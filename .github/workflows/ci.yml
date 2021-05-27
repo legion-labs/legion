@@ -1,0 +1,29 @@
+name: Legion CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    name: Building and running tests
+    strategy:
+      matrix:
+        include:
+          - os: windows-2019
+            container: ghcr.io/legion-labs/build-env-win-rust:0.1.0
+          - os: ubuntu-20.04
+            container: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ${{ matrix.container }}
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run cargo test
+        run: |
+          cargo test
