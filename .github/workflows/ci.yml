@@ -7,8 +7,29 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    name: Running code checks
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Check for formatting
+        run: cargo fmt --all -- --check 
+
+      - name: Validate docs
+        run: cargo doc --workspace
+
+      - name: Run Clippy
+        run: cargo clippy
+
   test:
-    name: Building and running tests
+    name: Running tests
+    needs: lint
     strategy:
       matrix:
         include:
@@ -28,8 +49,18 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build
+        run: >-
+          docker run
+          --name cargo_build
+          --rm
+          --workdir ${{ matrix.workdir }}
+          -v ${{ github.workspace }}:${{ matrix.workdir }}
+          ${{ matrix.container }}
+          cargo test --no-run
 
-      - name: Run cargo test
+      - name: Run tests
         run: >-
           docker run
           --name cargo_test
@@ -39,3 +70,12 @@ jobs:
           ${{ matrix.container }}
           cargo test
 
+      - name: Run benchmarks
+        run: >-
+          docker run
+          --name cargo_bench
+          --rm
+          --workdir ${{ matrix.workdir }}
+          -v ${{ github.workspace }}:${{ matrix.workdir }}
+          ${{ matrix.container }}
+          cargo bench
