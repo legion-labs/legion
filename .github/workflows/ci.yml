@@ -30,12 +30,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run cargo test
-        run: >
-          docker run 
-            --name cargo_test 
-            --rm 
-            --workdir ${{ matrix.workdir }} 
-            -v ${{ github.workspace }}:${{ matrix.workdir }} 
-            ${{ matrix.container }} 
+        run: >-
+          docker run
+            --name cargo_test
+            --rm
+            --workdir ${{ matrix.workdir }}
+            -v ${{ github.workspace }}:${{ matrix.workdir }}
+            ${{ matrix.container }}
             cargo test
 
