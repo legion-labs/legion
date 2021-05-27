@@ -12,8 +12,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: windows-2019
-            container: ghcr.io/legion-labs/build-env-win-rust:0.1.0
           - os: ubuntu-20.04
             container: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
     runs-on: ${{ matrix.os }}
