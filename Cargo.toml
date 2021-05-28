@@ -2,7 +2,8 @@
 members = [
     "core",
     "modules/*",
-    "apps/*"
+    "apps/*",
+    "tests/*"
 ]
 
 [profile.release]
