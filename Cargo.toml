@@ -4,3 +4,13 @@ members = [
     "modules/*",
     "apps/*"
 ]
+
+[profile.release]
+opt-level = 3
+debug = true
+debug-assertions = false
+
+[profile.bench]
+opt-level = 3
+debug = true
+debug-assertions = false
