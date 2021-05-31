@@ -40,6 +40,16 @@ fn main() {
             SubCommand::with_name("local-changes")
                 .about("Lists changes in workspace lsc knows about")
         )
+        .subcommand(
+            SubCommand::with_name("commit")
+                .about("Records local changes in the repository as a single transaction")
+                .arg(
+                    Arg::with_name("message")
+                        .short("m")
+                        .required(true)
+                        .value_delimiter("\"")
+                        .help("commit message"))
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -81,7 +91,22 @@ fn main() {
                 }
             }
         }
-        ("local-changes", Some(_command_match)) => match find_local_changes() {
+        ("commit", Some(command_match)) => {
+            let mut message = String::from("");
+            for item in command_match.values_of("message").unwrap() {
+                message += item;
+            }
+            match commit(&message) {
+                Err(e) => {
+                    println!("commit failed: {}", e);
+                    std::process::exit(1);
+                }
+                Ok(_) => {
+                    println!("commit completed");
+                }
+            }
+        }
+        ("local-changes", Some(_command_match)) => match find_local_changes_command() {
             Ok(changes) => {
                 for change in changes {
                     println!("{} {}", change.change_type, change.relative_path);

@@ -7,7 +7,7 @@ pub fn init_workspace(
     workspace_directory: &Path,
     repository_directory: &Path,
 ) -> Result<(), String> {
-    if let Ok(_) = fs::metadata(workspace_directory) {
+    if fs::metadata(workspace_directory).is_ok() {
         return Err(format!("{:?} already exists", workspace_directory));
     }
     if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc")) {

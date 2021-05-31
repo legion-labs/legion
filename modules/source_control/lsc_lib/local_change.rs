@@ -9,9 +9,7 @@ pub struct LocalChange {
     pub change_type: String, //edit, add, delete
 }
 
-pub fn find_local_changes() -> Result<Vec<LocalChange>, String> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
+pub fn find_local_changes( workspace_root: &Path) -> Result<Vec<LocalChange>, String> {
     let local_edits_dir = workspace_root.join(".lsc/local_edits");
     let mut res = Vec::new();
     match local_edits_dir.read_dir() {
@@ -42,6 +40,12 @@ pub fn find_local_changes() -> Result<Vec<LocalChange>, String> {
         }
     }
     Ok(res)
+}
+
+pub fn find_local_changes_command() -> Result<Vec<LocalChange>, String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    find_local_changes(&workspace_root)
 }
 
 pub fn track_new_file(file_to_add_specified: &Path) -> Result<(), String> {

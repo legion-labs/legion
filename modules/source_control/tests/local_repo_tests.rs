@@ -10,11 +10,17 @@ Nulla eu scelerisque odio. Suspendisse ultrices convallis hendrerit. Duis lacini
 }
 
 fn syscall(command: &str, args: &[&str]) {
+    print!("{} ", command);
+    for a in args{
+        print!("{} ", a);
+    }
+    print!("\n");
     let output = Command::new(command)
         .args(args)
         .output()
         .expect("failed to execute lsc-cli");
     println!("{}", std::str::from_utf8(&output.stdout).unwrap());
+    println!("{}", std::str::from_utf8(&output.stderr).unwrap());
     assert!(output.status.success());
 }
 
@@ -56,4 +62,5 @@ fn add_files() {
     assert!(std::env::set_current_dir(&workspace_dir).is_ok());
     lsc_cli_sys(&["add", "dir0/file1.txt"]);
     lsc_cli_sys(&["local-changes"]);
+    lsc_cli_sys(&["commit", r#"-m"my commit message""#]);
 }
