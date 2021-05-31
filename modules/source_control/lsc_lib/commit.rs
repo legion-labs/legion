@@ -144,7 +144,7 @@ pub fn commit(message: &str) -> Result<(), String> {
         String::from(message),
         hashed_changes,
         new_root_hash,
-        Vec::new(), //todo: use the current commit, which should be the head of the branch
+        Vec::from([base_commit.id]),
     );
     save_commit(&workspace_spec.repository, &commit)?;
     current_branch.head = commit.id;
