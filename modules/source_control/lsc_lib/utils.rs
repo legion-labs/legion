@@ -58,6 +58,30 @@ pub fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf, String> {
     }
 }
 
+pub fn make_file_read_only(file_path: &Path) -> Result<(),String>{
+    match fs::metadata(&file_path) {
+        Ok(meta) => {
+            let mut permissions = meta.permissions();
+            permissions.set_readonly(true);
+            if let Err(e) = fs::set_permissions(&file_path, permissions) {
+                return Err(format!(
+                    "Error making file read only for {}: {}",
+                    file_path.display(),
+                    e
+                ));
+            }
+        }
+        Err(e) => {
+            return Err(format!(
+                "Error reading file metadata for {}: {}",
+                file_path.display(),
+                e
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub fn lz4_compress_to_file(file_path: &Path, contents: &[u8]) -> Result<(), String> {
     match std::fs::File::create(file_path) {
         Err(e) => {

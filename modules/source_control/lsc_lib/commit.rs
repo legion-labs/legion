@@ -97,26 +97,7 @@ fn make_local_files_read_only(
     for change in changes {
         if change.change_type != "delete" {
             let full_path = workspace_root.join(&change.relative_path);
-            match fs::metadata(&full_path) {
-                Ok(meta) => {
-                    let mut permissions = meta.permissions();
-                    permissions.set_readonly(true);
-                    if let Err(e) = fs::set_permissions(&full_path, permissions) {
-                        return Err(format!(
-                            "Error making file read only for {}: {}",
-                            full_path.display(),
-                            e
-                        ));
-                    }
-                }
-                Err(e) => {
-                    return Err(format!(
-                        "Error reading file metadata for {}: {}",
-                        full_path.display(),
-                        e
-                    ));
-                }
-            }
+            make_file_read_only(&full_path)?;
         }
     }
     Ok(())

@@ -40,10 +40,12 @@ impl Tree {
     }
 
     pub fn add_or_update_file_node(&mut self, node: TreeNode) {
+        self.remove_file_node(&node.name);
         self.file_nodes.push(node);
     }
 
     pub fn add_or_update_dir_node(&mut self, node: TreeNode) {
+        self.remove_dir_node(&node.name);
         self.directory_nodes.push(node);
     }
 
@@ -59,6 +61,12 @@ impl Tree {
     pub fn remove_file_node(&mut self, node_name: &str) {
         if let Some(index) = self.file_nodes.iter().position(|x| x.name == node_name) {
             self.file_nodes.swap_remove(index);
+        }
+    }
+
+    pub fn remove_dir_node(&mut self, node_name: &str) {
+        if let Some(index) = self.directory_nodes.iter().position(|x| x.name == node_name) {
+            self.directory_nodes.swap_remove(index);
         }
     }
 }
@@ -85,7 +93,7 @@ pub fn read_tree(repo: &Path, hash: &str) -> Result<Tree, String> {
     }
 }
 
-pub fn fetch_tree_subdir(repo: &Path, root: &Tree, subdir: &Path) -> Result<Tree,String> {
+pub fn fetch_tree_subdir(repo: &Path, root: &Tree, subdir: &Path) -> Result<Tree, String> {
     let mut parent = root.clone();
     for component in subdir.components() {
         match parent.find_dir_node(
@@ -95,7 +103,7 @@ pub fn fetch_tree_subdir(repo: &Path, root: &Tree, subdir: &Path) -> Result<Tree
                 .expect("invalid path component name"),
         ) {
             Ok(node) => {
-                parent = read_tree(repo,&node.hash)?;
+                parent = read_tree(repo, &node.hash)?;
             }
             Err(_) => {
                 return Ok(Tree::empty()); //new directory
@@ -201,7 +209,6 @@ pub fn update_tree_from_changes(
     Err(String::from("root tree not processed"))
 }
 
-//todo: make files read-only
 pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Result<(), String> {
     let mut dir_to_process = Vec::from([TreeNode {
         name: String::from(download_path.to_str().expect("path is invalid string")),
@@ -238,6 +245,9 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
                     abs_path.display(),
                     e
                 ));
+            }
+            if let Err(e) = make_file_read_only(&abs_path){
+                errors.push(e);
             }
         }
     }
