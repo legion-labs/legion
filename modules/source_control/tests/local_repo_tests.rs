@@ -35,8 +35,15 @@ fn syscall(command: &str, args: &[&str], should_succeed: bool) {
         .args(args)
         .output()
         .expect("failed to execute lsc-cli");
-    println!("{}", std::str::from_utf8(&output.stdout).unwrap());
-    println!("{}", std::str::from_utf8(&output.stderr).unwrap());
+
+    let mut out = std::io::stdout();
+    out.write_all(&output.stdout).unwrap();
+    out.flush().unwrap();
+
+    let mut err = std::io::stderr();
+    err.write_all(&output.stderr).unwrap();
+    err.flush().unwrap();
+
     assert!(output.status.success() == should_succeed);
 }
 
@@ -249,11 +256,10 @@ fn local_single_branch_merge_flow() {
 
 #[test]
 fn test_print_config() {
-    let config_file_path = lsc_lib::config_file_path().unwrap();
-    if config_file_path.exists(){
+    let config_file_path = lsc_lib::Config::config_file_path().unwrap();
+    if config_file_path.exists() {
         lsc_cli_sys(&["config"]);
-    }
-    else{
+    } else {
         println!("no config file, skipping test");
     }
 }

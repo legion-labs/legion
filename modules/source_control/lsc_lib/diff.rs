@@ -1,5 +1,7 @@
 use crate::*;
 use std::path::Path;
+use std::process::Command;
+use std::io::Write;
 
 fn reference_version_name_as_commit_id(
     repo: &Path,
@@ -16,9 +18,7 @@ fn reference_version_name_as_commit_id(
             let branch = read_branch_from_repo(&repo, &workspace_branch.name)?;
             Ok(branch.head)
         }
-        _ => {
-            Ok(String::from(reference_version_name))
-        }
+        _ => Ok(String::from(reference_version_name)),
     }
 }
 
@@ -26,16 +26,54 @@ pub fn diff_file_command(path: &Path, reference_version_name: &str) -> Result<()
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let repo = &workspace_spec.repository;
     let relative_path = path_relative_to(&abs_path, workspace_root)?;
     let ref_commit_id = reference_version_name_as_commit_id(
-        &workspace_spec.repository,
+        &repo,
         &workspace_root,
         reference_version_name,
     )?;
-    let ref_file_hash = find_file_hash_at_commit(&workspace_spec.repository, &relative_path, &ref_commit_id)?;
-    let base_version_contents = read_blob(&workspace_spec.repository, &ref_file_hash)?;
-    let local_version_contents = read_text_file(&path)?;
-    let patch = diffy::create_patch(&base_version_contents, &local_version_contents);
-    println!("{}", patch);
+    let ref_file_hash =
+        find_file_hash_at_commit(&repo, &relative_path, &ref_commit_id)?;
+
+    let config = Config::read_config()?;
+    match config.find_diff_command(&relative_path) {
+        Some(mut external_command_vec) => {
+            let ref_path = download_temp_file(&repo, &workspace_root, &ref_file_hash)?;
+            //todo: delete temp file with RAII
+            let ref_path_str = ref_path.to_str().unwrap();
+            let local_file = abs_path.to_str().unwrap();
+            for item in &mut external_command_vec[..]{
+                *item = item.replace("%1", &ref_path_str);
+                *item = item.replace("%2", &local_file);
+            }
+            match Command::new(&external_command_vec[0])
+                .args( &external_command_vec[1..] )
+                .output() {
+                Ok(output) => {
+                    let mut out = std::io::stdout();
+                    out.write_all(&output.stdout).unwrap();
+                    out.flush().unwrap();
+                    
+                    let mut err = std::io::stderr();
+                    err.write_all(&output.stderr).unwrap();
+                    err.flush().unwrap();
+                }
+                Err(e) => {
+                    return Err(format!(
+                        "Error executing external command {:?}: {}",
+                        external_command_vec, e
+                    ));
+                }
+            }
+        }
+        None => {
+            let base_version_contents = read_blob(&repo, &ref_file_hash)?;
+            let local_version_contents = read_text_file(&path)?;
+            let patch = diffy::create_patch(&base_version_contents, &local_version_contents);
+            println!("{}", patch);
+        }
+    }
+
     Ok(())
 }

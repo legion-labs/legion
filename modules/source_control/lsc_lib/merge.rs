@@ -206,21 +206,19 @@ pub fn merge_file_command(p: &Path) -> Result<(), String> {
     let repo = &workspace_spec.repository;
     let relative_path = path_relative_to(&abs_path, workspace_root)?;
     let merge_pending = find_merge_pending(&workspace_root, &relative_path)?;
-    let tmp_dir = workspace_root.join(".lsc/tmp");
     let base_file_hash = find_file_hash_at_commit(
         &workspace_spec.repository,
         &relative_path,
         &merge_pending.base_commit_id,
     )?;
-    let base_file_path = tmp_dir.join(&base_file_hash);
-    download_blob(repo, &base_file_path, &base_file_hash)?;
+    let base_file_path = download_temp_file(&repo, &workspace_root, &base_file_hash)?;
     let theirs_file_hash = find_file_hash_at_commit(
         &workspace_spec.repository,
         &relative_path,
         &merge_pending.theirs_commit_id,
     )?;
-    let theirs_file_path = tmp_dir.join(&theirs_file_hash);
-    download_blob(repo, &theirs_file_path, &theirs_file_hash)?;
+    let theirs_file_path = download_temp_file(&repo, &workspace_root, &theirs_file_hash)?;
+    let tmp_dir = workspace_root.join(".lsc/tmp");
     let output_path = tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string()));
     run_merge_program(
         abs_path.to_str().unwrap(),

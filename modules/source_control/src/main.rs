@@ -55,6 +55,7 @@ fn main() {
         .subcommand(
             SubCommand::with_name("diff")
                 .about("Prints difference between local file and specified commit")
+                //todo: add --notool
                 .arg(
                     Arg::with_name("path")
                         .required(true)
