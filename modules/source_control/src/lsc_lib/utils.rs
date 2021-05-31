@@ -15,6 +15,20 @@ pub fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
+pub fn read_file(path: &Path) -> Result<String, String> {
+    match fs::File::open(path) {
+        Ok(mut f) => {
+            let mut buffer = String::new();
+            match f.read_to_string(&mut buffer){
+                Ok(_size) => {}
+                Err(e) => return Err(format!("Error reading file {:?}: {}", path, e))
+            }
+            Ok(buffer)
+        }
+        Err(e) => return Err(format!("Error opening file {:?}: {}", path, e)),
+    }
+}
+
 pub fn path_to_string(p: &Path) -> String {
     String::from(p.to_str().unwrap())
 }

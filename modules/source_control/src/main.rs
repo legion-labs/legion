@@ -43,6 +43,10 @@ fn main() {
                         .required(true)
                         .help("local path within a workspace")),
         )
+        .subcommand(
+            SubCommand::with_name("local-changes")
+                .about("Lists changes in workspace lsc knows about")
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -67,6 +71,16 @@ fn main() {
             if let Err(e) = track_new_file(Path::new(command_match.value_of("path").unwrap())) {
                 println!("add failed: {}", e);
                 std::process::exit(1);
+            }
+        }
+        ("local-changes", Some(_command_match)) => {
+            match find_local_changes(){
+                Ok(changes) => {
+                    for change in changes{
+                        println!("{} {}", change.change_type, change.relative_path);
+                    }
+                }
+                Err(e) =>{ println!("local-changes failed: {}", e ) }
             }
         }
         _ => {}

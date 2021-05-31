@@ -1,12 +1,47 @@
 use crate::lsc_lib::*;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LocalChange {
     pub relative_path: String,
     pub change_type: String, //edit, add, delete
+}
+
+pub fn find_local_changes() -> Result<Vec<LocalChange>, String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let local_edits_dir = workspace_root.join(".lsc/local_edits");
+    let mut res = Vec::new();
+    match local_edits_dir.read_dir() {
+        Ok(dir_iterator) => {
+            for entry_res in dir_iterator {
+                match entry_res {
+                    Ok(entry) => {
+                        let parsed: serde_json::Result<LocalChange> =
+                            serde_json::from_str(&read_file(&entry.path())?);
+                        match parsed {
+                            Ok(edit) => {
+                                res.push(edit);
+                            }
+                            Err(e) => {
+                                return Err(format!("Error parsing {:?}: {}", entry.path(), e))
+                            }
+                        }
+                    }
+                    Err(e) => return Err(format!("Error reading local edit entry: {}", e)),
+                }
+            }
+        }
+        Err(e) => {
+            return Err(format!(
+                "Error reading directory {:?}: {}",
+                local_edits_dir, e
+            ))
+        }
+    }
+    Ok(res)
 }
 
 pub fn track_new_file(file_to_add_specified: &Path) -> Result<(), String> {
