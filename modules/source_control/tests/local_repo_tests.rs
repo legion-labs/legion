@@ -1,5 +1,5 @@
 use std::fs::{self, DirEntry};
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -9,6 +9,15 @@ fn write_lorem_ipsum(p: &Path) {
 Nulla eu scelerisque odio. Suspendisse ultrices convallis hendrerit. Duis lacinia lacus ut urna pellentesque, euismod auctor risus volutpat. Sed et congue dolor, et bibendum dolor. Nam sit amet ante id eros aliquet luctus. Donec pulvinar mauris turpis, a ullamcorper mi fermentum ac. Morbi a volutpat turpis. Nulla facilisi. Sed rutrum placerat nisl vitae condimentum. Nunc et lacus ut lacus aliquet tempor et volutpat mi. Maecenas pretium ultricies mi id vestibulum. Sed turpis justo, semper eu nisl ac, hendrerit mattis turpis. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Praesent condimentum pellentesque vestibulum. Fusce at hendrerit lorem.";
 
     lsc_lib::write_file(p, contents.as_bytes()).expect("write failed");
+}
+
+fn append_text_to_file(p: &Path, contents: &str) {
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(p)
+        .unwrap();
+    f.write(contents.as_bytes()).unwrap();
 }
 
 fn syscall(command: &str, args: &[&str]) {
@@ -28,9 +37,11 @@ fn syscall(command: &str, args: &[&str]) {
 
 fn lsc_cli_sys(args: &[&str]) {
     let test_bin_exe = std::env::current_exe().expect("error getting current exe");
-    let mut subdir = test_bin_exe.parent().expect("error getting parent directory");
+    let mut subdir = test_bin_exe
+        .parent()
+        .expect("error getting parent directory");
     let mut parent_dir = subdir.parent().expect("error getting parent directory");
-    while parent_dir.file_name().expect("file name") != "target"{
+    while parent_dir.file_name().expect("file name") != "target" {
         subdir = parent_dir;
         parent_dir = subdir.parent().expect("error getting parent directory");
     }
@@ -133,9 +144,12 @@ fn add_files() {
 
     assert!(fs::metadata(work2.join("dir0/file3.txt")).is_ok());
     assert!(fs::metadata(work2.join("dir0/file1.txt")).is_ok());
-    
 
     //still under first workspace
     lsc_cli_sys(&["log"]);
-
+    lsc_cli_sys(&["edit", "dir0/file0.txt"]);
+    lsc_cli_sys(&["local-changes"]);
+    append_text_to_file(Path::new("dir0/file0.txt"), "\nnew line");
+    lsc_cli_sys(&["commit", r#"-m"commit #3""#]);
+    lsc_cli_sys(&["log"]);
 }

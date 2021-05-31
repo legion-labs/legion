@@ -40,8 +40,8 @@ pub fn path_to_string(p: &Path) -> String {
     String::from(p.to_str().unwrap())
 }
 
-pub fn format_path(p: &Path) -> String{
-    p.to_string_lossy().replace( "/", "\\" )
+pub fn format_path(p: &Path) -> String {
+    p.to_string_lossy().replace("/", "\\")
 }
 
 pub fn make_path_absolute(p: &Path) -> PathBuf {
@@ -62,14 +62,14 @@ pub fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf, String> {
     }
 }
 
-pub fn make_file_read_only(file_path: &Path) -> Result<(),String>{
+pub fn make_file_read_only(file_path: &Path, readonly: bool) -> Result<(), String> {
     match fs::metadata(&file_path) {
         Ok(meta) => {
             let mut permissions = meta.permissions();
-            permissions.set_readonly(true);
+            permissions.set_readonly(readonly);
             if let Err(e) = fs::set_permissions(&file_path, permissions) {
                 return Err(format!(
-                    "Error making file read only for {}: {}",
+                    "Error changing file permissions for {}: {}",
                     file_path.display(),
                     e
                 ));

@@ -104,7 +104,7 @@ fn make_local_files_read_only(
     for change in changes {
         if change.change_type != "delete" {
             let full_path = workspace_root.join(&change.relative_path);
-            make_file_read_only(&full_path)?;
+            make_file_read_only(&full_path, true)?;
         }
     }
     Ok(())

@@ -247,7 +247,7 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
                     e
                 ));
             }
-            if let Err(e) = make_file_read_only(&abs_path){
+            if let Err(e) = make_file_read_only(&abs_path, true){
                 errors.push(e);
             }
         }

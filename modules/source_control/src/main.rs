@@ -38,6 +38,14 @@ fn main() {
                         .help("local path within a workspace")),
         )
         .subcommand(
+            SubCommand::with_name("edit")
+                .about("Makes file writable and adds it to the set of pending changes")
+                .arg(
+                    Arg::with_name("path")
+                        .required(true)
+                        .help("local path within a workspace")),
+        )
+        .subcommand(
             SubCommand::with_name("local-changes")
                 .about("Lists changes in workspace lsc knows about")
         )
@@ -94,6 +102,15 @@ fn main() {
                 Ok(_) => {
                     println!("tracking new file");
                 }
+            }
+        }
+        ("edit", Some(command_match)) => {
+            if let Err(e) = edit_file_command(Path::new(command_match.value_of("path").unwrap())) {
+                println!("edit failed: {}", e);
+                std::process::exit(1);
+            }
+            else{
+                println!("file ready to be edited");
             }
         }
         ("commit", Some(command_match)) => {
