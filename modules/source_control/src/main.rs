@@ -4,6 +4,12 @@ use std::fs;
 use std::io::prelude::*;
 use std::result::Result;
 
+#[derive(Serialize, Deserialize, Debug)]
+struct Workspace {
+    repository: String,
+    owner: String,
+}
+
 fn init_local_repository(directory: &str) -> Result<(), String> {
     if let Ok(_) = fs::metadata(directory) {
         return Err(format!("{} already exists", directory));
@@ -17,9 +23,6 @@ fn init_local_repository(directory: &str) -> Result<(), String> {
     if let Err(e) = fs::create_dir_all(format!("{}/blobs", directory)) {
         return Err(format!("Error creating blobs directory: {}", e));
     }
-    if let Err(e) = fs::create_dir_all(format!("{}/workspaces", directory)) {
-        return Err(format!("Error creating workspaces directory: {}", e));
-    }
     if let Err(e) = fs::create_dir_all(format!("{}/branches", directory)) {
         return Err(format!("Error creating branches directory: {}", e));
     }
@@ -27,13 +30,6 @@ fn init_local_repository(directory: &str) -> Result<(), String> {
         return Err(format!("Error creating locks directory: {}", e));
     }
     Ok(())
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Workspace {
-    id: String,
-    repository: String,
-    owner: String,
 }
 
 fn write_file(path: &std::path::Path, contents: &[u8]) -> Result<(), String> {
@@ -59,7 +55,6 @@ fn init_workspace(
         return Err(format!("Error creating .lsc directory: {}", e));
     }
     let spec = Workspace {
-        id: uuid::Uuid::new_v4().to_string(),
         repository: String::from(repository_directory.to_str().unwrap()),
         owner: whoami::username(),
     };
