@@ -36,6 +36,5 @@ pub fn init_workspace(
     save_current_branch(workspace_directory, &main_branch)?;
     let commit = read_commit(repository_directory, &main_branch.head)?;
     download_tree(repository_directory, workspace_directory, &commit.root_hash)?;
-    //todo: fill workspace
     Ok(())
 }

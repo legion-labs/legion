@@ -14,16 +14,23 @@ pub struct HashedChange {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Commit {
     pub id: String,
+    pub message: String,
     pub changes: Vec<HashedChange>,
     pub root_hash: String,
     pub parents: Vec<String>,
 }
 
 impl Commit {
-    pub fn new(changes: Vec<HashedChange>, root_hash: String, parents: Vec<String>) -> Commit {
+    pub fn new(
+        message: String,
+        changes: Vec<HashedChange>,
+        root_hash: String,
+        parents: Vec<String>,
+    ) -> Commit {
         let id = uuid::Uuid::new_v4().to_string();
         Commit {
             id,
+            message,
             changes,
             root_hash,
             parents,
@@ -115,7 +122,7 @@ fn make_local_files_read_only(
     Ok(())
 }
 
-pub fn commit(_message: &str) -> Result<(), String> {
+pub fn commit(message: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
@@ -123,20 +130,23 @@ pub fn commit(_message: &str) -> Result<(), String> {
     let hashed_changes =
         upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
 
+    let mut current_branch = read_current_branch(&workspace_root)?;
+    let base_commit = read_commit(&workspace_spec.repository, &current_branch.head)?;
+    let previous_root_tree = read_tree(&workspace_spec.repository, &base_commit.root_hash)?;
+
     let new_root_hash = update_tree_from_changes(
-        Tree::empty(), //todo: take tree of current commit
+        previous_root_tree,
         &hashed_changes,
         &workspace_spec.repository,
     )?;
 
-    let commit = Commit {
-        id: uuid::Uuid::new_v4().to_string(),
-        changes: hashed_changes,
-        root_hash: new_root_hash,
-        parents: Vec::new(), //todo: use the current commit, which should be the head of the branch
-    };
+    let commit = Commit::new(
+        String::from(message),
+        hashed_changes,
+        new_root_hash,
+        Vec::new(), //todo: use the current commit, which should be the head of the branch
+    );
     save_commit(&workspace_spec.repository, &commit)?;
-    let mut current_branch = read_current_branch(&workspace_root)?;
     current_branch.head = commit.id;
     save_current_branch(&workspace_root, &current_branch)?;
 

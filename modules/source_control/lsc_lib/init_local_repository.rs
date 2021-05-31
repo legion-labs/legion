@@ -29,7 +29,7 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
     let root_hash = root_tree.hash();
     save_tree(directory, &root_tree, &root_hash)?;
 
-    let initial_commit = Commit::new(Vec::new(), root_hash, Vec::new());
+    let initial_commit = Commit::new(String::from("initial commit"), Vec::new(), root_hash, Vec::new());
     save_commit(directory, &initial_commit)?;
 
     let main_branch = Branch::new(String::from("main"), initial_commit.id);

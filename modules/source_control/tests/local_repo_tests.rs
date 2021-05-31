@@ -108,4 +108,21 @@ fn add_files() {
     lsc_cli_sys(&["add", "bin.jpg"]);
     lsc_cli_sys(&["local-changes"]);
     lsc_cli_sys(&["commit", r#"-m"my commit message""#]);
+
+    write_lorem_ipsum(&workspace_dir.join("dir0/file3.txt"));
+    lsc_cli_sys(&["add", "dir0/file3.txt"]);
+    lsc_cli_sys(&["local-changes"]);
+    lsc_cli_sys(&["commit", r#"-m"my second commit message""#]);
+
+    let work2 = this_test_dir.join("work2");
+    lsc_cli_sys(&[
+        "init-workspace",
+        work2.to_str().unwrap(),
+        repo_dir.to_str().unwrap(),
+    ]);
+
+    assert!(fs::metadata(work2.join("dir0/file3.txt")).is_ok());
+    assert!(fs::metadata(work2.join("dir0/file1.txt")).is_ok());
+    
+    
 }

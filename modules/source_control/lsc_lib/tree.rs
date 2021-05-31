@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TreeNode {
-    pub name: PathBuf,
+    pub name: String,
     pub hash: String,
 }
 
@@ -29,11 +29,11 @@ impl Tree {
         //std::hash::Hasher is not right here because it supports only 64 bit hashes
         let mut hasher = Sha256::new();
         for node in &self.directory_nodes {
-            hasher.update(node.name.to_str().expect("invalid node name").as_bytes());
+            hasher.update(node.name.as_bytes());
             hasher.update(&node.hash);
         }
         for node in &self.file_nodes {
-            hasher.update(node.name.to_str().expect("invalid node name").as_bytes());
+            hasher.update(node.name.as_bytes());
             hasher.update(&node.hash);
         }
         format!("{:X}", hasher.finalize())
@@ -47,7 +47,16 @@ impl Tree {
         self.directory_nodes.push(node);
     }
 
-    pub fn remove_file_node(&mut self, node_name: &Path) {
+    pub fn find_dir_node(&self, name: &str) -> Result<&TreeNode, String> {
+        for node in &self.directory_nodes {
+            if node.name == name {
+                return Ok(node);
+            }
+        }
+        Err(format!("could not find tree node {}", name))
+    }
+
+    pub fn remove_file_node(&mut self, node_name: &str) {
         if let Some(index) = self.file_nodes.iter().position(|x| x.name == node_name) {
             self.file_nodes.swap_remove(index);
         }
@@ -76,9 +85,29 @@ pub fn read_tree(repo: &Path, hash: &str) -> Result<Tree, String> {
     }
 }
 
+pub fn fetch_tree_subdir(repo: &Path, root: &Tree, subdir: &Path) -> Result<Tree,String> {
+    let mut parent = root.clone();
+    for component in subdir.components() {
+        match parent.find_dir_node(
+            &component
+                .as_os_str()
+                .to_str()
+                .expect("invalid path component name"),
+        ) {
+            Ok(node) => {
+                parent = read_tree(repo,&node.hash)?;
+            }
+            Err(_) => {
+                return Ok(Tree::empty()); //new directory
+            }
+        }
+    }
+    Ok(parent)
+}
+
 // returns the hash of the updated root tree
 pub fn update_tree_from_changes(
-    _previous_version: Tree,
+    previous_root: Tree,
     local_changes: &[HashedChange],
     repo: &Path,
 ) -> Result<String, String> {
@@ -113,7 +142,7 @@ pub fn update_tree_from_changes(
     //process leafs before parents to be able to patch parents with hash of children
     dir_to_update_by_length.sort_by_key(|a| core::cmp::Reverse(a.components().count()));
     for dir in dir_to_update_by_length {
-        let mut tree = Tree::empty(); //todo: fetch previous version
+        let mut tree = fetch_tree_subdir(repo, &previous_root, &dir)?;
         for change in local_changes {
             let parent = change
                 .relative_path
@@ -122,11 +151,13 @@ pub fn update_tree_from_changes(
             if dir == parent {
                 //todo: handle edit & delete
                 tree.add_or_update_file_node(TreeNode {
-                    name: PathBuf::from(
+                    name: String::from(
                         change
                             .relative_path
                             .file_name()
-                            .expect("error getting file name"),
+                            .expect("error getting file name")
+                            .to_str()
+                            .expect("path is invalid string"),
                     ),
                     hash: change.hash.clone(),
                 });
@@ -149,7 +180,7 @@ pub fn update_tree_from_changes(
                 .strip_prefix(dir_parent)
                 .expect("Error getting directory name");
             let dir_node = TreeNode {
-                name: name.to_path_buf(),
+                name: String::from(name.to_str().expect("path is invalid string")),
                 hash: dir_hash.clone(),
             };
             match parent_to_children_dir.get_mut(&key) {
@@ -170,9 +201,10 @@ pub fn update_tree_from_changes(
     Err(String::from("root tree not processed"))
 }
 
+//todo: make files read-only
 pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Result<(), String> {
     let mut dir_to_process = Vec::from([TreeNode {
-        name: download_path.to_path_buf(),
+        name: String::from(download_path.to_str().expect("path is invalid string")),
         hash: String::from(tree_hash),
     }]);
     let mut errors: Vec<String> = Vec::new();
@@ -181,7 +213,7 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
         let tree = read_tree(repo, &dir_node.hash)?;
         for relative_subdir_node in tree.directory_nodes {
             let abs_subdir_node = TreeNode {
-                name: dir_node.name.join(relative_subdir_node.name),
+                name: format!("{}/{}", &dir_node.name, relative_subdir_node.name),
                 hash: relative_subdir_node.hash,
             };
             match std::fs::create_dir_all(&abs_subdir_node.name) {
@@ -191,14 +223,13 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
                 Err(e) => {
                     errors.push(format!(
                         "Error creating directory {}: {}",
-                        abs_subdir_node.name.display(),
-                        e
+                        abs_subdir_node.name, e
                     ));
                 }
             }
         }
         for relative_file_node in tree.file_nodes {
-            let abs_path = dir_node.name.join(relative_file_node.name);
+            let abs_path = PathBuf::from(&dir_node.name).join(relative_file_node.name);
             let blob_path = repo.join(format!("blobs/{}", relative_file_node.hash));
             if let Err(e) = lz4_decompress(&blob_path, &abs_path) {
                 errors.push(format!(
