@@ -36,28 +36,39 @@ struct Workspace {
     owner: String,
 }
 
-fn init_workspace(workspace_directory: &str, repository_directory: &str) -> Result<(), String> {
-    if let Ok(_) = fs::metadata(workspace_directory) {
-        return Err(format!("{} already exists", workspace_directory));
+fn write_file(path: &std::path::Path, contents: &[u8]) -> Result<(), String> {
+    match fs::File::create(path) {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(contents) {
+                return Err(format!("Error writing {:?}: {}", path, e));
+            }
+        }
+        Err(e) => return Err(format!("Error writing {:?}: {}", path, e)),
     }
-    if let Err(e) = fs::create_dir_all(format!("{}/.lsc", workspace_directory)) {
+    Ok(())
+}
+
+fn init_workspace(
+    workspace_directory: &std::path::Path,
+    repository_directory: &std::path::Path,
+) -> Result<(), String> {
+    if let Ok(_) = fs::metadata(workspace_directory) {
+        return Err(format!("{:?} already exists", workspace_directory));
+    }
+    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc")) {
         return Err(format!("Error creating .lsc directory: {}", e));
     }
     let spec = Workspace {
         id: uuid::Uuid::new_v4().to_string(),
-        repository: repository_directory.to_string(),
+        repository: String::from(repository_directory.to_str().unwrap()),
         owner: whoami::username(),
     };
     match serde_json::to_string(&spec) {
         Ok(json_spec) => {
-            match fs::File::create(format!("{}/.lsc/workspace.json", workspace_directory)) {
-                Ok(mut file) => {
-                    if let Err(e) = file.write_all(json_spec.as_bytes()) {
-                        return Err(format!("Error writing workspace.json: {}", e));
-                    }
-                }
-                Err(e) => return Err(format!("Error writing workspace.json: {}", e)),
-            }
+            write_file(
+                workspace_directory.join(".lsc/workspace.json").as_path(),
+                json_spec.as_bytes(),
+            )?;
         }
         Err(e) => {
             return Err(format!("Error formatting workspace spec: {}", e));
@@ -111,8 +122,8 @@ fn main() {
     //todo: process in the order specified
     if let Some(command_match) = matches.subcommand_matches("init-workspace") {
         if let Err(e) = init_workspace(
-            command_match.value_of("workspace-directory").unwrap(),
-            command_match.value_of("repository-directory").unwrap(),
+            std::path::Path::new(command_match.value_of("workspace-directory").unwrap()),
+            std::path::Path::new(command_match.value_of("repository-directory").unwrap()),
         ) {
             println!("init_workspace failed: {}", e);
             std::process::exit(1);
