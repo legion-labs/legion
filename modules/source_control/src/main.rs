@@ -1,6 +1,7 @@
 use clap::{App, Arg, SubCommand};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::prelude::*;
 use std::result::Result;
 
 fn init_local_repository(directory: &str) -> Result<(), String> {
@@ -42,10 +43,24 @@ fn init_workspace(workspace_directory: &str, repository_directory: &str) -> Resu
         return Err(format!("Error creating .lsc directory: {}", e));
     }
     let spec = Workspace {
-        id: "allo".to_string(),
+        id: "allo".to_string(), //todo: make uuid
         repository: repository_directory.to_string(),
     };
-    println!("spec {:?}", spec);
+    match serde_json::to_string(&spec) {
+        Ok(json_spec) => {
+            match fs::File::create(format!("{}/.lsc/workspace.json", workspace_directory)) {
+                Ok(mut file) => {
+                    if let Err(e) = file.write_all(json_spec.as_bytes()) {
+                        return Err(format!("Error writing workspace.json: {}", e));
+                    }
+                }
+                Err(e) => return Err(format!("Error writing workspace.json: {}", e)),
+            }
+        }
+        Err(e) => {
+            return Err(format!("Error formatting workspace spec: {}", e));
+        }
+    }
     Ok(())
 }
 
@@ -83,7 +98,9 @@ fn main() {
         .get_matches();
 
     if let Some(command_match) = matches.subcommand_matches("init-local-repository") {
-        if let Err(e) = init_local_repository(command_match.value_of("repository-directory").unwrap()) {
+        if let Err(e) =
+            init_local_repository(command_match.value_of("repository-directory").unwrap())
+        {
             println!("init_local_repository failed: {}", e);
             std::process::exit(1);
         }
