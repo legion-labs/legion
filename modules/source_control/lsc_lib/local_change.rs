@@ -18,7 +18,7 @@ pub fn find_local_changes( workspace_root: &Path) -> Result<Vec<LocalChange>, St
                 match entry_res {
                     Ok(entry) => {
                         let parsed: serde_json::Result<LocalChange> =
-                            serde_json::from_str(&read_file(&entry.path())?);
+                            serde_json::from_str(&read_text_file(&entry.path())?);
                         match parsed {
                             Ok(edit) => {
                                 res.push(edit);

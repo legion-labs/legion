@@ -23,7 +23,7 @@ pub fn find_workspace_root(directory: &Path) -> Result<&Path, String> {
 pub fn read_workspace_spec(workspace_root_dir: &Path) -> Result<Workspace, String> {
     let workspace_json_path = workspace_root_dir.join(".lsc/workspace.json");
     let parsed: serde_json::Result<Workspace> =
-        serde_json::from_str(&read_file(&workspace_json_path)?);
+        serde_json::from_str(&read_text_file(&workspace_json_path)?);
     match parsed {
         Ok(spec) => Ok(spec),
         Err(e) => Err(format!(

@@ -53,6 +53,7 @@ fn add_files() {
     std::fs::create_dir_all(workspace_dir.join("dir0")).expect("dir0 creation failed");
     write_lorem_ipsum(&workspace_dir.join("dir0/file0.txt"));
     write_lorem_ipsum(&workspace_dir.join("dir0/file1.txt"));
+    std::fs::copy( cargo_project_dir.join( "tests/lambda.jpg" ), workspace_dir.join("bin.jpg") ).expect("error copying lambda.jpg");
 
     lsc_cli_sys(&[
         "add",
@@ -61,6 +62,7 @@ fn add_files() {
 
     assert!(std::env::set_current_dir(&workspace_dir).is_ok());
     lsc_cli_sys(&["add", "dir0/file1.txt"]);
+    lsc_cli_sys(&["add", "bin.jpg"]);
     lsc_cli_sys(&["local-changes"]);
     lsc_cli_sys(&["commit", r#"-m"my commit message""#]);
 }
