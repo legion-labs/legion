@@ -1,69 +1,17 @@
 mod lsc_lib;
 
+use lsc_lib::*;
+
 use clap::{App, AppSettings, Arg, SubCommand};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::result::Result;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Workspace {
-    id: String, //a file lock will contain the workspace id
-    repository: String,
-    owner: String,
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 struct LocalChange {
     relative_path: String,
     change_type: String, //edit, add, delete
-}
-
-fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
-    match fs::File::create(path) {
-        Ok(mut file) => {
-            if let Err(e) = file.write_all(contents) {
-                return Err(format!("Error writing {:?}: {}", path, e));
-            }
-        }
-        Err(e) => return Err(format!("Error writing {:?}: {}", path, e)),
-    }
-    Ok(())
-}
-
-fn path_to_string(p: &Path) -> String {
-    String::from(p.to_str().unwrap())
-}
-
-fn init_workspace(workspace_directory: &Path, repository_directory: &Path) -> Result<(), String> {
-    if let Ok(_) = fs::metadata(workspace_directory) {
-        return Err(format!("{:?} already exists", workspace_directory));
-    }
-    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc")) {
-        return Err(format!("Error creating .lsc directory: {}", e));
-    }
-    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/local_edits")) {
-        return Err(format!("Error creating .lsc/local_edits directory: {}", e));
-    }
-    let spec = Workspace {
-        id: uuid::Uuid::new_v4().to_string(),
-        repository: path_to_string(repository_directory),
-        owner: whoami::username(),
-    };
-    //todo: record the workspace in the central database
-    match serde_json::to_string(&spec) {
-        Ok(json_spec) => {
-            write_file(
-                workspace_directory.join(".lsc/workspace.json").as_path(),
-                json_spec.as_bytes(),
-            )?;
-        }
-        Err(e) => {
-            return Err(format!("Error formatting workspace spec: {}", e));
-        }
-    }
-    Ok(())
 }
 
 fn find_workspace_root(directory: &Path) -> Result<&Path, String> {
