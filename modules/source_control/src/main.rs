@@ -33,6 +33,7 @@ fn init_local_repository(directory: &str) -> Result<(), String> {
 struct Workspace {
     id: String,
     repository: String,
+    owner: String,
 }
 
 fn init_workspace(workspace_directory: &str, repository_directory: &str) -> Result<(), String> {
@@ -43,8 +44,9 @@ fn init_workspace(workspace_directory: &str, repository_directory: &str) -> Resu
         return Err(format!("Error creating .lsc directory: {}", e));
     }
     let spec = Workspace {
-        id: "allo".to_string(), //todo: make uuid
+        id: uuid::Uuid::new_v4().to_string(),
         repository: repository_directory.to_string(),
+        owner: whoami::username(),
     };
     match serde_json::to_string(&spec) {
         Ok(json_spec) => {
