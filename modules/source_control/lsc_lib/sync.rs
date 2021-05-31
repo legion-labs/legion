@@ -24,6 +24,48 @@ fn compute_file_hash(p: &Path) -> Result<String, String> {
     Ok(hash)
 }
 
+fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<(), String> {
+    let local_hash = compute_file_hash(&local_path)?;
+    if local_hash != hash_to_sync {
+        match fs::metadata(&local_path) {
+            Ok(meta) => {
+                let mut permissions = meta.permissions();
+                if !permissions.readonly() {
+                    return Err(format!(
+                        "Error: local file {} is writable. Skipping sync for this file.",
+                        local_path.display()
+                    ));
+                }
+
+                permissions.set_readonly(false);
+                if let Err(e) = fs::set_permissions(&local_path, permissions) {
+                    return Err(format!(
+                        "Error making file {} writable: {}",
+                        local_path.display(),
+                        e
+                    ));
+                }
+                if let Err(e) = download_blob(&repo, &local_path, &hash_to_sync) {
+                    return Err(format!(
+                        "Error downloading {} {}: {}",
+                        local_path.display(),
+                        &hash_to_sync,
+                        e
+                    ));
+                }
+            }
+            Err(e) => {
+                return Err(format!(
+                    "Error reading metadata for {}: {}",
+                    local_path.display(),
+                    e
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn sync_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -38,56 +80,9 @@ pub fn sync_command() -> Result<(), String> {
     }
     let mut errors: Vec<String> = Vec::new();
     for (path, latest_hash) in to_download {
-        match compute_file_hash(&path) {
-            Ok(local_hash) => {
-                if local_hash != latest_hash {
-                    match fs::metadata(&path) {
-                        Ok(meta) => {
-                            let mut permissions = meta.permissions();
-                            if permissions.readonly() {
-                                permissions.set_readonly(false);
-                                match fs::set_permissions(&path, permissions) {
-                                    Ok(_) => {
-                                        match download_blob(
-                                            &workspace_spec.repository,
-                                            &path,
-                                            &latest_hash,
-                                        ) {
-                                            Err(e) => {
-                                                errors.push(format!(
-                                                    "Error downloading {} {}: {}",
-                                                    path.display(),
-                                                    &latest_hash,
-                                                    e
-                                                ));
-                                            }
-                                            Ok(_) => {
-                                                println!("Updated {}", path.display());
-                                            }
-                                        }
-                                    }
-                                    Err(e) => {
-                                        errors.push(format!(
-                                            "Error making file {} writable: {}",
-                                            path.display(),
-                                            e
-                                        ));
-                                    }
-                                }
-                            } else {
-                                errors.push(format!("Error: local file {} is writable. Skipping sync for this file.",
-                                            path.display()));
-                            }
-                        }
-                        Err(e) => {
-                            errors.push(format!(
-                                "Error reading metadata for {}: {}",
-                                path.display(),
-                                e
-                            ));
-                        }
-                    }
-                }
+        match sync_file(&workspace_spec.repository, &path, &latest_hash) {
+            Ok(_) => {
+                println!("Updated {}", path.display());
             }
             Err(e) => {
                 errors.push(e);
