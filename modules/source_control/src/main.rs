@@ -1,4 +1,3 @@
-use chrono::{DateTime, Local};
 use clap::{App, AppSettings, Arg, SubCommand};
 use lsc_lib::*;
 use std::path::Path;
@@ -170,23 +169,9 @@ fn main() {
                 std::process::exit(1);
             }
         },
-        ("log", Some(_command_match)) => match find_branch_commits_command() {
-            Ok(commits) => {
-                for c in commits {
-                    let utc = DateTime::parse_from_rfc3339(&c.date_time_utc)
-                        .expect("Error reading commit date");
-                    let local_time: DateTime<Local> = DateTime::from(utc);
-                    println!(
-                        "{} {} {} {}",
-                        c.id,
-                        local_time.format("%Y-%m-%d %H:%M:%S").to_string(),
-                        c.owner,
-                        c.message
-                    );
-                }
-            }
-            Err(e) => {
-                println!("log command failed: {}", e);
+        ("log", Some(_command_match)) => {
+            if let Err(e) = log_command(){
+                println!("{}", e);
                 std::process::exit(1);
             }
         },
