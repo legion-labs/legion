@@ -33,24 +33,38 @@ fn write_blob(file_path: &Path, contents: &[u8]) -> Result<(), String> {
 fn upload_localy_edited_blobs(
     workspace_root: &Path,
     workspace_spec: &Workspace,
-) -> Result<(), String> {
+    local_changes: &[LocalChange],
+) -> Result<Vec<HashedChange>, String> {
     let blob_dir = Path::new(&workspace_spec.repository).join("blobs");
-    for local_change in find_local_changes(workspace_root)? {
-        let workspace_path = workspace_root.join(local_change.relative_path);
+    let mut res = Vec::<HashedChange>::new();
+    for local_change in local_changes {
+        let workspace_path = workspace_root.join(&local_change.relative_path);
         let local_file_contents = read_bin_file(&workspace_path)?;
         let hash = format!("{:X}", Sha256::digest(&local_file_contents));
-        write_blob(&blob_dir.join(hash), &local_file_contents)?;
+        write_blob(&blob_dir.join(&hash), &local_file_contents)?;
+        res.push(HashedChange {
+            relative_path: local_change.relative_path.clone(),
+            hash: hash.clone(),
+            change_type: local_change.change_type.clone(),
+        });
     }
-    Ok(())
+    Ok(res)
 }
 
 pub fn commit(_message: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    upload_localy_edited_blobs(workspace_root, &workspace_spec)?;
+    let local_changes = find_local_changes(workspace_root)?;
+    let hashed_changes =
+        upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
 
-    //todo: build trees
+    let new_tree = update_tree_from_changes(
+        Tree::empty(), //todo: take tree of current commit
+        &hashed_changes,
+    );
+    println!("{:?}", new_tree);
+
     //todo: save commit
     //todo: make local files read only
     //todo: clear local changes

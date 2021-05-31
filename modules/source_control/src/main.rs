@@ -109,7 +109,7 @@ fn main() {
         ("local-changes", Some(_command_match)) => match find_local_changes_command() {
             Ok(changes) => {
                 for change in changes {
-                    println!("{} {}", change.change_type, change.relative_path);
+                    println!("{} {}", change.change_type, change.relative_path.display());
                 }
             }
             Err(e) => {

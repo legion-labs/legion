@@ -1,15 +1,22 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LocalChange {
-    pub relative_path: String,
+    pub relative_path: PathBuf,
     pub change_type: String, //edit, add, delete
 }
 
-pub fn find_local_changes( workspace_root: &Path) -> Result<Vec<LocalChange>, String> {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct HashedChange {
+    pub relative_path: PathBuf,
+    pub hash: String,
+    pub change_type: String, //edit, add, delete
+}
+
+pub fn find_local_changes(workspace_root: &Path) -> Result<Vec<LocalChange>, String> {
     let local_edits_dir = workspace_root.join(".lsc/local_edits");
     let mut res = Vec::new();
     match local_edits_dir.read_dir() {
@@ -69,9 +76,7 @@ pub fn track_new_file(file_to_add_specified: &Path) -> Result<(), String> {
 
                     //todo: lock the new file before recording the local change
                     let local_change = LocalChange {
-                        relative_path: path_to_string(
-                            path_relative_to(file_to_add, workspace_root.as_path())?.as_path(),
-                        ),
+                        relative_path: path_relative_to(file_to_add, workspace_root.as_path())?,
                         change_type: String::from("add"),
                     };
 
