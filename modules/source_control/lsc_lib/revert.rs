@@ -12,15 +12,18 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
     let current_commit = read_commit(&workspace_spec.repository, &workspace_branch.head)?;
     let root_tree = read_tree(&workspace_spec.repository, &current_commit.root_hash)?;
     let dir_tree = fetch_tree_subdir(&workspace_spec.repository, &root_tree, &parent_dir)?;
-    let file_node = dir_tree.find_file_node(
-        relative_path
-            .file_name()
-            .expect("no file name in path specified")
-            .to_str()
-            .expect("invalid file name"),
-    )?;
-    download_blob(&workspace_spec.repository, &abs_path, &file_node.hash)?;
-    make_file_read_only(&abs_path, true)?;
+
+    if local_change.change_type != "add" {
+        let file_node = dir_tree.find_file_node(
+            relative_path
+                .file_name()
+                .expect("no file name in path specified")
+                .to_str()
+                .expect("invalid file name"),
+        )?;
+        download_blob(&workspace_spec.repository, &abs_path, &file_node.hash)?;
+        make_file_read_only(&abs_path, true)?;
+    }
     clear_local_change(&workspace_root, &local_change)?;
     Ok(())
 }

@@ -181,6 +181,10 @@ fn local_repo_suite() {
     assert!(std::env::set_current_dir(&work1).is_ok());
     lsc_cli_sys(&["log"]);
     lsc_cli_sys(&["sync"]);
-    
+
+    //test revert add
+    write_lorem_ipsum(&work1.join("dir0/added_and_reverted.txt"));
+    lsc_cli_sys(&["add", "dir0/added_and_reverted.txt"]);
+    lsc_cli_sys(&["revert", "dir0/added_and_reverted.txt"]);
     
 }
