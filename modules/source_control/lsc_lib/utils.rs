@@ -106,6 +106,40 @@ pub fn lz4_compress_to_file(file_path: &Path, contents: &[u8]) -> Result<(), Str
     }
 }
 
+pub fn lz4_read(compressed: &Path) -> Result<String, String> {
+    match std::fs::File::open(compressed) {
+        Ok(input_file) => match lz4::Decoder::new(input_file) {
+            Ok(mut decoder) => {
+                let mut res = String::new();
+                match decoder.read_to_string(&mut res) {
+                    Ok(_) => Ok(res),
+                    Err(e) => {
+                        return Err(format!(
+                            "Error reading lz4 file {}: {}",
+                            compressed.display(),
+                            e
+                        ));
+                    }
+                }
+            }
+            Err(e) => {
+                return Err(format!(
+                    "Error reading lz4 file {}: {}",
+                    compressed.display(),
+                    e
+                ));
+            }
+        },
+        Err(e) => {
+            return Err(format!(
+                "Error opening file {}: {}",
+                compressed.display(),
+                e
+            ));
+        }
+    }
+}
+
 pub fn lz4_decompress(compressed: &Path, destination: &Path) -> Result<(), String> {
     match std::fs::File::open(compressed) {
         Ok(input_file) => match lz4::Decoder::new(input_file) {

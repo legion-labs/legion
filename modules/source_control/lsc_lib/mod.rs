@@ -1,6 +1,7 @@
 pub mod branch;
 pub mod commit;
 pub mod delete;
+pub mod diff;
 pub mod init_local_repository;
 pub mod init_workspace;
 pub mod local_change;
@@ -14,6 +15,7 @@ pub mod workspace;
 pub use branch::*;
 pub use commit::*;
 pub use delete::*;
+pub use diff::*;
 pub use init_local_repository::*;
 pub use init_workspace::*;
 pub use local_change::*;

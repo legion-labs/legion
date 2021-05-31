@@ -222,6 +222,12 @@ pub fn update_tree_from_changes(
     Err(String::from("root tree not processed"))
 }
 
+pub fn read_blob(repo: &Path, hash: &str) -> Result<String,String>{
+    assert!( !hash.is_empty() );
+    let blob_path = repo.join(format!("blobs/{}", hash));
+    lz4_read(&blob_path)
+}
+
 pub fn download_blob(repo: &Path, local_path: &Path, hash: &str) -> Result<(),String>{
     assert!( !hash.is_empty() );
     let blob_path = repo.join(format!("blobs/{}", hash));
