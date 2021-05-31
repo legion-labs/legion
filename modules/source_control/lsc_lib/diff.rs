@@ -39,9 +39,8 @@ pub fn diff_file_command(path: &Path, reference_version_name: &str) -> Result<()
     let config = Config::read_config()?;
     match config.find_diff_command(&relative_path) {
         Some(mut external_command_vec) => {
-            let ref_path = download_temp_file(&repo, &workspace_root, &ref_file_hash)?;
-            //todo: delete temp file with RAII
-            let ref_path_str = ref_path.to_str().unwrap();
+            let ref_temp_file = download_temp_file(&repo, &workspace_root, &ref_file_hash)?;
+            let ref_path_str = ref_temp_file.path.to_str().unwrap();
             let local_file = abs_path.to_str().unwrap();
             for item in &mut external_command_vec[..]{
                 *item = item.replace("%1", &ref_path_str);

@@ -41,14 +41,26 @@ pub fn write_workspace_spec(path: &Path, spec: &Workspace) -> Result<(), String>
     }
 }
 
+pub struct TempPath{
+    pub path: PathBuf,
+}
+
+impl Drop for TempPath {
+    fn drop(&mut self) {
+        if let Err(e) = fs::remove_file(&self.path){
+            println!("Error deleting temp file {}: {}", self.path.display(), e);
+        }
+    }
+}
+
 
 pub fn download_temp_file(
     repo: &Path,
     workspace_root: &Path,
     blob_hash: &str,
-) -> Result<PathBuf, String> {
+) -> Result<TempPath, String> {
     let tmp_dir = workspace_root.join(".lsc/tmp");
     let temp_file_path = tmp_dir.join(blob_hash);
     download_blob(repo, &temp_file_path, &blob_hash)?;
-    Ok(temp_file_path)
+    Ok(TempPath{path: temp_file_path})
 }

@@ -211,45 +211,32 @@ pub fn merge_file_command(p: &Path) -> Result<(), String> {
         &relative_path,
         &merge_pending.base_commit_id,
     )?;
-    let base_file_path = download_temp_file(&repo, &workspace_root, &base_file_hash)?;
+    let base_temp_file = download_temp_file(&repo, &workspace_root, &base_file_hash)?;
     let theirs_file_hash = find_file_hash_at_commit(
         &workspace_spec.repository,
         &relative_path,
         &merge_pending.theirs_commit_id,
     )?;
-    let theirs_file_path = download_temp_file(&repo, &workspace_root, &theirs_file_hash)?;
+    let theirs_temp_file = download_temp_file(&repo, &workspace_root, &theirs_file_hash)?;
     let tmp_dir = workspace_root.join(".lsc/tmp");
-    let output_path = tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string()));
+    let output_temp_file = TempPath {
+        path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),
+    };
     run_merge_program(
         abs_path.to_str().unwrap(),
-        theirs_file_path.to_str().unwrap(),
-        base_file_path.to_str().unwrap(),
-        output_path.to_str().unwrap(),
+        theirs_temp_file.path.to_str().unwrap(),
+        base_temp_file.path.to_str().unwrap(),
+        output_temp_file.path.to_str().unwrap(),
     )?;
-    if let Err(e) = fs::copy(&output_path, &abs_path) {
+    if let Err(e) = fs::copy(&output_temp_file.path, &abs_path) {
         return Err(format!(
             "Error copying {} to {}: {}",
-            output_path.display(),
+            output_temp_file.path.display(),
             abs_path.display(),
             e
         ));
     }
     println!("Merge accepted, {} updated", abs_path.display());
-    let mut errors = Vec::new();
-    if let Err(e) = clear_merge_pending(&workspace_root, &merge_pending) {
-        errors.push(e);
-    }
-    for temp_file_path in &[&base_file_path, &theirs_file_path] {
-        if let Err(e) = fs::remove_file(temp_file_path) {
-            errors.push(format!(
-                "Error deleting temporary file {}: {}",
-                temp_file_path.display(),
-                e
-            ));
-        }
-    }
-    if !errors.is_empty() {
-        return Err(errors.join("\n"));
-    }
+    clear_merge_pending(&workspace_root, &merge_pending)?;
     Ok(())
 }
