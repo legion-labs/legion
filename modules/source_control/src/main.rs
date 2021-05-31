@@ -85,6 +85,10 @@ fn main() {
                 .about("Updates the workspace with the latest version of the files")
         )
         .subcommand(
+            SubCommand::with_name("merges-pending")
+                .about("Lists the files that are scheduled to be merged following a sync with colliding changes")
+        )
+        .subcommand(
             SubCommand::with_name("commit")
                 .about("Records local changes in the repository as a single transaction")
                 .arg(
@@ -197,6 +201,20 @@ fn main() {
             }
             Err(e) => {
                 println!("local-changes failed: {}", e);
+                std::process::exit(1);
+            }
+        },
+        ("merges-pending", Some(_command_match)) => match find_merges_pending_command() {
+            Ok(merges_pending) => {
+                if merges_pending.is_empty() {
+                    println!("No merges pending");
+                }
+                for m in merges_pending {
+                    println!("{} {} {}", m.relative_path.display(), &m.base_version, &m.theirs_version);
+                }
+            }
+            Err(e) => {
+                println!("merges-pending failed: {}", e);
                 std::process::exit(1);
             }
         },

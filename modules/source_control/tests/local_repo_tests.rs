@@ -241,4 +241,5 @@ fn local_single_branch_merge_flow() {
     append_text_to_file(Path::new("file1.txt"), "line3\n");
     lsc_cli_sys_fail(&["commit", r#"-m"should fail - not at head""#]);
     lsc_cli_sys(&["sync"]);
+    lsc_cli_sys(&["merges-pending"]);
 }
