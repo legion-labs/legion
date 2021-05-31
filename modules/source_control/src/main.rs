@@ -58,7 +58,11 @@ fn main() {
                 .arg(
                     Arg::with_name("path")
                         .required(true)
-                        .help("local path within a workspace")),
+                        .help("local path within a workspace"))
+                .arg(
+                    Arg::with_name("reference")
+                        .help("reference version: a commit id, base or latest"))
+                ,
         )
         .subcommand(
             SubCommand::with_name("revert")
@@ -140,7 +144,8 @@ fn main() {
             }
         }
         ("delete", Some(command_match)) => {
-            if let Err(e) = delete_file_command(Path::new(command_match.value_of("path").unwrap())) {
+            if let Err(e) = delete_file_command(Path::new(command_match.value_of("path").unwrap()))
+            {
                 println!("delete failed: {}", e);
                 std::process::exit(1);
             } else {
@@ -148,13 +153,18 @@ fn main() {
             }
         }
         ("diff", Some(command_match)) => {
-            if let Err(e) = diff_file_command(Path::new(command_match.value_of("path").unwrap())) {
+            let reference_version_name = command_match.value_of("reference").unwrap_or("base");
+            if let Err(e) = diff_file_command(
+                Path::new(command_match.value_of("path").unwrap()),
+                &reference_version_name,
+            ) {
                 println!("diff failed: {}", e);
                 std::process::exit(1);
             }
         }
         ("revert", Some(command_match)) => {
-            if let Err(e) = revert_file_command(Path::new(command_match.value_of("path").unwrap())) {
+            if let Err(e) = revert_file_command(Path::new(command_match.value_of("path").unwrap()))
+            {
                 println!("revert failed: {}", e);
                 std::process::exit(1);
             } else {
@@ -178,7 +188,7 @@ fn main() {
         }
         ("local-changes", Some(_command_match)) => match find_local_changes_command() {
             Ok(changes) => {
-                if changes.is_empty(){
+                if changes.is_empty() {
                     println!("No local changes");
                 }
                 for change in changes {
@@ -200,11 +210,11 @@ fn main() {
             }
         },
         ("log", Some(_command_match)) => {
-            if let Err(e) = log_command(){
+            if let Err(e) = log_command() {
                 println!("{}", e);
                 std::process::exit(1);
             }
-        },
+        }
         _ => {}
     }
 }
