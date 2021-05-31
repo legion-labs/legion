@@ -55,7 +55,10 @@ fn main() {
         .subcommand(
             SubCommand::with_name("diff")
                 .about("Prints difference between local file and specified commit")
-                //todo: add --notool
+                .arg(
+                    Arg::with_name("notool")
+                        .long("notool")
+                        .help("ignores diff tool config and prints a patch on stdout"))
                 .arg(
                     Arg::with_name("path")
                         .required(true)
@@ -169,10 +172,12 @@ fn main() {
             }
         }
         ("diff", Some(command_match)) => {
+            let notool = command_match.is_present("notool");
             let reference_version_name = command_match.value_of("reference").unwrap_or("base");
             if let Err(e) = diff_file_command(
                 Path::new(command_match.value_of("path").unwrap()),
                 &reference_version_name,
+                !notool,
             ) {
                 println!("diff failed: {}", e);
                 std::process::exit(1);

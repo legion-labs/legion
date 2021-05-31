@@ -171,8 +171,8 @@ fn local_repo_suite() {
     lsc_cli_sys(&["edit", "dir0/file0.txt"]);
     lsc_cli_sys(&["local-changes"]);
     append_text_to_file(Path::new("dir0/file0.txt"), "\nnew line in file0");
-    lsc_cli_sys(&["diff", "dir0/file0.txt"]);
-    lsc_cli_sys(&["diff", "dir0/file0.txt", "latest"]);
+    lsc_cli_sys(&["diff", "--notool", "dir0/file0.txt"]);
+    lsc_cli_sys(&["diff", "--notool", "dir0/file0.txt", "latest"]);
     lsc_cli_sys(&["commit", r#"-m"edit file0""#]);
 
     lsc_cli_sys(&["edit", "dir0/file1.txt"]);
