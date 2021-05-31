@@ -186,5 +186,9 @@ fn local_repo_suite() {
     write_lorem_ipsum(&work1.join("dir0/added_and_reverted.txt"));
     lsc_cli_sys(&["add", "dir0/added_and_reverted.txt"]);
     lsc_cli_sys(&["revert", "dir0/added_and_reverted.txt"]);
+
+    //test revert delete
+    lsc_cli_sys(&["delete", "dir0/file1.txt"]);
+    lsc_cli_sys(&["revert", "dir0/file1.txt"]);
     
 }
