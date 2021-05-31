@@ -84,15 +84,24 @@ fn upload_localy_edited_blobs(
     let blob_dir = Path::new(&workspace_spec.repository).join("blobs");
     let mut res = Vec::<HashedChange>::new();
     for local_change in local_changes {
-        let local_path = workspace_root.join(&local_change.relative_path);
-        let local_file_contents = read_bin_file(&local_path)?;
-        let hash = format!("{:X}", Sha256::digest(&local_file_contents));
-        write_blob(&blob_dir.join(&hash), &local_file_contents)?;
-        res.push(HashedChange {
-            relative_path: local_change.relative_path.clone(),
-            hash: hash.clone(),
-            change_type: local_change.change_type.clone(),
-        });
+        if local_change.change_type == "delete"{
+            res.push(HashedChange {
+                relative_path: local_change.relative_path.clone(),
+                hash: String::from(""),
+                change_type: local_change.change_type.clone(),
+            });
+        }
+        else{
+            let local_path = workspace_root.join(&local_change.relative_path);
+            let local_file_contents = read_bin_file(&local_path)?;
+            let hash = format!("{:X}", Sha256::digest(&local_file_contents));
+            write_blob(&blob_dir.join(&hash), &local_file_contents)?;
+            res.push(HashedChange {
+                relative_path: local_change.relative_path.clone(),
+                hash: hash.clone(),
+                change_type: local_change.change_type.clone(),
+            });
+        }
     }
     Ok(res)
 }

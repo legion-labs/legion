@@ -45,6 +45,14 @@ fn main() {
                         .help("local path within a workspace")),
         )
         .subcommand(
+            SubCommand::with_name("delete")
+                .about("Deletes the local file and records the pending change")
+                .arg(
+                    Arg::with_name("path")
+                        .required(true)
+                        .help("local path within a workspace")),
+        )
+        .subcommand(
             SubCommand::with_name("revert")
                 .about("Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.")
                 .arg(
@@ -121,6 +129,14 @@ fn main() {
                 std::process::exit(1);
             } else {
                 println!("file ready to be edited");
+            }
+        }
+        ("delete", Some(command_match)) => {
+            if let Err(e) = delete_file_command(Path::new(command_match.value_of("path").unwrap())) {
+                println!("delete failed: {}", e);
+                std::process::exit(1);
+            } else {
+                println!("file deleted, pending change recorded");
             }
         }
         ("revert", Some(command_match)) => {

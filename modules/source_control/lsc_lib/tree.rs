@@ -166,18 +166,22 @@ pub fn update_tree_from_changes(
                 .parent()
                 .expect("relative path with no parent");
             if dir == parent {
-                //todo: handle edit & delete
-                tree.add_or_update_file_node(TreeNode {
-                    name: String::from(
-                        change
-                            .relative_path
-                            .file_name()
-                            .expect("error getting file name")
-                            .to_str()
-                            .expect("path is invalid string"),
-                    ),
-                    hash: change.hash.clone(),
-                });
+                let filename = String::from(
+                            change
+                                .relative_path
+                                .file_name()
+                                .expect("error getting file name")
+                                .to_str()
+                                .expect("path is invalid string") );
+                if change.change_type == "delete"{
+                    tree.remove_file_node(&filename)
+                }
+                else{
+                    tree.add_or_update_file_node(TreeNode {
+                        name: filename,
+                        hash: change.hash.clone(),
+                    });
+                }
             }
         }
         //find dir's children, add them to the current tree

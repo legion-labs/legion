@@ -87,10 +87,10 @@ fn force_delete_all(dir: &Path) {
 }
 
 #[test]
-fn add_files() {
+fn local_repo_suite() {
     let cargo_project_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let test_scratch_dir = cargo_project_dir.join("target/test_scratch");
-    let this_test_dir = test_scratch_dir.join("add_files");
+    let this_test_dir = test_scratch_dir.join("local_repo_suite");
 
     if let Ok(_) = std::fs::metadata(&this_test_dir) {
         force_delete_all(&this_test_dir);
@@ -98,39 +98,39 @@ fn add_files() {
     std::fs::create_dir_all(&this_test_dir).unwrap();
 
     let repo_dir = this_test_dir.join("repo");
-    let workspace_dir = this_test_dir.join("work");
+    let work1 = this_test_dir.join("work");
 
     lsc_cli_sys(&["init-local-repository", repo_dir.to_str().unwrap()]);
 
     lsc_cli_sys(&[
         "init-workspace",
-        workspace_dir.to_str().unwrap(),
+        work1.to_str().unwrap(),
         repo_dir.to_str().unwrap(),
     ]);
 
-    std::fs::create_dir_all(workspace_dir.join("dir0/deep")).expect("dir0 creation failed");
-    write_lorem_ipsum(&workspace_dir.join("dir0/file0.txt"));
-    write_lorem_ipsum(&workspace_dir.join("dir0/file1.txt"));
-    write_lorem_ipsum(&workspace_dir.join("dir0/deep/file2.txt"));
+    std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0 creation failed");
+    write_lorem_ipsum(&work1.join("dir0/file0.txt"));
+    write_lorem_ipsum(&work1.join("dir0/file1.txt"));
+    write_lorem_ipsum(&work1.join("dir0/deep/file2.txt"));
     std::fs::copy(
         cargo_project_dir.join("tests/lambda.jpg"),
-        workspace_dir.join("bin.jpg"),
+        work1.join("bin.jpg"),
     )
     .expect("error copying lambda.jpg");
 
     lsc_cli_sys(&[
         "add",
-        workspace_dir.join("dir0/file0.txt").to_str().unwrap(),
+        work1.join("dir0/file0.txt").to_str().unwrap(),
     ]);
 
-    assert!(std::env::set_current_dir(&workspace_dir).is_ok());
+    assert!(std::env::set_current_dir(&work1).is_ok());
     lsc_cli_sys(&["add", "dir0/file1.txt"]);
     lsc_cli_sys(&["add", "dir0/deep/file2.txt"]);
     lsc_cli_sys(&["add", "bin.jpg"]);
     lsc_cli_sys(&["local-changes"]);
     lsc_cli_sys(&["commit", r#"-m"my commit message""#]);
 
-    write_lorem_ipsum(&workspace_dir.join("dir0/file3.txt"));
+    write_lorem_ipsum(&work1.join("dir0/file3.txt"));
     lsc_cli_sys(&["add", "dir0/file3.txt"]);
     lsc_cli_sys(&["local-changes"]);
     lsc_cli_sys(&["commit", r#"-m"my second commit message""#]);
@@ -164,5 +164,15 @@ fn add_files() {
     lsc_cli_sys(&["local-changes"]);
     lsc_cli_sys(&["revert", "dir0/file0.txt"]);
     lsc_cli_sys(&["local-changes"]);
+
+    lsc_cli_sys(&["delete", "dir0/file0.txt"]);
+    lsc_cli_sys(&["local-changes"]);
+    //this should fail because the workspace is not on latest version
+    //#16: prevent commit when not at the head of the branch
+    lsc_cli_sys(&["commit", r#"-m"delete file0""#]);
+
+    assert!(std::env::set_current_dir(&work1).is_ok());
+    lsc_cli_sys(&["log"]);
+    
     
 }

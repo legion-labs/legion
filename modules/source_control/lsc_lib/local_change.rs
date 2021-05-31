@@ -21,7 +21,7 @@ impl LocalChange {
     }
 }
 
-fn save_local_change( workspace_root: &Path, change_spec: &LocalChange ) -> Result<(),String>{
+pub fn save_local_change( workspace_root: &Path, change_spec: &LocalChange ) -> Result<(),String>{
     let local_edit_obj_path =
         workspace_root.join(format!(".lsc/local_edits/{}.json", &change_spec.id));
 
