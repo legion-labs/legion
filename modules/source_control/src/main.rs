@@ -57,18 +57,28 @@ fn main() {
             }
         }
         ("init-workspace", Some(command_match)) => {
-            if let Err(e) = init_workspace(
+            match init_workspace(
                 Path::new(command_match.value_of("workspace-directory").unwrap()),
                 Path::new(command_match.value_of("repository-directory").unwrap()),
             ) {
-                println!("init_workspace failed: {}", e);
-                std::process::exit(1);
+                Err(e) => {
+                    println!("init_workspace failed: {}", e);
+                    std::process::exit(1);
+                }
+                Ok(_) => {
+                    println!("workspace initialized");
+                }
             }
         }
         ("add", Some(command_match)) => {
-            if let Err(e) = track_new_file(Path::new(command_match.value_of("path").unwrap())) {
-                println!("add failed: {}", e);
-                std::process::exit(1);
+            match track_new_file(Path::new(command_match.value_of("path").unwrap())) {
+                Err(e) => {
+                    println!("add failed: {}", e);
+                    std::process::exit(1);
+                }
+                Ok(_) => {
+                    println!("tracking new file");
+                }
             }
         }
         ("local-changes", Some(_command_match)) => match find_local_changes() {
