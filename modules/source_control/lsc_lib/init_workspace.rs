@@ -1,4 +1,4 @@
-use crate::lsc_lib::*;
+use crate::*;
 
 use std::fs;
 use std::path::Path;

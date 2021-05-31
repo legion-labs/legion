@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["mad-legion <mad@legionlabs.com>"]
 edition = "2018"
 
+[lib]
+name = "lsc_lib"
+path = "lsc_lib/mod.rs"
+
 [dependencies]
 clap = "2.33"
 serde = { version = "1.0", features = ["derive"] }

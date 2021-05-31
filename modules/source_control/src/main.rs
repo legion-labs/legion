@@ -1,4 +1,3 @@
-mod lsc_lib;
 use clap::{App, AppSettings, Arg, SubCommand};
 use lsc_lib::*;
 use std::path::Path;
@@ -12,8 +11,6 @@ fn main() {
                 .about("Initializes a repository stored on a local filesystem")
                 .arg(
                     Arg::with_name("repository-directory")
-                        .short("r")
-                        .value_name("repository-directory")
                         .required(true)
                         .help("lsc database directory"),
                 ),
@@ -23,14 +20,10 @@ fn main() {
                 .about("Initializes a workspace and populates it with the latest version of the main branch")
                 .arg(
                     Arg::with_name("workspace-directory")
-                        .short("w")
-                        .value_name("workspace-directory")
                         .required(true)
                         .help("lsc workspace directory"))
                 .arg(
                     Arg::with_name("repository-directory")
-                        .short("r")
-                        .value_name("repository-directory")
                         .required(true)
                         .help("local repository directory"),
                 ),
@@ -51,11 +44,16 @@ fn main() {
 
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
-            if let Err(e) = lsc_lib::init_local_repository(
+            match lsc_lib::init_local_repository(
                 command_match.value_of("repository-directory").unwrap(),
             ) {
-                println!("init_local_repository failed: {}", e);
-                std::process::exit(1);
+                Err(e) => {
+                    println!("init_local_repository failed: {}", e);
+                    std::process::exit(1);
+                }
+                Ok(_) => {
+                    println!("repository initialized");
+                }
             }
         }
         ("init-workspace", Some(command_match)) => {
@@ -73,16 +71,16 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        ("local-changes", Some(_command_match)) => {
-            match find_local_changes(){
-                Ok(changes) => {
-                    for change in changes{
-                        println!("{} {}", change.change_type, change.relative_path);
-                    }
+        ("local-changes", Some(_command_match)) => match find_local_changes() {
+            Ok(changes) => {
+                for change in changes {
+                    println!("{} {}", change.change_type, change.relative_path);
                 }
-                Err(e) =>{ println!("local-changes failed: {}", e ) }
             }
-        }
+            Err(e) => {
+                println!("local-changes failed: {}", e)
+            }
+        },
         _ => {}
     }
 }
