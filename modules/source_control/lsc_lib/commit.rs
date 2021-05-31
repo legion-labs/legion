@@ -1,9 +1,37 @@
 use crate::*;
-use sha2::Digest;
-use sha2::Sha256;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct HashedChange {
+    pub relative_path: PathBuf,
+    pub hash: String,
+    pub change_type: String, //edit, add, delete
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Commit {
+    pub id: String,
+    pub changes: Vec<HashedChange>,
+    pub root_hash: String,
+    pub parents: Vec<String>,
+}
+
+fn save_commit(repo: &Path, commit: &Commit) -> Result<(), String> {
+    let file_path = repo.join("commits").join(format!("{}{}",commit.id,".json"));
+    match serde_json::to_string(&commit) {
+        Ok(json) => {
+            write_file(&file_path, json.as_bytes())?;
+        }
+        Err(e) => {
+            return Err(format!("Error formatting commit {:?}: {}", commit, e));
+        }
+    }
+    Ok(())
+}
 
 fn write_blob(file_path: &Path, contents: &[u8]) -> Result<(), String> {
     if fs::metadata(file_path).is_ok() {
@@ -59,12 +87,20 @@ pub fn commit(_message: &str) -> Result<(), String> {
     let hashed_changes =
         upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
 
-    let _new_tree_hash = update_tree_from_changes(
+    let new_root_hash = update_tree_from_changes(
         Tree::empty(), //todo: take tree of current commit
         &hashed_changes,
         &workspace_spec.repository,
     )?;
-    //todo: save commit
+
+    let commit = Commit {
+        id: uuid::Uuid::new_v4().to_string(),
+        changes: hashed_changes,
+        root_hash: new_root_hash,
+        parents: Vec::new(), //todo: use the current commit, which should be the head of the branch
+    };
+    save_commit(&workspace_spec.repository, &commit)?;
+
     //todo: make local files read only
     //todo: clear local changes
     //todo: update branch

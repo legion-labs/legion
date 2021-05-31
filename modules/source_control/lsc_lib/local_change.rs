@@ -9,13 +9,6 @@ pub struct LocalChange {
     pub change_type: String, //edit, add, delete
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct HashedChange {
-    pub relative_path: PathBuf,
-    pub hash: String,
-    pub change_type: String, //edit, add, delete
-}
-
 pub fn find_local_changes(workspace_root: &Path) -> Result<Vec<LocalChange>, String> {
     let local_edits_dir = workspace_root.join(".lsc/local_edits");
     let mut res = Vec::new();
