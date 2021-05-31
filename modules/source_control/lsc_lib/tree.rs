@@ -28,13 +28,13 @@ impl Tree {
     pub fn hash(&self) -> String {
         //std::hash::Hasher is not right here because it supports only 64 bit hashes
         let mut hasher = Sha256::new();
-        for node in &self.directory_nodes{
-            hasher.update( node.name.to_str().expect("invalid node name").as_bytes() );
-            hasher.update( &node.hash );
+        for node in &self.directory_nodes {
+            hasher.update(node.name.to_str().expect("invalid node name").as_bytes());
+            hasher.update(&node.hash);
         }
-        for node in &self.file_nodes{
-            hasher.update( node.name.to_str().expect("invalid node name").as_bytes() );
-            hasher.update( &node.hash );
+        for node in &self.file_nodes {
+            hasher.update(node.name.to_str().expect("invalid node name").as_bytes());
+            hasher.update(&node.hash);
         }
         format!("{:X}", hasher.finalize())
     }
@@ -54,10 +54,25 @@ impl Tree {
     }
 }
 
+fn save_tree(repo: &Path, tree: &Tree, hash: &str) -> Result<(), String> {
+    let file_path = repo.join("trees").join(String::from(hash) + ".json");
+    match serde_json::to_string(&tree) {
+        Ok(json) => {
+            write_file(&file_path, json.as_bytes())?;
+        }
+        Err(e) => {
+            return Err(format!("Error formatting tree {:?}: {}", tree, e));
+        }
+    }
+    Ok(())
+}
+
+// returns the hash of the updated root tree
 pub fn update_tree_from_changes(
-    previous_version: Tree,
+    _previous_version: Tree,
     local_changes: &[HashedChange],
-) -> Result<Tree, String> {
+    repo: &Path,
+) -> Result<String, String> {
     //scan changes to get the list of trees to update
     let mut dir_to_update = BTreeSet::new();
     for change in local_changes {
@@ -87,7 +102,7 @@ pub fn update_tree_from_changes(
 
     let mut parent_to_children_dir = HashMap::<PathBuf, Vec<TreeNode>>::new();
     //process leafs before parents to be able to patch parents with hash of children
-    dir_to_update_by_length.sort_by(|b, a| a.components().count().cmp(&b.components().count()));
+    dir_to_update_by_length.sort_by_key(|a| core::cmp::Reverse(a.components().count()));
     for dir in dir_to_update_by_length {
         let mut tree = Tree::empty(); //todo: fetch previous version
         for change in local_changes {
@@ -115,6 +130,8 @@ pub fn update_tree_from_changes(
             }
         }
 
+        let dir_hash = tree.hash(); //important not to modify tree beyond this point
+
         //save the child for the parent to find
         if let Some(dir_parent) = dir.parent() {
             //save the child for the parent to find
@@ -122,10 +139,9 @@ pub fn update_tree_from_changes(
             let name = dir
                 .strip_prefix(dir_parent)
                 .expect("Error getting directory name");
-            let dir_hash = tree.hash(); //important not to modify tree beyond this point
             let dir_node = TreeNode {
                 name: name.to_path_buf(),
-                hash: dir_hash,
+                hash: dir_hash.clone(),
             };
             match parent_to_children_dir.get_mut(&key) {
                 Some(v) => {
@@ -136,10 +152,11 @@ pub fn update_tree_from_changes(
                 }
             }
         }
-        
 
-        //todo: add to database
-        println!("tree {}: {:?}", dir.display(), tree);
+        save_tree(repo, &tree, &dir_hash)?;
+        if dir.components().count() == 0 {
+            return Ok(dir_hash);
+        }
     }
-    return Ok(previous_version.clone());
+    Err(String::from("root tree not processed"))
 }

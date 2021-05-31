@@ -1,12 +1,12 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Workspace {
     pub id: String, //a file lock will contain the workspace id
-    pub repository: String,
+    pub repository: PathBuf,
     pub owner: String,
 }
 

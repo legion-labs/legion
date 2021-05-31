@@ -18,7 +18,7 @@ pub fn init_workspace(
     }
     let spec = Workspace {
         id: uuid::Uuid::new_v4().to_string(),
-        repository: path_to_string(repository_directory),
+        repository: repository_directory.to_path_buf(),
         owner: whoami::username(),
     };
     //todo: record the workspace in the central database

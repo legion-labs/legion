@@ -59,12 +59,11 @@ pub fn commit(_message: &str) -> Result<(), String> {
     let hashed_changes =
         upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
 
-    let new_tree = update_tree_from_changes(
+    let _new_tree_hash = update_tree_from_changes(
         Tree::empty(), //todo: take tree of current commit
         &hashed_changes,
-    );
-    println!("{:?}", new_tree);
-
+        &workspace_spec.repository,
+    )?;
     //todo: save commit
     //todo: make local files read only
     //todo: clear local changes
