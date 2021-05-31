@@ -2,7 +2,6 @@ use crate::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -60,23 +59,7 @@ fn write_blob(file_path: &Path, contents: &[u8]) -> Result<(), String> {
         return Ok(());
     }
 
-    match std::fs::File::create(file_path) {
-        Err(e) => {
-            return Err(format!("Error creating file {:?}: {}", file_path, e));
-        }
-        Ok(output_file) => match lz4::EncoderBuilder::new().level(10).build(output_file) {
-            Err(e) => return Err(format!("Error building lz4 encoder: {}", e)),
-            Ok(mut encoder) => {
-                if let Err(e) = encoder.write(contents) {
-                    return Err(format!("Error writing to lz4 encoder: {}", e));
-                }
-                if let (_w, Err(e)) = encoder.finish() {
-                    return Err(format!("Error closing lz4 encoder: {}", e));
-                }
-                Ok(())
-            }
-        },
-    }
+    lz4_compress_to_file(file_path, contents)
 }
 
 fn upload_localy_edited_blobs(
@@ -153,8 +136,12 @@ pub fn commit(_message: &str) -> Result<(), String> {
         parents: Vec::new(), //todo: use the current commit, which should be the head of the branch
     };
     save_commit(&workspace_spec.repository, &commit)?;
+    let mut current_branch = read_current_branch(&workspace_root)?;
+    current_branch.head = commit.id;
+    save_current_branch(&workspace_root, &current_branch)?;
 
-    //todo: update branch
+    //todo: will need to lock to avoid races in updating branch in the database
+    save_branch_to_repo(&workspace_spec.repository, &current_branch)?;
 
     if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);

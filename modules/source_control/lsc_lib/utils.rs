@@ -19,9 +19,9 @@ pub fn read_text_file(path: &Path) -> Result<String, String> {
     match fs::File::open(path) {
         Ok(mut f) => {
             let mut buffer = String::new();
-            match f.read_to_string(&mut buffer){
+            match f.read_to_string(&mut buffer) {
                 Ok(_size) => {}
-                Err(e) => return Err(format!("Error reading file {:?}: {}", path, e))
+                Err(e) => return Err(format!("Error reading file {:?}: {}", path, e)),
             }
             Ok(buffer)
         }
@@ -30,9 +30,9 @@ pub fn read_text_file(path: &Path) -> Result<String, String> {
 }
 
 pub fn read_bin_file(path: &Path) -> Result<Vec<u8>, String> {
-    match fs::read(path){
+    match fs::read(path) {
         Ok(buffer) => Ok(buffer),
-        Err(e) => Err(format!("Error reading file {:?}: {}", path, e))
+        Err(e) => Err(format!("Error reading file {:?}: {}", path, e)),
     }
 }
 
@@ -56,4 +56,65 @@ pub fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf, String> {
         Ok(res) => Ok(res.to_path_buf()),
         Err(e) => Err(format!("{:?} not relative to {:?}: {}", p, base, e)),
     }
+}
+
+pub fn lz4_compress_to_file(file_path: &Path, contents: &[u8]) -> Result<(), String> {
+    match std::fs::File::create(file_path) {
+        Err(e) => {
+            return Err(format!("Error creating file {:?}: {}", file_path, e));
+        }
+        Ok(output_file) => match lz4::EncoderBuilder::new().level(10).build(output_file) {
+            Err(e) => return Err(format!("Error building lz4 encoder: {}", e)),
+            Ok(mut encoder) => {
+                if let Err(e) = encoder.write(contents) {
+                    return Err(format!("Error writing to lz4 encoder: {}", e));
+                }
+                if let (_w, Err(e)) = encoder.finish() {
+                    return Err(format!("Error closing lz4 encoder: {}", e));
+                }
+                Ok(())
+            }
+        },
+    }
+}
+
+pub fn lz4_decompress(compressed: &Path, destination: &Path) -> Result<(), String> {
+    match std::fs::File::open(compressed) {
+        Ok(input_file) => match lz4::Decoder::new(input_file) {
+            Ok(mut decoder) => match std::fs::File::create(destination) {
+                Ok(mut output_file) => {
+                    if let Err(e) = std::io::copy(&mut decoder, &mut output_file) {
+                        return Err(format!(
+                            "Error decoding from {} to {}: {}",
+                            compressed.display(),
+                            destination.display(),
+                            e
+                        ));
+                    }
+                }
+                Err(e) => {
+                    return Err(format!(
+                        "Error creating file {}: {}",
+                        destination.display(),
+                        e
+                    ));
+                }
+            },
+            Err(e) => {
+                return Err(format!(
+                    "Error creating lz4 decoder from {}: {}",
+                    compressed.display(),
+                    e
+                ));
+            }
+        },
+        Err(e) => {
+            return Err(format!(
+                "Error opening file {}: {}",
+                compressed.display(),
+                e
+            ));
+        }
+    }
+    Ok(())
 }

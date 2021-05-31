@@ -184,12 +184,23 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
                 name: dir_node.name.join(relative_subdir_node.name),
                 hash: relative_subdir_node.hash,
             };
-            dir_to_process.push(abs_subdir_node);
+            match std::fs::create_dir_all(&abs_subdir_node.name) {
+                Ok(_) => {
+                    dir_to_process.push(abs_subdir_node);
+                }
+                Err(e) => {
+                    errors.push(format!(
+                        "Error creating directory {}: {}",
+                        abs_subdir_node.name.display(),
+                        e
+                    ));
+                }
+            }
         }
         for relative_file_node in tree.file_nodes {
             let abs_path = dir_node.name.join(relative_file_node.name);
             let blob_path = repo.join(format!("blobs/{}", relative_file_node.hash));
-            if let Err(e) = std::fs::copy(&blob_path, &abs_path) {
+            if let Err(e) = lz4_decompress(&blob_path, &abs_path) {
                 errors.push(format!(
                     "Error copying {} to {}: {}",
                     blob_path.display(),

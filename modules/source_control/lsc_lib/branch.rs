@@ -31,6 +31,11 @@ pub fn save_current_branch(workspace_root: &Path, branch: &Branch) -> Result<(),
     write_branch_spec(&file_path, branch)
 }
 
+pub fn read_current_branch(workspace_root: &Path) -> Result<Branch,String>{
+    let file_path = workspace_root.join( ".lsc/branch.json" );
+    read_branch(&file_path)
+}
+
 pub fn read_branch(branch_file_path: &Path) -> Result<Branch, String> {
     let parsed: serde_json::Result<Branch> =
         serde_json::from_str(&read_text_file(branch_file_path)?);
