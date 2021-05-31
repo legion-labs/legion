@@ -7,10 +7,10 @@ pub fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
     match fs::File::create(path) {
         Ok(mut file) => {
             if let Err(e) = file.write_all(contents) {
-                return Err(format!("Error writing {:?}: {}", path, e));
+                return Err(format!("Error writing {}: {}", path.display(), e));
             }
         }
-        Err(e) => return Err(format!("Error writing {:?}: {}", path, e)),
+        Err(e) => return Err(format!("Error writing {}: {}", path.display(), e)),
     }
     Ok(())
 }
@@ -21,18 +21,18 @@ pub fn read_text_file(path: &Path) -> Result<String, String> {
             let mut buffer = String::new();
             match f.read_to_string(&mut buffer) {
                 Ok(_size) => {}
-                Err(e) => return Err(format!("Error reading file {:?}: {}", path, e)),
+                Err(e) => return Err(format!("Error reading file {}: {}", path.display(), e)),
             }
             Ok(buffer)
         }
-        Err(e) => return Err(format!("Error opening file {:?}: {}", path, e)),
+        Err(e) => return Err(format!("Error opening file {}: {}", path.display(), e)),
     }
 }
 
 pub fn read_bin_file(path: &Path) -> Result<Vec<u8>, String> {
     match fs::read(path) {
         Ok(buffer) => Ok(buffer),
-        Err(e) => Err(format!("Error reading file {:?}: {}", path, e)),
+        Err(e) => Err(format!("Error reading file {}: {}", path.display(), e)),
     }
 }
 
@@ -58,7 +58,7 @@ pub fn make_path_absolute(p: &Path) -> PathBuf {
 pub fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf, String> {
     match p.strip_prefix(base) {
         Ok(res) => Ok(res.to_path_buf()),
-        Err(e) => Err(format!("{:?} not relative to {:?}: {}", p, base, e)),
+        Err(e) => Err(format!("{} not relative to {}: {}", p.display(), base.display(), e)),
     }
 }
 
@@ -89,7 +89,7 @@ pub fn make_file_read_only(file_path: &Path, readonly: bool) -> Result<(), Strin
 pub fn lz4_compress_to_file(file_path: &Path, contents: &[u8]) -> Result<(), String> {
     match std::fs::File::create(file_path) {
         Err(e) => {
-            return Err(format!("Error creating file {:?}: {}", file_path, e));
+            return Err(format!("Error creating file {}: {}", file_path.display(), e));
         }
         Ok(output_file) => match lz4::EncoderBuilder::new().level(10).build(output_file) {
             Err(e) => return Err(format!("Error building lz4 encoder: {}", e)),

@@ -105,6 +105,10 @@ fn main() {
                         .value_delimiter("\"")
                         .help("commit message"))
         )
+        .subcommand(
+            SubCommand::with_name("config")
+                .about("Prints the path to the configuration file and its content")
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -247,6 +251,12 @@ fn main() {
         },
         ("log", Some(_command_match)) => {
             if let Err(e) = log_command() {
+                println!("{}", e);
+                std::process::exit(1);
+            }
+        }
+        ("config", Some(_command_match)) => {
+            if let Err(e) = print_config_command() {
                 println!("{}", e);
                 std::process::exit(1);
             }

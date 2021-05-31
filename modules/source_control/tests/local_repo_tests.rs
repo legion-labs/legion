@@ -246,3 +246,14 @@ fn local_single_branch_merge_flow() {
     lsc_cli_sys(&["merges-pending"]);
     lsc_cli_sys(&["commit", r#"-m"merged""#]);
 }
+
+#[test]
+fn test_print_config() {
+    let config_file_path = lsc_lib::config_file_path().unwrap();
+    if config_file_path.exists(){
+        lsc_cli_sys(&["config"]);
+    }
+    else{
+        println!("no config file, skipping test");
+    }
+}
