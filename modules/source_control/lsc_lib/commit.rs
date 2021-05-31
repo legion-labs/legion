@@ -123,11 +123,15 @@ pub fn commit(message: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let mut current_branch = read_current_branch(&workspace_root)?;
+    let repo_branch = read_branch_from_repo(&workspace_spec.repository, &current_branch.name)?;
+    if repo_branch.head != current_branch.head{
+        return Err(String::from("Workspace is not up to date, aborting commit"));
+    }
     let local_changes = find_local_changes(workspace_root)?;
     let hashed_changes =
         upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
 
-    let mut current_branch = read_current_branch(&workspace_root)?;
     let base_commit = read_commit(&workspace_spec.repository, &current_branch.head)?;
     let previous_root_tree = read_tree(&workspace_spec.repository, &base_commit.root_hash)?;
 

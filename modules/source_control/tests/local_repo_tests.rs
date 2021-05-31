@@ -20,7 +20,7 @@ fn append_text_to_file(p: &Path, contents: &str) {
     f.write(contents.as_bytes()).unwrap();
 }
 
-fn syscall(command: &str, args: &[&str]) {
+fn syscall(command: &str, args: &[&str], should_succeed: bool) {
     print!("{} ", command);
     for a in args {
         print!("{} ", a);
@@ -32,10 +32,10 @@ fn syscall(command: &str, args: &[&str]) {
         .expect("failed to execute lsc-cli");
     println!("{}", std::str::from_utf8(&output.stdout).unwrap());
     println!("{}", std::str::from_utf8(&output.stderr).unwrap());
-    assert!(output.status.success());
+    assert!(output.status.success() == should_succeed);
 }
 
-fn lsc_cli_sys(args: &[&str]) {
+fn lsc_cli_sys_impl(args: &[&str], should_succeed: bool) {
     let test_bin_exe = std::env::current_exe().expect("error getting current exe");
     let mut subdir = test_bin_exe
         .parent()
@@ -48,7 +48,15 @@ fn lsc_cli_sys(args: &[&str]) {
 
     let command = subdir.join("lsc-cli");
 
-    syscall(command.to_str().expect("command path"), args);
+    syscall(command.to_str().expect("command path"), args, should_succeed);
+}
+
+fn lsc_cli_sys(args: &[&str]){
+    lsc_cli_sys_impl(&args, true);
+}
+
+fn lsc_cli_sys_fail(args: &[&str]){
+    lsc_cli_sys_impl(&args, false);
 }
 
 fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
@@ -158,21 +166,21 @@ fn local_repo_suite() {
 
     assert!(std::env::set_current_dir(&work2).is_ok());
     lsc_cli_sys(&["log"]);
-    lsc_cli_sys(&["sync"]);
 
+    //should not be allowed to commit before sync
     lsc_cli_sys(&["edit", "dir0/file0.txt"]);
-    lsc_cli_sys(&["local-changes"]);
+    lsc_cli_sys_fail(&["commit", r#"-m"bad commit""#]);
     lsc_cli_sys(&["revert", "dir0/file0.txt"]);
-    lsc_cli_sys(&["local-changes"]);
+    lsc_cli_sys(&["sync"]);
 
     lsc_cli_sys(&["delete", "dir0/file0.txt"]);
     lsc_cli_sys(&["local-changes"]);
-    //this should fail because the workspace is not on latest version
-    //#16: prevent commit when not at the head of the branch
+    lsc_cli_sys(&["log"]);
     lsc_cli_sys(&["commit", r#"-m"delete file0""#]);
 
     assert!(std::env::set_current_dir(&work1).is_ok());
     lsc_cli_sys(&["log"]);
+    lsc_cli_sys(&["sync"]);
     
     
 }

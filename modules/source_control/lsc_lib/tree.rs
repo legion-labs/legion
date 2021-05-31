@@ -223,6 +223,7 @@ pub fn update_tree_from_changes(
 }
 
 pub fn download_blob(repo: &Path, local_path: &Path, hash: &str) -> Result<(),String>{
+    assert!( !hash.is_empty() );
     let blob_path = repo.join(format!("blobs/{}", hash));
     lz4_decompress(&blob_path, &local_path)
 }
