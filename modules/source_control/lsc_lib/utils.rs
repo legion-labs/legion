@@ -1,10 +1,23 @@
 use std::fs;
+use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::result::Result;
 
 pub fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
     match fs::File::create(path) {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(contents) {
+                return Err(format!("Error writing {}: {}", path.display(), e));
+            }
+        }
+        Err(e) => return Err(format!("Error writing {}: {}", path.display(), e)),
+    }
+    Ok(())
+}
+
+pub fn write_new_file(path: &Path, contents: &[u8]) -> Result<(), String> {
+    match OpenOptions::new().write(true).create_new(true).open(&path) {
         Ok(mut file) => {
             if let Err(e) = file.write_all(contents) {
                 return Err(format!("Error writing {}: {}", path.display(), e));
@@ -58,7 +71,12 @@ pub fn make_path_absolute(p: &Path) -> PathBuf {
 pub fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf, String> {
     match p.strip_prefix(base) {
         Ok(res) => Ok(res.to_path_buf()),
-        Err(e) => Err(format!("{} not relative to {}: {}", p.display(), base.display(), e)),
+        Err(e) => Err(format!(
+            "{} not relative to {}: {}",
+            p.display(),
+            base.display(),
+            e
+        )),
     }
 }
 
@@ -89,7 +107,11 @@ pub fn make_file_read_only(file_path: &Path, readonly: bool) -> Result<(), Strin
 pub fn lz4_compress_to_file(file_path: &Path, contents: &[u8]) -> Result<(), String> {
     match std::fs::File::create(file_path) {
         Err(e) => {
-            return Err(format!("Error creating file {}: {}", file_path.display(), e));
+            return Err(format!(
+                "Error creating file {}: {}",
+                file_path.display(),
+                e
+            ));
         }
         Ok(output_file) => match lz4::EncoderBuilder::new().level(10).build(output_file) {
             Err(e) => return Err(format!("Error building lz4 encoder: {}", e)),

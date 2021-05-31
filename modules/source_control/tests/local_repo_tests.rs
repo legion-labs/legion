@@ -271,3 +271,37 @@ fn test_print_config() {
         println!("no config file, skipping test");
     }
 }
+
+#[test]
+fn test_branch() {
+    let config_file_path = lsc_lib::Config::config_file_path().unwrap();
+    if config_file_path.exists() {
+        lsc_cli_sys(&["config"]);
+    } else {
+        println!("no config file, skipping test");
+    }
+
+    let cargo_project_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    let test_scratch_dir = cargo_project_dir.join("target/test_scratch");
+    let this_test_dir = test_scratch_dir.join("branch");
+    if let Ok(_) = std::fs::metadata(&this_test_dir) {
+        force_delete_all(&this_test_dir);
+    }
+    std::fs::create_dir_all(&this_test_dir).unwrap();
+    let repo_dir = this_test_dir.join("repo");
+    let work1 = this_test_dir.join("work1");
+
+    lsc_cli_sys(&["init-local-repository", repo_dir.to_str().unwrap()]);
+
+    lsc_cli_sys(&[
+        "init-workspace",
+        work1.to_str().unwrap(),
+        repo_dir.to_str().unwrap(),
+    ]);
+
+    assert!(std::env::set_current_dir(&work1).is_ok());
+    lsc_lib::write_file(Path::new("file1.txt"), "line1\n".as_bytes()).unwrap();
+    lsc_cli_sys(&["add", "file1.txt"]);
+    lsc_cli_sys(&["commit", r#"-m"add file1""#]);
+    lsc_cli_sys(&["create-branch", "task"]);
+}

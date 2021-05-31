@@ -76,6 +76,14 @@ fn main() {
                         .help("local path within a workspace"))
         )
         .subcommand(
+            SubCommand::with_name("create-branch")
+                .about("Creates a new branch based on the state of the workspace")
+                .arg(
+                    Arg::with_name("name")
+                        .required(true)
+                        .help("name of the new branch"))
+        )
+        .subcommand(
             SubCommand::with_name("revert")
                 .about("Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.")
                 .arg(
@@ -190,6 +198,15 @@ fn main() {
             if let Err(e) = merge_file_command(Path::new(command_match.value_of("path").unwrap())) {
                 println!("merge failed: {}", e);
                 std::process::exit(1);
+            }
+        }
+        ("create-branch", Some(command_match)) => {
+            let name = command_match.value_of("name").unwrap();
+            if let Err(e) = create_branch_command(&name) {
+                println!("create branch failed: {}", e);
+                std::process::exit(1);
+            }else{
+                println!("now on branch {}", &name);
             }
         }
         ("revert", Some(command_match)) => {

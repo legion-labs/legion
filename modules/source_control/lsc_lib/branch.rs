@@ -6,11 +6,12 @@ use std::path::Path;
 pub struct Branch {
     pub name: String,
     pub head: String, //commit id
+    pub parent: String,
 }
 
 impl Branch {
-    pub fn new(name: String, head: String) -> Branch {
-        Branch { name, head }
+    pub fn new(name: String, head: String, parent: String) -> Branch {
+        Branch { name, head, parent }
     }
 }
 
@@ -21,22 +22,30 @@ fn write_branch_spec(file_path: &Path, branch: &Branch) -> Result<(), String> {
     }
 }
 
+pub fn save_new_branch_to_repo(repo: &Path, branch: &Branch) -> Result<(), String> {
+    let file_path = repo.join("branches").join(branch.name.to_owned() + ".json");
+    match serde_json::to_string(branch) {
+        Ok(json) => write_new_file(&file_path, json.as_bytes()),
+        Err(e) => Err(format!("Error formatting branch {:?}: {}", branch, e)),
+    }
+}
+
 pub fn save_branch_to_repo(repo: &Path, branch: &Branch) -> Result<(), String> {
     let file_path = repo.join("branches").join(branch.name.to_owned() + ".json");
     write_branch_spec(&file_path, branch)
 }
 
 pub fn save_current_branch(workspace_root: &Path, branch: &Branch) -> Result<(), String> {
-    let file_path = workspace_root.join( ".lsc/branch.json" );
+    let file_path = workspace_root.join(".lsc/branch.json");
     write_branch_spec(&file_path, branch)
 }
 
-pub fn read_current_branch(workspace_root: &Path) -> Result<Branch,String>{
-    let file_path = workspace_root.join( ".lsc/branch.json" );
+pub fn read_current_branch(workspace_root: &Path) -> Result<Branch, String> {
+    let file_path = workspace_root.join(".lsc/branch.json");
     read_branch(&file_path)
 }
 
-pub fn read_branch_from_repo(repo: &Path, name: &str) -> Result<Branch,String>{
+pub fn read_branch_from_repo(repo: &Path, name: &str) -> Result<Branch, String> {
     let file_path = repo.join("branches").join(name.to_owned() + ".json");
     read_branch(&file_path)
 }
@@ -52,4 +61,14 @@ pub fn read_branch(branch_file_path: &Path) -> Result<Branch, String> {
             e
         )),
     }
+}
+
+pub fn create_branch_command(name: &str) -> Result<(), String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let old_branch = read_current_branch(&workspace_root)?;
+    let new_branch = Branch::new(String::from(name), old_branch.head.clone(), old_branch.name);
+    save_new_branch_to_repo(&workspace_spec.repository, &new_branch)?;
+    save_current_branch(&workspace_root, &new_branch)
 }

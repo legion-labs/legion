@@ -38,7 +38,7 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
     );
     save_commit(directory, &initial_commit)?;
 
-    let main_branch = Branch::new(String::from("main"), initial_commit.id);
+    let main_branch = Branch::new(String::from("main"), initial_commit.id, String::new());
     save_branch_to_repo(directory, &main_branch)?;
 
     Ok(())
