@@ -162,7 +162,7 @@ fn add_files() {
 
     lsc_cli_sys(&["edit", "dir0/file0.txt"]);
     lsc_cli_sys(&["local-changes"]);
-    lsc_cli_sys(&["revert", "dir0\\file0.txt"]);
+    lsc_cli_sys(&["revert", "dir0/file0.txt"]);
     lsc_cli_sys(&["local-changes"]);
     
 }
