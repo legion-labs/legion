@@ -12,8 +12,8 @@ fn main() {
                 .arg(
                     Arg::with_name("repository-directory")
                         .required(true)
-                        .help("lsc database directory"),
-                ),
+                        .help("lsc database directory")
+                )
         )
         .subcommand(
             SubCommand::with_name("init-workspace")
@@ -25,8 +25,8 @@ fn main() {
                 .arg(
                     Arg::with_name("repository-directory")
                         .required(true)
-                        .help("local repository directory"),
-                ),
+                        .help("local repository directory")
+                )
         )
         .subcommand(
             SubCommand::with_name("add")
@@ -34,7 +34,7 @@ fn main() {
                 .arg(
                     Arg::with_name("path")
                         .required(true)
-                        .help("local path within a workspace")),
+                        .help("local path within a workspace"))
         )
         .subcommand(
             SubCommand::with_name("edit")
@@ -42,7 +42,7 @@ fn main() {
                 .arg(
                     Arg::with_name("path")
                         .required(true)
-                        .help("local path within a workspace")),
+                        .help("local path within a workspace"))
         )
         .subcommand(
             SubCommand::with_name("delete")
@@ -50,7 +50,7 @@ fn main() {
                 .arg(
                     Arg::with_name("path")
                         .required(true)
-                        .help("local path within a workspace")),
+                        .help("local path within a workspace"))
         )
         .subcommand(
             SubCommand::with_name("diff")
@@ -62,7 +62,14 @@ fn main() {
                 .arg(
                     Arg::with_name("reference")
                         .help("reference version: a commit id, base or latest"))
-                ,
+        )
+        .subcommand(
+            SubCommand::with_name("merge")
+                .about("Reconciles local modifications with colliding changes from other workspaces")
+                .arg(
+                    Arg::with_name("path")
+                        .required(true)
+                        .help("local path within a workspace"))
         )
         .subcommand(
             SubCommand::with_name("revert")
@@ -166,6 +173,12 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        ("merge", Some(command_match)) => {
+            if let Err(e) = merge_file_command(Path::new(command_match.value_of("path").unwrap())) {
+                println!("merge failed: {}", e);
+                std::process::exit(1);
+            }
+        }
         ("revert", Some(command_match)) => {
             if let Err(e) = revert_file_command(Path::new(command_match.value_of("path").unwrap()))
             {
@@ -210,7 +223,12 @@ fn main() {
                     println!("No merges pending");
                 }
                 for m in merges_pending {
-                    println!("{} {} {}", m.relative_path.display(), &m.base_version, &m.theirs_version);
+                    println!(
+                        "{} {} {}",
+                        m.relative_path.display(),
+                        &m.base_commit_id,
+                        &m.theirs_commit_id
+                    );
                 }
             }
             Err(e) => {

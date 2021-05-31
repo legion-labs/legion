@@ -238,8 +238,9 @@ fn local_single_branch_merge_flow() {
 
     assert!(std::env::set_current_dir(&work1).is_ok());
     lsc_cli_sys(&["edit", "file1.txt"]);
-    append_text_to_file(Path::new("file1.txt"), "line3\n");
+    append_text_to_file(Path::new("file1.txt"), "line2\nline3\n");
     lsc_cli_sys_fail(&["commit", r#"-m"should fail - not at head""#]);
     lsc_cli_sys(&["sync"]);
     lsc_cli_sys(&["merges-pending"]);
+    lsc_cli_sys(&["merge", "file1.txt"]);
 }

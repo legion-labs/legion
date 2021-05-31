@@ -115,6 +115,7 @@ pub fn sync_command() -> Result<(), String> {
         match local_changes_map.get(&relative_path) {
             Some(_change) => {
                 println!("{} changed locally, recording pending merge and leaving the local file untouched", relative_path.display());
+                //todo: handle case where merge pending already exists
                 let merge_pending = MergePending::new(
                     relative_path.to_path_buf(),
                     workspace_branch.head.clone(),
