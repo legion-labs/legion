@@ -21,7 +21,7 @@ pub struct Commit {
 }
 
 fn save_commit(repo: &Path, commit: &Commit) -> Result<(), String> {
-    let file_path = repo.join("commits").join(format!("{}{}",commit.id,".json"));
+    let file_path = repo.join("commits").join(commit.id.to_owned() + ".json");
     match serde_json::to_string(&commit) {
         Ok(json) => {
             write_file(&file_path, json.as_bytes())?;
@@ -79,6 +79,38 @@ fn upload_localy_edited_blobs(
     Ok(res)
 }
 
+fn make_local_files_read_only(
+    workspace_root: &Path,
+    changes: &[HashedChange],
+) -> Result<(), String> {
+    for change in changes {
+        if change.change_type != "delete" {
+            let full_path = workspace_root.join(&change.relative_path);
+            match fs::metadata(&full_path) {
+                Ok(meta) => {
+                    let mut permissions = meta.permissions();
+                    permissions.set_readonly(true);
+                    if let Err(e) = fs::set_permissions(&full_path, permissions) {
+                        return Err(format!(
+                            "Error making file read only for {}: {}",
+                            full_path.display(),
+                            e
+                        ));
+                    }
+                }
+                Err(e) => {
+                    return Err(format!(
+                        "Error reading file metadata for {}: {}",
+                        full_path.display(),
+                        e
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn commit(_message: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -101,9 +133,13 @@ pub fn commit(_message: &str) -> Result<(), String> {
     };
     save_commit(&workspace_spec.repository, &commit)?;
 
-    //todo: make local files read only
-    //todo: clear local changes
     //todo: update branch
+
+    //todo: make local files read only
+    if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
+        println!("Error making local files read only: {}", e);
+    }
+    //todo: clear local changes
 
     Ok(())
 }

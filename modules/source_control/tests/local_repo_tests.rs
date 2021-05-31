@@ -1,3 +1,5 @@
+use std::fs::{self, DirEntry};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -11,7 +13,7 @@ Nulla eu scelerisque odio. Suspendisse ultrices convallis hendrerit. Duis lacini
 
 fn syscall(command: &str, args: &[&str]) {
     print!("{} ", command);
-    for a in args{
+    for a in args {
         print!("{} ", a);
     }
     print!("\n");
@@ -28,6 +30,41 @@ fn lsc_cli_sys(args: &[&str]) {
     syscall("lsc-cli", args);
 }
 
+fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                visit_dirs(&path, cb)?;
+                cb(&entry);
+            } else {
+                cb(&entry);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn force_delete_all(dir: &Path) {
+    //std::fs::remove_dir_all leaves read-only files and reports an error
+    visit_dirs(dir, &|entry| {
+        let p = entry.path();
+        let meta = entry.metadata().unwrap();
+        if meta.is_dir() {
+            fs::remove_dir(p).unwrap();
+        } else {
+            let mut perm = meta.permissions();
+            if perm.readonly() {
+                perm.set_readonly(false);
+                fs::set_permissions(&p, perm).unwrap();
+            }
+            fs::remove_file(&p).unwrap();
+        }
+    })
+    .unwrap();
+}
+
 #[test]
 fn add_files() {
     let cargo_project_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
@@ -35,7 +72,7 @@ fn add_files() {
     let this_test_dir = test_scratch_dir.join("add_files");
 
     if let Ok(_) = std::fs::metadata(&this_test_dir) {
-        std::fs::remove_dir_all(&this_test_dir).unwrap();
+        force_delete_all(&this_test_dir);
     }
     std::fs::create_dir_all(&this_test_dir).unwrap();
 
@@ -54,7 +91,11 @@ fn add_files() {
     write_lorem_ipsum(&workspace_dir.join("dir0/file0.txt"));
     write_lorem_ipsum(&workspace_dir.join("dir0/file1.txt"));
     write_lorem_ipsum(&workspace_dir.join("dir0/deep/file2.txt"));
-    std::fs::copy( cargo_project_dir.join( "tests/lambda.jpg" ), workspace_dir.join("bin.jpg") ).expect("error copying lambda.jpg");
+    std::fs::copy(
+        cargo_project_dir.join("tests/lambda.jpg"),
+        workspace_dir.join("bin.jpg"),
+    )
+    .expect("error copying lambda.jpg");
 
     lsc_cli_sys(&[
         "add",
