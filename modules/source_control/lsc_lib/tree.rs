@@ -54,7 +54,7 @@ impl Tree {
     }
 }
 
-fn save_tree(repo: &Path, tree: &Tree, hash: &str) -> Result<(), String> {
+pub fn save_tree(repo: &Path, tree: &Tree, hash: &str) -> Result<(), String> {
     let file_path = repo.join("trees").join(String::from(hash) + ".json");
     match serde_json::to_string(&tree) {
         Ok(json) => {

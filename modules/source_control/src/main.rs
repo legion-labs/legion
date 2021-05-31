@@ -55,7 +55,7 @@ fn main() {
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
             match lsc_lib::init_local_repository(
-                command_match.value_of("repository-directory").unwrap(),
+                Path::new(command_match.value_of("repository-directory").unwrap()),
             ) {
                 Err(e) => {
                     println!("init_local_repository failed: {}", e);

@@ -20,7 +20,19 @@ pub struct Commit {
     pub parents: Vec<String>,
 }
 
-fn save_commit(repo: &Path, commit: &Commit) -> Result<(), String> {
+impl Commit {
+    pub fn new(changes: Vec<HashedChange>, root_hash: String, parents: Vec<String>) -> Commit {
+        let id = uuid::Uuid::new_v4().to_string();
+        Commit {
+            id,
+            changes,
+            root_hash,
+            parents,
+        }
+    }
+}
+
+pub fn save_commit(repo: &Path, commit: &Commit) -> Result<(), String> {
     let file_path = repo.join("commits").join(commit.id.to_owned() + ".json");
     match serde_json::to_string(&commit) {
         Ok(json) => {
@@ -135,12 +147,9 @@ pub fn commit(_message: &str) -> Result<(), String> {
 
     //todo: update branch
 
-    //todo: make local files read only
     if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);
     }
-
     clear_local_changes(&workspace_root, &local_changes);
-
     Ok(())
 }
