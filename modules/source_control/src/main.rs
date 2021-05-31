@@ -3,9 +3,9 @@ use lsc_lib::*;
 use std::path::Path;
 
 fn main() {
-    let matches = App::new("Legion Source Control")
-        .version("0.1.0")
+    let matches = App::new("Legion Source Control 0.1")
         .setting(AppSettings::ArgRequiredElseHelp)
+        .setting(AppSettings::DisableVersion)
         .subcommand(
             SubCommand::with_name("init-local-repository")
                 .about("Initializes a repository stored on a local filesystem")
