@@ -1,7 +1,7 @@
 use std::fs;
-use std::path::Path;
-use std::result::Result;
 use std::io::prelude::*;
+use std::path::{Path, PathBuf};
+use std::result::Result;
 
 pub fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
     match fs::File::create(path) {
@@ -17,4 +17,22 @@ pub fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
 
 pub fn path_to_string(p: &Path) -> String {
     String::from(p.to_str().unwrap())
+}
+
+pub fn make_path_absolute(p: &Path) -> PathBuf {
+    //fs::canonicalize is a trap - it generates crazy unusable "extended length" paths
+    if p.is_absolute() {
+        PathBuf::from(path_clean::clean(p.to_str().unwrap()))
+    } else {
+        PathBuf::from(path_clean::clean(
+            std::env::current_dir().unwrap().join(p).to_str().unwrap(),
+        ))
+    }
+}
+
+pub fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf, String> {
+    match p.strip_prefix(base) {
+        Ok(res) => Ok(res.to_path_buf()),
+        Err(e) => Err(format!("{:?} not relative to {:?}: {}", p, base, e)),
+    }
 }
