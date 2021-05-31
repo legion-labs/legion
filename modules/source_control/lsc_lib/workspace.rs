@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 pub struct Workspace {
     pub id: String, //a file lock will contain the workspace id
     pub repository: PathBuf,
+    pub root: PathBuf,
     pub owner: String,
 }
 
@@ -30,5 +31,12 @@ pub fn read_workspace_spec(workspace_root_dir: &Path) -> Result<Workspace, Strin
             "Error reading workspace spec {:?}: {}",
             &workspace_json_path, e
         )),
+    }
+}
+
+pub fn write_workspace_spec(path: &Path, spec: &Workspace) -> Result<(), String> {
+    match serde_json::to_string(spec) {
+        Ok(json_spec) => write_file(path, json_spec.as_bytes()),
+        Err(e) => Err(format!("Error formatting workspace spec: {}", e)),
     }
 }

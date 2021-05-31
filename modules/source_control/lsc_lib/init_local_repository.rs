@@ -32,8 +32,8 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
     let initial_commit = Commit::new(Vec::new(), root_hash, Vec::new());
     save_commit(directory, &initial_commit)?;
 
-    let main_branch = Branch::new(String::from("main"), initial_commit.id.clone());
-    save_branch(directory, &main_branch)?;
+    let main_branch = Branch::new(String::from("main"), initial_commit.id);
+    save_branch_to_repo(directory, &main_branch)?;
 
     Ok(())
 }

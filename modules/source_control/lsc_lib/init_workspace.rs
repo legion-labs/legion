@@ -19,19 +19,21 @@ pub fn init_workspace(
     let spec = Workspace {
         id: uuid::Uuid::new_v4().to_string(),
         repository: repository_directory.to_path_buf(),
+        root: workspace_directory.to_path_buf(),
         owner: whoami::username(),
     };
-    //todo: record the workspace in the central database
-    match serde_json::to_string(&spec) {
-        Ok(json_spec) => {
-            write_file(
-                workspace_directory.join(".lsc/workspace.json").as_path(),
-                json_spec.as_bytes(),
-            )?;
-        }
-        Err(e) => {
-            return Err(format!("Error formatting workspace spec: {}", e));
-        }
-    }
+    write_workspace_spec(
+        workspace_directory.join(".lsc/workspace.json").as_path(),
+        &spec,
+    )?;
+    write_workspace_spec(
+        repository_directory
+            .join(format!("workspaces/{}.json", &spec.id))
+            .as_path(),
+        &spec,
+    )?;
+    let main_branch = read_branch(repository_directory.join("branches/main.json").as_path())?;
+    save_current_branch(workspace_directory, &main_branch)?;
+    //todo: fill workspace
     Ok(())
 }
