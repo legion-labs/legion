@@ -9,6 +9,19 @@ Nulla eu scelerisque odio. Suspendisse ultrices convallis hendrerit. Duis lacini
     lsc_lib::write_file(p, contents.as_bytes()).expect("write failed");
 }
 
+fn syscall(command: &str, args: &[&str]) {
+    let output = Command::new(command)
+        .args(args)
+        .output()
+        .expect("failed to execute lsc-cli");
+    println!("{}", std::str::from_utf8(&output.stdout).unwrap());
+    assert!(output.status.success());
+}
+
+fn lsc_cli_sys(args: &[&str]) {
+    syscall("lsc-cli", args);
+}
+
 #[test]
 fn add_files() {
     let cargo_project_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
@@ -23,50 +36,24 @@ fn add_files() {
     let repo_dir = this_test_dir.join("repo");
     let workspace_dir = this_test_dir.join("work");
 
-    let mut output = Command::new("lsc-cli")
-        .args(&["init-local-repository", repo_dir.to_str().unwrap()])
-        .output()
-        .expect("failed to execute lsc-cli");
-    println!("{}", std::str::from_utf8(&output.stdout).unwrap());
-    assert!(output.status.success());
+    lsc_cli_sys(&["init-local-repository", repo_dir.to_str().unwrap()]);
 
-    output = Command::new("lsc-cli")
-        .args(&[
-            "init-workspace",
-            workspace_dir.to_str().unwrap(),
-            repo_dir.to_str().unwrap(),
-        ])
-        .output()
-        .expect("failed to execute lsc-cli");
-    println!("{}", std::str::from_utf8(&output.stdout).unwrap());
-    assert!(output.status.success());
+    lsc_cli_sys(&[
+        "init-workspace",
+        workspace_dir.to_str().unwrap(),
+        repo_dir.to_str().unwrap(),
+    ]);
 
     std::fs::create_dir_all(workspace_dir.join("dir0")).expect("dir0 creation failed");
     write_lorem_ipsum(&workspace_dir.join("dir0/file0.txt"));
     write_lorem_ipsum(&workspace_dir.join("dir0/file1.txt"));
 
-    output = Command::new("lsc-cli")
-        .args(&[
-            "add",
-            workspace_dir.join("dir0/file0.txt").to_str().unwrap(),
-        ])
-        .output()
-        .expect("failed to execute lsc-cli");
-    println!("{}", std::str::from_utf8(&output.stdout).unwrap());
-    assert!(output.status.success());
+    lsc_cli_sys(&[
+        "add",
+        workspace_dir.join("dir0/file0.txt").to_str().unwrap(),
+    ]);
 
     assert!(std::env::set_current_dir(&workspace_dir).is_ok());
-    output = Command::new("lsc-cli")
-        .args(&["add", "dir0/file1.txt"])
-        .output()
-        .expect("failed to execute lsc-cli");
-    println!("{}", std::str::from_utf8(&output.stdout).unwrap());
-    assert!(output.status.success());
-
-    output = Command::new("lsc-cli")
-        .args(&["local-changes"])
-        .output()
-        .expect("failed to execute lsc-cli");
-    println!("{}", std::str::from_utf8(&output.stdout).unwrap());
-    assert!(output.status.success());
+    lsc_cli_sys(&["add", "dir0/file1.txt"]);
+    lsc_cli_sys(&["local-changes"]);
 }
