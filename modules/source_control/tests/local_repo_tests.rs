@@ -243,4 +243,6 @@ fn local_single_branch_merge_flow() {
     lsc_cli_sys(&["sync"]);
     lsc_cli_sys(&["merges-pending"]);
     lsc_cli_sys(&["merge", "file1.txt"]);
+    lsc_cli_sys(&["merges-pending"]);
+    lsc_cli_sys(&["commit", r#"-m"merged""#]);
 }

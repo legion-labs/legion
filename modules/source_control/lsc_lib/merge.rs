@@ -1,7 +1,7 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -40,6 +40,21 @@ pub fn save_merge_pending(
         Err(e) => {
             return Err(format!("Error formatting merge pending: {}", e));
         }
+    }
+    Ok(())
+}
+
+pub fn clear_merge_pending(
+    workspace_root: &Path,
+    merge_pending: &MergePending,
+) -> Result<(), String> {
+    let file_path = workspace_root.join(format!(".lsc/merge_pending/{}.json", &merge_pending.id));
+    if let Err(e) = fs::remove_file(&file_path) {
+        return Err(format!(
+            "Error clearing merge pending {}: {}",
+            file_path.display(),
+            e
+        ));
     }
     Ok(())
 }
@@ -212,9 +227,30 @@ pub fn merge_file_command(p: &Path) -> Result<(), String> {
         base_file_path.to_str().unwrap(),
         output_path.to_str().unwrap(),
     )?;
-    if let Err(e) = fs::copy(&output_path, &abs_path){
-        return Err(format!("Error copying {} to {}: {}", output_path.display(), abs_path.display(), e));
+    if let Err(e) = fs::copy(&output_path, &abs_path) {
+        return Err(format!(
+            "Error copying {} to {}: {}",
+            output_path.display(),
+            abs_path.display(),
+            e
+        ));
     }
-    //todo: delete pending merge & temp files
+    println!("Merge accepted, {} updated", abs_path.display());
+    let mut errors = Vec::new();
+    if let Err(e) = clear_merge_pending(&workspace_root, &merge_pending) {
+        errors.push(e);
+    }
+    for temp_file_path in &[&base_file_path, &theirs_file_path] {
+        if let Err(e) = fs::remove_file(temp_file_path) {
+            errors.push(format!(
+                "Error deleting temporary file {}: {}",
+                temp_file_path.display(),
+                e
+            ));
+        }
+    }
+    if !errors.is_empty() {
+        return Err(errors.join("\n"));
+    }
     Ok(())
 }
