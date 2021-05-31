@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LocalChange {
+    pub id: String,
     pub relative_path: PathBuf,
     pub change_type: String, //edit, add, delete
 }
@@ -48,6 +49,19 @@ pub fn find_local_changes_command() -> Result<Vec<LocalChange>, String> {
     find_local_changes(&workspace_root)
 }
 
+pub fn clear_local_changes(workspace_root: &Path, local_changes: &[LocalChange]) {
+    for change in local_changes {
+        let change_path = workspace_root.join(format!(".lsc/local_edits/{}.json", &change.id));
+        if let Err(e) = fs::remove_file(change_path) {
+            println!(
+                "Error clearing local change {}: {}",
+                change.relative_path.display(),
+                e
+            );
+        }
+    }
+}
+
 pub fn track_new_file(file_to_add_specified: &Path) -> Result<(), String> {
     let file_to_add_buf = make_path_absolute(file_to_add_specified);
     let file_to_add = file_to_add_buf.as_path();
@@ -63,12 +77,12 @@ pub fn track_new_file(file_to_add_specified: &Path) -> Result<(), String> {
                 Some(parent) => {
                     let workspace_root = make_path_absolute(find_workspace_root(parent)?);
                     let local_edit_id = uuid::Uuid::new_v4().to_string();
-                    let local_edit_obj_path = workspace_root
-                        .join(".lsc/local_edits/")
-                        .join(local_edit_id + ".json");
+                    let local_edit_obj_path =
+                        workspace_root.join(format!(".lsc/local_edits/{}.json", local_edit_id));
 
                     //todo: lock the new file before recording the local change
                     let local_change = LocalChange {
+                        id: local_edit_id.clone(),
                         relative_path: path_relative_to(file_to_add, workspace_root.as_path())?,
                         change_type: String::from("add"),
                     };

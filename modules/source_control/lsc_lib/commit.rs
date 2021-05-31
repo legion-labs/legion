@@ -139,7 +139,8 @@ pub fn commit(_message: &str) -> Result<(), String> {
     if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);
     }
-    //todo: clear local changes
+
+    clear_local_changes(&workspace_root, &local_changes);
 
     Ok(())
 }
