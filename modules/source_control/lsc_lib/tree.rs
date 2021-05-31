@@ -237,6 +237,7 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
         }
         for relative_file_node in tree.file_nodes {
             let abs_path = PathBuf::from(&dir_node.name).join(relative_file_node.name);
+            println!("writing {}", format_path(&abs_path));
             let blob_path = repo.join(format!("blobs/{}", relative_file_node.hash));
             if let Err(e) = lz4_decompress(&blob_path, &abs_path) {
                 errors.push(format!(

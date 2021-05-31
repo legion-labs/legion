@@ -40,6 +40,10 @@ pub fn path_to_string(p: &Path) -> String {
     String::from(p.to_str().unwrap())
 }
 
+pub fn format_path(p: &Path) -> String{
+    p.to_string_lossy().replace( "/", "\\" )
+}
+
 pub fn make_path_absolute(p: &Path) -> PathBuf {
     //fs::canonicalize is a trap - it generates crazy unusable "extended length" paths
     if p.is_absolute() {
