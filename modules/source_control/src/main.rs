@@ -1,3 +1,5 @@
+mod lsc_lib;
+
 use clap::{App, AppSettings, Arg, SubCommand};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -16,31 +18,6 @@ struct Workspace {
 struct LocalChange {
     relative_path: String,
     change_type: String, //edit, add, delete
-}
-
-fn init_local_repository(directory: &str) -> Result<(), String> {
-    if let Ok(_) = fs::metadata(directory) {
-        return Err(format!("{} already exists", directory));
-    }
-    if let Err(e) = fs::create_dir_all(format!("{}/trees", directory)) {
-        return Err(format!("Error creating trees directory: {}", e));
-    }
-    if let Err(e) = fs::create_dir_all(format!("{}/commits", directory)) {
-        return Err(format!("Error creating commits directory: {}", e));
-    }
-    if let Err(e) = fs::create_dir_all(format!("{}/blobs", directory)) {
-        return Err(format!("Error creating blobs directory: {}", e));
-    }
-    if let Err(e) = fs::create_dir_all(format!("{}/branches", directory)) {
-        return Err(format!("Error creating branches directory: {}", e));
-    }
-    if let Err(e) = fs::create_dir_all(format!("{}/workspaces", directory)) {
-        return Err(format!("Error creating workspaces directory: {}", e));
-    }
-    if let Err(e) = fs::create_dir_all(format!("{}/locks", directory)) {
-        return Err(format!("Error creating locks directory: {}", e));
-    }
-    Ok(())
 }
 
 fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
@@ -210,7 +187,7 @@ fn main() {
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
             if let Err(e) =
-                init_local_repository(command_match.value_of("repository-directory").unwrap())
+                lsc_lib::init_local_repository(command_match.value_of("repository-directory").unwrap())
             {
                 println!("init_local_repository failed: {}", e);
                 std::process::exit(1);
