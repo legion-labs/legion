@@ -124,5 +124,8 @@ fn add_files() {
     assert!(fs::metadata(work2.join("dir0/file3.txt")).is_ok());
     assert!(fs::metadata(work2.join("dir0/file1.txt")).is_ok());
     
-    
+
+    //still under first workspace
+    lsc_cli_sys(&["log"]);
+
 }

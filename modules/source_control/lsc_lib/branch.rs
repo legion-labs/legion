@@ -36,6 +36,11 @@ pub fn read_current_branch(workspace_root: &Path) -> Result<Branch,String>{
     read_branch(&file_path)
 }
 
+pub fn read_branch_from_repo(repo: &Path, name: &str) -> Result<Branch,String>{
+    let file_path = repo.join("branches").join(name.to_owned() + ".json");
+    read_branch(&file_path)
+}
+
 pub fn read_branch(branch_file_path: &Path) -> Result<Branch, String> {
     let parsed: serde_json::Result<Branch> =
         serde_json::from_str(&read_text_file(branch_file_path)?);

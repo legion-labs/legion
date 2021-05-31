@@ -1,39 +1,46 @@
 use crate::*;
+use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HashedChange {
     pub relative_path: PathBuf,
     pub hash: String,
     pub change_type: String, //edit, add, delete
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Commit {
     pub id: String,
+    pub owner: String,
     pub message: String,
     pub changes: Vec<HashedChange>,
     pub root_hash: String,
     pub parents: Vec<String>,
+    pub date_time_utc: String,
 }
 
 impl Commit {
     pub fn new(
+        owner: String,
         message: String,
         changes: Vec<HashedChange>,
         root_hash: String,
         parents: Vec<String>,
     ) -> Commit {
         let id = uuid::Uuid::new_v4().to_string();
+        let date_time_utc = Utc::now().to_rfc3339();
         Commit {
             id,
+            owner,
             message,
             changes,
             root_hash,
             parents,
+            date_time_utc,
         }
     }
 }
@@ -122,6 +129,7 @@ pub fn commit(message: &str) -> Result<(), String> {
     )?;
 
     let commit = Commit::new(
+        whoami::username(),
         String::from(message),
         hashed_changes,
         new_root_hash,
@@ -139,4 +147,21 @@ pub fn commit(message: &str) -> Result<(), String> {
     }
     clear_local_changes(&workspace_root, &local_changes);
     Ok(())
+}
+
+pub fn find_branch_commits_command() -> Result<Vec<Commit>, String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let workspace_branch = read_current_branch(&workspace_root)?;
+    let repo_branch = read_branch_from_repo(&workspace_spec.repository, &workspace_branch.name)?;
+    let mut commits = Vec::new();
+    let mut c = read_commit(&workspace_spec.repository, &repo_branch.head)?;
+    commits.push(c.clone());
+    while !c.parents.is_empty() {
+        let id = &c.parents[0]; //first parent is assumed to be branch trunk
+        c = read_commit(&workspace_spec.repository, &id)?;
+        commits.push(c.clone());
+    }
+    Ok(commits)
 }
