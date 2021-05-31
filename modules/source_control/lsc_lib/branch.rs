@@ -1,5 +1,6 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -71,4 +72,82 @@ pub fn create_branch_command(name: &str) -> Result<(), String> {
     let new_branch = Branch::new(String::from(name), old_branch.head.clone(), old_branch.name);
     save_new_branch_to_repo(&workspace_spec.repository, &new_branch)?;
     save_current_branch(&workspace_root, &new_branch)
+}
+
+fn sync_tree_diff(
+    repo: &Path,
+    current_tree_hash: &str,
+    new_tree_hash: &str,
+    relative_path_tree: &Path,
+    workspace_root: &Path,
+) -> Result<(), String> {
+    let current_tree = read_tree(repo, current_tree_hash)?;
+    let mut files_present: BTreeMap<String, String> = BTreeMap::new();
+    for file_node in &current_tree.file_nodes {
+        files_present.insert(file_node.name.clone(), file_node.hash.clone());
+    }
+
+    let mut errors: Vec<String> = Vec::new();
+    let new_tree = read_tree(repo, new_tree_hash)?;
+    for new_file_node in &new_tree.file_nodes {
+        let present_hash = match files_present.get(&new_file_node.name) {
+            Some(hash) => {
+                let res = hash.clone();
+                files_present.remove(&new_file_node.name);
+                res
+            }
+            None => String::new(),
+        };
+        if new_file_node.hash != present_hash {
+            match sync_file(
+                repo,
+                &workspace_root
+                    .join(relative_path_tree)
+                    .join(&new_file_node.name),
+                &new_file_node.hash,
+            ) {
+                Ok(message) => {
+                    println!("{}", message);
+                }
+                Err(e) => {
+                    errors.push(e);
+                }
+            }
+        }
+    }
+
+    //those files were not matched, delete them
+    for k in files_present.keys() {
+        match sync_file(repo, &workspace_root.join(relative_path_tree).join(&k), "") {
+            Ok(message) => {
+                println!("{}", message);
+            }
+            Err(e) => {
+                errors.push(e);
+            }
+        }
+    }
+
+    //todo: deal with subdirectories
+
+    Ok(())
+}
+
+pub fn switch_branch_command(name: &str) -> Result<(), String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let repo = &workspace_spec.repository;
+    let old_branch = read_current_branch(&workspace_root)?;
+    let old_commit = read_commit(&repo, &old_branch.head)?;
+    let new_branch = read_branch_from_repo(&repo, name)?;
+    let new_commit = read_commit(&repo, &new_branch.head)?;
+    save_current_branch(&workspace_root, &new_branch)?;
+    sync_tree_diff(
+        &repo,
+        &old_commit.root_hash,
+        &new_commit.root_hash,
+        Path::new(""),
+        &workspace_root,
+    )
 }

@@ -84,6 +84,14 @@ fn main() {
                         .help("name of the new branch"))
         )
         .subcommand(
+            SubCommand::with_name("switch-branch")
+                .about("Syncs workspace to specified branch")
+                .arg(
+                    Arg::with_name("name")
+                        .required(true)
+                        .help("name of the existing branch to sync to"))
+        )
+        .subcommand(
             SubCommand::with_name("revert")
                 .about("Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.")
                 .arg(
@@ -205,7 +213,16 @@ fn main() {
             if let Err(e) = create_branch_command(&name) {
                 println!("create branch failed: {}", e);
                 std::process::exit(1);
-            }else{
+            } else {
+                println!("now on branch {}", &name);
+            }
+        }
+        ("switch-branch", Some(command_match)) => {
+            let name = command_match.value_of("name").unwrap();
+            if let Err(e) = switch_branch_command(&name) {
+                println!("switch branch failed: {}", e);
+                std::process::exit(1);
+            } else {
                 println!("now on branch {}", &name);
             }
         }
@@ -268,7 +285,7 @@ fn main() {
         },
         ("sync", Some(command_match)) => {
             let sync_result;
-            match command_match.value_of("commit-id"){
+            match command_match.value_of("commit-id") {
                 Some(commit_id) => {
                     sync_result = sync_to_command(&commit_id);
                 }
@@ -298,6 +315,9 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        _ => {}
+        other_match => {
+            println!("unknown subcommand match: {:?}", &other_match);
+            std::process::exit(1);
+        }
     }
 }

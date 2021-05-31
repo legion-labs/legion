@@ -302,6 +302,26 @@ fn test_branch() {
     assert!(std::env::set_current_dir(&work1).is_ok());
     lsc_lib::write_file(Path::new("file1.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&["add", "file1.txt"]);
+
+    lsc_lib::write_file(Path::new("file2.txt"), "line1\n".as_bytes()).unwrap();
+    lsc_cli_sys(&["add", "file2.txt"]);
+
     lsc_cli_sys(&["commit", r#"-m"add file1""#]);
     lsc_cli_sys(&["create-branch", "task"]);
+    lsc_cli_sys(&["edit", "file1.txt"]);
+    append_text_to_file(Path::new("file1.txt"), "\nfrom task branch");
+
+    lsc_cli_sys(&["delete", "file2.txt"]);
+    
+    lsc_lib::write_file(Path::new("file3.txt"), "line1\n".as_bytes()).unwrap();
+    lsc_cli_sys(&["add", "file3.txt"]);
+
+    std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0 creation failed");
+    lsc_lib::write_file(Path::new("dir0/deep/inner_task.txt"), "line1\n".as_bytes()).unwrap();
+    lsc_cli_sys(&["add", "dir0/deep/inner_task.txt"]);
+    
+    lsc_cli_sys(&["commit", r#"-m"task complete""#]);
+    lsc_cli_sys(&["log"]);
+    lsc_cli_sys(&["switch-branch", "main"]);
+    lsc_cli_sys(&["log"]);
 }

@@ -14,14 +14,22 @@ fn find_commit_range(
 ) -> Result<Vec<Commit>, String> {
     let repo_branch = read_branch_from_repo(&repo, &branch_name)?;
     let mut current_commit = read_commit(&repo, &repo_branch.head)?;
-    //todo: handle the case where we run out of parents
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
+        if current_commit.parents.is_empty(){
+            return Err(format!("commits {} and {} not found in current branch", &start_commit_id, &end_commit_id));
+        }
         current_commit = read_commit(&repo, &current_commit.parents[0])?;
     }
     let mut commits = vec![current_commit.clone()];
+    if current_commit.id == start_commit_id && current_commit.id == end_commit_id{
+        return Ok(commits);
+    }
     current_commit = read_commit(&repo, &current_commit.parents[0])?;
     commits.push(current_commit.clone());
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
+        if current_commit.parents.is_empty(){
+            return Err(format!("commit {} or {} not found in current branch", &start_commit_id, &end_commit_id));
+        }
         current_commit = read_commit(&repo, &current_commit.parents[0])?;
         commits.push(current_commit.clone());
     }
@@ -34,7 +42,7 @@ fn compute_file_hash(p: &Path) -> Result<String, String> {
     Ok(hash)
 }
 
-fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<String, String> {
+pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<String, String> {
     let local_hash = if local_path.exists() {
         compute_file_hash(&local_path)?
     } else {
