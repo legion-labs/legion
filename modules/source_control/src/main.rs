@@ -46,6 +46,14 @@ fn main() {
                         .help("local path within a workspace")),
         )
         .subcommand(
+            SubCommand::with_name("revert")
+                .about("Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.")
+                .arg(
+                    Arg::with_name("path")
+                        .required(true)
+                        .help("local path within a workspace")),
+        )
+        .subcommand(
             SubCommand::with_name("local-changes")
                 .about("Lists changes in workspace lsc knows about")
         )
@@ -116,6 +124,14 @@ fn main() {
                 println!("file ready to be edited");
             }
         }
+        ("revert", Some(command_match)) => {
+            if let Err(e) = revert_file_command(Path::new(command_match.value_of("path").unwrap())) {
+                println!("revert failed: {}", e);
+                std::process::exit(1);
+            } else {
+                println!("file reverted");
+            }
+        }
         ("commit", Some(command_match)) => {
             let mut message = String::from("");
             for item in command_match.values_of("message").unwrap() {
@@ -133,6 +149,9 @@ fn main() {
         }
         ("local-changes", Some(_command_match)) => match find_local_changes_command() {
             Ok(changes) => {
+                if changes.is_empty(){
+                    println!("No local changes");
+                }
                 for change in changes {
                     println!("{} {}", change.change_type, change.relative_path.display());
                 }

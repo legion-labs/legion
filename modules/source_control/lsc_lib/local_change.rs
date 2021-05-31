@@ -36,6 +36,39 @@ fn save_local_change( workspace_root: &Path, change_spec: &LocalChange ) -> Resu
     Ok(())
 }
 
+pub fn find_local_change(workspace_root: &Path, relative_path: &Path) -> Result<LocalChange,String>{
+    let local_edits_dir = workspace_root.join(".lsc/local_edits");
+    match local_edits_dir.read_dir() {
+        Ok(dir_iterator) => {
+            for entry_res in dir_iterator {
+                match entry_res {
+                    Ok(entry) => {
+                        let parsed: serde_json::Result<LocalChange> =
+                            serde_json::from_str(&read_text_file(&entry.path())?);
+                        match parsed {
+                            Ok(edit) => {
+                                if edit.relative_path == relative_path{
+                                    return Ok(edit);
+                                }
+                            }
+                            Err(e) => {return Err(format!("Error parsing {:?}: {}", entry.path(), e));}
+                        }
+                        
+                    }
+                    Err(e) => return Err(format!("Error reading local edit entry: {}", e)),
+                }
+            }
+        }
+        Err(e) => {
+            return Err(format!(
+                "Error reading directory {:?}: {}",
+                local_edits_dir, e
+            ))
+        }
+    }
+    Err(format!("local change {} not found", relative_path.display()))
+}
+
 pub fn find_local_changes(workspace_root: &Path) -> Result<Vec<LocalChange>, String> {
     let local_edits_dir = workspace_root.join(".lsc/local_edits");
     let mut res = Vec::new();
@@ -73,6 +106,14 @@ pub fn find_local_changes_command() -> Result<Vec<LocalChange>, String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     find_local_changes(&workspace_root)
+}
+
+pub fn clear_local_change(workspace_root: &Path, change: &LocalChange) -> Result<(),String>{
+    let change_path = workspace_root.join(format!(".lsc/local_edits/{}.json", &change.id));
+    if let Err(e) = fs::remove_file(&change_path) {
+        return Err(format!("Error clearing local change {}: {}", change_path.display(), e));
+    }
+    Ok(())
 }
 
 pub fn clear_local_changes(workspace_root: &Path, local_changes: &[LocalChange]) {

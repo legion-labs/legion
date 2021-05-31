@@ -159,5 +159,10 @@ fn add_files() {
     assert!(std::env::set_current_dir(&work2).is_ok());
     lsc_cli_sys(&["log"]);
     lsc_cli_sys(&["sync"]);
+
+    lsc_cli_sys(&["edit", "dir0/file0.txt"]);
+    lsc_cli_sys(&["local-changes"]);
+    lsc_cli_sys(&["revert", "dir0\\file0.txt"]);
+    lsc_cli_sys(&["local-changes"]);
     
 }

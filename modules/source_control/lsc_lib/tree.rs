@@ -58,6 +58,15 @@ impl Tree {
         Err(format!("could not find tree node {}", name))
     }
 
+    pub fn find_file_node(&self, name: &str) -> Result<&TreeNode, String> {
+        for node in &self.file_nodes {
+            if node.name == name {
+                return Ok(node);
+            }
+        }
+        Err(format!("could not find tree node {}", name))
+    }
+    
     pub fn remove_file_node(&mut self, node_name: &str) {
         if let Some(index) = self.file_nodes.iter().position(|x| x.name == node_name) {
             self.file_nodes.swap_remove(index);
