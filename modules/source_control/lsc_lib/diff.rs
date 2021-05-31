@@ -55,8 +55,8 @@ pub fn diff_file_command(
             let ref_path_str = ref_temp_file.path.to_str().unwrap();
             let local_file = abs_path.to_str().unwrap();
             for item in &mut external_command_vec[..] {
-                *item = item.replace("%1", &ref_path_str);
-                *item = item.replace("%2", &local_file);
+                *item = item.replace("%ref", &ref_path_str);
+                *item = item.replace("%local", &local_file);
             }
             match Command::new(&external_command_vec[0])
                 .args(&external_command_vec[1..])

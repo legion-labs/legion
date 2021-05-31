@@ -1,6 +1,7 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -156,43 +157,48 @@ pub fn find_file_hash_at_commit(
 }
 
 fn run_merge_program(
+    relative_path: &Path,
     abs_path: &str,
     theirs_path: &str,
     base_path: &str,
     output_path: &str,
 ) -> Result<(), String> {
-    let program = Path::new(r#"C:\Program Files\Beyond Compare 4\bcomp.exe"#);
-    let left_title_arg = format!("/lefttitle={} [yours]", abs_path);
-    match Command::new(program)
-        .args(&[
-            "/automerge",
-            "/reviewconflicts",
-            &left_title_arg,
-            "/righttitle=[theirs]",
-            "/centertitle=[base]",
-            "/outputtitle=[output]",
-            abs_path,    //left
-            theirs_path, //right
-            base_path,   //center
-            output_path,
-        ])
-        .output()
-    {
-        Ok(output) => {
-            println!("{}", std::str::from_utf8(&output.stdout).unwrap());
-            println!("{}", std::str::from_utf8(&output.stderr).unwrap());
-            if !output.status.success() {
-                return Err(format!(
-                    "merge program returned error code {}",
-                    output.status.code().expect("error reading status code")
-                ));
+    let config = Config::read_config()?;
+    match config.find_merge_command(&relative_path) {
+        Some(mut external_command_vec) => {
+            for item in &mut external_command_vec[..] {
+                *item = item.replace("%local", &abs_path);
+                *item = item.replace("%theirs", &theirs_path);
+                *item = item.replace("%base", &base_path);
+                *item = item.replace("%output", &output_path);
+            }
+
+            match Command::new(&external_command_vec[0])
+                .args(&external_command_vec[1..])
+                .output()
+            {
+                Ok(output) => {
+                    let mut out = std::io::stdout();
+                    out.write_all(&output.stdout).unwrap();
+                    out.flush().unwrap();
+
+                    let mut err = std::io::stderr();
+                    err.write_all(&output.stderr).unwrap();
+                    err.flush().unwrap();
+                }
+                Err(e) => {
+                    return Err(format!(
+                        "Error executing external command {:?}: {}",
+                        external_command_vec, e
+                    ));
+                }
             }
         }
-        Err(e) => {
+        None => {
             return Err(format!(
-                "Error launching merge program {}: {}",
-                program.display(),
-                e
+                "No merge command corresponding to {} was found in {}",
+                relative_path.display(),
+                Config::config_file_path().unwrap().display()
             ));
         }
     }
@@ -223,6 +229,7 @@ pub fn merge_file_command(p: &Path) -> Result<(), String> {
         path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),
     };
     run_merge_program(
+        &relative_path,
         abs_path.to_str().unwrap(),
         theirs_temp_file.path.to_str().unwrap(),
         base_temp_file.path.to_str().unwrap(),
