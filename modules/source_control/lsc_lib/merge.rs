@@ -135,7 +135,8 @@ pub fn find_merges_pending_command() -> Result<Vec<MergePending>, String> {
     read_merges_pending(&workspace_root)
 }
 
-fn find_file_hash_at_commit(
+//todo: move to repo
+pub fn find_file_hash_at_commit(
     repo: &Path,
     relative_path: &Path,
     commit_id: &str,
