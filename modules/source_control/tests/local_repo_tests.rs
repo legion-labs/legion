@@ -149,7 +149,15 @@ fn add_files() {
     lsc_cli_sys(&["log"]);
     lsc_cli_sys(&["edit", "dir0/file0.txt"]);
     lsc_cli_sys(&["local-changes"]);
-    append_text_to_file(Path::new("dir0/file0.txt"), "\nnew line");
-    lsc_cli_sys(&["commit", r#"-m"commit #3""#]);
+    append_text_to_file(Path::new("dir0/file0.txt"), "\nnew line in file0");
+    lsc_cli_sys(&["commit", r#"-m"edit file0""#]);
+
+    lsc_cli_sys(&["edit", "dir0/file1.txt"]);
+    append_text_to_file(Path::new("dir0/file1.txt"), "\nnew line in file1");
+    lsc_cli_sys(&["commit", r#"-m"edit file1""#]);
+
+    assert!(std::env::set_current_dir(&work2).is_ok());
     lsc_cli_sys(&["log"]);
+    lsc_cli_sys(&["sync"]);
+    
 }

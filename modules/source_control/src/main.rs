@@ -54,6 +54,10 @@ fn main() {
                 .about("Lists commits of the current branch")
         )
         .subcommand(
+            SubCommand::with_name("sync")
+                .about("Updates the workspace with the latest version of the files")
+        )
+        .subcommand(
             SubCommand::with_name("commit")
                 .about("Records local changes in the repository as a single transaction")
                 .arg(
@@ -108,8 +112,7 @@ fn main() {
             if let Err(e) = edit_file_command(Path::new(command_match.value_of("path").unwrap())) {
                 println!("edit failed: {}", e);
                 std::process::exit(1);
-            }
-            else{
+            } else {
                 println!("file ready to be edited");
             }
         }
@@ -136,6 +139,15 @@ fn main() {
             }
             Err(e) => {
                 println!("local-changes failed: {}", e);
+                std::process::exit(1);
+            }
+        },
+        ("sync", Some(_command_match)) => match sync_command() {
+            Ok(_) => {
+                println!("sync completed");
+            }
+            Err(e) => {
+                println!("sync failed: {}", e);
                 std::process::exit(1);
             }
         },

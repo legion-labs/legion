@@ -209,6 +209,11 @@ pub fn update_tree_from_changes(
     Err(String::from("root tree not processed"))
 }
 
+pub fn download_blob(repo: &Path, local_path: &Path, hash: &str) -> Result<(),String>{
+    let blob_path = repo.join(format!("blobs/{}", hash));
+    lz4_decompress(&blob_path, &local_path)
+}
+
 pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Result<(), String> {
     let mut dir_to_process = Vec::from([TreeNode {
         name: String::from(download_path.to_str().expect("path is invalid string")),
@@ -238,11 +243,10 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
         for relative_file_node in tree.file_nodes {
             let abs_path = PathBuf::from(&dir_node.name).join(relative_file_node.name);
             println!("writing {}", format_path(&abs_path));
-            let blob_path = repo.join(format!("blobs/{}", relative_file_node.hash));
-            if let Err(e) = lz4_decompress(&blob_path, &abs_path) {
+            if let Err(e) = download_blob(repo, &abs_path, &relative_file_node.hash) {
                 errors.push(format!(
-                    "Error copying {} to {}: {}",
-                    blob_path.display(),
+                    "Error downloading blob {} to {}: {}",
+                    &relative_file_node.hash,
                     abs_path.display(),
                     e
                 ));
