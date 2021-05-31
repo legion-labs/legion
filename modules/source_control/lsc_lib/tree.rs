@@ -67,6 +67,15 @@ pub fn save_tree(repo: &Path, tree: &Tree, hash: &str) -> Result<(), String> {
     Ok(())
 }
 
+pub fn read_tree(repo: &Path, hash: &str) -> Result<Tree, String> {
+    let file_path = repo.join(format!("trees/{}.json", hash));
+    let parsed: serde_json::Result<Tree> = serde_json::from_str(&read_text_file(&file_path)?);
+    match parsed {
+        Ok(tree) => Ok(tree),
+        Err(e) => Err(format!("Error reading tree {}: {}", hash, e)),
+    }
+}
+
 // returns the hash of the updated root tree
 pub fn update_tree_from_changes(
     _previous_version: Tree,
@@ -159,4 +168,40 @@ pub fn update_tree_from_changes(
         }
     }
     Err(String::from("root tree not processed"))
+}
+
+pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Result<(), String> {
+    let mut dir_to_process = Vec::from([TreeNode {
+        name: download_path.to_path_buf(),
+        hash: String::from(tree_hash),
+    }]);
+    let mut errors: Vec<String> = Vec::new();
+    while !dir_to_process.is_empty() {
+        let dir_node = dir_to_process.pop().expect("empty dir_to_process");
+        let tree = read_tree(repo, &dir_node.hash)?;
+        for relative_subdir_node in tree.directory_nodes {
+            let abs_subdir_node = TreeNode {
+                name: dir_node.name.join(relative_subdir_node.name),
+                hash: relative_subdir_node.hash,
+            };
+            dir_to_process.push(abs_subdir_node);
+        }
+        for relative_file_node in tree.file_nodes {
+            let abs_path = dir_node.name.join(relative_file_node.name);
+            let blob_path = repo.join(format!("blobs/{}", relative_file_node.hash));
+            if let Err(e) = std::fs::copy(&blob_path, &abs_path) {
+                errors.push(format!(
+                    "Error copying {} to {}: {}",
+                    blob_path.display(),
+                    abs_path.display(),
+                    e
+                ));
+            }
+        }
+    }
+    if !errors.is_empty() {
+        let message = errors.join("\n");
+        return Err(message);
+    }
+    Ok(())
 }

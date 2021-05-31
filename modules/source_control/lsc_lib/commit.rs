@@ -45,6 +45,15 @@ pub fn save_commit(repo: &Path, commit: &Commit) -> Result<(), String> {
     Ok(())
 }
 
+pub fn read_commit(repo: &Path, id: &str) -> Result<Commit, String> {
+    let file_path = repo.join(format!("commits/{}.json", id));
+    let parsed: serde_json::Result<Commit> = serde_json::from_str(&read_text_file(&file_path)?);
+    match parsed {
+        Ok(commit) => Ok(commit),
+        Err(e) => Err(format!("Error reading commit {}: {}", id, e)),
+    }
+}
+
 fn write_blob(file_path: &Path, contents: &[u8]) -> Result<(), String> {
     if fs::metadata(file_path).is_ok() {
         //blob already exists
