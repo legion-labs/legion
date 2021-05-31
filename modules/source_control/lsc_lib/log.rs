@@ -5,8 +5,11 @@ pub fn log_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let work_branch = read_current_branch(&workspace_root)?;
-    println!("This workspace is on branch {} at commit {}", &work_branch.name, &work_branch.head);
-    match find_branch_commits_command() {
+    println!(
+        "This workspace is on branch {} at commit {}",
+        &work_branch.name, &work_branch.head
+    );
+    match find_branch_commits(&workspace_root) {
         Ok(commits) => {
             for c in commits {
                 let utc = DateTime::parse_from_rfc3339(&c.date_time_utc)

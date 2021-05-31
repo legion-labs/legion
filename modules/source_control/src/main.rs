@@ -94,6 +94,9 @@ fn main() {
         .subcommand(
             SubCommand::with_name("sync")
                 .about("Updates the workspace with the latest version of the files")
+                .arg(
+                    Arg::with_name("commit-id")
+                        .help("version to sync to"))
         )
         .subcommand(
             SubCommand::with_name("merges-pending")
@@ -246,15 +249,26 @@ fn main() {
                 std::process::exit(1);
             }
         },
-        ("sync", Some(_command_match)) => match sync_command() {
-            Ok(_) => {
-                println!("sync completed");
+        ("sync", Some(command_match)) => {
+            let sync_result;
+            match command_match.value_of("commit-id"){
+                Some(commit_id) => {
+                    sync_result = sync_to_command(&commit_id);
+                }
+                None => {
+                    sync_result = sync_command();
+                }
             }
-            Err(e) => {
-                println!("sync failed: {}", e);
-                std::process::exit(1);
+            match sync_result {
+                Ok(_) => {
+                    println!("sync completed");
+                }
+                Err(e) => {
+                    println!("sync failed: {}", e);
+                    std::process::exit(1);
+                }
             }
-        },
+        }
         ("log", Some(_command_match)) => {
             if let Err(e) = log_command() {
                 println!("{}", e);

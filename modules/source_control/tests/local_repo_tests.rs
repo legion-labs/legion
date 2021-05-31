@@ -205,6 +205,14 @@ fn local_repo_suite() {
     //test revert delete
     lsc_cli_sys(&["delete", "dir0/file1.txt"]);
     lsc_cli_sys(&["revert", "dir0/file1.txt"]);
+
+    //sync backwards
+    let log_vec = lsc_lib::find_branch_commits(&work1).unwrap();
+    let init_commit = log_vec.last().unwrap();
+    lsc_cli_sys(&["sync", &init_commit.id]);
+
+    //sync forwards
+    lsc_cli_sys(&["sync"]);
 }
 
 #[test]

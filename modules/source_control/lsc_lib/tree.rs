@@ -122,6 +122,24 @@ pub fn fetch_tree_subdir(repo: &Path, root: &Tree, subdir: &Path) -> Result<Tree
     Ok(parent)
 }
 
+pub fn find_file_hash_in_tree(
+    repo: &Path,
+    relative_path: &Path,
+    root_tree: &Tree,
+) -> Result<String, String> {
+    let parent_dir = relative_path.parent().expect("no parent to path provided");
+    let dir_tree = fetch_tree_subdir(repo, &root_tree, &parent_dir)?;
+    let file_node = dir_tree.find_file_node(
+        relative_path
+            .file_name()
+            .expect("no file name in path specified")
+            .to_str()
+            .expect("invalid file name"),
+    )?;
+    Ok(file_node.hash.clone())
+}
+
+
 // returns the hash of the updated root tree
 pub fn update_tree_from_changes(
     previous_root: Tree,

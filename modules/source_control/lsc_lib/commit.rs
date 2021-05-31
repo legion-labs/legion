@@ -60,7 +60,7 @@ pub fn save_commit(repo: &Path, commit: &Commit) -> Result<(), String> {
 
 pub fn read_commit(repo: &Path, id: &str) -> Result<Commit, String> {
     let file_path = repo.join(format!("commits/{}.json", id));
-    match read_text_file(&file_path){
+    match read_text_file(&file_path) {
         Ok(contents) => {
             let parsed: serde_json::Result<Commit> = serde_json::from_str(&contents);
             match parsed {
@@ -68,9 +68,7 @@ pub fn read_commit(repo: &Path, id: &str) -> Result<Commit, String> {
                 Err(e) => Err(format!("Error reading commit {}: {}", id, e)),
             }
         }
-        Err(e) => {
-            Err(format!("Commit {} not found: {}", id, e))
-        }
+        Err(e) => Err(format!("Commit {} not found: {}", id, e)),
     }
 }
 
@@ -91,14 +89,13 @@ fn upload_localy_edited_blobs(
     let blob_dir = Path::new(&workspace_spec.repository).join("blobs");
     let mut res = Vec::<HashedChange>::new();
     for local_change in local_changes {
-        if local_change.change_type == "delete"{
+        if local_change.change_type == "delete" {
             res.push(HashedChange {
                 relative_path: local_change.relative_path.clone(),
                 hash: String::from(""),
                 change_type: local_change.change_type.clone(),
             });
-        }
-        else{
+        } else {
             let local_path = workspace_root.join(&local_change.relative_path);
             let local_file_contents = read_bin_file(&local_path)?;
             let hash = format!("{:X}", Sha256::digest(&local_file_contents));
@@ -132,7 +129,7 @@ pub fn commit(message: &str) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let mut current_branch = read_current_branch(&workspace_root)?;
     let repo_branch = read_branch_from_repo(&workspace_spec.repository, &current_branch.name)?;
-    if repo_branch.head != current_branch.head{
+    if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
     let local_changes = read_local_changes(workspace_root)?;
@@ -169,9 +166,7 @@ pub fn commit(message: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn find_branch_commits_command() -> Result<Vec<Commit>, String> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
+pub fn find_branch_commits(workspace_root: &Path) -> Result<Vec<Commit>, String> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let workspace_branch = read_current_branch(&workspace_root)?;
     let repo_branch = read_branch_from_repo(&workspace_spec.repository, &workspace_branch.name)?;
