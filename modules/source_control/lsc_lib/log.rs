@@ -5,7 +5,7 @@ pub fn log_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let work_branch = read_current_branch(&workspace_root)?;
-    println!("{:?}", work_branch);//todo: remove
+    println!("This workspace is on branch {} at commit {}", &work_branch.name, &work_branch.head);
     match find_branch_commits_command() {
         Ok(commits) => {
             for c in commits {
