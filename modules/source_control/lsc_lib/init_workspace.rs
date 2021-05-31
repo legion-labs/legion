@@ -16,6 +16,9 @@ pub fn init_workspace(
     if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/local_edits")) {
         return Err(format!("Error creating .lsc/local_edits directory: {}", e));
     }
+    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/merge_pending")) {
+        return Err(format!("Error creating .lsc/merge_pending directory: {}", e));
+    }
     let spec = Workspace {
         id: uuid::Uuid::new_v4().to_string(),
         repository: repository_directory.to_path_buf(),

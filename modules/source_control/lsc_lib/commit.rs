@@ -135,7 +135,7 @@ pub fn commit(message: &str) -> Result<(), String> {
     if repo_branch.head != current_branch.head{
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
-    let local_changes = find_local_changes(workspace_root)?;
+    let local_changes = read_local_changes(workspace_root)?;
     let hashed_changes =
         upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
 

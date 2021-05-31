@@ -3,6 +3,11 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+//
+// Tests should run in succession, not in parallel, because they set the current directory.
+// cargo test -- --nocapture --test-threads=1
+//
+
 fn write_lorem_ipsum(p: &Path) {
     let contents = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In iaculis odio ac nulla porta, eget dictum nulla euismod. Vivamus congue eros vitae velit feugiat lacinia. Curabitur mi lectus, semper in posuere nec, eleifend eu magna. Morbi egestas magna eget ligula aliquet, vitae mattis urna pellentesque. Maecenas sem risus, scelerisque id semper ut, ornare id diam. Integer ut urna varius, lobortis sapien id, ullamcorper mi. Donec pulvinar ante ligula, in interdum turpis tempor a. Maecenas malesuada turpis orci, vitae efficitur tortor laoreet sit amet.
 
@@ -48,14 +53,18 @@ fn lsc_cli_sys_impl(args: &[&str], should_succeed: bool) {
 
     let command = subdir.join("lsc-cli");
 
-    syscall(command.to_str().expect("command path"), args, should_succeed);
+    syscall(
+        command.to_str().expect("command path"),
+        args,
+        should_succeed,
+    );
 }
 
-fn lsc_cli_sys(args: &[&str]){
+fn lsc_cli_sys(args: &[&str]) {
     lsc_cli_sys_impl(&args, true);
 }
 
-fn lsc_cli_sys_fail(args: &[&str]){
+fn lsc_cli_sys_fail(args: &[&str]) {
     lsc_cli_sys_impl(&args, false);
 }
 
@@ -126,10 +135,7 @@ fn local_repo_suite() {
     )
     .expect("error copying lambda.jpg");
 
-    lsc_cli_sys(&[
-        "add",
-        work1.join("dir0/file0.txt").to_str().unwrap(),
-    ]);
+    lsc_cli_sys(&["add", work1.join("dir0/file0.txt").to_str().unwrap()]);
 
     assert!(std::env::set_current_dir(&work1).is_ok());
     lsc_cli_sys(&["add", "dir0/file1.txt"]);
@@ -192,5 +198,47 @@ fn local_repo_suite() {
     //test revert delete
     lsc_cli_sys(&["delete", "dir0/file1.txt"]);
     lsc_cli_sys(&["revert", "dir0/file1.txt"]);
-    
+}
+
+#[test]
+fn local_single_branch_merge_flow() {
+    let cargo_project_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    let test_scratch_dir = cargo_project_dir.join("target/test_scratch");
+    let this_test_dir = test_scratch_dir.join("single_merge");
+    if let Ok(_) = std::fs::metadata(&this_test_dir) {
+        force_delete_all(&this_test_dir);
+    }
+    std::fs::create_dir_all(&this_test_dir).unwrap();
+    let repo_dir = this_test_dir.join("repo");
+    let work1 = this_test_dir.join("work1");
+    let work2 = this_test_dir.join("work2");
+
+    lsc_cli_sys(&["init-local-repository", repo_dir.to_str().unwrap()]);
+
+    lsc_cli_sys(&[
+        "init-workspace",
+        work1.to_str().unwrap(),
+        repo_dir.to_str().unwrap(),
+    ]);
+
+    assert!(std::env::set_current_dir(&work1).is_ok());
+    lsc_lib::write_file(Path::new("file1.txt"), "line1\n".as_bytes()).unwrap();
+    lsc_cli_sys(&["add", "file1.txt"]);
+    lsc_cli_sys(&["commit", r#"-m"add file1""#]);
+
+    lsc_cli_sys(&[
+        "init-workspace",
+        work2.to_str().unwrap(),
+        repo_dir.to_str().unwrap(),
+    ]);
+    assert!(std::env::set_current_dir(&work2).is_ok());
+    lsc_cli_sys(&["edit", "file1.txt"]);
+    append_text_to_file(Path::new("file1.txt"), "line2\n");
+    lsc_cli_sys(&["commit", r#"-m"add line2 to file1""#]);
+
+    assert!(std::env::set_current_dir(&work1).is_ok());
+    lsc_cli_sys(&["edit", "file1.txt"]);
+    append_text_to_file(Path::new("file1.txt"), "line3\n");
+    lsc_cli_sys_fail(&["commit", r#"-m"should fail - not at head""#]);
+    lsc_cli_sys(&["sync"]);
 }

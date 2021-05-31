@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalChange {
     pub id: String,
     pub relative_path: PathBuf,
@@ -69,7 +69,7 @@ pub fn find_local_change(workspace_root: &Path, relative_path: &Path) -> Result<
     Err(format!("local change {} not found", relative_path.display()))
 }
 
-pub fn find_local_changes(workspace_root: &Path) -> Result<Vec<LocalChange>, String> {
+pub fn read_local_changes(workspace_root: &Path) -> Result<Vec<LocalChange>, String> {
     let local_edits_dir = workspace_root.join(".lsc/local_edits");
     let mut res = Vec::new();
     match local_edits_dir.read_dir() {
@@ -105,7 +105,7 @@ pub fn find_local_changes(workspace_root: &Path) -> Result<Vec<LocalChange>, Str
 pub fn find_local_changes_command() -> Result<Vec<LocalChange>, String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
-    find_local_changes(&workspace_root)
+    read_local_changes(&workspace_root)
 }
 
 pub fn clear_local_change(workspace_root: &Path, change: &LocalChange) -> Result<(),String>{

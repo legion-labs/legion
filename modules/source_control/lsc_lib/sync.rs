@@ -1,6 +1,7 @@
 use crate::*;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -28,7 +29,7 @@ fn compute_file_hash(p: &Path) -> Result<String, String> {
 
 fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<String, String> {
     let local_hash = compute_file_hash(&local_path)?;
-    if local_hash == hash_to_sync{
+    if local_hash == hash_to_sync {
         return Ok(format!("Verified {}", local_path.display()));
     }
     match fs::metadata(&local_path) {
@@ -91,18 +92,49 @@ pub fn sync_command() -> Result<(), String> {
     let mut to_download: BTreeMap<PathBuf, String> = BTreeMap::new();
     for commit in commits {
         for change in commit.changes {
-            let path = workspace_root.join(change.relative_path);
-            to_download.entry(path).or_insert(change.hash);
+            to_download
+                .entry(change.relative_path.clone())
+                .or_insert(change.hash);
         }
     }
-    let mut errors: Vec<String> = Vec::new();
-    for (path, latest_hash) in to_download {
-        match sync_file(&workspace_spec.repository, &path, &latest_hash) {
-            Ok(message) => {
-                println!("{}", message);
+
+    let mut local_changes_map = HashMap::new();
+    match read_local_changes(&workspace_root) {
+        Ok(changes_vec) => {
+            for change in changes_vec {
+                local_changes_map.insert(change.relative_path.clone(), change.clone());
             }
-            Err(e) => {
-                errors.push(e);
+        }
+        Err(e) => {
+            return Err(format!("Error reading local changes: {}", e));
+        }
+    }
+
+    let mut errors: Vec<String> = Vec::new();
+    for (relative_path, latest_hash) in to_download {
+        match local_changes_map.get(&relative_path) {
+            Some(_change) => {
+                println!("{} changed locally, recording pending merge and leaving the local file untouched", relative_path.display());
+                let merge_pending = MergePending::new(
+                    relative_path.to_path_buf(),
+                    workspace_branch.head.clone(),
+                    repo_branch.head.clone(),
+                );
+                if let Err(e) = save_merge_pending(&workspace_root, &merge_pending) {
+                    errors.push(format!("Error saving pending merge {}: {}", relative_path.display(), e));
+                }
+            }
+            None => {
+                //no local change, ok to sync
+                let local_path = workspace_root.join(relative_path);
+                match sync_file(&workspace_spec.repository, &local_path, &latest_hash) {
+                    Ok(message) => {
+                        println!("{}", message);
+                    }
+                    Err(e) => {
+                        errors.push(e);
+                    }
+                }
             }
         }
     }
