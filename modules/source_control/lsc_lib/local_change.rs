@@ -82,7 +82,7 @@ pub fn track_new_file(file_to_add_specified: &Path) -> Result<(), String> {
 
                     //todo: lock the new file before recording the local change
                     let local_change = LocalChange {
-                        id: local_edit_id.clone(),
+                        id: local_edit_id,
                         relative_path: path_relative_to(file_to_add, workspace_root.as_path())?,
                         change_type: String::from("add"),
                     };
