@@ -30,20 +30,32 @@ fn write_blob(file_path: &Path, contents: &[u8]) -> Result<(), String> {
     }
 }
 
-pub fn commit(_message: &str) -> Result<(), String> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
+fn upload_localy_edited_blobs(
+    workspace_root: &Path,
+    workspace_spec: &Workspace,
+) -> Result<(), String> {
     let blob_dir = Path::new(&workspace_spec.repository).join("blobs");
-    for local_change in find_local_changes(&workspace_root)? {
+    for local_change in find_local_changes(workspace_root)? {
         let workspace_path = workspace_root.join(local_change.relative_path);
         //todo: support binary files
         let local_file_contents = read_file(&workspace_path)?;
         let hash = format!("{:X}", Sha256::digest(local_file_contents.as_bytes()));
         write_blob(&blob_dir.join(hash), local_file_contents.as_bytes())?;
-        //todo: build trees
-        //todo: save commit
-        //todo: update branch
     }
+    Ok(())
+}
+
+pub fn commit(_message: &str) -> Result<(), String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    upload_localy_edited_blobs(workspace_root, &workspace_spec)?;
+
+    //todo: build trees
+    //todo: save commit
+    //todo: make local files read only
+    //todo: clear local changes
+    //todo: update branch
+
     Ok(())
 }
