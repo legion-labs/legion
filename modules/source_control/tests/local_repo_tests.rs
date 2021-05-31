@@ -27,7 +27,17 @@ fn syscall(command: &str, args: &[&str]) {
 }
 
 fn lsc_cli_sys(args: &[&str]) {
-    syscall("lsc-cli", args);
+    let test_bin_exe = std::env::current_exe().expect("error getting current exe");
+    let mut subdir = test_bin_exe.parent().expect("error getting parent directory");
+    let mut parent_dir = subdir.parent().expect("error getting parent directory");
+    while parent_dir.file_name().expect("file name") != "target"{
+        subdir = parent_dir;
+        parent_dir = subdir.parent().expect("error getting parent directory");
+    }
+
+    let command = subdir.join("lsc-cli");
+
+    syscall(command.to_str().expect("command path"), args);
 }
 
 fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
