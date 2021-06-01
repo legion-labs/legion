@@ -193,7 +193,8 @@ fn local_repo_suite() {
     lsc_cli_sys(&work1, &["revert", "dir0/file1.txt"]);
 
     //sync backwards
-    let log_vec = legion_src_ctl::find_branch_commits(&work1).unwrap();
+    let main_branch = legion_src_ctl::read_branch_from_repo(&repo_dir, "main").unwrap();
+    let log_vec = legion_src_ctl::find_branch_commits(&repo_dir, &main_branch).unwrap();
     let init_commit = log_vec.last().unwrap();
     lsc_cli_sys(&work1, &["sync", &init_commit.id]);
 
@@ -319,4 +320,8 @@ fn test_branch() {
     lsc_cli_sys(&work1, &["switch-branch", "task"]);
     lsc_cli_sys(&work1, &["log"]);
     lsc_cli_sys(&work1, &["list-branches"]);
+
+    lsc_cli_sys(&work1, &["switch-branch", "main"]);
+    lsc_cli_sys(&work1, &["merge-branch", "task"]);
+    lsc_cli_sys(&work1, &["log"]);
 }

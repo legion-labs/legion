@@ -166,16 +166,13 @@ pub fn commit(message: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn find_branch_commits(workspace_root: &Path) -> Result<Vec<Commit>, String> {
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let workspace_branch = read_current_branch(&workspace_root)?;
-    let repo_branch = read_branch_from_repo(&workspace_spec.repository, &workspace_branch.name)?;
+pub fn find_branch_commits(repo: &Path, branch: &Branch) -> Result<Vec<Commit>, String> {
     let mut commits = Vec::new();
-    let mut c = read_commit(&workspace_spec.repository, &repo_branch.head)?;
+    let mut c = read_commit(&repo, &branch.head)?;
     commits.push(c.clone());
     while !c.parents.is_empty() {
         let id = &c.parents[0]; //first parent is assumed to be branch trunk
-        c = read_commit(&workspace_spec.repository, &id)?;
+        c = read_commit(&repo, &id)?;
         commits.push(c.clone());
     }
     Ok(commits)
