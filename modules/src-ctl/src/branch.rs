@@ -260,7 +260,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
         .position(|c| c.id == latest_branch.head)
     {
         //fast forward case
-        latest_branch.head = branch_to_merge.head.clone();
+        latest_branch.head = branch_to_merge.head;
         save_current_branch(&workspace_root, &latest_branch)?;
         save_branch_to_repo(&repo, &latest_branch)?;
         println!("Fast-forward merge: branch updated, synching");
