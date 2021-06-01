@@ -214,15 +214,28 @@ name = "legion-core"
 version = "0.1.0"
 
 [[package]]
-name = "legion-hwcodec"
+name = "legion-hw-codec"
 version = "0.1.0"
 dependencies = [
  "ash",
 ]
 
 [[package]]
-name = "legion-vm-agent"
+name = "legion-src-ctl"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diffy",
+ "dirs",
+ "glob",
+ "lz4",
+ "path-clean",
+ "serde",
+ "serde_json",
+ "sha2",
+ "uuid",
+ "whoami",
+]
 
 [[package]]
 name = "leigon-end-to-end-tests"
@@ -251,24 +264,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "lsc-cli"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "diffy",
- "dirs",
- "glob",
- "lz4",
- "path-clean",
- "serde",
- "serde_json",
- "sha2",
- "uuid",
- "whoami",
 ]
 
 [[package]]
@@ -410,6 +405,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "src-ctl-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "legion-src-ctl",
+]
+
+[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -484,6 +487,10 @@ name = "version_check"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+
+[[package]]
+name = "vm-agent"
+version = "0.1.0"
 
 [[package]]
 name = "wasi"

@@ -8,7 +8,7 @@ fn write_lorem_ipsum(p: &Path) {
 
 Nulla eu scelerisque odio. Suspendisse ultrices convallis hendrerit. Duis lacinia lacus ut urna pellentesque, euismod auctor risus volutpat. Sed et congue dolor, et bibendum dolor. Nam sit amet ante id eros aliquet luctus. Donec pulvinar mauris turpis, a ullamcorper mi fermentum ac. Morbi a volutpat turpis. Nulla facilisi. Sed rutrum placerat nisl vitae condimentum. Nunc et lacus ut lacus aliquet tempor et volutpat mi. Maecenas pretium ultricies mi id vestibulum. Sed turpis justo, semper eu nisl ac, hendrerit mattis turpis. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Praesent condimentum pellentesque vestibulum. Fusce at hendrerit lorem.\n";
 
-    lsc_lib::write_file(p, contents.as_bytes()).expect("write failed");
+    legion_src_ctl::write_file(p, contents.as_bytes()).expect("write failed");
 }
 
 fn append_text_to_file(p: &Path, contents: &str) {
@@ -35,7 +35,7 @@ fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
     assert!(status.success() == should_succeed);
 }
 
-static LSC_CLI_EXE_VAR: &str = env!("CARGO_BIN_EXE_lsc-cli");
+static LSC_CLI_EXE_VAR: &str = env!("CARGO_BIN_EXE_src-ctl-cli");
 fn lsc_cli_sys(wd: &Path, args: &[&str]) {
     syscall(LSC_CLI_EXE_VAR, wd, args, true);
 }
@@ -193,7 +193,7 @@ fn local_repo_suite() {
     lsc_cli_sys(&work1, &["revert", "dir0/file1.txt"]);
 
     //sync backwards
-    let log_vec = lsc_lib::find_branch_commits(&work1).unwrap();
+    let log_vec = legion_src_ctl::find_branch_commits(&work1).unwrap();
     let init_commit = log_vec.last().unwrap();
     lsc_cli_sys(&work1, &["sync", &init_commit.id]);
 
@@ -222,7 +222,7 @@ fn local_single_branch_merge_flow() {
         ],
     );
 
-    lsc_lib::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
+    legion_src_ctl::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file1.txt"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"add file1""#]);
 
@@ -251,7 +251,7 @@ fn local_single_branch_merge_flow() {
 
 #[test]
 fn test_print_config() {
-    let config_file_path = lsc_lib::Config::config_file_path().unwrap();
+    let config_file_path = legion_src_ctl::Config::config_file_path().unwrap();
     if config_file_path.exists() {
         lsc_cli_sys(std::env::current_dir().unwrap().as_path(), &["config"]);
     } else {
@@ -262,7 +262,7 @@ fn test_print_config() {
 #[test]
 fn test_branch() {
     let test_dir = test_dir("test_branch");
-    let config_file_path = lsc_lib::Config::config_file_path().unwrap();
+    let config_file_path = legion_src_ctl::Config::config_file_path().unwrap();
     if config_file_path.exists() {
         lsc_cli_sys(&test_dir, &["config"]);
     } else {
@@ -287,10 +287,10 @@ fn test_branch() {
     );
 
     assert!(std::env::set_current_dir(&work1).is_ok());
-    lsc_lib::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
+    legion_src_ctl::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file1.txt"]);
 
-    lsc_lib::write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
+    legion_src_ctl::write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file2.txt"]);
 
     lsc_cli_sys(&work1, &["commit", r#"-m"add file1""#]);
@@ -300,11 +300,11 @@ fn test_branch() {
 
     lsc_cli_sys(&work1, &["delete", "file2.txt"]);
 
-    lsc_lib::write_file(&work1.join("file3.txt"), "line1\n".as_bytes()).unwrap();
+    legion_src_ctl::write_file(&work1.join("file3.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file3.txt"]);
 
     std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0 creation failed");
-    lsc_lib::write_file(
+    legion_src_ctl::write_file(
         &work1.join("dir0/deep/inner_task.txt"),
         "line1\n".as_bytes(),
     )

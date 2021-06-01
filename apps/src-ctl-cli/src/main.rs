@@ -1,5 +1,5 @@
 use clap::{App, AppSettings, Arg, SubCommand};
-use lsc_lib::*;
+use legion_src_ctl::*;
 use std::path::Path;
 
 fn main() {
@@ -145,7 +145,7 @@ fn main() {
 
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
-            match lsc_lib::init_local_repository(Path::new(
+            match legion_src_ctl::init_local_repository(Path::new(
                 command_match.value_of("repository-directory").unwrap(),
             )) {
                 Err(e) => {
