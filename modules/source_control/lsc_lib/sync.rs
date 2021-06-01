@@ -85,6 +85,9 @@ pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<S
                     e
                 ));
             }
+            if let Err(e) = make_file_read_only(&local_path, true) {
+                return Err(e);
+            }
             return Ok(format!("Updated {}", local_path.display()));
         }
         Err(_) => {
@@ -96,6 +99,9 @@ pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<S
                     &hash_to_sync,
                     e
                 ));
+            }
+            if let Err(e) = make_file_read_only(&local_path, true) {
+                return Err(e);
             }
             return Ok(format!("Added {}", local_path.display()));
         }

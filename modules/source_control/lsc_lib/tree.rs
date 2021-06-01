@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::hash_map::HashMap;
 use std::collections::BTreeSet;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -66,7 +67,7 @@ impl Tree {
         }
         Err(format!("could not find tree node {}", name))
     }
-    
+
     pub fn remove_file_node(&mut self, node_name: &str) {
         if let Some(index) = self.file_nodes.iter().position(|x| x.name == node_name) {
             self.file_nodes.swap_remove(index);
@@ -74,7 +75,11 @@ impl Tree {
     }
 
     pub fn remove_dir_node(&mut self, node_name: &str) {
-        if let Some(index) = self.directory_nodes.iter().position(|x| x.name == node_name) {
+        if let Some(index) = self
+            .directory_nodes
+            .iter()
+            .position(|x| x.name == node_name)
+        {
             self.directory_nodes.swap_remove(index);
         }
     }
@@ -139,7 +144,6 @@ pub fn find_file_hash_in_tree(
     Ok(file_node.hash.clone())
 }
 
-
 // returns the hash of the updated root tree
 pub fn update_tree_from_changes(
     previous_root: Tree,
@@ -185,16 +189,16 @@ pub fn update_tree_from_changes(
                 .expect("relative path with no parent");
             if dir == parent {
                 let filename = String::from(
-                            change
-                                .relative_path
-                                .file_name()
-                                .expect("error getting file name")
-                                .to_str()
-                                .expect("path is invalid string") );
-                if change.change_type == "delete"{
+                    change
+                        .relative_path
+                        .file_name()
+                        .expect("error getting file name")
+                        .to_str()
+                        .expect("path is invalid string"),
+                );
+                if change.change_type == "delete" {
                     tree.remove_file_node(&filename)
-                }
-                else{
+                } else {
                     tree.add_or_update_file_node(TreeNode {
                         name: filename,
                         hash: change.hash.clone(),
@@ -240,16 +244,56 @@ pub fn update_tree_from_changes(
     Err(String::from("root tree not processed"))
 }
 
-pub fn read_blob(repo: &Path, hash: &str) -> Result<String,String>{
-    assert!( !hash.is_empty() );
+pub fn read_blob(repo: &Path, hash: &str) -> Result<String, String> {
+    assert!(!hash.is_empty());
     let blob_path = repo.join(format!("blobs/{}", hash));
     lz4_read(&blob_path)
 }
 
-pub fn download_blob(repo: &Path, local_path: &Path, hash: &str) -> Result<(),String>{
-    assert!( !hash.is_empty() );
+pub fn download_blob(repo: &Path, local_path: &Path, hash: &str) -> Result<(), String> {
+    assert!(!hash.is_empty());
     let blob_path = repo.join(format!("blobs/{}", hash));
     lz4_decompress(&blob_path, &local_path)
+}
+
+pub fn remove_dir_rec(repo: &Path, local_path: &Path, tree_hash: &str) -> Result<String, String> {
+    let mut messages: Vec<String> = Vec::new();
+    let tree = read_tree(repo, tree_hash)?;
+
+    for file_node in &tree.file_nodes {
+        let file_path = local_path.join(&file_node.name);
+        make_file_read_only(&file_path, false)?;
+        if let Err(e) = fs::remove_file(&file_path) {
+            messages.push(format!(
+                "Error deleting file {}: {}",
+                file_path.display(),
+                e
+            ));
+        }else{
+            messages.push( format!("Deleted {}", file_path.display()) );
+        }
+    }
+
+    for dir_node in &tree.directory_nodes{
+        let dir_path = local_path.join(&dir_node.name);
+        let message = remove_dir_rec(&repo, &dir_path, &dir_node.hash)?;
+        if !message.is_empty(){
+            messages.push(message);
+        }
+    }
+
+    if let Err(e) = fs::remove_dir(&local_path){
+        messages.push(format!(
+            "Error deleting directory {}: {}",
+            local_path.display(),
+            e
+        ));
+    }
+    else{
+        messages.push( format!("Deleted {}", local_path.display()) );
+    }
+
+    Ok(messages.join("\n"))
 }
 
 pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Result<(), String> {
@@ -289,7 +333,7 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
                     e
                 ));
             }
-            if let Err(e) = make_file_read_only(&abs_path, true){
+            if let Err(e) = make_file_read_only(&abs_path, true) {
                 errors.push(e);
             }
         }
