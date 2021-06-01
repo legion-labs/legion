@@ -86,7 +86,7 @@ fn test_dir(test_name: &str) -> PathBuf {
         .join("test_scratch")
         .join(test_name);
 
-    if let Ok(_) = std::fs::metadata(&path) {
+    if path.exists() {
         force_delete_all(&path);
     }
 
@@ -244,7 +244,7 @@ fn local_single_branch_merge_flow() {
     lsc_cli_sys_fail(&work1, &["commit", r#"-m"should fail - not at head""#]);
     lsc_cli_sys(&work1, &["sync"]);
     lsc_cli_sys(&work1, &["merges-pending"]);
-    lsc_cli_sys(&work1, &["merge", "file1.txt"]);
+    lsc_cli_sys(&work1, &["merge", "--notool", "file1.txt"]);
     lsc_cli_sys(&work1, &["merges-pending"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"merged""#]);
 }

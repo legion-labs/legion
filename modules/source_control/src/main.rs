@@ -72,6 +72,10 @@ fn main() {
             SubCommand::with_name("merge")
                 .about("Reconciles local modifications with colliding changes from other workspaces")
                 .arg(
+                    Arg::with_name("notool")
+                        .long("notool")
+                        .help("ignores merge tool config"))
+                .arg(
                     Arg::with_name("path")
                         .required(true)
                         .help("local path within a workspace"))
@@ -204,7 +208,9 @@ fn main() {
             }
         }
         ("merge", Some(command_match)) => {
-            if let Err(e) = merge_file_command(Path::new(command_match.value_of("path").unwrap())) {
+            let notool = command_match.is_present("notool");
+            let path = Path::new(command_match.value_of("path").unwrap());
+            if let Err(e) = merge_file_command(path, !notool) {
                 println!("merge failed: {}", e);
                 std::process::exit(1);
             }

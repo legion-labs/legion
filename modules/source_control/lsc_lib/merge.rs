@@ -205,7 +205,27 @@ fn run_merge_program(
     Ok(())
 }
 
-pub fn merge_file_command(p: &Path) -> Result<(), String> {
+fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> Result<(), String> {
+    let yours = read_bin_file(&yours_path)?;
+    let theirs = read_bin_file(&theirs_path)?;
+    let base = read_bin_file(&base_path)?;
+    match diffy::merge_bytes(&base, &yours, &theirs) {
+        Ok(merged_contents) => {
+            write_file(&yours_path, &merged_contents)?;
+            println!("Merge completed, {} updated", yours_path.display());
+        }
+        Err(conflicts) => {
+            write_file(&yours_path, &conflicts)?;
+            println!(
+                "Merge *not* completed, please resolve conflicts in {}",
+                yours_path.display()
+            );
+        }
+    }
+    Ok(())
+}
+
+pub fn merge_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
     let abs_path = make_path_absolute(p);
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
@@ -228,6 +248,12 @@ pub fn merge_file_command(p: &Path) -> Result<(), String> {
     let output_temp_file = TempPath {
         path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),
     };
+    if !allow_tools {
+        run_diffy_merge(&abs_path, &theirs_temp_file.path, &base_temp_file.path)?;
+        clear_merge_pending(&workspace_root, &merge_pending)?;
+        return Ok(());
+    }
+
     run_merge_program(
         &relative_path,
         abs_path.to_str().unwrap(),
