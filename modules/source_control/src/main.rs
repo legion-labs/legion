@@ -3,9 +3,10 @@ use lsc_lib::*;
 use std::path::Path;
 
 fn main() {
-    let matches = App::new("Legion Source Control 0.1")
+    let matches = App::new("Legion Source Control")
         .setting(AppSettings::ArgRequiredElseHelp)
-        .setting(AppSettings::DisableVersion)
+        .version(env!("CARGO_PKG_VERSION"))
+        .about("CLI to interact with Legion Source Control")
         .subcommand(
             SubCommand::with_name("init-local-repository")
                 .about("Initializes a repository stored on a local filesystem")
@@ -70,10 +71,6 @@ fn main() {
         .subcommand(
             SubCommand::with_name("merge")
                 .about("Reconciles local modifications with colliding changes from other workspaces")
-                .arg(
-                    Arg::with_name("notool")
-                        .long("notool")
-                        .help("ignores merge tool config"))
                 .arg(
                     Arg::with_name("path")
                         .required(true)
@@ -207,9 +204,7 @@ fn main() {
             }
         }
         ("merge", Some(command_match)) => {
-            let notool = command_match.is_present("notool");
-            let path = Path::new(command_match.value_of("path").unwrap());
-            if let Err(e) = merge_file_command(path, !notool) {
+            if let Err(e) = merge_file_command(Path::new(command_match.value_of("path").unwrap())) {
                 println!("merge failed: {}", e);
                 std::process::exit(1);
             }
