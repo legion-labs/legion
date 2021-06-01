@@ -5,7 +5,8 @@ use std::path::Path;
 fn main() {
     let matches = App::new("Legion Source Control 0.1")
         .setting(AppSettings::ArgRequiredElseHelp)
-        .setting(AppSettings::DisableVersion)
+        .version(env!("CARGO_PKG_VERSION"))
+        .about("CLI to interact with Legion Source Control")
         .subcommand(
             SubCommand::with_name("init-local-repository")
                 .about("Initializes a repository stored on a local filesystem")
@@ -132,7 +133,18 @@ fn main() {
             SubCommand::with_name("config")
                 .about("Prints the path to the configuration file and its content")
         )
+        .arg(
+            Arg::with_name("work-dir")
+                .required(false)
+                .takes_value(true)
+                .help("Changes the current directory for the commands to be executed from")
+        )
         .get_matches();
+
+    if let Some(cd) = matches.value_of("work-dir") {
+        println!("Using work directory: {}", cd);
+        std::env::set_current_dir(cd).expect("Could not set current directory")
+    }
 
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
