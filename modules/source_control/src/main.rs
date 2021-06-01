@@ -3,7 +3,7 @@ use lsc_lib::*;
 use std::path::Path;
 
 fn main() {
-    let matches = App::new("Legion Source Control 0.1")
+    let matches = App::new("Legion Source Control")
         .setting(AppSettings::ArgRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))
         .about("CLI to interact with Legion Source Control")
