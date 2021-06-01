@@ -20,11 +20,21 @@ impl Config {
 
     pub fn read_config() -> Result<Config, String> {
         let path = Config::config_file_path()?;
-        let contents = read_text_file(&path)?;
-        let parsed: serde_json::Result<Config> = serde_json::from_str(&contents);
-        match parsed {
-            Ok(config) => Ok(config),
-            Err(e) => Err(format!("Error parsing config file: {}", e)),
+        match read_text_file(&path) {
+            Ok(contents) => {
+                let parsed: serde_json::Result<Config> = serde_json::from_str(&contents);
+                match parsed {
+                    Ok(config) => Ok(config),
+                    Err(e) => Err(format!("Error parsing config file: {}", e)),
+                }
+            }
+            Err(e) => {
+                return Err(format!(
+                    "Error reading config file {}: {}",
+                    path.display(),
+                    e
+                ));
+            }
         }
     }
 
