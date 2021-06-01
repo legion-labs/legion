@@ -32,7 +32,7 @@ fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
         .status()
         .expect("failed to execute command");
 
-    assert!(status.success() == should_succeed);
+    assert_eq!(status.success(), should_succeed);
 }
 
 static LSC_CLI_EXE_VAR: &str = env!("CARGO_BIN_EXE_src-ctl-cli");
