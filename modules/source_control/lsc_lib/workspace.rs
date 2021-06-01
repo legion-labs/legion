@@ -47,8 +47,10 @@ pub struct TempPath{
 
 impl Drop for TempPath {
     fn drop(&mut self) {
-        if let Err(e) = fs::remove_file(&self.path){
-            println!("Error deleting temp file {}: {}", self.path.display(), e);
+        if self.path.exists(){
+            if let Err(e) = fs::remove_file(&self.path){
+                println!("Error deleting temp file {}: {}", self.path.display(), e);
+            }
         }
     }
 }
