@@ -237,7 +237,7 @@ fn main() {
                 println!("now on branch {}", &name);
             }
         }
-        ("list-branches", Some(command_match)) => {
+        ("list-branches", Some(_command_match)) => {
             if let Err(e) = list_branches_command() {
                 println!("list branches failed: {}", e);
                 std::process::exit(1);
