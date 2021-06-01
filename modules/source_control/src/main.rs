@@ -3,10 +3,9 @@ use lsc_lib::*;
 use std::path::Path;
 
 fn main() {
-    let matches = App::new("Legion Source Control")
+    let matches = App::new("Legion Source Control 0.1")
         .setting(AppSettings::ArgRequiredElseHelp)
-        .version(env!("CARGO_PKG_VERSION"))
-        .about("CLI to interact with Legion Source Control")
+        .setting(AppSettings::DisableVersion)
         .subcommand(
             SubCommand::with_name("init-local-repository")
                 .about("Initializes a repository stored on a local filesystem")
@@ -95,6 +94,10 @@ fn main() {
                     Arg::with_name("name")
                         .required(true)
                         .help("name of the existing branch to sync to"))
+        )
+        .subcommand(
+            SubCommand::with_name("list-branches")
+                .about("Prints a list of all branches")
         )
         .subcommand(
             SubCommand::with_name("revert")
@@ -231,6 +234,12 @@ fn main() {
                 std::process::exit(1);
             } else {
                 println!("now on branch {}", &name);
+            }
+        }
+        ("list-branches", Some(command_match)) => {
+            if let Err(e) = list_branches_command() {
+                println!("list branches failed: {}", e);
+                std::process::exit(1);
             }
         }
         ("revert", Some(command_match)) => {

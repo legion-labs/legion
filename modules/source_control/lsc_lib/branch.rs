@@ -133,7 +133,7 @@ fn sync_tree_diff(
             Err(e) => {
                 println!("{}", e);
             }
-        }        
+        }
     }
 
     for new_dir_node in &new_tree.directory_nodes {
@@ -197,4 +197,50 @@ pub fn switch_branch_command(name: &str) -> Result<(), String> {
         Path::new(""),
         &workspace_root,
     )
+}
+
+pub fn list_branches_command() -> Result<(), String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let repo = &workspace_spec.repository;
+    let branches_dir = repo.join("branches");
+    match branches_dir.read_dir() {
+        Ok(dir_iterator) => {
+            for entry_res in dir_iterator {
+                match entry_res {
+                    Ok(entry) => {
+                        let parsed: serde_json::Result<Branch> =
+                            serde_json::from_str(&read_text_file(&entry.path())?);
+                        match parsed {
+                            Ok(branch) => {
+                                println!(
+                                    "{} head:{} parent:{}",
+                                    branch.name, branch.head, branch.parent
+                                );
+                            }
+                            Err(e) => {
+                                return Err(format!(
+                                    "Error parsing {}: {}",
+                                    entry.path().display(),
+                                    e
+                                ));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        return Err(format!("Error reading branch entry: {}", e));
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            return Err(format!(
+                "Error reading {} directory: {}",
+                branches_dir.display(),
+                e
+            ));
+        }
+    }
+    Ok(())
 }
