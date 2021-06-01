@@ -85,6 +85,16 @@ fn local_repo_suite() {
     lsc_cli_sys(&[wd1, "local-changes"]);
     lsc_cli_sys(&[wd1, "commit", r#"-m"my second commit message""#]);
 
+
+    let work2 = temp_dir.path().join("work2");
+    lsc_cli_sys(&[
+        "init-workspace",
+        work2.to_str().unwrap(),
+        repo_dir.to_str().unwrap(),
+    ]);
+    assert!(fs::metadata(work2.join("dir0/file3.txt")).is_ok());
+    assert!(fs::metadata(work2.join("dir0/file1.txt")).is_ok());
+
     //still under first workspace
     lsc_cli_sys(&[wd1, "log"]);
     lsc_cli_sys(&[wd1, "edit", "dir0/file0.txt"]);
@@ -97,15 +107,6 @@ fn local_repo_suite() {
     lsc_cli_sys(&[wd1, "edit", "dir0/file1.txt"]);
     append_text_to_file(&work1.join("dir0/file1.txt"), "\nnew line in file1");
     lsc_cli_sys(&[wd1, "commit", r#"-m"edit file1""#]);
-
-    let work2 = temp_dir.path().join("work2");
-    lsc_cli_sys(&[
-        "init-workspace",
-        work2.to_str().unwrap(),
-        repo_dir.to_str().unwrap(),
-    ]);
-    assert!(fs::metadata(work2.join("dir0/file3.txt")).is_ok());
-    assert!(fs::metadata(work2.join("dir0/file1.txt")).is_ok());
 
     let wd2 = work2.to_str().unwrap();
     lsc_cli_sys(&[wd2, "log"]);
@@ -121,6 +122,7 @@ fn local_repo_suite() {
     lsc_cli_sys(&[wd2, "log"]);
     lsc_cli_sys(&[wd2, "commit", r#"-m"delete file0""#]);
 
+    // Switching back to wd1
     lsc_cli_sys(&[wd1, "log"]);
     lsc_cli_sys(&[wd1, "sync"]);
 
