@@ -47,32 +47,13 @@ fn syscall(command: &str, args: &[&str], should_succeed: bool) {
     assert!(output.status.success() == should_succeed);
 }
 
-fn lsc_cli_sys_impl(args: &[&str], should_succeed: bool) {
-    let test_bin_exe = std::env::current_exe().expect("error getting current exe");
-    let mut subdir = test_bin_exe
-        .parent()
-        .expect("error getting parent directory");
-    let mut parent_dir = subdir.parent().expect("error getting parent directory");
-    while parent_dir.file_name().expect("file name") != "target" {
-        subdir = parent_dir;
-        parent_dir = subdir.parent().expect("error getting parent directory");
-    }
-
-    let command = subdir.join("lsc-cli");
-
-    syscall(
-        command.to_str().expect("command path"),
-        args,
-        should_succeed,
-    );
-}
-
+static LSC_CLI_EXE_VAR: &str = env!("CARGO_BIN_EXE_lsc-cli");
 fn lsc_cli_sys(args: &[&str]) {
-    lsc_cli_sys_impl(&args, true);
+    syscall(LSC_CLI_EXE_VAR, args, true);
 }
 
 fn lsc_cli_sys_fail(args: &[&str]) {
-    lsc_cli_sys_impl(&args, false);
+    syscall(LSC_CLI_EXE_VAR, args, false);
 }
 
 fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
@@ -312,14 +293,14 @@ fn test_branch() {
     append_text_to_file(Path::new("file1.txt"), "\nfrom task branch");
 
     lsc_cli_sys(&["delete", "file2.txt"]);
-    
+
     lsc_lib::write_file(Path::new("file3.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&["add", "file3.txt"]);
 
     std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0 creation failed");
     lsc_lib::write_file(Path::new("dir0/deep/inner_task.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&["add", "dir0/deep/inner_task.txt"]);
-    
+
     lsc_cli_sys(&["commit", r#"-m"task complete""#]);
     lsc_cli_sys(&["log"]);
     lsc_cli_sys(&["switch-branch", "main"]);
