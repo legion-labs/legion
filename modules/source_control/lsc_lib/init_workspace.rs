@@ -17,7 +17,10 @@ pub fn init_workspace(
         return Err(format!("Error creating .lsc/local_edits directory: {}", e));
     }
     if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/merge_pending")) {
-        return Err(format!("Error creating .lsc/merge_pending directory: {}", e));
+        return Err(format!(
+            "Error creating .lsc/merge_pending directory: {}",
+            e
+        ));
     }
     if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/tmp")) {
         return Err(format!("Error creating .lsc/tmp directory: {}", e));

@@ -21,7 +21,7 @@ impl LocalChange {
     }
 }
 
-pub fn save_local_change( workspace_root: &Path, change_spec: &LocalChange ) -> Result<(),String>{
+pub fn save_local_change(workspace_root: &Path, change_spec: &LocalChange) -> Result<(), String> {
     let local_edit_obj_path =
         workspace_root.join(format!(".lsc/local_edits/{}.json", &change_spec.id));
 
@@ -36,7 +36,10 @@ pub fn save_local_change( workspace_root: &Path, change_spec: &LocalChange ) -> 
     Ok(())
 }
 
-pub fn find_local_change(workspace_root: &Path, relative_path: &Path) -> Result<LocalChange,String>{
+pub fn find_local_change(
+    workspace_root: &Path,
+    relative_path: &Path,
+) -> Result<LocalChange, String> {
     let local_edits_dir = workspace_root.join(".lsc/local_edits");
     match local_edits_dir.read_dir() {
         Ok(dir_iterator) => {
@@ -47,13 +50,14 @@ pub fn find_local_change(workspace_root: &Path, relative_path: &Path) -> Result<
                             serde_json::from_str(&read_text_file(&entry.path())?);
                         match parsed {
                             Ok(edit) => {
-                                if edit.relative_path == relative_path{
+                                if edit.relative_path == relative_path {
                                     return Ok(edit);
                                 }
                             }
-                            Err(e) => {return Err(format!("Error parsing {:?}: {}", entry.path(), e));}
+                            Err(e) => {
+                                return Err(format!("Error parsing {:?}: {}", entry.path(), e));
+                            }
                         }
-                        
                     }
                     Err(e) => return Err(format!("Error reading local edit entry: {}", e)),
                 }
@@ -66,7 +70,10 @@ pub fn find_local_change(workspace_root: &Path, relative_path: &Path) -> Result<
             ))
         }
     }
-    Err(format!("local change {} not found", relative_path.display()))
+    Err(format!(
+        "local change {} not found",
+        relative_path.display()
+    ))
 }
 
 pub fn read_local_changes(workspace_root: &Path) -> Result<Vec<LocalChange>, String> {
@@ -108,10 +115,14 @@ pub fn find_local_changes_command() -> Result<Vec<LocalChange>, String> {
     read_local_changes(&workspace_root)
 }
 
-pub fn clear_local_change(workspace_root: &Path, change: &LocalChange) -> Result<(),String>{
+pub fn clear_local_change(workspace_root: &Path, change: &LocalChange) -> Result<(), String> {
     let change_path = workspace_root.join(format!(".lsc/local_edits/{}.json", &change.id));
     if let Err(e) = fs::remove_file(&change_path) {
-        return Err(format!("Error clearing local change {}: {}", change_path.display(), e));
+        return Err(format!(
+            "Error clearing local change {}: {}",
+            change_path.display(),
+            e
+        ));
     }
     Ok(())
 }
@@ -131,7 +142,7 @@ pub fn clear_local_changes(workspace_root: &Path, local_changes: &[LocalChange])
 
 pub fn track_new_file(path_specified: &Path) -> Result<(), String> {
     let abs_path = make_path_absolute(path_specified);
-    if let Err(e) = fs::metadata(&abs_path){
+    if let Err(e) = fs::metadata(&abs_path) {
         return Err(format!(
             "Error reading file metadata {}: {}",
             &abs_path.display(),
@@ -152,14 +163,14 @@ pub fn track_new_file(path_specified: &Path) -> Result<(), String> {
 
 pub fn edit_file_command(path_specified: &Path) -> Result<(), String> {
     let abs_path = make_path_absolute(path_specified);
-    if let Err(e) = fs::metadata(&abs_path){
+    if let Err(e) = fs::metadata(&abs_path) {
         return Err(format!(
             "Error reading file metadata {}: {}",
             &abs_path.display(),
             e
         ));
     }
-    
+
     let workspace_root = make_path_absolute(find_workspace_root(&abs_path)?);
     //todo: make sure file is tracked by finding it in the current tree hierarchy
 

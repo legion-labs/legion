@@ -269,28 +269,27 @@ pub fn remove_dir_rec(repo: &Path, local_path: &Path, tree_hash: &str) -> Result
                 file_path.display(),
                 e
             ));
-        }else{
-            messages.push( format!("Deleted {}", file_path.display()) );
+        } else {
+            messages.push(format!("Deleted {}", file_path.display()));
         }
     }
 
-    for dir_node in &tree.directory_nodes{
+    for dir_node in &tree.directory_nodes {
         let dir_path = local_path.join(&dir_node.name);
         let message = remove_dir_rec(&repo, &dir_path, &dir_node.hash)?;
-        if !message.is_empty(){
+        if !message.is_empty() {
             messages.push(message);
         }
     }
 
-    if let Err(e) = fs::remove_dir(&local_path){
+    if let Err(e) = fs::remove_dir(&local_path) {
         messages.push(format!(
             "Error deleting directory {}: {}",
             local_path.display(),
             e
         ));
-    }
-    else{
-        messages.push( format!("Deleted {}", local_path.display()) );
+    } else {
+        messages.push(format!("Deleted {}", local_path.display()));
     }
 
     Ok(messages.join("\n"))
