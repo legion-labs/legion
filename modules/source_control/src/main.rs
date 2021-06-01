@@ -133,18 +133,7 @@ fn main() {
             SubCommand::with_name("config")
                 .about("Prints the path to the configuration file and its content")
         )
-        .arg(
-            Arg::with_name("work-dir")
-                .required(false)
-                .takes_value(true)
-                .help("Changes the current directory for the commands to be executed from")
-        )
         .get_matches();
-
-    if let Some(cd) = matches.value_of("work-dir") {
-        println!("Using work directory: {}", cd);
-        std::env::set_current_dir(cd).expect("Could not set current directory")
-    }
 
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
