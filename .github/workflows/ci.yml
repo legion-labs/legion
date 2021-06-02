@@ -27,6 +27,9 @@ jobs:
       - name: Run Clippy
         run: cargo clippy
 
+      - name: Run Cargo Deny
+        run: cargo deny check
+
   test:
     name: Running tests
     needs: lint
