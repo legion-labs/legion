@@ -98,6 +98,16 @@ pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<S
         }
         Err(_) => {
             //there is no local file, downloading a fresh copy
+            let parent_dir = local_path.parent().unwrap();
+            if !parent_dir.exists() {
+                if let Err(e) = std::fs::create_dir_all(parent_dir) {
+                    return Err(format!(
+                        "Error creating directory path {}: {}",
+                        parent_dir.display(),
+                        e
+                    ));
+                }
+            }
             if let Err(e) = download_blob(&repo, &local_path, &hash_to_sync) {
                 return Err(format!(
                     "Error downloading {} {}: {}",

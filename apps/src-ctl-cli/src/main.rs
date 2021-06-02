@@ -89,6 +89,14 @@ fn main() {
                         .help("name of the new branch"))
         )
         .subcommand(
+            SubCommand::with_name("merge-branch")
+                .about("Merge the specified branch into the current one")
+                .arg(
+                    Arg::with_name("name")
+                        .required(true)
+                        .help("name of the branch to merge"))
+        )
+        .subcommand(
             SubCommand::with_name("switch-branch")
                 .about("Syncs workspace to specified branch")
                 .arg(
@@ -226,6 +234,13 @@ fn main() {
                 std::process::exit(1);
             } else {
                 println!("now on branch {}", &name);
+            }
+        }
+        ("merge-branch", Some(command_match)) => {
+            let name = command_match.value_of("name").unwrap();
+            if let Err(e) = merge_branch_command(&name) {
+                println!("merge branch failed: {}", e);
+                std::process::exit(1);
             }
         }
         ("switch-branch", Some(command_match)) => {
