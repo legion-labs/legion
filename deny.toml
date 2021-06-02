@@ -136,6 +136,8 @@ allow = [] #{ name = "ansi_term", version = "=0.11.0" },
 deny = [] #{ name = "ansi_term", version = "=0.11.0", wrappers = [] },
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
+    # Clap v2 depends on an older verison, moving to clap 3 when released
+    # is going to fix this!
     { name = "ansi_term", version = "=0.11.0" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
@@ -162,7 +164,7 @@ allow-git = []
 
 [sources.allow-org]
 # 1 or more github.com organizations to allow git sources for
-github = ["legion-labs"]
+#github = ["legion-labs"]
 # 1 or more gitlab.com organizations to allow git sources for
 #gitlab = [""]
 # 1 or more bitbucket.org organizations to allow git sources for
