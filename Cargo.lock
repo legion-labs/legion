@@ -153,6 +153,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "end-to-end-tests"
+version = "0.1.0"
+
+[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -236,10 +240,6 @@ dependencies = [
  "uuid",
  "whoami",
 ]
-
-[[package]]
-name = "leigon-end-to-end-tests"
-version = "0.1.0"
 
 [[package]]
 name = "libc"
