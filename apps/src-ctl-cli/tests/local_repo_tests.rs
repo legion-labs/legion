@@ -323,5 +323,19 @@ fn test_branch() {
 
     lsc_cli_sys(&work1, &["switch-branch", "main"]);
     lsc_cli_sys(&work1, &["merge-branch", "task"]);
+
+    lsc_cli_sys(&work1, &["edit", "file1.txt"]);
+    append_text_to_file(&work1.join("file1.txt"), "\nfrom main branch");
+    lsc_cli_sys(&work1, &["commit", r#"-m"work on main""#]);
+
+    lsc_cli_sys(&work1, &["switch-branch", "task"]);
+    lsc_cli_sys(&work1, &["edit", "file3.txt"]);
+    append_text_to_file(&work1.join("file3.txt"), "\nfrom task branch");
+    lsc_cli_sys(&work1, &["commit", r#"-m"work on task""#]);
+
+    lsc_cli_sys(&work1, &["switch-branch", "main"]);
+    lsc_cli_sys(&work1, &["merge-branch", "task"]);
+    lsc_cli_sys(&work1, &["local-changes"]);
+    lsc_cli_sys(&work1, &["commit", r#"-m"merge task branch""#]);
     lsc_cli_sys(&work1, &["log"]);
 }

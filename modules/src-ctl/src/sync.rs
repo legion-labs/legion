@@ -42,7 +42,7 @@ fn find_commit_range(
     Ok(commits)
 }
 
-fn compute_file_hash(p: &Path) -> Result<String, String> {
+pub fn compute_file_hash(p: &Path) -> Result<String, String> {
     let contents = read_bin_file(p)?;
     let hash = format!("{:X}", Sha256::digest(&contents));
     Ok(hash)

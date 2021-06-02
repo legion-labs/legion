@@ -5,6 +5,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+//todo: rename ResolvePending
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MergePending {
     pub id: String,
