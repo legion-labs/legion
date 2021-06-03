@@ -239,7 +239,7 @@ fn main() {
         ("merge-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
             if let Err(e) = merge_branch_command(&name) {
-                println!("merge branch failed: {}", e);
+                println!("{}", e);
                 std::process::exit(1);
             }
         }

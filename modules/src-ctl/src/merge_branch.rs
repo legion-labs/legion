@@ -230,18 +230,38 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
 
         for (path, hash) in to_update.iter() {
             if modified_in_current.contains_key(path) {
-                //todo: support conflicts
-                return Err(format!(
-                    "merge aborted, conflict found with {}",
+                let resolve_pending = MergePending::new(
+                    path.clone(),
+                    common_ancestor_id.clone(),
+                    src_branch.head.clone(),
+                );
+                errors.push(format!(
+                    "{} conflicts, please resolve before commit",
                     path.display()
                 ));
-            }
-            match change_file_to(&repo, &path, &workspace_root, &hash) {
-                Ok(message) => {
-                    println!("{}", message);
+                let full_path = workspace_root.join(path);
+                if let Err(e) = edit_file_command(&full_path){
+                    errors.push(format!(
+                        "Error editing {}: {}",
+                        full_path.display(),
+                        e
+                    ));
                 }
-                Err(e) => {
-                    errors.push(e);
+                if let Err(e) = save_merge_pending(&workspace_root, &resolve_pending) {
+                    errors.push(format!(
+                        "Error saving pending resolve {}: {}",
+                        path.display(),
+                        e
+                    ));
+                }
+            } else {
+                match change_file_to(&repo, &path, &workspace_root, &hash) {
+                    Ok(message) => {
+                        println!("{}", message);
+                    }
+                    Err(e) => {
+                        errors.push(e);
+                    }
                 }
             }
         }

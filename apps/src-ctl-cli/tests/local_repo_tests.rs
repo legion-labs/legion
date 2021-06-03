@@ -343,5 +343,21 @@ fn test_branch() {
     lsc_cli_sys(&work1, &["switch-branch", "task"]);
     lsc_cli_sys(&work1, &["merge-branch", "main"]); //fast-forward
 
+    //making a conflict that can be merged automatically
+    lsc_cli_sys(&work1, &["switch-branch", "main"]);
+    lsc_cli_sys(&work1, &["edit", "file3.txt"]);
+    append_text_to_file(&work1.join("file3.txt"), "line3\n");
+    lsc_cli_sys(&work1, &["commit", r#"-m"append line3 to file3""#]);
+    lsc_cli_sys(&work1, &["switch-branch", "task"]);
+    lsc_cli_sys(&work1, &["edit", "file3.txt"]);
+    append_text_to_file(&work1.join("file3.txt"), "line3\nline4\n");
+    lsc_cli_sys(&work1, &["commit", r#"-m"append line3,line4 to file3""#]);
+    lsc_cli_sys_fail(&work1, &["merge-branch", "main"]); //conflict in file3
+    lsc_cli_sys(&work1, &["merge", "file3.txt"]);
+    lsc_cli_sys(&work1, &["commit", r#"-m"merge main in task""#]);
+
+    lsc_cli_sys(&work1, &["switch-branch", "main"]);
+    lsc_cli_sys(&work1, &["merge-branch", "task"]); //fast-forward
+
     //lsc_cli_sys(&work1, &["log"]);
 }
