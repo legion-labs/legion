@@ -1,7 +1,97 @@
 use crate::*;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
+use std::collections::VecDeque;
+use std::fs;
 use std::path::{Path, PathBuf};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PendingBranchMerge {
+    pub name: String,
+    pub head: String, //commit id
+}
+
+impl PendingBranchMerge {
+    pub fn new(branch: &Branch) -> PendingBranchMerge {
+        PendingBranchMerge {
+            name: branch.name.clone(),
+            head: branch.head.clone(),
+        }
+    }
+}
+
+pub fn save_pending_branch_merge(
+    workspace_root: &Path,
+    merge_spec: &PendingBranchMerge,
+) -> Result<(), String> {
+    let path = workspace_root.join(format!(
+        ".lsc/branch_merge_pending/{}.json",
+        &merge_spec.name
+    ));
+    match serde_json::to_string(&merge_spec) {
+        Ok(contents) => {
+            write_file(&path, contents.as_bytes())?;
+        }
+        Err(e) => {
+            return Err(format!("Error formatting pending branch merge: {}", e));
+        }
+    }
+    Ok(())
+}
+
+pub fn read_pending_branch_merges(
+    workspace_root: &Path,
+) -> Result<Vec<PendingBranchMerge>, String> {
+    let path = workspace_root.join(".lsc/branch_merge_pending");
+    let mut res = Vec::new();
+    match path.read_dir() {
+        Ok(dir_iterator) => {
+            for entry_res in dir_iterator {
+                match entry_res {
+                    Ok(entry) => {
+                        let parsed: serde_json::Result<PendingBranchMerge> =
+                            serde_json::from_str(&read_text_file(&entry.path())?);
+                        match parsed {
+                            Ok(pending) => {
+                                res.push(pending);
+                            }
+                            Err(e) => {
+                                return Err(format!("Error parsing {:?}: {}", entry.path(), e))
+                            }
+                        }
+                    }
+                    Err(e) => return Err(format!("Error reading local edit entry: {}", e)),
+                }
+            }
+        }
+        Err(e) => return Err(format!("Error reading directory {:?}: {}", path, e)),
+    }
+    Ok(res)
+}
+
+pub fn clear_pending_branch_merges(workspace_root: &Path) {
+    let path = workspace_root.join(".lsc/branch_merge_pending");
+    match path.read_dir() {
+        Ok(dir_iterator) => {
+            for entry_res in dir_iterator {
+                match entry_res {
+                    Ok(entry) => {
+                        if let Err(e) = fs::remove_file(&entry.path()) {
+                            println!("Error removing file {}: {}", &entry.path().display(), e);
+                        }
+                    }
+                    Err(e) => {
+                        println!("Error reading local edit entry: {}", e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("Error reading directory {}: {}", path.display(), e);
+        }
+    }
+}
 
 fn find_latest_common_ancestor(
     sequence_branch_one: &[Commit],
@@ -66,42 +156,56 @@ fn change_file_to(
     }
 }
 
+fn find_commit_ancestors(repo: &Path, id: &str) -> Result<BTreeSet<String>, String> {
+    let mut seeds: VecDeque<String> = VecDeque::new();
+    seeds.push_back(String::from(id));
+    let mut ancestors = BTreeSet::new();
+    while !seeds.is_empty() {
+        let seed = seeds.pop_front().unwrap();
+        let c = read_commit(repo, &seed)?;
+        for parent_id in &c.parents {
+            if !ancestors.contains(parent_id) {
+                ancestors.insert(parent_id.clone());
+                seeds.push_back(parent_id.clone());
+            }
+        }
+    }
+    Ok(ancestors)
+}
+
 pub fn merge_branch_command(name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    let branch_to_merge = read_branch_from_repo(&repo, &name)?;
+    let src_branch = read_branch_from_repo(&repo, &name)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut latest_branch = read_branch_from_repo(&repo, &current_branch.name)?;
+    let mut destination_branch = read_branch_from_repo(&repo, &current_branch.name)?;
 
-    let branch_commits = find_branch_commits(&repo, &branch_to_merge)?;
-    let mut branch_commit_ids_set: BTreeSet<String> = BTreeSet::new();
-    for c in &branch_commits {
-        branch_commit_ids_set.insert(c.id.clone());
-    }
-    if branch_commit_ids_set.contains(&latest_branch.head) {
+    let merge_source_ancestors = find_commit_ancestors(&repo, &src_branch.head)?;
+    let src_commit_history = find_branch_commits(&repo, &src_branch)?;
+    if merge_source_ancestors.contains(&destination_branch.head) {
         //fast forward case
-        latest_branch.head = branch_to_merge.head;
-        save_current_branch(&workspace_root, &latest_branch)?;
-        save_branch_to_repo(&repo, &latest_branch)?;
+        destination_branch.head = src_branch.head;
+        save_current_branch(&workspace_root, &destination_branch)?;
+        save_branch_to_repo(&repo, &destination_branch)?;
         println!("Fast-forward merge: branch updated, synching");
         return sync_command();
     }
 
-    if current_branch.head != latest_branch.head {
+    if current_branch.head != destination_branch.head {
         return Err(String::from(
             "Workspace not up to date, sync to latest before merge",
         ));
     }
 
     let mut errors: Vec<String> = Vec::new();
-    let latest_commits = find_branch_commits(&repo, &latest_branch)?;
+    let destination_commit_history = find_branch_commits(&repo, &destination_branch)?;
     if let Some(common_ancestor_id) =
-        find_latest_common_ancestor(&latest_commits, &branch_commit_ids_set)
+        find_latest_common_ancestor(&destination_commit_history, &merge_source_ancestors)
     {
         let mut modified_in_current: BTreeMap<PathBuf, String> = BTreeMap::new();
-        for commit in &latest_commits {
+        for commit in &destination_commit_history {
             if commit.id == common_ancestor_id {
                 break;
             }
@@ -113,7 +217,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
         }
 
         let mut to_update: BTreeMap<PathBuf, String> = BTreeMap::new();
-        for commit in &branch_commits {
+        for commit in &src_commit_history {
             if commit.id == common_ancestor_id {
                 break;
             }
@@ -145,6 +249,12 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
         return Err(String::from(
             "Error finding common ancestor for branch merge",
         ));
+    }
+
+    //record pending merge to record all parents in upcoming commit
+    let pending = PendingBranchMerge::new(&src_branch);
+    if let Err(e) = save_pending_branch_merge(&workspace_root, &pending) {
+        errors.push(e);
     }
 
     if !errors.is_empty() {

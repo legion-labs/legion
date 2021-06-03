@@ -128,7 +128,8 @@ pub fn commit(message: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let mut current_branch = read_current_branch(&workspace_root)?;
-    let repo_branch = read_branch_from_repo(&workspace_spec.repository, &current_branch.name)?;
+    let repo = &workspace_spec.repository;
+    let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
@@ -136,33 +137,35 @@ pub fn commit(message: &str) -> Result<(), String> {
     let hashed_changes =
         upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
 
-    let base_commit = read_commit(&workspace_spec.repository, &current_branch.head)?;
-    let previous_root_tree = read_tree(&workspace_spec.repository, &base_commit.root_hash)?;
+    let base_commit = read_commit(repo, &current_branch.head)?;
+    let previous_root_tree = read_tree(repo, &base_commit.root_hash)?;
 
-    let new_root_hash = update_tree_from_changes(
-        previous_root_tree,
-        &hashed_changes,
-        &workspace_spec.repository,
-    )?;
+    let new_root_hash = update_tree_from_changes(previous_root_tree, &hashed_changes, repo)?;
+
+    let mut parent_commits = Vec::from([base_commit.id]);
+    for pending_branch_merge in read_pending_branch_merges(&workspace_root)? {
+        parent_commits.push(pending_branch_merge.head.clone());
+    }
 
     let commit = Commit::new(
         whoami::username(),
         String::from(message),
         hashed_changes,
         new_root_hash,
-        Vec::from([base_commit.id]),
+        parent_commits,
     );
-    save_commit(&workspace_spec.repository, &commit)?;
+    save_commit(repo, &commit)?;
     current_branch.head = commit.id;
     save_current_branch(&workspace_root, &current_branch)?;
 
     //todo: will need to lock to avoid races in updating branch in the database
-    save_branch_to_repo(&workspace_spec.repository, &current_branch)?;
+    save_branch_to_repo(repo, &current_branch)?;
 
     if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);
     }
     clear_local_changes(&workspace_root, &local_changes);
+    clear_pending_branch_merges(&workspace_root);
     Ok(())
 }
 

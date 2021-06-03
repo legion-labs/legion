@@ -341,7 +341,7 @@ fn test_branch() {
     //now that task has been merge into main, doing the merge the other way should be a ff merge
     //but for ff detection to work, the previous commit has to have the two parents
     lsc_cli_sys(&work1, &["switch-branch", "task"]);
-    //lsc_cli_sys(&work1, &["merge-branch", "main"]); //fast-forward
+    lsc_cli_sys(&work1, &["merge-branch", "main"]); //fast-forward
 
     //lsc_cli_sys(&work1, &["log"]);
 }
