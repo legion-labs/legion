@@ -240,12 +240,8 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
                     path.display()
                 ));
                 let full_path = workspace_root.join(path);
-                if let Err(e) = edit_file_command(&full_path){
-                    errors.push(format!(
-                        "Error editing {}: {}",
-                        full_path.display(),
-                        e
-                    ));
+                if let Err(e) = edit_file_command(&full_path) {
+                    errors.push(format!("Error editing {}: {}", full_path.display(), e));
                 }
                 if let Err(e) = save_merge_pending(&workspace_root, &resolve_pending) {
                     errors.push(format!(
