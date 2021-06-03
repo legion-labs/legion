@@ -69,7 +69,7 @@ fn main() {
                         .help("reference version: a commit id, base or latest"))
         )
         .subcommand(
-            SubCommand::with_name("merge")
+            SubCommand::with_name("resolve")
                 .about("Reconciles local modifications with colliding changes from other workspaces")
                 .arg(
                     Arg::with_name("notool")
@@ -132,7 +132,7 @@ fn main() {
                         .help("version to sync to"))
         )
         .subcommand(
-            SubCommand::with_name("merges-pending")
+            SubCommand::with_name("resolves-pending")
                 .about("Lists the files that are scheduled to be merged following a sync with colliding changes")
         )
         .subcommand(
@@ -219,11 +219,11 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        ("merge", Some(command_match)) => {
+        ("resolve", Some(command_match)) => {
             let notool = command_match.is_present("notool");
             let path = Path::new(command_match.value_of("path").unwrap());
-            if let Err(e) = merge_file_command(path, !notool) {
-                println!("merge failed: {}", e);
+            if let Err(e) = resolve_file_command(path, !notool) {
+                println!("resolve failed: {}", e);
                 std::process::exit(1);
             }
         }
@@ -296,12 +296,12 @@ fn main() {
                 std::process::exit(1);
             }
         },
-        ("merges-pending", Some(_command_match)) => match find_merges_pending_command() {
-            Ok(merges_pending) => {
-                if merges_pending.is_empty() {
+        ("resolves-pending", Some(_command_match)) => match find_resolves_pending_command() {
+            Ok(resolves_pending) => {
+                if resolves_pending.is_empty() {
                     println!("No merges pending");
                 }
-                for m in merges_pending {
+                for m in resolves_pending {
                     println!(
                         "{} {} {}",
                         m.relative_path.display(),
@@ -311,7 +311,7 @@ fn main() {
                 }
             }
             Err(e) => {
-                println!("merges-pending failed: {}", e);
+                println!("resolves-pending failed: {}", e);
                 std::process::exit(1);
             }
         },

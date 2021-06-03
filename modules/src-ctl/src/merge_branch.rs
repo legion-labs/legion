@@ -230,7 +230,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
 
         for (path, hash) in to_update.iter() {
             if modified_in_current.contains_key(path) {
-                let resolve_pending = MergePending::new(
+                let resolve_pending = ResolvePending::new(
                     path.clone(),
                     common_ancestor_id.clone(),
                     src_branch.head.clone(),
@@ -243,7 +243,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
                 if let Err(e) = edit_file_command(&full_path) {
                     errors.push(format!("Error editing {}: {}", full_path.display(), e));
                 }
-                if let Err(e) = save_merge_pending(&workspace_root, &resolve_pending) {
+                if let Err(e) = save_resolve_pending(&workspace_root, &resolve_pending) {
                     errors.push(format!(
                         "Error saving pending resolve {}: {}",
                         path.display(),

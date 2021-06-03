@@ -189,12 +189,12 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
                 println!("{} changed locally, recording pending merge and leaving the local file untouched", relative_path.display());
                 //todo: handle case where merge pending already exists
                 //todo: validate how we want to deal with merge pending with syncing backwards
-                let merge_pending = MergePending::new(
+                let merge_pending = ResolvePending::new(
                     relative_path.to_path_buf(),
                     workspace_branch.head.clone(),
                     String::from(commit_id),
                 );
-                if let Err(e) = save_merge_pending(&workspace_root, &merge_pending) {
+                if let Err(e) = save_resolve_pending(&workspace_root, &merge_pending) {
                     errors.push(format!(
                         "Error saving pending merge {}: {}",
                         relative_path.display(),

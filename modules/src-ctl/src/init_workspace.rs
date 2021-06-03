@@ -17,9 +17,9 @@ pub fn init_workspace(
         return Err(format!("Error creating .lsc/local_edits directory: {}", e));
     }
     //todo rename resolve_pending
-    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/merge_pending")) {
+    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/resolve_pending")) {
         return Err(format!(
-            "Error creating .lsc/merge_pending directory: {}",
+            "Error creating .lsc/resolve_pending directory: {}",
             e
         ));
     }
