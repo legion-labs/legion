@@ -218,9 +218,6 @@ pub fn assert_not_locked(workspace_root: &Path, path_specified: &Path) -> Result
             path_specified.display(),
             e
         )),
-        SearchResult::None => {
-            println!("no lock found");
-            Ok(())
-        }
+        SearchResult::None => Ok(()),
     }
 }

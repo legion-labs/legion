@@ -153,7 +153,6 @@ pub fn track_new_file(path_specified: &Path) -> Result<(), String> {
     //todo: make sure the file does not exist in the current tree hierarchy
 
     assert_not_locked(&workspace_root, &abs_path)?;
-
     let local_change = LocalChange::new(
         path_relative_to(&abs_path, workspace_root.as_path())?,
         String::from("add"),
@@ -174,7 +173,7 @@ pub fn edit_file_command(path_specified: &Path) -> Result<(), String> {
 
     let workspace_root = find_workspace_root(&abs_path)?;
     //todo: make sure file is tracked by finding it in the current tree hierarchy
-
+    assert_not_locked(&workspace_root, &abs_path)?;
     let local_change = LocalChange::new(
         path_relative_to(&abs_path, &workspace_root)?,
         String::from("edit"),
