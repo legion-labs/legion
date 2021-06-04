@@ -54,7 +54,7 @@ pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
         relative_path: canonical_relative_path,
         lock_domain_id: repo_branch.lock_domain_id.clone(),
         workspace_id: workspace_spec.id.clone(),
-        branch_name: repo_branch.name.clone(),
+        branch_name: repo_branch.name,
     };
     save_lock(&repo, &lock)
 }

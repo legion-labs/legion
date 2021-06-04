@@ -228,8 +228,7 @@ fn main() {
             }
         }
         ("lock", Some(command_match)) => {
-            if let Err(e) = lock_file_command(Path::new(command_match.value_of("path").unwrap()))
-            {
+            if let Err(e) = lock_file_command(Path::new(command_match.value_of("path").unwrap())) {
                 println!("lock failed: {}", e);
                 std::process::exit(1);
             } else {
