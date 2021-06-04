@@ -115,7 +115,7 @@ fn local_repo_suite() {
         ],
     );
 
-    std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0 creation failed");
+    std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0/deep creation failed");
     write_lorem_ipsum(&work1.join("dir0/file0.txt"));
     write_lorem_ipsum(&work1.join("dir0/file1.txt"));
     write_lorem_ipsum(&work1.join("dir0/deep/file2.txt"));
@@ -388,10 +388,18 @@ fn test_locks() {
         ],
     );
 
+    std::fs::create_dir_all(work1.join("dir/deep")).unwrap();
+    legion_src_ctl::write_file(&work1.join("dir/deep/file1.txt"), "line1\n".as_bytes()).unwrap();
+
     lsc_cli_sys(&work1, &["lock", "dir\\deep\\file1.txt"]);
     lsc_cli_sys_fail(&work1, &["lock", "dir\\deep\\file1.txt"]);
     lsc_cli_sys_fail(&work1, &["lock", "dir/deep/file1.txt"]);
     lsc_cli_sys(&work1, &["list-locks"]);
+    lsc_cli_sys(&work1, &["add", "dir/deep/file1.txt"]);
 
+    lsc_cli_sys(&work1, &["create-branch", "task"]);
+    lsc_cli_sys_fail(&work1, &["add", "dir/deep/file1.txt"]);
     lsc_cli_sys(&work1, &["unlock", "dir/deep/file1.txt"]);
+    lsc_cli_sys(&work1, &["add", "dir/deep/file1.txt"]);
+    lsc_cli_sys(&work1, &["commit", r#"-m"add file1 in task branch""#]);
 }

@@ -40,6 +40,41 @@ fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
     Ok(())
 }
 
+pub enum SearchResult<T, E> {
+    Ok(T),
+    Err(E),
+    None,
+}
+
+fn read_lock(
+    repo: &Path,
+    lock_domain_id: &str,
+    canonical_relative_path: &str,
+) -> SearchResult<Lock, String> {
+    let path = repo.join(format!(
+        "lock_domains/{}/{}.json",
+        lock_domain_id,
+        hash_string(&canonical_relative_path)
+    ));
+    if !path.exists() {
+        return SearchResult::None;
+    }
+    match read_text_file(&path) {
+        Ok(contents) => {
+            let parsed: serde_json::Result<Lock> = serde_json::from_str(&contents);
+            match parsed {
+                Ok(lock) => SearchResult::Ok(lock),
+                Err(e) => SearchResult::Err(format!(
+                    "Error parsing lock entry {}: {}",
+                    path.display(),
+                    e
+                )),
+            }
+        }
+        Err(e) => SearchResult::Err(format!("Error reading lock file {}: {}", path.display(), e)),
+    }
+}
+
 fn clear_lock(
     repo: &Path,
     lock_domain_id: &str,
@@ -159,4 +194,33 @@ pub fn list_locks_command() -> Result<(), String> {
         );
     }
     Ok(())
+}
+
+pub fn assert_not_locked(workspace_root: &Path, path_specified: &Path) -> Result<(), String> {
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let current_branch = read_current_branch(&workspace_root)?;
+    let repo = &workspace_spec.repository;
+    let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
+    let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
+    match read_lock(&repo, &repo_branch.lock_domain_id, &relative_path) {
+        SearchResult::Ok(lock) => {
+            if lock.branch_name == current_branch.name && lock.workspace_id == workspace_spec.id {
+                Ok(()) //locked by this workspace on this branch - all good
+            } else {
+                Err(format!(
+                    "File {} locked in branch {}, owned by workspace {}",
+                    lock.relative_path, lock.branch_name, lock.workspace_id
+                ))
+            }
+        }
+        SearchResult::Err(e) => Err(format!(
+            "Error validating that {} is lock-free: {}",
+            path_specified.display(),
+            e
+        )),
+        SearchResult::None => {
+            println!("no lock found");
+            Ok(())
+        }
+    }
 }
