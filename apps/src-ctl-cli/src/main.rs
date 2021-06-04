@@ -236,7 +236,8 @@ fn main() {
             }
         }
         ("unlock", Some(command_match)) => {
-            if let Err(e) = unlock_file_command(Path::new(command_match.value_of("path").unwrap())) {
+            if let Err(e) = unlock_file_command(Path::new(command_match.value_of("path").unwrap()))
+            {
                 println!("unlock failed: {}", e);
                 std::process::exit(1);
             } else {
