@@ -2,6 +2,7 @@ use crate::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::Path;
+use std::fs;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lock {
@@ -11,19 +12,17 @@ pub struct Lock {
     pub branch_name: String,
 }
 
-impl Lock {
-    pub fn hash(&self) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(self.relative_path.as_bytes());
-        format!("{:X}", hasher.finalize())
-    }
+fn hash_string(data: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(data.as_bytes());
+    format!("{:X}", hasher.finalize())
 }
 
 fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
     let path = repo.join(format!(
         "lock_domains/{}/{}.json",
         lock.lock_domain_id,
-        lock.hash()
+        hash_string(&lock.relative_path),
     ));
     if path.exists() {
         return Err(format!("Lock {} already exists", path.display()));
@@ -37,6 +36,32 @@ fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
         Err(e) => {
             return Err(format!("Error formatting lock spec: {}", e));
         }
+    }
+    Ok(())
+}
+
+fn clear_lock(
+    repo: &Path,
+    lock_domain_id: &str,
+    canonical_relative_path: &str,
+) -> Result<(), String> {
+    let path = repo.join(format!(
+        "lock_domains/{}/{}.json",
+        lock_domain_id,
+        hash_string(&canonical_relative_path)
+    ));
+    if !path.exists() {
+        return Err(format!(
+            "Error clearing lock {}, file {} not found",
+            &canonical_relative_path,
+            path.display()
+        ));
+    }
+    if let Err(e) = fs::remove_file(&path) {
+        return Err(format!(
+            "Error clearing lock {}: {}",
+            &canonical_relative_path, e
+        ));
     }
     Ok(())
 }
@@ -81,22 +106,39 @@ fn read_locks(repo: &Path, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
     Ok(locks)
 }
 
+fn make_canonical_relative_path(
+    workspace_root: &Path,
+    path_specified: &Path,
+) -> Result<String, String> {
+    let abs_path = make_path_absolute(path_specified);
+    let relative_path = path_relative_to(&abs_path, &workspace_root)?;
+    let canonical_relative_path = relative_path.to_str().unwrap().replace("\\", "/");
+    Ok(canonical_relative_path)
+}
+
 pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(&path_specified)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let current_branch = read_current_branch(&workspace_root)?;
     let repo = &workspace_spec.repository;
     let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
-    let abs_path = make_path_absolute(path_specified);
-    let relative_path = path_relative_to(&abs_path, &workspace_root)?;
-    let canonical_relative_path = relative_path.to_str().unwrap().replace("\\", "/");
     let lock = Lock {
-        relative_path: canonical_relative_path,
+        relative_path: make_canonical_relative_path(&workspace_root, path_specified)?,
         lock_domain_id: repo_branch.lock_domain_id.clone(),
         workspace_id: workspace_spec.id.clone(),
         branch_name: repo_branch.name,
     };
     save_lock(&repo, &lock)
+}
+
+pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
+    let workspace_root = find_workspace_root(&path_specified)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let current_branch = read_current_branch(&workspace_root)?;
+    let repo = &workspace_spec.repository;
+    let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
+    let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
+    clear_lock(&repo, &repo_branch.lock_domain_id, &relative_path)
 }
 
 pub fn list_locks_command() -> Result<(), String> {

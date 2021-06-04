@@ -235,6 +235,14 @@ fn main() {
                 println!("lock acquired");
             }
         }
+        ("unlock", Some(command_match)) => {
+            if let Err(e) = unlock_file_command(Path::new(command_match.value_of("path").unwrap())) {
+                println!("unlock failed: {}", e);
+                std::process::exit(1);
+            } else {
+                println!("lock released");
+            }
+        }
         ("list-locks", Some(_command_match)) => {
             if let Err(e) = list_locks_command() {
                 println!("{}", e);
