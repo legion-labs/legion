@@ -391,4 +391,5 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["lock", "dir\\deep\\file1.txt"]);
     lsc_cli_sys_fail(&work1, &["lock", "dir\\deep\\file1.txt"]);
     lsc_cli_sys_fail(&work1, &["lock", "dir/deep/file1.txt"]);
+    lsc_cli_sys(&work1, &["list-locks"]);
 }

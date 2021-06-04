@@ -41,6 +41,46 @@ fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
     Ok(())
 }
 
+fn read_locks(repo: &Path, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
+    let mut locks = Vec::new();
+    let domain = repo.join(format!("lock_domains/{}", lock_domain_id));
+    match domain.read_dir() {
+        Ok(dir_iterator) => {
+            for entry_res in dir_iterator {
+                match entry_res {
+                    Ok(entry) => {
+                        let parsed: serde_json::Result<Lock> =
+                            serde_json::from_str(&read_text_file(&entry.path())?);
+                        match parsed {
+                            Ok(lock) => {
+                                locks.push(lock);
+                            }
+                            Err(e) => {
+                                return Err(format!(
+                                    "Error parsing lock entry {}: {}",
+                                    entry.path().display(),
+                                    e
+                                ));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        return Err(format!("Error reading lock domain entry: {}", e));
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            return Err(format!(
+                "Error reading directory {}: {}",
+                domain.display(),
+                e
+            ));
+        }
+    }
+    Ok(locks)
+}
+
 pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(&path_specified)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
@@ -57,4 +97,24 @@ pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
         branch_name: repo_branch.name,
     };
     save_lock(&repo, &lock)
+}
+
+pub fn list_locks_command() -> Result<(), String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let current_branch = read_current_branch(&workspace_root)?;
+    let repo = &workspace_spec.repository;
+    let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
+    let locks = read_locks(&repo, &repo_branch.lock_domain_id)?;
+    if locks.is_empty() {
+        println!("no locks found in domain {}", &repo_branch.lock_domain_id);
+    }
+    for lock in locks {
+        println!(
+            "{} in branch {} owned by workspace {}",
+            &lock.relative_path, &lock.branch_name, &lock.workspace_id
+        );
+    }
+    Ok(())
 }

@@ -235,6 +235,12 @@ fn main() {
                 println!("lock acquired");
             }
         }
+        ("list-locks", Some(_command_match)) => {
+            if let Err(e) = list_locks_command() {
+                println!("{}", e);
+                std::process::exit(1);
+            }
+        }
         ("diff", Some(command_match)) => {
             let notool = command_match.is_present("notool");
             let reference_version_name = command_match.value_of("reference").unwrap_or("base");
