@@ -7,11 +7,17 @@ pub struct Branch {
     pub name: String,
     pub head: String, //commit id
     pub parent: String,
+    pub lock_domain_id: String,
 }
 
 impl Branch {
-    pub fn new(name: String, head: String, parent: String) -> Branch {
-        Branch { name, head, parent }
+    pub fn new(name: String, head: String, parent: String, lock_domain_id: String) -> Branch {
+        Branch {
+            name,
+            head,
+            parent,
+            lock_domain_id,
+        }
     }
 }
 
@@ -68,7 +74,12 @@ pub fn create_branch_command(name: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let old_branch = read_current_branch(&workspace_root)?;
-    let new_branch = Branch::new(String::from(name), old_branch.head.clone(), old_branch.name);
+    let new_branch = Branch::new(
+        String::from(name),
+        old_branch.head.clone(),
+        old_branch.name,
+        old_branch.lock_domain_id,
+    );
     save_new_branch_to_repo(&workspace_spec.repository, &new_branch)?;
     save_current_branch(&workspace_root, &new_branch)
 }

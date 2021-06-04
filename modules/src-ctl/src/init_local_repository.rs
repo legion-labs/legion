@@ -21,7 +21,9 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
     if let Err(e) = fs::create_dir_all(directory.join("workspaces")) {
         return Err(format!("Error creating workspaces directory: {}", e));
     }
-    if let Err(e) = fs::create_dir_all(directory.join("locks")) {
+
+    let lock_domain_id = uuid::Uuid::new_v4().to_string();
+    if let Err(e) = fs::create_dir_all(directory.join(format!("lock_domains/{}", lock_domain_id))) {
         return Err(format!("Error creating locks directory: {}", e));
     }
 
@@ -38,7 +40,12 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
     );
     save_commit(directory, &initial_commit)?;
 
-    let main_branch = Branch::new(String::from("main"), initial_commit.id, String::new());
+    let main_branch = Branch::new(
+        String::from("main"),
+        initial_commit.id,
+        String::new(),
+        lock_domain_id,
+    );
     save_branch_to_repo(directory, &main_branch)?;
 
     Ok(())

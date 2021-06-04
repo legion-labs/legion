@@ -5,7 +5,7 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let relative_path = path_relative_to(&abs_path, workspace_root)?;
+    let relative_path = path_relative_to(&abs_path, &workspace_root)?;
     let local_change = find_local_change(&workspace_root, &relative_path)?;
     let parent_dir = relative_path.parent().expect("no parent to path provided");
     let workspace_branch = read_current_branch(&workspace_root)?;

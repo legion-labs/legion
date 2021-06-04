@@ -11,9 +11,9 @@ pub struct Workspace {
     pub owner: String,
 }
 
-pub fn find_workspace_root(directory: &Path) -> Result<&Path, String> {
+pub fn find_workspace_root(directory: &Path) -> Result<PathBuf, String> {
     if let Ok(_meta) = fs::metadata(directory.join(".lsc")) {
-        return Ok(directory);
+        return Ok(make_path_absolute(&directory));
     }
     match directory.parent() {
         None => Err(String::from("workspace not found")),

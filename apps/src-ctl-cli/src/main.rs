@@ -54,6 +54,26 @@ fn main() {
                         .help("local path within a workspace"))
         )
         .subcommand(
+            SubCommand::with_name("lock")
+                .about("Prevent others from modifying the specified file. Locks apply throught all related branches")
+                .arg(
+                    Arg::with_name("path")
+                        .required(true)
+                        .help("local path within a workspace"))
+        )
+        .subcommand(
+            SubCommand::with_name("unlock")
+                .about("Releases a lock, allowing others to modify or lock the file")
+                .arg(
+                    Arg::with_name("path")
+                        .required(true)
+                        .help("local path within a workspace"))
+        )
+        .subcommand(
+            SubCommand::with_name("list-locks")
+                .about("Prints all the locks in the current lock domain")
+        )
+        .subcommand(
             SubCommand::with_name("diff")
                 .about("Prints difference between local file and specified commit")
                 .arg(
@@ -205,6 +225,15 @@ fn main() {
                 std::process::exit(1);
             } else {
                 println!("file deleted, pending change recorded");
+            }
+        }
+        ("lock", Some(command_match)) => {
+            if let Err(e) = lock_file_command(Path::new(command_match.value_of("path").unwrap()))
+            {
+                println!("lock failed: {}", e);
+                std::process::exit(1);
+            } else {
+                println!("lock acquired");
             }
         }
         ("diff", Some(command_match)) => {

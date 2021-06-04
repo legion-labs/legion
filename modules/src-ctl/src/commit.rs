@@ -133,9 +133,9 @@ pub fn commit(message: &str) -> Result<(), String> {
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
-    let local_changes = read_local_changes(workspace_root)?;
+    let local_changes = read_local_changes(&workspace_root)?;
     let hashed_changes =
-        upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
+        upload_localy_edited_blobs(&workspace_root, &workspace_spec, &local_changes)?;
 
     let base_commit = read_commit(repo, &current_branch.head)?;
     let previous_root_tree = read_tree(repo, &base_commit.root_hash)?;

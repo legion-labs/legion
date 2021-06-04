@@ -287,7 +287,6 @@ fn test_branch() {
         ],
     );
 
-    assert!(std::env::set_current_dir(&work1).is_ok());
     legion_src_ctl::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file1.txt"]);
 
@@ -360,4 +359,36 @@ fn test_branch() {
     lsc_cli_sys(&work1, &["merge-branch", "task"]); //fast-forward
 
     //lsc_cli_sys(&work1, &["log"]);
+}
+
+#[test]
+fn test_locks() {
+    let test_dir = test_dir("test_locks");
+    let config_file_path = legion_src_ctl::Config::config_file_path().unwrap();
+    if config_file_path.exists() {
+        lsc_cli_sys(&test_dir, &["config"]);
+    } else {
+        println!("no config file, skipping test");
+    }
+
+    let repo_dir = test_dir.join("repo");
+    let work1 = test_dir.join("work1");
+
+    lsc_cli_sys(
+        &test_dir,
+        &["init-local-repository", repo_dir.to_str().unwrap()],
+    );
+
+    lsc_cli_sys(
+        &test_dir,
+        &[
+            "init-workspace",
+            work1.to_str().unwrap(),
+            repo_dir.to_str().unwrap(),
+        ],
+    );
+
+    lsc_cli_sys(&work1, &["lock", "dir\\deep\\file1.txt"]);
+    lsc_cli_sys_fail(&work1, &["lock", "dir\\deep\\file1.txt"]);
+    lsc_cli_sys_fail(&work1, &["lock", "dir/deep/file1.txt"]);
 }

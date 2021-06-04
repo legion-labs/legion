@@ -236,7 +236,7 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    let relative_path = path_relative_to(&abs_path, workspace_root)?;
+    let relative_path = path_relative_to(&abs_path, &&workspace_root)?;
     let resolve_pending = find_resolve_pending(&workspace_root, &relative_path)?;
     let base_file_hash = find_file_hash_at_commit(
         &workspace_spec.repository,
