@@ -1,8 +1,66 @@
+// BEGIN - Legion Labs lints v0.1
+// do not change or add/remove here, but one can add exceptions after this section
+#![deny(unsafe_code)]
+#![warn(
+    clippy::all,
+    clippy::await_holding_lock,
+    clippy::dbg_macro,
+    clippy::debug_assert_with_mut_call,
+    clippy::doc_markdown,
+    clippy::empty_enum,
+    clippy::enum_glob_use,
+    clippy::exit,
+    clippy::explicit_into_iter_loop,
+    clippy::filter_map_next,
+    clippy::fn_params_excessive_bools,
+    clippy::if_let_mutex,
+    clippy::imprecise_flops,
+    clippy::inefficient_to_string,
+    clippy::large_types_passed_by_value,
+    clippy::let_unit_value,
+    clippy::linkedlist,
+    clippy::lossy_float_literal,
+    clippy::macro_use_imports,
+    clippy::map_err_ignore,
+    clippy::map_flatten,
+    clippy::map_unwrap_or,
+    clippy::match_on_vec_items,
+    clippy::match_same_arms,
+    clippy::match_wildcard_for_single_variants,
+    clippy::mem_forget,
+    clippy::mismatched_target_os,
+    clippy::needless_borrow,
+    clippy::needless_continue,
+    clippy::needless_pass_by_value,
+    clippy::option_option,
+    clippy::pub_enum_variant_names,
+    clippy::ref_option_ref,
+    clippy::rest_pat_in_fully_bound_structs,
+    clippy::string_add_assign,
+    clippy::string_to_string,
+    clippy::suboptimal_flops,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unnested_or_patterns,
+    clippy::unused_self,
+    clippy::use_self,
+    clippy::verbose_file_reads,
+    future_incompatible,
+    nonstandard_style,
+    broken_intra_doc_links,
+    private_intra_doc_links,
+    missing_crate_level_docs,
+    rust_2018_idioms
+)]
+// END - Legion Labs standard lints v0.1
+// crate-specific exceptions:
+#![allow()]
+
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_src_ctl::*;
 use std::path::Path;
 
-fn main() {
+fn main() -> Result<(), String> {
     let matches = App::new("Legion Source Control")
         .setting(AppSettings::ArgRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))
@@ -172,158 +230,65 @@ fn main() {
         .get_matches();
 
     match matches.subcommand() {
-        ("init-local-repository", Some(command_match)) => {
-            match legion_src_ctl::init_local_repository(Path::new(
-                command_match.value_of("repository-directory").unwrap(),
-            )) {
-                Err(e) => {
-                    println!("init_local_repository failed: {}", e);
-                    std::process::exit(1);
-                }
-                Ok(_) => {
-                    println!("repository initialized");
-                }
-            }
-        }
-        ("init-workspace", Some(command_match)) => {
-            match init_workspace(
-                Path::new(command_match.value_of("workspace-directory").unwrap()),
-                Path::new(command_match.value_of("repository-directory").unwrap()),
-            ) {
-                Err(e) => {
-                    println!("init_workspace failed: {}", e);
-                    std::process::exit(1);
-                }
-                Ok(_) => {
-                    println!("workspace initialized");
-                }
-            }
-        }
+        ("init-local-repository", Some(command_match)) => legion_src_ctl::init_local_repository(
+            Path::new(command_match.value_of("repository-directory").unwrap()),
+        ),
+        ("init-workspace", Some(command_match)) => init_workspace(
+            Path::new(command_match.value_of("workspace-directory").unwrap()),
+            Path::new(command_match.value_of("repository-directory").unwrap()),
+        ),
         ("add", Some(command_match)) => {
-            match track_new_file(Path::new(command_match.value_of("path").unwrap())) {
-                Err(e) => {
-                    println!("add failed: {}", e);
-                    std::process::exit(1);
-                }
-                Ok(_) => {
-                    println!("tracking new file");
-                }
-            }
+            track_new_file(Path::new(command_match.value_of("path").unwrap()))
         }
         ("edit", Some(command_match)) => {
-            if let Err(e) = edit_file_command(Path::new(command_match.value_of("path").unwrap())) {
-                println!("edit failed: {}", e);
-                std::process::exit(1);
-            } else {
-                println!("file ready to be edited");
-            }
+            edit_file_command(Path::new(command_match.value_of("path").unwrap()))
         }
         ("delete", Some(command_match)) => {
-            if let Err(e) = delete_file_command(Path::new(command_match.value_of("path").unwrap()))
-            {
-                println!("delete failed: {}", e);
-                std::process::exit(1);
-            } else {
-                println!("file deleted, pending change recorded");
-            }
+            delete_file_command(Path::new(command_match.value_of("path").unwrap()))
         }
         ("lock", Some(command_match)) => {
-            if let Err(e) = lock_file_command(Path::new(command_match.value_of("path").unwrap())) {
-                println!("lock failed: {}", e);
-                std::process::exit(1);
-            } else {
-                println!("lock acquired");
-            }
+            lock_file_command(Path::new(command_match.value_of("path").unwrap()))
         }
         ("unlock", Some(command_match)) => {
-            if let Err(e) = unlock_file_command(Path::new(command_match.value_of("path").unwrap()))
-            {
-                println!("unlock failed: {}", e);
-                std::process::exit(1);
-            } else {
-                println!("lock released");
-            }
+            unlock_file_command(Path::new(command_match.value_of("path").unwrap()))
         }
-        ("list-locks", Some(_command_match)) => {
-            if let Err(e) = list_locks_command() {
-                println!("{}", e);
-                std::process::exit(1);
-            }
-        }
+        ("list-locks", Some(_command_match)) => list_locks_command(),
         ("diff", Some(command_match)) => {
             let notool = command_match.is_present("notool");
             let reference_version_name = command_match.value_of("reference").unwrap_or("base");
-            if let Err(e) = diff_file_command(
+            diff_file_command(
                 Path::new(command_match.value_of("path").unwrap()),
-                &reference_version_name,
+                reference_version_name,
                 !notool,
-            ) {
-                println!("diff failed: {}", e);
-                std::process::exit(1);
-            }
+            )
         }
         ("resolve", Some(command_match)) => {
             let notool = command_match.is_present("notool");
             let path = Path::new(command_match.value_of("path").unwrap());
-            if let Err(e) = resolve_file_command(path, !notool) {
-                println!("resolve failed: {}", e);
-                std::process::exit(1);
-            }
+            resolve_file_command(path, !notool)
         }
         ("create-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
-            if let Err(e) = create_branch_command(&name) {
-                println!("create branch failed: {}", e);
-                std::process::exit(1);
-            } else {
-                println!("now on branch {}", &name);
-            }
+            create_branch_command(name)
         }
         ("merge-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
-            if let Err(e) = merge_branch_command(&name) {
-                println!("{}", e);
-                std::process::exit(1);
-            }
+            merge_branch_command(name)
         }
         ("switch-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
-            if let Err(e) = switch_branch_command(&name) {
-                println!("switch branch failed: {}", e);
-                std::process::exit(1);
-            } else {
-                println!("now on branch {}", &name);
-            }
+            switch_branch_command(name)
         }
-        ("list-branches", Some(_command_match)) => {
-            if let Err(e) = list_branches_command() {
-                println!("list branches failed: {}", e);
-                std::process::exit(1);
-            }
-        }
+        ("list-branches", Some(_command_match)) => list_branches_command(),
         ("revert", Some(command_match)) => {
-            if let Err(e) = revert_file_command(Path::new(command_match.value_of("path").unwrap()))
-            {
-                println!("revert failed: {}", e);
-                std::process::exit(1);
-            } else {
-                println!("file reverted");
-            }
+            revert_file_command(Path::new(command_match.value_of("path").unwrap()))
         }
         ("commit", Some(command_match)) => {
             let mut message = String::from("");
             for item in command_match.values_of("message").unwrap() {
                 message += item;
             }
-            match commit(&message) {
-                Err(e) => {
-                    println!("commit failed: {}", e);
-                    std::process::exit(1);
-                }
-                Ok(_) => {
-                    println!("commit completed");
-                }
-            }
+            commit(&message)
         }
         ("local-changes", Some(_command_match)) => match find_local_changes_command() {
             Ok(changes) => {
@@ -333,11 +298,9 @@ fn main() {
                 for change in changes {
                     println!("{} {}", change.change_type, change.relative_path.display());
                 }
+                Ok(())
             }
-            Err(e) => {
-                println!("local-changes failed: {}", e);
-                std::process::exit(1);
-            }
+            Err(e) => Err(e),
         },
         ("resolves-pending", Some(_command_match)) => match find_resolves_pending_command() {
             Ok(resolves_pending) => {
@@ -352,47 +315,16 @@ fn main() {
                         &m.theirs_commit_id
                     );
                 }
+                Ok(())
             }
-            Err(e) => {
-                println!("resolves-pending failed: {}", e);
-                std::process::exit(1);
-            }
+            Err(e) => Err(e),
         },
-        ("sync", Some(command_match)) => {
-            let sync_result;
-            match command_match.value_of("commit-id") {
-                Some(commit_id) => {
-                    sync_result = sync_to_command(&commit_id);
-                }
-                None => {
-                    sync_result = sync_command();
-                }
-            }
-            match sync_result {
-                Ok(_) => {
-                    println!("sync completed");
-                }
-                Err(e) => {
-                    println!("sync failed: {}", e);
-                    std::process::exit(1);
-                }
-            }
-        }
-        ("log", Some(_command_match)) => {
-            if let Err(e) = log_command() {
-                println!("{}", e);
-                std::process::exit(1);
-            }
-        }
-        ("config", Some(_command_match)) => {
-            if let Err(e) = print_config_command() {
-                println!("{}", e);
-                std::process::exit(1);
-            }
-        }
-        other_match => {
-            println!("unknown subcommand match: {:?}", &other_match);
-            std::process::exit(1);
-        }
+        ("sync", Some(command_match)) => match command_match.value_of("commit-id") {
+            Some(commit_id) => sync_to_command(commit_id),
+            None => sync_command(),
+        },
+        ("log", Some(_command_match)) => log_command(),
+        ("config", Some(_command_match)) => print_config_command(),
+        other_match => Err(format!("unknown subcommand match: {:?}", &other_match)),
     }
 }

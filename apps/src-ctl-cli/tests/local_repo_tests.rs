@@ -17,7 +17,7 @@ fn append_text_to_file(p: &Path, contents: &str) {
         .append(true)
         .open(p)
         .unwrap();
-    f.write(contents.as_bytes()).unwrap();
+    f.write_all(contents.as_bytes()).unwrap();
 }
 
 fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
@@ -25,7 +25,7 @@ fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
     for a in args {
         print!("{} ", a);
     }
-    print!("\n");
+    println!();
     let status = Command::new(command)
         .current_dir(wd)
         .args(args)
