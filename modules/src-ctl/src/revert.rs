@@ -11,7 +11,7 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
     let workspace_branch = read_current_branch(&workspace_root)?;
     let current_commit = read_commit(&workspace_spec.repository, &workspace_branch.head)?;
     let root_tree = read_tree(&workspace_spec.repository, &current_commit.root_hash)?;
-    let dir_tree = fetch_tree_subdir(&workspace_spec.repository, &root_tree, &parent_dir)?;
+    let dir_tree = fetch_tree_subdir(&workspace_spec.repository, &root_tree, parent_dir)?;
 
     if local_change.change_type != "add" {
         let file_node = dir_tree.find_file_node(

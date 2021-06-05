@@ -13,8 +13,8 @@ pub struct PendingBranchMerge {
 }
 
 impl PendingBranchMerge {
-    pub fn new(branch: &Branch) -> PendingBranchMerge {
-        PendingBranchMerge {
+    pub fn new(branch: &Branch) -> Self {
+        Self {
             name: branch.name.clone(),
             head: branch.head.clone(),
         }
@@ -123,7 +123,7 @@ fn change_file_to(
             return Ok(format!("Deleted {}", local_path.display()));
         }
         edit_file_command(&local_path)?;
-        if let Err(e) = download_blob(&repo, &local_path, &hash_to_sync) {
+        if let Err(e) = download_blob(repo, &local_path, hash_to_sync) {
             return Err(format!(
                 "Error downloading {} {}: {}",
                 local_path.display(),
@@ -140,7 +140,7 @@ fn change_file_to(
         if hash_to_sync.is_empty() {
             return Ok(format!("Verified {}", local_path.display()));
         }
-        if let Err(e) = download_blob(&repo, &local_path, &hash_to_sync) {
+        if let Err(e) = download_blob(repo, &local_path, hash_to_sync) {
             return Err(format!(
                 "Error downloading {} {}: {}",
                 local_path.display(),
@@ -178,17 +178,17 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    let src_branch = read_branch_from_repo(&repo, &name)?;
+    let src_branch = read_branch_from_repo(repo, name)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut destination_branch = read_branch_from_repo(&repo, &current_branch.name)?;
+    let mut destination_branch = read_branch_from_repo(repo, &current_branch.name)?;
 
-    let merge_source_ancestors = find_commit_ancestors(&repo, &src_branch.head)?;
-    let src_commit_history = find_branch_commits(&repo, &src_branch)?;
+    let merge_source_ancestors = find_commit_ancestors(repo, &src_branch.head)?;
+    let src_commit_history = find_branch_commits(repo, &src_branch)?;
     if merge_source_ancestors.contains(&destination_branch.head) {
         //fast forward case
         destination_branch.head = src_branch.head;
         save_current_branch(&workspace_root, &destination_branch)?;
-        save_branch_to_repo(&repo, &destination_branch)?;
+        save_branch_to_repo(repo, &destination_branch)?;
         println!("Fast-forward merge: branch updated, synching");
         return sync_command();
     }
@@ -200,7 +200,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
     }
 
     let mut errors: Vec<String> = Vec::new();
-    let destination_commit_history = find_branch_commits(&repo, &destination_branch)?;
+    let destination_commit_history = find_branch_commits(repo, &destination_branch)?;
     if let Some(common_ancestor_id) =
         find_latest_common_ancestor(&destination_commit_history, &merge_source_ancestors)
     {
@@ -251,7 +251,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
                     ));
                 }
             } else {
-                match change_file_to(&repo, &path, &workspace_root, &hash) {
+                match change_file_to(repo, path, &workspace_root, hash) {
                     Ok(message) => {
                         println!("{}", message);
                     }

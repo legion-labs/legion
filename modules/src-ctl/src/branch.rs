@@ -11,8 +11,8 @@ pub struct Branch {
 }
 
 impl Branch {
-    pub fn new(name: String, head: String, parent: String, lock_domain_id: String) -> Branch {
-        Branch {
+    pub fn new(name: String, head: String, parent: String, lock_domain_id: String) -> Self {
+        Self {
             name,
             head,
             parent,
@@ -23,7 +23,7 @@ impl Branch {
 
 fn write_branch_spec(file_path: &Path, branch: &Branch) -> Result<(), String> {
     match serde_json::to_string(branch) {
-        Ok(json) => write_file(&file_path, json.as_bytes()),
+        Ok(json) => write_file(file_path, json.as_bytes()),
         Err(e) => Err(format!("Error formatting branch {:?}: {}", branch, e)),
     }
 }

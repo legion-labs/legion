@@ -11,9 +11,9 @@ pub struct LocalChange {
 }
 
 impl LocalChange {
-    pub fn new(relative_path: PathBuf, change_type: String) -> LocalChange {
+    pub fn new(relative_path: PathBuf, change_type: String) -> Self {
         let id = uuid::Uuid::new_v4().to_string();
-        LocalChange {
+        Self {
             id,
             relative_path,
             change_type,

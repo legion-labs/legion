@@ -54,7 +54,7 @@ fn read_lock(
     let path = repo.join(format!(
         "lock_domains/{}/{}.json",
         lock_domain_id,
-        hash_string(&canonical_relative_path)
+        hash_string(canonical_relative_path)
     ));
     if !path.exists() {
         return SearchResult::None;
@@ -83,7 +83,7 @@ fn clear_lock(
     let path = repo.join(format!(
         "lock_domains/{}/{}.json",
         lock_domain_id,
-        hash_string(&canonical_relative_path)
+        hash_string(canonical_relative_path)
     ));
     if !path.exists() {
         return Err(format!(
@@ -146,13 +146,13 @@ fn make_canonical_relative_path(
     path_specified: &Path,
 ) -> Result<String, String> {
     let abs_path = make_path_absolute(path_specified);
-    let relative_path = path_relative_to(&abs_path, &workspace_root)?;
+    let relative_path = path_relative_to(&abs_path, workspace_root)?;
     let canonical_relative_path = relative_path.to_str().unwrap().replace("\\", "/");
     Ok(canonical_relative_path)
 }
 
 pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
-    let workspace_root = find_workspace_root(&path_specified)?;
+    let workspace_root = find_workspace_root(path_specified)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let current_branch = read_current_branch(&workspace_root)?;
     let repo = &workspace_spec.repository;
@@ -163,17 +163,17 @@ pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
         workspace_id: workspace_spec.id.clone(),
         branch_name: repo_branch.name,
     };
-    save_lock(&repo, &lock)
+    save_lock(repo, &lock)
 }
 
 pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
-    let workspace_root = find_workspace_root(&path_specified)?;
+    let workspace_root = find_workspace_root(path_specified)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let current_branch = read_current_branch(&workspace_root)?;
     let repo = &workspace_spec.repository;
     let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
     let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
-    clear_lock(&repo, &repo_branch.lock_domain_id, &relative_path)
+    clear_lock(repo, &repo_branch.lock_domain_id, &relative_path)
 }
 
 pub fn list_locks_command() -> Result<(), String> {
@@ -183,7 +183,7 @@ pub fn list_locks_command() -> Result<(), String> {
     let current_branch = read_current_branch(&workspace_root)?;
     let repo = &workspace_spec.repository;
     let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
-    let locks = read_locks(&repo, &repo_branch.lock_domain_id)?;
+    let locks = read_locks(repo, &repo_branch.lock_domain_id)?;
     if locks.is_empty() {
         println!("no locks found in domain {}", &repo_branch.lock_domain_id);
     }
@@ -197,12 +197,12 @@ pub fn list_locks_command() -> Result<(), String> {
 }
 
 pub fn assert_not_locked(workspace_root: &Path, path_specified: &Path) -> Result<(), String> {
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let current_branch = read_current_branch(&workspace_root)?;
+    let workspace_spec = read_workspace_spec(workspace_root)?;
+    let current_branch = read_current_branch(workspace_root)?;
     let repo = &workspace_spec.repository;
     let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
-    let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
-    match read_lock(&repo, &repo_branch.lock_domain_id, &relative_path) {
+    let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
+    match read_lock(repo, &repo_branch.lock_domain_id, &relative_path) {
         SearchResult::Ok(lock) => {
             if lock.branch_name == current_branch.name && lock.workspace_id == workspace_spec.id {
                 Ok(()) //locked by this workspace on this branch - all good

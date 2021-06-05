@@ -12,8 +12,8 @@ fn find_commit_range(
     start_commit_id: &str,
     end_commit_id: &str,
 ) -> Result<Vec<Commit>, String> {
-    let repo_branch = read_branch_from_repo(&repo, &branch_name)?;
-    let mut current_commit = read_commit(&repo, &repo_branch.head)?;
+    let repo_branch = read_branch_from_repo(repo, branch_name)?;
+    let mut current_commit = read_commit(repo, &repo_branch.head)?;
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
             return Err(format!(
@@ -21,13 +21,13 @@ fn find_commit_range(
                 &start_commit_id, &end_commit_id
             ));
         }
-        current_commit = read_commit(&repo, &current_commit.parents[0])?;
+        current_commit = read_commit(repo, &current_commit.parents[0])?;
     }
     let mut commits = vec![current_commit.clone()];
     if current_commit.id == start_commit_id && current_commit.id == end_commit_id {
         return Ok(commits);
     }
-    current_commit = read_commit(&repo, &current_commit.parents[0])?;
+    current_commit = read_commit(repo, &current_commit.parents[0])?;
     commits.push(current_commit.clone());
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
@@ -36,7 +36,7 @@ fn find_commit_range(
                 &start_commit_id, &end_commit_id
             ));
         }
-        current_commit = read_commit(&repo, &current_commit.parents[0])?;
+        current_commit = read_commit(repo, &current_commit.parents[0])?;
         commits.push(current_commit.clone());
     }
     Ok(commits)
@@ -50,7 +50,7 @@ pub fn compute_file_hash(p: &Path) -> Result<String, String> {
 
 pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<String, String> {
     let local_hash = if local_path.exists() {
-        compute_file_hash(&local_path)?
+        compute_file_hash(local_path)?
     } else {
         String::new()
     };
@@ -83,7 +83,7 @@ pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<S
                     return Ok(format!("Deleted {}", local_path.display()));
                 }
             }
-            if let Err(e) = download_blob(&repo, &local_path, &hash_to_sync) {
+            if let Err(e) = download_blob(repo, local_path, hash_to_sync) {
                 return Err(format!(
                     "Error downloading {} {}: {}",
                     local_path.display(),
@@ -91,7 +91,7 @@ pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<S
                     e
                 ));
             }
-            if let Err(e) = make_file_read_only(&local_path, true) {
+            if let Err(e) = make_file_read_only(local_path, true) {
                 return Err(e);
             }
             return Ok(format!("Updated {}", local_path.display()));
@@ -108,7 +108,7 @@ pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<S
                     ));
                 }
             }
-            if let Err(e) = download_blob(&repo, &local_path, &hash_to_sync) {
+            if let Err(e) = download_blob(repo, local_path, hash_to_sync) {
                 return Err(format!(
                     "Error downloading {} {}: {}",
                     local_path.display(),
@@ -116,7 +116,7 @@ pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<S
                     e
                 ));
             }
-            if let Err(e) = make_file_read_only(&local_path, true) {
+            if let Err(e) = make_file_read_only(local_path, true) {
                 return Err(e);
             }
             return Ok(format!("Added {}", local_path.display()));
@@ -150,7 +150,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
         //sync backwards is slower and could be optimized if we had before&after hashes in changes
         let ref_commit = &commits.last().unwrap();
         assert!(ref_commit.id == commit_id);
-        let root_tree = read_tree(&repo, &ref_commit.root_hash)?;
+        let root_tree = read_tree(repo, &ref_commit.root_hash)?;
 
         let mut to_update: BTreeSet<PathBuf> = BTreeSet::new();
         for commit in commits {
@@ -162,7 +162,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
             to_download.insert(
                 path.clone(),
                 //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we should fail on error
-                match find_file_hash_in_tree(&repo, &path, &root_tree) {
+                match find_file_hash_in_tree(repo, &path, &root_tree) {
                     Ok(hash) => hash,
                     Err(_) => String::new(),
                 },

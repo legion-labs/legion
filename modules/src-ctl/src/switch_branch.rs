@@ -82,11 +82,11 @@ fn sync_tree_diff(
         }
         if new_dir_node.hash != present_hash {
             if let Err(e) = sync_tree_diff(
-                &repo,
+                repo,
                 &present_hash,
                 &new_dir_node.hash,
                 &relative_sub_dir,
-                &workspace_root,
+                workspace_root,
             ) {
                 println!("{}", e);
             }
@@ -95,7 +95,7 @@ fn sync_tree_diff(
     //delete the contents of the directories that were not matched
     for (name, hash) in dirs_present {
         let path = workspace_root.join(&relative_path_tree).join(name);
-        match remove_dir_rec(&repo, &path, &hash) {
+        match remove_dir_rec(repo, &path, &hash) {
             Ok(messages) => {
                 if !messages.is_empty() {
                     println!("{}", messages);
@@ -116,12 +116,12 @@ pub fn switch_branch_command(name: &str) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
     let old_branch = read_current_branch(&workspace_root)?;
-    let old_commit = read_commit(&repo, &old_branch.head)?;
-    let new_branch = read_branch_from_repo(&repo, name)?;
-    let new_commit = read_commit(&repo, &new_branch.head)?;
+    let old_commit = read_commit(repo, &old_branch.head)?;
+    let new_branch = read_branch_from_repo(repo, name)?;
+    let new_commit = read_commit(repo, &new_branch.head)?;
     save_current_branch(&workspace_root, &new_branch)?;
     sync_tree_diff(
-        &repo,
+        repo,
         &old_commit.root_hash,
         &new_commit.root_hash,
         Path::new(""),

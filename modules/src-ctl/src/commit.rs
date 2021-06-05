@@ -30,10 +30,10 @@ impl Commit {
         changes: Vec<HashedChange>,
         root_hash: String,
         parents: Vec<String>,
-    ) -> Commit {
+    ) -> Self {
         let id = uuid::Uuid::new_v4().to_string();
         let date_time_utc = Utc::now().to_rfc3339();
-        Commit {
+        Self {
             id,
             owner,
             message,
@@ -138,9 +138,12 @@ pub fn commit(message: &str) -> Result<(), String> {
         upload_localy_edited_blobs(&workspace_root, &workspace_spec, &local_changes)?;
 
     let base_commit = read_commit(repo, &current_branch.head)?;
-    let previous_root_tree = read_tree(repo, &base_commit.root_hash)?;
 
-    let new_root_hash = update_tree_from_changes(previous_root_tree, &hashed_changes, repo)?;
+    let new_root_hash = update_tree_from_changes(
+        &read_tree(repo, &base_commit.root_hash)?,
+        &hashed_changes,
+        repo,
+    )?;
 
     let mut parent_commits = Vec::from([base_commit.id]);
     for pending_branch_merge in read_pending_branch_merges(&workspace_root)? {
@@ -171,11 +174,11 @@ pub fn commit(message: &str) -> Result<(), String> {
 
 pub fn find_branch_commits(repo: &Path, branch: &Branch) -> Result<Vec<Commit>, String> {
     let mut commits = Vec::new();
-    let mut c = read_commit(&repo, &branch.head)?;
+    let mut c = read_commit(repo, &branch.head)?;
     commits.push(c.clone());
     while !c.parents.is_empty() {
         let id = &c.parents[0]; //first parent is assumed to be branch trunk
-        c = read_commit(&repo, &id)?;
+        c = read_commit(repo, id)?;
         commits.push(c.clone());
     }
     Ok(commits)

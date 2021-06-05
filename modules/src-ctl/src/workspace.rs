@@ -13,7 +13,7 @@ pub struct Workspace {
 
 pub fn find_workspace_root(directory: &Path) -> Result<PathBuf, String> {
     if let Ok(_meta) = fs::metadata(directory.join(".lsc")) {
-        return Ok(make_path_absolute(&directory));
+        return Ok(make_path_absolute(directory));
     }
     match directory.parent() {
         None => Err(String::from("workspace not found")),
@@ -62,7 +62,7 @@ pub fn download_temp_file(
 ) -> Result<TempPath, String> {
     let tmp_dir = workspace_root.join(".lsc/tmp");
     let temp_file_path = tmp_dir.join(blob_hash);
-    download_blob(repo, &temp_file_path, &blob_hash)?;
+    download_blob(repo, &temp_file_path, blob_hash)?;
     Ok(TempPath {
         path: temp_file_path,
     })

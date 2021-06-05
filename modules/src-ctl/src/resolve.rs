@@ -15,13 +15,9 @@ pub struct ResolvePending {
 }
 
 impl ResolvePending {
-    pub fn new(
-        relative_path: PathBuf,
-        base_commit_id: String,
-        theirs_commit_id: String,
-    ) -> ResolvePending {
+    pub fn new(relative_path: PathBuf, base_commit_id: String, theirs_commit_id: String) -> Self {
         let id = uuid::Uuid::new_v4().to_string();
-        ResolvePending {
+        Self {
             id,
             relative_path,
             base_commit_id,
@@ -151,7 +147,7 @@ pub fn find_file_hash_at_commit(
     let commit = read_commit(repo, commit_id)?;
     let root_tree = read_tree(repo, &commit.root_hash)?;
     let parent_dir = relative_path.parent().expect("no parent to path provided");
-    let dir_tree = fetch_tree_subdir(repo, &root_tree, &parent_dir)?;
+    let dir_tree = fetch_tree_subdir(repo, &root_tree, parent_dir)?;
     let file_node = dir_tree.find_file_node(
         relative_path
             .file_name()
@@ -170,13 +166,13 @@ fn run_merge_program(
     output_path: &str,
 ) -> Result<(), String> {
     let config = Config::read_config()?;
-    match config.find_merge_command(&relative_path) {
+    match config.find_merge_command(relative_path) {
         Some(mut external_command_vec) => {
             for item in &mut external_command_vec[..] {
-                *item = item.replace("%local", &abs_path);
-                *item = item.replace("%theirs", &theirs_path);
-                *item = item.replace("%base", &base_path);
-                *item = item.replace("%output", &output_path);
+                *item = item.replace("%local", abs_path);
+                *item = item.replace("%theirs", theirs_path);
+                *item = item.replace("%base", base_path);
+                *item = item.replace("%output", output_path);
             }
 
             match Command::new(&external_command_vec[0])
@@ -212,16 +208,16 @@ fn run_merge_program(
 }
 
 fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> Result<(), String> {
-    let yours = read_bin_file(&yours_path)?;
-    let theirs = read_bin_file(&theirs_path)?;
-    let base = read_bin_file(&base_path)?;
+    let yours = read_bin_file(yours_path)?;
+    let theirs = read_bin_file(theirs_path)?;
+    let base = read_bin_file(base_path)?;
     match diffy::merge_bytes(&base, &yours, &theirs) {
         Ok(merged_contents) => {
-            write_file(&yours_path, &merged_contents)?;
+            write_file(yours_path, &merged_contents)?;
             println!("Merge completed, {} updated", yours_path.display());
         }
         Err(conflicts) => {
-            write_file(&yours_path, &conflicts)?;
+            write_file(yours_path, &conflicts)?;
             println!(
                 "Merge *not* completed, please resolve conflicts in {}",
                 yours_path.display()
@@ -236,20 +232,20 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    let relative_path = path_relative_to(&abs_path, &&workspace_root)?;
+    let relative_path = path_relative_to(&abs_path, &workspace_root)?;
     let resolve_pending = find_resolve_pending(&workspace_root, &relative_path)?;
     let base_file_hash = find_file_hash_at_commit(
         &workspace_spec.repository,
         &relative_path,
         &resolve_pending.base_commit_id,
     )?;
-    let base_temp_file = download_temp_file(&repo, &workspace_root, &base_file_hash)?;
+    let base_temp_file = download_temp_file(repo, &workspace_root, &base_file_hash)?;
     let theirs_file_hash = find_file_hash_at_commit(
         &workspace_spec.repository,
         &relative_path,
         &resolve_pending.theirs_commit_id,
     )?;
-    let theirs_temp_file = download_temp_file(&repo, &workspace_root, &theirs_file_hash)?;
+    let theirs_temp_file = download_temp_file(repo, &workspace_root, &theirs_file_hash)?;
     let tmp_dir = workspace_root.join(".lsc/tmp");
     let output_temp_file = TempPath {
         path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),

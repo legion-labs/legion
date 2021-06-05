@@ -19,8 +19,8 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn empty() -> Tree {
-        Tree {
+    pub fn empty() -> Self {
+        Self {
             directory_nodes: Vec::new(),
             file_nodes: Vec::new(),
         }
@@ -111,7 +111,7 @@ pub fn fetch_tree_subdir(repo: &Path, root: &Tree, subdir: &Path) -> Result<Tree
     let mut parent = root.clone();
     for component in subdir.components() {
         match parent.find_dir_node(
-            &component
+            component
                 .as_os_str()
                 .to_str()
                 .expect("invalid path component name"),
@@ -133,7 +133,7 @@ pub fn find_file_hash_in_tree(
     root_tree: &Tree,
 ) -> Result<String, String> {
     let parent_dir = relative_path.parent().expect("no parent to path provided");
-    let dir_tree = fetch_tree_subdir(repo, &root_tree, &parent_dir)?;
+    let dir_tree = fetch_tree_subdir(repo, root_tree, parent_dir)?;
     let file_node = dir_tree.find_file_node(
         relative_path
             .file_name()
@@ -146,7 +146,7 @@ pub fn find_file_hash_in_tree(
 
 // returns the hash of the updated root tree
 pub fn update_tree_from_changes(
-    previous_root: Tree,
+    previous_root: &Tree,
     local_changes: &[HashedChange],
     repo: &Path,
 ) -> Result<String, String> {
@@ -181,7 +181,7 @@ pub fn update_tree_from_changes(
     //process leafs before parents to be able to patch parents with hash of children
     dir_to_update_by_length.sort_by_key(|a| core::cmp::Reverse(a.components().count()));
     for dir in dir_to_update_by_length {
-        let mut tree = fetch_tree_subdir(repo, &previous_root, &dir)?;
+        let mut tree = fetch_tree_subdir(repo, previous_root, &dir)?;
         for change in local_changes {
             let parent = change
                 .relative_path
@@ -253,7 +253,7 @@ pub fn read_blob(repo: &Path, hash: &str) -> Result<String, String> {
 pub fn download_blob(repo: &Path, local_path: &Path, hash: &str) -> Result<(), String> {
     assert!(!hash.is_empty());
     let blob_path = repo.join(format!("blobs/{}", hash));
-    lz4_decompress(&blob_path, &local_path)
+    lz4_decompress(&blob_path, local_path)
 }
 
 pub fn remove_dir_rec(repo: &Path, local_path: &Path, tree_hash: &str) -> Result<String, String> {
@@ -276,7 +276,7 @@ pub fn remove_dir_rec(repo: &Path, local_path: &Path, tree_hash: &str) -> Result
 
     for dir_node in &tree.directory_nodes {
         let dir_path = local_path.join(&dir_node.name);
-        let message = remove_dir_rec(&repo, &dir_path, &dir_node.hash)?;
+        let message = remove_dir_rec(repo, &dir_path, &dir_node.hash)?;
         if !message.is_empty() {
             messages.push(message);
         }

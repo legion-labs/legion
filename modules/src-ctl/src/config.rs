@@ -18,11 +18,11 @@ impl Config {
         }
     }
 
-    pub fn read_config() -> Result<Config, String> {
-        let path = Config::config_file_path()?;
+    pub fn read_config() -> Result<Self, String> {
+        let path = Self::config_file_path()?;
         match read_text_file(&path) {
             Ok(contents) => {
-                let parsed: serde_json::Result<Config> = serde_json::from_str(&contents);
+                let parsed: serde_json::Result<Self> = serde_json::from_str(&contents);
                 match parsed {
                     Ok(config) => Ok(config),
                     Err(e) => Err(format!("Error parsing config file: {}", e)),
@@ -43,7 +43,7 @@ impl Config {
         for command_spec in command_spec_vec {
             match glob::Pattern::new(&command_spec[0]) {
                 Ok(pattern) => {
-                    if pattern.matches(&path_str) {
+                    if pattern.matches(path_str) {
                         let command_name = &command_spec[1];
                         match self.commands.get(command_name) {
                             Some(command) => {
