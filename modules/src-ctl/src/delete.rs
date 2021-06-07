@@ -4,7 +4,7 @@ use std::path::Path;
 
 pub fn delete_file_command(path_specified: &Path) -> Result<(), String> {
     let abs_path = make_path_absolute(path_specified);
-    if !abs_path.exists(){
+    if !abs_path.exists() {
         return Err(format!("Error: file not found {}", abs_path.display()));
     }
     let workspace_root = find_workspace_root(&abs_path)?;
