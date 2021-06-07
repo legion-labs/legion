@@ -121,7 +121,7 @@ registries = [] #"https://sekretz.com/registry
 # https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
 [bans]
 # Lint level for when multiple versions of the same crate are detected
-multiple-versions = "warn"
+multiple-versions = "deny"
 # Lint level for when a crate version requirement is `*`
 wildcards = "allow"
 # The graph highlighting used when creating dotgraphs for crates
@@ -136,8 +136,6 @@ allow = [] #{ name = "ansi_term", version = "=0.11.0" },
 deny = [] #{ name = "ansi_term", version = "=0.11.0", wrappers = [] },
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
-    
-    
     { name = "ansi_term", version = "=0.11.0" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
