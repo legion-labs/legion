@@ -373,6 +373,7 @@ fn test_locks() {
 
     let repo_dir = test_dir.join("repo");
     let work1 = test_dir.join("work1");
+    let work2 = test_dir.join("work2");
 
     lsc_cli_sys(
         &test_dir,
@@ -414,4 +415,26 @@ fn test_locks() {
     lsc_cli_sys_fail(&work1, &["edit", "file2.txt"]); //locked
     lsc_cli_sys(&work1, &["unlock", "file2.txt"]);
     lsc_cli_sys(&work1, &["edit", "file2.txt"]);
+
+    lsc_cli_sys(
+        &test_dir,
+        &[
+            "init-workspace",
+            work2.to_str().unwrap(),
+            repo_dir.to_str().unwrap(),
+        ],
+    );
+    lsc_cli_sys(&work2, &["lock", "file2.txt"]); //locking the file that is being edited in work1
+    lsc_cli_sys_fail(
+        &work1,
+        &[
+            "commit",
+            r#"-m"commiting with file locked in other workspace""#,
+        ],
+    );
+    lsc_cli_sys(&work1, &["unlock", "file2.txt"]);
+    lsc_cli_sys(
+        &work1,
+        &["commit", r#"-m"commiting with file now unlocked""#],
+    );
 }

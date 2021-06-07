@@ -134,6 +134,10 @@ pub fn commit(message: &str) -> Result<(), String> {
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
     let local_changes = read_local_changes(&workspace_root)?;
+    for change in &local_changes {
+        let abs_path = workspace_root.join(&change.relative_path);
+        assert_not_locked(&workspace_root, &abs_path)?;
+    }
     let hashed_changes =
         upload_localy_edited_blobs(&workspace_root, &workspace_spec, &local_changes)?;
 
