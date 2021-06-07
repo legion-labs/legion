@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::Path;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Lock {
     pub relative_path: String, //needs to have a stable representation across platforms because it seeds the hash
     pub lock_domain_id: String,
@@ -18,7 +18,7 @@ fn hash_string(data: &str) -> String {
     format!("{:X}", hasher.finalize())
 }
 
-fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
+pub fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
     let path = repo.join(format!(
         "lock_domains/{}/{}.json",
         lock.lock_domain_id,
@@ -75,7 +75,7 @@ fn read_lock(
     }
 }
 
-fn clear_lock(
+pub fn clear_lock(
     repo: &Path,
     lock_domain_id: &str,
     canonical_relative_path: &str,
@@ -101,7 +101,7 @@ fn clear_lock(
     Ok(())
 }
 
-fn read_locks(repo: &Path, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
+pub fn read_locks(repo: &Path, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
     let mut locks = Vec::new();
     let domain = repo.join(format!("lock_domains/{}", lock_domain_id));
     match domain.read_dir() {

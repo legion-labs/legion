@@ -183,6 +183,11 @@ fn main() -> Result<(), String> {
                         .help("name of the existing branch to sync to"))
         )
         .subcommand(
+            SubCommand::with_name("detach-branch")
+                .about("Move the current branch and its descendance to a new lock domain")
+
+        )
+        .subcommand(
             SubCommand::with_name("list-branches")
                 .about("Prints a list of all branches")
         )
@@ -279,6 +284,7 @@ fn main() -> Result<(), String> {
             let name = command_match.value_of("name").unwrap();
             switch_branch_command(name)
         }
+        ("detach-branch", Some(_command_match)) => detach_branch_command(),
         ("list-branches", Some(_command_match)) => list_branches_command(),
         ("revert", Some(command_match)) => {
             revert_file_command(Path::new(command_match.value_of("path").unwrap()))

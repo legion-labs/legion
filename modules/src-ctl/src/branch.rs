@@ -84,11 +84,8 @@ pub fn create_branch_command(name: &str) -> Result<(), String> {
     save_current_branch(&workspace_root, &new_branch)
 }
 
-pub fn list_branches_command() -> Result<(), String> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo = &workspace_spec.repository;
+pub fn read_branches(repo: &Path) -> Result<Vec<Branch>, String> {
+    let mut res = Vec::new();
     let branches_dir = repo.join("branches");
     match branches_dir.read_dir() {
         Ok(dir_iterator) => {
@@ -99,10 +96,7 @@ pub fn list_branches_command() -> Result<(), String> {
                             serde_json::from_str(&read_text_file(&entry.path())?);
                         match parsed {
                             Ok(branch) => {
-                                println!(
-                                    "{} head:{} parent:{}",
-                                    branch.name, branch.head, branch.parent
-                                );
+                                res.push(branch);
                             }
                             Err(e) => {
                                 return Err(format!(
@@ -126,6 +120,20 @@ pub fn list_branches_command() -> Result<(), String> {
                 e
             ));
         }
+    }
+    Ok(res)
+}
+
+pub fn list_branches_command() -> Result<(), String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let repo = &workspace_spec.repository;
+    for branch in read_branches(repo)? {
+        println!(
+            "{} head:{} parent:{}",
+            branch.name, branch.head, branch.parent
+        );
     }
     Ok(())
 }
