@@ -437,4 +437,18 @@ fn test_locks() {
         &work1,
         &["commit", r#"-m"commiting with file now unlocked""#],
     );
+
+    lsc_cli_sys(&work1, &["lock", "file2.txt"]);
+    lsc_cli_sys(&work2, &["sync"]);
+    lsc_cli_sys_fail(&work2, &["delete", "file2.txt"]);
+    lsc_cli_sys(&work1, &["unlock", "file2.txt"]);
+    lsc_cli_sys(&work2, &["delete", "file2.txt"]);
+    lsc_cli_sys(&work1, &["lock", "file2.txt"]);
+    lsc_cli_sys_fail(
+        &work2,
+        &[
+            "commit",
+            r#"-m"commiting with file locked in other workspace""#,
+        ],
+    );
 }
