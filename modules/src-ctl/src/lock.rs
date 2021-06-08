@@ -40,12 +40,6 @@ pub fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
     Ok(())
 }
 
-pub enum SearchResult<T, E> {
-    Ok(T),
-    Err(E),
-    None,
-}
-
 fn read_lock(
     repo: &Path,
     lock_domain_id: &str,

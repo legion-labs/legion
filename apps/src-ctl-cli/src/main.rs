@@ -324,7 +324,7 @@ fn main() -> Result<(), String> {
         ("resolves-pending", Some(_command_match)) => match find_resolves_pending_command() {
             Ok(resolves_pending) => {
                 if resolves_pending.is_empty() {
-                    println!("No merges pending");
+                    println!("No local changes need to be resolved");
                 }
                 for m in resolves_pending {
                     println!(

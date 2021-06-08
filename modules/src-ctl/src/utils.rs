@@ -4,6 +4,12 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::result::Result;
 
+pub enum SearchResult<T, E> {
+    Ok(T),
+    Err(E),
+    None,
+}
+
 pub fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
     match fs::File::create(path) {
         Ok(mut file) => {

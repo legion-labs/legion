@@ -59,44 +59,59 @@ pub fn clear_resolve_pending(
     Ok(())
 }
 
-fn find_resolve_pending(
+pub fn find_resolve_pending(
     workspace_root: &Path,
     relative_path: &Path,
-) -> Result<ResolvePending, String> {
+) -> SearchResult<ResolvePending, String> {
     let resolves_pending_dir = workspace_root.join(".lsc/resolve_pending");
     match resolves_pending_dir.read_dir() {
         Ok(dir_iterator) => {
             for entry_res in dir_iterator {
                 match entry_res {
-                    Ok(entry) => {
-                        let parsed: serde_json::Result<ResolvePending> =
-                            serde_json::from_str(&read_text_file(&entry.path())?);
-                        match parsed {
-                            Ok(merge) => {
-                                if merge.relative_path == relative_path {
-                                    return Ok(merge);
+                    Ok(entry) => match read_text_file(&entry.path()) {
+                        Ok(contents) => {
+                            let parsed: serde_json::Result<ResolvePending> =
+                                serde_json::from_str(&contents);
+                            match parsed {
+                                Ok(merge) => {
+                                    if merge.relative_path == relative_path {
+                                        return SearchResult::Ok(merge);
+                                    }
+                                }
+                                Err(e) => {
+                                    return SearchResult::Err(format!(
+                                        "Error parsing {:?}: {}",
+                                        entry.path(),
+                                        e
+                                    ));
                                 }
                             }
-                            Err(e) => {
-                                return Err(format!("Error parsing {:?}: {}", entry.path(), e));
-                            }
                         }
+                        Err(e) => {
+                            return SearchResult::Err(format!(
+                                "Error reading file {}: {}",
+                                entry.path().display(),
+                                e
+                            ));
+                        }
+                    },
+                    Err(e) => {
+                        return SearchResult::Err(format!(
+                            "Error reading pending merge entry: {}",
+                            e
+                        ))
                     }
-                    Err(e) => return Err(format!("Error reading pending merge entry: {}", e)),
                 }
             }
         }
         Err(e) => {
-            return Err(format!(
+            return SearchResult::Err(format!(
                 "Error reading directory {:?}: {}",
                 resolves_pending_dir, e
             ))
         }
     }
-    Err(format!(
-        "local change {} not found",
-        relative_path.display()
-    ))
+    SearchResult::None
 }
 
 fn read_resolves_pending(workspace_root: &Path) -> Result<Vec<ResolvePending>, String> {
@@ -233,45 +248,61 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
-    let resolve_pending = find_resolve_pending(&workspace_root, &relative_path)?;
-    let base_file_hash = find_file_hash_at_commit(
-        &workspace_spec.repository,
-        &relative_path,
-        &resolve_pending.base_commit_id,
-    )?;
-    let base_temp_file = download_temp_file(repo, &workspace_root, &base_file_hash)?;
-    let theirs_file_hash = find_file_hash_at_commit(
-        &workspace_spec.repository,
-        &relative_path,
-        &resolve_pending.theirs_commit_id,
-    )?;
-    let theirs_temp_file = download_temp_file(repo, &workspace_root, &theirs_file_hash)?;
-    let tmp_dir = workspace_root.join(".lsc/tmp");
-    let output_temp_file = TempPath {
-        path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),
-    };
-    if !allow_tools {
-        run_diffy_merge(&abs_path, &theirs_temp_file.path, &base_temp_file.path)?;
-        clear_resolve_pending(&workspace_root, &resolve_pending)?;
-        return Ok(());
-    }
+    match find_resolve_pending(&workspace_root, &relative_path) {
+        SearchResult::Err(e) => {
+            return Err(format!(
+                "Error finding resolve pending for file {}: {}",
+                p.display(),
+                e
+            ));
+        }
+        SearchResult::None => {
+            return Err(format!(
+                "Pending resolve for file {} not found",
+                p.display()
+            ));
+        }
+        SearchResult::Ok(resolve_pending) => {
+            let base_file_hash = find_file_hash_at_commit(
+                &workspace_spec.repository,
+                &relative_path,
+                &resolve_pending.base_commit_id,
+            )?;
+            let base_temp_file = download_temp_file(repo, &workspace_root, &base_file_hash)?;
+            let theirs_file_hash = find_file_hash_at_commit(
+                &workspace_spec.repository,
+                &relative_path,
+                &resolve_pending.theirs_commit_id,
+            )?;
+            let theirs_temp_file = download_temp_file(repo, &workspace_root, &theirs_file_hash)?;
+            let tmp_dir = workspace_root.join(".lsc/tmp");
+            let output_temp_file = TempPath {
+                path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),
+            };
+            if !allow_tools {
+                run_diffy_merge(&abs_path, &theirs_temp_file.path, &base_temp_file.path)?;
+                clear_resolve_pending(&workspace_root, &resolve_pending)?;
+                return Ok(());
+            }
 
-    run_merge_program(
-        &relative_path,
-        abs_path.to_str().unwrap(),
-        theirs_temp_file.path.to_str().unwrap(),
-        base_temp_file.path.to_str().unwrap(),
-        output_temp_file.path.to_str().unwrap(),
-    )?;
-    if let Err(e) = fs::copy(&output_temp_file.path, &abs_path) {
-        return Err(format!(
-            "Error copying {} to {}: {}",
-            output_temp_file.path.display(),
-            abs_path.display(),
-            e
-        ));
+            run_merge_program(
+                &relative_path,
+                abs_path.to_str().unwrap(),
+                theirs_temp_file.path.to_str().unwrap(),
+                base_temp_file.path.to_str().unwrap(),
+                output_temp_file.path.to_str().unwrap(),
+            )?;
+            if let Err(e) = fs::copy(&output_temp_file.path, &abs_path) {
+                return Err(format!(
+                    "Error copying {} to {}: {}",
+                    output_temp_file.path.display(),
+                    abs_path.display(),
+                    e
+                ));
+            }
+            println!("Merge accepted, {} updated", abs_path.display());
+            clear_resolve_pending(&workspace_root, &resolve_pending)?;
+        }
     }
-    println!("Merge accepted, {} updated", abs_path.display());
-    clear_resolve_pending(&workspace_root, &resolve_pending)?;
     Ok(())
 }

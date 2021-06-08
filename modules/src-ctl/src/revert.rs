@@ -25,5 +25,15 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
         make_file_read_only(&abs_path, true)?;
     }
     clear_local_change(&workspace_root, &local_change)?;
-    Ok(())
+    match find_resolve_pending(&workspace_root, &relative_path) {
+        SearchResult::Ok(resolve_pending) => {
+            clear_resolve_pending(&workspace_root, &resolve_pending)
+        }
+        SearchResult::Err(e) => Err(format!(
+            "Error finding resolve pending for file {}: {}",
+            relative_path.display(),
+            e
+        )),
+        SearchResult::None => Ok(()),
+    }
 }

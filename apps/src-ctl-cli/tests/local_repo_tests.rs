@@ -248,6 +248,17 @@ fn local_single_branch_merge_flow() {
     lsc_cli_sys(&work1, &["resolve", "--notool", "file1.txt"]);
     lsc_cli_sys(&work1, &["resolves-pending"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"merged""#]);
+
+    lsc_cli_sys(&work2, &["sync"]);
+    lsc_cli_sys(&work2, &["edit", "file1.txt"]);
+    append_text_to_file(&work2.join("file1.txt"), "line4\n");
+    lsc_cli_sys(&work2, &["commit", r#"-m"add line4 to file1""#]);
+
+    lsc_cli_sys(&work1, &["edit", "file1.txt"]);
+    lsc_cli_sys(&work1, &["sync"]);
+    lsc_cli_sys(&work1, &["resolves-pending"]);
+    lsc_cli_sys(&work1, &["revert", "file1.txt"]);
+    lsc_cli_sys(&work1, &["resolves-pending"]);
 }
 
 #[test]
