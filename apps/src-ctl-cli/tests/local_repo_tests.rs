@@ -493,3 +493,13 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["lock", "some_other_file.txt"]);
     lsc_cli_sys(&work1, &["attach-branch", "main"]);
 }
+
+#[test]
+fn test_import_git() {
+    let output = Command::new("git")
+        .args(&["rev-parse", "--show-toplevel"])
+        .output()
+        .expect("failed to execute git command");
+    let root_dir = Path::new(std::str::from_utf8(&output.stdout).unwrap().trim_end());
+    assert!(root_dir.exists());
+}
