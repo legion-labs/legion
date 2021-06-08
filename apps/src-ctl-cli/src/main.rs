@@ -188,6 +188,15 @@ fn main() -> Result<(), String> {
 
         )
         .subcommand(
+            SubCommand::with_name("attach-branch")
+                .about("Merges the lock domains of the two branches")
+                .arg(
+                    Arg::with_name("parent-branch-name")
+                        .required(true)
+                        .help("name of the existing branch to set as parent"))
+
+        )
+        .subcommand(
             SubCommand::with_name("list-branches")
                 .about("Prints a list of all branches")
         )
@@ -285,6 +294,10 @@ fn main() -> Result<(), String> {
             switch_branch_command(name)
         }
         ("detach-branch", Some(_command_match)) => detach_branch_command(),
+        ("attach-branch", Some(command_match)) => {
+            let name = command_match.value_of("parent-branch-name").unwrap();
+            attach_branch_command(name)
+        }
         ("list-branches", Some(_command_match)) => list_branches_command(),
         ("revert", Some(command_match)) => {
             revert_file_command(Path::new(command_match.value_of("path").unwrap()))

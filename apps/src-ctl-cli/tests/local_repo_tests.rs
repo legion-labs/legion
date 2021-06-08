@@ -469,4 +469,16 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["create-branch", "feature-gchild2"]);
     lsc_cli_sys(&work1, &["switch-branch", "feature"]);
     lsc_cli_sys(&work1, &["detach-branch"]);
+
+    lsc_cli_sys(&work1, &["switch-branch", "main"]);
+    lsc_cli_sys(&work1, &["lock", "file2.txt"]);
+
+    lsc_cli_sys(&work1, &["switch-branch", "feature-child"]);
+    lsc_cli_sys_fail(&work1, &["attach-branch", "main"]); //branch already has a parent
+
+    lsc_cli_sys(&work1, &["switch-branch", "feature"]);
+    lsc_cli_sys_fail(&work1, &["attach-branch", "main"]); //lock domains conflict on file2.txt
+    lsc_cli_sys(&work1, &["unlock", "file2.txt"]);
+    lsc_cli_sys(&work1, &["lock", "some_other_file.txt"]);
+    lsc_cli_sys(&work1, &["attach-branch", "main"]);
 }

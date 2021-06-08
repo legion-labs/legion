@@ -101,6 +101,17 @@ pub fn clear_lock(
     Ok(())
 }
 
+pub fn clear_lock_domain(repo: &Path, lock_domain_id: &str) -> Result<(), String> {
+    let dir = repo.join(format!("lock_domains/{}", lock_domain_id));
+    if let Err(e) = fs::remove_dir(&dir) {
+        return Err(format!(
+            "Error deleting lock domain {}: {}",
+            lock_domain_id, e
+        ));
+    }
+    Ok(())
+}
+
 pub fn read_locks(repo: &Path, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
     let mut locks = Vec::new();
     let domain = repo.join(format!("lock_domains/{}", lock_domain_id));

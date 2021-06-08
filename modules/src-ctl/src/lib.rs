@@ -56,6 +56,7 @@
 // crate-specific exceptions:
 #![allow()]
 
+pub mod attach_branch;
 pub mod branch;
 pub mod commit;
 pub mod config;
@@ -76,6 +77,7 @@ pub mod tree;
 pub mod utils;
 pub mod workspace;
 
+pub use attach_branch::*;
 pub use branch::*;
 pub use commit::*;
 pub use config::*;

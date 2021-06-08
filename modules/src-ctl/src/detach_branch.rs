@@ -41,6 +41,13 @@ pub fn detach_branch_command() -> Result<(), String> {
 
     let descendants = find_branch_descendants(repo, &current_branch.name)?;
 
+    if let Err(e) = save_branch_to_repo(repo, &repo_branch) {
+        return Err(format!(
+            "Error saving {} to clear its parent: {}",
+            repo_branch.name, e
+        ));
+    }
+
     let mut errors = Vec::new();
 
     for branch_name in &descendants {
