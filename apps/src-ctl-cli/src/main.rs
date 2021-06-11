@@ -241,6 +241,14 @@ fn main() -> Result<(), String> {
             SubCommand::with_name("config")
                 .about("Prints the path to the configuration file and its content")
         )
+        .subcommand(
+            SubCommand::with_name("import-git-repo")
+                .about("Replicates branches and commits from a git repo")
+                .arg(
+                    Arg::with_name("path")
+                        .required(true)
+                        .help("Path to the root of a git repository. Should contain a .git subfolder"))
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -344,6 +352,9 @@ fn main() -> Result<(), String> {
         },
         ("log", Some(_command_match)) => log_command(),
         ("config", Some(_command_match)) => print_config_command(),
+        ("import-git-repo", Some(command_match)) => {
+            import_git_repo_command(Path::new(command_match.value_of("path").unwrap()))
+        }
         other_match => Err(format!("unknown subcommand match: {:?}", &other_match)),
     }
 }

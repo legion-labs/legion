@@ -494,12 +494,35 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["attach-branch", "main"]);
 }
 
-#[test]
-fn test_import_git() {
+fn get_root_git_directory() -> PathBuf {
     let output = Command::new("git")
         .args(&["rev-parse", "--show-toplevel"])
         .output()
         .expect("failed to execute git command");
-    let root_dir = Path::new(std::str::from_utf8(&output.stdout).unwrap().trim_end());
+    PathBuf::from(std::str::from_utf8(&output.stdout).unwrap().trim_end())
+}
+
+#[test]
+fn test_import_git() {
+    let test_dir = test_dir("test_import_git");
+    let repo_dir = test_dir.join("repo");
+    let work1 = test_dir.join("work1");
+
+    lsc_cli_sys(
+        &test_dir,
+        &["init-local-repository", repo_dir.to_str().unwrap()],
+    );
+
+    lsc_cli_sys(
+        &test_dir,
+        &[
+            "init-workspace",
+            work1.to_str().unwrap(),
+            repo_dir.to_str().unwrap(),
+        ],
+    );
+    let root_dir = get_root_git_directory();
     assert!(root_dir.exists());
+
+    lsc_cli_sys(&work1, &["import-git-repo", root_dir.to_str().unwrap()]);
 }

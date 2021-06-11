@@ -52,8 +52,19 @@ pub fn read_current_branch(workspace_root: &Path) -> Result<Branch, String> {
 }
 
 pub fn read_branch_from_repo(repo: &Path, name: &str) -> Result<Branch, String> {
-    let file_path = repo.join("branches").join(name.to_owned() + ".json");
+    let file_path = repo.join(format!("branches/{}.json", name));
     read_branch(&file_path)
+}
+
+pub fn find_branch(repo: &Path, name: &str) -> SearchResult<Branch, String> {
+    let file_path = repo.join(format!("branches/{}.json", name));
+    if !file_path.exists() {
+        return SearchResult::None;
+    }
+    match read_branch(&file_path) {
+        Ok(branch) => SearchResult::Ok(branch),
+        Err(e) => SearchResult::Err(e),
+    }
 }
 
 pub fn read_branch(branch_file_path: &Path) -> Result<Branch, String> {

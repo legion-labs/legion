@@ -72,6 +72,11 @@ pub fn read_commit(repo: &Path, id: &str) -> Result<Commit, String> {
     }
 }
 
+pub fn commit_exists(repo: &Path, id: &str) -> bool {
+    let file_path = repo.join(format!("commits/{}.json", id));
+    file_path.exists()
+}
+
 fn write_blob(file_path: &Path, contents: &[u8]) -> Result<(), String> {
     if fs::metadata(file_path).is_ok() {
         //blob already exists
