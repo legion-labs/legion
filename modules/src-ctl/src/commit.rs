@@ -128,23 +128,21 @@ fn make_local_files_read_only(
     Ok(())
 }
 
-pub fn commit(message: &str) -> Result<(), String> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut current_branch = read_current_branch(&workspace_root)?;
+pub fn commit_local_changes(workspace_root: &Path, message: &str) -> Result<(), String> {
+    let workspace_spec = read_workspace_spec(workspace_root)?;
+    let mut current_branch = read_current_branch(workspace_root)?;
     let repo = &workspace_spec.repository;
     let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
-    let local_changes = read_local_changes(&workspace_root)?;
+    let local_changes = read_local_changes(workspace_root)?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
-        assert_not_locked(&workspace_root, &abs_path)?;
+        assert_not_locked(workspace_root, &abs_path)?;
     }
     let hashed_changes =
-        upload_localy_edited_blobs(&workspace_root, &workspace_spec, &local_changes)?;
+        upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
 
     let base_commit = read_commit(repo, &current_branch.head)?;
 
@@ -155,7 +153,7 @@ pub fn commit(message: &str) -> Result<(), String> {
     )?;
 
     let mut parent_commits = Vec::from([base_commit.id]);
-    for pending_branch_merge in read_pending_branch_merges(&workspace_root)? {
+    for pending_branch_merge in read_pending_branch_merges(workspace_root)? {
         parent_commits.push(pending_branch_merge.head.clone());
     }
 
@@ -168,17 +166,23 @@ pub fn commit(message: &str) -> Result<(), String> {
     );
     save_commit(repo, &commit)?;
     current_branch.head = commit.id;
-    save_current_branch(&workspace_root, &current_branch)?;
+    save_current_branch(workspace_root, &current_branch)?;
 
     //todo: will need to lock to avoid races in updating branch in the database
     save_branch_to_repo(repo, &current_branch)?;
 
-    if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
+    if let Err(e) = make_local_files_read_only(workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);
     }
-    clear_local_changes(&workspace_root, &local_changes);
-    clear_pending_branch_merges(&workspace_root);
+    clear_local_changes(workspace_root, &local_changes);
+    clear_pending_branch_merges(workspace_root);
     Ok(())
+}
+
+pub fn commit_command(message: &str) -> Result<(), String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    commit_local_changes(&workspace_root, message)
 }
 
 pub fn find_branch_commits(repo: &Path, branch: &Branch) -> Result<Vec<Commit>, String> {

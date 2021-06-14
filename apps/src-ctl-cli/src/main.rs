@@ -315,7 +315,7 @@ fn main() -> Result<(), String> {
             for item in command_match.values_of("message").unwrap() {
                 message += item;
             }
-            commit(&message)
+            commit_command(&message)
         }
         ("local-changes", Some(_command_match)) => match find_local_changes_command() {
             Ok(changes) => {

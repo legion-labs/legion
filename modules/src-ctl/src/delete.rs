@@ -9,6 +9,23 @@ pub fn delete_file_command(path_specified: &Path) -> Result<(), String> {
     }
     let workspace_root = find_workspace_root(&abs_path)?;
     assert_not_locked(&workspace_root, &abs_path)?;
+
+    let relative_path = path_relative_to(&abs_path, &workspace_root)?;
+    match find_local_change(&workspace_root, &relative_path) {
+        SearchResult::Ok(change) => {
+            return Err(format!(
+                "Error: {} already tracked for {}",
+                change.relative_path.display(),
+                change.change_type
+            ));
+        }
+        SearchResult::Err(e) => {
+            return Err(format!("Error searching in local changes: {}", e));
+        }
+        SearchResult::None => { //all is good
+        }
+    }
+
     //todo: lock file
     let local_change = LocalChange::new(
         path_relative_to(&abs_path, workspace_root.as_path())?,
