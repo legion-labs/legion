@@ -503,6 +503,7 @@ fn get_root_git_directory() -> PathBuf {
 }
 
 #[test]
+#[ignore]
 fn test_import_git() {
     let test_dir = test_dir("test_import_git");
     let repo_dir = test_dir.join("repo");
