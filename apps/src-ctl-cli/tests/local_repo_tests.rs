@@ -503,7 +503,7 @@ fn get_root_git_directory() -> PathBuf {
 }
 
 #[test]
-#[ignore]
+#[ignore] //fails in the build actions because tests don't run under a full git clone, see https://github.com/legion-labs/legion/issues/4
 fn test_import_git() {
     let test_dir = test_dir("test_import_git");
     let repo_dir = test_dir.join("repo");
