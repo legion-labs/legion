@@ -64,12 +64,18 @@ June 2021
 ## Problem statement
 > Hundreds of instances of a microservice are spawned to work on a small part of the data kept under source control. How can we give them efficient access in read and write?
 
-Shared, virtual workspaces.
 
-Like a local workspace, it's a set of modifications based on a branch at a specific revision (commit).
+---
 
- * Unmodified files are fetched on demand.
- * No concurrency guarantees.
+## Shared, virtual workspaces
+
+Like a local workspace, it's a set of modifications based on a branch.
+
+- Unmodified files are fetched on demand.
+- No concurrency guarantees.
+- Makes possible tight collaboration workflows
+  * one workspace shared by many people
+  * auto-sync workspace that's always on latest (except for modified files)
 
 ---
 
@@ -84,3 +90,79 @@ Like a local workspace, it's a set of modifications based on a branch at a speci
 - Requirements and implications
 - **Data structures and architecture**
 - Roadmap
+
+---
+# Data: commit
+> like git, but centralized
+
+![bg width:800px right](figures/branch_commits.svg)
+
+- branch has a commit pointer
+- commits are back-linked
+- blobs and trees are stored in content adressable storage
+
+---
+# Data: commit
+
+```
+pub struct Commit {
+    pub id: String,
+    pub owner: String,
+    pub message: String,
+    pub changes: Vec<HashedChange>,
+    pub root_hash: String,
+    pub parents: Vec<String>,
+    pub date_time_utc: String,
+}
+```
+
+---
+# Data: branch
+```
+pub struct Branch {
+    pub name: String,
+    pub head: String, //commit id
+    pub parent: String,
+    pub lock_domain_id: String,
+}
+```
+
+---
+# Data: tree
+
+```
+pub struct TreeNode {
+    pub name: String,
+    pub hash: String,
+}
+
+pub struct Tree {
+    pub directory_nodes: Vec<TreeNode>,
+    pub file_nodes: Vec<TreeNode>,
+}
+```
+
+Hash of a file node points to a blob.
+Hash of a directory node points to a tree.
+
+Every commit has a different root.
+Unchanged directories refer to the same tree nodes.
+
+---
+# Data: local workspace
+
+- Branch name and commit
+- Local changes
+- Pending file resolves
+- Pending branch merge
+- **physical copy of all the files in the commit's tree**
+
+---
+# Data: repository
+
+- Trees
+- Commits
+- Blobs
+- Branches
+- Workspaces
+- Lock domains
