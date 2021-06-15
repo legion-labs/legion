@@ -94,6 +94,11 @@ Below is a list things to consider for each data type, transformation and some c
    - How do we support level-streaming?
    - How are the assets divided into streamed chunks?
 
+5. Runtime reflection
+
+   - Having the ability to target data properties by 'path' at runtime (i.e. scripting)
+   - Being able to live-edit properties?
+
 ### Packaged Data Format
 
 1. Support data compression
