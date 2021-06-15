@@ -102,7 +102,14 @@ Below is a list things to consider for each data type, transformation and some c
 ### Packaged Data Format
 
 1. Support data compression
-2. Support patching
+2. File "virtualization"
+
+   - I.e. loading different `archive` for different language while keeping the same filepaths at runtime
+
+3. Support patching
+
+   - Creating `delta archives`
+   - Overriding files through higher-priority `archives`
 
 ### Data Compilation (offline -> runtime)
 
