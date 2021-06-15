@@ -8,7 +8,7 @@ June 2021
 
 ---
 # Legion Source Control
-- Requirements and implications
+- **Requirements and implications**
 - Data structures and architecture
 - Roadmap
 
@@ -87,7 +87,7 @@ Like a local workspace, it's a set of modifications based on a branch.
 
  ---
 # Legion Source Control
-- Requirements and implications
+- Requirements and implications ✓
 - **Data structures and architecture**
 - Roadmap
 
@@ -166,3 +166,44 @@ Unchanged directories refer to the same tree nodes.
 - Branches
 - Workspaces
 - Lock domains
+
+---
+# Data: AWS server-side
+
+- blobs: S3
+- everything else: Aurora?
+  * needs transactions and row locking
+  * serverless
+- runtime: App runner?
+  * needs containers that will run Rust on server-side
+  * serverless
+
+ ---
+# Legion Source Control
+- Requirements and implications ✓
+- Data structures and architecture ✓
+- **Roadmap**
+
+---
+
+# Roadmap
+
+## Roadmap: Now
+ - Local workspace
+ - Local repository
+ - Import from git
+
+---
+## Roadmap: Summer
+ - AWS repository
+ - Back & forth with git
+   * self-hosting becomes possible
+ - Import from perforce
+
+## Roadmap: Autumn
+ - Shared workspace (programmatic access)
+ - Virtual filesystem on linux?
+ - UI?
+
+---
+# ?
