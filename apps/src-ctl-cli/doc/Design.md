@@ -75,7 +75,7 @@ Like a local workspace, it's a set of modifications based on a branch.
 - No concurrency guarantees.
 - Makes possible tight collaboration workflows
   * one workspace shared by many people
-  * auto-sync workspace that's always on latest (except for modified files)
+  * auto-sync workspace that's always on latest (auto-merging of local changes?)
 
 ---
 
@@ -142,11 +142,18 @@ pub struct Tree {
 }
 ```
 
-Hash of a file node points to a blob.
-Hash of a directory node points to a tree.
+- Hash of a file node points to a blob.
+- Hash of a directory node points to a tree.
 
-Every commit has a different root.
-Unchanged directories refer to the same tree nodes.
+---
+# Data: tree (continued)
+
+- Every commit has a different root.
+- No need to have the whole tree in memory, only one folder at a time
+- Unchanged directories refer to the same tree nodes.
+- **Forces serialization of commit commands**
+  * even when two consecutive commits don't have overlapping changes
+  * because all commits refer to a complete tree hierarchy
 
 ---
 # Data: local workspace
@@ -177,6 +184,7 @@ Unchanged directories refer to the same tree nodes.
 - runtime: App runner?
   * needs containers that will run Rust on server-side
   * serverless
+  * HTTP or gRPC?
 
  ---
 # Legion Source Control
