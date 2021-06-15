@@ -276,7 +276,8 @@ pub fn import_git_repo_command(git_root_path: &Path) -> Result<(), String> {
     match git2::Repository::open(git_root_path) {
         Ok(git_repo) => {
             println!("git repository state: {:?}", git_repo.state());
-            //todo: instead of discovering branches, the user should specify which one to import
+            // todo: instead of discovering branches, the user should specify which one to import
+            // https://github.com/legion-labs/legion/issues/21
             match git_repo.branches(Some(git2::BranchType::Local)) {
                 Ok(branches) => {
                     for branch_result in branches {
