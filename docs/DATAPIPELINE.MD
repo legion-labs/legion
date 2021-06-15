@@ -29,39 +29,45 @@ Below is a list things to consider for each data type, transformation and some c
    - What is the language(s) that tools use?
    - Take a look at the Racket macro system as an example of an extensible data definition system
 
-2. Versioning & Compatibility
+2. Asset metadata
+
+   - Provide a way to describe additional data about an asset (unique id, compression, anim frame-range, etc)
+   - Metadata can point to a source asset producing many offline assets from it
+   - Have a central place for asset metadata (db?)
+
+3. Versioning & Compatibility
 
    - Can a new tool version open old data?
    - Can an old tool version open new data?
 
-3. Version Conversion
+4. Version Conversion
 
    - How can we run custom code to convert data from old to new format?
    - How can we read old format and write a new one at the same time?
    - How do we deprecate formats and remove conversion over time?
 
-4. Dependency tracking (static & dynamic) consistent, asset type independent.
+5. Dependency tracking (static & dynamic) consistent, asset type independent.
 
    - How do we determine dependencies without having to read asset's content?
 
-5. Generic asset cloning
+6. Generic asset cloning
 
    - Can we copy/paste assets in an asset-type independent way?
 
-6. Generic undo/redo
+7. Generic undo/redo
 
    - Can we create undo/redo functionality in an asset-independent way?
 
-7. Seamless collaboration
+8. Seamless collaboration
 
    - What does it mean to collaborate seamlessly?
    - How do we resolve conflicts? Which conflicts can be auto-resolved?
 
-8. Offline data granularity
+9. Offline data granularity
 
    - To enable good collaboration data should be split in many files.
 
-9. Incremental building
+10. Incremental building
 
    - How do we track what changed?
    - How do we know what needs to be rebuilt?
