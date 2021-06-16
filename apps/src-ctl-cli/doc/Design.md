@@ -2,6 +2,8 @@
 marp: true
 ---
 
+![bg right](figures/shark.jpg)
+
 # Legion Source Control
 
 June 2021
@@ -16,16 +18,20 @@ June 2021
 
 # Requirements
 
-- Unified code & data solution
 - Large binary files: Central database
 - Support for live workflows: Branches
+- Support code & data
 - Predictable merges: Central locking across branches
 - Support for distributed build tools: Shared virtual workspaces
 
 ---
 
-# Requirement: Unified code & data solution
+# Requirement: Support code & data
 
+- Toolset should be the same to track/diff code in C++, Rust, Lua
+  * Code can be an asset
+- Configurable merge/diff tools based on file path patterns
+  * Source control can't be expected to understand all file types
 - Code and data have interdependencies
 - Atomic changes across code & data in a single commit
 - Unified tools and processes for all crafts
@@ -43,6 +49,7 @@ June 2021
 
 - Branches!
 - Git branches are very efficient in size and speed
+  * Perforce branches can be more flexible, but do we really need that? 
 
 ---
 
@@ -84,6 +91,17 @@ Like a local workspace, it's a set of modifications based on a branch.
  - On-site cache or commit servers
  - CI/CD specific features
  - Task tracking integration
+
+---
+# Comparison with standard industry tools
+
+ - unlike perforce, workspace is assumed to be based on a single commit
+   * no per-file sync info in the workspace
+   * other revisions are accessible, but would be a local edit
+ - unlike git, there is a central authority
+   * locks are necessary, not just an optimisation
+   * VFS for git is an optimisation, but does not solve the merge problem
+
 
  ---
 # Legion Source Control
