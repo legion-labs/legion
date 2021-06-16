@@ -190,7 +190,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
                 //todo: handle case where merge pending already exists
                 //todo: validate how we want to deal with merge pending with syncing backwards
                 let merge_pending = ResolvePending::new(
-                    relative_path.to_path_buf(),
+                    relative_path.clone(),
                     workspace_branch.head.clone(),
                     String::from(commit_id),
                 );

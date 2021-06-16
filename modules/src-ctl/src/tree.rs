@@ -197,7 +197,7 @@ pub fn update_tree_from_changes(
                         .expect("path is invalid string"),
                 );
                 if change.change_type == "delete" {
-                    tree.remove_file_node(&filename)
+                    tree.remove_file_node(&filename);
                 } else {
                     tree.add_or_update_file_node(TreeNode {
                         name: filename,

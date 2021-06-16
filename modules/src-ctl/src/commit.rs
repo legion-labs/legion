@@ -46,7 +46,7 @@ impl Commit {
 }
 
 pub fn save_commit(repo: &Path, commit: &Commit) -> Result<(), String> {
-    let file_path = repo.join("commits").join(commit.id.to_owned() + ".json");
+    let file_path = repo.join("commits").join(commit.id.clone() + ".json");
     match serde_json::to_string(&commit) {
         Ok(json) => {
             write_file(&file_path, json.as_bytes())?;

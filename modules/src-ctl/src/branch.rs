@@ -29,7 +29,7 @@ fn write_branch_spec(file_path: &Path, branch: &Branch) -> Result<(), String> {
 }
 
 pub fn save_new_branch_to_repo(repo: &Path, branch: &Branch) -> Result<(), String> {
-    let file_path = repo.join("branches").join(branch.name.to_owned() + ".json");
+    let file_path = repo.join("branches").join(branch.name.clone() + ".json");
     match serde_json::to_string(branch) {
         Ok(json) => write_new_file(&file_path, json.as_bytes()),
         Err(e) => Err(format!("Error formatting branch {:?}: {}", branch, e)),
@@ -37,7 +37,7 @@ pub fn save_new_branch_to_repo(repo: &Path, branch: &Branch) -> Result<(), Strin
 }
 
 pub fn save_branch_to_repo(repo: &Path, branch: &Branch) -> Result<(), String> {
-    let file_path = repo.join("branches").join(branch.name.to_owned() + ".json");
+    let file_path = repo.join("branches").join(branch.name.clone() + ".json");
     write_branch_spec(&file_path, branch)
 }
 
