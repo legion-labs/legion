@@ -4,11 +4,13 @@ use std::fs;
 use std::path::Path;
 
 pub fn init_workspace(
-    workspace_directory: &Path,
-    repository_directory: &Path,
+    specified_workspace_directory: &Path,
+    specified_repository_directory: &Path,
 ) -> Result<(), String> {
-    if fs::metadata(workspace_directory).is_ok() {
-        return Err(format!("{:?} already exists", workspace_directory));
+    let workspace_directory = make_path_absolute(specified_workspace_directory);
+    let repository_directory = make_path_absolute(specified_repository_directory);
+    if fs::metadata(&workspace_directory).is_ok() {
+        return Err(format!("{} already exists", workspace_directory.display()));
     }
     if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc")) {
         return Err(format!("Error creating .lsc directory: {}", e));
@@ -34,8 +36,8 @@ pub fn init_workspace(
     }
     let spec = Workspace {
         id: uuid::Uuid::new_v4().to_string(),
-        repository: repository_directory.to_path_buf(),
-        root: workspace_directory.to_path_buf(),
+        repository: repository_directory.clone(),
+        root: workspace_directory.clone(),
         owner: whoami::username(),
     };
     write_workspace_spec(
@@ -49,8 +51,12 @@ pub fn init_workspace(
         &spec,
     )?;
     let main_branch = read_branch(repository_directory.join("branches/main.json").as_path())?;
-    save_current_branch(workspace_directory, &main_branch)?;
-    let commit = read_commit(repository_directory, &main_branch.head)?;
-    download_tree(repository_directory, workspace_directory, &commit.root_hash)?;
+    save_current_branch(&workspace_directory, &main_branch)?;
+    let commit = read_commit(&repository_directory, &main_branch.head)?;
+    download_tree(
+        &repository_directory,
+        &workspace_directory,
+        &commit.root_hash,
+    )?;
     Ok(())
 }
