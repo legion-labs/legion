@@ -160,6 +160,8 @@ pub struct Tree {
 - **Forces serialization of commit commands**
   * even when two consecutive commits don't have overlapping changes
   * because all commits refer to a complete tree hierarchy
+- **Current implementation forces commit from latest**
+  * because tree is computed on client
 
 ---
 # Data: local workspace
