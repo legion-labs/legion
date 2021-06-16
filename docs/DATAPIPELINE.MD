@@ -4,16 +4,18 @@ This document describes problems, ideas, considerations related to the data proc
 
 In high-level the data pipeline deals with 3 types of data and 2 transformations used to convert between those types.
 
-> **Offline** =<u>compilation</u>=> **Runtime** =<u>packing</u>=> **Packaged**
+> **Source** =<u>export</u>=> **Offline** =<u>compilation</u>=> **Runtime** =<u>packing</u>=> **Packaged**
 
 <u>Data formats</u>:
 
+- *Source* - data in a source editor format (photoshop, maya, hudini, etc)
 - *Offline* - edition-friendly data format optimized for editing/writing
 - *Runtime* - runtime-friendly data format optimized for reading
 - *Packaged* - IO-friendly data format optimized for throughput
 
 <u>Transformations</u>:
 
+- Data export - process of converting source format into offline format which is stripped of unrelevant pieces
 - Data compilation - process of converting offline data format to runtime format
 - Data packing - process of converting runtime format into packaged format
 
@@ -147,8 +149,9 @@ Below is a list things to consider for each data type, transformation and some c
 
 ## Questions:
 
-- how do we display offline data in editor? is it compiled to runtime data? or we display offline data?
-- is it feasible/reasonable to have separate runtime and storage data schemas.
+- Do we store source assets or the offline assets in source control?
+- How do we display offline data in editor? is it compiled to runtime data? or we display offline data?
+- Is it feasible/reasonable to have separate runtime and storage data schemas.
 
 
 
