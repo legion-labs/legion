@@ -25,13 +25,13 @@ pub struct Commit {
 
 impl Commit {
     pub fn new(
+        id: String,
         owner: String,
         message: String,
         changes: Vec<HashedChange>,
         root_hash: String,
         parents: Vec<String>,
     ) -> Self {
-        let id = uuid::Uuid::new_v4().to_string();
         let date_time_utc = Utc::now().to_rfc3339();
         Self {
             id,
@@ -128,7 +128,11 @@ fn make_local_files_read_only(
     Ok(())
 }
 
-pub fn commit_local_changes(workspace_root: &Path, message: &str) -> Result<(), String> {
+pub fn commit_local_changes(
+    workspace_root: &Path,
+    commit_id: &str,
+    message: &str,
+) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let mut current_branch = read_current_branch(workspace_root)?;
     let repo = &workspace_spec.repository;
@@ -158,6 +162,7 @@ pub fn commit_local_changes(workspace_root: &Path, message: &str) -> Result<(), 
     }
 
     let commit = Commit::new(
+        String::from(commit_id),
         whoami::username(),
         String::from(message),
         hashed_changes,
@@ -182,16 +187,19 @@ pub fn commit_local_changes(workspace_root: &Path, message: &str) -> Result<(), 
 pub fn commit_command(message: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
-    commit_local_changes(&workspace_root, message)
+    let id = uuid::Uuid::new_v4().to_string();
+    commit_local_changes(&workspace_root, &id, message)
 }
 
 pub fn find_branch_commits(repo: &Path, branch: &Branch) -> Result<Vec<Commit>, String> {
     let mut commits = Vec::new();
     let mut c = read_commit(repo, &branch.head)?;
+    println!("{}", c.id);
     commits.push(c.clone());
     while !c.parents.is_empty() {
         let id = &c.parents[0]; //first parent is assumed to be branch trunk
         c = read_commit(repo, id)?;
+        println!("{}", c.id);
         commits.push(c.clone());
     }
     Ok(commits)

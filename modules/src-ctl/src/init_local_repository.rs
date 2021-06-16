@@ -31,7 +31,9 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
     let root_hash = root_tree.hash();
     save_tree(directory, &root_tree, &root_hash)?;
 
+    let id = uuid::Uuid::new_v4().to_string();
     let initial_commit = Commit::new(
+        id,
         whoami::username(),
         String::from("initial commit"),
         Vec::new(),

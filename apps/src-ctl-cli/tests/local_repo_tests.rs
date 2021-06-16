@@ -35,7 +35,7 @@ fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
     assert_eq!(status.success(), should_succeed);
 }
 
-static LSC_CLI_EXE_VAR: &str = env!("CARGO_BIN_EXE_src-ctl-cli");
+static LSC_CLI_EXE_VAR: &str = env!("CARGO_BIN_EXE_lsc");
 fn lsc_cli_sys(wd: &Path, args: &[&str]) {
     syscall(LSC_CLI_EXE_VAR, wd, args, true);
 }

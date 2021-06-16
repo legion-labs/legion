@@ -159,7 +159,7 @@ fn import_commit_sequence(
     let mut reference_index = git2::Index::new().unwrap();
     loop {
         let commit = stack.last().unwrap();
-        let commit_id = root_commit.id().to_string();
+        let commit_id = commit.id().to_string();
         if commit_exists(repo, &commit_id) {
             match commit.tree() {
                 Ok(tree) => {
@@ -214,7 +214,8 @@ fn import_commit_sequence(
                         if let Err(e) = import_commit_diff(workspace_root, &diff, git_repo) {
                             return Err(format!("Error importing {:?}: {}", commit, e));
                         }
-                        if let Err(e) = commit_local_changes(workspace_root, &message) {
+                        let commit_id = commit.id().to_string();
+                        if let Err(e) = commit_local_changes(workspace_root, &commit_id, &message) {
                             return Err(format!("Error recording {:?}: {}", commit, e));
                         }
                     }
