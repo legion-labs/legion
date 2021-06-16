@@ -20,21 +20,9 @@ June 2021
 
 - Large binary files: Central database
 - Support for live workflows: Branches
-- Support code & data
 - Predictable merges: Central locking across branches
+- Support code & data
 - Support for distributed build tools: Shared virtual workspaces
-
----
-
-# Requirement: Support code & data
-
-- Toolset should be the same to track/diff code in C++, Rust, Lua
-  * Code can be an asset
-- Configurable merge/diff tools based on file path patterns
-  * Source control can't be expected to understand all file types
-- Code and data have interdependencies
-- Atomic changes across code & data in a single commit
-- Unified tools and processes for all crafts
 
 ---
 
@@ -66,6 +54,17 @@ June 2021
   * Allows to override/augment lock when conflict-free merge is guaranteed
 
 ---
+# Requirement: Support code & data
+
+- Toolset should be the same to track/diff code in C++, Rust, Lua
+  * Code can be an asset
+- Configurable merge/diff tools based on file path patterns
+  * Source control can't be expected to understand all file types
+- Code and data have interdependencies
+- Atomic changes across code & data in a single commit
+- Unified tools and processes for all crafts
+
+---
 
 # Requirement: Support for distributed build tools
 ## Problem statement
@@ -91,17 +90,6 @@ Like a local workspace, it's a set of modifications based on a branch.
  - On-site cache or commit servers
  - CI/CD specific features
  - Task tracking integration
-
----
-# Comparison with standard industry tools
-
- - unlike perforce, workspace is assumed to be based on a single commit
-   * no per-file sync info in the workspace
-   * other revisions are accessible, but would be a local edit
- - unlike git, there is a central authority
-   * locks are necessary, not just an optimisation
-   * VFS for git is an optimisation, but does not solve the merge problem
-
 
  ---
 # Legion Source Control
@@ -204,6 +192,16 @@ pub struct Tree {
   * serverless
   * HTTP or gRPC?
 
+---
+# Comparison with standard industry tools
+
+ - unlike perforce, workspace is assumed to be based on a single commit
+   * no per-file sync info in the workspace
+   * other revisions are accessible, but would be a local edit
+ - unlike git, there is a central authority
+   * locks are necessary, not just an optimisation
+   * VFS for git is an optimisation, but does not solve the merge problem
+
  ---
 # Legion Source Control
 - Requirements and implications ✓
@@ -232,4 +230,4 @@ pub struct Tree {
  - UI?
 
 ---
-# ?
+![bg](figures/question_mark.jpg)
