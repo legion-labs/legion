@@ -203,6 +203,7 @@ pub struct Tree {
  - unlike git, there is a central authority
    * locks are necessary, not just an optimisation
    * VFS for git is an optimisation, but does not solve the merge problem
+ - Plastic SCM locks are global to all branches
 
  ---
 # Legion Source Control
