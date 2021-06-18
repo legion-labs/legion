@@ -340,7 +340,7 @@ fn main() -> Result<(), String> {
                     println!("No local changes");
                 }
                 for change in changes {
-                    println!("{} {}", change.change_type, change.relative_path.display());
+                    println!("{} {}", change.change_type, change.relative_path);
                 }
                 Ok(())
             }
@@ -354,9 +354,7 @@ fn main() -> Result<(), String> {
                 for m in resolves_pending {
                     println!(
                         "{} {} {}",
-                        m.relative_path.display(),
-                        &m.base_commit_id,
-                        &m.theirs_commit_id
+                        m.relative_path, &m.base_commit_id, &m.theirs_commit_id
                     );
                 }
                 Ok(())

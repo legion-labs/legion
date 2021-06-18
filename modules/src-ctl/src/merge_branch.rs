@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PendingBranchMerge {
@@ -204,7 +204,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
     if let Some(common_ancestor_id) =
         find_latest_common_ancestor(&destination_commit_history, &merge_source_ancestors)
     {
-        let mut modified_in_current: BTreeMap<PathBuf, String> = BTreeMap::new();
+        let mut modified_in_current: BTreeMap<String, String> = BTreeMap::new();
         for commit in &destination_commit_history {
             if commit.id == common_ancestor_id {
                 break;
@@ -216,7 +216,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
             }
         }
 
-        let mut to_update: BTreeMap<PathBuf, String> = BTreeMap::new();
+        let mut to_update: BTreeMap<String, String> = BTreeMap::new();
         for commit in &src_commit_history {
             if commit.id == common_ancestor_id {
                 break;
@@ -235,23 +235,16 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
                     common_ancestor_id.clone(),
                     src_branch.head.clone(),
                 );
-                errors.push(format!(
-                    "{} conflicts, please resolve before commit",
-                    path.display()
-                ));
+                errors.push(format!("{} conflicts, please resolve before commit", path));
                 let full_path = workspace_root.join(path);
                 if let Err(e) = edit_file_command(&full_path) {
                     errors.push(format!("Error editing {}: {}", full_path.display(), e));
                 }
                 if let Err(e) = save_resolve_pending(&workspace_root, &resolve_pending) {
-                    errors.push(format!(
-                        "Error saving pending resolve {}: {}",
-                        path.display(),
-                        e
-                    ));
+                    errors.push(format!("Error saving pending resolve {}: {}", path, e));
                 }
             } else {
-                match change_file_to(repo, path, &workspace_root, hash) {
+                match change_file_to(repo, Path::new(path), &workspace_root, hash) {
                     Ok(message) => {
                         println!("{}", message);
                     }

@@ -1,3 +1,4 @@
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -8,6 +9,12 @@ pub enum SearchResult<T, E> {
     Ok(T),
     Err(E),
     None,
+}
+
+pub fn hash_string(data: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(data.as_bytes());
+    format!("{:X}", hasher.finalize())
 }
 
 pub fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
@@ -69,6 +76,16 @@ pub fn path_relative_to(p: &Path, base: &Path) -> Result<PathBuf, String> {
             e
         )),
     }
+}
+
+pub fn make_canonical_relative_path(
+    workspace_root: &Path,
+    path_specified: &Path,
+) -> Result<String, String> {
+    let abs_path = make_path_absolute(path_specified);
+    let relative_path = path_relative_to(&abs_path, workspace_root)?;
+    let canonical_relative_path = relative_path.to_str().unwrap().replace("\\", "/");
+    Ok(canonical_relative_path)
 }
 
 pub fn make_file_read_only(file_path: &Path, readonly: bool) -> Result<(), String> {

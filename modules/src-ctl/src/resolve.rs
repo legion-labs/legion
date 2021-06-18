@@ -2,24 +2,29 @@ use crate::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 //todo: rename ResolvePending
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResolvePending {
     pub id: String,
-    pub relative_path: PathBuf,
+    pub relative_path: String,
     pub base_commit_id: String,
     pub theirs_commit_id: String,
 }
 
 impl ResolvePending {
-    pub fn new(relative_path: PathBuf, base_commit_id: String, theirs_commit_id: String) -> Self {
+    pub fn new(
+        canonical_relative_path: String,
+        base_commit_id: String,
+        theirs_commit_id: String,
+    ) -> Self {
+        //todo: change to hash
         let id = uuid::Uuid::new_v4().to_string();
         Self {
             id,
-            relative_path,
+            relative_path: canonical_relative_path,
             base_commit_id,
             theirs_commit_id,
         }
@@ -61,7 +66,7 @@ pub fn clear_resolve_pending(
 
 pub fn find_resolve_pending(
     workspace_root: &Path,
-    relative_path: &Path,
+    canonical_relative_path: &str,
 ) -> SearchResult<ResolvePending, String> {
     let resolves_pending_dir = workspace_root.join(".lsc/resolve_pending");
     match resolves_pending_dir.read_dir() {
@@ -74,7 +79,7 @@ pub fn find_resolve_pending(
                                 serde_json::from_str(&contents);
                             match parsed {
                                 Ok(merge) => {
-                                    if merge.relative_path == relative_path {
+                                    if merge.relative_path == canonical_relative_path {
                                         return SearchResult::Ok(merge);
                                     }
                                 }
@@ -247,7 +252,7 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    let relative_path = path_relative_to(&abs_path, &workspace_root)?;
+    let relative_path = make_canonical_relative_path(&workspace_root, p)?;
     match find_resolve_pending(&workspace_root, &relative_path) {
         SearchResult::Err(e) => {
             return Err(format!(
@@ -265,13 +270,13 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
         SearchResult::Ok(resolve_pending) => {
             let base_file_hash = find_file_hash_at_commit(
                 &workspace_spec.repository,
-                &relative_path,
+                Path::new(&relative_path),
                 &resolve_pending.base_commit_id,
             )?;
             let base_temp_file = download_temp_file(repo, &workspace_root, &base_file_hash)?;
             let theirs_file_hash = find_file_hash_at_commit(
                 &workspace_spec.repository,
-                &relative_path,
+                Path::new(&relative_path),
                 &resolve_pending.theirs_commit_id,
             )?;
             let theirs_temp_file = download_temp_file(repo, &workspace_root, &theirs_file_hash)?;
@@ -286,7 +291,7 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
             }
 
             run_merge_program(
-                &relative_path,
+                Path::new(&relative_path),
                 abs_path.to_str().unwrap(),
                 theirs_temp_file.path.to_str().unwrap(),
                 base_temp_file.path.to_str().unwrap(),

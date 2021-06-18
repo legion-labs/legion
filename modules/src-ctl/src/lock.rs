@@ -1,6 +1,5 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::Path;
 
@@ -10,12 +9,6 @@ pub struct Lock {
     pub lock_domain_id: String,
     pub workspace_id: String,
     pub branch_name: String,
-}
-
-fn hash_string(data: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(data.as_bytes());
-    format!("{:X}", hasher.finalize())
 }
 
 pub fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
@@ -144,16 +137,6 @@ pub fn read_locks(repo: &Path, lock_domain_id: &str) -> Result<Vec<Lock>, String
         }
     }
     Ok(locks)
-}
-
-fn make_canonical_relative_path(
-    workspace_root: &Path,
-    path_specified: &Path,
-) -> Result<String, String> {
-    let abs_path = make_path_absolute(path_specified);
-    let relative_path = path_relative_to(&abs_path, workspace_root)?;
-    let canonical_relative_path = relative_path.to_str().unwrap().replace("\\", "/");
-    Ok(canonical_relative_path)
 }
 
 pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {

@@ -3,11 +3,11 @@ use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HashedChange {
-    pub relative_path: PathBuf,
+    pub relative_path: String,
     pub hash: String,
     pub change_type: String, //edit, add, delete
 }

@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn find_commit_range(
     repo: &Path,
@@ -136,7 +136,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
         &workspace_branch.head,
         commit_id,
     )?;
-    let mut to_download: BTreeMap<PathBuf, String> = BTreeMap::new();
+    let mut to_download: BTreeMap<String, String> = BTreeMap::new();
     if commits[0].id == commit_id {
         //sync forwards
         for commit in commits {
@@ -152,7 +152,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
         assert!(ref_commit.id == commit_id);
         let root_tree = read_tree(repo, &ref_commit.root_hash)?;
 
-        let mut to_update: BTreeSet<PathBuf> = BTreeSet::new();
+        let mut to_update: BTreeSet<String> = BTreeSet::new();
         for commit in commits {
             for change in commit.changes {
                 to_update.insert(change.relative_path.clone());
@@ -162,7 +162,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
             to_download.insert(
                 path.clone(),
                 //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we should fail on error
-                match find_file_hash_in_tree(repo, &path, &root_tree) {
+                match find_file_hash_in_tree(repo, Path::new(&path), &root_tree) {
                     Ok(hash) => hash,
                     Err(_) => String::new(),
                 },
@@ -186,7 +186,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
     for (relative_path, latest_hash) in to_download {
         match local_changes_map.get(&relative_path) {
             Some(_change) => {
-                println!("{} changed locally, recording pending merge and leaving the local file untouched", relative_path.display());
+                println!("{} changed locally, recording pending merge and leaving the local file untouched", relative_path);
                 //todo: handle case where merge pending already exists
                 //todo: validate how we want to deal with merge pending with syncing backwards
                 let merge_pending = ResolvePending::new(
@@ -197,8 +197,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
                 if let Err(e) = save_resolve_pending(&workspace_root, &merge_pending) {
                     errors.push(format!(
                         "Error saving pending merge {}: {}",
-                        relative_path.display(),
-                        e
+                        relative_path, e
                     ));
                 }
             }

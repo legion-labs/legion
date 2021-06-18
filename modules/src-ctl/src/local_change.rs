@@ -1,21 +1,21 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalChange {
     pub id: String,
-    pub relative_path: PathBuf,
+    pub relative_path: String,
     pub change_type: String, //edit, add, delete
 }
 
 impl LocalChange {
-    pub fn new(relative_path: PathBuf, change_type: String) -> Self {
-        let id = uuid::Uuid::new_v4().to_string();
+    pub fn new(canonical_relative_path: String, change_type: String) -> Self {
+        let id = hash_string(&canonical_relative_path);
         Self {
             id,
-            relative_path,
+            relative_path: canonical_relative_path,
             change_type,
         }
     }
@@ -38,7 +38,7 @@ pub fn save_local_change(workspace_root: &Path, change_spec: &LocalChange) -> Re
 
 pub fn find_local_change(
     workspace_root: &Path,
-    relative_path: &Path,
+    canonical_relative_path: &str,
 ) -> SearchResult<LocalChange, String> {
     let local_edits_dir = workspace_root.join(".lsc/local_edits");
     match local_edits_dir.read_dir() {
@@ -51,7 +51,7 @@ pub fn find_local_change(
                                 serde_json::from_str(&contents);
                             match parsed {
                                 Ok(edit) => {
-                                    if edit.relative_path == relative_path {
+                                    if edit.relative_path == canonical_relative_path {
                                         return SearchResult::Ok(edit);
                                     }
                                 }
@@ -145,8 +145,7 @@ pub fn clear_local_changes(workspace_root: &Path, local_changes: &[LocalChange])
         if let Err(e) = fs::remove_file(change_path) {
             println!(
                 "Error clearing local change {}: {}",
-                change.relative_path.display(),
-                e
+                change.relative_path, e
             );
         }
     }
@@ -164,11 +163,10 @@ pub fn track_new_file(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(&abs_path)?;
     //todo: make sure the file does not exist in the current tree hierarchy
 
+    let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
+
     assert_not_locked(&workspace_root, &abs_path)?;
-    let local_change = LocalChange::new(
-        path_relative_to(&abs_path, workspace_root.as_path())?,
-        String::from("add"),
-    );
+    let local_change = LocalChange::new(relative_path, String::from("add"));
 
     save_local_change(&workspace_root, &local_change)
 }
@@ -186,10 +184,9 @@ pub fn edit_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(&abs_path)?;
     //todo: make sure file is tracked by finding it in the current tree hierarchy
     assert_not_locked(&workspace_root, &abs_path)?;
-    let local_change = LocalChange::new(
-        path_relative_to(&abs_path, &workspace_root)?,
-        String::from("edit"),
-    );
+
+    let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
+    let local_change = LocalChange::new(relative_path, String::from("edit"));
     save_local_change(&workspace_root, &local_change)?;
     make_file_read_only(&abs_path, false)
 }

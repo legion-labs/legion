@@ -10,13 +10,13 @@ pub fn delete_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(&abs_path)?;
     assert_not_locked(&workspace_root, &abs_path)?;
 
-    let relative_path = path_relative_to(&abs_path, &workspace_root)?;
+    let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
+
     match find_local_change(&workspace_root, &relative_path) {
         SearchResult::Ok(change) => {
             return Err(format!(
                 "Error: {} already tracked for {}",
-                change.relative_path.display(),
-                change.change_type
+                change.relative_path, change.change_type
             ));
         }
         SearchResult::Err(e) => {
@@ -27,10 +27,7 @@ pub fn delete_file_command(path_specified: &Path) -> Result<(), String> {
     }
 
     //todo: lock file
-    let local_change = LocalChange::new(
-        path_relative_to(&abs_path, workspace_root.as_path())?,
-        String::from("delete"),
-    );
+    let local_change = LocalChange::new(relative_path, String::from("delete"));
     save_local_change(&workspace_root, &local_change)?;
 
     make_file_read_only(&abs_path, false)?;

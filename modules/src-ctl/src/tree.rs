@@ -153,8 +153,8 @@ pub fn update_tree_from_changes(
     //scan changes to get the list of trees to update
     let mut dir_to_update = BTreeSet::new();
     for change in local_changes {
-        let parent = change
-            .relative_path
+        let relative_path = Path::new(&change.relative_path);
+        let parent = relative_path
             .parent()
             .expect("relative path with no parent");
         dir_to_update.insert(parent);
@@ -183,14 +183,13 @@ pub fn update_tree_from_changes(
     for dir in dir_to_update_by_length {
         let mut tree = fetch_tree_subdir(repo, previous_root, &dir)?;
         for change in local_changes {
-            let parent = change
-                .relative_path
+            let relative_path = Path::new(&change.relative_path);
+            let parent = relative_path
                 .parent()
                 .expect("relative path with no parent");
             if dir == parent {
                 let filename = String::from(
-                    change
-                        .relative_path
+                    relative_path
                         .file_name()
                         .expect("error getting file name")
                         .to_str()
