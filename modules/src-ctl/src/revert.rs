@@ -1,6 +1,34 @@
 use crate::*;
 use std::path::Path;
 
+pub fn revert_glob_command(pattern: &str) -> Result<(), String> {
+    let mut nb_errors = 0;
+    match glob::Pattern::new(pattern) {
+        Ok(matcher) => {
+            let current_dir = std::env::current_dir().unwrap();
+            let workspace_root = find_workspace_root(&current_dir)?;
+            for change in read_local_changes(&workspace_root)? {
+                if matcher.matches(&change.relative_path) {
+                    println!("reverting {}", change.relative_path);
+                    let local_file_path = workspace_root.join(change.relative_path);
+                    if let Err(e) = revert_file_command(&local_file_path) {
+                        println!("{}", e);
+                        nb_errors += 1;
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            return Err(format!("Error parsing glob pattern: {}", e));
+        }
+    }
+    if nb_errors == 0 {
+        Ok(())
+    } else {
+        Err(format!("{} errors", nb_errors))
+    }
+}
+
 pub fn revert_file_command(path: &Path) -> Result<(), String> {
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;

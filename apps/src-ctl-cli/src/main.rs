@@ -227,6 +227,10 @@ fn main_impl() -> Result<(), String> {
             SubCommand::with_name("revert")
                 .about("Abandon the local changes made to a file. Overwrites the content of the file based on the current commit.")
                 .arg(
+                    Arg::with_name("glob")
+                        .long("glob")
+                        .help("revert all the local changes that match the specified pattern"))
+                .arg(
                     Arg::with_name("path")
                         .required(true)
                         .help("local path within a workspace")),
@@ -331,7 +335,12 @@ fn main_impl() -> Result<(), String> {
         }
         ("list-branches", Some(_command_match)) => list_branches_command(),
         ("revert", Some(command_match)) => {
-            revert_file_command(Path::new(command_match.value_of("path").unwrap()))
+            let path = command_match.value_of("path").unwrap();
+            if command_match.is_present("glob") {
+                revert_glob_command(path)
+            } else {
+                revert_file_command(Path::new(path))
+            }
         }
         ("commit", Some(command_match)) => {
             let mut message = String::from("");
