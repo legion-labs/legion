@@ -11,7 +11,6 @@
     clippy::doc_markdown,
     clippy::empty_enum,
     clippy::enum_glob_use,
-    clippy::exit,
     clippy::expl_impl_clone_on_copy,
     clippy::explicit_deref_methods,
     clippy::explicit_into_iter_loop,
