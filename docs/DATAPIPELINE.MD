@@ -23,6 +23,13 @@ In high-level the data pipeline deals with 3 types of data and 2 transformations
 
 Below is a list things to consider for each data type, transformation and some cross-cutting concerns.
 
+### Source Data Format
+
+1. Do we care about source data?
+
+   - We could not care about the source data format and store only the offline data format. Which would imply on-demand conversion from offline to source data that we would have to maintain (i.e. opening source mesh file in Maya, Blender, etc)
+   - What is the primary source of data? Source or offline? Or a mix?
+
 ### Offline Data Format
 
 1. Data schema
@@ -112,6 +119,11 @@ Below is a list things to consider for each data type, transformation and some c
 
    - Creating `delta archives`
    - Overriding files through higher-priority `archives`
+
+### Data Export (source -> offline)
+
+1. This process can be either seen as an integral (at times automated) part of the data pipeline or artist's responsibility outside of the data pipeline.
+2. Data pipeline can be aware of export tools, data pipeline & export metadata to automate data exporting.
 
 ### Data Compilation (offline -> runtime)
 
