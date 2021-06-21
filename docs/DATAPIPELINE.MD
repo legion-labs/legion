@@ -4,14 +4,14 @@ This document describes problems, ideas, considerations related to the data proc
 
 In high-level the data pipeline deals with 3 types of data and 2 transformations used to convert between those types.
 
-> **Source** =<u>export</u>=> **Offline** =<u>compilation</u>=> **Runtime** =<u>packing</u>=> **Packaged**
+> **SOURCE** =<u>export</u>=> **OFFLINE** =<u>compilation</u>=> **RUNTIME** =<u>packing</u>=> **PACKAGED**
 
 <u>Data formats</u>:
 
 - *Source* - data in a source editor format (photoshop, maya, hudini, etc)
-- *Offline* - edition-friendly data format optimized for editing/writing
-- *Runtime* - runtime-friendly data format optimized for reading
-- *Packaged* - IO-friendly data format optimized for throughput
+- *Offline* - edition-friendly data format optimized for editing/writing. in-house opaquely parsable format (i.e. bag of properties)
+- *Runtime* - runtime-friendly data format optimized for reading. in binary format.
+- *Packaged* - IO-friendly data format optimized for throughput. in zip-like archive format
 
 <u>Transformations</u>:
 
