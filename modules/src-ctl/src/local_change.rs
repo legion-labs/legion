@@ -40,52 +40,22 @@ pub fn find_local_change(
     workspace_root: &Path,
     canonical_relative_path: &str,
 ) -> SearchResult<LocalChange, String> {
-    let local_edits_dir = workspace_root.join(".lsc/local_edits");
-    match local_edits_dir.read_dir() {
-        Ok(dir_iterator) => {
-            for entry_res in dir_iterator {
-                match entry_res {
-                    Ok(entry) => match read_text_file(&entry.path()) {
-                        Ok(contents) => {
-                            let parsed: serde_json::Result<LocalChange> =
-                                serde_json::from_str(&contents);
-                            match parsed {
-                                Ok(edit) => {
-                                    if edit.relative_path == canonical_relative_path {
-                                        return SearchResult::Ok(edit);
-                                    }
-                                }
-                                Err(e) => {
-                                    return SearchResult::Err(format!(
-                                        "Error parsing {:?}: {}",
-                                        entry.path(),
-                                        e
-                                    ));
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            return SearchResult::Err(format!(
-                                "Error reading {}: {}",
-                                entry.path().display(),
-                                e
-                            ));
-                        }
-                    },
-                    Err(e) => {
-                        return SearchResult::Err(format!("Error reading local edit entry: {}", e))
-                    }
-                }
+    let id = hash_string(canonical_relative_path);
+    let path = workspace_root.join(format!(".lsc/local_edits/{}.json", id));
+    if !path.exists() {
+        return SearchResult::None;
+    }
+
+    match read_text_file(&path) {
+        Ok(contents) => {
+            let parsed: serde_json::Result<LocalChange> = serde_json::from_str(&contents);
+            match parsed {
+                Ok(edit) => SearchResult::Ok(edit),
+                Err(e) => SearchResult::Err(format!("Error parsing {:?}: {}", path.display(), e)),
             }
         }
-        Err(e) => {
-            return SearchResult::Err(format!(
-                "Error reading directory {:?}: {}",
-                local_edits_dir, e
-            ))
-        }
+        Err(e) => SearchResult::Err(format!("Error reading {}: {}", path.display(), e)),
     }
-    SearchResult::None
 }
 
 pub fn read_local_changes(workspace_root: &Path) -> Result<Vec<LocalChange>, String> {

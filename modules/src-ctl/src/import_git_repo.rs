@@ -1,6 +1,10 @@
 use crate::*;
 use std::path::Path;
 
+fn format_commit(c: &git2::Commit<'_>) -> String {
+    format!("{} {}", c.id(), c.summary().unwrap())
+}
+
 fn copy_git_blob(
     git_repo: &git2::Repository,
     blob_oid: git2::Oid,
@@ -87,10 +91,11 @@ fn import_commit_diff(
             match delta.status() {
                 git2::Delta::Added => {
                     let new_file = delta.new_file();
+                    let path = new_file.path().unwrap();
                     if let Err(e) = add_file_from_git(workspace_root, git_repo, &new_file) {
-                        errors.push(format!("Error adding file {:?}: {}", new_file, e));
+                        errors.push(format!("Error adding file {}: {}", path.display(), e));
                     } else {
-                        println!("added {}", new_file.path().unwrap().display());
+                        println!("added {}", path.display());
                     }
                 }
                 git2::Delta::Deleted => {
@@ -98,7 +103,7 @@ fn import_commit_diff(
                     let local_file = workspace_root.join(old_file.path().unwrap());
                     if let Err(e) = delete_file_command(&local_file) {
                         errors.push(format!(
-                            "Error deleting file {:?}: {}",
+                            "Error deleting file {}: {}",
                             local_file.display(),
                             e
                         ));
@@ -108,10 +113,11 @@ fn import_commit_diff(
                 }
                 git2::Delta::Modified => {
                     let new_file = delta.new_file();
+                    let path = new_file.path().unwrap();
                     if let Err(e) = edit_file_from_git(workspace_root, git_repo, &new_file) {
-                        errors.push(format!("Error modifying file {:?}: {}", new_file, e));
+                        errors.push(format!("Error modifying file {}: {}", path.display(), e));
                     } else {
-                        println!("modified {}", new_file.path().unwrap().display());
+                        println!("modified {}", path.display());
                     }
                 }
                 //todo: make a test case for those
@@ -158,22 +164,24 @@ fn import_commit_sequence(
     let mut stack = vec![root_commit.clone()];
     let mut reference_index = git2::Index::new().unwrap();
     loop {
-        let commit = stack.last().unwrap();
+        let commit = stack.pop().unwrap();
         let commit_id = commit.id().to_string();
         if commit_exists(repo, &commit_id) {
             match commit.tree() {
                 Ok(tree) => {
                     if let Err(e) = reference_index.read_tree(&tree) {
                         return Err(format!(
-                            "Error reading tree from commit {:?} into index: {}",
-                            commit, e
+                            "Error reading tree from commit {} into index: {}",
+                            format_commit(&commit),
+                            e
                         ));
                     }
                 }
                 Err(e) => {
                     return Err(format!(
-                        "Error getting tree from commit {:?}: {}",
-                        commit, e
+                        "Error getting tree from commit {}: {}",
+                        format_commit(&commit),
+                        e
                     ));
                 }
             }
@@ -184,12 +192,14 @@ fn import_commit_sequence(
         }
         match commit.parent(0) {
             Ok(parent) => {
+                stack.push(commit);
                 stack.push(parent);
             }
             Err(e) => {
                 return Err(format!(
-                    "Error fetching commit parent for {:?}: {}",
-                    commit, e
+                    "Error fetching commit parent for {}: {}",
+                    format_commit(&commit),
+                    e
                 ));
             }
         }
@@ -205,22 +215,35 @@ fn import_commit_sequence(
                 let mut current_index = git2::Index::new().unwrap();
                 if let Err(e) = current_index.read_tree(&tree) {
                     return Err(format!(
-                        "Error reading tree from commit {:?} into index: {}",
-                        commit, e
+                        "Error reading tree from commit {} into index: {}",
+                        format_commit(&commit),
+                        e
                     ));
                 }
                 match git_repo.diff_index_to_index(&reference_index, &current_index, None) {
                     Ok(diff) => {
                         if let Err(e) = import_commit_diff(workspace_root, &diff, git_repo) {
-                            return Err(format!("Error importing {:?}: {}", commit, e));
+                            return Err(format!(
+                                "Error importing {}: {}",
+                                format_commit(&commit),
+                                e
+                            ));
                         }
                         let commit_id = commit.id().to_string();
                         if let Err(e) = commit_local_changes(workspace_root, &commit_id, &message) {
-                            return Err(format!("Error recording {:?}: {}", commit, e));
+                            return Err(format!(
+                                "Error recording {}: {}",
+                                format_commit(&commit),
+                                e
+                            ));
                         }
                     }
                     Err(e) => {
-                        return Err(format!("Error in diff for {:?}: {}", commit, e));
+                        return Err(format!(
+                            "Error in diff for {}: {}",
+                            format_commit(&commit),
+                            e
+                        ));
                     }
                 }
 
@@ -228,8 +251,9 @@ fn import_commit_sequence(
             }
             Err(e) => {
                 return Err(format!(
-                    "Error getting tree from commit {:?}: {}",
-                    commit, e
+                    "Error getting tree from {}: {}",
+                    format_commit(&commit),
+                    e
                 ));
             }
         }

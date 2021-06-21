@@ -77,7 +77,14 @@ use clap::{App, AppSettings, Arg, SubCommand};
 use legion_src_ctl::*;
 use std::path::Path;
 
-fn main() -> Result<(), String> {
+fn main() {
+    if let Err(e) = main_impl() {
+        println!("{}", e);
+        std::process::exit(1);
+    }
+}
+
+fn main_impl() -> Result<(), String> {
     let matches = App::new("Legion Source Control")
         .setting(AppSettings::ArgRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))

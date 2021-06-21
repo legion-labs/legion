@@ -33,6 +33,7 @@ impl Commit {
         parents: Vec<String>,
     ) -> Self {
         let date_time_utc = Utc::now().to_rfc3339();
+        assert!(!parents.contains(&id));
         Self {
             id,
             owner,
