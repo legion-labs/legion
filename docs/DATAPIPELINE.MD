@@ -29,6 +29,7 @@ Below is a list things to consider for each data type, transformation and some c
 
    - We could not care about the source data format and store only the offline data format. Which would imply on-demand conversion from offline to source data that we would have to maintain (i.e. opening source mesh file in Maya, Blender, etc)
    - What is the primary source of data? Source or offline? Or a mix?
+   - Source assets are possible very large in size - we need to make sure they are not polluting IO if not necessary. (src ctl?)
 
 ### Offline Data Format
 
