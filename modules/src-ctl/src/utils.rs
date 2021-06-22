@@ -17,19 +17,35 @@ pub fn hash_string(data: &str) -> String {
     format!("{:X}", hasher.finalize())
 }
 
+fn create_parent_directory(path: &Path) -> Result<(), String> {
+    let parent_dir = path.parent().unwrap();
+    if !parent_dir.exists() {
+        if let Err(e) = std::fs::create_dir_all(parent_dir) {
+            return Err(format!(
+                "Error creating directory {}: {}",
+                parent_dir.display(),
+                e
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub fn write_file(path: &Path, contents: &[u8]) -> Result<(), String> {
+    create_parent_directory(path)?;
     match fs::File::create(path) {
         Ok(mut file) => {
             if let Err(e) = file.write_all(contents) {
                 return Err(format!("Error writing {}: {}", path.display(), e));
             }
         }
-        Err(e) => return Err(format!("Error writing {}: {}", path.display(), e)),
+        Err(e) => return Err(format!("Error creating {}: {}", path.display(), e)),
     }
     Ok(())
 }
 
 pub fn write_new_file(path: &Path, contents: &[u8]) -> Result<(), String> {
+    create_parent_directory(path)?;
     match OpenOptions::new().write(true).create_new(true).open(&path) {
         Ok(mut file) => {
             if let Err(e) = file.write_all(contents) {
@@ -113,6 +129,7 @@ pub fn make_file_read_only(file_path: &Path, readonly: bool) -> Result<(), Strin
 }
 
 pub fn lz4_compress_to_file(file_path: &Path, contents: &[u8]) -> Result<(), String> {
+    create_parent_directory(file_path)?;
     match std::fs::File::create(file_path) {
         Err(e) => {
             return Err(format!(
@@ -171,6 +188,7 @@ pub fn lz4_read(compressed: &Path) -> Result<String, String> {
 }
 
 pub fn lz4_decompress(compressed: &Path, destination: &Path) -> Result<(), String> {
+    create_parent_directory(destination)?;
     match std::fs::File::open(compressed) {
         Ok(input_file) => match lz4::Decoder::new(input_file) {
             Ok(mut decoder) => match std::fs::File::create(destination) {

@@ -12,6 +12,7 @@ pub struct LocalChange {
 
 impl LocalChange {
     pub fn new(canonical_relative_path: String, change_type: String) -> Self {
+        //todo: hash is case-sensitive - could be a problem
         let id = hash_string(&canonical_relative_path);
         Self {
             id,

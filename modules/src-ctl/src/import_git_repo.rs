@@ -10,20 +10,10 @@ fn copy_git_blob(
     blob_oid: git2::Oid,
     destination: &Path,
 ) -> Result<(), String> {
-    let parent_dir = destination.parent().unwrap();
-    if !parent_dir.exists() {
-        if let Err(e) = std::fs::create_dir_all(parent_dir) {
-            return Err(format!(
-                "Error creating directory {}: {}",
-                parent_dir.display(),
-                e
-            ));
-        }
-    }
-
     match git_repo.find_blob(blob_oid) {
         Ok(blob) => {
-            if let Err(e) = write_file(destination, blob.content()) {
+            let content = blob.content();
+            if let Err(e) = write_file(destination, content) {
                 return Err(format!(
                     "Error writing blob {} to {}: {}",
                     blob.id(),
@@ -46,6 +36,9 @@ fn add_file_from_git(
 ) -> Result<(), String> {
     let relative_path = new_file.path().unwrap();
     let local_path = workspace_root.join(relative_path);
+    if local_path.exists() {
+        return Err(String::from("local file already exists"));
+    }
     if let Err(e) = copy_git_blob(git_repo, new_file.id(), &local_path) {
         return Err(format!(
             "Error copy git blob {} to {}: {}",
