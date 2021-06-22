@@ -36,6 +36,27 @@ fn add_file_from_git(
 ) -> Result<(), String> {
     let relative_path = new_file.path().unwrap();
     let local_path = workspace_root.join(relative_path);
+    let canonical_relative_path = make_canonical_relative_path(workspace_root, &local_path)?;
+
+    match find_local_change(workspace_root, &canonical_relative_path) {
+        SearchResult::Ok(change) => {
+            if change.change_type == "delete" {
+                println!("adding of file being deleted - reverting change and editing");
+                revert_file_command(&local_path)?;
+                return edit_file_from_git(workspace_root, git_repo, new_file);
+            }
+            return Err(format!(
+                "Error: {} already tracked for {}",
+                change.relative_path, change.change_type
+            ));
+        }
+        SearchResult::Err(e) => {
+            return Err(format!("Error searching in local changes: {}", e));
+        }
+        SearchResult::None => { //all is good
+        }
+    }
+
     if local_path.exists() {
         return Err(String::from("local file already exists"));
     }
@@ -79,38 +100,54 @@ fn import_commit_diff(
     git_repo: &git2::Repository,
 ) -> Result<(), String> {
     let mut errors: Vec<String> = Vec::new();
+    //process deletes first
+    //because git is case-sensitive a file can be seen as being removed and added in the same commit
+    if let Err(e) = diff.foreach(
+        &mut |delta, _progress| {
+            if let git2::Delta::Deleted = delta.status() {
+                let old_file = delta.old_file();
+                let local_file = workspace_root.join(old_file.path().unwrap());
+                println!("deleting {}", old_file.path().unwrap().display());
+                if let Err(e) = delete_file_command(&local_file) {
+                    let message = format!("Error deleting file {}: {}", local_file.display(), e);
+                    println!("{}", message);
+                    errors.push(message);
+                }
+            }
+            true //continue foreach
+        },
+        None,
+        None,
+        None,
+    ) {
+        if !errors.is_empty() {
+            return Err(errors.join("\n"));
+        }
+        return Err(format!("Error iterating in diff: {}", e));
+    }
+
     if let Err(e) = diff.foreach(
         &mut |delta, _progress| {
             match delta.status() {
                 git2::Delta::Added => {
                     let new_file = delta.new_file();
                     let path = new_file.path().unwrap();
+                    println!("adding {}", path.display());
                     if let Err(e) = add_file_from_git(workspace_root, git_repo, &new_file) {
-                        errors.push(format!("Error adding file {}: {}", path.display(), e));
-                    } else {
-                        println!("added {}", path.display());
+                        let message = format!("Error adding file {}: {}", path.display(), e);
+                        println!("{}", message);
+                        errors.push(message);
                     }
                 }
-                git2::Delta::Deleted => {
-                    let old_file = delta.old_file();
-                    let local_file = workspace_root.join(old_file.path().unwrap());
-                    if let Err(e) = delete_file_command(&local_file) {
-                        errors.push(format!(
-                            "Error deleting file {}: {}",
-                            local_file.display(),
-                            e
-                        ));
-                    } else {
-                        println!("deleted {}", old_file.path().unwrap().display());
-                    }
-                }
+                git2::Delta::Deleted => {}
                 git2::Delta::Modified => {
                     let new_file = delta.new_file();
                     let path = new_file.path().unwrap();
+                    println!("modifying {}", path.display());
                     if let Err(e) = edit_file_from_git(workspace_root, git_repo, &new_file) {
-                        errors.push(format!("Error modifying file {}: {}", path.display(), e));
-                    } else {
-                        println!("modified {}", path.display());
+                        let message = format!("Error modifying file {}: {}", path.display(), e);
+                        println!("{}", message);
+                        errors.push(message);
                     }
                 }
                 //todo: make a test case for those
@@ -136,6 +173,7 @@ fn import_commit_diff(
         }
         return Err(format!("Error iterating in diff: {}", e));
     }
+
     if !errors.is_empty() {
         return Err(errors.join("\n"));
     }
@@ -223,6 +261,7 @@ fn import_commit_sequence(
                             ));
                         }
                         let commit_id = commit.id().to_string();
+                        println!("recording commit {}: {}", commit_id, message);
                         if let Err(e) = commit_local_changes(workspace_root, &commit_id, &message) {
                             return Err(format!(
                                 "Error recording {}: {}",

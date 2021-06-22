@@ -12,14 +12,18 @@ pub struct LocalChange {
 
 impl LocalChange {
     pub fn new(canonical_relative_path: String, change_type: String) -> Self {
-        //todo: hash is case-sensitive - could be a problem
-        let id = hash_string(&canonical_relative_path);
+        let id = hash_path(&canonical_relative_path);
         Self {
             id,
             relative_path: canonical_relative_path,
             change_type,
         }
     }
+}
+
+fn hash_path(canonical_relative_path: &str) -> String {
+    let lower = canonical_relative_path.to_lowercase();
+    hash_string(&lower)
 }
 
 pub fn save_local_change(workspace_root: &Path, change_spec: &LocalChange) -> Result<(), String> {
@@ -41,7 +45,7 @@ pub fn find_local_change(
     workspace_root: &Path,
     canonical_relative_path: &str,
 ) -> SearchResult<LocalChange, String> {
-    let id = hash_string(canonical_relative_path);
+    let id = hash_path(canonical_relative_path);
     let path = workspace_root.join(format!(".lsc/local_edits/{}.json", id));
     if !path.exists() {
         return SearchResult::None;
@@ -135,6 +139,19 @@ pub fn track_new_file(path_specified: &Path) -> Result<(), String> {
     //todo: make sure the file does not exist in the current tree hierarchy
 
     let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
+    match find_local_change(&workspace_root, &relative_path) {
+        SearchResult::Ok(change) => {
+            return Err(format!(
+                "Error: {} already tracked for {}",
+                change.relative_path, change.change_type
+            ));
+        }
+        SearchResult::Err(e) => {
+            return Err(format!("Error searching in local changes: {}", e));
+        }
+        SearchResult::None => { //all is good
+        }
+    }
 
     assert_not_locked(&workspace_root, &abs_path)?;
     let local_change = LocalChange::new(relative_path, String::from("add"));
@@ -157,6 +174,20 @@ pub fn edit_file_command(path_specified: &Path) -> Result<(), String> {
     assert_not_locked(&workspace_root, &abs_path)?;
 
     let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
+    match find_local_change(&workspace_root, &relative_path) {
+        SearchResult::Ok(change) => {
+            return Err(format!(
+                "Error: {} already tracked for {}",
+                change.relative_path, change.change_type
+            ));
+        }
+        SearchResult::Err(e) => {
+            return Err(format!("Error searching in local changes: {}", e));
+        }
+        SearchResult::None => { //all is good
+        }
+    }
+
     let local_change = LocalChange::new(relative_path, String::from("edit"));
     save_local_change(&workspace_root, &local_change)?;
     make_file_read_only(&abs_path, false)

@@ -5,6 +5,7 @@ use std::collections::hash_map::HashMap;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use unicase::UniCase;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TreeNode {
@@ -50,35 +51,43 @@ impl Tree {
         self.directory_nodes.push(node);
     }
 
-    pub fn find_dir_node(&self, name: &str) -> Result<&TreeNode, String> {
+    pub fn find_dir_node(&self, specified: &str) -> Result<&TreeNode, String> {
+        let name = UniCase::new(specified);
         for node in &self.directory_nodes {
-            if node.name == name {
+            if UniCase::new(&node.name) == name {
                 return Ok(node);
             }
         }
-        Err(format!("could not find tree node {}", name))
+        Err(format!("could not find directory node {}", name))
     }
 
-    pub fn find_file_node(&self, name: &str) -> Result<&TreeNode, String> {
+    pub fn find_file_node(&self, specified: &str) -> Result<&TreeNode, String> {
+        let name = UniCase::new(specified);
         for node in &self.file_nodes {
-            if node.name == name {
+            if UniCase::new(&node.name) == name {
                 return Ok(node);
             }
         }
-        Err(format!("could not find tree node {}", name))
+        Err(format!("could not find file node {}", name))
     }
 
-    pub fn remove_file_node(&mut self, node_name: &str) {
-        if let Some(index) = self.file_nodes.iter().position(|x| x.name == node_name) {
+    pub fn remove_file_node(&mut self, specified_name: &str) {
+        let name = UniCase::new(specified_name);
+        if let Some(index) = self
+            .file_nodes
+            .iter()
+            .position(|x| UniCase::new(&x.name) == name)
+        {
             self.file_nodes.swap_remove(index);
         }
     }
 
-    pub fn remove_dir_node(&mut self, node_name: &str) {
+    pub fn remove_dir_node(&mut self, specified_name: &str) {
+        let name = UniCase::new(specified_name);
         if let Some(index) = self
             .directory_nodes
             .iter()
-            .position(|x| x.name == node_name)
+            .position(|x| UniCase::new(&x.name) == name)
         {
             self.directory_nodes.swap_remove(index);
         }
