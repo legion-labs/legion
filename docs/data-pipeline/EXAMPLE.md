@@ -1,6 +1,18 @@
-### Example
+# Example(s):
 
-##### Source Representation
+Below you can find an example (just one for now) of how data pipeline works to transform data from a psd/fbx format to the runtime binary one.
+
+The process in high level can be described as:
+
+SOURCE => OFFLINE => RUNTIME ( OBJECT, PACKED ) => ARCHIVED
+
+## Actor Example
+
+This example illustrates data pipeline for a 'hero' actor which consists of 2 meshes, with 2 different materials using different textures, a skeleton and 2 animations accompanied by an animation blend tree.
+
+The purpuse of this example is to illustrate various forms the data takes and the transitions that happen between them.
+
+#### Source Representation
 
 Optimized for artist's workflow; focused around DCC tools.
 ```
@@ -14,7 +26,7 @@ Optimized for artist's workflow; focused around DCC tools.
   // animations blend trees created by editing offline format directly
 ```
 
-##### Offline Representation
+#### Offline Representation
 
 Optimized for tool editing (writing) & asset compilation; stripped from excess DCC format data.
 
@@ -53,7 +65,7 @@ Filenames are in reality GUIDs (replaced below by names for simplicity). File na
 - backward references (resources that depend on it) need to be looked up
 - data compilers read metadata files and can optionally open the resource itself
 
-##### Object Representation
+#### Object Representation
 
 Optimized for engine runtime (reading); stripped from editor-related data.
 
@@ -73,9 +85,9 @@ Each 'data object' can be loaded in a different place in memory and keeps the sy
   - hair.material   // references textures
 ```
 
-##### Binary Representation
+#### Packed Representation
 
-Optimized for loading and patching; combines many related `data objects` into one file.
+Optimized for loading and patching; combines many related `data objects` into one file. Not all data objects need to be packed.
 ```
 + data-runtime/
   - albedo.texture
@@ -99,4 +111,15 @@ Visual representation
 \>|  idle.anim   |                           =================
   |  hero.animbt |
   ================
+```
+
+#### Archived Representation
+
+Optimized for IO throughput; 'zips' many packed and object representations into one file.
+
+```
+characters.archive
+intro_map.archive
+common.archive
+...
 ```
