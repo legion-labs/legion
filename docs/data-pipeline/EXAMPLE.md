@@ -21,9 +21,9 @@ Optimized for tool editing (writing) & asset compilation; stripped from excess D
 Filenames are in reality GUIDs (replaced below by names for simplicity). File names are stored in .meta for display.
 ```
 + data-offline/
-  - stefan.actor            // top level
-  - stefan.actor.meta       // geom, skeleton, anim bundle(s) refs
-  - stefan.geom             // vertex data of many meshes
+  - hero.actor              // top level
+  - hero.actor.meta         // geom, skeleton, anim bundle(s) refs
+  - hero.geom               // vertex data of many meshes
   - body.geom.meta          // material(s) refs
   - male.skeleton           // nodetree
   - male.skeleton.meta      // guid only, no refs
@@ -37,14 +37,14 @@ Filenames are in reality GUIDs (replaced below by names for simplicity). File na
   - albedo2.texture.meta    // guid only, no refs
   - normal.texture          // pixel data
   - normal.texture.meta     // guid only, no refs
-  - stefan.anim.bundle      // sampling/compression, grouping
-  - stefan.anim.bundle.meta // anim(s), blend tree references
+  - hero.anim.bundle        // sampling/compression, grouping
+  - hero.anim.bundle.meta   // anim(s), blend tree references
   - idle.anim               // splines, keyframes
   - idle.anim.meta          // skeleton ref (or in bundle?)
   - run.anim                // splines, keyframes
   - run.anim.meta           // skeleton ref (or in bundle?)
-  - stefan.animbt           // for bt editor
-  - stefan.animbt.meta      // anim(s), skeleton references
+  - hero.animbt             // for bt editor
+  - hero.animbt.meta        // anim(s), skeleton references
 ```
 - `offline resource` is a unit of data appearing in the offline resource browser
 - each offline resource is accompanied with a limited in size `metadata` file
@@ -66,7 +66,7 @@ Each 'data object' can be loaded in a different place in memory and keeps the sy
   - male.skeleton   // skinning matrices, nodetree
   - idle.anim       // references skeleton
   - run.anim        // references skeleton
-  - stefan.animbt   // references animations
+  - hero.animbt     // references animations
   - body.mesh       // references material
   - hair.mesh       // references material
   - body.material   // references textures
@@ -81,9 +81,9 @@ Optimized for loading and patching; combines many related `data objects` into on
   - albedo.texture
   - albedo2.texture
   - normal.texture
-  - stefan.animbundle     // bag of animations & blend trees (internal + external refs)
-  - stefan.materialbundle // bag of materials (external refs)
-  - stefan.model          // meshes & skeleton (internal refs)
+  - hero.animbundle     // bag of animations & blend trees (internal + external refs)
+  - hero.materialbundle // bag of materials (external refs)
+  - hero.model          // meshes & skeleton (internal refs)
 ```
 
 Visual representation
@@ -97,6 +97,6 @@ Visual representation
 : ======fileB=====                    :      ======fileF======
 +>|   run.anim   |                    \----->|albedo2.texture|
 \>|  idle.anim   |                           =================
-  |stefan.animbt |
+  |  hero.animbt |
   ================
 ```
