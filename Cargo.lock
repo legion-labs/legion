@@ -357,6 +357,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-streamer"
+version = "0.1.0"
+dependencies = [
+ "legion-hw-codec",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
