@@ -1,6 +1,6 @@
-# Example(s):
+# Examples:
 
-Below you can find an example (just one for now) of how data pipeline works to transform data from a psd/fbx format to the runtime binary one.
+Below you can find examples of how data pipeline works to transform data from a psd/fbx format to the runtime binary one.
 
 The process in high level can be described as:
 
@@ -123,3 +123,10 @@ intro_map.archive
 common.archive
 ...
 ```
+## Data Model Example
+
+todo
+
+## Game World/Level
+
+todo
