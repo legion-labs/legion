@@ -125,7 +125,33 @@ common.archive
 ```
 ## Data Model Example
 
-todo
+The big assets (like meshes, textures, animations, etc) will have their own data formats (across the whole pipeline) tailored to their use cases. The other - usually smaller assets - will benefit from using a default, go-to flexible data model. This model will allow to declare the data format (both offline and runtime) and allow to define data. 
+
+It will include features like:
+
+- data parenting / overriding
+- build time transformations (offline -> runtime)
+- data format versioning & conversion
+- common UI support
+- more...
+
+Below is an example of its usage within the prefab system to define an area with various types of enemies:
+
+```
++ data-offline/
+  - basic_weapon.data // .data files contain both offline & runtime data format definition
+  - basic_weapon.meta
+  - basic_actor.data
+  - basic_actor.meta // basic_weapon reference
+  - advanced_actor.data
+  - advanced_actor.meta // basic_actor reference
+  - boss_weapon.data
+  - boss_weapon.meta // basic_weapon reference
+  - boss_actor.data
+  - boss_actor.meta // advanced_actor reference
+  - area.data
+  - area.meta // many advanced_actor instances, one boss_actor instance, basic_weapon of boss_actor overridden
+```
 
 ## Game World/Level
 
