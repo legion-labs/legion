@@ -157,4 +157,5 @@ This local expandable archive can persist between different game versions - maki
 - [HandmadeCon 2016 - Large-scale Systems Architecture - YouTube](https://www.youtube.com/watch?v=gpINOFQ32o0)
 - [Scripting in Uncharted 2](https://www.slideshare.net/naughty_dog/statebased-scripting-in-uncharted-2-among-thieves)
 - [Data Building Pipeline of Overwatch](https://www.gdcvault.com/play/1024019/The-Data-Building-Pipeline-of)
+- Unreal Engine Runtime Resource Mgmnt: [Asset Mgmnt](https://docs.unrealengine.com/4.26/en-US/ProductionPipelines/AssetManagement/), [Cooking & Chunking](https://docs.unrealengine.com/4.26/en-US/SharingAndReleasing/Patching/GeneralPatching/CookingAndChunking/)
 
