@@ -88,6 +88,8 @@ DCC exporters are command-line tools that are used to extract offline resources 
 
 Asset build process is able to identify and process various kinds of assets. The list of asset types and associated compilers is easily extendable. Compilers are standalone command-line tools that are used to convert from offline to runtime format.
 
+Each compilation unit has to have all its inputs declared ahead of time. The data processed by the compiler needs to be strictly limited to those inputs.
+
 ##### 	Compiler Code & Asset Format Versioning
 
 Asset build process handles changes to compiler code and asset format changes by making sure relevant assets are recompiled.
@@ -95,6 +97,8 @@ Asset build process handles changes to compiler code and asset format changes by
 ##### 	Dependency Processing (compilation order and invalidation)
 
 Asset build process reads asset dependencies from `.meta` files in order to determine the order in which the assets need to be processed and to determine if an asset needs to be rebuilt.
+
+A dependency filtering (by type) is required to be able to reduce the dependencies for various processes (i.e. include only the geometry in navmesh generation).
 
 ##### 	Specialized Output (i.e. platform, game version)
 
