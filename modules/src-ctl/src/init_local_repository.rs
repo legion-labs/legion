@@ -6,6 +6,14 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
     if fs::metadata(directory).is_ok() {
         return Err(format!("{} already exists", directory.display()));
     }
+
+    if let Err(e) = fs::create_dir_all(&directory) {
+        return Err(format!("Error creating repository directory: {}", e));
+    }
+
+    let repo_connection = Connection::new(directory)?;
+    init_forest_database(&repo_connection)?;
+
     if let Err(e) = fs::create_dir_all(directory.join("trees")) {
         return Err(format!("Error creating trees directory: {}", e));
     }
@@ -29,7 +37,7 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
 
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
-    save_tree(directory, &root_tree, &root_hash)?;
+    save_tree(&repo_connection, &root_tree, &root_hash)?;
 
     let id = uuid::Uuid::new_v4().to_string();
     let initial_commit = Commit::new(

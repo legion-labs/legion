@@ -7,6 +7,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use unicase::UniCase;
 
+pub enum TreeNodeType {
+    Directory = 1,
+    File = 2,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TreeNode {
     pub name: String,
@@ -94,29 +99,11 @@ impl Tree {
     }
 }
 
-pub fn save_tree(repo: &Path, tree: &Tree, hash: &str) -> Result<(), String> {
-    let file_path = repo.join("trees").join(String::from(hash) + ".json");
-    match serde_json::to_string(&tree) {
-        Ok(json) => {
-            write_file(&file_path, json.as_bytes())?;
-        }
-        Err(e) => {
-            return Err(format!("Error formatting tree {:?}: {}", tree, e));
-        }
-    }
-    Ok(())
-}
-
-pub fn read_tree(repo: &Path, hash: &str) -> Result<Tree, String> {
-    let file_path = repo.join(format!("trees/{}.json", hash));
-    let parsed: serde_json::Result<Tree> = serde_json::from_str(&read_text_file(&file_path)?);
-    match parsed {
-        Ok(tree) => Ok(tree),
-        Err(e) => Err(format!("Error reading tree {}: {}", hash, e)),
-    }
-}
-
-pub fn fetch_tree_subdir(repo: &Path, root: &Tree, subdir: &Path) -> Result<Tree, String> {
+pub fn fetch_tree_subdir(
+    connection: &Connection,
+    root: &Tree,
+    subdir: &Path,
+) -> Result<Tree, String> {
     let mut parent = root.clone();
     for component in subdir.components() {
         match parent.find_dir_node(
@@ -126,7 +113,7 @@ pub fn fetch_tree_subdir(repo: &Path, root: &Tree, subdir: &Path) -> Result<Tree
                 .expect("invalid path component name"),
         ) {
             Ok(node) => {
-                parent = read_tree(repo, &node.hash)?;
+                parent = read_tree(connection, &node.hash)?;
             }
             Err(_) => {
                 return Ok(Tree::empty()); //new directory
@@ -137,12 +124,12 @@ pub fn fetch_tree_subdir(repo: &Path, root: &Tree, subdir: &Path) -> Result<Tree
 }
 
 pub fn find_file_hash_in_tree(
-    repo: &Path,
+    connection: &Connection,
     relative_path: &Path,
     root_tree: &Tree,
 ) -> Result<String, String> {
     let parent_dir = relative_path.parent().expect("no parent to path provided");
-    let dir_tree = fetch_tree_subdir(repo, root_tree, parent_dir)?;
+    let dir_tree = fetch_tree_subdir(connection, root_tree, parent_dir)?;
     let file_node = dir_tree.find_file_node(
         relative_path
             .file_name()
@@ -157,7 +144,7 @@ pub fn find_file_hash_in_tree(
 pub fn update_tree_from_changes(
     previous_root: &Tree,
     local_changes: &[HashedChange],
-    repo: &Path,
+    connection: &Connection,
 ) -> Result<String, String> {
     //scan changes to get the list of trees to update
     let mut dir_to_update = BTreeSet::new();
@@ -190,7 +177,7 @@ pub fn update_tree_from_changes(
     //process leafs before parents to be able to patch parents with hash of children
     dir_to_update_by_length.sort_by_key(|a| core::cmp::Reverse(a.components().count()));
     for dir in dir_to_update_by_length {
-        let mut tree = fetch_tree_subdir(repo, previous_root, &dir)?;
+        let mut tree = fetch_tree_subdir(connection, previous_root, &dir)?;
         for change in local_changes {
             let relative_path = Path::new(&change.relative_path);
             let parent = relative_path
@@ -244,7 +231,7 @@ pub fn update_tree_from_changes(
             }
         }
 
-        save_tree(repo, &tree, &dir_hash)?;
+        save_tree(connection, &tree, &dir_hash)?;
         if dir.components().count() == 0 {
             return Ok(dir_hash);
         }
@@ -264,9 +251,13 @@ pub fn download_blob(repo: &Path, local_path: &Path, hash: &str) -> Result<(), S
     lz4_decompress(&blob_path, local_path)
 }
 
-pub fn remove_dir_rec(repo: &Path, local_path: &Path, tree_hash: &str) -> Result<String, String> {
+pub fn remove_dir_rec(
+    connection: &Connection,
+    local_path: &Path,
+    tree_hash: &str,
+) -> Result<String, String> {
     let mut messages: Vec<String> = Vec::new();
-    let tree = read_tree(repo, tree_hash)?;
+    let tree = read_tree(connection, tree_hash)?;
 
     for file_node in &tree.file_nodes {
         let file_path = local_path.join(&file_node.name);
@@ -284,7 +275,7 @@ pub fn remove_dir_rec(repo: &Path, local_path: &Path, tree_hash: &str) -> Result
 
     for dir_node in &tree.directory_nodes {
         let dir_path = local_path.join(&dir_node.name);
-        let message = remove_dir_rec(repo, &dir_path, &dir_node.hash)?;
+        let message = remove_dir_rec(connection, &dir_path, &dir_node.hash)?;
         if !message.is_empty() {
             messages.push(message);
         }
@@ -303,7 +294,11 @@ pub fn remove_dir_rec(repo: &Path, local_path: &Path, tree_hash: &str) -> Result
     Ok(messages.join("\n"))
 }
 
-pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Result<(), String> {
+pub fn download_tree(
+    connection: &Connection,
+    download_path: &Path,
+    tree_hash: &str,
+) -> Result<(), String> {
     let mut dir_to_process = Vec::from([TreeNode {
         name: String::from(download_path.to_str().expect("path is invalid string")),
         hash: String::from(tree_hash),
@@ -311,7 +306,7 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
     let mut errors: Vec<String> = Vec::new();
     while !dir_to_process.is_empty() {
         let dir_node = dir_to_process.pop().expect("empty dir_to_process");
-        let tree = read_tree(repo, &dir_node.hash)?;
+        let tree = read_tree(connection, &dir_node.hash)?;
         for relative_subdir_node in tree.directory_nodes {
             let abs_subdir_node = TreeNode {
                 name: format!("{}/{}", &dir_node.name, relative_subdir_node.name),
@@ -332,7 +327,9 @@ pub fn download_tree(repo: &Path, download_path: &Path, tree_hash: &str) -> Resu
         for relative_file_node in tree.file_nodes {
             let abs_path = PathBuf::from(&dir_node.name).join(relative_file_node.name);
             println!("writing {}", abs_path.display());
-            if let Err(e) = download_blob(repo, &abs_path, &relative_file_node.hash) {
+            if let Err(e) =
+                download_blob(connection.repository(), &abs_path, &relative_file_node.hash)
+            {
                 errors.push(format!(
                     "Error downloading blob {} to {}: {}",
                     &relative_file_node.hash,

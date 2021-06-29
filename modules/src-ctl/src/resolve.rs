@@ -158,16 +158,16 @@ pub fn find_resolves_pending_command() -> Result<Vec<ResolvePending>, String> {
     read_resolves_pending(&workspace_root)
 }
 
-//todo: move to repo
 pub fn find_file_hash_at_commit(
-    repo: &Path,
+    connection: &Connection,
     relative_path: &Path,
     commit_id: &str,
 ) -> Result<String, String> {
+    let repo = connection.repository();
     let commit = read_commit(repo, commit_id)?;
-    let root_tree = read_tree(repo, &commit.root_hash)?;
+    let root_tree = read_tree(connection, &commit.root_hash)?;
     let parent_dir = relative_path.parent().expect("no parent to path provided");
-    let dir_tree = fetch_tree_subdir(repo, &root_tree, parent_dir)?;
+    let dir_tree = fetch_tree_subdir(connection, &root_tree, parent_dir)?;
     let file_node = dir_tree.find_file_node(
         relative_path
             .file_name()
@@ -252,6 +252,7 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
+    let connection = Connection::new(repo)?;
     let relative_path = make_canonical_relative_path(&workspace_root, p)?;
     match find_resolve_pending(&workspace_root, &relative_path) {
         SearchResult::Err(e) => {
@@ -269,13 +270,13 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
         }
         SearchResult::Ok(resolve_pending) => {
             let base_file_hash = find_file_hash_at_commit(
-                &workspace_spec.repository,
+                &connection,
                 Path::new(&relative_path),
                 &resolve_pending.base_commit_id,
             )?;
             let base_temp_file = download_temp_file(repo, &workspace_root, &base_file_hash)?;
             let theirs_file_hash = find_file_hash_at_commit(
-                &workspace_spec.repository,
+                &connection,
                 Path::new(&relative_path),
                 &resolve_pending.theirs_commit_id,
             )?;

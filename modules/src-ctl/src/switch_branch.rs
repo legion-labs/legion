@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 fn sync_tree_diff(
-    repo: &Path,
+    connection: &Connection,
     current_tree_hash: &str,
     new_tree_hash: &str,
     relative_path_tree: &Path,
@@ -13,7 +13,7 @@ fn sync_tree_diff(
     let mut files_present: BTreeMap<String, String> = BTreeMap::new();
     let mut dirs_present: BTreeMap<String, String> = BTreeMap::new();
     if !current_tree_hash.is_empty() {
-        let current_tree = read_tree(repo, current_tree_hash)?;
+        let current_tree = read_tree(connection, current_tree_hash)?;
         for file_node in &current_tree.file_nodes {
             files_present.insert(file_node.name.clone(), file_node.hash.clone());
         }
@@ -23,7 +23,7 @@ fn sync_tree_diff(
         }
     }
 
-    let new_tree = read_tree(repo, new_tree_hash)?;
+    let new_tree = read_tree(connection, new_tree_hash)?;
     for new_file_node in &new_tree.file_nodes {
         let present_hash = match files_present.get(&new_file_node.name) {
             Some(hash) => {
@@ -35,7 +35,7 @@ fn sync_tree_diff(
         };
         if new_file_node.hash != present_hash {
             match sync_file(
-                repo,
+                connection.repository(),
                 &workspace_root
                     .join(relative_path_tree)
                     .join(&new_file_node.name),
@@ -54,7 +54,7 @@ fn sync_tree_diff(
     //those files were not matched, delete them
     for k in files_present.keys() {
         let abs_path = workspace_root.join(relative_path_tree).join(&k);
-        match sync_file(repo, &abs_path, "") {
+        match sync_file(connection.repository(), &abs_path, "") {
             Ok(message) => {
                 println!("{}", message);
             }
@@ -82,7 +82,7 @@ fn sync_tree_diff(
         }
         if new_dir_node.hash != present_hash {
             if let Err(e) = sync_tree_diff(
-                repo,
+                connection,
                 &present_hash,
                 &new_dir_node.hash,
                 &relative_sub_dir,
@@ -95,7 +95,7 @@ fn sync_tree_diff(
     //delete the contents of the directories that were not matched
     for (name, hash) in dirs_present {
         let path = workspace_root.join(&relative_path_tree).join(name);
-        match remove_dir_rec(repo, &path, &hash) {
+        match remove_dir_rec(connection, &path, &hash) {
             Ok(messages) => {
                 if !messages.is_empty() {
                     println!("{}", messages);
@@ -115,13 +115,14 @@ pub fn switch_branch_command(name: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
+    let connection = Connection::new(repo)?;
     let old_branch = read_current_branch(&workspace_root)?;
     let old_commit = read_commit(repo, &old_branch.head)?;
     let new_branch = read_branch_from_repo(repo, name)?;
     let new_commit = read_commit(repo, &new_branch.head)?;
     save_current_branch(&workspace_root, &new_branch)?;
     sync_tree_diff(
-        repo,
+        &connection,
         &old_commit.root_hash,
         &new_commit.root_hash,
         Path::new(""),

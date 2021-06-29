@@ -129,6 +129,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
+    let connection = Connection::new(repo)?;
     let mut workspace_branch = read_current_branch(&workspace_root)?;
     let commits = find_commit_range(
         &workspace_spec.repository,
@@ -150,7 +151,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
         //sync backwards is slower and could be optimized if we had before&after hashes in changes
         let ref_commit = &commits.last().unwrap();
         assert!(ref_commit.id == commit_id);
-        let root_tree = read_tree(repo, &ref_commit.root_hash)?;
+        let root_tree = read_tree(&connection, &ref_commit.root_hash)?;
 
         let mut to_update: BTreeSet<String> = BTreeSet::new();
         for commit in commits {
@@ -162,7 +163,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
             to_download.insert(
                 path.clone(),
                 //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we should fail on error
-                match find_file_hash_in_tree(repo, Path::new(&path), &root_tree) {
+                match find_file_hash_in_tree(&connection, Path::new(&path), &root_tree) {
                     Ok(hash) => hash,
                     Err(_) => String::new(),
                 },

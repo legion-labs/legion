@@ -137,6 +137,7 @@ pub fn commit_local_changes(
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let mut current_branch = read_current_branch(workspace_root)?;
     let repo = &workspace_spec.repository;
+    let connection = Connection::new(repo)?;
     let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
@@ -152,9 +153,9 @@ pub fn commit_local_changes(
     let base_commit = read_commit(repo, &current_branch.head)?;
 
     let new_root_hash = update_tree_from_changes(
-        &read_tree(repo, &base_commit.root_hash)?,
+        &read_tree(&connection, &base_commit.root_hash)?,
         &hashed_changes,
-        repo,
+        &connection,
     )?;
 
     let mut parent_commits = Vec::from([base_commit.id]);
