@@ -18,6 +18,12 @@ pub struct TreeNode {
     pub hash: String,
 }
 
+impl TreeNode {
+    pub fn new(name: String, hash: String) -> Self {
+        Self { name, hash }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Tree {
     pub directory_nodes: Vec<TreeNode>,
@@ -30,6 +36,15 @@ impl Tree {
             directory_nodes: Vec::new(),
             file_nodes: Vec::new(),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.directory_nodes.is_empty() && self.file_nodes.is_empty()
+    }
+
+    pub fn sort(&mut self) {
+        self.directory_nodes.sort_by_key(|n| n.name.clone());
+        self.file_nodes.sort_by_key(|n| n.name.clone());
     }
 
     pub fn hash(&self) -> String {
@@ -66,14 +81,14 @@ impl Tree {
         Err(format!("could not find directory node {}", name))
     }
 
-    pub fn find_file_node(&self, specified: &str) -> Result<&TreeNode, String> {
+    pub fn find_file_node(&self, specified: &str) -> Option<&TreeNode> {
         let name = UniCase::new(specified);
         for node in &self.file_nodes {
             if UniCase::new(&node.name) == name {
-                return Ok(node);
+                return Some(node);
             }
         }
-        Err(format!("could not find file node {}", name))
+        None
     }
 
     pub fn remove_file_node(&mut self, specified_name: &str) {
@@ -106,12 +121,11 @@ pub fn fetch_tree_subdir(
 ) -> Result<Tree, String> {
     let mut parent = root.clone();
     for component in subdir.components() {
-        match parent.find_dir_node(
-            component
-                .as_os_str()
-                .to_str()
-                .expect("invalid path component name"),
-        ) {
+        let component_name = component
+            .as_os_str()
+            .to_str()
+            .expect("invalid path component name");
+        match parent.find_dir_node(component_name) {
             Ok(node) => {
                 parent = read_tree(connection, &node.hash)?;
             }
@@ -127,17 +141,19 @@ pub fn find_file_hash_in_tree(
     connection: &Connection,
     relative_path: &Path,
     root_tree: &Tree,
-) -> Result<String, String> {
+) -> Result<Option<String>, String> {
     let parent_dir = relative_path.parent().expect("no parent to path provided");
     let dir_tree = fetch_tree_subdir(connection, root_tree, parent_dir)?;
-    let file_node = dir_tree.find_file_node(
+    match dir_tree.find_file_node(
         relative_path
             .file_name()
             .expect("no file name in path specified")
             .to_str()
             .expect("invalid file name"),
-    )?;
-    Ok(file_node.hash.clone())
+    ) {
+        Some(file_node) => Ok(Some(file_node.hash.clone())),
+        None => Ok(None),
+    }
 }
 
 // returns the hash of the updated root tree
@@ -208,6 +224,7 @@ pub fn update_tree_from_changes(
             }
         }
 
+        tree.sort();
         let dir_hash = tree.hash(); //important not to modify tree beyond this point
 
         //save the child for the parent to find

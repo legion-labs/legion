@@ -53,13 +53,21 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
     let dir_tree = fetch_tree_subdir(&connection, &root_tree, parent_dir)?;
 
     if local_change.change_type != "add" {
-        let file_node = dir_tree.find_file_node(
+        let file_node;
+        match dir_tree.find_file_node(
             abs_path
                 .file_name()
                 .expect("no file name in path specified")
                 .to_str()
                 .expect("invalid file name"),
-        )?;
+        ) {
+            Some(node) => {
+                file_node = node;
+            }
+            None => {
+                return Err(String::from("Original file not found in tree"));
+            }
+        }
         download_blob(&workspace_spec.repository, &abs_path, &file_node.hash)?;
         make_file_read_only(&abs_path, true)?;
     }

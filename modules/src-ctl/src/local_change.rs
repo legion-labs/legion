@@ -153,6 +153,17 @@ pub fn track_new_file(path_specified: &Path) -> Result<(), String> {
         }
     }
 
+    let current_branch = read_current_branch(&workspace_root)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let repo = &workspace_spec.repository;
+    let connection = Connection::new(repo)?;
+
+    if let Some(_hash) =
+        find_file_hash_at_commit(&connection, Path::new(&relative_path), &current_branch.head)?
+    {
+        return Err(String::from("file already exists in tree"));
+    }
+
     assert_not_locked(&workspace_root, &abs_path)?;
     let local_change = LocalChange::new(relative_path, String::from("add"));
 

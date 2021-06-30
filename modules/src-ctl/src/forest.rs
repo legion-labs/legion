@@ -1,20 +1,6 @@
 use crate::*;
-use std::path::Path;
 
 // a Forest struct could eventually contain a MRU cache of recently fetched trees
-
-fn old_save_tree(repo: &Path, tree: &Tree, hash: &str) -> Result<(), String> {
-    let file_path = repo.join("trees").join(String::from(hash) + ".json");
-    match serde_json::to_string(&tree) {
-        Ok(json) => {
-            write_file(&file_path, json.as_bytes())?;
-        }
-        Err(e) => {
-            return Err(format!("Error formatting tree {:?}: {}", tree, e));
-        }
-    }
-    Ok(())
-}
 
 pub fn init_forest_database(connection: &Connection) -> Result<(), String> {
     let sql_connection = connection.sql_connection();
@@ -28,17 +14,43 @@ pub fn init_forest_database(connection: &Connection) -> Result<(), String> {
 }
 
 pub fn read_tree(connection: &Connection, hash: &str) -> Result<Tree, String> {
-    let repo = connection.repository();
-    let file_path = repo.join(format!("trees/{}.json", hash));
-    let parsed: serde_json::Result<Tree> = serde_json::from_str(&read_text_file(&file_path)?);
-    match parsed {
-        Ok(tree) => Ok(tree),
-        Err(e) => Err(format!("Error reading tree {}: {}", hash, e)),
+    let sql_connection = connection.sql_connection();
+    let sql = format!(
+        "SELECT name, hash, node_type 
+         FROM tree_nodes 
+         WHERE parent_tree_hash = '{}'
+         ORDER BY name
+         ;",
+        hash
+    );
+    let mut cursor = sql_connection.prepare(sql).unwrap().into_cursor();
+
+    let mut directory_nodes: Vec<TreeNode> = Vec::new();
+    let mut file_nodes: Vec<TreeNode> = Vec::new();
+
+    while let Some(row) = cursor.next().unwrap() {
+        let name = row[0].as_string().unwrap();
+        let node_hash = row[1].as_string().unwrap();
+        let node_type = row[2].as_integer().unwrap();
+        let node = TreeNode::new(String::from(name), String::from(node_hash));
+        if node_type == TreeNodeType::Directory as i64 {
+            directory_nodes.push(node);
+        } else if node_type == TreeNodeType::File as i64 {
+            file_nodes.push(node);
+        }
     }
+
+    Ok(Tree {
+        directory_nodes,
+        file_nodes,
+    })
 }
 
 pub fn save_tree(connection: &Connection, tree: &Tree, hash: &str) -> Result<(), String> {
-    old_save_tree(connection.repository(), tree, hash)?;
+    let tree_in_db = read_tree(connection, hash)?;
+    if !tree.is_empty() && !tree_in_db.is_empty() {
+        return Ok(());
+    }
 
     let sql_connection = connection.sql_connection();
 

@@ -162,20 +162,22 @@ pub fn find_file_hash_at_commit(
     connection: &Connection,
     relative_path: &Path,
     commit_id: &str,
-) -> Result<String, String> {
+) -> Result<Option<String>, String> {
     let repo = connection.repository();
     let commit = read_commit(repo, commit_id)?;
     let root_tree = read_tree(connection, &commit.root_hash)?;
     let parent_dir = relative_path.parent().expect("no parent to path provided");
     let dir_tree = fetch_tree_subdir(connection, &root_tree, parent_dir)?;
-    let file_node = dir_tree.find_file_node(
+    match dir_tree.find_file_node(
         relative_path
             .file_name()
             .expect("no file name in path specified")
             .to_str()
             .expect("invalid file name"),
-    )?;
-    Ok(file_node.hash.clone())
+    ) {
+        Some(file_node) => Ok(Some(file_node.hash.clone())),
+        None => Ok(None),
+    }
 }
 
 fn run_merge_program(
@@ -273,13 +275,15 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
                 &connection,
                 Path::new(&relative_path),
                 &resolve_pending.base_commit_id,
-            )?;
+            )?
+            .unwrap();
             let base_temp_file = download_temp_file(repo, &workspace_root, &base_file_hash)?;
             let theirs_file_hash = find_file_hash_at_commit(
                 &connection,
                 Path::new(&relative_path),
                 &resolve_pending.theirs_commit_id,
-            )?;
+            )?
+            .unwrap();
             let theirs_temp_file = download_temp_file(repo, &workspace_root, &theirs_file_hash)?;
             let tmp_dir = workspace_root.join(".lsc/tmp");
             let output_temp_file = TempPath {

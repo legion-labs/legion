@@ -164,8 +164,11 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
                 path.clone(),
                 //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we should fail on error
                 match find_file_hash_in_tree(&connection, Path::new(&path), &root_tree) {
-                    Ok(hash) => hash,
-                    Err(_) => String::new(),
+                    Ok(Some(hash)) => hash,
+                    Ok(None) => String::new(),
+                    Err(e) => {
+                        return Err(e);
+                    }
                 },
             );
         }

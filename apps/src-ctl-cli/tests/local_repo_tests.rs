@@ -413,8 +413,8 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["create-branch", "task"]);
     lsc_cli_sys_fail(&work1, &["add", "dir/deep/file1.txt"]);
     lsc_cli_sys(&work1, &["unlock", "dir/deep/file1.txt"]);
-    lsc_cli_sys(&work1, &["add", "dir/deep/file1.txt"]);
-    lsc_cli_sys(&work1, &["commit", r#"-m"add file1 in task branch""#]);
+    lsc_cli_sys(&work1, &["edit", "dir/deep/file1.txt"]);
+    lsc_cli_sys(&work1, &["commit", r#"-m"non-edit file1 in task branch""#]);
 
     lsc_cli_sys(&work1, &["switch-branch", "main"]);
     legion_src_ctl::write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();

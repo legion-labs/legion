@@ -43,7 +43,8 @@ pub fn diff_file_command(
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
     let ref_commit_id =
         reference_version_name_as_commit_id(repo, &workspace_root, reference_version_name)?;
-    let ref_file_hash = find_file_hash_at_commit(&connection, &relative_path, &ref_commit_id)?;
+    let ref_file_hash =
+        find_file_hash_at_commit(&connection, &relative_path, &ref_commit_id)?.unwrap();
 
     if !allow_tools {
         return print_diff(repo, &abs_path, &ref_file_hash);
