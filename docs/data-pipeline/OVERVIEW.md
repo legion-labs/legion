@@ -1,5 +1,7 @@
 # Data Pipeline - Overview
 
+> **Disclaimer**: This document is work in progress and describes our aspirations. There are technical challenges to sort out so the final outcome might look different from the original vision described here.
+
 This document describes the overview of the data processing pipeline in the context outlined in the [CONTEXT DOCUMENT](./data-pipeline/CONTEXT.md).
 
 In high-level the data pipeline deals with 4 distinct representations of data and 3 data transformation processes converting those.
