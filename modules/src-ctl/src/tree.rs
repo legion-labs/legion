@@ -115,7 +115,7 @@ impl Tree {
 }
 
 pub fn fetch_tree_subdir(
-    connection: &Connection,
+    connection: &mut RepositoryConnection,
     root: &Tree,
     subdir: &Path,
 ) -> Result<Tree, String> {
@@ -138,7 +138,7 @@ pub fn fetch_tree_subdir(
 }
 
 pub fn find_file_hash_in_tree(
-    connection: &Connection,
+    connection: &mut RepositoryConnection,
     relative_path: &Path,
     root_tree: &Tree,
 ) -> Result<Option<String>, String> {
@@ -160,7 +160,7 @@ pub fn find_file_hash_in_tree(
 pub fn update_tree_from_changes(
     previous_root: &Tree,
     local_changes: &[HashedChange],
-    connection: &Connection,
+    connection: &mut RepositoryConnection,
 ) -> Result<String, String> {
     //scan changes to get the list of trees to update
     let mut dir_to_update = BTreeSet::new();
@@ -269,7 +269,7 @@ pub fn download_blob(repo: &Path, local_path: &Path, hash: &str) -> Result<(), S
 }
 
 pub fn remove_dir_rec(
-    connection: &Connection,
+    connection: &mut RepositoryConnection,
     local_path: &Path,
     tree_hash: &str,
 ) -> Result<String, String> {
@@ -312,7 +312,7 @@ pub fn remove_dir_rec(
 }
 
 pub fn download_tree(
-    connection: &Connection,
+    connection: &mut RepositoryConnection,
     download_path: &Path,
     tree_hash: &str,
 ) -> Result<(), String> {

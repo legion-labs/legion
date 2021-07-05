@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 fn sync_tree_diff(
-    connection: &Connection,
+    connection: &mut RepositoryConnection,
     current_tree_hash: &str,
     new_tree_hash: &str,
     relative_path_tree: &Path,
@@ -115,14 +115,14 @@ pub fn switch_branch_command(name: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    let connection = Connection::new(repo)?;
+    let mut connection = RepositoryConnection::new(repo)?;
     let old_branch = read_current_branch(&workspace_root)?;
-    let old_commit = read_commit(repo, &old_branch.head)?;
+    let old_commit = read_commit(&mut connection, &old_branch.head)?;
     let new_branch = read_branch_from_repo(repo, name)?;
-    let new_commit = read_commit(repo, &new_branch.head)?;
+    let new_commit = read_commit(&mut connection, &new_branch.head)?;
     save_current_branch(&workspace_root, &new_branch)?;
     sync_tree_diff(
-        &connection,
+        &mut connection,
         &old_commit.root_hash,
         &new_commit.root_hash,
         Path::new(""),

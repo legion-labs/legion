@@ -156,13 +156,16 @@ fn change_file_to(
     }
 }
 
-fn find_commit_ancestors(repo: &Path, id: &str) -> Result<BTreeSet<String>, String> {
+fn find_commit_ancestors(
+    connection: &mut RepositoryConnection,
+    id: &str,
+) -> Result<BTreeSet<String>, String> {
     let mut seeds: VecDeque<String> = VecDeque::new();
     seeds.push_back(String::from(id));
     let mut ancestors = BTreeSet::new();
     while !seeds.is_empty() {
         let seed = seeds.pop_front().unwrap();
-        let c = read_commit(repo, &seed)?;
+        let c = read_commit(connection, &seed)?;
         for parent_id in &c.parents {
             if !ancestors.contains(parent_id) {
                 ancestors.insert(parent_id.clone());
@@ -178,12 +181,13 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
+    let mut connection = RepositoryConnection::new(repo)?;
     let src_branch = read_branch_from_repo(repo, name)?;
     let current_branch = read_current_branch(&workspace_root)?;
     let mut destination_branch = read_branch_from_repo(repo, &current_branch.name)?;
 
-    let merge_source_ancestors = find_commit_ancestors(repo, &src_branch.head)?;
-    let src_commit_history = find_branch_commits(repo, &src_branch)?;
+    let merge_source_ancestors = find_commit_ancestors(&mut connection, &src_branch.head)?;
+    let src_commit_history = find_branch_commits(&mut connection, &src_branch)?;
     if merge_source_ancestors.contains(&destination_branch.head) {
         //fast forward case
         destination_branch.head = src_branch.head;
@@ -200,7 +204,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
     }
 
     let mut errors: Vec<String> = Vec::new();
-    let destination_commit_history = find_branch_commits(repo, &destination_branch)?;
+    let destination_commit_history = find_branch_commits(&mut connection, &destination_branch)?;
     if let Some(common_ancestor_id) =
         find_latest_common_ancestor(&destination_commit_history, &merge_source_ancestors)
     {

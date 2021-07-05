@@ -1,7 +1,9 @@
 use crate::*;
 use chrono::prelude::*;
+use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use sqlx::Row;
 use std::fs;
 use std::path::Path;
 
@@ -46,30 +48,132 @@ impl Commit {
     }
 }
 
-pub fn save_commit(repo: &Path, commit: &Commit) -> Result<(), String> {
-    let file_path = repo.join("commits").join(commit.id.clone() + ".json");
-    match serde_json::to_string(&commit) {
-        Ok(json) => {
-            write_file(&file_path, json.as_bytes())?;
-        }
-        Err(e) => {
-            return Err(format!("Error formatting commit {:?}: {}", commit, e));
-        }
+pub fn init_commit_database(connection: &mut RepositoryConnection) -> Result<(), String> {
+    let sql_connection = connection.sql_connection();
+    let sql = "CREATE TABLE commits(id TEXT, owner TEXT, message TEXT, root_hash TEXT, date_time_utc TEXT);
+         CREATE UNIQUE INDEX commit_id on commits(id);
+         CREATE TABLE commit_parents(id TEXT, parent_id TEXT);
+         CREATE INDEX commit_parents_id on commit_parents(id);
+         CREATE TABLE commit_changes(commit_id TEXT, relative_path TEXT, hash TEXT, change_type INTEGER);
+         CREATE INDEX commit_changes_commit on commit_changes(commit_id);
+        ";
+    if let Err(e) = execute_sql(sql_connection, sql) {
+        return Err(format!("Error creating commit tables and indices: {}", e));
     }
     Ok(())
 }
 
-pub fn read_commit(repo: &Path, id: &str) -> Result<Commit, String> {
-    let file_path = repo.join(format!("commits/{}.json", id));
-    match read_text_file(&file_path) {
-        Ok(contents) => {
-            let parsed: serde_json::Result<Commit> = serde_json::from_str(&contents);
-            match parsed {
-                Ok(commit) => Ok(commit),
-                Err(e) => Err(format!("Error reading commit {}: {}", id, e)),
+pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Result<(), String> {
+    let sql_connection = connection.sql_connection();
+
+    if let Err(e) = block_on(
+        sqlx::query("INSERT INTO commits VALUES($1, $2, $3, $4, $5);")
+            .bind(commit.id.clone())
+            .bind(commit.owner.clone())
+            .bind(commit.message.clone())
+            .bind(commit.root_hash.clone())
+            .bind(commit.date_time_utc.clone())
+            .execute(&mut *sql_connection),
+    ) {
+        return Err(format!("Error inserting into commits: {}", e));
+    }
+
+    for parent_id in &commit.parents {
+        if let Err(e) = block_on(
+            sqlx::query("INSERT INTO commit_parents VALUES($1, $2);")
+                .bind(commit.id.clone())
+                .bind(parent_id.clone())
+                .execute(&mut *sql_connection),
+        ) {
+            return Err(format!("Error inserting into commit_parents: {}", e));
+        }
+    }
+
+    for change in &commit.changes {
+        if let Err(e) = block_on(
+            sqlx::query("INSERT INTO commit_changes VALUES($1, $2, $3, $4);")
+                .bind(commit.id.clone())
+                .bind(change.relative_path.clone())
+                .bind(change.hash.clone())
+                .bind(change.change_type.clone())
+                .execute(&mut *sql_connection),
+        ) {
+            return Err(format!("Error inserting into commit_changes: {}", e));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Commit, String> {
+    let sql_connection = connection.sql_connection();
+    let mut changes: Vec<HashedChange> = Vec::new();
+
+    match block_on(
+        sqlx::query(
+            "SELECT relative_path, hash, change_type
+             FROM commit_changes
+             WHERE commit_id = $1;",
+        )
+        .bind(id)
+        .fetch_all(&mut *sql_connection),
+    ) {
+        Ok(rows) => {
+            for r in rows {
+                changes.push(HashedChange {
+                    relative_path: r.get("relative_path"),
+                    hash: r.get("hash"),
+                    change_type: r.get("change_type"),
+                });
             }
         }
-        Err(e) => Err(format!("Commit {} not found: {}", id, e)),
+        Err(e) => {
+            return Err(format!("Error fetching changes for commit {}: {}", id, e));
+        }
+    }
+
+    let mut parents: Vec<String> = Vec::new();
+    match block_on(
+        sqlx::query(
+            "SELECT parent_id
+             FROM commit_parents
+             WHERE id = $1;",
+        )
+        .bind(id)
+        .fetch_all(&mut *sql_connection),
+    ) {
+        Ok(rows) => {
+            for r in rows {
+                parents.push(r.get("parent_id"));
+            }
+        }
+        Err(e) => {
+            return Err(format!("Error fetching parents for commit {}: {}", id, e));
+        }
+    }
+
+    match block_on(
+        sqlx::query(
+            "SELECT owner, message, root_hash, date_time_utc 
+             FROM commits
+             WHERE id = $1;",
+        )
+        .bind(id)
+        .fetch_one(&mut *sql_connection),
+    ) {
+        Ok(row) => {
+            let commit = Commit::new(
+                String::from(id),
+                row.get("owner"),
+                row.get("message"),
+                changes,
+                row.get("root_hash"),
+                parents,
+            );
+            // println!("commit: {:?}", commit);
+            Ok(commit)
+        }
+        Err(e) => Err(format!("Error fetching commit: {}", e)),
     }
 }
 
@@ -137,7 +241,7 @@ pub fn commit_local_changes(
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let mut current_branch = read_current_branch(workspace_root)?;
     let repo = &workspace_spec.repository;
-    let connection = Connection::new(repo)?;
+    let mut connection = RepositoryConnection::new(repo)?;
     let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
@@ -150,12 +254,12 @@ pub fn commit_local_changes(
     let hashed_changes =
         upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
 
-    let base_commit = read_commit(repo, &current_branch.head)?;
+    let base_commit = read_commit(&mut connection, &current_branch.head)?;
 
     let new_root_hash = update_tree_from_changes(
-        &read_tree(&connection, &base_commit.root_hash)?,
+        &read_tree(&mut connection, &base_commit.root_hash)?,
         &hashed_changes,
-        &connection,
+        &mut connection,
     )?;
 
     let mut parent_commits = Vec::from([base_commit.id]);
@@ -171,7 +275,7 @@ pub fn commit_local_changes(
         new_root_hash,
         parent_commits,
     );
-    save_commit(repo, &commit)?;
+    save_commit(&mut connection, &commit)?;
     current_branch.head = commit.id;
     save_current_branch(workspace_root, &current_branch)?;
 
@@ -193,14 +297,17 @@ pub fn commit_command(message: &str) -> Result<(), String> {
     commit_local_changes(&workspace_root, &id, message)
 }
 
-pub fn find_branch_commits(repo: &Path, branch: &Branch) -> Result<Vec<Commit>, String> {
+pub fn find_branch_commits(
+    connection: &mut RepositoryConnection,
+    branch: &Branch,
+) -> Result<Vec<Commit>, String> {
     let mut commits = Vec::new();
-    let mut c = read_commit(repo, &branch.head)?;
+    let mut c = read_commit(connection, &branch.head)?;
     println!("{}", c.id);
     commits.push(c.clone());
     while !c.parents.is_empty() {
         let id = &c.parents[0]; //first parent is assumed to be branch trunk
-        c = read_commit(repo, id)?;
+        c = read_commit(connection, id)?;
         println!("{}", c.id);
         commits.push(c.clone());
     }

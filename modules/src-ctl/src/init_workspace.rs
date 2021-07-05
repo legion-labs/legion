@@ -9,7 +9,7 @@ pub fn init_workspace(
 ) -> Result<(), String> {
     let workspace_directory = make_path_absolute(specified_workspace_directory);
     let repository_directory = make_path_absolute(specified_repository_directory);
-    let connection = Connection::new(&repository_directory)?;
+    let mut connection = RepositoryConnection::new(&repository_directory)?;
     if fs::metadata(&workspace_directory).is_ok() {
         return Err(format!("{} already exists", workspace_directory.display()));
     }
@@ -53,7 +53,7 @@ pub fn init_workspace(
     )?;
     let main_branch = read_branch(repository_directory.join("branches/main.json").as_path())?;
     save_current_branch(&workspace_directory, &main_branch)?;
-    let commit = read_commit(&repository_directory, &main_branch.head)?;
-    download_tree(&connection, &workspace_directory, &commit.root_hash)?;
+    let commit = read_commit(&mut connection, &main_branch.head)?;
+    download_tree(&mut connection, &workspace_directory, &commit.root_hash)?;
     Ok(())
 }

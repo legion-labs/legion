@@ -11,12 +11,12 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
         return Err(format!("Error creating repository directory: {}", e));
     }
 
-    let repo_connection = Connection::new(directory)?;
-    init_forest_database(&repo_connection)?;
+    create_sqlite_repo_database(directory)?;
 
-    if let Err(e) = fs::create_dir_all(directory.join("trees")) {
-        return Err(format!("Error creating trees directory: {}", e));
-    }
+    let mut repo_connection = RepositoryConnection::new(directory)?;
+    init_commit_database(&mut repo_connection)?;
+    init_forest_database(&mut repo_connection)?;
+
     if let Err(e) = fs::create_dir_all(directory.join("commits")) {
         return Err(format!("Error creating commits directory: {}", e));
     }
@@ -37,7 +37,7 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
 
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
-    save_tree(&repo_connection, &root_tree, &root_hash)?;
+    save_tree(&mut repo_connection, &root_tree, &root_hash)?;
 
     let id = uuid::Uuid::new_v4().to_string();
     let initial_commit = Commit::new(
@@ -48,7 +48,7 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
         root_hash,
         Vec::new(),
     );
-    save_commit(directory, &initial_commit)?;
+    save_commit(&mut repo_connection, &initial_commit)?;
 
     let main_branch = Branch::new(
         String::from("main"),

@@ -5,6 +5,7 @@ pub fn log_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let mut connection = RepositoryConnection::new(&workspace_spec.repository)?;
     let workspace_branch = read_current_branch(&workspace_root)?;
     println!(
         "This workspace is on branch {} at commit {}",
@@ -13,7 +14,7 @@ pub fn log_command() -> Result<(), String> {
 
     let repo_branch = read_branch_from_repo(&workspace_spec.repository, &workspace_branch.name)?;
 
-    match find_branch_commits(&workspace_spec.repository, &repo_branch) {
+    match find_branch_commits(&mut connection, &repo_branch) {
         Ok(commits) => {
             for c in commits {
                 let utc = DateTime::parse_from_rfc3339(&c.date_time_utc)

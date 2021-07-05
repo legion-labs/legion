@@ -39,12 +39,12 @@ pub fn diff_file_command(
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    let connection = Connection::new(repo)?;
+    let mut connection = RepositoryConnection::new(repo)?;
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
     let ref_commit_id =
         reference_version_name_as_commit_id(repo, &workspace_root, reference_version_name)?;
     let ref_file_hash =
-        find_file_hash_at_commit(&connection, &relative_path, &ref_commit_id)?.unwrap();
+        find_file_hash_at_commit(&mut connection, &relative_path, &ref_commit_id)?.unwrap();
 
     if !allow_tools {
         return print_diff(repo, &abs_path, &ref_file_hash);

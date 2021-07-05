@@ -1,42 +1,51 @@
 use crate::*;
+use futures::executor::block_on;
+use sqlx::Row;
 
 // a Forest struct could eventually contain a MRU cache of recently fetched trees
 
-pub fn init_forest_database(connection: &Connection) -> Result<(), String> {
+pub fn init_forest_database(connection: &mut RepositoryConnection) -> Result<(), String> {
     let sql_connection = connection.sql_connection();
-    if let Err(e) = sql_connection.execute(
+    let sql =
         "CREATE TABLE tree_nodes (name TEXT, hash TEXT, parent_tree_hash TEXT, node_type INTEGER);
-         CREATE INDEX tree on tree_nodes(parent_tree_hash);",
-    ) {
+         CREATE INDEX tree on tree_nodes(parent_tree_hash);";
+
+    if let Err(e) = execute_sql(sql_connection, sql) {
         return Err(format!("Error creating forest: {}", e));
     }
     Ok(())
 }
 
-pub fn read_tree(connection: &Connection, hash: &str) -> Result<Tree, String> {
+pub fn read_tree(connection: &mut RepositoryConnection, hash: &str) -> Result<Tree, String> {
     let sql_connection = connection.sql_connection();
-    let sql = format!(
-        "SELECT name, hash, node_type 
-         FROM tree_nodes 
-         WHERE parent_tree_hash = '{}'
-         ORDER BY name
-         ;",
-        hash
-    );
-    let mut cursor = sql_connection.prepare(sql).unwrap().into_cursor();
-
     let mut directory_nodes: Vec<TreeNode> = Vec::new();
     let mut file_nodes: Vec<TreeNode> = Vec::new();
 
-    while let Some(row) = cursor.next().unwrap() {
-        let name = row[0].as_string().unwrap();
-        let node_hash = row[1].as_string().unwrap();
-        let node_type = row[2].as_integer().unwrap();
-        let node = TreeNode::new(String::from(name), String::from(node_hash));
-        if node_type == TreeNodeType::Directory as i64 {
-            directory_nodes.push(node);
-        } else if node_type == TreeNodeType::File as i64 {
-            file_nodes.push(node);
+    match block_on(
+        sqlx::query(
+            "SELECT name, hash, node_type
+             FROM tree_nodes
+             WHERE parent_tree_hash = $1
+             ORDER BY name;",
+        )
+        .bind(hash)
+        .fetch_all(&mut *sql_connection),
+    ) {
+        Ok(rows) => {
+            for r in rows {
+                let name: String = r.get("name");
+                let node_hash: String = r.get("hash");
+                let node_type: i64 = r.get("node_type");
+                let node = TreeNode::new(name, node_hash);
+                if node_type == TreeNodeType::Directory as i64 {
+                    directory_nodes.push(node);
+                } else if node_type == TreeNodeType::File as i64 {
+                    file_nodes.push(node);
+                }
+            }
+        }
+        Err(e) => {
+            return Err(format!("Error fetching tree nodes for {}: {}", hash, e));
         }
     }
 
@@ -46,7 +55,11 @@ pub fn read_tree(connection: &Connection, hash: &str) -> Result<Tree, String> {
     })
 }
 
-pub fn save_tree(connection: &Connection, tree: &Tree, hash: &str) -> Result<(), String> {
+pub fn save_tree(
+    connection: &mut RepositoryConnection,
+    tree: &Tree,
+    hash: &str,
+) -> Result<(), String> {
     let tree_in_db = read_tree(connection, hash)?;
     if !tree.is_empty() && !tree_in_db.is_empty() {
         return Ok(());
@@ -54,53 +67,31 @@ pub fn save_tree(connection: &Connection, tree: &Tree, hash: &str) -> Result<(),
 
     let sql_connection = connection.sql_connection();
 
-    let mut statement = match sql_connection
-        .prepare("INSERT INTO tree_nodes VALUES(:name, :hash, :parent_tree_hash, :node_type);")
-    {
-        Err(e) => {
-            return Err(format!("Error preparing insert: {}", e));
-        }
-        Ok(statement) => statement,
-    };
-
-    execute_sql(sql_connection, "BEGIN TRANSACTION;")?;
-
-    statement.bind_by_name(":parent_tree_hash", &*hash).unwrap();
-    statement
-        .bind_by_name(":node_type", TreeNodeType::File as i64)
-        .unwrap();
-    let mut cursor = statement.into_cursor();
     for file_node in &tree.file_nodes {
-        cursor
-            .bind_by_name(vec![
-                (":name", sqlite::Value::String(file_node.name.clone())),
-                (":hash", sqlite::Value::String(file_node.hash.clone())),
-            ])
-            .unwrap();
-        if let Err(e) = cursor.next() {
-            return Err(format!("Error inserting tree_node: {}", e));
+        if let Err(e) = block_on(
+            sqlx::query("INSERT INTO tree_nodes VALUES($1, $2, $3, $4);")
+                .bind(file_node.name.clone())
+                .bind(file_node.hash.clone())
+                .bind(hash)
+                .bind(TreeNodeType::File as i64)
+                .execute(&mut *sql_connection),
+        ) {
+            return Err(format!("Error inserting into tree_nodes: {}", e));
         }
     }
 
-    cursor
-        .bind_by_name(vec![(
-            ":node_type",
-            sqlite::Value::Integer(TreeNodeType::Directory as i64),
-        )])
-        .unwrap();
     for dir_node in &tree.directory_nodes {
-        cursor
-            .bind_by_name(vec![
-                (":name", sqlite::Value::String(dir_node.name.clone())),
-                (":hash", sqlite::Value::String(dir_node.hash.clone())),
-            ])
-            .unwrap();
-        if let Err(e) = cursor.next() {
-            return Err(format!("Error inserting tree_node: {}", e));
+        if let Err(e) = block_on(
+            sqlx::query("INSERT INTO tree_nodes VALUES($1, $2, $3, $4);")
+                .bind(dir_node.name.clone())
+                .bind(dir_node.hash.clone())
+                .bind(hash)
+                .bind(TreeNodeType::Directory as i64)
+                .execute(&mut *sql_connection),
+        ) {
+            return Err(format!("Error inserting into tree_nodes: {}", e));
         }
     }
-
-    execute_sql(sql_connection, "COMMIT;")?;
 
     Ok(())
 }

@@ -7,13 +7,13 @@ use std::fs;
 use std::path::Path;
 
 fn find_commit_range(
-    repo: &Path,
+    connection: &mut RepositoryConnection,
     branch_name: &str,
     start_commit_id: &str,
     end_commit_id: &str,
 ) -> Result<Vec<Commit>, String> {
-    let repo_branch = read_branch_from_repo(repo, branch_name)?;
-    let mut current_commit = read_commit(repo, &repo_branch.head)?;
+    let repo_branch = read_branch_from_repo(connection.repository(), branch_name)?;
+    let mut current_commit = read_commit(connection, &repo_branch.head)?;
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
             return Err(format!(
@@ -21,13 +21,13 @@ fn find_commit_range(
                 &start_commit_id, &end_commit_id
             ));
         }
-        current_commit = read_commit(repo, &current_commit.parents[0])?;
+        current_commit = read_commit(connection, &current_commit.parents[0])?;
     }
     let mut commits = vec![current_commit.clone()];
     if current_commit.id == start_commit_id && current_commit.id == end_commit_id {
         return Ok(commits);
     }
-    current_commit = read_commit(repo, &current_commit.parents[0])?;
+    current_commit = read_commit(connection, &current_commit.parents[0])?;
     commits.push(current_commit.clone());
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
@@ -36,7 +36,7 @@ fn find_commit_range(
                 &start_commit_id, &end_commit_id
             ));
         }
-        current_commit = read_commit(repo, &current_commit.parents[0])?;
+        current_commit = read_commit(connection, &current_commit.parents[0])?;
         commits.push(current_commit.clone());
     }
     Ok(commits)
@@ -129,10 +129,10 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    let connection = Connection::new(repo)?;
+    let mut connection = RepositoryConnection::new(repo)?;
     let mut workspace_branch = read_current_branch(&workspace_root)?;
     let commits = find_commit_range(
-        &workspace_spec.repository,
+        &mut connection,
         &workspace_branch.name,
         &workspace_branch.head,
         commit_id,
@@ -151,7 +151,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
         //sync backwards is slower and could be optimized if we had before&after hashes in changes
         let ref_commit = &commits.last().unwrap();
         assert!(ref_commit.id == commit_id);
-        let root_tree = read_tree(&connection, &ref_commit.root_hash)?;
+        let root_tree = read_tree(&mut connection, &ref_commit.root_hash)?;
 
         let mut to_update: BTreeSet<String> = BTreeSet::new();
         for commit in commits {
@@ -163,7 +163,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
             to_download.insert(
                 path.clone(),
                 //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we should fail on error
-                match find_file_hash_in_tree(&connection, Path::new(&path), &root_tree) {
+                match find_file_hash_in_tree(&mut connection, Path::new(&path), &root_tree) {
                     Ok(Some(hash)) => hash,
                     Ok(None) => String::new(),
                     Err(e) => {
