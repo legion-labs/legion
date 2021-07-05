@@ -7,7 +7,7 @@
 //! will own the output end.
 //!
 //! ```
-//! use legion_hw_codec::{
+//! use legion_codec_hal::{
 //!     backends::null::{NullEncoder, NullEncoderConfig},
 //!     Error, GpuImage, VideoProcessor,
 //! };

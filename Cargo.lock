@@ -854,18 +854,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
+name = "legion-codec-hal"
+version = "0.1.0"
+dependencies = [
+ "amf",
+ "ash",
+]
+
+[[package]]
 name = "legion-core"
 version = "0.1.0"
 
 [[package]]
 name = "legion-graphics-hal"
 version = "0.1.0"
-
-[[package]]
-name = "legion-hw-codec"
-version = "0.1.0"
 dependencies = [
- "amf",
  "ash",
 ]
 
@@ -875,6 +878,10 @@ version = "0.1.0"
 
 [[package]]
 name = "legion-renderer"
+version = "0.1.0"
+
+[[package]]
+name = "legion-shader-compiler"
 version = "0.1.0"
 
 [[package]]
@@ -902,7 +909,7 @@ dependencies = [
 name = "legion-streamer"
 version = "0.1.0"
 dependencies = [
- "legion-hw-codec",
+ "legion-codec-hal",
 ]
 
 [[package]]
