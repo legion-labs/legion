@@ -7,12 +7,11 @@ Uses hardware encoding/decoding to generate a stream of frames to be consumed. T
 | HW Vendor         | Encoding           | Decoding           |
 |-------------------|--------------------|--------------------|
 | AMD (min ver)     | :heavy_check_mark: | :heavy_check_mark: |
-| Android (min ver) | :x:                | :calendar:         |
-| Apple (min ver)   | :x:                | :calendar:         |
+| Android (min ver) | :x:                | :construction:     |
+| Apple (min ver)   | :x:                | :construction:     |
 | Intel (min ver)   | :x:                | :heavy_check_mark: |
 | Nvidia (min ver)  | :heavy_check_mark: | :heavy_check_mark: |
 
 - :heavy_check_mark: : Supported
-- :calendar: : Not supported but planned
+- :construction: : Not supported but planned or wip
 - :x: : not planned
-
