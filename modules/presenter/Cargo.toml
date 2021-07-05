@@ -1,5 +1,5 @@
 [package]
-name = "legion-hw-codec"
+name = "legion-presenter"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2018"
@@ -8,5 +8,3 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ash = "0.32"
-amf = { git="https://github.com/legion-labs/amf-rs.git", branch="main", features=["ash"] }

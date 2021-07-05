@@ -1,10 +1,6 @@
 [workspace]
-members = [
-    "core",
-    "modules/*",
-    "apps/*",
-    "tests/*"
-]
+members = ["core", "modules/*", "apps/*", "tests/*"]
+resolver = "2"
 
 [profile.release]
 opt-level = 3

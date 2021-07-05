@@ -3,9 +3,10 @@
 [[package]]
 name = "amf"
 version = "0.1.0"
-source = "git+https://github.com/legion-labs/amf-rs.git?branch=main#651d340398b15971caf5aa18a0adb3a74868fa2e"
+source = "git+https://github.com/legion-labs/amf-rs.git?branch=main#75b1ddab7f9350dc079970df91b34354388f9488"
 dependencies = [
  "amf-sys",
+ "ash",
  "bitflags",
  "lazy_static",
  "libloading",
@@ -14,7 +15,7 @@ dependencies = [
 [[package]]
 name = "amf-sys"
 version = "0.1.0"
-source = "git+https://github.com/legion-labs/amf-rs.git?branch=main#651d340398b15971caf5aa18a0adb3a74868fa2e"
+source = "git+https://github.com/legion-labs/amf-rs.git?branch=main#75b1ddab7f9350dc079970df91b34354388f9488"
 dependencies = [
  "bindgen",
 ]
@@ -271,9 +272,9 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "hermit-abi"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "322f4de77956e22ed0e5032c359a0f1273f1f7f0d79bfa3b8ffbc730d7fbcc5c"
+checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
@@ -330,12 +331,24 @@ name = "legion-core"
 version = "0.1.0"
 
 [[package]]
+name = "legion-graphics-hal"
+version = "0.1.0"
+
+[[package]]
 name = "legion-hw-codec"
 version = "0.1.0"
 dependencies = [
  "amf",
  "ash",
 ]
+
+[[package]]
+name = "legion-presenter"
+version = "0.1.0"
+
+[[package]]
+name = "legion-renderer"
+version = "0.1.0"
 
 [[package]]
 name = "legion-src-ctl"
