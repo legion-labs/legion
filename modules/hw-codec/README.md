@@ -13,7 +13,7 @@ Uses hardware encoding/decoding to generate a stream of frames to be consumed. T
 | Android   | :x:                          | :construction:                |
 | Apple     | :x:                          | :construction:                |
 | Intel     | :x:                          | (Sandy Bridge+):construction: |
-| Nvidia    | (Pascal+) :construction:     | () :construction:             |
+| Nvidia    | (Pascal+) :construction:     | (Maxwell+) :construction:     |
 
 - :heavy_check_mark: : Supported
 - :construction: : Not supported but planned or wip
