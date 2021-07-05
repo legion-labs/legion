@@ -4,13 +4,16 @@ Uses hardware encoding/decoding to generate a stream of frames to be consumed. T
 
 ## Support Matrix
 
-| HW Vendor         | Encoding           | Decoding           |
-|-------------------|--------------------|--------------------|
-| AMD (min ver)     | :heavy_check_mark: | :heavy_check_mark: |
-| Android (min ver) | :x:                | :construction:     |
-| Apple (min ver)   | :x:                | :construction:     |
-| Intel (min ver)   | :x:                | :heavy_check_mark: |
-| Nvidia (min ver)  | :heavy_check_mark: | :heavy_check_mark: |
+Minimum support of H.265 @ 4k in low latency for encoding.
+Minimum support of H.264 @ 4k in low latency mode for decoding.
+
+| HW Vendor | Encoding                     | Decoding                      |
+|-----------|------------------------------|-------------------------------|
+| AMD       | (GCN3+) :heavy_check_mark:   | (GCN1+) :heavy_check_mark:    |
+| Android   | :x:                          | :construction:                |
+| Apple     | :x:                          | :construction:                |
+| Intel     | :x:                          | (Sandy Bridge+):construction: |
+| Nvidia    | (Pascal+) :construction:     | () :construction:             |
 
 - :heavy_check_mark: : Supported
 - :construction: : Not supported but planned or wip
