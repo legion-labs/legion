@@ -53,10 +53,8 @@ fn force_delete_all(dir: &Path) {
                 let path = entry.path();
                 if path.is_dir() {
                     visit_dirs(&path, cb)?;
-                    cb(&entry);
-                } else {
-                    cb(&entry);
                 }
+                cb(&entry);
             }
         }
         Ok(())
