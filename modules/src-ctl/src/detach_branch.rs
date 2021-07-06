@@ -1,16 +1,15 @@
 use crate::*;
 use std::collections::BTreeSet;
 use std::fs;
-use std::path::Path;
 
 // find_branch_descendants includes the branch itself
 fn find_branch_descendants(
-    repo: &Path,
+    connection: &mut RepositoryConnection,
     root_branch_name: &str,
 ) -> Result<BTreeSet<String>, String> {
     let mut set = BTreeSet::new();
     set.insert(String::from(root_branch_name));
-    let branches = read_branches(repo)?;
+    let branches = read_branches(connection)?;
     let mut keep_going = true;
     while keep_going {
         keep_going = false;
@@ -29,8 +28,9 @@ pub fn detach_branch_command() -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
+    let mut connection = RepositoryConnection::new(repo)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
+    let mut repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     repo_branch.parent.clear();
 
     let locks_in_old_domain = read_locks(repo, &repo_branch.lock_domain_id)?;
@@ -39,9 +39,9 @@ pub fn detach_branch_command() -> Result<(), String> {
         return Err(format!("Error creating locks directory: {}", e));
     }
 
-    let descendants = find_branch_descendants(repo, &current_branch.name)?;
+    let descendants = find_branch_descendants(&mut connection, &current_branch.name)?;
 
-    if let Err(e) = save_branch_to_repo(repo, &repo_branch) {
+    if let Err(e) = save_branch_to_repo(&mut connection, &repo_branch) {
         return Err(format!(
             "Error saving {} to clear its parent: {}",
             repo_branch.name, e
@@ -51,10 +51,10 @@ pub fn detach_branch_command() -> Result<(), String> {
     let mut errors = Vec::new();
 
     for branch_name in &descendants {
-        match read_branch_from_repo(repo, branch_name) {
+        match read_branch_from_repo(&mut connection, branch_name) {
             Ok(mut branch) => {
                 branch.lock_domain_id = lock_domain_id.clone();
-                if let Err(e) = save_branch_to_repo(repo, &branch) {
+                if let Err(e) = save_branch_to_repo(&mut connection, &branch) {
                     errors.push(format!("Error updating branch {}: {}", branch_name, e));
                 } else {
                     println!("updated branch {}", branch_name);

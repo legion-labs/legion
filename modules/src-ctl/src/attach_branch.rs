@@ -1,10 +1,12 @@
 use crate::*;
 use std::collections::BTreeSet;
-use std::path::Path;
 
-fn find_branches_in_lock_domain(repo: &Path, lock_domain_id: &str) -> Result<Vec<Branch>, String> {
+fn find_branches_in_lock_domain(
+    connection: &mut RepositoryConnection,
+    lock_domain_id: &str,
+) -> Result<Vec<Branch>, String> {
     let mut res = Vec::new();
-    for branch in read_branches(repo)? {
+    for branch in read_branches(connection)? {
         if branch.lock_domain_id == lock_domain_id {
             res.push(branch);
         }
@@ -17,8 +19,9 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
+    let mut connection = RepositoryConnection::new(repo)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
+    let mut repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     if !repo_branch.parent.is_empty() {
         return Err(format!(
             "Can't attach branch {} to {}: branch {} already has {} for parent",
@@ -26,7 +29,7 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
         ));
     }
 
-    let parent_branch = read_branch_from_repo(repo, parent_branch_name)?;
+    let parent_branch = read_branch_from_repo(&mut connection, parent_branch_name)?;
     let mut locks_parent_domain = BTreeSet::new();
     for lock in read_locks(repo, &parent_branch.lock_domain_id)? {
         locks_parent_domain.insert(lock.relative_path);
@@ -64,18 +67,18 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
     }
 
     repo_branch.parent = parent_branch.name;
-    if let Err(e) = save_branch_to_repo(repo, &repo_branch) {
+    if let Err(e) = save_branch_to_repo(&mut connection, &repo_branch) {
         return Err(format!(
             "Error saving {} to set its parent: {}",
             repo_branch.name, e
         ));
     }
 
-    match find_branches_in_lock_domain(repo, &repo_branch.lock_domain_id) {
+    match find_branches_in_lock_domain(&mut connection, &repo_branch.lock_domain_id) {
         Ok(branches) => {
             for mut branch in branches {
                 branch.lock_domain_id = parent_branch.lock_domain_id.clone();
-                if let Err(e) = save_branch_to_repo(repo, &branch) {
+                if let Err(e) = save_branch_to_repo(&mut connection, &branch) {
                     errors.push(format!("Error saving branch {}: {}", branch.name, e));
                 } else {
                     println!("Updated branch {}", branch.name);

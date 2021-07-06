@@ -51,7 +51,7 @@ pub fn init_workspace(
             .as_path(),
         &spec,
     )?;
-    let main_branch = read_branch(repository_directory.join("branches/main.json").as_path())?;
+    let main_branch = read_branch_from_repo(&mut connection, "main")?;
     save_current_branch(&workspace_directory, &main_branch)?;
     let commit = read_commit(&mut connection, &main_branch.head)?;
     download_tree(&mut connection, &workspace_directory, &commit.root_hash)?;

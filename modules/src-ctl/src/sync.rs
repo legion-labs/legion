@@ -12,7 +12,7 @@ fn find_commit_range(
     start_commit_id: &str,
     end_commit_id: &str,
 ) -> Result<Vec<Commit>, String> {
-    let repo_branch = read_branch_from_repo(connection.repository(), branch_name)?;
+    let repo_branch = read_branch_from_repo(connection, branch_name)?;
     let mut current_commit = read_commit(connection, &repo_branch.head)?;
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
@@ -235,6 +235,7 @@ pub fn sync_command() -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let workspace_branch = read_current_branch(&workspace_root)?;
-    let repo_branch = read_branch_from_repo(&workspace_spec.repository, &workspace_branch.name)?;
+    let mut connection = RepositoryConnection::new(&workspace_spec.repository)?;
+    let repo_branch = read_branch_from_repo(&mut connection, &workspace_branch.name)?;
     sync_to_command(&repo_branch.head)
 }

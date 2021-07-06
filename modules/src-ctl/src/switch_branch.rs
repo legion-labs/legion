@@ -118,7 +118,7 @@ pub fn switch_branch_command(name: &str) -> Result<(), String> {
     let mut connection = RepositoryConnection::new(repo)?;
     let old_branch = read_current_branch(&workspace_root)?;
     let old_commit = read_commit(&mut connection, &old_branch.head)?;
-    let new_branch = read_branch_from_repo(repo, name)?;
+    let new_branch = read_branch_from_repo(&mut connection, name)?;
     let new_commit = read_commit(&mut connection, &new_branch.head)?;
     save_current_branch(&workspace_root, &new_branch)?;
     sync_tree_diff(

@@ -4,7 +4,7 @@ use std::path::Path;
 use std::process::Command;
 
 fn reference_version_name_as_commit_id(
-    repo: &Path,
+    connection: &mut RepositoryConnection,
     workspace_root: &Path,
     reference_version_name: &str,
 ) -> Result<String, String> {
@@ -15,7 +15,7 @@ fn reference_version_name_as_commit_id(
         }
         "latest" => {
             let workspace_branch = read_current_branch(workspace_root)?;
-            let branch = read_branch_from_repo(repo, &workspace_branch.name)?;
+            let branch = read_branch_from_repo(connection, &workspace_branch.name)?;
             Ok(branch.head)
         }
         _ => Ok(String::from(reference_version_name)),
@@ -41,8 +41,11 @@ pub fn diff_file_command(
     let repo = &workspace_spec.repository;
     let mut connection = RepositoryConnection::new(repo)?;
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
-    let ref_commit_id =
-        reference_version_name_as_commit_id(repo, &workspace_root, reference_version_name)?;
+    let ref_commit_id = reference_version_name_as_commit_id(
+        &mut connection,
+        &workspace_root,
+        reference_version_name,
+    )?;
     let ref_file_hash =
         find_file_hash_at_commit(&mut connection, &relative_path, &ref_commit_id)?.unwrap();
 

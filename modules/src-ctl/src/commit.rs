@@ -177,9 +177,20 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
     }
 }
 
-pub fn commit_exists(repo: &Path, id: &str) -> bool {
-    let file_path = repo.join(format!("commits/{}.json", id));
-    file_path.exists()
+pub fn commit_exists(connection: &mut RepositoryConnection, id: &str) -> bool {
+    let sql_connection = connection.sql_connection();
+    let res = block_on(
+        sqlx::query(
+            "SELECT count(*) as count
+             FROM commits
+             WHERE id = $1;",
+        )
+        .bind(id)
+        .fetch_one(&mut *sql_connection),
+    );
+    let row = res.unwrap();
+    let count: i32 = row.get("count");
+    count > 0
 }
 
 fn write_blob(file_path: &Path, contents: &[u8]) -> Result<(), String> {
@@ -242,7 +253,7 @@ pub fn commit_local_changes(
     let mut current_branch = read_current_branch(workspace_root)?;
     let repo = &workspace_spec.repository;
     let mut connection = RepositoryConnection::new(repo)?;
-    let repo_branch = read_branch_from_repo(repo, &current_branch.name)?;
+    let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
@@ -280,7 +291,7 @@ pub fn commit_local_changes(
     save_current_branch(workspace_root, &current_branch)?;
 
     //todo: will need to lock to avoid races in updating branch in the database
-    save_branch_to_repo(repo, &current_branch)?;
+    save_branch_to_repo(&mut connection, &current_branch)?;
 
     if let Err(e) = make_local_files_read_only(workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);

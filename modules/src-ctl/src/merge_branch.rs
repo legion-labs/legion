@@ -182,9 +182,9 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
     let mut connection = RepositoryConnection::new(repo)?;
-    let src_branch = read_branch_from_repo(repo, name)?;
+    let src_branch = read_branch_from_repo(&mut connection, name)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut destination_branch = read_branch_from_repo(repo, &current_branch.name)?;
+    let mut destination_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
 
     let merge_source_ancestors = find_commit_ancestors(&mut connection, &src_branch.head)?;
     let src_commit_history = find_branch_commits(&mut connection, &src_branch)?;
@@ -192,7 +192,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
         //fast forward case
         destination_branch.head = src_branch.head;
         save_current_branch(&workspace_root, &destination_branch)?;
-        save_branch_to_repo(repo, &destination_branch)?;
+        save_branch_to_repo(&mut connection, &destination_branch)?;
         println!("Fast-forward merge: branch updated, synching");
         return sync_command();
     }

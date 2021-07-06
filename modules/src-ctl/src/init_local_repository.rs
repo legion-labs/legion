@@ -16,15 +16,10 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
     let mut repo_connection = RepositoryConnection::new(directory)?;
     init_commit_database(&mut repo_connection)?;
     init_forest_database(&mut repo_connection)?;
+    init_branch_database(&mut repo_connection)?;
 
-    if let Err(e) = fs::create_dir_all(directory.join("commits")) {
-        return Err(format!("Error creating commits directory: {}", e));
-    }
     if let Err(e) = fs::create_dir_all(directory.join("blobs")) {
         return Err(format!("Error creating blobs directory: {}", e));
-    }
-    if let Err(e) = fs::create_dir_all(directory.join("branches")) {
-        return Err(format!("Error creating branches directory: {}", e));
     }
     if let Err(e) = fs::create_dir_all(directory.join("workspaces")) {
         return Err(format!("Error creating workspaces directory: {}", e));
@@ -56,7 +51,7 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
         String::new(),
         lock_domain_id,
     );
-    save_branch_to_repo(directory, &main_branch)?;
+    save_new_branch_to_repo(&mut repo_connection, &main_branch)?;
 
     Ok(())
 }

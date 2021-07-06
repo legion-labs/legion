@@ -187,7 +187,7 @@ fn import_commit_diff(
 // One alternative would be to find the shortest path between the last integrated commit and the
 // top of the branch.
 fn import_commit_sequence(
-    repo: &Path,
+    connection: &mut RepositoryConnection,
     workspace_root: &Path,
     git_repo: &git2::Repository,
     root_commit: &git2::Commit<'_>,
@@ -197,7 +197,7 @@ fn import_commit_sequence(
     loop {
         let commit = stack.pop().unwrap();
         let commit_id = commit.id().to_string();
-        if commit_exists(repo, &commit_id) {
+        if commit_exists(connection, &commit_id) {
             match commit.tree() {
                 Ok(tree) => {
                     if let Err(e) = reference_index.read_tree(&tree) {
@@ -294,7 +294,7 @@ fn import_commit_sequence(
 }
 
 fn import_branch(
-    repo: &Path,
+    connection: &mut RepositoryConnection,
     workspace_root: &Path,
     git_repo: &git2::Repository,
     branch: &git2::Branch<'_>,
@@ -302,7 +302,7 @@ fn import_branch(
     let branch_name = branch.name().unwrap().unwrap();
     println!("importing branch {}", branch_name);
 
-    match find_branch(repo, branch_name) {
+    match find_branch(connection, branch_name) {
         SearchResult::Ok(_branch) => {
             println!("branch already exists");
         }
@@ -316,7 +316,7 @@ fn import_branch(
 
     match branch.get().peel_to_commit() {
         Ok(commit) => {
-            import_commit_sequence(repo, workspace_root, git_repo, &commit)?;
+            import_commit_sequence(connection, workspace_root, git_repo, &commit)?;
         }
         Err(e) => {
             return Err(format!("Branch reference is not a commit: {}", e));
@@ -330,6 +330,7 @@ pub fn import_git_repo_command(git_root_path: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
+    let mut connection = RepositoryConnection::new(repo)?;
     match git2::Repository::open(git_root_path) {
         Ok(git_repo) => {
             println!("git repository state: {:?}", git_repo.state());
@@ -340,7 +341,12 @@ pub fn import_git_repo_command(git_root_path: &Path) -> Result<(), String> {
                     for branch_result in branches {
                         match branch_result {
                             Ok((branch, _branch_type)) => {
-                                import_branch(repo, &workspace_root, &git_repo, &branch)?;
+                                import_branch(
+                                    &mut connection,
+                                    &workspace_root,
+                                    &git_repo,
+                                    &branch,
+                                )?;
                             }
                             Err(e) => {
                                 return Err(format!("Error iterating in branches: {}", e));

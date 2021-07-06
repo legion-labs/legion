@@ -1,5 +1,7 @@
 use crate::*;
+use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
+use sqlx::Row;
 use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,6 +23,17 @@ impl Branch {
     }
 }
 
+pub fn init_branch_database(connection: &mut RepositoryConnection) -> Result<(), String> {
+    let sql_connection = connection.sql_connection();
+    let sql = "CREATE TABLE branches(name TEXT, head TEXT, parent TEXT, lock_domain_id TEXT);
+         CREATE UNIQUE INDEX branch_name on branches(name);
+        ";
+    if let Err(e) = execute_sql(sql_connection, sql) {
+        return Err(format!("Error creating branch table and index: {}", e));
+    }
+    Ok(())
+}
+
 fn write_branch_spec(file_path: &Path, branch: &Branch) -> Result<(), String> {
     match serde_json::to_string(branch) {
         Ok(json) => write_file(file_path, json.as_bytes()),
@@ -28,19 +41,44 @@ fn write_branch_spec(file_path: &Path, branch: &Branch) -> Result<(), String> {
     }
 }
 
-pub fn save_new_branch_to_repo(repo: &Path, branch: &Branch) -> Result<(), String> {
-    let file_path = repo.join("branches").join(branch.name.clone() + ".json");
-    match serde_json::to_string(branch) {
-        Ok(json) => write_new_file(&file_path, json.as_bytes()),
-        Err(e) => Err(format!("Error formatting branch {:?}: {}", branch, e)),
+pub fn save_new_branch_to_repo(
+    connection: &mut RepositoryConnection,
+    branch: &Branch,
+) -> Result<(), String> {
+    let sql_connection = connection.sql_connection();
+    if let Err(e) = block_on(
+        sqlx::query("INSERT INTO branches VALUES($1, $2, $3, $4);")
+            .bind(branch.name.clone())
+            .bind(branch.head.clone())
+            .bind(branch.parent.clone())
+            .bind(branch.lock_domain_id.clone())
+            .execute(&mut *sql_connection),
+    ) {
+        return Err(format!("Error inserting into commits: {}", e));
     }
+    Ok(())
 }
 
-pub fn save_branch_to_repo(repo: &Path, branch: &Branch) -> Result<(), String> {
-    let file_path = repo.join("branches").join(branch.name.clone() + ".json");
-    write_branch_spec(&file_path, branch)
+pub fn save_branch_to_repo(
+    connection: &mut RepositoryConnection,
+    branch: &Branch,
+) -> Result<(), String> {
+    let sql_connection = connection.sql_connection();
+    if let Err(e) = block_on(
+        sqlx::query(
+            "UPDATE branches SET head=$1, parent=$2, lock_domain_id=$3
+             WHERE name=$4;",
+        )
+        .bind(branch.head.clone())
+        .bind(branch.parent.clone())
+        .bind(branch.lock_domain_id.clone())
+        .bind(branch.name.clone())
+        .execute(&mut *sql_connection),
+    ) {
+        return Err(format!("Error updating branch {}: {}", branch.name, e));
+    }
+    Ok(())
 }
-
 pub fn save_current_branch(workspace_root: &Path, branch: &Branch) -> Result<(), String> {
     let file_path = workspace_root.join(".lsc/branch.json");
     write_branch_spec(&file_path, branch)
@@ -51,19 +89,58 @@ pub fn read_current_branch(workspace_root: &Path) -> Result<Branch, String> {
     read_branch(&file_path)
 }
 
-pub fn read_branch_from_repo(repo: &Path, name: &str) -> Result<Branch, String> {
-    let file_path = repo.join(format!("branches/{}.json", name));
-    read_branch(&file_path)
+pub fn read_branch_from_repo(
+    connection: &mut RepositoryConnection,
+    name: &str,
+) -> Result<Branch, String> {
+    let sql_connection = connection.sql_connection();
+    match block_on(
+        sqlx::query(
+            "SELECT head, parent, lock_domain_id 
+             FROM branches
+             WHERE name = $1;",
+        )
+        .bind(name)
+        .fetch_one(&mut *sql_connection),
+    ) {
+        Ok(row) => {
+            let branch = Branch::new(
+                String::from(name),
+                row.get("head"),
+                row.get("parent"),
+                row.get("lock_domain_id"),
+            );
+            Ok(branch)
+        }
+        Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
+    }
 }
 
-pub fn find_branch(repo: &Path, name: &str) -> SearchResult<Branch, String> {
-    let file_path = repo.join(format!("branches/{}.json", name));
-    if !file_path.exists() {
-        return SearchResult::None;
-    }
-    match read_branch(&file_path) {
-        Ok(branch) => SearchResult::Ok(branch),
-        Err(e) => SearchResult::Err(e),
+pub fn find_branch(
+    connection: &mut RepositoryConnection,
+    name: &str,
+) -> SearchResult<Branch, String> {
+    let sql_connection = connection.sql_connection();
+    match block_on(
+        sqlx::query(
+            "SELECT head, parent, lock_domain_id 
+             FROM branches
+             WHERE name = $1;",
+        )
+        .bind(name)
+        .fetch_optional(&mut *sql_connection),
+    ) {
+        Ok(None) => SearchResult::None,
+        Ok(Some(row)) => {
+            let branch = Branch::new(
+                String::from(name),
+                row.get("head"),
+                row.get("parent"),
+                row.get("lock_domain_id"),
+            );
+            SearchResult::Ok(branch)
+        }
+        Err(e) => SearchResult::Err(format!("Error fetching branch {}: {}", name, e)),
     }
 }
 
@@ -84,6 +161,8 @@ pub fn create_branch_command(name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let repo = &workspace_spec.repository;
+    let mut connection = RepositoryConnection::new(repo)?;
     let old_branch = read_current_branch(&workspace_root)?;
     let new_branch = Branch::new(
         String::from(name),
@@ -91,48 +170,34 @@ pub fn create_branch_command(name: &str) -> Result<(), String> {
         old_branch.name,
         old_branch.lock_domain_id,
     );
-    save_new_branch_to_repo(&workspace_spec.repository, &new_branch)?;
+    save_new_branch_to_repo(&mut connection, &new_branch)?;
     save_current_branch(&workspace_root, &new_branch)
 }
 
-pub fn read_branches(repo: &Path) -> Result<Vec<Branch>, String> {
+pub fn read_branches(connection: &mut RepositoryConnection) -> Result<Vec<Branch>, String> {
+    let sql_connection = connection.sql_connection();
     let mut res = Vec::new();
-    let branches_dir = repo.join("branches");
-    match branches_dir.read_dir() {
-        Ok(dir_iterator) => {
-            for entry_res in dir_iterator {
-                match entry_res {
-                    Ok(entry) => {
-                        let parsed: serde_json::Result<Branch> =
-                            serde_json::from_str(&read_text_file(&entry.path())?);
-                        match parsed {
-                            Ok(branch) => {
-                                res.push(branch);
-                            }
-                            Err(e) => {
-                                return Err(format!(
-                                    "Error parsing {}: {}",
-                                    entry.path().display(),
-                                    e
-                                ));
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        return Err(format!("Error reading branch entry: {}", e));
-                    }
-                }
+    match block_on(
+        sqlx::query(
+            "SELECT name, head, parent, lock_domain_id 
+             FROM branches;",
+        )
+        .fetch_all(&mut *sql_connection),
+    ) {
+        Ok(rows) => {
+            for r in rows {
+                let branch = Branch::new(
+                    r.get("name"),
+                    r.get("head"),
+                    r.get("parent"),
+                    r.get("lock_domain_id"),
+                );
+                res.push(branch);
             }
+            Ok(res)
         }
-        Err(e) => {
-            return Err(format!(
-                "Error reading {} directory: {}",
-                branches_dir.display(),
-                e
-            ));
-        }
+        Err(e) => Err(format!("Error fetching branches: {}", e)),
     }
-    Ok(res)
 }
 
 pub fn list_branches_command() -> Result<(), String> {
@@ -140,7 +205,8 @@ pub fn list_branches_command() -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    for branch in read_branches(repo)? {
+    let mut connection = RepositoryConnection::new(repo)?;
+    for branch in read_branches(&mut connection)? {
         println!(
             "{} head:{} parent:{}",
             branch.name, branch.head, branch.parent
