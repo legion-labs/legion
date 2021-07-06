@@ -9,7 +9,7 @@ pub fn init_workspace(
 ) -> Result<(), String> {
     let workspace_directory = make_path_absolute(specified_workspace_directory);
     let repository_directory = make_path_absolute(specified_repository_directory);
-    let mut connection = RepositoryConnection::new(&repository_directory)?;
+    let mut connection = RepositoryConnection::new(repository_directory.to_str().unwrap())?;
     if fs::metadata(&workspace_directory).is_ok() {
         return Err(format!("{} already exists", workspace_directory.display()));
     }
@@ -37,20 +37,16 @@ pub fn init_workspace(
     }
     let spec = Workspace {
         id: uuid::Uuid::new_v4().to_string(),
-        repository: repository_directory.clone(),
-        root: workspace_directory.clone(),
+        repository: String::from(repository_directory.to_str().unwrap()),
+        root: String::from(workspace_directory.to_str().unwrap()),
         owner: whoami::username(),
     };
     write_workspace_spec(
         workspace_directory.join(".lsc/workspace.json").as_path(),
         &spec,
     )?;
-    write_workspace_spec(
-        repository_directory
-            .join(format!("workspaces/{}.json", &spec.id))
-            .as_path(),
-        &spec,
-    )?;
+
+    save_new_workspace_to_repo(&mut connection, &spec)?;
     let main_branch = read_branch_from_repo(&mut connection, "main")?;
     save_current_branch(&workspace_directory, &main_branch)?;
     let commit = read_commit(&mut connection, &main_branch.head)?;

@@ -191,7 +191,8 @@ fn local_repo_suite() {
     lsc_cli_sys(&work1, &["revert", "dir0/file1.txt"]);
 
     //sync backwards
-    let mut connection = legion_src_ctl::RepositoryConnection::new(&repo_dir).unwrap();
+    let mut connection =
+        legion_src_ctl::RepositoryConnection::new(repo_dir.to_str().unwrap()).unwrap();
     let main_branch = legion_src_ctl::read_branch_from_repo(&mut connection, "main").unwrap();
     let log_vec = legion_src_ctl::find_branch_commits(&mut connection, &main_branch).unwrap();
     let init_commit = log_vec.last().unwrap();

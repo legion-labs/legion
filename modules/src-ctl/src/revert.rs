@@ -68,7 +68,7 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
                 return Err(String::from("Original file not found in tree"));
             }
         }
-        download_blob(&workspace_spec.repository, &abs_path, &file_node.hash)?;
+        download_blob(&mut connection, &abs_path, &file_node.hash)?;
         make_file_read_only(&abs_path, true)?;
     }
     clear_local_change(&workspace_root, &local_change)?;

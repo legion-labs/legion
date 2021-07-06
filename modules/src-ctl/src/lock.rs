@@ -11,7 +11,8 @@ pub struct Lock {
     pub branch_name: String,
 }
 
-pub fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
+pub fn save_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Result<(), String> {
+    let repo = connection.repository();
     let path = repo.join(format!(
         "lock_domains/{}/{}.json",
         lock.lock_domain_id,
@@ -34,10 +35,11 @@ pub fn save_lock(repo: &Path, lock: &Lock) -> Result<(), String> {
 }
 
 fn read_lock(
-    repo: &Path,
+    connection: &mut RepositoryConnection,
     lock_domain_id: &str,
     canonical_relative_path: &str,
 ) -> SearchResult<Lock, String> {
+    let repo = connection.repository();
     let path = repo.join(format!(
         "lock_domains/{}/{}.json",
         lock_domain_id,
@@ -63,10 +65,11 @@ fn read_lock(
 }
 
 pub fn clear_lock(
-    repo: &Path,
+    connection: &mut RepositoryConnection,
     lock_domain_id: &str,
     canonical_relative_path: &str,
 ) -> Result<(), String> {
+    let repo = connection.repository();
     let path = repo.join(format!(
         "lock_domains/{}/{}.json",
         lock_domain_id,
@@ -88,7 +91,11 @@ pub fn clear_lock(
     Ok(())
 }
 
-pub fn clear_lock_domain(repo: &Path, lock_domain_id: &str) -> Result<(), String> {
+pub fn clear_lock_domain(
+    connection: &mut RepositoryConnection,
+    lock_domain_id: &str,
+) -> Result<(), String> {
+    let repo = connection.repository();
     let dir = repo.join(format!("lock_domains/{}", lock_domain_id));
     if let Err(e) = fs::remove_dir(&dir) {
         return Err(format!(
@@ -99,7 +106,11 @@ pub fn clear_lock_domain(repo: &Path, lock_domain_id: &str) -> Result<(), String
     Ok(())
 }
 
-pub fn read_locks(repo: &Path, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
+pub fn read_locks(
+    connection: &mut RepositoryConnection,
+    lock_domain_id: &str,
+) -> Result<Vec<Lock>, String> {
+    let repo = connection.repository();
     let mut locks = Vec::new();
     let domain = repo.join(format!("lock_domains/{}", lock_domain_id));
     match domain.read_dir() {
@@ -152,7 +163,7 @@ pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
         workspace_id: workspace_spec.id.clone(),
         branch_name: repo_branch.name,
     };
-    save_lock(repo, &lock)
+    save_lock(&mut connection, &lock)
 }
 
 pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
@@ -163,7 +174,7 @@ pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
     let mut connection = RepositoryConnection::new(repo)?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
-    clear_lock(repo, &repo_branch.lock_domain_id, &relative_path)
+    clear_lock(&mut connection, &repo_branch.lock_domain_id, &relative_path)
 }
 
 pub fn list_locks_command() -> Result<(), String> {
@@ -174,7 +185,7 @@ pub fn list_locks_command() -> Result<(), String> {
     let repo = &workspace_spec.repository;
     let mut connection = RepositoryConnection::new(repo)?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
-    let locks = read_locks(repo, &repo_branch.lock_domain_id)?;
+    let locks = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
     if locks.is_empty() {
         println!("no locks found in domain {}", &repo_branch.lock_domain_id);
     }
@@ -194,7 +205,7 @@ pub fn assert_not_locked(workspace_root: &Path, path_specified: &Path) -> Result
     let mut connection = RepositoryConnection::new(repo)?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
-    match read_lock(repo, &repo_branch.lock_domain_id, &relative_path) {
+    match read_lock(&mut connection, &repo_branch.lock_domain_id, &relative_path) {
         SearchResult::Ok(lock) => {
             if lock.branch_name == current_branch.name && lock.workspace_id == workspace_spec.id {
                 Ok(()) //locked by this workspace on this branch - all good

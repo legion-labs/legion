@@ -48,7 +48,11 @@ pub fn compute_file_hash(p: &Path) -> Result<String, String> {
     Ok(hash)
 }
 
-pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<String, String> {
+pub fn sync_file(
+    connection: &mut RepositoryConnection,
+    local_path: &Path,
+    hash_to_sync: &str,
+) -> Result<String, String> {
     let local_hash = if local_path.exists() {
         compute_file_hash(local_path)?
     } else {
@@ -83,7 +87,7 @@ pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<S
                     return Ok(format!("Deleted {}", local_path.display()));
                 }
             }
-            if let Err(e) = download_blob(repo, local_path, hash_to_sync) {
+            if let Err(e) = download_blob(connection, local_path, hash_to_sync) {
                 return Err(format!(
                     "Error downloading {} {}: {}",
                     local_path.display(),
@@ -108,7 +112,7 @@ pub fn sync_file(repo: &Path, local_path: &Path, hash_to_sync: &str) -> Result<S
                     ));
                 }
             }
-            if let Err(e) = download_blob(repo, local_path, hash_to_sync) {
+            if let Err(e) = download_blob(connection, local_path, hash_to_sync) {
                 return Err(format!(
                     "Error downloading {} {}: {}",
                     local_path.display(),
@@ -208,7 +212,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
             None => {
                 //no local change, ok to sync
                 let local_path = workspace_root.join(relative_path);
-                match sync_file(&workspace_spec.repository, &local_path, &latest_hash) {
+                match sync_file(&mut connection, &local_path, &latest_hash) {
                     Ok(message) => {
                         println!("{}", message);
                     }
