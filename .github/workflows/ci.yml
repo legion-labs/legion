@@ -21,6 +21,9 @@ jobs:
       - name: Check for formatting
         run: cargo fmt --all -- --check
 
+      - name: Validate docs
+        run: cargo doc --workspace --no-deps
+
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
