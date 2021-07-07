@@ -33,7 +33,7 @@ pub fn detach_branch_command() -> Result<(), String> {
     let mut repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     repo_branch.parent.clear();
 
-    let locks_in_old_domain = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
+    let locks_in_old_domain = read_locks(&connection, &repo_branch.lock_domain_id)?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
     if let Err(e) = fs::create_dir_all(
         std::path::Path::new(repo).join(format!("lock_domains/{}", lock_domain_id)),
@@ -73,13 +73,13 @@ pub fn detach_branch_command() -> Result<(), String> {
             let mut new_lock = lock.clone();
             new_lock.lock_domain_id = lock_domain_id.clone();
             println!("moving lock for {}", lock.relative_path);
-            if let Err(e) = save_lock(&mut connection, &new_lock) {
+            if let Err(e) = save_lock(&connection, &new_lock) {
                 errors.push(format!(
                     "Error writing lock in new domain for {}: {}",
                     lock.relative_path, e
                 ));
             }
-            if let Err(e) = clear_lock(&mut connection, &lock.lock_domain_id, &lock.relative_path) {
+            if let Err(e) = clear_lock(&connection, &lock.lock_domain_id, &lock.relative_path) {
                 errors.push(format!(
                     "Error clearning lock from old domain for {}: {}",
                     lock.relative_path, e

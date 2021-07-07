@@ -2,10 +2,10 @@ use futures::executor::block_on;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::Connection;
 use sqlx::Executor;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub struct RepositoryConnection {
-    repo_directory: String,
+    repo_directory: PathBuf,
     // metadata_connection: sqlite::Connection,
     metadata_connection: sqlx::AnyConnection,
 }
@@ -19,7 +19,7 @@ impl RepositoryConnection {
         match block_on(sqlx::AnyConnection::connect(&url)) {
             Err(e) => Err(format!("Error opening database {}: {}", url, e)),
             Ok(c) => Ok(Self {
-                repo_directory: String::from(repo_directory),
+                repo_directory: PathBuf::from(repo_directory),
                 metadata_connection: c,
             }),
         }
@@ -30,7 +30,7 @@ impl RepositoryConnection {
     }
 
     pub fn repository(&self) -> &Path {
-        Path::new(&self.repo_directory)
+        &self.repo_directory
     }
 }
 

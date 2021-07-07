@@ -31,12 +31,12 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
 
     let parent_branch = read_branch_from_repo(&mut connection, parent_branch_name)?;
     let mut locks_parent_domain = BTreeSet::new();
-    for lock in read_locks(&mut connection, &parent_branch.lock_domain_id)? {
+    for lock in read_locks(&connection, &parent_branch.lock_domain_id)? {
         locks_parent_domain.insert(lock.relative_path);
     }
 
     let mut errors = Vec::new();
-    let locks_to_move = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
+    let locks_to_move = read_locks(&connection, &repo_branch.lock_domain_id)?;
     for lock in &locks_to_move {
         //validate first before making the change
         if locks_parent_domain.contains(&lock.relative_path) {
@@ -51,13 +51,13 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
     for lock in &locks_to_move {
         let mut new_lock = lock.clone();
         new_lock.lock_domain_id = parent_branch.lock_domain_id.clone();
-        if let Err(e) = save_lock(&mut connection, &new_lock) {
+        if let Err(e) = save_lock(&connection, &new_lock) {
             errors.push(format!(
                 "Error creating new lock for {}: {}",
                 new_lock.relative_path, e
             ));
         }
-        if let Err(e) = clear_lock(&mut connection, &lock.lock_domain_id, &lock.relative_path) {
+        if let Err(e) = clear_lock(&connection, &lock.lock_domain_id, &lock.relative_path) {
             errors.push(format!(
                 "Error clearing old lock for {}: {}",
                 new_lock.relative_path, e
@@ -93,7 +93,7 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
         }
     }
 
-    if let Err(e) = clear_lock_domain(&mut connection, &repo_branch.lock_domain_id) {
+    if let Err(e) = clear_lock_domain(&connection, &repo_branch.lock_domain_id) {
         errors.push(e);
     } else {
         println!("Deleted lock domain {}", repo_branch.lock_domain_id);

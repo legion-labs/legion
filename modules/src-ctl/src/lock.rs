@@ -11,7 +11,7 @@ pub struct Lock {
     pub branch_name: String,
 }
 
-pub fn save_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Result<(), String> {
+pub fn save_lock(connection: &RepositoryConnection, lock: &Lock) -> Result<(), String> {
     let repo = connection.repository();
     let path = repo.join(format!(
         "lock_domains/{}/{}.json",
@@ -35,7 +35,7 @@ pub fn save_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Result<(
 }
 
 fn read_lock(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     lock_domain_id: &str,
     canonical_relative_path: &str,
 ) -> SearchResult<Lock, String> {
@@ -65,7 +65,7 @@ fn read_lock(
 }
 
 pub fn clear_lock(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     lock_domain_id: &str,
     canonical_relative_path: &str,
 ) -> Result<(), String> {
@@ -92,7 +92,7 @@ pub fn clear_lock(
 }
 
 pub fn clear_lock_domain(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     lock_domain_id: &str,
 ) -> Result<(), String> {
     let repo = connection.repository();
@@ -107,7 +107,7 @@ pub fn clear_lock_domain(
 }
 
 pub fn read_locks(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     lock_domain_id: &str,
 ) -> Result<Vec<Lock>, String> {
     let repo = connection.repository();
@@ -185,7 +185,7 @@ pub fn list_locks_command() -> Result<(), String> {
     let repo = &workspace_spec.repository;
     let mut connection = RepositoryConnection::new(repo)?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
-    let locks = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
+    let locks = read_locks(&connection, &repo_branch.lock_domain_id)?;
     if locks.is_empty() {
         println!("no locks found in domain {}", &repo_branch.lock_domain_id);
     }
