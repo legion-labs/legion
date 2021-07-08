@@ -13,23 +13,18 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
 
     create_sqlite_repo_database(directory)?;
 
-    let mut repo_connection = RepositoryConnection::new(directory)?;
+    let mut repo_connection = RepositoryConnection::new(directory.to_str().unwrap())?;
     init_commit_database(&mut repo_connection)?;
     init_forest_database(&mut repo_connection)?;
     init_branch_database(&mut repo_connection)?;
+    init_workspace_database(&mut repo_connection)?;
+    init_lock_database(&mut repo_connection)?;
 
     if let Err(e) = fs::create_dir_all(directory.join("blobs")) {
         return Err(format!("Error creating blobs directory: {}", e));
     }
-    if let Err(e) = fs::create_dir_all(directory.join("workspaces")) {
-        return Err(format!("Error creating workspaces directory: {}", e));
-    }
 
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
-    if let Err(e) = fs::create_dir_all(directory.join(format!("lock_domains/{}", lock_domain_id))) {
-        return Err(format!("Error creating locks directory: {}", e));
-    }
-
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
     save_tree(&mut repo_connection, &root_tree, &root_hash)?;

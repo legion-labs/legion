@@ -107,7 +107,7 @@ fn find_latest_common_ancestor(
 }
 
 fn change_file_to(
-    repo: &Path,
+    connection: &mut RepositoryConnection,
     relative_path: &Path,
     workspace_root: &Path,
     hash_to_sync: &str,
@@ -123,7 +123,7 @@ fn change_file_to(
             return Ok(format!("Deleted {}", local_path.display()));
         }
         edit_file_command(&local_path)?;
-        if let Err(e) = download_blob(repo, &local_path, hash_to_sync) {
+        if let Err(e) = download_blob(connection, &local_path, hash_to_sync) {
             return Err(format!(
                 "Error downloading {} {}: {}",
                 local_path.display(),
@@ -140,7 +140,7 @@ fn change_file_to(
         if hash_to_sync.is_empty() {
             return Ok(format!("Verified {}", local_path.display()));
         }
-        if let Err(e) = download_blob(repo, &local_path, hash_to_sync) {
+        if let Err(e) = download_blob(connection, &local_path, hash_to_sync) {
             return Err(format!(
                 "Error downloading {} {}: {}",
                 local_path.display(),
@@ -248,7 +248,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
                     errors.push(format!("Error saving pending resolve {}: {}", path, e));
                 }
             } else {
-                match change_file_to(repo, Path::new(path), &workspace_root, hash) {
+                match change_file_to(&mut connection, Path::new(path), &workspace_root, hash) {
                     Ok(message) => {
                         println!("{}", message);
                     }

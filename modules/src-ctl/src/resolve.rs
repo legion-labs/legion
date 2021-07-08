@@ -276,14 +276,16 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
                 &resolve_pending.base_commit_id,
             )?
             .unwrap();
-            let base_temp_file = download_temp_file(repo, &workspace_root, &base_file_hash)?;
+            let base_temp_file =
+                download_temp_file(&mut connection, &workspace_root, &base_file_hash)?;
             let theirs_file_hash = find_file_hash_at_commit(
                 &mut connection,
                 Path::new(&relative_path),
                 &resolve_pending.theirs_commit_id,
             )?
             .unwrap();
-            let theirs_temp_file = download_temp_file(repo, &workspace_root, &theirs_file_hash)?;
+            let theirs_temp_file =
+                download_temp_file(&mut connection, &workspace_root, &theirs_file_hash)?;
             let tmp_dir = workspace_root.join(".lsc/tmp");
             let output_temp_file = TempPath {
                 path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),

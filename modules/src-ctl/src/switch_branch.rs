@@ -35,7 +35,7 @@ fn sync_tree_diff(
         };
         if new_file_node.hash != present_hash {
             match sync_file(
-                connection.repository(),
+                connection,
                 &workspace_root
                     .join(relative_path_tree)
                     .join(&new_file_node.name),
@@ -54,7 +54,7 @@ fn sync_tree_diff(
     //those files were not matched, delete them
     for k in files_present.keys() {
         let abs_path = workspace_root.join(relative_path_tree).join(&k);
-        match sync_file(connection.repository(), &abs_path, "") {
+        match sync_file(connection, &abs_path, "") {
             Ok(message) => {
                 println!("{}", message);
             }

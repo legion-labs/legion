@@ -325,7 +325,7 @@ fn import_branch(
     Ok(())
 }
 
-pub fn import_git_repo_command(git_root_path: &Path) -> Result<(), String> {
+pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
@@ -337,19 +337,48 @@ pub fn import_git_repo_command(git_root_path: &Path) -> Result<(), String> {
             // todo: instead of discovering branches, the user should specify which one to import
             // https://github.com/legion-labs/legion/issues/21
             match git_repo.branches(Some(git2::BranchType::Local)) {
-                Ok(branches) => {
-                    for branch_result in branches {
-                        match branch_result {
-                            Ok((branch, _branch_type)) => {
+                Ok(mut branches) => {
+                    let git_branch = match branch {
+                        Some(branch) => branches.find(|result| {
+                            if let Ok((git_branch, _branch_type)) = result {
+                                if let Some(branch_shorthand) = git_branch.get().shorthand() {
+                                    return branch_shorthand.eq(branch);
+                                }
+                            }
+                            false
+                        }),
+                        None => {
+                            // if no branch specified, then just import the first valid discovered branch
+                            branches.next()
+                        }
+                    };
+
+                    match git_branch {
+                        Some(branch_result) => match branch_result {
+                            Ok((git_branch, _branch_type)) => {
                                 import_branch(
                                     &mut connection,
                                     &workspace_root,
                                     &git_repo,
-                                    &branch,
+                                    &git_branch,
                                 )?;
                             }
                             Err(e) => {
                                 return Err(format!("Error iterating in branches: {}", e));
+                            }
+                        },
+                        None => {
+                            match branch {
+                                Some(branch) => {
+                                    return Err(format!(
+                                        "Cannot find branch '{}' in repository",
+                                        branch
+                                    ));
+                                }
+                                None => {
+                                    // ? not sure if should return Ok ?
+                                    return Err("No valid branches found in repository".to_string());
+                                }
                             }
                         }
                     }

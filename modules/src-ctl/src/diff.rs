@@ -22,8 +22,12 @@ fn reference_version_name_as_commit_id(
     }
 }
 
-fn print_diff(repo: &Path, local_path: &Path, ref_file_hash: &str) -> Result<(), String> {
-    let base_version_contents = read_blob(repo, ref_file_hash)?;
+fn print_diff(
+    connection: &mut RepositoryConnection,
+    local_path: &Path,
+    ref_file_hash: &str,
+) -> Result<(), String> {
+    let base_version_contents = read_blob(connection, ref_file_hash)?;
     let local_version_contents = read_text_file(local_path)?;
     let patch = diffy::create_patch(&base_version_contents, &local_version_contents);
     println!("{}", patch);
@@ -50,13 +54,14 @@ pub fn diff_file_command(
         find_file_hash_at_commit(&mut connection, &relative_path, &ref_commit_id)?.unwrap();
 
     if !allow_tools {
-        return print_diff(repo, &abs_path, &ref_file_hash);
+        return print_diff(&mut connection, &abs_path, &ref_file_hash);
     }
 
     let config = Config::read_config()?;
     match config.find_diff_command(&relative_path) {
         Some(mut external_command_vec) => {
-            let ref_temp_file = download_temp_file(repo, &workspace_root, &ref_file_hash)?;
+            let ref_temp_file =
+                download_temp_file(&mut connection, &workspace_root, &ref_file_hash)?;
             let ref_path_str = ref_temp_file.path.to_str().unwrap();
             let local_file = abs_path.to_str().unwrap();
             for item in &mut external_command_vec[..] {
@@ -85,7 +90,7 @@ pub fn diff_file_command(
             }
         }
         None => {
-            return print_diff(repo, &abs_path, &ref_file_hash);
+            return print_diff(&mut connection, &abs_path, &ref_file_hash);
         }
     }
 

@@ -1,4 +1,5 @@
 use crate::*;
+use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -6,9 +7,36 @@ use std::path::{Path, PathBuf};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Workspace {
     pub id: String, //a file lock will contain the workspace id
-    pub repository: PathBuf,
-    pub root: PathBuf,
+    pub repository: String,
+    pub root: String,
     pub owner: String,
+}
+
+pub fn init_workspace_database(connection: &mut RepositoryConnection) -> Result<(), String> {
+    let sql_connection = connection.sql_connection();
+    let sql = "CREATE TABLE workspaces(id TEXT, root TEXT, owner TEXT);
+               CREATE UNIQUE INDEX workspace_id on workspaces(id);";
+    if let Err(e) = execute_sql(sql_connection, sql) {
+        return Err(format!("Error creating workspace table and index: {}", e));
+    }
+    Ok(())
+}
+
+pub fn save_new_workspace_to_repo(
+    connection: &mut RepositoryConnection,
+    workspace: &Workspace,
+) -> Result<(), String> {
+    let sql_connection = connection.sql_connection();
+    if let Err(e) = block_on(
+        sqlx::query("INSERT INTO workspaces VALUES($1, $2, $3);")
+            .bind(workspace.id.clone())
+            .bind(workspace.root.clone())
+            .bind(workspace.owner.clone())
+            .execute(&mut *sql_connection),
+    ) {
+        return Err(format!("Error inserting into workspaces: {}", e));
+    }
+    Ok(())
 }
 
 pub fn find_workspace_root(directory: &Path) -> Result<PathBuf, String> {
@@ -56,13 +84,13 @@ impl Drop for TempPath {
 }
 
 pub fn download_temp_file(
-    repo: &Path,
+    connection: &mut RepositoryConnection,
     workspace_root: &Path,
     blob_hash: &str,
 ) -> Result<TempPath, String> {
     let tmp_dir = workspace_root.join(".lsc/tmp");
     let temp_file_path = tmp_dir.join(blob_hash);
-    download_blob(repo, &temp_file_path, blob_hash)?;
+    download_blob(connection, &temp_file_path, blob_hash)?;
     Ok(TempPath {
         path: temp_file_path,
     })

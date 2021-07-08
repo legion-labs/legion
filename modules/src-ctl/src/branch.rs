@@ -54,7 +54,7 @@ pub fn save_new_branch_to_repo(
             .bind(branch.lock_domain_id.clone())
             .execute(&mut *sql_connection),
     ) {
-        return Err(format!("Error inserting into commits: {}", e));
+        return Err(format!("Error inserting into branches: {}", e));
     }
     Ok(())
 }

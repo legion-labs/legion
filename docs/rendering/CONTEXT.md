@@ -8,6 +8,7 @@ Legion has 3 leaf component that are the basis of displaying a final image on sc
  * Renderer: Render Graph management and frame rendering processing
  * streamer: Sends bits or receives bits over the network
  * presenter: Creates a swapchain to display content on screen
+
 You can compose the following:
  * Streaming server: composes a renderer and a streamer : renders a given scene and streams it compressed using hardware encoders.
  * Local client: composes a renderer and a presenter, renderer doing the same work as the streaming server, but the presenter takes over to locally display each frame, this will be the case for the runtime engine when we support local platforms for runtime, but also for debugging and local workflow.
