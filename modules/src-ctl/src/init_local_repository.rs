@@ -18,16 +18,13 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
     init_forest_database(&mut repo_connection)?;
     init_branch_database(&mut repo_connection)?;
     init_workspace_database(&mut repo_connection)?;
+    init_lock_database(&mut repo_connection)?;
 
     if let Err(e) = fs::create_dir_all(directory.join("blobs")) {
         return Err(format!("Error creating blobs directory: {}", e));
     }
 
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
-    if let Err(e) = fs::create_dir_all(directory.join(format!("lock_domains/{}", lock_domain_id))) {
-        return Err(format!("Error creating locks directory: {}", e));
-    }
-
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
     save_tree(&mut repo_connection, &root_tree, &root_hash)?;

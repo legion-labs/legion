@@ -51,7 +51,7 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
     for lock in &locks_to_move {
         let mut new_lock = lock.clone();
         new_lock.lock_domain_id = parent_branch.lock_domain_id.clone();
-        if let Err(e) = save_lock(&mut connection, &new_lock) {
+        if let Err(e) = save_new_lock(&mut connection, &new_lock) {
             errors.push(format!(
                 "Error creating new lock for {}: {}",
                 new_lock.relative_path, e
@@ -93,7 +93,7 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
         }
     }
 
-    if let Err(e) = clear_lock_domain(&mut connection, &repo_branch.lock_domain_id) {
+    if let Err(e) = verify_empty_lock_domain(&mut connection, &repo_branch.lock_domain_id) {
         errors.push(e);
     } else {
         println!("Deleted lock domain {}", repo_branch.lock_domain_id);

@@ -73,7 +73,7 @@ pub fn detach_branch_command() -> Result<(), String> {
             let mut new_lock = lock.clone();
             new_lock.lock_domain_id = lock_domain_id.clone();
             println!("moving lock for {}", lock.relative_path);
-            if let Err(e) = save_lock(&mut connection, &new_lock) {
+            if let Err(e) = save_new_lock(&mut connection, &new_lock) {
                 errors.push(format!(
                     "Error writing lock in new domain for {}: {}",
                     lock.relative_path, e

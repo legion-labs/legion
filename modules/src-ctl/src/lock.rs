@@ -1,6 +1,7 @@
 use crate::*;
+use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
-use std::fs;
+use sqlx::Row;
 use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -11,25 +12,53 @@ pub struct Lock {
     pub branch_name: String,
 }
 
-pub fn save_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Result<(), String> {
-    let repo = connection.repository();
-    let path = repo.join(format!(
-        "lock_domains/{}/{}.json",
-        lock.lock_domain_id,
-        hash_string(&lock.relative_path),
-    ));
-    if path.exists() {
-        return Err(format!("Lock {} already exists", path.display()));
+pub fn init_lock_database(connection: &mut RepositoryConnection) -> Result<(), String> {
+    let sql_connection = connection.sql_connection();
+    let sql = "CREATE TABLE locks(relative_path TEXT, lock_domain_id TEXT, workspace_id TEXT, branch_name TEXT);
+         CREATE UNIQUE INDEX lock_key on locks(relative_path, lock_domain_id);
+        ";
+    if let Err(e) = execute_sql(sql_connection, sql) {
+        return Err(format!("Error creating locks table and index: {}", e));
     }
-    match serde_json::to_string(&lock) {
-        Ok(contents) => {
-            if let Err(e) = write_new_file(&path, contents.as_bytes()) {
-                return Err(format!("Error writing lock to {}: {}", path.display(), e));
+    Ok(())
+}
+
+pub fn save_new_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Result<(), String> {
+    let sql_connection = connection.sql_connection();
+    match block_on(
+        sqlx::query(
+            "SELECT count(*) as count
+             FROM locks
+             WHERE relative_path = $1
+             AND lock_domain_id = $2;",
+        )
+        .bind(lock.relative_path.clone())
+        .bind(lock.lock_domain_id.clone())
+        .fetch_one(&mut *sql_connection),
+    ) {
+        Err(e) => {
+            return Err(format!("Error counting locks: {}", e));
+        }
+        Ok(row) => {
+            let count: i32 = row.get("count");
+            if count > 0 {
+                return Err(format!(
+                    "Lock {} already exists in domain {}",
+                    lock.relative_path, lock.lock_domain_id
+                ));
             }
         }
-        Err(e) => {
-            return Err(format!("Error formatting lock spec: {}", e));
-        }
+    }
+
+    if let Err(e) = block_on(
+        sqlx::query("INSERT INTO locks VALUES($1, $2, $3, $4);")
+            .bind(lock.relative_path.clone())
+            .bind(lock.lock_domain_id.clone())
+            .bind(lock.workspace_id.clone())
+            .bind(lock.branch_name.clone())
+            .execute(&mut *sql_connection),
+    ) {
+        return Err(format!("Error inserting into locks: {}", e));
     }
     Ok(())
 }
@@ -38,29 +67,27 @@ fn read_lock(
     connection: &mut RepositoryConnection,
     lock_domain_id: &str,
     canonical_relative_path: &str,
-) -> SearchResult<Lock, String> {
-    let repo = connection.repository();
-    let path = repo.join(format!(
-        "lock_domains/{}/{}.json",
-        lock_domain_id,
-        hash_string(canonical_relative_path)
-    ));
-    if !path.exists() {
-        return SearchResult::None;
-    }
-    match read_text_file(&path) {
-        Ok(contents) => {
-            let parsed: serde_json::Result<Lock> = serde_json::from_str(&contents);
-            match parsed {
-                Ok(lock) => SearchResult::Ok(lock),
-                Err(e) => SearchResult::Err(format!(
-                    "Error parsing lock entry {}: {}",
-                    path.display(),
-                    e
-                )),
-            }
-        }
-        Err(e) => SearchResult::Err(format!("Error reading lock file {}: {}", path.display(), e)),
+) -> Result<Option<Lock>, String> {
+    let sql_connection = connection.sql_connection();
+    match block_on(
+        sqlx::query(
+            "SELECT workspace_id, branch_name
+             FROM locks
+             WHERE lock_domain_id=$1
+             AND relative_path=$2;",
+        )
+        .bind(lock_domain_id)
+        .bind(canonical_relative_path)
+        .fetch_optional(&mut *sql_connection),
+    ) {
+        Ok(None) => Ok(None),
+        Ok(Some(row)) => Ok(Some(Lock {
+            relative_path: String::from(canonical_relative_path),
+            lock_domain_id: String::from(lock_domain_id),
+            workspace_id: row.get("workspace_id"),
+            branch_name: row.get("branch_name"),
+        })),
+        Err(e) => Err(format!("Error fetching lock: {}", e)),
     }
 }
 
@@ -69,85 +96,72 @@ pub fn clear_lock(
     lock_domain_id: &str,
     canonical_relative_path: &str,
 ) -> Result<(), String> {
-    let repo = connection.repository();
-    let path = repo.join(format!(
-        "lock_domains/{}/{}.json",
-        lock_domain_id,
-        hash_string(canonical_relative_path)
-    ));
-    if !path.exists() {
-        return Err(format!(
-            "Error clearing lock {}, file {} not found",
-            &canonical_relative_path,
-            path.display()
-        ));
-    }
-    if let Err(e) = fs::remove_file(&path) {
-        return Err(format!(
-            "Error clearing lock {}: {}",
-            &canonical_relative_path, e
-        ));
+    let sql_connection = connection.sql_connection();
+    if let Err(e) = block_on(
+        sqlx::query("DELETE from locks WHERE relative_path=$1 AND lock_domain_id=$2;")
+            .bind(canonical_relative_path)
+            .bind(lock_domain_id)
+            .execute(&mut *sql_connection),
+    ) {
+        return Err(format!("Error clearing lock: {}", e));
     }
     Ok(())
 }
 
-pub fn clear_lock_domain(
+pub fn verify_empty_lock_domain(
     connection: &mut RepositoryConnection,
     lock_domain_id: &str,
 ) -> Result<(), String> {
-    let repo = connection.repository();
-    let dir = repo.join(format!("lock_domains/{}", lock_domain_id));
-    if let Err(e) = fs::remove_dir(&dir) {
-        return Err(format!(
-            "Error deleting lock domain {}: {}",
-            lock_domain_id, e
-        ));
+    let sql_connection = connection.sql_connection();
+    match block_on(
+        sqlx::query(
+            "SELECT count(*) as count
+             FROM locks
+             WHERE lock_domain_id = $1;",
+        )
+        .bind(lock_domain_id)
+        .fetch_one(&mut *sql_connection),
+    ) {
+        Err(e) => Err(format!("Error counting locks: {}", e)),
+        Ok(row) => {
+            let count: i32 = row.get("count");
+            if count > 0 {
+                Err(format!("lock domain not empty{}", lock_domain_id))
+            } else {
+                Ok(())
+            }
+        }
     }
-    Ok(())
 }
 
 pub fn read_locks(
     connection: &mut RepositoryConnection,
     lock_domain_id: &str,
 ) -> Result<Vec<Lock>, String> {
-    let repo = connection.repository();
-    let mut locks = Vec::new();
-    let domain = repo.join(format!("lock_domains/{}", lock_domain_id));
-    match domain.read_dir() {
-        Ok(dir_iterator) => {
-            for entry_res in dir_iterator {
-                match entry_res {
-                    Ok(entry) => {
-                        let parsed: serde_json::Result<Lock> =
-                            serde_json::from_str(&read_text_file(&entry.path())?);
-                        match parsed {
-                            Ok(lock) => {
-                                locks.push(lock);
-                            }
-                            Err(e) => {
-                                return Err(format!(
-                                    "Error parsing lock entry {}: {}",
-                                    entry.path().display(),
-                                    e
-                                ));
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        return Err(format!("Error reading lock domain entry: {}", e));
-                    }
-                }
+    let sql_connection = connection.sql_connection();
+    match block_on(
+        sqlx::query(
+            "SELECT relative_path, workspace_id, branch_name
+             FROM locks
+             WHERE lock_domain_id=$1;",
+        )
+        .bind(lock_domain_id)
+        .fetch_all(&mut *sql_connection),
+    ) {
+        Ok(rows) => {
+            let mut locks = Vec::new();
+            for r in rows {
+                locks.push(Lock {
+                    relative_path: r.get("relative_path"),
+                    lock_domain_id: String::from(lock_domain_id),
+                    workspace_id: r.get("workspace_id"),
+                    branch_name: r.get("branch_name"),
+                });
             }
+            Ok(locks)
         }
-        Err(e) => {
-            return Err(format!(
-                "Error reading directory {}: {}",
-                domain.display(),
-                e
-            ));
-        }
+        Err(e) => Err(format!("Error listing locks: {}", e)),
     }
-    Ok(locks)
 }
 
 pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
@@ -163,7 +177,7 @@ pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
         workspace_id: workspace_spec.id.clone(),
         branch_name: repo_branch.name,
     };
-    save_lock(&mut connection, &lock)
+    save_new_lock(&mut connection, &lock)
 }
 
 pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
@@ -206,7 +220,7 @@ pub fn assert_not_locked(workspace_root: &Path, path_specified: &Path) -> Result
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
     match read_lock(&mut connection, &repo_branch.lock_domain_id, &relative_path) {
-        SearchResult::Ok(lock) => {
+        Ok(Some(lock)) => {
             if lock.branch_name == current_branch.name && lock.workspace_id == workspace_spec.id {
                 Ok(()) //locked by this workspace on this branch - all good
             } else {
@@ -216,11 +230,11 @@ pub fn assert_not_locked(workspace_root: &Path, path_specified: &Path) -> Result
                 ))
             }
         }
-        SearchResult::Err(e) => Err(format!(
+        Err(e) => Err(format!(
             "Error validating that {} is lock-free: {}",
             path_specified.display(),
             e
         )),
-        SearchResult::None => Ok(()),
+        Ok(None) => Ok(()),
     }
 }
