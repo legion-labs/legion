@@ -27,7 +27,7 @@ impl AssetId {
     }
 
     /// Returns the type of the asset.
-    pub fn to_type(&self) -> AssetType {
+    pub fn asset_type(&self) -> AssetType {
         let type_id = (u64::from(self.id) >> 32) as u32;
         type_id.try_into().unwrap()
     }

@@ -198,14 +198,14 @@ impl DataBuild {
 
         let compilers = CompilerRegistry::new();
         let compiler_info = compilers
-            .find(resource.to_type())
+            .find(resource.resource_type())
             .ok_or(Error::CompilerNotFound)?;
 
         // todo(kstasik): support triggering compilation for multiple platforms
         let compiler_id = compiler_info.compiler_id(target, platform, locale);
 
         let compiler_desc = CompilerDesc {
-            resource_type: resource.to_type(),
+            resource_type: resource.resource_type(),
             compiler_id,
             databuild_version: Self::version(),
         }; // compiler_hash
