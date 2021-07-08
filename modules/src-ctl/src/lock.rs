@@ -163,7 +163,7 @@ pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
         workspace_id: workspace_spec.id.clone(),
         branch_name: repo_branch.name,
     };
-    save_lock(&mut connection, &lock)
+    save_lock(&connection, &lock)
 }
 
 pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
@@ -174,7 +174,7 @@ pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
     let mut connection = RepositoryConnection::new(repo)?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
-    clear_lock(&mut connection, &repo_branch.lock_domain_id, &relative_path)
+    clear_lock(&connection, &repo_branch.lock_domain_id, &relative_path)
 }
 
 pub fn list_locks_command() -> Result<(), String> {
@@ -205,7 +205,7 @@ pub fn assert_not_locked(workspace_root: &Path, path_specified: &Path) -> Result
     let mut connection = RepositoryConnection::new(repo)?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
-    match read_lock(&mut connection, &repo_branch.lock_domain_id, &relative_path) {
+    match read_lock(&connection, &repo_branch.lock_domain_id, &relative_path) {
         SearchResult::Ok(lock) => {
             if lock.branch_name == current_branch.name && lock.workspace_id == workspace_spec.id {
                 Ok(()) //locked by this workspace on this branch - all good
