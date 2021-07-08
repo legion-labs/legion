@@ -5,8 +5,7 @@ use sqlx::Executor;
 use std::path::Path;
 
 pub struct RepositoryConnection {
-    repo_directory: String,
-    // metadata_connection: sqlite::Connection,
+    repo_directory: String, //to store blobs, will be replaced by a generic blob storage interface
     metadata_connection: sqlx::AnyConnection,
 }
 
