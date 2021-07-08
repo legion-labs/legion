@@ -385,9 +385,10 @@ fn main_impl() -> Result<(), String> {
         },
         ("log", Some(_command_match)) => log_command(),
         ("config", Some(_command_match)) => print_config_command(),
-        ("import-git-repo", Some(command_match)) => {
-            import_git_repo_command(Path::new(command_match.value_of("path").unwrap()), command_match.value_of("branch"))
-        }
+        ("import-git-repo", Some(command_match)) => import_git_repo_command(
+            Path::new(command_match.value_of("path").unwrap()),
+            command_match.value_of("branch"),
+        ),
         other_match => Err(format!("unknown subcommand match: {:?}", &other_match)),
     }
 }

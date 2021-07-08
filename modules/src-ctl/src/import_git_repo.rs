@@ -339,16 +339,14 @@ pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Re
             match git_repo.branches(Some(git2::BranchType::Local)) {
                 Ok(mut branches) => {
                     let git_branch = match branch {
-                        Some(branch) => {
-                            branches.find(|result| {
-                                if let Ok((git_branch, _branch_type)) = result {
-                                    if let Some(branch_shorthand) = git_branch.get().shorthand() {
-                                        return branch_shorthand.eq(branch);
-                                    }
+                        Some(branch) => branches.find(|result| {
+                            if let Ok((git_branch, _branch_type)) = result {
+                                if let Some(branch_shorthand) = git_branch.get().shorthand() {
+                                    return branch_shorthand.eq(branch);
                                 }
-                                false
-                            })
-                        }
+                            }
+                            false
+                        }),
                         None => {
                             // if no branch specified, then just import the first valid discovered branch
                             branches.next()
@@ -356,25 +354,26 @@ pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Re
                     };
 
                     match git_branch {
-                        Some(branch_result) => {
-                            match branch_result {
-                                Ok((git_branch, _branch_type)) => {
-                                    import_branch(
-                                        &mut connection,
-                                        &workspace_root,
-                                        &git_repo,
-                                        &git_branch,
-                                    )?;
-                                }
-                                Err(e) => {
-                                    return Err(format!("Error iterating in branches: {}", e));
-                                }    
+                        Some(branch_result) => match branch_result {
+                            Ok((git_branch, _branch_type)) => {
+                                import_branch(
+                                    &mut connection,
+                                    &workspace_root,
+                                    &git_repo,
+                                    &git_branch,
+                                )?;
                             }
-                        }
+                            Err(e) => {
+                                return Err(format!("Error iterating in branches: {}", e));
+                            }
+                        },
                         None => {
                             match branch {
                                 Some(branch) => {
-                                    return Err(format!("Cannot find branch '{}' in repository", branch));
+                                    return Err(format!(
+                                        "Cannot find branch '{}' in repository",
+                                        branch
+                                    ));
                                 }
                                 None => {
                                     // ? not sure if should return Ok ?
