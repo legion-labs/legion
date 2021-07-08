@@ -3,7 +3,7 @@ use std::{
     convert::{TryFrom, TryInto},
     fmt::LowerHex,
     hash::Hash,
-    path::PathBuf,
+    path::{Path, PathBuf},
     u8,
 };
 
@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 
 /// Name identifier of a resource.
 pub type ResourcePath = PathBuf;
+
+/// Temporarily a reference to `ResourcePath` to silence lints.
+pub type ResourcePathRef = Path;
 
 /// A unique id of an offline resource.
 ///

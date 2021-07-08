@@ -52,8 +52,8 @@
 //! - [ ] Cache invalidation when editing resources.
 //! - [ ] On-commit re-calculation of .meta dependencies (i.e. root level when an object in other file is added/removed).
 //! - [ ] Resource deletion.
-//! - [ ] Revisit ResourcePath - currently is OS-dependent (PathBuf)
-//! - [ ] Safe generation of ResourceId (avoid clashes)
+//! - [ ] Revisit `ResourcePath` - currently is OS-dependent (`PathBuf`)
+//! - [ ] Safe generation of `ResourceId` (avoid clashes)
 
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section

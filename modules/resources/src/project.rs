@@ -2,6 +2,7 @@ use crate::metadata::Metadata;
 use crate::metadata::ResourceHash;
 use crate::types::ResourceId;
 use crate::types::ResourceType;
+use crate::ResourcePathRef;
 
 use crate::ResourcePath;
 
@@ -72,7 +73,7 @@ impl std::fmt::Display for Error {
 impl Project {
     /// Returns the default location of the index file in a given directory.
     ///
-    /// This method ignores the filename in work_dir if one exists.
+    /// This method ignores the filename in `work_dir` if one exists.
     pub fn default_index_file(work_dir: &Path) -> PathBuf {
         let mut path = work_dir.to_owned();
         if path.is_dir() {
@@ -85,7 +86,7 @@ impl Project {
 
     /// Creates a new project index file turining the containing directory into a project.
     pub fn create_new(root_dir: &Path) -> Result<Self, Error> {
-        let index_path = Self::default_index_file(&root_dir);
+        let index_path = Self::default_index_file(root_dir);
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -132,7 +133,7 @@ impl Project {
     }
 
     /// Finds resource by its name and returns its `ResourceId`.
-    pub fn find_resource(&self, name: ResourcePath) -> Result<ResourceId, Error> {
+    pub fn find_resource(&self, name: &ResourcePathRef) -> Result<ResourceId, Error> {
         let all_resources = [&self.db.remote_resources, &self.db.local_resources];
         let mut references = all_resources.iter().flat_map(|v| v.iter());
 
@@ -155,7 +156,7 @@ impl Project {
     }
 
     /// Checks if a resource exists.
-    pub fn exists(&self, name: ResourcePath) -> bool {
+    pub fn exists(&self, name: &ResourcePathRef) -> bool {
         self.find_resource(name).is_ok()
     }
 
@@ -331,13 +332,13 @@ impl Project {
     pub fn rename_resource(
         &mut self,
         id: ResourceId,
-        new_name: ResourcePath,
+        new_name: &ResourcePathRef,
     ) -> Result<ResourcePath, Error> {
         self.checkout(id)?;
 
         let mut old_name = ResourcePath::new();
         self.update_meta(id, |data| {
-            old_name = data.rename(new_name.clone());
+            old_name = data.rename(new_name.to_owned());
         });
         Ok(old_name)
     }
@@ -481,7 +482,7 @@ mod tests {
         let project = create_actor(root_dir.path());
 
         let top_level_resource = project
-            .find_resource(ResourcePath::from("hero.actor"))
+            .find_resource(&ResourcePath::from("hero.actor"))
             .unwrap();
 
         let (_, all_deps) = project.collect_resource_info(top_level_resource).unwrap();
@@ -492,17 +493,17 @@ mod tests {
     #[test]
     fn rename() {
         let rename_assert = |proj: &mut Project, old_name: ResourcePath, new_name: ResourcePath| {
-            let skeleton_id = proj.find_resource(old_name.clone());
+            let skeleton_id = proj.find_resource(&old_name);
             assert!(skeleton_id.is_ok());
             let skeleton_id = skeleton_id.unwrap();
 
-            let prev_name = proj.rename_resource(skeleton_id, new_name.clone());
+            let prev_name = proj.rename_resource(skeleton_id, &new_name);
             assert!(prev_name.is_ok());
             let prev_name = prev_name.unwrap();
             assert_eq!(&prev_name, &old_name);
 
-            assert!(proj.find_resource(old_name).is_err());
-            assert_eq!(proj.find_resource(new_name).unwrap(), skeleton_id);
+            assert!(proj.find_resource(&old_name).is_err());
+            assert_eq!(proj.find_resource(&new_name).unwrap(), skeleton_id);
         };
 
         let root_dir = setup_test();

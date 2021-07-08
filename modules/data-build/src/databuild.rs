@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 use legion_assets::AssetId;
-use legion_resources::{Project, ResourceId, ResourcePath, ResourceType};
+use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
 
 use crate::buildindex::BuildIndex;
 use crate::compiledassetstore::LocalCompiledAssetStore;
@@ -120,7 +120,7 @@ impl DataBuild {
             }
             Err(Error::NotFound) => {
                 let projectindex_path = buildindex_path; // we are going to try to locate the project index in the same directory
-                Self::new(buildindex_path, &projectindex_path, assetstore_path)
+                Self::new(buildindex_path, projectindex_path, assetstore_path)
             }
             Err(e) => Err(e),
         }
@@ -186,7 +186,7 @@ impl DataBuild {
     /// The data compilation results in a `manifest` that describes the resulting runtime resources.
     pub fn compile(
         &mut self,
-        root_resource_name: ResourcePath,
+        root_resource_name: &ResourcePathRef,
         target: Target,
         platform: Platform,
         locale: Locale,
@@ -353,7 +353,7 @@ mod tests {
 
         let manifest = build
             .compile(
-                ResourcePath::from("child"),
+                &ResourcePath::from("child"),
                 Target::Game,
                 Platform::Windows,
                 ['e', 'n'],
@@ -371,7 +371,7 @@ mod tests {
 
         build
             .compile(
-                ResourcePath::from("child"),
+                &ResourcePath::from("child"),
                 Target::Game,
                 Platform::Windows,
                 ['e', 'n'],

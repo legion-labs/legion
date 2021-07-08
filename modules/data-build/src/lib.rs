@@ -70,7 +70,7 @@
 //! - [ ] Load dependencies - gather during compilation, use at runtime.
 //! - [ ] More flexible compiler registration (compilers-as-executables?).
 //! - [ ] Allow one resource to be processed by many compilers (currently only one supported).
-//! - [ ] Make source_hash include hashes of filtered resource dependencies.
+//! - [ ] Make `source_hash` include hashes of filtered resource dependencies.
 //! - [ ] Clarify how the manifest works and how it gets update if a leaf resource is compiled.
 //!
 //! [`.meta`]: ../resources/index.html#resource-meta-file
