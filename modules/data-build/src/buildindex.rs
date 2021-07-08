@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn dependency_update() {
         let work_dir = tempfile::tempdir().unwrap();
-        let mut project = Project::create_new(&work_dir.path()).expect("failed to create project");
+        let mut project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         let child = project
             .create_resource(ResourcePath::from("child"), ResourceType::Actor)
@@ -238,11 +238,11 @@ mod tests {
         let invalid_project = PathBuf::new();
         let mut db = BuildIndex::create_new(&db_file, &invalid_project, "0.0.1").unwrap();
 
-        let parent_deps = vec![child.clone()];
+        let parent_deps = vec![child];
 
         let resource_hash = 0; // this is irrelevant to the test
 
-        db.update_resource(parent.clone(), resource_hash, parent_deps.clone());
+        db.update_resource(parent, resource_hash, parent_deps.clone());
         assert_eq!(db.content.resources.len(), 1);
         assert_eq!(db.content.resources[0].build_deps.len(), 1);
 

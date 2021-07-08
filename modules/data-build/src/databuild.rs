@@ -287,7 +287,7 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         {
             let mut project =
-                Project::create_new(&work_dir.path()).expect("failed to create a project");
+                Project::create_new(work_dir.path()).expect("failed to create a project");
             let texture = project
                 .create_resource(ResourcePath::from("child"), ResourceType::Texture)
                 .unwrap();
@@ -314,7 +314,7 @@ mod tests {
         }
 
         {
-            let mut project = Project::open(&work_dir.path()).unwrap();
+            let mut project = Project::open(work_dir.path()).unwrap();
             project
                 .create_resource(ResourcePath::from("orphan"), ResourceType::Texture)
                 .unwrap();
@@ -332,7 +332,7 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         {
             let mut project =
-                Project::create_new(&work_dir.path()).expect("failed to create a project");
+                Project::create_new(work_dir.path()).expect("failed to create a project");
             let texture = project
                 .create_resource(ResourcePath::from("child"), ResourceType::Texture)
                 .unwrap();
