@@ -11,7 +11,8 @@ pub fn init_local_repository(directory: &Path) -> Result<(), String> {
         return Err(format!("Error creating repository directory: {}", e));
     }
 
-    create_sqlite_repo_database(directory)?;
+    let db_path = directory.join("repo.db3");
+    create_sqlite_database(&db_path)?;
 
     let mut repo_connection = RepositoryConnection::new(directory.to_str().unwrap())?;
     init_commit_database(&mut repo_connection)?;
