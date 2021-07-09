@@ -1,4 +1,4 @@
-//! Data build pipeline module
+//! Data build module of data processing pipeline.
 //!
 //! > **WORK IN PROGRESS**: *This document describes the current state of the implementation
 //! > and highlights near future development plans.*
