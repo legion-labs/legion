@@ -138,7 +138,9 @@ deny = [] #{ name = "ansi_term", version = "=0.11.0", wrappers = [] },
 skip = [
     { name = "ansi_term", version = "=0.11.0" },
     { name = "nom", version = "=5.1.2" },
-    
+    { name = "autocfg", version = "=0.1.7" },
+    { name = "num-bigint", version = "=0.3.2" },
+   
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 
