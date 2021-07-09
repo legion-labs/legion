@@ -2,7 +2,7 @@
 
 > **Disclaimer**: This document is work in progress and describes our aspirations. There are technical challenges to sort out so the final outcome might look different from the original vision described here.
 
-This document describes the overview of the data processing pipeline in the context outlined in the [CONTEXT DOCUMENT](./CONTEXT.md).
+This document describes the overview of the data processing pipeline in the context outlined in the [Context](./context.md) chapter.
 
 In high-level the data pipeline deals with 4 distinct representations of data and 3 data transformation processes converting those.
 
@@ -52,7 +52,7 @@ It provides a view of the resources present under source control and keeps track
 
 An example of file structure related to the component looks like this (GUIDs would be used for offline file names; here changed to 'name' to illustrate the example):
 
-```
+```ignore
 + data/
   - textures.psd		// source asset
   - textures.export		// parameters of .psd export process

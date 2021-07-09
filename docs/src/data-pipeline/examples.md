@@ -1,4 +1,4 @@
-# Examples:
+# Data Pipeline - Examples
 
 Below you can find examples of how data pipeline works to transform data from a psd/fbx format to the runtime binary one.
 
@@ -15,7 +15,7 @@ The purpuse of this example is to illustrate various forms the data takes and th
 #### Source Representation
 
 Optimized for artist's workflow; focused around DCC tools.
-```
+```ignore
 + data-source/
   - hero.anim.fbx             // animation editing workflow
   - hero.anim.fbx.export      // metadata used to export into offline format
@@ -31,7 +31,7 @@ Optimized for artist's workflow; focused around DCC tools.
 Optimized for tool editing (writing) & asset compilation; stripped from excess DCC format data.
 
 Filenames are in reality GUIDs (replaced below by names for simplicity). File names are stored in .meta for display.
-```
+```ignore
 + data-offline/
   - hero.actor              // top level
   - hero.actor.meta         // geom, skeleton, anim bundle(s) refs
@@ -70,7 +70,7 @@ Filenames are in reality GUIDs (replaced below by names for simplicity). File na
 Optimized for engine runtime (reading); stripped from editor-related data.
 
 Each 'data object' can be loaded in a different place in memory and keeps the system coupling to minimum.
-```
+```ignore
 + data-obj/
   - albedo.texture  // platform-compressed
   - albedo2.texture // platform-compressed
@@ -88,7 +88,7 @@ Each 'data object' can be loaded in a different place in memory and keeps the sy
 #### Packed Representation
 
 Optimized for loading and patching; combines many related `data objects` into one file. Not all data objects need to be packed.
-```
+```ignore
 + data-runtime/
   - albedo.texture
   - albedo2.texture
@@ -99,7 +99,7 @@ Optimized for loading and patching; combines many related `data objects` into on
 ```
 
 Visual representation
-```
+```ignore
   ======fileA======   =====fileC=====        =====fileD======
   |  body.mesh<--\|<->|body.material|<---+-->|albedo.texture|
   |  hair.mesh<--+|<->|hair.material|<\  :   ================
@@ -117,7 +117,7 @@ Visual representation
 
 Optimized for IO throughput; 'zips' many packed and object representations into one file.
 
-```
+```ignore
 characters.archive
 intro_map.archive
 common.archive
@@ -137,7 +137,7 @@ It will include features like:
 
 Below is an example of its usage within the prefab system to define an area with various types of enemies:
 
-```
+```ignore
 + data-offline/
   - basic_weapon.data // .data files contain both offline & runtime data format definition
   - basic_weapon.meta

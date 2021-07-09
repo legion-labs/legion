@@ -1,5 +1,6 @@
 # All target directory is ignored
 /target
+/docs/book
 
 # IntelliJ project files
 /.idea

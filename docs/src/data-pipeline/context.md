@@ -1,6 +1,6 @@
 # Data Pipeline - Context
 
-This document describes assumptions related to the data pipeline. It provides context for which the data pipeline is developed. You can refer to [EXAMPLES DOCUMENT](./EXAMPLE.md) to find more concrete use cases that the data pipeline needs to support.
+This document describes assumptions related to the data pipeline. It provides context for which the data pipeline is developed. You can refer to [Examples](./examples.md) chapter to find more concrete use cases that the data pipeline needs to support.
 
 #### Engine / Tool Context
 
