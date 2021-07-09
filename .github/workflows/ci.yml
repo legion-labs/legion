@@ -55,6 +55,7 @@ jobs:
           publish_dir: ./target/doc
           force_orphan: true
           user_name: ${{ github.repository_owner }}
+          user_email: 'kris.stasik@legionlabs.com'
     
   test:
     name: Running tests
