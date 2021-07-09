@@ -1,20 +1,19 @@
 use crate::*;
 use chrono::prelude::*;
 use futures::executor::block_on;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::fs;
 use std::path::Path;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct HashedChange {
     pub relative_path: String,
     pub hash: String,
     pub change_type: ChangeType,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Commit {
     pub id: String,
     pub owner: String,

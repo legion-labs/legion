@@ -1,5 +1,4 @@
 use crate::*;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::hash_map::HashMap;
 use std::collections::BTreeSet;
@@ -12,7 +11,7 @@ pub enum TreeNodeType {
     File = 2,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TreeNode {
     pub name: String,
     pub hash: String,
@@ -24,7 +23,7 @@ impl TreeNode {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Tree {
     pub directory_nodes: Vec<TreeNode>,
     pub file_nodes: Vec<TreeNode>,

@@ -1,11 +1,10 @@
 use crate::*;
 use futures::executor::block_on;
-use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::fs;
 use std::path::Path;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ChangeType {
     Edit = 1,
     Add = 2,
@@ -23,7 +22,7 @@ impl ChangeType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct LocalChange {
     pub relative_path: String,
     pub change_type: ChangeType,
