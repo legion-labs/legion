@@ -30,6 +30,32 @@ jobs:
       - name: Run Cargo Deny
         run: cargo deny check
 
+  docs:
+    name: Generating & deploying docs
+    needs: test
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Build
+        run: |
+          cargo doc --workspace --no-deps --all-features
+          echo "<meta http-equiv=\"refresh\" content=\"0; URL=Legion/index.html\"/>" > target/doc/index.html
+          
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: docs
+          publish_dir: ./target/doc
+          force_orphan: true
+          user_name: ${{ github.repository_owner }}
+    
   test:
     name: Running tests
     needs: lint
