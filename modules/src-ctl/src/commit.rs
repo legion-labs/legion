@@ -11,7 +11,7 @@ use std::path::Path;
 pub struct HashedChange {
     pub relative_path: String,
     pub hash: String,
-    pub change_type: String, //edit, add, delete
+    pub change_type: ChangeType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -49,7 +49,7 @@ impl Commit {
 }
 
 pub fn init_commit_database(connection: &mut RepositoryConnection) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     let sql = "CREATE TABLE commits(id TEXT, owner TEXT, message TEXT, root_hash TEXT, date_time_utc TEXT);
          CREATE UNIQUE INDEX commit_id on commits(id);
          CREATE TABLE commit_parents(id TEXT, parent_id TEXT);
@@ -64,7 +64,7 @@ pub fn init_commit_database(connection: &mut RepositoryConnection) -> Result<(),
 }
 
 pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
 
     if let Err(e) = block_on(
         sqlx::query("INSERT INTO commits VALUES($1, $2, $3, $4, $5);")
@@ -95,7 +95,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
                 .bind(commit.id.clone())
                 .bind(change.relative_path.clone())
                 .bind(change.hash.clone())
-                .bind(change.change_type.clone())
+                .bind(change.change_type.clone() as i64)
                 .execute(&mut *sql_connection),
         ) {
             return Err(format!("Error inserting into commit_changes: {}", e));
@@ -106,7 +106,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
 }
 
 pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Commit, String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     let mut changes: Vec<HashedChange> = Vec::new();
 
     match block_on(
@@ -120,10 +120,11 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
     ) {
         Ok(rows) => {
             for r in rows {
+                let change_type_int: i64 = r.get("change_type");
                 changes.push(HashedChange {
                     relative_path: r.get("relative_path"),
                     hash: r.get("hash"),
-                    change_type: r.get("change_type"),
+                    change_type: ChangeType::from_int(change_type_int).unwrap(),
                 });
             }
         }
@@ -170,7 +171,6 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
                 row.get("root_hash"),
                 parents,
             );
-            // println!("commit: {:?}", commit);
             Ok(commit)
         }
         Err(e) => Err(format!("Error fetching commit: {}", e)),
@@ -178,7 +178,7 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
 }
 
 pub fn commit_exists(connection: &mut RepositoryConnection, id: &str) -> bool {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     let res = block_on(
         sqlx::query(
             "SELECT count(*) as count
@@ -210,7 +210,7 @@ fn upload_localy_edited_blobs(
     let blob_dir = Path::new(&workspace_spec.repository).join("blobs");
     let mut res = Vec::<HashedChange>::new();
     for local_change in local_changes {
-        if local_change.change_type == "delete" {
+        if local_change.change_type == ChangeType::Delete {
             res.push(HashedChange {
                 relative_path: local_change.relative_path.clone(),
                 hash: String::from(""),
@@ -236,7 +236,7 @@ fn make_local_files_read_only(
     changes: &[HashedChange],
 ) -> Result<(), String> {
     for change in changes {
-        if change.change_type != "delete" {
+        if change.change_type != ChangeType::Delete {
             let full_path = workspace_root.join(&change.relative_path);
             make_file_read_only(&full_path, true)?;
         }
@@ -245,25 +245,26 @@ fn make_local_files_read_only(
 }
 
 pub fn commit_local_changes(
-    workspace_root: &Path,
+    workspace_connection: &mut LocalWorkspaceConnection,
     commit_id: &str,
     message: &str,
 ) -> Result<(), String> {
-    let workspace_spec = read_workspace_spec(workspace_root)?;
-    let mut current_branch = read_current_branch(workspace_root)?;
+    let workspace_root = workspace_connection.workspace_path().to_path_buf();
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let mut current_branch = read_current_branch(&workspace_root)?;
     let repo = &workspace_spec.repository;
     let mut connection = RepositoryConnection::new(repo)?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
-    let local_changes = read_local_changes(workspace_root)?;
+    let local_changes = read_local_changes(workspace_connection)?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
-        assert_not_locked(workspace_root, &abs_path)?;
+        assert_not_locked(&workspace_root, &abs_path)?;
     }
     let hashed_changes =
-        upload_localy_edited_blobs(workspace_root, &workspace_spec, &local_changes)?;
+        upload_localy_edited_blobs(&workspace_root, &workspace_spec, &local_changes)?;
 
     let base_commit = read_commit(&mut connection, &current_branch.head)?;
 
@@ -274,7 +275,7 @@ pub fn commit_local_changes(
     )?;
 
     let mut parent_commits = Vec::from([base_commit.id]);
-    for pending_branch_merge in read_pending_branch_merges(workspace_root)? {
+    for pending_branch_merge in read_pending_branch_merges(&workspace_root)? {
         parent_commits.push(pending_branch_merge.head.clone());
     }
 
@@ -288,24 +289,25 @@ pub fn commit_local_changes(
     );
     save_commit(&mut connection, &commit)?;
     current_branch.head = commit.id;
-    save_current_branch(workspace_root, &current_branch)?;
+    save_current_branch(&workspace_root, &current_branch)?;
 
     //todo: will need to lock to avoid races in updating branch in the database
     save_branch_to_repo(&mut connection, &current_branch)?;
 
-    if let Err(e) = make_local_files_read_only(workspace_root, &commit.changes) {
+    if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);
     }
-    clear_local_changes(workspace_root, &local_changes);
-    clear_pending_branch_merges(workspace_root);
+    clear_local_changes(workspace_connection, &local_changes);
+    clear_pending_branch_merges(&workspace_root);
     Ok(())
 }
 
 pub fn commit_command(message: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let id = uuid::Uuid::new_v4().to_string();
-    commit_local_changes(&workspace_root, &id, message)
+    commit_local_changes(&mut workspace_connection, &id, message)
 }
 
 pub fn find_branch_commits(

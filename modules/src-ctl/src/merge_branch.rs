@@ -151,7 +151,7 @@ fn change_file_to(
         if let Err(e) = make_file_read_only(&local_path, true) {
             return Err(e);
         }
-        track_new_file(&local_path)?;
+        track_new_file_command(&local_path)?;
         return Ok(format!("Added {}", local_path.display()));
     }
 }

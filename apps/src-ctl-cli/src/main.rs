@@ -290,7 +290,7 @@ fn main_impl() -> Result<(), String> {
             Path::new(command_match.value_of("repository-directory").unwrap()),
         ),
         ("add", Some(command_match)) => {
-            track_new_file(Path::new(command_match.value_of("path").unwrap()))
+            track_new_file_command(Path::new(command_match.value_of("path").unwrap()))
         }
         ("edit", Some(command_match)) => {
             edit_file_command(Path::new(command_match.value_of("path").unwrap()))
@@ -358,7 +358,7 @@ fn main_impl() -> Result<(), String> {
                     println!("No local changes");
                 }
                 for change in changes {
-                    println!("{} {}", change.change_type, change.relative_path);
+                    println!("{:?} {}", change.change_type, change.relative_path);
                 }
                 Ok(())
             }

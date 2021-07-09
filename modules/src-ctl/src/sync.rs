@@ -131,6 +131,7 @@ pub fn sync_file(
 pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
     let mut connection = RepositoryConnection::new(repo)?;
@@ -179,7 +180,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
     };
 
     let mut local_changes_map = HashMap::new();
-    match read_local_changes(&workspace_root) {
+    match read_local_changes(&mut workspace_connection) {
         Ok(changes_vec) => {
             for change in changes_vec {
                 local_changes_map.insert(change.relative_path.clone(), change.clone());

@@ -207,7 +207,7 @@ pub fn update_tree_from_changes(
                         .to_str()
                         .expect("path is invalid string"),
                 );
-                if change.change_type == "delete" {
+                if change.change_type == ChangeType::Delete {
                     tree.remove_file_node(&filename);
                 } else {
                     tree.add_or_update_file_node(TreeNode {

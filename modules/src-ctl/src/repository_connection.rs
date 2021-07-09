@@ -4,7 +4,7 @@ use std::path::Path;
 
 pub struct RepositoryConnection {
     repo_directory: String, //to store blobs, will be replaced by a generic blob storage interface
-    metadata_connection: sqlx::AnyConnection,
+    sql_connection: sqlx::AnyConnection,
 }
 
 impl RepositoryConnection {
@@ -15,13 +15,13 @@ impl RepositoryConnection {
             Err(e) => Err(format!("Error opening database {}: {}", url, e)),
             Ok(c) => Ok(Self {
                 repo_directory: String::from(repo_directory),
-                metadata_connection: c,
+                sql_connection: c,
             }),
         }
     }
 
-    pub fn sql_connection(&mut self) -> &mut sqlx::AnyConnection {
-        &mut self.metadata_connection
+    pub fn sql(&mut self) -> &mut sqlx::AnyConnection {
+        &mut self.sql_connection
     }
 
     pub fn repository(&self) -> &Path {

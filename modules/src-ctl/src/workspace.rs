@@ -13,7 +13,7 @@ pub struct Workspace {
 }
 
 pub fn init_workspace_database(connection: &mut RepositoryConnection) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     let sql = "CREATE TABLE workspaces(id TEXT, root TEXT, owner TEXT);
                CREATE UNIQUE INDEX workspace_id on workspaces(id);";
     if let Err(e) = execute_sql(sql_connection, sql) {
@@ -26,7 +26,7 @@ pub fn save_new_workspace_to_repo(
     connection: &mut RepositoryConnection,
     workspace: &Workspace,
 ) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     if let Err(e) = block_on(
         sqlx::query("INSERT INTO workspaces VALUES($1, $2, $3);")
             .bind(workspace.id.clone())

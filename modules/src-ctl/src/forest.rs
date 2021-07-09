@@ -5,7 +5,7 @@ use sqlx::Row;
 // a Forest struct could eventually contain a MRU cache of recently fetched trees
 
 pub fn init_forest_database(connection: &mut RepositoryConnection) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     let sql =
         "CREATE TABLE tree_nodes (name TEXT, hash TEXT, parent_tree_hash TEXT, node_type INTEGER);
          CREATE INDEX tree on tree_nodes(parent_tree_hash);";
@@ -17,7 +17,7 @@ pub fn init_forest_database(connection: &mut RepositoryConnection) -> Result<(),
 }
 
 pub fn read_tree(connection: &mut RepositoryConnection, hash: &str) -> Result<Tree, String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     let mut directory_nodes: Vec<TreeNode> = Vec::new();
     let mut file_nodes: Vec<TreeNode> = Vec::new();
 
@@ -65,7 +65,7 @@ pub fn save_tree(
         return Ok(());
     }
 
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
 
     for file_node in &tree.file_nodes {
         if let Err(e) = block_on(

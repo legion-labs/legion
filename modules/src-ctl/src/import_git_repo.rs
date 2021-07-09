@@ -30,30 +30,31 @@ fn copy_git_blob(
 }
 
 fn add_file_from_git(
-    workspace_root: &Path,
+    connection: &mut LocalWorkspaceConnection,
     git_repo: &git2::Repository,
     new_file: &git2::DiffFile<'_>,
 ) -> Result<(), String> {
     let relative_path = new_file.path().unwrap();
+    let workspace_root = connection.workspace_path().to_path_buf();
     let local_path = workspace_root.join(relative_path);
-    let canonical_relative_path = make_canonical_relative_path(workspace_root, &local_path)?;
+    let canonical_relative_path = make_canonical_relative_path(&workspace_root, &local_path)?;
 
-    match find_local_change(workspace_root, &canonical_relative_path) {
-        SearchResult::Ok(change) => {
-            if change.change_type == "delete" {
+    match find_local_change(connection, &canonical_relative_path) {
+        Ok(Some(change)) => {
+            if change.change_type == ChangeType::Delete {
                 println!("adding of file being deleted - reverting change and editing");
                 revert_file_command(&local_path)?;
-                return edit_file_from_git(workspace_root, git_repo, new_file);
+                return edit_file_from_git(&workspace_root, git_repo, new_file);
             }
             return Err(format!(
-                "Error: {} already tracked for {}",
+                "Error: {} already tracked for {:?}",
                 change.relative_path, change.change_type
             ));
         }
-        SearchResult::Err(e) => {
+        Err(e) => {
             return Err(format!("Error searching in local changes: {}", e));
         }
-        SearchResult::None => { //all is good
+        Ok(None) => { //all is good
         }
     }
 
@@ -68,7 +69,7 @@ fn add_file_from_git(
             e
         ));
     }
-    track_new_file(&local_path)
+    track_new_file_command(&local_path)
 }
 
 fn edit_file_from_git(
@@ -95,11 +96,12 @@ fn edit_file_from_git(
 }
 
 fn import_commit_diff(
-    workspace_root: &Path,
+    connection: &mut LocalWorkspaceConnection,
     diff: &git2::Diff<'_>,
     git_repo: &git2::Repository,
 ) -> Result<(), String> {
     let mut errors: Vec<String> = Vec::new();
+    let workspace_root = connection.workspace_path().to_path_buf();
     //process deletes first
     //because git is case-sensitive a file can be seen as being removed and added in the same commit
     if let Err(e) = diff.foreach(
@@ -133,7 +135,7 @@ fn import_commit_diff(
                     let new_file = delta.new_file();
                     let path = new_file.path().unwrap();
                     println!("adding {}", path.display());
-                    if let Err(e) = add_file_from_git(workspace_root, git_repo, &new_file) {
+                    if let Err(e) = add_file_from_git(connection, git_repo, &new_file) {
                         let message = format!("Error adding file {}: {}", path.display(), e);
                         println!("{}", message);
                         errors.push(message);
@@ -144,7 +146,7 @@ fn import_commit_diff(
                     let new_file = delta.new_file();
                     let path = new_file.path().unwrap();
                     println!("modifying {}", path.display());
-                    if let Err(e) = edit_file_from_git(workspace_root, git_repo, &new_file) {
+                    if let Err(e) = edit_file_from_git(&workspace_root, git_repo, &new_file) {
                         let message = format!("Error modifying file {}: {}", path.display(), e);
                         println!("{}", message);
                         errors.push(message);
@@ -187,8 +189,8 @@ fn import_commit_diff(
 // One alternative would be to find the shortest path between the last integrated commit and the
 // top of the branch.
 fn import_commit_sequence(
-    connection: &mut RepositoryConnection,
-    workspace_root: &Path,
+    repo_connection: &mut RepositoryConnection,
+    workspace_connection: &mut LocalWorkspaceConnection,
     git_repo: &git2::Repository,
     root_commit: &git2::Commit<'_>,
 ) -> Result<(), String> {
@@ -197,7 +199,7 @@ fn import_commit_sequence(
     loop {
         let commit = stack.pop().unwrap();
         let commit_id = commit.id().to_string();
-        if commit_exists(connection, &commit_id) {
+        if commit_exists(repo_connection, &commit_id) {
             match commit.tree() {
                 Ok(tree) => {
                     if let Err(e) = reference_index.read_tree(&tree) {
@@ -253,7 +255,7 @@ fn import_commit_sequence(
                 }
                 match git_repo.diff_index_to_index(&reference_index, &current_index, None) {
                     Ok(diff) => {
-                        if let Err(e) = import_commit_diff(workspace_root, &diff, git_repo) {
+                        if let Err(e) = import_commit_diff(workspace_connection, &diff, git_repo) {
                             return Err(format!(
                                 "Error importing {}: {}",
                                 format_commit(&commit),
@@ -262,7 +264,9 @@ fn import_commit_sequence(
                         }
                         let commit_id = commit.id().to_string();
                         println!("recording commit {}: {}", commit_id, message);
-                        if let Err(e) = commit_local_changes(workspace_root, &commit_id, &message) {
+                        if let Err(e) =
+                            commit_local_changes(workspace_connection, &commit_id, &message)
+                        {
                             return Err(format!(
                                 "Error recording {}: {}",
                                 format_commit(&commit),
@@ -294,29 +298,29 @@ fn import_commit_sequence(
 }
 
 fn import_branch(
-    connection: &mut RepositoryConnection,
-    workspace_root: &Path,
+    repo_connection: &mut RepositoryConnection,
+    workspace_connection: &mut LocalWorkspaceConnection,
     git_repo: &git2::Repository,
     branch: &git2::Branch<'_>,
 ) -> Result<(), String> {
     let branch_name = branch.name().unwrap().unwrap();
     println!("importing branch {}", branch_name);
 
-    match find_branch(connection, branch_name) {
-        SearchResult::Ok(_branch) => {
+    match find_branch(repo_connection, branch_name) {
+        Ok(Some(_branch)) => {
             println!("branch already exists");
         }
-        SearchResult::Err(e) => {
+        Err(e) => {
             return Err(format!("Error reading local branch {}: {}", branch_name, e));
         }
-        SearchResult::None => {
+        Ok(None) => {
             panic!("branch creation not supported");
         }
     }
 
     match branch.get().peel_to_commit() {
         Ok(commit) => {
-            import_commit_sequence(connection, workspace_root, git_repo, &commit)?;
+            import_commit_sequence(repo_connection, workspace_connection, git_repo, &commit)?;
         }
         Err(e) => {
             return Err(format!("Branch reference is not a commit: {}", e));
@@ -328,9 +332,10 @@ fn import_branch(
 pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo = &workspace_spec.repository;
-    let mut connection = RepositoryConnection::new(repo)?;
+    let mut repo_connection = RepositoryConnection::new(repo)?;
     match git2::Repository::open(git_root_path) {
         Ok(git_repo) => {
             println!("git repository state: {:?}", git_repo.state());
@@ -357,8 +362,8 @@ pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Re
                         Some(branch_result) => match branch_result {
                             Ok((git_branch, _branch_type)) => {
                                 import_branch(
-                                    &mut connection,
-                                    &workspace_root,
+                                    &mut repo_connection,
+                                    &mut workspace_connection,
                                     &git_repo,
                                     &git_branch,
                                 )?;

@@ -24,7 +24,7 @@ impl Branch {
 }
 
 pub fn init_branch_database(connection: &mut RepositoryConnection) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     let sql = "CREATE TABLE branches(name TEXT, head TEXT, parent TEXT, lock_domain_id TEXT);
          CREATE UNIQUE INDEX branch_name on branches(name);
         ";
@@ -45,7 +45,7 @@ pub fn save_new_branch_to_repo(
     connection: &mut RepositoryConnection,
     branch: &Branch,
 ) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     if let Err(e) = block_on(
         sqlx::query("INSERT INTO branches VALUES($1, $2, $3, $4);")
             .bind(branch.name.clone())
@@ -63,7 +63,7 @@ pub fn save_branch_to_repo(
     connection: &mut RepositoryConnection,
     branch: &Branch,
 ) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     if let Err(e) = block_on(
         sqlx::query(
             "UPDATE branches SET head=$1, parent=$2, lock_domain_id=$3
@@ -93,7 +93,7 @@ pub fn read_branch_from_repo(
     connection: &mut RepositoryConnection,
     name: &str,
 ) -> Result<Branch, String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     match block_on(
         sqlx::query(
             "SELECT head, parent, lock_domain_id 
@@ -119,8 +119,8 @@ pub fn read_branch_from_repo(
 pub fn find_branch(
     connection: &mut RepositoryConnection,
     name: &str,
-) -> SearchResult<Branch, String> {
-    let sql_connection = connection.sql_connection();
+) -> Result<Option<Branch>, String> {
+    let sql_connection = connection.sql();
     match block_on(
         sqlx::query(
             "SELECT head, parent, lock_domain_id 
@@ -130,7 +130,7 @@ pub fn find_branch(
         .bind(name)
         .fetch_optional(&mut *sql_connection),
     ) {
-        Ok(None) => SearchResult::None,
+        Ok(None) => Ok(None),
         Ok(Some(row)) => {
             let branch = Branch::new(
                 String::from(name),
@@ -138,9 +138,9 @@ pub fn find_branch(
                 row.get("parent"),
                 row.get("lock_domain_id"),
             );
-            SearchResult::Ok(branch)
+            Ok(Some(branch))
         }
-        Err(e) => SearchResult::Err(format!("Error fetching branch {}: {}", name, e)),
+        Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
     }
 }
 
@@ -175,7 +175,7 @@ pub fn create_branch_command(name: &str) -> Result<(), String> {
 }
 
 pub fn read_branches(connection: &mut RepositoryConnection) -> Result<Vec<Branch>, String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     let mut res = Vec::new();
     match block_on(
         sqlx::query(

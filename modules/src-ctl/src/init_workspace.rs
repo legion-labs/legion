@@ -13,13 +13,18 @@ pub fn init_workspace(
     if fs::metadata(&workspace_directory).is_ok() {
         return Err(format!("{} already exists", workspace_directory.display()));
     }
-    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc")) {
+
+    let lsc_dir = workspace_directory.join(".lsc");
+    if let Err(e) = fs::create_dir_all(&lsc_dir) {
         return Err(format!("Error creating .lsc directory: {}", e));
     }
-    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/local_edits")) {
-        return Err(format!("Error creating .lsc/local_edits directory: {}", e));
-    }
-    //todo rename resolve_pending
+
+    let db_path = lsc_dir.join("workspace.db3");
+    create_sqlite_database(&db_path)?;
+
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_directory)?;
+    init_local_changes_database(&mut workspace_connection)?;
+
     if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/resolve_pending")) {
         return Err(format!(
             "Error creating .lsc/resolve_pending directory: {}",

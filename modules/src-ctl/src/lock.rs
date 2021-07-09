@@ -13,7 +13,7 @@ pub struct Lock {
 }
 
 pub fn init_lock_database(connection: &mut RepositoryConnection) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     let sql = "CREATE TABLE locks(relative_path TEXT, lock_domain_id TEXT, workspace_id TEXT, branch_name TEXT);
          CREATE UNIQUE INDEX lock_key on locks(relative_path, lock_domain_id);
         ";
@@ -24,7 +24,7 @@ pub fn init_lock_database(connection: &mut RepositoryConnection) -> Result<(), S
 }
 
 pub fn save_new_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     match block_on(
         sqlx::query(
             "SELECT count(*) as count
@@ -68,7 +68,7 @@ fn read_lock(
     lock_domain_id: &str,
     canonical_relative_path: &str,
 ) -> Result<Option<Lock>, String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     match block_on(
         sqlx::query(
             "SELECT workspace_id, branch_name
@@ -96,7 +96,7 @@ pub fn clear_lock(
     lock_domain_id: &str,
     canonical_relative_path: &str,
 ) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     if let Err(e) = block_on(
         sqlx::query("DELETE from locks WHERE relative_path=$1 AND lock_domain_id=$2;")
             .bind(canonical_relative_path)
@@ -112,7 +112,7 @@ pub fn verify_empty_lock_domain(
     connection: &mut RepositoryConnection,
     lock_domain_id: &str,
 ) -> Result<(), String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     match block_on(
         sqlx::query(
             "SELECT count(*) as count
@@ -138,7 +138,7 @@ pub fn read_locks(
     connection: &mut RepositoryConnection,
     lock_domain_id: &str,
 ) -> Result<Vec<Lock>, String> {
-    let sql_connection = connection.sql_connection();
+    let sql_connection = connection.sql();
     match block_on(
         sqlx::query(
             "SELECT relative_path, workspace_id, branch_name
