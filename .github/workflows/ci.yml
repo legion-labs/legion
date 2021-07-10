@@ -85,6 +85,7 @@ jobs:
 
   docs:
     name: Generating & deploying docs
+    needs: test
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
