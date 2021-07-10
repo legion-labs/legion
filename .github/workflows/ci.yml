@@ -97,8 +97,8 @@ jobs:
       - name: Build
         run: |
           cargo doc --workspace --no-deps --all-features
-          mdbook build .\docs\
-          mv .\target\book\ .\target\doc\
+          mdbook build ./docs/
+          mv ./target/book/ ./target/doc/
           echo "<meta http-equiv=\"refresh\" content=\"0; URL=book/index.html\"/>" > target/doc/index.html
           
       - name: Deploy
