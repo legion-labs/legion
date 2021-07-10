@@ -42,7 +42,7 @@
 //!
 //! # Future Work
 //!
-//! - [x] Change resource name to a path.
+//! - [ ] Change resource name to a path. [legion/task#49](https://github.com/legion-labs/legion/issues/49)
 //! - [ ] Use directory path to open a project.
 //! - [ ] Make changes to resource content be reflected in the .meta file (`content_md5`).
 //! - [ ] Use `SQLite` to persist project's state.
