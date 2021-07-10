@@ -4,3 +4,6 @@ language = "en"
 multilingual = false
 src = "src"
 title = "The Legion Engine and Pipeline Book"
+
+[build]
+build-dir = "../target/book"
