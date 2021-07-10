@@ -16,7 +16,7 @@
     - [Context](./rendering/CONTEXT.md)
 
 - [Streaming](./streaming/README.md)
-    - [Context](./streaming/context.md)
+    - [Context](./streaming/CONTEXT.md)
 
 - [Source Control](./source-control/README.md)
     - [Design](./source-control/DESIGN.md)
