@@ -1,10 +1,6 @@
-# Data Pipeline - Examples
+# Example use cases
 
 Below you can find examples of how data pipeline works to transform data from a psd/fbx format to the runtime binary one.
-
-The process in high level can be described as:
-
-SOURCE => OFFLINE => RUNTIME ( OBJECT, PACKED ) => ARCHIVED
 
 ## Actor Example
 
