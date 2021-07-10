@@ -5,5 +5,9 @@ multilingual = false
 src = "src"
 title = "The Legion Engine and Pipeline Book"
 
+[rust]
+edition = "2018"
+
 [build]
 build-dir = "../target/book"
+create-missing = false

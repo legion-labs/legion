@@ -1,6 +1,6 @@
 # Summary
 
-[Introduction](./README.md)
+[**Legion**](./README.md)
 
 # Features
 
@@ -12,15 +12,17 @@
     - [Packaging](./data-pipeline/packaging.md)
     - [Example use cases](./data-pipeline/examples.md)
 
-- [Rendering](./data-pipeline/README.md)
-    - [Context](./data-pipeline/CONTEXT.md)
+- [Rendering](./rendering/README.md)
+    - [Context](./rendering/CONTEXT.md)
 
 - [Streaming](./streaming/README.md)
-    - [Context](./data-pipeline/context.md)
+    - [Context](./streaming/context.md)
 
 - [Source Control](./source-control/README.md)
-    - [Design](./data-pipeline/DESIGN.md)
+    - [Design](./source-control/DESIGN.md)
 
 # Other
+
+- [Roadmap](./roadmap/README.md)
 
 - [API Reference](referemce.md)
