@@ -78,7 +78,7 @@ pub struct Manifest {
 /// Data build uses file-based storage to persist the state of data builds and data compilation.
 /// It requires access to offline resources to retrieve resource metadata - throught  [`legion_resources::Project`].
 pub struct DataBuild {
-    build_db: BuildIndex,
+    build_index: BuildIndex,
     project: Project,
     asset_store: LocalCompiledAssetStore,
 }
@@ -86,18 +86,19 @@ pub struct DataBuild {
 impl DataBuild {
     fn new(
         buildindex_path: &Path,
-        projectindex_path: &Path,
+        project_root_path: &Path,
         assetstore_path: &Path,
     ) -> Result<Self, Error> {
-        let project = Self::open_project(projectindex_path)?;
+        let project = Self::open_project(project_root_path)?;
 
-        let build_db = BuildIndex::create_new(buildindex_path, projectindex_path, Self::version())
-            .map_err(|_e| Error::IOError)?;
+        let build_index =
+            BuildIndex::create_new(buildindex_path, &project.indexfile_path(), Self::version())
+                .map_err(|_e| Error::IOError)?;
 
         let asset_store = LocalCompiledAssetStore::new(assetstore_path).ok_or(Error::NotFound)?;
 
         Ok(Self {
-            build_db,
+            build_index,
             project,
             asset_store,
         })
@@ -105,15 +106,15 @@ impl DataBuild {
 
     /// Opens the existing build index.
     ///
-    /// If the build index does not exist it creates one if a project present in the directory.
+    /// If the build index does not exist it creates one if a project is present in the directory.
     pub fn open(buildindex_path: &Path, assetstore_path: &Path) -> Result<Self, Error> {
         // todo(kstasik): better error
         let asset_store = LocalCompiledAssetStore::new(assetstore_path).ok_or(Error::NotFound)?;
         match BuildIndex::open(buildindex_path, Self::version()) {
-            Ok(build_db) => {
-                let project = build_db.open_project()?;
+            Ok(build_index) => {
+                let project = build_index.open_project()?;
                 Ok(Self {
-                    build_db,
+                    build_index,
                     project,
                     asset_store,
                 })
@@ -136,8 +137,8 @@ impl DataBuild {
         Err(Error::IntegrityFailure)
     }
 
-    fn open_project(projectindex_path: &Path) -> Result<Project, Error> {
-        Project::open(projectindex_path).map_err(|e| match e {
+    fn open_project(projectroot_path: &Path) -> Result<Project, Error> {
+        Project::open(projectroot_path).map_err(|e| match e {
             legion_resources::Error::ParseError => Error::IntegrityFailure,
             legion_resources::Error::NotFound | legion_resources::Error::InvalidPath => {
                 Error::NotFound
@@ -160,7 +161,7 @@ impl DataBuild {
                 .collect::<Result<Vec<ResourceId>, Error>>()?;
 
             if self
-                .build_db
+                .build_index
                 .update_resource(*res, resource_hash, dependencies)
             {
                 updated_resources += 1;
@@ -194,7 +195,7 @@ impl DataBuild {
         let resource_id = self.project.find_resource(root_resource_name)?;
 
         // todo(kstasik): for now dependencies are not compiled - only the root resource is.
-        let (resource, dependencies) = self.build_db.find(resource_id).ok_or(Error::NotFound)?;
+        let (resource, dependencies) = self.build_index.find(resource_id).ok_or(Error::NotFound)?;
 
         let compilers = CompilerRegistry::new();
         let compiler_info = compilers
@@ -217,12 +218,14 @@ impl DataBuild {
         // the same resource can have a different source_hash depending on the compiler
         // used as compilers can filter dependencies out.
         //
-        let source_hash = self.build_db.compute_source_hash(resource)?;
+        let source_hash = self.build_index.compute_source_hash(resource)?;
 
         let compilerdesc_hash = compiler_desc.to_hash();
 
         let compiled_assets = {
-            let cached = self.build_db.find_compiled(compilerdesc_hash, source_hash);
+            let cached = self
+                .build_index
+                .find_compiled(compilerdesc_hash, source_hash);
             if !cached.is_empty() {
                 cached
                     .iter()
@@ -243,7 +246,7 @@ impl DataBuild {
                     &self.project,
                 )?;
 
-                self.build_db.insert_compiled(
+                self.build_index.insert_compiled(
                     compilerdesc_hash,
                     source_guid,
                     source_hash,
@@ -266,14 +269,17 @@ impl DataBuild {
 // todo(kstasik): file IO on descructor - is it ok?
 impl Drop for DataBuild {
     fn drop(&mut self) {
-        self.build_db.flush().unwrap();
+        self.build_index.flush().unwrap();
     }
 }
 
 #[cfg(test)]
 mod tests {
 
+    use std::fs;
+
     use crate::{
+        buildindex::BuildIndex,
         compiledassetstore::{CompiledAssetStore, LocalCompiledAssetStore},
         databuild::DataBuild,
         Platform, Target,
@@ -281,6 +287,33 @@ mod tests {
     use legion_resources::{Project, ResourcePath, ResourceType};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
+
+    #[test]
+    fn create() {
+        let work_dir = tempfile::tempdir().unwrap();
+
+        let projectindex_path = {
+            let project = Project::create_new(work_dir.path()).expect("failed to create a project");
+            project.indexfile_path()
+        };
+
+        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
+        let assetstore_root = work_dir.path();
+
+        {
+            let _build = DataBuild::open(&buildindex_path, assetstore_root)
+                .expect("failed to create data build");
+        }
+
+        let index = BuildIndex::open(&buildindex_path, DataBuild::version())
+            .expect("failed to open build index file");
+
+        assert!(index.validate_project_index());
+
+        fs::remove_file(projectindex_path).unwrap();
+
+        assert!(!index.validate_project_index());
+    }
 
     #[test]
     fn source_pull() {

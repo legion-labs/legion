@@ -47,6 +47,10 @@ impl BuildIndex {
         projectindex_path: &Path,
         version: &str,
     ) -> Result<Self, Error> {
+        if !projectindex_path.exists() {
+            return Err(Error::InvalidProject);
+        }
+
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -66,15 +70,19 @@ impl BuildIndex {
         Ok(Self { content, file })
     }
 
-    pub(crate) fn open(db_path: &Path, version: &str) -> Result<Self, Error> {
+    pub(crate) fn open(buildindex_path: &Path, version: &str) -> Result<Self, Error> {
         let file = OpenOptions::new()
             .read(true)
             .write(true)
-            .open(db_path)
+            .open(buildindex_path)
             .map_err(|_e| Error::NotFound)?;
 
         let content: BuildIndexContent =
             serde_json::from_reader(&file).map_err(|_e| Error::IOError)?;
+
+        if !content.project_index.exists() {
+            return Err(Error::InvalidProject);
+        }
 
         if content.version != version {
             return Err(Error::VersionMismatch);
@@ -84,7 +92,14 @@ impl BuildIndex {
     }
 
     pub(crate) fn open_project(&self) -> Result<Project, Error> {
+        if !self.validate_project_index() {
+            return Err(Error::InvalidProject);
+        }
         Project::open(&self.content.project_index).map_err(|_e| Error::InvalidProject)
+    }
+
+    pub(crate) fn validate_project_index(&self) -> bool {
+        self.content.project_index.exists()
     }
 
     pub(crate) fn compute_source_hash(&self, id: ResourceId) -> Result<ResourceHash, Error> {
@@ -197,23 +212,25 @@ mod tests {
     use super::BuildIndex;
     use crate::Error;
     use legion_resources::{Project, ResourcePath, ResourceType};
-    use std::{path::PathBuf, slice};
+    use std::slice;
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
     #[test]
     fn version_check() {
         let work_dir = tempfile::tempdir().unwrap();
-        Project::create_new(work_dir.path()).expect("failed to create project");
-        let invalid_project = PathBuf::new();
 
-        let db_file = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
+        let project = Project::create_new(work_dir.path()).expect("failed to create project");
+        let projectindex_path = project.indexfile_path();
+
+        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
         {
-            let _db = BuildIndex::create_new(&db_file, &invalid_project, "0.0.1").unwrap();
+            let _buildindex =
+                BuildIndex::create_new(&buildindex_path, &projectindex_path, "0.0.1").unwrap();
         }
 
         assert_eq!(
-            BuildIndex::open(&db_file, "0.0.2").unwrap_err(),
+            BuildIndex::open(&buildindex_path, "0.0.2").unwrap_err(),
             Error::VersionMismatch
         );
     }
@@ -234,9 +251,10 @@ mod tests {
             )
             .unwrap();
 
-        let db_file = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
-        let invalid_project = PathBuf::new();
-        let mut db = BuildIndex::create_new(&db_file, &invalid_project, "0.0.1").unwrap();
+        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
+        let projectindex_path = project.indexfile_path();
+
+        let mut db = BuildIndex::create_new(&buildindex_path, &projectindex_path, "0.0.1").unwrap();
 
         let parent_deps = vec![child];
 

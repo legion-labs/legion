@@ -80,21 +80,21 @@ impl CompiledAssetStore for InMemoryCompiledAssetStore {
 }*/
 
 pub(crate) struct LocalCompiledAssetStore {
-    root_dir: PathBuf,
+    root_path: PathBuf,
 }
 
 impl LocalCompiledAssetStore {
-    pub fn new(root_dir: &Path) -> Option<Self> {
-        if !root_dir.is_dir() {
+    pub fn new(root_path: &Path) -> Option<Self> {
+        if !root_path.is_dir() {
             return None;
         }
         Some(Self {
-            root_dir: root_dir.to_owned(),
+            root_path: root_path.to_owned(),
         })
     }
 
     fn asset_path(&self, id: AssetId) -> PathBuf {
-        self.root_dir.clone().join(id.to_string())
+        self.root_path.clone().join(id.to_string())
     }
 }
 

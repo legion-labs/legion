@@ -41,7 +41,7 @@ struct ResourceDb {
 pub struct Project {
     file: std::fs::File,
     db: ResourceDb,
-    root_dir: PathBuf,
+    projectroot_path: PathBuf,
 }
 
 #[derive(Debug)]
@@ -74,8 +74,8 @@ impl Project {
     /// Returns the default location of the index file in a given directory.
     ///
     /// This method ignores the filename in `work_dir` if one exists.
-    pub fn default_index_file(work_dir: &Path) -> PathBuf {
-        let mut path = work_dir.to_owned();
+    pub fn root_to_index_path(projectroot_path: &Path) -> PathBuf {
+        let mut path = projectroot_path.to_owned();
         if path.is_dir() {
             path.push(PROJECT_INDEX_FILENAME);
         } else {
@@ -84,9 +84,14 @@ impl Project {
         path
     }
 
+    /// Returns the path to project's index file.
+    pub fn indexfile_path(&self) -> PathBuf {
+        Self::root_to_index_path(&self.projectroot_path)
+    }
+
     /// Creates a new project index file turining the containing directory into a project.
-    pub fn create_new(root_dir: &Path) -> Result<Self, Error> {
-        let index_path = Self::default_index_file(root_dir);
+    pub fn create_new(projectroot_path: &Path) -> Result<Self, Error> {
+        let index_path = Self::root_to_index_path(projectroot_path);
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -97,13 +102,17 @@ impl Project {
         let db = ResourceDb::default();
         serde_json::to_writer(&file, &db).map_err(|_e| Error::ParseError)?;
 
-        let root_dir = index_path.parent().unwrap().to_owned();
-        Ok(Self { file, db, root_dir })
+        let projectroot_path = index_path.parent().unwrap().to_owned();
+        Ok(Self {
+            file,
+            db,
+            projectroot_path,
+        })
     }
 
     /// Opens the project index specified
-    pub fn open(root_dir: &Path) -> Result<Self, Error> {
-        let index_path = Self::default_index_file(root_dir);
+    pub fn open(projectroot_path: &Path) -> Result<Self, Error> {
+        let index_path = Self::root_to_index_path(projectroot_path);
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -113,13 +122,17 @@ impl Project {
 
         let db = serde_json::from_reader(&file).map_err(|_e| Error::ParseError)?;
 
-        let root_dir = index_path.parent().unwrap().to_owned();
-        Ok(Self { file, db, root_dir })
+        let projectroot_path = index_path.parent().unwrap().to_owned();
+        Ok(Self {
+            file,
+            db,
+            projectroot_path,
+        })
     }
 
     /// Deletes the project by deleting the index file.
     pub fn delete(self) {
-        let index_path = Self::default_index_file(&self.root_dir);
+        let index_path = self.indexfile_path();
         let _res = fs::remove_file(index_path);
     }
 
@@ -267,14 +280,14 @@ impl Project {
     }
 
     fn metadata_path(&self, id: ResourceId) -> PathBuf {
-        let mut path = self.root_dir.clone();
+        let mut path = self.projectroot_path.clone();
         path.push(format!("{:x}", id));
         path.set_extension(METADATA_EXT);
         path
     }
 
     fn resource_path(&self, id: ResourceId) -> PathBuf {
-        let mut path = self.root_dir.clone();
+        let mut path = self.projectroot_path.clone();
         path.push(format!("{:x}", id));
         path.set_extension(RESOURCE_EXT);
         path
@@ -378,15 +391,15 @@ mod tests {
     fn setup_test() -> TempDir {
         let root = tempfile::tempdir().unwrap();
 
-        let index_path = Project::default_index_file(root.path());
-        let db_path = File::create(index_path).unwrap();
+        let projectindex_path = Project::root_to_index_path(root.path());
+        let projectindex_file = File::create(projectindex_path).unwrap();
 
-        serde_json::to_writer(db_path, &ResourceDb::default()).unwrap();
+        serde_json::to_writer(projectindex_file, &ResourceDb::default()).unwrap();
         root
     }
 
-    fn create_actor(work_dir: &Path) -> Project {
-        let index_path = Project::default_index_file(work_dir);
+    fn create_actor(projectroot_path: &Path) -> Project {
+        let index_path = Project::root_to_index_path(projectroot_path);
         let mut project = Project::open(&index_path).unwrap();
         let texture = project
             .create_resource(ResourcePath::from("albedo.texture"), ResourceType::Texture)
@@ -458,8 +471,8 @@ mod tests {
 
     #[test]
     fn local_changes() {
-        let root_dir = setup_test();
-        let project = create_actor(root_dir.path());
+        let projroot_path = setup_test();
+        let project = create_actor(projroot_path.path());
 
         assert_eq!(project.db.local_resources.len(), 5);
         assert_eq!(project.db.remote_resources.len(), 0);
@@ -467,8 +480,8 @@ mod tests {
 
     #[test]
     fn commit() {
-        let root_dir = setup_test();
-        let mut project = create_actor(root_dir.path());
+        let projroot_path = setup_test();
+        let mut project = create_actor(projroot_path.path());
 
         project.commit().unwrap();
 
@@ -478,8 +491,8 @@ mod tests {
 
     #[test]
     fn collect_dependencies() {
-        let root_dir = setup_test();
-        let project = create_actor(root_dir.path());
+        let projectroot_path = setup_test();
+        let project = create_actor(projectroot_path.path());
 
         let top_level_resource = project
             .find_resource(&ResourcePath::from("hero.actor"))
@@ -506,8 +519,8 @@ mod tests {
             assert_eq!(proj.find_resource(&new_name).unwrap(), skeleton_id);
         };
 
-        let root_dir = setup_test();
-        let mut project = create_actor(root_dir.path());
+        let projectroot_path = setup_test();
+        let mut project = create_actor(projectroot_path.path());
         assert!(project.commit().is_ok());
         create_sky_material(&mut project);
 
