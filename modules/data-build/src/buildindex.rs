@@ -18,7 +18,7 @@ struct ResourceInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledAssetInfo {
-    compilerdesc_hash: u64,
+    context_hash: u64,
     source_guid: ResourceId,
     source_hash: u64,
     pub(crate) compiled_guid: AssetId,
@@ -158,7 +158,7 @@ impl BuildIndex {
 
     pub(crate) fn insert_compiled(
         &mut self,
-        compilerdesc_hash: u64,
+        context_hash: u64,
         source_guid: ResourceId,
         source_hash: u64,
         compiled_assets: &[CompiledAsset],
@@ -166,7 +166,7 @@ impl BuildIndex {
         let mut compiled_desc = compiled_assets
             .iter()
             .map(|asset| CompiledAssetInfo {
-                compilerdesc_hash,
+                context_hash,
                 source_guid,
                 source_hash,
                 compiled_guid: asset.guid,
@@ -179,22 +179,20 @@ impl BuildIndex {
         // so there is no way to compile the same resources twice.
         // Once we support it we will have to make sure the result of the compilation
         // is exactly the same for all compiled_assets.
-        assert_eq!(self.find_compiled(compilerdesc_hash, source_hash).len(), 0);
+        assert_eq!(self.find_compiled(context_hash, source_hash).len(), 0);
 
         self.content.compiled_assets.append(&mut compiled_desc);
     }
 
     pub(crate) fn find_compiled(
         &self,
-        compilerdesc_hash: u64,
+        context_hash: u64,
         source_hash: u64,
     ) -> Vec<CompiledAssetInfo> {
         self.content
             .compiled_assets
             .iter()
-            .filter(|asset| {
-                asset.compilerdesc_hash == compilerdesc_hash && asset.source_hash == source_hash
-            })
+            .filter(|asset| asset.context_hash == context_hash && asset.source_hash == source_hash)
             .cloned()
             .collect::<Vec<CompiledAssetInfo>>()
     }

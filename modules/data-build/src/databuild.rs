@@ -18,21 +18,23 @@ use serde::{Deserialize, Serialize};
 
 const DATABUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-// everything outside of the resource itself that goes into compiling a resource.
-#[derive(Hash)]
-struct CompilerDesc {
+/// Context hash represents all that goes into resource compilation
+/// excluding the resource itself.
+///
+/// The resource itself is represented by `source_hash`.
+/// Data compilation of the tuple (`context_hash`, `source_hash`) will always
+/// yield the same compilation outcome.
+// todo(kstasik): `context_hash` should also include localization_id
+fn compute_context_hash(
     resource_type: ResourceType,
     compiler_id: CompilerId,
     databuild_version: &'static str,
-    // todo(kstasik): localization_id
-}
-
-impl CompilerDesc {
-    fn to_hash(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        hasher.finish()
-    }
+) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    resource_type.hash(&mut hasher);
+    compiler_id.hash(&mut hasher);
+    databuild_version.hash(&mut hasher);
+    hasher.finish()
 }
 
 /// Description of a compiled asset.
@@ -182,37 +184,29 @@ impl DataBuild {
         let resource_id = self.project.find_resource(root_resource_name)?;
 
         // todo(kstasik): for now dependencies are not compiled - only the root resource is.
-        let (resource, dependencies) = self.build_index.find(resource_id).ok_or(Error::NotFound)?;
+        let (source_guid, dependencies) =
+            self.build_index.find(resource_id).ok_or(Error::NotFound)?;
 
         let compilers = CompilerRegistry::new();
         let compiler_info = compilers
-            .find(resource.resource_type())
+            .find(source_guid.resource_type())
             .ok_or(Error::CompilerNotFound)?;
 
         // todo(kstasik): support triggering compilation for multiple platforms
         let compiler_id = compiler_info.compiler_id(target, platform, locale);
 
-        let compiler_desc = CompilerDesc {
-            resource_type: resource.resource_type(),
-            compiler_id,
-            databuild_version: Self::version(),
-        }; // compiler_hash
-
-        let source_guid = resource;
+        let context_hash =
+            compute_context_hash(source_guid.resource_type(), compiler_id, Self::version());
 
         //
         // todo(kstasik): source_hash computation can include filtering of resource types in the future.
         // the same resource can have a different source_hash depending on the compiler
         // used as compilers can filter dependencies out.
         //
-        let source_hash = self.build_index.compute_source_hash(resource)?;
-
-        let compilerdesc_hash = compiler_desc.to_hash();
+        let source_hash = self.build_index.compute_source_hash(source_guid)?;
 
         let compiled_assets = {
-            let cached = self
-                .build_index
-                .find_compiled(compilerdesc_hash, source_hash);
+            let cached = self.build_index.find_compiled(context_hash, source_hash);
             if !cached.is_empty() {
                 cached
                     .iter()
@@ -227,14 +221,14 @@ impl DataBuild {
                 // todo(kstasik): how do we know that GI needs to be run? taking many assets as arguments?
 
                 let compiled_assets = compiler_info.compile(
-                    resource,
+                    source_guid,
                     dependencies,
                     &mut self.asset_store,
                     &self.project,
                 )?;
 
                 self.build_index.insert_compiled(
-                    compilerdesc_hash,
+                    context_hash,
                     source_guid,
                     source_hash,
                     &compiled_assets,
