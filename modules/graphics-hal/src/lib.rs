@@ -76,6 +76,8 @@
 #![allow()]
 #![warn(missing_docs)]
 
+mod backends;
+
 #[cfg(test)]
 mod tests {
     #[test]
