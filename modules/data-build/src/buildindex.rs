@@ -22,7 +22,7 @@ pub(crate) struct CompiledAssetInfo {
     source_guid: ResourceId,
     source_hash: u64,
     pub(crate) compiled_guid: AssetId,
-    pub(crate) compiled_md5: i128,
+    pub(crate) compiled_checksum: i128,
     pub(crate) compiled_size: usize,
 }
 
@@ -170,7 +170,7 @@ impl BuildIndex {
                 source_guid,
                 source_hash,
                 compiled_guid: asset.guid,
-                compiled_md5: asset.md5,
+                compiled_checksum: asset.checksum,
                 compiled_size: asset.size,
             })
             .collect::<Vec<CompiledAssetInfo>>();

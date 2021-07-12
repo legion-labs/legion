@@ -7,10 +7,6 @@ fn compile(input: &mut CompilerInput<'_>) -> Result<Vec<CompiledAsset>, Error> {
     // todo: convert ResourceId to AssetId
     let guid = AssetId::new(AssetType::Texture, 2);
 
-    if let Some(asset) = input.asset_store.find(guid) {
-        return Ok(vec![asset]);
-    }
-
     let asset_content = input
         .project
         .read_resource(input.resource)
@@ -22,10 +18,16 @@ fn compile(input: &mut CompilerInput<'_>) -> Result<Vec<CompiledAsset>, Error> {
         buffer
     };
 
-    let asset = input
+    let checksum = input
         .asset_store
-        .store(guid, &compiled_asset)
+        .store(&compiled_asset)
         .ok_or(Error::IOError)?;
+
+    let asset = CompiledAsset {
+        guid,
+        checksum,
+        size: compiled_asset.len(),
+    };
     Ok(vec![asset])
 }
 

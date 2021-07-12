@@ -1,8 +1,10 @@
 use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::hash_map::DefaultHasher,
     convert::{TryFrom, TryInto},
     fmt::LowerHex,
+    hash::{Hash, Hasher},
 };
 
 /// A unique id of a runtime asset.
@@ -43,6 +45,13 @@ impl ToString for AssetId {
     fn to_string(&self) -> String {
         self.id.to_string()
     }
+}
+
+/// Returns the hash of the provided data.
+pub fn compute_asset_checksum(data: &[u8]) -> i128 {
+    let mut hasher = DefaultHasher::new();
+    data.hash(&mut hasher);
+    hasher.finish() as i128
 }
 
 /// Enumeration of runtime asset types.

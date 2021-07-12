@@ -14,7 +14,7 @@ An example of file structure related to the component looks like this (GUIDs wou
   - textures.psd		// source asset
   - textures.export		// parameters of .psd export process
   - albedo.texture		// output of the export process
-  - albedo.texture.meta	// meta information of the output asset (name, dependencies, md5)
+  - albedo.texture.meta	// meta information of the output asset (name, dependencies, checksum)
   - normal.texture
   - normal.texture.meta 
 ```

@@ -14,7 +14,7 @@ pub type ResourceHash = u64;
 pub(crate) struct Metadata {
     pub(crate) name: ResourcePath,
     pub(crate) build_deps: Vec<ResourceId>,
-    pub(crate) content_md5: i128, // this needs to be updated on every asset change.
+    pub(crate) content_checksum: i128, // this needs to be updated on every asset change.
 }
 
 impl Metadata {
@@ -26,19 +26,19 @@ impl Metadata {
 impl Metadata {
     pub(crate) fn new_with_dependencies(
         name: ResourcePath,
-        content_md5: i128,
+        content_checksum: i128,
         deps: &[ResourceId],
     ) -> Self {
         Self {
             name,
             build_deps: deps.to_vec(),
-            content_md5,
+            content_checksum,
         }
     }
 
     pub(crate) fn resource_hash(&self) -> ResourceHash {
         let mut hasher = DefaultHasher::new();
-        self.content_md5.hash(&mut hasher);
+        self.content_checksum.hash(&mut hasher);
         // todo(kstasik): include the hash of .meta content (excluding asset name) if it ever matters.
         hasher.finish()
     }

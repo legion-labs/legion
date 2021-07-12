@@ -38,28 +38,10 @@ impl CompilerDesc {
 pub struct CompiledAsset {
     /// The id of the asset.
     pub guid: AssetId,
-    /// The md5 checksum of the asset.
-    pub md5: i128,
+    /// The checksum of the asset.
+    pub checksum: i128,
     /// The size of the asset.
     pub size: usize,
-}
-
-impl CompiledAsset {
-    fn compute_md5(data: &[u8]) -> i128 {
-        // this is not md5 ;)
-        let mut hasher = DefaultHasher::new();
-        data.hash(&mut hasher);
-        hasher.finish() as i128
-    }
-
-    /// Returns
-    pub fn new(id: AssetId, data: &[u8]) -> Self {
-        Self {
-            guid: id,
-            md5: Self::compute_md5(data),
-            size: data.len(),
-        }
-    }
 }
 
 /// The output of data compilation.
@@ -174,11 +156,11 @@ impl DataBuild {
     // compile_input:
     // - compiler_hash: (asset_type, databuild_ver, compiler_id, loc_id)
     // - source_guid: guid of source resource
-    // - source_hash: asset_hash (md5 of meta, md5 of content, flags) + asset_hash(es) of deps
+    // - source_hash: asset_hash (checksum of meta, checksum of content, flags) + asset_hash(es) of deps
     // compile_output:
     // - compiled_guid
     // - compiled_type
-    // - compiled_md5
+    // - compiled_checksum
     // - compiled_size
     // - compiled_flags
 
@@ -231,7 +213,7 @@ impl DataBuild {
                     .iter()
                     .map(|asset| CompiledAsset {
                         guid: asset.compiled_guid,
-                        md5: asset.compiled_md5,
+                        checksum: asset.compiled_checksum,
                         size: asset.compiled_size,
                     })
                     .collect()
@@ -395,10 +377,10 @@ mod tests {
 
         assert_eq!(manifest.compiled_assets.len(), 1); // for now only the root asset is compiled
 
-        let compiled_guid = manifest.compiled_assets[0].guid;
+        let compiled_checksum = manifest.compiled_assets[0].checksum;
         let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
 
-        assert!(asset_store.find(compiled_guid).is_some());
+        assert!(asset_store.exists(compiled_checksum));
 
         println!("{:?}", manifest);
 

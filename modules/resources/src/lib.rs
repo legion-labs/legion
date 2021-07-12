@@ -36,7 +36,7 @@
 //! The information in the `.meta` file includes:
 //! - List of [`ResourceId`]s of resource's build dependencies.
 //! - Resource's name/path.
-//! - Md5 checksum of resource's content file.
+//! - Checksum of resource's content file.
 //!
 //! Note: Resource's name/path is only used for display purposes and can be changed freely.
 //!
@@ -44,7 +44,7 @@
 //!
 //! - [ ] Change resource name to a path. [legion/task#49](https://github.com/legion-labs/legion/issues/49)
 //! - [ ] Use directory path to open a project.
-//! - [ ] Make changes to resource content be reflected in the .meta file (`content_md5`).
+//! - [ ] Make changes to resource content be reflected in the .meta file (`content_checksum`).
 //! - [ ] Use `SQLite` to persist project's state.
 //! - [ ] Use source-control to retrieve remote work and commit local edits.
 //! - [ ] Cache resource names to avoid opening .meta files

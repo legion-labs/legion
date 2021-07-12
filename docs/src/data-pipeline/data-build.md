@@ -2,7 +2,7 @@
 
 Data build's primary responsibility is to transform resources from their offline format into the runtime format. In order to maintain fast iteration time at all scales it is key to keep its processing time to minimum. It does it by implementing incremental building, efficient dependency tracking, data build output caching.
 
-The output of an asset build process is a `manifest file` containing the list of `compiled resources` - GUIDs, sizes, md5s. A compiled resource is an asset file in runtime consumable format. It is stored in the `compiled asset cache` - a content-addressable data storage. 
+The output of an asset build process is a `manifest file` containing the list of `compiled resources` - GUIDs, sizes, checksums. A compiled resource is an asset file in runtime consumable format. It is stored in the `compiled asset cache` - a content-addressable data storage. 
 
 Offline resources describe build dependencies in `.meta` files which are parsed by the asset build process in order to extract the dependency structure without loading the content of the offline resource itself.
 

@@ -186,8 +186,8 @@ impl Project {
 
     /// Creates an empty resource file of a given type with an associated `.meta`.
     ///
-    /// The created `.meta` file contains an md5 of the resource content.
-    /// `TODO`: the md5 of content needs to be updated when file is modified.
+    /// The created `.meta` file contains a checksum of the resource content.
+    /// `TODO`: the checksum of content needs to be updated when file is modified.
     ///
     /// Both resource file and its corresponding `.meta` file are `staged`.
     /// Use [`Self::commit()`] to push changes to remote.
@@ -218,13 +218,13 @@ impl Project {
             Error::IOError(e)
         })?;
 
-        let content_md5 = {
+        let content_checksum = {
             let mut hasher = DefaultHasher::new();
             file_content.hash(&mut hasher);
             hasher.finish() as i128
         };
 
-        let metadata = Metadata::new_with_dependencies(name, content_md5, dependencies);
+        let metadata = Metadata::new_with_dependencies(name, content_checksum, dependencies);
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
         self.db.local_resources.push(id);

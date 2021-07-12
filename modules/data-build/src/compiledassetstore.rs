@@ -1,50 +1,47 @@
-use crate::CompiledAsset;
-use legion_assets::AssetId;
 use std::{
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
 };
 
+use legion_assets::compute_asset_checksum;
+
 /// A content-addressable storage interface for dealing with compiled assets.
 // todo: change Option to Error
 pub trait CompiledAssetStore {
     /// Write asset to the backing storage.
-    fn write(&mut self, id: AssetId, data: &[u8]) -> Option<()>;
+    fn write(&mut self, id: i128, data: &[u8]) -> Option<()>;
 
     /// Read asset from the backing storage.
-    fn read(&self, id: AssetId) -> Option<Vec<u8>>;
+    fn read(&self, id: i128) -> Option<Vec<u8>>;
 
     /// Remove asset from the backing storage.
-    fn remove(&mut self, id: AssetId);
+    fn remove(&mut self, id: i128);
 
     /// Returns the description of the asset if it exists.
     ///
     /// This default implementation is quite inefficient as it involves reading the asset's
-    /// content to calculate its md5.
-    fn find(&self, id: AssetId) -> Option<CompiledAsset> {
-        let data = self.read(id)?;
-
-        Some(CompiledAsset::new(id, &data))
+    /// content to calculate its checksum.
+    fn exists(&self, id: i128) -> bool {
+        self.read(id).is_some()
     }
 
     /// Stores the asset and validates its validity afterwards.
     ///
     /// This method calls [`write`](#method.write) to store the asset and [`read`](#method.read) afterwards
     /// to perform the validation.
-    fn store(&mut self, id: AssetId, data: &[u8]) -> Option<CompiledAsset> {
+    fn store(&mut self, data: &[u8]) -> Option<i128> {
+        let id = compute_asset_checksum(data);
         self.write(id, data)?;
-
-        let asset = CompiledAsset::new(id, data);
 
         let read = self.read(id)?;
 
-        if asset != CompiledAsset::new(id, &read) {
+        if id != compute_asset_checksum(&read) {
             self.remove(id);
             return None;
         }
 
-        Some(asset)
+        Some(id)
     }
 }
 
@@ -93,13 +90,13 @@ impl LocalCompiledAssetStore {
         })
     }
 
-    fn asset_path(&self, id: AssetId) -> PathBuf {
+    fn asset_path(&self, id: i128) -> PathBuf {
         self.root_path.clone().join(id.to_string())
     }
 }
 
 impl CompiledAssetStore for LocalCompiledAssetStore {
-    fn write(&mut self, id: AssetId, data: &[u8]) -> Option<()> {
+    fn write(&mut self, id: i128, data: &[u8]) -> Option<()> {
         let asset_path = self.asset_path(id);
 
         let mut file = OpenOptions::new()
@@ -111,12 +108,12 @@ impl CompiledAssetStore for LocalCompiledAssetStore {
         file.write_all(data).ok()
     }
 
-    fn read(&self, id: AssetId) -> Option<Vec<u8>> {
+    fn read(&self, id: i128) -> Option<Vec<u8>> {
         let asset_path = self.asset_path(id);
         fs::read(asset_path).ok()
     }
 
-    fn remove(&mut self, id: AssetId) {
+    fn remove(&mut self, id: i128) {
         let asset_path = self.asset_path(id);
         let _res = fs::remove_file(asset_path);
     }
