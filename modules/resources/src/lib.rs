@@ -1,7 +1,7 @@
 //! Offline resource management module of data processing pipeline.
 //!
-//! > **WORK IN PROGRESS**: *This document describes the current state of the implementation
-//! > and highlights near future development plans.*
+//! * Tracking Issue: [legion/crate/#37](https://github.com/legion-labs/legion/issues/37)
+//! * Design Doc: [legion/design/data-pipeline](./book/data-pipeline/runtime-assets.html)
 //!
 //! The module is responsible for keeping track of offline resources.
 //! This includes `local resources` - those modified by the local user and
@@ -39,21 +39,6 @@
 //! - Checksum of resource's content file.
 //!
 //! Note: Resource's name/path is only used for display purposes and can be changed freely.
-//!
-//! # Future Work
-//!
-//! - [ ] Change resource name to a path. [legion/task#49](https://github.com/legion-labs/legion/issues/49)
-//! - [ ] Use directory path to open a project.
-//! - [ ] Make changes to resource content be reflected in the .meta file (`content_checksum`).
-//! - [ ] Use `SQLite` to persist project's state.
-//! - [ ] Use source-control to retrieve remote work and commit local edits.
-//! - [ ] Cache resource names to avoid opening .meta files
-//! - [ ] Cache resource dependencies to avoid opening .meta files.
-//! - [ ] Cache invalidation when editing resources.
-//! - [ ] On-commit re-calculation of .meta dependencies (i.e. root level when an object in other file is added/removed).
-//! - [ ] Resource deletion.
-//! - [ ] Revisit `ResourcePath` - currently is OS-dependent (`PathBuf`)
-//! - [ ] Safe generation of `ResourceId` (avoid clashes)
 
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section
