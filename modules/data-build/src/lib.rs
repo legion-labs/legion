@@ -13,7 +13,7 @@
 //!
 //! Data compilation is:
 //! - **Hermetic** - dependent only on a known set of inputs.
-//! - **Deterministic** - the result is bit-by-bit reproducable given the same set of inputs.
+//! - **Deterministic** - the result is bit-by-bit reproducible given the same set of inputs.
 //!
 //! All the results of data-compilation are stored in a [`CompiledAssetStore`] and a manifest
 //! file containing the metadata about the results is returned.
@@ -66,7 +66,7 @@
 //!
 //! # Future Work
 //! - [ ] Creation of DAG of dependencies to be able to process them in the right order.
-//! - [ ] Be able to distribute the resourece compilation. (build-index does not support concurrent inserts)
+//! - [ ] Be able to distribute the resource compilation. (build-index does not support concurrent inserts)
 //! - [ ] Load dependencies - gather during compilation, use at runtime.
 //! - [ ] More flexible compiler registration (compilers-as-executables?).
 //! - [ ] Allow one resource to be processed by many compilers (currently only one supported).
