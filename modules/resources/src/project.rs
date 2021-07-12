@@ -73,7 +73,8 @@ impl std::fmt::Display for Error {
 impl Project {
     /// Returns the default location of the index file in a given directory.
     ///
-    /// This method ignores the filename in `work_dir` if one exists.
+    /// This method replaces the filename in `work_dir` (if one exists) with
+    /// the file name of the project index.
     pub fn root_to_index_path(projectroot_path: &Path) -> PathBuf {
         let mut path = projectroot_path.to_owned();
         if path.is_dir() {
@@ -182,6 +183,40 @@ impl Project {
             _ => Error::IOError(e),
         })?;
         Ok(data)
+    }
+
+    /// Changes the content of the resource to `new_content` and updates the corresponding .meta file.
+    pub fn save_resource(&mut self, id: ResourceId, new_content: &[u8]) -> Result<(), Error> {
+        let resource_path = self.resource_path(id);
+        let metadata_path = self.metadata_path(id);
+
+        let mut meta_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(metadata_path)
+            .map_err(Error::IOError)?;
+        let mut resource_file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(resource_path)
+            .map_err(Error::IOError)?;
+        let mut metadata: Metadata =
+            serde_json::from_reader(&meta_file).map_err(|_e| Error::ParseError)?;
+
+        resource_file.write_all(new_content).unwrap(); // todo(kstasik): introduce 'corrupted' resource flag.
+
+        metadata.content_checksum = {
+            let mut hasher = DefaultHasher::new();
+            new_content.hash(&mut hasher);
+            hasher.finish() as i128
+        };
+
+        // todo(kstasik): parse the resource to extract dependencies.
+
+        meta_file.set_len(0).unwrap();
+        meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
+        Ok(())
     }
 
     /// Creates an empty resource file of a given type with an associated `.meta`.

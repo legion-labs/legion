@@ -169,6 +169,8 @@ pub enum Error {
     VersionMismatch,
     /// Project invalid.
     InvalidProject,
+    /// Manifest file error.
+    InvalidManifest,
 }
 
 impl std::error::Error for Error {}
@@ -183,6 +185,7 @@ impl std::fmt::Display for Error {
             Error::IntegrityFailure => write!(f, "IntegrityFailure"),
             Error::VersionMismatch => write!(f, "VersionMismatch"),
             Error::InvalidProject => write!(f, "InvalidProject"),
+            Error::InvalidManifest => write!(f, "InvalidManifest"),
         }
     }
 }

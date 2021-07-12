@@ -1,7 +1,9 @@
 use std::collections::hash_map::DefaultHasher;
-use std::env;
+use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
-use std::path::Path;
+use std::io::Seek;
+use std::path::{Path, PathBuf};
+use std::{env, io};
 
 use legion_assets::AssetId;
 use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
@@ -11,6 +13,8 @@ use crate::compiledassetstore::LocalCompiledAssetStore;
 use crate::compilers::CompilerId;
 use crate::compilers::CompilerRegistry;
 use crate::{Error, Locale, Platform, Target};
+
+use serde::{Deserialize, Serialize};
 
 const DATABUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -34,7 +38,7 @@ impl CompilerDesc {
 /// Description of a compiled asset.
 ///
 /// The contained information can be used to retrieve and validate the asset from a [`CompiledAssetStore`](`super::compiledassetstore::CompiledAssetStore`).
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompiledAsset {
     /// The id of the asset.
     pub guid: AssetId,
@@ -47,7 +51,7 @@ pub struct CompiledAsset {
 /// The output of data compilation.
 ///
 /// `Manifest` contains the list of compiled assets.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Manifest {
     /// The description of all compiled assets.
     pub compiled_assets: Vec<CompiledAsset>,
@@ -170,6 +174,7 @@ impl DataBuild {
     pub fn compile(
         &mut self,
         root_resource_name: &ResourcePathRef,
+        output_file: &Path,
         target: Target,
         platform: Platform,
         locale: Locale,
@@ -238,13 +243,62 @@ impl DataBuild {
             }
         };
 
-        let manifest = Manifest { compiled_assets };
+        let (mut manifest, mut file) = {
+            if let Ok(file) = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .append(false)
+                .open(output_file)
+            {
+                let manifest_content: Manifest =
+                    serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
+                (manifest_content, file)
+            } else {
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create_new(true)
+                    .open(output_file)
+                    .map_err(|_e| Error::InvalidManifest)?;
+
+                (Manifest::default(), file)
+            }
+        };
+
+        for asset in compiled_assets {
+            if let Some(existing) = manifest
+                .compiled_assets
+                .iter_mut()
+                .find(|existing| existing.guid == asset.guid)
+            {
+                *existing = asset;
+            } else {
+                manifest.compiled_assets.push(asset);
+            }
+        }
+
+        file.set_len(0).unwrap();
+        file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
+
         Ok(manifest)
     }
 
     /// Returns the global version of the databuild module.
     pub fn version() -> &'static str {
         DATABUILD_VERSION
+    }
+
+    /// The default name of the output .manifest file.
+    pub fn default_output_file() -> PathBuf {
+        PathBuf::from("output.manifest")
+    }
+
+    /// Returns the path to the output .manifest file for given build name.
+    pub fn manifest_output_file(build_name: &str) -> Result<PathBuf, io::Error> {
+        Ok(env::current_dir()?
+            .join(build_name)
+            .with_extension("manifest"))
     }
 }
 
@@ -258,13 +312,16 @@ impl Drop for DataBuild {
 #[cfg(test)]
 mod tests {
 
-    use std::fs;
+    use std::{
+        env,
+        fs::{self, File},
+    };
 
     use crate::{
         buildindex::BuildIndex,
         compiledassetstore::{CompiledAssetStore, LocalCompiledAssetStore},
         databuild::DataBuild,
-        Platform, Target,
+        Manifest, Platform, Target,
     };
     use legion_resources::{Project, ResourcePath, ResourceType};
 
@@ -300,6 +357,7 @@ mod tests {
     #[test]
     fn source_pull() {
         let work_dir = tempfile::tempdir().unwrap();
+        env::set_current_dir(work_dir.path()).unwrap();
         {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
@@ -343,8 +401,111 @@ mod tests {
     }
 
     #[test]
+    fn resource_modify_compile() {
+        let work_dir = tempfile::tempdir().unwrap();
+        env::set_current_dir(work_dir.path()).unwrap();
+
+        let resource = {
+            let mut project =
+                Project::create_new(work_dir.path()).expect("failed to create a project");
+            project
+                .create_resource(ResourcePath::from("child"), ResourceType::Texture)
+                .unwrap()
+        };
+
+        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
+        let assetstore_root = work_dir.path();
+
+        let output_manifest_file = DataBuild::default_output_file();
+
+        let original_checksum = {
+            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
+            build.source_pull().expect("failed to pull from project");
+
+            let manifest = build
+                .compile(
+                    &ResourcePath::from("child"),
+                    &output_manifest_file,
+                    Target::Game,
+                    Platform::Windows,
+                    ['e', 'n'],
+                )
+                .unwrap();
+
+            assert_eq!(manifest.compiled_assets.len(), 1);
+
+            let original_checksum = manifest.compiled_assets[0].checksum;
+
+            {
+                let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
+                assert!(asset_store.exists(original_checksum));
+            }
+
+            assert!(output_manifest_file.exists());
+            let read_manifest: Manifest = {
+                let manifest_file = File::open(&output_manifest_file).unwrap();
+                serde_json::from_reader(&manifest_file).unwrap()
+            };
+
+            assert_eq!(
+                read_manifest.compiled_assets.len(),
+                manifest.compiled_assets.len()
+            );
+
+            assert_eq!(read_manifest.compiled_assets[0].checksum, original_checksum);
+            original_checksum
+        };
+
+        let mut project = Project::open(work_dir.path()).expect("failed to open project");
+        project
+            .save_resource(resource, b"hello new content")
+            .unwrap();
+
+        let modified_checksum = {
+            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
+            build.source_pull().expect("failed to pull from project");
+            let manifest = build
+                .compile(
+                    &ResourcePath::from("child"),
+                    &output_manifest_file,
+                    Target::Game,
+                    Platform::Windows,
+                    ['e', 'n'],
+                )
+                .unwrap();
+
+            assert_eq!(manifest.compiled_assets.len(), 1);
+
+            let modified_checksum = manifest.compiled_assets[0].checksum;
+
+            {
+                let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
+                assert!(asset_store.exists(original_checksum));
+                assert!(asset_store.exists(modified_checksum));
+            }
+
+            assert!(output_manifest_file.exists());
+            let read_manifest: Manifest = {
+                let manifest_file = File::open(&output_manifest_file).unwrap();
+                serde_json::from_reader(&manifest_file).unwrap()
+            };
+
+            assert_eq!(
+                read_manifest.compiled_assets.len(),
+                manifest.compiled_assets.len()
+            );
+
+            assert_eq!(read_manifest.compiled_assets[0].checksum, modified_checksum);
+            modified_checksum
+        };
+
+        assert_ne!(original_checksum, modified_checksum);
+    }
+
+    #[test]
     fn compile() {
         let work_dir = tempfile::tempdir().unwrap();
+        env::set_current_dir(work_dir.path()).unwrap();
         {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
@@ -366,9 +527,12 @@ mod tests {
 
         build.source_pull().unwrap();
 
+        let output_manifest_file = DataBuild::default_output_file();
+
         let manifest = build
             .compile(
                 &ResourcePath::from("child"),
+                &output_manifest_file,
                 Target::Game,
                 Platform::Windows,
                 ['e', 'n'],
@@ -379,18 +543,38 @@ mod tests {
 
         let compiled_checksum = manifest.compiled_assets[0].checksum;
         let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
-
         assert!(asset_store.exists(compiled_checksum));
 
-        println!("{:?}", manifest);
+        assert!(output_manifest_file.exists());
+        let read_manifest: Manifest = {
+            let manifest_file = File::open(&output_manifest_file).unwrap();
+            serde_json::from_reader(&manifest_file).unwrap()
+        };
+
+        assert_eq!(
+            read_manifest.compiled_assets.len(),
+            manifest.compiled_assets.len()
+        );
 
         build
             .compile(
                 &ResourcePath::from("child"),
+                &output_manifest_file,
                 Target::Game,
                 Platform::Windows,
                 ['e', 'n'],
             )
             .unwrap();
+
+        assert!(output_manifest_file.exists());
+        let read_manifest: Manifest = {
+            let manifest_file = File::open(&output_manifest_file).unwrap();
+            serde_json::from_reader(&manifest_file).unwrap()
+        };
+
+        assert_eq!(
+            read_manifest.compiled_assets.len(),
+            manifest.compiled_assets.len()
+        );
     }
 }

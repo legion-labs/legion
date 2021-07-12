@@ -9,7 +9,7 @@ use crate::{
     compiledassetstore::CompiledAssetStore, CompiledAsset, Error, Locale, Platform, Target,
 };
 
-// a hash of code-version, dataformat-version
+// Code-version, Dataformat-version
 pub(crate) type CompilerId = u64;
 type CodeVersion = i16;
 type DataFormatVersion = i16;
