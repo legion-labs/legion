@@ -312,10 +312,7 @@ impl Drop for DataBuild {
 #[cfg(test)]
 mod tests {
 
-    use std::{
-        env,
-        fs::{self, File},
-    };
+    use std::fs::{self, File};
 
     use crate::{
         buildindex::BuildIndex,
