@@ -1,7 +1,7 @@
 //! Offline resource management module of data processing pipeline.
 //!
 //! * Tracking Issue: [legion/crate/#37](https://github.com/legion-labs/legion/issues/37)
-//! * Design Doc: [legion/design/data-pipeline](./book/data-pipeline/runtime-assets.html)
+//! * Design Doc: [legion/book/project-resources](/book/data-pipeline/project-resources.html)
 //!
 //! The module is responsible for keeping track of offline resources.
 //! This includes `local resources` - those modified by the local user and
