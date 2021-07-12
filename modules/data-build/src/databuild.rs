@@ -358,13 +358,14 @@ mod tests {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
             let texture = project
-                .create_resource(ResourcePath::from("child"), ResourceType::Texture)
+                .create_resource(ResourcePath::from("child"), ResourceType::Texture, b"test")
                 .unwrap();
             let _material = project
                 .create_resource_with_deps(
                     ResourcePath::from("parent"),
                     ResourceType::Material,
                     &[texture],
+                    b"test",
                 )
                 .unwrap();
         }
@@ -385,7 +386,7 @@ mod tests {
         {
             let mut project = Project::open(work_dir.path()).unwrap();
             project
-                .create_resource(ResourcePath::from("orphan"), ResourceType::Texture)
+                .create_resource(ResourcePath::from("orphan"), ResourceType::Texture, b"test")
                 .unwrap();
         }
 
@@ -404,7 +405,7 @@ mod tests {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
             project
-                .create_resource(ResourcePath::from("child"), ResourceType::Texture)
+                .create_resource(ResourcePath::from("child"), ResourceType::Texture, b"test")
                 .unwrap()
         };
 
@@ -504,13 +505,14 @@ mod tests {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
             let texture = project
-                .create_resource(ResourcePath::from("child"), ResourceType::Texture)
+                .create_resource(ResourcePath::from("child"), ResourceType::Texture, b"test")
                 .unwrap();
             let _material = project
                 .create_resource_with_deps(
                     ResourcePath::from("parent"),
                     ResourceType::Material,
                     &[texture],
+                    b"test",
                 )
                 .unwrap();
         }

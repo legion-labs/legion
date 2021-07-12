@@ -231,6 +231,7 @@ impl Project {
         name: ResourcePath,
         kind: ResourceType,
         dependencies: &[ResourceId],
+        content: &[u8],
     ) -> Result<ResourceId, Error> {
         let id = ResourceId::generate_new(kind);
 
@@ -240,13 +241,10 @@ impl Project {
 
         let mut resource_file = File::create(&resource_path).map_err(Error::IOError)?;
 
-        let file_content = name.to_str().unwrap();
-        resource_file
-            .write_all(file_content.as_bytes())
-            .map_err(|e| {
-                fs::remove_file(&resource_path).unwrap();
-                Error::IOError(e)
-            })?;
+        resource_file.write_all(content).map_err(|e| {
+            fs::remove_file(&resource_path).unwrap();
+            Error::IOError(e)
+        })?;
 
         let meta_file = File::create(&meta_path).map_err(|e| {
             fs::remove_file(&resource_path).unwrap();
@@ -255,7 +253,7 @@ impl Project {
 
         let content_checksum = {
             let mut hasher = DefaultHasher::new();
-            file_content.hash(&mut hasher);
+            content.hash(&mut hasher);
             hasher.finish() as i128
         };
 
@@ -273,8 +271,9 @@ impl Project {
         &mut self,
         name: ResourcePath,
         kind: ResourceType,
+        content: &[u8],
     ) -> Result<ResourceId, Error> {
-        self.create_resource_with_deps(name, kind, &[])
+        self.create_resource_with_deps(name, kind, &[], content)
     }
 
     /// Gathers information about a given resource.
@@ -437,13 +436,18 @@ mod tests {
         let index_path = Project::root_to_index_path(projectroot_path);
         let mut project = Project::open(&index_path).unwrap();
         let texture = project
-            .create_resource(ResourcePath::from("albedo.texture"), ResourceType::Texture)
+            .create_resource(
+                ResourcePath::from("albedo.texture"),
+                ResourceType::Texture,
+                b"test",
+            )
             .unwrap();
         let material = project
             .create_resource_with_deps(
                 ResourcePath::from("body.material"),
                 ResourceType::Material,
                 &[texture],
+                b"test",
             )
             .unwrap();
         let geometry = project
@@ -451,16 +455,22 @@ mod tests {
                 ResourcePath::from("hero.geometry"),
                 ResourceType::Geometry,
                 &[material],
+                b"test",
             )
             .unwrap();
         let skeleton = project
-            .create_resource(ResourcePath::from("hero.skeleton"), ResourceType::Skeleton)
+            .create_resource(
+                ResourcePath::from("hero.skeleton"),
+                ResourceType::Skeleton,
+                b"test",
+            )
             .unwrap();
         let _actor = project
             .create_resource_with_deps(
                 ResourcePath::from("hero.actor"),
                 ResourceType::Actor,
                 &[geometry, skeleton],
+                b"test",
             )
             .unwrap();
 
@@ -469,13 +479,18 @@ mod tests {
 
     fn create_sky_material(project: &mut Project) {
         let texture = project
-            .create_resource(ResourcePath::from("sky.texture"), ResourceType::Texture)
+            .create_resource(
+                ResourcePath::from("sky.texture"),
+                ResourceType::Texture,
+                b"test",
+            )
             .unwrap();
         let _material = project
             .create_resource_with_deps(
                 ResourcePath::from("sky.material"),
                 ResourceType::Material,
                 &[texture],
+                b"test",
             )
             .unwrap();
     }

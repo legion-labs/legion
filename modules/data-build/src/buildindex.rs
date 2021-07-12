@@ -241,13 +241,14 @@ mod tests {
         let mut project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         let child = project
-            .create_resource(ResourcePath::from("child"), ResourceType::Actor)
+            .create_resource(ResourcePath::from("child"), ResourceType::Actor, b"test")
             .unwrap();
         let parent = project
             .create_resource_with_deps(
                 ResourcePath::from("parent"),
                 ResourceType::Actor,
                 slice::from_ref(&child),
+                b"test",
             )
             .unwrap();
 
