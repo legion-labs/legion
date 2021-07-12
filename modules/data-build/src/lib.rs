@@ -205,7 +205,7 @@ impl From<legion_resources::Error> for Error {
 
 /// Build target enumeration.
 ///
-/// `TODO`: This needs to be more extensibe.
+/// `TODO`: This needs to be more extensible.
 #[derive(Clone, Copy)]
 pub enum Target {
     /// Game client.
