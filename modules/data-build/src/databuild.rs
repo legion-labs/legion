@@ -357,7 +357,6 @@ mod tests {
     #[test]
     fn source_pull() {
         let work_dir = tempfile::tempdir().unwrap();
-        env::set_current_dir(work_dir.path()).unwrap();
         {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
@@ -403,7 +402,6 @@ mod tests {
     #[test]
     fn resource_modify_compile() {
         let work_dir = tempfile::tempdir().unwrap();
-        env::set_current_dir(work_dir.path()).unwrap();
 
         let resource = {
             let mut project =
@@ -416,7 +414,7 @@ mod tests {
         let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
         let assetstore_root = work_dir.path();
 
-        let output_manifest_file = DataBuild::default_output_file();
+        let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
         let original_checksum = {
             let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
@@ -505,7 +503,6 @@ mod tests {
     #[test]
     fn compile() {
         let work_dir = tempfile::tempdir().unwrap();
-        env::set_current_dir(work_dir.path()).unwrap();
         {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
@@ -527,7 +524,7 @@ mod tests {
 
         build.source_pull().unwrap();
 
-        let output_manifest_file = DataBuild::default_output_file();
+        let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
         let manifest = build
             .compile(
