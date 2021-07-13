@@ -345,7 +345,7 @@ pub trait Device<B: Backend>: fmt::Debug + Any + Send + Sync {
     /// it contains can be used in pipeline shader stages of
     /// [compute pipelines](crate::pso::ComputePipelineDesc) and
     /// [graphics pipelines](crate::pso::GraphicsPipelineDesc).
-    unsafe fn create_shader_module(&self, spirv: &[u32]) -> Result<B::ShaderModule, ShaderError>;
+    unsafe fn create_shader_module(&self, spirv: &[u8]) -> Result<B::ShaderModule, ShaderError>;
 
     /// Destroy a shader module module
     ///
