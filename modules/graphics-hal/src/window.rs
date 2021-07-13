@@ -2,7 +2,7 @@
 //!
 //! Screen presentation (fullscreen or window) of images requires two objects:
 //!
-//! * [Surface][Surface] is an abstraction of a native screen or window, for graphics use.
+//! * [`Surface`](Surface) is an abstraction of a native screen or window, for graphics use.
 //!     It hosts a chain of multiple images, which can be presented on a surface ("swapchain").
 //!
 //! ## Window
@@ -14,8 +14,8 @@
 //!
 //! ## Surface
 //!
-//! Once you have a window handle, you need to [create a `surface`][`crate::Instance::create_surface`]
-//! compatible with the [`instance`][`crate::Instance`] of the graphics API you currently use.
+//! Once you have a window handle, you need to [create a `surface`](`crate::Instance::create_surface`)
+//! compatible with the [`instance`](`crate::Instance`) of the graphics API you currently use.
 //!
 //! ## `PresentationSurface`
 //!
