@@ -82,16 +82,16 @@ pub trait PhysicalDevice<B: Backend>: fmt::Debug + Any + Send + Sync {
     /// # Examples
     ///
     /// ```no_run
-    /// # extern crate gfx_backend_empty as empty;
-    /// # extern crate gfx_hal;
-    /// # fn main() {
-    /// use gfx_hal::{adapter::PhysicalDevice, Features};
+    /// extern crate legion_graphics_hal as gfx_hal;
+    /// fn main() {
+    ///     use gfx_hal::{adapter::PhysicalDevice, Features, empty};
     ///
-    /// # let physical_device: empty::PhysicalDevice = return;
-    /// # let family: empty::QueueFamily = return;
-    /// # unsafe {
-    /// let gpu = physical_device.open(&[(&family, &[1.0; 1])], Features::empty());
-    /// # }}
+    ///     let physical_device: empty::PhysicalDevice = return;
+    ///     let family: empty::QueueFamily = return;
+    ///     unsafe {
+    ///         let gpu = physical_device.open(&[(&family, &[1.0; 1])], Features::empty());
+    ///     }
+    /// }
     /// ```
     unsafe fn open(
         &self,

@@ -746,14 +746,12 @@ impl Default for ExternalMemoryLimits {
 /// # Examples
 ///
 /// ```rust
-/// # extern crate gfx_backend_empty;
-/// # extern crate gfx_hal;
-/// use gfx_backend_empty as backend;
-/// use gfx_hal::Instance;
+/// extern crate legion_graphics_hal as gfx_hal;
+/// use gfx_hal::{Instance, empty};
 ///
 /// // Create a concrete instance of our backend (this is backend-dependent and may be more
 /// // complicated for some backends).
-/// let instance = backend::Instance::create("My App", 1).unwrap();
+/// let instance = empty::Instance::create("My App", 1).unwrap();
 /// // We can get a list of the available adapters, which are either physical graphics
 /// // devices, or virtual adapters. Because we are using the dummy `empty` backend,
 /// // there will be nothing in this list.
@@ -911,3 +909,6 @@ pub trait Backend: 'static + Sized + Eq + Clone + Hash + fmt::Debug + Any + Send
     /// The corresponding display mode type for this backend
     type DisplayMode: fmt::Debug + Any + Send + Sync;
 }
+
+pub use backends::empty;
+pub use backends::empty::Backend as EmptyBackend;

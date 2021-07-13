@@ -28,22 +28,23 @@
 //! The common steps for presentation of a frame are acquisition and presentation:
 //!
 //! ```no_run
-//! # extern crate gfx_backend_empty as empty;
-//! # extern crate gfx_hal;
-//! # fn main() {
-//! # use gfx_hal::prelude::*;
+//! extern crate legion_graphics_hal as gfx_hal;
+//! fn main() {
+//!     use gfx_hal::prelude::*;
+//!     use gfx_hal::empty;
 //!
-//! # let mut surface: empty::Surface = return;
-//! # let device: empty::Device = return;
-//! # let mut present_queue: empty::Queue = return;
-//! # unsafe {
-//! let mut render_semaphore = device.create_semaphore().unwrap();
+//!     let mut surface: empty::Surface = return;
+//!     let device: empty::Device = return;
+//!     let mut present_queue: empty::Queue = return;
+//!     unsafe {
+//!         let mut render_semaphore = device.create_semaphore().unwrap();
 //!
-//! let (frame, suboptimal) = surface.acquire_image(!0).unwrap();
-//! // render the scene..
-//! // `render_semaphore` will be signalled once rendering has been finished
-//! present_queue.present(&mut surface, frame, Some(&mut render_semaphore));
-//! # }}
+//!         let (frame, suboptimal) = surface.acquire_image(!0).unwrap();
+//!         // render the scene..
+//!        // `render_semaphore` will be signalled once rendering has been finished
+//!        present_queue.present(&mut surface, frame, Some(&mut render_semaphore));
+//!     }
+//! }
 //! ```
 //!
 //! Queues need to synchronize with the presentation engine, usually done via signalling a semaphore
@@ -336,12 +337,12 @@ bitflags!(
 /// easily chained.
 ///
 /// ```no_run
-/// # extern crate gfx_hal;
-/// # fn main() {
-/// # use gfx_hal::window::SwapchainConfig;
-/// # use gfx_hal::format::Format;
-/// let config = SwapchainConfig::new(100, 100, Format::Bgra8Unorm, 2);
-/// # }
+/// extern crate legion_graphics_hal as gfx_hal;
+/// fn main() {
+///     use gfx_hal::window::SwapchainConfig;
+///     use gfx_hal::format::Format;
+///     let config = SwapchainConfig::new(100, 100, Format::Bgra8Unorm, 2);
+/// }
 /// ```
 #[derive(Debug, Clone)]
 pub struct SwapchainConfig {
