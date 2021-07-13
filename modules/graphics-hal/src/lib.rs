@@ -120,7 +120,6 @@ pub mod buffer;
 pub mod command;
 pub mod device;
 pub mod display;
-pub mod external_memory;
 pub mod format;
 pub mod image;
 pub mod memory;

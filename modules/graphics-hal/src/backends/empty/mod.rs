@@ -144,30 +144,6 @@ impl adapter::PhysicalDevice<Backend> for PhysicalDevice {
         }
     }
 
-    fn external_buffer_properties(
-        &self,
-        _usage: crate::buffer::Usage,
-        _sparse: crate::memory::SparseFlags,
-        _memory_type: crate::external_memory::ExternalMemoryType,
-    ) -> crate::external_memory::ExternalMemoryProperties {
-        unimplemented!()
-    }
-
-    fn external_image_properties(
-        &self,
-        _format: crate::format::Format,
-        _dimensions: u8,
-        _tiling: crate::image::Tiling,
-        _usage: crate::image::Usage,
-        _view_caps: crate::image::ViewCapabilities,
-        _memory_type: crate::external_memory::ExternalMemoryType,
-    ) -> Result<
-        crate::external_memory::ExternalMemoryProperties,
-        crate::external_memory::ExternalImagePropertiesError,
-    > {
-        unimplemented!()
-    }
-
     fn features(&self) -> crate::Features {
         crate::Features::empty()
     }
@@ -616,100 +592,6 @@ impl device::Device<Backend> for Device {
 
     unsafe fn set_pipeline_layout_name(&self, _pipeline_layout: &mut (), _name: &str) {
         unimplemented!("{}", NOT_SUPPORTED_MESSAGE)
-    }
-
-    unsafe fn create_allocate_external_buffer(
-        &self,
-        _external_memory_type: crate::external_memory::ExternalBufferMemoryType,
-        _usage: crate::buffer::Usage,
-        _sparse: crate::memory::SparseFlags,
-        _type_mask: u32,
-        _size: u64,
-    ) -> Result<
-        (
-            <Backend as crate::Backend>::Buffer,
-            <Backend as crate::Backend>::Memory,
-        ),
-        crate::external_memory::ExternalResourceError,
-    > {
-        unimplemented!()
-    }
-
-    unsafe fn import_external_buffer(
-        &self,
-        _external_memory: crate::external_memory::ExternalBufferMemory,
-        _usage: crate::buffer::Usage,
-        _sparse: crate::memory::SparseFlags,
-        _type_mask: u32,
-        _size: u64,
-    ) -> Result<
-        (
-            <Backend as crate::Backend>::Buffer,
-            <Backend as crate::Backend>::Memory,
-        ),
-        crate::external_memory::ExternalResourceError,
-    > {
-        unimplemented!()
-    }
-
-    unsafe fn create_allocate_external_image(
-        &self,
-        _external_memory_type: crate::external_memory::ExternalImageMemoryType,
-        _kind: crate::image::Kind,
-        _num_levels: crate::image::Level,
-        _format: crate::format::Format,
-        _tiling: crate::image::Tiling,
-        _usage: crate::image::Usage,
-        _sparse: crate::memory::SparseFlags,
-        _view_caps: crate::image::ViewCapabilities,
-        _type_mask: u32,
-    ) -> Result<
-        (
-            <Backend as crate::Backend>::Image,
-            <Backend as crate::Backend>::Memory,
-        ),
-        crate::external_memory::ExternalResourceError,
-    > {
-        unimplemented!()
-    }
-
-    unsafe fn import_external_image(
-        &self,
-        _external_memory: crate::external_memory::ExternalImageMemory,
-        _kind: crate::image::Kind,
-        _num_levels: crate::image::Level,
-        _format: crate::format::Format,
-        _tiling: crate::image::Tiling,
-        _usage: crate::image::Usage,
-        _sparse: crate::memory::SparseFlags,
-        _view_caps: crate::image::ViewCapabilities,
-        _type_mask: u32,
-    ) -> Result<
-        (
-            <Backend as crate::Backend>::Image,
-            <Backend as crate::Backend>::Memory,
-        ),
-        crate::external_memory::ExternalResourceError,
-    > {
-        unimplemented!()
-    }
-
-    unsafe fn export_memory(
-        &self,
-        _external_memory_type: crate::external_memory::ExternalMemoryType,
-        _memory: &<Backend as crate::Backend>::Memory,
-    ) -> Result<
-        crate::external_memory::PlatformMemory,
-        crate::external_memory::ExternalMemoryExportError,
-    > {
-        unimplemented!()
-    }
-
-    unsafe fn drm_format_modifier(
-        &self,
-        _image: &<Backend as crate::Backend>::Image,
-    ) -> Option<crate::format::DrmModifier> {
-        None
     }
 
     unsafe fn reset_fence(&self, _: &mut ()) -> Result<(), device::OutOfMemory> {
