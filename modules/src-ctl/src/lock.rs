@@ -14,7 +14,7 @@ pub struct Lock {
 
 pub fn init_lock_database(connection: &mut RepositoryConnection) -> Result<(), String> {
     let sql_connection = connection.sql();
-    let sql = "CREATE TABLE locks(relative_path TEXT, lock_domain_id TEXT, workspace_id TEXT, branch_name TEXT);
+    let sql = "CREATE TABLE locks(relative_path VARCHAR(512), lock_domain_id VARCHAR(64), workspace_id VARCHAR(255), branch_name VARCHAR(255));
          CREATE UNIQUE INDEX lock_key on locks(relative_path, lock_domain_id);
         ";
     if let Err(e) = execute_sql(sql_connection, sql) {
@@ -29,8 +29,8 @@ pub fn save_new_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Resu
         sqlx::query(
             "SELECT count(*) as count
              FROM locks
-             WHERE relative_path = $1
-             AND lock_domain_id = $2;",
+             WHERE relative_path = ?
+             AND lock_domain_id = ?;",
         )
         .bind(lock.relative_path.clone())
         .bind(lock.lock_domain_id.clone())
@@ -51,7 +51,7 @@ pub fn save_new_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Resu
     }
 
     if let Err(e) = block_on(
-        sqlx::query("INSERT INTO locks VALUES($1, $2, $3, $4);")
+        sqlx::query("INSERT INTO locks VALUES(?, ?, ?, ?);")
             .bind(lock.relative_path.clone())
             .bind(lock.lock_domain_id.clone())
             .bind(lock.workspace_id.clone())
@@ -73,8 +73,8 @@ fn read_lock(
         sqlx::query(
             "SELECT workspace_id, branch_name
              FROM locks
-             WHERE lock_domain_id=$1
-             AND relative_path=$2;",
+             WHERE lock_domain_id=?
+             AND relative_path=?;",
         )
         .bind(lock_domain_id)
         .bind(canonical_relative_path)
@@ -98,7 +98,7 @@ pub fn clear_lock(
 ) -> Result<(), String> {
     let sql_connection = connection.sql();
     if let Err(e) = block_on(
-        sqlx::query("DELETE from locks WHERE relative_path=$1 AND lock_domain_id=$2;")
+        sqlx::query("DELETE from locks WHERE relative_path=? AND lock_domain_id=?;")
             .bind(canonical_relative_path)
             .bind(lock_domain_id)
             .execute(&mut *sql_connection),
@@ -117,7 +117,7 @@ pub fn verify_empty_lock_domain(
         sqlx::query(
             "SELECT count(*) as count
              FROM locks
-             WHERE lock_domain_id = $1;",
+             WHERE lock_domain_id = ?;",
         )
         .bind(lock_domain_id)
         .fetch_one(&mut *sql_connection),
@@ -143,7 +143,7 @@ pub fn read_locks(
         sqlx::query(
             "SELECT relative_path, workspace_id, branch_name
              FROM locks
-             WHERE lock_domain_id=$1;",
+             WHERE lock_domain_id=?;",
         )
         .bind(lock_domain_id)
         .fetch_all(&mut *sql_connection),
@@ -173,7 +173,7 @@ pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
     let lock = Lock {
         relative_path: make_canonical_relative_path(&workspace_root, path_specified)?,
         lock_domain_id: repo_branch.lock_domain_id.clone(),
-        workspace_id: workspace_spec.id.clone(),
+        workspace_id: workspace_spec.id,
         branch_name: repo_branch.name,
     };
     save_new_lock(&mut connection, &lock)

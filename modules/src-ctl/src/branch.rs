@@ -25,7 +25,7 @@ impl Branch {
 
 pub fn init_branch_database(connection: &mut RepositoryConnection) -> Result<(), String> {
     let sql_connection = connection.sql();
-    let sql = "CREATE TABLE branches(name TEXT, head TEXT, parent TEXT, lock_domain_id TEXT);
+    let sql = "CREATE TABLE branches(name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64));
          CREATE UNIQUE INDEX branch_name on branches(name);
         ";
     if let Err(e) = execute_sql(sql_connection, sql) {
@@ -47,7 +47,7 @@ pub fn save_new_branch_to_repo(
 ) -> Result<(), String> {
     let sql_connection = connection.sql();
     if let Err(e) = block_on(
-        sqlx::query("INSERT INTO branches VALUES($1, $2, $3, $4);")
+        sqlx::query("INSERT INTO branches VALUES(?, ?, ?, ?);")
             .bind(branch.name.clone())
             .bind(branch.head.clone())
             .bind(branch.parent.clone())
@@ -66,8 +66,8 @@ pub fn save_branch_to_repo(
     let sql_connection = connection.sql();
     if let Err(e) = block_on(
         sqlx::query(
-            "UPDATE branches SET head=$1, parent=$2, lock_domain_id=$3
-             WHERE name=$4;",
+            "UPDATE branches SET head=?, parent=?, lock_domain_id=?
+             WHERE name=?;",
         )
         .bind(branch.head.clone())
         .bind(branch.parent.clone())
@@ -98,7 +98,7 @@ pub fn read_branch_from_repo(
         sqlx::query(
             "SELECT head, parent, lock_domain_id 
              FROM branches
-             WHERE name = $1;",
+             WHERE name = ?;",
         )
         .bind(name)
         .fetch_one(&mut *sql_connection),
@@ -125,7 +125,7 @@ pub fn find_branch(
         sqlx::query(
             "SELECT head, parent, lock_domain_id 
              FROM branches
-             WHERE name = $1;",
+             WHERE name = ?;",
         )
         .bind(name)
         .fetch_optional(&mut *sql_connection),

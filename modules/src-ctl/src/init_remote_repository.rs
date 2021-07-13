@@ -10,7 +10,7 @@ pub fn init_remote_repository(
     username: &str,
     password: &str,
     database_name: &str,
-) -> Result<(), String> {
+) -> Result<RepositoryAddr, String> {
     let repo_uri = format!(
         "mysql://{}:{}@{}/{}",
         username, password, host, database_name
@@ -33,9 +33,9 @@ pub fn init_remote_repository(
             .unwrap()
             .replace("\\", "/")
     );
-
-    println!("repository uri: {}", repo_uri);
-    println!("blob store uri: {}", blob_uri);
-
-    Ok(())
+    let addr = RepositoryAddr { repo_uri, blob_uri };
+    let mut repo_connection = RepositoryConnection::new(&addr)?;
+    init_repo_database(&mut repo_connection)?;
+    push_init_repo_data(&mut repo_connection)?;
+    Ok(addr)
 }

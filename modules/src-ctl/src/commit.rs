@@ -49,11 +49,11 @@ impl Commit {
 
 pub fn init_commit_database(connection: &mut RepositoryConnection) -> Result<(), String> {
     let sql_connection = connection.sql();
-    let sql = "CREATE TABLE commits(id TEXT, owner TEXT, message TEXT, root_hash TEXT, date_time_utc TEXT);
+    let sql = "CREATE TABLE commits(id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
          CREATE UNIQUE INDEX commit_id on commits(id);
-         CREATE TABLE commit_parents(id TEXT, parent_id TEXT);
+         CREATE TABLE commit_parents(id VARCHAR(255), parent_id TEXT);
          CREATE INDEX commit_parents_id on commit_parents(id);
-         CREATE TABLE commit_changes(commit_id TEXT, relative_path TEXT, hash TEXT, change_type INTEGER);
+         CREATE TABLE commit_changes(commit_id VARCHAR(255), relative_path TEXT, hash CHAR(64), change_type INTEGER);
          CREATE INDEX commit_changes_commit on commit_changes(commit_id);
         ";
     if let Err(e) = execute_sql(sql_connection, sql) {
@@ -66,7 +66,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
     let sql_connection = connection.sql();
 
     if let Err(e) = block_on(
-        sqlx::query("INSERT INTO commits VALUES($1, $2, $3, $4, $5);")
+        sqlx::query("INSERT INTO commits VALUES(?, ?, ?, ?, ?);")
             .bind(commit.id.clone())
             .bind(commit.owner.clone())
             .bind(commit.message.clone())
@@ -79,7 +79,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
 
     for parent_id in &commit.parents {
         if let Err(e) = block_on(
-            sqlx::query("INSERT INTO commit_parents VALUES($1, $2);")
+            sqlx::query("INSERT INTO commit_parents VALUES(?, ?);")
                 .bind(commit.id.clone())
                 .bind(parent_id.clone())
                 .execute(&mut *sql_connection),
@@ -90,7 +90,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
 
     for change in &commit.changes {
         if let Err(e) = block_on(
-            sqlx::query("INSERT INTO commit_changes VALUES($1, $2, $3, $4);")
+            sqlx::query("INSERT INTO commit_changes VALUES(?, ?, ?, ?);")
                 .bind(commit.id.clone())
                 .bind(change.relative_path.clone())
                 .bind(change.hash.clone())
@@ -112,7 +112,7 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
         sqlx::query(
             "SELECT relative_path, hash, change_type
              FROM commit_changes
-             WHERE commit_id = $1;",
+             WHERE commit_id = ?;",
         )
         .bind(id)
         .fetch_all(&mut *sql_connection),
@@ -137,7 +137,7 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
         sqlx::query(
             "SELECT parent_id
              FROM commit_parents
-             WHERE id = $1;",
+             WHERE id = ?;",
         )
         .bind(id)
         .fetch_all(&mut *sql_connection),
@@ -156,7 +156,7 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
         sqlx::query(
             "SELECT owner, message, root_hash, date_time_utc 
              FROM commits
-             WHERE id = $1;",
+             WHERE id = ?;",
         )
         .bind(id)
         .fetch_one(&mut *sql_connection),
@@ -182,7 +182,7 @@ pub fn commit_exists(connection: &mut RepositoryConnection, id: &str) -> bool {
         sqlx::query(
             "SELECT count(*) as count
              FROM commits
-             WHERE id = $1;",
+             WHERE id = ?;",
         )
         .bind(id)
         .fetch_one(&mut *sql_connection),
@@ -261,8 +261,7 @@ pub fn commit_local_changes(
         let abs_path = workspace_root.join(&change.relative_path);
         assert_not_locked(&workspace_root, &abs_path)?;
     }
-    let hashed_changes =
-        upload_localy_edited_blobs(&workspace_root, &connection, &local_changes)?;
+    let hashed_changes = upload_localy_edited_blobs(&workspace_root, &connection, &local_changes)?;
 
     let base_commit = read_commit(&mut connection, &current_branch.head)?;
 

@@ -54,7 +54,7 @@ pub fn save_local_change(
 ) -> Result<(), String> {
     let sql_connection = connection.sql();
     if let Err(e) = block_on(
-        sqlx::query("REPLACE INTO changes VALUES($1, $2);")
+        sqlx::query("REPLACE INTO changes VALUES(?, ?);")
             .bind(change_spec.relative_path.clone())
             .bind(change_spec.change_type.clone() as i64)
             .execute(sql_connection),
@@ -78,7 +78,7 @@ pub fn find_local_change(
         sqlx::query(
             "SELECT change_type
              FROM changes
-             WHERE relative_path = $1;",
+             WHERE relative_path = ?;",
         )
         .bind(path.clone())
         .fetch_optional(&mut *sql_connection),
@@ -134,7 +134,7 @@ pub fn clear_local_change(
 ) -> Result<(), String> {
     let sql_connection = connection.sql();
     if let Err(e) = block_on(
-        sqlx::query("DELETE from changes where relative_path=$1;")
+        sqlx::query("DELETE from changes where relative_path=?;")
             .bind(change.relative_path.clone())
             .execute(sql_connection),
     ) {

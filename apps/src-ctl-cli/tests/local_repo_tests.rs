@@ -93,13 +93,36 @@ fn test_dir(test_name: &str) -> PathBuf {
     path
 }
 
+fn init_test_repo(test_dir: &Path, name: &str) -> legion_src_ctl::RepositoryAddr {
+    let use_mysql = std::env::var("LEGION_SRC_CTL_TEST_MYSQL").unwrap_or(String::new());
+    if use_mysql.is_empty() {
+        let repo_dir = test_dir.join("repo");
+        legion_src_ctl::init_local_repository(&repo_dir).unwrap()
+    } else {
+        let blob_dir = test_dir.join("blobs");
+
+        let host = "localhost";
+        let username = "root";
+        let password = "";
+        let repo_uri = format!("mysql://{}:{}@{}/{}", username, password, host, name);
+        if legion_src_ctl::database_exists(&repo_uri).unwrap() {
+            let drop_test_db =
+                std::env::var("LEGION_SRC_CTL_TEST_ALLOW_DROP_DATABASE").unwrap_or(String::new());
+            if drop_test_db == "YES" {
+                legion_src_ctl::drop_database(&repo_uri).unwrap();
+            } else {
+                panic!("test database exists");
+            }
+        }
+        legion_src_ctl::init_remote_repository(&blob_dir, host, username, password, name).unwrap()
+    }
+}
+
 #[test]
 fn local_repo_suite() {
     let test_dir = test_dir("local_repo_suite");
-    let repo_dir = test_dir.join("repo");
     let work1 = test_dir.join("work");
-
-    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
+    let addr = init_test_repo(&test_dir, "local_repo_suite");
 
     lsc_cli_sys(
         &test_dir,
@@ -204,11 +227,10 @@ fn local_repo_suite() {
 #[test]
 fn local_single_branch_merge_flow() {
     let test_dir = test_dir("local_single_branch_merge_flow");
-    let repo_dir = test_dir.join("repo");
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
 
-    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
+    let addr = init_test_repo(&test_dir, "local_single_branch_merge_flow");
 
     lsc_cli_sys(
         &test_dir,
@@ -279,10 +301,8 @@ fn test_branch() {
         println!("no config file, skipping test");
     }
 
-    let repo_dir = test_dir.join("repo");
     let work1 = test_dir.join("work1");
-
-    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
+    let addr = init_test_repo(&test_dir, "test_branch");
 
     lsc_cli_sys(
         &test_dir,
@@ -378,11 +398,10 @@ fn test_locks() {
         println!("no config file, skipping test");
     }
 
-    let repo_dir = test_dir.join("repo");
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
 
-    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
+    let addr = init_test_repo(&test_dir, "test_locks");
 
     lsc_cli_sys(
         &test_dir,
@@ -501,10 +520,9 @@ fn get_root_git_directory() -> PathBuf {
 #[ignore] //fails in the build actions because tests don't run under a full git clone, see https://github.com/legion-labs/legion/issues/4
 fn test_import_git() {
     let test_dir = test_dir("test_import_git");
-    let repo_dir = test_dir.join("repo");
     let work1 = test_dir.join("work1");
 
-    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
+    let addr = init_test_repo(&test_dir, "test_import_git");
 
     lsc_cli_sys(
         &test_dir,

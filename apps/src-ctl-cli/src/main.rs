@@ -327,7 +327,14 @@ fn main_impl() -> Result<(), String> {
             let username = command_match.value_of("username").unwrap();
             let password = command_match.value_of("password").unwrap_or("");
             let name = command_match.value_of("name").unwrap();
-            init_remote_repository(blob_dir, host, username, password, name)
+            match init_remote_repository(blob_dir, host, username, password, name) {
+                Ok(addr) => {
+                    println!("repository uri: {}", addr.repo_uri);
+                    println!("blob store uri: {}", addr.blob_uri);
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            }
         }
         ("init-workspace", Some(command_match)) => init_workspace(
             Path::new(command_match.value_of("workspace-directory").unwrap()),

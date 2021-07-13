@@ -7,7 +7,7 @@ use sqlx::Row;
 pub fn init_forest_database(connection: &mut RepositoryConnection) -> Result<(), String> {
     let sql_connection = connection.sql();
     let sql =
-        "CREATE TABLE tree_nodes (name TEXT, hash TEXT, parent_tree_hash TEXT, node_type INTEGER);
+        "CREATE TABLE tree_nodes (name VARCHAR(255), hash CHAR(64), parent_tree_hash CHAR(64), node_type INTEGER);
          CREATE INDEX tree on tree_nodes(parent_tree_hash);";
 
     if let Err(e) = execute_sql(sql_connection, sql) {
@@ -25,7 +25,7 @@ pub fn read_tree(connection: &mut RepositoryConnection, hash: &str) -> Result<Tr
         sqlx::query(
             "SELECT name, hash, node_type
              FROM tree_nodes
-             WHERE parent_tree_hash = $1
+             WHERE parent_tree_hash = ?
              ORDER BY name;",
         )
         .bind(hash)
@@ -69,7 +69,7 @@ pub fn save_tree(
 
     for file_node in &tree.file_nodes {
         if let Err(e) = block_on(
-            sqlx::query("INSERT INTO tree_nodes VALUES($1, $2, $3, $4);")
+            sqlx::query("INSERT INTO tree_nodes VALUES(?, ?, ?, ?);")
                 .bind(file_node.name.clone())
                 .bind(file_node.hash.clone())
                 .bind(hash)
@@ -82,7 +82,7 @@ pub fn save_tree(
 
     for dir_node in &tree.directory_nodes {
         if let Err(e) = block_on(
-            sqlx::query("INSERT INTO tree_nodes VALUES($1, $2, $3, $4);")
+            sqlx::query("INSERT INTO tree_nodes VALUES(?, ?, ?, ?);")
                 .bind(dir_node.name.clone())
                 .bind(dir_node.hash.clone())
                 .bind(hash)
