@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 pub struct Workspace {
     pub id: String, //a file lock will contain the workspace id
     pub repo_uri: String,
-    pub blob_store_uri: String,
+    pub blob_dir: String,
     pub root: String,
     pub owner: String,
 }

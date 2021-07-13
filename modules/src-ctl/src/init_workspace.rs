@@ -6,7 +6,7 @@ use std::path::Path;
 pub fn init_workspace(
     specified_workspace_directory: &Path,
     repo_uri: &str,
-    blob_store_uri: &str,
+    blob_dir: &str,
 ) -> Result<(), String> {
     let workspace_directory = make_path_absolute(specified_workspace_directory);
 
@@ -17,7 +17,7 @@ pub fn init_workspace(
     let spec = Workspace {
         id: uuid::Uuid::new_v4().to_string(),
         repo_uri: String::from(repo_uri),
-        blob_store_uri: String::from(blob_store_uri),
+        blob_dir: String::from(blob_dir),
         root: String::from(workspace_directory.to_str().unwrap()),
         owner: whoami::username(),
     };

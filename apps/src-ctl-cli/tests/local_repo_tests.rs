@@ -130,7 +130,7 @@ fn local_repo_suite() {
             "init-workspace",
             work1.to_str().unwrap(),
             &addr.repo_uri,
-            &addr.blob_uri,
+            &addr.blob_dir.to_str().unwrap(),
         ],
     );
 
@@ -167,7 +167,7 @@ fn local_repo_suite() {
             "init-workspace",
             work2.to_str().unwrap(),
             &addr.repo_uri,
-            &addr.blob_uri,
+            &addr.blob_dir.to_str().unwrap(),
         ],
     );
     assert!(fs::metadata(work2.join("dir0/file3.txt")).is_ok());
@@ -238,7 +238,7 @@ fn local_single_branch_merge_flow() {
             "init-workspace",
             work1.to_str().unwrap(),
             &addr.repo_uri,
-            &addr.blob_uri,
+            &addr.blob_dir.to_str().unwrap(),
         ],
     );
 
@@ -252,7 +252,7 @@ fn local_single_branch_merge_flow() {
             "init-workspace",
             work2.to_str().unwrap(),
             &addr.repo_uri,
-            &addr.blob_uri,
+            &addr.blob_dir.to_str().unwrap(),
         ],
     );
 
@@ -310,7 +310,7 @@ fn test_branch() {
             "init-workspace",
             work1.to_str().unwrap(),
             &addr.repo_uri,
-            &addr.blob_uri,
+            &addr.blob_dir.to_str().unwrap(),
         ],
     );
 
@@ -409,7 +409,7 @@ fn test_locks() {
             "init-workspace",
             work1.to_str().unwrap(),
             &addr.repo_uri,
-            &addr.blob_uri,
+            &addr.blob_dir.to_str().unwrap(),
         ],
     );
 
@@ -446,7 +446,7 @@ fn test_locks() {
             "init-workspace",
             work2.to_str().unwrap(),
             &addr.repo_uri,
-            &addr.blob_uri,
+            &addr.blob_dir.to_str().unwrap(),
         ],
     );
     lsc_cli_sys(&work2, &["lock", "file2.txt"]); //locking the file that is being edited in work1
@@ -530,7 +530,7 @@ fn test_import_git() {
             "init-workspace",
             work1.to_str().unwrap(),
             &addr.repo_uri,
-            &addr.blob_uri,
+            &addr.blob_dir.to_str().unwrap(),
         ],
     );
     let root_dir = get_root_git_directory();

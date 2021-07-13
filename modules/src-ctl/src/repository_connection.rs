@@ -1,6 +1,5 @@
 use crate::*;
 use futures::executor::block_on;
-use http::Uri;
 use sqlx::Connection;
 use std::path::{Path, PathBuf};
 
@@ -12,17 +11,15 @@ pub struct RepositoryConnection {
 #[derive(Debug)]
 pub struct RepositoryAddr {
     pub repo_uri: String,
-    pub blob_uri: String,
+    pub blob_dir: PathBuf,
 }
 
 impl RepositoryConnection {
     pub fn new(addr: &RepositoryAddr) -> Result<Self, String> {
-        let blob_store_uri = addr.blob_uri.parse::<Uri>().unwrap();
-        assert_eq!(blob_store_uri.scheme_str(), Some("file"));
         match block_on(sqlx::AnyConnection::connect(&addr.repo_uri)) {
             Err(e) => Err(format!("Error opening database {}: {}", addr.repo_uri, e)),
             Ok(c) => Ok(Self {
-                blob_directory: PathBuf::from(blob_store_uri.path()),
+                blob_directory: addr.blob_dir.clone(),
                 sql_connection: c,
             }),
         }
@@ -40,6 +37,6 @@ impl RepositoryConnection {
 pub fn connect_to_server(workspace: &Workspace) -> Result<RepositoryConnection, String> {
     RepositoryConnection::new(&RepositoryAddr {
         repo_uri: workspace.repo_uri.clone(),
-        blob_uri: workspace.blob_store_uri.clone(),
+        blob_dir: PathBuf::from(&workspace.blob_dir),
     })
 }

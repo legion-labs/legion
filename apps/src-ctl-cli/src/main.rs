@@ -315,7 +315,7 @@ fn main_impl() -> Result<(), String> {
             )) {
                 Ok(addr) => {
                     println!("repository uri: {}", addr.repo_uri);
-                    println!("blob store uri: {}", addr.blob_uri);
+                    println!("blob store uri: {}", addr.blob_dir.display());
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -330,7 +330,7 @@ fn main_impl() -> Result<(), String> {
             match init_remote_repository(blob_dir, host, username, password, name) {
                 Ok(addr) => {
                     println!("repository uri: {}", addr.repo_uri);
-                    println!("blob store uri: {}", addr.blob_uri);
+                    println!("blob store uri: {}", addr.blob_dir.display());
                     Ok(())
                 }
                 Err(e) => Err(e),

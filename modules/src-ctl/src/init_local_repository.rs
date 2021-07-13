@@ -55,9 +55,8 @@ pub fn init_local_repository(directory: &Path) -> Result<RepositoryAddr, String>
     if let Err(e) = fs::create_dir_all(&blob_dir) {
         return Err(format!("Error creating blobs directory: {}", e));
     }
-    let blob_uri = format!("file://{}", blob_dir.to_str().unwrap().replace("\\", "/"));
 
-    let addr = RepositoryAddr { repo_uri, blob_uri };
+    let addr = RepositoryAddr { repo_uri, blob_dir };
     let mut repo_connection = RepositoryConnection::new(&addr)?;
 
     init_repo_database(&mut repo_connection)?;
