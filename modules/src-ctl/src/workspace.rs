@@ -7,7 +7,8 @@ use std::path::{Path, PathBuf};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Workspace {
     pub id: String, //a file lock will contain the workspace id
-    pub repository: String,
+    pub repo_uri: String,
+    pub blob_store_uri: String,
     pub root: String,
     pub owner: String,
 }

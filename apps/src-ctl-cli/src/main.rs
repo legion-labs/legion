@@ -98,6 +98,30 @@ fn main_impl() -> Result<(), String> {
                 )
         )
         .subcommand(
+            SubCommand::with_name("init-remote-repository")
+                .about("Initializes a repository stored on a remote server")
+                .arg(
+                    Arg::with_name("blob-directory")
+                        .required(true)
+                        .help("local blob storage"))
+                .arg(
+                    Arg::with_name("host")
+                        .required(true)
+                        .help("database host"))
+                .arg(
+                    Arg::with_name("username")
+                        .required(true)
+                        .help("database username"))
+                .arg(
+                    Arg::with_name("name")
+                        .required(true)
+                        .help("database to be created on the remote host"))
+                .arg(
+                    Arg::with_name("password")
+                        .required(false)
+                        .help("database password"))
+        )
+        .subcommand(
             SubCommand::with_name("init-workspace")
                 .about("Initializes a workspace and populates it with the latest version of the main branch")
                 .arg(
@@ -105,10 +129,13 @@ fn main_impl() -> Result<(), String> {
                         .required(true)
                         .help("lsc workspace directory"))
                 .arg(
-                    Arg::with_name("repository-directory")
+                    Arg::with_name("repository-uri")
                         .required(true)
-                        .help("local repository directory")
-                )
+                        .help("uri printed at the creation of the repository"))
+                .arg(
+                    Arg::with_name("blob-store-uri")
+                        .required(true)
+                        .help("also printed at the creation of the repository"))
         )
         .subcommand(
             SubCommand::with_name("add")
@@ -282,12 +309,30 @@ fn main_impl() -> Result<(), String> {
         .get_matches();
 
     match matches.subcommand() {
-        ("init-local-repository", Some(command_match)) => legion_src_ctl::init_local_repository(
-            Path::new(command_match.value_of("repository-directory").unwrap()),
-        ),
+        ("init-local-repository", Some(command_match)) => {
+            match legion_src_ctl::init_local_repository(Path::new(
+                command_match.value_of("repository-directory").unwrap(),
+            )) {
+                Ok(addr) => {
+                    println!("repository uri: {}", addr.repo_uri);
+                    println!("blob store uri: {}", addr.blob_uri);
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            }
+        }
+        ("init-remote-repository", Some(command_match)) => {
+            let blob_dir = Path::new(command_match.value_of("blob-directory").unwrap());
+            let host = command_match.value_of("host").unwrap();
+            let username = command_match.value_of("username").unwrap();
+            let password = command_match.value_of("password").unwrap_or("");
+            let name = command_match.value_of("name").unwrap();
+            init_remote_repository(blob_dir, host, username, password, name)
+        }
         ("init-workspace", Some(command_match)) => init_workspace(
             Path::new(command_match.value_of("workspace-directory").unwrap()),
-            Path::new(command_match.value_of("repository-directory").unwrap()),
+            command_match.value_of("repository-uri").unwrap(),
+            command_match.value_of("blob-store-uri").unwrap(),
         ),
         ("add", Some(command_match)) => {
             track_new_file_command(Path::new(command_match.value_of("path").unwrap()))

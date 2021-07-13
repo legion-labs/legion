@@ -334,8 +334,7 @@ pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Re
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo = &workspace_spec.repository;
-    let mut repo_connection = RepositoryConnection::new(repo)?;
+    let mut repo_connection = connect_to_server(&workspace_spec)?;
     match git2::Repository::open(git_root_path) {
         Ok(git_repo) => {
             println!("git repository state: {:?}", git_repo.state());

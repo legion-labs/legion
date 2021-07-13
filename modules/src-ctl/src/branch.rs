@@ -161,8 +161,7 @@ pub fn create_branch_command(name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo = &workspace_spec.repository;
-    let mut connection = RepositoryConnection::new(repo)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     let old_branch = read_current_branch(&workspace_root)?;
     let new_branch = Branch::new(
         String::from(name),
@@ -204,8 +203,7 @@ pub fn list_branches_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo = &workspace_spec.repository;
-    let mut connection = RepositoryConnection::new(repo)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     for branch in read_branches(&mut connection)? {
         println!(
             "{} head:{} parent:{}",

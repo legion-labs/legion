@@ -99,17 +99,15 @@ fn local_repo_suite() {
     let repo_dir = test_dir.join("repo");
     let work1 = test_dir.join("work");
 
-    lsc_cli_sys(
-        &test_dir,
-        &["init-local-repository", repo_dir.to_str().unwrap()],
-    );
+    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
 
     lsc_cli_sys(
         &test_dir,
         &[
             "init-workspace",
             work1.to_str().unwrap(),
-            repo_dir.to_str().unwrap(),
+            &addr.repo_uri,
+            &addr.blob_uri,
         ],
     );
 
@@ -145,7 +143,8 @@ fn local_repo_suite() {
         &[
             "init-workspace",
             work2.to_str().unwrap(),
-            repo_dir.to_str().unwrap(),
+            &addr.repo_uri,
+            &addr.blob_uri,
         ],
     );
     assert!(fs::metadata(work2.join("dir0/file3.txt")).is_ok());
@@ -191,8 +190,8 @@ fn local_repo_suite() {
     lsc_cli_sys(&work1, &["revert", "dir0/file1.txt"]);
 
     //sync backwards
-    let mut connection =
-        legion_src_ctl::RepositoryConnection::new(repo_dir.to_str().unwrap()).unwrap();
+    let workspace_spec = legion_src_ctl::read_workspace_spec(&work1).unwrap();
+    let mut connection = legion_src_ctl::connect_to_server(&workspace_spec).unwrap();
     let main_branch = legion_src_ctl::read_branch_from_repo(&mut connection, "main").unwrap();
     let log_vec = legion_src_ctl::find_branch_commits(&mut connection, &main_branch).unwrap();
     let init_commit = log_vec.last().unwrap();
@@ -209,17 +208,15 @@ fn local_single_branch_merge_flow() {
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
 
-    lsc_cli_sys(
-        &test_dir,
-        &["init-local-repository", repo_dir.to_str().unwrap()],
-    );
+    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
 
     lsc_cli_sys(
         &test_dir,
         &[
             "init-workspace",
             work1.to_str().unwrap(),
-            repo_dir.to_str().unwrap(),
+            &addr.repo_uri,
+            &addr.blob_uri,
         ],
     );
 
@@ -232,7 +229,8 @@ fn local_single_branch_merge_flow() {
         &[
             "init-workspace",
             work2.to_str().unwrap(),
-            repo_dir.to_str().unwrap(),
+            &addr.repo_uri,
+            &addr.blob_uri,
         ],
     );
 
@@ -284,17 +282,15 @@ fn test_branch() {
     let repo_dir = test_dir.join("repo");
     let work1 = test_dir.join("work1");
 
-    lsc_cli_sys(
-        &test_dir,
-        &["init-local-repository", repo_dir.to_str().unwrap()],
-    );
+    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
 
     lsc_cli_sys(
         &test_dir,
         &[
             "init-workspace",
             work1.to_str().unwrap(),
-            repo_dir.to_str().unwrap(),
+            &addr.repo_uri,
+            &addr.blob_uri,
         ],
     );
 
@@ -386,17 +382,15 @@ fn test_locks() {
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
 
-    lsc_cli_sys(
-        &test_dir,
-        &["init-local-repository", repo_dir.to_str().unwrap()],
-    );
+    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
 
     lsc_cli_sys(
         &test_dir,
         &[
             "init-workspace",
             work1.to_str().unwrap(),
-            repo_dir.to_str().unwrap(),
+            &addr.repo_uri,
+            &addr.blob_uri,
         ],
     );
 
@@ -432,7 +426,8 @@ fn test_locks() {
         &[
             "init-workspace",
             work2.to_str().unwrap(),
-            repo_dir.to_str().unwrap(),
+            &addr.repo_uri,
+            &addr.blob_uri,
         ],
     );
     lsc_cli_sys(&work2, &["lock", "file2.txt"]); //locking the file that is being edited in work1
@@ -509,17 +504,15 @@ fn test_import_git() {
     let repo_dir = test_dir.join("repo");
     let work1 = test_dir.join("work1");
 
-    lsc_cli_sys(
-        &test_dir,
-        &["init-local-repository", repo_dir.to_str().unwrap()],
-    );
+    let addr = legion_src_ctl::init_local_repository(&repo_dir).unwrap();
 
     lsc_cli_sys(
         &test_dir,
         &[
             "init-workspace",
             work1.to_str().unwrap(),
-            repo_dir.to_str().unwrap(),
+            &addr.repo_uri,
+            &addr.blob_uri,
         ],
     );
     let root_dir = get_root_git_directory();

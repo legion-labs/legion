@@ -21,3 +21,4 @@ git2 = { version="0.13", features=["vendored-openssl"] }
 unicase = "2.6"
 futures = "0.3"
 sqlx = { version="0.5", features=["sqlite", "any", "mysql", "runtime-async-std-native-tls"] }
+http = "0.2"

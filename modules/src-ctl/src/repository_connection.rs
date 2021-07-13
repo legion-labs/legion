@@ -1,20 +1,28 @@
+use crate::*;
 use futures::executor::block_on;
+use http::Uri;
 use sqlx::Connection;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub struct RepositoryConnection {
-    repo_directory: String, //to store blobs, will be replaced by a generic blob storage interface
+    blob_directory: PathBuf, //to store blobs, will be replaced by a generic blob storage interface
     sql_connection: sqlx::AnyConnection,
 }
 
+#[derive(Debug)]
+pub struct RepositoryAddr {
+    pub repo_uri: String,
+    pub blob_uri: String,
+}
+
 impl RepositoryConnection {
-    pub fn new(repo_directory: &str) -> Result<Self, String> {
-        let db_path = Path::new(repo_directory).join("repo.db3");
-        let url = format!("sqlite://{}", db_path.display());
-        match block_on(sqlx::AnyConnection::connect(&url)) {
-            Err(e) => Err(format!("Error opening database {}: {}", url, e)),
+    pub fn new(addr: &RepositoryAddr) -> Result<Self, String> {
+        let blob_store_uri = addr.blob_uri.parse::<Uri>().unwrap();
+        assert_eq!(blob_store_uri.scheme_str(), Some("file"));
+        match block_on(sqlx::AnyConnection::connect(&addr.repo_uri)) {
+            Err(e) => Err(format!("Error opening database {}: {}", addr.repo_uri, e)),
             Ok(c) => Ok(Self {
-                repo_directory: String::from(repo_directory),
+                blob_directory: PathBuf::from(blob_store_uri.path()),
                 sql_connection: c,
             }),
         }
@@ -24,7 +32,14 @@ impl RepositoryConnection {
         &mut self.sql_connection
     }
 
-    pub fn repository(&self) -> &Path {
-        Path::new(&self.repo_directory)
+    pub fn blob_directory(&self) -> &Path {
+        &self.blob_directory
     }
+}
+
+pub fn connect_to_server(workspace: &Workspace) -> Result<RepositoryConnection, String> {
+    RepositoryConnection::new(&RepositoryAddr {
+        repo_uri: workspace.repo_uri.clone(),
+        blob_uri: workspace.blob_store_uri.clone(),
+    })
 }

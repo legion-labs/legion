@@ -190,8 +190,7 @@ pub fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
 
     let current_branch = read_current_branch(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo = &workspace_spec.repository;
-    let mut connection = RepositoryConnection::new(repo)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
 
     if let Some(_hash) = find_file_hash_at_commit(
         &mut connection,

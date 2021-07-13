@@ -18,8 +18,7 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo = &workspace_spec.repository;
-    let mut connection = RepositoryConnection::new(repo)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     let current_branch = read_current_branch(&workspace_root)?;
     let mut repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     if !repo_branch.parent.is_empty() {

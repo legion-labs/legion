@@ -1,12 +1,10 @@
 use futures::executor::block_on;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::Executor;
-use std::path::Path;
 
-pub fn create_sqlite_database(db_path: &Path) -> Result<(), String> {
-    let url = format!("sqlite://{}", db_path.display());
-    if let Err(e) = block_on(sqlx::Any::create_database(&url)) {
-        return Err(format!("Error creating database {}: {}", url, e));
+pub fn create_sqlite_database(uri: &str) -> Result<(), String> {
+    if let Err(e) = block_on(sqlx::Any::create_database(uri)) {
+        return Err(format!("Error creating database {}: {}", uri, e));
     }
     Ok(())
 }

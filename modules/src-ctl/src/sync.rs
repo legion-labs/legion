@@ -133,8 +133,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo = &workspace_spec.repository;
-    let mut connection = RepositoryConnection::new(repo)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     let mut workspace_branch = read_current_branch(&workspace_root)?;
     let commits = find_commit_range(
         &mut connection,
@@ -240,7 +239,7 @@ pub fn sync_command() -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let workspace_branch = read_current_branch(&workspace_root)?;
-    let mut connection = RepositoryConnection::new(&workspace_spec.repository)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     let repo_branch = read_branch_from_repo(&mut connection, &workspace_branch.name)?;
     sync_to_command(&repo_branch.head)
 }

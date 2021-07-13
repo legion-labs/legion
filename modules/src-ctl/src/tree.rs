@@ -257,8 +257,7 @@ pub fn update_tree_from_changes(
 
 pub fn read_blob(connection: &mut RepositoryConnection, hash: &str) -> Result<String, String> {
     assert!(!hash.is_empty());
-    let repo = connection.repository();
-    let blob_path = repo.join(format!("blobs/{}", hash));
+    let blob_path = connection.blob_directory().join(hash);
     lz4_read(&blob_path)
 }
 
@@ -268,8 +267,7 @@ pub fn download_blob(
     hash: &str,
 ) -> Result<(), String> {
     assert!(!hash.is_empty());
-    let repo = connection.repository();
-    let blob_path = repo.join(format!("blobs/{}", hash));
+    let blob_path = connection.blob_directory().join(hash);
     lz4_decompress(&blob_path, local_path)
 }
 

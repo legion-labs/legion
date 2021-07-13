@@ -35,7 +35,7 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = RepositoryConnection::new(&workspace_spec.repository)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
     let local_change = match find_local_change(&mut workspace_connection, &relative_path) {
         Ok(Some(change)) => change,

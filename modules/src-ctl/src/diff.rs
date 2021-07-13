@@ -42,8 +42,7 @@ pub fn diff_file_command(
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo = &workspace_spec.repository;
-    let mut connection = RepositoryConnection::new(repo)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
     let ref_commit_id = reference_version_name_as_commit_id(
         &mut connection,

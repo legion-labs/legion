@@ -1,6 +1,5 @@
 use crate::*;
 use std::collections::BTreeSet;
-use std::fs;
 
 // find_branch_descendants includes the branch itself
 fn find_branch_descendants(
@@ -27,19 +26,13 @@ pub fn detach_branch_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let repo = &workspace_spec.repository;
-    let mut connection = RepositoryConnection::new(repo)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     let current_branch = read_current_branch(&workspace_root)?;
     let mut repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     repo_branch.parent.clear();
 
     let locks_in_old_domain = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
-    if let Err(e) = fs::create_dir_all(
-        std::path::Path::new(repo).join(format!("lock_domains/{}", lock_domain_id)),
-    ) {
-        return Err(format!("Error creating locks directory: {}", e));
-    }
 
     let descendants = find_branch_descendants(&mut connection, &current_branch.name)?;
 

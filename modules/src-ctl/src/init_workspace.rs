@@ -5,22 +5,29 @@ use std::path::Path;
 
 pub fn init_workspace(
     specified_workspace_directory: &Path,
-    specified_repository_directory: &Path,
+    repo_uri: &str,
+    blob_store_uri: &str,
 ) -> Result<(), String> {
     let workspace_directory = make_path_absolute(specified_workspace_directory);
-    let repository_directory = make_path_absolute(specified_repository_directory);
-    let mut connection = RepositoryConnection::new(repository_directory.to_str().unwrap())?;
-    if fs::metadata(&workspace_directory).is_ok() {
-        return Err(format!("{} already exists", workspace_directory.display()));
-    }
 
     let lsc_dir = workspace_directory.join(".lsc");
+    let db_path = lsc_dir.join("workspace.db3");
+    let db_uri = format!("sqlite://{}", db_path.display());
+
+    let spec = Workspace {
+        id: uuid::Uuid::new_v4().to_string(),
+        repo_uri: String::from(repo_uri),
+        blob_store_uri: String::from(blob_store_uri),
+        root: String::from(workspace_directory.to_str().unwrap()),
+        owner: whoami::username(),
+    };
+
+    let mut connection = connect_to_server(&spec)?;
+
     if let Err(e) = fs::create_dir_all(&lsc_dir) {
         return Err(format!("Error creating .lsc directory: {}", e));
     }
-
-    let db_path = lsc_dir.join("workspace.db3");
-    create_sqlite_database(&db_path)?;
+    create_sqlite_database(&db_uri)?;
 
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_directory)?;
     init_local_changes_database(&mut workspace_connection)?;
@@ -40,12 +47,7 @@ pub fn init_workspace(
             e
         ));
     }
-    let spec = Workspace {
-        id: uuid::Uuid::new_v4().to_string(),
-        repository: String::from(repository_directory.to_str().unwrap()),
-        root: String::from(workspace_directory.to_str().unwrap()),
-        owner: whoami::username(),
-    };
+
     write_workspace_spec(
         workspace_directory.join(".lsc/workspace.json").as_path(),
         &spec,

@@ -5,7 +5,7 @@ pub fn log_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = RepositoryConnection::new(&workspace_spec.repository)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     let workspace_branch = read_current_branch(&workspace_root)?;
     println!(
         "This workspace is on branch {} at commit {}",

@@ -203,10 +203,10 @@ fn write_blob(file_path: &Path, contents: &[u8]) -> Result<(), String> {
 
 fn upload_localy_edited_blobs(
     workspace_root: &Path,
-    workspace_spec: &Workspace,
+    repo_connection: &RepositoryConnection,
     local_changes: &[LocalChange],
 ) -> Result<Vec<HashedChange>, String> {
-    let blob_dir = Path::new(&workspace_spec.repository).join("blobs");
+    let blob_dir = repo_connection.blob_directory();
     let mut res = Vec::<HashedChange>::new();
     for local_change in local_changes {
         if local_change.change_type == ChangeType::Delete {
@@ -251,8 +251,7 @@ pub fn commit_local_changes(
     let workspace_root = workspace_connection.workspace_path().to_path_buf();
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let mut current_branch = read_current_branch(&workspace_root)?;
-    let repo = &workspace_spec.repository;
-    let mut connection = RepositoryConnection::new(repo)?;
+    let mut connection = connect_to_server(&workspace_spec)?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
@@ -263,7 +262,7 @@ pub fn commit_local_changes(
         assert_not_locked(&workspace_root, &abs_path)?;
     }
     let hashed_changes =
-        upload_localy_edited_blobs(&workspace_root, &workspace_spec, &local_changes)?;
+        upload_localy_edited_blobs(&workspace_root, &connection, &local_changes)?;
 
     let base_commit = read_commit(&mut connection, &current_branch.head)?;
 
