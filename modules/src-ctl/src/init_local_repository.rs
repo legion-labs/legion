@@ -49,7 +49,7 @@ pub fn init_local_repository(directory: &Path) -> Result<RepositoryAddr, String>
 
     let db_path = make_path_absolute(&directory.join("repo.db3"));
     let repo_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
-    create_sqlite_database(&repo_uri)?;
+    create_database(&repo_uri)?;
 
     let blob_dir = make_path_absolute(&directory.join("blobs"));
     if let Err(e) = fs::create_dir_all(&blob_dir) {

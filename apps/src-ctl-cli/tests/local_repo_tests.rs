@@ -87,9 +87,7 @@ fn test_dir(test_name: &str) -> PathBuf {
     if path.exists() {
         force_delete_all(&path);
     }
-
     std::fs::create_dir_all(&path).unwrap();
-
     path
 }
 

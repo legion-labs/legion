@@ -2,7 +2,7 @@ use futures::executor::block_on;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::Executor;
 
-pub fn create_sqlite_database(uri: &str) -> Result<(), String> {
+pub fn create_database(uri: &str) -> Result<(), String> {
     if let Err(e) = block_on(sqlx::Any::create_database(uri)) {
         return Err(format!("Error creating database {}: {}", uri, e));
     }

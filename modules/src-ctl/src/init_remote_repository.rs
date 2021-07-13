@@ -1,6 +1,4 @@
 use crate::*;
-use futures::executor::block_on;
-use sqlx::migrate::MigrateDatabase;
 use std::fs;
 use std::path::Path;
 
@@ -15,9 +13,7 @@ pub fn init_remote_repository(
         "mysql://{}:{}@{}/{}",
         username, password, host, database_name
     );
-    if let Err(e) = block_on(sqlx::Any::create_database(&repo_uri)) {
-        return Err(format!("Error creating database {}: {}", repo_uri, e));
-    }
+    create_database(&repo_uri)?;
     if let Err(e) = fs::create_dir_all(blob_dir) {
         return Err(format!(
             "Error creating directory {}: {}",

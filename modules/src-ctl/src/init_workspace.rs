@@ -27,7 +27,7 @@ pub fn init_workspace(
     if let Err(e) = fs::create_dir_all(&lsc_dir) {
         return Err(format!("Error creating .lsc directory: {}", e));
     }
-    create_sqlite_database(&db_uri)?;
+    create_database(&db_uri)?;
 
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_directory)?;
     init_local_changes_database(&mut workspace_connection)?;
