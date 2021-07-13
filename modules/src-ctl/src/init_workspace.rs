@@ -32,15 +32,10 @@ pub fn init_workspace(
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_directory)?;
     init_local_changes_database(&mut workspace_connection)?;
     init_resolve_pending_database(&mut workspace_connection)?;
+    init_branch_merge_pending_database(&mut workspace_connection)?;
 
     if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/tmp")) {
         return Err(format!("Error creating .lsc/tmp directory: {}", e));
-    }
-    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/branch_merge_pending")) {
-        return Err(format!(
-            "Error creating .lsc/branch_merge_pending directory: {}",
-            e
-        ));
     }
 
     write_workspace_spec(

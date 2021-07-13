@@ -1,9 +1,10 @@
 use crate::*;
+use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
+use sqlx::Row;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
-use std::fs;
 use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,76 +22,71 @@ impl PendingBranchMerge {
     }
 }
 
+pub fn init_branch_merge_pending_database(
+    workspace_connection: &mut LocalWorkspaceConnection,
+) -> Result<(), String> {
+    let sql_connection = workspace_connection.sql();
+    let sql = "CREATE TABLE branch_merges_pending(name VARCHAR(255) NOT NULL PRIMARY KEY, head VARCHAR(255));";
+    if let Err(e) = execute_sql(sql_connection, sql) {
+        return Err(format!("Error creating branch_merges_pending table: {}", e));
+    }
+    Ok(())
+}
+
 pub fn save_pending_branch_merge(
-    workspace_root: &Path,
+    workspace_connection: &mut LocalWorkspaceConnection,
     merge_spec: &PendingBranchMerge,
 ) -> Result<(), String> {
-    let path = workspace_root.join(format!(
-        ".lsc/branch_merge_pending/{}.json",
-        &merge_spec.name
-    ));
-    match serde_json::to_string(&merge_spec) {
-        Ok(contents) => {
-            write_file(&path, contents.as_bytes())?;
-        }
-        Err(e) => {
-            return Err(format!("Error formatting pending branch merge: {}", e));
-        }
+    let sql_connection = workspace_connection.sql();
+    if let Err(e) = block_on(
+        sqlx::query("INSERT OR REPLACE into branch_merges_pending VALUES(?,?);")
+            .bind(merge_spec.name.clone())
+            .bind(merge_spec.head.clone())
+            .execute(&mut *sql_connection),
+    ) {
+        return Err(format!(
+            "Error saving pending branch merge {}: {}",
+            merge_spec.name, e
+        ));
     }
     Ok(())
 }
 
 pub fn read_pending_branch_merges(
-    workspace_root: &Path,
+    workspace_connection: &mut LocalWorkspaceConnection,
 ) -> Result<Vec<PendingBranchMerge>, String> {
-    let path = workspace_root.join(".lsc/branch_merge_pending");
+    let sql_connection = workspace_connection.sql();
     let mut res = Vec::new();
-    match path.read_dir() {
-        Ok(dir_iterator) => {
-            for entry_res in dir_iterator {
-                match entry_res {
-                    Ok(entry) => {
-                        let parsed: serde_json::Result<PendingBranchMerge> =
-                            serde_json::from_str(&read_text_file(&entry.path())?);
-                        match parsed {
-                            Ok(pending) => {
-                                res.push(pending);
-                            }
-                            Err(e) => {
-                                return Err(format!("Error parsing {:?}: {}", entry.path(), e))
-                            }
-                        }
-                    }
-                    Err(e) => return Err(format!("Error reading local edit entry: {}", e)),
-                }
+    match block_on(
+        sqlx::query(
+            "SELECT name, head 
+             FROM branch_merges_pending;",
+        )
+        .fetch_all(&mut *sql_connection),
+    ) {
+        Ok(rows) => {
+            for row in rows {
+                let merge_pending = PendingBranchMerge {
+                    name: row.get("name"),
+                    head: row.get("head"),
+                };
+                res.push(merge_pending);
             }
+            Ok(res)
         }
-        Err(e) => return Err(format!("Error reading directory {:?}: {}", path, e)),
+        Err(e) => Err(format!("Error fetching merges pending: {}", e)),
     }
-    Ok(res)
 }
 
-pub fn clear_pending_branch_merges(workspace_root: &Path) {
-    let path = workspace_root.join(".lsc/branch_merge_pending");
-    match path.read_dir() {
-        Ok(dir_iterator) => {
-            for entry_res in dir_iterator {
-                match entry_res {
-                    Ok(entry) => {
-                        if let Err(e) = fs::remove_file(&entry.path()) {
-                            println!("Error removing file {}: {}", &entry.path().display(), e);
-                        }
-                    }
-                    Err(e) => {
-                        println!("Error reading local edit entry: {}", e);
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            println!("Error reading directory {}: {}", path.display(), e);
-        }
+pub fn clear_pending_branch_merges(
+    workspace_connection: &mut LocalWorkspaceConnection,
+) -> Result<(), String> {
+    let sql_connection = workspace_connection.sql();
+    let sql = "DELETE from branch_merges_pending;";
+    if let Err(e) = execute_sql(sql_connection, sql) {
+        return Err(format!("Error clearing pending branch merges: {}", e));
     }
+    Ok(())
 }
 
 fn find_latest_common_ancestor(
@@ -266,7 +262,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
 
     //record pending merge to record all parents in upcoming commit
     let pending = PendingBranchMerge::new(&src_branch);
-    if let Err(e) = save_pending_branch_merge(&workspace_root, &pending) {
+    if let Err(e) = save_pending_branch_merge(&mut workspace_connection, &pending) {
         errors.push(e);
     }
 

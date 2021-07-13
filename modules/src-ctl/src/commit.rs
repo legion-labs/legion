@@ -272,7 +272,7 @@ pub fn commit_local_changes(
     )?;
 
     let mut parent_commits = Vec::from([base_commit.id]);
-    for pending_branch_merge in read_pending_branch_merges(&workspace_root)? {
+    for pending_branch_merge in read_pending_branch_merges(workspace_connection)? {
         parent_commits.push(pending_branch_merge.head.clone());
     }
 
@@ -295,7 +295,9 @@ pub fn commit_local_changes(
         println!("Error making local files read only: {}", e);
     }
     clear_local_changes(workspace_connection, &local_changes);
-    clear_pending_branch_merges(&workspace_root);
+    if let Err(e) = clear_pending_branch_merges(workspace_connection) {
+        println!("{}", e);
+    }
     Ok(())
 }
 
