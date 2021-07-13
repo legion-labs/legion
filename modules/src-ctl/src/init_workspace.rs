@@ -31,13 +31,8 @@ pub fn init_workspace(
 
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_directory)?;
     init_local_changes_database(&mut workspace_connection)?;
+    init_resolve_pending_database(&mut workspace_connection)?;
 
-    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/resolve_pending")) {
-        return Err(format!(
-            "Error creating .lsc/resolve_pending directory: {}",
-            e
-        ));
-    }
     if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/tmp")) {
         return Err(format!("Error creating .lsc/tmp directory: {}", e));
     }

@@ -202,7 +202,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
                     workspace_branch.head.clone(),
                     String::from(commit_id),
                 );
-                if let Err(e) = save_resolve_pending(&workspace_root, &merge_pending) {
+                if let Err(e) = save_resolve_pending(&mut workspace_connection, &merge_pending) {
                     errors.push(format!(
                         "Error saving pending merge {}: {}",
                         relative_path, e

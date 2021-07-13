@@ -179,6 +179,7 @@ fn find_commit_ancestors(
 pub fn merge_branch_command(name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let mut connection = connect_to_server(&workspace_spec)?;
     let src_branch = read_branch_from_repo(&mut connection, name)?;
@@ -243,7 +244,7 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
                 if let Err(e) = edit_file_command(&full_path) {
                     errors.push(format!("Error editing {}: {}", full_path.display(), e));
                 }
-                if let Err(e) = save_resolve_pending(&workspace_root, &resolve_pending) {
+                if let Err(e) = save_resolve_pending(&mut workspace_connection, &resolve_pending) {
                     errors.push(format!("Error saving pending resolve {}: {}", path, e));
                 }
             } else {
