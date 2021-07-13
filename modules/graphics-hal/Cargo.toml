@@ -7,11 +7,15 @@ license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+vulkan = ["ash"]
+
 [dependencies]
 bitflags = "1.0"
 serde = { version="1", features=["serde_derive"] }
-ash = { version="0.32", optional=true }
 thiserror = "1"
 raw-window-handle = "0.3"
-drm-fourcc = { version="2.1", features=["serde"] }
 log = "0.4"
+# vulkan backend
+ash = { version="0.32", optional=true }
