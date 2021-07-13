@@ -476,12 +476,12 @@ pub trait CommandBuffer<B: Backend>: fmt::Debug + Any + Send + Sync {
     /// instance to draw.
     unsafe fn draw_indirect_count(
         &mut self,
-        _buffer: &B::Buffer,
-        _offset: buffer::Offset,
-        _count_buffer: &B::Buffer,
-        _count_buffer_offset: buffer::Offset,
-        _max_draw_count: u32,
-        _stride: buffer::Stride,
+        buffer: &B::Buffer,
+        offset: buffer::Offset,
+        count_buffer: &B::Buffer,
+        count_buffer_offset: buffer::Offset,
+        max_draw_count: u32,
+        stride: buffer::Stride,
     );
 
     /// Functions identically to `draw_indexed_indirect()`, except the amount of draw
@@ -494,12 +494,12 @@ pub trait CommandBuffer<B: Backend>: fmt::Debug + Any + Send + Sync {
     /// the vertex offset, which is an `i32`.
     unsafe fn draw_indexed_indirect_count(
         &mut self,
-        _buffer: &B::Buffer,
-        _offset: buffer::Offset,
-        _count_buffer: &B::Buffer,
-        _count_buffer_offset: buffer::Offset,
-        _max_draw_count: u32,
-        _stride: buffer::Stride,
+        buffer: &B::Buffer,
+        offset: buffer::Offset,
+        count_buffer: &B::Buffer,
+        count_buffer_offset: buffer::Offset,
+        max_draw_count: u32,
+        stride: buffer::Stride,
     );
 
     /// Dispatches `task_count` of threads. Similar to compute dispatch.

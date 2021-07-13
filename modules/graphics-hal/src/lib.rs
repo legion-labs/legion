@@ -25,7 +25,9 @@
 //! handle](device::Device), from which you can manage all the other device-specific
 //! resources.
 //!
-//! This crate is a fork of the graphics-hal crate that is in maintenance mode.
+//! This crate is a fork of the gfx-hal crate at 0.9.1 that is in maintenance mode.
+//! The crate is going to switch focus to vulkan compatibility layer, but the current
+//! basis fits our constraint 100%, making it a good basis.
 //!
 
 // BEGIN - Legion Labs lints v0.2
@@ -842,7 +844,7 @@ impl<T> Extend<T> for PseudoVec<T> {
 /// Each backend module, such as OpenGL or Metal, will implement this trait
 /// with its own concrete types.
 pub trait Backend: 'static + Sized + Eq + Clone + Hash + fmt::Debug + Any + Send + Sync {
-    /// The corresponding [instance][Instance] type for this backend.
+    /// The corresponding [instance](Instance) type for this backend.
     type Instance: Instance<Self>;
     /// The corresponding [physical device](adapter::PhysicalDevice) type for this backend.
     type PhysicalDevice: adapter::PhysicalDevice<Self>;
