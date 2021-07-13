@@ -13,9 +13,9 @@ vulkan = ["ash"]
 
 [dependencies]
 bitflags = "1.0"
-serde = { version="1", features=["serde_derive"] }
+serde = { version = "1", features = ["serde_derive"] }
 thiserror = "1"
 raw-window-handle = "0.3"
 log = "0.4"
 # vulkan backend
-ash = { version="0.32", optional=true }
+ash = { version = "0.32", optional = true }
