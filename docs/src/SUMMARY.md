@@ -1,6 +1,6 @@
 # Summary
 
-[**Legion**](./README.md)
+[**Introduction**](./README.md)
 
 # Features
 
