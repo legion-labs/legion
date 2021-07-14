@@ -1,3 +1,7 @@
+//! Legion core crate, contains core services and systems used by other modules
+//! The crate is not allowed to depend on other legion modules
+//!
+
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]

@@ -1,3 +1,6 @@
+//! Source control CLI
+//!
+
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]

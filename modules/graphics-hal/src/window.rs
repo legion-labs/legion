@@ -90,7 +90,7 @@ pub enum SwapchainError {
     /// Window in use
     #[error("Window is in use")]
     WindowInUse,
-    /// Accecssing the underlying NSView from wrong thread https://github.com/graphics-hal/gfx/issues/3704
+    /// Accecssing the underlying NSView from wrong thread
     #[error("Accecssing NSView from wrong thread")]
     WrongThread,
     /// Unknown error.
