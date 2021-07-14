@@ -683,7 +683,7 @@ impl crate::Instance<Backend> for Instance {
             RawWindowHandle::Xlib(handle)
                 if self.extensions.contains(&khr::XlibSurface::name()) =>
             {
-                Ok(self.create_surface_from_xlib(handle.display as *mut _, handle.window))
+                Ok(self.create_surface_from_xlib(handle.display.cast(), handle.window))
             }
             #[cfg(all(
                 unix,
@@ -692,7 +692,7 @@ impl crate::Instance<Backend> for Instance {
                 not(target_os = "ios")
             ))]
             RawWindowHandle::Xcb(handle) if self.extensions.contains(&khr::XcbSurface::name()) => {
-                Ok(self.create_surface_from_xcb(handle.connection as *mut _, handle.window))
+                Ok(self.create_surface_from_xcb(handle.connection.cast(), handle.window))
             }
             #[cfg(target_os = "android")]
             RawWindowHandle::Android(handle) => {

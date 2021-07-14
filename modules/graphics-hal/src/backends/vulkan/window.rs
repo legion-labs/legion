@@ -57,6 +57,7 @@ pub struct RawSurface {
 
 impl Instance {
     #[cfg(all(unix, not(target_os = "android"), not(target_os = "macos")))]
+    /// Create a surface from a xlib window
     pub fn create_surface_from_xlib(&self, dpy: *mut vk::Display, window: vk::Window) -> Surface {
         if !self.extensions.contains(&khr::XlibSurface::name()) {
             panic!("Vulkan driver does not support VK_KHR_XLIB_SURFACE");
@@ -77,6 +78,7 @@ impl Instance {
     }
 
     #[cfg(all(unix, not(target_os = "android"), not(target_os = "macos")))]
+    /// Create a surface from a xcb surface
     pub fn create_surface_from_xcb(
         &self,
         connection: *mut vk::xcb_connection_t,
@@ -101,6 +103,7 @@ impl Instance {
     }
 
     #[cfg(all(unix, not(target_os = "android")))]
+    /// create a surface from a wayland window
     pub fn create_surface_from_wayland(
         &self,
         display: *mut c_void,
