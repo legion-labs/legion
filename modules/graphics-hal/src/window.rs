@@ -254,7 +254,7 @@ pub trait PresentationSurface<B: Backend>: Surface<B> {
     unsafe fn configure_swapchain(
         &mut self,
         device: &B::Device,
-        config: SwapchainConfig,
+        config: &SwapchainConfig,
     ) -> Result<(), SwapchainError>;
 
     /// Remove the associated swapchain from this surface.

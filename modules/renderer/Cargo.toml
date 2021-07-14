@@ -4,9 +4,16 @@ version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
+build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gfx-hal = { path="../graphics-hal", package="legion-graphics-hal" }
+gfx-hal = { path = "../graphics-hal", package = "legion-graphics-hal" }
 log = "0.4"
+
+
+[target.'cfg(any(unix, windows))'.dependencies]
+gfx-hal = { path = "../graphics-hal", package = "legion-graphics-hal", features = [
+    "vulkan",
+] }

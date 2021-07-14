@@ -170,7 +170,7 @@ pub struct SubpassDesc<'a> {
 }
 
 /// A sub-pass borrow of a pass.
-#[derive(Debug, Clone, Copy, Eq)]
+#[derive(Debug)]
 pub struct Subpass<'a, B: Backend> {
     /// Index of the subpass
     pub index: SubpassId,
@@ -178,8 +178,21 @@ pub struct Subpass<'a, B: Backend> {
     pub main_pass: &'a B::RenderPass,
 }
 
+#[allow(clippy::expl_impl_clone_on_copy)]
+impl<'a, B: Backend> Clone for Subpass<'a, B> {
+    fn clone(&self) -> Self {
+        Subpass {
+            index: self.index,
+            main_pass: self.main_pass,
+        }
+    }
+}
+
 impl<'a, B: Backend> PartialEq for Subpass<'a, B> {
     fn eq(&self, other: &Self) -> bool {
         self.index == other.index && std::ptr::eq(self.main_pass, other.main_pass)
     }
 }
+
+impl<'a, B: Backend> Copy for Subpass<'a, B> {}
+impl<'a, B: Backend> Eq for Subpass<'a, B> {}

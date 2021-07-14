@@ -312,7 +312,7 @@ impl device::Device<Backend> for Device {
         Ok(())
     }
 
-    unsafe fn create_shader_module(&self, _: &[u8]) -> Result<(), device::ShaderError> {
+    unsafe fn create_shader_module(&self, _: &[u32]) -> Result<(), device::ShaderError> {
         Ok(())
     }
 
@@ -1088,7 +1088,7 @@ impl window::PresentationSurface<Backend> for Surface {
     unsafe fn configure_swapchain(
         &mut self,
         _: &Device,
-        _: window::SwapchainConfig,
+        _: &window::SwapchainConfig,
     ) -> Result<(), window::SwapchainError> {
         Ok(())
     }

@@ -485,7 +485,7 @@ where
         let extent = swap_config.extent;
         unsafe {
             surface
-                .configure_swapchain(&device, swap_config)
+                .configure_swapchain(&device, &swap_config)
                 .expect("Can't configure swapchain");
         };
 
@@ -605,12 +605,18 @@ where
         );
         let pipeline = {
             let vs_module = {
-                unsafe { device.create_shader_module(&include_bytes!("../data/quad.vert.spv")[..]) }
-                    .unwrap()
+                let shader = include_bytes!("../data/quad.vert.spv");
+                let shader = unsafe {
+                    std::slice::from_raw_parts(shader as *const u8 as *const u32, shader.len() / 4)
+                };
+                unsafe { device.create_shader_module(shader) }.unwrap()
             };
             let fs_module = {
-                unsafe { device.create_shader_module(&include_bytes!("../data/quad.frag.spv")[..]) }
-                    .unwrap()
+                let shader = include_bytes!("../data/quad.frag.spv");
+                let shader = unsafe {
+                    std::slice::from_raw_parts(shader as *const u8 as *const u32, shader.len() / 4)
+                };
+                unsafe { device.create_shader_module(shader) }.unwrap()
             };
 
             let pipeline = {
@@ -775,7 +781,7 @@ where
 
         unsafe {
             self.surface
-                .configure_swapchain(&self.device, swap_config)
+                .configure_swapchain(&self.device, &swap_config)
                 .expect("Can't create swapchain");
         }
     }
