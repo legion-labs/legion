@@ -365,23 +365,13 @@ impl Instance {
         let mut extensions: Vec<&'static CStr> = vec![khr::Surface::name()];
 
         // Platform-specific WSI extensions
-        if cfg!(all(
-            unix,
-            not(target_os = "android"),
-            not(target_os = "macos")
-        )) {
+        if cfg!(target_os = "linux") {
             extensions.push(khr::XlibSurface::name());
             extensions.push(khr::XcbSurface::name());
             extensions.push(khr::WaylandSurface::name());
         }
-        if cfg!(target_os = "android") {
-            extensions.push(khr::AndroidSurface::name());
-        }
         if cfg!(target_os = "windows") {
             extensions.push(khr::Win32Surface::name());
-        }
-        if cfg!(target_os = "macos") {
-            extensions.push(ash::extensions::mvk::MacOSSurface::name());
         }
 
         extensions.push(ext::DebugUtils::name());
@@ -663,40 +653,21 @@ impl crate::Instance<Backend> for Instance {
         use raw_window_handle::RawWindowHandle;
 
         match has_handle.raw_window_handle() {
-            #[cfg(all(
-                unix,
-                not(target_os = "android"),
-                not(target_os = "macos"),
-                not(target_os = "solaris")
-            ))]
+            #[cfg(target_os = "linux")]
             RawWindowHandle::Wayland(handle)
                 if self.extensions.contains(&khr::WaylandSurface::name()) =>
             {
                 Ok(self.create_surface_from_wayland(handle.display, handle.surface))
             }
-            #[cfg(all(
-                unix,
-                not(target_os = "android"),
-                not(target_os = "macos"),
-                not(target_os = "solaris")
-            ))]
+            #[cfg(target_os = "linux")]
             RawWindowHandle::Xlib(handle)
                 if self.extensions.contains(&khr::XlibSurface::name()) =>
             {
                 Ok(self.create_surface_from_xlib(handle.display.cast(), handle.window))
             }
-            #[cfg(all(
-                unix,
-                not(target_os = "android"),
-                not(target_os = "macos"),
-                not(target_os = "ios")
-            ))]
+            #[cfg(target_os = "linux")]
             RawWindowHandle::Xcb(handle) if self.extensions.contains(&khr::XcbSurface::name()) => {
                 Ok(self.create_surface_from_xcb(handle.connection.cast(), handle.window))
-            }
-            #[cfg(target_os = "android")]
-            RawWindowHandle::Android(handle) => {
-                Ok(self.create_surface_android(handle.a_native_window))
             }
             #[cfg(windows)]
             RawWindowHandle::Windows(handle) => {
@@ -705,8 +676,6 @@ impl crate::Instance<Backend> for Instance {
                 let hinstance = GetModuleHandleW(std::ptr::null());
                 Ok(self.create_surface_from_hwnd(hinstance.cast(), handle.hwnd))
             }
-            #[cfg(target_os = "macos")]
-            RawWindowHandle::MacOS(handle) => Ok(self.create_surface_from_ns_view(handle.ns_view)),
             _ => Err(crate::window::InitError::UnsupportedWindowHandle),
         }
     }
@@ -806,26 +775,10 @@ impl queue::QueueFamily for QueueFamily {
     }
 }
 
-#[allow(dead_code)]
 struct DeviceExtensionFunctions {
     mesh_shaders: Option<ExtensionFn<MeshShader>>,
     draw_indirect_count: Option<ExtensionFn<khr::DrawIndirectCount>>,
     display_control: Option<vk::ExtDisplayControlFn>,
-    memory_requirements2: Option<ExtensionFn<vk::KhrGetMemoryRequirements2Fn>>,
-    // The extension does not have its own functions.
-    dedicated_allocation: Option<ExtensionFn<()>>,
-    // The extension does not have its own functions.
-    external_memory: Option<ExtensionFn<()>>,
-    external_memory_host: Option<vk::ExtExternalMemoryHostFn>,
-    #[cfg(windows)]
-    external_memory_win32: Option<vk::KhrExternalMemoryWin32Fn>,
-    #[cfg(unix)]
-    external_memory_fd: Option<khr::ExternalMemoryFd>,
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    // The extension does not have its own functions.
-    external_memory_dma_buf: Option<()>,
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    image_drm_format_modifier: Option<vk::ExtImageDrmFormatModifierFn>,
 }
 
 // TODO there's no reason why this can't be unified--the function pointers should all be the same--it's not clear how to do this with `ash`.

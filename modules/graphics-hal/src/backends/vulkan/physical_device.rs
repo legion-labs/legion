@@ -4,8 +4,6 @@ use ash::{
     vk,
 };
 
-#[cfg(unix)]
-use ash::extensions::khr::ExternalMemoryFd;
 use log::{debug, error, warn};
 
 use crate::{
@@ -13,8 +11,8 @@ use crate::{
     device::{CreationError, OutOfMemory},
     display, format, image,
     pso::PatchSize,
-    queue, DescriptorLimits, DownlevelProperties, DynamicStates, ExternalMemoryLimits, Features,
-    Limits, PhysicalDeviceProperties,
+    queue, DescriptorLimits, DownlevelProperties, DynamicStates, Features, Limits,
+    PhysicalDeviceProperties,
 };
 
 use std::{ffi::CStr, fmt, mem, panic, ptr, sync::Arc};
@@ -443,13 +441,6 @@ impl PhysicalDeviceFeatures {
             bits |= Features::CONSERVATIVE_RASTERIZATION;
         }
 
-        if info.api_version() >= Version::V1_1
-            || (info.supports_extension(vk::KhrGetPhysicalDeviceProperties2Fn::name())
-                && info.supports_extension(vk::KhrExternalMemoryFn::name()))
-        {
-            bits |= Features::EXTERNAL_MEMORY;
-        }
-
         if let Some(ref vulkan_1_2) = self.vulkan_1_2 {
             if vulkan_1_2.shader_sampled_image_array_non_uniform_indexing != 0 {
                 bits |= Features::SAMPLED_TEXTURE_DESCRIPTOR_INDEXING;
@@ -595,31 +586,6 @@ impl PhysicalDeviceInfo {
             requested_extensions.push(vk::ExtDisplayControlFn::name());
         }
 
-        if requested_features.contains(Features::EXTERNAL_MEMORY) {
-            if self.api_version() < Version::V1_1 {
-                requested_extensions.push(vk::KhrGetPhysicalDeviceProperties2Fn::name());
-                requested_extensions.push(vk::KhrExternalMemoryFn::name());
-
-                // External memory interact with DedicatedAllocation extension, but it is not a strict dependency.
-                requested_extensions.push(vk::KhrGetMemoryRequirements2Fn::name()); // TODO Functions should be added because they are useful
-                requested_extensions.push(vk::KhrDedicatedAllocationFn::name());
-            }
-
-            requested_extensions.push(vk::ExtExternalMemoryHostFn::name());
-            #[cfg(window)]
-            requested_extensions.push(vk::KhrExternalMemoryWin32Fn::name());
-            #[cfg(unix)]
-            {
-                requested_extensions.push(vk::KhrExternalMemoryFdFn::name());
-                requested_extensions.push(vk::ExtExternalMemoryDmaBufFn::name());
-
-                requested_extensions.push(vk::KhrBindMemory2Fn::name());
-
-                requested_extensions.push(vk::KhrImageFormatListFn::name());
-                requested_extensions.push(vk::KhrSamplerYcbcrConversionFn::name());
-                requested_extensions.push(vk::ExtImageDrmFormatModifierFn::name());
-            }
-        }
         requested_extensions
     }
 
@@ -825,138 +791,6 @@ impl PhysicalDevice {
             None
         };
 
-        let memory_requirements2 =
-            if enabled_extensions.contains(&vk::KhrGetMemoryRequirements2Fn::name()) {
-                Some(ExtensionFn::Extension(
-                    vk::KhrGetMemoryRequirements2Fn::load(|name| {
-                        std::mem::transmute(
-                            self.instance
-                                .inner
-                                .get_device_proc_addr(device_raw.handle(), name.as_ptr()),
-                        )
-                    }),
-                ))
-            } else {
-                None
-            };
-
-        let dedicated_allocation;
-        let external_memory;
-        let external_memory_host;
-
-        #[cfg(unix)]
-        let external_memory_fd;
-
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        let external_memory_dma_buf;
-
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        let image_drm_format_modifier;
-
-        #[cfg(windows)]
-        let external_memory_win32;
-
-        if requested_features.contains(Features::EXTERNAL_MEMORY) {
-            if self.device_info.api_version() < Version::V1_1 {
-                external_memory = if enabled_extensions.contains(&vk::KhrExternalMemoryFn::name()) {
-                    Some(ExtensionFn::Extension(()))
-                } else {
-                    None
-                };
-
-                // External memory interact with DedicatedAllocation extension, but it is not a strict dependency.
-                dedicated_allocation =
-                    if enabled_extensions.contains(&vk::KhrDedicatedAllocationFn::name()) {
-                        Some(ExtensionFn::Extension(()))
-                    } else {
-                        None
-                    };
-            } else {
-                external_memory = Some(ExtensionFn::Promoted);
-                dedicated_allocation = Some(ExtensionFn::Promoted);
-            }
-
-            external_memory_host =
-                if enabled_extensions.contains(&vk::ExtExternalMemoryHostFn::name()) {
-                    Some(vk::ExtExternalMemoryHostFn::load(|name| {
-                        std::mem::transmute(
-                            self.instance
-                                .inner
-                                .get_device_proc_addr(device_raw.handle(), name.as_ptr()),
-                        )
-                    }))
-                } else {
-                    None
-                };
-
-            #[cfg(windows)]
-            {
-                external_memory_win32 =
-                    if enabled_extensions.contains(&vk::KhrExternalMemoryWin32Fn::name()) {
-                        Some(vk::KhrExternalMemoryWin32Fn::load(|name| {
-                            std::mem::transmute(
-                                self.instance
-                                    .inner
-                                    .get_device_proc_addr(device_raw.handle(), name.as_ptr()),
-                            )
-                        }))
-                    } else {
-                        None
-                    };
-            }
-            #[cfg(unix)]
-            {
-                external_memory_fd = if enabled_extensions.contains(&ExternalMemoryFd::name()) {
-                    Some(ExternalMemoryFd::new(&self.instance.inner, &device_raw))
-                } else {
-                    None
-                };
-
-                #[cfg(any(target_os = "linux", target_os = "android"))]
-                {
-                    external_memory_dma_buf =
-                        if enabled_extensions.contains(&vk::ExtExternalMemoryDmaBufFn::name()) {
-                            Some(())
-                        } else {
-                            None
-                        };
-
-                    image_drm_format_modifier =
-                        if enabled_extensions.contains(&vk::ExtImageDrmFormatModifierFn::name()) {
-                            Some(vk::ExtImageDrmFormatModifierFn::load(|name| {
-                                std::mem::transmute(
-                                    self.instance
-                                        .inner
-                                        .get_device_proc_addr(device_raw.handle(), name.as_ptr()),
-                                )
-                            }))
-                        } else {
-                            None
-                        };
-                }
-            }
-        } else {
-            dedicated_allocation = None;
-            external_memory = None;
-            external_memory_host = None;
-
-            #[cfg(unix)]
-            {
-                external_memory_fd = None;
-            }
-
-            #[cfg(any(target_os = "linux", target_os = "android"))]
-            {
-                external_memory_dma_buf = None;
-                image_drm_format_modifier = None;
-            }
-
-            #[cfg(windows)]
-            {
-                external_memory_win32 = None;
-            }
-        }
-
         let device = Device {
             shared: Arc::new(RawDevice {
                 raw: device_raw,
@@ -967,18 +801,6 @@ impl PhysicalDevice {
                     mesh_shaders: mesh_fn,
                     draw_indirect_count: indirect_count_fn,
                     display_control,
-                    memory_requirements2,
-                    dedicated_allocation,
-                    external_memory,
-                    external_memory_host,
-                    #[cfg(unix)]
-                    external_memory_fd,
-                    #[cfg(windows)]
-                    external_memory_win32,
-                    #[cfg(any(target_os = "linux", target_os = "android"))]
-                    external_memory_dma_buf,
-                    #[cfg(any(target_os = "linux", target_os = "android"))]
-                    image_drm_format_modifier,
                 },
                 flip_y_requires_shift: self.device_info.api_version() >= Version::V1_1
                     || self
@@ -1501,7 +1323,6 @@ impl adapter::PhysicalDevice<Backend> for PhysicalDevice {
         let mut descriptor_indexing_capabilities = crate::DescriptorIndexingProperties::default();
         let mut mesh_shader_capabilities = crate::MeshShaderProperties::default();
         let mut sampler_reduction_capabilities = crate::SamplerReductionProperties::default();
-        let mut external_memory_limits = crate::ExternalMemoryLimits::default();
 
         if let Some(get_physical_device_properties) =
             self.instance.get_physical_device_properties.as_ref()
@@ -1593,11 +1414,6 @@ impl adapter::PhysicalDevice<Backend> for PhysicalDevice {
                     .filter_minmax_image_component_mapping
                     == vk::TRUE,
             };
-
-            external_memory_limits = ExternalMemoryLimits {
-                min_imported_host_pointer_alignment: memory_host_properties
-                    .min_imported_host_pointer_alignment,
-            };
         }
 
         PhysicalDeviceProperties {
@@ -1608,7 +1424,6 @@ impl adapter::PhysicalDevice<Backend> for PhysicalDevice {
             performance_caveats: Default::default(),
             dynamic_pipeline_states: DynamicStates::all(),
             downlevel: DownlevelProperties::all_enabled(),
-            external_memory_limits,
         }
     }
 

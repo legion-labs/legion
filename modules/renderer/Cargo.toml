@@ -13,7 +13,7 @@ gfx-hal = { path = "../graphics-hal", package = "legion-graphics-hal" }
 log = "0.4"
 
 
-[target.'cfg(any(unix, windows))'.dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 gfx-hal = { path = "../graphics-hal", package = "legion-graphics-hal", features = [
     "vulkan",
 ] }
