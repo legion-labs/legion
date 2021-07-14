@@ -17,7 +17,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Check for formatting
         run: cargo fmt --all -- --check
 
@@ -124,7 +124,7 @@ jobs:
           mdbook build ./docs/
           mv ./target/book/ ./target/doc/
           echo "<meta http-equiv=\"refresh\" content=\"0; URL=book/index.html\"/>" > target/doc/index.html
-    
+
       - uses: actions/upload-artifact@v2
         with:
           name: docs
@@ -140,7 +140,7 @@ jobs:
         with:
           name: docs
           path: ./target/doc
-          
+
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
