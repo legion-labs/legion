@@ -1,7 +1,7 @@
+use std::fs;
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
-use std::fs;
 
 fn main() {
     let listener = TcpListener::bind("0.0.0.0:80").unwrap();
@@ -13,10 +13,9 @@ fn main() {
     }
 }
 
-
 fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
-    stream.read(&mut buffer).unwrap();
+    stream.read_exact(&mut buffer).unwrap();
 
     let get = b"GET / HTTP/1.1\r\n";
 
@@ -35,6 +34,6 @@ fn handle_connection(mut stream: TcpStream) {
         contents
     );
 
-    stream.write(response.as_bytes()).unwrap();
+    stream.write_all(response.as_bytes()).unwrap();
     stream.flush().unwrap();
 }
