@@ -78,6 +78,7 @@
 #![allow()]
 
 pub mod decimal;
+mod ecs;
 pub mod memory;
 pub mod trust_cell;
 
