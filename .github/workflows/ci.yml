@@ -1,4 +1,4 @@
-name: Legion CI
+name: CI
 
 on:
   push:
@@ -21,15 +21,15 @@ jobs:
       - name: Check for formatting
         run: cargo fmt --all -- --check
 
-      - name: Validate docs
-        run: cargo doc --workspace --no-deps
+      - name: Run Check
+        run: cargo check --locked --all-targets --all-features
 
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
 
       - name: Run Cargo Deny
         run: cargo deny check
-    
+
   test:
     name: Running tests
     needs: lint
@@ -52,7 +52,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Build
         run: >-
           docker run
@@ -83,9 +83,9 @@ jobs:
           ${{ matrix.container }}
           cargo bench
 
-  docs:
-    name: Generating & deploying docs
-    needs: test
+  build_docs:
+    name: Building the docs
+    needs: lint
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
@@ -94,13 +94,28 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v2
-      
-      - name: Build
+
+      - name: Build docs
         run: |
           cargo doc --workspace --no-deps --all-features
           mdbook build ./docs/
           mv ./target/book/ ./target/doc/
           echo "<meta http-equiv=\"refresh\" content=\"0; URL=book/index.html\"/>" > target/doc/index.html
+    
+      - uses: actions/upload-artifact@v2
+        with:
+          name: docs
+          path: ./target/doc
+
+  deploy_docs:
+    name: Deploying docs
+    needs: [test, build_docs]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: docs
+          path: ./target/doc
           
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
