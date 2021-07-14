@@ -1,4 +1,4 @@
-name: Docker Image Release
+name: Docker Image Release (Test)
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
           IMAGE_TAG: 1.0.0
         run: |
           echo "Building Docker image"  
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./tests/deployment/
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f ./tests/deployment/Dockerfile .
           echo "Pushing image to ECR..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
