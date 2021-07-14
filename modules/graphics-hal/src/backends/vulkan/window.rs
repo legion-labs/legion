@@ -56,7 +56,7 @@ pub struct RawSurface {
 }
 
 impl Instance {
-    #[cfg(all(unix, not(target_os = "android"), not(target_os = "macos")))]
+    #[cfg(target_os = "linux")]
     /// Create a surface from a xlib window
     pub fn create_surface_from_xlib(&self, dpy: *mut vk::Display, window: vk::Window) -> Surface {
         if !self.extensions.contains(&khr::XlibSurface::name()) {
@@ -77,7 +77,7 @@ impl Instance {
         self.create_surface_from_vk_surface_khr(surface)
     }
 
-    #[cfg(all(unix, not(target_os = "android"), not(target_os = "macos")))]
+    #[cfg(target_os = "linux")]
     /// Create a surface from a xcb surface
     pub fn create_surface_from_xcb(
         &self,
@@ -102,7 +102,7 @@ impl Instance {
         self.create_surface_from_vk_surface_khr(surface)
     }
 
-    #[cfg(all(unix, not(target_os = "android")))]
+    #[cfg(target_os = "linux")]
     /// create a surface from a wayland window
     pub fn create_surface_from_wayland(
         &self,
@@ -126,20 +126,6 @@ impl Instance {
         self.create_surface_from_vk_surface_khr(surface)
     }
 
-    #[cfg(target_os = "android")]
-    pub fn create_surface_android(&self, window: *const c_void) -> Surface {
-        let surface = {
-            let a_loader = khr::AndroidSurface::new(&self.entry, &self.raw.inner);
-            let info = vk::AndroidSurfaceCreateInfoKHR::builder()
-                .flags(vk::AndroidSurfaceCreateFlagsKHR::empty())
-                .window(window as *mut _);
-
-            unsafe { a_loader.create_android_surface(&info, None) }.expect("AndroidSurface failed")
-        };
-
-        self.create_surface_from_vk_surface_khr(surface)
-    }
-
     #[cfg(windows)]
     /// Create a surface from a native Windows window handle
     pub fn create_surface_from_hwnd(&self, hinstance: *mut c_void, hwnd: *mut c_void) -> Surface {
@@ -157,61 +143,6 @@ impl Instance {
                 win32_loader
                     .create_win32_surface(&info, None)
                     .expect("Unable to create Win32 surface")
-            }
-        };
-
-        self.create_surface_from_vk_surface_khr(surface)
-    }
-
-    #[cfg(target_os = "macos")]
-    pub fn create_surface_from_ns_view(&self, view: *mut c_void) -> Surface {
-        use ash::extensions::mvk;
-        use core_graphics_types::{base::CGFloat, geometry::CGRect};
-        use objc::runtime::{Object, BOOL, YES};
-
-        // TODO: this logic is duplicated from gfx-backend-metal, refactor?
-        unsafe {
-            let view = view as *mut Object;
-            let existing: *mut Object = msg_send![view, layer];
-            let class = class!(CAMetalLayer);
-
-            let use_current = if existing.is_null() {
-                false
-            } else {
-                let result: BOOL = msg_send![existing, isKindOfClass: class];
-                result == YES
-            };
-
-            if !use_current {
-                let layer: *mut Object = msg_send![class, new];
-                let () = msg_send![view, setLayer: layer];
-                let bounds: CGRect = msg_send![view, bounds];
-                let () = msg_send![layer, setBounds: bounds];
-
-                let window: *mut Object = msg_send![view, window];
-                if !window.is_null() {
-                    let scale_factor: CGFloat = msg_send![window, backingScaleFactor];
-                    let () = msg_send![layer, setContentsScale: scale_factor];
-                }
-            }
-        }
-
-        if !self.extensions.contains(&mvk::MacOSSurface::name()) {
-            panic!("Vulkan driver does not support VK_MVK_MACOS_SURFACE");
-        }
-
-        let surface = {
-            let mac_os_loader = mvk::MacOSSurface::new(&self.entry, &self.raw.inner);
-            let mut info = vk::MacOSSurfaceCreateInfoMVK::builder()
-                .flags(vk::MacOSSurfaceCreateFlagsMVK::empty());
-            if let Some(view) = unsafe { view.as_ref() } {
-                info = info.view(view);
-            }
-
-            unsafe {
-                mac_os_loader
-                    .create_mac_os_surface_mvk(&info, None)
-                    .expect("Unable to create macOS surface")
             }
         };
 
