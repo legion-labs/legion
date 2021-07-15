@@ -1,9 +1,4 @@
-use std::borrow::Borrow;
-use std::cell::RefCell;
-use std::rc::{Rc, Weak};
-
-pub type EntityIdentifier = u64;
-const INVALID_ID: EntityIdentifier = 0;
+use std::{cell::RefCell, ops::AddAssign};
 
 pub struct Entity {
     id: EntityIdentifier,
@@ -12,85 +7,121 @@ pub struct Entity {
 pub trait Component {}
 
 pub struct World {
+    id: WorldIdentifier,
     name: String,
     entities: Vec<Entity>,
-    // todo add weak reference to Project
-    project_data: Weak<RefCell<ProjectData>>,
+    // project: Weak<RefCell<Project>>,
 }
 
 impl World {
-    pub fn new(name: String, project: &Project) -> Self {
+    pub fn new(id: WorldIdentifier, name: String, project: &Project) -> Self {
         Self {
+            id,
             name,
             entities: Vec::new(),
-            project_data: Rc::downgrade(&project.data),
+            // project: Rc::downgrade(&project),
         }
     }
 
-    fn create_entity(&mut self) -> EntityIdentifier {
-        if let Some(project_data) = self.project_data.borrow().upgrade() {
-            let project_data = (*project_data).borrow();
-            let mut id_generator = project_data.id_generator.borrow_mut();
-            let id = id_generator.get_new_id();
-            self.entities.push(Entity { id });
-            return id;
-        }
-        INVALID_ID
+    fn create_entity(&mut self, id: EntityIdentifier) -> EntityIdentifier {
+        self.entities.push(Entity { id });
+        id
+    }
+
+    fn create_entity_with_project(&mut self, project: &Project) -> EntityIdentifier {
+        self.create_entity(project.get_new_entity_id())
+    }
+}
+trait One {
+    fn one() -> Self;
+}
+
+pub type EntityIdentifier = u64;
+//const INVALID_ENTITY_ID: EntityIdentifier = EntityIdentifier::MAX;
+
+impl One for EntityIdentifier {
+    fn one() -> Self {
+        1
     }
 }
 
-struct EntityIdentifierGenerator {
-    next_valid_id: EntityIdentifier,
+pub type WorldIdentifier = u16;
+//const INVALID_WORLD_ID: WorldIdentifier = WorldIdentifier::MAX;
+
+impl One for WorldIdentifier {
+    fn one() -> Self {
+        1
+    }
 }
 
-impl EntityIdentifierGenerator {
+struct IdentifierGenerator<T>
+where
+    T: AddAssign + Copy + Default + One,
+{
+    next_valid_id: T,
+}
+
+impl<T> IdentifierGenerator<T>
+where
+    T: AddAssign + Copy + Default + One,
+{
     fn new() -> Self {
         Self {
-            next_valid_id: INVALID_ID,
+            next_valid_id: T::default(),
         }
     }
 
-    fn get_new_id(&mut self) -> EntityIdentifier {
-        self.next_valid_id += 1;
+    fn get_new_id(&mut self) -> T {
+        self.next_valid_id += T::one();
         self.next_valid_id
     }
 }
 
-struct ProjectData {
-    name: String,
-    worlds: Vec<World>,
-    id_generator: RefCell<EntityIdentifierGenerator>,
-}
-
-impl ProjectData {
-    pub fn create_world<'w>(&mut self, name: String, project: &'w Project) {
-        let world = World::new(name, project);
-        self.worlds.push(world);
-    }
-}
-
 pub struct Project {
-    data: Rc<RefCell<ProjectData>>,
+    name: String,
+    world_id_generator: IdentifierGenerator<WorldIdentifier>,
+    worlds: Vec<World>,
+    entity_id_generator: RefCell<IdentifierGenerator<EntityIdentifier>>,
 }
 
 impl Project {
     pub fn new(name: String) -> Self {
         Self {
-            data: Rc::new(RefCell::new(ProjectData {
-                name,
-                worlds: Vec::new(),
-                id_generator: RefCell::new(EntityIdentifierGenerator::new()),
-            })),
+            name,
+            world_id_generator: IdentifierGenerator::<WorldIdentifier>::new(),
+            worlds: Vec::new(),
+            entity_id_generator: RefCell::new(IdentifierGenerator::<EntityIdentifier>::new()),
         }
     }
 
-    pub fn create_world(&mut self, name: String) {
-        (*self.data).borrow_mut().create_world(name, self);
+    // World management
+
+    pub fn create_world(&mut self, name: String) -> WorldIdentifier {
+        let id = self.world_id_generator.get_new_id();
+        let world = World::new(id, name, self);
+        self.worlds.push(world);
+        id
     }
 
-    // pub fn get_worlds(&self) -> &Vec<World> {
-    //     &(*self.data).borrow().worlds
-    // }
+    pub fn get_world(&self, id: WorldIdentifier) -> Option<&World> {
+        if let Some(world) = self.worlds.iter().find(|&world| world.id == id) {
+            Some(world)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_world_mut(&mut self, id: WorldIdentifier) -> Option<&mut World> {
+        if let Some(world) = self.worlds.iter_mut().find(|world| world.id == id) {
+            Some(world)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_new_entity_id(&self) -> EntityIdentifier {
+        self.entity_id_generator.borrow_mut().get_new_id()
+    }
 }
 
 #[cfg(test)]
@@ -102,21 +133,23 @@ mod tests {
         let mut project = Project::new("test project".to_string());
 
         {
-            project.create_world("test world".to_string());
+            let world_id = project.create_world("test world".to_string());
+
+            let entity_id = project.get_new_entity_id();
+
+            if let Some(world) = project.get_world_mut(world_id) {
+                //let entity = project.create_entity(world);
+
+                //let entity = world.create_entity_with_project(&project);
+
+                let entity = world.create_entity(entity_id);
+
+                println!("entity created {:?}", entity);
+            }
         }
 
         {
-            let mut project_data = (*project.data).borrow_mut();
-            let world = project_data.worlds.iter_mut().next().unwrap();
-
-            //let entity = project.create_entity(world);
-            let entity = world.create_entity();
-
-            println!("entity created {:?}", entity);
-        }
-
-        {
-            let _world = project.create_world("another world".to_string());
+            let _world_id = project.create_world("another world".to_string());
         }
     }
 }
