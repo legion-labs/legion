@@ -77,7 +77,7 @@
 
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_src_ctl::*;
-use std::path::Path;
+use std::path::{Path,PathBuf};
 
 fn main() {
     if let Err(e) = main_impl() {
@@ -104,9 +104,15 @@ fn main_impl() -> Result<(), String> {
             SubCommand::with_name("init-remote-repository")
                 .about("Initializes a repository stored on a remote server")
                 .arg(
-                    Arg::with_name("blob-directory")
-                        .required(true)
+                    Arg::with_name("local-blob-directory")
+                        .value_name("local-blob-directory")
+                        .long("local-blob-directory")
                         .help("local blob storage"))
+                .arg(
+                    Arg::with_name("s3-storage-uri")
+                        .value_name("s3-storage-uri")
+                        .long("s3-storage-uri")
+                        .help("s3://bucket/path/to/folder"))
                 .arg(
                     Arg::with_name("host")
                         .required(true)
@@ -128,6 +134,11 @@ fn main_impl() -> Result<(), String> {
             SubCommand::with_name("init-workspace")
                 .about("Initializes a workspace and populates it with the latest version of the main branch")
                 .arg(
+                    Arg::with_name("local-blob-directory")  //todo: move to the repository metadata
+                        .value_name("local-blob-directory")
+                        .long("local-blob-directory")
+                        .help("local blob storage"))
+                .arg(
                     Arg::with_name("workspace-directory")
                         .required(true)
                         .help("lsc workspace directory"))
@@ -135,10 +146,6 @@ fn main_impl() -> Result<(), String> {
                     Arg::with_name("repository-uri")
                         .required(true)
                         .help("uri printed at the creation of the repository"))
-                .arg(
-                    Arg::with_name("blob-store-uri")
-                        .required(true)
-                        .help("also printed at the creation of the repository"))
         )
         .subcommand(
             SubCommand::with_name("add")
@@ -318,22 +325,31 @@ fn main_impl() -> Result<(), String> {
             )) {
                 Ok(addr) => {
                     println!("repository uri: {}", addr.repo_uri);
-                    println!("blob store uri: {}", addr.blob_dir.display());
+                    println!("blob store uri: {}", addr.blob_store);
                     Ok(())
                 }
                 Err(e) => Err(e),
             }
         }
         ("init-remote-repository", Some(command_match)) => {
-            let blob_dir = Path::new(command_match.value_of("blob-directory").unwrap());
+            let blob_storage;
+            if let Some(dir) = command_match.value_of("local-blob-directory") {
+                blob_storage = BlobStorageSpec::LocalDirectory(PathBuf::from(dir));
+            } else if let Some(uri) = command_match.value_of("s3-storage-uri") {
+                blob_storage = BlobStorageSpec::S3Uri(uri.to_string());
+            } else {
+                return Err(String::from(
+                    "local-blob-directory or s3-storage-uri need to be specified",
+                ));
+            }
             let host = command_match.value_of("host").unwrap();
             let username = command_match.value_of("username").unwrap();
             let password = command_match.value_of("password").unwrap_or("");
             let name = command_match.value_of("name").unwrap();
-            match init_remote_repository(blob_dir, host, username, password, name) {
+            match init_remote_repository(&blob_storage, host, username, password, name) {
                 Ok(addr) => {
                     println!("repository uri: {}", addr.repo_uri);
-                    println!("blob store uri: {}", addr.blob_dir.display());
+                    println!("blob store uri: {}", addr.blob_store);
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -342,7 +358,7 @@ fn main_impl() -> Result<(), String> {
         ("init-workspace", Some(command_match)) => init_workspace(
             Path::new(command_match.value_of("workspace-directory").unwrap()),
             command_match.value_of("repository-uri").unwrap(),
-            command_match.value_of("blob-store-uri").unwrap(),
+            command_match.value_of("local-blob-directory").unwrap(),
         ),
         ("add", Some(command_match)) => {
             track_new_file_command(Path::new(command_match.value_of("path").unwrap()))

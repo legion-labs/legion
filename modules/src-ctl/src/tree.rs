@@ -255,22 +255,6 @@ pub fn update_tree_from_changes(
     Err(String::from("root tree not processed"))
 }
 
-pub fn read_blob(connection: &mut RepositoryConnection, hash: &str) -> Result<String, String> {
-    assert!(!hash.is_empty());
-    let blob_path = connection.blob_directory().join(hash);
-    lz4_read(&blob_path)
-}
-
-pub fn download_blob(
-    connection: &mut RepositoryConnection,
-    local_path: &Path,
-    hash: &str,
-) -> Result<(), String> {
-    assert!(!hash.is_empty());
-    let blob_path = connection.blob_directory().join(hash);
-    lz4_decompress(&blob_path, local_path)
-}
-
 pub fn remove_dir_rec(
     connection: &mut RepositoryConnection,
     local_path: &Path,
@@ -347,7 +331,7 @@ pub fn download_tree(
         for relative_file_node in tree.file_nodes {
             let abs_path = PathBuf::from(&dir_node.name).join(relative_file_node.name);
             println!("writing {}", abs_path.display());
-            if let Err(e) = download_blob(connection, &abs_path, &relative_file_node.hash) {
+            if let Err(e) = connection.download_blob(&abs_path, &relative_file_node.hash) {
                 errors.push(format!(
                     "Error downloading blob {} to {}: {}",
                     &relative_file_node.hash,

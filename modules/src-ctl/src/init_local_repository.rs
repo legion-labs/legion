@@ -56,7 +56,10 @@ pub fn init_local_repository(directory: &Path) -> Result<RepositoryAddr, String>
         return Err(format!("Error creating blobs directory: {}", e));
     }
 
-    let addr = RepositoryAddr { repo_uri, blob_dir };
+    let addr = RepositoryAddr {
+        repo_uri,
+        blob_store: BlobStorageSpec::LocalDirectory(blob_dir),
+    };
     let mut repo_connection = RepositoryConnection::new(&addr)?;
 
     init_repo_database(&mut repo_connection)?;

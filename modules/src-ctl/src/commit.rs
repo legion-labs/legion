@@ -3,7 +3,6 @@ use chrono::prelude::*;
 use futures::executor::block_on;
 use sha2::{Digest, Sha256};
 use sqlx::Row;
-use std::fs;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -192,21 +191,11 @@ pub fn commit_exists(connection: &mut RepositoryConnection, id: &str) -> bool {
     count > 0
 }
 
-fn write_blob(file_path: &Path, contents: &[u8]) -> Result<(), String> {
-    if fs::metadata(file_path).is_ok() {
-        //blob already exists
-        return Ok(());
-    }
-
-    lz4_compress_to_file(file_path, contents)
-}
-
 fn upload_localy_edited_blobs(
     workspace_root: &Path,
     repo_connection: &RepositoryConnection,
     local_changes: &[LocalChange],
 ) -> Result<Vec<HashedChange>, String> {
-    let blob_dir = repo_connection.blob_directory();
     let mut res = Vec::<HashedChange>::new();
     for local_change in local_changes {
         if local_change.change_type == ChangeType::Delete {
@@ -219,7 +208,7 @@ fn upload_localy_edited_blobs(
             let local_path = workspace_root.join(&local_change.relative_path);
             let local_file_contents = read_bin_file(&local_path)?;
             let hash = format!("{:X}", Sha256::digest(&local_file_contents));
-            write_blob(&blob_dir.join(&hash), &local_file_contents)?;
+            repo_connection.write_blob(&hash, &local_file_contents)?;
             res.push(HashedChange {
                 relative_path: local_change.relative_path.clone(),
                 hash: hash.clone(),

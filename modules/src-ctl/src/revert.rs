@@ -70,7 +70,7 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
                 return Err(String::from("Original file not found in tree"));
             }
         }
-        download_blob(&mut connection, &abs_path, &file_node.hash)?;
+        connection.download_blob(&abs_path, &file_node.hash)?;
         make_file_read_only(&abs_path, true)?;
     }
     clear_local_change(&mut workspace_connection, &local_change)?;
