@@ -77,6 +77,7 @@
 #![allow()]
 
 pub mod attach_branch;
+pub mod blob_storage_spec;
 pub mod branch;
 pub mod commit;
 pub mod config;
@@ -104,6 +105,7 @@ pub mod utils;
 pub mod workspace;
 
 pub use attach_branch::*;
+pub use blob_storage_spec::*;
 pub use branch::*;
 pub use commit::*;
 pub use config::*;
