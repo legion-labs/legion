@@ -5,7 +5,7 @@ ENV TZ=Etc/UTC \
     APP=/usr/src/app
 
 COPY tests/deployment/static/* ${APP}/static/
-COPY target/release/hello-legionlabs ${APP}/
+COPY target/release/deployment-tests ${APP}/
 
 RUN addgroup $APP_USER && useradd -g $APP_USER $APP_USER && \
     chown -R $APP_USER:$APP_USER ${APP}
@@ -16,4 +16,4 @@ WORKDIR ${APP}
 
 EXPOSE 80
 
-CMD ["./hello-legionlabs"]
+CMD ["./deployment-tests"]
