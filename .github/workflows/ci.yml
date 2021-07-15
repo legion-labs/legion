@@ -134,7 +134,7 @@ jobs:
     name: Deploying docs
     needs: [test, bench, build_docs]
     runs-on: ubuntu-20.04
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/download-artifact@v2
         with:
