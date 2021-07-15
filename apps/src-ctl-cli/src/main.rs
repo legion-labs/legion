@@ -77,7 +77,7 @@
 
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_src_ctl::*;
-use std::path::{Path,PathBuf};
+use std::path::{Path, PathBuf};
 
 fn main() {
     if let Err(e) = main_impl() {
@@ -323,9 +323,8 @@ fn main_impl() -> Result<(), String> {
             match legion_src_ctl::init_local_repository(Path::new(
                 command_match.value_of("repository-directory").unwrap(),
             )) {
-                Ok(addr) => {
-                    println!("repository uri: {}", addr.repo_uri);
-                    println!("blob store uri: {}", addr.blob_store);
+                Ok(repo_uri) => {
+                    println!("repository uri: {}", repo_uri);
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -347,9 +346,8 @@ fn main_impl() -> Result<(), String> {
             let password = command_match.value_of("password").unwrap_or("");
             let name = command_match.value_of("name").unwrap();
             match init_remote_repository(&blob_storage, host, username, password, name) {
-                Ok(addr) => {
-                    println!("repository uri: {}", addr.repo_uri);
-                    println!("blob store uri: {}", addr.blob_store);
+                Ok(repo_uri) => {
+                    println!("repository uri: {}", repo_uri);
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -358,7 +356,6 @@ fn main_impl() -> Result<(), String> {
         ("init-workspace", Some(command_match)) => init_workspace(
             Path::new(command_match.value_of("workspace-directory").unwrap()),
             command_match.value_of("repository-uri").unwrap(),
-            command_match.value_of("local-blob-directory").unwrap(),
         ),
         ("add", Some(command_match)) => {
             track_new_file_command(Path::new(command_match.value_of("path").unwrap()))

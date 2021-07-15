@@ -7,13 +7,13 @@ pub fn init_remote_repository(
     username: &str,
     password: &str,
     database_name: &str,
-) -> Result<RepositoryAddr, String> {
+) -> Result<String, String> {
     let repo_uri = format!(
         "mysql://{}:{}@{}/{}",
         username, password, host, database_name
     );
     create_database(&repo_uri)?;
-    match blob_storage{
+    match blob_storage {
         BlobStorageSpec::LocalDirectory(blob_dir) => {
             if let Err(e) = fs::create_dir_all(blob_dir) {
                 return Err(format!(
@@ -28,12 +28,8 @@ pub fn init_remote_repository(
         }
     }
 
-    let addr = RepositoryAddr {
-        repo_uri,
-        blob_store: blob_storage.clone(),
-    };
-    let mut repo_connection = RepositoryConnection::new(&addr)?;
-    init_repo_database(&mut repo_connection)?;
-    push_init_repo_data(&mut repo_connection)?;
-    Ok(addr)
+    let mut sql_connection = connect(&repo_uri)?;
+    init_repo_database(&mut sql_connection)?;
+    push_init_repo_data(&mut sql_connection, &repo_uri, blob_storage)?;
+    Ok(repo_uri)
 }

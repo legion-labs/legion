@@ -12,8 +12,7 @@ pub struct Lock {
     pub branch_name: String,
 }
 
-pub fn init_lock_database(connection: &mut RepositoryConnection) -> Result<(), String> {
-    let sql_connection = connection.sql();
+pub fn init_lock_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
     let sql = "CREATE TABLE locks(relative_path VARCHAR(512), lock_domain_id VARCHAR(64), workspace_id VARCHAR(255), branch_name VARCHAR(255));
          CREATE UNIQUE INDEX lock_key on locks(relative_path, lock_domain_id);
         ";

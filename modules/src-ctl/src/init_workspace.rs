@@ -3,11 +3,7 @@ use crate::*;
 use std::fs;
 use std::path::Path;
 
-pub fn init_workspace(
-    specified_workspace_directory: &Path,
-    repo_uri: &str,
-    blob_dir: &str,
-) -> Result<(), String> {
+pub fn init_workspace(specified_workspace_directory: &Path, repo_uri: &str) -> Result<(), String> {
     let workspace_directory = make_path_absolute(specified_workspace_directory);
 
     let lsc_dir = workspace_directory.join(".lsc");
@@ -17,7 +13,6 @@ pub fn init_workspace(
     let spec = Workspace {
         id: uuid::Uuid::new_v4().to_string(),
         repo_uri: String::from(repo_uri),
-        blob_dir: String::from(blob_dir),
         root: String::from(workspace_directory.to_str().unwrap()),
         owner: whoami::username(),
     };

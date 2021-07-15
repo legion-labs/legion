@@ -8,13 +8,11 @@ use std::path::{Path, PathBuf};
 pub struct Workspace {
     pub id: String, //a file lock will contain the workspace id
     pub repo_uri: String,
-    pub blob_dir: String,
     pub root: String,
     pub owner: String,
 }
 
-pub fn init_workspace_database(connection: &mut RepositoryConnection) -> Result<(), String> {
-    let sql_connection = connection.sql();
+pub fn init_workspace_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
     let sql = "CREATE TABLE workspaces(id VARCHAR(255), root VARCHAR(255), owner VARCHAR(255));
                CREATE UNIQUE INDEX workspace_id on workspaces(id);";
     if let Err(e) = execute_sql(sql_connection, sql) {

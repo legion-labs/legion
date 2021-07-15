@@ -91,7 +91,7 @@ fn test_dir(test_name: &str) -> PathBuf {
     path
 }
 
-fn init_test_repo(test_dir: &Path, name: &str) -> legion_src_ctl::RepositoryAddr {
+fn init_test_repo(test_dir: &Path, name: &str) -> String {
     let use_mysql = std::env::var("LEGION_SRC_CTL_TEST_MYSQL").unwrap_or_default();
     if use_mysql.is_empty() {
         let repo_dir = test_dir.join("repo");
@@ -127,17 +127,11 @@ fn init_test_repo(test_dir: &Path, name: &str) -> legion_src_ctl::RepositoryAddr
 fn local_repo_suite() {
     let test_dir = test_dir("local_repo_suite");
     let work1 = test_dir.join("work");
-    let addr = init_test_repo(&test_dir, "local_repo_suite");
+    let repo_uri = init_test_repo(&test_dir, "local_repo_suite");
 
     lsc_cli_sys(
         &test_dir,
-        &[
-            "init-workspace",
-            "--local-blob-directory",
-            &addr.blob_store.to_str(),
-            work1.to_str().unwrap(),
-            &addr.repo_uri,
-        ],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
     std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0/deep creation failed");
@@ -169,13 +163,7 @@ fn local_repo_suite() {
     let work2 = test_dir.join("work2");
     lsc_cli_sys(
         &test_dir,
-        &[
-            "init-workspace",
-            "--local-blob-directory",
-            &addr.blob_store.to_str(),
-            work2.to_str().unwrap(),
-            &addr.repo_uri,
-        ],
+        &["init-workspace", work2.to_str().unwrap(), &repo_uri],
     );
     assert!(fs::metadata(work2.join("dir0/file3.txt")).is_ok());
     assert!(fs::metadata(work2.join("dir0/file1.txt")).is_ok());
@@ -236,18 +224,11 @@ fn local_single_branch_merge_flow() {
     let test_dir = test_dir("local_single_branch_merge_flow");
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
-
-    let addr = init_test_repo(&test_dir, "local_single_branch_merge_flow");
+    let repo_uri = init_test_repo(&test_dir, "local_single_branch_merge_flow");
 
     lsc_cli_sys(
         &test_dir,
-        &[
-            "init-workspace",
-            "--local-blob-directory",
-            &addr.blob_store.to_str(),
-            work1.to_str().unwrap(),
-            &addr.repo_uri,
-        ],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
     legion_src_ctl::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
@@ -256,13 +237,7 @@ fn local_single_branch_merge_flow() {
 
     lsc_cli_sys(
         &test_dir,
-        &[
-            "init-workspace",
-            "--local-blob-directory",
-            &addr.blob_store.to_str(),
-            work2.to_str().unwrap(),
-            &addr.repo_uri,
-        ],
+        &["init-workspace", work2.to_str().unwrap(), &repo_uri],
     );
 
     lsc_cli_sys(&work2, &["edit", "file1.txt"]);
@@ -311,17 +286,11 @@ fn test_branch() {
     }
 
     let work1 = test_dir.join("work1");
-    let addr = init_test_repo(&test_dir, "test_branch");
+    let repo_uri = init_test_repo(&test_dir, "test_branch");
 
     lsc_cli_sys(
         &test_dir,
-        &[
-            "init-workspace",
-            "--local-blob-directory",
-            &addr.blob_store.to_str(),
-            work1.to_str().unwrap(),
-            &addr.repo_uri,
-        ],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
     legion_src_ctl::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
@@ -410,18 +379,11 @@ fn test_locks() {
 
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
-
-    let addr = init_test_repo(&test_dir, "test_locks");
+    let repo_uri = init_test_repo(&test_dir, "test_locks");
 
     lsc_cli_sys(
         &test_dir,
-        &[
-            "init-workspace",
-            "--local-blob-directory",
-            &addr.blob_store.to_str(),
-            work1.to_str().unwrap(),
-            &addr.repo_uri,
-        ],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
     std::fs::create_dir_all(work1.join("dir/deep")).unwrap();
@@ -453,13 +415,7 @@ fn test_locks() {
 
     lsc_cli_sys(
         &test_dir,
-        &[
-            "init-workspace",
-            "--local-blob-directory",
-            &addr.blob_store.to_str(),
-            work2.to_str().unwrap(),
-            &addr.repo_uri,
-        ],
+        &["init-workspace", work2.to_str().unwrap(), &repo_uri],
     );
     lsc_cli_sys(&work2, &["lock", "file2.txt"]); //locking the file that is being edited in work1
     lsc_cli_sys_fail(
@@ -533,18 +489,11 @@ fn get_root_git_directory() -> PathBuf {
 fn test_import_git() {
     let test_dir = test_dir("test_import_git");
     let work1 = test_dir.join("work1");
-
-    let addr = init_test_repo(&test_dir, "test_import_git");
+    let repo_uri = init_test_repo(&test_dir, "test_import_git");
 
     lsc_cli_sys(
         &test_dir,
-        &[
-            "init-workspace",
-            "--local-blob-directory",
-            &addr.blob_store.to_str(),
-            work1.to_str().unwrap(),
-            &addr.repo_uri,
-        ],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
     let root_dir = get_root_git_directory();
     assert!(root_dir.exists());

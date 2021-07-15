@@ -2,28 +2,27 @@ use crate::*;
 use futures::executor::block_on;
 use sqlx::Connection;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub struct RepositoryConnection {
     blob_store: BlobStorageSpec,
     sql_connection: sqlx::AnyConnection,
 }
 
-#[derive(Debug)]
-pub struct RepositoryAddr {
-    pub repo_uri: String,
-    pub blob_store: BlobStorageSpec,
+pub fn connect(database_uri: &str) -> Result<sqlx::AnyConnection, String> {
+    match block_on(sqlx::AnyConnection::connect(database_uri)) {
+        Ok(connection) => Ok(connection),
+        Err(e) => Err(format!("Error connecting to {}: {}", database_uri, e)),
+    }
 }
 
 impl RepositoryConnection {
-    pub fn new(addr: &RepositoryAddr) -> Result<Self, String> {
-        match block_on(sqlx::AnyConnection::connect(&addr.repo_uri)) {
-            Err(e) => Err(format!("Error opening database {}: {}", addr.repo_uri, e)),
-            Ok(c) => Ok(Self {
-                blob_store: addr.blob_store.clone(),
-                sql_connection: c,
-            }),
-        }
+    pub fn new(repo_uri: &str) -> Result<Self, String> {
+        let mut c = connect(repo_uri)?;
+        Ok(Self {
+            blob_store: read_blob_storage_spec(&mut c)?,
+            sql_connection: c,
+        })
     }
 
     pub fn sql(&mut self) -> &mut sqlx::AnyConnection {
@@ -63,10 +62,7 @@ impl RepositoryConnection {
 }
 
 pub fn connect_to_server(workspace: &Workspace) -> Result<RepositoryConnection, String> {
-    RepositoryConnection::new(&RepositoryAddr {
-        repo_uri: workspace.repo_uri.clone(),
-        blob_store: BlobStorageSpec::LocalDirectory(PathBuf::from(&workspace.blob_dir)),
-    })
+    RepositoryConnection::new(&workspace.repo_uri)
 }
 
 fn write_blob_to_disk(file_path: &Path, contents: &[u8]) -> Result<(), String> {

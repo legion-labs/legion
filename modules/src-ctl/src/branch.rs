@@ -23,8 +23,7 @@ impl Branch {
     }
 }
 
-pub fn init_branch_database(connection: &mut RepositoryConnection) -> Result<(), String> {
-    let sql_connection = connection.sql();
+pub fn init_branch_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
     let sql = "CREATE TABLE branches(name VARCHAR(255), head VARCHAR(255), parent VARCHAR(255), lock_domain_id VARCHAR(64));
          CREATE UNIQUE INDEX branch_name on branches(name);
         ";

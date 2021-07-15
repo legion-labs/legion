@@ -46,8 +46,7 @@ impl Commit {
     }
 }
 
-pub fn init_commit_database(connection: &mut RepositoryConnection) -> Result<(), String> {
-    let sql_connection = connection.sql();
+pub fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
     let sql = "CREATE TABLE commits(id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
          CREATE UNIQUE INDEX commit_id on commits(id);
          CREATE TABLE commit_parents(id VARCHAR(255), parent_id TEXT);
