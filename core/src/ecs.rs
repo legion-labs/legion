@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::ops::AddAssign;
+use std::rc::{Rc, Weak};
 
 pub struct Entity {
     id: EntityIdentifier,
@@ -10,34 +12,38 @@ pub struct World {
     id: WorldIdentifier,
     name: String,
     entities: Vec<Entity>,
-    // project: Weak<RefCell<Project>>,
+    entity_id_generator: Weak<RefCell<EntityIdentifierGenerator>>,
 }
 
 impl World {
-    pub fn new(id: WorldIdentifier, name: String, project: &Project) -> Self {
+    pub fn new(
+        id: WorldIdentifier,
+        name: String,
+        entity_id_generator: Weak<RefCell<EntityIdentifierGenerator>>,
+    ) -> Self {
         Self {
             id,
             name,
             entities: Vec::new(),
-            // project: Rc::downgrade(&project),
+            entity_id_generator,
         }
     }
 
-    fn create_entity(&mut self, id: EntityIdentifier) -> EntityIdentifier {
-        self.entities.push(Entity { id });
-        id
-    }
-
-    fn create_entity_with_project(&mut self, project: &mut Project) -> EntityIdentifier {
-        self.create_entity(project.get_new_entity_id())
+    fn create_entity(&mut self) -> EntityIdentifier {
+        if let Some(id_generator) = self.entity_id_generator.upgrade() {
+            let id = (*id_generator).borrow_mut().get_new_id();
+            self.entities.push(Entity { id });
+            return id;
+        }
+        INVALID_ENTITY_ID
     }
 }
-trait One {
+pub trait One {
     fn one() -> Self;
 }
 
 pub type EntityIdentifier = u64;
-//const INVALID_ENTITY_ID: EntityIdentifier = EntityIdentifier::MAX;
+const INVALID_ENTITY_ID: EntityIdentifier = EntityIdentifier::MAX;
 
 impl One for EntityIdentifier {
     fn one() -> Self {
@@ -54,7 +60,7 @@ impl One for WorldIdentifier {
     }
 }
 
-struct IdentifierGenerator<T>
+pub struct IdentifierGenerator<T>
 where
     T: AddAssign + Copy + Default + One,
 {
@@ -77,20 +83,23 @@ where
     }
 }
 
+type EntityIdentifierGenerator = IdentifierGenerator<EntityIdentifier>;
+type WorldIdentifierGenerator = IdentifierGenerator<WorldIdentifier>;
+
 pub struct Project {
     name: String,
-    world_id_generator: IdentifierGenerator<WorldIdentifier>,
+    world_id_generator: WorldIdentifierGenerator,
     worlds: Vec<World>,
-    entity_id_generator: IdentifierGenerator<EntityIdentifier>,
+    entity_id_generator: Rc<RefCell<EntityIdentifierGenerator>>,
 }
 
 impl Project {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            world_id_generator: IdentifierGenerator::<WorldIdentifier>::new(),
+            world_id_generator: WorldIdentifierGenerator::new(),
             worlds: Vec::new(),
-            entity_id_generator: IdentifierGenerator::<EntityIdentifier>::new(),
+            entity_id_generator: Rc::new(RefCell::new(EntityIdentifierGenerator::new())),
         }
     }
 
@@ -98,13 +107,13 @@ impl Project {
 
     pub fn create_world(&mut self, name: String) -> WorldIdentifier {
         let id = self.world_id_generator.get_new_id();
-        let world = World::new(id, name, self);
+        let world = World::new(id, name, Rc::downgrade(&self.entity_id_generator));
         self.worlds.push(world);
         id
     }
 
     pub fn get_world(&self, id: WorldIdentifier) -> Option<&World> {
-        if let Some(world) = self.worlds.iter().find(|&world| world.id == id) {
+        if let Some(world) = self.worlds.iter().find(|world| world.id == id) {
             Some(world)
         } else {
             None
@@ -118,10 +127,6 @@ impl Project {
             None
         }
     }
-
-    pub fn get_new_entity_id(&mut self) -> EntityIdentifier {
-        self.entity_id_generator.get_new_id()
-    }
 }
 
 #[cfg(test)]
@@ -132,23 +137,22 @@ mod tests {
     fn create_entity() {
         let mut project = Project::new("test project".to_string());
 
-        {
-            let world_id = project.create_world("test world".to_string());
+        let world_a = project.create_world("a".to_string());
+        if let Some(world) = project.get_world_mut(world_a) {
+            let entity = world.create_entity();
 
-            let entity_id = project.get_new_entity_id();
+            println!("entity created {:?}", entity);
 
-            if let Some(world) = project.get_world_mut(world_id) {
-                // the following line generates "cannot borrow 'project' as immutable because of mutable borrow as side-effect of call to get_world_mut"
-                //let entity_id = project.get_new_entity_id();
+            let entity = world.create_entity();
 
-                let entity = world.create_entity(entity_id);
-
-                println!("entity created {:?}", entity);
-            }
+            println!("entity created {:?}", entity);
         }
 
-        {
-            let _world_id = project.create_world("another world".to_string());
+        let world_b = project.create_world("b".to_string());
+        if let Some(world) = project.get_world_mut(world_b) {
+            let entity = world.create_entity();
+
+            println!("entity created {:?}", entity);
         }
     }
 }
