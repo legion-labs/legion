@@ -1,4 +1,4 @@
-use std::{cell::RefCell, ops::AddAssign};
+use std::ops::AddAssign;
 
 pub struct Entity {
     id: EntityIdentifier,
@@ -28,7 +28,7 @@ impl World {
         id
     }
 
-    fn create_entity_with_project(&mut self, project: &Project) -> EntityIdentifier {
+    fn create_entity_with_project(&mut self, project: &mut Project) -> EntityIdentifier {
         self.create_entity(project.get_new_entity_id())
     }
 }
@@ -81,7 +81,7 @@ pub struct Project {
     name: String,
     world_id_generator: IdentifierGenerator<WorldIdentifier>,
     worlds: Vec<World>,
-    entity_id_generator: RefCell<IdentifierGenerator<EntityIdentifier>>,
+    entity_id_generator: IdentifierGenerator<EntityIdentifier>,
 }
 
 impl Project {
@@ -90,7 +90,7 @@ impl Project {
             name,
             world_id_generator: IdentifierGenerator::<WorldIdentifier>::new(),
             worlds: Vec::new(),
-            entity_id_generator: RefCell::new(IdentifierGenerator::<EntityIdentifier>::new()),
+            entity_id_generator: IdentifierGenerator::<EntityIdentifier>::new(),
         }
     }
 
@@ -119,8 +119,8 @@ impl Project {
         }
     }
 
-    pub fn get_new_entity_id(&self) -> EntityIdentifier {
-        self.entity_id_generator.borrow_mut().get_new_id()
+    pub fn get_new_entity_id(&mut self) -> EntityIdentifier {
+        self.entity_id_generator.get_new_id()
     }
 }
 
@@ -138,9 +138,8 @@ mod tests {
             let entity_id = project.get_new_entity_id();
 
             if let Some(world) = project.get_world_mut(world_id) {
-                //let entity = project.create_entity(world);
-
-                //let entity = world.create_entity_with_project(&project);
+                // the following line generates "cannot borrow 'project' as immutable because of mutable borrow as side-effect of call to get_world_mut"
+                //let entity_id = project.get_new_entity_id();
 
                 let entity = world.create_entity(entity_id);
 
