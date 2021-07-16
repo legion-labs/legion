@@ -134,11 +134,6 @@ fn main_impl() -> Result<(), String> {
             SubCommand::with_name("init-workspace")
                 .about("Initializes a workspace and populates it with the latest version of the main branch")
                 .arg(
-                    Arg::with_name("local-blob-directory")  //todo: move to the repository metadata
-                        .value_name("local-blob-directory")
-                        .long("local-blob-directory")
-                        .help("local blob storage"))
-                .arg(
                     Arg::with_name("workspace-directory")
                         .required(true)
                         .help("lsc workspace directory"))
