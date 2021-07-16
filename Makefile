@@ -1,6 +1,6 @@
 # make takes the first target as the default target, so please keep it at the top
 # all the checks used in the CI
-checks: check-format check-build check-clippy check-deps
+check: check-format check-build check-clippy check-deps
 
 check-env:
 	rustup --version
@@ -22,12 +22,12 @@ check-clippy:
 check-deps:
 	cargo deny check
 
-tests: tests-build tests-run
+test: test-build test-run
 
-tests-build:
+test-build:
 	cargo test --no-run
 
-tests-run:
+test-run:
 	cargo test
 
 bench: bench-build bench-run
@@ -54,4 +54,4 @@ docs:
 clean:
 	cargo clean
 
-.PHONY: check-format check-build check-clippy check-deps check-env tests tests-build tests-run bench bench-build bench-run build-all build build-release docs clean
+.PHONY: check-format check-build check-clippy check-deps check-env test test-build test-run bench bench-build bench-run build-all build build-release docs clean

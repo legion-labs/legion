@@ -61,7 +61,7 @@ jobs:
           --workdir ${{ matrix.workdir }}
           -v ${{ github.workspace }}:${{ matrix.workdir }}
           ${{ matrix.container }}
-          make tests-build
+          make test-build
 
       - name: Run tests
         run: >-
@@ -71,7 +71,7 @@ jobs:
           --workdir ${{ matrix.workdir }}
           -v ${{ github.workspace }}:${{ matrix.workdir }}
           ${{ matrix.container }}
-          make tests-run
+          make test-run
 
   bench:
     name: Running benchmarks
