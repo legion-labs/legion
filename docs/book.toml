@@ -9,5 +9,5 @@ title = "The Legion Book"
 edition = "2018"
 
 [build]
-build-dir = "../target/book"
+build-dir = "../target/doc/book"
 create-missing = false
