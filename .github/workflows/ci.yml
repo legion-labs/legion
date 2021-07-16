@@ -18,16 +18,16 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Check for formatting
+      - name: Run formatting check
         run: make check-format
 
-      - name: Run Check
+      - name: Run build checks
         run: make check-build
 
-      - name: Run Clippy
+      - name: Run clippy checks
         run: make check-clippy
 
-      - name: Run Cargo Deny
+      - name: Run dependencies checks
         run: make check-deps
 
   test:
