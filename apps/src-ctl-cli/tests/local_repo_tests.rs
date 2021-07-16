@@ -97,7 +97,10 @@ fn init_test_repo(test_dir: &Path, name: &str) -> String {
         let repo_dir = test_dir.join("repo");
         legion_src_ctl::init_local_repository(&repo_dir).unwrap()
     } else {
-        let blob_dir = test_dir.join("blobs");
+        let blob_storage_spec = match std::env::var("LEGION_SRC_CTL_TEST_S3_BUCKET") {
+            Ok(s3uri) => legion_src_ctl::BlobStorageSpec::S3Uri(s3uri),
+            Err(_) => legion_src_ctl::BlobStorageSpec::LocalDirectory(test_dir.join("blobs")),
+        };
 
         let host = "localhost";
         let username = "root";
@@ -112,14 +115,8 @@ fn init_test_repo(test_dir: &Path, name: &str) -> String {
                 panic!("test database exists");
             }
         }
-        legion_src_ctl::init_remote_repository(
-            &legion_src_ctl::BlobStorageSpec::LocalDirectory(blob_dir),
-            host,
-            username,
-            password,
-            name,
-        )
-        .unwrap()
+        legion_src_ctl::init_remote_repository(&blob_storage_spec, host, username, password, name)
+            .unwrap()
     }
 }
 
