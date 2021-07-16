@@ -1254,6 +1254,7 @@ dependencies = [
  "futures",
  "git2",
  "glob",
+ "http",
  "lz4",
  "path-clean",
  "serde",

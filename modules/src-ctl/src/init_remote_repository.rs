@@ -12,7 +12,6 @@ pub fn init_remote_repository(
         "mysql://{}:{}@{}/{}",
         username, password, host, database_name
     );
-    create_database(&repo_uri)?;
     match blob_storage {
         BlobStorageSpec::LocalDirectory(blob_dir) => {
             if let Err(e) = fs::create_dir_all(blob_dir) {
@@ -23,11 +22,13 @@ pub fn init_remote_repository(
                 ));
             }
         }
-        BlobStorageSpec::S3Uri(s3_spec) => {
-            return Err(format!("s3: {}", s3_spec));
+        BlobStorageSpec::S3Uri(s3uri) => {
+            if let Err(e) = validate_connection_to_bucket(s3uri) {
+                return Err(format!("Error connecting to s3: {}", e));
+            }
         }
     }
-
+    create_database(&repo_uri)?;
     let mut sql_connection = connect(&repo_uri)?;
     init_repo_database(&mut sql_connection)?;
     push_init_repo_data(&mut sql_connection, &repo_uri, blob_storage)?;
