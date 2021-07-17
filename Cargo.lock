@@ -1102,12 +1102,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "inplace_it"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90953f308a79fe6d62a4643e51f848fbfddcd05975a38e69fdf4ab86a7baf7ca"
-
-[[package]]
 name = "instant"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1199,18 +1193,9 @@ dependencies = [
 name = "legion-graphics-hal"
 version = "0.1.0"
 dependencies = [
- "arrayvec",
  "ash",
- "bitflags",
- "byteorder",
- "inplace_it",
  "log",
- "parking_lot",
  "raw-window-handle",
- "serde",
- "smallvec",
- "thiserror",
- "winapi",
 ]
 
 [[package]]
