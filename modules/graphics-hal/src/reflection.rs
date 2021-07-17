@@ -13,7 +13,7 @@ pub struct ShaderResourceBindingKey {
 
 /// A data source within a shader. Often a descriptor or push constant.
 ///
-/// A `ShaderResource` may be specified by hand or generated using rafx-shader-processor
+/// A `ShaderResource` may be specified by hand or generated using shader-compiler
 //TODO: Consider separate type for bindings vs. push constants
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]

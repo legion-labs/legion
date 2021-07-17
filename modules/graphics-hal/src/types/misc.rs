@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::Api;
-use core::decimal::DecimalF32;
+use legion_core::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
 /// Controls if validation is enabled or not. The requirements/behaviors of validation is
@@ -25,7 +25,7 @@ pub enum ValidationMode {
 impl Default for ValidationMode {
     fn default() -> Self {
         #[cfg(debug_assertions)]
-        let validation_mode = ValidationMode::EnabledIfAvailable;
+        let validation_mode = Self::EnabledIfAvailable;
         #[cfg(not(debug_assertions))]
         let validation_mode = ValidationMode::Disabled;
 
@@ -161,7 +161,7 @@ pub enum SampleCount {
 
 impl Default for SampleCount {
     fn default() -> Self {
-        SampleCount::SampleCount1
+        Self::SampleCount1
     }
 }
 
@@ -194,7 +194,7 @@ bitflags::bitflags! {
         const INDIRECT_BUFFER = 1<<11;
         // Cubemap SRV
         /// Similar to vulkan's CUBE_COMPATIBLE image create flag and metal's Cube texture type
-        const TEXTURE_CUBE = 1<<12 | ResourceType::TEXTURE.bits();
+        const TEXTURE_CUBE = 1<<12 | Self::TEXTURE.bits();
         // RTV
         const RENDER_TARGET_MIP_SLICES = 1<<13;
         const RENDER_TARGET_ARRAY_SLICES = 1<<14;
@@ -218,21 +218,19 @@ bitflags::bitflags! {
 
 impl ResourceType {
     pub fn is_uniform_buffer(self) -> bool {
-        self.intersects(ResourceType::UNIFORM_BUFFER)
+        self.intersects(Self::UNIFORM_BUFFER)
     }
 
     pub fn is_storage_buffer(self) -> bool {
-        self.intersects(ResourceType::BUFFER | ResourceType::BUFFER_READ_WRITE)
+        self.intersects(Self::BUFFER | Self::BUFFER_READ_WRITE)
     }
 
     pub fn is_render_target(self) -> bool {
-        self.intersects(
-            ResourceType::RENDER_TARGET_COLOR | ResourceType::RENDER_TARGET_DEPTH_STENCIL,
-        )
+        self.intersects(Self::RENDER_TARGET_COLOR | Self::RENDER_TARGET_DEPTH_STENCIL)
     }
 
     pub fn is_texture(self) -> bool {
-        self.intersects(ResourceType::TEXTURE | ResourceType::TEXTURE_READ_WRITE)
+        self.intersects(Self::TEXTURE | Self::TEXTURE_READ_WRITE)
     }
 }
 
@@ -250,7 +248,7 @@ bitflags::bitflags! {
 
 impl Default for ColorFlags {
     fn default() -> Self {
-        ColorFlags::ALL
+        Self::ALL
     }
 }
 
@@ -348,14 +346,14 @@ pub const ALL_SHADER_STAGE_FLAGS: [ShaderStageFlags; 6] = [
     ShaderStageFlags::COMPUTE,
 ];
 
-/// Indicates the type of pipeline, roughly corresponds with QueueType
+/// Indicates the type of pipeline, roughly corresponds with `QueueType`
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PipelineType {
     Graphics = 0,
     Compute = 1,
 }
 
-/// Affects how quickly vertex attributes are consumed from buffers, similar to VkVertexInputRate
+/// Affects how quickly vertex attributes are consumed from buffers, similar to `vkVertexInputRate`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VertexAttributeRate {
     Vertex,
@@ -364,12 +362,12 @@ pub enum VertexAttributeRate {
 
 impl Default for VertexAttributeRate {
     fn default() -> Self {
-        VertexAttributeRate::Vertex
+        Self::Vertex
     }
 }
 
 /// Determines if the contents of an image attachment in a renderpass begins with its previous
-/// contents, a clear value, or undefined data. Similar to VkAttachmentLoadOp
+/// contents, a clear value, or undefined data. Similar to `vkAttachmentLoadOp`
 #[derive(Copy, Clone, Debug, Hash, PartialEq)]
 pub enum LoadOp {
     DontCare,
@@ -379,11 +377,11 @@ pub enum LoadOp {
 
 impl Default for LoadOp {
     fn default() -> Self {
-        LoadOp::DontCare
+        Self::DontCare
     }
 }
 
-/// Determines if the contents of an image attachment in a rander pass will store the resulting
+/// Determines if the contents of an image attachment in a render pass will store the resulting
 /// state for use after the render pass
 #[derive(Copy, Clone, Debug, Hash, PartialEq)]
 pub enum StoreOp {
@@ -396,11 +394,11 @@ pub enum StoreOp {
 
 impl Default for StoreOp {
     fn default() -> Self {
-        StoreOp::Store
+        Self::Store
     }
 }
 
-/// How to intepret vertex data into a form of geometry. Similar to VkPrimitiveTopology
+/// How to intepret vertex data into a form of geometry. Similar to `vkPrimitiveTopology`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum PrimitiveTopology {
@@ -422,11 +420,11 @@ pub enum IndexType {
 
 impl Default for IndexType {
     fn default() -> Self {
-        IndexType::Uint32
+        Self::Uint32
     }
 }
 
-/// Affects blending. Similar to VkBlendFactor
+/// Affects blending. Similar to `vkBlendFactor`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum BlendFactor {
@@ -447,11 +445,11 @@ pub enum BlendFactor {
 
 impl Default for BlendFactor {
     fn default() -> Self {
-        BlendFactor::Zero
+        Self::Zero
     }
 }
 
-/// Affects blending. Similar to VkBlendOp
+/// Affects blending. Similar to `vkBlendOp`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum BlendOp {
@@ -464,11 +462,11 @@ pub enum BlendOp {
 
 impl Default for BlendOp {
     fn default() -> Self {
-        BlendOp::Add
+        Self::Add
     }
 }
 
-/// Affects depth testing and sampling. Similar to VkCompareOp
+/// Affects depth testing and sampling. Similar to `vkCompareOp`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum CompareOp {
@@ -484,11 +482,11 @@ pub enum CompareOp {
 
 impl Default for CompareOp {
     fn default() -> Self {
-        CompareOp::Never
+        Self::Never
     }
 }
 
-/// Similar to VkStencilOp
+/// Similar to `vkStencilOp`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum StencilOp {
@@ -504,12 +502,12 @@ pub enum StencilOp {
 
 impl Default for StencilOp {
     fn default() -> Self {
-        StencilOp::Keep
+        Self::Keep
     }
 }
 
 /// Determines if we cull polygons that are front-facing or back-facing. Facing direction is
-/// determined by FrontFace, sometimes called "winding order". Similar to VkCullModeFlags
+/// determined by `FrontFace`, sometimes called "winding order". Similar to `vkCullModeFlags`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum CullMode {
@@ -520,12 +518,12 @@ pub enum CullMode {
 
 impl Default for CullMode {
     fn default() -> Self {
-        CullMode::None
+        Self::None
     }
 }
 
-/// Determines what winding order is considerered the front face of a polygon. Similar to
-/// VkFrontFace
+/// Determines what winding order is considered the front face of a polygon. Similar to
+/// `vkFrontFace`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum FrontFace {
@@ -535,11 +533,11 @@ pub enum FrontFace {
 
 impl Default for FrontFace {
     fn default() -> Self {
-        FrontFace::CounterClockwise
+        Self::CounterClockwise
     }
 }
 
-/// Whether to fill in polygons or not. Similar to VkPolygonMode
+/// Whether to fill in polygons or not. Similar to `vkPolygonMode`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum FillMode {
@@ -549,11 +547,11 @@ pub enum FillMode {
 
 impl Default for FillMode {
     fn default() -> Self {
-        FillMode::Solid
+        Self::Solid
     }
 }
 
-/// Filtering method when sampling. Similar to VkFilter
+/// Filtering method when sampling. Similar to `vkFilter`
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum FilterType {
@@ -568,12 +566,12 @@ pub enum FilterType {
 
 impl Default for FilterType {
     fn default() -> Self {
-        FilterType::Nearest
+        Self::Nearest
     }
 }
 
 /// Affects image sampling, particularly for UV coordinates outside the [0, 1] range. Similar to
-/// VkSamplerAddressMode
+/// `vkSamplerAddressMode`
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum AddressMode {
@@ -585,11 +583,11 @@ pub enum AddressMode {
 
 impl Default for AddressMode {
     fn default() -> Self {
-        AddressMode::Mirror
+        Self::Mirror
     }
 }
 
-/// Similar to VkSamplerMipmapMode
+/// Similar to `vkSamplerMipmapMode`
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum MipMapMode {
@@ -599,7 +597,7 @@ pub enum MipMapMode {
 
 impl Default for MipMapMode {
     fn default() -> Self {
-        MipMapMode::Nearest
+        Self::Nearest
     }
 }
 
@@ -625,7 +623,7 @@ pub struct DepthStencilClearValue {
 
 impl Default for DepthStencilClearValue {
     fn default() -> Self {
-        DepthStencilClearValue {
+        Self {
             depth: 0.0,
             stencil: 0,
         }
@@ -655,7 +653,7 @@ pub enum BarrierQueueTransition {
 
 impl Default for BarrierQueueTransition {
     fn default() -> Self {
-        BarrierQueueTransition::None
+        Self::None
     }
 }
 
@@ -766,7 +764,7 @@ pub struct CmdBlitParams {
     pub array_slices: Option<[u16; 2]>,
 }
 
-/// A rafx-specific index that refers to a particular binding. Instead of doing name/binding lookups
+/// A legion-specific index that refers to a particular binding. Instead of doing name/binding lookups
 /// every frame, query the descriptor index during startup and use it instead. This is a more
 /// efficient way to address descriptors.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

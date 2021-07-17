@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::Api;
-use core::decimal::DecimalF32;
+use legion_core::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
 use fnv::FnvHasher;
@@ -41,7 +41,7 @@ pub struct BufferDef {
 
 impl Default for BufferDef {
     fn default() -> Self {
-        BufferDef {
+        Self {
             size: 0,
             alignment: 0,
             memory_usage: MemoryUsage::Unknown,
@@ -59,8 +59,8 @@ impl BufferDef {
         assert_ne!(self.size, 0);
     }
 
-    pub fn for_staging_buffer(size: usize, resource_type: ResourceType) -> BufferDef {
-        BufferDef {
+    pub fn for_staging_buffer(size: usize, resource_type: ResourceType) -> Self {
+        Self {
             size: size as u64,
             alignment: 0,
             memory_usage: MemoryUsage::CpuToGpu,
@@ -72,31 +72,34 @@ impl BufferDef {
         }
     }
 
-    pub fn for_staging_buffer_data<T: Copy>(data: &[T], resource_type: ResourceType) -> BufferDef {
-        Self::for_staging_buffer(core::memory::slice_size_in_bytes(data), resource_type)
+    pub fn for_staging_buffer_data<T: Copy>(data: &[T], resource_type: ResourceType) -> Self {
+        Self::for_staging_buffer(
+            legion_core::memory::slice_size_in_bytes(data),
+            resource_type,
+        )
     }
 
-    pub fn for_staging_vertex_buffer(size: usize) -> BufferDef {
+    pub fn for_staging_vertex_buffer(size: usize) -> Self {
         Self::for_staging_buffer(size, ResourceType::VERTEX_BUFFER)
     }
 
-    pub fn for_staging_vertex_buffer_data<T: Copy>(data: &[T]) -> BufferDef {
+    pub fn for_staging_vertex_buffer_data<T: Copy>(data: &[T]) -> Self {
         Self::for_staging_buffer_data(data, ResourceType::VERTEX_BUFFER)
     }
 
-    pub fn for_staging_index_buffer(size: usize) -> BufferDef {
+    pub fn for_staging_index_buffer(size: usize) -> Self {
         Self::for_staging_buffer(size, ResourceType::INDEX_BUFFER)
     }
 
-    pub fn for_staging_index_buffer_data<T: Copy>(data: &[T]) -> BufferDef {
+    pub fn for_staging_index_buffer_data<T: Copy>(data: &[T]) -> Self {
         Self::for_staging_buffer_data(data, ResourceType::INDEX_BUFFER)
     }
 
-    pub fn for_staging_uniform_buffer(size: usize) -> BufferDef {
+    pub fn for_staging_uniform_buffer(size: usize) -> Self {
         Self::for_staging_buffer(size, ResourceType::UNIFORM_BUFFER)
     }
 
-    pub fn for_staging_uniform_buffer_data<T: Copy>(data: &[T]) -> BufferDef {
+    pub fn for_staging_uniform_buffer_data<T: Copy>(data: &[T]) -> Self {
         Self::for_staging_buffer_data(data, ResourceType::UNIFORM_BUFFER)
     }
 }
@@ -113,30 +116,30 @@ pub enum TextureDimensions {
 
 impl Default for TextureDimensions {
     fn default() -> Self {
-        TextureDimensions::Auto
+        Self::Auto
     }
 }
 
 impl TextureDimensions {
-    pub fn determine_dimensions(self, extents: Extents3D) -> TextureDimensions {
+    pub fn determine_dimensions(self, extents: Extents3D) -> Self {
         match self {
-            TextureDimensions::Auto => {
+            Self::Auto => {
                 if extents.depth > 1 {
-                    TextureDimensions::Dim3D
+                    Self::Dim3D
                 } else {
-                    TextureDimensions::Dim2D
+                    Self::Dim2D
                 }
             }
-            TextureDimensions::Dim1D => {
+            Self::Dim1D => {
                 assert_eq!(extents.height, 1);
                 assert_eq!(extents.depth, 1);
-                TextureDimensions::Dim1D
+                Self::Dim1D
             }
-            TextureDimensions::Dim2D => {
+            Self::Dim2D => {
                 assert_eq!(extents.depth, 1);
-                TextureDimensions::Dim2D
+                Self::Dim2D
             }
-            TextureDimensions::Dim3D => TextureDimensions::Dim3D,
+            Self::Dim3D => Self::Dim3D,
         }
     }
 }
@@ -159,7 +162,7 @@ pub struct TextureDef {
 
 impl Default for TextureDef {
     fn default() -> Self {
-        TextureDef {
+        Self {
             extents: Extents3D {
                 width: 0,
                 height: 0,
@@ -355,7 +358,7 @@ impl<'a, A: Api> RootSignatureDef<'a, A> {
 }
 
 /// Used to create a `Sampler`
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct SamplerDef {
     #[cfg_attr(feature = "serde-support", serde(default))]
@@ -380,6 +383,19 @@ pub struct SamplerDef {
 }
 
 impl Eq for SamplerDef {}
+impl PartialEq for SamplerDef {
+    fn eq(&self, other: &Self) -> bool {
+        self.min_filter == other.min_filter
+            && self.mag_filter == other.mag_filter
+            && self.mip_map_mode == other.mip_map_mode
+            && self.address_mode_u == other.address_mode_u
+            && self.address_mode_v == other.address_mode_v
+            && self.address_mode_w == other.address_mode_w
+            && DecimalF32(self.mip_lod_bias) == DecimalF32(other.mip_lod_bias)
+            && DecimalF32(self.max_anisotropy) == DecimalF32(other.max_anisotropy)
+            && self.compare_op == other.compare_op
+    }
+}
 
 impl Hash for SamplerDef {
     fn hash<H: Hasher>(&self, mut state: &mut H) {
@@ -395,7 +411,7 @@ impl Hash for SamplerDef {
     }
 }
 
-/// Describes an attribute within a VertexLayout
+/// Describes an attribute within a `VertexLayout`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VertexLayoutAttribute {
     /// Format of the attribute
@@ -411,7 +427,7 @@ pub struct VertexLayoutAttribute {
     pub gl_attribute_name: Option<String>,
 }
 
-/// Describes a buffer that provides vertex attribute data (See VertexLayout)
+/// Describes a buffer that provides vertex attribute data (See `VertexLayout`)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VertexLayoutBuffer {
     pub stride: u32,
@@ -447,7 +463,7 @@ pub struct DepthState {
 
 impl Default for DepthState {
     fn default() -> Self {
-        DepthState {
+        Self {
             depth_test_enable: false,
             depth_write_enable: false,
             depth_compare_op: CompareOp::LessOrEqual,
@@ -467,7 +483,7 @@ impl Default for DepthState {
 }
 
 /// Affects rasterization, commonly used to enable backface culling or wireframe rendering
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RasterizerState {
     pub cull_mode: CullMode,
@@ -482,6 +498,19 @@ pub struct RasterizerState {
 }
 
 impl Eq for RasterizerState {}
+
+impl PartialEq for RasterizerState {
+    fn eq(&self, other: &Self) -> bool {
+        self.cull_mode == other.cull_mode
+            && self.front_face == other.front_face
+            && self.fill_mode == other.fill_mode
+            && self.depth_bias == other.depth_bias
+            && DecimalF32(self.depth_bias_slope_scaled) == DecimalF32(other.depth_bias_slope_scaled)
+            && self.depth_clamp_enable == other.depth_clamp_enable
+            && self.multisample == other.multisample
+            && self.scissor == other.scissor
+    }
+}
 
 impl Hash for RasterizerState {
     fn hash<H: Hasher>(&self, mut state: &mut H) {
@@ -498,7 +527,7 @@ impl Hash for RasterizerState {
 
 impl Default for RasterizerState {
     fn default() -> Self {
-        RasterizerState {
+        Self {
             cull_mode: CullMode::None,
             front_face: Default::default(),
             fill_mode: Default::default(),
@@ -526,7 +555,7 @@ pub struct BlendStateRenderTarget {
 
 impl Default for BlendStateRenderTarget {
     fn default() -> Self {
-        BlendStateRenderTarget {
+        Self {
             blend_op: BlendOp::Add,
             blend_op_alpha: BlendOp::Add,
             src_factor: BlendFactor::One,
@@ -544,7 +573,7 @@ impl BlendStateRenderTarget {
     }
 
     pub fn default_alpha_enabled() -> Self {
-        BlendStateRenderTarget {
+        Self {
             src_factor: BlendFactor::SrcAlpha,
             dst_factor: BlendFactor::OneMinusSrcAlpha,
             src_factor_alpha: BlendFactor::One,
@@ -585,7 +614,7 @@ pub struct BlendState {
 
 impl BlendState {
     pub fn default_alpha_disabled() -> Self {
-        BlendState {
+        Self {
             render_target_blend_states: vec![BlendStateRenderTarget::default_alpha_disabled()],
             render_target_mask: BlendStateTargets::BLEND_STATE_TARGET_ALL,
             independent_blend: false,
@@ -593,7 +622,7 @@ impl BlendState {
     }
 
     pub fn default_alpha_enabled() -> Self {
-        BlendState {
+        Self {
             render_target_blend_states: vec![BlendStateRenderTarget::default_alpha_enabled()],
             render_target_mask: BlendStateTargets::BLEND_STATE_TARGET_ALL,
             independent_blend: false,
