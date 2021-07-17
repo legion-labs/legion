@@ -80,6 +80,7 @@
 use std::{fmt, sync::Arc};
 
 use raw_window_handle::HasRawWindowHandle;
+pub use types::*;
 
 pub type GfxResult<T> = Result<T, GfxError>;
 
@@ -90,14 +91,45 @@ pub enum GfxError {
     IoError(Arc<std::io::Error>),
 }
 
+impl From<&str> for GfxError {
+    fn from(str: &str) -> Self {
+        Self::StringError(str.to_string())
+    }
+}
+
+impl From<String> for GfxError {
+    fn from(string: String) -> Self {
+        Self::StringError(string)
+    }
+}
+
+impl From<std::io::Error> for GfxError {
+    fn from(error: std::io::Error) -> Self {
+        Self::IoError(Arc::new(error))
+    }
+}
+
 mod backends;
-//mod types;
+mod reflection;
+mod types;
+
+//
+// Constants
+//
+
+/// The maximum descriptor set layout index allowed. Vulkan only guarantees up to 4 are available
+pub const MAX_DESCRIPTOR_SET_LAYOUTS: usize = 4;
+/// The maximum number of simultaneously attached render targets
+// In sync with RafxBlendStateTargets
+pub const MAX_RENDER_TARGET_ATTACHMENTS: usize = 8;
+// Vulkan guarantees up to 16
+pub const MAX_VERTEX_INPUT_BINDINGS: usize = 16;
 
 //
 // Root of the API
 //
 pub trait Api: Clone + Sized {
-    fn device_context(&self) -> &Self::DeviceContext;
+    fn device_context(&self, api_def: ApiDef) -> &Self::DeviceContext;
     fn destroy(&mut self) -> GfxResult<()>;
 
     type DeviceContext: DeviceContext<Self>;
@@ -118,37 +150,6 @@ pub trait Api: Clone + Sized {
     type Swapchain: Swapchain<Self>;
 }
 
-pub struct DeviceInfo();
-pub struct QueueType();
-pub struct SwapchainDef();
-pub struct FenceStatus();
-pub struct Format();
-pub struct SwapchainImage();
-pub struct CommandBufferDef();
-pub struct SamplerDef();
-pub struct TextureDef();
-pub struct BufferDef();
-pub struct ShaderStageDef();
-pub struct RootSignatureDef();
-pub struct DescriptorSetArrayDef();
-pub struct GraphicsPipelineDef();
-pub struct ComputePipelineDef();
-pub struct ResourceType();
-pub struct SampleCount();
-pub struct PipelineReflection();
-pub struct PipelineType();
-pub struct DescriptorUpdate();
-pub struct CommandPoolDef();
-pub struct PresentSuccessResult();
-pub struct ColorRenderTargetBinding();
-pub struct DepthStencilRenderTargetBinding();
-pub struct VertexBufferBinding();
-pub struct IndexBufferBinding();
-pub struct BufferBarrier();
-pub struct TextureBarrier();
-pub struct CmdCopyBufferToTextureParams();
-pub struct ShaderModuleDef();
-
 pub trait DeviceContext<A: Api>: Clone {
     fn device_info(&self) -> &DeviceInfo;
     fn create_queue(&self, queue_type: QueueType) -> GfxResult<A::Queue>;
@@ -162,24 +163,24 @@ pub trait DeviceContext<A: Api>: Clone {
     fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<A::Sampler>;
     fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<A::Texture>;
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<A::Buffer>;
-    fn create_shader(&self, stages: Vec<ShaderStageDef>) -> GfxResult<A::Shader>;
+    fn create_shader(&self, stages: Vec<ShaderStageDef<A>>) -> GfxResult<A::Shader>;
     fn create_root_signature(
         &self,
-        root_signature_def: &RootSignatureDef,
+        root_signature_def: &RootSignatureDef<'_, A>,
     ) -> GfxResult<A::RootSignature>;
     fn create_descriptor_set_array(
         &self,
-        descriptor_set_array_def: &DescriptorSetArrayDef,
+        descriptor_set_array_def: &DescriptorSetArrayDef<'_, A>,
     ) -> GfxResult<A::DescriptorSetArray>;
     fn create_graphics_pipeline(
         &self,
-        graphics_pipeline_def: &GraphicsPipelineDef,
+        graphics_pipeline_def: &GraphicsPipelineDef<'_, A>,
     ) -> GfxResult<A::Pipeline>;
     fn create_compute_pipeline(
         &self,
-        compute_pipeline_def: &ComputePipelineDef,
+        compute_pipeline_def: &ComputePipelineDef<'_, A>,
     ) -> GfxResult<A::Pipeline>;
-    fn create_shader_module(&self, data: ShaderModuleDef) -> GfxResult<A::ShaderModule>;
+    fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<A::ShaderModule>;
 
     fn wait_for_fences(&self, fences: &[&A::Fence]) -> GfxResult<()>;
 
@@ -237,8 +238,8 @@ pub trait DescriptorSetHandle<A: Api>: fmt::Debug {}
 pub trait DescriptorSetArray<A: Api>: fmt::Debug {
     fn handle(&self, array_index: u32) -> Option<A::DescriptorSetHandle>;
     fn root_signature(&self) -> &A::RootSignature;
-    fn update_descriptor_set(&mut self, params: &[DescriptorUpdate]) -> GfxResult<()>;
-    fn queue_descriptor_set_update(&mut self, update: &DescriptorUpdate) -> GfxResult<()>;
+    fn update_descriptor_set(&mut self, params: &[DescriptorUpdate<'_, A>]) -> GfxResult<()>;
+    fn queue_descriptor_set_update(&mut self, update: &DescriptorUpdate<'_, A>) -> GfxResult<()>;
     fn flush_descriptor_set_updates(&mut self) -> GfxResult<()>;
 }
 
@@ -282,8 +283,8 @@ pub trait CommandBuffer<A: Api>: fmt::Debug {
 
     fn cmd_begin_render_pass(
         &self,
-        color_targets: &[ColorRenderTargetBinding],
-        depth_target: Option<DepthStencilRenderTargetBinding>,
+        color_targets: &[ColorRenderTargetBinding<'_, A>],
+        depth_target: Option<DepthStencilRenderTargetBinding<'_, A>>,
     ) -> GfxResult<()>;
     fn cmd_end_render_pass(&self) -> GfxResult<()>;
 
@@ -302,9 +303,9 @@ pub trait CommandBuffer<A: Api>: fmt::Debug {
     fn cmd_bind_vertex_buffers(
         &self,
         first_binding: u32,
-        bindings: &[VertexBufferBinding],
+        bindings: &[VertexBufferBinding<'_, A>],
     ) -> GfxResult<()>;
-    fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding) -> GfxResult<()>;
+    fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_, A>) -> GfxResult<()>;
     fn cmd_bind_descriptor_set(
         &self,
         descriptor_set_array: &A::DescriptorSetArray,
@@ -349,8 +350,8 @@ pub trait CommandBuffer<A: Api>: fmt::Debug {
 
     fn cmd_resource_barrier(
         &self,
-        buffer_barriers: &[BufferBarrier],
-        texture_barriers: &[TextureBarrier],
+        buffer_barriers: &[BufferBarrier<'_, A>],
+        texture_barriers: &[TextureBarrier<'_, A>],
     ) -> GfxResult<()>;
     fn cmd_copy_buffer_to_buffer(
         &self,
@@ -386,10 +387,10 @@ pub trait Swapchain<A: Api> {
     fn swapchain_def(&self) -> &SwapchainDef;
     fn image_count(&self) -> usize;
     fn format(&self) -> Format;
-    fn acquire_next_image_fence(&mut self, fence: &A::Fence) -> GfxResult<SwapchainImage>;
+    fn acquire_next_image_fence(&mut self, fence: &A::Fence) -> GfxResult<SwapchainImage<A>>;
     fn acquire_next_image_semaphore(
         &mut self,
         semaphore: &A::Semaphore,
-    ) -> GfxResult<SwapchainImage>;
+    ) -> GfxResult<SwapchainImage<A>>;
     fn rebuild(&mut self, swapchain_def: &SwapchainDef) -> GfxResult<()>;
 }

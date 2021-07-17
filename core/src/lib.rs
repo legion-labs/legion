@@ -77,6 +77,9 @@
 // crate-specific exceptions:
 #![allow()]
 
+pub mod decimal;
+pub mod memory;
+
 #[cfg(test)]
 mod tests {
     #[test]

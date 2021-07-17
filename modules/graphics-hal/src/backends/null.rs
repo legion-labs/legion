@@ -13,7 +13,7 @@ use raw_window_handle::HasRawWindowHandle;
 struct NullApi;
 
 impl Api for NullApi {
-    fn device_context(&self) -> &NullDeviceContext {
+    fn device_context(&self, api_def: ApiDef) -> &NullDeviceContext {
         unimplemented!()
     }
 
@@ -71,34 +71,34 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<NullBuffer> {
         unimplemented!();
     }
-    fn create_shader(&self, stages: Vec<ShaderStageDef>) -> GfxResult<NullShader> {
+    fn create_shader(&self, stages: Vec<ShaderStageDef<NullApi>>) -> GfxResult<NullShader> {
         unimplemented!();
     }
     fn create_root_signature(
         &self,
-        root_signature_def: &RootSignatureDef,
+        root_signature_def: &RootSignatureDef<'_, NullApi>,
     ) -> GfxResult<NullRootSignature> {
         unimplemented!();
     }
     fn create_descriptor_set_array(
         &self,
-        descriptor_set_array_def: &DescriptorSetArrayDef,
+        descriptor_set_array_def: &DescriptorSetArrayDef<'_, NullApi>,
     ) -> GfxResult<NullDescriptorSetArray> {
         unimplemented!();
     }
     fn create_graphics_pipeline(
         &self,
-        graphics_pipeline_def: &GraphicsPipelineDef,
+        graphics_pipeline_def: &GraphicsPipelineDef<'_, NullApi>,
     ) -> GfxResult<NullPipeline> {
         unimplemented!();
     }
     fn create_compute_pipeline(
         &self,
-        compute_pipeline_def: &ComputePipelineDef,
+        compute_pipeline_def: &ComputePipelineDef<'_, NullApi>,
     ) -> GfxResult<NullPipeline> {
         unimplemented!();
     }
-    fn create_shader_module(&self, data: ShaderModuleDef) -> GfxResult<NullShaderModule> {
+    fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<NullShaderModule> {
         unimplemented!();
     }
 
@@ -210,10 +210,13 @@ impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
     fn root_signature(&self) -> &NullRootSignature {
         unimplemented!();
     }
-    fn update_descriptor_set(&mut self, params: &[DescriptorUpdate]) -> GfxResult<()> {
+    fn update_descriptor_set(&mut self, params: &[DescriptorUpdate<'_, NullApi>]) -> GfxResult<()> {
         unimplemented!();
     }
-    fn queue_descriptor_set_update(&mut self, update: &DescriptorUpdate) -> GfxResult<()> {
+    fn queue_descriptor_set_update(
+        &mut self,
+        update: &DescriptorUpdate<'_, NullApi>,
+    ) -> GfxResult<()> {
         unimplemented!();
     }
     fn flush_descriptor_set_updates(&mut self) -> GfxResult<()> {
@@ -292,8 +295,8 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
 
     fn cmd_begin_render_pass(
         &self,
-        color_targets: &[ColorRenderTargetBinding],
-        depth_target: Option<DepthStencilRenderTargetBinding>,
+        color_targets: &[ColorRenderTargetBinding<'_, NullApi>],
+        depth_target: Option<DepthStencilRenderTargetBinding<'_, NullApi>>,
     ) -> GfxResult<()> {
         unimplemented!()
     }
@@ -325,11 +328,11 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     fn cmd_bind_vertex_buffers(
         &self,
         first_binding: u32,
-        bindings: &[VertexBufferBinding],
+        bindings: &[VertexBufferBinding<'_, NullApi>],
     ) -> GfxResult<()> {
         unimplemented!()
     }
-    fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding) -> GfxResult<()> {
+    fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_, NullApi>) -> GfxResult<()> {
         unimplemented!()
     }
     fn cmd_bind_descriptor_set(
@@ -390,8 +393,8 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
 
     fn cmd_resource_barrier(
         &self,
-        buffer_barriers: &[BufferBarrier],
-        texture_barriers: &[TextureBarrier],
+        buffer_barriers: &[BufferBarrier<'_, NullApi>],
+        texture_barriers: &[TextureBarrier<'_, NullApi>],
     ) -> GfxResult<()> {
         unimplemented!()
     }
@@ -448,13 +451,16 @@ impl Swapchain<NullApi> for NullSwapchain {
     fn format(&self) -> Format {
         unimplemented!()
     }
-    fn acquire_next_image_fence(&mut self, fence: &NullFence) -> GfxResult<SwapchainImage> {
+    fn acquire_next_image_fence(
+        &mut self,
+        fence: &NullFence,
+    ) -> GfxResult<SwapchainImage<NullApi>> {
         unimplemented!()
     }
     fn acquire_next_image_semaphore(
         &mut self,
         semaphore: &NullSemaphore,
-    ) -> GfxResult<SwapchainImage> {
+    ) -> GfxResult<SwapchainImage<NullApi>> {
         unimplemented!()
     }
     fn rebuild(&mut self, swapchain_def: &SwapchainDef) -> GfxResult<()> {
