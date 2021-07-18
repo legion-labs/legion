@@ -9,11 +9,10 @@ use raw_window_handle::HasRawWindowHandle;
 //
 // Root of the API
 //
-#[derive(Clone)]
 struct NullApi;
 
 impl Api for NullApi {
-    fn device_context(&self, api_def: ApiDef) -> &NullDeviceContext {
+    fn device_context(&self) -> &NullDeviceContext {
         unimplemented!()
     }
 
@@ -413,6 +412,14 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
         src_buffer: &NullBuffer,
         dst_texture: &NullTexture,
         params: &CmdCopyBufferToTextureParams,
+    ) -> GfxResult<()> {
+        unimplemented!()
+    }
+    fn cmd_blit_image(
+        &self,
+        src_texture: &NullTexture,
+        dst_texture: &NullTexture,
+        params: &CmdBlitParams,
     ) -> GfxResult<()> {
         unimplemented!()
     }

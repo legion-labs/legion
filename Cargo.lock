@@ -1269,6 +1269,7 @@ dependencies = [
  "ash",
  "ash-window",
  "bitflags",
+ "crossbeam-channel",
  "fnv",
  "legion-core",
  "log",

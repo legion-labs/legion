@@ -77,6 +77,10 @@
 #![allow()]
 //#![warn(missing_docs)]
 
+pub mod backends;
+pub mod reflection;
+pub mod types;
+
 use std::{fmt, sync::Arc};
 
 use raw_window_handle::HasRawWindowHandle;
@@ -89,6 +93,14 @@ pub type GfxResult<T> = Result<T, GfxError>;
 pub enum GfxError {
     StringError(String),
     IoError(Arc<std::io::Error>),
+    #[cfg(feature = "vulkan")]
+    VkError(ash::vk::Result),
+    #[cfg(feature = "vulkan")]
+    VkLoadingError(Arc<ash::LoadingError>),
+    #[cfg(feature = "vulkan")]
+    VkCreateInstanceError(Arc<backends::vulkan::VkCreateInstanceError>),
+    #[cfg(feature = "vulkan")]
+    VkMemError(Arc<vk_mem::Error>),
 }
 
 impl From<&str> for GfxError {
@@ -109,9 +121,33 @@ impl From<std::io::Error> for GfxError {
     }
 }
 
-mod backends;
-mod reflection;
-mod types;
+#[cfg(feature = "vulkan")]
+impl From<ash::vk::Result> for GfxError {
+    fn from(result: ash::vk::Result) -> Self {
+        Self::VkError(result)
+    }
+}
+
+#[cfg(feature = "vulkan")]
+impl From<ash::LoadingError> for GfxError {
+    fn from(result: ash::LoadingError) -> Self {
+        Self::VkLoadingError(Arc::new(result))
+    }
+}
+
+#[cfg(feature = "vulkan")]
+impl From<backends::vulkan::VkCreateInstanceError> for GfxError {
+    fn from(result: backends::vulkan::VkCreateInstanceError) -> Self {
+        Self::VkCreateInstanceError(Arc::new(result))
+    }
+}
+
+#[cfg(feature = "vulkan")]
+impl From<vk_mem::Error> for GfxError {
+    fn from(error: vk_mem::Error) -> Self {
+        Self::VkMemError(Arc::new(error))
+    }
+}
 
 //
 // Constants
@@ -128,8 +164,8 @@ pub const MAX_VERTEX_INPUT_BINDINGS: usize = 16;
 //
 // Root of the API
 //
-pub trait Api: Clone + Sized {
-    fn device_context(&self, api_def: ApiDef) -> &Self::DeviceContext;
+pub trait Api: Sized {
+    fn device_context(&self) -> &Self::DeviceContext;
     fn destroy(&mut self) -> GfxResult<()>;
 
     type DeviceContext: DeviceContext<Self>;
@@ -366,6 +402,12 @@ pub trait CommandBuffer<A: Api>: fmt::Debug {
         src_buffer: &A::Buffer,
         dst_texture: &A::Texture,
         params: &CmdCopyBufferToTextureParams,
+    ) -> GfxResult<()>;
+    fn cmd_blit_image(
+        &self,
+        src_texture: &A::Texture,
+        dst_texture: &A::Texture,
+        params: &CmdBlitParams,
     ) -> GfxResult<()>;
 }
 

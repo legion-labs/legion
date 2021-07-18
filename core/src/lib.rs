@@ -79,6 +79,7 @@
 
 pub mod decimal;
 pub mod memory;
+pub mod trust_cell;
 
 #[cfg(test)]
 mod tests {

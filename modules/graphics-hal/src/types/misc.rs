@@ -698,10 +698,18 @@ impl<'a, A: Api> TextureBarrier<'a, A> {
 }
 
 /// Represents an image owned by the swapchain
-#[derive(Clone)]
 pub struct SwapchainImage<A: Api> {
     pub texture: A::Texture,
     pub swapchain_image_index: u32,
+}
+
+impl<A: Api> Clone for SwapchainImage<A> {
+    fn clone(&self) -> Self {
+        Self {
+            texture: self.texture.clone(),
+            swapchain_image_index: self.swapchain_image_index,
+        }
+    }
 }
 
 /// A color render target bound during a renderpass
