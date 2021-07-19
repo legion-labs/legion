@@ -1,8 +1,5 @@
 use gfx_api::prelude::*;
 
-const WINDOW_WIDTH: u32 = 900;
-const WINDOW_HEIGHT: u32 = 600;
-
 fn main() {
     run().unwrap();
 }
@@ -400,6 +397,7 @@ fn run() -> GfxResult<()> {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 pub struct Sdl2Systems {
     pub context: sdl2::Sdl,
     pub video_subsystem: sdl2::VideoSubsystem,
@@ -408,6 +406,9 @@ pub struct Sdl2Systems {
 
 #[cfg(target_os = "windows")]
 pub fn sdl2_init() -> Sdl2Systems {
+    const WINDOW_WIDTH: u32 = 900;
+    const WINDOW_HEIGHT: u32 = 600;
+
     // Setup SDL
     let context = sdl2::init().expect("Failed to initialize sdl2");
     let video_subsystem = context
