@@ -207,7 +207,9 @@ fn upload_localy_edited_blobs(
             let local_path = workspace_root.join(&local_change.relative_path);
             let local_file_contents = read_bin_file(&local_path)?;
             let hash = format!("{:X}", Sha256::digest(&local_file_contents));
-            repo_connection.write_blob(&hash, &local_file_contents)?;
+            repo_connection
+                .blob_storage()
+                .write_blob(&hash, &local_file_contents)?;
             res.push(HashedChange {
                 relative_path: local_change.relative_path.clone(),
                 hash: hash.clone(),

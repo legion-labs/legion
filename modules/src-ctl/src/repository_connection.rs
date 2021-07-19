@@ -1,11 +1,9 @@
 use crate::*;
 use futures::executor::block_on;
 use sqlx::Connection;
-use std::fs;
-use std::path::Path;
 
 pub struct RepositoryConnection {
-    blob_store: BlobStorageSpec,
+    blob_store: Box<dyn BlobStorage>,
     sql_connection: sqlx::AnyConnection,
 }
 
@@ -19,8 +17,18 @@ pub fn connect(database_uri: &str) -> Result<sqlx::AnyConnection, String> {
 impl RepositoryConnection {
     pub fn new(repo_uri: &str) -> Result<Self, String> {
         let mut c = connect(repo_uri)?;
+        let blob_storage;
+        match read_blob_storage_spec(&mut c)? {
+            BlobStorageSpec::LocalDirectory(blob_directory) => {
+                blob_storage = Box::new(DiskBlobStorage { blob_directory });
+            }
+            BlobStorageSpec::S3Uri(_) => {
+                return Err(String::from("s3 blob storage not implemented"))
+            }
+        }
+
         Ok(Self {
-            blob_store: read_blob_storage_spec(&mut c)?,
+            blob_store: blob_storage,
             sql_connection: c,
         })
     }
@@ -29,46 +37,11 @@ impl RepositoryConnection {
         &mut self.sql_connection
     }
 
-    pub fn read_blob(&self, hash: &str) -> Result<String, String> {
-        match &self.blob_store {
-            BlobStorageSpec::LocalDirectory(dir) => {
-                let blob_path = dir.join(hash);
-                lz4_read(&blob_path)
-            }
-            BlobStorageSpec::S3Uri(_) => Err(String::from("read_blob for s3 not implemented")),
-        }
-    }
-
-    pub fn download_blob(&self, local_path: &Path, hash: &str) -> Result<(), String> {
-        match &self.blob_store {
-            BlobStorageSpec::LocalDirectory(dir) => {
-                assert!(!hash.is_empty());
-                let blob_path = dir.join(hash);
-                lz4_decompress(&blob_path, local_path)
-            }
-            BlobStorageSpec::S3Uri(_) => Err(String::from("download_blob for s3 not implemented")),
-        }
-    }
-
-    pub fn write_blob(&self, hash: &str, contents: &[u8]) -> Result<(), String> {
-        match &self.blob_store {
-            BlobStorageSpec::LocalDirectory(dir) => {
-                let path = dir.join(hash);
-                write_blob_to_disk(&path, contents)
-            }
-            BlobStorageSpec::S3Uri(_) => Err(String::from("write_blob for s3 not implemented")),
-        }
+    pub fn blob_storage(&self) -> &dyn BlobStorage {
+        &*self.blob_store
     }
 }
 
 pub fn connect_to_server(workspace: &Workspace) -> Result<RepositoryConnection, String> {
     RepositoryConnection::new(&workspace.repo_uri)
-}
-
-fn write_blob_to_disk(file_path: &Path, contents: &[u8]) -> Result<(), String> {
-    if fs::metadata(file_path).is_ok() {
-        //blob already exists
-        return Ok(());
-    }
-    lz4_compress_to_file(file_path, contents)
 }

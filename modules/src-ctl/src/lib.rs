@@ -77,6 +77,7 @@
 #![allow()]
 
 pub mod attach_branch;
+pub mod blob_storage;
 pub mod blob_storage_spec;
 pub mod branch;
 pub mod commit;
@@ -84,6 +85,7 @@ pub mod config;
 pub mod delete;
 pub mod detach_branch;
 pub mod diff;
+pub mod disk_blob_storage;
 pub mod forest;
 pub mod import_git_repo;
 pub mod init_local_repository;
@@ -107,6 +109,7 @@ pub mod utils;
 pub mod workspace;
 
 pub use attach_branch::*;
+pub use blob_storage::*;
 pub use blob_storage_spec::*;
 pub use branch::*;
 pub use commit::*;
@@ -114,6 +117,7 @@ pub use config::*;
 pub use delete::*;
 pub use detach_branch::*;
 pub use diff::*;
+pub use disk_blob_storage::*;
 pub use forest::*;
 pub use import_git_repo::*;
 pub use init_local_repository::*;

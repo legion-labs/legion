@@ -27,7 +27,7 @@ fn print_diff(
     local_path: &Path,
     ref_file_hash: &str,
 ) -> Result<(), String> {
-    let base_version_contents = connection.read_blob(ref_file_hash)?;
+    let base_version_contents = connection.blob_storage().read_blob(ref_file_hash)?;
     let local_version_contents = read_text_file(local_path)?;
     let patch = diffy::create_patch(&base_version_contents, &local_version_contents);
     println!("{}", patch);

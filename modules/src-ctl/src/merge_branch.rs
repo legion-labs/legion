@@ -119,7 +119,10 @@ fn change_file_to(
             return Ok(format!("Deleted {}", local_path.display()));
         }
         edit_file_command(&local_path)?;
-        if let Err(e) = connection.download_blob(&local_path, hash_to_sync) {
+        if let Err(e) = connection
+            .blob_storage()
+            .download_blob(&local_path, hash_to_sync)
+        {
             return Err(format!(
                 "Error downloading {} {}: {}",
                 local_path.display(),
@@ -136,7 +139,10 @@ fn change_file_to(
         if hash_to_sync.is_empty() {
             return Ok(format!("Verified {}", local_path.display()));
         }
-        if let Err(e) = connection.download_blob(&local_path, hash_to_sync) {
+        if let Err(e) = connection
+            .blob_storage()
+            .download_blob(&local_path, hash_to_sync)
+        {
             return Err(format!(
                 "Error downloading {} {}: {}",
                 local_path.display(),

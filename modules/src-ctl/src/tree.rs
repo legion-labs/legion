@@ -331,7 +331,10 @@ pub fn download_tree(
         for relative_file_node in tree.file_nodes {
             let abs_path = PathBuf::from(&dir_node.name).join(relative_file_node.name);
             println!("writing {}", abs_path.display());
-            if let Err(e) = connection.download_blob(&abs_path, &relative_file_node.hash) {
+            if let Err(e) = connection
+                .blob_storage()
+                .download_blob(&abs_path, &relative_file_node.hash)
+            {
                 errors.push(format!(
                     "Error downloading blob {} to {}: {}",
                     &relative_file_node.hash,

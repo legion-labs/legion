@@ -89,7 +89,9 @@ pub fn download_temp_file(
 ) -> Result<TempPath, String> {
     let tmp_dir = workspace_root.join(".lsc/tmp");
     let temp_file_path = tmp_dir.join(blob_hash);
-    connection.download_blob(&temp_file_path, blob_hash)?;
+    connection
+        .blob_storage()
+        .download_blob(&temp_file_path, blob_hash)?;
     Ok(TempPath {
         path: temp_file_path,
     })

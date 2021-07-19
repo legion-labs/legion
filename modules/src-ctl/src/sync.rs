@@ -87,7 +87,10 @@ pub fn sync_file(
                     return Ok(format!("Deleted {}", local_path.display()));
                 }
             }
-            if let Err(e) = connection.download_blob(local_path, hash_to_sync) {
+            if let Err(e) = connection
+                .blob_storage()
+                .download_blob(local_path, hash_to_sync)
+            {
                 return Err(format!(
                     "Error downloading {} {}: {}",
                     local_path.display(),
@@ -112,7 +115,10 @@ pub fn sync_file(
                     ));
                 }
             }
-            if let Err(e) = connection.download_blob(local_path, hash_to_sync) {
+            if let Err(e) = connection
+                .blob_storage()
+                .download_blob(local_path, hash_to_sync)
+            {
                 return Err(format!(
                     "Error downloading {} {}: {}",
                     local_path.display(),
