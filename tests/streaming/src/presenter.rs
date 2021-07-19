@@ -7,6 +7,12 @@ fn main() {
     run().unwrap();
 }
 
+#[cfg(target_os = "linux")]
+fn run() -> GfxResult<()> {
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
     //
     // Init SDL2 (winit and anything that uses raw-window-handle works too!)
@@ -400,6 +406,7 @@ pub struct Sdl2Systems {
     pub window: sdl2::video::Window,
 }
 
+#[cfg(target_os = "windows")]
 pub fn sdl2_init() -> Sdl2Systems {
     // Setup SDL
     let context = sdl2::init().expect("Failed to initialize sdl2");
@@ -423,6 +430,7 @@ pub fn sdl2_init() -> Sdl2Systems {
     }
 }
 
+#[cfg(target_os = "windows")]
 fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
     use sdl2::event::Event;
     use sdl2::keyboard::Keycode;

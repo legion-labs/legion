@@ -22,12 +22,14 @@ path = "src/streamer_server.rs"
 gfx-api = { path = "../../modules/graphics-api", package = "legion-graphics-api" }
 presenter = { path = "../../modules/presenter", package = "legion-presenter" }
 log = "0.4"
-sdl2 = { git = "https://github.com/legion-labs/rust-sdl2.git", features = [
-    "bundled",
-    "raw-window-handle",
-] }
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 gfx-api = { path = "../../modules/graphics-api", package = "legion-graphics-api", features = [
     "vulkan",
+] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+sdl2 = { git = "https://github.com/legion-labs/rust-sdl2.git", features = [
+    "bundled",
+    "raw-window-handle",
 ] }
