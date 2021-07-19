@@ -6,7 +6,7 @@
 //!  * Focusses of the needs of Legion, with special attention to server side rendering, gpu based pipeline
 //!
 //! Additional Resources:
-//! * Tracking Issue: [legion/crate/#37](https://github.com/legion-labs/legion/issues/37)
+//! * Tracking Issue: [legion/crate/#64](https://github.com/legion-labs/legion/issues/64)
 //! * Design Doc: [legion/book/rendering](/book/rendering/graphics-api.html)
 //!
 //! The implementation of Graphics Api is based of `Rafx`, but instead of using concrete enum types
