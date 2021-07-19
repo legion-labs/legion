@@ -1281,6 +1281,12 @@ dependencies = [
 [[package]]
 name = "legion-presenter"
 version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "instant",
+ "legion-graphics-hal",
+ "log",
+]
 
 [[package]]
 name = "legion-renderer"

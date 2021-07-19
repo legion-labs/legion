@@ -3,13 +3,13 @@
 #![allow(unused_variables)]
 #![allow(clippy::unimplemented)]
 
-use crate::*;
+use crate::prelude::*;
 use raw_window_handle::HasRawWindowHandle;
 
 //
 // Root of the API
 //
-struct NullApi;
+pub struct NullApi;
 
 impl Api for NullApi {
     fn device_context(&self) -> &NullDeviceContext {
@@ -39,7 +39,7 @@ impl Api for NullApi {
 }
 
 #[derive(Clone)]
-struct NullDeviceContext;
+pub struct NullDeviceContext;
 impl DeviceContext<NullApi> for NullDeviceContext {
     fn device_info(&self) -> &DeviceInfo {
         unimplemented!()
@@ -121,7 +121,7 @@ impl DeviceContext<NullApi> for NullDeviceContext {
 // Resources (Buffers, Textures, Samplers)
 //
 #[derive(Debug)]
-struct NullBuffer;
+pub struct NullBuffer;
 impl Buffer<NullApi> for NullBuffer {
     fn buffer_def(&self) -> &BufferDef {
         unimplemented!()
@@ -148,7 +148,7 @@ impl Buffer<NullApi> for NullBuffer {
 }
 
 #[derive(Clone, Debug)]
-struct NullTexture;
+pub struct NullTexture;
 impl Texture<NullApi> for NullTexture {
     fn texture_def(&self) -> &TextureDef {
         unimplemented!()
@@ -156,18 +156,18 @@ impl Texture<NullApi> for NullTexture {
 }
 
 #[derive(Clone, Debug)]
-struct NullSampler;
+pub struct NullSampler;
 impl Sampler<NullApi> for NullSampler {}
 
 //
 // Shaders/Pipelines
 //
 #[derive(Clone, Debug)]
-struct NullShaderModule;
+pub struct NullShaderModule;
 impl ShaderModule<NullApi> for NullShaderModule {}
 
 #[derive(Clone, Debug)]
-struct NullShader;
+pub struct NullShader;
 impl Shader<NullApi> for NullShader {
     fn pipeline_reflection(&self) -> &PipelineReflection {
         unimplemented!()
@@ -175,7 +175,7 @@ impl Shader<NullApi> for NullShader {
 }
 
 #[derive(Clone, Debug)]
-struct NullRootSignature;
+pub struct NullRootSignature;
 impl RootSignature<NullApi> for NullRootSignature {
     fn pipeline_type(&self) -> PipelineType {
         unimplemented!()
@@ -183,7 +183,7 @@ impl RootSignature<NullApi> for NullRootSignature {
 }
 
 #[derive(Debug)]
-struct NullPipeline;
+pub struct NullPipeline;
 impl Pipeline<NullApi> for NullPipeline {
     fn pipeline_type(&self) -> PipelineType {
         unimplemented!();
@@ -197,11 +197,11 @@ impl Pipeline<NullApi> for NullPipeline {
 // Descriptor Sets
 //
 #[derive(Clone, Debug)]
-struct NullDescriptorSetHandle;
+pub struct NullDescriptorSetHandle;
 impl DescriptorSetHandle<NullApi> for NullDescriptorSetHandle {}
 
 #[derive(Debug)]
-struct NullDescriptorSetArray;
+pub struct NullDescriptorSetArray;
 impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
     fn handle(&self, array_index: u32) -> Option<NullDescriptorSetHandle> {
         unimplemented!();
@@ -227,7 +227,7 @@ impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
 // Queues, Command Buffers
 //
 #[derive(Clone, Debug)]
-struct NullQueue;
+pub struct NullQueue;
 impl Queue<NullApi> for NullQueue {
     fn device_context(&self) -> &NullDeviceContext {
         unimplemented!()
@@ -263,7 +263,7 @@ impl Queue<NullApi> for NullQueue {
     }
 }
 
-struct NullCommandPool;
+pub struct NullCommandPool;
 impl CommandPool<NullApi> for NullCommandPool {
     fn device_context(&self) -> &NullDeviceContext {
         unimplemented!()
@@ -280,7 +280,7 @@ impl CommandPool<NullApi> for NullCommandPool {
 }
 
 #[derive(Debug)]
-struct NullCommandBuffer;
+pub struct NullCommandBuffer;
 impl CommandBuffer<NullApi> for NullCommandBuffer {
     fn begin(&self) -> GfxResult<()> {
         unimplemented!()
@@ -428,7 +428,7 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
 //
 // Fences and Semaphores
 //
-struct NullFence;
+pub struct NullFence;
 impl Fence<NullApi> for NullFence {
     fn wait(&self) -> GfxResult<()> {
         unimplemented!();
@@ -441,13 +441,13 @@ impl Fence<NullApi> for NullFence {
     }
 }
 
-struct NullSemaphore;
+pub struct NullSemaphore;
 impl Semaphore<NullApi> for NullSemaphore {}
 
 //
 // Swapchain
 //
-struct NullSwapchain;
+pub struct NullSwapchain;
 impl Swapchain<NullApi> for NullSwapchain {
     fn swapchain_def(&self) -> &SwapchainDef {
         unimplemented!()

@@ -78,76 +78,36 @@
 //#![warn(missing_docs)]
 
 pub mod backends;
+pub mod error;
 pub mod reflection;
 pub mod types;
 
-use std::{fmt, sync::Arc};
+pub mod prelude {
+    pub use crate::types::*;
+    pub use crate::{
+        Api, Buffer, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray,
+        DescriptorSetHandle, DeviceContext, Fence, GfxResult, Pipeline, Queue, RootSignature,
+        Sampler, Semaphore, Shader, ShaderModule, Swapchain, Texture,
+    };
+}
 
-use raw_window_handle::HasRawWindowHandle;
+pub use error::*;
 pub use types::*;
 
-pub type GfxResult<T> = Result<T, GfxError>;
-
-/// Generic error that contains all the different kinds of errors that may occur when using the API
-#[derive(Debug, Clone)]
-pub enum GfxError {
-    StringError(String),
-    IoError(Arc<std::io::Error>),
-    #[cfg(feature = "vulkan")]
-    VkError(ash::vk::Result),
-    #[cfg(feature = "vulkan")]
-    VkLoadingError(Arc<ash::LoadingError>),
-    #[cfg(feature = "vulkan")]
-    VkCreateInstanceError(Arc<backends::vulkan::VkCreateInstanceError>),
-    #[cfg(feature = "vulkan")]
-    VkMemError(Arc<vk_mem::Error>),
-}
-
-impl From<&str> for GfxError {
-    fn from(str: &str) -> Self {
-        Self::StringError(str.to_string())
-    }
-}
-
-impl From<String> for GfxError {
-    fn from(string: String) -> Self {
-        Self::StringError(string)
-    }
-}
-
-impl From<std::io::Error> for GfxError {
-    fn from(error: std::io::Error) -> Self {
-        Self::IoError(Arc::new(error))
-    }
-}
+pub use backends::null;
+pub use null::NullApi;
 
 #[cfg(feature = "vulkan")]
-impl From<ash::vk::Result> for GfxError {
-    fn from(result: ash::vk::Result) -> Self {
-        Self::VkError(result)
-    }
-}
-
+pub use backends::vulkan;
 #[cfg(feature = "vulkan")]
-impl From<ash::LoadingError> for GfxError {
-    fn from(result: ash::LoadingError) -> Self {
-        Self::VkLoadingError(Arc::new(result))
-    }
-}
-
+pub use vulkan::VulkanApi;
 #[cfg(feature = "vulkan")]
-impl From<backends::vulkan::VkCreateInstanceError> for GfxError {
-    fn from(result: backends::vulkan::VkCreateInstanceError) -> Self {
-        Self::VkCreateInstanceError(Arc::new(result))
-    }
-}
+pub type DefaultApi = VulkanApi;
 
-#[cfg(feature = "vulkan")]
-impl From<vk_mem::Error> for GfxError {
-    fn from(error: vk_mem::Error) -> Self {
-        Self::VkMemError(Arc::new(error))
-    }
-}
+#[cfg(not(feature = "vulkan"))]
+pub type DefaultApi = NullApi;
+#[cfg(not(feature = "vulkan"))]
+pub type DefaultApi = NullApi;
 
 //
 // Constants
@@ -193,7 +153,7 @@ pub trait DeviceContext<A: Api>: Clone {
     fn create_semaphore(&self) -> GfxResult<A::Semaphore>;
     fn create_swapchain(
         &self,
-        raw_window_handle: &dyn HasRawWindowHandle,
+        raw_window_handle: &dyn raw_window_handle::HasRawWindowHandle,
         swapchain_def: &SwapchainDef,
     ) -> GfxResult<A::Swapchain>;
     fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<A::Sampler>;
@@ -231,7 +191,7 @@ pub trait DeviceContext<A: Api>: Clone {
 //
 // Resources (Buffers, Textures, Samplers)
 //
-pub trait Buffer<A: Api>: fmt::Debug {
+pub trait Buffer<A: Api>: std::fmt::Debug {
     fn buffer_def(&self) -> &BufferDef;
     fn map_buffer(&self) -> GfxResult<*mut u8>;
     fn unmap_buffer(&self) -> GfxResult<()>;
@@ -243,25 +203,25 @@ pub trait Buffer<A: Api>: fmt::Debug {
         buffer_byte_offset: u64,
     ) -> GfxResult<()>;
 }
-pub trait Texture<A: Api>: Clone + fmt::Debug {
+pub trait Texture<A: Api>: Clone + std::fmt::Debug {
     fn texture_def(&self) -> &TextureDef;
 }
-pub trait Sampler<A: Api>: Clone + fmt::Debug {}
+pub trait Sampler<A: Api>: Clone + std::fmt::Debug {}
 
 //
 // Shaders/Pipelines
 //
-pub trait ShaderModule<A: Api>: Clone + fmt::Debug {}
+pub trait ShaderModule<A: Api>: Clone + std::fmt::Debug {}
 
-pub trait Shader<A: Api>: Clone + fmt::Debug {
+pub trait Shader<A: Api>: Clone + std::fmt::Debug {
     fn pipeline_reflection(&self) -> &PipelineReflection;
 }
 
-pub trait RootSignature<A: Api>: Clone + fmt::Debug {
+pub trait RootSignature<A: Api>: Clone + std::fmt::Debug {
     fn pipeline_type(&self) -> PipelineType;
 }
 
-pub trait Pipeline<A: Api>: fmt::Debug {
+pub trait Pipeline<A: Api>: std::fmt::Debug {
     fn pipeline_type(&self) -> PipelineType;
     fn root_signature(&self) -> &A::RootSignature;
 }
@@ -269,9 +229,9 @@ pub trait Pipeline<A: Api>: fmt::Debug {
 //
 // Descriptor Sets
 //
-pub trait DescriptorSetHandle<A: Api>: fmt::Debug {}
+pub trait DescriptorSetHandle<A: Api>: std::fmt::Debug {}
 
-pub trait DescriptorSetArray<A: Api>: fmt::Debug {
+pub trait DescriptorSetArray<A: Api>: std::fmt::Debug {
     fn handle(&self, array_index: u32) -> Option<A::DescriptorSetHandle>;
     fn root_signature(&self) -> &A::RootSignature;
     fn update_descriptor_set(&mut self, params: &[DescriptorUpdate<'_, A>]) -> GfxResult<()>;
@@ -282,7 +242,7 @@ pub trait DescriptorSetArray<A: Api>: fmt::Debug {
 //
 // Queues, Command Buffers
 //
-pub trait Queue<A: Api>: Clone + fmt::Debug {
+pub trait Queue<A: Api>: Clone + std::fmt::Debug {
     fn device_context(&self) -> &A::DeviceContext;
     fn queue_id(&self) -> u32;
     fn queue_type(&self) -> QueueType;
@@ -312,7 +272,7 @@ pub trait CommandPool<A: Api> {
     fn reset_command_pool(&self) -> GfxResult<()>;
 }
 
-pub trait CommandBuffer<A: Api>: fmt::Debug {
+pub trait CommandBuffer<A: Api>: std::fmt::Debug {
     fn begin(&self) -> GfxResult<()>;
     fn end(&self) -> GfxResult<()>;
     fn return_to_pool(&self) -> GfxResult<()>;

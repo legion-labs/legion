@@ -6,7 +6,7 @@ use super::{
 };
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 use super::{VulkanDeviceContext, VulkanDeviceContextInner};
 use crate::*;

@@ -8,3 +8,12 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+gfx-hal = { path = "../graphics-hal", package = "legion-graphics-hal" }
+log = "0.4"
+crossbeam-channel = "0.5"
+instant = "0.1"
+
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+gfx-hal = { path = "../graphics-hal", package = "legion-graphics-hal", features = [
+    "vulkan",
+] }

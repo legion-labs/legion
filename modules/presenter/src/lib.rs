@@ -80,6 +80,8 @@
 // crate-specific exceptions:
 #![allow()]
 
+pub mod swapchain_helper;
+
 #[cfg(test)]
 mod tests {
     #[test]
