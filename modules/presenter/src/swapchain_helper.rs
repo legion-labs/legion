@@ -1,5 +1,5 @@
 use crossbeam_channel::{Receiver, Sender};
-use gfx_hal::{
+use gfx_api::{
     Api, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult, Queue, Swapchain,
     SwapchainDef, SwapchainImage,
 };

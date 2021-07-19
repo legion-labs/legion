@@ -1263,7 +1263,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-graphics-hal"
+name = "legion-graphics-api"
 version = "0.1.0"
 dependencies = [
  "ash",
@@ -1284,7 +1284,7 @@ version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "instant",
- "legion-graphics-hal",
+ "legion-graphics-api",
  "log",
 ]
 
@@ -1292,7 +1292,7 @@ dependencies = [
 name = "legion-renderer"
 version = "0.1.0"
 dependencies = [
- "legion-graphics-hal",
+ "legion-graphics-api",
  "log",
 ]
 
