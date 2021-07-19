@@ -93,7 +93,7 @@ impl<'a, T: ?Sized> Ref<'a, T> {
     /// stored in the `TrustCell`.
     ///
     /// ```
-    /// use rafx_base::trust_cell::{Ref, TrustCell};
+    /// use legion_core::trust_cell::{Ref, TrustCell};
     ///
     /// let cb = TrustCell::new(Box::new(5));
     ///
@@ -112,7 +112,7 @@ impl<'a, T: ?Sized> Ref<'a, T> {
     /// value.
     ///
     /// ```rust
-    /// # use rafx_base::trust_cell::{TrustCell, Ref};
+    /// # use legion_core::trust_cell::{TrustCell, Ref};
     ///
     /// let c = TrustCell::new((5, 'b'));
     /// let b1: Ref<'_, (u32, char)> = c.borrow();
@@ -195,7 +195,7 @@ impl<'a, T: ?Sized> RefMut<'a, T> {
     /// stored in the `TrustCell`.
     ///
     /// ```
-    /// use rafx_base::trust_cell::{RefMut, TrustCell};
+    /// use legion_core::trust_cell::{RefMut, TrustCell};
     ///
     /// let cb = TrustCell::new(Box::new(5));
     ///
@@ -214,7 +214,7 @@ impl<'a, T: ?Sized> RefMut<'a, T> {
     /// value.
     ///
     /// ```rust
-    /// # use rafx_base::trust_cell::{TrustCell, RefMut};
+    /// # use legion_core::trust_cell::{TrustCell, RefMut};
     ///
     /// let c = TrustCell::new((5, 'b'));
     ///
