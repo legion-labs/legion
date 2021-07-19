@@ -1,0 +1,33 @@
+[package]
+name = "streaming-tests"
+version = "0.1.0"
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "presenter-test"
+path = "src/presenter.rs"
+
+[[bin]]
+name = "streamer-client-test"
+path = "src/streamer_client.rs"
+
+[[bin]]
+name = "streamer-server-test"
+path = "src/streamer_server.rs"
+
+[dependencies]
+gfx-api = { path = "../../modules/graphics-api", package = "legion-graphics-api" }
+presenter = { path = "../../modules/presenter", package = "legion-presenter" }
+log = "0.4"
+sdl2 = { git = "https://github.com/legion-labs/rust-sdl2.git", features = [
+    "bundled",
+    "raw-window-handle",
+] }
+
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+gfx-api = { path = "../../modules/graphics-api", package = "legion-graphics-api", features = [
+    "vulkan",
+] }
