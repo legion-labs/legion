@@ -17,15 +17,12 @@ pub fn connect(database_uri: &str) -> Result<sqlx::AnyConnection, String> {
 impl RepositoryConnection {
     pub fn new(repo_uri: &str) -> Result<Self, String> {
         let mut c = connect(repo_uri)?;
-        let blob_storage;
-        match read_blob_storage_spec(&mut c)? {
+        let blob_storage: Box<dyn BlobStorage> = match read_blob_storage_spec(&mut c)? {
             BlobStorageSpec::LocalDirectory(blob_directory) => {
-                blob_storage = Box::new(DiskBlobStorage { blob_directory });
+                Box::new(DiskBlobStorage { blob_directory })
             }
-            BlobStorageSpec::S3Uri(_) => {
-                return Err(String::from("s3 blob storage not implemented"))
-            }
-        }
+            BlobStorageSpec::S3Uri(s3uri) => Box::new(S3BlobStorage::new(&s3uri)?),
+        };
 
         Ok(Self {
             blob_store: blob_storage,
