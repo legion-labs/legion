@@ -2,15 +2,12 @@ use std::cell::RefCell;
 use std::ops::AddAssign;
 use std::rc::{Rc, Weak};
 
-pub struct Entity {
-    id: EntityIdentifier,
-}
+pub struct Entity(EntityIdentifier);
 
 pub trait Component {}
 
 pub struct World {
     id: WorldIdentifier,
-    name: String,
     entities: Vec<Entity>,
     entity_id_generator: Weak<RefCell<EntityIdentifierGenerator>>,
 }
@@ -18,12 +15,10 @@ pub struct World {
 impl World {
     pub fn new(
         id: WorldIdentifier,
-        name: String,
         entity_id_generator: Weak<RefCell<EntityIdentifierGenerator>>,
     ) -> Self {
         Self {
             id,
-            name,
             entities: Vec::new(),
             entity_id_generator,
         }
@@ -32,7 +27,7 @@ impl World {
     fn create_entity(&mut self) -> EntityIdentifier {
         if let Some(id_generator) = self.entity_id_generator.upgrade() {
             let id = (*id_generator).borrow_mut().get_new_id();
-            self.entities.push(Entity { id });
+            self.entities.push(Entity(id));
             return id;
         }
         INVALID_ENTITY_ID
@@ -87,27 +82,17 @@ type EntityIdentifierGenerator = IdentifierGenerator<EntityIdentifier>;
 type WorldIdentifierGenerator = IdentifierGenerator<WorldIdentifier>;
 
 pub struct Project {
-    name: String,
     world_id_generator: WorldIdentifierGenerator,
     worlds: Vec<World>,
     entity_id_generator: Rc<RefCell<EntityIdentifierGenerator>>,
 }
 
 impl Project {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            world_id_generator: WorldIdentifierGenerator::new(),
-            worlds: Vec::new(),
-            entity_id_generator: Rc::new(RefCell::new(EntityIdentifierGenerator::new())),
-        }
-    }
-
     // World management
 
-    pub fn create_world(&mut self, name: String) -> WorldIdentifier {
+    pub fn create_world(&mut self) -> WorldIdentifier {
         let id = self.world_id_generator.get_new_id();
-        let world = World::new(id, name, Rc::downgrade(&self.entity_id_generator));
+        let world = World::new(id, Rc::downgrade(&self.entity_id_generator));
         self.worlds.push(world);
         id
     }
@@ -129,30 +114,40 @@ impl Project {
     }
 }
 
+impl Default for Project {
+    fn default() -> Self {
+        Self {
+            world_id_generator: WorldIdentifierGenerator::new(),
+            worlds: Vec::new(),
+            entity_id_generator: Rc::new(RefCell::new(EntityIdentifierGenerator::new())),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn create_entity() {
-        let mut project = Project::new("test project".to_string());
+    fn create_entities() {
+        let mut project = Project::default();
 
-        let world_a = project.create_world("a".to_string());
-        if let Some(world) = project.get_world_mut(world_a) {
-            let entity = world.create_entity();
+        let world = project.create_world();
+        if let Some(world) = project.get_world_mut(world) {
+            let entity_1 = world.create_entity();
+            assert!(world.entities.len() == 1);
 
-            println!("entity created {:?}", entity);
-
-            let entity = world.create_entity();
-
-            println!("entity created {:?}", entity);
+            let entity_2 = world.create_entity();
+            assert!(entity_1 != entity_2);
+            assert!(world.entities.len() == 2);
         }
+        assert!(project.worlds.len() == 1);
 
-        let world_b = project.create_world("b".to_string());
-        if let Some(world) = project.get_world_mut(world_b) {
-            let entity = world.create_entity();
-
-            println!("entity created {:?}", entity);
+        let world = project.create_world();
+        if let Some(world) = project.get_world_mut(world) {
+            let _entity = world.create_entity();
+            assert!(world.entities.len() == 1);
         }
+        assert!(project.worlds.len() == 2);
     }
 }
