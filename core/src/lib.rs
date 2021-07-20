@@ -82,6 +82,8 @@ mod ecs;
 pub mod memory;
 pub mod trust_cell;
 
+pub use ecs::*;
+
 #[cfg(test)]
 mod tests {
     #[test]
