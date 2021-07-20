@@ -69,16 +69,20 @@ See [Entitas](https://github.com/sschmid/Entitas-CSharp)
 
 - [ECS Bench Suite](https://github.com/rust-gamedev/ecs_bench_suite)
 
-## C++ implementations
+## C/C++/C# implementations
 
-### Overviews of using C++ for ECS
+### Overviews of using C/C++/C# for ECS
 
 - The Entity-Component-System - [An awesome game-design pattern in C++ (Part 1)](https://www.gamasutra.com/blogs/TobiasStein/20171122/310172/The_EntityComponentSystem__An_awesome_gamedesign_pattern_in_C_Part_1.php) and [BountyHunter game (Part 2)](https://www.gamasutra.com/blogs/TobiasStein/20171122/310174/The_EntityComponentSystem__BountyHunter_game_Part_2.php), Tobias Stein
 
-### List of C++ implementations
+### List of C/C++/C# implementations
 
 | Name | Architecture | Notes |
 | ---- | ------------ | ----- |
+| [Entitas](https://github.com/sschmid/Entitas-CSharp) | reactive | Written in C#. Can integrate with Unity. [Entitas++](https://github.com/JuDelCo/Entitas-Cpp) is a C++ port. |
+| [EntityX](https://github.com/alecthomas/entityx) | bitset | |
 | [EnTT](https://github.com/skypjack/entt) | sparse set | EnTT is a header-only, tiny and easy to use library for game programming and much more written in modern C++. Among others, it's used in Minecraft by Mojang |
 | [Flecs](https://github.com/SanderMertens/flecs) | archetype | |
-| [Unity](https://docs.unity3d.com/Packages/com.unity.entities@0.1/manual/index.html) | archetype | The Entity Component System (ECS) is the core of the Unity Data-Oriented Tech Stack. |
+| [The Machinery](https://ourmachinery.com/) | archetype | Written in plain C. Plugin-based. Graph-based import workflow. Centralized [data model](https://ourmachinery.com/post/the-story-behind-the-truth-designing-a-data-model/). Real-time collaborative game editing |
+| [Unity](https://docs.unity3d.com/Packages/com.unity.entities@0.1/manual/index.html) | archetype | The Entity Component System (ECS) is the core of the Unity [Data-Oriented Technology Stack](https://unity.com/dots) (DOTS). |
+| [Unreal](https://www.unrealengine.com/en-US/tech-blog/performance-at-scale-sequencer-in-unreal-engine-4-26) | archetype | In 4.26, the foundational runtime for Sequencer was redesigned to lay out evaluation data in a way that is cache-efficient and transparent through an evaluation framework based on the entity-component-system pattern. |
