@@ -53,23 +53,15 @@ impl S3BlobStorage {
             Err(e) => Err(format!("error fetching acl: {:?}", e)),
         }
     }
-}
 
-impl BlobStorage for S3BlobStorage {
-    fn read_blob(&self, _hash: &str) -> Result<String, String> {
-        Err(String::from("not impl"))
-    }
-
-    fn download_blob(&self, local_path: &Path, hash: &str) -> Result<(), String> {
-        assert!(!hash.is_empty());
+    fn download_blob_to_cache(&self, hash: &str) -> Result<PathBuf,String>{
+        let cache_path = self.compressed_blob_cache.join(hash);
+        if cache_path.exists(){
+            //todo: validate the compressed file checksum
+            return Ok(cache_path);
+        }
         let path = self.root.join(hash);
         let s3key = path.to_str().unwrap();
-
-        create_parent_directory(local_path)?;
-
-        //todo: don't download files over and over
-        let cache_path = self.compressed_blob_cache.join(hash);
-
         let req = self
             .client
             .get_object()
@@ -95,7 +87,7 @@ impl BlobStorage for S3BlobStorage {
                 Err(e) => {
                     return Err(format!(
                         "Error creating file {}: {}",
-                        local_path.display(),
+                        cache_path.display(),
                         e
                     ));
                 }
@@ -104,6 +96,18 @@ impl BlobStorage for S3BlobStorage {
                 return Err(format!("Error downloading blob: {}", e));
             }
         }
+        Ok(cache_path)
+    }
+}
+
+impl BlobStorage for S3BlobStorage {
+    fn read_blob(&self, _hash: &str) -> Result<String, String> {
+        Err(String::from("not impl"))
+    }
+
+    fn download_blob(&self, local_path: &Path, hash: &str) -> Result<(), String> {
+        assert!(!hash.is_empty());
+        let cache_path = self.download_blob_to_cache(hash)?;
         lz4_decompress(&cache_path, local_path)?;
         let downloaded_hash = compute_file_hash(local_path)?;
         if hash != downloaded_hash {
