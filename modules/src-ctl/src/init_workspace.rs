@@ -33,6 +33,10 @@ pub fn init_workspace(specified_workspace_directory: &Path, repo_uri: &str) -> R
         return Err(format!("Error creating .lsc/tmp directory: {}", e));
     }
 
+    if let Err(e) = fs::create_dir_all(workspace_directory.join(".lsc/blob_cache")) {
+        return Err(format!("Error creating .lsc/blob_cache directory: {}", e));
+    }
+
     write_workspace_spec(
         workspace_directory.join(".lsc/workspace.json").as_path(),
         &spec,

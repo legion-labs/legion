@@ -19,7 +19,8 @@ pub fn push_init_repo_data(
 ) -> Result<(), String> {
     insert_config(sql_connection, self_uri, blob_storage)?;
 
-    let mut repo_connection = RepositoryConnection::new(self_uri)?;
+    let bogus_blob_cache = std::path::PathBuf::new();
+    let mut repo_connection = RepositoryConnection::new(self_uri, bogus_blob_cache)?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
