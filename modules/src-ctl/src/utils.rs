@@ -17,7 +17,7 @@ pub fn hash_string(data: &str) -> String {
     format!("{:X}", hasher.finalize())
 }
 
-fn create_parent_directory(path: &Path) -> Result<(), String> {
+pub fn create_parent_directory(path: &Path) -> Result<(), String> {
     let parent_dir = path.parent().unwrap();
     if !parent_dir.exists() {
         if let Err(e) = std::fs::create_dir_all(parent_dir) {
