@@ -54,9 +54,9 @@ impl S3BlobStorage {
         }
     }
 
-    fn download_blob_to_cache(&self, hash: &str) -> Result<PathBuf,String>{
+    fn download_blob_to_cache(&self, hash: &str) -> Result<PathBuf, String> {
         let cache_path = self.compressed_blob_cache.join(hash);
-        if cache_path.exists(){
+        if cache_path.exists() {
             //todo: validate the compressed file checksum
             return Ok(cache_path);
         }
@@ -101,8 +101,9 @@ impl S3BlobStorage {
 }
 
 impl BlobStorage for S3BlobStorage {
-    fn read_blob(&self, _hash: &str) -> Result<String, String> {
-        Err(String::from("not impl"))
+    fn read_blob(&self, hash: &str) -> Result<String, String> {
+        let cache_path = self.download_blob_to_cache(hash)?;
+        lz4_read(&cache_path)
     }
 
     fn download_blob(&self, local_path: &Path, hash: &str) -> Result<(), String> {
