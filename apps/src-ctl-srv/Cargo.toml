@@ -9,3 +9,4 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 warp = "0.3"
+bytes = "1.0"

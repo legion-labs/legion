@@ -461,7 +461,7 @@ fn main_impl() -> Result<(), String> {
             command_match.value_of("branch"),
         ),
         ("ping", Some(command_match)) => {
-            ping_command(command_match.value_of("server_uri").unwrap())
+            ping_console_command(command_match.value_of("server_uri").unwrap())
         }
         other_match => Err(format!("unknown subcommand match: {:?}", &other_match)),
     }
