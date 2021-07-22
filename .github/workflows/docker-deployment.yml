@@ -22,7 +22,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.overwrite_github_token}}       
+          password: ${{ secrets.GITHUB_TOKEN }}      
       - name: Build app
         run: >-
           docker run
