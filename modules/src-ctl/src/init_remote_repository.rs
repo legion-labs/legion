@@ -1,7 +1,7 @@
 use crate::*;
 use std::fs;
 
-pub fn init_remote_repository(
+pub fn init_mysql_repo_db_command(
     blob_storage: &BlobStorageSpec,
     host: &str,
     username: &str,

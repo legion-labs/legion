@@ -101,7 +101,7 @@ fn main_impl() -> Result<(), String> {
                 )
         )
         .subcommand(
-            SubCommand::with_name("init-remote-repository")
+            SubCommand::with_name("init-mysql-repo-db")
                 .about("Initializes a repository stored on a remote server")
                 .arg(
                     Arg::with_name("local-blob-directory")
@@ -311,6 +311,14 @@ fn main_impl() -> Result<(), String> {
                     Arg::with_name("branch")
                         .help("Name of the branch to import. If omitted will default to first valid branch found"))
         )
+        .subcommand(
+            SubCommand::with_name("ping")
+                .about("Contact server")
+                .arg(
+                    Arg::with_name("server_uri")
+                        .required(true)
+                        .help("lsc://host:port"))
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -325,7 +333,7 @@ fn main_impl() -> Result<(), String> {
                 Err(e) => Err(e),
             }
         }
-        ("init-remote-repository", Some(command_match)) => {
+        ("init-mysql-repo-db", Some(command_match)) => {
             let blob_storage;
             if let Some(dir) = command_match.value_of("local-blob-directory") {
                 blob_storage = BlobStorageSpec::LocalDirectory(PathBuf::from(dir));
@@ -340,7 +348,7 @@ fn main_impl() -> Result<(), String> {
             let username = command_match.value_of("username").unwrap();
             let password = command_match.value_of("password").unwrap_or("");
             let name = command_match.value_of("name").unwrap();
-            match init_remote_repository(&blob_storage, host, username, password, name) {
+            match init_mysql_repo_db_command(&blob_storage, host, username, password, name) {
                 Ok(repo_uri) => {
                     println!("repository uri: {}", repo_uri);
                     Ok(())
@@ -452,6 +460,9 @@ fn main_impl() -> Result<(), String> {
             Path::new(command_match.value_of("path").unwrap()),
             command_match.value_of("branch"),
         ),
+        ("ping", Some(command_match)) => {
+            ping_command(command_match.value_of("server_uri").unwrap())
+        }
         other_match => Err(format!("unknown subcommand match: {:?}", &other_match)),
     }
 }

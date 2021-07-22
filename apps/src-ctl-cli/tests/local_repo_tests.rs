@@ -115,8 +115,14 @@ fn init_test_repo(test_dir: &Path, name: &str) -> String {
                 panic!("test database exists");
             }
         }
-        legion_src_ctl::init_remote_repository(&blob_storage_spec, host, username, password, name)
-            .unwrap()
+        legion_src_ctl::init_mysql_repo_db_command(
+            &blob_storage_spec,
+            host,
+            username,
+            password,
+            name,
+        )
+        .unwrap()
     }
 }
 
