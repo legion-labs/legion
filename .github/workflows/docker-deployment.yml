@@ -1,0 +1,46 @@
+name: Docker Image Release (Test)
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  Dockerize:
+    name: Build Docker Images
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            container: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
+            workdir: /github/workspace
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.overwrite_github_token}}       
+      - name: Build app
+        run: >-
+          docker run
+          --name cargo_build
+          --rm
+          --workdir ${{ matrix.workdir }}
+          -v ${{ github.workspace }}:${{ matrix.workdir }}
+          ${{ matrix.container }}
+          cargo build --release
+      - name: Build Docker Images
+        run:
+          sh docker-scripts/build-docker-images.sh
+      - name: Deploy image to AWS Elastic Container Registry (ECR)
+        env:
+          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          AWS_REGION: ${{secrets.AWS_REGION}}
+        run: |
+          sh docker-scripts/authenticate-aws-ecr.sh ${{secrets.AWS_REGION}}
+          sh docker-scripts/create-aws-ecr-repository.sh ${{secrets.AWS_REGION}}
+          sh docker-scripts/tag-push-docker-images.sh ${{secrets.AWS_REGION}}
