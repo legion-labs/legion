@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use std::cell::RefCell;
 use std::ops::AddAssign;
 use std::rc::{Rc, Weak};
@@ -5,6 +6,12 @@ use std::rc::{Rc, Weak};
 pub struct Entity(EntityIdentifier);
 
 pub trait Component {}
+
+pub struct Position(Vector3<f32>);
+impl Component for Position {}
+
+pub struct Velocity(Vector3<f32>);
+impl Component for Velocity {}
 
 pub struct World {
     id: WorldIdentifier,

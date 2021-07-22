@@ -78,8 +78,10 @@
 #![allow()]
 
 pub mod decimal;
-mod ecs;
+pub mod ecs;
+pub mod math;
 pub mod memory;
+pub mod prelude;
 pub mod trust_cell;
 
 pub use ecs::*;
