@@ -14,6 +14,22 @@ pub fn connect(database_uri: &str) -> Result<sqlx::AnyConnection, String> {
     }
 }
 
+#[derive(Debug)]
+pub struct SqlConnectionPool {
+    pub pool: sqlx::AnyPool,
+}
+
+pub fn make_sql_connection_pool(database_uri: &str) -> Result<SqlConnectionPool, String> {
+    match block_on(
+        sqlx::any::AnyPoolOptions::new()
+            .max_connections(5)
+            .connect(database_uri),
+    ) {
+        Ok(pool) => Ok(SqlConnectionPool { pool }),
+        Err(e) => Err(format!("Error allocating database pool: {}", e)),
+    }
+}
+
 impl RepositoryConnection {
     pub fn new(repo_uri: &str, compressed_blob_cache: std::path::PathBuf) -> Result<Self, String> {
         let mut c = connect(repo_uri)?;
