@@ -57,7 +57,7 @@ pub fn compute_asset_checksum(data: &[u8]) -> i128 {
 /// Enumeration of runtime asset types.
 ///
 /// `TODO`: for more flexibility it could be better to change this to asset registry.
-#[derive(Clone, Copy, PartialEq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Debug, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum AssetType {
     /// Texture asset type.

@@ -71,7 +71,8 @@
 //! - [ ] More flexible compiler registration (compilers-as-executables?).
 //! - [ ] Allow one resource to be processed by many compilers (currently only one supported).
 //! - [ ] Make `source_hash` include hashes of filtered resource dependencies.
-//! - [ ] Clarify how the manifest works and how it gets update if a leaf resource is compiled.
+//! - [x] Clarify how the manifest works and how it gets update if a leaf resource is compiled.
+//! - [ ] Index compiled assets in two ways: current branch & branchless.
 //!
 //! [`.meta`]: ../resources/index.html#resource-meta-file
 //! [`project`]: ../resources/index.html#project-index
