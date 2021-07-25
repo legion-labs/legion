@@ -318,6 +318,9 @@ mod tests {
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
+    const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
+    const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
+
     #[test]
     fn create() {
         let work_dir = tempfile::tempdir().unwrap();
@@ -352,12 +355,12 @@ mod tests {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
             let texture = project
-                .create_resource(ResourcePath::from("child"), ResourceType::Texture, b"test")
+                .create_resource(ResourcePath::from("child"), RESOURCE_TEXTURE, b"test")
                 .unwrap();
             let _material = project
                 .create_resource_with_deps(
                     ResourcePath::from("parent"),
-                    ResourceType::Material,
+                    RESOURCE_MATERIAL,
                     &[texture],
                     b"test",
                 )
@@ -380,7 +383,7 @@ mod tests {
         {
             let mut project = Project::open(work_dir.path()).unwrap();
             project
-                .create_resource(ResourcePath::from("orphan"), ResourceType::Texture, b"test")
+                .create_resource(ResourcePath::from("orphan"), RESOURCE_TEXTURE, b"test")
                 .unwrap();
         }
 
@@ -399,7 +402,7 @@ mod tests {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
             project
-                .create_resource(ResourcePath::from("child"), ResourceType::Texture, b"test")
+                .create_resource(ResourcePath::from("child"), RESOURCE_TEXTURE, b"test")
                 .unwrap()
         };
 
@@ -494,17 +497,20 @@ mod tests {
 
     #[test]
     fn compile() {
+        const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
+        const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
+
         let work_dir = tempfile::tempdir().unwrap();
         {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
             let texture = project
-                .create_resource(ResourcePath::from("child"), ResourceType::Texture, b"test")
+                .create_resource(ResourcePath::from("child"), RESOURCE_TEXTURE, b"test")
                 .unwrap();
             let _material = project
                 .create_resource_with_deps(
                     ResourcePath::from("parent"),
-                    ResourceType::Material,
+                    RESOURCE_MATERIAL,
                     &[texture],
                     b"test",
                 )

@@ -418,7 +418,7 @@ mod tests {
 
     use tempfile::TempDir;
 
-    use crate::{project::Project, types::ResourceType, ResourcePath};
+    use crate::{project::Project, ResourcePath, ResourceType};
 
     use super::ResourceDb;
 
@@ -432,20 +432,26 @@ mod tests {
         root
     }
 
+    const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
+    const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
+    const RESOURCE_GEOMETRY: ResourceType = ResourceType::new(b"geometry");
+    const RESOURCE_SKELETON: ResourceType = ResourceType::new(b"skeleton");
+    const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
+
     fn create_actor(projectroot_path: &Path) -> Project {
         let index_path = Project::root_to_index_path(projectroot_path);
         let mut project = Project::open(&index_path).unwrap();
         let texture = project
             .create_resource(
                 ResourcePath::from("albedo.texture"),
-                ResourceType::Texture,
+                RESOURCE_TEXTURE,
                 b"test",
             )
             .unwrap();
         let material = project
             .create_resource_with_deps(
                 ResourcePath::from("body.material"),
-                ResourceType::Material,
+                RESOURCE_MATERIAL,
                 &[texture],
                 b"test",
             )
@@ -453,7 +459,7 @@ mod tests {
         let geometry = project
             .create_resource_with_deps(
                 ResourcePath::from("hero.geometry"),
-                ResourceType::Geometry,
+                RESOURCE_GEOMETRY,
                 &[material],
                 b"test",
             )
@@ -461,14 +467,14 @@ mod tests {
         let skeleton = project
             .create_resource(
                 ResourcePath::from("hero.skeleton"),
-                ResourceType::Skeleton,
+                RESOURCE_SKELETON,
                 b"test",
             )
             .unwrap();
         let _actor = project
             .create_resource_with_deps(
                 ResourcePath::from("hero.actor"),
-                ResourceType::Actor,
+                RESOURCE_ACTOR,
                 &[geometry, skeleton],
                 b"test",
             )
@@ -479,16 +485,12 @@ mod tests {
 
     fn create_sky_material(project: &mut Project) {
         let texture = project
-            .create_resource(
-                ResourcePath::from("sky.texture"),
-                ResourceType::Texture,
-                b"test",
-            )
+            .create_resource(ResourcePath::from("sky.texture"), RESOURCE_TEXTURE, b"test")
             .unwrap();
         let _material = project
             .create_resource_with_deps(
                 ResourcePath::from("sky.material"),
-                ResourceType::Material,
+                RESOURCE_MATERIAL,
                 &[texture],
                 b"test",
             )

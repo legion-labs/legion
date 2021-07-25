@@ -202,9 +202,11 @@ mod tests {
 
     #[test]
     fn asset_handle() {
+        const ASSET_TEXTURE: AssetType = AssetType::new(b"texture");
+
         let mut reg = AssetStorage::new();
 
-        let id = AssetId::new(AssetType::Texture, 1);
+        let id = AssetId::new(ASSET_TEXTURE, 1);
         let asset = Box::new(SampleAsset {});
 
         assert_eq!(reg.find(id), None);

@@ -179,6 +179,8 @@ mod tests {
 
     use super::{AssetCreator, AssetLoader};
 
+    const ASSET_TEXTURE: AssetType = AssetType::new(b"texture");
+
     struct TextureCreator {}
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -230,7 +232,7 @@ mod tests {
 
         let asset_header = AssetHeader {
             asset_size: 64,
-            asset_id: AssetId::new(AssetType::Texture, 2),
+            asset_id: AssetId::new(ASSET_TEXTURE, 2),
         };
         serde_json::to_writer_pretty(&mut writer, &asset_header).unwrap();
 
@@ -248,7 +250,7 @@ mod tests {
 
         loader
             .creators
-            .insert(AssetType::Texture, Box::new(TextureCreator {}));
+            .insert(ASSET_TEXTURE, Box::new(TextureCreator {}));
         {
             let mut buffer = [0u8; 512];
             create_test_asset(&mut buffer[..]);

@@ -3,9 +3,13 @@ use crate::{CompiledAsset, Error};
 use legion_assets::{AssetId, AssetType};
 use legion_resources::ResourceType;
 
+// This is just a test compiler. Normally following asset types should be defined by relevant modules.
+const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
+const ASSET_TEXTURE: AssetType = AssetType::new(b"texture");
+
 fn compile(input: &mut CompilerInput<'_>) -> Result<Vec<CompiledAsset>, Error> {
     // todo: convert ResourceId to AssetId
-    let guid = AssetId::new(AssetType::Texture, 2);
+    let guid = AssetId::new(ASSET_TEXTURE, 2);
 
     let asset_content = input
         .project
@@ -32,7 +36,7 @@ fn compile(input: &mut CompilerInput<'_>) -> Result<Vec<CompiledAsset>, Error> {
 }
 
 pub static COMPILER_INFO: CompilerInfo = CompilerInfo {
-    handled_resources: &[ResourceType::Texture],
+    handled_resources: &[RESOURCE_TEXTURE],
     code_id: 1,
     data_id: 1,
     compilerid_func: default_compilerid,

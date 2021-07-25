@@ -1,10 +1,8 @@
 use core::fmt;
 use std::{
-    convert::{TryFrom, TryInto},
     fmt::LowerHex,
     hash::Hash,
     path::{Path, PathBuf},
-    u8,
 };
 
 use rand::Rng;
@@ -30,7 +28,7 @@ impl ResourceId {
     /// Creates a new random id.
     pub fn generate_new(kind: ResourceType) -> Self {
         let rand_id: u32 = rand::thread_rng().gen();
-        let type_id = kind as u32;
+        let type_id = kind.0 as u32;
 
         let internal = ((type_id as u64) << 32) | rand_id as u64;
         Self {
@@ -41,7 +39,7 @@ impl ResourceId {
     /// Returns the type of the resource.
     pub fn resource_type(&self) -> ResourceType {
         let type_id = (u64::from(self.id) >> 32) as u32;
-        type_id.try_into().unwrap()
+        ResourceType::from_raw(type_id)
     }
 }
 
@@ -51,36 +49,31 @@ impl LowerHex for ResourceId {
     }
 }
 
-/// A type identifier of an offline resource.
-///
-/// `TODO`: this needs pulling out into a lower-level crate.
-/// `TODO`: for more flexibility it could be better to change this to resource registry.
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Debug, Hash)]
-#[repr(u8)]
-pub enum ResourceType {
-    /// Texture resource type.
-    Texture,
-    /// Metarial resource type.
-    Material,
-    /// Geometry resource type.
-    Geometry,
-    /// Skeleton resource type.
-    Skeleton,
-    /// Actor resource type.
-    Actor,
-}
+/// Type identifier of an offline resource.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResourceType(u32);
 
-impl TryFrom<u32> for ResourceType {
-    type Error = ();
+impl ResourceType {
+    const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        match value {
-            value if value == Self::Texture as u32 => Ok(Self::Texture),
-            value if value == Self::Material as u32 => Ok(Self::Material),
-            value if value == Self::Geometry as u32 => Ok(Self::Geometry),
-            value if value == Self::Skeleton as u32 => Ok(Self::Skeleton),
-            value if value == Self::Actor as u32 => Ok(Self::Actor),
-            _ => Err(()),
-        }
+    const fn crc32(v: &[u8]) -> u32 {
+        Self::CRC32_ALGO.checksum(v)
+    }
+
+    /// Creates a new 32 bit resource type id from series of bytes.
+    ///
+    /// It is recommended to use this method to define a public constant
+    /// which can be used to identify an resource type.
+    pub const fn new(v: &[u8]) -> Self {
+        // TODO: A std::num::NonZeroU32 would be more suitable as an internal representation
+        // however a value of 0 is as likely as any other value returned by `crc32`
+        // and const-fn-friendly panic is not available yet.
+        // See https://github.com/rust-lang/rfcs/pull/2345.
+        Self(Self::crc32(v))
+    }
+
+    /// Creates a 32 bit resource type id from a non-zero integer.
+    pub fn from_raw(v: u32) -> Self {
+        Self(v)
     }
 }

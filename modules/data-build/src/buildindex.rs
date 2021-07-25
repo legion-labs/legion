@@ -238,13 +238,15 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let mut project = Project::create_new(work_dir.path()).expect("failed to create project");
 
+        const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
+
         let child = project
-            .create_resource(ResourcePath::from("child"), ResourceType::Actor, b"test")
+            .create_resource(ResourcePath::from("child"), RESOURCE_ACTOR, b"test")
             .unwrap();
         let parent = project
             .create_resource_with_deps(
                 ResourcePath::from("parent"),
-                ResourceType::Actor,
+                RESOURCE_ACTOR,
                 slice::from_ref(&child),
                 b"test",
             )

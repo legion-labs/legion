@@ -2,7 +2,6 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::hash_map::DefaultHasher,
-    convert::{TryFrom, TryInto},
     fmt::LowerHex,
     hash::{Hash, Hasher},
 };
@@ -20,7 +19,7 @@ pub struct AssetId {
 impl AssetId {
     /// Creates an asset id of a given type.
     pub fn new(kind: AssetType, id: u32) -> Self {
-        let type_id = kind as u32;
+        let type_id = kind.0;
 
         let internal = ((type_id as u64) << 32) | id as u64;
         Self {
@@ -31,7 +30,7 @@ impl AssetId {
     /// Returns the type of the asset.
     pub fn asset_type(&self) -> AssetType {
         let type_id = (u64::from(self.id) >> 32) as u32;
-        type_id.try_into().unwrap()
+        AssetType::from_raw(type_id)
     }
 }
 
@@ -54,29 +53,31 @@ pub fn compute_asset_checksum(data: &[u8]) -> i128 {
     hasher.finish() as i128
 }
 
-/// Enumeration of runtime asset types.
-///
-/// `TODO`: for more flexibility it could be better to change this to asset registry.
-#[derive(Clone, Copy, PartialEq, Debug, Eq, Hash, Serialize, Deserialize)]
-#[repr(u8)]
-pub enum AssetType {
-    /// Texture asset type.
-    Texture,
-    /// Material asset type.
-    Material,
-    /// Skeleton asset type.
-    Skeleton,
-}
+/// Type id of a runtime asset.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AssetType(u32);
 
-impl TryFrom<u32> for AssetType {
-    type Error = ();
+impl AssetType {
+    const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        match value {
-            value if value == Self::Texture as u32 => Ok(Self::Texture),
-            value if value == Self::Material as u32 => Ok(Self::Material),
-            value if value == Self::Skeleton as u32 => Ok(Self::Skeleton),
-            _ => Err(()),
-        }
+    const fn crc32(v: &[u8]) -> u32 {
+        Self::CRC32_ALGO.checksum(v)
+    }
+
+    /// Creates a new 32 bit asset type id from series of bytes.
+    ///
+    /// It is recommended to use this method to define a public constant
+    /// which can be used to identify an asset type.
+    pub const fn new(v: &[u8]) -> Self {
+        // TODO: A std::num::NonZeroU32 would be more suitable as an internal representation
+        // however a value of 0 is as likely as any other value returned by `crc32`
+        // and const-fn-friendly panic is not available yet.
+        // See https://github.com/rust-lang/rfcs/pull/2345.
+        Self(Self::crc32(v))
+    }
+
+    /// Creates a 32 bit asset type id from a non-zero integer.
+    pub fn from_raw(v: u32) -> Self {
+        Self(v)
     }
 }
