@@ -131,7 +131,7 @@ It will include features like:
 - common UI support
 - more...
 
-Below is an example of its usage within the prefab system to define an area with various types of enemies:
+Below is an example of its usage within the prefab system to define the `offline data format` of an area with various types of enemies:
 
 ```ignore
 + data-offline/
@@ -148,7 +148,3 @@ Below is an example of its usage within the prefab system to define an area with
   - area.data
   - area.meta // many advanced_actor instances, one boss_actor instance, basic_weapon of boss_actor overridden
 ```
-
-## Game World/Level
-
-todo

@@ -18,7 +18,7 @@ One of the goals of the runtime format is to do as little post-load processing o
 
 ##### Data Model
 
-[`Data Model`] chapter is dedicated to the problem of declaring offline and runtime data formats, data edition, compilation and many other related matters.
+[Data Model](./data-model.html) chapter is dedicated to the problem of declaring offline and runtime data formats, data edition, compilation and many other related matters.
 
 #### Focus on Many Different Workflows
 
