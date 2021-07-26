@@ -123,3 +123,6 @@ pub use self::metadata::*;
 
 mod types;
 pub use self::types::*;
+
+mod registry;
+pub use self::registry::*;
