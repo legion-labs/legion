@@ -27,5 +27,8 @@ async fn main() {
         .and(warp::body::bytes())
         .map(|body: bytes::Bytes| dispatch_request(unsafe { G_POOL.as_ref().unwrap() }, body));
 
-    warp::serve(command_filter).run(([0, 0, 0, 0], 8080)).await;
+    let server_addr_str = std::env::var("LEGION_SRC_CTL_SERVER_ADDR")
+        .expect("missing env variable LEGION_SRC_CTL_SERVER_ADDR");
+    let addr: std::net::SocketAddr = server_addr_str.parse().unwrap();
+    warp::serve(command_filter).run(addr).await;
 }
