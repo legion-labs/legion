@@ -48,7 +48,7 @@ pub fn compute_file_hash(p: &Path) -> Result<String, String> {
     Ok(hash)
 }
 
-pub fn sync_file(
+pub async fn sync_file(
     connection: &mut RepositoryConnection,
     local_path: &Path,
     hash_to_sync: &str,
@@ -90,6 +90,7 @@ pub fn sync_file(
             if let Err(e) = connection
                 .blob_storage()
                 .download_blob(local_path, hash_to_sync)
+                .await
             {
                 return Err(format!(
                     "Error downloading {} {}: {}",
@@ -118,6 +119,7 @@ pub fn sync_file(
             if let Err(e) = connection
                 .blob_storage()
                 .download_blob(local_path, hash_to_sync)
+                .await
             {
                 return Err(format!(
                     "Error downloading {} {}: {}",
@@ -139,7 +141,8 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let mut workspace_branch = read_current_branch(&workspace_root)?;
     let commits = find_commit_range(
         &mut connection,
@@ -218,7 +221,8 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
             None => {
                 //no local change, ok to sync
                 let local_path = workspace_root.join(relative_path);
-                match sync_file(&mut connection, &local_path, &latest_hash) {
+                match tokio_runtime.block_on(sync_file(&mut connection, &local_path, &latest_hash))
+                {
                     Ok(message) => {
                         println!("{}", message);
                     }
@@ -245,7 +249,8 @@ pub fn sync_command() -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let workspace_branch = read_current_branch(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let repo_branch = read_branch_from_repo(&mut connection, &workspace_branch.name)?;
     sync_to_command(&repo_branch.head)
 }

@@ -12,7 +12,7 @@ pub fn init_repo_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()
     Ok(())
 }
 
-pub fn push_init_repo_data(
+pub async fn push_init_repo_data(
     sql_connection: &mut sqlx::AnyConnection,
     self_uri: &str,
     blob_storage: &BlobStorageSpec,
@@ -20,7 +20,7 @@ pub fn push_init_repo_data(
     insert_config(sql_connection, self_uri, blob_storage)?;
 
     let bogus_blob_cache = std::path::PathBuf::new();
-    let mut repo_connection = RepositoryConnection::new(self_uri, bogus_blob_cache)?;
+    let mut repo_connection = RepositoryConnection::new(self_uri, bogus_blob_cache).await?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
@@ -65,12 +65,14 @@ pub fn init_local_repository(directory: &Path) -> Result<String, String> {
         return Err(format!("Error creating blobs directory: {}", e));
     }
 
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+
     let mut sql_connection = connect(&repo_uri)?;
     init_repo_database(&mut sql_connection)?;
-    push_init_repo_data(
+    tokio_runtime.block_on(push_init_repo_data(
         &mut sql_connection,
         &repo_uri,
         &BlobStorageSpec::LocalDirectory(blob_dir),
-    )?;
+    ))?;
     Ok(repo_uri)
 }

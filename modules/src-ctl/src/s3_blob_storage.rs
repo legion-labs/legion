@@ -1,4 +1,5 @@
 use crate::*;
+use async_trait::async_trait;
 use futures::TryStreamExt;
 use http::Uri;
 use std::io::Write;
@@ -8,31 +9,28 @@ pub struct S3BlobStorage {
     bucket_name: String,
     root: PathBuf,
     client: s3::Client,
-    tokio_runtime: tokio::runtime::Runtime,
     compressed_blob_cache: PathBuf,
 }
 
 impl S3BlobStorage {
-    pub fn new(s3uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
+    pub async fn new(s3uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
         let uri = s3uri.parse::<Uri>().unwrap();
         let bucket_name = String::from(uri.host().unwrap());
         let root = PathBuf::from(uri.path().strip_prefix("/").unwrap());
-        let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
         let client = s3::Client::from_env();
         let req = client.get_bucket_location().bucket(&bucket_name);
-        if let Err(e) = tokio_runtime.block_on(req.send()) {
+        if let Err(e) = req.send().await {
             return Err(format!("Error connecting to bucket {}: {}", s3uri, e));
         }
         Ok(Self {
             bucket_name,
             root,
             client,
-            tokio_runtime,
             compressed_blob_cache,
         })
     }
 
-    fn blob_exists(&self, hash: &str) -> Result<bool, String> {
+    async fn blob_exists(&self, hash: &str) -> Result<bool, String> {
         let path = self.root.join(hash);
         let key = path.to_str().unwrap();
         //we fetch the acl to know if the object exists
@@ -41,7 +39,7 @@ impl S3BlobStorage {
             .get_object_acl()
             .bucket(&self.bucket_name)
             .key(key);
-        match self.tokio_runtime.block_on(req_acl.send()) {
+        match req_acl.send().await {
             Ok(_acl) => Ok(true),
             Err(s3::SdkError::ServiceError { err, raw }) => match err.kind {
                 s3::error::GetObjectAclErrorKind::NoSuchKey(_) => Ok(false),
@@ -54,7 +52,7 @@ impl S3BlobStorage {
         }
     }
 
-    fn download_blob_to_cache(&self, hash: &str) -> Result<PathBuf, String> {
+    async fn download_blob_to_cache(&self, hash: &str) -> Result<PathBuf, String> {
         let cache_path = self.compressed_blob_cache.join(hash);
         if cache_path.exists() {
             //todo: validate the compressed file checksum
@@ -67,10 +65,10 @@ impl S3BlobStorage {
             .get_object()
             .bucket(&self.bucket_name)
             .key(s3key);
-        match self.tokio_runtime.block_on(req.send()) {
+        match req.send().await {
             Ok(mut obj_output) => match std::fs::File::create(&cache_path) {
                 Ok(mut output_file) => loop {
-                    match self.tokio_runtime.block_on(obj_output.body.try_next()) {
+                    match obj_output.body.try_next().await {
                         Ok(Some(bytes)) => {
                             if let Err(e) = output_file.write(&bytes) {
                                 return Err(format!("Error writing to temp buffer: {}", e));
@@ -100,15 +98,16 @@ impl S3BlobStorage {
     }
 }
 
+#[async_trait]
 impl BlobStorage for S3BlobStorage {
-    fn read_blob(&self, hash: &str) -> Result<String, String> {
-        let cache_path = self.download_blob_to_cache(hash)?;
+    async fn read_blob(&self, hash: &str) -> Result<String, String> {
+        let cache_path = self.download_blob_to_cache(hash).await?;
         lz4_read(&cache_path)
     }
 
-    fn download_blob(&self, local_path: &Path, hash: &str) -> Result<(), String> {
+    async fn download_blob(&self, local_path: &Path, hash: &str) -> Result<(), String> {
         assert!(!hash.is_empty());
-        let cache_path = self.download_blob_to_cache(hash)?;
+        let cache_path = self.download_blob_to_cache(hash).await?;
         lz4_decompress(&cache_path, local_path)?;
         let downloaded_hash = compute_file_hash(local_path)?;
         if hash != downloaded_hash {
@@ -120,10 +119,10 @@ impl BlobStorage for S3BlobStorage {
         Ok(())
     }
 
-    fn write_blob(&self, hash: &str, contents: &[u8]) -> Result<(), String> {
+    async fn write_blob(&self, hash: &str, contents: &[u8]) -> Result<(), String> {
         let path = self.root.join(hash);
         let key = path.to_str().unwrap();
-        if self.blob_exists(hash)? {
+        if self.blob_exists(hash).await? {
             return Ok(());
         }
 
@@ -142,10 +141,7 @@ impl BlobStorage for S3BlobStorage {
                 return Err(format!("Error making lz4 encoder: {}", e));
             }
         }
-        if let Err(e) = self
-            .tokio_runtime
-            .block_on(req.body(s3::ByteStream::from(buffer)).send())
-        {
+        if let Err(e) = req.body(s3::ByteStream::from(buffer)).send().await {
             return Err(format!("Error writing to bucket {}", e));
         }
 
@@ -153,8 +149,8 @@ impl BlobStorage for S3BlobStorage {
     }
 }
 
-pub fn validate_connection_to_bucket(s3uri: &str) -> Result<(), String> {
+pub async fn validate_connection_to_bucket(s3uri: &str) -> Result<(), String> {
     let bogus_blob_cache = std::path::PathBuf::new();
-    let _storage = S3BlobStorage::new(s3uri, bogus_blob_cache)?;
+    let _storage = S3BlobStorage::new(s3uri, bogus_blob_cache).await?;
     Ok(())
 }

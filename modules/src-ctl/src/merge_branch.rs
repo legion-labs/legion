@@ -102,7 +102,7 @@ fn find_latest_common_ancestor(
     None
 }
 
-fn change_file_to(
+async fn change_file_to(
     connection: &mut RepositoryConnection,
     relative_path: &Path,
     workspace_root: &Path,
@@ -122,6 +122,7 @@ fn change_file_to(
         if let Err(e) = connection
             .blob_storage()
             .download_blob(&local_path, hash_to_sync)
+            .await
         {
             return Err(format!(
                 "Error downloading {} {}: {}",
@@ -142,6 +143,7 @@ fn change_file_to(
         if let Err(e) = connection
             .blob_storage()
             .download_blob(&local_path, hash_to_sync)
+            .await
         {
             return Err(format!(
                 "Error downloading {} {}: {}",
@@ -183,7 +185,8 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let src_branch = read_branch_from_repo(&mut connection, name)?;
     let current_branch = read_current_branch(&workspace_root)?;
     let mut destination_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
@@ -250,7 +253,12 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
                     errors.push(format!("Error saving pending resolve {}: {}", path, e));
                 }
             } else {
-                match change_file_to(&mut connection, Path::new(path), &workspace_root, hash) {
+                match tokio_runtime.block_on(change_file_to(
+                    &mut connection,
+                    Path::new(path),
+                    &workspace_root,
+                    hash,
+                )) {
                     Ok(message) => {
                         println!("{}", message);
                     }

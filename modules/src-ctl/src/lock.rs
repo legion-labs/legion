@@ -167,7 +167,8 @@ pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     let lock = Lock {
         relative_path: make_canonical_relative_path(&workspace_root, path_specified)?,
@@ -182,7 +183,8 @@ pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
     clear_lock(&mut connection, &repo_branch.lock_domain_id, &relative_path)
@@ -193,7 +195,8 @@ pub fn list_locks_command() -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     let locks = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
     if locks.is_empty() {
@@ -211,7 +214,8 @@ pub fn list_locks_command() -> Result<(), String> {
 pub fn assert_not_locked(workspace_root: &Path, path_specified: &Path) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let current_branch = read_current_branch(workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
     match read_lock(&mut connection, &repo_branch.lock_domain_id, &relative_path) {

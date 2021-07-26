@@ -1,4 +1,5 @@
 use crate::*;
+use async_trait::async_trait;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -6,19 +7,20 @@ pub struct DiskBlobStorage {
     pub blob_directory: PathBuf,
 }
 
+#[async_trait]
 impl BlobStorage for DiskBlobStorage {
-    fn read_blob(&self, hash: &str) -> Result<String, String> {
+    async fn read_blob(&self, hash: &str) -> Result<String, String> {
         let blob_path = self.blob_directory.join(hash);
         lz4_read(&blob_path)
     }
 
-    fn download_blob(&self, local_path: &Path, hash: &str) -> Result<(), String> {
+    async fn download_blob(&self, local_path: &Path, hash: &str) -> Result<(), String> {
         assert!(!hash.is_empty());
         let blob_path = self.blob_directory.join(hash);
         lz4_decompress(&blob_path, local_path)
     }
 
-    fn write_blob(&self, hash: &str, contents: &[u8]) -> Result<(), String> {
+    async fn write_blob(&self, hash: &str, contents: &[u8]) -> Result<(), String> {
         let path = self.blob_directory.join(hash);
         write_blob_to_disk(&path, contents)
     }

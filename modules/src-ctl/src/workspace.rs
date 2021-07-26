@@ -82,7 +82,7 @@ impl Drop for TempPath {
     }
 }
 
-pub fn download_temp_file(
+pub async fn download_temp_file(
     connection: &mut RepositoryConnection,
     workspace_root: &Path,
     blob_hash: &str,
@@ -91,7 +91,8 @@ pub fn download_temp_file(
     let temp_file_path = tmp_dir.join(blob_hash);
     connection
         .blob_storage()
-        .download_blob(&temp_file_path, blob_hash)?;
+        .download_blob(&temp_file_path, blob_hash)
+        .await?;
     Ok(TempPath {
         path: temp_file_path,
     })

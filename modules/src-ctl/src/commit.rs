@@ -190,7 +190,7 @@ pub fn commit_exists(connection: &mut RepositoryConnection, id: &str) -> bool {
     count > 0
 }
 
-fn upload_localy_edited_blobs(
+async fn upload_localy_edited_blobs(
     workspace_root: &Path,
     repo_connection: &RepositoryConnection,
     local_changes: &[LocalChange],
@@ -209,7 +209,8 @@ fn upload_localy_edited_blobs(
             let hash = format!("{:X}", Sha256::digest(&local_file_contents));
             repo_connection
                 .blob_storage()
-                .write_blob(&hash, &local_file_contents)?;
+                .write_blob(&hash, &local_file_contents)
+                .await?;
             res.push(HashedChange {
                 relative_path: local_change.relative_path.clone(),
                 hash: hash.clone(),
@@ -241,7 +242,8 @@ pub fn commit_local_changes(
     let workspace_root = workspace_connection.workspace_path().to_path_buf();
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let mut current_branch = read_current_branch(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
@@ -251,7 +253,11 @@ pub fn commit_local_changes(
         let abs_path = workspace_root.join(&change.relative_path);
         assert_not_locked(&workspace_root, &abs_path)?;
     }
-    let hashed_changes = upload_localy_edited_blobs(&workspace_root, &connection, &local_changes)?;
+    let hashed_changes = tokio_runtime.block_on(upload_localy_edited_blobs(
+        &workspace_root,
+        &connection,
+        &local_changes,
+    ))?;
 
     let base_commit = read_commit(&mut connection, &current_branch.head)?;
 

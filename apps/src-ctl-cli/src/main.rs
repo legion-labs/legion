@@ -101,8 +101,16 @@ fn main_impl() -> Result<(), String> {
                 )
         )
         .subcommand(
+            SubCommand::with_name("init-remote-repository")
+                .about("Initializes a repository stored in a remove server")
+                .arg(
+                    Arg::with_name("repository_uri")
+                        .required(true)
+                        .help("lsc://host:port/repository_name"))
+        )
+        .subcommand(
             SubCommand::with_name("init-mysql-repo-db")
-                .about("Initializes a repository stored on a remote server")
+                .about("Initializes a repository stored in a MySQL server")
                 .arg(
                     Arg::with_name("local-blob-directory")
                         .value_name("local-blob-directory")
@@ -333,6 +341,11 @@ fn main_impl() -> Result<(), String> {
                 Err(e) => Err(e),
             }
         }
+        ("init-remote-repository", Some(command_match)) => {
+            legion_src_ctl::init_remote_repository_command(
+                command_match.value_of("repository_uri").unwrap(),
+            )
+        }
         ("init-mysql-repo-db", Some(command_match)) => {
             let blob_storage;
             if let Some(dir) = command_match.value_of("local-blob-directory") {
@@ -348,7 +361,14 @@ fn main_impl() -> Result<(), String> {
             let username = command_match.value_of("username").unwrap();
             let password = command_match.value_of("password").unwrap_or("");
             let name = command_match.value_of("name").unwrap();
-            match init_mysql_repo_db_command(&blob_storage, host, username, password, name) {
+            let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+            match tokio_runtime.block_on(init_mysql_repo_db(
+                &blob_storage,
+                host,
+                username,
+                password,
+                name,
+            )) {
                 Ok(repo_uri) => {
                     println!("repository uri: {}", repo_uri);
                     Ok(())

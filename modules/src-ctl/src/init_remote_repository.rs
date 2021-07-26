@@ -1,7 +1,8 @@
 use crate::*;
+use http::Uri;
 use std::fs;
 
-pub fn init_mysql_repo_db_command(
+pub async fn init_mysql_repo_db(
     blob_storage: &BlobStorageSpec,
     host: &str,
     username: &str,
@@ -23,7 +24,7 @@ pub fn init_mysql_repo_db_command(
             }
         }
         BlobStorageSpec::S3Uri(s3uri) => {
-            if let Err(e) = validate_connection_to_bucket(s3uri) {
+            if let Err(e) = validate_connection_to_bucket(s3uri).await {
                 return Err(format!("Error connecting to s3: {}", e));
             }
         }
@@ -31,6 +32,16 @@ pub fn init_mysql_repo_db_command(
     create_database(&repo_uri)?;
     let mut sql_connection = connect(&repo_uri)?;
     init_repo_database(&mut sql_connection)?;
-    push_init_repo_data(&mut sql_connection, &repo_uri, blob_storage)?;
+    push_init_repo_data(&mut sql_connection, &repo_uri, blob_storage).await?;
     Ok(repo_uri)
+}
+
+pub fn init_remote_repository_command(repo_uri: &str) -> Result<(), String> {
+    let specified_uri = repo_uri.parse::<Uri>().unwrap();
+    let mut path = String::from(specified_uri.path());
+    let name = path.split_off(1); //remove leading /
+    let request = ServerRequest::InitRepo(InitRepositoryRequest { name });
+    let resp = execute_request(repo_uri, &request)?;
+    println!("{}", resp);
+    Ok(())
 }

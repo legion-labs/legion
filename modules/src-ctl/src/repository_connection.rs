@@ -31,14 +31,17 @@ pub fn make_sql_connection_pool(database_uri: &str) -> Result<SqlConnectionPool,
 }
 
 impl RepositoryConnection {
-    pub fn new(repo_uri: &str, compressed_blob_cache: std::path::PathBuf) -> Result<Self, String> {
+    pub async fn new(
+        repo_uri: &str,
+        compressed_blob_cache: std::path::PathBuf,
+    ) -> Result<Self, String> {
         let mut c = connect(repo_uri)?;
         let blob_storage: Box<dyn BlobStorage> = match read_blob_storage_spec(&mut c)? {
             BlobStorageSpec::LocalDirectory(blob_directory) => {
                 Box::new(DiskBlobStorage { blob_directory })
             }
             BlobStorageSpec::S3Uri(s3uri) => {
-                Box::new(S3BlobStorage::new(&s3uri, compressed_blob_cache)?)
+                Box::new(S3BlobStorage::new(&s3uri, compressed_blob_cache).await?)
             }
         };
 
@@ -57,7 +60,7 @@ impl RepositoryConnection {
     }
 }
 
-pub fn connect_to_server(workspace: &Workspace) -> Result<RepositoryConnection, String> {
+pub async fn connect_to_server(workspace: &Workspace) -> Result<RepositoryConnection, String> {
     let blob_cache_dir = std::path::Path::new(&workspace.root).join(".lsc/blob_cache");
-    RepositoryConnection::new(&workspace.repo_uri, blob_cache_dir)
+    RepositoryConnection::new(&workspace.repo_uri, blob_cache_dir).await
 }

@@ -17,7 +17,8 @@ pub fn init_workspace(specified_workspace_directory: &Path, repo_uri: &str) -> R
         owner: whoami::username(),
     };
 
-    let mut connection = connect_to_server(&spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&spec))?;
 
     if let Err(e) = fs::create_dir_all(&lsc_dir) {
         return Err(format!("Error creating .lsc directory: {}", e));
@@ -46,6 +47,10 @@ pub fn init_workspace(specified_workspace_directory: &Path, repo_uri: &str) -> R
     let main_branch = read_branch_from_repo(&mut connection, "main")?;
     save_current_branch(&workspace_directory, &main_branch)?;
     let commit = read_commit(&mut connection, &main_branch.head)?;
-    download_tree(&mut connection, &workspace_directory, &commit.root_hash)?;
+    tokio_runtime.block_on(download_tree(
+        &mut connection,
+        &workspace_directory,
+        &commit.root_hash,
+    ))?;
     Ok(())
 }

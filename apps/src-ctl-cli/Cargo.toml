@@ -10,3 +10,4 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 clap = "2.33"
 legion-src-ctl = { path = "../../modules/src-ctl" }
+tokio = { version = "1", features = ["full"] }

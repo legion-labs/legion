@@ -7,8 +7,14 @@ pub struct PingRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct InitRepositoryRequest {
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     Ping(PingRequest),
+    InitRepo(InitRepositoryRequest),
 }
 
 impl ServerRequest {
@@ -38,7 +44,12 @@ pub fn execute_request(server_uri: &str, request: &ServerRequest) -> Result<Stri
         Ok(resp) => {
             let status = resp.status();
             if !status.is_success() {
-                return Err(format!("Request {} failed with status {}", url, status));
+                return Err(format!(
+                    "Request {} failed with status {}\n{}",
+                    url,
+                    status,
+                    resp.text().unwrap_or_default()
+                ));
             }
             match resp.text() {
                 Ok(body) => Ok(body),

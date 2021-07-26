@@ -35,7 +35,8 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
     let local_change = match find_local_change(&mut workspace_connection, &relative_path) {
         Ok(Some(change)) => change,
@@ -70,9 +71,11 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
                 return Err(String::from("Original file not found in tree"));
             }
         }
-        connection
-            .blob_storage()
-            .download_blob(&abs_path, &file_node.hash)?;
+        tokio_runtime.block_on(
+            connection
+                .blob_storage()
+                .download_blob(&abs_path, &file_node.hash),
+        )?;
         make_file_read_only(&abs_path, true)?;
     }
     clear_local_change(&mut workspace_connection, &local_change)?;

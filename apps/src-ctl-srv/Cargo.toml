@@ -13,3 +13,4 @@ warp = "0.3"
 bytes = "1.0"
 http = { version = "0.2.4" }
 hyper = "0.14"
+futures = "0.3"

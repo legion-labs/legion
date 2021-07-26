@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 
 fn sync_tree_diff(
+    runtime: &tokio::runtime::Runtime,
     connection: &mut RepositoryConnection,
     current_tree_hash: &str,
     new_tree_hash: &str,
@@ -34,13 +35,13 @@ fn sync_tree_diff(
             None => String::new(),
         };
         if new_file_node.hash != present_hash {
-            match sync_file(
+            match runtime.block_on(sync_file(
                 connection,
                 &workspace_root
                     .join(relative_path_tree)
                     .join(&new_file_node.name),
                 &new_file_node.hash,
-            ) {
+            )) {
                 Ok(message) => {
                     println!("{}", message);
                 }
@@ -54,7 +55,7 @@ fn sync_tree_diff(
     //those files were not matched, delete them
     for k in files_present.keys() {
         let abs_path = workspace_root.join(relative_path_tree).join(&k);
-        match sync_file(connection, &abs_path, "") {
+        match runtime.block_on(sync_file(connection, &abs_path, "")) {
             Ok(message) => {
                 println!("{}", message);
             }
@@ -82,12 +83,14 @@ fn sync_tree_diff(
         }
         if new_dir_node.hash != present_hash {
             if let Err(e) = sync_tree_diff(
+                runtime,
                 connection,
                 &present_hash,
                 &new_dir_node.hash,
                 &relative_sub_dir,
                 workspace_root,
-            ) {
+            )
+            {
                 println!("{}", e);
             }
         }
@@ -114,13 +117,15 @@ pub fn switch_branch_command(name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let old_branch = read_current_branch(&workspace_root)?;
     let old_commit = read_commit(&mut connection, &old_branch.head)?;
     let new_branch = read_branch_from_repo(&mut connection, name)?;
     let new_commit = read_commit(&mut connection, &new_branch.head)?;
     save_current_branch(&workspace_root, &new_branch)?;
     sync_tree_diff(
+        &tokio_runtime,
         &mut connection,
         &old_commit.root_hash,
         &new_commit.root_hash,

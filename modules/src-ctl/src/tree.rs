@@ -298,7 +298,7 @@ pub fn remove_dir_rec(
     Ok(messages.join("\n"))
 }
 
-pub fn download_tree(
+pub async fn download_tree(
     connection: &mut RepositoryConnection,
     download_path: &Path,
     tree_hash: &str,
@@ -334,6 +334,7 @@ pub fn download_tree(
             if let Err(e) = connection
                 .blob_storage()
                 .download_blob(&abs_path, &relative_file_node.hash)
+                .await
             {
                 errors.push(format!(
                     "Error downloading blob {} to {}: {}",

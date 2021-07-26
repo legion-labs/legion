@@ -104,6 +104,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-recursion"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7d78656ba01f1b93024b7c3a0467f1608e4be67d725749fdcd7d2c7678fd7a2"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "async-trait"
+version = "0.1.50"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b98e84bbb4cbcdd97da190ba0c58a1bb0de2c1fdf67d159e192ed766aeca722"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "atoi"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1240,6 +1262,8 @@ dependencies = [
 name = "legion-src-ctl"
 version = "0.1.0"
 dependencies = [
+ "async-recursion",
+ "async-trait",
  "aws-sdk-s3",
  "chrono",
  "diffy",
@@ -1378,6 +1402,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "legion-src-ctl",
+ "tokio",
 ]
 
 [[package]]
@@ -2634,6 +2659,7 @@ name = "src-ctl-srv"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "futures",
  "http",
  "hyper",
  "legion-src-ctl",
