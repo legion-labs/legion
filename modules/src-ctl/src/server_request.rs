@@ -18,6 +18,14 @@ impl ServerRequest {
             Err(e) => Err(format!("Error formatting server request: {}", e)),
         }
     }
+
+    pub fn from_json(contents: &str) -> Result<Self, String> {
+        let parsed: serde_json::Result<Self> = serde_json::from_str(contents);
+        match parsed {
+            Ok(req) => Ok(req),
+            Err(e) => Err(format!("Error parsing server request: {}", e)),
+        }
+    }
 }
 
 pub fn execute_request(server_uri: &str, request: &ServerRequest) -> Result<String, String> {

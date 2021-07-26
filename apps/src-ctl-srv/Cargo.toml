@@ -11,3 +11,5 @@ legion-src-ctl = { path = "../../modules/src-ctl" }
 tokio = { version = "1", features = ["full"] }
 warp = "0.3"
 bytes = "1.0"
+http = { version = "0.2.4" }
+hyper = "0.14"

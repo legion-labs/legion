@@ -2634,6 +2634,8 @@ name = "src-ctl-srv"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "http",
+ "hyper",
  "legion-src-ctl",
  "tokio",
  "warp",
