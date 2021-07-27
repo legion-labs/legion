@@ -7,6 +7,8 @@
 - [Entities, components and systems](https://medium.com/ingeniouslysimple/entities-components-and-systems-89c31464240d), Mark Jordan
 - [ECS FAQ](https://github.com/SanderMertens/ecs-faq), Sander Mertens (author of Flecs)
 - [Overwatch Gameplay Architecture and Netcode](https://www.youtube.com/watch?v=W3aieHjyNvw), Timothy Ford (Blizzard), GDC 2017 talk
+- [Understanding data-oriented design for entity component systems](https://www.youtube.com/watch?v=0_Byw9UMn9g), Unity at GDC 2019
+
 
 ## Common definitions
 
@@ -48,8 +50,11 @@ See [Entitas](https://github.com/sschmid/Entitas-CSharp)
 - [Entity Component System implementations](https://arewegameyet.rs/ecosystem/ecs/), Are we game yet?
 - [Using Rust for game development](https://www.youtube.com/watch?v=aKLntZcp27M), Catherine West, RustConf 2018 closing keynote
     - [detailed notes](https://kyren.github.io/2018/09/14/rustconf-talk.html)
-    - depends on [slotmap](https://crates.io/crates/slotmap) crate for generational indexes, and [AnyMap](https://crates.io/crates/anymap) crate 
+    - depends on [slotmap](https://crates.io/crates/slotmap) crate for generational indexes, and [AnyMap](https://crates.io/crates/anymap) crate
+    - [Rant: Entity systems and the Rust borrow checker ... or something](https://www.youtube.com/watch?v=4t1K66dMhWk), Jonathan Blow
 - [Specs and Legion, two very different approaches to ECS](https://csherratt.github.io/blog/posts/specs-and-legion/), Cora Sherratt
+    - proposal to move Amethyst from specs to legion: [[RFC Discussion] Legion ECS Evolution](https://github.com/amethyst/rfcs/issues/22)
+- [Data Oriented GUI in Rust](https://www.youtube.com/watch?v=4YTfxresvS8), Raph Levien, Bay Area Rust Meetup
 
 ### List of Rust implementations
 
@@ -58,6 +63,7 @@ See [Entitas](https://github.com/sschmid/Entitas-CSharp)
 | [Bevy](https://bevyengine.org/) | ? | 54k | [Bevy ECS overview](https://bevyengine.org/learn/book/getting-started/ecs/). Entities are simple type containing unique integer. Components are  normal Rust structs. |
 | [DCES](https://crates.io/crates/dces) | ? | 11k | part of OrbTk |
 | [Dotrix](https://crates.io/crates/dotrix) | ? | <1k | |
+| [ecs-rs](https://github.com/HeroesGrave/ecs-rs) | ? | ? | port of [Artemis framework](https://gamadu.com/artemis/) |
 | [hecs](https://github.com/Ralith/hecs) | archetype | 12k | |
 | [Legion](https://crates.io/crates/legion) | archetype | 33k | Queries specify components using types (with mut for write-access). Systems use update functions, components extracted from signature, and scheduled according to data-flow |
 | [Planck](https://jojolepro.com/blog/2021-01-13_planck_ecs/) | ? | <1k | Adds resources, which are independant of entites, ex: game-time |
