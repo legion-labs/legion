@@ -276,9 +276,13 @@ fn import_commit_sequence(
                 }
                 match git_repo.diff_index_to_index(&reference_index, &current_index, None) {
                     Ok(diff) => {
-                        if let Err(e) =
-                            import_commit_diff(workspace_connection, repo_connection, runtime, &diff, git_repo)
-                        {
+                        if let Err(e) = import_commit_diff(
+                            workspace_connection,
+                            repo_connection,
+                            runtime,
+                            &diff,
+                            git_repo,
+                        ) {
                             return Err(format!(
                                 "Error importing {}: {}",
                                 format_commit(&commit),

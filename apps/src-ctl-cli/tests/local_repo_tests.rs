@@ -95,7 +95,9 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
     let use_mysql = std::env::var("LEGION_SRC_CTL_TEST_MYSQL").unwrap_or_default();
     if use_mysql.is_empty() {
         let repo_dir = test_dir.join("repo");
-        legion_src_ctl::init_local_repository(&repo_dir).await.unwrap()
+        legion_src_ctl::init_local_repository(&repo_dir)
+            .await
+            .unwrap()
     } else {
         let blob_storage_spec = match std::env::var("LEGION_SRC_CTL_TEST_S3_BUCKET") {
             Ok(s3uri) => legion_src_ctl::BlobStorageSpec::S3Uri(s3uri),

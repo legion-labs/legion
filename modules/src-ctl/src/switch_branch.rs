@@ -89,8 +89,7 @@ fn sync_tree_diff(
                 &new_dir_node.hash,
                 &relative_sub_dir,
                 workspace_root,
-            )
-            {
+            ) {
                 println!("{}", e);
             }
         }
