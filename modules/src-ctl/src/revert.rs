@@ -79,9 +79,7 @@ pub async fn revert_file(
     }
     clear_local_change(workspace_connection, &local_change)?;
     match find_resolve_pending(workspace_connection, &relative_path) {
-        Ok(Some(resolve_pending)) => {
-            clear_resolve_pending(workspace_connection, &resolve_pending)
-        }
+        Ok(Some(resolve_pending)) => clear_resolve_pending(workspace_connection, &resolve_pending),
         Err(e) => Err(format!(
             "Error finding resolve pending for file {}: {}",
             relative_path, e
