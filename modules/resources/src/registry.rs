@@ -189,10 +189,7 @@ impl ResourceRegistry {
                 let resource = self
                     .resources
                     .get(handle.handle_id)
-                    .ok_or_else(|| io::Error::new(
-                        io::ErrorKind::NotFound,
-                        "Resource not found.",
-                    ))?
+                    .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Resource not found."))?
                     .as_ref()
                     .unwrap()
                     .as_ref();
