@@ -1,16 +1,15 @@
 use crate::prelude::*;
 use std::cell::RefCell;
-use std::ops::AddAssign;
 use std::rc::{Rc, Weak};
 
 pub struct Entity(EntityIdentifier);
 
 pub trait Component {}
 
-pub struct Position(Vector3<f32>);
+pub struct Position(Vector3);
 impl Component for Position {}
 
-pub struct Velocity(Vector3<f32>);
+pub struct Velocity(Vector3);
 impl Component for Velocity {}
 
 pub struct World {
@@ -40,42 +39,24 @@ impl World {
         INVALID_ENTITY_ID
     }
 }
-pub trait One {
-    fn one() -> Self;
-}
 
 pub type EntityIdentifier = u64;
 const INVALID_ENTITY_ID: EntityIdentifier = EntityIdentifier::MAX;
 
-impl One for EntityIdentifier {
-    fn one() -> Self {
-        1
-    }
-}
-
 pub type WorldIdentifier = u16;
 //const INVALID_WORLD_ID: WorldIdentifier = WorldIdentifier::MAX;
 
-impl One for WorldIdentifier {
-    fn one() -> Self {
-        1
-    }
-}
+pub trait Identifier: Copy + num_traits::NumAssign {}
+impl<T> Identifier for T where T: Copy + num_traits::NumAssign {}
 
-pub struct IdentifierGenerator<T>
-where
-    T: AddAssign + Copy + Default + One,
-{
+pub struct IdentifierGenerator<T: Identifier> {
     next_valid_id: T,
 }
 
-impl<T> IdentifierGenerator<T>
-where
-    T: AddAssign + Copy + Default + One,
-{
+impl<T: Identifier> IdentifierGenerator<T> {
     fn new() -> Self {
         Self {
-            next_valid_id: T::default(),
+            next_valid_id: T::zero(),
         }
     }
 
