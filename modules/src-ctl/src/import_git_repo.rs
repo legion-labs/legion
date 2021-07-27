@@ -44,7 +44,7 @@ async fn add_file_from_git(
         Ok(Some(change)) => {
             if change.change_type == ChangeType::Delete {
                 println!("adding of file being deleted - reverting change and editing");
-                revert_file_command(&local_path)?;
+                revert_file(workspace_connection, repo_connection, &local_path).await?;
                 return edit_file_from_git(
                     workspace_connection,
                     repo_connection,
@@ -76,7 +76,7 @@ async fn add_file_from_git(
             e
         ));
     }
-    track_new_file_command(&local_path)
+    track_new_file(workspace_connection, repo_connection, &local_path)
 }
 
 async fn edit_file_from_git(

@@ -30,15 +30,15 @@ pub fn revert_glob_command(pattern: &str) -> Result<(), String> {
     }
 }
 
-pub fn revert_file_command(path: &Path) -> Result<(), String> {
+pub async fn revert_file(
+    workspace_connection: &mut LocalWorkspaceConnection,
+    repo_connection: &mut RepositoryConnection,
+    path: &Path,
+) -> Result<(), String> {
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
-    let local_change = match find_local_change(&mut workspace_connection, &relative_path) {
+    let local_change = match find_local_change(workspace_connection, &relative_path) {
         Ok(Some(change)) => change,
         Err(e) => {
             return Err(format!("Error searching in local changes: {}", e));
@@ -51,9 +51,9 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
         .parent()
         .expect("no parent to path provided");
     let workspace_branch = read_current_branch(&workspace_root)?;
-    let current_commit = read_commit(&mut connection, &workspace_branch.head)?;
-    let root_tree = read_tree(&mut connection, &current_commit.root_hash)?;
-    let dir_tree = fetch_tree_subdir(&mut connection, &root_tree, parent_dir)?;
+    let current_commit = read_commit(repo_connection, &workspace_branch.head)?;
+    let root_tree = read_tree(repo_connection, &current_commit.root_hash)?;
+    let dir_tree = fetch_tree_subdir(repo_connection, &root_tree, parent_dir)?;
 
     if local_change.change_type != ChangeType::Add {
         let file_node;
@@ -71,17 +71,16 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
                 return Err(String::from("Original file not found in tree"));
             }
         }
-        tokio_runtime.block_on(
-            connection
-                .blob_storage()
-                .download_blob(&abs_path, &file_node.hash),
-        )?;
+        repo_connection
+            .blob_storage()
+            .download_blob(&abs_path, &file_node.hash)
+            .await?;
         make_file_read_only(&abs_path, true)?;
     }
-    clear_local_change(&mut workspace_connection, &local_change)?;
-    match find_resolve_pending(&mut workspace_connection, &relative_path) {
+    clear_local_change(workspace_connection, &local_change)?;
+    match find_resolve_pending(workspace_connection, &relative_path) {
         Ok(Some(resolve_pending)) => {
-            clear_resolve_pending(&mut workspace_connection, &resolve_pending)
+            clear_resolve_pending(workspace_connection, &resolve_pending)
         }
         Err(e) => Err(format!(
             "Error finding resolve pending for file {}: {}",
@@ -89,4 +88,18 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
         )),
         Ok(None) => Ok(()),
     }
+}
+
+pub fn revert_file_command(path: &Path) -> Result<(), String> {
+    let abs_path = make_path_absolute(path);
+    let workspace_root = find_workspace_root(&abs_path)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut repo_connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    tokio_runtime.block_on(revert_file(
+        &mut workspace_connection,
+        &mut repo_connection,
+        path,
+    ))
 }

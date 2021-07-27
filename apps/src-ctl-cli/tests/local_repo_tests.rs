@@ -506,5 +506,5 @@ fn test_import_git() {
     let root_dir = get_root_git_directory();
     assert!(root_dir.exists());
 
-    lsc_cli_sys(&work1, &["import-git-repo", root_dir.to_str().unwrap()]);
+    lsc_cli_sys(&work1, &["import-git-repo", root_dir.to_str().unwrap(), "main"]);
 }
