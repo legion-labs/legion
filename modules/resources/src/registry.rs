@@ -1,10 +1,14 @@
 use core::fmt;
 use std::{
     any::Any,
+    collections::HashMap,
+    io,
     sync::{Arc, Mutex},
 };
 
 use slotmap::{SecondaryMap, SlotMap};
+
+use crate::ResourceType;
 
 slotmap::new_key_type!(
     struct ResourceHandleId;
@@ -17,6 +21,22 @@ pub trait Resource: Any {
 
     /// Cast to &mut dyn Any type.
     fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+/// The `ResourceProcessor` trait allows to process an offline resource.
+pub trait ResourceProcessor {
+    /// Interface returning a resource in a default state. Useful when creating a new resource.
+    fn new_resource(&mut self) -> Box<dyn Resource>;
+
+    /// Interface defining serialization behavior of the resource.
+    fn write_resource(
+        &mut self,
+        resource: &dyn Resource,
+        writer: &mut dyn io::Write,
+    ) -> io::Result<usize>;
+
+    /// Interface defining deserialization behavior of the resource.
+    fn read_resource(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Resource>>;
 }
 
 /// Reference counted handle to a resource.
@@ -113,9 +133,85 @@ impl ResourceRefCounter {
 pub struct ResourceRegistry {
     ref_counts: Arc<Mutex<ResourceRefCounter>>,
     resources: SecondaryMap<ResourceHandleId, Option<Box<dyn Resource>>>,
+    processors: HashMap<ResourceType, Box<dyn ResourceProcessor>>,
 }
 
 impl ResourceRegistry {
+    /// Register a processor for a resource type.
+    pub fn register_type(&mut self, kind: ResourceType, proc: Box<dyn ResourceProcessor>) {
+        self.processors.insert(kind, proc);
+    }
+
+    /// Create a new resource of a given type in a default state.
+    ///
+    /// The default state of the resource is defined by the registered `ResourceProcessor`.
+    pub fn new_resource(&mut self, kind: ResourceType) -> Option<ResourceHandle> {
+        if let Some(processor) = self.processors.get_mut(&kind) {
+            let resource = processor.new_resource();
+            Some(self.insert(resource))
+        } else {
+            None
+        }
+    }
+
+    /// Creates an instance of a resource and deserializes content from provided reader.
+    pub fn load_resource(
+        &mut self,
+        kind: ResourceType,
+        reader: &mut dyn io::Read,
+    ) -> io::Result<ResourceHandle> {
+        if let Some(processor) = self.processors.get_mut(&kind) {
+            let resource = processor.read_resource(reader)?;
+            Ok(self.insert(resource))
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "Processor not found.",
+            ))
+        }
+    }
+
+    /// Serializes the content of the resource into the writer.
+    pub fn save_resource(
+        &mut self,
+        kind: ResourceType,
+        handle: &ResourceHandle,
+        writer: &mut dyn io::Write,
+    ) -> io::Result<usize> {
+        if let Some(processor) = self.processors.get_mut(&kind) {
+            if self
+                .ref_counts
+                .lock()
+                .unwrap()
+                .ref_counts
+                .contains_key(handle.handle_id)
+            {
+                let resource = self
+                    .resources
+                    .get(handle.handle_id)
+                    .ok_or_else(|| io::Error::new(
+                        io::ErrorKind::NotFound,
+                        "Resource not found.",
+                    ))?
+                    .as_ref()
+                    .unwrap()
+                    .as_ref();
+
+                processor.write_resource(&*resource, writer)
+            } else {
+                Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "Resource not found.",
+                ))
+            }
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "Processor not found.",
+            ))
+        }
+    }
+
     /// Inserts a resource into the registry and returns a handle
     /// that identifies that resource.
     pub fn insert(&mut self, resource: Box<dyn Resource>) -> ResourceHandle {
@@ -182,7 +278,12 @@ impl ResourceRegistry {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
+    use std::{
+        io,
+        sync::{Arc, Mutex},
+    };
+
+    use crate::{ResourceProcessor, ResourceType};
 
     use super::{Resource, ResourceHandle, ResourceRefCounter, ResourceRegistry};
 
@@ -196,7 +297,10 @@ mod tests {
         assert_ne!(ref_a, ref_b);
     }
 
-    struct SampleResource;
+    struct SampleResource {
+        content: String,
+    }
+
     impl Resource for SampleResource {
         fn as_any(&self) -> &dyn std::any::Any {
             self
@@ -207,12 +311,62 @@ mod tests {
         }
     }
 
+    struct SampleProcessor {
+        default_content: String,
+    }
+
+    impl ResourceProcessor for SampleProcessor {
+        fn new_resource(&mut self) -> Box<dyn Resource> {
+            Box::new(SampleResource {
+                content: self.default_content.clone(),
+            })
+        }
+
+        fn write_resource(
+            &mut self,
+            resource: &dyn Resource,
+            writer: &mut dyn std::io::Write,
+        ) -> std::io::Result<usize> {
+            let resource = resource.as_any().downcast_ref::<SampleResource>().unwrap();
+
+            let length = resource.content.len();
+            writer.write_all(&length.to_ne_bytes())?;
+            writer.write_all(resource.content.as_bytes())?;
+            Ok(length.to_ne_bytes().len() + resource.content.as_bytes().len())
+        }
+
+        fn read_resource(
+            &mut self,
+            reader: &mut dyn std::io::Read,
+        ) -> std::io::Result<Box<dyn Resource>> {
+            let mut resource = self.new_resource();
+            let sample_resource = resource
+                .as_any_mut()
+                .downcast_mut::<SampleResource>()
+                .unwrap();
+
+            let mut bytes = 0usize.to_ne_bytes();
+            reader.read_exact(&mut bytes)?;
+            let length = usize::from_ne_bytes(bytes);
+
+            let mut buffer = vec![0; length];
+            reader.read_exact(&mut buffer)?;
+            sample_resource.content = String::from_utf8(buffer)
+                .map_err(|_e| io::Error::new(io::ErrorKind::InvalidData, "Parsing error"))?;
+            Ok(resource)
+        }
+    }
+
+    const RESOURCE_SAMPLE: ResourceType = ResourceType::new(b"sample");
+
     #[test]
-    fn resources() {
+    fn reference_count() {
         let mut resources = ResourceRegistry::default();
 
         {
-            let handle = resources.insert(Box::new(SampleResource {}));
+            let handle = resources.insert(Box::new(SampleResource {
+                content: String::from("test content"),
+            }));
             assert!(handle.get::<SampleResource>(&resources).is_some());
             assert_eq!(resources.len(), 1);
 
@@ -230,9 +384,60 @@ mod tests {
         assert_eq!(resources.len(), 0);
 
         {
-            let handle = resources.insert(Box::new(SampleResource {}));
+            let handle = resources.insert(Box::new(SampleResource {
+                content: String::from("more test content"),
+            }));
             assert!(handle.get::<SampleResource>(&resources).is_some());
             assert_eq!(resources.len(), 1);
         }
+    }
+
+    #[test]
+    fn create_save_load() {
+        let default_content = "default content";
+
+        let mut resources = {
+            let mut reg = ResourceRegistry::default();
+
+            reg.register_type(
+                RESOURCE_SAMPLE,
+                Box::new(SampleProcessor {
+                    default_content: String::from(default_content),
+                }),
+            );
+            reg
+        };
+
+        let created_handle = resources
+            .new_resource(RESOURCE_SAMPLE)
+            .expect("failed to create a resource");
+
+        {
+            let resource = created_handle
+                .get::<SampleResource>(&resources)
+                .expect("resource not found");
+
+            assert_eq!(resource.content, default_content);
+        }
+
+        let mut buffer = [0u8; 256];
+
+        resources
+            .save_resource(RESOURCE_SAMPLE, &created_handle, &mut &mut buffer[..])
+            .unwrap();
+
+        let loaded_handle = resources
+            .load_resource(RESOURCE_SAMPLE, &mut &buffer[..])
+            .expect("Resource load");
+
+        let loaded_resource = loaded_handle
+            .get::<SampleResource>(&resources)
+            .expect("Loaded resource not found");
+
+        let created_resource = created_handle
+            .get::<SampleResource>(&resources)
+            .expect("resource not found");
+
+        assert_eq!(loaded_resource.content, created_resource.content);
     }
 }
