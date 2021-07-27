@@ -232,9 +232,9 @@ pub async fn edit_file(
 
     let workspace_root = workspace_connection.workspace_path();
     //todo: make sure file is tracked by finding it in the current tree hierarchy
-    assert_not_locked(repo_connection, &workspace_root, &abs_path)?;
+    assert_not_locked(repo_connection, workspace_root, &abs_path)?;
 
-    let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
+    let relative_path = make_canonical_relative_path(workspace_root, &abs_path)?;
     match find_local_change(workspace_connection, &relative_path) {
         Ok(Some(change)) => {
             return Err(format!(
