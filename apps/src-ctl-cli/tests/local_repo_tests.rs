@@ -91,11 +91,11 @@ fn test_dir(test_name: &str) -> PathBuf {
     path
 }
 
-fn init_test_repo(test_dir: &Path, name: &str) -> String {
+async fn init_test_repo(test_dir: &Path, name: &str) -> String {
     let use_mysql = std::env::var("LEGION_SRC_CTL_TEST_MYSQL").unwrap_or_default();
     if use_mysql.is_empty() {
         let repo_dir = test_dir.join("repo");
-        legion_src_ctl::init_local_repository(&repo_dir).unwrap()
+        legion_src_ctl::init_local_repository(&repo_dir).await.unwrap()
     } else {
         let blob_storage_spec = match std::env::var("LEGION_SRC_CTL_TEST_S3_BUCKET") {
             Ok(s3uri) => legion_src_ctl::BlobStorageSpec::S3Uri(s3uri),
@@ -115,14 +115,9 @@ fn init_test_repo(test_dir: &Path, name: &str) -> String {
                 panic!("test database exists");
             }
         }
-        legion_src_ctl::init_mysql_repo_db_command(
-            &blob_storage_spec,
-            host,
-            username,
-            password,
-            name,
-        )
-        .unwrap()
+        legion_src_ctl::init_mysql_repo_db(&blob_storage_spec, host, username, password, name)
+            .await
+            .unwrap()
     }
 }
 
@@ -130,7 +125,8 @@ fn init_test_repo(test_dir: &Path, name: &str) -> String {
 fn local_repo_suite() {
     let test_dir = test_dir("local_repo_suite");
     let work1 = test_dir.join("work");
-    let repo_uri = init_test_repo(&test_dir, "local_repo_suite");
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "local_repo_suite"));
 
     lsc_cli_sys(
         &test_dir,
@@ -212,7 +208,9 @@ fn local_repo_suite() {
 
     //sync backwards
     let workspace_spec = legion_src_ctl::read_workspace_spec(&work1).unwrap();
-    let mut connection = legion_src_ctl::connect_to_server(&workspace_spec).unwrap();
+    let mut connection = tokio_runtime
+        .block_on(legion_src_ctl::connect_to_server(&workspace_spec))
+        .unwrap();
     let main_branch = legion_src_ctl::read_branch_from_repo(&mut connection, "main").unwrap();
     let log_vec = legion_src_ctl::find_branch_commits(&mut connection, &main_branch).unwrap();
     let init_commit = log_vec.last().unwrap();
@@ -227,7 +225,9 @@ fn local_single_branch_merge_flow() {
     let test_dir = test_dir("local_single_branch_merge_flow");
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
-    let repo_uri = init_test_repo(&test_dir, "local_single_branch_merge_flow");
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let repo_uri =
+        tokio_runtime.block_on(init_test_repo(&test_dir, "local_single_branch_merge_flow"));
 
     lsc_cli_sys(
         &test_dir,
@@ -289,7 +289,8 @@ fn test_branch() {
     }
 
     let work1 = test_dir.join("work1");
-    let repo_uri = init_test_repo(&test_dir, "test_branch");
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_branch"));
 
     lsc_cli_sys(
         &test_dir,
@@ -382,7 +383,8 @@ fn test_locks() {
 
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
-    let repo_uri = init_test_repo(&test_dir, "test_locks");
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_locks"));
 
     lsc_cli_sys(
         &test_dir,
@@ -492,7 +494,8 @@ fn get_root_git_directory() -> PathBuf {
 fn test_import_git() {
     let test_dir = test_dir("test_import_git");
     let work1 = test_dir.join("work1");
-    let repo_uri = init_test_repo(&test_dir, "test_import_git");
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_import_git"));
 
     lsc_cli_sys(
         &test_dir,

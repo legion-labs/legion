@@ -331,9 +331,10 @@ fn main_impl() -> Result<(), String> {
 
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
-            match legion_src_ctl::init_local_repository(Path::new(
+            let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+            match tokio_runtime.block_on(legion_src_ctl::init_local_repository(Path::new(
                 command_match.value_of("repository-directory").unwrap(),
-            )) {
+            ))) {
                 Ok(repo_uri) => {
                     println!("repository uri: {}", repo_uri);
                     Ok(())

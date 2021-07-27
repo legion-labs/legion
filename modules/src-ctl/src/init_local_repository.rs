@@ -47,7 +47,7 @@ pub async fn push_init_repo_data(
     Ok(())
 }
 
-pub fn init_local_repository(directory: &Path) -> Result<String, String> {
+pub async fn init_local_repository(directory: &Path) -> Result<String, String> {
     if fs::metadata(directory).is_ok() {
         return Err(format!("{} already exists", directory.display()));
     }
@@ -65,14 +65,13 @@ pub fn init_local_repository(directory: &Path) -> Result<String, String> {
         return Err(format!("Error creating blobs directory: {}", e));
     }
 
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-
     let mut sql_connection = connect(&repo_uri)?;
     init_repo_database(&mut sql_connection)?;
-    tokio_runtime.block_on(push_init_repo_data(
+    push_init_repo_data(
         &mut sql_connection,
         &repo_uri,
         &BlobStorageSpec::LocalDirectory(blob_dir),
-    ))?;
+    )
+    .await?;
     Ok(repo_uri)
 }

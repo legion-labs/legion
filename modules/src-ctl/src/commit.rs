@@ -251,7 +251,7 @@ pub fn commit_local_changes(
     let local_changes = read_local_changes(workspace_connection)?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
-        assert_not_locked(&workspace_root, &abs_path)?;
+        assert_not_locked(&mut connection, &workspace_root, &abs_path)?;
     }
     let hashed_changes = tokio_runtime.block_on(upload_localy_edited_blobs(
         &workspace_root,

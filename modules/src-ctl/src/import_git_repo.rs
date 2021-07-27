@@ -29,22 +29,29 @@ fn copy_git_blob(
     Ok(())
 }
 
-fn add_file_from_git(
-    connection: &mut LocalWorkspaceConnection,
+async fn add_file_from_git(
+    workspace_connection: &mut LocalWorkspaceConnection,
+    repo_connection: &mut RepositoryConnection,
     git_repo: &git2::Repository,
     new_file: &git2::DiffFile<'_>,
 ) -> Result<(), String> {
     let relative_path = new_file.path().unwrap();
-    let workspace_root = connection.workspace_path().to_path_buf();
+    let workspace_root = workspace_connection.workspace_path().to_path_buf();
     let local_path = workspace_root.join(relative_path);
     let canonical_relative_path = make_canonical_relative_path(&workspace_root, &local_path)?;
 
-    match find_local_change(connection, &canonical_relative_path) {
+    match find_local_change(workspace_connection, &canonical_relative_path) {
         Ok(Some(change)) => {
             if change.change_type == ChangeType::Delete {
                 println!("adding of file being deleted - reverting change and editing");
                 revert_file_command(&local_path)?;
-                return edit_file_from_git(&workspace_root, git_repo, new_file);
+                return edit_file_from_git(
+                    workspace_connection,
+                    repo_connection,
+                    git_repo,
+                    new_file,
+                )
+                .await;
             }
             return Err(format!(
                 "Error: {} already tracked for {:?}",
@@ -72,15 +79,16 @@ fn add_file_from_git(
     track_new_file_command(&local_path)
 }
 
-fn edit_file_from_git(
-    workspace_root: &Path,
+async fn edit_file_from_git(
+    workspace_connection: &mut LocalWorkspaceConnection,
+    repo_connection: &mut RepositoryConnection,
     git_repo: &git2::Repository,
     new_file: &git2::DiffFile<'_>,
 ) -> Result<(), String> {
     let relative_path = new_file.path().unwrap();
-    let local_path = workspace_root.join(relative_path);
+    let local_path = workspace_connection.workspace_path().join(relative_path);
 
-    if let Err(e) = edit_file_command(&local_path) {
+    if let Err(e) = edit_file(workspace_connection, repo_connection, &local_path).await {
         return Err(format!("Error editing {}: {}", local_path.display(), e));
     }
 
@@ -96,12 +104,14 @@ fn edit_file_from_git(
 }
 
 fn import_commit_diff(
-    connection: &mut LocalWorkspaceConnection,
+    workspace_connection: &mut LocalWorkspaceConnection,
+    repo_connection: &mut RepositoryConnection,
+    runtime: &tokio::runtime::Runtime,
     diff: &git2::Diff<'_>,
     git_repo: &git2::Repository,
 ) -> Result<(), String> {
     let mut errors: Vec<String> = Vec::new();
-    let workspace_root = connection.workspace_path().to_path_buf();
+    let workspace_root = workspace_connection.workspace_path().to_path_buf();
     //process deletes first
     //because git is case-sensitive a file can be seen as being removed and added in the same commit
     if let Err(e) = diff.foreach(
@@ -135,7 +145,12 @@ fn import_commit_diff(
                     let new_file = delta.new_file();
                     let path = new_file.path().unwrap();
                     println!("adding {}", path.display());
-                    if let Err(e) = add_file_from_git(connection, git_repo, &new_file) {
+                    if let Err(e) = runtime.block_on(add_file_from_git(
+                        workspace_connection,
+                        repo_connection,
+                        git_repo,
+                        &new_file,
+                    )) {
                         let message = format!("Error adding file {}: {}", path.display(), e);
                         println!("{}", message);
                         errors.push(message);
@@ -146,7 +161,12 @@ fn import_commit_diff(
                     let new_file = delta.new_file();
                     let path = new_file.path().unwrap();
                     println!("modifying {}", path.display());
-                    if let Err(e) = edit_file_from_git(&workspace_root, git_repo, &new_file) {
+                    if let Err(e) = runtime.block_on(edit_file_from_git(
+                        workspace_connection,
+                        repo_connection,
+                        git_repo,
+                        &new_file,
+                    )) {
                         let message = format!("Error modifying file {}: {}", path.display(), e);
                         println!("{}", message);
                         errors.push(message);
@@ -191,6 +211,7 @@ fn import_commit_diff(
 fn import_commit_sequence(
     repo_connection: &mut RepositoryConnection,
     workspace_connection: &mut LocalWorkspaceConnection,
+    runtime: &tokio::runtime::Runtime,
     git_repo: &git2::Repository,
     root_commit: &git2::Commit<'_>,
 ) -> Result<(), String> {
@@ -255,7 +276,9 @@ fn import_commit_sequence(
                 }
                 match git_repo.diff_index_to_index(&reference_index, &current_index, None) {
                     Ok(diff) => {
-                        if let Err(e) = import_commit_diff(workspace_connection, &diff, git_repo) {
+                        if let Err(e) =
+                            import_commit_diff(workspace_connection, repo_connection, runtime, &diff, git_repo)
+                        {
                             return Err(format!(
                                 "Error importing {}: {}",
                                 format_commit(&commit),
@@ -300,6 +323,7 @@ fn import_commit_sequence(
 fn import_branch(
     repo_connection: &mut RepositoryConnection,
     workspace_connection: &mut LocalWorkspaceConnection,
+    runtime: &tokio::runtime::Runtime,
     git_repo: &git2::Repository,
     branch: &git2::Branch<'_>,
 ) -> Result<(), String> {
@@ -320,7 +344,13 @@ fn import_branch(
 
     match branch.get().peel_to_commit() {
         Ok(commit) => {
-            import_commit_sequence(repo_connection, workspace_connection, git_repo, &commit)?;
+            import_commit_sequence(
+                repo_connection,
+                workspace_connection,
+                runtime,
+                git_repo,
+                &commit,
+            )?;
         }
         Err(e) => {
             return Err(format!("Branch reference is not a commit: {}", e));
@@ -364,6 +394,7 @@ pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Re
                                 import_branch(
                                     &mut repo_connection,
                                     &mut workspace_connection,
+                                    &tokio_runtime,
                                     &git_repo,
                                     &git_branch,
                                 )?;

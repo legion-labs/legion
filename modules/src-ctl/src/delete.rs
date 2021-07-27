@@ -9,7 +9,10 @@ pub fn delete_file_command(path_specified: &Path) -> Result<(), String> {
     }
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut connection = LocalWorkspaceConnection::new(&workspace_root)?;
-    assert_not_locked(&workspace_root, &abs_path)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let mut repo_connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    assert_not_locked(&mut repo_connection, &workspace_root, &abs_path)?;
 
     let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
 

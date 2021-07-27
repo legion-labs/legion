@@ -201,13 +201,17 @@ pub fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
         return Err(String::from("file already exists in tree"));
     }
 
-    assert_not_locked(&workspace_root, &abs_path)?;
+    assert_not_locked(&mut connection, &workspace_root, &abs_path)?;
     let local_change = LocalChange::new(&relative_path, ChangeType::Add);
 
     save_local_change(&mut workspace_connection, &local_change)
 }
 
-pub fn edit_file_command(path_specified: &Path) -> Result<(), String> {
+pub async fn edit_file(
+    workspace_connection: &mut LocalWorkspaceConnection,
+    repo_connection: &mut RepositoryConnection,
+    path_specified: &Path,
+) -> Result<(), String> {
     let abs_path = make_path_absolute(path_specified);
     if let Err(e) = fs::metadata(&abs_path) {
         return Err(format!(
@@ -217,13 +221,12 @@ pub fn edit_file_command(path_specified: &Path) -> Result<(), String> {
         ));
     }
 
-    let workspace_root = find_workspace_root(&abs_path)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let workspace_root = workspace_connection.workspace_path();
     //todo: make sure file is tracked by finding it in the current tree hierarchy
-    assert_not_locked(&workspace_root, &abs_path)?;
+    assert_not_locked(repo_connection, &workspace_root, &abs_path)?;
 
     let relative_path = make_canonical_relative_path(&workspace_root, &abs_path)?;
-    match find_local_change(&mut workspace_connection, &relative_path) {
+    match find_local_change(workspace_connection, &relative_path) {
         Ok(Some(change)) => {
             return Err(format!(
                 "Error: {} already tracked for {:?}",
@@ -238,6 +241,15 @@ pub fn edit_file_command(path_specified: &Path) -> Result<(), String> {
     }
 
     let local_change = LocalChange::new(&relative_path, ChangeType::Edit);
-    save_local_change(&mut workspace_connection, &local_change)?;
+    save_local_change(workspace_connection, &local_change)?;
     make_file_read_only(&abs_path, false)
+}
+
+pub fn edit_file_command(path_specified: &Path) -> Result<(), String> {
+    let workspace_root = find_workspace_root(path_specified)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    tokio_runtime.block_on(edit_file(&mut workspace_connection, &mut connection, path_specified))
 }

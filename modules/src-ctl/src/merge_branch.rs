@@ -103,12 +103,12 @@ fn find_latest_common_ancestor(
 }
 
 async fn change_file_to(
-    connection: &mut RepositoryConnection,
+    workspace_connection: &mut LocalWorkspaceConnection,
+    repo_connection: &mut RepositoryConnection,
     relative_path: &Path,
-    workspace_root: &Path,
     hash_to_sync: &str,
 ) -> Result<String, String> {
-    let local_path = workspace_root.join(relative_path);
+    let local_path = workspace_connection.workspace_path().join(relative_path);
     if local_path.exists() {
         let local_hash = compute_file_hash(&local_path)?;
         if local_hash == hash_to_sync {
@@ -118,8 +118,8 @@ async fn change_file_to(
             delete_file_command(&local_path)?;
             return Ok(format!("Deleted {}", local_path.display()));
         }
-        edit_file_command(&local_path)?;
-        if let Err(e) = connection
+        edit_file(workspace_connection, repo_connection, &local_path).await?;
+        if let Err(e) = repo_connection
             .blob_storage()
             .download_blob(&local_path, hash_to_sync)
             .await
@@ -140,7 +140,7 @@ async fn change_file_to(
         if hash_to_sync.is_empty() {
             return Ok(format!("Verified {}", local_path.display()));
         }
-        if let Err(e) = connection
+        if let Err(e) = repo_connection
             .blob_storage()
             .download_blob(&local_path, hash_to_sync)
             .await
@@ -254,9 +254,9 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
                 }
             } else {
                 match tokio_runtime.block_on(change_file_to(
+                    &mut workspace_connection,
                     &mut connection,
                     Path::new(path),
-                    &workspace_root,
                     hash,
                 )) {
                     Ok(message) => {

@@ -211,14 +211,16 @@ pub fn list_locks_command() -> Result<(), String> {
     Ok(())
 }
 
-pub fn assert_not_locked(workspace_root: &Path, path_specified: &Path) -> Result<(), String> {
+pub fn assert_not_locked(
+    connection: &mut RepositoryConnection,
+    workspace_root: &Path,
+    path_specified: &Path,
+) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let current_branch = read_current_branch(workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
-    let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
+    let repo_branch = read_branch_from_repo(connection, &current_branch.name)?;
     let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
-    match read_lock(&mut connection, &repo_branch.lock_domain_id, &relative_path) {
+    match read_lock(connection, &repo_branch.lock_domain_id, &relative_path) {
         Ok(Some(lock)) => {
             if lock.branch_name == current_branch.name && lock.workspace_id == workspace_spec.id {
                 Ok(()) //locked by this workspace on this branch - all good
