@@ -60,12 +60,12 @@ pub trait SignatureAnalyzer<Args> {
     fn add_component_accesses(&self, signature: &mut Vec<ComponentAccess>);
 }
 
-// impl<F> SignatureAnalyzer<()> for F
-// where
-//     F: Fn() -> SystemResult,
-// {
-//     fn add_component_accesses(&self, _signature: &mut Vec<ComponentAccess>) {}
-// }
+impl<F> SignatureAnalyzer<()> for F
+where
+    F: Fn() -> SystemResult,
+{
+    fn add_component_accesses(&self, _signature: &mut Vec<ComponentAccess>) {}
+}
 
 impl<F, Args> SignatureAnalyzer<Args> for F
 where
@@ -77,44 +77,32 @@ where
     }
 }
 
-// impl<Arg> SignatureAnalyzer for &dyn Fn(&'static mut Arg) -> SystemResult {
-//     fn add_component_accesses(&self, signature: &mut Vec<ComponentAccess>) {
-//         signature.push(ComponentAccess::new::<Arg>(true));
-//     }
-// }
-
-// impl<Args> SignatureAnalyzer for &dyn FnOnce(&Args) -> SystemResult
-// where
-//     Args: 'static,
-// {
-//     fn add_component_accesses(&self, signature: &mut Vec<ComponentAccess>) {
-//         signature.push(ComponentAccess::new::<Args>(false));
-//     }
-// }
-
-// impl<F> SignatureAnalyzer for F
-// where
-//     F: Fn(&mut Args1, &Args2) -> SystemResult,
-// {
-//     fn add_component_accesses(&self, signature: &mut Vec<ComponentAccess>) {
-//         signature.push(ComponentAccess::new::<Args1>(true));
-//         signature.push(ComponentAccess::new::<Args2>(false));
-//     }
-// }
+impl<F, Args0, Args1> SignatureAnalyzer<(Args0, Args1)> for F
+where
+    F: Fn(Args0, Args1) -> SystemResult,
+    Args0: Reference,
+    Args1: Reference,
+{
+    fn add_component_accesses(&self, signature: &mut Vec<ComponentAccess>) {
+        signature.push(ComponentAccess::new::<Args0>());
+        signature.push(ComponentAccess::new::<Args1>());
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // fn do_nothing() -> SystemResult {
-    //     Ok(())
-    // }
+    fn do_nothing() -> SystemResult {
+        Ok(())
+    }
 
-    // #[test]
-    // fn build_system_no_args() {
-    //     let system = System::new("do_nothing", do_nothing);
-    //     assert_eq!(system.signature.len(), 0);
-    // }
+    #[test]
+    fn build_system_no_args() {
+        let system = System::new("do_nothing", do_nothing);
+        println!("signature: {:?}", system.signature);
+        assert_eq!(system.signature.len(), 0);
+    }
 
     struct Position(Vector3);
 
@@ -151,19 +139,23 @@ mod tests {
         );
     }
 
-    // struct Velocity(Vector3);
+    struct Velocity(Vector3);
 
-    // fn update_position(pos: &mut Position, vel: &Velocity) -> SystemResult {
-    //     pos.0.x += vel.0.x;
-    //     pos.0.y += vel.0.y;
-    //     pos.0.z += vel.0.z;
-    //     Ok(())
-    // }
+    fn update_position(pos: &mut Position, vel: &Velocity) -> SystemResult {
+        pos.0.x += vel.0.x;
+        pos.0.y += vel.0.y;
+        pos.0.z += vel.0.z;
+        Ok(())
+    }
 
-    // #[test]
-    // fn build_dependencies() {
-    //     let system = System::new("update_position", &update_position);
-
-    //     assert_eq!(system.signature.len(), 2);
-    // }
+    #[test]
+    fn build_system_with_two_args() {
+        let system = System::new("update_position", &update_position);
+        println!("signature: {:?}", system.signature);
+        assert_eq!(system.signature.len(), 2);
+        assert_eq!(system.signature[0].component_type.get_name(), "Position");
+        assert!(system.signature[0].mutable);
+        assert_eq!(system.signature[1].component_type.get_name(), "Velocity");
+        assert!(!system.signature[1].mutable);
+    }
 }
