@@ -29,7 +29,7 @@ impl World {
     pub fn create_entity(&mut self) -> EntityIdentifier {
         if let Some(id_generator) = self.entity_id_generator.upgrade() {
             let id = (*id_generator).borrow_mut().get_new_id();
-            self.entities.push(Entity::new(id));
+            self.entities.push(Entity::from(id));
             return id;
         }
         INVALID_ENTITY_ID
