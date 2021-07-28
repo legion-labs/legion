@@ -1,33 +1,8 @@
-use crate::*;
-use futures::executor::block_on;
-use sqlx::Connection;
+use crate::{sql_repository_query::*, *};
 
 pub struct RepositoryConnection {
     blob_store: Box<dyn BlobStorage>,
-    sql_connection: sqlx::AnyConnection,
-}
-
-pub fn connect(database_uri: &str) -> Result<sqlx::AnyConnection, String> {
-    match block_on(sqlx::AnyConnection::connect(database_uri)) {
-        Ok(connection) => Ok(connection),
-        Err(e) => Err(format!("Error connecting to {}: {}", database_uri, e)),
-    }
-}
-
-#[derive(Debug)]
-pub struct SqlConnectionPool {
-    pub pool: sqlx::AnyPool,
-}
-
-pub fn make_sql_connection_pool(database_uri: &str) -> Result<SqlConnectionPool, String> {
-    match block_on(
-        sqlx::any::AnyPoolOptions::new()
-            .max_connections(5)
-            .connect(database_uri),
-    ) {
-        Ok(pool) => Ok(SqlConnectionPool { pool }),
-        Err(e) => Err(format!("Error allocating database pool: {}", e)),
-    }
+    repo_query: Box<dyn RepositoryQuery>,
 }
 
 impl RepositoryConnection {
@@ -35,8 +10,9 @@ impl RepositoryConnection {
         repo_uri: &str,
         compressed_blob_cache: std::path::PathBuf,
     ) -> Result<Self, String> {
-        let mut c = connect(repo_uri)?;
-        let blob_storage: Box<dyn BlobStorage> = match read_blob_storage_spec(&mut c)? {
+        let mut repo_query = Box::new(SqlRepositoryQuery::new(repo_uri)?);
+        let blob_storage: Box<dyn BlobStorage> = match read_blob_storage_spec(repo_query.as_mut())?
+        {
             BlobStorageSpec::LocalDirectory(blob_directory) => {
                 Box::new(DiskBlobStorage { blob_directory })
             }
@@ -47,12 +23,12 @@ impl RepositoryConnection {
 
         Ok(Self {
             blob_store: blob_storage,
-            sql_connection: c,
+            repo_query,
         })
     }
 
     pub fn sql(&mut self) -> &mut sqlx::AnyConnection {
-        &mut self.sql_connection
+        self.repo_query.sql()
     }
 
     pub fn blob_storage(&self) -> &dyn BlobStorage {

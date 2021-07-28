@@ -108,11 +108,11 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
         let username = "root";
         let password = "";
         let repo_uri = format!("mysql://{}:{}@{}/{}", username, password, host, name);
-        if legion_src_ctl::database_exists(&repo_uri).unwrap() {
+        if legion_src_ctl::sql::database_exists(&repo_uri).unwrap() {
             let drop_test_db =
                 std::env::var("LEGION_SRC_CTL_TEST_ALLOW_DROP_DATABASE").unwrap_or_default();
             if drop_test_db == "YES" {
-                legion_src_ctl::drop_database(&repo_uri).unwrap();
+                legion_src_ctl::sql::drop_database(&repo_uri).unwrap();
             } else {
                 panic!("test database exists");
             }

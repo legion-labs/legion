@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{sql::execute_sql, *};
 use futures::executor::block_on;
 use sqlx::Row;
 

@@ -1,10 +1,11 @@
 use futures::executor::block_on;
 use sqlx::migrate::MigrateDatabase;
-use sqlx::Executor;
+use sqlx::{Connection, Executor};
 
 pub fn create_database(uri: &str) -> Result<(), String> {
     if let Err(e) = block_on(sqlx::Any::create_database(uri)) {
-        return Err(format!("Error creating database {}: {}", uri, e));
+        //don't print uri, could contain user/passwd of database
+        return Err(format!("Error creating database: {}", e));
     }
     Ok(())
 }
@@ -28,4 +29,27 @@ pub fn execute_sql(connection: &mut sqlx::AnyConnection, sql: &str) -> Result<()
         return Err(format!("SQL error: {}", e));
     }
     Ok(())
+}
+
+pub fn connect(database_uri: &str) -> Result<sqlx::AnyConnection, String> {
+    match block_on(sqlx::AnyConnection::connect(database_uri)) {
+        Ok(connection) => Ok(connection),
+        Err(e) => Err(format!("Error connecting to database: {}", e)),
+    }
+}
+
+#[derive(Debug)]
+pub struct SqlConnectionPool {
+    pub pool: sqlx::AnyPool,
+}
+
+pub fn make_sql_connection_pool(database_uri: &str) -> Result<SqlConnectionPool, String> {
+    match block_on(
+        sqlx::any::AnyPoolOptions::new()
+            .max_connections(5)
+            .connect(database_uri),
+    ) {
+        Ok(pool) => Ok(SqlConnectionPool { pool }),
+        Err(e) => Err(format!("Error allocating database pool: {}", e)),
+    }
 }
