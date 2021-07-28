@@ -31,13 +31,21 @@ pub struct ComponentType {
 }
 
 impl ComponentType {
-    pub fn new<T: 'static>() -> Self
+    pub fn new<T>() -> Self
     where
-        T: 'static + reflection::Named,
+        T: reflection::Reference,
     {
         Self {
-            name: reflection::get_short_type_name(T::get_name()),
-            id: TypeId::of::<T>(),
+            name: T::get_short_type_name(),
+            id: T::get_type_id(),
         }
+    }
+
+    pub fn get_name(&self) -> &str {
+        self.name
+    }
+
+    pub fn get_id(&self) -> &TypeId {
+        &self.id
     }
 }

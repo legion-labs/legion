@@ -1,40 +1,39 @@
-pub trait Reference {
+use std::any::TypeId;
+
+pub trait Reference: 'static {
+    type Inner;
+
+    fn get_type_id() -> TypeId {
+        TypeId::of::<Self::Inner>()
+    }
+
+    fn get_name() -> &'static str {
+        std::any::type_name::<Self::Inner>()
+    }
+
+    fn get_short_type_name() -> &'static str {
+        let name = Self::get_name();
+        match name.rfind("::") {
+            Some(index) => &name[(index + 2)..],
+            None => name,
+        }
+    }
+
     fn is_mutable() -> bool;
 }
 
-impl<T> Reference for &mut T {
-    fn is_mutable() -> bool {
-        true
-    }
-}
+impl<T> Reference for &'static T {
+    type Inner = T;
 
-impl<T> Reference for &T {
     fn is_mutable() -> bool {
         false
     }
 }
 
-pub trait Named {
-    fn get_name() -> &'static str {
-        std::any::type_name::<Self>()
-    }
-}
+impl<T> Reference for &'static mut T {
+    type Inner = T;
 
-impl<T> Named for &T {
-    fn get_name() -> &'static str {
-        std::any::type_name::<T>()
-    }
-}
-
-impl<T> Named for &mut T {
-    fn get_name() -> &'static str {
-        std::any::type_name::<T>()
-    }
-}
-
-pub fn get_short_type_name(type_name: &'static str) -> &'static str {
-    match type_name.rfind("::") {
-        Some(index) => &type_name[(index + 2)..],
-        None => type_name,
+    fn is_mutable() -> bool {
+        true
     }
 }

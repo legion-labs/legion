@@ -1,5 +1,5 @@
 use super::entity::ComponentType;
-use super::reflection::{Named, Reference};
+use super::reflection::Reference;
 #[cfg(test)]
 use crate::prelude::*;
 use std::marker::PhantomData;
@@ -43,7 +43,7 @@ pub struct ComponentAccess {
 impl ComponentAccess {
     fn new<T>() -> Self
     where
-        T: 'static + Named + Reference,
+        T: Reference,
     {
         Self {
             component_type: ComponentType::new::<T>(),
@@ -70,7 +70,7 @@ pub trait SignatureAnalyzer<Args> {
 impl<F, Args> SignatureAnalyzer<Args> for F
 where
     F: Fn(Args) -> SystemResult,
-    Args: 'static + Named + Reference,
+    Args: Reference,
 {
     fn add_component_accesses(&self, signature: &mut Vec<ComponentAccess>) {
         signature.push(ComponentAccess::new::<Args>());
@@ -129,15 +129,26 @@ mod tests {
 
     #[test]
     fn build_system_single_arg() {
-        let system = System::new("read_position", read_position);
-        println!("signature: {:?}", system.signature);
-        assert_eq!(system.signature.len(), 1);
-        assert!(!system.signature[0].mutable);
+        let immutable_system = System::new("read_position", read_position);
+        println!("signature: {:?}", immutable_system.signature);
+        assert_eq!(immutable_system.signature.len(), 1);
+        let immutable_arg = &immutable_system.signature[0];
+        assert!(!immutable_arg.mutable);
 
-        let system = System::new("drift_position", drift_position);
-        println!("signature: {:?}", system.signature);
-        assert_eq!(system.signature.len(), 1);
-        assert!(system.signature[0].mutable);
+        let mutable_system = System::new("drift_position", drift_position);
+        println!("signature: {:?}", mutable_system.signature);
+        assert_eq!(mutable_system.signature.len(), 1);
+        let mutable_arg = &mutable_system.signature[0];
+        assert!(mutable_arg.mutable);
+
+        assert_eq!(
+            immutable_arg.component_type.get_name(),
+            mutable_arg.component_type.get_name()
+        );
+        assert_eq!(
+            immutable_arg.component_type.get_id(),
+            mutable_arg.component_type.get_id()
+        );
     }
 
     // struct Velocity(Vector3);
