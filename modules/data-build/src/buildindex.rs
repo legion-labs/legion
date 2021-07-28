@@ -209,8 +209,7 @@ mod tests {
 
     use super::BuildIndex;
     use crate::Error;
-    use legion_resources::{Project, ResourcePath, ResourceType};
-    use std::slice;
+    use legion_resources::{Project, ResourceId, ResourceType};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
@@ -236,21 +235,13 @@ mod tests {
     #[test]
     fn dependency_update() {
         let work_dir = tempfile::tempdir().unwrap();
-        let mut project = Project::create_new(work_dir.path()).expect("failed to create project");
+        let project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
 
-        let child = project
-            .create_resource(ResourcePath::from("child"), RESOURCE_ACTOR, b"test")
-            .unwrap();
-        let parent = project
-            .create_resource_with_deps(
-                ResourcePath::from("parent"),
-                RESOURCE_ACTOR,
-                slice::from_ref(&child),
-                b"test",
-            )
-            .unwrap();
+        // dummy ids - the actual project structure is irrelevant in this test.
+        let child = ResourceId::generate_new(RESOURCE_ACTOR);
+        let parent = ResourceId::generate_new(RESOURCE_ACTOR);
 
         let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
         let projectindex_path = project.indexfile_path();
@@ -276,30 +267,3 @@ mod tests {
         db.flush().unwrap();
     }
 }
-
-/*
-
-- asset's definitions (offline and runtime formats)
-- adding factories (offline and runtime)
-- editor appearance
-- asset-spcific management
-- pluginizing it???
-- own editor, import, compiler, etc
-
-
-class MyResource : OfflineResource {
-    string text_content;
-}
-
-class MyAsset : RuntimeAsset {
-    int integer_value;
-}
-
-- content browser uses OfflineResource
-- content browser defaults to property grid
-- 1 offline resource can generate many runtime resoureces
-
-- create and register MyResourceFactory.
-
-
-*/

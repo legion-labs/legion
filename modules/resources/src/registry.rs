@@ -8,7 +8,7 @@ use std::{
 
 use slotmap::{SecondaryMap, SlotMap};
 
-use crate::ResourceType;
+use crate::{ResourceId, ResourceType};
 
 slotmap::new_key_type!(
     struct ResourceHandleId;
@@ -27,6 +27,9 @@ pub trait Resource: Any {
 pub trait ResourceProcessor {
     /// Interface returning a resource in a default state. Useful when creating a new resource.
     fn new_resource(&mut self) -> Box<dyn Resource>;
+
+    /// Interface returning a list of resources that `resource` depends on for building.
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourceId>;
 
     /// Interface defining serialization behavior of the resource.
     fn write_resource(
@@ -56,7 +59,8 @@ impl ResourceHandle {
 
     /// Returns a reference to the resource behind the handle if one exists.
     pub fn get<'a, T: Resource>(&'_ self, registry: &'a ResourceRegistry) -> Option<&'a T> {
-        registry.get(self)
+        let resource = registry.get(self)?;
+        resource.as_any().downcast_ref::<T>()
     }
 
     /// Returns a reference to the resource behind the handle if one exists.
@@ -64,7 +68,8 @@ impl ResourceHandle {
         &'_ self,
         registry: &'a mut ResourceRegistry,
     ) -> Option<&'a mut T> {
-        registry.get_mut(self)
+        let resource = registry.get_mut(self)?;
+        resource.as_any_mut().downcast_mut::<T>()
     }
 }
 
@@ -128,7 +133,12 @@ impl ResourceRefCounter {
     }
 }
 
-/// The registry of loaded resources.
+/// The registry of resources currently available in memory.
+///
+/// While `Project` is responsible for managing on disk/source control resources
+/// the `ResourceRegisry` manages resources that are in memory. Therefore it is possible
+/// that some resources are in memory but not known to `Project` or are part of the `Project`
+/// but are not currently loaded to memory.
 #[derive(Default)]
 pub struct ResourceRegistry {
     ref_counts: Arc<Mutex<ResourceRefCounter>>,
@@ -138,6 +148,8 @@ pub struct ResourceRegistry {
 
 impl ResourceRegistry {
     /// Register a processor for a resource type.
+    ///
+    /// A `ResourceProcessor` will allow to serialize/deserialize and extract load dependecies from a resource.
     pub fn register_type(&mut self, kind: ResourceType, proc: Box<dyn ResourceProcessor>) {
         self.processors.insert(kind, proc);
     }
@@ -155,7 +167,7 @@ impl ResourceRegistry {
     }
 
     /// Creates an instance of a resource and deserializes content from provided reader.
-    pub fn load_resource(
+    pub fn deserialize_resource(
         &mut self,
         kind: ResourceType,
         reader: &mut dyn io::Read,
@@ -172,12 +184,12 @@ impl ResourceRegistry {
     }
 
     /// Serializes the content of the resource into the writer.
-    pub fn save_resource(
+    pub fn serialize_resource(
         &mut self,
         kind: ResourceType,
         handle: &ResourceHandle,
         writer: &mut dyn io::Write,
-    ) -> io::Result<usize> {
+    ) -> io::Result<(usize, Vec<ResourceId>)> {
         if let Some(processor) = self.processors.get_mut(&kind) {
             if self
                 .ref_counts
@@ -194,7 +206,9 @@ impl ResourceRegistry {
                     .unwrap()
                     .as_ref();
 
-                processor.write_resource(&*resource, writer)
+                let build_deps = processor.extract_build_dependencies(&*resource);
+                let written = processor.write_resource(&*resource, writer)?;
+                Ok((written, build_deps))
             } else {
                 Err(io::Error::new(
                     io::ErrorKind::NotFound,
@@ -225,7 +239,7 @@ impl ResourceRegistry {
     }
 
     /// Returns a reference to a resource behind the handle, None if the resource does not exist.
-    pub fn get<'a, T: Any>(&'a self, handle: &ResourceHandle) -> Option<&'a T> {
+    pub fn get<'a>(&'a self, handle: &ResourceHandle) -> Option<&'a dyn Resource> {
         if self
             .ref_counts
             .lock()
@@ -233,18 +247,20 @@ impl ResourceRegistry {
             .ref_counts
             .contains_key(handle.handle_id)
         {
-            self.resources
-                .get(handle.handle_id)?
-                .as_ref()?
-                .as_any()
-                .downcast_ref::<T>()
+            Some(
+                self.resources
+                    .get(handle.handle_id)?
+                    .as_ref()
+                    .unwrap()
+                    .as_ref(),
+            )
         } else {
             None
         }
     }
 
     /// Returns a mutable reference to a resource behind the handle, None if the resource does not exist.
-    pub fn get_mut<'a, T: Any>(&'a mut self, handle: &ResourceHandle) -> Option<&'a mut T> {
+    pub fn get_mut<'a>(&'a mut self, handle: &ResourceHandle) -> Option<&'a mut dyn Resource> {
         if self
             .ref_counts
             .lock()
@@ -252,11 +268,13 @@ impl ResourceRegistry {
             .ref_counts
             .contains_key(handle.handle_id)
         {
-            self.resources
-                .get_mut(handle.handle_id)?
-                .as_mut()?
-                .as_any_mut()
-                .downcast_mut::<T>()
+            Some(
+                self.resources
+                    .get_mut(handle.handle_id)?
+                    .as_mut()
+                    .unwrap()
+                    .as_mut(),
+            )
         } else {
             None
         }
@@ -280,7 +298,7 @@ mod tests {
         sync::{Arc, Mutex},
     };
 
-    use crate::{ResourceProcessor, ResourceType};
+    use crate::{ResourceId, ResourceProcessor, ResourceType};
 
     use super::{Resource, ResourceHandle, ResourceRefCounter, ResourceRegistry};
 
@@ -352,6 +370,10 @@ mod tests {
                 .map_err(|_e| io::Error::new(io::ErrorKind::InvalidData, "Parsing error"))?;
             Ok(resource)
         }
+
+        fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourceId> {
+            vec![]
+        }
     }
 
     const RESOURCE_SAMPLE: ResourceType = ResourceType::new(b"sample");
@@ -420,11 +442,11 @@ mod tests {
         let mut buffer = [0u8; 256];
 
         resources
-            .save_resource(RESOURCE_SAMPLE, &created_handle, &mut &mut buffer[..])
+            .serialize_resource(RESOURCE_SAMPLE, &created_handle, &mut &mut buffer[..])
             .unwrap();
 
         let loaded_handle = resources
-            .load_resource(RESOURCE_SAMPLE, &mut &buffer[..])
+            .deserialize_resource(RESOURCE_SAMPLE, &mut &buffer[..])
             .expect("Resource load");
 
         let loaded_resource = loaded_handle

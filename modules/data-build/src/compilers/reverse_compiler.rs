@@ -13,7 +13,7 @@ fn compile(input: &mut CompilerInput<'_>) -> Result<Vec<CompiledAsset>, Error> {
 
     let asset_content = input
         .project
-        .read_resource(input.resource)
+        .read_resource_deprecated(input.resource)
         .map_err(|_e| Error::NotFound)?;
 
     let compiled_asset = {
