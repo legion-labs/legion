@@ -2,7 +2,9 @@ use crate::metadata::Metadata;
 use crate::metadata::ResourceHash;
 use crate::types::ResourceId;
 use crate::types::ResourceType;
+use crate::ResourceHandle;
 use crate::ResourcePathRef;
+use crate::ResourceRegistry;
 
 use crate::ResourcePath;
 
@@ -10,10 +12,9 @@ use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::hash::Hash;
 use std::hash::Hasher;
+use std::io::Read;
 use std::io::Seek;
-use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -174,19 +175,70 @@ impl Project {
         self.find_resource(name).is_ok()
     }
 
-    /// Reads the resource content file.
-    pub fn read_resource(&self, id: ResourceId) -> Result<Vec<u8>, Error> {
-        let resource_path = self.resource_path(id);
+    /// Add a given resource of a given type with an associated `.meta`.
+    ///
+    /// The created `.meta` file contains a checksum of the resource content.
+    /// `TODO`: the checksum of content needs to be updated when file is modified.
+    ///
+    /// Both resource file and its corresponding `.meta` file are `staged`.
+    /// Use [`Self::commit()`] to push changes to remote.
+    pub fn add_resource(
+        &mut self,
+        name: ResourcePath,
+        kind: ResourceType,
+        handle: &ResourceHandle,
+        registry: &mut ResourceRegistry,
+    ) -> Result<ResourceId, Error> {
+        let id = ResourceId::generate_new(kind);
+        let meta_path = self.metadata_path(id);
+        let mut resource_path = meta_path.clone();
+        resource_path.set_extension(RESOURCE_EXT);
 
-        let data = fs::read(resource_path).map_err(|e| match e.kind() {
-            std::io::ErrorKind::NotFound => Error::NotFound,
-            _ => Error::IOError(e),
+        let build_dependencies = {
+            let mut resource_file = File::create(&resource_path).map_err(Error::IOError)?;
+
+            let (_written, load_deps) = registry
+                .serialize_resource(kind, handle, &mut resource_file)
+                .map_err(Error::IOError)?;
+            load_deps
+        };
+
+        let content_checksum = {
+            let mut resource_file = File::open(&resource_path).map_err(Error::IOError)?;
+
+            let mut hasher = DefaultHasher::new();
+            let mut buffer = [0; 1024];
+            loop {
+                let count = resource_file.read(&mut buffer).map_err(Error::IOError)?;
+                if count == 0 {
+                    break;
+                }
+
+                hasher.write(&buffer[..count]);
+            }
+
+            hasher.finish() as i128
+        };
+
+        let meta_file = File::create(&meta_path).map_err(|e| {
+            fs::remove_file(&resource_path).unwrap();
+            Error::IOError(e)
         })?;
-        Ok(data)
+
+        let metadata = Metadata::new_with_dependencies(name, content_checksum, &build_dependencies);
+        serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
+
+        self.db.local_resources.push(id);
+        Ok(id)
     }
 
-    /// Changes the content of the resource to `new_content` and updates the corresponding .meta file.
-    pub fn save_resource(&mut self, id: ResourceId, new_content: &[u8]) -> Result<(), Error> {
+    /// Writes the resource behind `handle` from memory to disk and updates the corresponding .meta file.
+    pub fn save_resource(
+        &mut self,
+        id: ResourceId,
+        handle: &ResourceHandle,
+        resources: &mut ResourceRegistry,
+    ) -> Result<(), Error> {
         let resource_path = self.resource_path(id);
         let metadata_path = self.metadata_path(id);
 
@@ -195,23 +247,41 @@ impl Project {
             .write(true)
             .open(metadata_path)
             .map_err(Error::IOError)?;
-        let mut resource_file = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .open(resource_path)
-            .map_err(Error::IOError)?;
         let mut metadata: Metadata =
             serde_json::from_reader(&meta_file).map_err(|_e| Error::ParseError)?;
 
-        resource_file.write_all(new_content).unwrap(); // todo(kstasik): introduce 'corrupted' resource flag.
+        let build_dependencies = {
+            let mut resource_file = OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .open(&resource_path)
+                .map_err(Error::IOError)?;
 
-        metadata.content_checksum = {
+            let (_written, build_deps) = resources
+                .serialize_resource(id.resource_type(), handle, &mut resource_file)
+                .map_err(Error::IOError)?;
+            build_deps
+        };
+
+        let content_checksum = {
+            let mut resource_file = File::open(&resource_path).map_err(Error::IOError)?;
+
             let mut hasher = DefaultHasher::new();
-            new_content.hash(&mut hasher);
+            let mut buffer = [0; 1024];
+            loop {
+                let count = resource_file.read(&mut buffer).map_err(Error::IOError)?;
+                if count == 0 {
+                    break;
+                }
+
+                hasher.write(&buffer[..count]);
+            }
+
             hasher.finish() as i128
         };
 
-        // todo(kstasik): parse the resource to extract dependencies.
+        metadata.content_checksum = content_checksum;
+        metadata.build_deps = build_dependencies;
 
         meta_file.set_len(0).unwrap();
         meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
@@ -219,61 +289,33 @@ impl Project {
         Ok(())
     }
 
-    /// Creates an empty resource file of a given type with an associated `.meta`.
+    /// Loads a resource of a given id.
     ///
-    /// The created `.meta` file contains a checksum of the resource content.
-    /// `TODO`: the checksum of content needs to be updated when file is modified.
-    ///
-    /// Both resource file and its corresponding `.meta` file are `staged`.
-    /// Use [`Self::commit()`] to push changes to remote.
-    pub fn create_resource_with_deps(
-        &mut self,
-        name: ResourcePath,
-        kind: ResourceType,
-        dependencies: &[ResourceId],
-        content: &[u8],
-    ) -> Result<ResourceId, Error> {
-        let id = ResourceId::generate_new(kind);
+    /// In-memory representation of that resource is managed by `ResourceRegistry`.
+    /// In order to update the resource on disk see [`Self::save_resource()`].
+    pub fn load_resource(
+        &self,
+        id: ResourceId,
+        resources: &mut ResourceRegistry,
+    ) -> Result<ResourceHandle, Error> {
+        let resource_path = self.resource_path(id);
 
-        let meta_path = self.metadata_path(id);
-        let mut resource_path = meta_path.clone();
-        resource_path.set_extension(RESOURCE_EXT);
-
-        let mut resource_file = File::create(&resource_path).map_err(Error::IOError)?;
-
-        resource_file.write_all(content).map_err(|e| {
-            fs::remove_file(&resource_path).unwrap();
-            Error::IOError(e)
-        })?;
-
-        let meta_file = File::create(&meta_path).map_err(|e| {
-            fs::remove_file(&resource_path).unwrap();
-            Error::IOError(e)
-        })?;
-
-        let content_checksum = {
-            let mut hasher = DefaultHasher::new();
-            content.hash(&mut hasher);
-            hasher.finish() as i128
-        };
-
-        let metadata = Metadata::new_with_dependencies(name, content_checksum, dependencies);
-        serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
-
-        self.db.local_resources.push(id);
-        Ok(id)
+        let mut resource_file = File::open(resource_path).map_err(Error::IOError)?;
+        let handle = resources
+            .deserialize_resource(id.resource_type(), &mut resource_file)
+            .map_err(Error::IOError)?;
+        Ok(handle)
     }
 
-    /// Creates an empty resource file of a given type with an associated `.meta`.
-    ///
-    /// For more information see [`Self::create_resource_with_deps()`].
-    pub fn create_resource(
-        &mut self,
-        name: ResourcePath,
-        kind: ResourceType,
-        content: &[u8],
-    ) -> Result<ResourceId, Error> {
-        self.create_resource_with_deps(name, kind, &[], content)
+    /// Reads the resource content file.
+    pub fn read_resource_deprecated(&self, id: ResourceId) -> Result<Vec<u8>, Error> {
+        let resource_path = self.resource_path(id);
+
+        let data = fs::read(resource_path).map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => Error::NotFound,
+            _ => Error::IOError(e),
+        })?;
+        Ok(data)
     }
 
     /// Gathers information about a given resource.
@@ -418,7 +460,10 @@ mod tests {
 
     use tempfile::TempDir;
 
-    use crate::{project::Project, ResourcePath, ResourceType};
+    use crate::{
+        project::Project, Resource, ResourceId, ResourcePath, ResourceProcessor, ResourceRegistry,
+        ResourceType,
+    };
 
     use super::ResourceDb;
 
@@ -438,61 +483,188 @@ mod tests {
     const RESOURCE_SKELETON: ResourceType = ResourceType::new(b"skeleton");
     const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
 
-    fn create_actor(projectroot_path: &Path) -> Project {
-        let index_path = Project::root_to_index_path(projectroot_path);
-        let mut project = Project::open(&index_path).unwrap();
-        let texture = project
-            .create_resource(
-                ResourcePath::from("albedo.texture"),
-                RESOURCE_TEXTURE,
-                b"test",
-            )
-            .unwrap();
-        let material = project
-            .create_resource_with_deps(
-                ResourcePath::from("body.material"),
-                RESOURCE_MATERIAL,
-                &[texture],
-                b"test",
-            )
-            .unwrap();
-        let geometry = project
-            .create_resource_with_deps(
-                ResourcePath::from("hero.geometry"),
-                RESOURCE_GEOMETRY,
-                &[material],
-                b"test",
-            )
-            .unwrap();
-        let skeleton = project
-            .create_resource(
-                ResourcePath::from("hero.skeleton"),
-                RESOURCE_SKELETON,
-                b"test",
-            )
-            .unwrap();
-        let _actor = project
-            .create_resource_with_deps(
-                ResourcePath::from("hero.actor"),
-                RESOURCE_ACTOR,
-                &[geometry, skeleton],
-                b"test",
-            )
-            .unwrap();
+    struct NullResource {
+        content: isize,
+        build_deps: Vec<ResourceId>,
+    }
+    impl Resource for NullResource {
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
 
-        project
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+    }
+    struct NullResourceProc {}
+    impl ResourceProcessor for NullResourceProc {
+        fn new_resource(&mut self) -> Box<dyn Resource> {
+            Box::new(NullResource {
+                content: 0,
+                build_deps: vec![],
+            })
+        }
+
+        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourceId> {
+            resource
+                .as_any()
+                .downcast_ref::<NullResource>()
+                .unwrap()
+                .build_deps
+                .clone()
+        }
+
+        fn write_resource(
+            &mut self,
+            resource: &dyn Resource,
+            writer: &mut dyn std::io::Write,
+        ) -> std::io::Result<usize> {
+            let resource = resource.as_any().downcast_ref::<NullResource>().unwrap();
+            let mut nbytes = 0;
+
+            let bytes = resource.content.to_ne_bytes();
+            nbytes += bytes.len();
+            writer.write_all(&bytes)?;
+
+            let bytes = resource.build_deps.len().to_ne_bytes();
+            nbytes += bytes.len();
+            writer.write_all(&bytes)?;
+
+            for dep in &resource.build_deps {
+                let bytes = dep.get_internal().to_ne_bytes();
+                nbytes += bytes.len();
+                writer.write_all(&bytes)?;
+            }
+
+            Ok(nbytes)
+        }
+
+        fn read_resource(
+            &mut self,
+            reader: &mut dyn std::io::Read,
+        ) -> std::io::Result<Box<dyn Resource>> {
+            let mut resource = self.new_resource();
+            let mut res = resource
+                .as_any_mut()
+                .downcast_mut::<NullResource>()
+                .unwrap();
+
+            let mut buf = res.content.to_ne_bytes();
+            reader.read_exact(&mut buf[..])?;
+            res.content = isize::from_ne_bytes(buf);
+
+            let mut buf = res.build_deps.len().to_ne_bytes();
+            reader.read_exact(&mut buf[..])?;
+
+            for _ in 0..usize::from_ne_bytes(buf) {
+                let mut buf = 0u64.to_ne_bytes();
+                reader.read_exact(&mut buf[..])?;
+                res.build_deps
+                    .push(ResourceId::from_raw(u64::from_ne_bytes(buf)).unwrap());
+            }
+
+            Ok(resource)
+        }
     }
 
-    fn create_sky_material(project: &mut Project) {
+    fn create_actor(projectroot_path: &Path) -> (Project, ResourceRegistry) {
+        let index_path = Project::root_to_index_path(projectroot_path);
+        let mut project = Project::open(&index_path).unwrap();
+        let mut resources = ResourceRegistry::default();
+        resources.register_type(RESOURCE_TEXTURE, Box::new(NullResourceProc {}));
+        resources.register_type(RESOURCE_MATERIAL, Box::new(NullResourceProc {}));
+        resources.register_type(RESOURCE_GEOMETRY, Box::new(NullResourceProc {}));
+        resources.register_type(RESOURCE_SKELETON, Box::new(NullResourceProc {}));
+        resources.register_type(RESOURCE_ACTOR, Box::new(NullResourceProc {}));
+
         let texture = project
-            .create_resource(ResourcePath::from("sky.texture"), RESOURCE_TEXTURE, b"test")
+            .add_resource(
+                ResourcePath::from("albedo.texture"),
+                RESOURCE_TEXTURE,
+                &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                &mut resources,
+            )
             .unwrap();
+
+        let material = resources.new_resource(RESOURCE_MATERIAL).unwrap();
+        material
+            .get_mut::<NullResource>(&mut resources)
+            .unwrap()
+            .build_deps
+            .push(texture);
+        let material = project
+            .add_resource(
+                ResourcePath::from("body.material"),
+                RESOURCE_MATERIAL,
+                &material,
+                &mut resources,
+            )
+            .unwrap();
+
+        let geometry = resources.new_resource(RESOURCE_GEOMETRY).unwrap();
+        geometry
+            .get_mut::<NullResource>(&mut resources)
+            .unwrap()
+            .build_deps
+            .push(material);
+        let geometry = project
+            .add_resource(
+                ResourcePath::from("hero.geometry"),
+                RESOURCE_GEOMETRY,
+                &geometry,
+                &mut resources,
+            )
+            .unwrap();
+
+        let skeleton = project
+            .add_resource(
+                ResourcePath::from("hero.skeleton"),
+                RESOURCE_SKELETON,
+                &resources.new_resource(RESOURCE_SKELETON).unwrap(),
+                &mut resources,
+            )
+            .unwrap();
+
+        let actor = resources.new_resource(RESOURCE_ACTOR).unwrap();
+        actor
+            .get_mut::<NullResource>(&mut resources)
+            .unwrap()
+            .build_deps = vec![geometry, skeleton];
+        let _actor = project
+            .add_resource(
+                ResourcePath::from("hero.actor"),
+                RESOURCE_ACTOR,
+                &actor,
+                &mut resources,
+            )
+            .unwrap();
+
+        (project, resources)
+    }
+
+    fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
+        let texture = project
+            .add_resource(
+                ResourcePath::from("sky.texture"),
+                RESOURCE_TEXTURE,
+                &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                resources,
+            )
+            .unwrap();
+
+        let material = resources.new_resource(RESOURCE_MATERIAL).unwrap();
+        material
+            .get_mut::<NullResource>(resources)
+            .unwrap()
+            .build_deps
+            .push(texture);
+
         let _material = project
-            .create_resource_with_deps(
+            .add_resource(
                 ResourcePath::from("sky.material"),
                 RESOURCE_MATERIAL,
-                &[texture],
-                b"test",
+                &material,
+                resources,
             )
             .unwrap();
     }
@@ -524,7 +696,7 @@ mod tests {
     #[test]
     fn local_changes() {
         let projroot_path = setup_test();
-        let project = create_actor(projroot_path.path());
+        let (project, _) = create_actor(projroot_path.path());
 
         assert_eq!(project.db.local_resources.len(), 5);
         assert_eq!(project.db.remote_resources.len(), 0);
@@ -533,7 +705,7 @@ mod tests {
     #[test]
     fn commit() {
         let projroot_path = setup_test();
-        let mut project = create_actor(projroot_path.path());
+        let (mut project, _) = create_actor(projroot_path.path());
 
         project.commit().unwrap();
 
@@ -544,7 +716,7 @@ mod tests {
     #[test]
     fn collect_dependencies() {
         let projectroot_path = setup_test();
-        let project = create_actor(projectroot_path.path());
+        let (project, _) = create_actor(projectroot_path.path());
 
         let top_level_resource = project
             .find_resource(&ResourcePath::from("hero.actor"))
@@ -572,9 +744,9 @@ mod tests {
         };
 
         let projectroot_path = setup_test();
-        let mut project = create_actor(projectroot_path.path());
+        let (mut project, mut resources) = create_actor(projectroot_path.path());
         assert!(project.commit().is_ok());
-        create_sky_material(&mut project);
+        create_sky_material(&mut project, &mut resources);
 
         rename_assert(
             &mut project,

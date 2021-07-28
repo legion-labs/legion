@@ -314,12 +314,106 @@ mod tests {
         databuild::DataBuild,
         Manifest, Platform, Target,
     };
-    use legion_resources::{Project, ResourcePath, ResourceType};
+    use legion_resources::{
+        Project, Resource, ResourceId, ResourcePath, ResourceProcessor, ResourceRegistry,
+        ResourceType,
+    };
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
     const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
     const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
+
+    struct NullResource {
+        content: isize,
+        build_deps: Vec<ResourceId>,
+    }
+    impl Resource for NullResource {
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+    }
+    struct NullResourceProc {}
+    impl ResourceProcessor for NullResourceProc {
+        fn new_resource(&mut self) -> Box<dyn Resource> {
+            Box::new(NullResource {
+                content: 0,
+                build_deps: vec![],
+            })
+        }
+
+        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourceId> {
+            resource
+                .as_any()
+                .downcast_ref::<NullResource>()
+                .unwrap()
+                .build_deps
+                .clone()
+        }
+
+        fn write_resource(
+            &mut self,
+            resource: &dyn Resource,
+            writer: &mut dyn std::io::Write,
+        ) -> std::io::Result<usize> {
+            let resource = resource.as_any().downcast_ref::<NullResource>().unwrap();
+            let mut nbytes = 0;
+
+            let bytes = resource.content.to_ne_bytes();
+            nbytes += bytes.len();
+            writer.write_all(&bytes)?;
+
+            let bytes = resource.build_deps.len().to_ne_bytes();
+            nbytes += bytes.len();
+            writer.write_all(&bytes)?;
+
+            for dep in &resource.build_deps {
+                let bytes = dep.get_internal().to_ne_bytes();
+                nbytes += bytes.len();
+                writer.write_all(&bytes)?;
+            }
+
+            Ok(nbytes)
+        }
+
+        fn read_resource(
+            &mut self,
+            reader: &mut dyn std::io::Read,
+        ) -> std::io::Result<Box<dyn Resource>> {
+            let mut resource = self.new_resource();
+            let mut res = resource
+                .as_any_mut()
+                .downcast_mut::<NullResource>()
+                .unwrap();
+
+            let mut buf = res.content.to_ne_bytes();
+            reader.read_exact(&mut buf[..])?;
+            res.content = isize::from_ne_bytes(buf);
+
+            let mut buf = res.build_deps.len().to_ne_bytes();
+            reader.read_exact(&mut buf[..])?;
+
+            for _ in 0..usize::from_ne_bytes(buf) {
+                let mut buf = 0u64.to_ne_bytes();
+                reader.read_exact(&mut buf[..])?;
+                res.build_deps
+                    .push(ResourceId::from_raw(u64::from_ne_bytes(buf)).unwrap());
+            }
+
+            Ok(resource)
+        }
+    }
+
+    fn setup_registry() -> ResourceRegistry {
+        let mut resources = ResourceRegistry::default();
+        resources.register_type(RESOURCE_TEXTURE, Box::new(NullResourceProc {}));
+        resources.register_type(RESOURCE_MATERIAL, Box::new(NullResourceProc {}));
+        resources
+    }
 
     #[test]
     fn create() {
@@ -351,18 +445,36 @@ mod tests {
     #[test]
     fn source_pull() {
         let work_dir = tempfile::tempdir().unwrap();
+
+        let mut resources = setup_registry();
+
         {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
+
             let texture = project
-                .create_resource(ResourcePath::from("child"), RESOURCE_TEXTURE, b"test")
+                .add_resource(
+                    ResourcePath::from("child"),
+                    RESOURCE_TEXTURE,
+                    &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                    &mut resources,
+                )
                 .unwrap();
+
+            let resource = {
+                let res = resources.new_resource(RESOURCE_TEXTURE).unwrap();
+                res.get_mut::<NullResource>(&mut resources)
+                    .unwrap()
+                    .build_deps
+                    .push(texture);
+                res
+            };
             let _material = project
-                .create_resource_with_deps(
+                .add_resource(
                     ResourcePath::from("parent"),
                     RESOURCE_MATERIAL,
-                    &[texture],
-                    b"test",
+                    &resource,
+                    &mut resources,
                 )
                 .unwrap();
         }
@@ -383,7 +495,12 @@ mod tests {
         {
             let mut project = Project::open(work_dir.path()).unwrap();
             project
-                .create_resource(ResourcePath::from("orphan"), RESOURCE_TEXTURE, b"test")
+                .add_resource(
+                    ResourcePath::from("orphan"),
+                    RESOURCE_TEXTURE,
+                    &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                    &mut resources,
+                )
                 .unwrap();
         }
 
@@ -395,124 +512,35 @@ mod tests {
     }
 
     #[test]
-    fn resource_modify_compile() {
-        let work_dir = tempfile::tempdir().unwrap();
-
-        let resource = {
-            let mut project =
-                Project::create_new(work_dir.path()).expect("failed to create a project");
-            project
-                .create_resource(ResourcePath::from("child"), RESOURCE_TEXTURE, b"test")
-                .unwrap()
-        };
-
-        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
-        let assetstore_root = work_dir.path();
-
-        let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
-
-        let original_checksum = {
-            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
-            build.source_pull().expect("failed to pull from project");
-
-            let manifest = build
-                .compile(
-                    &ResourcePath::from("child"),
-                    &output_manifest_file,
-                    Target::Game,
-                    Platform::Windows,
-                    ['e', 'n'],
-                )
-                .unwrap();
-
-            assert_eq!(manifest.compiled_assets.len(), 1);
-
-            let original_checksum = manifest.compiled_assets[0].checksum;
-
-            {
-                let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
-                assert!(asset_store.exists(original_checksum));
-            }
-
-            assert!(output_manifest_file.exists());
-            let read_manifest: Manifest = {
-                let manifest_file = File::open(&output_manifest_file).unwrap();
-                serde_json::from_reader(&manifest_file).unwrap()
-            };
-
-            assert_eq!(
-                read_manifest.compiled_assets.len(),
-                manifest.compiled_assets.len()
-            );
-
-            assert_eq!(read_manifest.compiled_assets[0].checksum, original_checksum);
-            original_checksum
-        };
-
-        let mut project = Project::open(work_dir.path()).expect("failed to open project");
-        project
-            .save_resource(resource, b"hello new content")
-            .unwrap();
-
-        let modified_checksum = {
-            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
-            build.source_pull().expect("failed to pull from project");
-            let manifest = build
-                .compile(
-                    &ResourcePath::from("child"),
-                    &output_manifest_file,
-                    Target::Game,
-                    Platform::Windows,
-                    ['e', 'n'],
-                )
-                .unwrap();
-
-            assert_eq!(manifest.compiled_assets.len(), 1);
-
-            let modified_checksum = manifest.compiled_assets[0].checksum;
-
-            {
-                let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
-                assert!(asset_store.exists(original_checksum));
-                assert!(asset_store.exists(modified_checksum));
-            }
-
-            assert!(output_manifest_file.exists());
-            let read_manifest: Manifest = {
-                let manifest_file = File::open(&output_manifest_file).unwrap();
-                serde_json::from_reader(&manifest_file).unwrap()
-            };
-
-            assert_eq!(
-                read_manifest.compiled_assets.len(),
-                manifest.compiled_assets.len()
-            );
-
-            assert_eq!(read_manifest.compiled_assets[0].checksum, modified_checksum);
-            modified_checksum
-        };
-
-        assert_ne!(original_checksum, modified_checksum);
-    }
-
-    #[test]
     fn compile() {
-        const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
-        const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
-
         let work_dir = tempfile::tempdir().unwrap();
+        let mut resources = setup_registry();
         {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
+
             let texture = project
-                .create_resource(ResourcePath::from("child"), RESOURCE_TEXTURE, b"test")
+                .add_resource(
+                    ResourcePath::from("child"),
+                    RESOURCE_TEXTURE,
+                    &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                    &mut resources,
+                )
                 .unwrap();
+
+            let material_handle = resources.new_resource(RESOURCE_MATERIAL).unwrap();
+            material_handle
+                .get_mut::<NullResource>(&mut resources)
+                .unwrap()
+                .build_deps
+                .push(texture);
+
             let _material = project
-                .create_resource_with_deps(
+                .add_resource(
                     ResourcePath::from("parent"),
                     RESOURCE_MATERIAL,
-                    &[texture],
-                    b"test",
+                    &material_handle,
+                    &mut resources,
                 )
                 .unwrap();
         }
@@ -572,5 +600,121 @@ mod tests {
             read_manifest.compiled_assets.len(),
             manifest.compiled_assets.len()
         );
+    }
+
+    #[test]
+    fn resource_modify_compile() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let mut resources = setup_registry();
+
+        let (resource_id, resource_handle) = {
+            let mut project =
+                Project::create_new(work_dir.path()).expect("failed to create a project");
+
+            let resource_handle = resources.new_resource(RESOURCE_TEXTURE).unwrap();
+            let resource_id = project
+                .add_resource(
+                    ResourcePath::from("child"),
+                    RESOURCE_TEXTURE,
+                    &resource_handle,
+                    &mut resources,
+                )
+                .unwrap();
+            (resource_id, resource_handle)
+        };
+
+        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
+        let assetstore_root = work_dir.path();
+
+        let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
+
+        let original_checksum = {
+            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
+            build.source_pull().expect("failed to pull from project");
+
+            let manifest = build
+                .compile(
+                    &ResourcePath::from("child"),
+                    &output_manifest_file,
+                    Target::Game,
+                    Platform::Windows,
+                    ['e', 'n'],
+                )
+                .unwrap();
+
+            assert_eq!(manifest.compiled_assets.len(), 1);
+
+            let original_checksum = manifest.compiled_assets[0].checksum;
+
+            {
+                let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
+                assert!(asset_store.exists(original_checksum));
+            }
+
+            assert!(output_manifest_file.exists());
+            let read_manifest: Manifest = {
+                let manifest_file = File::open(&output_manifest_file).unwrap();
+                serde_json::from_reader(&manifest_file).unwrap()
+            };
+
+            assert_eq!(
+                read_manifest.compiled_assets.len(),
+                manifest.compiled_assets.len()
+            );
+
+            assert_eq!(read_manifest.compiled_assets[0].checksum, original_checksum);
+            original_checksum
+        };
+
+        let mut project = Project::open(work_dir.path()).expect("failed to open project");
+
+        resource_handle
+            .get_mut::<NullResource>(&mut resources)
+            .unwrap()
+            .content = 6;
+
+        project
+            .save_resource(resource_id, &resource_handle, &mut resources)
+            .unwrap();
+
+        let modified_checksum = {
+            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
+            build.source_pull().expect("failed to pull from project");
+            let manifest = build
+                .compile(
+                    &ResourcePath::from("child"),
+                    &output_manifest_file,
+                    Target::Game,
+                    Platform::Windows,
+                    ['e', 'n'],
+                )
+                .unwrap();
+
+            assert_eq!(manifest.compiled_assets.len(), 1);
+
+            let modified_checksum = manifest.compiled_assets[0].checksum;
+
+            {
+                let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
+                assert!(asset_store.exists(original_checksum));
+                assert!(asset_store.exists(modified_checksum));
+            }
+
+            assert!(output_manifest_file.exists());
+            let read_manifest: Manifest = {
+                let manifest_file = File::open(&output_manifest_file).unwrap();
+                serde_json::from_reader(&manifest_file).unwrap()
+            };
+
+            assert_eq!(
+                read_manifest.compiled_assets.len(),
+                manifest.compiled_assets.len()
+            );
+
+            assert_eq!(read_manifest.compiled_assets[0].checksum, modified_checksum);
+            modified_checksum
+        };
+
+        assert_ne!(original_checksum, modified_checksum);
     }
 }

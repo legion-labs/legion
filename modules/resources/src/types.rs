@@ -41,6 +41,17 @@ impl ResourceId {
         let type_id = (u64::from(self.id) >> 32) as u32;
         ResourceType::from_raw(type_id)
     }
+
+    /// TODO: This should be removed. Exposed for serialization for now.
+    pub fn get_internal(&self) -> u64 {
+        self.id.get()
+    }
+
+    /// TODO: This should be removed. Exposed for deserialization for now.
+    pub fn from_raw(internal: u64) -> Option<Self> {
+        let id = std::num::NonZeroU64::new(internal)?;
+        Some(Self { id })
+    }
 }
 
 impl LowerHex for ResourceId {
