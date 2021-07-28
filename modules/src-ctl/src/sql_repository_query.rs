@@ -7,7 +7,7 @@ pub struct SqlRepositoryQuery {
 }
 
 impl SqlRepositoryQuery {
-    pub fn new(db_uri: &str) -> Result<SqlRepositoryQuery, String> {
+    pub fn new(db_uri: &str) -> Result<Self, String> {
         Ok(Self {
             sql_connection: connect(db_uri)?,
         })
@@ -16,7 +16,4 @@ impl SqlRepositoryQuery {
 
 #[async_trait]
 impl RepositoryQuery for SqlRepositoryQuery {
-    fn sql(&mut self) -> &mut sqlx::AnyConnection {
-        &mut self.sql_connection
-    }
 }

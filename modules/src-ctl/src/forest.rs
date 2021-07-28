@@ -16,7 +16,7 @@ pub fn init_forest_database(sql_connection: &mut sqlx::AnyConnection) -> Result<
 }
 
 pub fn read_tree(connection: &mut RepositoryConnection, hash: &str) -> Result<Tree, String> {
-    let sql_connection = connection.sql();
+    let mut sql_connection = connection.sql();
     let mut directory_nodes: Vec<TreeNode> = Vec::new();
     let mut file_nodes: Vec<TreeNode> = Vec::new();
 
@@ -28,7 +28,7 @@ pub fn read_tree(connection: &mut RepositoryConnection, hash: &str) -> Result<Tr
              ORDER BY name;",
         )
         .bind(hash)
-        .fetch_all(&mut *sql_connection),
+        .fetch_all(&mut sql_connection),
     ) {
         Ok(rows) => {
             for r in rows {
@@ -64,7 +64,7 @@ pub fn save_tree(
         return Ok(());
     }
 
-    let sql_connection = connection.sql();
+    let mut sql_connection = connection.sql();
 
     for file_node in &tree.file_nodes {
         if let Err(e) = block_on(
@@ -73,7 +73,7 @@ pub fn save_tree(
                 .bind(file_node.hash.clone())
                 .bind(hash)
                 .bind(TreeNodeType::File as i64)
-                .execute(&mut *sql_connection),
+                .execute(&mut sql_connection),
         ) {
             return Err(format!("Error inserting into tree_nodes: {}", e));
         }
@@ -86,7 +86,7 @@ pub fn save_tree(
                 .bind(dir_node.hash.clone())
                 .bind(hash)
                 .bind(TreeNodeType::Directory as i64)
-                .execute(&mut *sql_connection),
+                .execute(&mut sql_connection),
         ) {
             return Err(format!("Error inserting into tree_nodes: {}", e));
         }

@@ -61,7 +61,7 @@ pub fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<
 }
 
 pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Result<(), String> {
-    let sql_connection = connection.sql();
+    let mut sql_connection = connection.sql();
 
     if let Err(e) = block_on(
         sqlx::query("INSERT INTO commits VALUES(?, ?, ?, ?, ?);")
@@ -70,7 +70,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
             .bind(commit.message.clone())
             .bind(commit.root_hash.clone())
             .bind(commit.date_time_utc.clone())
-            .execute(&mut *sql_connection),
+            .execute(&mut sql_connection),
     ) {
         return Err(format!("Error inserting into commits: {}", e));
     }
@@ -80,7 +80,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
             sqlx::query("INSERT INTO commit_parents VALUES(?, ?);")
                 .bind(commit.id.clone())
                 .bind(parent_id.clone())
-                .execute(&mut *sql_connection),
+                .execute(&mut sql_connection),
         ) {
             return Err(format!("Error inserting into commit_parents: {}", e));
         }
@@ -93,7 +93,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
                 .bind(change.relative_path.clone())
                 .bind(change.hash.clone())
                 .bind(change.change_type.clone() as i64)
-                .execute(&mut *sql_connection),
+                .execute(&mut sql_connection),
         ) {
             return Err(format!("Error inserting into commit_changes: {}", e));
         }
@@ -103,7 +103,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
 }
 
 pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Commit, String> {
-    let sql_connection = connection.sql();
+    let mut sql_connection = connection.sql();
     let mut changes: Vec<HashedChange> = Vec::new();
 
     match block_on(
@@ -113,7 +113,7 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
              WHERE commit_id = ?;",
         )
         .bind(id)
-        .fetch_all(&mut *sql_connection),
+        .fetch_all(&mut sql_connection),
     ) {
         Ok(rows) => {
             for r in rows {
@@ -138,7 +138,7 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
              WHERE id = ?;",
         )
         .bind(id)
-        .fetch_all(&mut *sql_connection),
+        .fetch_all(&mut sql_connection),
     ) {
         Ok(rows) => {
             for r in rows {
@@ -157,7 +157,7 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
              WHERE id = ?;",
         )
         .bind(id)
-        .fetch_one(&mut *sql_connection),
+        .fetch_one(&mut sql_connection),
     ) {
         Ok(row) => {
             let commit = Commit::new(
@@ -175,7 +175,7 @@ pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Co
 }
 
 pub fn commit_exists(connection: &mut RepositoryConnection, id: &str) -> bool {
-    let sql_connection = connection.sql();
+    let mut sql_connection = connection.sql();
     let res = block_on(
         sqlx::query(
             "SELECT count(*) as count
@@ -183,7 +183,7 @@ pub fn commit_exists(connection: &mut RepositoryConnection, id: &str) -> bool {
              WHERE id = ?;",
         )
         .bind(id)
-        .fetch_one(&mut *sql_connection),
+        .fetch_one(&mut sql_connection),
     );
     let row = res.unwrap();
     let count: i32 = row.get("count");

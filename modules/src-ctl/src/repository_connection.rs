@@ -1,8 +1,9 @@
-use crate::{sql_repository_query::*, *};
+use crate::{sql::*, sql_repository_query::*, *};
 
 pub struct RepositoryConnection {
     blob_store: Box<dyn BlobStorage>,
     repo_query: Box<dyn RepositoryQuery>,
+    db_uri: String, //todo: remove
 }
 
 impl RepositoryConnection {
@@ -10,8 +11,9 @@ impl RepositoryConnection {
         repo_uri: &str,
         compressed_blob_cache: std::path::PathBuf,
     ) -> Result<Self, String> {
-        let mut repo_query = Box::new(SqlRepositoryQuery::new(repo_uri)?);
-        let blob_storage: Box<dyn BlobStorage> = match read_blob_storage_spec(repo_query.as_mut())?
+        let repo_query = Box::new(SqlRepositoryQuery::new(repo_uri)?);
+        let mut sql_connection = connect(repo_uri)?; //todo: remove
+        let blob_storage: Box<dyn BlobStorage> = match read_blob_storage_spec(&mut sql_connection)?
         {
             BlobStorageSpec::LocalDirectory(blob_directory) => {
                 Box::new(DiskBlobStorage { blob_directory })
@@ -24,11 +26,16 @@ impl RepositoryConnection {
         Ok(Self {
             blob_store: blob_storage,
             repo_query,
+            db_uri: String::from(repo_uri),
         })
     }
 
-    pub fn sql(&mut self) -> &mut sqlx::AnyConnection {
-        self.repo_query.sql()
+    pub fn sql(&self) -> sqlx::AnyConnection {
+        connect(&self.db_uri).unwrap()
+    }
+
+    pub fn query(&mut self) -> &mut dyn RepositoryQuery {
+        &mut *self.repo_query
     }
 
     pub fn blob_storage(&self) -> &dyn BlobStorage {

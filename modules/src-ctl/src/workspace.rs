@@ -25,13 +25,13 @@ pub fn save_new_workspace_to_repo(
     connection: &mut RepositoryConnection,
     workspace: &Workspace,
 ) -> Result<(), String> {
-    let sql_connection = connection.sql();
+    let mut sql_connection = connection.sql();
     if let Err(e) = block_on(
         sqlx::query("INSERT INTO workspaces VALUES(?, ?, ?);")
             .bind(workspace.id.clone())
             .bind(workspace.root.clone())
             .bind(workspace.owner.clone())
-            .execute(&mut *sql_connection),
+            .execute(&mut sql_connection),
     ) {
         return Err(format!("Error inserting into workspaces: {}", e));
     }
