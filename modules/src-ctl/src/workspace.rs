@@ -1,5 +1,4 @@
 use crate::{sql::*, *};
-use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,23 +16,6 @@ pub fn init_workspace_database(sql_connection: &mut sqlx::AnyConnection) -> Resu
                CREATE UNIQUE INDEX workspace_id on workspaces(id);";
     if let Err(e) = execute_sql(sql_connection, sql) {
         return Err(format!("Error creating workspace table and index: {}", e));
-    }
-    Ok(())
-}
-
-pub fn save_new_workspace_to_repo(
-    connection: &mut RepositoryConnection,
-    workspace: &Workspace,
-) -> Result<(), String> {
-    let mut sql_connection = connection.sql();
-    if let Err(e) = block_on(
-        sqlx::query("INSERT INTO workspaces VALUES(?, ?, ?);")
-            .bind(workspace.id.clone())
-            .bind(workspace.root.clone())
-            .bind(workspace.owner.clone())
-            .execute(&mut sql_connection),
-    ) {
-        return Err(format!("Error inserting into workspaces: {}", e));
     }
     Ok(())
 }

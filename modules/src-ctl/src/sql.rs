@@ -43,13 +43,19 @@ pub struct SqlConnectionPool {
     pub pool: sqlx::AnyPool,
 }
 
-pub fn make_sql_connection_pool(database_uri: &str) -> Result<SqlConnectionPool, String> {
+pub fn alloc_sql_pool(database_uri: &str) -> Result<sqlx::AnyPool, String> {
     match block_on(
         sqlx::any::AnyPoolOptions::new()
             .max_connections(5)
             .connect(database_uri),
     ) {
-        Ok(pool) => Ok(SqlConnectionPool { pool }),
+        Ok(pool) => Ok(pool),
         Err(e) => Err(format!("Error allocating database pool: {}", e)),
     }
+}
+
+pub fn make_sql_connection_pool(database_uri: &str) -> Result<SqlConnectionPool, String> {
+    Ok(SqlConnectionPool {
+        pool: alloc_sql_pool(database_uri)?,
+    })
 }

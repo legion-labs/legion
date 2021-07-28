@@ -43,7 +43,8 @@ pub fn init_workspace(specified_workspace_directory: &Path, repo_uri: &str) -> R
         &spec,
     )?;
 
-    save_new_workspace_to_repo(&mut connection, &spec)?;
+    let query = connection.query();
+    tokio_runtime.block_on(query.insert_workspace(&spec))?;
     let main_branch = read_branch_from_repo(&mut connection, "main")?;
     save_current_branch(&workspace_directory, &main_branch)?;
     let commit = read_commit(&mut connection, &main_branch.head)?;
