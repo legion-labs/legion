@@ -39,6 +39,8 @@ struct ResourceDb {
 /// pulled from `source-control` as well as `local resources` added/removed/edited locally.
 ///
 /// It provides a resource-oriented interface to source-control.
+///
+/// For more about loading, saving and managing resources in the memory see [`ResourceRegistry`]
 pub struct Project {
     file: std::fs::File,
     db: ResourceDb,
@@ -305,17 +307,6 @@ impl Project {
             .deserialize_resource(id.resource_type(), &mut resource_file)
             .map_err(Error::IOError)?;
         Ok(handle)
-    }
-
-    /// Reads the resource content file.
-    pub fn read_resource_deprecated(&self, id: ResourceId) -> Result<Vec<u8>, Error> {
-        let resource_path = self.resource_path(id);
-
-        let data = fs::read(resource_path).map_err(|e| match e.kind() {
-            std::io::ErrorKind::NotFound => Error::NotFound,
-            _ => Error::IOError(e),
-        })?;
-        Ok(data)
     }
 
     /// Gathers information about a given resource.

@@ -3,18 +3,23 @@
 //! * Tracking Issue: [legion/crate/#37](https://github.com/legion-labs/legion/issues/37)
 //! * Design Doc: [legion/book/project-resources](/book/data-pipeline/project-resources.html)
 //!
-//! The module is responsible for keeping track of offline resources.
-//! This includes `local resources` - those modified by the local user and
-//! `remote resources` - those synced using the backing source-control.
+//! The module is responsible for management of `resources` - data in offline format, optimized for editing and writing,
+//! which is operated on by the editor and various tools.
 //!
-//! Resource modification includes change of resource's content, name or location as well as adding or removing a resource.
+//! The [`Project`] keeps track of resources that are part of the project and is responsible for their storage - which includes
+//! both on-disk storage and source control interactions. The [`ResourceRegistry`] on the other handle takes responsibility
+//! of managing the in-memory representation of `resources`.
+//!
+//! From [`Project`]'s perspective there are two kinds of resources:
+//! * *local resources* - those modified by local user
+//! * *remote resources* - those synced using backing source-control.
 //!
 //! # Project Index
 //!
 //! The state of the project is read from a file once [`Project`] is opened and kept in memory throughout its lifetime.
 //! The changes are written back to the file once [`Project`] is dropped.
 //!
-//! The state of the project consists of two sets of [`ResourceId`]s:
+//! The state of a project consists of two sets of [`ResourceId`]s:
 //! - Local [`ResourceId`] list - locally modified resources.
 //! - Remote [`ResourceId`] list - synced resources.
 //!
@@ -33,7 +38,7 @@
 //!
 //! ## Resource `.meta` file
 //!
-//! The information in the `.meta` file includes:
+//! The information in `.meta` file includes:
 //! - List of [`ResourceId`]s of resource's build dependencies.
 //! - Resource's name/path.
 //! - Checksum of resource's content file.

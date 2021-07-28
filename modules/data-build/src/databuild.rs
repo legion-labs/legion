@@ -303,30 +303,14 @@ impl Drop for DataBuild {
     }
 }
 
-#[cfg(test)]
-mod tests {
+pub(crate) mod test_resource {
+    use legion_resources::{Resource, ResourceId, ResourceProcessor, ResourceType};
 
-    use std::fs::{self, File};
+    pub(crate) const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
 
-    use crate::{
-        buildindex::BuildIndex,
-        compiledassetstore::{CompiledAssetStore, LocalCompiledAssetStore},
-        databuild::DataBuild,
-        Manifest, Platform, Target,
-    };
-    use legion_resources::{
-        Project, Resource, ResourceId, ResourcePath, ResourceProcessor, ResourceRegistry,
-        ResourceType,
-    };
-
-    pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
-
-    const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
-    const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
-
-    struct NullResource {
-        content: isize,
-        build_deps: Vec<ResourceId>,
+    pub(crate) struct NullResource {
+        pub(crate) content: String,
+        pub(crate) build_deps: Vec<ResourceId>,
     }
     impl Resource for NullResource {
         fn as_any(&self) -> &dyn std::any::Any {
@@ -337,11 +321,11 @@ mod tests {
             self
         }
     }
-    struct NullResourceProc {}
+    pub(crate) struct NullResourceProc {}
     impl ResourceProcessor for NullResourceProc {
         fn new_resource(&mut self) -> Box<dyn Resource> {
             Box::new(NullResource {
-                content: 0,
+                content: String::from("default content"),
                 build_deps: vec![],
             })
         }
@@ -363,9 +347,13 @@ mod tests {
             let resource = resource.as_any().downcast_ref::<NullResource>().unwrap();
             let mut nbytes = 0;
 
-            let bytes = resource.content.to_ne_bytes();
+            let content_bytes = resource.content.as_bytes();
+
+            let bytes = content_bytes.len().to_ne_bytes();
             nbytes += bytes.len();
             writer.write_all(&bytes)?;
+            nbytes += content_bytes.len();
+            writer.write_all(content_bytes)?;
 
             let bytes = resource.build_deps.len().to_ne_bytes();
             nbytes += bytes.len();
@@ -390,14 +378,19 @@ mod tests {
                 .downcast_mut::<NullResource>()
                 .unwrap();
 
-            let mut buf = res.content.to_ne_bytes();
+            let mut buf = 0usize.to_ne_bytes();
             reader.read_exact(&mut buf[..])?;
-            res.content = isize::from_ne_bytes(buf);
+            let length = usize::from_ne_bytes(buf);
+
+            let mut buf = vec![0u8; length];
+            reader.read_exact(&mut buf[..])?;
+            res.content = String::from_utf8(buf).unwrap();
 
             let mut buf = res.build_deps.len().to_ne_bytes();
             reader.read_exact(&mut buf[..])?;
+            let dep_count = usize::from_ne_bytes(buf);
 
-            for _ in 0..usize::from_ne_bytes(buf) {
+            for _ in 0..dep_count {
                 let mut buf = 0u64.to_ne_bytes();
                 reader.read_exact(&mut buf[..])?;
                 res.build_deps
@@ -407,6 +400,26 @@ mod tests {
             Ok(resource)
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::fs::{self, File};
+
+    use crate::{
+        buildindex::BuildIndex,
+        compiledassetstore::{CompiledAssetStore, LocalCompiledAssetStore},
+        databuild::DataBuild,
+        Manifest, Platform, Target,
+    };
+    use legion_resources::{Project, ResourcePath, ResourceRegistry, ResourceType};
+
+    use super::test_resource::{NullResource, NullResourceProc, RESOURCE_TEXTURE};
+
+    pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
+
+    const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
 
     fn setup_registry() -> ResourceRegistry {
         let mut resources = ResourceRegistry::default();
@@ -671,7 +684,7 @@ mod tests {
         resource_handle
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
-            .content = 6;
+            .content = String::from("new content");
 
         project
             .save_resource(resource_id, &resource_handle, &mut resources)
