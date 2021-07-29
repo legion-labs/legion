@@ -1,5 +1,6 @@
 use crate::{sql::*, *};
 use async_trait::async_trait;
+use sqlx::Row;
 
 // access to repository metadata inside a mysql or sqlite database
 pub struct SqlRepositoryQuery {
@@ -11,6 +12,13 @@ impl SqlRepositoryQuery {
         Ok(Self {
             pool: alloc_sql_pool(db_uri)?,
         })
+    }
+
+    async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>, String> {
+        match self.pool.acquire().await {
+            Ok(c) => Ok(c),
+            Err(e) => Err(format!("Error acquiring sql connection: {}", e)),
+        }
     }
 }
 
@@ -32,6 +40,30 @@ impl RepositoryQuery for SqlRepositoryQuery {
                 }
             }
             Err(e) => Err(format!("Error acquiring sql connection: {}", e)),
+        }
+    }
+
+    async fn read_branch(&self, name: &str) -> Result<Branch, String> {
+        let mut sql_connection = self.acquire().await?;
+        match sqlx::query(
+            "SELECT head, parent, lock_domain_id 
+             FROM branches
+             WHERE name = ?;",
+        )
+        .bind(name)
+        .fetch_one(&mut sql_connection)
+        .await
+        {
+            Ok(row) => {
+                let branch = Branch::new(
+                    String::from(name),
+                    row.get("head"),
+                    row.get("parent"),
+                    row.get("lock_domain_id"),
+                );
+                Ok(branch)
+            }
+            Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
         }
     }
 }

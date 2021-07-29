@@ -88,33 +88,6 @@ pub fn read_current_branch(workspace_root: &Path) -> Result<Branch, String> {
     read_branch(&file_path)
 }
 
-pub fn read_branch_from_repo(
-    connection: &mut RepositoryConnection,
-    name: &str,
-) -> Result<Branch, String> {
-    let mut sql_connection = connection.sql();
-    match block_on(
-        sqlx::query(
-            "SELECT head, parent, lock_domain_id 
-             FROM branches
-             WHERE name = ?;",
-        )
-        .bind(name)
-        .fetch_one(&mut sql_connection),
-    ) {
-        Ok(row) => {
-            let branch = Branch::new(
-                String::from(name),
-                row.get("head"),
-                row.get("parent"),
-                row.get("lock_domain_id"),
-            );
-            Ok(branch)
-        }
-        Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
-    }
-}
-
 pub fn find_branch(
     connection: &mut RepositoryConnection,
     name: &str,

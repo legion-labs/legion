@@ -20,8 +20,9 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let query = connection.query();
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
+    let mut repo_branch = tokio_runtime.block_on(query.read_branch(&current_branch.name))?;
     if !repo_branch.parent.is_empty() {
         return Err(format!(
             "Can't attach branch {} to {}: branch {} already has {} for parent",
@@ -29,7 +30,7 @@ pub fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
         ));
     }
 
-    let parent_branch = read_branch_from_repo(&mut connection, parent_branch_name)?;
+    let parent_branch = tokio_runtime.block_on(query.read_branch(parent_branch_name))?;
     let mut locks_parent_domain = BTreeSet::new();
     for lock in read_locks(&mut connection, &parent_branch.lock_domain_id)? {
         locks_parent_domain.insert(lock.relative_path);

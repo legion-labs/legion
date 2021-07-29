@@ -29,7 +29,8 @@ pub fn detach_branch_command() -> Result<(), String> {
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
+    let mut repo_branch =
+        tokio_runtime.block_on(connection.query().read_branch(&current_branch.name))?;
     repo_branch.parent.clear();
 
     let locks_in_old_domain = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
@@ -47,7 +48,7 @@ pub fn detach_branch_command() -> Result<(), String> {
     let mut errors = Vec::new();
 
     for branch_name in &descendants {
-        match read_branch_from_repo(&mut connection, branch_name) {
+        match tokio_runtime.block_on(connection.query().read_branch(branch_name)) {
             Ok(mut branch) => {
                 branch.lock_domain_id = lock_domain_id.clone();
                 if let Err(e) = save_branch_to_repo(&mut connection, &branch) {

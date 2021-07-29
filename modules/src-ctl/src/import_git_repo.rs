@@ -76,7 +76,7 @@ async fn add_file_from_git(
             e
         ));
     }
-    track_new_file(workspace_connection, repo_connection, &local_path)
+    track_new_file(workspace_connection, repo_connection, &local_path).await
 }
 
 async fn edit_file_from_git(

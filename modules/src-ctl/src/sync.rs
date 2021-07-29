@@ -6,13 +6,14 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-fn find_commit_range(
+async fn find_commit_range(
     connection: &mut RepositoryConnection,
     branch_name: &str,
     start_commit_id: &str,
     end_commit_id: &str,
 ) -> Result<Vec<Commit>, String> {
-    let repo_branch = read_branch_from_repo(connection, branch_name)?;
+    let query = connection.query();
+    let repo_branch = query.read_branch(branch_name).await?;
     let mut current_commit = read_commit(connection, &repo_branch.head)?;
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
@@ -144,12 +145,12 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let mut workspace_branch = read_current_branch(&workspace_root)?;
-    let commits = find_commit_range(
+    let commits = tokio_runtime.block_on(find_commit_range(
         &mut connection,
         &workspace_branch.name,
         &workspace_branch.head,
         commit_id,
-    )?;
+    ))?;
     let mut to_download: BTreeMap<String, String> = BTreeMap::new();
     if commits[0].id == commit_id {
         //sync forwards
@@ -250,7 +251,8 @@ pub fn sync_command() -> Result<(), String> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let workspace_branch = read_current_branch(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
-    let repo_branch = read_branch_from_repo(&mut connection, &workspace_branch.name)?;
+    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let query = connection.query();
+    let repo_branch = tokio_runtime.block_on(query.read_branch(&workspace_branch.name))?;
     sync_to_command(&repo_branch.head)
 }

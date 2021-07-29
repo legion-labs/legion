@@ -34,8 +34,8 @@ impl RepositoryConnection {
         connect(&self.db_uri).unwrap()
     }
 
-    pub fn query(&mut self) -> &mut dyn RepositoryQuery {
-        &mut *self.repo_query
+    pub fn query(&self) -> &dyn RepositoryQuery {
+        &*self.repo_query
     }
 
     pub fn blob_storage(&self) -> &dyn BlobStorage {

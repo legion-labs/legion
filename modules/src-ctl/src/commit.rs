@@ -244,14 +244,20 @@ pub fn commit_local_changes(
     let mut current_branch = read_current_branch(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
-    let repo_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
+    let query = connection.query();
+    let repo_branch = tokio_runtime.block_on(query.read_branch(&current_branch.name))?;
+
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
     let local_changes = read_local_changes(workspace_connection)?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
-        assert_not_locked(&mut connection, &workspace_root, &abs_path)?;
+        tokio_runtime.block_on(assert_not_locked(
+            &mut connection,
+            &workspace_root,
+            &abs_path,
+        ))?;
     }
     let hashed_changes = tokio_runtime.block_on(upload_localy_edited_blobs(
         &workspace_root,

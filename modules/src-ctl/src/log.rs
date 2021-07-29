@@ -13,7 +13,8 @@ pub fn log_command() -> Result<(), String> {
         &workspace_branch.name, &workspace_branch.head
     );
 
-    let repo_branch = read_branch_from_repo(&mut connection, &workspace_branch.name)?;
+    let repo_branch =
+        tokio_runtime.block_on(connection.query().read_branch(&workspace_branch.name))?;
 
     match find_branch_commits(&mut connection, &repo_branch) {
         Ok(commits) => {

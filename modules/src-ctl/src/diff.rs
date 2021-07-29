@@ -3,8 +3,8 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
-fn reference_version_name_as_commit_id(
-    connection: &mut RepositoryConnection,
+async fn reference_version_name_as_commit_id(
+    repo_query: &dyn RepositoryQuery,
     workspace_root: &Path,
     reference_version_name: &str,
 ) -> Result<String, String> {
@@ -15,7 +15,7 @@ fn reference_version_name_as_commit_id(
         }
         "latest" => {
             let workspace_branch = read_current_branch(workspace_root)?;
-            let branch = read_branch_from_repo(connection, &workspace_branch.name)?;
+            let branch = repo_query.read_branch(&workspace_branch.name).await?;
             Ok(branch.head)
         }
         _ => Ok(String::from(reference_version_name)),
@@ -45,11 +45,11 @@ pub fn diff_file_command(
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
-    let ref_commit_id = reference_version_name_as_commit_id(
-        &mut connection,
+    let ref_commit_id = tokio_runtime.block_on(reference_version_name_as_commit_id(
+        connection.query(),
         &workspace_root,
         reference_version_name,
-    )?;
+    ))?;
     let ref_file_hash =
         find_file_hash_at_commit(&mut connection, &relative_path, &ref_commit_id)?.unwrap();
 

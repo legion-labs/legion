@@ -187,9 +187,10 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
-    let src_branch = read_branch_from_repo(&mut connection, name)?;
+    let query = connection.query();
+    let src_branch = tokio_runtime.block_on(query.read_branch(name))?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut destination_branch = read_branch_from_repo(&mut connection, &current_branch.name)?;
+    let mut destination_branch = tokio_runtime.block_on(query.read_branch(&current_branch.name))?;
 
     let merge_source_ancestors = find_commit_ancestors(&mut connection, &src_branch.head)?;
     let src_commit_history = find_branch_commits(&mut connection, &src_branch)?;
