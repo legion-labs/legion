@@ -199,10 +199,10 @@ impl Project {
         let build_dependencies = {
             let mut resource_file = File::create(&resource_path).map_err(Error::IOError)?;
 
-            let (_written, load_deps) = registry
+            let (_written, build_deps) = registry
                 .serialize_resource(kind, handle, &mut resource_file)
                 .map_err(Error::IOError)?;
-            load_deps
+            build_deps
         };
 
         let content_checksum = {
