@@ -3,7 +3,10 @@ use crate::{sql::*, *};
 use std::fs;
 use std::path::Path;
 
-pub fn init_workspace(specified_workspace_directory: &Path, repo_uri: &str) -> Result<(), String> {
+async fn init_workspace_impl(
+    specified_workspace_directory: &Path,
+    repo_uri: &str,
+) -> Result<(), String> {
     let workspace_directory = make_path_absolute(specified_workspace_directory);
 
     let lsc_dir = workspace_directory.join(".lsc");
@@ -17,8 +20,7 @@ pub fn init_workspace(specified_workspace_directory: &Path, repo_uri: &str) -> R
         owner: whoami::username(),
     };
 
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&spec))?;
+    let mut connection = connect_to_server(&spec).await?;
 
     if let Err(e) = fs::create_dir_all(&lsc_dir) {
         return Err(format!("Error creating .lsc directory: {}", e));
@@ -44,14 +46,18 @@ pub fn init_workspace(specified_workspace_directory: &Path, repo_uri: &str) -> R
     )?;
 
     let query = connection.query();
-    tokio_runtime.block_on(query.insert_workspace(&spec))?;
-    let main_branch = tokio_runtime.block_on(query.read_branch("main"))?;
+    query.insert_workspace(&spec).await?;
+    let main_branch = query.read_branch("main").await?;
     save_current_branch(&workspace_directory, &main_branch)?;
     let commit = read_commit(&mut connection, &main_branch.head)?;
-    tokio_runtime.block_on(download_tree(
-        &mut connection,
-        &workspace_directory,
-        &commit.root_hash,
-    ))?;
+    download_tree(&mut connection, &workspace_directory, &commit.root_hash).await?;
     Ok(())
+}
+
+pub fn init_workspace_command(
+    specified_workspace_directory: &Path,
+    repo_uri: &str,
+) -> Result<(), String> {
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+    tokio_runtime.block_on(init_workspace_impl(specified_workspace_directory, repo_uri))
 }

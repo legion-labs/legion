@@ -377,7 +377,7 @@ fn main_impl() -> Result<(), String> {
                 Err(e) => Err(e),
             }
         }
-        ("init-workspace", Some(command_match)) => init_workspace(
+        ("init-workspace", Some(command_match)) => init_workspace_command(
             Path::new(command_match.value_of("workspace-directory").unwrap()),
             command_match.value_of("repository-uri").unwrap(),
         ),
