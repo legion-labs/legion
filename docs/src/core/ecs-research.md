@@ -8,7 +8,7 @@
 - [ECS FAQ](https://github.com/SanderMertens/ecs-faq), Sander Mertens (author of Flecs)
 - [Overwatch Gameplay Architecture and Netcode](https://www.youtube.com/watch?v=W3aieHjyNvw), Timothy Ford (Blizzard), GDC 2017 talk
 - [Understanding data-oriented design for entity component systems](https://www.youtube.com/watch?v=0_Byw9UMn9g), Unity at GDC 2019
-
+- [Options for Entity interaction](https://www.youtube.com/watch?v=KuGRkC6wzMY), Luna Meier, Unite Copenhagen 2019
 
 ## Common definitions
 
