@@ -2,7 +2,7 @@
 
 > **Disclaimer**: This document is work in progress and describes our aspirations. There are technical challenges to sort out so the final outcome might look different from the original vision described here.
 
-Legion's supports streaming a viewport to a given endpoint:  
+Legion's supports streaming a viewport to a given endpoint. The goal of the streaming crate is to build the equivalent of an interactive `<video>` html tag (we can actually replace the client side functionality on the receiving end by using a `<video>` tag)
 
 ### Input Streaming
 
@@ -25,4 +25,3 @@ Main crates involved: `streamer`, `codec-api`, `presenter`
 
 * Receives a bit stream
 * Decompresses it and displays it to a window 
-
