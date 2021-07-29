@@ -1,4 +1,0 @@
-Streamer
-* Video
-* Audio
-* Input

@@ -14,10 +14,14 @@
     - [Example use cases](./data-pipeline/examples.md)
 
 - [Rendering](./rendering/README.md)
-    - [Context](./rendering/CONTEXT.md)
+    - [Design Overview](./rendering/design-overview.md)
+    - [Editor](./rendering/editor.md)
+    - [Runtime](./rendering/runtime.md)
+    - [Research](./rendering/research.md)
 
 - [Streaming](./streaming/README.md)
-    - [Context](./streaming/CONTEXT.md)
+
+- [Editor](./editor/README.md)
 
 - [Source Control](./source-control/README.md)
     - [Design](./source-control/DESIGN.md)

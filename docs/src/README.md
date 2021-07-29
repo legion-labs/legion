@@ -29,5 +29,4 @@ Engines are some of the most performance intensive programs, moving 8 Millions p
 
 ## Ability to evolve and change
 
-The gaming industry being product oriented by design, took more time to adopt better sofware engineering practices, like automated testing. And the complexity of the games have makes the problem a lot harder than in other industries. Games try more and more to be closer to the rules of reality, and the reality is made of hundred of tightly coupled systems that interact with each other in real time.
-
+The gaming industry being product oriented by design, took more time to adopt better software engineering practices, like automated testing. And the complexity of the games have makes the problem a lot harder than in other industries. Games try more and more to be closer to the rules of reality, and the reality is made of hundred of tightly coupled systems that interact with each other in real time.
