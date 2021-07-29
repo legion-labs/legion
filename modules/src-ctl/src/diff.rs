@@ -50,8 +50,13 @@ pub fn diff_file_command(
         &workspace_root,
         reference_version_name,
     ))?;
-    let ref_file_hash =
-        find_file_hash_at_commit(&mut connection, &relative_path, &ref_commit_id)?.unwrap();
+    let ref_file_hash = tokio_runtime
+        .block_on(find_file_hash_at_commit(
+            &mut connection,
+            &relative_path,
+            &ref_commit_id,
+        ))?
+        .unwrap();
 
     if !allow_tools {
         return tokio_runtime.block_on(print_diff(&mut connection, &abs_path, &ref_file_hash));

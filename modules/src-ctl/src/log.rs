@@ -16,7 +16,7 @@ pub fn log_command() -> Result<(), String> {
     let repo_branch =
         tokio_runtime.block_on(connection.query().read_branch(&workspace_branch.name))?;
 
-    match find_branch_commits(&mut connection, &repo_branch) {
+    match tokio_runtime.block_on(find_branch_commits(&mut connection, &repo_branch)) {
         Ok(commits) => {
             for c in commits {
                 let utc = DateTime::parse_from_rfc3339(&c.date_time_utc)

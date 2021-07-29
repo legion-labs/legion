@@ -143,12 +143,13 @@ pub fn find_resolves_pending_command() -> Result<Vec<ResolvePending>, String> {
     read_resolves_pending(&mut workspace_connection)
 }
 
-pub fn find_file_hash_at_commit(
+pub async fn find_file_hash_at_commit(
     connection: &mut RepositoryConnection,
     relative_path: &Path,
     commit_id: &str,
 ) -> Result<Option<String>, String> {
-    let commit = read_commit(connection, commit_id)?;
+    let query = connection.query();
+    let commit = query.read_commit(commit_id).await?;
     let root_tree = read_tree(connection, &commit.root_hash)?;
     let parent_dir = relative_path.parent().expect("no parent to path provided");
     let dir_tree = fetch_tree_subdir(connection, &root_tree, parent_dir)?;
@@ -233,13 +234,12 @@ fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> R
     Ok(())
 }
 
-pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
+pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
     let abs_path = make_path_absolute(p);
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let mut connection = connect_to_server(&workspace_spec).await?;
     let relative_path = make_canonical_relative_path(&workspace_root, p)?;
     match find_resolve_pending(&mut workspace_connection, &relative_path) {
         Err(e) => {
@@ -260,24 +260,20 @@ pub fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
                 &mut connection,
                 Path::new(&relative_path),
                 &resolve_pending.base_commit_id,
-            )?
+            )
+            .await?
             .unwrap();
-            let base_temp_file = tokio_runtime.block_on(download_temp_file(
-                &mut connection,
-                &workspace_root,
-                &base_file_hash,
-            ))?;
+            let base_temp_file =
+                download_temp_file(&mut connection, &workspace_root, &base_file_hash).await?;
             let theirs_file_hash = find_file_hash_at_commit(
                 &mut connection,
                 Path::new(&relative_path),
                 &resolve_pending.theirs_commit_id,
-            )?
+            )
+            .await?
             .unwrap();
-            let theirs_temp_file = tokio_runtime.block_on(download_temp_file(
-                &mut connection,
-                &workspace_root,
-                &theirs_file_hash,
-            ))?;
+            let theirs_temp_file =
+                download_temp_file(&mut connection, &workspace_root, &theirs_file_hash).await?;
             let tmp_dir = workspace_root.join(".lsc/tmp");
             let output_temp_file = TempPath {
                 path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),

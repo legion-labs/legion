@@ -49,7 +49,7 @@ async fn init_workspace_impl(
     query.insert_workspace(&spec).await?;
     let main_branch = query.read_branch("main").await?;
     save_current_branch(&workspace_directory, &main_branch)?;
-    let commit = read_commit(&mut connection, &main_branch.head)?;
+    let commit = query.read_commit(&main_branch.head).await?;
     download_tree(&mut connection, &workspace_directory, &commit.root_hash).await?;
     Ok(())
 }

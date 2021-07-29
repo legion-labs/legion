@@ -291,9 +291,11 @@ fn import_commit_sequence(
                         }
                         let commit_id = commit.id().to_string();
                         println!("recording commit {}: {}", commit_id, message);
-                        if let Err(e) =
-                            commit_local_changes(workspace_connection, &commit_id, &message)
-                        {
+                        if let Err(e) = runtime.block_on(commit_local_changes(
+                            workspace_connection,
+                            &commit_id,
+                            &message,
+                        )) {
                             return Err(format!(
                                 "Error recording {}: {}",
                                 format_commit(&commit),

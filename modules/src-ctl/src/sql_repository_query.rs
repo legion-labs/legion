@@ -66,4 +66,76 @@ impl RepositoryQuery for SqlRepositoryQuery {
             Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
         }
     }
+
+    async fn read_commit(&self, id: &str) -> Result<Commit, String> {
+        let mut sql_connection = self.acquire().await?;
+        let mut changes: Vec<HashedChange> = Vec::new();
+
+        match sqlx::query(
+            "SELECT relative_path, hash, change_type
+             FROM commit_changes
+             WHERE commit_id = ?;",
+        )
+        .bind(id)
+        .fetch_all(&mut sql_connection)
+        .await
+        {
+            Ok(rows) => {
+                for r in rows {
+                    let change_type_int: i64 = r.get("change_type");
+                    changes.push(HashedChange {
+                        relative_path: r.get("relative_path"),
+                        hash: r.get("hash"),
+                        change_type: ChangeType::from_int(change_type_int).unwrap(),
+                    });
+                }
+            }
+            Err(e) => {
+                return Err(format!("Error fetching changes for commit {}: {}", id, e));
+            }
+        }
+
+        let mut parents: Vec<String> = Vec::new();
+        match sqlx::query(
+            "SELECT parent_id
+             FROM commit_parents
+             WHERE id = ?;",
+        )
+        .bind(id)
+        .fetch_all(&mut sql_connection)
+        .await
+        {
+            Ok(rows) => {
+                for r in rows {
+                    parents.push(r.get("parent_id"));
+                }
+            }
+            Err(e) => {
+                return Err(format!("Error fetching parents for commit {}: {}", id, e));
+            }
+        }
+
+        match sqlx::query(
+            "SELECT owner, message, root_hash, date_time_utc 
+             FROM commits
+             WHERE id = ?;",
+        )
+        .bind(id)
+        .fetch_one(&mut sql_connection)
+        .await
+        {
+            Ok(row) => {
+                let commit = Commit::new(
+                    String::from(id),
+                    row.get("owner"),
+                    row.get("message"),
+                    changes,
+                    row.get("root_hash"),
+                    parents,
+                );
+                Ok(commit)
+            }
+            Err(e) => Err(format!("Error fetching commit: {}", e)),
+        }
+    }
 }

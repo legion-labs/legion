@@ -102,78 +102,6 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
     Ok(())
 }
 
-pub fn read_commit(connection: &mut RepositoryConnection, id: &str) -> Result<Commit, String> {
-    let mut sql_connection = connection.sql();
-    let mut changes: Vec<HashedChange> = Vec::new();
-
-    match block_on(
-        sqlx::query(
-            "SELECT relative_path, hash, change_type
-             FROM commit_changes
-             WHERE commit_id = ?;",
-        )
-        .bind(id)
-        .fetch_all(&mut sql_connection),
-    ) {
-        Ok(rows) => {
-            for r in rows {
-                let change_type_int: i64 = r.get("change_type");
-                changes.push(HashedChange {
-                    relative_path: r.get("relative_path"),
-                    hash: r.get("hash"),
-                    change_type: ChangeType::from_int(change_type_int).unwrap(),
-                });
-            }
-        }
-        Err(e) => {
-            return Err(format!("Error fetching changes for commit {}: {}", id, e));
-        }
-    }
-
-    let mut parents: Vec<String> = Vec::new();
-    match block_on(
-        sqlx::query(
-            "SELECT parent_id
-             FROM commit_parents
-             WHERE id = ?;",
-        )
-        .bind(id)
-        .fetch_all(&mut sql_connection),
-    ) {
-        Ok(rows) => {
-            for r in rows {
-                parents.push(r.get("parent_id"));
-            }
-        }
-        Err(e) => {
-            return Err(format!("Error fetching parents for commit {}: {}", id, e));
-        }
-    }
-
-    match block_on(
-        sqlx::query(
-            "SELECT owner, message, root_hash, date_time_utc 
-             FROM commits
-             WHERE id = ?;",
-        )
-        .bind(id)
-        .fetch_one(&mut sql_connection),
-    ) {
-        Ok(row) => {
-            let commit = Commit::new(
-                String::from(id),
-                row.get("owner"),
-                row.get("message"),
-                changes,
-                row.get("root_hash"),
-                parents,
-            );
-            Ok(commit)
-        }
-        Err(e) => Err(format!("Error fetching commit: {}", e)),
-    }
-}
-
 pub fn commit_exists(connection: &mut RepositoryConnection, id: &str) -> bool {
     let mut sql_connection = connection.sql();
     let res = block_on(
@@ -234,7 +162,7 @@ fn make_local_files_read_only(
     Ok(())
 }
 
-pub fn commit_local_changes(
+pub async fn commit_local_changes(
     workspace_connection: &mut LocalWorkspaceConnection,
     commit_id: &str,
     message: &str,
@@ -242,10 +170,8 @@ pub fn commit_local_changes(
     let workspace_root = workspace_connection.workspace_path().to_path_buf();
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let mut current_branch = read_current_branch(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
-    let query = connection.query();
-    let repo_branch = tokio_runtime.block_on(query.read_branch(&current_branch.name))?;
+    let mut connection = connect_to_server(&workspace_spec).await?;
+    let repo_branch = connection.query().read_branch(&current_branch.name).await?;
 
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
@@ -253,19 +179,12 @@ pub fn commit_local_changes(
     let local_changes = read_local_changes(workspace_connection)?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
-        tokio_runtime.block_on(assert_not_locked(
-            &mut connection,
-            &workspace_root,
-            &abs_path,
-        ))?;
+        assert_not_locked(&mut connection, &workspace_root, &abs_path).await?;
     }
-    let hashed_changes = tokio_runtime.block_on(upload_localy_edited_blobs(
-        &workspace_root,
-        &connection,
-        &local_changes,
-    ))?;
+    let hashed_changes =
+        upload_localy_edited_blobs(&workspace_root, &connection, &local_changes).await?;
 
-    let base_commit = read_commit(&mut connection, &current_branch.head)?;
+    let base_commit = connection.query().read_commit(&current_branch.head).await?;
 
     let new_root_hash = update_tree_from_changes(
         &read_tree(&mut connection, &base_commit.root_hash)?,
@@ -303,25 +222,26 @@ pub fn commit_local_changes(
     Ok(())
 }
 
-pub fn commit_command(message: &str) -> Result<(), String> {
+pub async fn commit_command(message: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let id = uuid::Uuid::new_v4().to_string();
-    commit_local_changes(&mut workspace_connection, &id, message)
+    commit_local_changes(&mut workspace_connection, &id, message).await
 }
 
-pub fn find_branch_commits(
+pub async fn find_branch_commits(
     connection: &mut RepositoryConnection,
     branch: &Branch,
 ) -> Result<Vec<Commit>, String> {
     let mut commits = Vec::new();
-    let mut c = read_commit(connection, &branch.head)?;
+    let query = connection.query();
+    let mut c = query.read_commit(&branch.head).await?;
     println!("{}", c.id);
     commits.push(c.clone());
     while !c.parents.is_empty() {
         let id = &c.parents[0]; //first parent is assumed to be branch trunk
-        c = read_commit(connection, id)?;
+        c = query.read_commit(id).await?;
         println!("{}", c.id);
         commits.push(c.clone());
     }

@@ -160,7 +160,7 @@ async fn change_file_to(
     }
 }
 
-fn find_commit_ancestors(
+async fn find_commit_ancestors(
     connection: &mut RepositoryConnection,
     id: &str,
 ) -> Result<BTreeSet<String>, String> {
@@ -169,7 +169,7 @@ fn find_commit_ancestors(
     let mut ancestors = BTreeSet::new();
     while !seeds.is_empty() {
         let seed = seeds.pop_front().unwrap();
-        let c = read_commit(connection, &seed)?;
+        let c = connection.query().read_commit(&seed).await?;
         for parent_id in &c.parents {
             if !ancestors.contains(parent_id) {
                 ancestors.insert(parent_id.clone());
@@ -180,27 +180,26 @@ fn find_commit_ancestors(
     Ok(ancestors)
 }
 
-pub fn merge_branch_command(name: &str) -> Result<(), String> {
+pub async fn merge_branch_command(name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let mut connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let src_branch = tokio_runtime.block_on(query.read_branch(name))?;
+    let src_branch = query.read_branch(name).await?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut destination_branch = tokio_runtime.block_on(query.read_branch(&current_branch.name))?;
+    let mut destination_branch = query.read_branch(&current_branch.name).await?;
 
-    let merge_source_ancestors = find_commit_ancestors(&mut connection, &src_branch.head)?;
-    let src_commit_history = find_branch_commits(&mut connection, &src_branch)?;
+    let merge_source_ancestors = find_commit_ancestors(&mut connection, &src_branch.head).await?;
+    let src_commit_history = find_branch_commits(&mut connection, &src_branch).await?;
     if merge_source_ancestors.contains(&destination_branch.head) {
         //fast forward case
         destination_branch.head = src_branch.head;
         save_current_branch(&workspace_root, &destination_branch)?;
         save_branch_to_repo(&mut connection, &destination_branch)?;
         println!("Fast-forward merge: branch updated, synching");
-        return sync_command();
+        return sync_command().await;
     }
 
     if current_branch.head != destination_branch.head {
@@ -210,7 +209,8 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
     }
 
     let mut errors: Vec<String> = Vec::new();
-    let destination_commit_history = find_branch_commits(&mut connection, &destination_branch)?;
+    let destination_commit_history =
+        find_branch_commits(&mut connection, &destination_branch).await?;
     if let Some(common_ancestor_id) =
         find_latest_common_ancestor(&destination_commit_history, &merge_source_ancestors)
     {
@@ -247,19 +247,21 @@ pub fn merge_branch_command(name: &str) -> Result<(), String> {
                 );
                 errors.push(format!("{} conflicts, please resolve before commit", path));
                 let full_path = workspace_root.join(path);
-                if let Err(e) = edit_file_command(&full_path) {
+                if let Err(e) = edit_file_command(&full_path).await {
                     errors.push(format!("Error editing {}: {}", full_path.display(), e));
                 }
                 if let Err(e) = save_resolve_pending(&mut workspace_connection, &resolve_pending) {
                     errors.push(format!("Error saving pending resolve {}: {}", path, e));
                 }
             } else {
-                match tokio_runtime.block_on(change_file_to(
+                match change_file_to(
                     &mut workspace_connection,
                     &mut connection,
                     Path::new(path),
                     hash,
-                )) {
+                )
+                .await
+                {
                     Ok(message) => {
                         println!("{}", message);
                     }

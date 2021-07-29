@@ -215,7 +215,12 @@ fn local_repo_suite() {
         .unwrap();
     let query = connection.query();
     let main_branch = tokio_runtime.block_on(query.read_branch("main")).unwrap();
-    let log_vec = legion_src_ctl::find_branch_commits(&mut connection, &main_branch).unwrap();
+    let log_vec = tokio_runtime
+        .block_on(legion_src_ctl::find_branch_commits(
+            &mut connection,
+            &main_branch,
+        ))
+        .unwrap();
     let init_commit = log_vec.last().unwrap();
     lsc_cli_sys(&work1, &["sync", &init_commit.id]);
 

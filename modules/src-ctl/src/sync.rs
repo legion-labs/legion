@@ -14,7 +14,7 @@ async fn find_commit_range(
 ) -> Result<Vec<Commit>, String> {
     let query = connection.query();
     let repo_branch = query.read_branch(branch_name).await?;
-    let mut current_commit = read_commit(connection, &repo_branch.head)?;
+    let mut current_commit = query.read_commit(&repo_branch.head).await?;
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
             return Err(format!(
@@ -22,13 +22,13 @@ async fn find_commit_range(
                 &start_commit_id, &end_commit_id
             ));
         }
-        current_commit = read_commit(connection, &current_commit.parents[0])?;
+        current_commit = query.read_commit(&current_commit.parents[0]).await?;
     }
     let mut commits = vec![current_commit.clone()];
     if current_commit.id == start_commit_id && current_commit.id == end_commit_id {
         return Ok(commits);
     }
-    current_commit = read_commit(connection, &current_commit.parents[0])?;
+    current_commit = query.read_commit(&current_commit.parents[0]).await?;
     commits.push(current_commit.clone());
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
@@ -37,7 +37,7 @@ async fn find_commit_range(
                 &start_commit_id, &end_commit_id
             ));
         }
-        current_commit = read_commit(connection, &current_commit.parents[0])?;
+        current_commit = query.read_commit(&current_commit.parents[0]).await?;
         commits.push(current_commit.clone());
     }
     Ok(commits)
@@ -137,20 +137,20 @@ pub async fn sync_file(
     }
 }
 
-pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
+pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let mut connection = connect_to_server(&workspace_spec).await?;
     let mut workspace_branch = read_current_branch(&workspace_root)?;
-    let commits = tokio_runtime.block_on(find_commit_range(
+    let commits = find_commit_range(
         &mut connection,
         &workspace_branch.name,
         &workspace_branch.head,
         commit_id,
-    ))?;
+    )
+    .await?;
     let mut to_download: BTreeMap<String, String> = BTreeMap::new();
     if commits[0].id == commit_id {
         //sync forwards
@@ -222,8 +222,7 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
             None => {
                 //no local change, ok to sync
                 let local_path = workspace_root.join(relative_path);
-                match tokio_runtime.block_on(sync_file(&mut connection, &local_path, &latest_hash))
-                {
+                match sync_file(&mut connection, &local_path, &latest_hash).await {
                     Ok(message) => {
                         println!("{}", message);
                     }
@@ -245,14 +244,13 @@ pub fn sync_to_command(commit_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn sync_command() -> Result<(), String> {
+pub async fn sync_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let workspace_branch = read_current_branch(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let repo_branch = tokio_runtime.block_on(query.read_branch(&workspace_branch.name))?;
-    sync_to_command(&repo_branch.head)
+    let repo_branch = query.read_branch(&workspace_branch.name).await?;
+    sync_to_command(&repo_branch.head).await
 }

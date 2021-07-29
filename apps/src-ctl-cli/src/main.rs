@@ -329,6 +329,8 @@ fn main_impl() -> Result<(), String> {
         )
         .get_matches();
 
+    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
             let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
@@ -384,9 +386,9 @@ fn main_impl() -> Result<(), String> {
         ("add", Some(command_match)) => {
             track_new_file_command(Path::new(command_match.value_of("path").unwrap()))
         }
-        ("edit", Some(command_match)) => {
-            edit_file_command(Path::new(command_match.value_of("path").unwrap()))
-        }
+        ("edit", Some(command_match)) => tokio_runtime.block_on(edit_file_command(Path::new(
+            command_match.value_of("path").unwrap(),
+        ))),
         ("delete", Some(command_match)) => {
             delete_file_command(Path::new(command_match.value_of("path").unwrap()))
         }
@@ -409,7 +411,7 @@ fn main_impl() -> Result<(), String> {
         ("resolve", Some(command_match)) => {
             let notool = command_match.is_present("notool");
             let path = Path::new(command_match.value_of("path").unwrap());
-            resolve_file_command(path, !notool)
+            tokio_runtime.block_on(resolve_file_command(path, !notool))
         }
         ("create-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
@@ -417,7 +419,7 @@ fn main_impl() -> Result<(), String> {
         }
         ("merge-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
-            merge_branch_command(name)
+            tokio_runtime.block_on(merge_branch_command(name))
         }
         ("switch-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
@@ -442,7 +444,7 @@ fn main_impl() -> Result<(), String> {
             for item in command_match.values_of("message").unwrap() {
                 message += item;
             }
-            commit_command(&message)
+            tokio_runtime.block_on(commit_command(&message))
         }
         ("local-changes", Some(_command_match)) => match find_local_changes_command() {
             Ok(changes) => {
@@ -472,8 +474,8 @@ fn main_impl() -> Result<(), String> {
             Err(e) => Err(e),
         },
         ("sync", Some(command_match)) => match command_match.value_of("commit-id") {
-            Some(commit_id) => sync_to_command(commit_id),
-            None => sync_command(),
+            Some(commit_id) => tokio_runtime.block_on(sync_to_command(commit_id)),
+            None => tokio_runtime.block_on(sync_command()),
         },
         ("log", Some(_command_match)) => log_command(),
         ("config", Some(_command_match)) => print_config_command(),
