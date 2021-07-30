@@ -113,8 +113,8 @@ impl Tree {
     }
 }
 
-pub fn fetch_tree_subdir(
-    connection: &mut RepositoryConnection,
+pub async fn fetch_tree_subdir(
+    query: &dyn RepositoryQuery,
     root: &Tree,
     subdir: &Path,
 ) -> Result<Tree, String> {
@@ -126,7 +126,7 @@ pub fn fetch_tree_subdir(
             .expect("invalid path component name");
         match parent.find_dir_node(component_name) {
             Ok(node) => {
-                parent = read_tree(connection, &node.hash)?;
+                parent = query.read_tree(&node.hash).await?;
             }
             Err(_) => {
                 return Ok(Tree::empty()); //new directory
@@ -136,13 +136,13 @@ pub fn fetch_tree_subdir(
     Ok(parent)
 }
 
-pub fn find_file_hash_in_tree(
+pub async fn find_file_hash_in_tree(
     connection: &mut RepositoryConnection,
     relative_path: &Path,
     root_tree: &Tree,
 ) -> Result<Option<String>, String> {
     let parent_dir = relative_path.parent().expect("no parent to path provided");
-    let dir_tree = fetch_tree_subdir(connection, root_tree, parent_dir)?;
+    let dir_tree = fetch_tree_subdir(connection.query(), root_tree, parent_dir).await?;
     match dir_tree.find_file_node(
         relative_path
             .file_name()
@@ -156,7 +156,7 @@ pub fn find_file_hash_in_tree(
 }
 
 // returns the hash of the updated root tree
-pub fn update_tree_from_changes(
+pub async fn update_tree_from_changes(
     previous_root: &Tree,
     local_changes: &[HashedChange],
     connection: &mut RepositoryConnection,
@@ -192,7 +192,7 @@ pub fn update_tree_from_changes(
     //process leafs before parents to be able to patch parents with hash of children
     dir_to_update_by_length.sort_by_key(|a| core::cmp::Reverse(a.components().count()));
     for dir in dir_to_update_by_length {
-        let mut tree = fetch_tree_subdir(connection, previous_root, &dir)?;
+        let mut tree = fetch_tree_subdir(connection.query(), previous_root, &dir).await?;
         for change in local_changes {
             let relative_path = Path::new(&change.relative_path);
             let parent = relative_path
@@ -247,7 +247,7 @@ pub fn update_tree_from_changes(
             }
         }
 
-        save_tree(connection, &tree, &dir_hash)?;
+        connection.query().save_tree(&tree, &dir_hash).await?;
         if dir.components().count() == 0 {
             return Ok(dir_hash);
         }
@@ -256,12 +256,13 @@ pub fn update_tree_from_changes(
 }
 
 pub fn remove_dir_rec(
+    runtime: &tokio::runtime::Runtime, //todo: remove recursion, make async
     connection: &mut RepositoryConnection,
     local_path: &Path,
     tree_hash: &str,
 ) -> Result<String, String> {
     let mut messages: Vec<String> = Vec::new();
-    let tree = read_tree(connection, tree_hash)?;
+    let tree = runtime.block_on(connection.query().read_tree(tree_hash))?;
 
     for file_node in &tree.file_nodes {
         let file_path = local_path.join(&file_node.name);
@@ -279,7 +280,7 @@ pub fn remove_dir_rec(
 
     for dir_node in &tree.directory_nodes {
         let dir_path = local_path.join(&dir_node.name);
-        let message = remove_dir_rec(connection, &dir_path, &dir_node.hash)?;
+        let message = remove_dir_rec(runtime, connection, &dir_path, &dir_node.hash)?;
         if !message.is_empty() {
             messages.push(message);
         }
@@ -310,7 +311,7 @@ pub async fn download_tree(
     let mut errors: Vec<String> = Vec::new();
     while !dir_to_process.is_empty() {
         let dir_node = dir_to_process.pop().expect("empty dir_to_process");
-        let tree = read_tree(connection, &dir_node.hash)?;
+        let tree = connection.query().read_tree(&dir_node.hash).await?;
         for relative_subdir_node in tree.directory_nodes {
             let abs_subdir_node = TreeNode {
                 name: format!("{}/{}", &dir_node.name, relative_subdir_node.name),
@@ -333,6 +334,7 @@ pub async fn download_tree(
             println!("writing {}", abs_path.display());
             if let Err(e) = connection
                 .blob_storage()
+                .await?
                 .download_blob(&abs_path, &relative_file_node.hash)
                 .await
             {

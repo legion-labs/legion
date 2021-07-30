@@ -121,6 +121,7 @@ async fn change_file_to(
         edit_file(workspace_connection, repo_connection, &local_path).await?;
         if let Err(e) = repo_connection
             .blob_storage()
+            .await?
             .download_blob(&local_path, hash_to_sync)
             .await
         {
@@ -142,6 +143,7 @@ async fn change_file_to(
         }
         if let Err(e) = repo_connection
             .blob_storage()
+            .await?
             .download_blob(&local_path, hash_to_sync)
             .await
         {

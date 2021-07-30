@@ -13,8 +13,9 @@ fn sync_tree_diff(
 ) -> Result<(), String> {
     let mut files_present: BTreeMap<String, String> = BTreeMap::new();
     let mut dirs_present: BTreeMap<String, String> = BTreeMap::new();
+    let query = connection.query();
     if !current_tree_hash.is_empty() {
-        let current_tree = read_tree(connection, current_tree_hash)?;
+        let current_tree = runtime.block_on(query.read_tree(current_tree_hash))?;
         for file_node in &current_tree.file_nodes {
             files_present.insert(file_node.name.clone(), file_node.hash.clone());
         }
@@ -24,7 +25,7 @@ fn sync_tree_diff(
         }
     }
 
-    let new_tree = read_tree(connection, new_tree_hash)?;
+    let new_tree = runtime.block_on(query.read_tree(new_tree_hash))?;
     for new_file_node in &new_tree.file_nodes {
         let present_hash = match files_present.get(&new_file_node.name) {
             Some(hash) => {
@@ -97,7 +98,7 @@ fn sync_tree_diff(
     //delete the contents of the directories that were not matched
     for (name, hash) in dirs_present {
         let path = workspace_root.join(&relative_path_tree).join(name);
-        match remove_dir_rec(connection, &path, &hash) {
+        match remove_dir_rec(runtime, connection, &path, &hash) {
             Ok(messages) => {
                 if !messages.is_empty() {
                     println!("{}", messages);

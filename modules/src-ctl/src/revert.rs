@@ -53,8 +53,8 @@ pub async fn revert_file(
     let workspace_branch = read_current_branch(&workspace_root)?;
     let query = repo_connection.query();
     let current_commit = query.read_commit(&workspace_branch.head).await?;
-    let root_tree = read_tree(repo_connection, &current_commit.root_hash)?;
-    let dir_tree = fetch_tree_subdir(repo_connection, &root_tree, parent_dir)?;
+    let root_tree = query.read_tree(&current_commit.root_hash).await?;
+    let dir_tree = fetch_tree_subdir(query, &root_tree, parent_dir).await?;
 
     if local_change.change_type != ChangeType::Add {
         let file_node;
@@ -74,6 +74,7 @@ pub async fn revert_file(
         }
         repo_connection
             .blob_storage()
+            .await?
             .download_blob(&abs_path, &file_node.hash)
             .await?;
         make_file_read_only(&abs_path, true)?;

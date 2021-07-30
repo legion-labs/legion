@@ -150,9 +150,9 @@ pub async fn find_file_hash_at_commit(
 ) -> Result<Option<String>, String> {
     let query = connection.query();
     let commit = query.read_commit(commit_id).await?;
-    let root_tree = read_tree(connection, &commit.root_hash)?;
+    let root_tree = query.read_tree(&commit.root_hash).await?;
     let parent_dir = relative_path.parent().expect("no parent to path provided");
-    let dir_tree = fetch_tree_subdir(connection, &root_tree, parent_dir)?;
+    let dir_tree = fetch_tree_subdir(query, &root_tree, parent_dir).await?;
     match dir_tree.find_file_node(
         relative_path
             .file_name()

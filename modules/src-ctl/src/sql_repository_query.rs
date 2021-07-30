@@ -138,4 +138,79 @@ impl RepositoryQuery for SqlRepositoryQuery {
             Err(e) => Err(format!("Error fetching commit: {}", e)),
         }
     }
+
+    async fn read_tree(&self, hash: &str) -> Result<Tree, String> {
+        let mut sql_connection = self.acquire().await?;
+        let mut directory_nodes: Vec<TreeNode> = Vec::new();
+        let mut file_nodes: Vec<TreeNode> = Vec::new();
+
+        match sqlx::query(
+            "SELECT name, hash, node_type
+             FROM tree_nodes
+             WHERE parent_tree_hash = ?
+             ORDER BY name;",
+        )
+        .bind(hash)
+        .fetch_all(&mut sql_connection)
+        .await
+        {
+            Ok(rows) => {
+                for r in rows {
+                    let name: String = r.get("name");
+                    let node_hash: String = r.get("hash");
+                    let node_type: i64 = r.get("node_type");
+                    let node = TreeNode::new(name, node_hash);
+                    if node_type == TreeNodeType::Directory as i64 {
+                        directory_nodes.push(node);
+                    } else if node_type == TreeNodeType::File as i64 {
+                        file_nodes.push(node);
+                    }
+                }
+            }
+            Err(e) => {
+                return Err(format!("Error fetching tree nodes for {}: {}", hash, e));
+            }
+        }
+
+        Ok(Tree {
+            directory_nodes,
+            file_nodes,
+        })
+    }
+
+    async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<(), String> {
+        let mut sql_connection = self.acquire().await?;
+        let tree_in_db = self.read_tree(hash).await?;
+        if !tree.is_empty() && !tree_in_db.is_empty() {
+            return Ok(());
+        }
+
+        for file_node in &tree.file_nodes {
+            if let Err(e) = sqlx::query("INSERT INTO tree_nodes VALUES(?, ?, ?, ?);")
+                .bind(file_node.name.clone())
+                .bind(file_node.hash.clone())
+                .bind(hash)
+                .bind(TreeNodeType::File as i64)
+                .execute(&mut sql_connection)
+                .await
+            {
+                return Err(format!("Error inserting into tree_nodes: {}", e));
+            }
+        }
+
+        for dir_node in &tree.directory_nodes {
+            if let Err(e) = sqlx::query("INSERT INTO tree_nodes VALUES(?, ?, ?, ?);")
+                .bind(dir_node.name.clone())
+                .bind(dir_node.hash.clone())
+                .bind(hash)
+                .bind(TreeNodeType::Directory as i64)
+                .execute(&mut sql_connection)
+                .await
+            {
+                return Err(format!("Error inserting into tree_nodes: {}", e));
+            }
+        }
+
+        Ok(())
+    }
 }

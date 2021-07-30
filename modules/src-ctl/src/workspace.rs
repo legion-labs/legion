@@ -73,6 +73,7 @@ pub async fn download_temp_file(
     let temp_file_path = tmp_dir.join(blob_hash);
     connection
         .blob_storage()
+        .await?
         .download_blob(&temp_file_path, blob_hash)
         .await?;
     Ok(TempPath {

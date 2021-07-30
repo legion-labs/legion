@@ -30,9 +30,9 @@ pub async fn init_mysql_repo_db(
         }
     }
     create_database(&repo_uri)?;
-    let mut sql_connection = connect(&repo_uri)?;
-    init_repo_database(&mut sql_connection)?;
-    push_init_repo_data(&mut sql_connection, &repo_uri, blob_storage).await?;
+    let pool = alloc_sql_pool(&repo_uri)?;
+    init_repo_database(&pool, &repo_uri, blob_storage)?;
+    push_init_repo_data(&repo_uri).await?;
     Ok(repo_uri)
 }
 

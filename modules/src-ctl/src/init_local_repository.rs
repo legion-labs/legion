@@ -1,30 +1,35 @@
+use crate::sql_repository_query::SqlRepositoryQuery;
 use crate::{sql::*, *};
+use futures::executor::block_on;
 use std::fs;
 use std::path::Path;
 
-pub fn init_repo_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
-    init_config_database(sql_connection)?;
-    init_commit_database(sql_connection)?;
-    init_forest_database(sql_connection)?;
-    init_branch_database(sql_connection)?;
-    init_workspace_database(sql_connection)?;
-    init_lock_database(sql_connection)?;
-    Ok(())
-}
-
-pub async fn push_init_repo_data(
-    sql_connection: &mut sqlx::AnyConnection,
+pub fn init_repo_database(
+    pool: &sqlx::AnyPool,
     self_uri: &str,
     blob_storage: &BlobStorageSpec,
 ) -> Result<(), String> {
-    insert_config(sql_connection, self_uri, blob_storage)?;
+    let mut sql_connection = block_on(pool.acquire()).unwrap(); //todo, fix
+    init_config_database(&mut sql_connection)?;
+    init_commit_database(&mut sql_connection)?;
+    init_forest_database(&mut sql_connection)?;
+    init_branch_database(&mut sql_connection)?;
+    init_workspace_database(&mut sql_connection)?;
+    init_lock_database(&mut sql_connection)?;
+
+    insert_config(&mut sql_connection, self_uri, blob_storage)?;
+    Ok(())
+}
+
+pub async fn push_init_repo_data(self_uri: &str) -> Result<(), String> {
+    let query = SqlRepositoryQuery::new(self_uri)?;
 
     let bogus_blob_cache = std::path::PathBuf::new();
     let mut repo_connection = RepositoryConnection::new(self_uri, bogus_blob_cache).await?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
-    save_tree(&mut repo_connection, &root_tree, &root_hash)?;
+    query.save_tree(&root_tree, &root_hash).await?;
 
     let id = uuid::Uuid::new_v4().to_string();
     let initial_commit = Commit::new(
@@ -65,13 +70,8 @@ pub async fn init_local_repository(directory: &Path) -> Result<String, String> {
         return Err(format!("Error creating blobs directory: {}", e));
     }
 
-    let mut sql_connection = connect(&repo_uri)?;
-    init_repo_database(&mut sql_connection)?;
-    push_init_repo_data(
-        &mut sql_connection,
-        &repo_uri,
-        &BlobStorageSpec::LocalDirectory(blob_dir),
-    )
-    .await?;
+    let pool = alloc_sql_pool(&repo_uri)?;
+    init_repo_database(&pool, &repo_uri, &BlobStorageSpec::LocalDirectory(blob_dir))?;
+    push_init_repo_data(&repo_uri).await?;
     Ok(repo_uri)
 }

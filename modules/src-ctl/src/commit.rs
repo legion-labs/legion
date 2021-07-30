@@ -137,6 +137,7 @@ async fn upload_localy_edited_blobs(
             let hash = format!("{:X}", Sha256::digest(&local_file_contents));
             repo_connection
                 .blob_storage()
+                .await?
                 .write_blob(&hash, &local_file_contents)
                 .await?;
             res.push(HashedChange {
@@ -187,10 +188,11 @@ pub async fn commit_local_changes(
     let base_commit = connection.query().read_commit(&current_branch.head).await?;
 
     let new_root_hash = update_tree_from_changes(
-        &read_tree(&mut connection, &base_commit.root_hash)?,
+        &connection.query().read_tree(&base_commit.root_hash).await?,
         &hashed_changes,
         &mut connection,
-    )?;
+    )
+    .await?;
 
     let mut parent_commits = Vec::from([base_commit.id]);
     for pending_branch_merge in read_pending_branch_merges(workspace_connection)? {

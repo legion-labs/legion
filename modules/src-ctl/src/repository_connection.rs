@@ -1,30 +1,22 @@
 use crate::{sql::*, sql_repository_query::*, *};
+use std::path::PathBuf;
 
 pub struct RepositoryConnection {
-    blob_store: Box<dyn BlobStorage>,
-    repo_query: Box<dyn RepositoryQuery>,
+    blob_storage_spec: BlobStorageSpec,
+    compressed_blob_cache: PathBuf,
+    repo_query: Box<dyn RepositoryQuery + Send>,
     db_uri: String, //todo: remove
 }
 
 impl RepositoryConnection {
-    pub async fn new(
-        repo_uri: &str,
-        compressed_blob_cache: std::path::PathBuf,
-    ) -> Result<Self, String> {
+    pub async fn new(repo_uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
         let repo_query = Box::new(SqlRepositoryQuery::new(repo_uri)?);
         let mut sql_connection = connect(repo_uri)?; //todo: remove
-        let blob_storage: Box<dyn BlobStorage> = match read_blob_storage_spec(&mut sql_connection)?
-        {
-            BlobStorageSpec::LocalDirectory(blob_directory) => {
-                Box::new(DiskBlobStorage { blob_directory })
-            }
-            BlobStorageSpec::S3Uri(s3uri) => {
-                Box::new(S3BlobStorage::new(&s3uri, compressed_blob_cache).await?)
-            }
-        };
+        let blob_storage_spec = read_blob_storage_spec(&mut sql_connection)?;
 
         Ok(Self {
-            blob_store: blob_storage,
+            blob_storage_spec,
+            compressed_blob_cache,
             repo_query,
             db_uri: String::from(repo_uri),
         })
@@ -38,8 +30,15 @@ impl RepositoryConnection {
         &*self.repo_query
     }
 
-    pub fn blob_storage(&self) -> &dyn BlobStorage {
-        &*self.blob_store
+    pub async fn blob_storage(&self) -> Result<Box<dyn BlobStorage>, String> {
+        match &self.blob_storage_spec {
+            BlobStorageSpec::LocalDirectory(blob_directory) => Ok(Box::new(DiskBlobStorage {
+                blob_directory: blob_directory.clone(),
+            })),
+            BlobStorageSpec::S3Uri(s3uri) => Ok(Box::new(
+                S3BlobStorage::new(s3uri, self.compressed_blob_cache.clone()).await?,
+            )),
+        }
     }
 }
 

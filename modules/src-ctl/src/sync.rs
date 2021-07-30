@@ -90,6 +90,7 @@ pub async fn sync_file(
             }
             if let Err(e) = connection
                 .blob_storage()
+                .await?
                 .download_blob(local_path, hash_to_sync)
                 .await
             {
@@ -119,6 +120,7 @@ pub async fn sync_file(
             }
             if let Err(e) = connection
                 .blob_storage()
+                .await?
                 .download_blob(local_path, hash_to_sync)
                 .await
             {
@@ -165,7 +167,7 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
         //sync backwards is slower and could be optimized if we had before&after hashes in changes
         let ref_commit = &commits.last().unwrap();
         assert!(ref_commit.id == commit_id);
-        let root_tree = read_tree(&mut connection, &ref_commit.root_hash)?;
+        let root_tree = connection.query().read_tree(&ref_commit.root_hash).await?;
 
         let mut to_update: BTreeSet<String> = BTreeSet::new();
         for commit in commits {
@@ -177,7 +179,7 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
             to_download.insert(
                 path.clone(),
                 //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we should fail on error
-                match find_file_hash_in_tree(&mut connection, Path::new(&path), &root_tree) {
+                match find_file_hash_in_tree(&mut connection, Path::new(&path), &root_tree).await {
                     Ok(Some(hash)) => hash,
                     Ok(None) => String::new(),
                     Err(e) => {
