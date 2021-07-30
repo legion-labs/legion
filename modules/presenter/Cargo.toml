@@ -12,8 +12,21 @@ gfx-api = { path = "../graphics-api", package = "legion-graphics-api" }
 log = "0.4"
 crossbeam-channel = "0.5"
 instant = "0.1"
+raw-window-handle = "0.3"
+bitflags = "1.2"
+lazy_static = "1"
+widestring = "0.4"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 gfx-api = { path = "../graphics-api", package = "legion-graphics-api", features = [
     "vulkan",
+] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winapi = { version = "0.3", features = [
+    "winuser",
+    "libloaderapi",
+    "errhandlingapi",
+    "ole2",
+    "shellscalingapi",
 ] }

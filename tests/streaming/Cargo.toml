@@ -27,9 +27,3 @@ log = "0.4"
 gfx-api = { path = "../../modules/graphics-api", package = "legion-graphics-api", features = [
     "vulkan",
 ] }
-
-[target.'cfg(target_os = "windows")'.dependencies]
-sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2.git", rev = "1b514a795b2d91caf519892c199f812cd3f99a33", features = [
-    "bundled",
-    "raw-window-handle",
-] }

@@ -83,7 +83,7 @@ impl fmt::Debug for VulkanApi {
     }
 }
 
-impl Api for VulkanApi {
+impl GfxApi for VulkanApi {
     fn device_context(&self) -> &VulkanDeviceContext {
         self.device_context.as_ref().unwrap()
     }

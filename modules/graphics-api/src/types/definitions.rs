@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::Api;
+use crate::GfxApi;
 use legion_core::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
@@ -234,12 +234,12 @@ pub struct SwapchainDef {
 
 /// Describes a single stage within a shader
 #[derive(Clone, Debug)]
-pub struct ShaderStageDef<A: Api> {
+pub struct ShaderStageDef<A: GfxApi> {
     pub shader_module: A::ShaderModule,
     pub reflection: ShaderStageReflection,
 }
 
-impl<A: Api> ShaderStageDef<A> {
+impl<A: GfxApi> ShaderStageDef<A> {
     pub fn hash_definition<HasherT: std::hash::Hasher, ShaderModuleHashT: Hash>(
         hasher: &mut HasherT,
         reflection_data: &[&ShaderStageReflection],
@@ -289,12 +289,12 @@ impl<'a> ImmutableSamplerKey<'a> {
 }
 
 /// Describes an immutable sampler key/value pair
-pub struct ImmutableSamplers<'a, A: Api> {
+pub struct ImmutableSamplers<'a, A: GfxApi> {
     pub key: ImmutableSamplerKey<'a>,
     pub samplers: &'a [A::Sampler],
 }
 
-impl<'a, A: Api> ImmutableSamplers<'a, A> {
+impl<'a, A: GfxApi> ImmutableSamplers<'a, A> {
     pub fn from_name(name: &'a str, samplers: &'a [A::Sampler]) -> ImmutableSamplers<'a, A> {
         ImmutableSamplers {
             key: ImmutableSamplerKey::from_name(name),
@@ -315,12 +315,12 @@ impl<'a, A: Api> ImmutableSamplers<'a, A> {
 }
 
 /// Used to create a `RootSignature`
-pub struct RootSignatureDef<'a, A: Api> {
+pub struct RootSignatureDef<'a, A: GfxApi> {
     pub shaders: &'a [A::Shader],
     pub immutable_samplers: &'a [ImmutableSamplers<'a, A>],
 }
 
-impl<'a, A: Api> RootSignatureDef<'a, A> {
+impl<'a, A: GfxApi> RootSignatureDef<'a, A> {
     // The current implementation here is minimal. It will produce different hash values for
     // shader orderings and immutable samplers.
     pub fn hash_definition<
@@ -648,7 +648,7 @@ impl BlendState {
 
 /// Used to create a `Pipeline` for graphics operations
 #[derive(Debug)]
-pub struct GraphicsPipelineDef<'a, A: Api> {
+pub struct GraphicsPipelineDef<'a, A: GfxApi> {
     pub shader: &'a A::Shader,
     pub root_signature: &'a A::RootSignature,
     pub vertex_layout: &'a VertexLayout,
@@ -664,13 +664,13 @@ pub struct GraphicsPipelineDef<'a, A: Api> {
 
 /// Used to create a `Pipeline` for compute operations
 #[derive(Debug)]
-pub struct ComputePipelineDef<'a, A: Api> {
+pub struct ComputePipelineDef<'a, A: GfxApi> {
     pub shader: &'a A::Shader,
     pub root_signature: &'a A::RootSignature,
 }
 
 /// Used to create a `DescriptorSetArray`
-pub struct DescriptorSetArrayDef<'a, A: Api> {
+pub struct DescriptorSetArrayDef<'a, A: GfxApi> {
     /// The root signature the descriptor set will be based on
     pub root_signature: &'a A::RootSignature,
     /// Which descriptor set to create the descriptor set array for

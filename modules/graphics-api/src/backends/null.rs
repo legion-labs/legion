@@ -11,7 +11,7 @@ use raw_window_handle::HasRawWindowHandle;
 //
 pub struct NullApi;
 
-impl Api for NullApi {
+impl GfxApi for NullApi {
     fn device_context(&self) -> &NullDeviceContext {
         unimplemented!()
     }

@@ -1,5 +1,9 @@
-//! Crate in charge of managing a Swapchain and a window, can either hook to a renderer
-//! or to a streamer to present the resulting window, or both
+//! Crate in charge of managing a Window we present a sequence of frames to.
+//! The window can be independent or tied to a parent window, for example in the case
+//! the editor.
+//! Multiple presenters need to be supported by process.
+//! Think of this library as providing the same functionality as <video> tag in html
+//! going so far
 //!
 //! * Tracking Issue: [legion/crate/#xx](https://github.com/legion-labs/legion/issues/xx)
 //! * Design Doc: [legion/book/project-resources](/book/rendering/CONTEXT.html)
@@ -79,8 +83,10 @@
 // END - Legion Labs standard lints v0.2
 // crate-specific exceptions:
 #![allow()]
+#![warn(missing_docs)]
 
 pub mod swapchain_helper;
+pub mod window;
 
 #[cfg(test)]
 mod tests {

@@ -297,9 +297,9 @@ pub mod types;
 pub mod prelude {
     pub use crate::types::*;
     pub use crate::{
-        Api, Buffer, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray,
-        DescriptorSetHandle, DeviceContext, Fence, GfxResult, Pipeline, Queue, RootSignature,
-        Sampler, Semaphore, Shader, ShaderModule, Swapchain, Texture,
+        Buffer, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray, DescriptorSetHandle,
+        DeviceContext, Fence, GfxApi, GfxResult, Pipeline, Queue, RootSignature, Sampler,
+        Semaphore, Shader, ShaderModule, Swapchain, Texture,
     };
 }
 
@@ -318,8 +318,6 @@ pub type DefaultApi = VulkanApi;
 
 #[cfg(not(feature = "vulkan"))]
 pub type DefaultApi = NullApi;
-#[cfg(not(feature = "vulkan"))]
-pub type DefaultApi = NullApi;
 
 //
 // Constants
@@ -336,7 +334,7 @@ pub const MAX_VERTEX_INPUT_BINDINGS: usize = 16;
 //
 // Root of the API
 //
-pub trait Api: Sized {
+pub trait GfxApi: Sized {
     fn device_context(&self) -> &Self::DeviceContext;
     fn destroy(&mut self) -> GfxResult<()>;
 
@@ -358,7 +356,7 @@ pub trait Api: Sized {
     type Swapchain: Swapchain<Self>;
 }
 
-pub trait DeviceContext<A: Api>: Clone {
+pub trait DeviceContext<A: GfxApi>: Clone {
     fn device_info(&self) -> &DeviceInfo;
     fn create_queue(&self, queue_type: QueueType) -> GfxResult<A::Queue>;
     fn create_fence(&self) -> GfxResult<A::Fence>;
@@ -403,7 +401,7 @@ pub trait DeviceContext<A: Api>: Clone {
 //
 // Resources (Buffers, Textures, Samplers)
 //
-pub trait Buffer<A: Api>: std::fmt::Debug {
+pub trait Buffer<A: GfxApi>: std::fmt::Debug {
     fn buffer_def(&self) -> &BufferDef;
     fn map_buffer(&self) -> GfxResult<*mut u8>;
     fn unmap_buffer(&self) -> GfxResult<()>;
@@ -415,25 +413,27 @@ pub trait Buffer<A: Api>: std::fmt::Debug {
         buffer_byte_offset: u64,
     ) -> GfxResult<()>;
 }
-pub trait Texture<A: Api>: Clone + std::fmt::Debug {
+
+pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
     fn texture_def(&self) -> &TextureDef;
 }
-pub trait Sampler<A: Api>: Clone + std::fmt::Debug {}
+
+pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
 
 //
 // Shaders/Pipelines
 //
-pub trait ShaderModule<A: Api>: Clone + std::fmt::Debug {}
+pub trait ShaderModule<A: GfxApi>: Clone + std::fmt::Debug {}
 
-pub trait Shader<A: Api>: Clone + std::fmt::Debug {
+pub trait Shader<A: GfxApi>: Clone + std::fmt::Debug {
     fn pipeline_reflection(&self) -> &PipelineReflection;
 }
 
-pub trait RootSignature<A: Api>: Clone + std::fmt::Debug {
+pub trait RootSignature<A: GfxApi>: Clone + std::fmt::Debug {
     fn pipeline_type(&self) -> PipelineType;
 }
 
-pub trait Pipeline<A: Api>: std::fmt::Debug {
+pub trait Pipeline<A: GfxApi>: std::fmt::Debug {
     fn pipeline_type(&self) -> PipelineType;
     fn root_signature(&self) -> &A::RootSignature;
 }
@@ -441,9 +441,9 @@ pub trait Pipeline<A: Api>: std::fmt::Debug {
 //
 // Descriptor Sets
 //
-pub trait DescriptorSetHandle<A: Api>: std::fmt::Debug {}
+pub trait DescriptorSetHandle<A: GfxApi>: std::fmt::Debug {}
 
-pub trait DescriptorSetArray<A: Api>: std::fmt::Debug {
+pub trait DescriptorSetArray<A: GfxApi>: std::fmt::Debug {
     fn handle(&self, array_index: u32) -> Option<A::DescriptorSetHandle>;
     fn root_signature(&self) -> &A::RootSignature;
     fn update_descriptor_set(&mut self, params: &[DescriptorUpdate<'_, A>]) -> GfxResult<()>;
@@ -454,7 +454,7 @@ pub trait DescriptorSetArray<A: Api>: std::fmt::Debug {
 //
 // Queues, Command Buffers
 //
-pub trait Queue<A: Api>: Clone + std::fmt::Debug {
+pub trait Queue<A: GfxApi>: Clone + std::fmt::Debug {
     fn device_context(&self) -> &A::DeviceContext;
     fn queue_id(&self) -> u32;
     fn queue_type(&self) -> QueueType;
@@ -475,7 +475,7 @@ pub trait Queue<A: Api>: Clone + std::fmt::Debug {
     fn wait_for_queue_idle(&self) -> GfxResult<()>;
 }
 
-pub trait CommandPool<A: Api> {
+pub trait CommandPool<A: GfxApi> {
     fn device_context(&self) -> &A::DeviceContext;
     fn create_command_buffer(
         &self,
@@ -484,7 +484,7 @@ pub trait CommandPool<A: Api> {
     fn reset_command_pool(&self) -> GfxResult<()>;
 }
 
-pub trait CommandBuffer<A: Api>: std::fmt::Debug {
+pub trait CommandBuffer<A: GfxApi>: std::fmt::Debug {
     fn begin(&self) -> GfxResult<()>;
     fn end(&self) -> GfxResult<()>;
     fn return_to_pool(&self) -> GfxResult<()>;
@@ -586,18 +586,18 @@ pub trait CommandBuffer<A: Api>: std::fmt::Debug {
 //
 // Fences and Semaphores
 //
-pub trait Fence<A: Api> {
+pub trait Fence<A: GfxApi> {
     fn wait(&self) -> GfxResult<()>;
     fn wait_for_fences(device_context: &A::DeviceContext, fences: &[&A::Fence]) -> GfxResult<()>;
     fn get_fence_status(&self) -> GfxResult<FenceStatus>;
 }
 
-pub trait Semaphore<A: Api> {}
+pub trait Semaphore<A: GfxApi> {}
 
 //
 // Swapchain
 //
-pub trait Swapchain<A: Api> {
+pub trait Swapchain<A: GfxApi> {
     fn swapchain_def(&self) -> &SwapchainDef;
     fn image_count(&self) -> usize;
     fn format(&self) -> Format;

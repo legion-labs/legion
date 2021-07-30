@@ -1,5 +1,5 @@
 use crate::types::{ResourceType, ShaderStageFlags};
-use crate::{Api, GfxResult, ShaderStageDef, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::{GfxApi, GfxResult, ShaderStageDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 use fnv::FnvHashMap;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
@@ -154,7 +154,7 @@ pub struct PipelineReflection {
 }
 
 impl PipelineReflection {
-    pub fn from_stages<A: Api>(stages: &[ShaderStageDef<A>]) -> GfxResult<Self> {
+    pub fn from_stages<A: GfxApi>(stages: &[ShaderStageDef<A>]) -> GfxResult<Self> {
         let mut unmerged_resources = Vec::default();
         for stage in stages {
             assert!(!stage.reflection.shader_stage.is_empty());

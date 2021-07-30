@@ -11,10 +11,21 @@ fn run() -> GfxResult<()> {
 
 #[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
+    use presenter::window::*;
+    const WINDOW_WIDTH: u32 = 900;
+    const WINDOW_HEIGHT: u32 = 600;
+
     //
     // Init SDL2 (winit and anything that uses raw-window-handle works too!)
     //
-    let sdl2_systems = sdl2_init();
+    let monitors = Window::list_monitors();
+    let window = Window::new(WindowType::Main(WindowMode::Windowed(WindowLocation {
+        monitor: monitors[0],
+        x: 0,
+        y: 0,
+        width: WINDOW_WIDTH,
+        height: WINDOW_HEIGHT,
+    })));
 
     //
     // Create the api. GPU programming is fundamentally unsafe, so all rafx APIs should be
@@ -24,7 +35,7 @@ fn run() -> GfxResult<()> {
     #[allow(unsafe_code)]
     let mut api = unsafe {
         DefaultApi::new(
-            &sdl2_systems.window,
+            &window.native_handle(),
             &Default::default(),
             &Default::default(),
         )?
@@ -39,9 +50,9 @@ fn run() -> GfxResult<()> {
         //
         // Create a swapchain
         //
-        let (window_width, window_height) = sdl2_systems.window.drawable_size();
+        let (window_width, window_height) = (WINDOW_WIDTH, WINDOW_HEIGHT);
         let swapchain = device_context.create_swapchain(
-            &sdl2_systems.window,
+            &window.native_handle(),
             &SwapchainDef {
                 width: window_width,
                 height: window_height,
@@ -275,119 +286,134 @@ fn run() -> GfxResult<()> {
         // SDL2 window pumping
         //
         log::info!("Starting window event loop");
-        let mut event_pump = sdl2_systems
-            .context
-            .event_pump()
-            .expect("Could not create sdl event pump");
+        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let thread_stop = stop.clone();
+        let join_handle = std::thread::spawn(move || {
+            while !thread_stop.load(std::sync::atomic::Ordering::Acquire) {
+                let elapsed_seconds = start_time.elapsed().as_secs_f32();
 
-        'running: loop {
-            if !process_input(&mut event_pump) {
-                break 'running;
+                #[rustfmt::skip]
+                let vertex_data = [
+                    0.0f32, 0.5, 1.0, 0.0, 0.0,
+                    0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
+                    -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
+                ];
+
+                let color = (elapsed_seconds.cos() + 1.0) / 2.0;
+                let uniform_data = [color, 0.0, 1.0 - color, 1.0];
+
+                //
+                // Acquire swapchain image
+                //
+                let (window_width, window_height) = (WINDOW_WIDTH, WINDOW_HEIGHT);
+                let presentable_frame = swapchain_helper
+                    .acquire_next_image(window_width, window_height, None)
+                    .unwrap();
+                let swapchain_texture = presentable_frame.swapchain_texture();
+
+                //
+                // Use the command pool/buffer assigned to this frame
+                //
+                let cmd_pool = &mut command_pools[presentable_frame.rotating_frame_index()];
+                let cmd_buffer = &command_buffers[presentable_frame.rotating_frame_index()];
+                let vertex_buffer = &vertex_buffers[presentable_frame.rotating_frame_index()];
+                let uniform_buffer = &uniform_buffers[presentable_frame.rotating_frame_index()];
+
+                //
+                // Update the buffers
+                //
+                vertex_buffer
+                    .copy_to_host_visible_buffer(&vertex_data)
+                    .unwrap();
+                uniform_buffer
+                    .copy_to_host_visible_buffer(&uniform_data)
+                    .unwrap();
+
+                //
+                // Record the command buffer. For now just transition it between layouts
+                //
+                cmd_pool.reset_command_pool().unwrap();
+                cmd_buffer.begin().unwrap();
+
+                // Put it into a layout where we can draw on it
+                cmd_buffer
+                    .cmd_resource_barrier(
+                        &[],
+                        &[TextureBarrier::<DefaultApi>::state_transition(
+                            swapchain_texture,
+                            ResourceState::PRESENT,
+                            ResourceState::RENDER_TARGET,
+                        )],
+                    )
+                    .unwrap();
+
+                cmd_buffer
+                    .cmd_begin_render_pass(
+                        &[ColorRenderTargetBinding {
+                            texture: swapchain_texture,
+                            load_op: LoadOp::Clear,
+                            store_op: StoreOp::Store,
+                            array_slice: None,
+                            mip_slice: None,
+                            clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
+                            resolve_target: None,
+                            resolve_store_op: StoreOp::DontCare,
+                            resolve_mip_slice: None,
+                            resolve_array_slice: None,
+                        }],
+                        None,
+                    )
+                    .unwrap();
+
+                cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
+
+                cmd_buffer
+                    .cmd_bind_vertex_buffers(
+                        0,
+                        &[VertexBufferBinding {
+                            buffer: vertex_buffer,
+                            byte_offset: 0,
+                        }],
+                    )
+                    .unwrap();
+                cmd_buffer
+                    .cmd_bind_descriptor_set(
+                        &descriptor_set_array,
+                        presentable_frame.rotating_frame_index() as u32,
+                    )
+                    .unwrap();
+                cmd_buffer.cmd_draw(3, 0).unwrap();
+
+                // Put it into a layout where we can present it
+
+                cmd_buffer.cmd_end_render_pass().unwrap();
+
+                cmd_buffer
+                    .cmd_resource_barrier(
+                        &[],
+                        &[TextureBarrier::<DefaultApi>::state_transition(
+                            swapchain_texture,
+                            ResourceState::RENDER_TARGET,
+                            ResourceState::PRESENT,
+                        )],
+                    )
+                    .unwrap();
+                cmd_buffer.end().unwrap();
+
+                //
+                // Present the image
+                //
+                presentable_frame
+                    .present(&graphics_queue, &[cmd_buffer])
+                    .unwrap();
             }
+            // Wait for all GPU work to complete before destroying resources it is using
+            graphics_queue.wait_for_queue_idle().unwrap();
+        });
 
-            let elapsed_seconds = start_time.elapsed().as_secs_f32();
-
-            #[rustfmt::skip]
-            let vertex_data = [
-                0.0f32, 0.5, 1.0, 0.0, 0.0,
-                0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
-                -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
-            ];
-
-            let color = (elapsed_seconds.cos() + 1.0) / 2.0;
-            let uniform_data = [color, 0.0, 1.0 - color, 1.0];
-
-            //
-            // Acquire swapchain image
-            //
-            let (window_width, window_height) = sdl2_systems.window.vulkan_drawable_size();
-            let presentable_frame =
-                swapchain_helper.acquire_next_image(window_width, window_height, None)?;
-            let swapchain_texture = presentable_frame.swapchain_texture();
-
-            //
-            // Use the command pool/buffer assigned to this frame
-            //
-            let cmd_pool = &mut command_pools[presentable_frame.rotating_frame_index()];
-            let cmd_buffer = &command_buffers[presentable_frame.rotating_frame_index()];
-            let vertex_buffer = &vertex_buffers[presentable_frame.rotating_frame_index()];
-            let uniform_buffer = &uniform_buffers[presentable_frame.rotating_frame_index()];
-
-            //
-            // Update the buffers
-            //
-            vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
-            uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
-
-            //
-            // Record the command buffer. For now just transition it between layouts
-            //
-            cmd_pool.reset_command_pool()?;
-            cmd_buffer.begin()?;
-
-            // Put it into a layout where we can draw on it
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::<DefaultApi>::state_transition(
-                    swapchain_texture,
-                    ResourceState::PRESENT,
-                    ResourceState::RENDER_TARGET,
-                )],
-            )?;
-
-            cmd_buffer.cmd_begin_render_pass(
-                &[ColorRenderTargetBinding {
-                    texture: swapchain_texture,
-                    load_op: LoadOp::Clear,
-                    store_op: StoreOp::Store,
-                    array_slice: None,
-                    mip_slice: None,
-                    clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
-                    resolve_target: None,
-                    resolve_store_op: StoreOp::DontCare,
-                    resolve_mip_slice: None,
-                    resolve_array_slice: None,
-                }],
-                None,
-            )?;
-
-            cmd_buffer.cmd_bind_pipeline(&pipeline)?;
-
-            cmd_buffer.cmd_bind_vertex_buffers(
-                0,
-                &[VertexBufferBinding {
-                    buffer: vertex_buffer,
-                    byte_offset: 0,
-                }],
-            )?;
-            cmd_buffer.cmd_bind_descriptor_set(
-                &descriptor_set_array,
-                presentable_frame.rotating_frame_index() as u32,
-            )?;
-            cmd_buffer.cmd_draw(3, 0)?;
-
-            // Put it into a layout where we can present it
-
-            cmd_buffer.cmd_end_render_pass()?;
-
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::<DefaultApi>::state_transition(
-                    swapchain_texture,
-                    ResourceState::RENDER_TARGET,
-                    ResourceState::PRESENT,
-                )],
-            )?;
-            cmd_buffer.end()?;
-
-            //
-            // Present the image
-            //
-            presentable_frame.present(&graphics_queue, &[cmd_buffer])?;
-        }
-
-        // Wait for all GPU work to complete before destroying resources it is using
-        graphics_queue.wait_for_queue_idle()?;
+        window.event_loop();
+        stop.store(true, std::sync::atomic::Ordering::Release);
+        join_handle.join().unwrap();
     }
 
     // Optional, but calling this verifies that all rafx objects/device contexts have been
@@ -395,72 +421,4 @@ fn run() -> GfxResult<()> {
     api.destroy()?;
 
     Ok(())
-}
-
-#[cfg(target_os = "windows")]
-pub struct Sdl2Systems {
-    pub context: sdl2::Sdl,
-    pub video_subsystem: sdl2::VideoSubsystem,
-    pub window: sdl2::video::Window,
-}
-
-#[cfg(target_os = "windows")]
-pub fn sdl2_init() -> Sdl2Systems {
-    const WINDOW_WIDTH: u32 = 900;
-    const WINDOW_HEIGHT: u32 = 600;
-
-    // Setup SDL
-    let context = sdl2::init().expect("Failed to initialize sdl2");
-    let video_subsystem = context
-        .video()
-        .expect("Failed to create sdl video subsystem");
-
-    // Create the window
-    let window = video_subsystem
-        .window("Legion", WINDOW_WIDTH, WINDOW_HEIGHT)
-        .position_centered()
-        .allow_highdpi()
-        .resizable()
-        .build()
-        .expect("Failed to create window");
-
-    Sdl2Systems {
-        context,
-        video_subsystem,
-        window,
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
-    use sdl2::event::Event;
-    use sdl2::keyboard::Keycode;
-
-    for event in event_pump.poll_iter() {
-        //log::trace!("{:?}", event);
-        match event {
-            //
-            // Halt if the user requests to close the window
-            //
-            Event::Quit { .. } => return false,
-
-            //
-            // Close if the escape key is hit
-            //
-            Event::KeyDown {
-                keycode: Some(keycode),
-                keymod: _modifiers,
-                ..
-            } => {
-                //log::trace!("Key Down {:?} {:?}", keycode, modifiers);
-                if keycode == Keycode::Escape {
-                    return false;
-                }
-            }
-
-            _ => {}
-        }
-    }
-
-    true
 }

@@ -10,7 +10,7 @@ Systems on the other hand should not require any state. When processing, for eac
 
 Systems will be scheduled so as to take into account their access requirements. All mutable accesses (writes) to a given component type should precede immutable accesses (reads).
 
-The engine can operate with either offline (edition) or runtime (compiled) data. The ECS will be used with the version of the engine that uses runtime data, as there is no real need for data processing when editing. The underlying architecture should be geared towards provided fast iteration and querying; adding and removing components to an entity after it has been instantiated should occur seldomly.
+The engine can operate with either offline (edition) or runtime (compiled) data. The ECS will be used with the version of the engine that uses runtime data, as there is no real need for data processing when editing. The underlying architecture should be geared towards providing fast iteration and querying; adding and removing components to an entity after it has been instantiated should occur seldomly.
 
 Entities themselves are owned by worlds. An expansive world can be subdivided into sub-worlds (loading cells).
 

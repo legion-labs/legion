@@ -1,7 +1,7 @@
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-use crate::Api;
+use crate::GfxApi;
 use legion_core::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
@@ -659,7 +659,7 @@ impl Default for BarrierQueueTransition {
 
 /// A memory barrier for buffers. This is used to transition buffers between resource states and
 /// possibly from one queue to another
-pub struct BufferBarrier<'a, A: Api> {
+pub struct BufferBarrier<'a, A: GfxApi> {
     pub buffer: &'a A::Buffer,
     pub src_state: ResourceState,
     pub dst_state: ResourceState,
@@ -668,7 +668,7 @@ pub struct BufferBarrier<'a, A: Api> {
 
 /// A memory barrier for textures. This is used to transition textures between resource states and
 /// possibly from one queue to another.
-pub struct TextureBarrier<'a, A: Api> {
+pub struct TextureBarrier<'a, A: GfxApi> {
     pub texture: &'a A::Texture,
     pub src_state: ResourceState,
     pub dst_state: ResourceState,
@@ -679,7 +679,7 @@ pub struct TextureBarrier<'a, A: Api> {
     pub mip_slice: Option<u8>,
 }
 
-impl<'a, A: Api> TextureBarrier<'a, A> {
+impl<'a, A: GfxApi> TextureBarrier<'a, A> {
     /// Creates a simple state transition
     pub fn state_transition(
         texture: &'a A::Texture,
@@ -698,12 +698,12 @@ impl<'a, A: Api> TextureBarrier<'a, A> {
 }
 
 /// Represents an image owned by the swapchain
-pub struct SwapchainImage<A: Api> {
+pub struct SwapchainImage<A: GfxApi> {
     pub texture: A::Texture,
     pub swapchain_image_index: u32,
 }
 
-impl<A: Api> Clone for SwapchainImage<A> {
+impl<A: GfxApi> Clone for SwapchainImage<A> {
     fn clone(&self) -> Self {
         Self {
             texture: self.texture.clone(),
@@ -714,7 +714,7 @@ impl<A: Api> Clone for SwapchainImage<A> {
 
 /// A color render target bound during a renderpass
 #[derive(Debug)]
-pub struct ColorRenderTargetBinding<'a, A: Api> {
+pub struct ColorRenderTargetBinding<'a, A: GfxApi> {
     pub texture: &'a A::Texture,
     pub load_op: LoadOp,
     pub store_op: StoreOp,
@@ -729,7 +729,7 @@ pub struct ColorRenderTargetBinding<'a, A: Api> {
 
 /// A depth/stencil render target to be bound during a renderpass
 #[derive(Debug)]
-pub struct DepthStencilRenderTargetBinding<'a, A: Api> {
+pub struct DepthStencilRenderTargetBinding<'a, A: GfxApi> {
     pub texture: &'a A::Texture,
     pub depth_load_op: LoadOp,
     pub stencil_load_op: LoadOp,
@@ -741,13 +741,13 @@ pub struct DepthStencilRenderTargetBinding<'a, A: Api> {
 }
 
 /// A vertex buffer to be bound during a renderpass
-pub struct VertexBufferBinding<'a, A: Api> {
+pub struct VertexBufferBinding<'a, A: GfxApi> {
     pub buffer: &'a A::Buffer,
     pub byte_offset: u64,
 }
 
 /// An index buffer to be bound during a renderpass
-pub struct IndexBufferBinding<'a, A: Api> {
+pub struct IndexBufferBinding<'a, A: GfxApi> {
     pub buffer: &'a A::Buffer,
     pub byte_offset: u64,
     pub index_type: IndexType,
@@ -802,14 +802,14 @@ pub struct OffsetSize {
 
 /// Specifies what value to assign to a descriptor set
 #[derive(Debug)]
-pub struct DescriptorElements<'a, A: Api> {
+pub struct DescriptorElements<'a, A: GfxApi> {
     pub textures: Option<&'a [&'a A::Texture]>,
     pub samplers: Option<&'a [&'a A::Sampler]>,
     pub buffers: Option<&'a [&'a A::Buffer]>,
     pub buffer_offset_sizes: Option<&'a [OffsetSize]>,
 }
 
-impl<'a, A: Api> Default for DescriptorElements<'a, A> {
+impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
     fn default() -> Self {
         Self {
             textures: None,
@@ -835,7 +835,7 @@ pub enum TextureBindType {
 
 /// Describes how to update a single descriptor
 #[derive(Debug)]
-pub struct DescriptorUpdate<'a, A: Api> {
+pub struct DescriptorUpdate<'a, A: GfxApi> {
     pub array_index: u32,
     pub descriptor_key: DescriptorKey<'a>,
     pub elements: DescriptorElements<'a, A>,
@@ -844,7 +844,7 @@ pub struct DescriptorUpdate<'a, A: Api> {
     pub texture_bind_type: Option<TextureBindType>,
 }
 
-impl<'a, A: Api> Default for DescriptorUpdate<'a, A> {
+impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {
     fn default() -> Self {
         DescriptorUpdate {
             array_index: 0,

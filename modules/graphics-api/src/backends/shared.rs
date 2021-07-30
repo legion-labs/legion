@@ -1,14 +1,14 @@
 use fnv::FnvHashMap;
 
 use crate::{
-    Api, GfxResult, ImmutableSamplerKey, ImmutableSamplers, PipelineType, RootSignatureDef, Shader,
-    ShaderResource, ShaderStageFlags,
+    GfxApi, GfxResult, ImmutableSamplerKey, ImmutableSamplers, PipelineType, RootSignatureDef,
+    Shader, ShaderResource, ShaderStageFlags,
 };
 
 pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
 
-pub(crate) fn find_immutable_sampler_index<A: Api>(
+pub(crate) fn find_immutable_sampler_index<A: GfxApi>(
     samplers: &[ImmutableSamplers<'_, A>],
     name: &Option<String>,
     set_index: u32,
@@ -34,7 +34,7 @@ pub(crate) fn find_immutable_sampler_index<A: Api>(
     None
 }
 
-pub(crate) fn merge_resources<'a, A: Api>(
+pub(crate) fn merge_resources<'a, A: GfxApi>(
     root_signature_def: &RootSignatureDef<'a, A>,
 ) -> GfxResult<(
     PipelineType,
