@@ -5,16 +5,16 @@ use std::io::Seek;
 use std::path::{Path, PathBuf};
 use std::{env, io};
 
-use legion_assets::AssetId;
+use legion_data_compiler::compiled_asset_store::{CompiledAssetStoreAddr, LocalCompiledAssetStore};
+use legion_data_compiler::compiler_cmd::{
+    list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd, CompilerInfoCmdOutput,
+};
+use legion_data_compiler::{CompiledAsset, CompilerHash, Manifest};
+use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
 
 use crate::buildindex::BuildIndex;
-use crate::compiledassetstore::LocalCompiledAssetStore;
-use crate::compilers::CompilerId;
-use crate::compilers::CompilerRegistry;
-use crate::{Error, Locale, Platform, Target};
-
-use serde::{Deserialize, Serialize};
+use crate::Error;
 
 const DATABUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -27,36 +27,45 @@ const DATABUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 // todo(kstasik): `context_hash` should also include localization_id
 fn compute_context_hash(
     resource_type: ResourceType,
-    compiler_id: CompilerId,
+    compiler_hash: CompilerHash,
     databuild_version: &'static str,
 ) -> u64 {
     let mut hasher = DefaultHasher::new();
     resource_type.hash(&mut hasher);
-    compiler_id.hash(&mut hasher);
+    compiler_hash.hash(&mut hasher);
     databuild_version.hash(&mut hasher);
     hasher.finish()
 }
 
-/// Description of a compiled asset.
-///
-/// The contained information can be used to retrieve and validate the asset from a [`CompiledAssetStore`](`super::compiledassetstore::CompiledAssetStore`).
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CompiledAsset {
-    /// The id of the asset.
-    pub guid: AssetId,
-    /// The checksum of the asset.
-    pub checksum: i128,
-    /// The size of the asset.
-    pub size: usize,
+/// The build configuration.
+#[derive(Clone)]
+pub struct Config {
+    buildindex_path: PathBuf,
+    assetstore_path: CompiledAssetStoreAddr,
+    compiler_search_paths: Vec<PathBuf>,
 }
 
-/// The output of data compilation.
-///
-/// `Manifest` contains the list of compiled assets.
-#[derive(Debug, Serialize, Deserialize, Default)]
-pub struct Manifest {
-    /// The description of all compiled assets.
-    pub compiled_assets: Vec<CompiledAsset>,
+impl Config {
+    /// Creates a new data build configuration.
+    pub fn new(
+        buildindex_path: impl Into<PathBuf>,
+        assetstore_path: CompiledAssetStoreAddr,
+    ) -> Self {
+        // default search paths.
+        let compiler_search_paths = vec![PathBuf::from(".")];
+
+        Self {
+            buildindex_path: buildindex_path.into(),
+            assetstore_path,
+            compiler_search_paths,
+        }
+    }
+
+    /// Adds a directory to compiler search paths.
+    pub fn compiler_dir<T: AsRef<Path>>(&mut self, dir: T) -> &mut Self {
+        self.compiler_search_paths.push(dir.as_ref().to_owned());
+        self
+    }
 }
 
 /// Data build interface.
@@ -69,47 +78,51 @@ pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
     asset_store: LocalCompiledAssetStore,
+    config: Config,
 }
 
 impl DataBuild {
-    fn new(
-        buildindex_path: &Path,
-        project_root_path: &Path,
-        assetstore_path: &Path,
-    ) -> Result<Self, Error> {
+    fn new(config: Config, project_root_path: &Path) -> Result<Self, Error> {
         let project = Self::open_project(project_root_path)?;
 
-        let build_index =
-            BuildIndex::create_new(buildindex_path, &project.indexfile_path(), Self::version())
-                .map_err(|_e| Error::IOError)?;
+        let build_index = BuildIndex::create_new(
+            &config.buildindex_path,
+            &project.indexfile_path(),
+            Self::version(),
+        )
+        .map_err(|_e| Error::IOError)?;
 
-        let asset_store = LocalCompiledAssetStore::new(assetstore_path).ok_or(Error::NotFound)?;
+        let asset_store =
+            LocalCompiledAssetStore::new(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
 
         Ok(Self {
             build_index,
             project,
             asset_store,
+            config,
         })
     }
 
     /// Opens the existing build index.
     ///
     /// If the build index does not exist it creates one if a project is present in the directory.
-    pub fn open(buildindex_path: &Path, assetstore_path: &Path) -> Result<Self, Error> {
+    pub fn open(config: Config) -> Result<Self, Error> {
         // todo(kstasik): better error
-        let asset_store = LocalCompiledAssetStore::new(assetstore_path).ok_or(Error::NotFound)?;
-        match BuildIndex::open(buildindex_path, Self::version()) {
+        let asset_store =
+            LocalCompiledAssetStore::new(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
+        match BuildIndex::open(&config.buildindex_path, Self::version()) {
             Ok(build_index) => {
                 let project = build_index.open_project()?;
                 Ok(Self {
                     build_index,
                     project,
                     asset_store,
+                    config,
                 })
             }
             Err(Error::NotFound) => {
-                let projectindex_path = buildindex_path; // we are going to try to locate the project index in the same directory
-                Self::new(buildindex_path, projectindex_path, assetstore_path)
+                let projectindex_path = config.buildindex_path.clone(); // we are going to try to locate the project index in the same directory
+                Self::new(config, &projectindex_path)
             }
             Err(e) => Err(e),
         }
@@ -176,10 +189,10 @@ impl DataBuild {
     pub fn compile(
         &mut self,
         root_resource_name: &ResourcePathRef,
-        output_file: &Path,
+        manifest_file: &Path,
         target: Target,
         platform: Platform,
-        locale: Locale,
+        locale: &Locale,
     ) -> Result<Manifest, Error> {
         let resource_id = self.project.find_resource(root_resource_name)?;
 
@@ -187,16 +200,36 @@ impl DataBuild {
         let (source_guid, dependencies) =
             self.build_index.find(resource_id).ok_or(Error::NotFound)?;
 
-        let compilers = CompilerRegistry::new();
-        let compiler_info = compilers
-            .find(source_guid.resource_type())
+        let compilers = list_compilers(&self.config.compiler_search_paths);
+
+        let info_cmd = CompilerInfoCmd::default();
+        let infos: Vec<CompilerInfoCmdOutput> = compilers
+            .iter()
+            .filter_map(|info| info_cmd.execute(&info.path).ok())
+            .collect();
+
+        assert_eq!(compilers.len(), infos.len()); // todo: support info command failure.
+
+        // todo: compare data_build/rustc version.
+
+        let compiler_index = infos
+            .iter()
+            .position(|info| info.resource_type.contains(&source_guid.resource_type()))
             .ok_or(Error::CompilerNotFound)?;
 
-        // todo(kstasik): support triggering compilation for multiple platforms
-        let compiler_id = compiler_info.compiler_id(target, platform, locale);
+        let compiler_path = &compilers[compiler_index].path;
 
+        // todo(kstasik): support triggering compilation for multiple platforms
+
+        let compiler_hash_cmd = CompilerHashCmd::new(target, platform, locale);
+        let compiler_hash = compiler_hash_cmd
+            .execute(compiler_path)
+            .map_err(Error::CompilerError)?;
+
+        assert_eq!(compiler_hash.compiler_hash_list.len(), 1); // todo: support more.
+        let compiler_hash = compiler_hash.compiler_hash_list[0];
         let context_hash =
-            compute_context_hash(source_guid.resource_type(), compiler_id, Self::version());
+            compute_context_hash(source_guid.resource_type(), compiler_hash, Self::version());
 
         //
         // todo(kstasik): source_hash computation can include filtering of resource types in the future.
@@ -220,12 +253,21 @@ impl DataBuild {
                 // for now we only focus on top level asset
                 // todo(kstasik): how do we know that GI needs to be run? taking many assets as arguments?
 
-                let compiled_assets = compiler_info.compile(
+                let mut compile_cmd = CompilerCompileCmd::new(
                     source_guid,
                     dependencies,
-                    &mut self.asset_store,
-                    &self.project,
-                )?;
+                    &self.asset_store.address(),
+                    &self.project.resource_dir(),
+                    target,
+                    platform,
+                    locale,
+                );
+
+                // todo: what is the cwd for if we provide resource_dir() ?
+                let compiled_assets = compile_cmd
+                    .execute(compiler_path, &self.project.resource_dir())
+                    .map_err(Error::CompilerError)?
+                    .compiled_assets;
 
                 self.build_index.insert_compiled(
                     context_hash,
@@ -242,7 +284,7 @@ impl DataBuild {
                 .read(true)
                 .write(true)
                 .append(false)
-                .open(output_file)
+                .open(manifest_file)
             {
                 let manifest_content: Manifest =
                     serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
@@ -252,7 +294,7 @@ impl DataBuild {
                     .read(true)
                     .write(true)
                     .create_new(true)
-                    .open(output_file)
+                    .open(manifest_file)
                     .map_err(|_e| Error::InvalidManifest)?;
 
                 (Manifest::default(), file)
@@ -303,119 +345,19 @@ impl Drop for DataBuild {
     }
 }
 
-pub(crate) mod test_resource {
-    use legion_resources::{Resource, ResourceId, ResourceProcessor, ResourceType};
-
-    pub(crate) const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
-
-    pub(crate) struct NullResource {
-        pub(crate) content: String,
-        pub(crate) build_deps: Vec<ResourceId>,
-    }
-    impl Resource for NullResource {
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-
-        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-            self
-        }
-    }
-    pub(crate) struct NullResourceProc {}
-    impl ResourceProcessor for NullResourceProc {
-        fn new_resource(&mut self) -> Box<dyn Resource> {
-            Box::new(NullResource {
-                content: String::from("default content"),
-                build_deps: vec![],
-            })
-        }
-
-        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourceId> {
-            resource
-                .as_any()
-                .downcast_ref::<NullResource>()
-                .unwrap()
-                .build_deps
-                .clone()
-        }
-
-        fn write_resource(
-            &mut self,
-            resource: &dyn Resource,
-            writer: &mut dyn std::io::Write,
-        ) -> std::io::Result<usize> {
-            let resource = resource.as_any().downcast_ref::<NullResource>().unwrap();
-            let mut nbytes = 0;
-
-            let content_bytes = resource.content.as_bytes();
-
-            let bytes = content_bytes.len().to_ne_bytes();
-            nbytes += bytes.len();
-            writer.write_all(&bytes)?;
-            nbytes += content_bytes.len();
-            writer.write_all(content_bytes)?;
-
-            let bytes = resource.build_deps.len().to_ne_bytes();
-            nbytes += bytes.len();
-            writer.write_all(&bytes)?;
-
-            for dep in &resource.build_deps {
-                let bytes = dep.get_internal().to_ne_bytes();
-                nbytes += bytes.len();
-                writer.write_all(&bytes)?;
-            }
-
-            Ok(nbytes)
-        }
-
-        fn read_resource(
-            &mut self,
-            reader: &mut dyn std::io::Read,
-        ) -> std::io::Result<Box<dyn Resource>> {
-            let mut resource = self.new_resource();
-            let mut res = resource
-                .as_any_mut()
-                .downcast_mut::<NullResource>()
-                .unwrap();
-
-            let mut buf = 0usize.to_ne_bytes();
-            reader.read_exact(&mut buf[..])?;
-            let length = usize::from_ne_bytes(buf);
-
-            let mut buf = vec![0u8; length];
-            reader.read_exact(&mut buf[..])?;
-            res.content = String::from_utf8(buf).unwrap();
-
-            let mut buf = res.build_deps.len().to_ne_bytes();
-            reader.read_exact(&mut buf[..])?;
-            let dep_count = usize::from_ne_bytes(buf);
-
-            for _ in 0..dep_count {
-                let mut buf = 0u64.to_ne_bytes();
-                reader.read_exact(&mut buf[..])?;
-                res.build_deps
-                    .push(ResourceId::from_raw(u64::from_ne_bytes(buf)).unwrap());
-            }
-
-            Ok(resource)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
+    use std::env;
     use std::fs::{self, File};
+    use std::path::PathBuf;
 
-    use crate::{
-        buildindex::BuildIndex,
-        compiledassetstore::{CompiledAssetStore, LocalCompiledAssetStore},
-        databuild::DataBuild,
-        Manifest, Platform, Target,
+    use crate::{buildindex::BuildIndex, databuild::DataBuild, Config};
+    use legion_data_compiler::compiled_asset_store::{
+        CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
     };
-    use legion_resources::{Project, ResourcePath, ResourceRegistry, ResourceType};
-
-    use super::test_resource::{NullResource, NullResourceProc, RESOURCE_TEXTURE};
+    use legion_data_compiler::{Locale, Manifest, Platform, Target};
+    use legion_resources::{test_resource, Project, ResourcePath, ResourceRegistry, ResourceType};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
@@ -423,8 +365,14 @@ mod tests {
 
     fn setup_registry() -> ResourceRegistry {
         let mut resources = ResourceRegistry::default();
-        resources.register_type(RESOURCE_TEXTURE, Box::new(NullResourceProc {}));
-        resources.register_type(RESOURCE_MATERIAL, Box::new(NullResourceProc {}));
+        resources.register_type(
+            test_resource::TYPE_ID,
+            Box::new(test_resource::TestResourceProc {}),
+        );
+        resources.register_type(
+            RESOURCE_MATERIAL,
+            Box::new(test_resource::TestResourceProc {}),
+        );
         resources
     }
 
@@ -438,11 +386,13 @@ mod tests {
         };
 
         let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
-        let assetstore_root = work_dir.path();
+        let config = Config::new(
+            &buildindex_path,
+            CompiledAssetStoreAddr::from(work_dir.path().to_owned()),
+        );
 
         {
-            let _build = DataBuild::open(&buildindex_path, assetstore_root)
-                .expect("failed to create data build");
+            let _build = DataBuild::open(config).expect("failed to create data build");
         }
 
         let index = BuildIndex::open(&buildindex_path, DataBuild::version())
@@ -468,15 +418,15 @@ mod tests {
             let texture = project
                 .add_resource(
                     ResourcePath::from("child"),
-                    RESOURCE_TEXTURE,
-                    &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                    test_resource::TYPE_ID,
+                    &resources.new_resource(test_resource::TYPE_ID).unwrap(),
                     &mut resources,
                 )
                 .unwrap();
 
             let resource = {
-                let res = resources.new_resource(RESOURCE_TEXTURE).unwrap();
-                res.get_mut::<NullResource>(&mut resources)
+                let res = resources.new_resource(test_resource::TYPE_ID).unwrap();
+                res.get_mut::<test_resource::TestResource>(&mut resources)
                     .unwrap()
                     .build_deps
                     .push(texture);
@@ -492,11 +442,13 @@ mod tests {
                 .unwrap();
         }
 
-        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
-        let assetstore_root = work_dir.path();
+        let config = Config::new(
+            work_dir.path().join(TEST_BUILDINDEX_FILENAME),
+            CompiledAssetStoreAddr::from(work_dir.path().to_owned()),
+        );
 
         {
-            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
+            let mut build = DataBuild::open(config.clone()).unwrap();
 
             let updated_count = build.source_pull().unwrap();
             assert_eq!(updated_count, 2);
@@ -510,18 +462,31 @@ mod tests {
             project
                 .add_resource(
                     ResourcePath::from("orphan"),
-                    RESOURCE_TEXTURE,
-                    &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                    test_resource::TYPE_ID,
+                    &resources.new_resource(test_resource::TYPE_ID).unwrap(),
                     &mut resources,
                 )
                 .unwrap();
         }
 
         {
-            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
+            let mut build = DataBuild::open(config).unwrap();
             let updated_count = build.source_pull().unwrap();
             assert_eq!(updated_count, 1);
         }
+    }
+
+    fn target_dir() -> PathBuf {
+        env::current_exe().ok().map_or_else(
+            || panic!("cannot find test directory"),
+            |mut path| {
+                path.pop();
+                if path.ends_with("deps") {
+                    path.pop();
+                }
+                path
+            },
+        )
     }
 
     #[test]
@@ -535,15 +500,15 @@ mod tests {
             let texture = project
                 .add_resource(
                     ResourcePath::from("child"),
-                    RESOURCE_TEXTURE,
-                    &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
+                    test_resource::TYPE_ID,
+                    &resources.new_resource(test_resource::TYPE_ID).unwrap(),
                     &mut resources,
                 )
                 .unwrap();
 
             let material_handle = resources.new_resource(RESOURCE_MATERIAL).unwrap();
             material_handle
-                .get_mut::<NullResource>(&mut resources)
+                .get_mut::<test_resource::TestResource>(&mut resources)
                 .unwrap()
                 .build_deps
                 .push(texture);
@@ -558,9 +523,13 @@ mod tests {
                 .unwrap();
         }
 
-        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
-        let assetstore_root = work_dir.path();
-        let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
+        let assetstore_root = CompiledAssetStoreAddr::from(work_dir.path());
+        let mut config = Config::new(
+            work_dir.path().join(TEST_BUILDINDEX_FILENAME),
+            assetstore_root.clone(),
+        );
+        config.compiler_dir(target_dir());
+        let mut build = DataBuild::open(config).unwrap();
 
         build.source_pull().unwrap();
 
@@ -572,7 +541,7 @@ mod tests {
                 &output_manifest_file,
                 Target::Game,
                 Platform::Windows,
-                ['e', 'n'],
+                &Locale::new("en"),
             )
             .unwrap();
 
@@ -599,7 +568,7 @@ mod tests {
                 &output_manifest_file,
                 Target::Game,
                 Platform::Windows,
-                ['e', 'n'],
+                &Locale::new("en"),
             )
             .unwrap();
 
@@ -624,11 +593,11 @@ mod tests {
             let mut project =
                 Project::create_new(work_dir.path()).expect("failed to create a project");
 
-            let resource_handle = resources.new_resource(RESOURCE_TEXTURE).unwrap();
+            let resource_handle = resources.new_resource(test_resource::TYPE_ID).unwrap();
             let resource_id = project
                 .add_resource(
                     ResourcePath::from("child"),
-                    RESOURCE_TEXTURE,
+                    test_resource::TYPE_ID,
                     &resource_handle,
                     &mut resources,
                 )
@@ -636,13 +605,17 @@ mod tests {
             (resource_id, resource_handle)
         };
 
-        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
-        let assetstore_root = work_dir.path();
+        let assetstore_root = CompiledAssetStoreAddr::from(work_dir.path());
+        let mut config = Config::new(
+            work_dir.path().join(TEST_BUILDINDEX_FILENAME),
+            assetstore_root.clone(),
+        );
+        config.compiler_dir(target_dir());
 
         let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
         let original_checksum = {
-            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
+            let mut build = DataBuild::open(config.clone()).unwrap();
             build.source_pull().expect("failed to pull from project");
 
             let manifest = build
@@ -651,7 +624,7 @@ mod tests {
                     &output_manifest_file,
                     Target::Game,
                     Platform::Windows,
-                    ['e', 'n'],
+                    &Locale::new("en"),
                 )
                 .unwrap();
 
@@ -660,7 +633,7 @@ mod tests {
             let original_checksum = manifest.compiled_assets[0].checksum;
 
             {
-                let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
+                let asset_store = LocalCompiledAssetStore::new(assetstore_root.clone()).unwrap();
                 assert!(asset_store.exists(original_checksum));
             }
 
@@ -682,7 +655,7 @@ mod tests {
         let mut project = Project::open(work_dir.path()).expect("failed to open project");
 
         resource_handle
-            .get_mut::<NullResource>(&mut resources)
+            .get_mut::<test_resource::TestResource>(&mut resources)
             .unwrap()
             .content = String::from("new content");
 
@@ -691,7 +664,7 @@ mod tests {
             .unwrap();
 
         let modified_checksum = {
-            let mut build = DataBuild::open(&buildindex_path, assetstore_root).unwrap();
+            let mut build = DataBuild::open(config).unwrap();
             build.source_pull().expect("failed to pull from project");
             let manifest = build
                 .compile(
@@ -699,7 +672,7 @@ mod tests {
                     &output_manifest_file,
                     Target::Game,
                     Platform::Windows,
-                    ['e', 'n'],
+                    &Locale::new("en"),
                 )
                 .unwrap();
 

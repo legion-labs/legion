@@ -1,3 +1,13 @@
+//! [`CompiledAssetStore`] is an interface used to store [`Asset`] - the results of data compilation.
+//!
+//! [`CompiledAssetStore`] functions as a *content-addressable storage* - using the [`compute_asset_checksum`]
+//! function to calculate the checksum of stored content.
+//!
+//! Currently the only [`LocalCompiledAssetStore`] is available which provides disk-based implementation of [`CompiledAssetStore`].
+//!
+//! [`Asset`]: legion_assets::Asset
+
+use core::fmt;
 use std::{
     fs::{self, OpenOptions},
     io::Write,
@@ -5,6 +15,37 @@ use std::{
 };
 
 use legion_assets::compute_asset_checksum;
+
+/// The address of the `Compiled Asset Store`.
+///
+/// For now, it is equivalent to a `PathBuf` since there is only support for on-disk `LocalCompiledAssetStore`.
+/// In the future the address could be representing a remote machine or service.
+#[derive(Clone)]
+pub struct CompiledAssetStoreAddr(PathBuf);
+
+impl From<&str> for CompiledAssetStoreAddr {
+    fn from(path: &str) -> Self {
+        Self(PathBuf::from(path))
+    }
+}
+
+impl From<PathBuf> for CompiledAssetStoreAddr {
+    fn from(path: PathBuf) -> Self {
+        Self(path)
+    }
+}
+
+impl From<&Path> for CompiledAssetStoreAddr {
+    fn from(path: &Path) -> Self {
+        Self(path.to_owned())
+    }
+}
+
+impl fmt::Display for CompiledAssetStoreAddr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}", self.0.display()))
+    }
+}
 
 /// A content-addressable storage interface for dealing with compiled assets.
 // todo: change Option to Error
@@ -76,22 +117,29 @@ impl CompiledAssetStore for InMemoryCompiledAssetStore {
     }
 }*/
 
-pub(crate) struct LocalCompiledAssetStore {
-    root_path: PathBuf,
+/// Disk-based `CompiledAssetStore` implementation.
+///
+/// All assets are assumed to be stored directly in a given root directory.
+pub struct LocalCompiledAssetStore {
+    address: CompiledAssetStoreAddr,
 }
 
 impl LocalCompiledAssetStore {
-    pub fn new(root_path: &Path) -> Option<Self> {
-        if !root_path.is_dir() {
+    /// [`LocalCompiledAssetStore`] in a given directory.
+    pub fn new(root_path: CompiledAssetStoreAddr) -> Option<Self> {
+        if !root_path.0.is_dir() {
             return None;
         }
-        Some(Self {
-            root_path: root_path.to_owned(),
-        })
+        Some(Self { address: root_path })
     }
 
     fn asset_path(&self, id: i128) -> PathBuf {
-        self.root_path.clone().join(id.to_string())
+        self.address.0.clone().join(id.to_string())
+    }
+
+    /// Address of the [`LocalCompiledAssetStore`]
+    pub fn address(&self) -> CompiledAssetStoreAddr {
+        self.address.clone()
     }
 }
 

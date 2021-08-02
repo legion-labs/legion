@@ -135,3 +135,5 @@ pub use types::*;
 
 mod assetregistry;
 pub use assetregistry::*;
+
+pub mod test_asset;

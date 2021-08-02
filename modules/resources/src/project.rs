@@ -5,6 +5,7 @@ use crate::types::ResourceType;
 use crate::ResourceHandle;
 use crate::ResourcePathRef;
 use crate::ResourceRegistry;
+use crate::RESOURCE_EXT;
 
 use crate::ResourcePath;
 
@@ -21,7 +22,6 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 const METADATA_EXT: &str = "meta";
-const RESOURCE_EXT: &str = "blob";
 
 /// A project exists always within a given directory and this file
 /// will be created directly in that directory.
@@ -346,8 +346,13 @@ impl Project {
         Ok((resource_hash, dependencies))
     }
 
+    /// Returns the root directory where resources are located.
+    pub fn resource_dir(&self) -> PathBuf {
+        self.projectroot_path.clone()
+    }
+
     fn metadata_path(&self, id: ResourceId) -> PathBuf {
-        let mut path = self.projectroot_path.clone();
+        let mut path = self.resource_dir();
         path.push(format!("{:x}", id));
         path.set_extension(METADATA_EXT);
         path

@@ -493,6 +493,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiler-test"
+version = "0.1.0"
+dependencies = [
+ "legion-assets",
+ "legion-data-compiler",
+ "legion-resources",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1182,10 +1191,22 @@ name = "legion-data-build"
 version = "0.1.0"
 dependencies = [
  "legion-assets",
+ "legion-data-compiler",
  "legion-resources",
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "legion-data-compiler"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "legion-assets",
+ "legion-resources",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2698,6 +2719,16 @@ dependencies = [
  "redox_syscall",
  "remove_dir_all",
  "winapi",
+]
+
+[[package]]
+name = "test-compilers"
+version = "0.1.0"
+dependencies = [
+ "legion-data-build",
+ "legion-data-compiler",
+ "legion-resources",
+ "tempfile",
 ]
 
 [[package]]

@@ -174,7 +174,9 @@ mod tests {
 
     use std::any::Any;
 
-    use crate::{assetloader::AssetLoaderStorage, assetregistry::AssetStorage, AssetId, AssetType};
+    use crate::{
+        assetloader::AssetLoaderStorage, assetregistry::AssetStorage, test_asset, AssetId,
+    };
 
     use super::Asset;
 
@@ -202,11 +204,9 @@ mod tests {
 
     #[test]
     fn asset_handle() {
-        const ASSET_TEXTURE: AssetType = AssetType::new(b"texture");
-
         let mut reg = AssetStorage::new();
 
-        let id = AssetId::new(ASSET_TEXTURE, 1);
+        let id = AssetId::new(test_asset::TYPE_ID, 1);
         let asset = Box::new(SampleAsset {});
 
         assert_eq!(reg.find(id), None);

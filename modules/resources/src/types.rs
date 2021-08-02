@@ -3,6 +3,7 @@ use std::{
     fmt::LowerHex,
     hash::Hash,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use rand::Rng;
@@ -13,6 +14,9 @@ pub type ResourcePath = PathBuf;
 
 /// Temporarily a reference to `ResourcePath` to silence lints.
 pub type ResourcePathRef = Path;
+
+/// Extension of a resource file.
+pub const RESOURCE_EXT: &str = "blob";
 
 /// A unique id of an offline resource.
 ///
@@ -60,8 +64,23 @@ impl LowerHex for ResourceId {
     }
 }
 
+impl fmt::Display for ResourceId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}", self.id.get()))
+    }
+}
+
+impl FromStr for ResourceId {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let id = std::num::NonZeroU64::from_str(s)?;
+        Ok(Self { id })
+    }
+}
+
 /// Type identifier of an offline resource.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
 pub struct ResourceType(u32);
 
 impl ResourceType {

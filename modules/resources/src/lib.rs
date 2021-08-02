@@ -131,3 +131,5 @@ pub use self::types::*;
 
 mod registry;
 pub use self::registry::*;
+
+pub mod test_resource;

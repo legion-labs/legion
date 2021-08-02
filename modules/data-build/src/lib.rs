@@ -15,13 +15,13 @@
 //! - **Hermetic** - dependent only on a known set of inputs.
 //! - **Deterministic** - the result is bit-by-bit reproducible given the same set of inputs.
 //!
-//! All the results of data-compilation are stored in a [`CompiledAssetStore`] and a manifest
+//! All the results of data-compilation are stored in a [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`) and a manifest
 //! file containing the metadata about the results is returned.
 //!
 //! To support incremental building the data build is persisted in a file on disk. This file is called `build.index`.
 //! The `build.index` contains:
 //! - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
-//! - Records of compiled assets that are stored in a [`CompiledAssetStore`].
+//! - Records of compiled assets that are stored in a [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`).
 //!
 //! For other parts of the data pipeline see [`legion_resources`] and [`legion_assets`] modules.
 //!
@@ -61,8 +61,35 @@
 //!         - Resource Hash - hash of the resource's content and the content of its dependencies.
 //! 5. Check the `build-index` if there is already existing output for given `(Compiler Input, Resource Input)`.
 //! 6. If not, compile the resource:
-//!     - store the resulting resource in [`CompiledAssetStore`] and a record in `build-index`.
+//!     - store the resulting resource in [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`) and a record in `build-index`.
 //!     - add the compiled resource to the resulting `manifest file`.
+//!
+//! # `SourceHash` and `ContextHash`
+//!
+//! The role of the two ids is two allow for incremental data compilation. They are the signature of the resource and the signature of the
+//! context for which they are compiled for. Both values are used in `build-index` to cache the compilation results and to be able to retrieve
+//! the results in consecutive builds. Both are created from number of sources:
+//!
+//! #### `SourceHash` - the signature of the compilation source data
+//!
+//! It identifies the content of a resource being compiled. It defines:
+//!
+//! * checksum of the resource's content (available in [`.meta`] file).
+//! * checksum of content of each of the resource's dependencies (list of dependencies is in [`.meta`] file)
+//!
+//! #### `ContextHash` - the signature of the compilation context
+//!
+//! It identifies the context of compilation of the `SourceHash` resource:
+//! * Type of the resource compiled
+//! * `CompilerHash` - a compiler-defined value based on:
+//!   * Compiler code version.
+//!   * Compiler data format version.
+//!   * Compilation target - i.e.: Game, Server, etc.
+//!   * Compilation platform - i.e.: Linux, Windows, Console, etc.
+//!   * Compilation locale - i.e.: Language, Region, etc.
+//! * Data-build process version.
+//!
+//! > **TODO**: The above does not take into account `feature switches` that would give  more granular control on the behavior of the data compiler.
 //!
 //! # Future Work
 //! - [ ] Creation of DAG of dependencies to be able to process them in the right order.
@@ -153,7 +180,7 @@
 #![allow()]
 #![warn(missing_docs)]
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 /// Data build error. todo(kstasik): revisit how errors are handled/propagated
 pub enum Error {
     /// Project-related error
@@ -172,6 +199,8 @@ pub enum Error {
     InvalidProject,
     /// Manifest file error.
     InvalidManifest,
+    /// Compiler returned an error.
+    CompilerError(io::Error),
 }
 
 impl std::error::Error for Error {}
@@ -187,6 +216,7 @@ impl std::fmt::Display for Error {
             Error::VersionMismatch => write!(f, "VersionMismatch"),
             Error::InvalidProject => write!(f, "InvalidProject"),
             Error::InvalidManifest => write!(f, "InvalidManifest"),
+            Error::CompilerError(_) => write!(f, "CompilerError"),
         }
     }
 }
@@ -204,38 +234,10 @@ impl From<legion_resources::Error> for Error {
     }
 }
 
-/// Build target enumeration.
-///
-/// `TODO`: This needs to be more extensible.
-#[derive(Clone, Copy)]
-pub enum Target {
-    /// Game client.
-    Game,
-    /// Server.
-    Server,
-    /// Backend service.
-    Backend,
-}
-
-/// Build platform enumeration.
-#[derive(Clone, Copy)]
-pub enum Platform {
-    /// Windows
-    Windows,
-    /// Linux
-    Linux,
-    /// Game Console X
-    ConsoleX,
-}
-
-/// Defines user's language/region.
-pub type Locale = [char; 2]; // todo(kstasik): this type is cumbersome in use
-
 mod buildindex;
-mod compiledassetstore;
-mod compilers;
 mod databuild;
 
-pub use self::compiledassetstore::*;
+use std::io;
+
 pub use self::databuild::*;
 pub use legion_resources::ResourcePath;

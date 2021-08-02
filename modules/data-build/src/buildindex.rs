@@ -1,4 +1,5 @@
 use legion_assets::AssetId;
+use legion_data_compiler::CompiledAsset;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
@@ -6,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{CompiledAsset, Error};
+use crate::Error;
 use legion_resources::{Project, ResourceHash, ResourceId};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -147,7 +148,6 @@ impl BuildIndex {
         }
     }
 
-    // todo: remove this api? rename?
     pub(crate) fn find(&self, id: ResourceId) -> Option<(ResourceId, &Vec<ResourceId>)> {
         self.content
             .resources
@@ -208,7 +208,6 @@ impl BuildIndex {
 mod tests {
 
     use super::BuildIndex;
-    use crate::Error;
     use legion_resources::{Project, ResourceId, ResourceType};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
@@ -226,10 +225,7 @@ mod tests {
                 BuildIndex::create_new(&buildindex_path, &projectindex_path, "0.0.1").unwrap();
         }
 
-        assert_eq!(
-            BuildIndex::open(&buildindex_path, "0.0.2").unwrap_err(),
-            Error::VersionMismatch
-        );
+        assert!(BuildIndex::open(&buildindex_path, "0.0.2").is_err());
     }
 
     #[test]
