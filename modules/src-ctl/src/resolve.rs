@@ -144,7 +144,7 @@ pub fn find_resolves_pending_command() -> Result<Vec<ResolvePending>, String> {
 }
 
 pub async fn find_file_hash_at_commit(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     relative_path: &Path,
     commit_id: &str,
 ) -> Result<Option<String>, String> {
@@ -239,7 +239,7 @@ pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), Str
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec).await?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let relative_path = make_canonical_relative_path(&workspace_root, p)?;
     match find_resolve_pending(&mut workspace_connection, &relative_path) {
         Err(e) => {
@@ -257,23 +257,23 @@ pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), Str
         }
         Ok(Some(resolve_pending)) => {
             let base_file_hash = find_file_hash_at_commit(
-                &mut connection,
+                &connection,
                 Path::new(&relative_path),
                 &resolve_pending.base_commit_id,
             )
             .await?
             .unwrap();
             let base_temp_file =
-                download_temp_file(&mut connection, &workspace_root, &base_file_hash).await?;
+                download_temp_file(&connection, &workspace_root, &base_file_hash).await?;
             let theirs_file_hash = find_file_hash_at_commit(
-                &mut connection,
+                &connection,
                 Path::new(&relative_path),
                 &resolve_pending.theirs_commit_id,
             )
             .await?
             .unwrap();
             let theirs_temp_file =
-                download_temp_file(&mut connection, &workspace_root, &theirs_file_hash).await?;
+                download_temp_file(&connection, &workspace_root, &theirs_file_hash).await?;
             let tmp_dir = workspace_root.join(".lsc/tmp");
             let output_temp_file = TempPath {
                 path: tmp_dir.join(format!("merge_output_{}", uuid::Uuid::new_v4().to_string())),

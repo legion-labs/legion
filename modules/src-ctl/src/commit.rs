@@ -1,8 +1,6 @@
 use crate::{sql::execute_sql, *};
 use chrono::prelude::*;
-use futures::executor::block_on;
 use sha2::{Digest, Sha256};
-use sqlx::Row;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -58,22 +56,6 @@ pub fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<
         return Err(format!("Error creating commit tables and indices: {}", e));
     }
     Ok(())
-}
-
-pub fn commit_exists(connection: &RepositoryConnection, id: &str) -> bool {
-    let mut sql_connection = connection.sql();
-    let res = block_on(
-        sqlx::query(
-            "SELECT count(*) as count
-             FROM commits
-             WHERE id = ?;",
-        )
-        .bind(id)
-        .fetch_one(&mut sql_connection),
-    );
-    let row = res.unwrap();
-    let count: i32 = row.get("count");
-    count > 0
 }
 
 async fn upload_localy_edited_blobs(

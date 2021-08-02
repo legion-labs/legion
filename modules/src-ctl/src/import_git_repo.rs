@@ -31,7 +31,7 @@ fn copy_git_blob(
 
 async fn add_file_from_git(
     workspace_connection: &mut LocalWorkspaceConnection,
-    repo_connection: &mut RepositoryConnection,
+    repo_connection: &RepositoryConnection,
     git_repo: &git2::Repository,
     new_file: &git2::DiffFile<'_>,
 ) -> Result<(), String> {
@@ -81,7 +81,7 @@ async fn add_file_from_git(
 
 async fn edit_file_from_git(
     workspace_connection: &mut LocalWorkspaceConnection,
-    repo_connection: &mut RepositoryConnection,
+    repo_connection: &RepositoryConnection,
     git_repo: &git2::Repository,
     new_file: &git2::DiffFile<'_>,
 ) -> Result<(), String> {
@@ -105,7 +105,7 @@ async fn edit_file_from_git(
 
 fn import_commit_diff(
     workspace_connection: &mut LocalWorkspaceConnection,
-    repo_connection: &mut RepositoryConnection,
+    repo_connection: &RepositoryConnection,
     runtime: &tokio::runtime::Runtime,
     diff: &git2::Diff<'_>,
     git_repo: &git2::Repository,
@@ -209,7 +209,7 @@ fn import_commit_diff(
 // One alternative would be to find the shortest path between the last integrated commit and the
 // top of the branch.
 fn import_commit_sequence(
-    repo_connection: &mut RepositoryConnection,
+    repo_connection: &RepositoryConnection,
     workspace_connection: &mut LocalWorkspaceConnection,
     runtime: &tokio::runtime::Runtime,
     git_repo: &git2::Repository,
@@ -217,10 +217,11 @@ fn import_commit_sequence(
 ) -> Result<(), String> {
     let mut stack = vec![root_commit.clone()];
     let mut reference_index = git2::Index::new().unwrap();
+    let query = repo_connection.query();
     loop {
         let commit = stack.pop().unwrap();
         let commit_id = commit.id().to_string();
-        if commit_exists(repo_connection, &commit_id) {
+        if runtime.block_on(query.commit_exists(&commit_id))? {
             match commit.tree() {
                 Ok(tree) => {
                     if let Err(e) = reference_index.read_tree(&tree) {
@@ -327,7 +328,7 @@ fn import_commit_sequence(
 }
 
 fn import_branch(
-    repo_connection: &mut RepositoryConnection,
+    repo_connection: &RepositoryConnection,
     workspace_connection: &mut LocalWorkspaceConnection,
     runtime: &tokio::runtime::Runtime,
     git_repo: &git2::Repository,
@@ -371,7 +372,7 @@ pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Re
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut repo_connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let repo_connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     match git2::Repository::open(git_root_path) {
         Ok(git_repo) => {
             println!("git repository state: {:?}", git_repo.state());
@@ -398,7 +399,7 @@ pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Re
                         Some(branch_result) => match branch_result {
                             Ok((git_branch, _branch_type)) => {
                                 import_branch(
-                                    &mut repo_connection,
+                                    &repo_connection,
                                     &mut workspace_connection,
                                     &tokio_runtime,
                                     &git_repo,

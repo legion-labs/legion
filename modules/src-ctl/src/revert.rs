@@ -32,7 +32,7 @@ pub fn revert_glob_command(pattern: &str) -> Result<(), String> {
 
 pub async fn revert_file(
     workspace_connection: &mut LocalWorkspaceConnection,
-    repo_connection: &mut RepositoryConnection,
+    repo_connection: &RepositoryConnection,
     path: &Path,
 ) -> Result<(), String> {
     let abs_path = make_path_absolute(path);
@@ -96,10 +96,10 @@ pub fn revert_file_command(path: &Path) -> Result<(), String> {
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut repo_connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let repo_connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     tokio_runtime.block_on(revert_file(
         &mut workspace_connection,
-        &mut repo_connection,
+        &repo_connection,
         path,
     ))
 }

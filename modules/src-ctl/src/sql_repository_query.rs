@@ -267,7 +267,6 @@ impl RepositoryQuery for SqlRepositoryQuery {
         {
             return Err(format!("Error inserting into commits: {}", e));
         }
-
         for parent_id in &commit.parents {
             if let Err(e) = sqlx::query("INSERT INTO commit_parents VALUES(?, ?);")
                 .bind(commit.id.clone())
@@ -278,7 +277,6 @@ impl RepositoryQuery for SqlRepositoryQuery {
                 return Err(format!("Error inserting into commit_parents: {}", e));
             }
         }
-
         for change in &commit.changes {
             if let Err(e) = sqlx::query("INSERT INTO commit_changes VALUES(?, ?, ?, ?);")
                 .bind(commit.id.clone())
@@ -291,8 +289,22 @@ impl RepositoryQuery for SqlRepositoryQuery {
                 return Err(format!("Error inserting into commit_changes: {}", e));
             }
         }
-
         Ok(())
+    }
+
+    async fn commit_exists(&self, id: &str) -> Result<bool, String> {
+        let mut sql_connection = self.acquire().await?;
+        let res = sqlx::query(
+            "SELECT count(*) as count
+             FROM commits
+             WHERE id = ?;",
+        )
+        .bind(id)
+        .fetch_one(&mut sql_connection)
+        .await;
+        let row = res.unwrap();
+        let count: i32 = row.get("count");
+        Ok(count > 0)
     }
 
     async fn read_tree(&self, hash: &str) -> Result<Tree, String> {

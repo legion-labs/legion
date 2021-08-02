@@ -23,7 +23,7 @@ async fn reference_version_name_as_commit_id(
 }
 
 async fn print_diff(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     local_path: &Path,
     ref_file_hash: &str,
 ) -> Result<(), String> {
@@ -47,7 +47,7 @@ pub fn diff_file_command(
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
     let ref_commit_id = tokio_runtime.block_on(reference_version_name_as_commit_id(
         connection.query(),
@@ -56,21 +56,21 @@ pub fn diff_file_command(
     ))?;
     let ref_file_hash = tokio_runtime
         .block_on(find_file_hash_at_commit(
-            &mut connection,
+            &connection,
             &relative_path,
             &ref_commit_id,
         ))?
         .unwrap();
 
     if !allow_tools {
-        return tokio_runtime.block_on(print_diff(&mut connection, &abs_path, &ref_file_hash));
+        return tokio_runtime.block_on(print_diff(&connection, &abs_path, &ref_file_hash));
     }
 
     let config = Config::read_config()?;
     match config.find_diff_command(&relative_path) {
         Some(mut external_command_vec) => {
             let ref_temp_file = tokio_runtime.block_on(download_temp_file(
-                &mut connection,
+                &connection,
                 &workspace_root,
                 &ref_file_hash,
             ))?;
@@ -102,7 +102,7 @@ pub fn diff_file_command(
             }
         }
         None => {
-            return tokio_runtime.block_on(print_diff(&mut connection, &abs_path, &ref_file_hash));
+            return tokio_runtime.block_on(print_diff(&connection, &abs_path, &ref_file_hash));
         }
     }
 

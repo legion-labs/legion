@@ -162,7 +162,7 @@ pub fn clear_local_changes(
 
 pub async fn track_new_file(
     workspace_connection: &mut LocalWorkspaceConnection,
-    repo_connection: &mut RepositoryConnection,
+    repo_connection: &RepositoryConnection,
     path_specified: &Path,
 ) -> Result<(), String> {
     let abs_path = make_path_absolute(path_specified);
@@ -215,10 +215,10 @@ pub fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     tokio_runtime.block_on(track_new_file(
         &mut workspace_connection,
-        &mut connection,
+        &connection,
         path_specified,
     ))
 }

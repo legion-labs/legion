@@ -65,7 +65,7 @@ impl Drop for TempPath {
 }
 
 pub async fn download_temp_file(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     workspace_root: &Path,
     blob_hash: &str,
 ) -> Result<TempPath, String> {
