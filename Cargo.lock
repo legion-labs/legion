@@ -493,6 +493,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiler-mock"
+version = "0.1.0"
+dependencies = [
+ "legion-assets",
+ "legion-data-compiler",
+ "legion-resources",
+ "mock-offline",
+ "mock-runtime",
+]
+
+[[package]]
 name = "compiler-test"
 version = "0.1.0"
 dependencies = [
@@ -1504,6 +1515,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "mock-offline"
+version = "0.1.0"
+dependencies = [
+ "legion-resources",
+]
+
+[[package]]
+name = "mock-runtime"
+version = "0.1.0"
+dependencies = [
+ "legion-assets",
 ]
 
 [[package]]
@@ -2725,9 +2750,13 @@ dependencies = [
 name = "test-compilers"
 version = "0.1.0"
 dependencies = [
+ "compiler-mock",
+ "legion-assets",
  "legion-data-build",
  "legion-data-compiler",
  "legion-resources",
+ "mock-offline",
+ "mock-runtime",
  "tempfile",
 ]
 

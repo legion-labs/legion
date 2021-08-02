@@ -7,6 +7,7 @@ mod tests {
         path::{Path, PathBuf},
     };
 
+    use assets::AssetCreator;
     use data_compiler::{
         compiled_asset_store::{
             CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
@@ -14,6 +15,8 @@ mod tests {
         compiler_cmd::{list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
         Locale, Platform, Target,
     };
+    use mock_offline::MockResource;
+    use mock_runtime::{MockAsset, MockAssetCreator};
     use resources::{test_resource, ResourceId, ResourceProcessor, RESOURCE_EXT};
 
     fn target_dir() -> PathBuf {
@@ -117,5 +120,73 @@ mod tests {
         let mut reversed = content.as_bytes().to_owned();
         reversed.reverse();
         assert_eq!(&asset_content[..], &reversed[..]);
+    }
+
+    #[test]
+    fn mock_compile() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let resource_dir = work_dir.path();
+
+        let source_magic_value = 7;
+
+        let source = {
+            let source = ResourceId::generate_new(mock_offline::TYPE_ID);
+
+            let mut proc = mock_offline::MockResourceProc {};
+
+            let mut resource = proc.new_resource();
+            let mut resource = resource
+                .as_any_mut()
+                .downcast_mut::<MockResource>()
+                .expect("valid resource");
+
+            resource.magic_value = source_magic_value;
+
+            let path = resource_dir.join(format!("{:x}.{}", source, RESOURCE_EXT));
+            let mut file = File::create(path).expect("new file");
+            proc.write_resource(resource, &mut file)
+                .expect("written to disk");
+            source
+        };
+
+        let cas_addr = CompiledAssetStoreAddr::from(resource_dir.to_owned());
+
+        let asset_info = {
+            let exe_path = compiler_exe("mock");
+            assert!(exe_path.exists());
+
+            let mut command = CompilerCompileCmd::new(
+                source,
+                &[],
+                &cas_addr,
+                &resource_dir,
+                Target::Game,
+                Platform::Windows,
+                &Locale::new("en"),
+            );
+
+            let result = command
+                .execute(&exe_path, resource_dir)
+                .expect("compile result");
+            println!("{:?}", result);
+
+            assert_eq!(result.compiled_assets.len(), 1);
+            result.compiled_assets[0].clone()
+        };
+
+        let asset_checksum = asset_info.checksum;
+
+        let cas = LocalCompiledAssetStore::new(cas_addr).expect("valid cas");
+        assert!(cas.exists(asset_checksum));
+
+        let asset_content = cas.read(asset_checksum).expect("asset content");
+
+        let mut creator = MockAssetCreator {};
+        let asset = creator
+            .load(mock_runtime::TYPE_ID, &mut &asset_content[..])
+            .expect("loaded assets");
+        let asset = asset.as_any().downcast_ref::<MockAsset>().unwrap();
+
+        assert_eq!(source_magic_value * 2, asset.magic_value);
     }
 }

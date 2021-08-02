@@ -1,0 +1,83 @@
+use std::{
+    collections::hash_map::DefaultHasher,
+    env,
+    hash::{Hash, Hasher},
+    path::Path,
+};
+
+use legion_assets::{test_asset, AssetId};
+use legion_data_compiler::{
+    compiled_asset_store::{CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore},
+    compiler_api::{compiler_load_resource, compiler_main, CompilerDescriptor, CompilerError},
+    CompiledAsset, CompilerHash, Locale, Platform, Target,
+};
+use legion_resources::{ResourceId, ResourceRegistry};
+
+static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
+    code_version: "1",
+    data_version: "1",
+    resource_types: &[mock_offline::TYPE_ID],
+    compiler_hash_func: compiler_hash,
+    compile_func: compile,
+};
+
+fn compiler_hash(
+    code: &'static str,
+    data: &'static str,
+    _target: Target,
+    _platform: Platform,
+    _locale: Locale,
+) -> Vec<CompilerHash> {
+    let mut hasher = DefaultHasher::new();
+    code.hash(&mut hasher);
+    data.hash(&mut hasher);
+    vec![CompilerHash(hasher.finish())]
+}
+
+fn compile(
+    source: ResourceId,
+    _dependencies: &[ResourceId],
+    _target: Target,
+    _platform: Platform,
+    _locale: &Locale,
+    compiled_asset_store_path: CompiledAssetStoreAddr,
+    resource_dir: &Path,
+) -> Result<Vec<CompiledAsset>, CompilerError> {
+    let mut resources = ResourceRegistry::default();
+    resources.register_type(
+        mock_offline::TYPE_ID,
+        Box::new(mock_offline::MockResourceProc {}),
+    );
+
+    let mut asset_store = LocalCompiledAssetStore::new(compiled_asset_store_path)
+        .ok_or(CompilerError::AssetStoreError)?;
+
+    // todo: convert ResourceId to AssetId
+    let guid = AssetId::new(test_asset::TYPE_ID, 2);
+
+    let resource = compiler_load_resource(source, resource_dir, &mut resources)?;
+    let resource = resource
+        .get::<mock_offline::MockResource>(&resources)
+        .unwrap();
+
+    let magic_value = resource.magic_value * 2;
+    let compiled_asset = magic_value.to_ne_bytes();
+
+    let checksum = asset_store
+        .store(&compiled_asset)
+        .ok_or(CompilerError::AssetStoreError)?;
+
+    let asset = CompiledAsset {
+        guid,
+        checksum,
+        size: compiled_asset.len(),
+    };
+    Ok(vec![asset])
+}
+
+fn main() {
+    std::process::exit(match compiler_main(env::args(), &COMPILER_INFO) {
+        Ok(_) => 0,
+        Err(_) => 1,
+    });
+}

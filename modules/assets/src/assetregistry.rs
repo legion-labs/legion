@@ -1,24 +1,14 @@
 use crate::{
     assetloader::{AssetLoader, AssetLoaderStorage},
     handle::{AssetGenericHandle, AssetHandleId, AssetRefCounter},
-    AssetId,
+    Asset, AssetId,
 };
 
 use std::{
-    any::Any,
     collections::HashMap,
     io, mem,
     sync::{Arc, Mutex},
 };
-
-/// Types implementing `Asset` represent non-mutable runtime data.
-pub trait Asset: Any {
-    /// Cast to &dyn Any type.
-    fn as_any(&self) -> &dyn Any;
-
-    /// Cast to &mut dyn Any type.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
 
 enum AssetState {
     Loaded(Box<dyn Asset>),

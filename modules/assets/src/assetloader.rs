@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs, io, mem, path::PathBuf};
 
 use crate::{
     assetloader::file_format_json::{AssetFileHeader, AssetHeader, SectionHeader, MAGIC_NUMBER},
-    Asset, AssetGenericHandle, AssetId, AssetType,
+    Asset, AssetCreator, AssetGenericHandle, AssetId, AssetType,
 };
 
 use serde::{Deserialize, Serialize};
@@ -15,16 +15,6 @@ fn asset_path(id: AssetId) -> PathBuf {
 struct AssetReference {
     primary: AssetId,
     secondary: AssetId,
-}
-
-/// An interface allowing to create and initialize assets.
-trait AssetCreator {
-    fn load(
-        &mut self,
-        kind: AssetType,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Asset>, io::Error>;
-    fn load_init(&mut self, asset: &mut dyn Asset);
 }
 
 pub(crate) trait AssetLoaderStorage {
@@ -174,10 +164,10 @@ mod tests {
         assetloader::file_format_json::{
             AssetFileHeader, AssetHeader, SectionHeader, MAGIC_NUMBER,
         },
-        test_asset, Asset, AssetId, AssetType,
+        test_asset, Asset, AssetCreator, AssetId, AssetType,
     };
 
-    use super::{AssetCreator, AssetLoader};
+    use super::AssetLoader;
 
     struct TextureCreator {}
 

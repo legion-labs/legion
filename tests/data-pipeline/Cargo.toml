@@ -10,6 +10,10 @@ license = "MIT OR Apache-2.0"
 data-compiler = { path = "../../modules/data-compiler", package = "legion-data-compiler" }
 data-build = { path = "../../modules/data-build", package = "legion-data-build" }
 resources = { path = "../../modules/resources", package = "legion-resources" }
+assets = { path = "../../modules/assets", package = "legion-assets" }
+mock-offline = { path = "mock-offline", package = "mock-offline" }
+mock-runtime = { path = "mock-runtime", package = "mock-runtime" }
+compiler-mock = { path = "compiler-mock", package = "compiler-mock" }
 
 
 [dev-dependencies]

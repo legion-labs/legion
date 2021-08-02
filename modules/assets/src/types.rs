@@ -1,9 +1,11 @@
 use core::fmt;
 use serde::{Deserialize, Serialize};
 use std::{
+    any::Any,
     collections::hash_map::DefaultHasher,
     fmt::LowerHex,
     hash::{Hash, Hasher},
+    io,
 };
 
 /// A unique id of a runtime asset.
@@ -80,4 +82,27 @@ impl AssetType {
     pub fn from_raw(v: u32) -> Self {
         Self(v)
     }
+}
+
+/// Types implementing `Asset` represent non-mutable runtime data.
+pub trait Asset: Any {
+    /// Cast to &dyn Any type.
+    fn as_any(&self) -> &dyn Any;
+
+    /// Cast to &mut dyn Any type.
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+/// An interface allowing to create and initialize assets.
+pub trait AssetCreator {
+    /// Asset loading interface.
+    fn load(
+        &mut self,
+        kind: AssetType,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Asset>, io::Error>;
+
+    /// Asset initialization executed after the asset and all its dependencies
+    /// have been loaded.
+    fn load_init(&mut self, asset: &mut dyn Asset);
 }

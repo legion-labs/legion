@@ -91,7 +91,7 @@ pub struct CompilerHash(pub u64);
 /// Description of a compiled asset.
 ///
 /// The contained information can be used to retrieve and validate the asset from a [`CompiledAssetStore`](`compiled_asset_store::CompiledAssetStore`).
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct CompiledAsset {
     /// The id of the asset.
     pub guid: AssetId,
