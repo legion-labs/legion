@@ -86,7 +86,7 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), Strin
         }
     }
 
-    if let Err(e) = verify_empty_lock_domain(&connection, &repo_branch.lock_domain_id) {
+    if let Err(e) = verify_empty_lock_domain(query, &repo_branch.lock_domain_id).await {
         errors.push(e);
     } else {
         println!("Deleted lock domain {}", repo_branch.lock_domain_id);

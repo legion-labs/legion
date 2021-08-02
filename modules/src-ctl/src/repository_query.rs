@@ -29,4 +29,5 @@ pub trait RepositoryQuery {
         lock_domain_id: &str,
         canonical_relative_path: &str,
     ) -> Result<(), String>;
+    async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32, String>;
 }

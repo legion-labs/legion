@@ -22,29 +22,14 @@ pub fn init_lock_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()
     Ok(())
 }
 
-pub fn verify_empty_lock_domain(
-    connection: &RepositoryConnection,
+pub async fn verify_empty_lock_domain(
+    query: &dyn RepositoryQuery,
     lock_domain_id: &str,
 ) -> Result<(), String> {
-    let mut sql_connection = connection.sql();
-    match block_on(
-        sqlx::query(
-            "SELECT count(*) as count
-             FROM locks
-             WHERE lock_domain_id = ?;",
-        )
-        .bind(lock_domain_id)
-        .fetch_one(&mut sql_connection),
-    ) {
-        Err(e) => Err(format!("Error counting locks: {}", e)),
-        Ok(row) => {
-            let count: i32 = row.get("count");
-            if count > 0 {
-                Err(format!("lock domain not empty{}", lock_domain_id))
-            } else {
-                Ok(())
-            }
-        }
+    if query.count_locks_in_domain(lock_domain_id).await? > 0 {
+        Err(format!("lock domain not empty{}", lock_domain_id))
+    } else {
+        Ok(())
     }
 }
 

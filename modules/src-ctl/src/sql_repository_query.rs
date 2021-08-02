@@ -446,4 +446,23 @@ impl RepositoryQuery for SqlRepositoryQuery {
         }
         Ok(())
     }
+
+    async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32, String> {
+        let mut sql_connection = self.acquire().await?;
+        match sqlx::query(
+            "SELECT count(*) as count
+             FROM locks
+             WHERE lock_domain_id = ?;",
+        )
+        .bind(lock_domain_id)
+        .fetch_one(&mut sql_connection)
+        .await
+        {
+            Err(e) => Err(format!("Error counting locks: {}", e)),
+            Ok(row) => {
+                let count: i32 = row.get("count");
+                Ok(count)
+            }
+        }
+    }
 }
