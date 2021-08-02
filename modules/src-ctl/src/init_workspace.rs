@@ -20,7 +20,7 @@ async fn init_workspace_impl(
         owner: whoami::username(),
     };
 
-    let mut connection = connect_to_server(&spec).await?;
+    let connection = connect_to_server(&spec).await?;
 
     if let Err(e) = fs::create_dir_all(&lsc_dir) {
         return Err(format!("Error creating .lsc directory: {}", e));
@@ -50,7 +50,7 @@ async fn init_workspace_impl(
     let main_branch = query.read_branch("main").await?;
     save_current_branch(&workspace_directory, &main_branch)?;
     let commit = query.read_commit(&main_branch.head).await?;
-    download_tree(&mut connection, &workspace_directory, &commit.root_hash).await?;
+    download_tree(&connection, &workspace_directory, &commit.root_hash).await?;
     Ok(())
 }
 

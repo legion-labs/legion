@@ -300,7 +300,7 @@ pub fn remove_dir_rec(
 }
 
 pub async fn download_tree(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     download_path: &Path,
     tree_hash: &str,
 ) -> Result<(), String> {

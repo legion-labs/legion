@@ -40,24 +40,6 @@ fn write_branch_spec(file_path: &Path, branch: &Branch) -> Result<(), String> {
     }
 }
 
-pub fn save_new_branch_to_repo(
-    connection: &mut RepositoryConnection,
-    branch: &Branch,
-) -> Result<(), String> {
-    let mut sql_connection = connection.sql();
-    if let Err(e) = block_on(
-        sqlx::query("INSERT INTO branches VALUES(?, ?, ?, ?);")
-            .bind(branch.name.clone())
-            .bind(branch.head.clone())
-            .bind(branch.parent.clone())
-            .bind(branch.lock_domain_id.clone())
-            .execute(&mut sql_connection),
-    ) {
-        return Err(format!("Error inserting into branches: {}", e));
-    }
-    Ok(())
-}
-
 pub fn save_branch_to_repo(
     connection: &mut RepositoryConnection,
     branch: &Branch,
@@ -129,12 +111,12 @@ pub fn read_branch(branch_file_path: &Path) -> Result<Branch, String> {
     }
 }
 
-pub fn create_branch_command(name: &str) -> Result<(), String> {
+pub async fn create_branch_command(name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = connect_to_server(&workspace_spec).await?;
+    let query = connection.query();
     let old_branch = read_current_branch(&workspace_root)?;
     let new_branch = Branch::new(
         String::from(name),
@@ -142,7 +124,7 @@ pub fn create_branch_command(name: &str) -> Result<(), String> {
         old_branch.name,
         old_branch.lock_domain_id,
     );
-    save_new_branch_to_repo(&mut connection, &new_branch)?;
+    query.insert_branch(&new_branch).await?;
     save_current_branch(&workspace_root, &new_branch)
 }
 

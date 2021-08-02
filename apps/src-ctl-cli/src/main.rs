@@ -415,7 +415,7 @@ fn main_impl() -> Result<(), String> {
         }
         ("create-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
-            create_branch_command(name)
+            tokio_runtime.block_on(create_branch_command(name))
         }
         ("merge-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();

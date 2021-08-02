@@ -67,6 +67,21 @@ impl RepositoryQuery for SqlRepositoryQuery {
         }
     }
 
+    async fn insert_branch(&self, branch: &Branch) -> Result<(), String> {
+        let mut sql_connection = self.acquire().await?;
+        if let Err(e) = sqlx::query("INSERT INTO branches VALUES(?, ?, ?, ?);")
+            .bind(branch.name.clone())
+            .bind(branch.head.clone())
+            .bind(branch.parent.clone())
+            .bind(branch.lock_domain_id.clone())
+            .execute(&mut sql_connection)
+            .await
+        {
+            return Err(format!("Error inserting into branches: {}", e));
+        }
+        Ok(())
+    }
+
     async fn read_commit(&self, id: &str) -> Result<Commit, String> {
         let mut sql_connection = self.acquire().await?;
         let mut changes: Vec<HashedChange> = Vec::new();

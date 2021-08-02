@@ -48,7 +48,7 @@ pub async fn push_init_repo_data(self_uri: &str) -> Result<(), String> {
         String::new(),
         lock_domain_id,
     );
-    save_new_branch_to_repo(&mut repo_connection, &main_branch)?;
+    query.insert_branch(&main_branch).await?;
     Ok(())
 }
 
