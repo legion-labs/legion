@@ -24,6 +24,7 @@ pub trait RepositoryQuery {
         lock_domain_id: &str,
         canonical_relative_path: &str,
     ) -> Result<Option<Lock>, String>;
+    async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>, String>;
     async fn clear_lock(
         &self,
         lock_domain_id: &str,

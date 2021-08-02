@@ -18,12 +18,17 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), Strin
 
     let parent_branch = query.read_branch(parent_branch_name).await?;
     let mut locks_parent_domain = BTreeSet::new();
-    for lock in read_locks(&connection, &parent_branch.lock_domain_id)? {
+    for lock in query
+        .find_locks_in_domain(&parent_branch.lock_domain_id)
+        .await?
+    {
         locks_parent_domain.insert(lock.relative_path);
     }
 
     let mut errors = Vec::new();
-    let locks_to_move = read_locks(&connection, &repo_branch.lock_domain_id)?;
+    let locks_to_move = query
+        .find_locks_in_domain(&repo_branch.lock_domain_id)
+        .await?;
     for lock in &locks_to_move {
         //validate first before making the change
         if locks_parent_domain.contains(&lock.relative_path) {

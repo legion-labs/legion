@@ -383,9 +383,9 @@ fn main_impl() -> Result<(), String> {
             Path::new(command_match.value_of("workspace-directory").unwrap()),
             command_match.value_of("repository-uri").unwrap(),
         ),
-        ("add", Some(command_match)) => {
-            track_new_file_command(Path::new(command_match.value_of("path").unwrap()))
-        }
+        ("add", Some(command_match)) => tokio_runtime.block_on(track_new_file_command(Path::new(
+            command_match.value_of("path").unwrap(),
+        ))),
         ("edit", Some(command_match)) => tokio_runtime.block_on(edit_file_command(Path::new(
             command_match.value_of("path").unwrap(),
         ))),
@@ -398,7 +398,7 @@ fn main_impl() -> Result<(), String> {
         ("unlock", Some(command_match)) => tokio_runtime.block_on(unlock_file_command(Path::new(
             command_match.value_of("path").unwrap(),
         ))),
-        ("list-locks", Some(_command_match)) => list_locks_command(),
+        ("list-locks", Some(_command_match)) => tokio_runtime.block_on(list_locks_command()),
         ("diff", Some(command_match)) => {
             let notool = command_match.is_present("notool");
             let reference_version_name = command_match.value_of("reference").unwrap_or("base");

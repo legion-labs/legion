@@ -430,6 +430,33 @@ impl RepositoryQuery for SqlRepositoryQuery {
         }
     }
 
+    async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
+        let mut sql_connection = self.acquire().await?;
+        match sqlx::query(
+            "SELECT relative_path, workspace_id, branch_name
+             FROM locks
+             WHERE lock_domain_id=?;",
+        )
+        .bind(lock_domain_id)
+        .fetch_all(&mut sql_connection)
+        .await
+        {
+            Ok(rows) => {
+                let mut locks = Vec::new();
+                for r in rows {
+                    locks.push(Lock {
+                        relative_path: r.get("relative_path"),
+                        lock_domain_id: String::from(lock_domain_id),
+                        workspace_id: r.get("workspace_id"),
+                        branch_name: r.get("branch_name"),
+                    });
+                }
+                Ok(locks)
+            }
+            Err(e) => Err(format!("Error listing locks: {}", e)),
+        }
+    }
+
     async fn clear_lock(
         &self,
         lock_domain_id: &str,

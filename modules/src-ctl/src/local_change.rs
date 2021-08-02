@@ -210,17 +210,12 @@ pub async fn track_new_file(
     save_local_change(workspace_connection, &local_change)
 }
 
-pub fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
+pub async fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
-    tokio_runtime.block_on(track_new_file(
-        &mut workspace_connection,
-        &connection,
-        path_specified,
-    ))
+    let connection = connect_to_server(&workspace_spec).await?;
+    track_new_file(&mut workspace_connection, &connection, path_specified).await
 }
 
 pub async fn edit_file(

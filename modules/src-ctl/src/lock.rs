@@ -1,7 +1,5 @@
 use crate::{sql::*, *};
-use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
 use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -30,36 +28,6 @@ pub async fn verify_empty_lock_domain(
         Err(format!("lock domain not empty{}", lock_domain_id))
     } else {
         Ok(())
-    }
-}
-
-pub fn read_locks(
-    connection: &RepositoryConnection,
-    lock_domain_id: &str,
-) -> Result<Vec<Lock>, String> {
-    let mut sql_connection = connection.sql();
-    match block_on(
-        sqlx::query(
-            "SELECT relative_path, workspace_id, branch_name
-             FROM locks
-             WHERE lock_domain_id=?;",
-        )
-        .bind(lock_domain_id)
-        .fetch_all(&mut sql_connection),
-    ) {
-        Ok(rows) => {
-            let mut locks = Vec::new();
-            for r in rows {
-                locks.push(Lock {
-                    relative_path: r.get("relative_path"),
-                    lock_domain_id: String::from(lock_domain_id),
-                    workspace_id: r.get("workspace_id"),
-                    branch_name: r.get("branch_name"),
-                });
-            }
-            Ok(locks)
-        }
-        Err(e) => Err(format!("Error listing locks: {}", e)),
     }
 }
 
@@ -92,16 +60,17 @@ pub async fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
         .await
 }
 
-pub fn list_locks_command() -> Result<(), String> {
+pub async fn list_locks_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let repo_branch = tokio_runtime.block_on(query.read_branch(&current_branch.name))?;
-    let locks = read_locks(&connection, &repo_branch.lock_domain_id)?;
+    let repo_branch = query.read_branch(&current_branch.name).await?;
+    let locks = query
+        .find_locks_in_domain(&repo_branch.lock_domain_id)
+        .await?;
     if locks.is_empty() {
         println!("no locks found in domain {}", &repo_branch.lock_domain_id);
     }

@@ -32,7 +32,9 @@ pub async fn detach_branch_command() -> Result<(), String> {
     let mut repo_branch = query.read_branch(&current_branch.name).await?;
     repo_branch.parent.clear();
 
-    let locks_in_old_domain = read_locks(&connection, &repo_branch.lock_domain_id)?;
+    let locks_in_old_domain = query
+        .find_locks_in_domain(&repo_branch.lock_domain_id)
+        .await?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
 
     let descendants = find_branch_descendants(query, &current_branch.name).await?;
