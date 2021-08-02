@@ -11,3 +11,7 @@ license = "MIT OR Apache-2.0"
 legion-data-compiler = { path = "../../modules/data-compiler" }
 legion-resources = { path = "../../modules/resources" }
 legion-assets = { path = "../../modules/assets" }
+
+[[bin]]
+name = "compiler-test"
+doc = false

@@ -13,3 +13,7 @@ legion-resources = { path = "../../../modules/resources" }
 legion-assets = { path = "../../../modules/assets" }
 mock-offline = { path = "../mock-offline", package="mock-offline"}
 mock-runtime = { path = "../mock-runtime", package="mock-runtime"}
+
+[[bin]]
+name = "compiler-mock"
+doc = false

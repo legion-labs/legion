@@ -9,14 +9,17 @@ license = "MIT OR Apache-2.0"
 [[bin]]
 name = "presenter-test"
 path = "src/presenter.rs"
+doc = false
 
 [[bin]]
 name = "streamer-client-test"
 path = "src/streamer_client.rs"
+doc = false
 
 [[bin]]
 name = "streamer-server-test"
 path = "src/streamer_server.rs"
+doc = false
 
 [dependencies]
 graphics-api = { path = "../../modules/graphics-api", package = "legion-graphics-api" }

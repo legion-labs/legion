@@ -8,3 +8,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 assets = { path = "../../../modules/assets", package = "legion-assets" }
+
+[lib]
+doc = false
