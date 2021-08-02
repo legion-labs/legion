@@ -66,7 +66,7 @@ use legion_resources::{ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
 /// Description of a compiler.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CompilerInfo {
     /// Name of the compiler.
     pub name: String,

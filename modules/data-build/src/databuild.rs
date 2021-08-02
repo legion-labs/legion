@@ -7,7 +7,8 @@ use std::{env, io};
 
 use legion_data_compiler::compiled_asset_store::{CompiledAssetStoreAddr, LocalCompiledAssetStore};
 use legion_data_compiler::compiler_cmd::{
-    list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd, CompilerInfoCmdOutput,
+    list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfo, CompilerInfoCmd,
+    CompilerInfoCmdOutput,
 };
 use legion_data_compiler::{CompiledAsset, CompilerHash, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
@@ -203,21 +204,24 @@ impl DataBuild {
         let compilers = list_compilers(&self.config.compiler_search_paths);
 
         let info_cmd = CompilerInfoCmd::default();
-        let infos: Vec<CompilerInfoCmdOutput> = compilers
+        let compilers: Vec<(CompilerInfo, CompilerInfoCmdOutput)> = compilers
             .iter()
-            .filter_map(|info| info_cmd.execute(&info.path).ok())
+            .filter_map(|info| {
+                info_cmd
+                    .execute(&info.path)
+                    .ok()
+                    .map(|res| ((*info).clone(), res))
+            })
             .collect();
-
-        assert_eq!(compilers.len(), infos.len()); // todo: support info command failure.
 
         // todo: compare data_build/rustc version.
 
-        let compiler_index = infos
+        let (compiler_file, _) = compilers
             .iter()
-            .position(|info| info.resource_type.contains(&source_guid.resource_type()))
+            .find(|info| info.1.resource_type.contains(&source_guid.resource_type()))
             .ok_or(Error::CompilerNotFound)?;
 
-        let compiler_path = &compilers[compiler_index].path;
+        let compiler_path = &compiler_file.path;
 
         // todo(kstasik): support triggering compilation for multiple platforms
 
