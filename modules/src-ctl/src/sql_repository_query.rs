@@ -100,6 +100,31 @@ impl RepositoryQuery for SqlRepositoryQuery {
         Ok(())
     }
 
+    async fn find_branch(&self, name: &str) -> Result<Option<Branch>, String> {
+        let mut sql_connection = self.acquire().await?;
+        match sqlx::query(
+            "SELECT head, parent, lock_domain_id 
+             FROM branches
+             WHERE name = ?;",
+        )
+        .bind(name)
+        .fetch_optional(&mut sql_connection)
+        .await
+        {
+            Ok(None) => Ok(None),
+            Ok(Some(row)) => {
+                let branch = Branch::new(
+                    String::from(name),
+                    row.get("head"),
+                    row.get("parent"),
+                    row.get("lock_domain_id"),
+                );
+                Ok(Some(branch))
+            }
+            Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
+        }
+    }
+
     async fn read_commit(&self, id: &str) -> Result<Commit, String> {
         let mut sql_connection = self.acquire().await?;
         let mut changes: Vec<HashedChange> = Vec::new();

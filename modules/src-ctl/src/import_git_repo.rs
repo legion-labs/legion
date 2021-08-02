@@ -336,7 +336,7 @@ fn import_branch(
     let branch_name = branch.name().unwrap().unwrap();
     println!("importing branch {}", branch_name);
 
-    match find_branch(repo_connection, branch_name) {
+    match runtime.block_on(repo_connection.query().find_branch(branch_name)) {
         Ok(Some(_branch)) => {
             println!("branch already exists");
         }

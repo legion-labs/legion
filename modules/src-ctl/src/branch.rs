@@ -50,34 +50,6 @@ pub fn read_current_branch(workspace_root: &Path) -> Result<Branch, String> {
     read_branch(&file_path)
 }
 
-pub fn find_branch(
-    connection: &mut RepositoryConnection,
-    name: &str,
-) -> Result<Option<Branch>, String> {
-    let mut sql_connection = connection.sql();
-    match block_on(
-        sqlx::query(
-            "SELECT head, parent, lock_domain_id 
-             FROM branches
-             WHERE name = ?;",
-        )
-        .bind(name)
-        .fetch_optional(&mut sql_connection),
-    ) {
-        Ok(None) => Ok(None),
-        Ok(Some(row)) => {
-            let branch = Branch::new(
-                String::from(name),
-                row.get("head"),
-                row.get("parent"),
-                row.get("lock_domain_id"),
-            );
-            Ok(Some(branch))
-        }
-        Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
-    }
-}
-
 pub fn read_branch(branch_file_path: &Path) -> Result<Branch, String> {
     let parsed: serde_json::Result<Branch> =
         serde_json::from_str(&read_text_file(branch_file_path)?);
