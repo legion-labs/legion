@@ -159,7 +159,7 @@ pub async fn find_file_hash_in_tree(
 pub async fn update_tree_from_changes(
     previous_root: &Tree,
     local_changes: &[HashedChange],
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
 ) -> Result<String, String> {
     //scan changes to get the list of trees to update
     let mut dir_to_update = BTreeSet::new();

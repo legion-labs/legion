@@ -60,48 +60,6 @@ pub fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<
     Ok(())
 }
 
-pub fn save_commit(connection: &RepositoryConnection, commit: &Commit) -> Result<(), String> {
-    let mut sql_connection = connection.sql();
-
-    if let Err(e) = block_on(
-        sqlx::query("INSERT INTO commits VALUES(?, ?, ?, ?, ?);")
-            .bind(commit.id.clone())
-            .bind(commit.owner.clone())
-            .bind(commit.message.clone())
-            .bind(commit.root_hash.clone())
-            .bind(commit.date_time_utc.clone())
-            .execute(&mut sql_connection),
-    ) {
-        return Err(format!("Error inserting into commits: {}", e));
-    }
-
-    for parent_id in &commit.parents {
-        if let Err(e) = block_on(
-            sqlx::query("INSERT INTO commit_parents VALUES(?, ?);")
-                .bind(commit.id.clone())
-                .bind(parent_id.clone())
-                .execute(&mut sql_connection),
-        ) {
-            return Err(format!("Error inserting into commit_parents: {}", e));
-        }
-    }
-
-    for change in &commit.changes {
-        if let Err(e) = block_on(
-            sqlx::query("INSERT INTO commit_changes VALUES(?, ?, ?, ?);")
-                .bind(commit.id.clone())
-                .bind(change.relative_path.clone())
-                .bind(change.hash.clone())
-                .bind(change.change_type.clone() as i64)
-                .execute(&mut sql_connection),
-        ) {
-            return Err(format!("Error inserting into commit_changes: {}", e));
-        }
-    }
-
-    Ok(())
-}
-
 pub fn commit_exists(connection: &RepositoryConnection, id: &str) -> bool {
     let mut sql_connection = connection.sql();
     let res = block_on(
@@ -171,8 +129,9 @@ pub async fn commit_local_changes(
     let workspace_root = workspace_connection.workspace_path().to_path_buf();
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let mut current_branch = read_current_branch(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec).await?;
-    let repo_branch = connection.query().read_branch(&current_branch.name).await?;
+    let connection = connect_to_server(&workspace_spec).await?;
+    let query = connection.query();
+    let repo_branch = query.read_branch(&current_branch.name).await?;
 
     if repo_branch.head != current_branch.head {
         return Err(String::from("Workspace is not up to date, aborting commit"));
@@ -180,17 +139,17 @@ pub async fn commit_local_changes(
     let local_changes = read_local_changes(workspace_connection)?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
-        assert_not_locked(&mut connection, &workspace_root, &abs_path).await?;
+        assert_not_locked(&connection, &workspace_root, &abs_path).await?;
     }
     let hashed_changes =
         upload_localy_edited_blobs(&workspace_root, &connection, &local_changes).await?;
 
-    let base_commit = connection.query().read_commit(&current_branch.head).await?;
+    let base_commit = query.read_commit(&current_branch.head).await?;
 
     let new_root_hash = update_tree_from_changes(
-        &connection.query().read_tree(&base_commit.root_hash).await?,
+        &query.read_tree(&base_commit.root_hash).await?,
         &hashed_changes,
-        &mut connection,
+        &connection,
     )
     .await?;
 
@@ -207,12 +166,12 @@ pub async fn commit_local_changes(
         new_root_hash,
         parent_commits,
     );
-    save_commit(&mut connection, &commit)?;
+    query.insert_commit(&commit).await?;
     current_branch.head = commit.id;
     save_current_branch(&workspace_root, &current_branch)?;
 
     //todo: will need to lock to avoid races in updating branch in the database
-    connection.query().update_branch(&current_branch).await?;
+    query.update_branch(&current_branch).await?;
 
     if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);

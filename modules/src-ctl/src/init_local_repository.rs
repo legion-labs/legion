@@ -23,9 +23,6 @@ pub fn init_repo_database(
 
 pub async fn push_init_repo_data(self_uri: &str) -> Result<(), String> {
     let query = SqlRepositoryQuery::new(self_uri)?;
-
-    let bogus_blob_cache = std::path::PathBuf::new();
-    let mut repo_connection = RepositoryConnection::new(self_uri, bogus_blob_cache).await?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
@@ -40,7 +37,7 @@ pub async fn push_init_repo_data(self_uri: &str) -> Result<(), String> {
         root_hash,
         Vec::new(),
     );
-    save_commit(&mut repo_connection, &initial_commit)?;
+    query.insert_commit(&initial_commit).await?;
 
     let main_branch = Branch::new(
         String::from("main"),

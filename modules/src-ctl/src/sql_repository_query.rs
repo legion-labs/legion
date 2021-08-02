@@ -125,7 +125,10 @@ impl RepositoryQuery for SqlRepositoryQuery {
         }
     }
 
-    async fn find_branches_in_lock_domain(&self, lock_domain_id: &str) -> Result<Vec<Branch>, String> {
+    async fn find_branches_in_lock_domain(
+        &self,
+        lock_domain_id: &str,
+    ) -> Result<Vec<Branch>, String> {
         let mut sql_connection = self.acquire().await?;
         let mut res = Vec::new();
         match sqlx::query(
@@ -152,7 +155,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
             Err(e) => Err(format!("Error fetching branches: {}", e)),
         }
     }
-    
+
     async fn read_branches(&self) -> Result<Vec<Branch>, String> {
         let mut sql_connection = self.acquire().await?;
         let mut res = Vec::new();
@@ -249,6 +252,47 @@ impl RepositoryQuery for SqlRepositoryQuery {
             }
             Err(e) => Err(format!("Error fetching commit: {}", e)),
         }
+    }
+
+    async fn insert_commit(&self, commit: &Commit) -> Result<(), String> {
+        let mut sql_connection = self.acquire().await?;
+        if let Err(e) = sqlx::query("INSERT INTO commits VALUES(?, ?, ?, ?, ?);")
+            .bind(commit.id.clone())
+            .bind(commit.owner.clone())
+            .bind(commit.message.clone())
+            .bind(commit.root_hash.clone())
+            .bind(commit.date_time_utc.clone())
+            .execute(&mut sql_connection)
+            .await
+        {
+            return Err(format!("Error inserting into commits: {}", e));
+        }
+
+        for parent_id in &commit.parents {
+            if let Err(e) = sqlx::query("INSERT INTO commit_parents VALUES(?, ?);")
+                .bind(commit.id.clone())
+                .bind(parent_id.clone())
+                .execute(&mut sql_connection)
+                .await
+            {
+                return Err(format!("Error inserting into commit_parents: {}", e));
+            }
+        }
+
+        for change in &commit.changes {
+            if let Err(e) = sqlx::query("INSERT INTO commit_changes VALUES(?, ?, ?, ?);")
+                .bind(commit.id.clone())
+                .bind(change.relative_path.clone())
+                .bind(change.hash.clone())
+                .bind(change.change_type.clone() as i64)
+                .execute(&mut sql_connection)
+                .await
+            {
+                return Err(format!("Error inserting into commit_changes: {}", e));
+            }
+        }
+
+        Ok(())
     }
 
     async fn read_tree(&self, hash: &str) -> Result<Tree, String> {
