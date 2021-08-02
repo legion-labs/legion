@@ -430,7 +430,7 @@ fn main_impl() -> Result<(), String> {
             let name = command_match.value_of("parent-branch-name").unwrap();
             tokio_runtime.block_on(attach_branch_command(name))
         }
-        ("list-branches", Some(_command_match)) => list_branches_command(),
+        ("list-branches", Some(_command_match)) => tokio_runtime.block_on(list_branches_command()),
         ("revert", Some(command_match)) => {
             let path = command_match.value_of("path").unwrap();
             if command_match.is_present("glob") {

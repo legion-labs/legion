@@ -2,13 +2,13 @@ use crate::*;
 use std::collections::BTreeSet;
 
 // find_branch_descendants includes the branch itself
-fn find_branch_descendants(
-    connection: &mut RepositoryConnection,
+async fn find_branch_descendants(
+    query: &dyn RepositoryQuery,
     root_branch_name: &str,
 ) -> Result<BTreeSet<String>, String> {
     let mut set = BTreeSet::new();
     set.insert(String::from(root_branch_name));
-    let branches = read_branches(connection)?;
+    let branches = query.read_branches().await?;
     let mut keep_going = true;
     while keep_going {
         keep_going = false;
@@ -34,7 +34,7 @@ pub async fn detach_branch_command() -> Result<(), String> {
     let locks_in_old_domain = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
 
-    let descendants = find_branch_descendants(&mut connection, &current_branch.name)?;
+    let descendants = find_branch_descendants(connection.query(), &current_branch.name).await?;
 
     if let Err(e) = connection.query().update_branch(&repo_branch).await {
         return Err(format!(

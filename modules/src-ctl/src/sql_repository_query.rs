@@ -125,6 +125,60 @@ impl RepositoryQuery for SqlRepositoryQuery {
         }
     }
 
+    async fn find_branches_in_lock_domain(&self, lock_domain_id: &str) -> Result<Vec<Branch>, String> {
+        let mut sql_connection = self.acquire().await?;
+        let mut res = Vec::new();
+        match sqlx::query(
+            "SELECT name, head, parent 
+             FROM branches
+             WHERE lock_domain_id = ?;",
+        )
+        .bind(lock_domain_id)
+        .fetch_all(&mut sql_connection)
+        .await
+        {
+            Ok(rows) => {
+                for r in rows {
+                    let branch = Branch::new(
+                        r.get("name"),
+                        r.get("head"),
+                        r.get("parent"),
+                        String::from(lock_domain_id),
+                    );
+                    res.push(branch);
+                }
+                Ok(res)
+            }
+            Err(e) => Err(format!("Error fetching branches: {}", e)),
+        }
+    }
+    
+    async fn read_branches(&self) -> Result<Vec<Branch>, String> {
+        let mut sql_connection = self.acquire().await?;
+        let mut res = Vec::new();
+        match sqlx::query(
+            "SELECT name, head, parent, lock_domain_id 
+             FROM branches;",
+        )
+        .fetch_all(&mut sql_connection)
+        .await
+        {
+            Ok(rows) => {
+                for r in rows {
+                    let branch = Branch::new(
+                        r.get("name"),
+                        r.get("head"),
+                        r.get("parent"),
+                        r.get("lock_domain_id"),
+                    );
+                    res.push(branch);
+                }
+                Ok(res)
+            }
+            Err(e) => Err(format!("Error fetching branches: {}", e)),
+        }
+    }
+
     async fn read_commit(&self, id: &str) -> Result<Commit, String> {
         let mut sql_connection = self.acquire().await?;
         let mut changes: Vec<HashedChange> = Vec::new();

@@ -1,19 +1,6 @@
 use crate::*;
 use std::collections::BTreeSet;
 
-fn find_branches_in_lock_domain(
-    connection: &RepositoryConnection,
-    lock_domain_id: &str,
-) -> Result<Vec<Branch>, String> {
-    let mut res = Vec::new();
-    for branch in read_branches(connection)? {
-        if branch.lock_domain_id == lock_domain_id {
-            res.push(branch);
-        }
-    }
-    Ok(res)
-}
-
 pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
@@ -74,7 +61,10 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), Strin
         ));
     }
 
-    match find_branches_in_lock_domain(&connection, &repo_branch.lock_domain_id) {
+    match query
+        .find_branches_in_lock_domain(&repo_branch.lock_domain_id)
+        .await
+    {
         Ok(branches) => {
             for mut branch in branches {
                 branch.lock_domain_id = parent_branch.lock_domain_id.clone();

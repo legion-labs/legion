@@ -1,7 +1,5 @@
 use crate::{sql::execute_sql, *};
-use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
 use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -80,39 +78,13 @@ pub async fn create_branch_command(name: &str) -> Result<(), String> {
     save_current_branch(&workspace_root, &new_branch)
 }
 
-pub fn read_branches(connection: &RepositoryConnection) -> Result<Vec<Branch>, String> {
-    let mut sql_connection = connection.sql();
-    let mut res = Vec::new();
-    match block_on(
-        sqlx::query(
-            "SELECT name, head, parent, lock_domain_id 
-             FROM branches;",
-        )
-        .fetch_all(&mut sql_connection),
-    ) {
-        Ok(rows) => {
-            for r in rows {
-                let branch = Branch::new(
-                    r.get("name"),
-                    r.get("head"),
-                    r.get("parent"),
-                    r.get("lock_domain_id"),
-                );
-                res.push(branch);
-            }
-            Ok(res)
-        }
-        Err(e) => Err(format!("Error fetching branches: {}", e)),
-    }
-}
-
-pub fn list_branches_command() -> Result<(), String> {
+pub async fn list_branches_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
-    for branch in read_branches(&mut connection)? {
+    let connection = connect_to_server(&workspace_spec).await?;
+    let query = connection.query();
+    for branch in query.read_branches().await? {
         println!(
             "{} head:{} parent:{}",
             branch.name, branch.head, branch.parent
