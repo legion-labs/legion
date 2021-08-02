@@ -43,30 +43,6 @@ impl RepositoryQuery for SqlRepositoryQuery {
         }
     }
 
-    async fn read_branch(&self, name: &str) -> Result<Branch, String> {
-        let mut sql_connection = self.acquire().await?;
-        match sqlx::query(
-            "SELECT head, parent, lock_domain_id 
-             FROM branches
-             WHERE name = ?;",
-        )
-        .bind(name)
-        .fetch_one(&mut sql_connection)
-        .await
-        {
-            Ok(row) => {
-                let branch = Branch::new(
-                    String::from(name),
-                    row.get("head"),
-                    row.get("parent"),
-                    row.get("lock_domain_id"),
-                );
-                Ok(branch)
-            }
-            Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
-        }
-    }
-
     async fn insert_branch(&self, branch: &Branch) -> Result<(), String> {
         let mut sql_connection = self.acquire().await?;
         if let Err(e) = sqlx::query("INSERT INTO branches VALUES(?, ?, ?, ?);")
@@ -98,6 +74,14 @@ impl RepositoryQuery for SqlRepositoryQuery {
             return Err(format!("Error updating branch {}: {}", branch.name, e));
         }
         Ok(())
+    }
+
+    async fn read_branch(&self, name: &str) -> Result<Branch, String> {
+        match self.find_branch(name).await {
+            Ok(Some(branch)) => Ok(branch),
+            Ok(None) => Err(format!("branch not found {}", name)),
+            Err(e) => Err(e),
+        }
     }
 
     async fn find_branch(&self, name: &str) -> Result<Option<Branch>, String> {
