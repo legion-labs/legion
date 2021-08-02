@@ -26,12 +26,12 @@ pub async fn detach_branch_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec).await?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let current_branch = read_current_branch(&workspace_root)?;
     let mut repo_branch = connection.query().read_branch(&current_branch.name).await?;
     repo_branch.parent.clear();
 
-    let locks_in_old_domain = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
+    let locks_in_old_domain = read_locks(&connection, &repo_branch.lock_domain_id)?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
 
     let descendants = find_branch_descendants(connection.query(), &current_branch.name).await?;
@@ -66,13 +66,13 @@ pub async fn detach_branch_command() -> Result<(), String> {
             let mut new_lock = lock.clone();
             new_lock.lock_domain_id = lock_domain_id.clone();
             println!("moving lock for {}", lock.relative_path);
-            if let Err(e) = save_new_lock(&mut connection, &new_lock) {
+            if let Err(e) = save_new_lock(&connection, &new_lock) {
                 errors.push(format!(
                     "Error writing lock in new domain for {}: {}",
                     lock.relative_path, e
                 ));
             }
-            if let Err(e) = clear_lock(&mut connection, &lock.lock_domain_id, &lock.relative_path) {
+            if let Err(e) = clear_lock(&connection, &lock.lock_domain_id, &lock.relative_path) {
                 errors.push(format!(
                     "Error clearning lock from old domain for {}: {}",
                     lock.relative_path, e

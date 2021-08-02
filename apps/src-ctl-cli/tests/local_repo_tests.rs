@@ -210,14 +210,14 @@ fn local_repo_suite() {
 
     //sync backwards
     let workspace_spec = legion_src_ctl::read_workspace_spec(&work1).unwrap();
-    let mut connection = tokio_runtime
+    let connection = tokio_runtime
         .block_on(legion_src_ctl::connect_to_server(&workspace_spec))
         .unwrap();
     let query = connection.query();
     let main_branch = tokio_runtime.block_on(query.read_branch("main")).unwrap();
     let log_vec = tokio_runtime
         .block_on(legion_src_ctl::find_branch_commits(
-            &mut connection,
+            &connection,
             &main_branch,
         ))
         .unwrap();

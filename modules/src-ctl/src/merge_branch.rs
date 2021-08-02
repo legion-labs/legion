@@ -118,7 +118,7 @@ async fn change_file_to(
             delete_file_command(&local_path)?;
             return Ok(format!("Deleted {}", local_path.display()));
         }
-        edit_file(workspace_connection, &repo_connection, &local_path).await?;
+        edit_file(workspace_connection, repo_connection, &local_path).await?;
         if let Err(e) = repo_connection
             .blob_storage()
             .await?
@@ -187,7 +187,7 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec).await?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
     let src_branch = query.read_branch(name).await?;
     let current_branch = read_current_branch(&workspace_root)?;
@@ -211,8 +211,7 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
     }
 
     let mut errors: Vec<String> = Vec::new();
-    let destination_commit_history =
-        find_branch_commits(&mut connection, &destination_branch).await?;
+    let destination_commit_history = find_branch_commits(&connection, &destination_branch).await?;
     if let Some(common_ancestor_id) =
         find_latest_common_ancestor(&destination_commit_history, &merge_source_ancestors)
     {
@@ -258,7 +257,7 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
             } else {
                 match change_file_to(
                     &mut workspace_connection,
-                    &mut connection,
+                    &connection,
                     Path::new(path),
                     hash,
                 )

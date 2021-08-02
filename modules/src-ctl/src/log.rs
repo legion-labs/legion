@@ -6,7 +6,7 @@ pub fn log_command() -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let workspace_branch = read_current_branch(&workspace_root)?;
     println!(
         "This workspace is on branch {} at commit {}",
@@ -16,7 +16,7 @@ pub fn log_command() -> Result<(), String> {
     let repo_branch =
         tokio_runtime.block_on(connection.query().read_branch(&workspace_branch.name))?;
 
-    match tokio_runtime.block_on(find_branch_commits(&mut connection, &repo_branch)) {
+    match tokio_runtime.block_on(find_branch_commits(&connection, &repo_branch)) {
         Ok(commits) => {
             for c in commits {
                 let utc = DateTime::parse_from_rfc3339(&c.date_time_utc)

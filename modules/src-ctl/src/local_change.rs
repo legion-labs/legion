@@ -265,6 +265,6 @@ pub async fn edit_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec).await?;
-    edit_file(&mut workspace_connection, &mut connection, path_specified).await
+    let connection = connect_to_server(&workspace_spec).await?;
+    edit_file(&mut workspace_connection, &connection, path_specified).await
 }

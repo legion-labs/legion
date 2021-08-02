@@ -5,7 +5,7 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), Strin
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec).await?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
     let current_branch = read_current_branch(&workspace_root)?;
     let mut repo_branch = query.read_branch(&current_branch.name).await?;
@@ -83,7 +83,7 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), Strin
         }
     }
 
-    if let Err(e) = verify_empty_lock_domain(&mut connection, &repo_branch.lock_domain_id) {
+    if let Err(e) = verify_empty_lock_domain(&connection, &repo_branch.lock_domain_id) {
         errors.push(e);
     } else {
         println!("Deleted lock domain {}", repo_branch.lock_domain_id);

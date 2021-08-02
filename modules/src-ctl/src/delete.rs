@@ -11,9 +11,9 @@ pub fn delete_file_command(path_specified: &Path) -> Result<(), String> {
     let mut connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut repo_connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let repo_connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     tokio_runtime.block_on(assert_not_locked(
-        &mut repo_connection,
+        &repo_connection,
         &workspace_root,
         &abs_path,
     ))?;
