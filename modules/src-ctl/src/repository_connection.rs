@@ -5,7 +5,6 @@ pub struct RepositoryConnection {
     blob_storage_spec: BlobStorageSpec,
     compressed_blob_cache: PathBuf,
     repo_query: Box<dyn RepositoryQuery + Send>,
-    db_uri: String, //todo: remove
 }
 
 impl RepositoryConnection {
@@ -18,12 +17,7 @@ impl RepositoryConnection {
             blob_storage_spec,
             compressed_blob_cache,
             repo_query,
-            db_uri: String::from(repo_uri),
         })
-    }
-
-    pub fn sql(&self) -> sqlx::AnyConnection {
-        connect(&self.db_uri).unwrap()
     }
 
     pub fn query(&self) -> &dyn RepositoryQuery {
