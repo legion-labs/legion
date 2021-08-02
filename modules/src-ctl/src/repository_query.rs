@@ -1,4 +1,4 @@
-use crate::{Branch, Commit, Tree, Workspace};
+use crate::{Branch, Commit, Lock, Tree, Workspace};
 use async_trait::async_trait;
 
 #[async_trait]
@@ -18,4 +18,5 @@ pub trait RepositoryQuery {
     async fn commit_exists(&self, id: &str) -> Result<bool, String>;
     async fn read_tree(&self, hash: &str) -> Result<Tree, String>;
     async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<(), String>;
+    async fn insert_lock(&self, lock: &Lock) -> Result<(), String>;
 }

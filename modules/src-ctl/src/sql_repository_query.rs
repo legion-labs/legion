@@ -352,7 +352,6 @@ impl RepositoryQuery for SqlRepositoryQuery {
         if !tree.is_empty() && !tree_in_db.is_empty() {
             return Ok(());
         }
-
         for file_node in &tree.file_nodes {
             if let Err(e) = sqlx::query("INSERT INTO tree_nodes VALUES(?, ?, ?, ?);")
                 .bind(file_node.name.clone())
@@ -365,7 +364,6 @@ impl RepositoryQuery for SqlRepositoryQuery {
                 return Err(format!("Error inserting into tree_nodes: {}", e));
             }
         }
-
         for dir_node in &tree.directory_nodes {
             if let Err(e) = sqlx::query("INSERT INTO tree_nodes VALUES(?, ?, ?, ?);")
                 .bind(dir_node.name.clone())
@@ -378,7 +376,45 @@ impl RepositoryQuery for SqlRepositoryQuery {
                 return Err(format!("Error inserting into tree_nodes: {}", e));
             }
         }
+        Ok(())
+    }
 
+    async fn insert_lock(&self, lock: &Lock) -> Result<(), String> {
+        let mut sql_connection = self.acquire().await?;
+        match sqlx::query(
+            "SELECT count(*) as count
+             FROM locks
+             WHERE relative_path = ?
+             AND lock_domain_id = ?;",
+        )
+        .bind(lock.relative_path.clone())
+        .bind(lock.lock_domain_id.clone())
+        .fetch_one(&mut sql_connection)
+        .await
+        {
+            Err(e) => {
+                return Err(format!("Error counting locks: {}", e));
+            }
+            Ok(row) => {
+                let count: i32 = row.get("count");
+                if count > 0 {
+                    return Err(format!(
+                        "Lock {} already exists in domain {}",
+                        lock.relative_path, lock.lock_domain_id
+                    ));
+                }
+            }
+        }
+        if let Err(e) = sqlx::query("INSERT INTO locks VALUES(?, ?, ?, ?);")
+            .bind(lock.relative_path.clone())
+            .bind(lock.lock_domain_id.clone())
+            .bind(lock.workspace_id.clone())
+            .bind(lock.branch_name.clone())
+            .execute(&mut sql_connection)
+            .await
+        {
+            return Err(format!("Error inserting into locks: {}", e));
+        }
         Ok(())
     }
 }

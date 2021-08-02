@@ -38,7 +38,7 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), Strin
     for lock in &locks_to_move {
         let mut new_lock = lock.clone();
         new_lock.lock_domain_id = parent_branch.lock_domain_id.clone();
-        if let Err(e) = save_new_lock(&connection, &new_lock) {
+        if let Err(e) = query.insert_lock(&new_lock).await {
             errors.push(format!(
                 "Error creating new lock for {}: {}",
                 new_lock.relative_path, e

@@ -392,9 +392,9 @@ fn main_impl() -> Result<(), String> {
         ("delete", Some(command_match)) => {
             delete_file_command(Path::new(command_match.value_of("path").unwrap()))
         }
-        ("lock", Some(command_match)) => {
-            lock_file_command(Path::new(command_match.value_of("path").unwrap()))
-        }
+        ("lock", Some(command_match)) => tokio_runtime.block_on(lock_file_command(Path::new(
+            command_match.value_of("path").unwrap(),
+        ))),
         ("unlock", Some(command_match)) => {
             unlock_file_command(Path::new(command_match.value_of("path").unwrap()))
         }

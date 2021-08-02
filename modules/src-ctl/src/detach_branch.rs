@@ -27,16 +27,17 @@ pub async fn detach_branch_command() -> Result<(), String> {
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
+    let query = connection.query();
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut repo_branch = connection.query().read_branch(&current_branch.name).await?;
+    let mut repo_branch = query.read_branch(&current_branch.name).await?;
     repo_branch.parent.clear();
 
     let locks_in_old_domain = read_locks(&connection, &repo_branch.lock_domain_id)?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
 
-    let descendants = find_branch_descendants(connection.query(), &current_branch.name).await?;
+    let descendants = find_branch_descendants(query, &current_branch.name).await?;
 
-    if let Err(e) = connection.query().update_branch(&repo_branch).await {
+    if let Err(e) = query.update_branch(&repo_branch).await {
         return Err(format!(
             "Error saving {} to clear its parent: {}",
             repo_branch.name, e
@@ -46,10 +47,10 @@ pub async fn detach_branch_command() -> Result<(), String> {
     let mut errors = Vec::new();
 
     for branch_name in &descendants {
-        match connection.query().read_branch(branch_name).await {
+        match query.read_branch(branch_name).await {
             Ok(mut branch) => {
                 branch.lock_domain_id = lock_domain_id.clone();
-                if let Err(e) = connection.query().update_branch(&branch).await {
+                if let Err(e) = query.update_branch(&branch).await {
                     errors.push(format!("Error updating branch {}: {}", branch_name, e));
                 } else {
                     println!("updated branch {}", branch_name);
@@ -66,7 +67,7 @@ pub async fn detach_branch_command() -> Result<(), String> {
             let mut new_lock = lock.clone();
             new_lock.lock_domain_id = lock_domain_id.clone();
             println!("moving lock for {}", lock.relative_path);
-            if let Err(e) = save_new_lock(&connection, &new_lock) {
+            if let Err(e) = query.insert_lock(&new_lock).await {
                 errors.push(format!(
                     "Error writing lock in new domain for {}: {}",
                     lock.relative_path, e

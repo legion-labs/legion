@@ -22,46 +22,6 @@ pub fn init_lock_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()
     Ok(())
 }
 
-pub fn save_new_lock(connection: &RepositoryConnection, lock: &Lock) -> Result<(), String> {
-    let mut sql_connection = connection.sql();
-    match block_on(
-        sqlx::query(
-            "SELECT count(*) as count
-             FROM locks
-             WHERE relative_path = ?
-             AND lock_domain_id = ?;",
-        )
-        .bind(lock.relative_path.clone())
-        .bind(lock.lock_domain_id.clone())
-        .fetch_one(&mut sql_connection),
-    ) {
-        Err(e) => {
-            return Err(format!("Error counting locks: {}", e));
-        }
-        Ok(row) => {
-            let count: i32 = row.get("count");
-            if count > 0 {
-                return Err(format!(
-                    "Lock {} already exists in domain {}",
-                    lock.relative_path, lock.lock_domain_id
-                ));
-            }
-        }
-    }
-
-    if let Err(e) = block_on(
-        sqlx::query("INSERT INTO locks VALUES(?, ?, ?, ?);")
-            .bind(lock.relative_path.clone())
-            .bind(lock.lock_domain_id.clone())
-            .bind(lock.workspace_id.clone())
-            .bind(lock.branch_name.clone())
-            .execute(&mut sql_connection),
-    ) {
-        return Err(format!("Error inserting into locks: {}", e));
-    }
-    Ok(())
-}
-
 fn read_lock(
     connection: &RepositoryConnection,
     lock_domain_id: &str,
@@ -163,21 +123,20 @@ pub fn read_locks(
     }
 }
 
-pub fn lock_file_command(path_specified: &Path) -> Result<(), String> {
+pub async fn lock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let repo_branch = tokio_runtime.block_on(query.read_branch(&current_branch.name))?;
+    let repo_branch = query.read_branch(&current_branch.name).await?;
     let lock = Lock {
         relative_path: make_canonical_relative_path(&workspace_root, path_specified)?,
         lock_domain_id: repo_branch.lock_domain_id.clone(),
         workspace_id: workspace_spec.id,
         branch_name: repo_branch.name,
     };
-    save_new_lock(&connection, &lock)
+    query.insert_lock(&lock).await
 }
 
 pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
