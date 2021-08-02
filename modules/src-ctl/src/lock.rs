@@ -22,23 +22,6 @@ pub fn init_lock_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()
     Ok(())
 }
 
-pub fn clear_lock(
-    connection: &RepositoryConnection,
-    lock_domain_id: &str,
-    canonical_relative_path: &str,
-) -> Result<(), String> {
-    let mut sql_connection = connection.sql();
-    if let Err(e) = block_on(
-        sqlx::query("DELETE from locks WHERE relative_path=? AND lock_domain_id=?;")
-            .bind(canonical_relative_path)
-            .bind(lock_domain_id)
-            .execute(&mut sql_connection),
-    ) {
-        return Err(format!("Error clearing lock: {}", e));
-    }
-    Ok(())
-}
-
 pub fn verify_empty_lock_domain(
     connection: &RepositoryConnection,
     lock_domain_id: &str,
@@ -111,16 +94,17 @@ pub async fn lock_file_command(path_specified: &Path) -> Result<(), String> {
     query.insert_lock(&lock).await
 }
 
-pub fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
+pub async fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let repo_branch = tokio_runtime.block_on(query.read_branch(&current_branch.name))?;
+    let repo_branch = query.read_branch(&current_branch.name).await?;
     let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
-    clear_lock(&connection, &repo_branch.lock_domain_id, &relative_path)
+    query
+        .clear_lock(&repo_branch.lock_domain_id, &relative_path)
+        .await
 }
 
 pub fn list_locks_command() -> Result<(), String> {

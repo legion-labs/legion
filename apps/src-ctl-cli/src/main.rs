@@ -395,9 +395,9 @@ fn main_impl() -> Result<(), String> {
         ("lock", Some(command_match)) => tokio_runtime.block_on(lock_file_command(Path::new(
             command_match.value_of("path").unwrap(),
         ))),
-        ("unlock", Some(command_match)) => {
-            unlock_file_command(Path::new(command_match.value_of("path").unwrap()))
-        }
+        ("unlock", Some(command_match)) => tokio_runtime.block_on(unlock_file_command(Path::new(
+            command_match.value_of("path").unwrap(),
+        ))),
         ("list-locks", Some(_command_match)) => list_locks_command(),
         ("diff", Some(command_match)) => {
             let notool = command_match.is_present("notool");

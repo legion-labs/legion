@@ -44,7 +44,10 @@ pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), Strin
                 new_lock.relative_path, e
             ));
         }
-        if let Err(e) = clear_lock(&connection, &lock.lock_domain_id, &lock.relative_path) {
+        if let Err(e) = query
+            .clear_lock(&lock.lock_domain_id, &lock.relative_path)
+            .await
+        {
             errors.push(format!(
                 "Error clearing old lock for {}: {}",
                 new_lock.relative_path, e

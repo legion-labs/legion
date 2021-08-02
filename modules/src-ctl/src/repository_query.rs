@@ -24,4 +24,9 @@ pub trait RepositoryQuery {
         lock_domain_id: &str,
         canonical_relative_path: &str,
     ) -> Result<Option<Lock>, String>;
+    async fn clear_lock(
+        &self,
+        lock_domain_id: &str,
+        canonical_relative_path: &str,
+    ) -> Result<(), String>;
 }

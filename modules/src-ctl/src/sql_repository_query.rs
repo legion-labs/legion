@@ -429,4 +429,21 @@ impl RepositoryQuery for SqlRepositoryQuery {
             Err(e) => Err(format!("Error fetching lock: {}", e)),
         }
     }
+
+    async fn clear_lock(
+        &self,
+        lock_domain_id: &str,
+        canonical_relative_path: &str,
+    ) -> Result<(), String> {
+        let mut sql_connection = self.acquire().await?;
+        if let Err(e) = sqlx::query("DELETE from locks WHERE relative_path=? AND lock_domain_id=?;")
+            .bind(canonical_relative_path)
+            .bind(lock_domain_id)
+            .execute(&mut sql_connection)
+            .await
+        {
+            return Err(format!("Error clearing lock: {}", e));
+        }
+        Ok(())
+    }
 }

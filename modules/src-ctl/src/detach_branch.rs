@@ -73,7 +73,10 @@ pub async fn detach_branch_command() -> Result<(), String> {
                     lock.relative_path, e
                 ));
             }
-            if let Err(e) = clear_lock(&connection, &lock.lock_domain_id, &lock.relative_path) {
+            if let Err(e) = query
+                .clear_lock(&lock.lock_domain_id, &lock.relative_path)
+                .await
+            {
                 errors.push(format!(
                     "Error clearning lock from old domain for {}: {}",
                     lock.relative_path, e
