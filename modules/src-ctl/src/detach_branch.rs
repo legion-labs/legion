@@ -22,15 +22,13 @@ fn find_branch_descendants(
     Ok(set)
 }
 
-pub fn detach_branch_command() -> Result<(), String> {
+pub async fn detach_branch_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let mut connection = connect_to_server(&workspace_spec).await?;
     let current_branch = read_current_branch(&workspace_root)?;
-    let mut repo_branch =
-        tokio_runtime.block_on(connection.query().read_branch(&current_branch.name))?;
+    let mut repo_branch = connection.query().read_branch(&current_branch.name).await?;
     repo_branch.parent.clear();
 
     let locks_in_old_domain = read_locks(&mut connection, &repo_branch.lock_domain_id)?;
@@ -38,7 +36,7 @@ pub fn detach_branch_command() -> Result<(), String> {
 
     let descendants = find_branch_descendants(&mut connection, &current_branch.name)?;
 
-    if let Err(e) = save_branch_to_repo(&mut connection, &repo_branch) {
+    if let Err(e) = connection.query().update_branch(&repo_branch).await {
         return Err(format!(
             "Error saving {} to clear its parent: {}",
             repo_branch.name, e
@@ -48,10 +46,10 @@ pub fn detach_branch_command() -> Result<(), String> {
     let mut errors = Vec::new();
 
     for branch_name in &descendants {
-        match tokio_runtime.block_on(connection.query().read_branch(branch_name)) {
+        match connection.query().read_branch(branch_name).await {
             Ok(mut branch) => {
                 branch.lock_domain_id = lock_domain_id.clone();
-                if let Err(e) = save_branch_to_repo(&mut connection, &branch) {
+                if let Err(e) = connection.query().update_branch(&branch).await {
                     errors.push(format!("Error updating branch {}: {}", branch_name, e));
                 } else {
                     println!("updated branch {}", branch_name);

@@ -60,7 +60,7 @@ pub fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<
     Ok(())
 }
 
-pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Result<(), String> {
+pub fn save_commit(connection: &RepositoryConnection, commit: &Commit) -> Result<(), String> {
     let mut sql_connection = connection.sql();
 
     if let Err(e) = block_on(
@@ -102,7 +102,7 @@ pub fn save_commit(connection: &mut RepositoryConnection, commit: &Commit) -> Re
     Ok(())
 }
 
-pub fn commit_exists(connection: &mut RepositoryConnection, id: &str) -> bool {
+pub fn commit_exists(connection: &RepositoryConnection, id: &str) -> bool {
     let mut sql_connection = connection.sql();
     let res = block_on(
         sqlx::query(
@@ -212,7 +212,7 @@ pub async fn commit_local_changes(
     save_current_branch(&workspace_root, &current_branch)?;
 
     //todo: will need to lock to avoid races in updating branch in the database
-    save_branch_to_repo(&mut connection, &current_branch)?;
+    connection.query().update_branch(&current_branch).await?;
 
     if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);
@@ -233,7 +233,7 @@ pub async fn commit_command(message: &str) -> Result<(), String> {
 }
 
 pub async fn find_branch_commits(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     branch: &Branch,
 ) -> Result<Vec<Commit>, String> {
     let mut commits = Vec::new();

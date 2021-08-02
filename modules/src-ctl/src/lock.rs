@@ -22,7 +22,7 @@ pub fn init_lock_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()
     Ok(())
 }
 
-pub fn save_new_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Result<(), String> {
+pub fn save_new_lock(connection: &RepositoryConnection, lock: &Lock) -> Result<(), String> {
     let mut sql_connection = connection.sql();
     match block_on(
         sqlx::query(
@@ -63,7 +63,7 @@ pub fn save_new_lock(connection: &mut RepositoryConnection, lock: &Lock) -> Resu
 }
 
 fn read_lock(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     lock_domain_id: &str,
     canonical_relative_path: &str,
 ) -> Result<Option<Lock>, String> {
@@ -91,7 +91,7 @@ fn read_lock(
 }
 
 pub fn clear_lock(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     lock_domain_id: &str,
     canonical_relative_path: &str,
 ) -> Result<(), String> {
@@ -108,7 +108,7 @@ pub fn clear_lock(
 }
 
 pub fn verify_empty_lock_domain(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     lock_domain_id: &str,
 ) -> Result<(), String> {
     let mut sql_connection = connection.sql();
@@ -134,7 +134,7 @@ pub fn verify_empty_lock_domain(
 }
 
 pub fn read_locks(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     lock_domain_id: &str,
 ) -> Result<Vec<Lock>, String> {
     let mut sql_connection = connection.sql();
@@ -215,7 +215,7 @@ pub fn list_locks_command() -> Result<(), String> {
 }
 
 pub async fn assert_not_locked(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     workspace_root: &Path,
     path_specified: &Path,
 ) -> Result<(), String> {

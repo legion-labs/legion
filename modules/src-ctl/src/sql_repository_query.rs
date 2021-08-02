@@ -82,6 +82,24 @@ impl RepositoryQuery for SqlRepositoryQuery {
         Ok(())
     }
 
+    async fn update_branch(&self, branch: &Branch) -> Result<(), String> {
+        let mut sql_connection = self.acquire().await?;
+        if let Err(e) = sqlx::query(
+            "UPDATE branches SET head=?, parent=?, lock_domain_id=?
+             WHERE name=?;",
+        )
+        .bind(branch.head.clone())
+        .bind(branch.parent.clone())
+        .bind(branch.lock_domain_id.clone())
+        .bind(branch.name.clone())
+        .execute(&mut sql_connection)
+        .await
+        {
+            return Err(format!("Error updating branch {}: {}", branch.name, e));
+        }
+        Ok(())
+    }
+
     async fn read_commit(&self, id: &str) -> Result<Commit, String> {
         let mut sql_connection = self.acquire().await?;
         let mut changes: Vec<HashedChange> = Vec::new();

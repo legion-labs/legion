@@ -425,10 +425,10 @@ fn main_impl() -> Result<(), String> {
             let name = command_match.value_of("name").unwrap();
             switch_branch_command(name)
         }
-        ("detach-branch", Some(_command_match)) => detach_branch_command(),
+        ("detach-branch", Some(_command_match)) => tokio_runtime.block_on(detach_branch_command()),
         ("attach-branch", Some(command_match)) => {
             let name = command_match.value_of("parent-branch-name").unwrap();
-            attach_branch_command(name)
+            tokio_runtime.block_on(attach_branch_command(name))
         }
         ("list-branches", Some(_command_match)) => list_branches_command(),
         ("revert", Some(command_match)) => {

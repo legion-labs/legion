@@ -225,7 +225,7 @@ pub fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
 
 pub async fn edit_file(
     workspace_connection: &mut LocalWorkspaceConnection,
-    repo_connection: &mut RepositoryConnection,
+    repo_connection: &RepositoryConnection,
     path_specified: &Path,
 ) -> Result<(), String> {
     let abs_path = make_path_absolute(path_specified);

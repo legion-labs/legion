@@ -104,7 +104,7 @@ fn find_latest_common_ancestor(
 
 async fn change_file_to(
     workspace_connection: &mut LocalWorkspaceConnection,
-    repo_connection: &mut RepositoryConnection,
+    repo_connection: &RepositoryConnection,
     relative_path: &Path,
     hash_to_sync: &str,
 ) -> Result<String, String> {
@@ -118,7 +118,7 @@ async fn change_file_to(
             delete_file_command(&local_path)?;
             return Ok(format!("Deleted {}", local_path.display()));
         }
-        edit_file(workspace_connection, repo_connection, &local_path).await?;
+        edit_file(workspace_connection, &repo_connection, &local_path).await?;
         if let Err(e) = repo_connection
             .blob_storage()
             .await?
@@ -163,7 +163,7 @@ async fn change_file_to(
 }
 
 async fn find_commit_ancestors(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     id: &str,
 ) -> Result<BTreeSet<String>, String> {
     let mut seeds: VecDeque<String> = VecDeque::new();
@@ -193,13 +193,13 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
     let current_branch = read_current_branch(&workspace_root)?;
     let mut destination_branch = query.read_branch(&current_branch.name).await?;
 
-    let merge_source_ancestors = find_commit_ancestors(&mut connection, &src_branch.head).await?;
-    let src_commit_history = find_branch_commits(&mut connection, &src_branch).await?;
+    let merge_source_ancestors = find_commit_ancestors(&connection, &src_branch.head).await?;
+    let src_commit_history = find_branch_commits(&connection, &src_branch).await?;
     if merge_source_ancestors.contains(&destination_branch.head) {
         //fast forward case
         destination_branch.head = src_branch.head;
         save_current_branch(&workspace_root, &destination_branch)?;
-        save_branch_to_repo(&mut connection, &destination_branch)?;
+        query.update_branch(&destination_branch).await?;
         println!("Fast-forward merge: branch updated, synching");
         return sync_command().await;
     }

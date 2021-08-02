@@ -40,26 +40,6 @@ fn write_branch_spec(file_path: &Path, branch: &Branch) -> Result<(), String> {
     }
 }
 
-pub fn save_branch_to_repo(
-    connection: &mut RepositoryConnection,
-    branch: &Branch,
-) -> Result<(), String> {
-    let mut sql_connection = connection.sql();
-    if let Err(e) = block_on(
-        sqlx::query(
-            "UPDATE branches SET head=?, parent=?, lock_domain_id=?
-             WHERE name=?;",
-        )
-        .bind(branch.head.clone())
-        .bind(branch.parent.clone())
-        .bind(branch.lock_domain_id.clone())
-        .bind(branch.name.clone())
-        .execute(&mut sql_connection),
-    ) {
-        return Err(format!("Error updating branch {}: {}", branch.name, e));
-    }
-    Ok(())
-}
 pub fn save_current_branch(workspace_root: &Path, branch: &Branch) -> Result<(), String> {
     let file_path = workspace_root.join(".lsc/branch.json");
     write_branch_spec(&file_path, branch)
@@ -128,7 +108,7 @@ pub async fn create_branch_command(name: &str) -> Result<(), String> {
     save_current_branch(&workspace_root, &new_branch)
 }
 
-pub fn read_branches(connection: &mut RepositoryConnection) -> Result<Vec<Branch>, String> {
+pub fn read_branches(connection: &RepositoryConnection) -> Result<Vec<Branch>, String> {
     let mut sql_connection = connection.sql();
     let mut res = Vec::new();
     match block_on(
