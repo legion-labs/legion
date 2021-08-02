@@ -1,7 +1,7 @@
 //! Swapchain helper
 
 use crossbeam_channel::{Receiver, Sender};
-use gfx_api::{
+use graphics_api::{
     DeviceContext, Fence, Format, GfxApi, GfxError, GfxResult, PresentSuccessResult, Queue,
     Swapchain, SwapchainDef, SwapchainImage,
 };

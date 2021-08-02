@@ -19,11 +19,11 @@ name = "streamer-server-test"
 path = "src/streamer_server.rs"
 
 [dependencies]
-gfx-api = { path = "../../modules/graphics-api", package = "legion-graphics-api" }
+graphics-api = { path = "../../modules/graphics-api", package = "legion-graphics-api" }
 presenter = { path = "../../modules/presenter", package = "legion-presenter" }
 log = "0.4"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
-gfx-api = { path = "../../modules/graphics-api", package = "legion-graphics-api", features = [
+presenter = { path = "../../modules/presenter", package = "legion-presenter", features = [
     "vulkan",
 ] }

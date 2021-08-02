@@ -9,11 +9,10 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gfx-api = { path = "../graphics-api", package = "legion-graphics-api" }
+graphics-api = { path = "../graphics-api", package = "legion-graphics-api" }
 log = "0.4"
 
 
-[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
-gfx-api = { path = "../graphics-api", package = "legion-graphics-api", features = [
-    "vulkan",
-] }
+[features]
+default = []
+vulkan = ["graphics-api/vulkan"]

@@ -1,4 +1,4 @@
-use gfx_api::prelude::*;
+use graphics_api::prelude::*;
 
 fn main() {
     run().unwrap();
@@ -16,7 +16,7 @@ fn run() -> GfxResult<()> {
     const WINDOW_HEIGHT: u32 = 600;
 
     //
-    // Init SDL2 (winit and anything that uses raw-window-handle works too!)
+    // Init a window
     //
     let monitors = Window::list_monitors();
     let window = Window::new(WindowType::Main(WindowMode::Windowed(WindowLocation {
