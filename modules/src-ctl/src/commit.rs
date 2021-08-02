@@ -121,7 +121,7 @@ pub async fn commit_local_changes(
     let local_changes = read_local_changes(workspace_connection)?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
-        assert_not_locked(&connection, &workspace_root, &abs_path).await?;
+        assert_not_locked(query, &workspace_root, &abs_path).await?;
     }
     let hashed_changes =
         upload_localy_edited_blobs(&workspace_root, &connection, &local_changes).await?;

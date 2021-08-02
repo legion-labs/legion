@@ -200,7 +200,7 @@ pub async fn track_new_file(
     }
 
     assert_not_locked(
-        repo_connection,
+        repo_connection.query(),
         workspace_connection.workspace_path(),
         &abs_path,
     )
@@ -225,7 +225,7 @@ pub fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
 
 pub async fn edit_file(
     workspace_connection: &mut LocalWorkspaceConnection,
-    repo_connection: &RepositoryConnection,
+    query: &dyn RepositoryQuery,
     path_specified: &Path,
 ) -> Result<(), String> {
     let abs_path = make_path_absolute(path_specified);
@@ -239,7 +239,7 @@ pub async fn edit_file(
 
     let workspace_root = workspace_connection.workspace_path();
     //todo: make sure file is tracked by finding it in the current tree hierarchy
-    assert_not_locked(repo_connection, workspace_root, &abs_path).await?;
+    assert_not_locked(query, workspace_root, &abs_path).await?;
 
     let relative_path = make_canonical_relative_path(workspace_root, &abs_path)?;
     match find_local_change(workspace_connection, &relative_path) {
@@ -266,5 +266,5 @@ pub async fn edit_file_command(path_specified: &Path) -> Result<(), String> {
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
-    edit_file(&mut workspace_connection, &connection, path_specified).await
+    edit_file(&mut workspace_connection, connection.query(), path_specified).await
 }

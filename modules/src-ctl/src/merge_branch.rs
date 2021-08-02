@@ -115,10 +115,10 @@ async fn change_file_to(
             return Ok(format!("Verified {}", local_path.display()));
         }
         if hash_to_sync.is_empty() {
-            delete_file_command(&local_path)?;
+            delete_file_command(&local_path).await?;
             return Ok(format!("Deleted {}", local_path.display()));
         }
-        edit_file(workspace_connection, repo_connection, &local_path).await?;
+        edit_file(workspace_connection, repo_connection.query(), &local_path).await?;
         if let Err(e) = repo_connection
             .blob_storage()
             .await?

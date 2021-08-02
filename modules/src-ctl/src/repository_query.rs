@@ -19,4 +19,9 @@ pub trait RepositoryQuery {
     async fn read_tree(&self, hash: &str) -> Result<Tree, String>;
     async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<(), String>;
     async fn insert_lock(&self, lock: &Lock) -> Result<(), String>;
+    async fn find_lock(
+        &self,
+        lock_domain_id: &str,
+        canonical_relative_path: &str,
+    ) -> Result<Option<Lock>, String>;
 }

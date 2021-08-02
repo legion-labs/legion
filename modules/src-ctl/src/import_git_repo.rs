@@ -47,7 +47,7 @@ async fn add_file_from_git(
                 revert_file(workspace_connection, repo_connection, &local_path).await?;
                 return edit_file_from_git(
                     workspace_connection,
-                    repo_connection,
+                    repo_connection.query(),
                     git_repo,
                     new_file,
                 )
@@ -81,14 +81,14 @@ async fn add_file_from_git(
 
 async fn edit_file_from_git(
     workspace_connection: &mut LocalWorkspaceConnection,
-    repo_connection: &RepositoryConnection,
+    query: &dyn RepositoryQuery,
     git_repo: &git2::Repository,
     new_file: &git2::DiffFile<'_>,
 ) -> Result<(), String> {
     let relative_path = new_file.path().unwrap();
     let local_path = workspace_connection.workspace_path().join(relative_path);
 
-    if let Err(e) = edit_file(workspace_connection, repo_connection, &local_path).await {
+    if let Err(e) = edit_file(workspace_connection, query, &local_path).await {
         return Err(format!("Error editing {}: {}", local_path.display(), e));
     }
 
@@ -120,7 +120,7 @@ fn import_commit_diff(
                 let old_file = delta.old_file();
                 let local_file = workspace_root.join(old_file.path().unwrap());
                 println!("deleting {}", old_file.path().unwrap().display());
-                if let Err(e) = delete_file_command(&local_file) {
+                if let Err(e) = runtime.block_on(delete_file_command(&local_file)) {
                     let message = format!("Error deleting file {}: {}", local_file.display(), e);
                     println!("{}", message);
                     errors.push(message);
@@ -163,7 +163,7 @@ fn import_commit_diff(
                     println!("modifying {}", path.display());
                     if let Err(e) = runtime.block_on(edit_file_from_git(
                         workspace_connection,
-                        repo_connection,
+                        repo_connection.query(),
                         git_repo,
                         &new_file,
                     )) {

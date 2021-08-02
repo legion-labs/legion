@@ -22,34 +22,6 @@ pub fn init_lock_database(sql_connection: &mut sqlx::AnyConnection) -> Result<()
     Ok(())
 }
 
-fn read_lock(
-    connection: &RepositoryConnection,
-    lock_domain_id: &str,
-    canonical_relative_path: &str,
-) -> Result<Option<Lock>, String> {
-    let mut sql_connection = connection.sql();
-    match block_on(
-        sqlx::query(
-            "SELECT workspace_id, branch_name
-             FROM locks
-             WHERE lock_domain_id=?
-             AND relative_path=?;",
-        )
-        .bind(lock_domain_id)
-        .bind(canonical_relative_path)
-        .fetch_optional(&mut sql_connection),
-    ) {
-        Ok(None) => Ok(None),
-        Ok(Some(row)) => Ok(Some(Lock {
-            relative_path: String::from(canonical_relative_path),
-            lock_domain_id: String::from(lock_domain_id),
-            workspace_id: row.get("workspace_id"),
-            branch_name: row.get("branch_name"),
-        })),
-        Err(e) => Err(format!("Error fetching lock: {}", e)),
-    }
-}
-
 pub fn clear_lock(
     connection: &RepositoryConnection,
     lock_domain_id: &str,
@@ -174,15 +146,18 @@ pub fn list_locks_command() -> Result<(), String> {
 }
 
 pub async fn assert_not_locked(
-    connection: &RepositoryConnection,
+    query: &dyn RepositoryQuery,
     workspace_root: &Path,
     path_specified: &Path,
 ) -> Result<(), String> {
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let current_branch = read_current_branch(workspace_root)?;
-    let repo_branch = connection.query().read_branch(&current_branch.name).await?;
+    let repo_branch = query.read_branch(&current_branch.name).await?;
     let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
-    match read_lock(connection, &repo_branch.lock_domain_id, &relative_path) {
+    match query
+        .find_lock(&repo_branch.lock_domain_id, &relative_path)
+        .await
+    {
         Ok(Some(lock)) => {
             if lock.branch_name == current_branch.name && lock.workspace_id == workspace_spec.id {
                 Ok(()) //locked by this workspace on this branch - all good

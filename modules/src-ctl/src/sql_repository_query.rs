@@ -401,4 +401,32 @@ impl RepositoryQuery for SqlRepositoryQuery {
         }
         Ok(())
     }
+
+    async fn find_lock(
+        &self,
+        lock_domain_id: &str,
+        canonical_relative_path: &str,
+    ) -> Result<Option<Lock>, String> {
+        let mut sql_connection = self.acquire().await?;
+        match sqlx::query(
+            "SELECT workspace_id, branch_name
+             FROM locks
+             WHERE lock_domain_id=?
+             AND relative_path=?;",
+        )
+        .bind(lock_domain_id)
+        .bind(canonical_relative_path)
+        .fetch_optional(&mut sql_connection)
+        .await
+        {
+            Ok(None) => Ok(None),
+            Ok(Some(row)) => Ok(Some(Lock {
+                relative_path: String::from(canonical_relative_path),
+                lock_domain_id: String::from(lock_domain_id),
+                workspace_id: row.get("workspace_id"),
+                branch_name: row.get("branch_name"),
+            })),
+            Err(e) => Err(format!("Error fetching lock: {}", e)),
+        }
+    }
 }
