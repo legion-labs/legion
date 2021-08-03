@@ -125,8 +125,8 @@ pub struct LocalCompiledAssetStore {
 }
 
 impl LocalCompiledAssetStore {
-    /// [`LocalCompiledAssetStore`] in a given directory.
-    pub fn new(root_path: CompiledAssetStoreAddr) -> Option<Self> {
+    /// Opens [`LocalCompiledAssetStore`] in a given directory.
+    pub fn open(root_path: CompiledAssetStoreAddr) -> Option<Self> {
         if !root_path.0.is_dir() {
             return None;
         }

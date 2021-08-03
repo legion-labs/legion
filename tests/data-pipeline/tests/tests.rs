@@ -109,7 +109,7 @@ fn compile_command() {
 
     let asset_checksum = result.compiled_assets[0].checksum;
 
-    let cas = LocalCompiledAssetStore::new(cas_addr).expect("valid cas");
+    let cas = LocalCompiledAssetStore::open(cas_addr).expect("valid cas");
     assert!(cas.exists(asset_checksum));
 
     let asset_content = cas.read(asset_checksum).expect("asset content");
@@ -172,7 +172,7 @@ fn mock_compile() {
 
     let asset_checksum = asset_info.checksum;
 
-    let cas = LocalCompiledAssetStore::new(cas_addr).expect("valid cas");
+    let cas = LocalCompiledAssetStore::open(cas_addr).expect("valid cas");
     assert!(cas.exists(asset_checksum));
 
     let asset_content = cas.read(asset_checksum).expect("asset content");

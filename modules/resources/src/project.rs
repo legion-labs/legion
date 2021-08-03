@@ -44,7 +44,7 @@ struct ResourceDb {
 pub struct Project {
     file: std::fs::File,
     db: ResourceDb,
-    projectroot_path: PathBuf,
+    project_dir: PathBuf,
 }
 
 #[derive(Debug)]
@@ -78,8 +78,8 @@ impl Project {
     ///
     /// This method replaces the filename in `work_dir` (if one exists) with
     /// the file name of the project index.
-    pub fn root_to_index_path(projectroot_path: &Path) -> PathBuf {
-        let mut path = projectroot_path.to_owned();
+    pub fn root_to_index_path(project_dir: &Path) -> PathBuf {
+        let mut path = project_dir.to_owned();
         if path.is_dir() {
             path.push(PROJECT_INDEX_FILENAME);
         } else {
@@ -90,12 +90,12 @@ impl Project {
 
     /// Returns the path to project's index file.
     pub fn indexfile_path(&self) -> PathBuf {
-        Self::root_to_index_path(&self.projectroot_path)
+        Self::root_to_index_path(&self.project_dir)
     }
 
     /// Creates a new project index file turining the containing directory into a project.
-    pub fn create_new(projectroot_path: &Path) -> Result<Self, Error> {
-        let index_path = Self::root_to_index_path(projectroot_path);
+    pub fn create_new(project_dir: &Path) -> Result<Self, Error> {
+        let index_path = Self::root_to_index_path(project_dir);
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -106,17 +106,17 @@ impl Project {
         let db = ResourceDb::default();
         serde_json::to_writer(&file, &db).map_err(|_e| Error::ParseError)?;
 
-        let projectroot_path = index_path.parent().unwrap().to_owned();
+        let project_dir = index_path.parent().unwrap().to_owned();
         Ok(Self {
             file,
             db,
-            projectroot_path,
+            project_dir,
         })
     }
 
     /// Opens the project index specified
-    pub fn open(projectroot_path: &Path) -> Result<Self, Error> {
-        let index_path = Self::root_to_index_path(projectroot_path);
+    pub fn open(project_dir: &Path) -> Result<Self, Error> {
+        let index_path = Self::root_to_index_path(project_dir);
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -126,11 +126,11 @@ impl Project {
 
         let db = serde_json::from_reader(&file).map_err(|_e| Error::ParseError)?;
 
-        let projectroot_path = index_path.parent().unwrap().to_owned();
+        let project_dir = index_path.parent().unwrap().to_owned();
         Ok(Self {
             file,
             db,
-            projectroot_path,
+            project_dir,
         })
     }
 
@@ -348,7 +348,7 @@ impl Project {
 
     /// Returns the root directory where resources are located.
     pub fn resource_dir(&self) -> PathBuf {
-        self.projectroot_path.clone()
+        self.project_dir.clone()
     }
 
     fn metadata_path(&self, id: ResourceId) -> PathBuf {
@@ -359,7 +359,7 @@ impl Project {
     }
 
     fn resource_path(&self, id: ResourceId) -> PathBuf {
-        let mut path = self.projectroot_path.clone();
+        let mut path = self.project_dir.clone();
         path.push(format!("{:x}", id));
         path.set_extension(RESOURCE_EXT);
         path
@@ -563,8 +563,8 @@ mod tests {
         }
     }
 
-    fn create_actor(projectroot_path: &Path) -> (Project, ResourceRegistry) {
-        let index_path = Project::root_to_index_path(projectroot_path);
+    fn create_actor(project_dir: &Path) -> (Project, ResourceRegistry) {
+        let index_path = Project::root_to_index_path(project_dir);
         let mut project = Project::open(&index_path).unwrap();
         let mut resources = ResourceRegistry::default();
         resources.register_type(RESOURCE_TEXTURE, Box::new(NullResourceProc {}));
@@ -711,8 +711,8 @@ mod tests {
 
     #[test]
     fn collect_dependencies() {
-        let projectroot_path = setup_test();
-        let (project, _) = create_actor(projectroot_path.path());
+        let project_dir = setup_test();
+        let (project, _) = create_actor(project_dir.path());
 
         let top_level_resource = project
             .find_resource(&ResourcePath::from("hero.actor"))
@@ -739,8 +739,8 @@ mod tests {
             assert_eq!(proj.find_resource(&new_name).unwrap(), skeleton_id);
         };
 
-        let projectroot_path = setup_test();
-        let (mut project, mut resources) = create_actor(projectroot_path.path());
+        let project_dir = setup_test();
+        let (mut project, mut resources) = create_actor(project_dir.path());
         assert!(project.commit().is_ok());
         create_sky_material(&mut project, &mut resources);
 

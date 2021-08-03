@@ -49,7 +49,7 @@ fn compile(
         Box::new(test_resource::TestResourceProc {}),
     );
 
-    let mut asset_store = LocalCompiledAssetStore::new(compiled_asset_store_path)
+    let mut asset_store = LocalCompiledAssetStore::open(compiled_asset_store_path)
         .ok_or(CompilerError::AssetStoreError)?;
 
     // todo: convert ResourceId to AssetId

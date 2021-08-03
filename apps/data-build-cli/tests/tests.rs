@@ -43,7 +43,7 @@ fn data_build() {
         }
         let mut build = DataBuildOptions::new(&buildindex_path)
             .asset_store(&CompiledAssetStoreAddr::from(cas.clone()))
-            .open_or_create()
+            .create(project_dir)
             .expect("new build index");
         build.source_pull().expect("successful pull");
 

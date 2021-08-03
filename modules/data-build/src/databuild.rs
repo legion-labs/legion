@@ -38,7 +38,11 @@ fn compute_context_hash(
     hasher.finish()
 }
 
-/// The build configuration.
+/// Options and flags used by [`DataBuild`].
+///
+/// To open or create `DataBuild` first call [`DataBuildOptions::new`], then chain calls to
+/// methods to set different options, then call [`DataBuildOptions::open_or_create`].
+/// This will give  you a [`Result`] with a [`DataBuild`] that you can further operate on.
 #[derive(Clone)]
 pub struct DataBuildOptions {
     buildindex_path: PathBuf,
@@ -47,7 +51,7 @@ pub struct DataBuildOptions {
 }
 
 impl DataBuildOptions {
-    /// Creates a new data build configuration.
+    /// Creates a new data build options.
     pub fn new(buildindex_path: impl AsRef<Path>) -> Self {
         Self {
             buildindex_path: buildindex_path.as_ref().to_owned(),
@@ -68,9 +72,26 @@ impl DataBuildOptions {
         self
     }
 
-    /// Open data build index if one exists. Tries to create one otherwise.
+    /// Opens the existing build index.
+    ///
+    /// If the build index does not exist it creates one if a project is present in the same directory.
     pub fn open_or_create(&self) -> Result<DataBuild, Error> {
+        DataBuild::open_or_create(self)
+    }
+
+    /// Opens existing build index.
+    ///
+    /// The following conditions need to be met to successfully open a build index:
+    /// * [`CompiledAssetStore`] must exist under a given address.
+    /// * A provided build index must exist and be of a supported version.
+    /// * The build index must point to an existing [`Project`].
+    pub fn open(&self) -> Result<DataBuild, Error> {
         DataBuild::open(self)
+    }
+
+    /// Create new build index for a specified project.
+    pub fn create(&self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
+        DataBuild::new(self, project_dir.as_ref())
     }
 }
 
@@ -88,8 +109,8 @@ pub struct DataBuild {
 }
 
 impl DataBuild {
-    fn new(config: &DataBuildOptions, project_root_path: &Path) -> Result<Self, Error> {
-        let project = Self::open_project(project_root_path)?;
+    fn new(config: &DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
+        let project = Self::open_project(project_dir)?;
 
         let build_index = BuildIndex::create_new(
             &config.buildindex_path,
@@ -99,8 +120,22 @@ impl DataBuild {
         .map_err(|_e| Error::IOError)?;
 
         let asset_store =
-            LocalCompiledAssetStore::new(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
+            LocalCompiledAssetStore::open(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
 
+        Ok(Self {
+            build_index,
+            project,
+            asset_store,
+            config: config.clone(),
+        })
+    }
+
+    fn open(config: &DataBuildOptions) -> Result<Self, Error> {
+        let asset_store =
+            LocalCompiledAssetStore::open(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
+
+        let build_index = BuildIndex::open(&config.buildindex_path, Self::version())?;
+        let project = build_index.open_project()?;
         Ok(Self {
             build_index,
             project,
@@ -112,10 +147,10 @@ impl DataBuild {
     /// Opens the existing build index.
     ///
     /// If the build index does not exist it creates one if a project is present in the directory.
-    pub fn open(config: &DataBuildOptions) -> Result<Self, Error> {
+    fn open_or_create(config: &DataBuildOptions) -> Result<Self, Error> {
         // todo(kstasik): better error
         let asset_store =
-            LocalCompiledAssetStore::new(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
+            LocalCompiledAssetStore::open(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
         match BuildIndex::open(&config.buildindex_path, Self::version()) {
             Ok(build_index) => {
                 let project = build_index.open_project()?;
@@ -144,8 +179,8 @@ impl DataBuild {
         Err(Error::IntegrityFailure)
     }
 
-    fn open_project(projectroot_path: &Path) -> Result<Project, Error> {
-        Project::open(projectroot_path).map_err(|e| match e {
+    fn open_project(project_dir: &Path) -> Result<Project, Error> {
+        Project::open(project_dir).map_err(|e| match e {
             legion_resources::Error::ParseError => Error::IntegrityFailure,
             legion_resources::Error::NotFound | legion_resources::Error::InvalidPath => {
                 Error::NotFound
@@ -388,19 +423,19 @@ mod tests {
     #[test]
     fn create() {
         let work_dir = tempfile::tempdir().unwrap();
-
+        let project_dir = work_dir.path();
         let projectindex_path = {
-            let project = Project::create_new(work_dir.path()).expect("failed to create a project");
+            let project = Project::create_new(project_dir).expect("failed to create a project");
             project.indexfile_path()
         };
         let cas_addr = CompiledAssetStoreAddr::from(work_dir.path().to_owned());
 
-        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
+        let buildindex_path = project_dir.join(TEST_BUILDINDEX_FILENAME);
 
         {
             let _build = DataBuildOptions::new(&buildindex_path)
                 .asset_store(&cas_addr)
-                .open_or_create()
+                .create(project_dir)
                 .expect("valid data build index");
         }
 
@@ -417,12 +452,12 @@ mod tests {
     #[test]
     fn source_pull() {
         let work_dir = tempfile::tempdir().unwrap();
+        let project_dir = work_dir.path();
 
         let mut resources = setup_registry();
 
         {
-            let mut project =
-                Project::create_new(work_dir.path()).expect("failed to create a project");
+            let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
             let texture = project
                 .add_resource(
@@ -451,11 +486,11 @@ mod tests {
                 .unwrap();
         }
 
-        let mut config = DataBuildOptions::new(work_dir.path().join(TEST_BUILDINDEX_FILENAME));
-        config.asset_store(&CompiledAssetStoreAddr::from(work_dir.path().to_owned()));
+        let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
+        config.asset_store(&CompiledAssetStoreAddr::from(project_dir.to_owned()));
 
         {
-            let mut build = config.open_or_create().expect("to create index");
+            let mut build = config.create(project_dir).expect("to create index");
 
             let updated_count = build.source_pull().unwrap();
             assert_eq!(updated_count, 2);
@@ -465,7 +500,7 @@ mod tests {
         }
 
         {
-            let mut project = Project::open(work_dir.path()).unwrap();
+            let mut project = Project::open(project_dir).unwrap();
             project
                 .add_resource(
                     ResourcePath::from("orphan"),
@@ -477,7 +512,7 @@ mod tests {
         }
 
         {
-            let mut build = config.open_or_create().expect("to open index");
+            let mut build = config.open().expect("to open index");
             let updated_count = build.source_pull().unwrap();
             assert_eq!(updated_count, 1);
         }
@@ -499,10 +534,10 @@ mod tests {
     #[test]
     fn compile() {
         let work_dir = tempfile::tempdir().unwrap();
+        let project_dir = work_dir.path();
         let mut resources = setup_registry();
         {
-            let mut project =
-                Project::create_new(work_dir.path()).expect("failed to create a project");
+            let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
             let texture = project
                 .add_resource(
@@ -530,11 +565,11 @@ mod tests {
                 .unwrap();
         }
 
-        let assetstore_root = CompiledAssetStoreAddr::from(work_dir.path());
-        let mut build = DataBuildOptions::new(work_dir.path().join(TEST_BUILDINDEX_FILENAME))
-            .asset_store(&assetstore_root)
+        let assetstore_path = CompiledAssetStoreAddr::from(work_dir.path());
+        let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+            .asset_store(&assetstore_path)
             .compiler_dir(target_dir())
-            .open_or_create()
+            .create(project_dir)
             .expect("to create index");
 
         build.source_pull().unwrap();
@@ -554,7 +589,7 @@ mod tests {
         assert_eq!(manifest.compiled_assets.len(), 1); // for now only the root asset is compiled
 
         let compiled_checksum = manifest.compiled_assets[0].checksum;
-        let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
+        let asset_store = LocalCompiledAssetStore::open(assetstore_path).unwrap();
         assert!(asset_store.exists(compiled_checksum));
 
         assert!(output_manifest_file.exists());
@@ -593,11 +628,11 @@ mod tests {
     #[test]
     fn resource_modify_compile() {
         let work_dir = tempfile::tempdir().unwrap();
+        let project_dir = work_dir.path();
         let mut resources = setup_registry();
 
         let (resource_id, resource_handle) = {
-            let mut project =
-                Project::create_new(work_dir.path()).expect("failed to create a project");
+            let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
             let resource_handle = resources.new_resource(test_resource::TYPE_ID).unwrap();
             let resource_id = project
@@ -611,16 +646,16 @@ mod tests {
             (resource_id, resource_handle)
         };
 
-        let assetstore_root = CompiledAssetStoreAddr::from(work_dir.path());
-        let mut config = DataBuildOptions::new(work_dir.path().join(TEST_BUILDINDEX_FILENAME));
+        let assetstore_path = CompiledAssetStoreAddr::from(work_dir.path());
+        let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
         config
-            .asset_store(&assetstore_root)
+            .asset_store(&assetstore_path)
             .compiler_dir(target_dir());
 
         let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
         let original_checksum = {
-            let mut build = config.open_or_create().expect("to create index");
+            let mut build = config.create(project_dir).expect("to create index");
             build.source_pull().expect("failed to pull from project");
 
             let manifest = build
@@ -638,7 +673,7 @@ mod tests {
             let original_checksum = manifest.compiled_assets[0].checksum;
 
             {
-                let asset_store = LocalCompiledAssetStore::new(assetstore_root.clone()).unwrap();
+                let asset_store = LocalCompiledAssetStore::open(assetstore_path.clone()).unwrap();
                 assert!(asset_store.exists(original_checksum));
             }
 
@@ -657,7 +692,7 @@ mod tests {
             original_checksum
         };
 
-        let mut project = Project::open(work_dir.path()).expect("failed to open project");
+        let mut project = Project::open(project_dir).expect("failed to open project");
 
         resource_handle
             .get_mut::<test_resource::TestResource>(&mut resources)
@@ -669,7 +704,7 @@ mod tests {
             .unwrap();
 
         let modified_checksum = {
-            let mut build = config.open_or_create().expect("to open index");
+            let mut build = config.open().expect("to open index");
             build.source_pull().expect("failed to pull from project");
             let manifest = build
                 .compile(
@@ -686,7 +721,7 @@ mod tests {
             let modified_checksum = manifest.compiled_assets[0].checksum;
 
             {
-                let asset_store = LocalCompiledAssetStore::new(assetstore_root).unwrap();
+                let asset_store = LocalCompiledAssetStore::open(assetstore_path).unwrap();
                 assert!(asset_store.exists(original_checksum));
                 assert!(asset_store.exists(modified_checksum));
             }

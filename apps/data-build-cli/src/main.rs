@@ -99,9 +99,7 @@ fn main() -> Result<(), String> {
             }
         }
 
-        let mut build = config
-            .open_or_create()
-            .map_err(|_e| "Failed to open build index")?;
+        let mut build = config.open().map_err(|_e| "Failed to open build index")?;
         let output = build
             .compile(&source_name, &manifest_file, target, platform, &locale)
             .map_err(|e| format!("Compilation Failed: '{}'", e))?;
