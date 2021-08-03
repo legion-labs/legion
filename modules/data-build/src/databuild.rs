@@ -311,8 +311,6 @@ impl DataBuild {
             })
             .collect();
 
-        // todo: compare data_build/rustc version.
-
         let (compiler_file, _) = compilers
             .iter()
             .find(|info| info.1.resource_type.contains(&resource_id.resource_type()))
