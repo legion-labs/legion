@@ -13,8 +13,8 @@ pub trait Reference: 'static {
 
     fn get_short_type_name() -> &'static str {
         let name = Self::get_name();
-        match name.rfind("::") {
-            Some(index) => &name[(index + 2)..],
+        match name.rsplit("::").next() {
+            Some(name) => name,
             None => name,
         }
     }
