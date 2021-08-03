@@ -15,9 +15,15 @@ impl HTTPRepositoryQuery {
 
 #[async_trait]
 impl RepositoryQuery for HTTPRepositoryQuery {
-    async fn insert_workspace(&self, _spec: &Workspace) -> Result<(), String> {
-        Err(String::from("insert_workspace not implemented"))
+    async fn insert_workspace(&self, spec: &Workspace) -> Result<(), String> {
+        let request = ServerRequest::InsertWorkspace(InsertWorkspaceRequest {
+            repo_name: self.repo_name.clone(),
+            spec: spec.clone(),
+        });
+        let _resp = execute_request(&self.url, &request).await?;
+        Ok(())
     }
+
     async fn read_branch(&self, _name: &str) -> Result<Branch, String> {
         panic!("not implemented");
     }

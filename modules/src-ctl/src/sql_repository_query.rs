@@ -9,8 +9,8 @@ pub struct SqlRepositoryQuery {
 }
 
 impl SqlRepositoryQuery {
-    pub async fn new(pool: Arc<SqlConnectionPool>) -> Result<Self, String> {
-        Ok(Self { pool })
+    pub fn new(pool: Arc<SqlConnectionPool>) -> Self {
+        Self { pool }
     }
 
     async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>, String> {

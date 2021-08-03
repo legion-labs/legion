@@ -1,3 +1,4 @@
+use crate::Workspace;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -16,10 +17,17 @@ pub struct ReadBlobStorageSpecRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct InsertWorkspaceRequest {
+    pub repo_name: String,
+    pub spec: Workspace,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     Ping(PingRequest),
     InitRepo(InitRepositoryRequest),
     ReadBlobStorageSpec(ReadBlobStorageSpecRequest),
+    InsertWorkspace(InsertWorkspaceRequest),
 }
 
 impl ServerRequest {

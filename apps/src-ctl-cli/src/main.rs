@@ -478,9 +478,9 @@ fn main_impl() -> Result<(), String> {
             Path::new(command_match.value_of("path").unwrap()),
             command_match.value_of("branch"),
         ),
-        ("ping", Some(command_match)) => {
-            tokio_runtime.block_on(ping_console_command(command_match.value_of("server_uri").unwrap()))
-        }
+        ("ping", Some(command_match)) => tokio_runtime.block_on(ping_console_command(
+            command_match.value_of("server_uri").unwrap(),
+        )),
         other_match => Err(format!("unknown subcommand match: {:?}", &other_match)),
     }
 }

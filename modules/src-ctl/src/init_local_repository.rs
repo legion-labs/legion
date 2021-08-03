@@ -21,7 +21,7 @@ pub fn init_repo_database(
 }
 
 pub async fn push_init_repo_data(pool: Arc<SqlConnectionPool>) -> Result<(), String> {
-    let query = SqlRepositoryQuery::new(pool).await?;
+    let query = SqlRepositoryQuery::new(pool);
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();

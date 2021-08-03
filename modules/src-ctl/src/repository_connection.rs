@@ -23,7 +23,7 @@ impl RepositoryConnection {
             }
             _ => {
                 let pool = Arc::new(SqlConnectionPool::new(repo_uri).await?);
-                repo_query = Box::new(SqlRepositoryQuery::new(pool).await?);
+                repo_query = Box::new(SqlRepositoryQuery::new(pool));
             }
         }
         let blob_storage_spec = repo_query.read_blob_storage_spec().await?;

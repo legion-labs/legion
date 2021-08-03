@@ -1,5 +1,6 @@
 use http::response::Response;
 use hyper::body::Body;
+use legion_src_ctl::sql_repository_query::SqlRepositoryQuery;
 use legion_src_ctl::{sql::*, *};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -28,6 +29,31 @@ fn read_blob_storage_spec_req(_name: &str) -> Result<String, String> {
     Ok(blob_spec.to_json())
 }
 
+async fn insert_workspace_req(repo_name: &str, spec: &Workspace) -> Result<String, String> {
+    let mut pool: Option<Arc<SqlConnectionPool>> = None;
+    {
+        let pool_read = POOLS.read().unwrap();
+        if let Some(p) = pool_read.get(repo_name) {
+            pool = Some(p.clone());
+        }
+    }
+
+    if pool.is_none() {
+        let db_server_uri = get_sql_uri();
+        let repo_uri = format!("{}/{}", db_server_uri, repo_name);
+        let p = Arc::new(SqlConnectionPool::new(&repo_uri).await?);
+        POOLS
+            .write()
+            .unwrap()
+            .insert(String::from(repo_name), p.clone());
+        pool = Some(p);
+    }
+
+    let query = SqlRepositoryQuery::new(pool.unwrap());
+    query.insert_workspace(spec).await?;
+    Ok(String::from(""))
+}
+
 async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
     let req = ServerRequest::from_json(std::str::from_utf8(&body).unwrap())?;
     println!("{:?}", req);
@@ -35,6 +61,9 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::Ping(req) => Ok(format!("Pong from {}", req.specified_uri)),
         ServerRequest::InitRepo(req) => init_remote_repository_req(&req.repo_name).await,
         ServerRequest::ReadBlobStorageSpec(req) => read_blob_storage_spec_req(&req.repo_name),
+        ServerRequest::InsertWorkspace(req) => {
+            insert_workspace_req(&req.repo_name, &req.spec).await
+        }
     }
 }
 
