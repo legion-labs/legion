@@ -1210,6 +1210,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-data-build-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "legion-data-build",
+ "legion-data-compiler",
+ "legion-resources",
+ "tempfile",
+]
+
+[[package]]
 name = "legion-data-compiler"
 version = "0.1.0"
 dependencies = [
