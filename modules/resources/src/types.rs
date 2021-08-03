@@ -66,16 +66,23 @@ impl LowerHex for ResourceId {
 
 impl fmt::Display for ResourceId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", self.id.get()))
+        f.write_fmt(format_args!("{:#016x}", self.id))
     }
 }
 
 impl FromStr for ResourceId {
     type Err = std::num::ParseIntError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let id = std::num::NonZeroU64::from_str(s)?;
-        Ok(Self { id })
+    fn from_str(mut s: &str) -> Result<Self, Self::Err> {
+        s = s.trim_start_matches("0x");
+        let id = u64::from_str_radix(s, 16)?;
+        if id == 0 {
+            Err("Z".parse::<i32>().expect_err("ParseIntError"))
+        } else {
+            // SAFETY: id is not zero in this else clause.
+            let id = unsafe { std::num::NonZeroU64::new_unchecked(id) };
+            Ok(Self { id })
+        }
     }
 }
 
