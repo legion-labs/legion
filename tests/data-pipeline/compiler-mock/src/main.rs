@@ -8,12 +8,16 @@ use std::{
 use legion_assets::{test_asset, AssetId};
 use legion_data_compiler::{
     compiled_asset_store::{CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore},
-    compiler_api::{compiler_load_resource, compiler_main, CompilerDescriptor, CompilerError},
+    compiler_api::{
+        compiler_load_resource, compiler_main, CompilerDescriptor, CompilerError,
+        DATA_BUILD_VERSION,
+    },
     CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
 use legion_resources::{ResourceId, ResourceRegistry};
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
+    build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
     resource_types: &[mock_offline::TYPE_ID],

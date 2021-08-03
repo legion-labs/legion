@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::{env, io};
 
 use legion_data_compiler::compiled_asset_store::{CompiledAssetStoreAddr, LocalCompiledAssetStore};
+use legion_data_compiler::compiler_api::DATA_BUILD_VERSION;
 use legion_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfo, CompilerInfoCmd,
     CompilerInfoCmdOutput,
@@ -16,8 +17,6 @@ use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
 
 use crate::buildindex::BuildIndex;
 use crate::Error;
-
-const DATABUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Context hash represents all that goes into resource compilation
 /// excluding the resource itself.
@@ -307,6 +306,7 @@ impl DataBuild {
                 info_cmd
                     .execute(&info.path)
                     .ok()
+                    .filter(|res| res.build_version == Self::version())
                     .map(|res| ((*info).clone(), res))
             })
             .collect();
@@ -423,7 +423,7 @@ impl DataBuild {
 
     /// Returns the global version of the databuild module.
     pub fn version() -> &'static str {
-        DATABUILD_VERSION
+        DATA_BUILD_VERSION
     }
 
     /// The default name of the output .manifest file.

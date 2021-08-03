@@ -16,11 +16,12 @@
 //!
 //! ```no_run
 //! # use legion_data_compiler::{CompiledAsset, CompilerHash, Locale, Platform, Target};
-//! # use legion_data_compiler::compiler_api::{compiler_main, CompilerDescriptor, CompilerError};
+//! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerDescriptor, CompilerError};
 //! # use legion_resources::ResourceId;
 //! # use legion_data_compiler::compiled_asset_store::CompiledAssetStoreAddr;
 //! # use std::path::Path;
 //! static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
+//!    build_version: DATA_BUILD_VERSION,
 //!    code_version: "",
 //!    data_version: "",
 //!    resource_types: &[],
@@ -106,8 +107,20 @@ use std::{
     str::FromStr,
 };
 
+/// Current version of data pipeline.
+///
+/// > **NOTE**: This does not follow *Semantic Versioning* rules.
+///
+/// Changing `DATA_BUILD_VERSION` will:
+///
+/// * Invalidate all `data compilers`.
+/// * Invalidate all `build index` files.
+pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// Defines data compiler properties.
 pub struct CompilerDescriptor {
+    /// Data build version of data compiler.
+    pub build_version: &'static str,
     /// Version of compiler's code.
     pub code_version: &'static str,
     /// Version of resource and asset data formats.

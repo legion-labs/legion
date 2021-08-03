@@ -179,6 +179,8 @@ impl CommandBuilder {
 #[derive(Serialize, Deserialize, Debug)]
 /// Output of `compiler_info` command.
 pub struct CompilerInfoCmdOutput {
+    /// Data build version of data compiler.
+    pub build_version: String,
     /// Code version of data compiler.
     pub code_version: String,
     /// Resource and Asset data version.
@@ -190,6 +192,7 @@ pub struct CompilerInfoCmdOutput {
 impl CompilerInfoCmdOutput {
     pub(crate) fn from_descriptor(descriptor: &CompilerDescriptor) -> Self {
         Self {
+            build_version: descriptor.build_version.to_owned(),
             code_version: descriptor.code_version.to_owned(),
             data_version: descriptor.data_version.to_owned(),
             resource_type: descriptor.resource_types.to_owned(),
