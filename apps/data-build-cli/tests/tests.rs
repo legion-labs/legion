@@ -1,6 +1,6 @@
 use std::fs;
 
-use legion_data_build::{Config, DataBuild, ResourcePath};
+use legion_data_build::{DataBuildOptions, ResourcePath};
 use legion_data_compiler::compiled_asset_store::CompiledAssetStoreAddr;
 use legion_resources::{test_resource, Project, ResourceRegistry};
 
@@ -41,8 +41,10 @@ fn data_build() {
                 )
                 .expect("adding the resource");
         }
-        let config = Config::new(&buildindex_path, CompiledAssetStoreAddr::from(cas.clone()));
-        let mut build = DataBuild::open(config).expect("new build index");
+        let mut build = DataBuildOptions::new(&buildindex_path)
+            .asset_store(&CompiledAssetStoreAddr::from(cas.clone()))
+            .open_or_create()
+            .expect("new build index");
         build.source_pull().expect("successful pull");
 
         resource_name

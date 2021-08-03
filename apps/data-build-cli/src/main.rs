@@ -1,7 +1,7 @@
 use std::{path::PathBuf, str::FromStr};
 
 use clap::{AppSettings, Arg, SubCommand};
-use legion_data_build::{Config, DataBuild, ResourcePath};
+use legion_data_build::{DataBuildOptions, ResourcePath};
 use legion_data_compiler::{
     compiled_asset_store::CompiledAssetStoreAddr, Locale, Platform, Target,
 };
@@ -88,7 +88,8 @@ fn main() -> Result<(), String> {
             CompiledAssetStoreAddr::from(cmd_args.value_of(ARG_NAME_CAS).unwrap());
         let buildindex_path = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
 
-        let mut config = Config::new(buildindex_path, asset_store_path);
+        let mut config = DataBuildOptions::new(buildindex_path);
+        config.asset_store(&asset_store_path);
         if let Ok(cwd) = std::env::current_dir() {
             config.compiler_dir(cwd);
         }
@@ -98,7 +99,9 @@ fn main() -> Result<(), String> {
             }
         }
 
-        let mut build = DataBuild::open(config).map_err(|_e| "Failed to open build index")?;
+        let mut build = config
+            .open_or_create()
+            .map_err(|_e| "Failed to open build index")?;
         let output = build
             .compile(&source_name, &manifest_file, target, platform, &locale)
             .map_err(|e| format!("Compilation Failed: '{}'", e))?;

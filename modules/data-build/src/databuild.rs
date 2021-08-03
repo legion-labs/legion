@@ -40,32 +40,37 @@ fn compute_context_hash(
 
 /// The build configuration.
 #[derive(Clone)]
-pub struct Config {
+pub struct DataBuildOptions {
     buildindex_path: PathBuf,
     assetstore_path: CompiledAssetStoreAddr,
     compiler_search_paths: Vec<PathBuf>,
 }
 
-impl Config {
+impl DataBuildOptions {
     /// Creates a new data build configuration.
-    pub fn new(
-        buildindex_path: impl Into<PathBuf>,
-        assetstore_path: CompiledAssetStoreAddr,
-    ) -> Self {
-        // default search paths.
-        let compiler_search_paths = vec![PathBuf::from(".")];
-
+    pub fn new(buildindex_path: impl AsRef<Path>) -> Self {
         Self {
-            buildindex_path: buildindex_path.into(),
-            assetstore_path,
-            compiler_search_paths,
+            buildindex_path: buildindex_path.as_ref().to_owned(),
+            assetstore_path: CompiledAssetStoreAddr::from(buildindex_path.as_ref()),
+            compiler_search_paths: vec![],
         }
+    }
+
+    /// Set asset store location for compiled assets.
+    pub fn asset_store(&mut self, assetstore_path: &CompiledAssetStoreAddr) -> &mut Self {
+        self.assetstore_path = assetstore_path.clone();
+        self
     }
 
     /// Adds a directory to compiler search paths.
     pub fn compiler_dir<T: AsRef<Path>>(&mut self, dir: T) -> &mut Self {
         self.compiler_search_paths.push(dir.as_ref().to_owned());
         self
+    }
+
+    /// Open data build index if one exists. Tries to create one otherwise.
+    pub fn open_or_create(&self) -> Result<DataBuild, Error> {
+        DataBuild::open(self)
     }
 }
 
@@ -79,11 +84,11 @@ pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
     asset_store: LocalCompiledAssetStore,
-    config: Config,
+    config: DataBuildOptions,
 }
 
 impl DataBuild {
-    fn new(config: Config, project_root_path: &Path) -> Result<Self, Error> {
+    fn new(config: &DataBuildOptions, project_root_path: &Path) -> Result<Self, Error> {
         let project = Self::open_project(project_root_path)?;
 
         let build_index = BuildIndex::create_new(
@@ -100,14 +105,14 @@ impl DataBuild {
             build_index,
             project,
             asset_store,
-            config,
+            config: config.clone(),
         })
     }
 
     /// Opens the existing build index.
     ///
     /// If the build index does not exist it creates one if a project is present in the directory.
-    pub fn open(config: Config) -> Result<Self, Error> {
+    pub fn open(config: &DataBuildOptions) -> Result<Self, Error> {
         // todo(kstasik): better error
         let asset_store =
             LocalCompiledAssetStore::new(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
@@ -118,7 +123,7 @@ impl DataBuild {
                     build_index,
                     project,
                     asset_store,
-                    config,
+                    config: config.clone(),
                 })
             }
             Err(Error::NotFound) => {
@@ -356,7 +361,7 @@ mod tests {
     use std::fs::{self, File};
     use std::path::PathBuf;
 
-    use crate::{buildindex::BuildIndex, databuild::DataBuild, Config};
+    use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
     use legion_data_compiler::compiled_asset_store::{
         CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
     };
@@ -388,15 +393,15 @@ mod tests {
             let project = Project::create_new(work_dir.path()).expect("failed to create a project");
             project.indexfile_path()
         };
+        let cas_addr = CompiledAssetStoreAddr::from(work_dir.path().to_owned());
 
         let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
-        let config = Config::new(
-            &buildindex_path,
-            CompiledAssetStoreAddr::from(work_dir.path().to_owned()),
-        );
 
         {
-            let _build = DataBuild::open(config).expect("failed to create data build");
+            let _build = DataBuildOptions::new(&buildindex_path)
+                .asset_store(&cas_addr)
+                .open_or_create()
+                .expect("valid data build index");
         }
 
         let index = BuildIndex::open(&buildindex_path, DataBuild::version())
@@ -446,13 +451,11 @@ mod tests {
                 .unwrap();
         }
 
-        let config = Config::new(
-            work_dir.path().join(TEST_BUILDINDEX_FILENAME),
-            CompiledAssetStoreAddr::from(work_dir.path().to_owned()),
-        );
+        let mut config = DataBuildOptions::new(work_dir.path().join(TEST_BUILDINDEX_FILENAME));
+        config.asset_store(&CompiledAssetStoreAddr::from(work_dir.path().to_owned()));
 
         {
-            let mut build = DataBuild::open(config.clone()).unwrap();
+            let mut build = config.open_or_create().expect("to create index");
 
             let updated_count = build.source_pull().unwrap();
             assert_eq!(updated_count, 2);
@@ -474,7 +477,7 @@ mod tests {
         }
 
         {
-            let mut build = DataBuild::open(config).unwrap();
+            let mut build = config.open_or_create().expect("to open index");
             let updated_count = build.source_pull().unwrap();
             assert_eq!(updated_count, 1);
         }
@@ -528,12 +531,11 @@ mod tests {
         }
 
         let assetstore_root = CompiledAssetStoreAddr::from(work_dir.path());
-        let mut config = Config::new(
-            work_dir.path().join(TEST_BUILDINDEX_FILENAME),
-            assetstore_root.clone(),
-        );
-        config.compiler_dir(target_dir());
-        let mut build = DataBuild::open(config).unwrap();
+        let mut build = DataBuildOptions::new(work_dir.path().join(TEST_BUILDINDEX_FILENAME))
+            .asset_store(&assetstore_root)
+            .compiler_dir(target_dir())
+            .open_or_create()
+            .expect("to create index");
 
         build.source_pull().unwrap();
 
@@ -610,16 +612,15 @@ mod tests {
         };
 
         let assetstore_root = CompiledAssetStoreAddr::from(work_dir.path());
-        let mut config = Config::new(
-            work_dir.path().join(TEST_BUILDINDEX_FILENAME),
-            assetstore_root.clone(),
-        );
-        config.compiler_dir(target_dir());
+        let mut config = DataBuildOptions::new(work_dir.path().join(TEST_BUILDINDEX_FILENAME));
+        config
+            .asset_store(&assetstore_root)
+            .compiler_dir(target_dir());
 
         let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
         let original_checksum = {
-            let mut build = DataBuild::open(config.clone()).unwrap();
+            let mut build = config.open_or_create().expect("to create index");
             build.source_pull().expect("failed to pull from project");
 
             let manifest = build
@@ -668,7 +669,7 @@ mod tests {
             .unwrap();
 
         let modified_checksum = {
-            let mut build = DataBuild::open(config).unwrap();
+            let mut build = config.open_or_create().expect("to open index");
             build.source_pull().expect("failed to pull from project");
             let manifest = build
                 .compile(
