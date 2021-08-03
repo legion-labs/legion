@@ -345,9 +345,9 @@ fn main_impl() -> Result<(), String> {
             }
         }
         ("init-remote-repository", Some(command_match)) => {
-            legion_src_ctl::init_remote_repository_command(
+            tokio_runtime.block_on(legion_src_ctl::init_remote_repository_command(
                 command_match.value_of("repository_uri").unwrap(),
-            )
+            ))
         }
         ("init-mysql-repo-db", Some(command_match)) => {
             let blob_storage;
@@ -479,7 +479,7 @@ fn main_impl() -> Result<(), String> {
             command_match.value_of("branch"),
         ),
         ("ping", Some(command_match)) => {
-            ping_console_command(command_match.value_of("server_uri").unwrap())
+            tokio_runtime.block_on(ping_console_command(command_match.value_of("server_uri").unwrap()))
         }
         other_match => Err(format!("unknown subcommand match: {:?}", &other_match)),
     }

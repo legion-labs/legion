@@ -32,12 +32,15 @@ pub async fn init_mysql_repo_db(
     Ok(pool)
 }
 
-pub fn init_remote_repository_command(repo_uri: &str) -> Result<(), String> {
+pub async fn init_remote_repository_command(repo_uri: &str) -> Result<(), String> {
     let specified_uri = repo_uri.parse::<Uri>().unwrap();
     let mut path = String::from(specified_uri.path());
     let name = path.split_off(1); //remove leading /
-    let request = ServerRequest::InitRepo(InitRepositoryRequest { name });
-    let resp = execute_request(repo_uri, &request)?;
+    let request = ServerRequest::InitRepo(InitRepositoryRequest { repo_name: name });
+    let host = specified_uri.host().unwrap();
+    let port = specified_uri.port_u16().unwrap_or(80);
+    let http_url = format!("http://{}:{}/lsc", host, port);
+    let resp = execute_request(&http_url, &request).await?;
     println!("{}", resp);
     Ok(())
 }

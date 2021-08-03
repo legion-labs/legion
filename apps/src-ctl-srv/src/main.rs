@@ -22,11 +22,19 @@ async fn init_remote_repository_req(name: &str) -> Result<String, String> {
     Ok(format!("Created repository {}", name))
 }
 
+fn read_blob_storage_spec_req(_name: &str) -> Result<String, String> {
+    let s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI").unwrap();
+    let blob_spec = BlobStorageSpec::S3Uri(s3_uri);
+    Ok(blob_spec.to_json())
+}
+
 async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
     let req = ServerRequest::from_json(std::str::from_utf8(&body).unwrap())?;
+    println!("{:?}", req);
     match req {
-        ServerRequest::Ping(ping_req) => Ok(format!("Pong from {}", ping_req.specified_uri)),
-        ServerRequest::InitRepo(init_req) => init_remote_repository_req(&init_req.name).await,
+        ServerRequest::Ping(req) => Ok(format!("Pong from {}", req.specified_uri)),
+        ServerRequest::InitRepo(req) => init_remote_repository_req(&req.repo_name).await,
+        ServerRequest::ReadBlobStorageSpec(req) => read_blob_storage_spec_req(&req.repo_name),
     }
 }
 

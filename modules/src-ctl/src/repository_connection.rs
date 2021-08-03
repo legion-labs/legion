@@ -1,4 +1,5 @@
-use crate::{sql::*, sql_repository_query::*, *};
+use crate::{http_repository_query::HTTPRepositoryQuery, sql::*, sql_repository_query::*, *};
+use http::Uri;
 use std::{path::PathBuf, sync::Arc};
 
 pub struct RepositoryConnection {
@@ -8,11 +9,23 @@ pub struct RepositoryConnection {
 }
 
 impl RepositoryConnection {
-    pub async fn new_sql_connection(
-        pool: Arc<SqlConnectionPool>,
-        compressed_blob_cache: PathBuf,
-    ) -> Result<Self, String> {
-        let repo_query = Box::new(SqlRepositoryQuery::new(pool).await?);
+    pub async fn new(repo_uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
+        let specified_uri = repo_uri.parse::<Uri>().unwrap();
+        let repo_query: Box<dyn RepositoryQuery + Send>;
+        match specified_uri.scheme_str() {
+            Some("lsc") => {
+                let host = specified_uri.host().unwrap();
+                let port = specified_uri.port_u16().unwrap_or(80);
+                let url = format!("http://{}:{}/lsc", host, port);
+                let mut path = String::from(specified_uri.path());
+                let name = path.split_off(1); //remove leading /
+                repo_query = Box::new(HTTPRepositoryQuery::new(url, name)?);
+            }
+            _ => {
+                let pool = Arc::new(SqlConnectionPool::new(repo_uri).await?);
+                repo_query = Box::new(SqlRepositoryQuery::new(pool).await?);
+            }
+        }
         let blob_storage_spec = repo_query.read_blob_storage_spec().await?;
         Ok(Self {
             blob_storage_spec,
@@ -39,6 +52,5 @@ impl RepositoryConnection {
 
 pub async fn connect_to_server(workspace: &Workspace) -> Result<RepositoryConnection, String> {
     let blob_cache_dir = std::path::Path::new(&workspace.root).join(".lsc/blob_cache");
-    let pool = Arc::new(SqlConnectionPool::new(&workspace.repo_uri).await?);
-    RepositoryConnection::new_sql_connection(pool, blob_cache_dir).await
+    RepositoryConnection::new(&workspace.repo_uri, blob_cache_dir).await
 }

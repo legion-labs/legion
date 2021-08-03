@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
 use crate::{sql::*, *};
 use async_trait::async_trait;
 use sqlx::Row;
+use std::sync::Arc;
 
 // access to repository metadata inside a mysql or sqlite database
 pub struct SqlRepositoryQuery {

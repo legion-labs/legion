@@ -91,6 +91,7 @@ pub mod import_git_repo;
 pub mod init_local_repository;
 pub mod init_remote_repository;
 pub mod init_workspace;
+pub mod http_repository_query;
 pub mod local_change;
 pub mod local_workspace_connection;
 pub mod lock;

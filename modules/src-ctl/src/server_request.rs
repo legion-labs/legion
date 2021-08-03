@@ -1,4 +1,3 @@
-use http::Uri;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -8,13 +7,19 @@ pub struct PingRequest {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InitRepositoryRequest {
-    pub name: String,
+    pub repo_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ReadBlobStorageSpecRequest {
+    pub repo_name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     Ping(PingRequest),
     InitRepo(InitRepositoryRequest),
+    ReadBlobStorageSpec(ReadBlobStorageSpecRequest),
 }
 
 impl ServerRequest {
@@ -34,24 +39,20 @@ impl ServerRequest {
     }
 }
 
-pub fn execute_request(server_uri: &str, request: &ServerRequest) -> Result<String, String> {
-    let specified_uri = server_uri.parse::<Uri>().unwrap();
-    let host = specified_uri.host().unwrap();
-    let port = specified_uri.port_u16().unwrap_or(80);
-    let url = format!("http://{}:{}/lsc", host, port);
-    let client = reqwest::blocking::Client::new();
-    match client.get(&url).body(request.to_json()?).send() {
+pub async fn execute_request(http_url: &str, request: &ServerRequest) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    match client.get(http_url).body(request.to_json()?).send().await {
         Ok(resp) => {
             let status = resp.status();
             if !status.is_success() {
                 return Err(format!(
                     "Request {} failed with status {}\n{}",
-                    url,
+                    http_url,
                     status,
-                    resp.text().unwrap_or_default()
+                    resp.text().await.unwrap_or_default()
                 ));
             }
-            match resp.text() {
+            match resp.text().await {
                 Ok(body) => Ok(body),
                 Err(e) => Err(format!("Error reading response body: {}", e)),
             }
