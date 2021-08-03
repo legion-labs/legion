@@ -360,20 +360,15 @@ fn main_impl() -> Result<(), String> {
                     "local-blob-directory or s3-storage-uri need to be specified",
                 ));
             }
-            let host = command_match.value_of("host").unwrap();
-            let username = command_match.value_of("username").unwrap();
-            let password = command_match.value_of("password").unwrap_or("");
+            let db_host = command_match.value_of("host").unwrap();
+            let db_user = command_match.value_of("username").unwrap();
+            let db_pass = command_match.value_of("password").unwrap_or("");
             let name = command_match.value_of("name").unwrap();
+            let db_server_uri = format!("mysql://{}:{}@{}", db_user, db_pass, db_host);
             let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-            match tokio_runtime.block_on(init_mysql_repo_db(
-                &blob_storage,
-                host,
-                username,
-                password,
-                name,
-            )) {
-                Ok(repo_uri) => {
-                    println!("repository uri: {}", repo_uri);
+            match tokio_runtime.block_on(init_mysql_repo_db(&blob_storage, &db_server_uri, name)) {
+                Ok(pool) => {
+                    println!("repository uri: {}", &pool.database_uri);
                     Ok(())
                 }
                 Err(e) => Err(e),

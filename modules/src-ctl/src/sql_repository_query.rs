@@ -1,17 +1,17 @@
+use std::sync::Arc;
+
 use crate::{sql::*, *};
 use async_trait::async_trait;
 use sqlx::Row;
 
 // access to repository metadata inside a mysql or sqlite database
 pub struct SqlRepositoryQuery {
-    pool: sqlx::AnyPool,
+    pool: Arc<SqlConnectionPool>,
 }
 
 impl SqlRepositoryQuery {
-    pub fn new(db_uri: &str) -> Result<Self, String> {
-        Ok(Self {
-            pool: alloc_sql_pool(db_uri)?,
-        })
+    pub async fn new(pool: Arc<SqlConnectionPool>) -> Result<Self, String> {
+        Ok(Self { pool: pool.clone() })
     }
 
     async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>, String> {
@@ -490,6 +490,20 @@ impl RepositoryQuery for SqlRepositoryQuery {
                 let count: i32 = row.get("count");
                 Ok(count)
             }
+        }
+    }
+
+    async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec, String> {
+        let mut sql_connection = self.acquire().await?;
+        match sqlx::query(
+            "SELECT blob_storage_spec 
+             FROM config;",
+        )
+        .fetch_one(&mut sql_connection)
+        .await
+        {
+            Ok(row) => BlobStorageSpec::from_json(row.get("blob_storage_spec")),
+            Err(e) => Err(format!("Error fetching blob storage spec: {}", e)),
         }
     }
 }

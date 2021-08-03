@@ -1,6 +1,5 @@
 use crate::{sql::*, *};
 use futures::executor::block_on;
-use sqlx::Row;
 
 pub fn init_config_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
     let sql = "CREATE TABLE config(self_uri TEXT, blob_storage_spec TEXT);";
@@ -24,17 +23,4 @@ pub fn insert_config(
         return Err(format!("Error inserting into config: {}", e));
     }
     Ok(())
-}
-
-pub fn read_blob_storage_spec(sql: &mut sqlx::AnyConnection) -> Result<BlobStorageSpec, String> {
-    match block_on(
-        sqlx::query(
-            "SELECT blob_storage_spec 
-             FROM config;",
-        )
-        .fetch_one(sql),
-    ) {
-        Ok(row) => BlobStorageSpec::from_json(row.get("blob_storage_spec")),
-        Err(e) => Err(format!("Error fetching blob storage spec: {}", e)),
-    }
 }

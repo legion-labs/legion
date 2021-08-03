@@ -1,4 +1,4 @@
-use crate::{Branch, Commit, Lock, Tree, Workspace};
+use crate::{BlobStorageSpec, Branch, Commit, Lock, Tree, Workspace};
 use async_trait::async_trait;
 
 #[async_trait]
@@ -31,4 +31,5 @@ pub trait RepositoryQuery {
         canonical_relative_path: &str,
     ) -> Result<(), String>;
     async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32, String>;
+    async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec, String>;
 }

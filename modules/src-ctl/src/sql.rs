@@ -38,24 +38,36 @@ pub fn connect(database_uri: &str) -> Result<sqlx::AnyConnection, String> {
     }
 }
 
+
 #[derive(Debug)]
 pub struct SqlConnectionPool {
     pub pool: sqlx::AnyPool,
+    pub database_uri: String,
 }
 
-pub fn alloc_sql_pool(database_uri: &str) -> Result<sqlx::AnyPool, String> {
-    match block_on(
-        sqlx::any::AnyPoolOptions::new()
-            .max_connections(5)
-            .connect(database_uri),
-    ) {
-        Ok(pool) => Ok(pool),
-        Err(e) => Err(format!("Error allocating database pool: {}", e)),
+impl SqlConnectionPool{
+
+    pub async fn new(database_uri: &str) -> Result<SqlConnectionPool, String> {
+        Ok(Self {
+            pool: alloc_sql_pool(database_uri).await?,
+            database_uri: String::from(database_uri),
+        })
+    }
+
+    pub async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>, String> {
+        match self.pool.acquire().await {
+            Ok(c) => Ok(c),
+            Err(e) => Err(format!("Error acquiring sql connection: {}", e)),
+        }
     }
 }
 
-pub fn make_sql_connection_pool(database_uri: &str) -> Result<SqlConnectionPool, String> {
-    Ok(SqlConnectionPool {
-        pool: alloc_sql_pool(database_uri)?,
-    })
+
+pub async fn alloc_sql_pool(db_server_uri: &str) -> Result<sqlx::AnyPool, String> {
+    match sqlx::any::AnyPoolOptions::new()
+            .max_connections(5)
+            .connect(db_server_uri).await {
+        Ok(pool) => Ok(pool),
+        Err(e) => Err(format!("Error allocating database pool: {}", e)),
+    }
 }

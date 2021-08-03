@@ -1,28 +1,27 @@
 use crate::sql_repository_query::SqlRepositoryQuery;
 use crate::{sql::*, *};
-use futures::executor::block_on;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 
 pub fn init_repo_database(
-    pool: &sqlx::AnyPool,
+    sql_connection: &mut sqlx::AnyConnection,
     self_uri: &str,
     blob_storage: &BlobStorageSpec,
 ) -> Result<(), String> {
-    let mut sql_connection = block_on(pool.acquire()).unwrap(); //todo, fix
-    init_config_database(&mut sql_connection)?;
-    init_commit_database(&mut sql_connection)?;
-    init_forest_database(&mut sql_connection)?;
-    init_branch_database(&mut sql_connection)?;
-    init_workspace_database(&mut sql_connection)?;
-    init_lock_database(&mut sql_connection)?;
+    init_config_database(sql_connection)?;
+    init_commit_database(sql_connection)?;
+    init_forest_database(sql_connection)?;
+    init_branch_database(sql_connection)?;
+    init_workspace_database(sql_connection)?;
+    init_lock_database(sql_connection)?;
 
-    insert_config(&mut sql_connection, self_uri, blob_storage)?;
+    insert_config(sql_connection, self_uri, blob_storage)?;
     Ok(())
 }
 
-pub async fn push_init_repo_data(self_uri: &str) -> Result<(), String> {
-    let query = SqlRepositoryQuery::new(self_uri)?;
+pub async fn push_init_repo_data(pool: Arc<SqlConnectionPool>) -> Result<(), String> {
+    let query = SqlRepositoryQuery::new(pool).await?;
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
@@ -67,8 +66,13 @@ pub async fn init_local_repository(directory: &Path) -> Result<String, String> {
         return Err(format!("Error creating blobs directory: {}", e));
     }
 
-    let pool = alloc_sql_pool(&repo_uri)?;
-    init_repo_database(&pool, &repo_uri, &BlobStorageSpec::LocalDirectory(blob_dir))?;
-    push_init_repo_data(&repo_uri).await?;
+    let pool = Arc::new(SqlConnectionPool::new(&repo_uri).await?);
+    let mut sql_connection = pool.acquire().await?;
+    init_repo_database(
+        &mut sql_connection,
+        &repo_uri,
+        &BlobStorageSpec::LocalDirectory(blob_dir),
+    )?;
+    push_init_repo_data(pool).await?;
     Ok(repo_uri)
 }

@@ -1,5 +1,5 @@
 use crate::{sql::*, sql_repository_query::*, *};
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 pub struct RepositoryConnection {
     blob_storage_spec: BlobStorageSpec,
@@ -8,11 +8,9 @@ pub struct RepositoryConnection {
 }
 
 impl RepositoryConnection {
-    pub async fn new(repo_uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
-        let repo_query = Box::new(SqlRepositoryQuery::new(repo_uri)?);
-        let mut sql_connection = connect(repo_uri)?; //todo: remove
-        let blob_storage_spec = read_blob_storage_spec(&mut sql_connection)?;
-
+    pub async fn new_sql_connection(pool: Arc<SqlConnectionPool>, compressed_blob_cache: PathBuf) -> Result<Self, String> {
+        let repo_query = Box::new(SqlRepositoryQuery::new(pool).await?);
+        let blob_storage_spec = repo_query.read_blob_storage_spec().await?;
         Ok(Self {
             blob_storage_spec,
             compressed_blob_cache,
@@ -38,5 +36,6 @@ impl RepositoryConnection {
 
 pub async fn connect_to_server(workspace: &Workspace) -> Result<RepositoryConnection, String> {
     let blob_cache_dir = std::path::Path::new(&workspace.root).join(".lsc/blob_cache");
-    RepositoryConnection::new(&workspace.repo_uri, blob_cache_dir).await
+    let pool = Arc::new(SqlConnectionPool::new(&workspace.repo_uri).await?);
+    RepositoryConnection::new_sql_connection(pool, blob_cache_dir).await
 }

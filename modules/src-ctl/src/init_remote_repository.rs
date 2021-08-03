@@ -1,18 +1,13 @@
 use crate::{sql::*, *};
 use http::Uri;
-use std::fs;
+use std::{fs, sync::Arc};
 
 pub async fn init_mysql_repo_db(
     blob_storage: &BlobStorageSpec,
-    host: &str,
-    username: &str,
-    password: &str,
+    db_server_uri: &str,
     database_name: &str,
-) -> Result<String, String> {
-    let repo_uri = format!(
-        "mysql://{}:{}@{}/{}",
-        username, password, host, database_name
-    );
+) -> Result<Arc<SqlConnectionPool>, String> {
+    let repo_uri = format!("{}/{}", db_server_uri, database_name);
     match blob_storage {
         BlobStorageSpec::LocalDirectory(blob_dir) => {
             if let Err(e) = fs::create_dir_all(blob_dir) {
@@ -30,10 +25,11 @@ pub async fn init_mysql_repo_db(
         }
     }
     create_database(&repo_uri)?;
-    let pool = alloc_sql_pool(&repo_uri)?;
-    init_repo_database(&pool, &repo_uri, blob_storage)?;
-    push_init_repo_data(&repo_uri).await?;
-    Ok(repo_uri)
+    let pool = Arc::new(SqlConnectionPool::new(&repo_uri).await?);
+    let mut sql_connection = pool.acquire().await?;
+    init_repo_database(&mut sql_connection, &repo_uri, blob_storage)?;
+    push_init_repo_data(pool.clone()).await?;
+    Ok(pool)
 }
 
 pub fn init_remote_repository_command(repo_uri: &str) -> Result<(), String> {

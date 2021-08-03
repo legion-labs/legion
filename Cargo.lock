@@ -2681,6 +2681,7 @@ dependencies = [
  "futures",
  "http",
  "hyper",
+ "lazy_static",
  "legion-src-ctl",
  "tokio",
  "warp",

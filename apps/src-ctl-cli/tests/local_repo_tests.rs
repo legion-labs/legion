@@ -107,7 +107,8 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
         let host = "localhost";
         let username = "root";
         let password = "";
-        let repo_uri = format!("mysql://{}:{}@{}/{}", username, password, host, name);
+        let server_uri = format!("mysql://{}:{}@{}", username, password, host);
+        let repo_uri = format!("{}/{}", server_uri, name);
         if legion_src_ctl::sql::database_exists(&repo_uri).unwrap() {
             let drop_test_db =
                 std::env::var("LEGION_SRC_CTL_TEST_ALLOW_DROP_DATABASE").unwrap_or_default();
@@ -117,7 +118,8 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
                 panic!("test database exists");
             }
         }
-        legion_src_ctl::init_mysql_repo_db(&blob_storage_spec, host, username, password, name)
+        let pool = legion_src_ctl::sql::SqlConnectionPool::new(&repo_uri).await.unwrap();
+        legion_src_ctl::init_mysql_repo_db(&blob_storage_spec, &pool, name)
             .await
             .unwrap()
     }
