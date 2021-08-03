@@ -122,7 +122,7 @@ async fn init_test_repo(
                 panic!("test database exists");
             }
         }
-        legion_src_ctl::init_mysql_repo_db(&blob_storage_spec, &repo_uri, name)
+        legion_src_ctl::init_mysql_repo_db(&blob_storage_spec, &server_uri, name)
             .await
             .unwrap()
     }
