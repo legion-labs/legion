@@ -148,12 +148,12 @@ impl BuildIndex {
         }
     }
 
-    pub(crate) fn find(&self, id: ResourceId) -> Option<(ResourceId, &Vec<ResourceId>)> {
+    pub(crate) fn find(&self, id: ResourceId) -> Option<(ResourceId, Vec<ResourceId>)> {
         self.content
             .resources
             .iter()
             .find(|r| r.id == id)
-            .map(|resource| (resource.id, &resource.build_deps))
+            .map(|resource| (resource.id, resource.build_deps.clone()))
     }
 
     pub(crate) fn insert_compiled(

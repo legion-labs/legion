@@ -43,6 +43,18 @@ fn compute_context_hash(
 /// To open or create `DataBuild` first call [`DataBuildOptions::new`], then chain calls to
 /// methods to set different options, then call [`DataBuildOptions::open_or_create`].
 /// This will give  you a [`Result`] with a [`DataBuild`] that you can further operate on.
+///
+/// # Example Usage
+///
+/// ```
+/// # use legion_data_build::DataBuildOptions;
+/// # use legion_data_compiler::compiled_asset_store::CompiledAssetStoreAddr;
+/// let mut build = DataBuildOptions::new("./build.index")
+///         .asset_store(&CompiledAssetStoreAddr::from("./asset_store/"))
+///         .compiler_dir("./compilers/")
+///         .create(".");
+/// ```
+
 #[derive(Clone)]
 pub struct DataBuildOptions {
     buildindex_path: PathBuf,
@@ -101,6 +113,30 @@ impl DataBuildOptions {
 ///
 /// Data build uses file-based storage to persist the state of data builds and data compilation.
 /// It requires access to offline resources to retrieve resource metadata - throught  [`legion_resources::Project`].
+///
+/// # Example Usage
+///
+/// ```no_run
+/// # use legion_data_build::{DataBuild, DataBuildOptions};
+/// # use legion_data_compiler::compiled_asset_store::CompiledAssetStoreAddr;
+/// # use legion_data_compiler::{Locale, Platform, Target};
+/// # use legion_resources::ResourcePath;
+/// let mut build = DataBuildOptions::new("./build.index")
+///         .asset_store(&CompiledAssetStoreAddr::from("./asset_store/"))
+///         .compiler_dir("./compilers/")
+///         .create(".").expect("new build index");
+///
+/// build.source_pull().expect("successful source pull");
+/// let manifest_file = &DataBuild::default_output_file();
+///
+/// let manifest = build.compile_named(
+///                         &ResourcePath::from("child"),
+///                         &manifest_file,
+///                         Target::Game,
+///                         Platform::Windows,
+///                         &Locale::new("en"),
+///                      ).expect("compilation output");
+/// ```
 pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
@@ -224,10 +260,9 @@ impl DataBuild {
     // - compiled_size
     // - compiled_flags
 
-    /// Compiles a named resource and all its dependencies. The compilation results are stored in `compilation database`.
-    ///
-    /// The data compilation results in a `manifest` that describes the resulting runtime resources.
-    pub fn compile(
+    /// Same as [`DataBuild::compile()`] but the root resource is specified by name. Its dependencies are
+    /// retrieved from the [`Project`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
+    pub fn compile_named(
         &mut self,
         root_resource_name: &ResourcePathRef,
         manifest_file: &Path,
@@ -241,6 +276,28 @@ impl DataBuild {
         let (source_guid, dependencies) =
             self.build_index.find(resource_id).ok_or(Error::NotFound)?;
 
+        self.compile(
+            source_guid,
+            &dependencies,
+            manifest_file,
+            target,
+            platform,
+            locale,
+        )
+    }
+
+    /// Compiles a resource with given dependencies. Returned  [`Manifest`] contains a list of compilation results.
+    /// Those results are in [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`)
+    /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
+    pub fn compile(
+        &mut self,
+        resource_id: ResourceId,
+        dependencies: &[ResourceId],
+        manifest_file: &Path,
+        target: Target,
+        platform: Platform,
+        locale: &Locale,
+    ) -> Result<Manifest, Error> {
         let compilers = list_compilers(&self.config.compiler_search_paths);
 
         let info_cmd = CompilerInfoCmd::default();
@@ -258,7 +315,7 @@ impl DataBuild {
 
         let (compiler_file, _) = compilers
             .iter()
-            .find(|info| info.1.resource_type.contains(&source_guid.resource_type()))
+            .find(|info| info.1.resource_type.contains(&resource_id.resource_type()))
             .ok_or(Error::CompilerNotFound)?;
 
         let compiler_path = &compiler_file.path;
@@ -273,14 +330,14 @@ impl DataBuild {
         assert_eq!(compiler_hash.compiler_hash_list.len(), 1); // todo: support more.
         let compiler_hash = compiler_hash.compiler_hash_list[0];
         let context_hash =
-            compute_context_hash(source_guid.resource_type(), compiler_hash, Self::version());
+            compute_context_hash(resource_id.resource_type(), compiler_hash, Self::version());
 
         //
         // todo(kstasik): source_hash computation can include filtering of resource types in the future.
         // the same resource can have a different source_hash depending on the compiler
         // used as compilers can filter dependencies out.
         //
-        let source_hash = self.build_index.compute_source_hash(source_guid)?;
+        let source_hash = self.build_index.compute_source_hash(resource_id)?;
 
         let compiled_assets = {
             let cached = self.build_index.find_compiled(context_hash, source_hash);
@@ -298,7 +355,7 @@ impl DataBuild {
                 // todo(kstasik): how do we know that GI needs to be run? taking many assets as arguments?
 
                 let mut compile_cmd = CompilerCompileCmd::new(
-                    source_guid,
+                    resource_id,
                     dependencies,
                     &self.asset_store.address(),
                     &self.project.resource_dir(),
@@ -315,7 +372,7 @@ impl DataBuild {
 
                 self.build_index.insert_compiled(
                     context_hash,
-                    source_guid,
+                    resource_id,
                     source_hash,
                     &compiled_assets,
                 );
@@ -577,7 +634,7 @@ mod tests {
         let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
         let manifest = build
-            .compile(
+            .compile_named(
                 &ResourcePath::from("child"),
                 &output_manifest_file,
                 Target::Game,
@@ -604,7 +661,7 @@ mod tests {
         );
 
         build
-            .compile(
+            .compile_named(
                 &ResourcePath::from("child"),
                 &output_manifest_file,
                 Target::Game,
@@ -659,7 +716,7 @@ mod tests {
             build.source_pull().expect("failed to pull from project");
 
             let manifest = build
-                .compile(
+                .compile_named(
                     &ResourcePath::from("child"),
                     &output_manifest_file,
                     Target::Game,
@@ -707,7 +764,7 @@ mod tests {
             let mut build = config.open().expect("to open index");
             build.source_pull().expect("failed to pull from project");
             let manifest = build
-                .compile(
+                .compile_named(
                     &ResourcePath::from("child"),
                     &output_manifest_file,
                     Target::Game,
