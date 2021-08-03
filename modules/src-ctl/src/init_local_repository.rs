@@ -48,7 +48,7 @@ pub async fn push_init_repo_data(pool: Arc<SqlConnectionPool>) -> Result<(), Str
     Ok(())
 }
 
-pub async fn init_local_repository(directory: &Path) -> Result<String, String> {
+pub async fn init_local_repository(directory: &Path) -> Result<Arc<SqlConnectionPool>, String> {
     if fs::metadata(directory).is_ok() {
         return Err(format!("{} already exists", directory.display()));
     }
@@ -73,6 +73,6 @@ pub async fn init_local_repository(directory: &Path) -> Result<String, String> {
         &repo_uri,
         &BlobStorageSpec::LocalDirectory(blob_dir),
     )?;
-    push_init_repo_data(pool).await?;
-    Ok(repo_uri)
+    push_init_repo_data(pool.clone()).await?;
+    Ok(pool)
 }

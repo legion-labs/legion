@@ -60,7 +60,7 @@ async fn main() {
 
     let command_filter = warp::path("lsc")
         .and(warp::body::bytes())
-        .and_then(|body: bytes::Bytes| dispatch_request(body));
+        .and_then(dispatch_request);
 
     let server_addr_str = std::env::var("LEGION_SRC_CTL_SERVER_ADDR")
         .expect("missing env variable LEGION_SRC_CTL_SERVER_ADDR");

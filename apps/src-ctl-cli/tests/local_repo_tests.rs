@@ -2,6 +2,7 @@ use std::fs::{self, DirEntry};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 
 fn write_lorem_ipsum(p: &Path) {
     let contents = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In iaculis odio ac nulla porta, eget dictum nulla euismod. Vivamus congue eros vitae velit feugiat lacinia. Curabitur mi lectus, semper in posuere nec, eleifend eu magna. Morbi egestas magna eget ligula aliquet, vitae mattis urna pellentesque. Maecenas sem risus, scelerisque id semper ut, ornare id diam. Integer ut urna varius, lobortis sapien id, ullamcorper mi. Donec pulvinar ante ligula, in interdum turpis tempor a. Maecenas malesuada turpis orci, vitae efficitur tortor laoreet sit amet.
@@ -91,7 +92,10 @@ fn test_dir(test_name: &str) -> PathBuf {
     path
 }
 
-async fn init_test_repo(test_dir: &Path, name: &str) -> String {
+async fn init_test_repo(
+    test_dir: &Path,
+    name: &str,
+) -> Arc<legion_src_ctl::sql::SqlConnectionPool> {
     let use_mysql = std::env::var("LEGION_SRC_CTL_TEST_MYSQL").unwrap_or_default();
     if use_mysql.is_empty() {
         let repo_dir = test_dir.join("repo");
@@ -118,8 +122,7 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
                 panic!("test database exists");
             }
         }
-        let pool = legion_src_ctl::sql::SqlConnectionPool::new(&repo_uri).await.unwrap();
-        legion_src_ctl::init_mysql_repo_db(&blob_storage_spec, &pool, name)
+        legion_src_ctl::init_mysql_repo_db(&blob_storage_spec, &repo_uri, name)
             .await
             .unwrap()
     }
@@ -130,7 +133,8 @@ fn local_repo_suite() {
     let test_dir = test_dir("local_repo_suite");
     let work1 = test_dir.join("work");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "local_repo_suite"));
+    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "local_repo_suite"));
+    let repo_uri = &pool.database_uri;
 
     lsc_cli_sys(
         &test_dir,
@@ -236,8 +240,8 @@ fn local_single_branch_merge_flow() {
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri =
-        tokio_runtime.block_on(init_test_repo(&test_dir, "local_single_branch_merge_flow"));
+    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "local_single_branch_merge_flow"));
+    let repo_uri = &pool.database_uri;
 
     lsc_cli_sys(
         &test_dir,
@@ -300,7 +304,8 @@ fn test_branch() {
 
     let work1 = test_dir.join("work1");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_branch"));
+    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "test_branch"));
+    let repo_uri = &pool.database_uri;
 
     lsc_cli_sys(
         &test_dir,
@@ -394,7 +399,8 @@ fn test_locks() {
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_locks"));
+    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "test_locks"));
+    let repo_uri = &pool.database_uri;
 
     lsc_cli_sys(
         &test_dir,
@@ -505,7 +511,8 @@ fn test_import_git() {
     let test_dir = test_dir("test_import_git");
     let work1 = test_dir.join("work1");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_import_git"));
+    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "test_import_git"));
+    let repo_uri = &pool.database_uri;
 
     lsc_cli_sys(
         &test_dir,

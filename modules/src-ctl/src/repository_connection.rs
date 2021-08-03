@@ -8,7 +8,10 @@ pub struct RepositoryConnection {
 }
 
 impl RepositoryConnection {
-    pub async fn new_sql_connection(pool: Arc<SqlConnectionPool>, compressed_blob_cache: PathBuf) -> Result<Self, String> {
+    pub async fn new_sql_connection(
+        pool: Arc<SqlConnectionPool>,
+        compressed_blob_cache: PathBuf,
+    ) -> Result<Self, String> {
         let repo_query = Box::new(SqlRepositoryQuery::new(pool).await?);
         let blob_storage_spec = repo_query.read_blob_storage_spec().await?;
         Ok(Self {

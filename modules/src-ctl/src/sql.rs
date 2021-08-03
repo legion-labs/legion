@@ -38,16 +38,14 @@ pub fn connect(database_uri: &str) -> Result<sqlx::AnyConnection, String> {
     }
 }
 
-
 #[derive(Debug)]
 pub struct SqlConnectionPool {
     pub pool: sqlx::AnyPool,
     pub database_uri: String,
 }
 
-impl SqlConnectionPool{
-
-    pub async fn new(database_uri: &str) -> Result<SqlConnectionPool, String> {
+impl SqlConnectionPool {
+    pub async fn new(database_uri: &str) -> Result<Self, String> {
         Ok(Self {
             pool: alloc_sql_pool(database_uri).await?,
             database_uri: String::from(database_uri),
@@ -62,11 +60,12 @@ impl SqlConnectionPool{
     }
 }
 
-
 pub async fn alloc_sql_pool(db_server_uri: &str) -> Result<sqlx::AnyPool, String> {
     match sqlx::any::AnyPoolOptions::new()
-            .max_connections(5)
-            .connect(db_server_uri).await {
+        .max_connections(5)
+        .connect(db_server_uri)
+        .await
+    {
         Ok(pool) => Ok(pool),
         Err(e) => Err(format!("Error allocating database pool: {}", e)),
     }

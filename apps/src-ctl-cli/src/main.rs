@@ -337,8 +337,8 @@ fn main_impl() -> Result<(), String> {
             match tokio_runtime.block_on(legion_src_ctl::init_local_repository(Path::new(
                 command_match.value_of("repository-directory").unwrap(),
             ))) {
-                Ok(repo_uri) => {
-                    println!("repository uri: {}", repo_uri);
+                Ok(pool) => {
+                    println!("repository uri: {}", pool.database_uri);
                     Ok(())
                 }
                 Err(e) => Err(e),

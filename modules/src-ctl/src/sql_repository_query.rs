@@ -11,7 +11,7 @@ pub struct SqlRepositoryQuery {
 
 impl SqlRepositoryQuery {
     pub async fn new(pool: Arc<SqlConnectionPool>) -> Result<Self, String> {
-        Ok(Self { pool: pool.clone() })
+        Ok(Self { pool })
     }
 
     async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>, String> {
