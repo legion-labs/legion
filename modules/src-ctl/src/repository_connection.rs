@@ -1,6 +1,6 @@
 use crate::{http_repository_query::HTTPRepositoryQuery, sql::*, sql_repository_query::*, *};
-use http::Uri;
 use std::{path::PathBuf, sync::Arc};
+use url::Url;
 
 pub struct RepositoryConnection {
     blob_storage_spec: BlobStorageSpec,
@@ -10,12 +10,12 @@ pub struct RepositoryConnection {
 
 impl RepositoryConnection {
     pub async fn new(repo_uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
-        let specified_uri = repo_uri.parse::<Uri>().unwrap();
+        let specified_uri = Url::parse(repo_uri).unwrap();
         let repo_query: Box<dyn RepositoryQuery + Send>;
-        match specified_uri.scheme_str() {
-            Some("lsc") => {
+        match specified_uri.scheme() {
+            "lsc" => {
                 let host = specified_uri.host().unwrap();
-                let port = specified_uri.port_u16().unwrap_or(80);
+                let port = specified_uri.port().unwrap_or(80);
                 let url = format!("http://{}:{}/lsc", host, port);
                 let mut path = String::from(specified_uri.path());
                 let name = path.split_off(1); //remove leading /
