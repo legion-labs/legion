@@ -82,7 +82,9 @@
 //! **Data Pipeline** is deterministic. Therefore all **data compilers** must be deterministic.
 //!
 //! Because of that the [`AssetId`]s generated during the compilation must be created by a deterministic process.
-//! The function [`primary_asset_id`] exists to facilitate this process. The following example shows its usage:
+//! The function [`primary_asset_id`] exists to facilitate this process. Called with the same arguments it will always return the same [`AssetId`].
+//!
+//! The following example shows its usage:
 //!
 //! ```
 //! # use legion_data_compiler::{CompiledAsset, Locale, Platform, Target};
@@ -112,6 +114,8 @@
 //!    Ok(vec![asset])
 //! }
 //! ```
+//!
+//! > **NOTE**: For now, only one asset of given [`AssetType`] can be generated from a resource of a given [`ResourceId`].
 //!
 //! For more about `Assets` and `Resources` see [`legion_resources`] and [`legion_assets`] crates.
 //!
@@ -434,6 +438,8 @@ pub fn compiler_load_resource(
 ///
 /// This function should be used when a resource creates one asset of a given type.
 /// Creating multiple assets of the same type from a resource is not supported at the moment.
+///
+/// Calling this function multiple times with the same arguments will **always produce the same result**.
 pub fn primary_asset_id(resource_id: ResourceId, kind: AssetType) -> AssetId {
     AssetId::new(kind, (resource_id.get_internal() & 0xffffffff) as u32)
 }
