@@ -1194,7 +1194,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-codec-hal"
+name = "legion-codec-api"
 version = "0.1.0"
 dependencies = [
  "amf",
@@ -1275,6 +1275,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-pso-compiler"
+version = "0.1.0"
+dependencies = [
+ "hassle-rs",
+ "spirv-reflect",
+]
+
+[[package]]
 name = "legion-renderer"
 version = "0.1.0"
 dependencies = [
@@ -1292,14 +1300,6 @@ dependencies = [
  "serde_json",
  "slotmap",
  "tempfile",
-]
-
-[[package]]
-name = "legion-shader-compiler"
-version = "0.1.0"
-dependencies = [
- "hassle-rs",
- "spirv-reflect",
 ]
 
 [[package]]
@@ -1333,7 +1333,7 @@ dependencies = [
 name = "legion-streamer"
 version = "0.1.0"
 dependencies = [
- "legion-codec-hal",
+ "legion-codec-api",
 ]
 
 [[package]]
