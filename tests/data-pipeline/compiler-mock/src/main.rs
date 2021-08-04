@@ -5,11 +5,11 @@ use std::{
     path::Path,
 };
 
-use legion_assets::{test_asset, AssetId};
+use legion_assets::test_asset;
 use legion_data_compiler::{
     compiled_asset_store::{CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore},
     compiler_api::{
-        compiler_load_resource, compiler_main, CompilerDescriptor, CompilerError,
+        compiler_load_resource, compiler_main, primary_asset_id, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
     CompiledAsset, CompilerHash, Locale, Platform, Target,
@@ -56,8 +56,7 @@ fn compile(
     let mut asset_store = LocalCompiledAssetStore::open(compiled_asset_store_path)
         .ok_or(CompilerError::AssetStoreError)?;
 
-    // todo: convert ResourceId to AssetId
-    let guid = AssetId::new(test_asset::TYPE_ID, 2);
+    let guid = primary_asset_id(source, test_asset::TYPE_ID);
 
     let resource = compiler_load_resource(source, resource_dir, &mut resources)?;
     let resource = resource

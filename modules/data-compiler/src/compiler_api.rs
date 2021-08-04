@@ -39,7 +39,7 @@
 //!    todo!()
 //!}
 //!
-//!fn compile(
+//! fn compile(
 //!    source: ResourceId,
 //!    dependencies: &[ResourceId],
 //!    target: Target,
@@ -77,6 +77,42 @@
 //! let resource = resource.get::<test_resource::TestResource>(&registry).unwrap();
 //! ```
 //!
+//! # Deterministic [`AssetId`] Generation
+//!
+//! **Data Pipeline** is deterministic. Therefore all **data compilers** must be deterministic.
+//!
+//! Because of that the [`AssetId`]s generated during the compilation must be created by a deterministic process.
+//! The function [`primary_asset_id`] exists to facilitate this process. The following example shows its usage:
+//!
+//! ```
+//! # use legion_data_compiler::{CompiledAsset, Locale, Platform, Target};
+//! # use legion_data_compiler::compiler_api::{primary_asset_id, CompilerError};
+//! # use legion_resources::ResourceId;
+//! # use legion_data_compiler::compiled_asset_store::CompiledAssetStoreAddr;
+//! # use legion_assets::test_asset;
+//! # use std::path::Path;
+//! # fn build_and_store_asset(_id: ResourceId) -> (i128, usize){(0,0)}
+//! fn compile(
+//!    source: ResourceId,
+//!    // ...
+//! #    dependencies: &[ResourceId],
+//! #    target: Target,
+//! #    platform: Platform,
+//! #    locale: &Locale,
+//! #    compiled_asset_store_path: CompiledAssetStoreAddr,
+//! #    resource_dir: &Path,
+//! ) -> Result<Vec<CompiledAsset>, CompilerError> {
+//!    let new_asset_id = primary_asset_id(source, test_asset::TYPE_ID);
+//!    let (checksum, size) = build_and_store_asset(source);
+//!    let asset = CompiledAsset {
+//!          guid: new_asset_id,
+//!          checksum,
+//!          size,
+//!    };
+//!    Ok(vec![asset])
+//! }
+//! ```
+//!
 //! For more about `Assets` and `Resources` see [`legion_resources`] and [`legion_assets`] crates.
 //!
 //! [`legion_data_build`]: ../../legion_data_build/index.html
@@ -98,6 +134,7 @@ use crate::{
     CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
 use clap::{AppSettings, Arg, SubCommand};
+use legion_assets::{AssetId, AssetType};
 use legion_resources::{ResourceHandle, ResourceId, ResourceRegistry, ResourceType, RESOURCE_EXT};
 use std::{
     env,
@@ -375,4 +412,12 @@ pub fn compiler_load_resource(
         .deserialize_resource(id.resource_type(), &mut resource_file)
         .map_err(CompilerError::ResourceLoadFailed)?;
     Ok(handle)
+}
+
+/// Deterministically create an [`AssetId`] of provided `AssetType` from a [`ResourceId`].
+///
+/// This function should be used when a resource creates one asset of a given type.
+/// Creating multiple assets of the same type from a resource is not supported at the moment.
+pub fn primary_asset_id(resource_id: ResourceId, kind: AssetType) -> AssetId {
+    AssetId::new(kind, (resource_id.get_internal() & 0xffffffff) as u32)
 }
