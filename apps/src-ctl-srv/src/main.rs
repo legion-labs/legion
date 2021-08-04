@@ -65,6 +65,12 @@ async fn read_commit_req(repo_name: &str, commit_id: &str) -> Result<String, Str
     commit.to_json()
 }
 
+async fn read_tree_req(repo_name: &str, tree_hash: &str) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(repo_name).await?);
+    let tree = query.read_tree(tree_hash).await?;
+    tree.to_json()
+}
+
 async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
     let req = ServerRequest::from_json(std::str::from_utf8(&body).unwrap())?;
     println!("{:?}", req);
@@ -77,6 +83,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         }
         ServerRequest::ReadBranch(req) => read_branch_req(&req.repo_name, &req.branch_name).await,
         ServerRequest::ReadCommit(req) => read_commit_req(&req.repo_name, &req.commit_id).await,
+        ServerRequest::ReadTree(req) => read_tree_req(&req.repo_name, &req.tree_hash).await,
     }
 }
 

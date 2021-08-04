@@ -64,8 +64,13 @@ impl RepositoryQuery for HTTPRepositoryQuery {
     async fn commit_exists(&self, _id: &str) -> Result<bool, String> {
         panic!("not implemented");
     }
-    async fn read_tree(&self, _hash: &str) -> Result<Tree, String> {
-        panic!("not implemented");
+    async fn read_tree(&self, hash: &str) -> Result<Tree, String> {
+        let request = ServerRequest::ReadTree(ReadTreeRequest {
+            repo_name: self.repo_name.clone(),
+            tree_hash: String::from(hash),
+        });
+        let resp = execute_request(&self.url, &request).await?;
+        Tree::from_json(&resp)
     }
     async fn save_tree(&self, _tree: &Tree, _hash: &str) -> Result<(), String> {
         panic!("not implemented");

@@ -1,4 +1,5 @@
 use crate::*;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::hash_map::HashMap;
 use std::collections::BTreeSet;
@@ -11,7 +12,7 @@ pub enum TreeNodeType {
     File = 2,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TreeNode {
     pub name: String,
     pub hash: String,
@@ -23,7 +24,7 @@ impl TreeNode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Tree {
     pub directory_nodes: Vec<TreeNode>,
     pub file_nodes: Vec<TreeNode>,
@@ -34,6 +35,21 @@ impl Tree {
         Self {
             directory_nodes: Vec::new(),
             file_nodes: Vec::new(),
+        }
+    }
+
+    pub fn from_json(contents: &str) -> Result<Self, String> {
+        let parsed: serde_json::Result<Self> = serde_json::from_str(contents);
+        match parsed {
+            Ok(tree) => Ok(tree),
+            Err(e) => Err(format!("Error parsing tree {}", e)),
+        }
+    }
+
+    pub fn to_json(&self) -> Result<String, String> {
+        match serde_json::to_string(&self) {
+            Ok(json) => Ok(json),
+            Err(e) => Err(format!("Error formatting tree {:?}: {}", &self, e)),
         }
     }
 
