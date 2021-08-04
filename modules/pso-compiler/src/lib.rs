@@ -31,12 +31,8 @@ pub fn test_build() {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_build;
-
     #[test]
     fn it_works() {
-        test_build();
-
         let four = 2 + 2;
         assert_eq!(four, 4);
     }
