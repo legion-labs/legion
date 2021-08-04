@@ -1,56 +1,43 @@
-use super::entity::ComponentType;
+use super::entity::ComponentAccess;
 use super::reflection::Reference;
 #[cfg(test)]
 use crate::prelude::*;
-use std::marker::PhantomData;
+use crate::reflection::shorten_type_name;
 
-pub struct System<F, Args>
-where
-    F: SignatureAnalyzer<Args>,
-{
-    _name: &'static str,
-    signature: Vec<ComponentAccess>,
+pub struct System<F> {
+    name: &'static str,
+    signature: Signature,
     functor: F,
-    args: PhantomData<Args>,
 }
 
-impl<F, Args> System<F, Args>
-where
-    F: SignatureAnalyzer<Args>,
-{
-    pub fn new(name: &'static str, functor: F) -> Self {
+impl<F> System<F> {
+    pub fn new<Args>(functor: F) -> Self
+    where
+        F: SignatureAnalyzer<Args>,
+    {
         let mut system = Self {
-            _name: name,
+            name: shorten_type_name(std::any::type_name::<F>()),
             signature: Vec::new(),
             functor,
-            args: PhantomData,
         };
-        system.build_signature();
+        system.functor.add_component_accesses(&mut system.signature);
         system
     }
 
-    fn build_signature(&mut self) {
-        self.functor.add_component_accesses(&mut self.signature);
+    pub fn get_name(&self) -> &str {
+        self.name
+    }
+
+    pub fn get_signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    pub fn get_functor(&self) -> &F {
+        &self.functor
     }
 }
 
-#[derive(Debug)]
-pub struct ComponentAccess {
-    component_type: ComponentType,
-    mutable: bool,
-}
-
-impl ComponentAccess {
-    fn new<T>() -> Self
-    where
-        T: Reference,
-    {
-        Self {
-            component_type: ComponentType::new::<T>(),
-            mutable: T::is_mutable(),
-        }
-    }
-}
+type Signature = Vec<ComponentAccess>;
 
 pub enum SystemError {}
 
@@ -99,7 +86,7 @@ mod tests {
 
     #[test]
     fn build_system_no_args() {
-        let system = System::new("do_nothing", do_nothing);
+        let system = System::new(do_nothing);
         println!("signature: {:?}", system.signature);
         assert_eq!(system.signature.len(), 0);
     }
@@ -117,25 +104,25 @@ mod tests {
 
     #[test]
     fn build_system_single_arg() {
-        let immutable_system = System::new("read_position", read_position);
+        let immutable_system = System::new(read_position);
         println!("signature: {:?}", immutable_system.signature);
         assert_eq!(immutable_system.signature.len(), 1);
         let immutable_arg = &immutable_system.signature[0];
-        assert!(!immutable_arg.mutable);
+        assert!(!immutable_arg.is_mutable());
 
-        let mutable_system = System::new("drift_position", drift_position);
+        let mutable_system = System::new(drift_position);
         println!("signature: {:?}", mutable_system.signature);
         assert_eq!(mutable_system.signature.len(), 1);
         let mutable_arg = &mutable_system.signature[0];
-        assert!(mutable_arg.mutable);
+        assert!(mutable_arg.is_mutable());
 
         assert_eq!(
-            immutable_arg.component_type.get_name(),
-            mutable_arg.component_type.get_name()
+            immutable_arg.get_component_type().get_name(),
+            mutable_arg.get_component_type().get_name()
         );
         assert_eq!(
-            immutable_arg.component_type.get_id(),
-            mutable_arg.component_type.get_id()
+            immutable_arg.get_component_type().get_id(),
+            mutable_arg.get_component_type().get_id()
         );
     }
 
@@ -150,12 +137,18 @@ mod tests {
 
     #[test]
     fn build_system_with_two_args() {
-        let system = System::new("update_position", &update_position);
+        let system = System::new(update_position);
         println!("signature: {:?}", system.signature);
         assert_eq!(system.signature.len(), 2);
-        assert_eq!(system.signature[0].component_type.get_name(), "Position");
-        assert!(system.signature[0].mutable);
-        assert_eq!(system.signature[1].component_type.get_name(), "Velocity");
-        assert!(!system.signature[1].mutable);
+        assert_eq!(
+            system.signature[0].get_component_type().get_name(),
+            "Position"
+        );
+        assert!(system.signature[0].is_mutable());
+        assert_eq!(
+            system.signature[1].get_component_type().get_name(),
+            "Velocity"
+        );
+        assert!(!system.signature[1].is_mutable());
     }
 }

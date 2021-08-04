@@ -2,6 +2,7 @@ use std::any::TypeId;
 
 use super::ids::IdentifierGenerator;
 use super::reflection;
+use super::reflection::Reference;
 
 pub struct Entity(EntityIdentifier);
 
@@ -47,5 +48,31 @@ impl ComponentType {
 
     pub fn get_id(&self) -> &TypeId {
         &self.id
+    }
+}
+
+#[derive(Debug)]
+pub struct ComponentAccess {
+    component_type: ComponentType,
+    is_mutable: bool,
+}
+
+impl ComponentAccess {
+    pub fn new<T>() -> Self
+    where
+        T: Reference,
+    {
+        Self {
+            component_type: ComponentType::new::<T>(),
+            is_mutable: T::is_mutable(),
+        }
+    }
+
+    pub fn get_component_type(&self) -> &ComponentType {
+        &self.component_type
+    }
+
+    pub fn is_mutable(&self) -> bool {
+        self.is_mutable
     }
 }

@@ -1,5 +1,12 @@
 use std::any::TypeId;
 
+pub fn shorten_type_name(type_name: &'static str) -> &'static str {
+    match type_name.rsplit("::").next() {
+        Some(last_segment) => last_segment,
+        None => type_name,
+    }
+}
+
 pub trait Reference: 'static {
     type Inner;
 
@@ -12,11 +19,7 @@ pub trait Reference: 'static {
     }
 
     fn get_short_type_name() -> &'static str {
-        let name = Self::get_name();
-        match name.rsplit("::").next() {
-            Some(name) => name,
-            None => name,
-        }
+        shorten_type_name(Self::get_name())
     }
 
     fn is_mutable() -> bool;
