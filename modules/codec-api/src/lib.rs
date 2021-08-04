@@ -7,11 +7,11 @@
 //! will own the output end.
 //!
 //! ```
-//! use legion_codec_hal::{
-//!     backends::null::{NullEncoder, NullEncoderConfig},
-//!     Error, GpuImage, VideoProcessor,
-//! };
-//! use std::thread;
+//! # use legion_codec_api::{
+//! #    backends::null::{NullEncoder, NullEncoderConfig},
+//! #    Error, GpuImage, VideoProcessor,
+//! # };
+//! # use std::thread;
 //! let mut frame_count = 100;
 //! let (input, output) =
 //!     NullEncoder::pipeline(NullEncoderConfig { queue_size: 10 })
