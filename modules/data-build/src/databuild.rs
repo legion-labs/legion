@@ -156,8 +156,8 @@ impl DataBuild {
         )
         .map_err(|_e| Error::IOError)?;
 
-        let asset_store =
-            LocalCompiledAssetStore::open(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
+        let asset_store = LocalCompiledAssetStore::open(config.assetstore_path.clone())
+            .ok_or(Error::InvalidAssetStore)?;
 
         Ok(Self {
             build_index,
@@ -168,8 +168,8 @@ impl DataBuild {
     }
 
     fn open(config: &DataBuildOptions) -> Result<Self, Error> {
-        let asset_store =
-            LocalCompiledAssetStore::open(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
+        let asset_store = LocalCompiledAssetStore::open(config.assetstore_path.clone())
+            .ok_or(Error::InvalidAssetStore)?;
 
         let build_index = BuildIndex::open(&config.buildindex_path, Self::version())?;
         let project = build_index.open_project()?;
@@ -185,9 +185,8 @@ impl DataBuild {
     ///
     /// If the build index does not exist it creates one if a project is present in the directory.
     fn open_or_create(config: &DataBuildOptions) -> Result<Self, Error> {
-        // todo(kstasik): better error
-        let asset_store =
-            LocalCompiledAssetStore::open(config.assetstore_path.clone()).ok_or(Error::NotFound)?;
+        let asset_store = LocalCompiledAssetStore::open(config.assetstore_path.clone())
+            .ok_or(Error::InvalidAssetStore)?;
         match BuildIndex::open(&config.buildindex_path, Self::version()) {
             Ok(build_index) => {
                 let project = build_index.open_project()?;
@@ -710,7 +709,8 @@ mod tests {
         assert_eq!(manifest.compiled_assets.len(), 1); // for now only the root asset is compiled
 
         let compiled_checksum = manifest.compiled_assets[0].checksum;
-        let asset_store = LocalCompiledAssetStore::open(assetstore_path).unwrap();
+        let asset_store =
+            LocalCompiledAssetStore::open(assetstore_path).expect("valid asset store");
         assert!(asset_store.exists(compiled_checksum));
 
         assert!(output_manifest_file.exists());
@@ -794,7 +794,8 @@ mod tests {
             let original_checksum = manifest.compiled_assets[0].checksum;
 
             {
-                let asset_store = LocalCompiledAssetStore::open(assetstore_path.clone()).unwrap();
+                let asset_store = LocalCompiledAssetStore::open(assetstore_path.clone())
+                    .expect("valid asset store");
                 assert!(asset_store.exists(original_checksum));
             }
 
@@ -842,7 +843,8 @@ mod tests {
             let modified_checksum = manifest.compiled_assets[0].checksum;
 
             {
-                let asset_store = LocalCompiledAssetStore::open(assetstore_path).unwrap();
+                let asset_store =
+                    LocalCompiledAssetStore::open(assetstore_path).expect("valid asset store");
                 assert!(asset_store.exists(original_checksum));
                 assert!(asset_store.exists(modified_checksum));
             }

@@ -195,6 +195,8 @@ pub enum Error {
     IntegrityFailure,
     /// Index version mismatch.
     VersionMismatch,
+    /// Compiled Asset Store invalid.
+    InvalidAssetStore,
     /// Project invalid.
     InvalidProject,
     /// Manifest file error.
@@ -214,6 +216,7 @@ impl std::fmt::Display for Error {
             Error::IOError => write!(f, "IOError"),
             Error::IntegrityFailure => write!(f, "IntegrityFailure"),
             Error::VersionMismatch => write!(f, "VersionMismatch"),
+            Error::InvalidAssetStore => write!(f, "InvalidCompiledAssetStore"),
             Error::InvalidProject => write!(f, "InvalidProject"),
             Error::InvalidManifest => write!(f, "InvalidManifest"),
             Error::CompilerError(_) => write!(f, "CompilerError"),
