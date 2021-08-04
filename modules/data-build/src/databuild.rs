@@ -956,7 +956,7 @@ mod tests {
             assert!(stats.iter().all(|s| s.from_cache));
         }
 
-        // change root resource, one asset from cache.
+        // change root resource, one asset re-compiled.
         {
             change_resource(root, project_dir);
             build.source_pull().expect("to pull changes");
@@ -969,7 +969,7 @@ mod tests {
             assert_eq!(stats.iter().filter(|s| !s.from_cache).count(), 1);
         }
 
-        // change resource E - which should invalide 4 resources in total (including E).
+        // change resource E - which invalides 4 resources in total (E included).
         {
             let resource_e = resource_list[4];
             change_resource(resource_e, project_dir);
