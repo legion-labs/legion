@@ -312,18 +312,45 @@ impl DataBuild {
     ) -> Result<Manifest, Error> {
         let resource_id = self.project.find_resource(root_resource_name)?;
 
-        // todo(kstasik): for now dependencies are not compiled - only the root resource is.
         let (source_guid, dependencies) =
             self.build_index.find(resource_id).ok_or(Error::NotFound)?;
+
+        let (mut manifest, mut file) = {
+            if let Ok(file) = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .append(false)
+                .open(manifest_file)
+            {
+                let manifest_content: Manifest =
+                    serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
+                (manifest_content, file)
+            } else {
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create_new(true)
+                    .open(manifest_file)
+                    .map_err(|_e| Error::InvalidManifest)?;
+
+                (Manifest::default(), file)
+            }
+        };
 
         self.compile(
             source_guid,
             &dependencies,
-            manifest_file,
+            &mut manifest,
             target,
             platform,
             locale,
-        )
+        )?;
+
+        file.set_len(0).unwrap();
+        file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
+
+        Ok(manifest)
     }
 
     /// Compiles a resource with given dependencies. Returned  [`Manifest`] contains a list of compilation results.
@@ -333,11 +360,11 @@ impl DataBuild {
         &mut self,
         resource_id: ResourceId,
         dependencies: &[ResourceId],
-        manifest_file: &Path,
+        manifest: &mut Manifest,
         target: Target,
         platform: Platform,
         locale: &Locale,
-    ) -> Result<Manifest, Error> {
+    ) -> Result<(), Error> {
         let compilers = list_compilers(&self.config.compiler_search_paths);
 
         let info_cmd = CompilerInfoCmd::default();
@@ -442,28 +469,6 @@ impl DataBuild {
             all_compiled_assets.extend(compiled_assets);
         }
 
-        let (mut manifest, mut file) = {
-            if let Ok(file) = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .append(false)
-                .open(manifest_file)
-            {
-                let manifest_content: Manifest =
-                    serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
-                (manifest_content, file)
-            } else {
-                let file = OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .create_new(true)
-                    .open(manifest_file)
-                    .map_err(|_e| Error::InvalidManifest)?;
-
-                (Manifest::default(), file)
-            }
-        };
-
         for asset in all_compiled_assets {
             if let Some(existing) = manifest
                 .compiled_assets
@@ -475,12 +480,7 @@ impl DataBuild {
                 manifest.compiled_assets.push(asset);
             }
         }
-
-        file.set_len(0).unwrap();
-        file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
-
-        Ok(manifest)
+        Ok(())
     }
 
     /// Returns the global version of the databuild module.
