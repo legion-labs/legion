@@ -9,8 +9,8 @@ use legion_assets::test_asset;
 use legion_data_compiler::{
     compiled_asset_store::{CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore},
     compiler_api::{
-        compiler_load_resource, compiler_main, primary_asset_id, CompilerDescriptor, CompilerError,
-        DATA_BUILD_VERSION,
+        compiler_load_resource, compiler_main, primary_asset_id, CompilationOutput,
+        CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
     },
     CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
@@ -40,13 +40,13 @@ fn compiler_hash(
 
 fn compile(
     source: ResourceId,
-    _dependencies: &[ResourceId],
+    dependencies: &[ResourceId],
     _target: Target,
     _platform: Platform,
     _locale: &Locale,
     compiled_asset_store_path: CompiledAssetStoreAddr,
     resource_dir: &Path,
-) -> Result<Vec<CompiledAsset>, CompilerError> {
+) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
         test_resource::TYPE_ID,
@@ -69,8 +69,6 @@ fn compile(
         content
     };
 
-    // todo: create Asset type and serialize it instead of just writing content bytes.
-
     let checksum = asset_store
         .store(&compiled_asset)
         .ok_or(CompilerError::AssetStoreError)?;
@@ -80,7 +78,17 @@ fn compile(
         checksum,
         size: compiled_asset.len(),
     };
-    Ok(vec![asset])
+
+    // in this test example every build dependency becomes a asset_reference/load-time dependency.
+    let asset_references: Vec<_> = dependencies
+        .iter()
+        .map(|dep| (guid, primary_asset_id(*dep, test_asset::TYPE_ID)))
+        .collect();
+
+    Ok(CompilationOutput {
+        compiled_assets: vec![asset],
+        asset_references,
+    })
 }
 
 fn main() {

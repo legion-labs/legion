@@ -9,8 +9,8 @@ use legion_assets::test_asset;
 use legion_data_compiler::{
     compiled_asset_store::{CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore},
     compiler_api::{
-        compiler_load_resource, compiler_main, primary_asset_id, CompilerDescriptor, CompilerError,
-        DATA_BUILD_VERSION,
+        compiler_load_resource, compiler_main, primary_asset_id, CompilationOutput,
+        CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
     },
     CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
@@ -46,7 +46,7 @@ fn compile(
     _locale: &Locale,
     compiled_asset_store_path: CompiledAssetStoreAddr,
     resource_dir: &Path,
-) -> Result<Vec<CompiledAsset>, CompilerError> {
+) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
         mock_offline::TYPE_ID,
@@ -75,7 +75,13 @@ fn compile(
         checksum,
         size: compiled_asset.len(),
     };
-    Ok(vec![asset])
+
+    // in this mock build dependency are _not_ runtime references.
+
+    Ok(CompilationOutput {
+        compiled_assets: vec![asset],
+        asset_references: vec![],
+    })
 }
 
 fn main() {

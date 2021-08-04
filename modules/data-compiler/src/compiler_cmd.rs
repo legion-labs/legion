@@ -61,6 +61,7 @@ use crate::{
     Platform, Target,
 };
 
+use legion_assets::AssetId;
 use legion_resources::{ResourceId, ResourceType};
 
 use serde::{Deserialize, Serialize};
@@ -289,6 +290,8 @@ impl CompilerHashCmd {
 pub struct CompilerCompileCmdOutput {
     /// Generated assets.
     pub compiled_assets: Vec<CompiledAsset>,
+    /// References between generated assets.
+    pub asset_references: Vec<(AssetId, AssetId)>,
 }
 
 impl CompilerCompileCmdOutput {
@@ -315,11 +318,10 @@ impl CompilerCompileCmd {
         builder.arg(COMMAND_NAME_COMPILE);
         builder.arg(format!("{}", source));
         if !deps.is_empty() {
-            let mut deps_arg = format!("--{}={}", COMMAND_ARG_DEPENDENCIES, deps[0]);
-            for res in deps.iter().skip(1) {
-                deps_arg.push_str(&format!(",{}", res));
+            builder.arg(format!("--{}", COMMAND_ARG_DEPENDENCIES));
+            for res in deps {
+                builder.arg(format!("{}", res));
             }
-            builder.arg(deps_arg);
         }
 
         builder.arg(format!(

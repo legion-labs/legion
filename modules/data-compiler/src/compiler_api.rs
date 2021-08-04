@@ -16,7 +16,7 @@
 //!
 //! ```no_run
 //! # use legion_data_compiler::{CompiledAsset, CompilerHash, Locale, Platform, Target};
-//! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerDescriptor, CompilerError};
+//! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerDescriptor, CompilationOutput, CompilerError};
 //! # use legion_resources::ResourceId;
 //! # use legion_data_compiler::compiled_asset_store::CompiledAssetStoreAddr;
 //! # use std::path::Path;
@@ -47,7 +47,7 @@
 //!    locale: &Locale,
 //!    compiled_asset_store_path: CompiledAssetStoreAddr,
 //!    resource_dir: &Path,
-//!) -> Result<Vec<CompiledAsset>, CompilerError> {
+//!) -> Result<CompilationOutput, CompilerError> {
 //!    todo!()
 //! }
 //!
@@ -154,6 +154,19 @@ use std::{
 /// * Invalidate all `build index` files.
 pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// `Data Compiler`'s output.
+///
+/// Includes data which allows to load and validate [`legion_assets::Asset`]s stored in [`CompiledAssetStore`].
+/// As well as references between assets that define load-time dependencies.
+///
+/// [`CompiledAssetStore`]: ../compiled_asset_store/index.html
+pub struct CompilationOutput {
+    /// List of compiled asset's metadata.
+    pub compiled_assets: Vec<CompiledAsset>,
+    /// List of references between compiled assets.
+    pub asset_references: Vec<(AssetId, AssetId)>,
+}
+
 /// Defines data compiler properties.
 pub struct CompilerDescriptor {
     /// Data build version of data compiler.
@@ -182,7 +195,7 @@ pub struct CompilerDescriptor {
         locale: &Locale,
         compiled_asset_store_path: CompiledAssetStoreAddr,
         resource_dir: &Path, // todo: assume sources are in the same directory? or cwd? or make this the resource dir?
-    ) -> Result<Vec<CompiledAsset>, CompilerError>,
+    ) -> Result<CompilationOutput, CompilerError>,
 }
 
 /// Compiler error.
@@ -374,7 +387,7 @@ pub fn compiler_main(
             );
             let resource_dir = PathBuf::from(cmd_args.value_of(COMMAND_ARG_RESOURCE_DIR).unwrap());
 
-            let compiled_assets = (descriptor.compile_func)(
+            let compilation_output = (descriptor.compile_func)(
                 source,
                 &deps,
                 target,
@@ -384,7 +397,10 @@ pub fn compiler_main(
                 &resource_dir,
             )?;
 
-            let output = CompilerCompileCmdOutput { compiled_assets };
+            let output = CompilerCompileCmdOutput {
+                compiled_assets: compilation_output.compiled_assets,
+                asset_references: compilation_output.asset_references,
+            };
             serde_json::to_writer_pretty(stdout(), &output)
                 .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())

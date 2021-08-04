@@ -30,13 +30,22 @@ pub(crate) struct CompiledAssetInfo {
     pub(crate) compiled_size: usize,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct CompiledAssetReference {
+    context_hash: u64,
+    source_guid: ResourceId,
+    source_hash: u64,
+    pub(crate) compiled_guid: AssetId,
+    pub(crate) compiled_reference: AssetId,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct BuildIndexContent {
     version: String,
     project_index: PathBuf,
-    resources: Vec<ResourceInfo>, // resource_references
+    resources: Vec<ResourceInfo>,
     compiled_assets: Vec<CompiledAssetInfo>,
-    // todo(kstasik): compiled_asset_references
+    compiled_asset_references: Vec<CompiledAssetReference>,
 }
 
 #[derive(Debug)]
@@ -67,6 +76,7 @@ impl BuildIndex {
             project_index: projectindex_path.to_owned(),
             resources: vec![],
             compiled_assets: vec![],
+            compiled_asset_references: vec![],
         };
 
         serde_json::to_writer(&file, &content).map_err(|_e| Error::IOError)?;
@@ -247,8 +257,9 @@ impl BuildIndex {
         source_guid: ResourceId,
         source_hash: u64,
         compiled_assets: &[CompiledAsset],
+        compiled_references: &[(AssetId, AssetId)],
     ) {
-        let mut compiled_desc = compiled_assets
+        let mut compiled_assets_desc: Vec<_> = compiled_assets
             .iter()
             .map(|asset| CompiledAssetInfo {
                 context_hash,
@@ -258,7 +269,20 @@ impl BuildIndex {
                 compiled_checksum: asset.checksum,
                 compiled_size: asset.size,
             })
-            .collect::<Vec<CompiledAssetInfo>>();
+            .collect();
+
+        let mut compiled_references_desc: Vec<_> = compiled_references
+            .iter()
+            .map(
+                |&(compiled_guid, compiled_reference)| CompiledAssetReference {
+                    context_hash,
+                    source_guid,
+                    source_hash,
+                    compiled_guid,
+                    compiled_reference,
+                },
+            )
+            .collect();
 
         // For now we assume there is not concurrent compilation
         // so there is no way to compile the same resources twice.
@@ -266,7 +290,13 @@ impl BuildIndex {
         // is exactly the same for all compiled_assets.
         assert_eq!(self.find_compiled(context_hash, source_hash).len(), 0);
 
-        self.content.compiled_assets.append(&mut compiled_desc);
+        self.content
+            .compiled_assets
+            .append(&mut compiled_assets_desc);
+
+        self.content
+            .compiled_asset_references
+            .append(&mut compiled_references_desc);
     }
 
     pub(crate) fn find_compiled(

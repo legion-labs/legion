@@ -10,8 +10,8 @@ use std::{env, io};
 use legion_data_compiler::compiled_asset_store::{CompiledAssetStoreAddr, LocalCompiledAssetStore};
 use legion_data_compiler::compiler_api::DATA_BUILD_VERSION;
 use legion_data_compiler::compiler_cmd::{
-    list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfo, CompilerInfoCmd,
-    CompilerInfoCmdOutput,
+    list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
+    CompilerInfoCmd, CompilerInfoCmdOutput,
 };
 use legion_data_compiler::{CompiledAsset, CompilerHash, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
@@ -430,16 +430,19 @@ impl DataBuild {
                     );
 
                     // todo: what is the cwd for if we provide resource_dir() ?
-                    let compiled_assets = compile_cmd
+                    let CompilerCompileCmdOutput {
+                        compiled_assets,
+                        asset_references,
+                    } = compile_cmd
                         .execute(compiler_path, &self.project.resource_dir())
-                        .map_err(Error::CompilerError)?
-                        .compiled_assets;
+                        .map_err(Error::CompilerError)?;
 
                     self.build_index.insert_compiled(
                         context_hash,
                         resource_id,
                         source_hash,
                         &compiled_assets,
+                        &asset_references,
                     );
                     let asset_count = compiled_assets.len();
                     (
