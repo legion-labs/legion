@@ -1,10 +1,11 @@
 use crate::{sql::*, *};
 use futures::executor::block_on;
+use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::fs;
 use std::path::Path;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ChangeType {
     Edit = 1,
     Add = 2,

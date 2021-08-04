@@ -50,8 +50,13 @@ impl RepositoryQuery for HTTPRepositoryQuery {
     async fn read_branches(&self) -> Result<Vec<Branch>, String> {
         panic!("not implemented");
     }
-    async fn read_commit(&self, _id: &str) -> Result<Commit, String> {
-        panic!("not implemented");
+    async fn read_commit(&self, id: &str) -> Result<Commit, String> {
+        let request = ServerRequest::ReadCommit(ReadCommitRequest {
+            repo_name: self.repo_name.clone(),
+            commit_id: String::from(id),
+        });
+        let resp = execute_request(&self.url, &request).await?;
+        Commit::from_json(&resp)
     }
     async fn insert_commit(&self, _commit: &Commit) -> Result<(), String> {
         panic!("not implemented");

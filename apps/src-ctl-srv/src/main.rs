@@ -59,6 +59,12 @@ async fn read_branch_req(repo_name: &str, branch_name: &str) -> Result<String, S
     branch.to_json()
 }
 
+async fn read_commit_req(repo_name: &str, commit_id: &str) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(repo_name).await?);
+    let commit = query.read_commit(commit_id).await?;
+    commit.to_json()
+}
+
 async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
     let req = ServerRequest::from_json(std::str::from_utf8(&body).unwrap())?;
     println!("{:?}", req);
@@ -70,6 +76,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
             insert_workspace_req(&req.repo_name, &req.spec).await
         }
         ServerRequest::ReadBranch(req) => read_branch_req(&req.repo_name, &req.branch_name).await,
+        ServerRequest::ReadCommit(req) => read_commit_req(&req.repo_name, &req.commit_id).await,
     }
 }
 

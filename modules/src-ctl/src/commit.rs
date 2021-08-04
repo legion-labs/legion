@@ -1,16 +1,17 @@
 use crate::{sql::execute_sql, *};
 use chrono::prelude::*;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HashedChange {
     pub relative_path: String,
     pub hash: String,
     pub change_type: ChangeType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Commit {
     pub id: String,
     pub owner: String,
@@ -40,6 +41,21 @@ impl Commit {
             root_hash,
             parents,
             date_time_utc,
+        }
+    }
+
+    pub fn from_json(contents: &str) -> Result<Self, String> {
+        let parsed: serde_json::Result<Self> = serde_json::from_str(contents);
+        match parsed {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(format!("Error parsing commit: {}", e)),
+        }
+    }
+
+    pub fn to_json(&self) -> Result<String, String> {
+        match serde_json::to_string(&self) {
+            Ok(json) => Ok(json),
+            Err(e) => Err(format!("Error formatting commit {:?}: {}", self.id, e)),
         }
     }
 }

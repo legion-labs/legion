@@ -29,12 +29,19 @@ pub struct ReadBranchRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ReadCommitRequest {
+    pub repo_name: String,
+    pub commit_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     InitRepo(InitRepositoryRequest),
     InsertWorkspace(InsertWorkspaceRequest),
     Ping(PingRequest),
     ReadBlobStorageSpec(ReadBlobStorageSpecRequest),
     ReadBranch(ReadBranchRequest),
+    ReadCommit(ReadCommitRequest),
 }
 
 impl ServerRequest {
