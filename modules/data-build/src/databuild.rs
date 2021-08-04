@@ -255,8 +255,12 @@ impl DataBuild {
         Ok(updated_resources)
     }
 
-    /// Same as [`DataBuild::compile()`] but the root resource is specified by name. Its dependencies are
-    /// retrieved from the [`Project`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
+    /// Compiles a named resource and updates the `manifest_file` at specified path.
+    ///
+    /// Compilation results are stored in [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`)
+    /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
+    ///
+    /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
     pub fn compile_named(
         &mut self,
         root_resource_name: &ResourcePathRef,
