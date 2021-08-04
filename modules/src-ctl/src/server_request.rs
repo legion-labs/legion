@@ -23,11 +23,18 @@ pub struct InsertWorkspaceRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ReadBranchRequest {
+    pub repo_name: String,
+    pub branch_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
-    Ping(PingRequest),
     InitRepo(InitRepositoryRequest),
-    ReadBlobStorageSpec(ReadBlobStorageSpecRequest),
     InsertWorkspace(InsertWorkspaceRequest),
+    Ping(PingRequest),
+    ReadBlobStorageSpec(ReadBlobStorageSpecRequest),
+    ReadBranch(ReadBranchRequest),
 }
 
 impl ServerRequest {

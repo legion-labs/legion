@@ -24,8 +24,13 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         Ok(())
     }
 
-    async fn read_branch(&self, _name: &str) -> Result<Branch, String> {
-        panic!("not implemented");
+    async fn read_branch(&self, name: &str) -> Result<Branch, String> {
+        let request = ServerRequest::ReadBranch(ReadBranchRequest {
+            repo_name: self.repo_name.clone(),
+            branch_name: String::from(name),
+        });
+        let resp = execute_request(&self.url, &request).await?;
+        Branch::from_json(&resp)
     }
     async fn insert_branch(&self, _branch: &Branch) -> Result<(), String> {
         panic!("not implemented");

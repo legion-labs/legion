@@ -29,29 +29,34 @@ fn read_blob_storage_spec_req(_name: &str) -> Result<String, String> {
     Ok(blob_spec.to_json())
 }
 
-async fn insert_workspace_req(repo_name: &str, spec: &Workspace) -> Result<String, String> {
-    let mut pool: Option<Arc<SqlConnectionPool>> = None;
+async fn get_connection_pool(repo_name: &str) -> Result<Arc<SqlConnectionPool>, String> {
     {
         let pool_read = POOLS.read().unwrap();
         if let Some(p) = pool_read.get(repo_name) {
-            pool = Some(p.clone());
+            return Ok(p.clone());
         }
     }
 
-    if pool.is_none() {
-        let db_server_uri = get_sql_uri();
-        let repo_uri = format!("{}/{}", db_server_uri, repo_name);
-        let p = Arc::new(SqlConnectionPool::new(&repo_uri).await?);
-        POOLS
-            .write()
-            .unwrap()
-            .insert(String::from(repo_name), p.clone());
-        pool = Some(p);
-    }
+    let db_server_uri = get_sql_uri();
+    let repo_uri = format!("{}/{}", db_server_uri, repo_name);
+    let p = Arc::new(SqlConnectionPool::new(&repo_uri).await?);
+    POOLS
+        .write()
+        .unwrap()
+        .insert(String::from(repo_name), p.clone());
+    Ok(p)
+}
 
-    let query = SqlRepositoryQuery::new(pool.unwrap());
+async fn insert_workspace_req(repo_name: &str, spec: &Workspace) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(repo_name).await?);
     query.insert_workspace(spec).await?;
     Ok(String::from(""))
+}
+
+async fn read_branch_req(repo_name: &str, branch_name: &str) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(repo_name).await?);
+    let branch = query.read_branch(branch_name).await?;
+    branch.to_json()
 }
 
 async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
@@ -64,6 +69,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::InsertWorkspace(req) => {
             insert_workspace_req(&req.repo_name, &req.spec).await
         }
+        ServerRequest::ReadBranch(req) => read_branch_req(&req.repo_name, &req.branch_name).await,
     }
 }
 

@@ -19,6 +19,21 @@ impl Branch {
             lock_domain_id,
         }
     }
+
+    pub fn from_json(contents: &str) -> Result<Self, String> {
+        let parsed: serde_json::Result<Self> = serde_json::from_str(contents);
+        match parsed {
+            Ok(branch) => Ok(branch),
+            Err(e) => Err(format!("Error parsing branch spec {}", e)),
+        }
+    }
+
+    pub fn to_json(&self) -> Result<String, String> {
+        match serde_json::to_string(&self) {
+            Ok(json) => Ok(json),
+            Err(e) => Err(format!("Error formatting branch {:?}: {}", self.name, e)),
+        }
+    }
 }
 
 pub fn init_branch_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
@@ -32,10 +47,7 @@ pub fn init_branch_database(sql_connection: &mut sqlx::AnyConnection) -> Result<
 }
 
 fn write_branch_spec(file_path: &Path, branch: &Branch) -> Result<(), String> {
-    match serde_json::to_string(branch) {
-        Ok(json) => write_file(file_path, json.as_bytes()),
-        Err(e) => Err(format!("Error formatting branch {:?}: {}", branch, e)),
-    }
+    write_file(file_path, branch.to_json()?.as_bytes())
 }
 
 pub fn save_current_branch(workspace_root: &Path, branch: &Branch) -> Result<(), String> {
@@ -49,16 +61,7 @@ pub fn read_current_branch(workspace_root: &Path) -> Result<Branch, String> {
 }
 
 pub fn read_branch(branch_file_path: &Path) -> Result<Branch, String> {
-    let parsed: serde_json::Result<Branch> =
-        serde_json::from_str(&read_text_file(branch_file_path)?);
-    match parsed {
-        Ok(branch) => Ok(branch),
-        Err(e) => Err(format!(
-            "Error reading branch spec {}: {}",
-            branch_file_path.display(),
-            e
-        )),
-    }
+    Branch::from_json(&read_text_file(branch_file_path)?)
 }
 
 pub async fn create_branch_command(name: &str) -> Result<(), String> {
