@@ -1,8 +1,11 @@
 use legion_assets::AssetId;
 use legion_data_compiler::CompiledAsset;
+use petgraph::{algo, Directed, Graph};
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::{hash_map::DefaultHasher, HashMap, VecDeque},
     fs::{File, OpenOptions},
+    hash::{Hash, Hasher},
     io::Seek,
     path::{Path, PathBuf},
 };
@@ -103,16 +106,98 @@ impl BuildIndex {
         self.content.project_index.exists()
     }
 
-    pub(crate) fn compute_source_hash(&self, id: ResourceId) -> Result<ResourceHash, Error> {
-        let resource = self
-            .content
-            .resources
-            .iter()
-            .find(|r| r.id == id)
-            .ok_or(Error::NotFound)?;
+    /// Returns ordered list of dependencies starting from leaf-dependencies ending with `resource_id` - the root.
+    pub(crate) fn evaluation_order(
+        &self,
+        resource_id: ResourceId,
+    ) -> Result<Vec<ResourceId>, Error> {
+        let mut dep_graph = Graph::<ResourceId, (), Directed>::new();
 
-        // TODO: this should include hashes of (filtered) dependencies
-        Ok(resource.resource_hash)
+        let mut indices = HashMap::<ResourceId, petgraph::prelude::NodeIndex>::new();
+        let mut processed = vec![];
+        let mut queue = VecDeque::<ResourceId>::new();
+
+        queue.push_back(resource_id);
+
+        let mut get_or_create_index = |res, dep_graph: &mut Graph<ResourceId, ()>| {
+            if let Some(own_index) = indices.get(&res) {
+                *own_index
+            } else {
+                let own_index = dep_graph.add_node(res);
+                indices.insert(res, own_index);
+                own_index
+            }
+        };
+
+        while let Some(res) = queue.pop_front() {
+            processed.push(res);
+
+            let own_index = get_or_create_index(res, &mut dep_graph);
+
+            let deps = self.find_dependencies(res).ok_or(Error::IntegrityFailure)?;
+
+            for d in &deps {
+                let other_index = get_or_create_index(*d, &mut dep_graph);
+                dep_graph.add_edge(own_index, other_index, ());
+            }
+
+            let unprocessed: VecDeque<ResourceId> = deps
+                .into_iter()
+                .filter(|r| !processed.contains(r))
+                .collect();
+            queue.extend(unprocessed);
+        }
+
+        let topological_order =
+            algo::toposort(&dep_graph, None).map_err(|_e| Error::IntegrityFailure)?;
+
+        let evaluation_order = topological_order
+            .iter()
+            .map(|i| *dep_graph.node_weight(*i).unwrap())
+            .rev()
+            .collect();
+        Ok(evaluation_order)
+    }
+
+    /// Returns a combined hash of:
+    /// * `id` resource's content.
+    /// * content of all `id`'s dependencies.
+    /// todo: at one point dependency filtering here will be useful.
+    pub(crate) fn compute_source_hash(&self, id: ResourceId) -> Result<ResourceHash, Error> {
+        let sorted_unique_resource_hashes: Vec<ResourceHash> = {
+            let mut unique_resources = HashMap::new();
+            let mut queue: VecDeque<_> = VecDeque::new();
+            queue.push_back(id);
+
+            while let Some(resource) = queue.pop_front() {
+                let resource_info = self
+                    .content
+                    .resources
+                    .iter()
+                    .find(|r| r.id == resource)
+                    .ok_or(Error::NotFound)?;
+
+                unique_resources.insert(resource, resource_info.resource_hash);
+
+                let newly_discovered_deps: Vec<_> = resource_info
+                    .build_deps
+                    .iter()
+                    .filter(|r| !unique_resources.contains_key(*r))
+                    .collect();
+
+                queue.extend(newly_discovered_deps);
+            }
+
+            let mut hashes: Vec<ResourceHash> = unique_resources.into_iter().map(|t| t.1).collect();
+            hashes.sort_unstable();
+            hashes
+        };
+
+        let mut hasher = DefaultHasher::new();
+        for h in sorted_unique_resource_hashes {
+            h.hash(&mut hasher);
+        }
+        Ok(hasher.finish())
     }
 
     pub(crate) fn update_resource(
@@ -148,12 +233,12 @@ impl BuildIndex {
         }
     }
 
-    pub(crate) fn find(&self, id: ResourceId) -> Option<(ResourceId, Vec<ResourceId>)> {
+    pub(crate) fn find_dependencies(&self, id: ResourceId) -> Option<Vec<ResourceId>> {
         self.content
             .resources
             .iter()
             .find(|r| r.id == id)
-            .map(|resource| (resource.id, resource.build_deps.clone()))
+            .map(|resource| resource.build_deps.clone())
     }
 
     pub(crate) fn insert_compiled(

@@ -1,9 +1,10 @@
 use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::io::Seek;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use std::{env, io};
 
 use legion_data_compiler::compiled_asset_store::{CompiledAssetStoreAddr, LocalCompiledAssetStore};
@@ -15,10 +16,15 @@ use legion_data_compiler::compiler_cmd::{
 use legion_data_compiler::{CompiledAsset, CompilerHash, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
-use petgraph::{algo, Directed, Graph};
 
 use crate::buildindex::BuildIndex;
 use crate::Error;
+
+#[derive(Clone, Debug)]
+struct CompileStat {
+    time: std::time::Duration,
+    from_cache: bool,
+}
 
 /// Context hash represents all that goes into resource compilation
 /// excluding the resource itself.
@@ -249,56 +255,6 @@ impl DataBuild {
         Ok(updated_resources)
     }
 
-    /// Returns ordered list of dependencies starting from leaf-dependencies ending with `resource_id` - the rootgit .
-    fn evaluation_order(&self, resource_id: ResourceId) -> Result<Vec<ResourceId>, Error> {
-        let mut dep_graph = Graph::<ResourceId, (), Directed>::new();
-
-        let mut indices = HashMap::<ResourceId, petgraph::prelude::NodeIndex>::new();
-        let mut processed = vec![];
-        let mut queue = VecDeque::<ResourceId>::new();
-
-        queue.push_back(resource_id);
-
-        let mut get_or_create_index = |res, dep_graph: &mut Graph<ResourceId, ()>| {
-            if let Some(own_index) = indices.get(&res) {
-                *own_index
-            } else {
-                let own_index = dep_graph.add_node(res);
-                indices.insert(res, own_index);
-                own_index
-            }
-        };
-
-        while let Some(res) = queue.pop_front() {
-            processed.push(res);
-
-            let own_index = get_or_create_index(res, &mut dep_graph);
-
-            let (_, deps) = self.build_index.find(res).ok_or(Error::IntegrityFailure)?;
-
-            for d in &deps {
-                let other_index = get_or_create_index(*d, &mut dep_graph);
-                dep_graph.add_edge(own_index, other_index, ());
-            }
-
-            let unprocessed: VecDeque<ResourceId> = deps
-                .into_iter()
-                .filter(|r| !processed.contains(r))
-                .collect();
-            queue.extend(unprocessed);
-        }
-
-        let topological_order =
-            algo::toposort(&dep_graph, None).map_err(|_e| Error::IntegrityFailure)?;
-
-        let evaluation_order = topological_order
-            .iter()
-            .map(|i| *dep_graph.node_weight(*i).unwrap())
-            .rev()
-            .collect();
-        Ok(evaluation_order)
-    }
-
     /// Same as [`DataBuild::compile()`] but the root resource is specified by name. Its dependencies are
     /// retrieved from the [`Project`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
     pub fn compile_named(
@@ -310,9 +266,6 @@ impl DataBuild {
         locale: &Locale,
     ) -> Result<Manifest, Error> {
         let resource_id = self.project.find_resource(root_resource_name)?;
-
-        let (source_guid, dependencies) =
-            self.build_index.find(resource_id).ok_or(Error::NotFound)?;
 
         let (mut manifest, mut file) = {
             if let Ok(file) = OpenOptions::new()
@@ -336,14 +289,19 @@ impl DataBuild {
             }
         };
 
-        self.compile(
-            source_guid,
-            &dependencies,
-            &mut manifest,
-            target,
-            platform,
-            locale,
-        )?;
+        let (changed_assets, _) = self.compile(resource_id, target, platform, locale)?;
+
+        for asset in changed_assets.compiled_assets {
+            if let Some(existing) = manifest
+                .compiled_assets
+                .iter_mut()
+                .find(|existing| existing.guid == asset.guid)
+            {
+                *existing = asset;
+            } else {
+                manifest.compiled_assets.push(asset);
+            }
+        }
 
         file.set_len(0).unwrap();
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
@@ -355,15 +313,18 @@ impl DataBuild {
     /// Compiles a resource with given dependencies. Returned  [`Manifest`] contains a list of compilation results.
     /// Those results are in [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`)
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
-    pub fn compile(
+    fn compile(
         &mut self,
         resource_id: ResourceId,
-        dependencies: &[ResourceId],
-        manifest: &mut Manifest,
         target: Target,
         platform: Platform,
         locale: &Locale,
-    ) -> Result<(), Error> {
+    ) -> Result<(Manifest, Vec<CompileStat>), Error> {
+        let dependencies = self
+            .build_index
+            .find_dependencies(resource_id)
+            .ok_or(Error::NotFound)?;
+
         let compilers = list_compilers(&self.config.compiler_search_paths);
 
         let info_cmd = CompilerInfoCmd::default();
@@ -378,7 +339,7 @@ impl DataBuild {
             })
             .collect();
 
-        let all_resources = self.evaluation_order(resource_id)?;
+        let all_resources = self.build_index.evaluation_order(resource_id)?;
 
         let resource_types = {
             let mut types: Vec<_> = all_resources.iter().map(|e| e.resource_type()).collect();
@@ -389,7 +350,7 @@ impl DataBuild {
 
         let compiler_hash_cmd = CompilerHashCmd::new(target, platform, locale);
 
-        let compiler_paths = resource_types
+        let compiler_details = resource_types
             .into_iter()
             .map(|kind| {
                 compilers
@@ -405,10 +366,14 @@ impl DataBuild {
             })
             .collect::<Result<HashMap<_, _>, _>>()?;
 
-        let mut all_compiled_assets = vec![];
+        let mut manifest = Manifest {
+            compiled_assets: vec![],
+        };
+        let mut compile_stats = vec![];
+
         for resource_id in all_resources {
             let (compiler_path, compiler_hash_list) =
-                compiler_paths.get(&resource_id.resource_type()).unwrap();
+                compiler_details.get(&resource_id.resource_type()).unwrap();
 
             // todo(kstasik): support triggering compilation for multiple platforms
 
@@ -424,24 +389,35 @@ impl DataBuild {
             //
             let source_hash = self.build_index.compute_source_hash(resource_id)?;
 
-            let compiled_assets = {
+            let (compiled_assets, stats) = {
+                let now = SystemTime::now();
                 let cached = self.build_index.find_compiled(context_hash, source_hash);
                 if !cached.is_empty() {
-                    cached
+                    let assets: Vec<_> = cached
                         .iter()
                         .map(|asset| CompiledAsset {
                             guid: asset.compiled_guid,
                             checksum: asset.compiled_checksum,
                             size: asset.compiled_size,
                         })
-                        .collect()
+                        .collect();
+                    let asset_count = assets.len();
+                    (
+                        assets,
+                        std::iter::repeat(CompileStat {
+                            time: now.elapsed().unwrap(),
+                            from_cache: true,
+                        })
+                        .take(asset_count)
+                        .collect::<Vec<_>>(),
+                    )
                 } else {
                     // for now we only focus on top level asset
                     // todo(kstasik): how do we know that GI needs to be run? taking many assets as arguments?
 
                     let mut compile_cmd = CompilerCompileCmd::new(
                         resource_id,
-                        dependencies,
+                        &dependencies[..],
                         &self.asset_store.address(),
                         &self.project.resource_dir(),
                         target,
@@ -461,25 +437,23 @@ impl DataBuild {
                         source_hash,
                         &compiled_assets,
                     );
-                    compiled_assets
+                    let asset_count = compiled_assets.len();
+                    (
+                        compiled_assets,
+                        std::iter::repeat(CompileStat {
+                            time: now.elapsed().unwrap(),
+                            from_cache: false,
+                        })
+                        .take(asset_count)
+                        .collect::<Vec<_>>(),
+                    )
                 }
             };
 
-            all_compiled_assets.extend(compiled_assets);
+            manifest.compiled_assets.extend(compiled_assets);
+            compile_stats.extend(stats);
         }
-
-        for asset in all_compiled_assets {
-            if let Some(existing) = manifest
-                .compiled_assets
-                .iter_mut()
-                .find(|existing| existing.guid == asset.guid)
-            {
-                *existing = asset;
-            } else {
-                manifest.compiled_assets.push(asset);
-            }
-        }
-        Ok(())
+        Ok((manifest, compile_stats))
     }
 
     /// Returns the global version of the databuild module.
@@ -887,19 +861,35 @@ mod tests {
             .unwrap()
     }
 
-    fn setup_project(project_dir: impl AsRef<Path>) -> ResourceId {
+    fn change_resource(resource_id: ResourceId, project_dir: &Path) {
+        let mut project = Project::open(project_dir).expect("failed to open project");
+        let mut resources = setup_registry();
+
+        let handle = project
+            .load_resource(resource_id, &mut resources)
+            .expect("to load resource");
+
+        let resource = handle
+            .get_mut::<test_resource::TestResource>(&mut resources)
+            .expect("resource instance");
+        resource.content.push_str(" more content");
+        project
+            .save_resource(resource_id, &handle, &mut resources)
+            .expect("successful save");
+    }
+
+    /// Creates a project with 5 resources with dependencies setup as depicted below.
+    /// Returns an array of resources from A to E where A is at index 0.
+    ///
+    /// A -> B -> C
+    /// |    |
+    /// D -> E
+    ///
+    fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
         let mut project =
             Project::create_new(project_dir.as_ref()).expect("failed to create a project");
 
         let mut resources = setup_registry();
-
-        /*
-
-        A -> B -> C
-        |    |
-        D -> E
-
-        */
 
         let res_c = create_resource(ResourcePath::from("C"), &[], &mut project, &mut resources);
         let res_e = create_resource(ResourcePath::from("E"), &[], &mut project, &mut resources);
@@ -915,20 +905,22 @@ mod tests {
             &mut project,
             &mut resources,
         );
-        create_resource(
+        let res_a = create_resource(
             ResourcePath::from("A"),
             &[res_b, res_d],
             &mut project,
             &mut resources,
-        )
+        );
+        [res_a, res_b, res_c, res_d, res_e]
     }
 
     #[test]
-    fn sort_dependencies() {
+    fn dependency_invalidation() {
         let work_dir = tempfile::tempdir().unwrap();
         let project_dir = work_dir.path();
 
-        let root = setup_project(project_dir);
+        let resource_list = setup_project(project_dir);
+        let root = resource_list[0];
 
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
             .asset_store(&CompiledAssetStoreAddr::from(work_dir.path()))
@@ -937,21 +929,58 @@ mod tests {
             .expect("new build index");
         build.source_pull().expect("successful pull");
 
-        let order = build.evaluation_order(root).expect("no cycles");
+        //  test of evaluation order computation.
+        {
+            let order = build.build_index.evaluation_order(root).expect("no cycles");
+            assert_eq!(order.len(), 5);
+            assert_eq!(order[4], root);
+        }
 
-        assert_eq!(order.len(), 5);
-        assert_eq!(order[4], root);
+        // first run - none of the assets from cache.
+        {
+            let (output, stats) = build
+                .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
+                .expect("successful compilation");
 
-        let output = build
-            .compile_named(
-                &ResourcePath::from("A"),
-                &project_dir.join("output.manifest"),
-                Target::Game,
-                Platform::Windows,
-                &Locale::new("en"),
-            )
-            .expect("successful compilation");
+            assert_eq!(output.compiled_assets.len(), 5);
+            assert!(stats.iter().all(|s| !s.from_cache));
+        }
 
-        assert_eq!(output.compiled_assets.len(), 5);
+        // no change, second run - all assets from cache.
+        {
+            let (output, stats) = build
+                .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
+                .expect("successful compilation");
+
+            assert_eq!(output.compiled_assets.len(), 5);
+            assert!(stats.iter().all(|s| s.from_cache));
+        }
+
+        // change root resource, one asset from cache.
+        {
+            change_resource(root, project_dir);
+            build.source_pull().expect("to pull changes");
+
+            let (output, stats) = build
+                .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
+                .expect("successful compilation");
+
+            assert_eq!(output.compiled_assets.len(), 5);
+            assert_eq!(stats.iter().filter(|s| !s.from_cache).count(), 1);
+        }
+
+        // change resource E - which should invalide 4 resources in total (including E).
+        {
+            let resource_e = resource_list[4];
+            change_resource(resource_e, project_dir);
+            build.source_pull().expect("to pull changes");
+
+            let (output, stats) = build
+                .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
+                .expect("successful compilation");
+
+            assert_eq!(output.compiled_assets.len(), 5);
+            assert_eq!(stats.iter().filter(|s| !s.from_cache).count(), 4);
+        }
     }
 }
