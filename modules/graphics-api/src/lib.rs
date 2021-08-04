@@ -32,7 +32,7 @@
 //!
 //! # Main Api Objects
 //!
-//! * [`Api`] - Primary entry point to using the API. Use the new_* functions to initialize the desired backend.
+//! * [`GfxApi`] - Primary entry point to using the API. Use the new_* functions to initialize the desired backend.
 //! * [`Buffer`] - Memory that can be accessed by the rendering API. It may reside in CPU or GPU memory.
 //! * [`CommandBuffer`] - A list of commands recorded by the CPU and submitted to the GPU.
 //! * [`CommandPool`] - A pool of command buffers. A command pool is necessary to create a command buffer.
