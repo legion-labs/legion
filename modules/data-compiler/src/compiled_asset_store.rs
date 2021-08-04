@@ -147,13 +147,17 @@ impl CompiledAssetStore for LocalCompiledAssetStore {
     fn write(&mut self, id: i128, data: &[u8]) -> Option<()> {
         let asset_path = self.asset_path(id);
 
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(asset_path)
-            .ok()?;
+        if asset_path.exists() {
+            Some(())
+        } else {
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(asset_path)
+                .ok()?;
 
-        file.write_all(data).ok()
+            file.write_all(data).ok()
+        }
     }
 
     fn read(&self, id: i128) -> Option<Vec<u8>> {
