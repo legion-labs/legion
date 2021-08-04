@@ -309,39 +309,11 @@ impl Project {
         Ok(handle)
     }
 
-    /// Gathers information about a given resource.
-    ///
-    /// This method opens `.meta` file of the requested resource and all its dependent resources.
-    ///
-    /// `TODO`: This implementation does a lot of IO work. It will become inefficient quickly.
-    /// Caching and related cache invalidation when pulling from source-control and/or when modifying assets locally
-    /// will be key here.
-    pub fn collect_resource_info(
-        &self,
-        id: ResourceId,
-    ) -> Result<(ResourceHash, Vec<ResourceId>), Error> {
-        let mut dependencies = Vec::<ResourceId>::new();
-
-        let mut queue = Vec::<ResourceId>::new();
-
-        let gather_dependencies =
-            |queue: &mut Vec<ResourceId>, dependencies: &mut Vec<ResourceId>, meta: &Metadata| {
-                for dep in &meta.build_deps {
-                    if !dependencies.contains(dep) {
-                        dependencies.push(*dep);
-                        queue.push(*dep);
-                    }
-                }
-            };
-
+    /// Returns information about a given resource from its `.meta` file.
+    pub fn resource_info(&self, id: ResourceId) -> Result<(ResourceHash, Vec<ResourceId>), Error> {
         let meta = self.read_meta(id)?;
-        gather_dependencies(&mut queue, &mut dependencies, &meta);
         let resource_hash = meta.resource_hash();
-
-        while let Some(id) = queue.pop() {
-            let meta = self.read_meta(id)?;
-            gather_dependencies(&mut queue, &mut dependencies, &meta);
-        }
+        let dependencies = meta.build_deps;
 
         Ok((resource_hash, dependencies))
     }
@@ -710,7 +682,7 @@ mod tests {
     }
 
     #[test]
-    fn collect_dependencies() {
+    fn immediate_dependencies() {
         let project_dir = setup_test();
         let (project, _) = create_actor(project_dir.path());
 
@@ -718,9 +690,9 @@ mod tests {
             .find_resource(&ResourcePath::from("hero.actor"))
             .unwrap();
 
-        let (_, all_deps) = project.collect_resource_info(top_level_resource).unwrap();
+        let (_, dependencies) = project.resource_info(top_level_resource).unwrap();
 
-        assert_eq!(all_deps.len(), 4);
+        assert_eq!(dependencies.len(), 2);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, VecDeque};
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::io::Seek;
@@ -14,6 +15,7 @@ use legion_data_compiler::compiler_cmd::{
 use legion_data_compiler::{CompiledAsset, CompilerHash, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
+use petgraph::{algo, Directed, Graph};
 
 use crate::buildindex::BuildIndex;
 use crate::Error;
@@ -231,7 +233,7 @@ impl DataBuild {
         let all_resources = self.project.resource_list();
 
         for res in &all_resources {
-            let (resource_hash, deps) = self.project.collect_resource_info(*res)?;
+            let (resource_hash, deps) = self.project.resource_info(*res)?;
             let dependencies = deps
                 .into_iter()
                 .map(|d| Self::map_resource_reference(d, &all_resources))
@@ -248,16 +250,55 @@ impl DataBuild {
         Ok(updated_resources)
     }
 
-    // compile_input:
-    // - compiler_hash: (asset_type, databuild_ver, compiler_id, loc_id)
-    // - source_guid: guid of source resource
-    // - source_hash: asset_hash (checksum of meta, checksum of content, flags) + asset_hash(es) of deps
-    // compile_output:
-    // - compiled_guid
-    // - compiled_type
-    // - compiled_checksum
-    // - compiled_size
-    // - compiled_flags
+    /// Returns ordered list of dependencies starting from leaf-dependencies ending with `resource_id` - the rootgit .
+    fn evaluation_order(&self, resource_id: ResourceId) -> Result<Vec<ResourceId>, Error> {
+        let mut dep_graph = Graph::<ResourceId, (), Directed>::new();
+
+        let mut indices = HashMap::<ResourceId, petgraph::prelude::NodeIndex>::new();
+        let mut processed = vec![];
+        let mut queue = VecDeque::<ResourceId>::new();
+
+        queue.push_back(resource_id);
+
+        let mut get_or_create_index = |res, dep_graph: &mut Graph<ResourceId, ()>| {
+            if let Some(own_index) = indices.get(&res) {
+                *own_index
+            } else {
+                let own_index = dep_graph.add_node(res);
+                indices.insert(res, own_index);
+                own_index
+            }
+        };
+
+        while let Some(res) = queue.pop_front() {
+            processed.push(res);
+
+            let own_index = get_or_create_index(res, &mut dep_graph);
+
+            let (_, deps) = self.build_index.find(res).ok_or(Error::IntegrityFailure)?;
+
+            for d in &deps {
+                let other_index = get_or_create_index(*d, &mut dep_graph);
+                dep_graph.add_edge(own_index, other_index, ());
+            }
+
+            let unprocessed: VecDeque<ResourceId> = deps
+                .into_iter()
+                .filter(|r| !processed.contains(r))
+                .collect();
+            queue.extend(unprocessed);
+        }
+
+        let topological_order =
+            algo::toposort(&dep_graph, None).map_err(|_e| Error::IntegrityFailure)?;
+
+        let evaluation_order = topological_order
+            .iter()
+            .map(|i| *dep_graph.node_weight(*i).unwrap())
+            .rev()
+            .collect();
+        Ok(evaluation_order)
+    }
 
     /// Same as [`DataBuild::compile()`] but the root resource is specified by name. Its dependencies are
     /// retrieved from the [`Project`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
@@ -311,72 +352,95 @@ impl DataBuild {
             })
             .collect();
 
-        let (compiler_file, _) = compilers
-            .iter()
-            .find(|info| info.1.resource_type.contains(&resource_id.resource_type()))
-            .ok_or(Error::CompilerNotFound)?;
+        let all_resources = self.evaluation_order(resource_id)?;
 
-        let compiler_path = &compiler_file.path;
-
-        // todo(kstasik): support triggering compilation for multiple platforms
+        let resource_types = {
+            let mut types: Vec<_> = all_resources.iter().map(|e| e.resource_type()).collect();
+            types.sort();
+            types.dedup();
+            types
+        };
 
         let compiler_hash_cmd = CompilerHashCmd::new(target, platform, locale);
-        let compiler_hash = compiler_hash_cmd
-            .execute(compiler_path)
-            .map_err(Error::CompilerError)?;
 
-        assert_eq!(compiler_hash.compiler_hash_list.len(), 1); // todo: support more.
-        let compiler_hash = compiler_hash.compiler_hash_list[0];
-        let context_hash =
-            compute_context_hash(resource_id.resource_type(), compiler_hash, Self::version());
-
-        //
-        // todo(kstasik): source_hash computation can include filtering of resource types in the future.
-        // the same resource can have a different source_hash depending on the compiler
-        // used as compilers can filter dependencies out.
-        //
-        let source_hash = self.build_index.compute_source_hash(resource_id)?;
-
-        let compiled_assets = {
-            let cached = self.build_index.find_compiled(context_hash, source_hash);
-            if !cached.is_empty() {
-                cached
+        let compiler_paths = resource_types
+            .into_iter()
+            .map(|kind| {
+                compilers
                     .iter()
-                    .map(|asset| CompiledAsset {
-                        guid: asset.compiled_guid,
-                        checksum: asset.compiled_checksum,
-                        size: asset.compiled_size,
+                    .find(|info| info.1.resource_type.contains(&kind))
+                    .map_or(Err(Error::CompilerNotFound), |e| {
+                        let res = compiler_hash_cmd
+                            .execute(&e.0.path)
+                            .map_err(Error::CompilerError)?;
+
+                        Ok((kind, (e.0.path.clone(), res.compiler_hash_list)))
                     })
-                    .collect()
-            } else {
-                // for now we only focus on top level asset
-                // todo(kstasik): how do we know that GI needs to be run? taking many assets as arguments?
+            })
+            .collect::<Result<HashMap<_, _>, _>>()?;
 
-                let mut compile_cmd = CompilerCompileCmd::new(
-                    resource_id,
-                    dependencies,
-                    &self.asset_store.address(),
-                    &self.project.resource_dir(),
-                    target,
-                    platform,
-                    locale,
-                );
+        let mut all_compiled_assets = vec![];
+        for resource_id in all_resources {
+            let (compiler_path, compiler_hash_list) =
+                compiler_paths.get(&resource_id.resource_type()).unwrap();
 
-                // todo: what is the cwd for if we provide resource_dir() ?
-                let compiled_assets = compile_cmd
-                    .execute(compiler_path, &self.project.resource_dir())
-                    .map_err(Error::CompilerError)?
-                    .compiled_assets;
+            // todo(kstasik): support triggering compilation for multiple platforms
 
-                self.build_index.insert_compiled(
-                    context_hash,
-                    resource_id,
-                    source_hash,
-                    &compiled_assets,
-                );
-                compiled_assets
-            }
-        };
+            assert_eq!(compiler_hash_list.len(), 1); // todo: support more.
+            let compiler_hash = compiler_hash_list[0];
+            let context_hash =
+                compute_context_hash(resource_id.resource_type(), compiler_hash, Self::version());
+
+            //
+            // todo(kstasik): source_hash computation can include filtering of resource types in the future.
+            // the same resource can have a different source_hash depending on the compiler
+            // used as compilers can filter dependencies out.
+            //
+            let source_hash = self.build_index.compute_source_hash(resource_id)?;
+
+            let compiled_assets = {
+                let cached = self.build_index.find_compiled(context_hash, source_hash);
+                if !cached.is_empty() {
+                    cached
+                        .iter()
+                        .map(|asset| CompiledAsset {
+                            guid: asset.compiled_guid,
+                            checksum: asset.compiled_checksum,
+                            size: asset.compiled_size,
+                        })
+                        .collect()
+                } else {
+                    // for now we only focus on top level asset
+                    // todo(kstasik): how do we know that GI needs to be run? taking many assets as arguments?
+
+                    let mut compile_cmd = CompilerCompileCmd::new(
+                        resource_id,
+                        dependencies,
+                        &self.asset_store.address(),
+                        &self.project.resource_dir(),
+                        target,
+                        platform,
+                        locale,
+                    );
+
+                    // todo: what is the cwd for if we provide resource_dir() ?
+                    let compiled_assets = compile_cmd
+                        .execute(compiler_path, &self.project.resource_dir())
+                        .map_err(Error::CompilerError)?
+                        .compiled_assets;
+
+                    self.build_index.insert_compiled(
+                        context_hash,
+                        resource_id,
+                        source_hash,
+                        &compiled_assets,
+                    );
+                    compiled_assets
+                }
+            };
+
+            all_compiled_assets.extend(compiled_assets);
+        }
 
         let (mut manifest, mut file) = {
             if let Ok(file) = OpenOptions::new()
@@ -400,7 +464,7 @@ impl DataBuild {
             }
         };
 
-        for asset in compiled_assets {
+        for asset in all_compiled_assets {
             if let Some(existing) = manifest
                 .compiled_assets
                 .iter_mut()
@@ -449,14 +513,16 @@ mod tests {
 
     use std::env;
     use std::fs::{self, File};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
     use legion_data_compiler::compiled_asset_store::{
         CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
     };
     use legion_data_compiler::{Locale, Manifest, Platform, Target};
-    use legion_resources::{test_resource, Project, ResourcePath, ResourceRegistry, ResourceType};
+    use legion_resources::{
+        test_resource, Project, ResourceId, ResourcePath, ResourceRegistry, ResourceType,
+    };
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
@@ -797,5 +863,93 @@ mod tests {
         };
 
         assert_ne!(original_checksum, modified_checksum);
+    }
+
+    fn create_resource(
+        name: ResourcePath,
+        deps: &[ResourceId],
+        project: &mut Project,
+        resources: &mut ResourceRegistry,
+    ) -> ResourceId {
+        let resource_b = {
+            let res = resources.new_resource(test_resource::TYPE_ID).unwrap();
+            let resource = res
+                .get_mut::<test_resource::TestResource>(resources)
+                .unwrap();
+            resource.content = name.display().to_string(); // each resource needs unique content to generate a unique asset.
+            resource.build_deps.extend_from_slice(deps);
+            res
+        };
+        project
+            .add_resource(name, test_resource::TYPE_ID, &resource_b, resources)
+            .unwrap()
+    }
+
+    fn setup_project(project_dir: impl AsRef<Path>) -> ResourceId {
+        let mut project =
+            Project::create_new(project_dir.as_ref()).expect("failed to create a project");
+
+        let mut resources = setup_registry();
+
+        /*
+
+        A -> B -> C
+        |    |
+        D -> E
+
+        */
+
+        let res_c = create_resource(ResourcePath::from("C"), &[], &mut project, &mut resources);
+        let res_e = create_resource(ResourcePath::from("E"), &[], &mut project, &mut resources);
+        let res_d = create_resource(
+            ResourcePath::from("D"),
+            &[res_e],
+            &mut project,
+            &mut resources,
+        );
+        let res_b = create_resource(
+            ResourcePath::from("B"),
+            &[res_c, res_e],
+            &mut project,
+            &mut resources,
+        );
+        create_resource(
+            ResourcePath::from("A"),
+            &[res_b, res_d],
+            &mut project,
+            &mut resources,
+        )
+    }
+
+    #[test]
+    fn sort_dependencies() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let project_dir = work_dir.path();
+
+        let root = setup_project(project_dir);
+
+        let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+            .asset_store(&CompiledAssetStoreAddr::from(work_dir.path()))
+            .compiler_dir(target_dir())
+            .create(project_dir)
+            .expect("new build index");
+        build.source_pull().expect("successful pull");
+
+        let order = build.evaluation_order(root).expect("no cycles");
+
+        assert_eq!(order.len(), 5);
+        assert_eq!(order[4], root);
+
+        let output = build
+            .compile_named(
+                &ResourcePath::from("A"),
+                &project_dir.join("output.manifest"),
+                Target::Game,
+                Platform::Windows,
+                &Locale::new("en"),
+            )
+            .expect("successful compilation");
+
+        assert_eq!(output.compiled_assets.len(), 5);
     }
 }

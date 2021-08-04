@@ -56,8 +56,11 @@ fn compile(
     let mut asset_store = LocalCompiledAssetStore::open(compiled_asset_store_path)
         .ok_or(CompilerError::AssetStoreError)?;
 
-    // todo: convert ResourceId to AssetId
-    let guid = AssetId::new(test_asset::TYPE_ID, 2);
+    // todo: convert ResourceId to AssetId better
+    let guid = AssetId::new(
+        test_asset::TYPE_ID,
+        (source.get_internal() & 0xffffffff) as u32,
+    );
 
     let resource = compiler_load_resource(source, resource_dir, &mut resources)?;
     let resource = resource
