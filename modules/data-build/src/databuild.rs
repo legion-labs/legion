@@ -324,11 +324,6 @@ impl DataBuild {
         platform: Platform,
         locale: &Locale,
     ) -> Result<(Manifest, Vec<CompileStat>), Error> {
-        let dependencies = self
-            .build_index
-            .find_dependencies(resource_id)
-            .ok_or(Error::NotFound)?;
-
         let compilers = list_compilers(&self.config.compiler_search_paths);
 
         let info_cmd = CompilerInfoCmd::default();
@@ -376,6 +371,11 @@ impl DataBuild {
         let mut compile_stats = vec![];
 
         for resource_id in all_resources {
+            let dependencies = self
+                .build_index
+                .find_dependencies(resource_id)
+                .ok_or(Error::NotFound)?;
+
             let (compiler_path, compiler_hash_list) =
                 compiler_details.get(&resource_id.resource_type()).unwrap();
 
