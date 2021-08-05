@@ -17,7 +17,7 @@ use legion_data_compiler::{CompiledAsset, CompilerHash, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
 
-use crate::buildindex::BuildIndex;
+use crate::buildindex::{BuildIndex, CompiledAssetInfo};
 use crate::Error;
 
 #[derive(Clone, Debug)]
@@ -295,15 +295,23 @@ impl DataBuild {
 
         let (changed_assets, _) = self.compile(resource_id, target, platform, locale)?;
 
-        for asset in changed_assets.compiled_assets {
+        //
+        // for now, we return raw assets in the manifest. without linking them.
+        //
+        for asset in changed_assets {
+            let compiled_asset = CompiledAsset {
+                guid: asset.compiled_guid,
+                checksum: asset.compiled_checksum,
+                size: asset.compiled_size,
+            };
             if let Some(existing) = manifest
                 .compiled_assets
                 .iter_mut()
-                .find(|existing| existing.guid == asset.guid)
+                .find(|existing| existing.guid == compiled_asset.guid)
             {
-                *existing = asset;
+                *existing = compiled_asset;
             } else {
-                manifest.compiled_assets.push(asset);
+                manifest.compiled_assets.push(compiled_asset);
             }
         }
 
@@ -314,7 +322,8 @@ impl DataBuild {
         Ok(manifest)
     }
 
-    /// Compiles a resource with given dependencies. Returned  [`Manifest`] contains a list of compilation results.
+    /// Compiles a resource by [`ResourceId`]. Returns a list of ids of `Asset Objects` compiled.
+    /// The list might contain many versions of the same [`AssetId`] compiled for many contexts (platform, target, locale, etc).
     /// Those results are in [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`)
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
     fn compile(
@@ -323,51 +332,50 @@ impl DataBuild {
         target: Target,
         platform: Platform,
         locale: &Locale,
-    ) -> Result<(Manifest, Vec<CompileStat>), Error> {
-        let compilers = list_compilers(&self.config.compiler_search_paths);
-
-        let info_cmd = CompilerInfoCmd::default();
-        let compilers: Vec<(CompilerInfo, CompilerInfoCmdOutput)> = compilers
-            .iter()
-            .filter_map(|info| {
-                info_cmd
-                    .execute(&info.path)
-                    .ok()
-                    .filter(|res| res.build_version == Self::version())
-                    .map(|res| ((*info).clone(), res))
-            })
-            .collect();
-
+    ) -> Result<(Vec<CompiledAssetInfo>, Vec<CompileStat>), Error> {
         let all_resources = self.build_index.evaluation_order(resource_id)?;
 
-        let resource_types = {
-            let mut types: Vec<_> = all_resources.iter().map(|e| e.resource_type()).collect();
-            types.sort();
-            types.dedup();
-            types
+        let compiler_details = {
+            let compilers = list_compilers(&self.config.compiler_search_paths);
+
+            let info_cmd = CompilerInfoCmd::default();
+            let compilers: Vec<(CompilerInfo, CompilerInfoCmdOutput)> = compilers
+                .iter()
+                .filter_map(|info| {
+                    info_cmd
+                        .execute(&info.path)
+                        .ok()
+                        .filter(|res| res.build_version == Self::version())
+                        .map(|res| ((*info).clone(), res))
+                })
+                .collect();
+
+            let resource_types = {
+                let mut types: Vec<_> = all_resources.iter().map(|e| e.resource_type()).collect();
+                types.sort();
+                types.dedup();
+                types
+            };
+
+            let compiler_hash_cmd = CompilerHashCmd::new(target, platform, locale);
+
+            resource_types
+                .into_iter()
+                .map(|kind| {
+                    compilers
+                        .iter()
+                        .find(|info| info.1.resource_type.contains(&kind))
+                        .map_or(Err(Error::CompilerNotFound), |e| {
+                            let res = compiler_hash_cmd
+                                .execute(&e.0.path)
+                                .map_err(Error::CompilerError)?;
+
+                            Ok((kind, (e.0.path.clone(), res.compiler_hash_list)))
+                        })
+                })
+                .collect::<Result<HashMap<_, _>, _>>()?
         };
-
-        let compiler_hash_cmd = CompilerHashCmd::new(target, platform, locale);
-
-        let compiler_details = resource_types
-            .into_iter()
-            .map(|kind| {
-                compilers
-                    .iter()
-                    .find(|info| info.1.resource_type.contains(&kind))
-                    .map_or(Err(Error::CompilerNotFound), |e| {
-                        let res = compiler_hash_cmd
-                            .execute(&e.0.path)
-                            .map_err(Error::CompilerError)?;
-
-                        Ok((kind, (e.0.path.clone(), res.compiler_hash_list)))
-                    })
-            })
-            .collect::<Result<HashMap<_, _>, _>>()?;
-
-        let mut manifest = Manifest {
-            compiled_assets: vec![],
-        };
+        let mut compiled_assets = vec![];
         let mut compile_stats = vec![];
 
         for resource_id in all_resources {
@@ -393,16 +401,19 @@ impl DataBuild {
             //
             let source_hash = self.build_index.compute_source_hash(resource_id)?;
 
-            let (compiled_assets, stats) = {
+            let (assets, stats) = {
                 let now = SystemTime::now();
                 let cached = self.build_index.find_compiled(context_hash, source_hash);
                 if !cached.is_empty() {
                     let assets: Vec<_> = cached
                         .iter()
-                        .map(|asset| CompiledAsset {
-                            guid: asset.compiled_guid,
-                            checksum: asset.compiled_checksum,
-                            size: asset.compiled_size,
+                        .map(|asset| CompiledAssetInfo {
+                            context_hash,
+                            source_guid: resource_id,
+                            source_hash,
+                            compiled_guid: asset.compiled_guid,
+                            compiled_checksum: asset.compiled_checksum,
+                            compiled_size: asset.compiled_size,
                         })
                         .collect();
                     let asset_count = assets.len();
@@ -416,9 +427,6 @@ impl DataBuild {
                         .collect::<Vec<_>>(),
                     )
                 } else {
-                    // for now we only focus on top level asset
-                    // todo(kstasik): how do we know that GI needs to be run? taking many assets as arguments?
-
                     let mut compile_cmd = CompilerCompileCmd::new(
                         resource_id,
                         &dependencies[..],
@@ -446,7 +454,17 @@ impl DataBuild {
                     );
                     let asset_count = compiled_assets.len();
                     (
-                        compiled_assets,
+                        compiled_assets
+                            .iter()
+                            .map(|asset| CompiledAssetInfo {
+                                context_hash,
+                                source_guid: resource_id,
+                                source_hash,
+                                compiled_guid: asset.guid,
+                                compiled_checksum: asset.checksum,
+                                compiled_size: asset.size,
+                            })
+                            .collect(),
                         std::iter::repeat(CompileStat {
                             time: now.elapsed().unwrap(),
                             from_cache: false,
@@ -457,10 +475,10 @@ impl DataBuild {
                 }
             };
 
-            manifest.compiled_assets.extend(compiled_assets);
+            compiled_assets.extend(assets);
             compile_stats.extend(stats);
         }
-        Ok((manifest, compile_stats))
+        Ok((compiled_assets, compile_stats))
     }
 
     /// Returns the global version of the databuild module.
@@ -949,7 +967,7 @@ mod tests {
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
-            assert_eq!(output.compiled_assets.len(), 5);
+            assert_eq!(output.len(), 5);
             assert!(stats.iter().all(|s| !s.from_cache));
         }
 
@@ -959,7 +977,7 @@ mod tests {
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
-            assert_eq!(output.compiled_assets.len(), 5);
+            assert_eq!(output.len(), 5);
             assert!(stats.iter().all(|s| s.from_cache));
         }
 
@@ -972,7 +990,7 @@ mod tests {
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
-            assert_eq!(output.compiled_assets.len(), 5);
+            assert_eq!(output.len(), 5);
             assert_eq!(stats.iter().filter(|s| !s.from_cache).count(), 1);
         }
 
@@ -986,7 +1004,7 @@ mod tests {
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
-            assert_eq!(output.compiled_assets.len(), 5);
+            assert_eq!(output.len(), 5);
             assert_eq!(stats.iter().filter(|s| !s.from_cache).count(), 4);
         }
     }

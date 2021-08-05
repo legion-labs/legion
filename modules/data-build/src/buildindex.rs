@@ -22,9 +22,9 @@ struct ResourceInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledAssetInfo {
-    context_hash: u64,
-    source_guid: ResourceId,
-    source_hash: u64,
+    pub(crate) context_hash: u64,
+    pub(crate) source_guid: ResourceId,
+    pub(crate) source_hash: u64,
     pub(crate) compiled_guid: AssetId,
     pub(crate) compiled_checksum: i128,
     pub(crate) compiled_size: usize,
