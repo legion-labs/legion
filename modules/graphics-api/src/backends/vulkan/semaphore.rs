@@ -1,6 +1,5 @@
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{GfxResult, Semaphore};
-use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::atomic::{AtomicBool, Ordering};
 

@@ -1,6 +1,5 @@
 use crate::backends::vulkan::VulkanDeviceContext;
 use crate::{Format, GfxResult, LoadOp, SampleCount, StoreOp};
-use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::Arc;
 

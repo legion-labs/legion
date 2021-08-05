@@ -9,7 +9,6 @@ use crate::{
     DepthStencilRenderTargetBinding, DescriptorSetArray, GfxResult, IndexBufferBinding, Pipeline,
     QueueType, ResourceState, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
 };
-use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::atomic::{AtomicBool, Ordering};
 

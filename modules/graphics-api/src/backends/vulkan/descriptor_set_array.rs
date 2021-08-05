@@ -6,7 +6,6 @@ use crate::{
     DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle,
     DescriptorUpdate, GfxResult, ResourceType, TextureBindType,
 };
-use ash::version::DeviceV1_0;
 use ash::vk;
 
 struct DescriptorUpdateData {

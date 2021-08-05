@@ -6,7 +6,6 @@ use crate::{
     ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef, Pipeline, PipelineType,
     ShaderStageFlags,
 };
-use ash::version::DeviceV1_0;
 use ash::vk;
 use std::ffi::CString;
 

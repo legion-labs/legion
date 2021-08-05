@@ -4,7 +4,6 @@ use super::{
     VulkanSemaphore, VulkanSwapchain,
 };
 use crate::{CommandPoolDef, GfxResult, PresentSuccessResult, Queue, QueueType};
-use ash::version::DeviceV1_0;
 use ash::vk;
 
 #[derive(Clone, Debug)]

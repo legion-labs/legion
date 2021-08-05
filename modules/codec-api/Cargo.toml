@@ -8,7 +8,4 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ash = "0.32"
-amf = { git = "https://github.com/legion-labs/amf-rs.git", branch = "main", features = [
-    "ash",
-] }
+ash = ">= 0.32.0"

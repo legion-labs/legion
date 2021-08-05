@@ -1,6 +1,5 @@
 use super::{VulkanApi, VulkanCommandBuffer, VulkanDeviceContext, VulkanQueue};
 use crate::{CommandBufferDef, CommandPool, CommandPoolDef, GfxResult, Queue, QueueType};
-use ash::version::DeviceV1_0;
 use ash::vk;
 
 pub struct VulkanCommandPool {

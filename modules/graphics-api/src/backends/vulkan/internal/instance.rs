@@ -1,11 +1,9 @@
 use std::ffi::{CStr, CString};
 
 use ash::prelude::VkResult;
-pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
-//use super::VkEntry;
-use crate::backends::vulkan::{VkCreateInstanceError::VkError, VkDebugReporter, VkEntry};
+use crate::backends::vulkan::{VkCreateInstanceError::VkError, VkDebugReporter};
 use ash::extensions::ext::DebugUtils;
 use ash::vk::DebugUtilsMessageTypeFlagsEXT;
 use raw_window_handle::HasRawWindowHandle;
@@ -13,7 +11,7 @@ use std::sync::Arc;
 
 /// Create one of these at startup. It never gets lost/destroyed.
 pub struct VkInstance {
-    pub entry: Arc<VkEntry>,
+    pub entry: Arc<ash::Entry>,
     pub instance: ash::Instance,
     pub debug_reporter: Option<VkDebugReporter>,
 }
@@ -57,7 +55,7 @@ impl From<vk::Result> for VkCreateInstanceError {
 impl VkInstance {
     /// Creates a vulkan instance.
     pub fn new(
-        entry: VkEntry,
+        entry: ash::Entry,
         window: &dyn HasRawWindowHandle,
         app_name: &CString,
         require_validation_layers_present: bool,
@@ -68,21 +66,20 @@ impl VkInstance {
             // Vulkan 1.1+
             Some(version) => version,
             // Vulkan 1.0
-            None => vk::make_version(1, 0, 0),
+            None => vk::make_api_version(0, 1, 0, 0),
         };
 
         let vulkan_version_tuple = (
-            vk::version_major(vulkan_version),
-            vk::version_minor(vulkan_version),
-            vk::version_patch(vulkan_version),
+            vk::api_version_major(vulkan_version),
+            vk::api_version_minor(vulkan_version),
+            vk::api_version_patch(vulkan_version),
         );
 
         log::info!("Found Vulkan version: {:?}", vulkan_version_tuple);
 
         // Only need 1.1 for negative y viewport support, which is also possible to get out of an
         // extension, but at this point I think 1.1 is a reasonable minimum expectation
-        let minimum_version = vk::make_version(1, 1, 0);
-        if vulkan_version < minimum_version {
+        if vulkan_version < vk::API_VERSION_1_1 {
             return Err(VkError(vk::Result::ERROR_INCOMPATIBLE_DRIVER));
         }
 
@@ -209,9 +206,9 @@ impl VkInstance {
     }
 
     /// This is used to setup a debug callback for logging validation errors
-    fn setup_vulkan_debug_callback<E: EntryV1_0, I: InstanceV1_0>(
-        entry: &E,
-        instance: &I,
+    fn setup_vulkan_debug_callback(
+        entry: &ash::Entry,
+        instance: &ash::Instance,
         debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
     ) -> VkResult<VkDebugReporter> {
         log::info!("Seting up vulkan debug callback");

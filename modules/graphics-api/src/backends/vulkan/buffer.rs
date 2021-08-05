@@ -1,6 +1,5 @@
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{Buffer, BufferDef, Format, GfxResult, MemoryUsage, ResourceType};
-use ash::version::DeviceV1_0;
 use ash::vk;
 use legion_core::trust_cell::TrustCell;
 
@@ -195,8 +194,7 @@ impl Drop for VulkanBuffer {
 
             self.device_context
                 .allocator()
-                .destroy_buffer(buffer_raw.buffer, &buffer_raw.allocation)
-                .unwrap();
+                .destroy_buffer(buffer_raw.buffer, &buffer_raw.allocation);
         }
 
         log::trace!("destroyed BufferVulkanInner");
@@ -223,7 +221,7 @@ impl Buffer<VulkanApi> for VulkanBuffer {
     fn unmap_buffer(&self) -> GfxResult<()> {
         self.device_context
             .allocator()
-            .unmap_memory(&self.buffer_raw.unwrap().allocation)?;
+            .unmap_memory(&self.buffer_raw.unwrap().allocation);
         *self.allocation_info.borrow_mut() = self
             .device_context
             .allocator()

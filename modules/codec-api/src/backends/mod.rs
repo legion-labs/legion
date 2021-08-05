@@ -1,10 +1,6 @@
-use self::{amf::AmfEncoder, mediasdk::MediaSdkEncoder, nvenc::NvEncEncoder};
+use self::nvenc::NvEncEncoder;
 use crate::{CpuBuffer, GpuBuffer, VideoProcessor};
 
-/// Amf Encoder/Decoder
-pub mod amf;
-/// `MediaSdk` Encoder/Decoder
-pub mod mediasdk;
 /// Null Encoder/Decoder
 pub mod null;
 /// `NvEnc` Encoder/Decoder
@@ -32,17 +28,13 @@ pub enum GraphicsConfig {
 /// config to the hardware specific one
 pub struct EncoderConfig {
     hardware: CodecHardware,
-    gfx_config: GraphicsConfig,
+    _gfx_config: GraphicsConfig,
 }
 
 /// Generic encoder,
 pub enum Encoder {
-    /// Amf Encoder
-    Amf(AmfEncoder),
     /// `NvEnc` Encoder
     NvEnc(NvEncEncoder),
-    /// `MediaSdk` Encoder
-    MediaSdk(MediaSdkEncoder),
 }
 
 impl VideoProcessor for Encoder {
@@ -59,12 +51,8 @@ impl VideoProcessor for Encoder {
     }
 
     fn new(config: Self::Config) -> Option<Self> {
-        if config.hardware == CodecHardware::Amd {
-            AmfEncoder::new(config.into()).map(Encoder::Amf)
-        } else if config.hardware == CodecHardware::Nvidia {
+        if config.hardware == CodecHardware::Nvidia {
             NvEncEncoder::new(config.into()).map(Encoder::NvEnc)
-        } else if config.hardware == CodecHardware::Intel {
-            MediaSdkEncoder::new(config.into()).map(Encoder::MediaSdk)
         } else {
             None
         }

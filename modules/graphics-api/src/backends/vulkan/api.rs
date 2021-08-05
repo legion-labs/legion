@@ -12,37 +12,11 @@ use super::{VulkanDeviceContext, VulkanDeviceContextInner};
 use crate::*;
 use std::ffi::CString;
 
-/// Determines the method of finding the vulkan loader
-#[derive(Copy, Clone, Debug)]
-pub enum VulkanLinkMethod {
-    /// Link vulkan dynamically (recommended and default)
-    Dynamic,
-
-    /// Assume the vulkan loader is statically linked.. intended for platforms like iOS
-    #[cfg(feature = "static-vulkan")]
-    Static,
-}
-
-impl Default for VulkanLinkMethod {
-    fn default() -> Self {
-        #[cfg(not(feature = "static-vulkan"))]
-        let link_method = Self::Dynamic;
-        #[cfg(feature = "static-vulkan")]
-        let link_method = Self::Static;
-
-        link_method
-    }
-}
-
 /// Vulkan-specific configuration
 pub struct ApiDefVulkan {
     /// Used as a hint for drivers for what is being run. There are no special requirements for
     /// this. It is not visible to end-users.
     pub app_name: CString,
-
-    /// Defines whether to load vulkan dynamically or use a statically-linked implementation. A
-    /// common case where static linking is useful is linking MoltenVK on iOS devices
-    pub link_method: VulkanLinkMethod,
 
     /// Used to enable/disable validation at runtime. Not all APIs allow this. Validation is helpful
     /// during development but very expensive. Applications should not ship with validation enabled.
@@ -58,7 +32,6 @@ impl Default for ApiDefVulkan {
     fn default() -> Self {
         Self {
             app_name: CString::new(" Application").unwrap(),
-            link_method: Default::default(),
             validation_mode: Default::default(),
         }
     }
@@ -158,7 +131,6 @@ impl VulkanApi {
         _api_def: &ApiDef,
         vk_api_def: &ApiDefVulkan,
     ) -> GfxResult<Self> {
-        let link_method = vk_api_def.link_method;
         let app_name = vk_api_def.app_name.clone();
 
         let (require_validation_layers_present, validation_layer_debug_report_flags) =
@@ -171,13 +143,8 @@ impl VulkanApi {
             };
 
         log::info!("Validation mode: {:?}", vk_api_def.validation_mode);
-        log::info!("Link method for vulkan: {:?}", link_method);
-        let entry = match link_method {
-            VulkanLinkMethod::Dynamic => VkEntry::new_dynamic(),
-            #[cfg(feature = "static-vulkan")]
-            VulkanLinkMethod::Static => VkEntry::new_static(),
-        }?;
 
+        let entry = ash::Entry::new()?;
         let instance = VkInstance::new(
             entry,
             window,

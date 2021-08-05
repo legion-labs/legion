@@ -1,6 +1,5 @@
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{CompareOp, GfxResult, MipMapMode, Sampler, SamplerDef};
-use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::Arc;
 

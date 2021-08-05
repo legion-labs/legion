@@ -3,7 +3,7 @@ use crate::{
     DescriptorIndex, GfxResult, PipelineType, ResourceType, RootSignature, RootSignatureDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use ash::version::DeviceV1_0;
+
 use ash::vk;
 use fnv::FnvHashMap;
 use std::sync::Arc;

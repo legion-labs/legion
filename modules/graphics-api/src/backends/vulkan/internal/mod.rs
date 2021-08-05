@@ -4,9 +4,6 @@ pub(crate) use debug_reporter::*;
 mod descriptor_heap;
 pub(crate) use descriptor_heap::*;
 
-mod entry;
-pub(crate) use entry::*;
-
 mod framebuffer;
 pub(crate) use framebuffer::*;
 

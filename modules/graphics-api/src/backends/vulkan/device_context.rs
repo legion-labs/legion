@@ -4,7 +4,6 @@ use crate::{
     GfxResult, GraphicsPipelineDef, QueueType, ResourceType, RootSignatureDef, SampleCount,
     SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
 };
-use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::{Arc, Mutex};
@@ -88,7 +87,7 @@ pub struct VulkanDeviceContextInner {
     device: ash::Device,
     allocator: vk_mem::Allocator,
     destroyed: AtomicBool,
-    entry: Arc<VkEntry>,
+    entry: Arc<ash::Entry>,
     instance: ash::Instance,
     physical_device: vk::PhysicalDevice,
     physical_device_info: PhysicalDeviceInfo,
@@ -280,7 +279,7 @@ impl VulkanDeviceContext {
         &self.inner.descriptor_heap
     }
 
-    pub fn entry(&self) -> &VkEntry {
+    pub fn entry(&self) -> &ash::Entry {
         &*self.inner.entry
     }
 
@@ -554,9 +553,9 @@ fn choose_physical_device(
 fn vk_version_to_string(version: u32) -> String {
     format!(
         "{}.{}.{}",
-        vk::version_major(version),
-        vk::version_minor(version),
-        vk::version_patch(version)
+        vk::api_version_major(version),
+        vk::api_version_minor(version),
+        vk::api_version_patch(version)
     )
 }
 

@@ -1,6 +1,5 @@
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{Extents3D, GfxResult, ResourceType, Texture, TextureDef, TextureDimensions};
-use ash::version::DeviceV1_0;
 use ash::vk;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -22,8 +21,7 @@ impl VulkanRawImage {
             assert_ne!(self.image, vk::Image::null());
             device_context
                 .allocator()
-                .destroy_image(self.image, &allocation)
-                .unwrap();
+                .destroy_image(self.image, &allocation);
             self.image = vk::Image::null();
             log::trace!("destroyed ImageVulkan");
         } else {

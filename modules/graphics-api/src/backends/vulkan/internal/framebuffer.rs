@@ -1,6 +1,5 @@
 use crate::backends::vulkan::{VulkanDeviceContext, VulkanRenderpass, VulkanTexture};
 use crate::*;
-use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::Arc;
 

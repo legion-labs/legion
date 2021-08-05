@@ -1,6 +1,5 @@
 use super::{
-    VkEntry, VulkanApi, VulkanDeviceContext, VulkanFence, VulkanRawImage, VulkanSemaphore,
-    VulkanTexture,
+    VulkanApi, VulkanDeviceContext, VulkanFence, VulkanRawImage, VulkanSemaphore, VulkanTexture,
 };
 use crate::{
     CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DeviceContext, Extents3D, Format,
@@ -8,7 +7,6 @@ use crate::{
     SwapchainDef, SwapchainImage, TextureBarrier, TextureDef, TextureDimensions,
 };
 
-use ash::version::DeviceV1_0;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
@@ -130,11 +128,10 @@ impl VulkanSwapchain {
             )?
         };
 
-        let surface_loader = Arc::new(match &device_context.entry() {
-            VkEntry::Dynamic(entry) => khr::Surface::new(entry, device_context.instance()),
-            #[cfg(feature = "static-vulkan")]
-            VkEntry::Static(entry) => khr::Surface::new(entry, &instance.instance),
-        });
+        let surface_loader = Arc::new(khr::Surface::new(
+            device_context.entry(),
+            device_context.instance(),
+        ));
 
         let present_mode_priority = present_mode_priority(swapchain_def);
 
