@@ -97,6 +97,17 @@ async fn find_lock_req(args: &FindLockRequest) -> Result<String, String> {
     }
 }
 
+async fn find_locks_in_domain_req(args: &FindLocksInDomainRequest) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let res = query
+        .find_locks_in_domain(&args.lock_domain_id)
+        .await?;
+    match serde_json::to_string(&res) {
+        Ok(json) => Ok(json),
+        Err(e) => Err(format!("Error formatting find_locks_in_domain result: {}", e)),
+    }
+}
+
 async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
     let req = ServerRequest::from_json(std::str::from_utf8(&body).unwrap())?;
     println!("{:?}", req);
@@ -113,6 +124,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::ReadTree(req) => read_tree_req(&req.repo_name, &req.tree_hash).await,
         ServerRequest::InsertLock(req) => insert_lock_req(&req.repo_name, &req.lock).await,
         ServerRequest::FindLock(req) => find_lock_req(&req).await,
+        ServerRequest::FindLocksInDomain(req) => find_locks_in_domain_req(&req).await,
     }
 }
 

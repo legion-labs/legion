@@ -59,6 +59,12 @@ pub struct FindLockRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct FindLocksInDomainRequest {
+    pub repo_name: String,
+    pub lock_domain_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     InitRepo(InitRepositoryRequest),
     DestroyRepo(DestroyRepositoryRequest),
@@ -70,6 +76,7 @@ pub enum ServerRequest {
     ReadTree(ReadTreeRequest),
     InsertLock(InsertLockRequest),
     FindLock(FindLockRequest),
+    FindLocksInDomain(FindLocksInDomainRequest),
 }
 
 impl ServerRequest {

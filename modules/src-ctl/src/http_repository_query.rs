@@ -101,9 +101,20 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             Err(e) => Err(format!("Error parsing response: {}", e)),
         }
     }
-    async fn find_locks_in_domain(&self, _lock_domain_id: &str) -> Result<Vec<Lock>, String> {
-        panic!("not implemented");
+    
+    async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
+        let request = ServerRequest::FindLocksInDomain(FindLocksInDomainRequest {
+            repo_name: self.repo_name.clone(),
+            lock_domain_id: String::from(lock_domain_id),
+        });
+        let resp = execute_request(&self.url, &request).await?;
+        let parsed: serde_json::Result<Vec<Lock>> = serde_json::from_str(&resp);
+        match parsed {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(format!("Error parsing response: {}", e)),
+        }
     }
+    
     async fn clear_lock(
         &self,
         _lock_domain_id: &str,
@@ -111,6 +122,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
     ) -> Result<(), String> {
         panic!("not implemented");
     }
+    
     async fn count_locks_in_domain(&self, _lock_domain_id: &str) -> Result<i32, String> {
         panic!("not implemented");
     }
