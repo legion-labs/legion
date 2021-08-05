@@ -32,9 +32,9 @@ pub(crate) struct CompiledAssetInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledAssetReference {
-    context_hash: u64,
-    source_guid: ResourceId,
-    source_hash: u64,
+    pub(crate) context_hash: u64,
+    pub(crate) source_guid: ResourceId,
+    pub(crate) source_hash: u64,
     pub(crate) compiled_guid: AssetId,
     pub(crate) compiled_reference: AssetId,
 }
@@ -288,7 +288,12 @@ impl BuildIndex {
         // so there is no way to compile the same resources twice.
         // Once we support it we will have to make sure the result of the compilation
         // is exactly the same for all compiled_assets.
-        assert_eq!(self.find_compiled(context_hash, source_hash).len(), 0);
+        assert_eq!(
+            self.find_compiled(source_guid, context_hash, source_hash)
+                .0
+                .len(),
+            0
+        );
 
         self.content
             .compiled_assets
@@ -301,15 +306,35 @@ impl BuildIndex {
 
     pub(crate) fn find_compiled(
         &self,
+        source_guid: ResourceId,
         context_hash: u64,
         source_hash: u64,
-    ) -> Vec<CompiledAssetInfo> {
-        self.content
+    ) -> (Vec<CompiledAssetInfo>, Vec<CompiledAssetReference>) {
+        let asset_objects: Vec<CompiledAssetInfo> = self
+            .content
             .compiled_assets
             .iter()
-            .filter(|asset| asset.context_hash == context_hash && asset.source_hash == source_hash)
+            .filter(|asset| {
+                asset.source_guid == source_guid
+                    && asset.context_hash == context_hash
+                    && asset.source_hash == source_hash
+            })
             .cloned()
-            .collect::<Vec<CompiledAssetInfo>>()
+            .collect();
+
+        let asset_references: Vec<CompiledAssetReference> = self
+            .content
+            .compiled_asset_references
+            .iter()
+            .filter(|reference| {
+                reference.source_guid == source_guid
+                    && reference.context_hash == context_hash
+                    && reference.source_hash == source_hash
+            })
+            .cloned()
+            .collect();
+
+        (asset_objects, asset_references)
     }
 
     pub(crate) fn flush(&mut self) -> Result<(), Error> {

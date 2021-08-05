@@ -17,13 +17,19 @@ use legion_data_compiler::{CompiledAsset, CompilerHash, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
 
-use crate::buildindex::{BuildIndex, CompiledAssetInfo};
+use crate::buildindex::{BuildIndex, CompiledAssetInfo, CompiledAssetReference};
 use crate::Error;
 
 #[derive(Clone, Debug)]
 struct CompileStat {
     time: std::time::Duration,
     from_cache: bool,
+}
+
+struct CompileOutput {
+    asset_objects: Vec<CompiledAssetInfo>,
+    references: Vec<CompiledAssetReference>,
+    statistics: Vec<CompileStat>,
 }
 
 /// Context hash represents all that goes into resource compilation
@@ -61,7 +67,6 @@ fn compute_context_hash(
 ///         .compiler_dir("./compilers/")
 ///         .create(".");
 /// ```
-
 #[derive(Clone)]
 pub struct DataBuildOptions {
     buildindex_path: PathBuf,
@@ -293,7 +298,11 @@ impl DataBuild {
             }
         };
 
-        let (asset_objects, _) = self.compile(resource_id, target, platform, locale)?;
+        let CompileOutput {
+            asset_objects,
+            references: _refs,
+            statistics: _stats,
+        } = self.compile(resource_id, target, platform, locale)?;
 
         //
         // for now, we return raw assets in the manifest. without linking them.
@@ -332,7 +341,7 @@ impl DataBuild {
         target: Target,
         platform: Platform,
         locale: &Locale,
-    ) -> Result<(Vec<CompiledAssetInfo>, Vec<CompileStat>), Error> {
+    ) -> Result<CompileOutput, Error> {
         let all_resources = self.build_index.evaluation_order(resource_id)?;
 
         let compiler_details = {
@@ -376,6 +385,7 @@ impl DataBuild {
                 .collect::<Result<HashMap<_, _>, _>>()?
         };
         let mut compiled_assets = vec![];
+        let mut compiled_references = vec![];
         let mut compile_stats = vec![];
 
         for resource_id in all_resources {
@@ -401,24 +411,20 @@ impl DataBuild {
             //
             let source_hash = self.build_index.compute_source_hash(resource_id)?;
 
-            let (asset_objects, stats): (Vec<CompiledAssetInfo>, _) = {
+            let (asset_objects, asset_object_references, stats): (
+                Vec<CompiledAssetInfo>,
+                Vec<CompiledAssetReference>,
+                _,
+            ) = {
                 let now = SystemTime::now();
-                let cached_asset_objects =
-                    self.build_index.find_compiled(context_hash, source_hash);
+                let (cached_asset_objects, cached_references) =
+                    self.build_index
+                        .find_compiled(resource_id, context_hash, source_hash);
                 if !cached_asset_objects.is_empty() {
                     let asset_count = cached_asset_objects.len();
                     (
-                        cached_asset_objects
-                            .iter()
-                            .map(|asset| CompiledAssetInfo {
-                                context_hash,
-                                source_guid: resource_id,
-                                source_hash,
-                                compiled_guid: asset.compiled_guid,
-                                compiled_checksum: asset.compiled_checksum,
-                                compiled_size: asset.compiled_size,
-                            })
-                            .collect(),
+                        cached_asset_objects,
+                        cached_references,
                         std::iter::repeat(CompileStat {
                             time: now.elapsed().unwrap(),
                             from_cache: true,
@@ -465,6 +471,16 @@ impl DataBuild {
                                 compiled_size: asset.size,
                             })
                             .collect(),
+                        asset_references
+                            .iter()
+                            .map(|reference| CompiledAssetReference {
+                                context_hash,
+                                source_guid: resource_id,
+                                source_hash,
+                                compiled_guid: reference.0,
+                                compiled_reference: reference.1,
+                            })
+                            .collect(),
                         std::iter::repeat(CompileStat {
                             time: now.elapsed().unwrap(),
                             from_cache: false,
@@ -477,8 +493,13 @@ impl DataBuild {
 
             compiled_assets.extend(asset_objects);
             compile_stats.extend(stats);
+            compiled_references.extend(asset_object_references);
         }
-        Ok((compiled_assets, compile_stats))
+        Ok(CompileOutput {
+            asset_objects: compiled_assets,
+            references: compiled_references,
+            statistics: compile_stats,
+        })
     }
 
     /// Returns the global version of the databuild module.
@@ -513,6 +534,7 @@ mod tests {
     use std::fs::{self, File};
     use std::path::{Path, PathBuf};
 
+    use crate::databuild::CompileOutput;
     use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
     use legion_data_compiler::compiled_asset_store::{
         CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
@@ -963,22 +985,32 @@ mod tests {
 
         // first run - none of the assets from cache.
         {
-            let (asset_objects, stats) = build
+            let CompileOutput {
+                asset_objects,
+                references,
+                statistics,
+            } = build
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
             assert_eq!(asset_objects.len(), 5);
-            assert!(stats.iter().all(|s| !s.from_cache));
+            assert_eq!(references.len(), 5);
+            assert!(statistics.iter().all(|s| !s.from_cache));
         }
 
         // no change, second run - all assets from cache.
         {
-            let (asset_objects, stats) = build
+            let CompileOutput {
+                asset_objects,
+                references,
+                statistics,
+            } = build
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
             assert_eq!(asset_objects.len(), 5);
-            assert!(stats.iter().all(|s| s.from_cache));
+            assert_eq!(references.len(), 5);
+            assert!(statistics.iter().all(|s| s.from_cache));
         }
 
         // change root resource, one asset re-compiled.
@@ -986,12 +1018,17 @@ mod tests {
             change_resource(root, project_dir);
             build.source_pull().expect("to pull changes");
 
-            let (asset_objects, stats) = build
+            let CompileOutput {
+                asset_objects,
+                references,
+                statistics,
+            } = build
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
             assert_eq!(asset_objects.len(), 5);
-            assert_eq!(stats.iter().filter(|s| !s.from_cache).count(), 1);
+            assert_eq!(references.len(), 5);
+            assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 1);
         }
 
         // change resource E - which invalides 4 resources in total (E included).
@@ -1000,12 +1037,17 @@ mod tests {
             change_resource(resource_e, project_dir);
             build.source_pull().expect("to pull changes");
 
-            let (asset_objects, stats) = build
+            let CompileOutput {
+                asset_objects,
+                references,
+                statistics,
+            } = build
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
             assert_eq!(asset_objects.len(), 5);
-            assert_eq!(stats.iter().filter(|s| !s.from_cache).count(), 4);
+            assert_eq!(references.len(), 5);
+            assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 4);
         }
     }
 }
