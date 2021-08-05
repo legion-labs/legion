@@ -2685,6 +2685,7 @@ dependencies = [
  "hyper",
  "lazy_static",
  "legion-src-ctl",
+ "serde_json",
  "tokio",
  "warp",
 ]

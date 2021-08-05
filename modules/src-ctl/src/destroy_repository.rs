@@ -16,8 +16,7 @@ pub async fn destroy_repository_command(uri: &str) -> Result<(), String> {
         "lsc" => {
             let mut url_path = String::from(repo_uri.path());
             let path = url_path.split_off(1); //remove leading /
-            let request = ServerRequest::DestroyRepo(DestroyRepositoryRequest {
-                repo_name: path } );
+            let request = ServerRequest::DestroyRepo(DestroyRepositoryRequest { repo_name: path });
             let host = repo_uri.host().unwrap();
             let port = repo_uri.port().unwrap_or(80);
             let url = format!("http://{}:{}/lsc", host, port);

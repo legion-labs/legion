@@ -24,7 +24,7 @@ async fn init_remote_repository_req(name: &str) -> Result<String, String> {
     Ok(format!("Created repository {}", name))
 }
 
-async fn destroy_repository_req(name: &str) -> Result<String,String>{
+async fn destroy_repository_req(name: &str) -> Result<String, String> {
     let db_server_uri = get_sql_uri();
     let db_uri = format!("{}/{}", db_server_uri, name);
     POOLS.write().unwrap().remove(name);
@@ -80,6 +80,23 @@ async fn read_tree_req(repo_name: &str, tree_hash: &str) -> Result<String, Strin
     tree.to_json()
 }
 
+async fn insert_lock_req(repo_name: &str, lock: &Lock) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(repo_name).await?);
+    query.insert_lock(lock).await?;
+    Ok(String::from(""))
+}
+
+async fn find_lock_req(args: &FindLockRequest) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let res = query
+        .find_lock(&args.lock_domain_id, &args.canonical_relative_path)
+        .await?;
+    match serde_json::to_string(&res) {
+        Ok(json) => Ok(json),
+        Err(e) => Err(format!("Error formatting find_lock result: {}", e)),
+    }
+}
+
 async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
     let req = ServerRequest::from_json(std::str::from_utf8(&body).unwrap())?;
     println!("{:?}", req);
@@ -94,6 +111,8 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::ReadBranch(req) => read_branch_req(&req.repo_name, &req.branch_name).await,
         ServerRequest::ReadCommit(req) => read_commit_req(&req.repo_name, &req.commit_id).await,
         ServerRequest::ReadTree(req) => read_tree_req(&req.repo_name, &req.tree_hash).await,
+        ServerRequest::InsertLock(req) => insert_lock_req(&req.repo_name, &req.lock).await,
+        ServerRequest::FindLock(req) => find_lock_req(&req).await,
     }
 }
 

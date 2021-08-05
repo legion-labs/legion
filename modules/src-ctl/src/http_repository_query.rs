@@ -75,16 +75,31 @@ impl RepositoryQuery for HTTPRepositoryQuery {
     async fn save_tree(&self, _tree: &Tree, _hash: &str) -> Result<(), String> {
         panic!("not implemented");
     }
-    async fn insert_lock(&self, _lock: &Lock) -> Result<(), String> {
-        panic!("not implemented");
+    async fn insert_lock(&self, lock: &Lock) -> Result<(), String> {
+        let request = ServerRequest::InsertLock(InsertLockRequest {
+            repo_name: self.repo_name.clone(),
+            lock: lock.clone(),
+        });
+        let _resp = execute_request(&self.url, &request).await?;
+        Ok(())
     }
 
     async fn find_lock(
         &self,
-        _lock_domain_id: &str,
-        _canonical_relative_path: &str,
+        lock_domain_id: &str,
+        canonical_relative_path: &str,
     ) -> Result<Option<Lock>, String> {
-        panic!("not implemented");
+        let request = ServerRequest::FindLock(FindLockRequest {
+            repo_name: self.repo_name.clone(),
+            lock_domain_id: String::from(lock_domain_id),
+            canonical_relative_path: String::from(canonical_relative_path),
+        });
+        let resp = execute_request(&self.url, &request).await?;
+        let parsed: serde_json::Result<Option<Lock>> = serde_json::from_str(&resp);
+        match parsed {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(format!("Error parsing response: {}", e)),
+        }
     }
     async fn find_locks_in_domain(&self, _lock_domain_id: &str) -> Result<Vec<Lock>, String> {
         panic!("not implemented");

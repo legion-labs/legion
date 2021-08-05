@@ -1,4 +1,4 @@
-use crate::Workspace;
+use crate::{Lock, Workspace};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -46,6 +46,19 @@ pub struct ReadTreeRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct InsertLockRequest {
+    pub repo_name: String,
+    pub lock: Lock,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FindLockRequest {
+    pub repo_name: String,
+    pub lock_domain_id: String,
+    pub canonical_relative_path: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     InitRepo(InitRepositoryRequest),
     DestroyRepo(DestroyRepositoryRequest),
@@ -55,6 +68,8 @@ pub enum ServerRequest {
     ReadBranch(ReadBranchRequest),
     ReadCommit(ReadCommitRequest),
     ReadTree(ReadTreeRequest),
+    InsertLock(InsertLockRequest),
+    FindLock(FindLockRequest),
 }
 
 impl ServerRequest {
