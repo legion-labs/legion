@@ -16,7 +16,7 @@ impl S3BlobStorage {
     pub async fn new(s3uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
         let uri = s3uri.parse::<Uri>().unwrap();
         let bucket_name = String::from(uri.host().unwrap());
-        let root = PathBuf::from(uri.path().strip_prefix("/").unwrap());
+        let root = PathBuf::from(uri.path().strip_prefix('/').unwrap());
         let client = s3::Client::from_env();
         let req = client.get_bucket_location().bucket(&bucket_name);
         if let Err(e) = req.send().await {

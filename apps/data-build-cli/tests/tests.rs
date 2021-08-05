@@ -22,7 +22,7 @@ fn data_build() {
     let resource_name = {
         let resource_name = "test_source";
         {
-            let mut project = Project::create_new(&project_dir).expect("new project");
+            let mut project = Project::create_new(project_dir).expect("new project");
             let mut resources = ResourceRegistry::default();
             resources.register_type(
                 test_resource::TYPE_ID,
