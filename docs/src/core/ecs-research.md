@@ -58,18 +58,18 @@ See [Entitas](https://github.com/sschmid/Entitas-CSharp)
 
 ### List of Rust implementations
 
-| Name | Architecture | Popularity (downloads) | Notes |
-| ---- | ------------- | ---: | -- |
-| [Bevy](https://bevyengine.org/) | ? | 54k | [Bevy ECS overview](https://bevyengine.org/learn/book/getting-started/ecs/). Entities are simple type containing unique integer. Components are  normal Rust structs. |
-| [DCES](https://crates.io/crates/dces) | ? | 11k | part of OrbTk |
-| [Dotrix](https://crates.io/crates/dotrix) | ? | <1k | |
-| [ecs-rs](https://github.com/HeroesGrave/ecs-rs) | ? | ? | port of [Artemis framework](https://gamadu.com/artemis/) |
-| [hecs](https://github.com/Ralith/hecs) | archetype | 12k | |
-| [Legion](https://crates.io/crates/legion) | archetype | 33k | Queries specify components using types (with mut for write-access). Systems use update functions, components extracted from signature, and scheduled according to data-flow |
-| [Planck](https://jojolepro.com/blog/2021-01-13_planck_ecs/) | ? | <1k | Adds resources, which are independant of entites, ex: game-time |
-| [Rustic](https://crates.io/crates/recs) | ? | 4k | |
-| [Shipyard](https://github.com/leudz/shipyard) | sparse set | 4k | |
-| [Specs](https://github.com/amethyst/specs) | bitset | 229k | Part of [Amethyst](https://amethyst.rs/) engine. Dependency on [hibitset](https://docs.rs/hibitset/0.6.3/hibitset/). Implement Component trait for each struct (ex: Position, Velocity); sub-type Storage implements the serialization. Implement System trait for system structs; sub-type SystemData defines access to different components, in a tuple; implement run method. World object acts as registry for components and systems |	
+| Name | Repo | Architecture | Popularity (downloads) | Notes |
+| ---- | ---- | ------------ | ---------------------: | ----- |
+| [Bevy](https://bevyengine.org/) | [GitHub](https://github.com/bevyengine/bevy) | ? | 54k | [Bevy ECS overview](https://bevyengine.org/learn/book/getting-started/ecs/). Entities are simple type containing unique integer. Components are  normal Rust structs. |
+| [DCES](https://crates.io/crates/dces) | [Gitlab](https://gitlab.redox-os.org/redox-os/dces-rust) | ? | 11k | part of OrbTk |
+| [Dotrix](https://crates.io/crates/dotrix) | [GitHub](https://github.com/lowenware/dotrix) | ? | <1k | |
+| ecs-rs | [GitHub](https://github.com/HeroesGrave/ecs-rs) | ? | ? | port of [Artemis framework](https://gamadu.com/artemis/) |
+| hecs | [GitHub](https://github.com/Ralith/hecs) | archetype | 12k | |
+| [Legion](https://crates.io/crates/legion) | [GitHub](https://github.com/amethyst/legion) | archetype | 33k | Queries specify components using types (with mut for write-access). Systems use update functions, components extracted from signature, and scheduled according to data-flow |
+| [Planck](https://jojolepro.com/blog/2021-01-13_planck_ecs/) | [GitHub](https://github.com/jojolepro/planck_ecs) | ? | <1k | Adds resources, which are independent of entites, ex: game-time |
+| [Rustic](https://crates.io/crates/recs) | [GitHub](https://github.com/andybarron/rustic-ecs) | ? | 4k | |
+| Shipyard | [GitHub](https://github.com/leudz/shipyard)  | sparse set | 4k | |
+| [Specs](https://specs.amethyst.rs/docs) | [GitHub](https://github.com/amethyst/specs) | bitset | 229k | Part of [Amethyst](https://amethyst.rs/) engine. Dependency on [hibitset](https://docs.rs/hibitset/0.6.3/hibitset/). Implement Component trait for each struct (ex: Position, Velocity); sub-type Storage implements the serialization. Implement System trait for system structs; sub-type SystemData defines access to different components, in a tuple; implement run method. World object acts as registry for components and systems |	
 
 ### Performance
 
