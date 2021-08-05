@@ -300,27 +300,21 @@ impl DataBuild {
 
         let CompileOutput {
             asset_objects,
-            references: _refs,
+            references,
             statistics: _stats,
         } = self.compile(resource_id, target, platform, locale)?;
 
-        //
-        // for now, we return raw assets in the manifest. without linking them.
-        //
-        for asset in asset_objects {
-            let compiled_asset = CompiledAsset {
-                guid: asset.compiled_guid,
-                checksum: asset.compiled_checksum,
-                size: asset.compiled_size,
-            };
+        let assets = Self::link(asset_objects, references)?;
+
+        for asset in assets {
             if let Some(existing) = manifest
                 .compiled_assets
                 .iter_mut()
-                .find(|existing| existing.guid == compiled_asset.guid)
+                .find(|existing| existing.guid == asset.guid)
             {
-                *existing = compiled_asset;
+                *existing = asset;
             } else {
-                manifest.compiled_assets.push(compiled_asset);
+                manifest.compiled_assets.push(asset);
             }
         }
 
@@ -500,6 +494,25 @@ impl DataBuild {
             references: compiled_references,
             statistics: compile_stats,
         })
+    }
+
+    fn link(
+        asset_objects: Vec<CompiledAssetInfo>,
+        _: Vec<CompiledAssetReference>,
+    ) -> Result<Vec<CompiledAsset>, Error> {
+        //
+        // for now, we return raw assets in the manifest. link does no relevant work.
+        //
+        let assets = asset_objects
+            .into_iter()
+            .map(|asset_object| CompiledAsset {
+                guid: asset_object.compiled_guid,
+                checksum: asset_object.compiled_checksum,
+                size: asset_object.compiled_size,
+            })
+            .collect();
+
+        Ok(assets)
     }
 
     /// Returns the global version of the databuild module.
