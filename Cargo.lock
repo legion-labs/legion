@@ -676,6 +676,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
+name = "editor"
+version = "0.1.0"
+dependencies = [
+ "sciter-js",
+]
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2266,6 +2273,33 @@ checksum = "8f05ba609c234e60bee0d547fe94a4c7e9da733d1c962cf6e59efa4cd9c8bc75"
 dependencies = [
  "lazy_static",
  "winapi",
+]
+
+[[package]]
+name = "sciter-js"
+version = "0.1.0"
+source = "git+https://github.com/legion-labs/sciter-js-rs?branch=main#2bb4950fccaf0fdc61547c3196aadff9db03e854"
+dependencies = [
+ "bitflags",
+ "lazy_static",
+ "libloading",
+ "sciter-js-interop",
+ "sciter-js-sys",
+ "widestring",
+ "winapi",
+]
+
+[[package]]
+name = "sciter-js-interop"
+version = "0.1.0"
+source = "git+https://github.com/legion-labs/sciter-js-rs?branch=main#2bb4950fccaf0fdc61547c3196aadff9db03e854"
+
+[[package]]
+name = "sciter-js-sys"
+version = "0.1.0"
+source = "git+https://github.com/legion-labs/sciter-js-rs?branch=main#2bb4950fccaf0fdc61547c3196aadff9db03e854"
+dependencies = [
+ "bindgen",
 ]
 
 [[package]]
