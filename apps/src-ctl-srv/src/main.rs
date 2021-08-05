@@ -18,7 +18,8 @@ async fn init_remote_repository_req(name: &str) -> Result<String, String> {
     let s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI").unwrap();
     let blob_spec = BlobStorageSpec::S3Uri(s3_uri);
     let db_server_uri = get_sql_uri();
-    let pool = init_mysql_repo_db(&blob_spec, &db_server_uri, name).await?;
+    let db_uri = format!("{}/{}", db_server_uri, name);
+    let pool = init_mysql_repo_db(&blob_spec, &db_uri).await?;
     POOLS.write().unwrap().insert(String::from(name), pool);
     Ok(format!("Created repository {}", name))
 }

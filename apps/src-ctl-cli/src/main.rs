@@ -77,7 +77,7 @@
 
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_src_ctl::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn main() {
     if let Err(e) = main_impl() {
@@ -93,50 +93,35 @@ fn main_impl() -> Result<(), String> {
         .about("CLI to interact with Legion Source Control")
         .subcommand(
             SubCommand::with_name("init-local-repository")
-                .about("Initializes a repository stored on a local filesystem")
+                .about("Initializes a repository stored on a local or remote system")
                 .arg(
-                    Arg::with_name("repository-directory")
+                    Arg::with_name("directory")
                         .required(true)
-                        .help("lsc database directory")
+                        .help("local path")
                 )
         )
         .subcommand(
             SubCommand::with_name("init-remote-repository")
-                .about("Initializes a repository stored in a remove server")
+                .about("Initializes a repository stored on a local or remote system")
                 .arg(
-                    Arg::with_name("repository_uri")
+                    Arg::with_name("uri")
                         .required(true)
-                        .help("lsc://host:port/repository_name"))
+                        .help("mysql://user:pass@host:port/database, lsc://host:port/database")
+                )
+                .arg(
+                    Arg::with_name("blob-storage")
+                        .required(false)
+                        .help("file://somepath, s3://bucket/root")
+                )
         )
         .subcommand(
-            SubCommand::with_name("init-mysql-repo-db")
-                .about("Initializes a repository stored in a MySQL server")
+            SubCommand::with_name("destroy-repository")
+                .about("Destroys all repository data permanently")
                 .arg(
-                    Arg::with_name("local-blob-directory")
-                        .value_name("local-blob-directory")
-                        .long("local-blob-directory")
-                        .help("local blob storage"))
-                .arg(
-                    Arg::with_name("s3-storage-uri")
-                        .value_name("s3-storage-uri")
-                        .long("s3-storage-uri")
-                        .help("s3://bucket/path/to/folder"))
-                .arg(
-                    Arg::with_name("host")
+                    Arg::with_name("uri")
                         .required(true)
-                        .help("database host"))
-                .arg(
-                    Arg::with_name("username")
-                        .required(true)
-                        .help("database username"))
-                .arg(
-                    Arg::with_name("name")
-                        .required(true)
-                        .help("database to be created on the remote host"))
-                .arg(
-                    Arg::with_name("password")
-                        .required(false)
-                        .help("database password"))
+                        .help("file://somepath, mysql://user:pass@host:port/database, lsc://host:port/database")
+                )
         )
         .subcommand(
             SubCommand::with_name("init-workspace")
@@ -334,45 +319,27 @@ fn main_impl() -> Result<(), String> {
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
             let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-            match tokio_runtime.block_on(legion_src_ctl::init_local_repository(Path::new(
-                command_match.value_of("repository-directory").unwrap(),
-            ))) {
-                Ok(pool) => {
-                    println!("repository uri: {}", pool.database_uri);
-                    Ok(())
-                }
-                Err(e) => Err(e),
+            let path = command_match.value_of("directory").unwrap();
+            if let Err(e) = tokio_runtime.block_on(legion_src_ctl::init_local_repository_command(
+                Path::new(&path),
+            )) {
+                return Err(e);
             }
+            Ok(())
         }
         ("init-remote-repository", Some(command_match)) => {
+            let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+            let repo_uri = command_match.value_of("uri").unwrap();
+            let blob_uri = command_match.value_of("blob-storage");
             tokio_runtime.block_on(legion_src_ctl::init_remote_repository_command(
-                command_match.value_of("repository_uri").unwrap(),
+                repo_uri, blob_uri,
             ))
         }
-        ("init-mysql-repo-db", Some(command_match)) => {
-            let blob_storage;
-            if let Some(dir) = command_match.value_of("local-blob-directory") {
-                blob_storage = BlobStorageSpec::LocalDirectory(PathBuf::from(dir));
-            } else if let Some(uri) = command_match.value_of("s3-storage-uri") {
-                blob_storage = BlobStorageSpec::S3Uri(uri.to_string());
-            } else {
-                return Err(String::from(
-                    "local-blob-directory or s3-storage-uri need to be specified",
-                ));
-            }
-            let db_host = command_match.value_of("host").unwrap();
-            let db_user = command_match.value_of("username").unwrap();
-            let db_pass = command_match.value_of("password").unwrap_or("");
-            let name = command_match.value_of("name").unwrap();
-            let db_server_uri = format!("mysql://{}:{}@{}", db_user, db_pass, db_host);
+        ("destroy-repository", Some(command_match)) => {
             let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-            match tokio_runtime.block_on(init_mysql_repo_db(&blob_storage, &db_server_uri, name)) {
-                Ok(pool) => {
-                    println!("repository uri: {}", &pool.database_uri);
-                    Ok(())
-                }
-                Err(e) => Err(e),
-            }
+            let repo_uri = command_match.value_of("uri").unwrap();
+            tokio_runtime
+                .block_on(legion_src_ctl::destroy_repository::destroy_repository_command(repo_uri))
         }
         ("init-workspace", Some(command_match)) => init_workspace_command(
             Path::new(command_match.value_of("workspace-directory").unwrap()),

@@ -48,7 +48,9 @@ pub async fn push_init_repo_data(pool: Arc<SqlConnectionPool>) -> Result<(), Str
     Ok(())
 }
 
-pub async fn init_local_repository(directory: &Path) -> Result<Arc<SqlConnectionPool>, String> {
+pub async fn init_local_repository_command(
+    directory: &Path,
+) -> Result<Arc<SqlConnectionPool>, String> {
     if fs::metadata(directory).is_ok() {
         return Err(format!("{} already exists", directory.display()));
     }

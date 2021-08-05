@@ -2,7 +2,6 @@ use std::fs::{self, DirEntry};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Arc;
 
 fn write_lorem_ipsum(p: &Path) {
     let contents = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In iaculis odio ac nulla porta, eget dictum nulla euismod. Vivamus congue eros vitae velit feugiat lacinia. Curabitur mi lectus, semper in posuere nec, eleifend eu magna. Morbi egestas magna eget ligula aliquet, vitae mattis urna pellentesque. Maecenas sem risus, scelerisque id semper ut, ornare id diam. Integer ut urna varius, lobortis sapien id, ullamcorper mi. Donec pulvinar ante ligula, in interdum turpis tempor a. Maecenas malesuada turpis orci, vitae efficitur tortor laoreet sit amet.
@@ -92,39 +91,32 @@ fn test_dir(test_name: &str) -> PathBuf {
     path
 }
 
-async fn init_test_repo(
-    test_dir: &Path,
-    name: &str,
-) -> Arc<legion_src_ctl::sql::SqlConnectionPool> {
-    let use_mysql = std::env::var("LEGION_SRC_CTL_TEST_MYSQL").unwrap_or_default();
-    if use_mysql.is_empty() {
-        let repo_dir = test_dir.join("repo");
-        legion_src_ctl::init_local_repository(&repo_dir)
-            .await
-            .unwrap()
-    } else {
-        let blob_storage_spec = match std::env::var("LEGION_SRC_CTL_TEST_S3_BUCKET") {
-            Ok(s3uri) => legion_src_ctl::BlobStorageSpec::S3Uri(s3uri),
-            Err(_) => legion_src_ctl::BlobStorageSpec::LocalDirectory(test_dir.join("blobs")),
-        };
+async fn init_test_repo(test_dir: &Path, name: &str) -> String {
+    match std::env::var("LEGION_SRC_CTL_TEST_HOST") {
+        Ok(test_host_uri) => {
+            let repo_uri = format!("{}/{}", test_host_uri, name);
+            let blob_storage_uri = std::env::var("LEGION_SRC_CTL_TEST_BLOB_STORAGE").unwrap();
 
-        let host = "localhost";
-        let username = "root";
-        let password = "";
-        let server_uri = format!("mysql://{}:{}@{}", username, password, host);
-        let repo_uri = format!("{}/{}", server_uri, name);
-        if legion_src_ctl::sql::database_exists(&repo_uri).unwrap() {
-            let drop_test_db =
-                std::env::var("LEGION_SRC_CTL_TEST_ALLOW_DROP_DATABASE").unwrap_or_default();
-            if drop_test_db == "YES" {
-                legion_src_ctl::sql::drop_database(&repo_uri).unwrap();
-            } else {
-                panic!("test database exists");
-            }
+            let _status = Command::new(LSC_CLI_EXE_VAR)
+                .current_dir(test_dir)
+                .args(["destroy-repository", &repo_uri])
+                .status()
+                .expect("failed to execute command");
+
+            lsc_cli_sys(
+                test_dir,
+                &["init-remote-repository", &repo_uri, &blob_storage_uri],
+            );
+            repo_uri
         }
-        legion_src_ctl::init_mysql_repo_db(&blob_storage_spec, &server_uri, name)
-            .await
-            .unwrap()
+        Err(_) => {
+            let repo_dir = test_dir.join("repo");
+            lsc_cli_sys(
+                test_dir,
+                &["init-local-repository", repo_dir.to_str().unwrap()],
+            );
+            format!("file://{}", repo_dir.display())
+        }
     }
 }
 
@@ -133,12 +125,11 @@ fn local_repo_suite() {
     let test_dir = test_dir("local_repo_suite");
     let work1 = test_dir.join("work");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "local_repo_suite"));
-    let repo_uri = &pool.database_uri;
+    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "local_repo_suite"));
 
     lsc_cli_sys(
         &test_dir,
-        &["init-workspace", work1.to_str().unwrap(), repo_uri],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
     std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0/deep creation failed");
@@ -170,7 +161,7 @@ fn local_repo_suite() {
     let work2 = test_dir.join("work2");
     lsc_cli_sys(
         &test_dir,
-        &["init-workspace", work2.to_str().unwrap(), repo_uri],
+        &["init-workspace", work2.to_str().unwrap(), &repo_uri],
     );
     assert!(fs::metadata(work2.join("dir0/file3.txt")).is_ok());
     assert!(fs::metadata(work2.join("dir0/file1.txt")).is_ok());
@@ -240,12 +231,12 @@ fn local_single_branch_merge_flow() {
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "local_single_branch_merge_flow"));
-    let repo_uri = &pool.database_uri;
+    let repo_uri =
+        tokio_runtime.block_on(init_test_repo(&test_dir, "local_single_branch_merge_flow"));
 
     lsc_cli_sys(
         &test_dir,
-        &["init-workspace", work1.to_str().unwrap(), repo_uri],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
     legion_src_ctl::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
@@ -254,7 +245,7 @@ fn local_single_branch_merge_flow() {
 
     lsc_cli_sys(
         &test_dir,
-        &["init-workspace", work2.to_str().unwrap(), repo_uri],
+        &["init-workspace", work2.to_str().unwrap(), &repo_uri],
     );
 
     lsc_cli_sys(&work2, &["edit", "file1.txt"]);
@@ -304,12 +295,11 @@ fn test_branch() {
 
     let work1 = test_dir.join("work1");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "test_branch"));
-    let repo_uri = &pool.database_uri;
+    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_branch"));
 
     lsc_cli_sys(
         &test_dir,
-        &["init-workspace", work1.to_str().unwrap(), repo_uri],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
     legion_src_ctl::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
@@ -399,12 +389,11 @@ fn test_locks() {
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "test_locks"));
-    let repo_uri = &pool.database_uri;
+    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_locks"));
 
     lsc_cli_sys(
         &test_dir,
-        &["init-workspace", work1.to_str().unwrap(), repo_uri],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
     std::fs::create_dir_all(work1.join("dir/deep")).unwrap();
@@ -436,7 +425,7 @@ fn test_locks() {
 
     lsc_cli_sys(
         &test_dir,
-        &["init-workspace", work2.to_str().unwrap(), repo_uri],
+        &["init-workspace", work2.to_str().unwrap(), &repo_uri],
     );
     lsc_cli_sys(&work2, &["lock", "file2.txt"]); //locking the file that is being edited in work1
     lsc_cli_sys_fail(
@@ -511,12 +500,11 @@ fn test_import_git() {
     let test_dir = test_dir("test_import_git");
     let work1 = test_dir.join("work1");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let pool = tokio_runtime.block_on(init_test_repo(&test_dir, "test_import_git"));
-    let repo_uri = &pool.database_uri;
+    let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_import_git"));
 
     lsc_cli_sys(
         &test_dir,
-        &["init-workspace", work1.to_str().unwrap(), repo_uri],
+        &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
     let root_dir = get_root_git_directory();
     assert!(root_dir.exists());

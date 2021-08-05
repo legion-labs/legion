@@ -83,6 +83,7 @@ pub mod branch;
 pub mod commit;
 pub mod config;
 pub mod delete;
+pub mod destroy_repository;
 pub mod detach_branch;
 pub mod diff;
 pub mod disk_blob_storage;

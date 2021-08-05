@@ -1,13 +1,11 @@
 use crate::{sql::*, *};
-use http::Uri; //todo: remove
 use std::{fs, sync::Arc};
+use url::Url;
 
 pub async fn init_mysql_repo_db(
     blob_storage: &BlobStorageSpec,
-    db_server_uri: &str,
-    database_name: &str,
+    db_uri: &str,
 ) -> Result<Arc<SqlConnectionPool>, String> {
-    let repo_uri = format!("{}/{}", db_server_uri, database_name);
     match blob_storage {
         BlobStorageSpec::LocalDirectory(blob_dir) => {
             if let Err(e) = fs::create_dir_all(blob_dir) {
@@ -24,23 +22,46 @@ pub async fn init_mysql_repo_db(
             }
         }
     }
-    create_database(&repo_uri)?;
-    let pool = Arc::new(SqlConnectionPool::new(&repo_uri).await?);
+    create_database(db_uri)?;
+    let pool = Arc::new(SqlConnectionPool::new(db_uri).await?);
     let mut sql_connection = pool.acquire().await?;
-    init_repo_database(&mut sql_connection, &repo_uri, blob_storage)?;
+    init_repo_database(&mut sql_connection, db_uri, blob_storage)?;
     push_init_repo_data(pool.clone()).await?;
     Ok(pool)
 }
 
-pub async fn init_remote_repository_command(repo_uri: &str) -> Result<(), String> {
-    let specified_uri = repo_uri.parse::<Uri>().unwrap();
-    let mut path = String::from(specified_uri.path());
-    let name = path.split_off(1); //remove leading /
-    let request = ServerRequest::InitRepo(InitRepositoryRequest { repo_name: name });
-    let host = specified_uri.host().unwrap();
-    let port = specified_uri.port_u16().unwrap_or(80);
+async fn init_http_repository_command(host: &str, port: u16, name: &str) -> Result<(), String> {
+    let request = ServerRequest::InitRepo(InitRepositoryRequest {
+        repo_name: String::from(name),
+    });
     let http_url = format!("http://{}:{}/lsc", host, port);
     let resp = execute_request(&http_url, &request).await?;
     println!("{}", resp);
+    Ok(())
+}
+
+pub async fn init_remote_repository_command(repo: &str, blob: Option<&str>) -> Result<(), String> {
+    let repo_uri = Url::parse(repo).unwrap();
+    let mut uri_path = String::from(repo_uri.path());
+    let path = uri_path.split_off(1); //remove leading /
+    match repo_uri.scheme() {
+        "mysql" => match blob {
+            Some(blob_uri) => {
+                let blob_spec = BlobStorageSpec::from_uri(blob_uri)?;
+                let _pool = init_mysql_repo_db(&blob_spec, repo).await?;
+            }
+            None => {
+                return Err(String::from("blob storage uri not specified"));
+            }
+        },
+        "lsc" => {
+            let host = repo_uri.host().unwrap();
+            let port = repo_uri.port().unwrap_or(80);
+            return init_http_repository_command(&host.to_string(), port, &path).await;
+        }
+        unknown => {
+            return Err(format!("Unknown repository scheme {}", unknown));
+        }
+    }
     Ok(())
 }

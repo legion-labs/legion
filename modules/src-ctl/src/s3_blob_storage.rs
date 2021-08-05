@@ -45,10 +45,10 @@ impl S3BlobStorage {
                 s3::error::GetObjectAclErrorKind::NoSuchKey(_) => Ok(false),
                 _ => {
                     let _dummy = raw;
-                    Err(format!("error fetching acl: {}", err))
+                    Err(format!("error fetching acl for {:?}: {}", key, err))
                 }
             },
-            Err(e) => Err(format!("error fetching acl: {:?}", e)),
+            Err(e) => Err(format!("error fetching acl for {:?}: {:?}", key, e)),
         }
     }
 

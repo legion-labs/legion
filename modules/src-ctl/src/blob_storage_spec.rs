@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use url::Url;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum BlobStorageSpec {
@@ -37,6 +38,21 @@ impl BlobStorageSpec {
         match parsed {
             Ok(spec) => Ok(spec),
             Err(e) => Err(format!("Error parsing blob storage spec: {}", e)),
+        }
+    }
+
+    pub fn from_uri(uri: &str) -> Result<Self, String> {
+        match Url::parse(uri) {
+            Ok(parsed) => {
+                let mut bogus_path = String::from(parsed.path());
+                let path = bogus_path.split_off(1); //remove leading /
+                match parsed.scheme() {
+                    "file" => Ok(Self::LocalDirectory(PathBuf::from(path))),
+                    "s3" => Ok(Self::S3Uri(String::from(uri))),
+                    unknown => Err(format!("unknown blob storage scheme {}", unknown)),
+                }
+            }
+            Err(e) => Err(format!("Error parsing blob uri {}: {}", uri, e)),
         }
     }
 }

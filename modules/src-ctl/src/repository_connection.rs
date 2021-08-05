@@ -12,14 +12,19 @@ impl RepositoryConnection {
     pub async fn new(repo_uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
         let specified_uri = Url::parse(repo_uri).unwrap();
         let repo_query: Box<dyn RepositoryQuery + Send>;
+        let mut url_path = String::from(specified_uri.path());
+        let path = url_path.split_off(1); //remove leading /
         match specified_uri.scheme() {
             "lsc" => {
                 let host = specified_uri.host().unwrap();
                 let port = specified_uri.port().unwrap_or(80);
                 let url = format!("http://{}:{}/lsc", host, port);
-                let mut path = String::from(specified_uri.path());
-                let name = path.split_off(1); //remove leading /
-                repo_query = Box::new(HTTPRepositoryQuery::new(url, name)?);
+                repo_query = Box::new(HTTPRepositoryQuery::new(url, path)?);
+            }
+            "file" => {
+                let db_url = format!("sqlite://{}/repo.db3", path);
+                let pool = Arc::new(SqlConnectionPool::new(&db_url).await?);
+                repo_query = Box::new(SqlRepositoryQuery::new(pool));
             }
             _ => {
                 let pool = Arc::new(SqlConnectionPool::new(repo_uri).await?);
