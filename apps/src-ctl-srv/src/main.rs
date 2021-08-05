@@ -108,6 +108,14 @@ async fn find_locks_in_domain_req(args: &FindLocksInDomainRequest) -> Result<Str
     }
 }
 
+async fn save_tree_req(args: &SaveTreeRequest) -> Result<String,String>{
+    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let _res = query
+        .save_tree(&args.tree, &args.hash)
+        .await?;
+    Ok(String::from(""))
+}
+
 async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
     let req = ServerRequest::from_json(std::str::from_utf8(&body).unwrap())?;
     println!("{:?}", req);
@@ -125,6 +133,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::InsertLock(req) => insert_lock_req(&req.repo_name, &req.lock).await,
         ServerRequest::FindLock(req) => find_lock_req(&req).await,
         ServerRequest::FindLocksInDomain(req) => find_locks_in_domain_req(&req).await,
+        ServerRequest::SaveTree(req) => save_tree_req(&req).await,
     }
 }
 

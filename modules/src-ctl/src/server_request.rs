@@ -1,4 +1,4 @@
-use crate::{Lock, Workspace};
+use crate::{Lock, Tree, Workspace};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -65,6 +65,13 @@ pub struct FindLocksInDomainRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct SaveTreeRequest {
+    pub repo_name: String,
+    pub tree: Tree,
+    pub hash: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     InitRepo(InitRepositoryRequest),
     DestroyRepo(DestroyRepositoryRequest),
@@ -77,6 +84,7 @@ pub enum ServerRequest {
     InsertLock(InsertLockRequest),
     FindLock(FindLockRequest),
     FindLocksInDomain(FindLocksInDomainRequest),
+    SaveTree(SaveTreeRequest),
 }
 
 impl ServerRequest {
