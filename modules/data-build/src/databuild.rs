@@ -293,12 +293,12 @@ impl DataBuild {
             }
         };
 
-        let (changed_assets, _) = self.compile(resource_id, target, platform, locale)?;
+        let (asset_objects, _) = self.compile(resource_id, target, platform, locale)?;
 
         //
         // for now, we return raw assets in the manifest. without linking them.
         //
-        for asset in changed_assets {
+        for asset in asset_objects {
             let compiled_asset = CompiledAsset {
                 guid: asset.compiled_guid,
                 checksum: asset.compiled_checksum,
@@ -401,24 +401,24 @@ impl DataBuild {
             //
             let source_hash = self.build_index.compute_source_hash(resource_id)?;
 
-            let (assets, stats) = {
+            let (asset_objects, stats): (Vec<CompiledAssetInfo>, _) = {
                 let now = SystemTime::now();
-                let cached = self.build_index.find_compiled(context_hash, source_hash);
-                if !cached.is_empty() {
-                    let assets: Vec<_> = cached
-                        .iter()
-                        .map(|asset| CompiledAssetInfo {
-                            context_hash,
-                            source_guid: resource_id,
-                            source_hash,
-                            compiled_guid: asset.compiled_guid,
-                            compiled_checksum: asset.compiled_checksum,
-                            compiled_size: asset.compiled_size,
-                        })
-                        .collect();
-                    let asset_count = assets.len();
+                let cached_asset_objects =
+                    self.build_index.find_compiled(context_hash, source_hash);
+                if !cached_asset_objects.is_empty() {
+                    let asset_count = cached_asset_objects.len();
                     (
-                        assets,
+                        cached_asset_objects
+                            .iter()
+                            .map(|asset| CompiledAssetInfo {
+                                context_hash,
+                                source_guid: resource_id,
+                                source_hash,
+                                compiled_guid: asset.compiled_guid,
+                                compiled_checksum: asset.compiled_checksum,
+                                compiled_size: asset.compiled_size,
+                            })
+                            .collect(),
                         std::iter::repeat(CompileStat {
                             time: now.elapsed().unwrap(),
                             from_cache: true,
@@ -475,7 +475,7 @@ impl DataBuild {
                 }
             };
 
-            compiled_assets.extend(assets);
+            compiled_assets.extend(asset_objects);
             compile_stats.extend(stats);
         }
         Ok((compiled_assets, compile_stats))
@@ -963,21 +963,21 @@ mod tests {
 
         // first run - none of the assets from cache.
         {
-            let (output, stats) = build
+            let (asset_objects, stats) = build
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
-            assert_eq!(output.len(), 5);
+            assert_eq!(asset_objects.len(), 5);
             assert!(stats.iter().all(|s| !s.from_cache));
         }
 
         // no change, second run - all assets from cache.
         {
-            let (output, stats) = build
+            let (asset_objects, stats) = build
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
-            assert_eq!(output.len(), 5);
+            assert_eq!(asset_objects.len(), 5);
             assert!(stats.iter().all(|s| s.from_cache));
         }
 
@@ -986,11 +986,11 @@ mod tests {
             change_resource(root, project_dir);
             build.source_pull().expect("to pull changes");
 
-            let (output, stats) = build
+            let (asset_objects, stats) = build
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
-            assert_eq!(output.len(), 5);
+            assert_eq!(asset_objects.len(), 5);
             assert_eq!(stats.iter().filter(|s| !s.from_cache).count(), 1);
         }
 
@@ -1000,11 +1000,11 @@ mod tests {
             change_resource(resource_e, project_dir);
             build.source_pull().expect("to pull changes");
 
-            let (output, stats) = build
+            let (asset_objects, stats) = build
                 .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
-            assert_eq!(output.len(), 5);
+            assert_eq!(asset_objects.len(), 5);
             assert_eq!(stats.iter().filter(|s| !s.from_cache).count(), 4);
         }
     }
