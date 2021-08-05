@@ -99,20 +99,31 @@ async fn find_lock_req(args: &FindLockRequest) -> Result<String, String> {
 
 async fn find_locks_in_domain_req(args: &FindLocksInDomainRequest) -> Result<String, String> {
     let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
-    let res = query
-        .find_locks_in_domain(&args.lock_domain_id)
-        .await?;
+    let res = query.find_locks_in_domain(&args.lock_domain_id).await?;
     match serde_json::to_string(&res) {
         Ok(json) => Ok(json),
-        Err(e) => Err(format!("Error formatting find_locks_in_domain result: {}", e)),
+        Err(e) => Err(format!(
+            "Error formatting find_locks_in_domain result: {}",
+            e
+        )),
     }
 }
 
-async fn save_tree_req(args: &SaveTreeRequest) -> Result<String,String>{
+async fn save_tree_req(args: &SaveTreeRequest) -> Result<String, String> {
     let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
-    let _res = query
-        .save_tree(&args.tree, &args.hash)
-        .await?;
+    let _res = query.save_tree(&args.tree, &args.hash).await?;
+    Ok(String::from(""))
+}
+
+async fn insert_commit_req(args: &InsertCommitRequest) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let _res = query.insert_commit(&args.commit).await?;
+    Ok(String::from(""))
+}
+
+async fn update_branch_req(args: &UpdateBranchRequest) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let _res = query.update_branch(&args.branch).await?;
     Ok(String::from(""))
 }
 
@@ -134,6 +145,8 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::FindLock(req) => find_lock_req(&req).await,
         ServerRequest::FindLocksInDomain(req) => find_locks_in_domain_req(&req).await,
         ServerRequest::SaveTree(req) => save_tree_req(&req).await,
+        ServerRequest::InsertCommit(req) => insert_commit_req(&req).await,
+        ServerRequest::UpdateBranch(req) => update_branch_req(&req).await,
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{Lock, Tree, Workspace};
+use crate::{Branch, Commit, Lock, Tree, Workspace};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -72,6 +72,18 @@ pub struct SaveTreeRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct InsertCommitRequest {
+    pub repo_name: String,
+    pub commit: Commit,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateBranchRequest {
+    pub repo_name: String,
+    pub branch: Branch,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     InitRepo(InitRepositoryRequest),
     DestroyRepo(DestroyRepositoryRequest),
@@ -85,6 +97,8 @@ pub enum ServerRequest {
     FindLock(FindLockRequest),
     FindLocksInDomain(FindLocksInDomainRequest),
     SaveTree(SaveTreeRequest),
+    InsertCommit(InsertCommitRequest),
+    UpdateBranch(UpdateBranchRequest),
 }
 
 impl ServerRequest {

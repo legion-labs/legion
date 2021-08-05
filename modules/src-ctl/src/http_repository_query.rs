@@ -32,25 +32,35 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         let resp = execute_request(&self.url, &request).await?;
         Branch::from_json(&resp)
     }
+
     async fn insert_branch(&self, _branch: &Branch) -> Result<(), String> {
         panic!("not implemented");
     }
-    async fn update_branch(&self, _branch: &Branch) -> Result<(), String> {
-        panic!("not implemented");
+
+    async fn update_branch(&self, branch: &Branch) -> Result<(), String> {
+        let request = ServerRequest::UpdateBranch(UpdateBranchRequest {
+            repo_name: self.repo_name.clone(),
+            branch: branch.clone(),
+        });
+        let _resp = execute_request(&self.url, &request).await?;
+        Ok(())
     }
+
     async fn find_branch(&self, _name: &str) -> Result<Option<Branch>, String> {
         panic!("not implemented");
     }
+
     async fn find_branches_in_lock_domain(
         &self,
         _lock_domain_id: &str,
     ) -> Result<Vec<Branch>, String> {
         panic!("not implemented");
     }
+
     async fn read_branches(&self) -> Result<Vec<Branch>, String> {
         panic!("not implemented");
     }
-    
+
     async fn read_commit(&self, id: &str) -> Result<Commit, String> {
         let request = ServerRequest::ReadCommit(ReadCommitRequest {
             repo_name: self.repo_name.clone(),
@@ -59,14 +69,20 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         let resp = execute_request(&self.url, &request).await?;
         Commit::from_json(&resp)
     }
-    
-    async fn insert_commit(&self, _commit: &Commit) -> Result<(), String> {
-        panic!("not implemented");
+
+    async fn insert_commit(&self, commit: &Commit) -> Result<(), String> {
+        let request = ServerRequest::InsertCommit(InsertCommitRequest {
+            repo_name: self.repo_name.clone(),
+            commit: commit.clone(),
+        });
+        let _resp = execute_request(&self.url, &request).await?;
+        Ok(())
     }
+
     async fn commit_exists(&self, _id: &str) -> Result<bool, String> {
         panic!("not implemented");
     }
-    
+
     async fn read_tree(&self, hash: &str) -> Result<Tree, String> {
         let request = ServerRequest::ReadTree(ReadTreeRequest {
             repo_name: self.repo_name.clone(),
@@ -75,16 +91,17 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         let resp = execute_request(&self.url, &request).await?;
         Tree::from_json(&resp)
     }
-    
+
     async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<(), String> {
-        let request = ServerRequest::SaveTree(SaveTreeRequest{
+        let request = ServerRequest::SaveTree(SaveTreeRequest {
             repo_name: self.repo_name.clone(),
             tree: tree.clone(),
-            hash: String::from(hash) });
+            hash: String::from(hash),
+        });
         let _resp = execute_request(&self.url, &request).await?;
         Ok(())
     }
-    
+
     async fn insert_lock(&self, lock: &Lock) -> Result<(), String> {
         let request = ServerRequest::InsertLock(InsertLockRequest {
             repo_name: self.repo_name.clone(),
@@ -111,7 +128,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             Err(e) => Err(format!("Error parsing response: {}", e)),
         }
     }
-    
+
     async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
         let request = ServerRequest::FindLocksInDomain(FindLocksInDomainRequest {
             repo_name: self.repo_name.clone(),
@@ -124,7 +141,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             Err(e) => Err(format!("Error parsing response: {}", e)),
         }
     }
-    
+
     async fn clear_lock(
         &self,
         _lock_domain_id: &str,
@@ -132,7 +149,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
     ) -> Result<(), String> {
         panic!("not implemented");
     }
-    
+
     async fn count_locks_in_domain(&self, _lock_domain_id: &str) -> Result<i32, String> {
         panic!("not implemented");
     }

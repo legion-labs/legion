@@ -2,7 +2,7 @@ use crate::{sql::execute_sql, *};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Branch {
     pub name: String,
     pub head: String, //commit id
