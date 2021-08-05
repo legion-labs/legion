@@ -24,6 +24,14 @@ async fn init_remote_repository_req(name: &str) -> Result<String, String> {
     Ok(format!("Created repository {}", name))
 }
 
+async fn destroy_repository_req(name: &str) -> Result<String,String>{
+    let db_server_uri = get_sql_uri();
+    let db_uri = format!("{}/{}", db_server_uri, name);
+    POOLS.write().unwrap().remove(name);
+    sql::drop_database(&db_uri)?;
+    Ok(format!("Dropped repository {}", name))
+}
+
 fn read_blob_storage_spec_req(_name: &str) -> Result<String, String> {
     let s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI").unwrap();
     let blob_spec = BlobStorageSpec::S3Uri(s3_uri);
@@ -78,6 +86,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
     match req {
         ServerRequest::Ping(req) => Ok(format!("Pong from {}", req.specified_uri)),
         ServerRequest::InitRepo(req) => init_remote_repository_req(&req.repo_name).await,
+        ServerRequest::DestroyRepo(req) => destroy_repository_req(&req.repo_name).await,
         ServerRequest::ReadBlobStorageSpec(req) => read_blob_storage_spec_req(&req.repo_name),
         ServerRequest::InsertWorkspace(req) => {
             insert_workspace_req(&req.repo_name, &req.spec).await

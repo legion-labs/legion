@@ -12,6 +12,11 @@ pub struct InitRepositoryRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DestroyRepositoryRequest {
+    pub repo_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ReadBlobStorageSpecRequest {
     pub repo_name: String,
 }
@@ -43,6 +48,7 @@ pub struct ReadTreeRequest {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     InitRepo(InitRepositoryRequest),
+    DestroyRepo(DestroyRepositoryRequest),
     InsertWorkspace(InsertWorkspaceRequest),
     Ping(PingRequest),
     ReadBlobStorageSpec(ReadBlobStorageSpecRequest),

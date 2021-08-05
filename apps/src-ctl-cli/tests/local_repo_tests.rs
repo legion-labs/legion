@@ -95,7 +95,6 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
     match std::env::var("LEGION_SRC_CTL_TEST_HOST") {
         Ok(test_host_uri) => {
             let repo_uri = format!("{}/{}", test_host_uri, name);
-            let blob_storage_uri = std::env::var("LEGION_SRC_CTL_TEST_BLOB_STORAGE").unwrap();
 
             let _status = Command::new(LSC_CLI_EXE_VAR)
                 .current_dir(test_dir)
@@ -103,10 +102,13 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
                 .status()
                 .expect("failed to execute command");
 
-            lsc_cli_sys(
-                test_dir,
-                &["init-remote-repository", &repo_uri, &blob_storage_uri],
-            );
+            match std::env::var("LEGION_SRC_CTL_TEST_BLOB_STORAGE") {
+                Ok(blob_storage_uri) => lsc_cli_sys(
+                    test_dir,
+                    &["init-remote-repository", &repo_uri, &blob_storage_uri],
+                ),
+                Err(_) => lsc_cli_sys(test_dir, &["init-remote-repository", &repo_uri]),
+            }
             repo_uri
         }
         Err(_) => {
