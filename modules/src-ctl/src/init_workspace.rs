@@ -1,11 +1,11 @@
 use crate::{sql::*, *};
-
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use url::Url;
 
-async fn init_workspace_impl(
+pub async fn init_workspace_command(
     specified_workspace_directory: &Path,
-    repo_uri: &str,
+    repo_location: &str,
 ) -> Result<(), String> {
     let workspace_directory = make_path_absolute(specified_workspace_directory);
 
@@ -13,9 +13,23 @@ async fn init_workspace_impl(
     let db_path = lsc_dir.join("workspace.db3");
     let db_uri = format!("sqlite://{}", db_path.display());
 
+    let repo_addr = if Path::new(repo_location).exists() {
+        RepositoryAddr::Local(PathBuf::from(repo_location))
+    } else {
+        match Url::parse(repo_location) {
+            Ok(_uri) => RepositoryAddr::Remote(String::from(repo_location)),
+            Err(e) => {
+                return Err(format!(
+                    "invalid repository location {}: {}",
+                    repo_location, e
+                ));
+            }
+        }
+    };
+
     let spec = Workspace {
         id: uuid::Uuid::new_v4().to_string(),
-        repo_uri: String::from(repo_uri),
+        repo_addr,
         root: String::from(workspace_directory.to_str().unwrap()),
         owner: whoami::username(),
     };
@@ -52,12 +66,4 @@ async fn init_workspace_impl(
     let commit = query.read_commit(&main_branch.head).await?;
     download_tree(&connection, &workspace_directory, &commit.root_hash).await?;
     Ok(())
-}
-
-pub fn init_workspace_command(
-    specified_workspace_directory: &Path,
-    repo_uri: &str,
-) -> Result<(), String> {
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    tokio_runtime.block_on(init_workspace_impl(specified_workspace_directory, repo_uri))
 }

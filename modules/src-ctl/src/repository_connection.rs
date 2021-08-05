@@ -9,28 +9,39 @@ pub struct RepositoryConnection {
 }
 
 impl RepositoryConnection {
-    pub async fn new(repo_uri: &str, compressed_blob_cache: PathBuf) -> Result<Self, String> {
-        let specified_uri = Url::parse(repo_uri).unwrap();
+    pub async fn new(
+        repo_addr: &RepositoryAddr,
+        compressed_blob_cache: PathBuf,
+    ) -> Result<Self, String> {
         let repo_query: Box<dyn RepositoryQuery + Send>;
-        let mut url_path = String::from(specified_uri.path());
-        let path = url_path.split_off(1); //remove leading /
-        match specified_uri.scheme() {
-            "lsc" => {
-                let host = specified_uri.host().unwrap();
-                let port = specified_uri.port().unwrap_or(80);
-                let url = format!("http://{}:{}/lsc", host, port);
-                repo_query = Box::new(HTTPRepositoryQuery::new(url, path)?);
-            }
-            "file" => {
-                let db_url = format!("sqlite://{}/repo.db3", path);
-                let pool = Arc::new(SqlConnectionPool::new(&db_url).await?);
+        match repo_addr {
+            RepositoryAddr::Local(local_path) => {
+                let sqlite_url = format!("sqlite://{}/repo.db3", local_path.display());
+                let pool = Arc::new(SqlConnectionPool::new(&sqlite_url).await?);
                 repo_query = Box::new(SqlRepositoryQuery::new(pool));
             }
-            _ => {
-                let pool = Arc::new(SqlConnectionPool::new(repo_uri).await?);
-                repo_query = Box::new(SqlRepositoryQuery::new(pool));
+            RepositoryAddr::Remote(spec_uri) => {
+                let uri = Url::parse(spec_uri).unwrap();
+                let mut url_path = String::from(uri.path());
+                let path = url_path.split_off(1); //remove leading /
+                match uri.scheme() {
+                    "lsc" => {
+                        let host = uri.host().unwrap();
+                        let port = uri.port().unwrap_or(80);
+                        let url = format!("http://{}:{}/lsc", host, port);
+                        repo_query = Box::new(HTTPRepositoryQuery::new(url, path)?);
+                    }
+                    "mysql" => {
+                        let pool = Arc::new(SqlConnectionPool::new(spec_uri).await?);
+                        repo_query = Box::new(SqlRepositoryQuery::new(pool));
+                    }
+                    unknown => {
+                        return Err(format!("unknown remote url scheme {}", unknown));
+                    }
+                };
             }
-        }
+        };
+
         let blob_storage_spec = repo_query.read_blob_storage_spec().await?;
         Ok(Self {
             blob_storage_spec,
@@ -57,5 +68,5 @@ impl RepositoryConnection {
 
 pub async fn connect_to_server(workspace: &Workspace) -> Result<RepositoryConnection, String> {
     let blob_cache_dir = std::path::Path::new(&workspace.root).join(".lsc/blob_cache");
-    RepositoryConnection::new(&workspace.repo_uri, blob_cache_dir).await
+    RepositoryConnection::new(&workspace.repo_addr, blob_cache_dir).await
 }

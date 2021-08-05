@@ -115,7 +115,7 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
                 test_dir,
                 &["init-local-repository", repo_dir.to_str().unwrap()],
             );
-            format!("file://{}", repo_dir.display())
+            String::from(repo_dir.to_str().unwrap())
         }
     }
 }
