@@ -62,10 +62,13 @@ async fn insert_workspace_req(repo_name: &str, spec: &Workspace) -> Result<Strin
     Ok(String::from(""))
 }
 
-async fn read_branch_req(args: &ReadBranchRequest) -> Result<String, String> {
+async fn find_branch_req(args: &FindBranchRequest) -> Result<String, String> {
     let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
-    let branch = query.read_branch(&args.branch_name).await?;
-    branch.to_json()
+    let res = query.find_branch(&args.branch_name).await?;
+    match serde_json::to_string(&res) {
+        Ok(json) => Ok(json),
+        Err(e) => Err(format!("Error formatting find_branch_req result: {}", e)),
+    }
 }
 
 async fn read_branches_req(args: &ReadBranchesRequest) -> Result<String, String> {
@@ -77,12 +80,19 @@ async fn read_branches_req(args: &ReadBranchesRequest) -> Result<String, String>
     }
 }
 
-async fn find_branches_in_lock_domain(args: &FindBranchesInLockDomainRequest) -> Result<String,String>{
+async fn find_branches_in_lock_domain(
+    args: &FindBranchesInLockDomainRequest,
+) -> Result<String, String> {
     let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
-    let res = query.find_branches_in_lock_domain(&args.lock_domain_id).await?;
+    let res = query
+        .find_branches_in_lock_domain(&args.lock_domain_id)
+        .await?;
     match serde_json::to_string(&res) {
         Ok(json) => Ok(json),
-        Err(e) => Err(format!("Error formatting find_branches_in_lock_domain result: {}", e)),
+        Err(e) => Err(format!(
+            "Error formatting find_branches_in_lock_domain result: {}",
+            e
+        )),
     }
 }
 
@@ -139,6 +149,15 @@ async fn insert_commit_req(args: &InsertCommitRequest) -> Result<String, String>
     Ok(String::from(""))
 }
 
+async fn commit_exists_req(args: &CommitExistsRequest) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let res = query.commit_exists(&args.commit_id).await?;
+    match serde_json::to_string(&res) {
+        Ok(json) => Ok(json),
+        Err(e) => Err(format!("Error formatting commit_exists_req result: {}", e)),
+    }
+}
+
 async fn update_branch_req(args: &UpdateBranchRequest) -> Result<String, String> {
     let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
     let _res = query.update_branch(&args.branch).await?;
@@ -153,7 +172,9 @@ async fn insert_branch_req(args: &InsertBranchRequest) -> Result<String, String>
 
 async fn clear_lock_req(args: &ClearLockRequest) -> Result<String, String> {
     let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
-    let _res = query.clear_lock(&args.lock_domain_id, &args.canonical_relative_path).await?;
+    let _res = query
+        .clear_lock(&args.lock_domain_id, &args.canonical_relative_path)
+        .await?;
     Ok(String::from(""))
 }
 
@@ -180,7 +201,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::InsertWorkspace(req) => {
             insert_workspace_req(&req.repo_name, &req.spec).await
         }
-        ServerRequest::ReadBranch(req) => read_branch_req(&req).await,
+        ServerRequest::FindBranch(req) => find_branch_req(&req).await,
         ServerRequest::ReadBranches(req) => read_branches_req(&req).await,
         ServerRequest::FindBranchesInLockDomain(req) => find_branches_in_lock_domain(&req).await,
         ServerRequest::ReadCommit(req) => read_commit_req(&req.repo_name, &req.commit_id).await,
@@ -190,6 +211,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::FindLocksInDomain(req) => find_locks_in_domain_req(&req).await,
         ServerRequest::SaveTree(req) => save_tree_req(&req).await,
         ServerRequest::InsertCommit(req) => insert_commit_req(&req).await,
+        ServerRequest::CommitExists(req) => commit_exists_req(&req).await,
         ServerRequest::UpdateBranch(req) => update_branch_req(&req).await,
         ServerRequest::InsertBranch(req) => insert_branch_req(&req).await,
         ServerRequest::ClearLock(req) => clear_lock_req(&req).await,

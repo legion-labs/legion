@@ -28,7 +28,7 @@ pub struct InsertWorkspaceRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ReadBranchRequest {
+pub struct FindBranchRequest {
     pub repo_name: String,
     pub branch_name: String,
 }
@@ -102,6 +102,12 @@ pub struct InsertCommitRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct CommitExistsRequest {
+    pub repo_name: String,
+    pub commit_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateBranchRequest {
     pub repo_name: String,
     pub branch: Branch,
@@ -120,7 +126,7 @@ pub enum ServerRequest {
     InsertWorkspace(InsertWorkspaceRequest),
     Ping(PingRequest),
     ReadBlobStorageSpec(ReadBlobStorageSpecRequest),
-    ReadBranch(ReadBranchRequest),
+    FindBranch(FindBranchRequest),
     ReadBranches(ReadBranchesRequest),
     FindBranchesInLockDomain(FindBranchesInLockDomainRequest),
     ReadCommit(ReadCommitRequest),
@@ -132,6 +138,7 @@ pub enum ServerRequest {
     FindLocksInDomain(FindLocksInDomainRequest),
     SaveTree(SaveTreeRequest),
     InsertCommit(InsertCommitRequest),
+    CommitExists(CommitExistsRequest),
     UpdateBranch(UpdateBranchRequest),
     InsertBranch(InsertBranchRequest),
 }

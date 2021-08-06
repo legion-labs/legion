@@ -25,12 +25,24 @@ impl RepositoryQuery for HTTPRepositoryQuery {
     }
 
     async fn read_branch(&self, name: &str) -> Result<Branch, String> {
-        let request = ServerRequest::ReadBranch(ReadBranchRequest {
+        match self.find_branch(name).await {
+            Ok(Some(obj)) => Ok(obj),
+            Ok(None) => Err(format!("branch {} not found", name)),
+            Err(e) => Err(format!("Error in read_branch: {}", e)),
+        }
+    }
+
+    async fn find_branch(&self, name: &str) -> Result<Option<Branch>, String> {
+        let request = ServerRequest::FindBranch(FindBranchRequest {
             repo_name: self.repo_name.clone(),
             branch_name: String::from(name),
         });
         let resp = execute_request(&self.url, &request).await?;
-        Branch::from_json(&resp)
+        let parsed: serde_json::Result<Option<Branch>> = serde_json::from_str(&resp);
+        match parsed {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(format!("Error parsing response: {}", e)),
+        }
     }
 
     async fn read_branches(&self) -> Result<Vec<Branch>, String> {
@@ -44,7 +56,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             Err(e) => Err(format!("Error parsing response: {}", e)),
         }
     }
-    
+
     async fn insert_branch(&self, branch: &Branch) -> Result<(), String> {
         let request = ServerRequest::InsertBranch(InsertBranchRequest {
             repo_name: self.repo_name.clone(),
@@ -61,10 +73,6 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         });
         let _resp = execute_request(&self.url, &request).await?;
         Ok(())
-    }
-
-    async fn find_branch(&self, _name: &str) -> Result<Option<Branch>, String> {
-        panic!("not implemented");
     }
 
     async fn find_branches_in_lock_domain(
@@ -101,8 +109,17 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         Ok(())
     }
 
-    async fn commit_exists(&self, _id: &str) -> Result<bool, String> {
-        panic!("not implemented");
+    async fn commit_exists(&self, id: &str) -> Result<bool, String> {
+        let request = ServerRequest::CommitExists(CommitExistsRequest {
+            repo_name: self.repo_name.clone(),
+            commit_id: String::from(id),
+        });
+        let resp = execute_request(&self.url, &request).await?;
+        let parsed: serde_json::Result<bool> = serde_json::from_str(&resp);
+        match parsed {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(format!("Error parsing response: {}", e)),
+        }
     }
 
     async fn read_tree(&self, hash: &str) -> Result<Tree, String> {
@@ -190,7 +207,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             Err(e) => Err(format!("Error parsing response: {}", e)),
         }
     }
-    
+
     async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec, String> {
         let request = ServerRequest::ReadBlobStorageSpec(ReadBlobStorageSpecRequest {
             repo_name: self.repo_name.clone(),
