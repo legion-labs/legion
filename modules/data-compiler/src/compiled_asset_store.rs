@@ -9,6 +9,7 @@
 
 use core::fmt;
 use std::{
+    collections::HashMap,
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
@@ -86,20 +87,24 @@ pub trait CompiledAssetStore {
     }
 }
 
-/*pub struct InMemoryCompiledAssetStore {
-    assets: HashMap<AssetId, Vec<u8>>,
+/// In-memory `CompiledAssetStore` implementation.
+///
+/// Handy implementation for testing purposes.
+pub struct InMemoryCompiledAssetStore {
+    assets: HashMap<i128, Vec<u8>>,
 }
 
 impl InMemoryCompiledAssetStore {
-    pub fn new() -> Self {
+    /// Create empty in-memory `CompiledAssetStore`.
+    pub fn default() -> Self {
         Self {
-            assets: HashMap::<AssetId, Vec<u8>>::new(),
+            assets: HashMap::new(),
         }
     }
 }
 
 impl CompiledAssetStore for InMemoryCompiledAssetStore {
-    fn write(&mut self, id: AssetId, data: &[u8]) -> Option<()> {
+    fn write(&mut self, id: i128, data: &[u8]) -> Option<()> {
         if self.assets.contains_key(&id) {
             return None;
         }
@@ -108,14 +113,14 @@ impl CompiledAssetStore for InMemoryCompiledAssetStore {
         Some(())
     }
 
-    fn read(&self, id: AssetId) -> Option<Vec<u8>> {
+    fn read(&self, id: i128) -> Option<Vec<u8>> {
         self.assets.get(&id).cloned()
     }
 
-    fn remove(&mut self, id: AssetId) {
+    fn remove(&mut self, id: i128) {
         self.assets.remove(&id);
     }
-}*/
+}
 
 /// Disk-based `CompiledAssetStore` implementation.
 ///
