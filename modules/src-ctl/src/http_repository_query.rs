@@ -5,11 +5,16 @@ use async_trait::async_trait;
 pub struct HTTPRepositoryQuery {
     url: String,
     repo_name: String,
+    client: reqwest::Client,
 }
 
 impl HTTPRepositoryQuery {
     pub fn new(url: String, repo_name: String) -> Result<Self, String> {
-        Ok(Self { url, repo_name })
+        Ok(Self {
+            url,
+            repo_name,
+            client: reqwest::Client::new(),
+        })
     }
 }
 
@@ -20,7 +25,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             spec: spec.clone(),
         });
-        let _resp = execute_request(&self.url, &request).await?;
+        let _resp = execute_request(&self.client, &self.url, &request).await?;
         Ok(())
     }
 
@@ -37,7 +42,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             branch_name: String::from(name),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         let parsed: serde_json::Result<Option<Branch>> = serde_json::from_str(&resp);
         match parsed {
             Ok(obj) => Ok(obj),
@@ -49,7 +54,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         let request = ServerRequest::ReadBranches(ReadBranchesRequest {
             repo_name: self.repo_name.clone(),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         let parsed: serde_json::Result<Vec<Branch>> = serde_json::from_str(&resp);
         match parsed {
             Ok(obj) => Ok(obj),
@@ -62,7 +67,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             branch: branch.clone(),
         });
-        let _resp = execute_request(&self.url, &request).await?;
+        let _resp = execute_request(&self.client, &self.url, &request).await?;
         Ok(())
     }
 
@@ -71,7 +76,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             branch: branch.clone(),
         });
-        let _resp = execute_request(&self.url, &request).await?;
+        let _resp = execute_request(&self.client, &self.url, &request).await?;
         Ok(())
     }
 
@@ -83,7 +88,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             lock_domain_id: String::from(lock_domain_id),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         let parsed: serde_json::Result<Vec<Branch>> = serde_json::from_str(&resp);
         match parsed {
             Ok(obj) => Ok(obj),
@@ -96,7 +101,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             commit_id: String::from(id),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         Commit::from_json(&resp)
     }
 
@@ -105,7 +110,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             commit: commit.clone(),
         });
-        let _resp = execute_request(&self.url, &request).await?;
+        let _resp = execute_request(&self.client, &self.url, &request).await?;
         Ok(())
     }
 
@@ -114,7 +119,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             commit_id: String::from(id),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         let parsed: serde_json::Result<bool> = serde_json::from_str(&resp);
         match parsed {
             Ok(obj) => Ok(obj),
@@ -127,7 +132,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             tree_hash: String::from(hash),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         Tree::from_json(&resp)
     }
 
@@ -137,7 +142,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             tree: tree.clone(),
             hash: String::from(hash),
         });
-        let _resp = execute_request(&self.url, &request).await?;
+        let _resp = execute_request(&self.client, &self.url, &request).await?;
         Ok(())
     }
 
@@ -146,7 +151,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             lock: lock.clone(),
         });
-        let _resp = execute_request(&self.url, &request).await?;
+        let _resp = execute_request(&self.client, &self.url, &request).await?;
         Ok(())
     }
 
@@ -160,7 +165,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             lock_domain_id: String::from(lock_domain_id),
             canonical_relative_path: String::from(canonical_relative_path),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         let parsed: serde_json::Result<Option<Lock>> = serde_json::from_str(&resp);
         match parsed {
             Ok(obj) => Ok(obj),
@@ -173,7 +178,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             lock_domain_id: String::from(lock_domain_id),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         let parsed: serde_json::Result<Vec<Lock>> = serde_json::from_str(&resp);
         match parsed {
             Ok(obj) => Ok(obj),
@@ -191,7 +196,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             lock_domain_id: String::from(lock_domain_id),
             canonical_relative_path: String::from(canonical_relative_path),
         });
-        let _resp = execute_request(&self.url, &request).await?;
+        let _resp = execute_request(&self.client, &self.url, &request).await?;
         Ok(())
     }
 
@@ -200,7 +205,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
             repo_name: self.repo_name.clone(),
             lock_domain_id: String::from(lock_domain_id),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         let parsed: serde_json::Result<i32> = serde_json::from_str(&resp);
         match parsed {
             Ok(obj) => Ok(obj),
@@ -212,7 +217,7 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         let request = ServerRequest::ReadBlobStorageSpec(ReadBlobStorageSpecRequest {
             repo_name: self.repo_name.clone(),
         });
-        let resp = execute_request(&self.url, &request).await?;
+        let resp = execute_request(&self.client, &self.url, &request).await?;
         Ok(BlobStorageSpec::from_json(&resp)?)
     }
 }

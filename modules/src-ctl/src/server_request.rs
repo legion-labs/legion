@@ -160,8 +160,11 @@ impl ServerRequest {
     }
 }
 
-pub async fn execute_request(http_url: &str, request: &ServerRequest) -> Result<String, String> {
-    let client = reqwest::Client::new();
+pub async fn execute_request(
+    client: &reqwest::Client,
+    http_url: &str,
+    request: &ServerRequest,
+) -> Result<String, String> {
     match client.get(http_url).body(request.to_json()?).send().await {
         Ok(resp) => {
             let status = resp.status();

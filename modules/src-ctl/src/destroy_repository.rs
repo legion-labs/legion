@@ -20,7 +20,8 @@ pub async fn destroy_repository_command(uri: &str) -> Result<(), String> {
             let host = repo_uri.host().unwrap();
             let port = repo_uri.port().unwrap_or(80);
             let url = format!("http://{}:{}/lsc", host, port);
-            let resp = execute_request(&url, &request).await?;
+            let client = reqwest::Client::new();
+            let resp = execute_request(&client, &url, &request).await?;
             println!("{}", resp);
         }
         unknown => {

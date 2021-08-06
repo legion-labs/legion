@@ -62,7 +62,6 @@ impl SqlConnectionPool {
 
 pub async fn alloc_sql_pool(db_server_uri: &str) -> Result<sqlx::AnyPool, String> {
     match sqlx::any::AnyPoolOptions::new()
-        .max_connections(5)
         .connect(db_server_uri)
         .await
     {

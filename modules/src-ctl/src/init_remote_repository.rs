@@ -35,7 +35,8 @@ async fn init_http_repository_command(host: &str, port: u16, name: &str) -> Resu
         repo_name: String::from(name),
     });
     let http_url = format!("http://{}:{}/lsc", host, port);
-    let resp = execute_request(&http_url, &request).await?;
+    let client = reqwest::Client::new();
+    let resp = execute_request(&client, &http_url, &request).await?;
     println!("{}", resp);
     Ok(())
 }
