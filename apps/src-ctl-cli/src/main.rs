@@ -393,9 +393,9 @@ fn main_impl() -> Result<(), String> {
         ("revert", Some(command_match)) => {
             let path = command_match.value_of("path").unwrap();
             if command_match.is_present("glob") {
-                revert_glob_command(path)
+                tokio_runtime.block_on(revert_glob_command(path))
             } else {
-                revert_file_command(Path::new(path))
+                tokio_runtime.block_on(revert_file_command(Path::new(path)))
             }
         }
         ("commit", Some(command_match)) => {

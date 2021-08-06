@@ -1,7 +1,7 @@
 use crate::*;
 use std::path::Path;
 
-pub fn revert_glob_command(pattern: &str) -> Result<(), String> {
+pub async fn revert_glob_command(pattern: &str) -> Result<(), String> {
     let mut nb_errors = 0;
     match glob::Pattern::new(pattern) {
         Ok(matcher) => {
@@ -12,7 +12,7 @@ pub fn revert_glob_command(pattern: &str) -> Result<(), String> {
                 if matcher.matches(&change.relative_path) {
                     println!("reverting {}", change.relative_path);
                     let local_file_path = workspace_root.join(change.relative_path);
-                    if let Err(e) = revert_file_command(&local_file_path) {
+                    if let Err(e) = revert_file_command(&local_file_path).await {
                         println!("{}", e);
                         nb_errors += 1;
                     }
@@ -90,16 +90,11 @@ pub async fn revert_file(
     }
 }
 
-pub fn revert_file_command(path: &Path) -> Result<(), String> {
+pub async fn revert_file_command(path: &Path) -> Result<(), String> {
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let repo_connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
-    tokio_runtime.block_on(revert_file(
-        &mut workspace_connection,
-        &repo_connection,
-        path,
-    ))
+    let repo_connection = connect_to_server(&workspace_spec).await?;
+    revert_file(&mut workspace_connection, &repo_connection, path).await
 }
