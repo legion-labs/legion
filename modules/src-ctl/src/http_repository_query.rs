@@ -33,8 +33,25 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         Branch::from_json(&resp)
     }
 
-    async fn insert_branch(&self, _branch: &Branch) -> Result<(), String> {
-        panic!("not implemented");
+    async fn read_branches(&self) -> Result<Vec<Branch>, String> {
+        let request = ServerRequest::ReadBranches(ReadBranchesRequest {
+            repo_name: self.repo_name.clone(),
+        });
+        let resp = execute_request(&self.url, &request).await?;
+        let parsed: serde_json::Result<Vec<Branch>> = serde_json::from_str(&resp);
+        match parsed {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(format!("Error parsing response: {}", e)),
+        }
+    }
+    
+    async fn insert_branch(&self, branch: &Branch) -> Result<(), String> {
+        let request = ServerRequest::InsertBranch(InsertBranchRequest {
+            repo_name: self.repo_name.clone(),
+            branch: branch.clone(),
+        });
+        let _resp = execute_request(&self.url, &request).await?;
+        Ok(())
     }
 
     async fn update_branch(&self, branch: &Branch) -> Result<(), String> {
@@ -52,13 +69,18 @@ impl RepositoryQuery for HTTPRepositoryQuery {
 
     async fn find_branches_in_lock_domain(
         &self,
-        _lock_domain_id: &str,
+        lock_domain_id: &str,
     ) -> Result<Vec<Branch>, String> {
-        panic!("not implemented");
-    }
-
-    async fn read_branches(&self) -> Result<Vec<Branch>, String> {
-        panic!("not implemented");
+        let request = ServerRequest::FindBranchesInLockDomain(FindBranchesInLockDomainRequest {
+            repo_name: self.repo_name.clone(),
+            lock_domain_id: String::from(lock_domain_id),
+        });
+        let resp = execute_request(&self.url, &request).await?;
+        let parsed: serde_json::Result<Vec<Branch>> = serde_json::from_str(&resp);
+        match parsed {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(format!("Error parsing response: {}", e)),
+        }
     }
 
     async fn read_commit(&self, id: &str) -> Result<Commit, String> {
@@ -144,10 +166,16 @@ impl RepositoryQuery for HTTPRepositoryQuery {
 
     async fn clear_lock(
         &self,
-        _lock_domain_id: &str,
-        _canonical_relative_path: &str,
+        lock_domain_id: &str,
+        canonical_relative_path: &str,
     ) -> Result<(), String> {
-        panic!("not implemented");
+        let request = ServerRequest::ClearLock(ClearLockRequest {
+            repo_name: self.repo_name.clone(),
+            lock_domain_id: String::from(lock_domain_id),
+            canonical_relative_path: String::from(canonical_relative_path),
+        });
+        let _resp = execute_request(&self.url, &request).await?;
+        Ok(())
     }
 
     async fn count_locks_in_domain(&self, _lock_domain_id: &str) -> Result<i32, String> {

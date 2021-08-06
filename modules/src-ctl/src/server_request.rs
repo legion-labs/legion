@@ -34,6 +34,17 @@ pub struct ReadBranchRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ReadBranchesRequest {
+    pub repo_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FindBranchesInLockDomainRequest {
+    pub repo_name: String,
+    pub lock_domain_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ReadCommitRequest {
     pub repo_name: String,
     pub commit_id: String,
@@ -53,6 +64,13 @@ pub struct InsertLockRequest {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FindLockRequest {
+    pub repo_name: String,
+    pub lock_domain_id: String,
+    pub canonical_relative_path: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ClearLockRequest {
     pub repo_name: String,
     pub lock_domain_id: String,
     pub canonical_relative_path: String,
@@ -84,6 +102,12 @@ pub struct UpdateBranchRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct InsertBranchRequest {
+    pub repo_name: String,
+    pub branch: Branch,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
     InitRepo(InitRepositoryRequest),
     DestroyRepo(DestroyRepositoryRequest),
@@ -91,14 +115,18 @@ pub enum ServerRequest {
     Ping(PingRequest),
     ReadBlobStorageSpec(ReadBlobStorageSpecRequest),
     ReadBranch(ReadBranchRequest),
+    ReadBranches(ReadBranchesRequest),
+    FindBranchesInLockDomain(FindBranchesInLockDomainRequest),
     ReadCommit(ReadCommitRequest),
     ReadTree(ReadTreeRequest),
     InsertLock(InsertLockRequest),
     FindLock(FindLockRequest),
+    ClearLock(ClearLockRequest),
     FindLocksInDomain(FindLocksInDomainRequest),
     SaveTree(SaveTreeRequest),
     InsertCommit(InsertCommitRequest),
     UpdateBranch(UpdateBranchRequest),
+    InsertBranch(InsertBranchRequest),
 }
 
 impl ServerRequest {
