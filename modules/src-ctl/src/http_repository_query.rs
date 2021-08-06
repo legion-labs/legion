@@ -178,9 +178,19 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         Ok(())
     }
 
-    async fn count_locks_in_domain(&self, _lock_domain_id: &str) -> Result<i32, String> {
-        panic!("not implemented");
+    async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32, String> {
+        let request = ServerRequest::ClountLocksInDomain(ClountLocksInDomainRequest {
+            repo_name: self.repo_name.clone(),
+            lock_domain_id: String::from(lock_domain_id),
+        });
+        let resp = execute_request(&self.url, &request).await?;
+        let parsed: serde_json::Result<i32> = serde_json::from_str(&resp);
+        match parsed {
+            Ok(obj) => Ok(obj),
+            Err(e) => Err(format!("Error parsing response: {}", e)),
+        }
     }
+    
     async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec, String> {
         let request = ServerRequest::ReadBlobStorageSpec(ReadBlobStorageSpecRequest {
             repo_name: self.repo_name.clone(),

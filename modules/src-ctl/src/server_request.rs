@@ -77,6 +77,12 @@ pub struct ClearLockRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ClountLocksInDomainRequest {
+    pub repo_name: String,
+    pub lock_domain_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FindLocksInDomainRequest {
     pub repo_name: String,
     pub lock_domain_id: String,
@@ -122,6 +128,7 @@ pub enum ServerRequest {
     InsertLock(InsertLockRequest),
     FindLock(FindLockRequest),
     ClearLock(ClearLockRequest),
+    ClountLocksInDomain(ClountLocksInDomainRequest),
     FindLocksInDomain(FindLocksInDomainRequest),
     SaveTree(SaveTreeRequest),
     InsertCommit(InsertCommitRequest),
