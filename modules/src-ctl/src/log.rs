@@ -1,22 +1,23 @@
 use crate::*;
 use chrono::{DateTime, Local};
 
-pub fn log_command() -> Result<(), String> {
+pub async fn log_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let workspace_branch = read_current_branch(&workspace_root)?;
     println!(
         "This workspace is on branch {} at commit {}",
         &workspace_branch.name, &workspace_branch.head
     );
 
-    let repo_branch =
-        tokio_runtime.block_on(connection.query().read_branch(&workspace_branch.name))?;
+    let repo_branch = connection
+        .query()
+        .read_branch(&workspace_branch.name)
+        .await?;
 
-    match tokio_runtime.block_on(find_branch_commits(&connection, &repo_branch)) {
+    match find_branch_commits(&connection, &repo_branch).await {
         Ok(commits) => {
             for c in commits {
                 let utc = DateTime::parse_from_rfc3339(&c.date_time_utc)
