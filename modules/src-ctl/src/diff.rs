@@ -38,7 +38,7 @@ async fn print_diff(
     Ok(())
 }
 
-pub fn diff_file_command(
+pub async fn diff_file_command(
     path: &Path,
     reference_version_name: &str,
     allow_tools: bool,
@@ -46,34 +46,27 @@ pub fn diff_file_command(
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = connect_to_server(&workspace_spec).await?;
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
-    let ref_commit_id = tokio_runtime.block_on(reference_version_name_as_commit_id(
+    let ref_commit_id = reference_version_name_as_commit_id(
         connection.query(),
         &workspace_root,
         reference_version_name,
-    ))?;
-    let ref_file_hash = tokio_runtime
-        .block_on(find_file_hash_at_commit(
-            &connection,
-            &relative_path,
-            &ref_commit_id,
-        ))?
+    )
+    .await?;
+    let ref_file_hash = find_file_hash_at_commit(&connection, &relative_path, &ref_commit_id)
+        .await?
         .unwrap();
 
     if !allow_tools {
-        return tokio_runtime.block_on(print_diff(&connection, &abs_path, &ref_file_hash));
+        return print_diff(&connection, &abs_path, &ref_file_hash).await;
     }
 
     let config = Config::read_config()?;
     match config.find_diff_command(&relative_path) {
         Some(mut external_command_vec) => {
-            let ref_temp_file = tokio_runtime.block_on(download_temp_file(
-                &connection,
-                &workspace_root,
-                &ref_file_hash,
-            ))?;
+            let ref_temp_file =
+                download_temp_file(&connection, &workspace_root, &ref_file_hash).await?;
             let ref_path_str = ref_temp_file.path.to_str().unwrap();
             let local_file = abs_path.to_str().unwrap();
             for item in &mut external_command_vec[..] {
@@ -102,7 +95,7 @@ pub fn diff_file_command(
             }
         }
         None => {
-            return tokio_runtime.block_on(print_diff(&connection, &abs_path, &ref_file_hash));
+            return print_diff(&connection, &abs_path, &ref_file_hash).await;
         }
     }
 

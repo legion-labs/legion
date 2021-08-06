@@ -361,11 +361,11 @@ fn main_impl() -> Result<(), String> {
         ("diff", Some(command_match)) => {
             let notool = command_match.is_present("notool");
             let reference_version_name = command_match.value_of("reference").unwrap_or("base");
-            diff_file_command(
+            tokio_runtime.block_on(diff_file_command(
                 Path::new(command_match.value_of("path").unwrap()),
                 reference_version_name,
                 !notool,
-            )
+            ))
         }
         ("resolve", Some(command_match)) => {
             let notool = command_match.is_present("notool");
