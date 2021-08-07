@@ -553,13 +553,9 @@ mod tests {
         CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
     };
     use legion_data_compiler::{Locale, Manifest, Platform, Target};
-    use legion_resources::{
-        test_resource, Project, ResourceId, ResourcePath, ResourceRegistry, ResourceType,
-    };
+    use legion_resources::{test_resource, Project, ResourceId, ResourcePath, ResourceRegistry};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
-
-    const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
 
     fn setup_registry() -> ResourceRegistry {
         let mut resources = ResourceRegistry::default();
@@ -568,7 +564,7 @@ mod tests {
             Box::new(test_resource::TestResourceProc {}),
         );
         resources.register_type(
-            RESOURCE_MATERIAL,
+            test_resource::TYPE_ID,
             Box::new(test_resource::TestResourceProc {}),
         );
         resources
@@ -633,7 +629,7 @@ mod tests {
             let _material = project
                 .add_resource(
                     ResourcePath::from("parent"),
-                    RESOURCE_MATERIAL,
+                    test_resource::TYPE_ID,
                     &resource,
                     &mut resources,
                 )
@@ -686,14 +682,14 @@ mod tests {
     }
 
     #[test]
-    fn compile() {
+    fn verify_manifest() {
         let work_dir = tempfile::tempdir().unwrap();
         let project_dir = work_dir.path();
         let mut resources = setup_registry();
-        {
+        let parent_path = {
             let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
-            let texture = project
+            let child_id = project
                 .add_resource(
                     ResourcePath::from("child"),
                     test_resource::TYPE_ID,
@@ -702,22 +698,25 @@ mod tests {
                 )
                 .unwrap();
 
-            let material_handle = resources.new_resource(RESOURCE_MATERIAL).unwrap();
-            material_handle
+            let child_handle = resources.new_resource(test_resource::TYPE_ID).unwrap();
+            child_handle
                 .get_mut::<test_resource::TestResource>(&mut resources)
                 .unwrap()
                 .build_deps
-                .push(texture);
+                .push(child_id);
 
-            let _material = project
+            let parent_path = ResourcePath::from("parent");
+
+            let _parent_id = project
                 .add_resource(
-                    ResourcePath::from("parent"),
-                    RESOURCE_MATERIAL,
-                    &material_handle,
+                    parent_path.clone(),
+                    test_resource::TYPE_ID,
+                    &child_handle,
                     &mut resources,
                 )
                 .unwrap();
-        }
+            parent_path
+        };
 
         let assetstore_path = CompiledAssetStoreAddr::from(work_dir.path());
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
@@ -732,7 +731,7 @@ mod tests {
 
         let manifest = build
             .compile_named(
-                &ResourcePath::from("child"),
+                &parent_path,
                 &output_manifest_file,
                 Target::Game,
                 Platform::Windows,
@@ -740,12 +739,14 @@ mod tests {
             )
             .unwrap();
 
-        assert_eq!(manifest.compiled_assets.len(), 1); // for now only the root asset is compiled
+        // both child and parent are separate assets.
+        assert_eq!(manifest.compiled_assets.len(), 2);
 
-        let compiled_checksum = manifest.compiled_assets[0].checksum;
         let asset_store =
             LocalCompiledAssetStore::open(assetstore_path).expect("valid asset store");
-        assert!(asset_store.exists(compiled_checksum));
+        for checksum in manifest.compiled_assets.iter().map(|a| a.checksum) {
+            assert!(asset_store.exists(checksum));
+        }
 
         assert!(output_manifest_file.exists());
         let read_manifest: Manifest = {
@@ -758,30 +759,16 @@ mod tests {
             manifest.compiled_assets.len()
         );
 
-        build
-            .compile_named(
-                &ResourcePath::from("child"),
-                &output_manifest_file,
-                Target::Game,
-                Platform::Windows,
-                &Locale::new("en"),
-            )
-            .unwrap();
-
-        assert!(output_manifest_file.exists());
-        let read_manifest: Manifest = {
-            let manifest_file = File::open(&output_manifest_file).unwrap();
-            serde_json::from_reader(&manifest_file).unwrap()
-        };
-
-        assert_eq!(
-            read_manifest.compiled_assets.len(),
-            manifest.compiled_assets.len()
-        );
+        for asset in read_manifest.compiled_assets {
+            assert!(manifest
+                .compiled_assets
+                .iter()
+                .any(|a| a.checksum == asset.checksum));
+        }
     }
 
     #[test]
-    fn resource_modify_compile() {
+    fn compile_change_no_deps() {
         let work_dir = tempfile::tempdir().unwrap();
         let project_dir = work_dir.path();
         let mut resources = setup_registry();
@@ -792,7 +779,7 @@ mod tests {
             let resource_handle = resources.new_resource(test_resource::TYPE_ID).unwrap();
             let resource_id = project
                 .add_resource(
-                    ResourcePath::from("child"),
+                    ResourcePath::from("resource"),
                     test_resource::TYPE_ID,
                     &resource_handle,
                     &mut resources,
@@ -807,44 +794,28 @@ mod tests {
             .asset_store(&assetstore_path)
             .compiler_dir(target_dir());
 
-        let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
-
         let original_checksum = {
             let mut build = config.create(project_dir).expect("to create index");
             build.source_pull().expect("failed to pull from project");
 
-            let manifest = build
-                .compile_named(
-                    &ResourcePath::from("child"),
-                    &output_manifest_file,
+            let compile_output = build
+                .compile(
+                    resource_id,
                     Target::Game,
                     Platform::Windows,
                     &Locale::new("en"),
                 )
                 .unwrap();
 
-            assert_eq!(manifest.compiled_assets.len(), 1);
+            assert_eq!(compile_output.asset_objects.len(), 1);
+            assert_eq!(compile_output.references.len(), 0);
 
-            let original_checksum = manifest.compiled_assets[0].checksum;
+            let original_checksum = compile_output.asset_objects[0].compiled_checksum;
 
-            {
-                let asset_store = LocalCompiledAssetStore::open(assetstore_path.clone())
-                    .expect("valid asset store");
-                assert!(asset_store.exists(original_checksum));
-            }
+            let asset_store =
+                LocalCompiledAssetStore::open(assetstore_path.clone()).expect("valid asset store");
+            assert!(asset_store.exists(original_checksum));
 
-            assert!(output_manifest_file.exists());
-            let read_manifest: Manifest = {
-                let manifest_file = File::open(&output_manifest_file).unwrap();
-                serde_json::from_reader(&manifest_file).unwrap()
-            };
-
-            assert_eq!(
-                read_manifest.compiled_assets.len(),
-                manifest.compiled_assets.len()
-            );
-
-            assert_eq!(read_manifest.compiled_assets[0].checksum, original_checksum);
             original_checksum
         };
 
@@ -862,39 +833,24 @@ mod tests {
         let modified_checksum = {
             let mut build = config.open().expect("to open index");
             build.source_pull().expect("failed to pull from project");
-            let manifest = build
-                .compile_named(
-                    &ResourcePath::from("child"),
-                    &output_manifest_file,
+            let compile_output = build
+                .compile(
+                    resource_id,
                     Target::Game,
                     Platform::Windows,
                     &Locale::new("en"),
                 )
                 .unwrap();
 
-            assert_eq!(manifest.compiled_assets.len(), 1);
+            assert_eq!(compile_output.asset_objects.len(), 1);
 
-            let modified_checksum = manifest.compiled_assets[0].checksum;
+            let modified_checksum = compile_output.asset_objects[0].compiled_checksum;
 
-            {
-                let asset_store =
-                    LocalCompiledAssetStore::open(assetstore_path).expect("valid asset store");
-                assert!(asset_store.exists(original_checksum));
-                assert!(asset_store.exists(modified_checksum));
-            }
+            let asset_store =
+                LocalCompiledAssetStore::open(assetstore_path).expect("valid asset store");
+            assert!(asset_store.exists(original_checksum));
+            assert!(asset_store.exists(modified_checksum));
 
-            assert!(output_manifest_file.exists());
-            let read_manifest: Manifest = {
-                let manifest_file = File::open(&output_manifest_file).unwrap();
-                serde_json::from_reader(&manifest_file).unwrap()
-            };
-
-            assert_eq!(
-                read_manifest.compiled_assets.len(),
-                manifest.compiled_assets.len()
-            );
-
-            assert_eq!(read_manifest.compiled_assets[0].checksum, modified_checksum);
             modified_checksum
         };
 
