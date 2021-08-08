@@ -84,7 +84,26 @@ pub(super) enum WorkUnit {
     ...
 }
 
-pub trait IntoWorkloadSystem<B, R> {
+pub trait IntoWorkloadSystem<B, R> for F
+where
+    F: 'static + Send + Sync + Fn() -> R,
+{
+    fn into_workload_system(self) -> Result<WorkloadSystem, error::InvalidSystem> {
+        Ok(WorkloadSystem {
+            system_fn: Box::new(move |_: &World| {
+                (self)();
+                Ok(())
+            }),
+            ...
+        })
+    }
+}
+
+pub struct WorkloadSystem {
+    pub(super) system_fn: Box<dyn Fn(&World) -> Result<(), error::Run> + Send + Sync + 'static>,
+    ...
+}
+
 ```
 
 Macros that allow conversion of types for multiple arguments in [`into_workload_system.rs`](https://github.com/leudz/shipyard/blob/master/src/scheduler/into_workload_system.rs)
