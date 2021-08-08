@@ -1,10 +1,8 @@
 use std::{collections::HashMap, fs, io, mem, path::PathBuf};
 
-use crate::{
-    assetloader::file_format_json::{AssetFileHeader, AssetHeader, SectionHeader, MAGIC_NUMBER},
-    Asset, AssetCreator, AssetGenericHandle, AssetId, AssetType,
-};
+use crate::{Asset, AssetCreator, AssetGenericHandle, AssetId, AssetType};
 
+use byteorder::{LittleEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
 
 fn asset_path(id: AssetId) -> PathBuf {
@@ -45,6 +43,10 @@ impl AssetLoader {
         }
     }
 
+    pub(crate) fn register_creator(&mut self, kind: AssetType, creator: Box<dyn AssetCreator>) {
+        self.creators.insert(kind, creator);
+    }
+
     pub(crate) fn load_request(&mut self, handle: AssetGenericHandle, id: AssetId) {
         self.requests.push((handle, id));
     }
@@ -54,7 +56,7 @@ impl AssetLoader {
             let file_path = asset_path(id);
 
             let result = match fs::File::open(file_path) {
-                Ok(mut file) => match self.load_internal(&mut file) {
+                Ok(mut file) => match self.load_internal(id, &mut file) {
                     Ok(mut output) => {
                         // for now we assume there is only one asset in a file
                         // and that this is the primary asset.
@@ -74,48 +76,54 @@ impl AssetLoader {
         }
     }
 
-    fn load_internal(&mut self, mut file: &mut dyn io::Read) -> Result<LoadOutput, io::Error> {
-        let load_dependencies = {
-            let mut de = serde_json::Deserializer::from_reader(&mut file);
-            let file_header = AssetFileHeader::deserialize(&mut de).unwrap();
-            println!("{:?}", file_header);
+    fn load_internal(
+        &mut self,
+        primary_id: AssetId,
+        reader: &mut dyn io::Read,
+    ) -> Result<LoadOutput, io::Error> {
+        const ASSET_FILE_VERSION: u16 = 1;
 
-            assert_eq!(file_header.magic_number, MAGIC_NUMBER);
-            assert!(file_header.load_dependencies.is_empty());
-            file_header.load_dependencies
+        // asset file header
+        let version = reader.read_u16::<LittleEndian>()?;
+        if version != ASSET_FILE_VERSION {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "Version Mismatch",
+            ));
+        }
+
+        let reference_count = reader.read_u64::<LittleEndian>()?;
+        let mut reference_list = Vec::with_capacity(reference_count as usize);
+        for _ in 0..reference_count {
+            let asset_ref =
+                unsafe { std::mem::transmute::<u64, AssetId>(reader.read_u64::<LittleEndian>()?) };
+            reference_list.push(AssetReference {
+                primary: asset_ref,
+                secondary: asset_ref,
+            });
+        }
+
+        // section header
+        let asset_type = unsafe {
+            std::mem::transmute::<u32, AssetType>(
+                reader.read_u32::<LittleEndian>().expect("valid data"),
+            )
         };
+        let asset_count = reader.read_u64::<LittleEndian>().expect("valid data");
+        assert_eq!(asset_count, 1);
 
-        // todo: for now we assume 1 section. later we need to do this for all the sections in the file.
-        let assets = {
-            let mut assets = vec![];
-            let mut de = serde_json::Deserializer::from_reader(&mut file);
-            let section_header = SectionHeader::deserialize(&mut de).unwrap();
-            println!("{:?}", section_header);
+        let nbytes = reader.read_u64::<LittleEndian>().expect("valid data");
 
-            assert_eq!(section_header.section_type, 0);
-            assert_eq!(section_header.asset_count, 1);
+        let mut content = Vec::new();
+        content.resize(nbytes as usize, 0);
+        reader.read_exact(&mut content).expect("valid data");
 
-            for _ in 0..section_header.asset_count {
-                let (asset_id, asset_type) = {
-                    let mut de = serde_json::Deserializer::from_reader(&mut file);
-                    let asset_header = AssetHeader::deserialize(&mut de).unwrap();
-                    println!("{:?}", asset_header);
-                    (asset_header.asset_id, asset_header.asset_id.asset_type())
-                };
-
-                // todo: better serialization format.
-                // since we do not know the length of the json content to expect
-                // we cannot simply skip the byts if the `creator` is not found.
-                let creator = self.creators.get_mut(&asset_type).unwrap();
-                let new_asset = creator.load(asset_type, file).unwrap();
-                assets.push((asset_id, new_asset));
-            }
-            assets
-        };
+        let creator = self.creators.get_mut(&asset_type).unwrap();
+        let boxed_asset = creator.load(asset_type, &mut &content[..]).unwrap();
 
         Ok(LoadOutput {
-            assets,
-            _load_dependencies: load_dependencies,
+            assets: vec![(primary_id, boxed_asset)],
+            _load_dependencies: reference_list,
         })
     }
 
@@ -125,151 +133,41 @@ impl AssetLoader {
     }
 }
 
-pub(super) mod file_format_json {
-
-    use serde::{Deserialize, Serialize};
-
-    use crate::AssetId;
-
-    use super::AssetReference;
-
-    pub(super) const MAGIC_NUMBER: usize = 0xdeadbeef;
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub(super) struct AssetFileHeader {
-        pub(super) magic_number: usize,
-        pub(super) load_dependencies: Vec<AssetReference>,
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub(super) struct SectionHeader {
-        pub(super) section_type: u8,
-        pub(super) asset_count: u8,
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub(super) struct AssetHeader {
-        pub(super) asset_size: usize,
-        pub(super) asset_id: AssetId,
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use serde::{Deserialize, Serialize};
-
-    use std::{any::Any, io};
-
     use crate::{
-        assetloader::file_format_json::{
-            AssetFileHeader, AssetHeader, SectionHeader, MAGIC_NUMBER,
-        },
-        test_asset, Asset, AssetCreator, AssetId, AssetType,
+        test_asset::{self, TestAsset},
+        AssetId,
     };
 
     use super::AssetLoader;
 
-    struct TextureCreator {}
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct TextureAsset {
-        content: String,
-        load_state: isize,
-    }
-
-    impl Asset for TextureAsset {
-        fn as_any(&self) -> &dyn Any {
-            self
-        }
-
-        fn as_any_mut(&mut self) -> &mut dyn Any {
-            self
-        }
-    }
-
-    impl AssetCreator for TextureCreator {
-        fn load(
-            &mut self,
-            _kind: AssetType,
-            reader: &mut dyn io::Read,
-        ) -> Result<Box<dyn Asset>, std::io::Error> {
-            let mut de = serde_json::Deserializer::from_reader(reader);
-            let asset = TextureAsset::deserialize(&mut de).unwrap();
-            println!("{:?}", asset);
-            Ok(Box::new(asset))
-        }
-
-        fn load_init(&mut self, asset: &mut dyn Asset) {
-            let texture_asset = asset.as_any_mut().downcast_mut::<TextureAsset>().unwrap();
-            texture_asset.load_state = 1;
-        }
-    }
-
-    fn create_test_asset(mut writer: &mut [u8]) {
-        let file_header = AssetFileHeader {
-            magic_number: MAGIC_NUMBER,
-            load_dependencies: vec![],
-        };
-        serde_json::to_writer_pretty(&mut writer, &file_header).unwrap();
-
-        let section_header = SectionHeader {
-            section_type: 0,
-            asset_count: 1,
-        };
-        serde_json::to_writer_pretty(&mut writer, &section_header).unwrap();
-
-        let asset_header = AssetHeader {
-            asset_size: 64,
-            asset_id: AssetId::new(test_asset::TYPE_ID, 2),
-        };
-        serde_json::to_writer_pretty(&mut writer, &asset_header).unwrap();
-
-        // test texture write
-        let sample_texture = TextureAsset {
-            content: String::from("hello_texture"),
-            load_state: -1,
-        };
-        serde_json::to_writer(&mut writer, &sample_texture).unwrap();
-    }
-
     #[test]
-    fn asset_loading() {
+    fn load_asset_file() {
+        let binary_assetfile = [
+            1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0,
+            0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110, 116,
+        ];
+        let expected_content = "parent";
+
         let mut loader = AssetLoader::new();
+        loader.register_creator(
+            test_asset::TYPE_ID,
+            Box::new(test_asset::TestAssetCreator {}),
+        );
 
-        loader
-            .creators
-            .insert(test_asset::TYPE_ID, Box::new(TextureCreator {}));
-        {
-            let mut buffer = [0u8; 512];
-            create_test_asset(&mut buffer[..]);
-            let mut reader = &buffer[..];
+        let id = AssetId::new(test_asset::TYPE_ID, 1);
+        let result = loader
+            .load_internal(id, &mut &binary_assetfile[..])
+            .expect("parable data");
 
-            let mut output = loader.load_internal(&mut reader).unwrap();
-            assert_eq!(output.assets.len(), 1);
+        assert_eq!(result.assets.len(), 1);
+        assert_eq!(result._load_dependencies.len(), 1);
 
-            let preload = output.assets[0]
-                .1
-                .as_any()
-                .downcast_ref::<TextureAsset>()
-                .unwrap()
-                .load_state;
-            assert_eq!(preload, -1);
+        let (asset_id, asset) = &result.assets[0];
 
-            for (asset_id, asset) in &mut output.assets {
-                loader.load_init_internal(*asset_id, asset.as_mut());
-                println!(
-                    "{:?}",
-                    asset.as_any().downcast_ref::<TextureAsset>().unwrap()
-                );
-            }
-
-            let postload = output.assets[0]
-                .1
-                .as_any()
-                .downcast_ref::<TextureAsset>()
-                .unwrap()
-                .load_state;
-            assert_eq!(postload, 1);
-        }
+        let asset = asset.as_any().downcast_ref::<TestAsset>().unwrap();
+        assert_eq!(asset.content, expected_content);
+        assert_eq!(asset_id, &id);
     }
 }

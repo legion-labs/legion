@@ -39,6 +39,20 @@ pub(crate) struct CompiledAssetReference {
     pub(crate) compiled_reference: AssetId,
 }
 
+impl CompiledAssetReference {
+    pub fn is_same_context(&self, asset_info: &CompiledAssetInfo) -> bool {
+        self.context_hash == asset_info.context_hash && self.source_hash == asset_info.source_hash
+    }
+
+    pub fn is_from_same_source(&self, asset_info: &CompiledAssetInfo) -> bool {
+        self.is_same_context(asset_info) && self.source_guid == asset_info.source_guid
+    }
+
+    pub fn is_reference_of(&self, asset_info: &CompiledAssetInfo) -> bool {
+        self.is_from_same_source(asset_info) && self.compiled_guid == asset_info.compiled_guid
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct BuildIndexContent {
     version: String,

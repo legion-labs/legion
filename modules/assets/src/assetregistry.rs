@@ -1,7 +1,7 @@
 use crate::{
     assetloader::{AssetLoader, AssetLoaderStorage},
     handle::{AssetGenericHandle, AssetHandleId, AssetRefCounter},
-    Asset, AssetId,
+    Asset, AssetCreator, AssetId, AssetType,
 };
 
 use std::{
@@ -129,6 +129,13 @@ impl Default for AssetRegistry {
 }
 
 impl AssetRegistry {
+    /// Register a creator for an asset type.
+    ///
+    /// [`AssetCreator`] is responsible for asset loading: memory management, deserialization, post-load initialization.
+    pub fn register_type(&mut self, kind: AssetType, creator: Box<dyn AssetCreator>) {
+        self.loader.register_creator(kind, creator);
+    }
+
     /// Requests asset loading.
     ///
     /// This method will look for a primary asset of `id` and try to load it.

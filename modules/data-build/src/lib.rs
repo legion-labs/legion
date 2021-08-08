@@ -106,7 +106,6 @@
 
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section
-#![deny(unsafe_code)]
 #![warn(
     clippy::all,
     clippy::await_holding_lock,
@@ -201,6 +200,8 @@ pub enum Error {
     InvalidProject,
     /// Manifest file error.
     InvalidManifest,
+    /// Asset linking failed.
+    LinkFailed,
     /// Compiler returned an error.
     CompilerError(io::Error),
 }
@@ -219,6 +220,7 @@ impl std::fmt::Display for Error {
             Error::InvalidAssetStore => write!(f, "InvalidCompiledAssetStore"),
             Error::InvalidProject => write!(f, "InvalidProject"),
             Error::InvalidManifest => write!(f, "InvalidManifest"),
+            Error::LinkFailed => write!(f, "LinkFailed"),
             Error::CompilerError(_) => write!(f, "CompilerError"),
         }
     }
@@ -237,6 +239,7 @@ impl From<legion_resources::Error> for Error {
     }
 }
 
+mod asset_file_writer;
 mod buildindex;
 mod databuild;
 

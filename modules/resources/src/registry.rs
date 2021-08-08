@@ -149,7 +149,7 @@ pub struct ResourceRegistry {
 impl ResourceRegistry {
     /// Register a processor for a resource type.
     ///
-    /// A `ResourceProcessor` will allow to serialize/deserialize and extract load dependecies from a resource.
+    /// A [`ResourceProcessor`] will allow to serialize/deserialize and extract load dependecies from a resource.
     pub fn register_type(&mut self, kind: ResourceType, proc: Box<dyn ResourceProcessor>) {
         self.processors.insert(kind, proc);
     }

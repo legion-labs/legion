@@ -1169,6 +1169,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 name = "legion-assets"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
  "crc 2.0.0",
  "rand 0.8.4",
  "serde",
@@ -1194,6 +1195,7 @@ dependencies = [
 name = "legion-data-build"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
  "legion-assets",
  "legion-data-compiler",
  "legion-resources",

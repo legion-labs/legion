@@ -56,7 +56,7 @@ pub fn compute_asset_checksum(data: &[u8]) -> i128 {
 }
 
 /// Type id of a runtime asset.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct AssetType(u32);
 
 impl AssetType {

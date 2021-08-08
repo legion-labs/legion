@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::{env, io};
 
-use legion_data_compiler::compiled_asset_store::{CompiledAssetStoreAddr, LocalCompiledAssetStore};
+use legion_data_compiler::compiled_asset_store::{
+    CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
+};
 use legion_data_compiler::compiler_api::DATA_BUILD_VERSION;
 use legion_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
@@ -17,6 +19,7 @@ use legion_data_compiler::{CompiledAsset, CompilerHash, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
 
+use crate::asset_file_writer::write_assetfile;
 use crate::buildindex::{BuildIndex, CompiledAssetInfo, CompiledAssetReference};
 use crate::Error;
 
@@ -304,7 +307,7 @@ impl DataBuild {
             statistics: _stats,
         } = self.compile(resource_id, target, platform, locale)?;
 
-        let assets = Self::link(asset_objects, references)?;
+        let assets = self.link(&asset_objects, &references)?;
 
         for asset in assets {
             if let Some(existing) = manifest
@@ -497,22 +500,41 @@ impl DataBuild {
     }
 
     fn link(
-        asset_objects: Vec<CompiledAssetInfo>,
-        _: Vec<CompiledAssetReference>,
+        &mut self,
+        asset_objects: &[CompiledAssetInfo],
+        references: &[CompiledAssetReference],
     ) -> Result<Vec<CompiledAsset>, Error> {
-        //
-        // for now, we return raw assets in the manifest. link does no relevant work.
-        //
-        let assets = asset_objects
-            .into_iter()
-            .map(|asset_object| CompiledAsset {
-                guid: asset_object.compiled_guid,
-                checksum: asset_object.compiled_checksum,
-                size: asset_object.compiled_size,
-            })
-            .collect();
+        let mut asset_files = Vec::with_capacity(asset_objects.len());
+        for asset_object in asset_objects {
+            let mut output: Vec<u8> = vec![];
+            let asset_list =
+                std::iter::once((asset_object.compiled_guid, asset_object.compiled_checksum));
+            let reference_list = references
+                .iter()
+                .filter(|r| r.is_reference_of(asset_object))
+                .map(|r| {
+                    (
+                        asset_object.compiled_guid,
+                        (r.compiled_reference, r.compiled_reference),
+                    )
+                });
+            let bytes_written =
+                write_assetfile(asset_list, reference_list, &self.asset_store, &mut output)?;
 
-        Ok(assets)
+            let checksum = self
+                .asset_store
+                .store(&output)
+                .ok_or(Error::InvalidAssetStore)?;
+
+            let asset_file = CompiledAsset {
+                guid: asset_object.compiled_guid,
+                checksum,
+                size: bytes_written,
+            };
+            asset_files.push(asset_file);
+        }
+
+        Ok(asset_files)
     }
 
     /// Returns the global version of the databuild module.
@@ -543,9 +565,9 @@ impl Drop for DataBuild {
 #[cfg(test)]
 mod tests {
 
-    use std::env;
     use std::fs::{self, File};
     use std::path::{Path, PathBuf};
+    use std::{env, vec};
 
     use crate::databuild::CompileOutput;
     use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
@@ -1017,6 +1039,98 @@ mod tests {
             assert_eq!(asset_objects.len(), 5);
             assert_eq!(references.len(), 5);
             assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 4);
+        }
+    }
+
+    #[test]
+    fn link() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let project_dir = work_dir.path();
+        let mut resources = setup_registry();
+
+        let parent_id = {
+            let mut project = Project::create_new(project_dir).expect("new project");
+
+            let child_handle = resources
+                .new_resource(test_resource::TYPE_ID)
+                .expect("valid resource");
+            let child = child_handle
+                .get_mut::<test_resource::TestResource>(&mut resources)
+                .expect("existing resource");
+            child.content = String::from("test child content");
+            let child_id = project
+                .add_resource(
+                    ResourcePath::from("child"),
+                    test_resource::TYPE_ID,
+                    &child_handle,
+                    &mut resources,
+                )
+                .unwrap();
+
+            let parent_handle = resources
+                .new_resource(test_resource::TYPE_ID)
+                .expect("valid resource");
+            let parent = parent_handle
+                .get_mut::<test_resource::TestResource>(&mut resources)
+                .expect("existing resource");
+            parent.content = String::from("test parent content");
+            parent.build_deps = vec![child_id];
+            project
+                .add_resource(
+                    ResourcePath::from("parent"),
+                    test_resource::TYPE_ID,
+                    &parent_handle,
+                    &mut resources,
+                )
+                .unwrap()
+        };
+
+        let assetstore_path = CompiledAssetStoreAddr::from(work_dir.path());
+        let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+            .asset_store(&assetstore_path)
+            .compiler_dir(target_dir())
+            .create(project_dir)
+            .expect("to create index");
+
+        build.source_pull().unwrap();
+
+        // for now each asset is a separate file so we need to validate that the compile output and link output produce the same number of assets
+
+        let compile_output = build
+            .compile(
+                parent_id,
+                Target::Game,
+                Platform::Windows,
+                &Locale::new("en"),
+            )
+            .expect("successful compilation");
+
+        assert_eq!(compile_output.asset_objects.len(), 2);
+        assert_eq!(compile_output.references.len(), 1);
+
+        let link_output = build
+            .link(&compile_output.asset_objects, &compile_output.references)
+            .expect("successful linking");
+
+        assert_eq!(compile_output.asset_objects.len(), link_output.len());
+
+        // link output checksum must be different from compile output checksum...
+        for obj in &compile_output.asset_objects {
+            assert!(!link_output
+                .iter()
+                .any(|compiled| compiled.checksum == obj.compiled_checksum));
+        }
+
+        // ... and each output asset need to exist as exactly one asset object (although having different checksum).
+        for output in link_output {
+            assert_eq!(
+                compile_output
+                    .asset_objects
+                    .iter()
+                    .filter(|obj| obj.compiled_guid == output.guid)
+                    .count(),
+                1
+            );
         }
     }
 }
