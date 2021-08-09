@@ -22,12 +22,12 @@ impl PendingBranchMerge {
     }
 }
 
-pub fn init_branch_merge_pending_database(
+pub async fn init_branch_merge_pending_database(
     workspace_connection: &mut LocalWorkspaceConnection,
 ) -> Result<(), String> {
     let sql_connection = workspace_connection.sql();
     let sql = "CREATE TABLE branch_merges_pending(name VARCHAR(255) NOT NULL PRIMARY KEY, head VARCHAR(255));";
-    if let Err(e) = execute_sql(sql_connection, sql) {
+    if let Err(e) = execute_sql(sql_connection, sql).await {
         return Err(format!("Error creating branch_merges_pending table: {}", e));
     }
     Ok(())
@@ -78,12 +78,12 @@ pub fn read_pending_branch_merges(
     }
 }
 
-pub fn clear_pending_branch_merges(
+pub async fn clear_pending_branch_merges(
     workspace_connection: &mut LocalWorkspaceConnection,
 ) -> Result<(), String> {
     let sql_connection = workspace_connection.sql();
     let sql = "DELETE from branch_merges_pending;";
-    if let Err(e) = execute_sql(sql_connection, sql) {
+    if let Err(e) = execute_sql(sql_connection, sql).await {
         return Err(format!("Error clearing pending branch merges: {}", e));
     }
     Ok(())

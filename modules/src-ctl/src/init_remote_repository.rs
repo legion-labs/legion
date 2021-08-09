@@ -22,10 +22,10 @@ pub async fn init_mysql_repo_db(
             }
         }
     }
-    create_database(db_uri)?;
+    create_database(db_uri).await?;
     let pool = Arc::new(SqlConnectionPool::new(db_uri).await?);
     let mut sql_connection = pool.acquire().await?;
-    init_repo_database(&mut sql_connection, db_uri, blob_storage)?;
+    init_repo_database(&mut sql_connection, db_uri, blob_storage).await?;
     push_init_repo_data(pool.clone()).await?;
     Ok(pool)
 }

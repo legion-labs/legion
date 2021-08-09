@@ -11,7 +11,7 @@ pub async fn destroy_repository_command(uri: &str) -> Result<(), String> {
             ));
         }
         "mysql" => {
-            sql::drop_database(uri)?;
+            sql::drop_database(uri).await?;
         }
         "lsc" => {
             let mut url_path = String::from(repo_uri.path());

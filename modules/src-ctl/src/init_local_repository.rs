@@ -4,17 +4,17 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-pub fn init_repo_database(
+pub async fn init_repo_database(
     sql_connection: &mut sqlx::AnyConnection,
     self_uri: &str,
     blob_storage: &BlobStorageSpec,
 ) -> Result<(), String> {
-    init_config_database(sql_connection)?;
-    init_commit_database(sql_connection)?;
-    init_forest_database(sql_connection)?;
-    init_branch_database(sql_connection)?;
-    init_workspace_database(sql_connection)?;
-    init_lock_database(sql_connection)?;
+    init_config_database(sql_connection).await?;
+    init_commit_database(sql_connection).await?;
+    init_forest_database(sql_connection).await?;
+    create_branches_table(sql_connection).await?;
+    init_workspace_database(sql_connection).await?;
+    init_lock_database(sql_connection).await?;
 
     insert_config(sql_connection, self_uri, blob_storage)?;
     Ok(())
@@ -61,7 +61,7 @@ pub async fn init_local_repository_command(
 
     let db_path = make_path_absolute(&directory.join("repo.db3"));
     let repo_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
-    create_database(&repo_uri)?;
+    create_database(&repo_uri).await?;
 
     let blob_dir = make_path_absolute(&directory.join("blobs"));
     if let Err(e) = fs::create_dir_all(&blob_dir) {
@@ -74,7 +74,8 @@ pub async fn init_local_repository_command(
         &mut sql_connection,
         &repo_uri,
         &BlobStorageSpec::LocalDirectory(blob_dir),
-    )?;
+    )
+    .await?;
     push_init_repo_data(pool.clone()).await?;
     Ok(pool)
 }

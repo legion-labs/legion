@@ -60,7 +60,7 @@ impl Commit {
     }
 }
 
-pub fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
+pub async fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
     let sql = "CREATE TABLE commits(id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
          CREATE UNIQUE INDEX commit_id on commits(id);
          CREATE TABLE commit_parents(id VARCHAR(255), parent_id TEXT);
@@ -68,7 +68,7 @@ pub fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<
          CREATE TABLE commit_changes(commit_id VARCHAR(255), relative_path TEXT, hash CHAR(64), change_type INTEGER);
          CREATE INDEX commit_changes_commit on commit_changes(commit_id);
         ";
-    if let Err(e) = execute_sql(sql_connection, sql) {
+    if let Err(e) = execute_sql(sql_connection, sql).await {
         return Err(format!("Error creating commit tables and indices: {}", e));
     }
     Ok(())
@@ -132,6 +132,8 @@ pub async fn commit_local_changes(
     let repo_branch = query.read_branch(&current_branch.name).await?;
 
     if repo_branch.head != current_branch.head {
+        // Check early to save work, but the real transaction lock will happen later.
+        // Don't want to lock too early because a slow client would block everyone.
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
     let local_changes = read_local_changes(workspace_connection)?;
@@ -175,7 +177,7 @@ pub async fn commit_local_changes(
         println!("Error making local files read only: {}", e);
     }
     clear_local_changes(workspace_connection, &local_changes);
-    if let Err(e) = clear_pending_branch_merges(workspace_connection) {
+    if let Err(e) = clear_pending_branch_merges(workspace_connection).await {
         println!("{}", e);
     }
     Ok(())

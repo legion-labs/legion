@@ -38,12 +38,12 @@ impl LocalChange {
     }
 }
 
-pub fn init_local_changes_database(
+pub async fn init_local_changes_database(
     connection: &mut LocalWorkspaceConnection,
 ) -> Result<(), String> {
     let sql_connection = connection.sql();
     let sql = "CREATE TABLE changes(relative_path TEXT NOT NULL PRIMARY KEY, change_type INTEGER);";
-    if let Err(e) = execute_sql(sql_connection, sql) {
+    if let Err(e) = execute_sql(sql_connection, sql).await {
         return Err(format!("Error creating change table: {}", e));
     }
     Ok(())

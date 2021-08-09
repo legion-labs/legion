@@ -1,9 +1,9 @@
 use crate::{sql::*, *};
 use futures::executor::block_on;
 
-pub fn init_config_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
+pub async fn init_config_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
     let sql = "CREATE TABLE config(self_uri TEXT, blob_storage_spec TEXT);";
-    if let Err(e) = execute_sql(sql_connection, sql) {
+    if let Err(e) = execute_sql(sql_connection, sql).await {
         return Err(format!("Error creating commit tables and indices: {}", e));
     }
     Ok(())

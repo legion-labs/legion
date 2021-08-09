@@ -28,7 +28,7 @@ async fn destroy_repository_req(name: &str) -> Result<String, String> {
     let db_server_uri = get_sql_uri();
     let db_uri = format!("{}/{}", db_server_uri, name);
     POOLS.write().unwrap().remove(name);
-    sql::drop_database(&db_uri)?;
+    sql::drop_database(&db_uri).await?;
     Ok(format!("Dropped repository {}", name))
 }
 

@@ -11,10 +11,12 @@ pub struct Workspace {
     pub owner: String,
 }
 
-pub fn init_workspace_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
+pub async fn init_workspace_database(
+    sql_connection: &mut sqlx::AnyConnection,
+) -> Result<(), String> {
     let sql = "CREATE TABLE workspaces(id VARCHAR(255), root VARCHAR(255), owner VARCHAR(255));
                CREATE UNIQUE INDEX workspace_id on workspaces(id);";
-    if let Err(e) = execute_sql(sql_connection, sql) {
+    if let Err(e) = execute_sql(sql_connection, sql).await {
         return Err(format!("Error creating workspace table and index: {}", e));
     }
     Ok(())

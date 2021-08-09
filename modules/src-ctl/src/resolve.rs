@@ -27,12 +27,12 @@ impl ResolvePending {
     }
 }
 
-pub fn init_resolve_pending_database(
+pub async fn init_resolve_pending_database(
     workspace_connection: &mut LocalWorkspaceConnection,
 ) -> Result<(), String> {
     let sql_connection = workspace_connection.sql();
     let sql = "CREATE TABLE resolves_pending(relative_path VARCHAR(512) NOT NULL PRIMARY KEY, base_commit_id VARCHAR(255), theirs_commit_id VARCHAR(255));";
-    if let Err(e) = execute_sql(sql_connection, sql) {
+    if let Err(e) = execute_sql(sql_connection, sql).await {
         return Err(format!("Error creating resolves_pending table: {}", e));
     }
     Ok(())
