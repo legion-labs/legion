@@ -5,17 +5,17 @@ use std::process::Command;
 
 async fn reference_version_name_as_commit_id(
     repo_query: &dyn RepositoryQuery,
-    workspace_root: &Path,
+    workspace_connection: &mut LocalWorkspaceConnection,
     reference_version_name: &str,
 ) -> Result<String, String> {
     match reference_version_name {
         "base" => {
-            let workspace_branch = read_current_branch(workspace_root)?;
-            Ok(workspace_branch.head)
+            let (_branch_name, commit_id) = read_current_branch(workspace_connection.sql()).await?;
+            Ok(commit_id)
         }
         "latest" => {
-            let workspace_branch = read_current_branch(workspace_root)?;
-            let branch = repo_query.read_branch(&workspace_branch.name).await?;
+            let (branch_name, _commit_id) = read_current_branch(workspace_connection.sql()).await?;
+            let branch = repo_query.read_branch(&branch_name).await?;
             Ok(branch.head)
         }
         _ => Ok(String::from(reference_version_name)),
@@ -45,12 +45,13 @@ pub async fn diff_file_command(
 ) -> Result<(), String> {
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
     let relative_path = path_relative_to(&abs_path, &workspace_root)?;
     let ref_commit_id = reference_version_name_as_commit_id(
         connection.query(),
-        &workspace_root,
+        &mut workspace_connection,
         reference_version_name,
     )
     .await?;

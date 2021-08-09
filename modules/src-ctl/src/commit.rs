@@ -126,12 +126,13 @@ pub async fn commit_local_changes(
 ) -> Result<(), String> {
     let workspace_root = workspace_connection.workspace_path().to_path_buf();
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut current_branch = read_current_branch(&workspace_root)?;
+    let (current_branch_name, current_workspace_commit) =
+        read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let repo_branch = query.read_branch(&current_branch.name).await?;
+    let mut repo_branch = query.read_branch(&current_branch_name).await?;
 
-    if repo_branch.head != current_branch.head {
+    if repo_branch.head != current_workspace_commit {
         // Check early to save work, but the real transaction lock will happen later.
         // Don't want to lock too early because a slow client would block everyone.
         return Err(String::from("Workspace is not up to date, aborting commit"));
@@ -139,12 +140,12 @@ pub async fn commit_local_changes(
     let local_changes = read_local_changes(workspace_connection)?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
-        assert_not_locked(query, &workspace_root, &abs_path).await?;
+        assert_not_locked(query, workspace_connection, &abs_path).await?;
     }
     let hashed_changes =
         upload_localy_edited_blobs(&workspace_root, &connection, &local_changes).await?;
 
-    let base_commit = query.read_commit(&current_branch.head).await?;
+    let base_commit = query.read_commit(&current_workspace_commit).await?;
 
     let new_root_hash = update_tree_from_changes(
         &query.read_tree(&base_commit.root_hash).await?,
@@ -167,11 +168,11 @@ pub async fn commit_local_changes(
         parent_commits,
     );
     query.insert_commit(&commit).await?;
-    current_branch.head = commit.id;
-    save_current_branch(&workspace_root, &current_branch)?;
+    repo_branch.head = commit.id.clone();
+    update_current_branch(workspace_connection.sql(), &current_branch_name, &commit.id).await?;
 
     //todo: will need to lock to avoid races in updating branch in the database
-    query.update_branch(&current_branch).await?;
+    query.update_branch(&repo_branch).await?;
 
     if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);

@@ -113,19 +113,26 @@ fn sync_tree_diff(
     Ok(())
 }
 
+// not yet async because of sync_tree_diff
 pub fn switch_branch_command(name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
     let query = connection.query();
-    let old_branch = read_current_branch(&workspace_root)?;
-    let old_commit = tokio_runtime.block_on(query.read_commit(&old_branch.head))?;
+    let (_current_branch_name, current_commit) =
+        tokio_runtime.block_on(read_current_branch(workspace_connection.sql()))?;
+    let old_commit = tokio_runtime.block_on(query.read_commit(&current_commit))?;
     let query = connection.query();
     let new_branch = tokio_runtime.block_on(query.read_branch(name))?;
     let new_commit = tokio_runtime.block_on(query.read_commit(&new_branch.head))?;
-    save_current_branch(&workspace_root, &new_branch)?;
+    tokio_runtime.block_on(update_current_branch(
+        workspace_connection.sql(),
+        &new_branch.name,
+        &new_branch.head,
+    ))?;
     sync_tree_diff(
         &tokio_runtime,
         &mut connection,

@@ -4,15 +4,17 @@ use std::collections::BTreeSet;
 pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let current_branch = read_current_branch(&workspace_root)?;
-    let mut repo_branch = query.read_branch(&current_branch.name).await?;
+    let (current_branch_name, _current_commit) =
+        read_current_branch(workspace_connection.sql()).await?;
+    let mut repo_branch = query.read_branch(&current_branch_name).await?;
     if !repo_branch.parent.is_empty() {
         return Err(format!(
             "Can't attach branch {} to {}: branch {} already has {} for parent",
-            current_branch.name, parent_branch_name, current_branch.name, repo_branch.parent
+            current_branch_name, parent_branch_name, current_branch_name, repo_branch.parent
         ));
     }
 

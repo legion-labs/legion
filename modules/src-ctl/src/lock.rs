@@ -33,11 +33,12 @@ pub async fn verify_empty_lock_domain(
 
 pub async fn lock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let current_branch = read_current_branch(&workspace_root)?;
+    let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let repo_branch = query.read_branch(&current_branch.name).await?;
+    let repo_branch = query.read_branch(&branch_name).await?;
     let lock = Lock {
         relative_path: make_canonical_relative_path(&workspace_root, path_specified)?,
         lock_domain_id: repo_branch.lock_domain_id.clone(),
@@ -49,11 +50,12 @@ pub async fn lock_file_command(path_specified: &Path) -> Result<(), String> {
 
 pub async fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let current_branch = read_current_branch(&workspace_root)?;
+    let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let repo_branch = query.read_branch(&current_branch.name).await?;
+    let repo_branch = query.read_branch(&branch_name).await?;
     let relative_path = make_canonical_relative_path(&workspace_root, path_specified)?;
     query
         .clear_lock(&repo_branch.lock_domain_id, &relative_path)
@@ -63,11 +65,12 @@ pub async fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
 pub async fn list_locks_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let current_branch = read_current_branch(&workspace_root)?;
+    let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let repo_branch = query.read_branch(&current_branch.name).await?;
+    let repo_branch = query.read_branch(&branch_name).await?;
     let locks = query
         .find_locks_in_domain(&repo_branch.lock_domain_id)
         .await?;
@@ -85,19 +88,21 @@ pub async fn list_locks_command() -> Result<(), String> {
 
 pub async fn assert_not_locked(
     query: &dyn RepositoryQuery,
-    workspace_root: &Path,
+    workspace_connection: &mut LocalWorkspaceConnection,
     path_specified: &Path,
 ) -> Result<(), String> {
-    let workspace_spec = read_workspace_spec(workspace_root)?;
-    let current_branch = read_current_branch(workspace_root)?;
-    let repo_branch = query.read_branch(&current_branch.name).await?;
-    let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
+    let workspace_spec = read_workspace_spec(workspace_connection.workspace_path())?;
+    let (current_branch_name, _current_commit) =
+        read_current_branch(workspace_connection.sql()).await?;
+    let repo_branch = query.read_branch(&current_branch_name).await?;
+    let relative_path =
+        make_canonical_relative_path(workspace_connection.workspace_path(), path_specified)?;
     match query
         .find_lock(&repo_branch.lock_domain_id, &relative_path)
         .await
     {
         Ok(Some(lock)) => {
-            if lock.branch_name == current_branch.name && lock.workspace_id == workspace_spec.id {
+            if lock.branch_name == current_branch_name && lock.workspace_id == workspace_spec.id {
                 Ok(()) //locked by this workspace on this branch - all good
             } else {
                 Err(format!(

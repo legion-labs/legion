@@ -188,24 +188,16 @@ pub async fn track_new_file(
         }
     }
 
-    let current_branch = read_current_branch(workspace_connection.workspace_path())?;
+    let (_branch_name, current_commit) = read_current_branch(workspace_connection.sql()).await?;
 
-    if let Some(_hash) = find_file_hash_at_commit(
-        repo_connection,
-        Path::new(&relative_path),
-        &current_branch.head,
-    )
-    .await?
+    if let Some(_hash) =
+        find_file_hash_at_commit(repo_connection, Path::new(&relative_path), &current_commit)
+            .await?
     {
         return Err(String::from("file already exists in tree"));
     }
 
-    assert_not_locked(
-        repo_connection.query(),
-        workspace_connection.workspace_path(),
-        &abs_path,
-    )
-    .await?;
+    assert_not_locked(repo_connection.query(), workspace_connection, &abs_path).await?;
     let local_change = LocalChange::new(&relative_path, ChangeType::Add);
 
     save_local_change(workspace_connection, &local_change)
@@ -233,11 +225,11 @@ pub async fn edit_file(
         ));
     }
 
-    let workspace_root = workspace_connection.workspace_path();
     //todo: make sure file is tracked by finding it in the current tree hierarchy
-    assert_not_locked(query, workspace_root, &abs_path).await?;
+    assert_not_locked(query, workspace_connection, &abs_path).await?;
 
-    let relative_path = make_canonical_relative_path(workspace_root, &abs_path)?;
+    let relative_path =
+        make_canonical_relative_path(workspace_connection.workspace_path(), &abs_path)?;
     match find_local_change(workspace_connection, &relative_path) {
         Ok(Some(change)) => {
             return Err(format!(

@@ -145,11 +145,12 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let mut connection = connect_to_server(&workspace_spec).await?;
-    let mut workspace_branch = read_current_branch(&workspace_root)?;
+    let (current_branch_name, current_commit) =
+        read_current_branch(workspace_connection.sql()).await?;
     let commits = find_commit_range(
         &mut connection,
-        &workspace_branch.name,
-        &workspace_branch.head,
+        &current_branch_name,
+        &current_commit,
         commit_id,
     )
     .await?;
@@ -211,7 +212,7 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
                 //todo: validate how we want to deal with merge pending with syncing backwards
                 let merge_pending = ResolvePending::new(
                     relative_path.clone(),
-                    workspace_branch.head.clone(),
+                    current_commit.clone(),
                     String::from(commit_id),
                 );
                 if let Err(e) = save_resolve_pending(&mut workspace_connection, &merge_pending) {
@@ -235,8 +236,9 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
             }
         }
     }
-    workspace_branch.head = String::from(commit_id);
-    if let Err(e) = save_current_branch(&workspace_root, &workspace_branch) {
+    if let Err(e) =
+        update_current_branch(workspace_connection.sql(), &current_branch_name, commit_id).await
+    {
         errors.push(e);
     }
     if !errors.is_empty() {
@@ -249,10 +251,11 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
 pub async fn sync_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let workspace_branch = read_current_branch(&workspace_root)?;
+    let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
-    let repo_branch = query.read_branch(&workspace_branch.name).await?;
+    let repo_branch = query.read_branch(&branch_name).await?;
     sync_to_command(&repo_branch.head).await
 }

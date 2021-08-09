@@ -190,21 +190,27 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
     let src_branch = query.read_branch(name).await?;
-    let current_branch = read_current_branch(&workspace_root)?;
-    let mut destination_branch = query.read_branch(&current_branch.name).await?;
+    let (current_branch_name, current_commit) =
+        read_current_branch(workspace_connection.sql()).await?;
+    let mut destination_branch = query.read_branch(&current_branch_name).await?;
 
     let merge_source_ancestors = find_commit_ancestors(&connection, &src_branch.head).await?;
     let src_commit_history = find_branch_commits(&connection, &src_branch).await?;
     if merge_source_ancestors.contains(&destination_branch.head) {
         //fast forward case
         destination_branch.head = src_branch.head;
-        save_current_branch(&workspace_root, &destination_branch)?;
+        update_current_branch(
+            workspace_connection.sql(),
+            &destination_branch.name,
+            &destination_branch.head,
+        )
+        .await?;
         query.update_branch(&destination_branch).await?;
         println!("Fast-forward merge: branch updated, synching");
         return sync_command().await;
     }
 
-    if current_branch.head != destination_branch.head {
+    if current_commit != destination_branch.head {
         return Err(String::from(
             "Workspace not up to date, sync to latest before merge",
         ));

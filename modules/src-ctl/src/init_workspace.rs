@@ -42,6 +42,7 @@ pub async fn init_workspace_command(
     create_database(&db_uri).await?;
 
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_directory)?;
+    create_workspace_branch_table(workspace_connection.sql()).await?;
     init_local_changes_database(&mut workspace_connection).await?;
     init_resolve_pending_database(&mut workspace_connection).await?;
     init_branch_merge_pending_database(&mut workspace_connection).await?;
@@ -62,7 +63,12 @@ pub async fn init_workspace_command(
     let query = connection.query();
     query.insert_workspace(&spec).await?;
     let main_branch = query.read_branch("main").await?;
-    save_current_branch(&workspace_directory, &main_branch)?;
+    insert_current_branch(
+        workspace_connection.sql(),
+        &main_branch.name,
+        &main_branch.head,
+    )
+    .await?;
     let commit = query.read_commit(&main_branch.head).await?;
     download_tree(&connection, &workspace_directory, &commit.root_hash).await?;
     Ok(())
