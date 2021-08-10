@@ -60,7 +60,7 @@ See [Entitas](https://github.com/sschmid/Entitas-CSharp)
 
 | Name | Repo | Architecture | Popularity (downloads) | Notes |
 | ---- | ---- | ------------ | ---------------------: | ----- |
-| [Bevy](https://bevyengine.org/) | [GitHub](https://github.com/bevyengine/bevy) | ? | 54k | [Bevy ECS overview](https://bevyengine.org/learn/book/getting-started/ecs/). Entities are simple type containing unique integer. Components are  normal Rust structs. |
+| [Bevy](https://bevyengine.org/) | [GitHub](https://github.com/bevyengine/bevy) | ? | 54k | [Bevy ECS overview](https://bevyengine.org/learn/book/getting-started/ecs/). Entities are simple type containing unique integer. Components are  normal Rust structs. Additional [research notes](https://hackmd.io/0jXdWYR3QQ6uycnbD3Oc_g) on HackMD. |
 | [DCES](https://crates.io/crates/dces) | [Gitlab](https://gitlab.redox-os.org/redox-os/dces-rust) | ? | 11k | part of OrbTk |
 | [Dotrix](https://crates.io/crates/dotrix) | [GitHub](https://github.com/lowenware/dotrix) | ? | <1k | |
 | ecs-rs | [GitHub](https://github.com/HeroesGrave/ecs-rs) | ? | ? | port of [Artemis framework](https://gamadu.com/artemis/) |
