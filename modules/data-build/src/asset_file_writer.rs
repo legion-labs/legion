@@ -189,7 +189,7 @@ mod tests {
         };
 
         //println!("{:?} : {:?}", parent_id, parent_assetfile);
-        //println!("{:?} : {:?}", child_id, _child_assetfile);
+        //println!("{:?} : {:?}", child_id,child_assetfile);
 
         {
             let mut assetfile_reader = &parent_assetfile[..];
