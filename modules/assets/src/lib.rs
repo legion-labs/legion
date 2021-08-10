@@ -125,15 +125,10 @@
 #![allow()]
 #![warn(missing_docs)]
 
-mod assetloader;
-
-mod handle;
-pub use handle::*;
+mod asset_loader;
+pub use asset_loader::*;
 
 mod types;
 pub use types::*;
-
-mod assetregistry;
-pub use assetregistry::*;
 
 pub mod test_asset;

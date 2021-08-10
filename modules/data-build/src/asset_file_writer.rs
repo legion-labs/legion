@@ -160,7 +160,7 @@ mod tests {
 
         let reference_list = vec![(parent_id, (child_id, child_id))];
 
-        let binary_assetfile = {
+        let parent_assetfile = {
             let mut output = vec![];
             let nbytes = write_assetfile(
                 std::iter::once((parent_id, parent_checksum)),
@@ -174,10 +174,25 @@ mod tests {
             output
         };
 
-        println!("{:?}", binary_assetfile);
+        let _child_assetfile = {
+            let mut output = vec![];
+            let nbytes = write_assetfile(
+                std::iter::once((child_id, child_checksum)),
+                std::iter::empty(),
+                &asset_store,
+                &mut output,
+            )
+            .expect("asset file");
+
+            assert_eq!(nbytes, output.len());
+            output
+        };
+
+        //println!("{:?} : {:?}", parent_id, parent_assetfile);
+        //println!("{:?} : {:?}", child_id, _child_assetfile);
 
         {
-            let mut assetfile_reader = &binary_assetfile[..];
+            let mut assetfile_reader = &parent_assetfile[..];
 
             let version = assetfile_reader
                 .read_u16::<LittleEndian>()
