@@ -85,6 +85,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Hash)]
 pub struct CompilerHash(pub u64);
 
+use legion_assets::AssetId;
+
+/// Description of a compiled asset.
+///
+/// The contained information can be used to retrieve and validate the asset from a [`CompiledAssetStore`](`compiled_asset_store::CompiledAssetStore`).
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+pub struct CompiledAsset {
+    /// The id of the asset.
+    pub guid: AssetId,
+    /// The checksum of the asset.
+    pub checksum: i128,
+    /// The size of the asset.
+    pub size: usize,
+}
+
+/// The output of data compilation.
+///
+/// `Manifest` contains the list of compiled assets.
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct Manifest {
+    /// The description of all compiled assets.
+    pub compiled_assets: Vec<CompiledAsset>,
+}
+
 /// Build target enumeration.
 ///
 /// `TODO`: This needs to be more extensible.

@@ -10,13 +10,13 @@ use std::{env, io};
 use legion_asset_store::compiled_asset_store::{
     CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
 };
-use legion_asset_store::{CompiledAsset, Manifest};
 use legion_data_compiler::compiler_api::DATA_BUILD_VERSION;
 use legion_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
     CompilerInfoCmd, CompilerInfoCmdOutput,
 };
 use legion_data_compiler::CompilerHash;
+use legion_data_compiler::{CompiledAsset, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
 
@@ -575,8 +575,7 @@ mod tests {
     use legion_asset_store::compiled_asset_store::{
         CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
     };
-    use legion_asset_store::Manifest;
-    use legion_data_compiler::{Locale, Platform, Target};
+    use legion_data_compiler::{Locale, Manifest, Platform, Target};
     use legion_resources::{test_resource, Project, ResourceId, ResourcePath, ResourceRegistry};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";

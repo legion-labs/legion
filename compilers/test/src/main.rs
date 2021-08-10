@@ -5,9 +5,8 @@ use std::{
     path::Path,
 };
 
-use legion_asset_store::{
-    compiled_asset_store::{CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore},
-    CompiledAsset,
+use legion_asset_store::compiled_asset_store::{
+    CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
 };
 use legion_assets::test_asset;
 use legion_data_compiler::{
@@ -15,7 +14,7 @@ use legion_data_compiler::{
         compiler_load_resource, compiler_main, primary_asset_id, CompilationOutput,
         CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
     },
-    CompilerHash, Locale, Platform, Target,
+    CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
 use legion_resources::{test_resource, ResourceId, ResourceRegistry};
 

@@ -15,10 +15,10 @@
 //! Below you can see a minimum code required to compile a data compiler:
 //!
 //! ```no_run
-//! # use legion_data_compiler::{CompilerHash, Locale, Platform, Target};
+//! # use legion_data_compiler::{CompiledAsset, CompilerHash, Locale, Platform, Target};
 //! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerDescriptor, CompilationOutput, CompilerError};
 //! # use legion_resources::ResourceId;
-//! # use legion_asset_store::{CompiledAsset, compiled_asset_store::CompiledAssetStoreAddr};
+//! # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 //! # use std::path::Path;
 //! static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 //!    build_version: DATA_BUILD_VERSION,
@@ -87,10 +87,10 @@
 //! The following example shows its usage:
 //!
 //! ```
-//! # use legion_data_compiler::{Locale, Platform, Target};
+//! # use legion_data_compiler::{CompiledAsset, Locale, Platform, Target};
 //! # use legion_data_compiler::compiler_api::{primary_asset_id, CompilerError};
 //! # use legion_resources::ResourceId;
-//! # use legion_asset_store::{CompiledAsset, compiled_asset_store::CompiledAssetStoreAddr};
+//! # use legion_asset_store::{compiled_asset_store::CompiledAssetStoreAddr};
 //! # use legion_assets::test_asset;
 //! # use std::path::Path;
 //! # fn build_and_store_asset(_id: ResourceId) -> (i128, usize){(0,0)}
@@ -134,10 +134,10 @@ use crate::{
         COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_TARGET,
         COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
-    CompilerHash, Locale, Platform, Target,
+    CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
 use clap::{AppSettings, Arg, SubCommand};
-use legion_asset_store::{compiled_asset_store::CompiledAssetStoreAddr, CompiledAsset};
+use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 use legion_assets::{AssetId, AssetType};
 use legion_resources::{ResourceHandle, ResourceId, ResourceRegistry, ResourceType, RESOURCE_EXT};
 use std::{

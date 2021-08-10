@@ -56,9 +56,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{compiler_api::CompilerDescriptor, CompilerHash, Locale, Platform, Target};
+use crate::{
+    compiler_api::CompilerDescriptor, CompiledAsset, CompilerHash, Locale, Platform, Target,
+};
 
-use legion_asset_store::{compiled_asset_store::CompiledAssetStoreAddr, CompiledAsset};
+use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 use legion_assets::AssetId;
 use legion_resources::{ResourceId, ResourceType};
 

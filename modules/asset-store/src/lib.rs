@@ -78,30 +78,4 @@
 #![allow()]
 #![warn(missing_docs)]
 
-use legion_assets::AssetId;
-
-use serde::{Deserialize, Serialize};
-
-/// Description of a compiled asset.
-///
-/// The contained information can be used to retrieve and validate the asset from a [`CompiledAssetStore`](`compiled_asset_store::CompiledAssetStore`).
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
-pub struct CompiledAsset {
-    /// The id of the asset.
-    pub guid: AssetId,
-    /// The checksum of the asset.
-    pub checksum: i128,
-    /// The size of the asset.
-    pub size: usize,
-}
-
-/// The output of data compilation.
-///
-/// `Manifest` contains the list of compiled assets.
-#[derive(Debug, Serialize, Deserialize, Default)]
-pub struct Manifest {
-    /// The description of all compiled assets.
-    pub compiled_assets: Vec<CompiledAsset>,
-}
-
 pub mod compiled_asset_store;
