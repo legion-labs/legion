@@ -1,11 +1,9 @@
-//! [`CompiledAssetStore`] is an interface used to store [`Asset`] - the results of data compilation.
+//! [`CompiledAssetStore`] is an interface used to stor the results of data compilation.
 //!
 //! [`CompiledAssetStore`] functions as a *content-addressable storage* - using the [`compute_asset_checksum`]
 //! function to calculate the checksum of stored content.
 //!
 //! Currently the only [`LocalCompiledAssetStore`] is available which provides disk-based implementation of [`CompiledAssetStore`].
-//!
-//! [`Asset`]: legion_assets::Asset
 
 use core::fmt;
 use std::{
