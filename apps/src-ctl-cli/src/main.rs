@@ -405,18 +405,20 @@ fn main_impl() -> Result<(), String> {
             }
             tokio_runtime.block_on(commit_command(&message))
         }
-        ("local-changes", Some(_command_match)) => match find_local_changes_command() {
-            Ok(changes) => {
-                if changes.is_empty() {
-                    println!("No local changes");
+        ("local-changes", Some(_command_match)) => {
+            match tokio_runtime.block_on(find_local_changes_command()) {
+                Ok(changes) => {
+                    if changes.is_empty() {
+                        println!("No local changes");
+                    }
+                    for change in changes {
+                        println!("{:?} {}", change.change_type, change.relative_path);
+                    }
+                    Ok(())
                 }
-                for change in changes {
-                    println!("{:?} {}", change.change_type, change.relative_path);
-                }
-                Ok(())
+                Err(e) => Err(e),
             }
-            Err(e) => Err(e),
-        },
+        }
         ("resolves-pending", Some(_command_match)) => match find_resolves_pending_command() {
             Ok(resolves_pending) => {
                 if resolves_pending.is_empty() {

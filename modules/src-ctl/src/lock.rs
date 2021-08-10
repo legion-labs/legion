@@ -88,15 +88,14 @@ pub async fn list_locks_command() -> Result<(), String> {
 
 pub async fn assert_not_locked(
     query: &dyn RepositoryQuery,
-    workspace_connection: &mut LocalWorkspaceConnection,
+    workspace_root: &Path,
+    transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     path_specified: &Path,
 ) -> Result<(), String> {
-    let workspace_spec = read_workspace_spec(workspace_connection.workspace_path())?;
-    let (current_branch_name, _current_commit) =
-        read_current_branch(workspace_connection.sql()).await?;
+    let workspace_spec = read_workspace_spec(workspace_root)?;
+    let (current_branch_name, _current_commit) = read_current_branch(transaction).await?;
     let repo_branch = query.read_branch(&current_branch_name).await?;
-    let relative_path =
-        make_canonical_relative_path(workspace_connection.workspace_path(), path_specified)?;
+    let relative_path = make_canonical_relative_path(workspace_root, path_specified)?;
     match query
         .find_lock(&repo_branch.lock_domain_id, &relative_path)
         .await

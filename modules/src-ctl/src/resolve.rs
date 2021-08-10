@@ -38,18 +38,17 @@ pub async fn init_resolve_pending_database(
     Ok(())
 }
 
-pub fn save_resolve_pending(
-    workspace_connection: &mut LocalWorkspaceConnection,
+pub async fn save_resolve_pending(
+    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     resolve_pending: &ResolvePending,
 ) -> Result<(), String> {
-    let sql_connection = workspace_connection.sql();
-    if let Err(e) = block_on(
-        sqlx::query("INSERT OR REPLACE into resolves_pending VALUES(?,?,?);")
-            .bind(resolve_pending.relative_path.clone())
-            .bind(resolve_pending.base_commit_id.clone())
-            .bind(resolve_pending.theirs_commit_id.clone())
-            .execute(&mut *sql_connection),
-    ) {
+    if let Err(e) = sqlx::query("INSERT OR REPLACE into resolves_pending VALUES(?,?,?);")
+        .bind(resolve_pending.relative_path.clone())
+        .bind(resolve_pending.base_commit_id.clone())
+        .bind(resolve_pending.theirs_commit_id.clone())
+        .execute(workspace_transaction)
+        .await
+    {
         return Err(format!(
             "Error updating resolve pending {}: {}",
             resolve_pending.relative_path, e
@@ -58,19 +57,18 @@ pub fn save_resolve_pending(
     Ok(())
 }
 
-pub fn clear_resolve_pending(
-    workspace_connection: &mut LocalWorkspaceConnection,
+pub async fn clear_resolve_pending(
+    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     resolve_pending: &ResolvePending,
 ) -> Result<(), String> {
-    let sql_connection = workspace_connection.sql();
-    if let Err(e) = block_on(
-        sqlx::query(
-            "DELETE from resolves_pending
+    if let Err(e) = sqlx::query(
+        "DELETE from resolves_pending
              WHERE relative_path=?;",
-        )
-        .bind(resolve_pending.relative_path.clone())
-        .execute(&mut *sql_connection),
-    ) {
+    )
+    .bind(resolve_pending.relative_path.clone())
+    .execute(workspace_transaction)
+    .await
+    {
         return Err(format!(
             "Error clearing resolve pending {}: {}",
             resolve_pending.relative_path, e
@@ -79,20 +77,19 @@ pub fn clear_resolve_pending(
     Ok(())
 }
 
-pub fn find_resolve_pending(
-    workspace_connection: &mut LocalWorkspaceConnection,
+pub async fn find_resolve_pending(
+    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     canonical_relative_path: &str,
 ) -> Result<Option<ResolvePending>, String> {
-    let sql_connection = workspace_connection.sql();
-    match block_on(
-        sqlx::query(
-            "SELECT base_commit_id, theirs_commit_id 
+    match sqlx::query(
+        "SELECT base_commit_id, theirs_commit_id 
              FROM resolves_pending
              WHERE relative_path = ?;",
-        )
-        .bind(canonical_relative_path)
-        .fetch_optional(&mut *sql_connection),
-    ) {
+    )
+    .bind(canonical_relative_path)
+    .fetch_optional(workspace_transaction)
+    .await
+    {
         Ok(None) => Ok(None),
         Ok(Some(row)) => {
             let resolve_pending = ResolvePending::new(
@@ -238,10 +235,11 @@ pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), Str
     let abs_path = make_path_absolute(p);
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
     let relative_path = make_canonical_relative_path(&workspace_root, p)?;
-    match find_resolve_pending(&mut workspace_connection, &relative_path) {
+    match find_resolve_pending(&mut workspace_transaction, &relative_path).await {
         Err(e) => {
             return Err(format!(
                 "Error finding resolve pending for file {}: {}",
@@ -280,7 +278,13 @@ pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), Str
             };
             if !allow_tools {
                 run_diffy_merge(&abs_path, &theirs_temp_file.path, &base_temp_file.path)?;
-                clear_resolve_pending(&mut workspace_connection, &resolve_pending)?;
+                clear_resolve_pending(&mut workspace_transaction, &resolve_pending).await?;
+                if let Err(e) = workspace_transaction.commit().await {
+                    return Err(format!(
+                        "Error in transaction commit for resolve_file_command: {}",
+                        e
+                    ));
+                }
                 return Ok(());
             }
 
@@ -300,8 +304,14 @@ pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), Str
                 ));
             }
             println!("Merge accepted, {} updated", abs_path.display());
-            clear_resolve_pending(&mut workspace_connection, &resolve_pending)?;
+            clear_resolve_pending(&mut workspace_transaction, &resolve_pending).await?;
         }
+    }
+    if let Err(e) = workspace_transaction.commit().await {
+        return Err(format!(
+            "Error in transaction commit for resolve_file_command: {}",
+            e
+        ));
     }
     Ok(())
 }

@@ -20,6 +20,15 @@ impl LocalWorkspaceConnection {
         }
     }
 
+    pub async fn begin(&mut self) -> Result<sqlx::Transaction<'_, sqlx::Any>, String> {
+        match self.sql_connection.begin().await {
+            Ok(t) => Ok(t),
+            Err(e) => {
+                return Err(format!("Error beginning transaction on workspace: {}", e));
+            }
+        }
+    }
+
     pub fn sql(&mut self) -> &mut sqlx::AnyConnection {
         &mut self.sql_connection
     }

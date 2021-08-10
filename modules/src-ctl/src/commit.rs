@@ -120,14 +120,14 @@ fn make_local_files_read_only(
 }
 
 pub async fn commit_local_changes(
-    workspace_connection: &mut LocalWorkspaceConnection,
+    workspace_root: &Path,
+    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     commit_id: &str,
     message: &str,
 ) -> Result<(), String> {
-    let workspace_root = workspace_connection.workspace_path().to_path_buf();
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let workspace_spec = read_workspace_spec(workspace_root)?;
     let (current_branch_name, current_workspace_commit) =
-        read_current_branch(workspace_connection.sql()).await?;
+        read_current_branch(workspace_transaction).await?;
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
     let mut repo_branch = query.read_branch(&current_branch_name).await?;
@@ -137,13 +137,13 @@ pub async fn commit_local_changes(
         // Don't want to lock too early because a slow client would block everyone.
         return Err(String::from("Workspace is not up to date, aborting commit"));
     }
-    let local_changes = read_local_changes(workspace_connection)?;
+    let local_changes = read_local_changes(workspace_transaction).await?;
     for change in &local_changes {
         let abs_path = workspace_root.join(&change.relative_path);
-        assert_not_locked(query, workspace_connection, &abs_path).await?;
+        assert_not_locked(query, workspace_root, workspace_transaction, &abs_path).await?;
     }
     let hashed_changes =
-        upload_localy_edited_blobs(&workspace_root, &connection, &local_changes).await?;
+        upload_localy_edited_blobs(workspace_root, &connection, &local_changes).await?;
 
     let base_commit = query.read_commit(&current_workspace_commit).await?;
 
@@ -155,7 +155,7 @@ pub async fn commit_local_changes(
     .await?;
 
     let mut parent_commits = Vec::from([base_commit.id]);
-    for pending_branch_merge in read_pending_branch_merges(workspace_connection)? {
+    for pending_branch_merge in read_pending_branch_merges(workspace_transaction).await? {
         parent_commits.push(pending_branch_merge.head.clone());
     }
 
@@ -169,16 +169,16 @@ pub async fn commit_local_changes(
     );
     query.insert_commit(&commit).await?;
     repo_branch.head = commit.id.clone();
-    update_current_branch(workspace_connection.sql(), &current_branch_name, &commit.id).await?;
+    update_current_branch(workspace_transaction, &current_branch_name, &commit.id).await?;
 
     //todo: will need to lock to avoid races in updating branch in the database
     query.update_branch(&repo_branch).await?;
 
-    if let Err(e) = make_local_files_read_only(&workspace_root, &commit.changes) {
+    if let Err(e) = make_local_files_read_only(workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);
     }
-    clear_local_changes(workspace_connection, &local_changes);
-    if let Err(e) = clear_pending_branch_merges(workspace_connection).await {
+    clear_local_changes(workspace_transaction, &local_changes).await;
+    if let Err(e) = clear_pending_branch_merges(workspace_transaction).await {
         println!("{}", e);
     }
     Ok(())
@@ -188,8 +188,16 @@ pub async fn commit_command(message: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_transaction = workspace_connection.begin().await?;
     let id = uuid::Uuid::new_v4().to_string();
-    commit_local_changes(&mut workspace_connection, &id, message).await
+    commit_local_changes(&workspace_root, &mut workspace_transaction, &id, message).await?;
+    if let Err(e) = workspace_transaction.commit().await {
+        return Err(format!(
+            "Error in transaction commit for commit_command: {}",
+            e
+        ));
+    }
+    Ok(())
 }
 
 pub async fn find_branch_commits(

@@ -1,5 +1,4 @@
 use crate::{sql::*, *};
-use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::collections::BTreeMap;
@@ -33,17 +32,16 @@ pub async fn init_branch_merge_pending_database(
     Ok(())
 }
 
-pub fn save_pending_branch_merge(
-    workspace_connection: &mut LocalWorkspaceConnection,
+pub async fn save_pending_branch_merge(
+    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     merge_spec: &PendingBranchMerge,
 ) -> Result<(), String> {
-    let sql_connection = workspace_connection.sql();
-    if let Err(e) = block_on(
-        sqlx::query("INSERT OR REPLACE into branch_merges_pending VALUES(?,?);")
-            .bind(merge_spec.name.clone())
-            .bind(merge_spec.head.clone())
-            .execute(&mut *sql_connection),
-    ) {
+    if let Err(e) = sqlx::query("INSERT OR REPLACE into branch_merges_pending VALUES(?,?);")
+        .bind(merge_spec.name.clone())
+        .bind(merge_spec.head.clone())
+        .execute(workspace_transaction)
+        .await
+    {
         return Err(format!(
             "Error saving pending branch merge {}: {}",
             merge_spec.name, e
@@ -52,18 +50,17 @@ pub fn save_pending_branch_merge(
     Ok(())
 }
 
-pub fn read_pending_branch_merges(
-    workspace_connection: &mut LocalWorkspaceConnection,
+pub async fn read_pending_branch_merges(
+    transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
 ) -> Result<Vec<PendingBranchMerge>, String> {
-    let sql_connection = workspace_connection.sql();
     let mut res = Vec::new();
-    match block_on(
-        sqlx::query(
-            "SELECT name, head 
+    match sqlx::query(
+        "SELECT name, head 
              FROM branch_merges_pending;",
-        )
-        .fetch_all(&mut *sql_connection),
-    ) {
+    )
+    .fetch_all(transaction)
+    .await
+    {
         Ok(rows) => {
             for row in rows {
                 let merge_pending = PendingBranchMerge {
@@ -79,11 +76,10 @@ pub fn read_pending_branch_merges(
 }
 
 pub async fn clear_pending_branch_merges(
-    workspace_connection: &mut LocalWorkspaceConnection,
+    transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
 ) -> Result<(), String> {
-    let sql_connection = workspace_connection.sql();
     let sql = "DELETE from branch_merges_pending;";
-    if let Err(e) = execute_sql(sql_connection, sql).await {
+    if let Err(e) = execute_sql(transaction, sql).await {
         return Err(format!("Error clearing pending branch merges: {}", e));
     }
     Ok(())
@@ -103,22 +99,29 @@ fn find_latest_common_ancestor(
 }
 
 async fn change_file_to(
-    workspace_connection: &mut LocalWorkspaceConnection,
+    workspace_root: &Path,
+    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     repo_connection: &RepositoryConnection,
     relative_path: &Path,
     hash_to_sync: &str,
 ) -> Result<String, String> {
-    let local_path = workspace_connection.workspace_path().join(relative_path);
+    let local_path = workspace_root.join(relative_path);
     if local_path.exists() {
         let local_hash = compute_file_hash(&local_path)?;
         if local_hash == hash_to_sync {
             return Ok(format!("Verified {}", local_path.display()));
         }
         if hash_to_sync.is_empty() {
-            delete_file_command(&local_path).await?;
+            delete_local_file(workspace_root, workspace_transaction, &local_path).await?;
             return Ok(format!("Deleted {}", local_path.display()));
         }
-        edit_file(workspace_connection, repo_connection.query(), &local_path).await?;
+        edit_file(
+            workspace_root,
+            workspace_transaction,
+            repo_connection.query(),
+            &local_path,
+        )
+        .await?;
         if let Err(e) = repo_connection
             .blob_storage()
             .await?
@@ -157,7 +160,13 @@ async fn change_file_to(
         if let Err(e) = make_file_read_only(&local_path, true) {
             return Err(e);
         }
-        track_new_file_command(&local_path).await?;
+        track_new_file(
+            workspace_root,
+            workspace_transaction,
+            repo_connection,
+            &local_path,
+        )
+        .await?;
         return Ok(format!("Added {}", local_path.display()));
     }
 }
@@ -186,12 +195,13 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();
     let src_branch = query.read_branch(name).await?;
     let (current_branch_name, current_commit) =
-        read_current_branch(workspace_connection.sql()).await?;
+        read_current_branch(&mut workspace_transaction).await?;
     let mut destination_branch = query.read_branch(&current_branch_name).await?;
 
     let merge_source_ancestors = find_commit_ancestors(&connection, &src_branch.head).await?;
@@ -200,12 +210,18 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
         //fast forward case
         destination_branch.head = src_branch.head;
         update_current_branch(
-            workspace_connection.sql(),
+            &mut workspace_transaction,
             &destination_branch.name,
             &destination_branch.head,
         )
         .await?;
         query.update_branch(&destination_branch).await?;
+        if let Err(e) = workspace_transaction.commit().await {
+            return Err(format!(
+                "Error in transaction commit for merge_branch_command: {}",
+                e
+            ));
+        }
         println!("Fast-forward merge: branch updated, synching");
         return sync_command().await;
     }
@@ -254,15 +270,25 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
                 );
                 errors.push(format!("{} conflicts, please resolve before commit", path));
                 let full_path = workspace_root.join(path);
-                if let Err(e) = edit_file_command(&full_path).await {
+                if let Err(e) = edit_file(
+                    &workspace_root,
+                    &mut workspace_transaction,
+                    connection.query(),
+                    &full_path,
+                )
+                .await
+                {
                     errors.push(format!("Error editing {}: {}", full_path.display(), e));
                 }
-                if let Err(e) = save_resolve_pending(&mut workspace_connection, &resolve_pending) {
+                if let Err(e) =
+                    save_resolve_pending(&mut workspace_transaction, &resolve_pending).await
+                {
                     errors.push(format!("Error saving pending resolve {}: {}", path, e));
                 }
             } else {
                 match change_file_to(
-                    &mut workspace_connection,
+                    &workspace_root,
+                    &mut workspace_transaction,
                     &connection,
                     Path::new(path),
                     hash,
@@ -286,13 +312,22 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
 
     //record pending merge to record all parents in upcoming commit
     let pending = PendingBranchMerge::new(&src_branch);
-    if let Err(e) = save_pending_branch_merge(&mut workspace_connection, &pending) {
+    if let Err(e) = save_pending_branch_merge(&mut workspace_transaction, &pending).await {
         errors.push(e);
+    }
+
+    //commit transaction even when errors occur, pending resolves need to be saved
+    if let Err(e) = workspace_transaction.commit().await {
+        return Err(format!(
+            "Error in transaction commit for merge_branch_command: {}",
+            e
+        ));
     }
 
     if !errors.is_empty() {
         return Err(errors.join("\n"));
     }
+
     println!("merge completed, ready to commit");
     Ok(())
 }

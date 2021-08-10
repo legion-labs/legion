@@ -143,10 +143,11 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let mut connection = connect_to_server(&workspace_spec).await?;
     let (current_branch_name, current_commit) =
-        read_current_branch(workspace_connection.sql()).await?;
+        read_current_branch(&mut workspace_transaction).await?;
     let commits = find_commit_range(
         &mut connection,
         &current_branch_name,
@@ -192,7 +193,7 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
     };
 
     let mut local_changes_map = HashMap::new();
-    match read_local_changes(&mut workspace_connection) {
+    match read_local_changes(&mut workspace_transaction).await {
         Ok(changes_vec) => {
             for change in changes_vec {
                 local_changes_map.insert(change.relative_path.clone(), change.clone());
@@ -215,7 +216,9 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
                     current_commit.clone(),
                     String::from(commit_id),
                 );
-                if let Err(e) = save_resolve_pending(&mut workspace_connection, &merge_pending) {
+                if let Err(e) =
+                    save_resolve_pending(&mut workspace_transaction, &merge_pending).await
+                {
                     errors.push(format!(
                         "Error saving pending merge {}: {}",
                         relative_path, e
@@ -237,13 +240,19 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
         }
     }
     if let Err(e) =
-        update_current_branch(workspace_connection.sql(), &current_branch_name, commit_id).await
+        update_current_branch(&mut workspace_transaction, &current_branch_name, commit_id).await
     {
         errors.push(e);
     }
     if !errors.is_empty() {
         let message = errors.join("\n");
         return Err(message);
+    }
+    if let Err(e) = workspace_transaction.commit().await {
+        return Err(format!(
+            "Error in transaction commit for sync_to_command: {}",
+            e
+        ));
     }
     Ok(())
 }
