@@ -1,7 +1,7 @@
 use crate::Error;
 use byteorder::{LittleEndian, WriteBytesExt};
+use legion_asset_store::compiled_asset_store::CompiledAssetStore;
 use legion_assets::{AssetId, AssetType};
-use legion_data_compiler::compiled_asset_store::CompiledAssetStore;
 
 const ASSET_FILE_VERSION: u16 = 1;
 
@@ -73,10 +73,10 @@ mod tests {
     use std::io::Read;
 
     use byteorder::{LittleEndian, ReadBytesExt};
-    use legion_assets::{test_asset, AssetId, AssetType};
-    use legion_data_compiler::compiled_asset_store::{
+    use legion_asset_store::compiled_asset_store::{
         CompiledAssetStore, InMemoryCompiledAssetStore,
     };
+    use legion_assets::{test_asset, AssetId, AssetType};
 
     use crate::asset_file_writer::{write_assetfile, ASSET_FILE_VERSION};
 

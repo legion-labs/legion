@@ -1,5 +1,5 @@
+use legion_asset_store::CompiledAsset;
 use legion_assets::AssetId;
-use legion_data_compiler::CompiledAsset;
 use petgraph::{algo, Directed, Graph};
 use serde::{Deserialize, Serialize};
 use std::{

@@ -15,13 +15,13 @@
 //! - **Hermetic** - dependent only on a known set of inputs.
 //! - **Deterministic** - the result is bit-by-bit reproducible given the same set of inputs.
 //!
-//! All the results of data-compilation are stored in a [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`) and a manifest
+//! All the results of data-compilation are stored in a [`CompiledAssetStore`](`legion_asset_store::compiled_asset_store::CompiledAssetStore`) and a manifest
 //! file containing the metadata about the results is returned.
 //!
 //! To support incremental building the data build is persisted in a file on disk. This file is called `build.index`.
 //! The `build.index` contains:
 //! - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
-//! - Records of compiled assets that are stored in a [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`).
+//! - Records of compiled assets that are stored in a [`CompiledAssetStore`](`legion_asset_store::compiled_asset_store::CompiledAssetStore`).
 //!
 //! For other parts of the data pipeline see [`legion_resources`] and [`legion_assets`] modules.
 //!
@@ -61,7 +61,7 @@
 //!         - Resource Hash - hash of the resource's content and the content of its dependencies.
 //! 5. Check the `build-index` if there is already existing output for given `(Compiler Input, Resource Input)`.
 //! 6. If not, compile the resource:
-//!     - store the resulting resource in [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`) and a record in `build-index`.
+//!     - store the resulting resource in [`CompiledAssetStore`](`legion_asset_store::compiled_asset_store::CompiledAssetStore`) and a record in `build-index`.
 //!     - add the compiled resource to the resulting `manifest file`.
 //!
 //! # `SourceHash` and `ContextHash`

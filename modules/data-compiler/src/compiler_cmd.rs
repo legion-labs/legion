@@ -32,7 +32,7 @@
 //!
 //! ```no_run
 //! # use legion_data_compiler::compiler_cmd::CompilerCompileCmd;
-//! # use legion_data_compiler::compiled_asset_store::CompiledAssetStoreAddr;
+//! # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 //! # use legion_data_compiler::{Locale, Platform, Target};
 //! # use legion_resources::ResourceId;
 //! # use std::path::PathBuf;
@@ -56,11 +56,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{
-    compiler_api::CompilerDescriptor, CompiledAsset, CompiledAssetStoreAddr, CompilerHash, Locale,
-    Platform, Target,
-};
+use crate::{compiler_api::CompilerDescriptor, CompilerHash, Locale, Platform, Target};
 
+use legion_asset_store::{compiled_asset_store::CompiledAssetStoreAddr, CompiledAsset};
 use legion_assets::AssetId;
 use legion_resources::{ResourceId, ResourceType};
 

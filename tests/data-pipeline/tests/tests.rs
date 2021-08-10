@@ -5,9 +5,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use asset_store::compiled_asset_store::{
+    CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
+};
 use assets::AssetCreator;
 use data_compiler::{
-    compiled_asset_store::{CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore},
     compiler_cmd::{list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
     Locale, Platform, Target,
 };

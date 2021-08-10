@@ -1,10 +1,9 @@
 use std::{path::PathBuf, str::FromStr};
 
 use clap::{AppSettings, Arg, SubCommand};
+use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 use legion_data_build::{DataBuildOptions, ResourcePath};
-use legion_data_compiler::{
-    compiled_asset_store::CompiledAssetStoreAddr, Locale, Platform, Target,
-};
+use legion_data_compiler::{Locale, Platform, Target};
 
 const ARG_NAME_RESOURCE: &str = "resource";
 const ARG_NAME_BUILDINDEX: &str = "buildindex";

@@ -5,14 +5,17 @@ use std::{
     path::Path,
 };
 
+use legion_asset_store::{
+    compiled_asset_store::{CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore},
+    CompiledAsset,
+};
 use legion_assets::test_asset;
 use legion_data_compiler::{
-    compiled_asset_store::{CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore},
     compiler_api::{
         compiler_load_resource, compiler_main, primary_asset_id, CompilationOutput,
         CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
     },
-    CompiledAsset, CompilerHash, Locale, Platform, Target,
+    CompilerHash, Locale, Platform, Target,
 };
 use legion_resources::{ResourceId, ResourceRegistry};
 

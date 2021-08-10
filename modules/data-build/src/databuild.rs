@@ -7,15 +7,16 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::{env, io};
 
-use legion_data_compiler::compiled_asset_store::{
+use legion_asset_store::compiled_asset_store::{
     CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
 };
+use legion_asset_store::{CompiledAsset, Manifest};
 use legion_data_compiler::compiler_api::DATA_BUILD_VERSION;
 use legion_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
     CompilerInfoCmd, CompilerInfoCmdOutput,
 };
-use legion_data_compiler::{CompiledAsset, CompilerHash, Manifest};
+use legion_data_compiler::CompilerHash;
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
 
@@ -64,7 +65,7 @@ fn compute_context_hash(
 ///
 /// ```
 /// # use legion_data_build::DataBuildOptions;
-/// # use legion_data_compiler::compiled_asset_store::CompiledAssetStoreAddr;
+/// # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 /// let mut build = DataBuildOptions::new("./build.index")
 ///         .asset_store(&CompiledAssetStoreAddr::from("./asset_store/"))
 ///         .compiler_dir("./compilers/")
@@ -109,7 +110,7 @@ impl DataBuildOptions {
     /// Opens existing build index.
     ///
     /// The following conditions need to be met to successfully open a build index:
-    /// * [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`) must exist under address set by [`DataBuildOptions::asset_store()`].
+    /// * [`CompiledAssetStore`](`legion_asset_store::compiled_asset_store::CompiledAssetStore`) must exist under address set by [`DataBuildOptions::asset_store()`].
     /// * Build index must exist and be of a supported version provided by [`DataBuildOptions::new()`].
     /// * The build index must point to an existing [`Project`].
     pub fn open(&self) -> Result<DataBuild, Error> {
@@ -133,7 +134,7 @@ impl DataBuildOptions {
 ///
 /// ```no_run
 /// # use legion_data_build::{DataBuild, DataBuildOptions};
-/// # use legion_data_compiler::compiled_asset_store::CompiledAssetStoreAddr;
+/// # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 /// # use legion_data_compiler::{Locale, Platform, Target};
 /// # use legion_resources::ResourcePath;
 /// let mut build = DataBuildOptions::new("./build.index")
@@ -265,7 +266,7 @@ impl DataBuild {
 
     /// Compiles a named resource and updates the `manifest_file` at specified path.
     ///
-    /// Compilation results are stored in [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`)
+    /// Compilation results are stored in [`CompiledAssetStore`](`legion_asset_store::compiled_asset_store::CompiledAssetStore`)
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
     ///
     /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
@@ -571,10 +572,11 @@ mod tests {
 
     use crate::databuild::CompileOutput;
     use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
-    use legion_data_compiler::compiled_asset_store::{
+    use legion_asset_store::compiled_asset_store::{
         CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
     };
-    use legion_data_compiler::{Locale, Manifest, Platform, Target};
+    use legion_asset_store::Manifest;
+    use legion_data_compiler::{Locale, Platform, Target};
     use legion_resources::{test_resource, Project, ResourceId, ResourcePath, ResourceRegistry};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";

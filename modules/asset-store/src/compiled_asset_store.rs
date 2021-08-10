@@ -9,13 +9,19 @@
 
 use core::fmt;
 use std::{
-    collections::HashMap,
+    collections::{hash_map::DefaultHasher, HashMap},
     fs::{self, OpenOptions},
+    hash::{Hash, Hasher},
     io::Write,
     path::{Path, PathBuf},
 };
 
-use legion_assets::compute_asset_checksum;
+/// Returns the hash of the provided data.
+pub fn compute_asset_checksum(data: &[u8]) -> i128 {
+    let mut hasher = DefaultHasher::new();
+    data.hash(&mut hasher);
+    hasher.finish() as i128
+}
 
 /// The address of the `Compiled Asset Store`.
 ///

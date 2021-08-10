@@ -462,6 +462,7 @@ checksum = "bf43edc576402991846b093a7ca18a3477e0ef9c588cde84964b5d3e43016642"
 name = "compiler-mock"
 version = "0.1.0"
 dependencies = [
+ "legion-asset-store",
  "legion-assets",
  "legion-data-compiler",
  "legion-resources",
@@ -473,6 +474,7 @@ dependencies = [
 name = "compiler-test"
 version = "0.1.0"
 dependencies = [
+ "legion-asset-store",
  "legion-assets",
  "legion-data-compiler",
  "legion-resources",
@@ -1166,6 +1168,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
+name = "legion-asset-store"
+version = "0.1.0"
+dependencies = [
+ "legion-assets",
+ "serde",
+]
+
+[[package]]
 name = "legion-assets"
 version = "0.1.0"
 dependencies = [
@@ -1197,6 +1207,7 @@ name = "legion-data-build"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "legion-asset-store",
  "legion-assets",
  "legion-data-compiler",
  "legion-resources",
@@ -1211,6 +1222,7 @@ name = "legion-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "legion-asset-store",
  "legion-data-build",
  "legion-data-compiler",
  "legion-resources",
@@ -1222,6 +1234,7 @@ name = "legion-data-compiler"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "legion-asset-store",
  "legion-assets",
  "legion-resources",
  "serde",
@@ -2778,6 +2791,7 @@ name = "test-compilers"
 version = "0.1.0"
 dependencies = [
  "compiler-mock",
+ "legion-asset-store",
  "legion-assets",
  "legion-data-build",
  "legion-data-compiler",

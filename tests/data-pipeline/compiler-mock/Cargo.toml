@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 legion-data-compiler = { path = "../../../modules/data-compiler" }
+legion-asset-store = { path = "../../../modules/asset-store" }
 legion-resources = { path = "../../../modules/resources" }
 legion-assets = { path = "../../../modules/assets" }
 mock-offline = { path = "../mock-offline", package="mock-offline"}
