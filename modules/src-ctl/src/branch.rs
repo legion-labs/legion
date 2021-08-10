@@ -2,7 +2,7 @@ use crate::{sql::execute_sql, *};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Branch {
     pub name: String,
     pub head: String, //commit id

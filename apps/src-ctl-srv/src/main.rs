@@ -149,6 +149,12 @@ async fn insert_commit_req(args: &InsertCommitRequest) -> Result<String, String>
     Ok(String::from(""))
 }
 
+async fn insert_commit_to_branch_req(args: &CommitToBranchRequest) -> Result<String, String> {
+    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let _res = query.commit_to_branch(&args.commit, &args.branch).await?;
+    Ok(String::from(""))
+}
+
 async fn commit_exists_req(args: &CommitExistsRequest) -> Result<String, String> {
     let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
     let res = query.commit_exists(&args.commit_id).await?;
@@ -211,6 +217,7 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::FindLocksInDomain(req) => find_locks_in_domain_req(&req).await,
         ServerRequest::SaveTree(req) => save_tree_req(&req).await,
         ServerRequest::InsertCommit(req) => insert_commit_req(&req).await,
+        ServerRequest::CommitToBranch(req) => insert_commit_to_branch_req(&req).await,
         ServerRequest::CommitExists(req) => commit_exists_req(&req).await,
         ServerRequest::UpdateBranch(req) => update_branch_req(&req).await,
         ServerRequest::InsertBranch(req) => insert_branch_req(&req).await,

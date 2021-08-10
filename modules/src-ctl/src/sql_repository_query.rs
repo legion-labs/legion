@@ -12,13 +12,6 @@ impl SqlRepositoryQuery {
     pub fn new(pool: Arc<SqlConnectionPool>) -> Self {
         Self { pool }
     }
-
-    async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>, String> {
-        match self.pool.acquire().await {
-            Ok(c) => Ok(c),
-            Err(e) => Err(format!("Error acquiring sql connection: {}", e)),
-        }
-    }
 }
 
 #[async_trait]
@@ -43,7 +36,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn insert_branch(&self, branch: &Branch) -> Result<(), String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         if let Err(e) = sqlx::query("INSERT INTO branches VALUES(?, ?, ?, ?);")
             .bind(branch.name.clone())
             .bind(branch.head.clone())
@@ -58,19 +51,13 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn update_branch(&self, branch: &Branch) -> Result<(), String> {
-        let mut sql_connection = self.acquire().await?;
-        if let Err(e) = sqlx::query(
-            "UPDATE branches SET head=?, parent=?, lock_domain_id=?
-             WHERE name=?;",
-        )
-        .bind(branch.head.clone())
-        .bind(branch.parent.clone())
-        .bind(branch.lock_domain_id.clone())
-        .bind(branch.name.clone())
-        .execute(&mut sql_connection)
-        .await
-        {
-            return Err(format!("Error updating branch {}: {}", branch.name, e));
+        let mut transaction = self.pool.begin().await?;
+        update_branch_tr(&mut transaction, branch).await?;
+        if let Err(e) = transaction.commit().await {
+            return Err(format!(
+                "Error in transaction commit for update_branch: {}",
+                e
+            ));
         }
         Ok(())
     }
@@ -84,7 +71,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn find_branch(&self, name: &str) -> Result<Option<Branch>, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT head, parent, lock_domain_id 
              FROM branches
@@ -112,7 +99,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         &self,
         lock_domain_id: &str,
     ) -> Result<Vec<Branch>, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         let mut res = Vec::new();
         match sqlx::query(
             "SELECT name, head, parent 
@@ -140,7 +127,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn read_branches(&self) -> Result<Vec<Branch>, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         let mut res = Vec::new();
         match sqlx::query(
             "SELECT name, head, parent, lock_domain_id 
@@ -166,7 +153,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn read_commit(&self, id: &str) -> Result<Commit, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         let mut changes: Vec<HashedChange> = Vec::new();
 
         match sqlx::query(
@@ -238,45 +225,41 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn insert_commit(&self, commit: &Commit) -> Result<(), String> {
-        let mut sql_connection = self.acquire().await?;
-        if let Err(e) = sqlx::query("INSERT INTO commits VALUES(?, ?, ?, ?, ?);")
-            .bind(commit.id.clone())
-            .bind(commit.owner.clone())
-            .bind(commit.message.clone())
-            .bind(commit.root_hash.clone())
-            .bind(commit.date_time_utc.clone())
-            .execute(&mut sql_connection)
-            .await
-        {
-            return Err(format!("Error inserting into commits: {}", e));
+        let mut transaction = self.pool.begin().await?;
+        insert_commit_tr(&mut transaction, commit).await?;
+        if let Err(e) = transaction.commit().await {
+            return Err(format!(
+                "Error in transaction commit for insert_commit: {}",
+                e
+            ));
         }
-        for parent_id in &commit.parents {
-            if let Err(e) = sqlx::query("INSERT INTO commit_parents VALUES(?, ?);")
-                .bind(commit.id.clone())
-                .bind(parent_id.clone())
-                .execute(&mut sql_connection)
-                .await
-            {
-                return Err(format!("Error inserting into commit_parents: {}", e));
-            }
+        Ok(())
+    }
+
+    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<(), String> {
+        let mut transaction = self.pool.begin().await?;
+        let stored_branch = read_branch_tr(&mut transaction, &branch.name).await?;
+        if &stored_branch != branch {
+            return Err(format!(
+                "Error: commit on stale branch. Branch {} is now at commit {}",
+                branch.name, stored_branch.head
+            ));
         }
-        for change in &commit.changes {
-            if let Err(e) = sqlx::query("INSERT INTO commit_changes VALUES(?, ?, ?, ?);")
-                .bind(commit.id.clone())
-                .bind(change.relative_path.clone())
-                .bind(change.hash.clone())
-                .bind(change.change_type.clone() as i64)
-                .execute(&mut sql_connection)
-                .await
-            {
-                return Err(format!("Error inserting into commit_changes: {}", e));
-            }
+        insert_commit_tr(&mut transaction, commit).await?;
+        let mut new_branch = branch.clone();
+        new_branch.head = commit.id.clone();
+        update_branch_tr(&mut transaction, &new_branch).await?;
+        if let Err(e) = transaction.commit().await {
+            return Err(format!(
+                "Error in transaction commit for commit_to_branch: {}",
+                e
+            ));
         }
         Ok(())
     }
 
     async fn commit_exists(&self, id: &str) -> Result<bool, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         let res = sqlx::query(
             "SELECT count(*) as count
              FROM commits
@@ -291,7 +274,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn read_tree(&self, hash: &str) -> Result<Tree, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         let mut directory_nodes: Vec<TreeNode> = Vec::new();
         let mut file_nodes: Vec<TreeNode> = Vec::new();
 
@@ -330,7 +313,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<(), String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         let tree_in_db = self.read_tree(hash).await?;
         if !tree.is_empty() && !tree_in_db.is_empty() {
             return Ok(());
@@ -363,7 +346,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn insert_lock(&self, lock: &Lock) -> Result<(), String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT count(*) as count
              FROM locks
@@ -406,7 +389,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         lock_domain_id: &str,
         canonical_relative_path: &str,
     ) -> Result<Option<Lock>, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT workspace_id, branch_name
              FROM locks
@@ -430,7 +413,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT relative_path, workspace_id, branch_name
              FROM locks
@@ -461,7 +444,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         lock_domain_id: &str,
         canonical_relative_path: &str,
     ) -> Result<(), String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         if let Err(e) = sqlx::query("DELETE from locks WHERE relative_path=? AND lock_domain_id=?;")
             .bind(canonical_relative_path)
             .bind(lock_domain_id)
@@ -474,7 +457,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT count(*) as count
              FROM locks
@@ -493,7 +476,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec, String> {
-        let mut sql_connection = self.acquire().await?;
+        let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT blob_storage_spec 
              FROM config;",
@@ -504,5 +487,91 @@ impl RepositoryQuery for SqlRepositoryQuery {
             Ok(row) => BlobStorageSpec::from_json(row.get("blob_storage_spec")),
             Err(e) => Err(format!("Error fetching blob storage spec: {}", e)),
         }
+    }
+}
+
+async fn insert_commit_tr(
+    tr: &mut sqlx::Transaction<'_, sqlx::Any>,
+    commit: &Commit,
+) -> Result<(), String> {
+    if let Err(e) = sqlx::query("INSERT INTO commits VALUES(?, ?, ?, ?, ?);")
+        .bind(commit.id.clone())
+        .bind(commit.owner.clone())
+        .bind(commit.message.clone())
+        .bind(commit.root_hash.clone())
+        .bind(commit.date_time_utc.clone())
+        .execute(&mut *tr)
+        .await
+    {
+        return Err(format!("Error inserting into commits: {}", e));
+    }
+    for parent_id in &commit.parents {
+        if let Err(e) = sqlx::query("INSERT INTO commit_parents VALUES(?, ?);")
+            .bind(commit.id.clone())
+            .bind(parent_id.clone())
+            .execute(&mut *tr)
+            .await
+        {
+            return Err(format!("Error inserting into commit_parents: {}", e));
+        }
+    }
+    for change in &commit.changes {
+        if let Err(e) = sqlx::query("INSERT INTO commit_changes VALUES(?, ?, ?, ?);")
+            .bind(commit.id.clone())
+            .bind(change.relative_path.clone())
+            .bind(change.hash.clone())
+            .bind(change.change_type.clone() as i64)
+            .execute(&mut *tr)
+            .await
+        {
+            return Err(format!("Error inserting into commit_changes: {}", e));
+        }
+    }
+    Ok(())
+}
+
+async fn update_branch_tr(
+    tr: &mut sqlx::Transaction<'_, sqlx::Any>,
+    branch: &Branch,
+) -> Result<(), String> {
+    if let Err(e) = sqlx::query(
+        "UPDATE branches SET head=?, parent=?, lock_domain_id=?
+             WHERE name=?;",
+    )
+    .bind(branch.head.clone())
+    .bind(branch.parent.clone())
+    .bind(branch.lock_domain_id.clone())
+    .bind(branch.name.clone())
+    .execute(tr)
+    .await
+    {
+        return Err(format!("Error updating branch {}: {}", branch.name, e));
+    }
+    Ok(())
+}
+
+async fn read_branch_tr(
+    tr: &mut sqlx::Transaction<'_, sqlx::Any>,
+    name: &str,
+) -> Result<Branch, String> {
+    match sqlx::query(
+        "SELECT head, parent, lock_domain_id 
+             FROM branches
+             WHERE name = ?;",
+    )
+    .bind(name)
+    .fetch_one(tr)
+    .await
+    {
+        Ok(row) => {
+            let branch = Branch::new(
+                String::from(name),
+                row.get("head"),
+                row.get("parent"),
+                row.get("lock_domain_id"),
+            );
+            Ok(branch)
+        }
+        Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
     }
 }

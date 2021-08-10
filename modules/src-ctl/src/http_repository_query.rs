@@ -114,6 +114,16 @@ impl RepositoryQuery for HTTPRepositoryQuery {
         Ok(())
     }
 
+    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<(), String> {
+        let request = ServerRequest::CommitToBranch(CommitToBranchRequest {
+            repo_name: self.repo_name.clone(),
+            commit: commit.clone(),
+            branch: branch.clone(),
+        });
+        let _resp = execute_request(&self.client, &self.url, &request).await?;
+        Ok(())
+    }
+
     async fn commit_exists(&self, id: &str) -> Result<bool, String> {
         let request = ServerRequest::CommitExists(CommitExistsRequest {
             repo_name: self.repo_name.clone(),

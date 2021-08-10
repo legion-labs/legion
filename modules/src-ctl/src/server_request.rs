@@ -102,6 +102,13 @@ pub struct InsertCommitRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct CommitToBranchRequest {
+    pub repo_name: String,
+    pub commit: Commit,
+    pub branch: Branch,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CommitExistsRequest {
     pub repo_name: String,
     pub commit_id: String,
@@ -138,6 +145,7 @@ pub enum ServerRequest {
     FindLocksInDomain(FindLocksInDomainRequest),
     SaveTree(SaveTreeRequest),
     InsertCommit(InsertCommitRequest),
+    CommitToBranch(CommitToBranchRequest),
     CommitExists(CommitExistsRequest),
     UpdateBranch(UpdateBranchRequest),
     InsertBranch(InsertBranchRequest),

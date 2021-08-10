@@ -167,13 +167,9 @@ pub async fn commit_local_changes(
         new_root_hash,
         parent_commits,
     );
-    query.insert_commit(&commit).await?;
+    query.commit_to_branch(&commit, &repo_branch).await?;
     repo_branch.head = commit.id.clone();
     update_current_branch(workspace_transaction, &current_branch_name, &commit.id).await?;
-
-    //todo: will need to lock to avoid races in updating branch in the database
-    query.update_branch(&repo_branch).await?;
-
     if let Err(e) = make_local_files_read_only(workspace_root, &commit.changes) {
         println!("Error making local files read only: {}", e);
     }

@@ -50,6 +50,13 @@ impl SqlConnectionPool {
             Err(e) => Err(format!("Error acquiring sql connection: {}", e)),
         }
     }
+
+    pub async fn begin(&self) -> Result<sqlx::Transaction<'static, sqlx::Any>, String> {
+        match self.pool.begin().await {
+            Ok(t) => Ok(t),
+            Err(e) => Err(format!("Error beginning sql transaction: {}", e)),
+        }
+    }
 }
 
 pub async fn alloc_sql_pool(db_server_uri: &str) -> Result<sqlx::AnyPool, String> {
