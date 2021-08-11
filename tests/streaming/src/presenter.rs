@@ -67,11 +67,8 @@ fn run() -> GfxResult<()> {
         // when the next image is acquired. The helper also ensures that the swapchain is rebuilt
         // as necessary.
         //
-        let mut swapchain_helper = presenter::swapchain_helper::SwapchainHelper::<DefaultApi>::new(
-            device_context,
-            swapchain,
-            None,
-        )?;
+        let mut swapchain_helper =
+            presenter::window::SwapchainHelper::<DefaultApi>::new(device_context, swapchain, None)?;
 
         //
         // Allocate a graphics queue. By default, there is just one graphics queue and it is shared.

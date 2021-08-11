@@ -78,3 +78,6 @@ pub use windows::WindowsWindow as Window;
 mod linux;
 #[cfg(target_os = "linux")]
 pub use linux::LinuxWindow as Window;
+
+mod swapchain_helper;
+pub use swapchain_helper::*;

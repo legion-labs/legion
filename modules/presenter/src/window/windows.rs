@@ -71,23 +71,41 @@ impl WindowApi for WindowsWindow {
         monitors
     }
 
+    // Create Centered Window
+    //RECT rect = { 0, 0, popNumericCast<LONG>(wantedWidth), popNumericCast<LONG>(wantedHeight) };
+    //winuser::AdjustWindowRect(&rect, MainWindowStyle, FALSE);
+
     fn new(win_type: super::WindowType<Self>) -> Self {
         let (style, x, y, width, height, parent) = match win_type {
             crate::window::WindowType::Main(window_mode) => match window_mode {
-                window::WindowMode::Windowed(location) => (
-                    winuser::WS_OVERLAPPED
+                window::WindowMode::Windowed(location) => {
+                    let style = winuser::WS_OVERLAPPED
                         | winuser::WS_CAPTION
                         | winuser::WS_SYSMENU
                         | winuser::WS_MINIMIZEBOX
                         | winuser::WS_CLIPSIBLINGS
                         | winuser::WS_CLIPCHILDREN
-                        | winuser::WS_VISIBLE,
-                    location.x as i32,
-                    location.y as i32,
-                    location.width as i32,
-                    location.height as i32,
-                    std::ptr::null_mut::<windef::HWND__>(),
-                ),
+                        | winuser::WS_VISIBLE;
+                    let mut rect = windef::RECT {
+                        left: 0,
+                        top: 0,
+                        right: location.width as i32,
+                        bottom: location.height as i32,
+                    };
+                    println!("{:?}", rect);
+                    unsafe {
+                        winuser::AdjustWindowRect(&mut rect, style, minwindef::FALSE);
+                    }
+                    println!("{:?}", rect);
+                    (
+                        style,
+                        location.x as i32,
+                        location.y as i32,
+                        rect.right - rect.left,
+                        rect.bottom - rect.top,
+                        std::ptr::null_mut::<windef::HWND__>(),
+                    )
+                }
                 window::WindowMode::Borderless(location) => (
                     winuser::WS_POPUP | winuser::WS_CLIPSIBLINGS | winuser::WS_CLIPCHILDREN,
                     location.x as i32,

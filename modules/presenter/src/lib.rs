@@ -85,14 +85,4 @@
 #![allow()]
 #![warn(missing_docs)]
 
-pub mod swapchain_helper;
 pub mod window;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let four = 2 + 2;
-        assert_eq!(four, 4);
-    }
-}
