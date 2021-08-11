@@ -16,7 +16,120 @@ Solutions:
 
 ## Bevy
 
-(to do)
+Initial Bevy ECS was based on hecs, but has been rewritten.
+
+[Redesign notes](https://bevyengine.org/news/bevy-0-5/#bevy-ecs-v2), and associated [pull request](https://github.com/bevyengine/bevy/pull/1525).
+
+### Usage
+
+```Rust
+// systems access components by using queries
+fn score_system(mut query: Query<(&Player, &mut Score)>) { ... }
+
+// systems can access global resources
+fn new_round_system(game_rules: Res<GameRules>, mut game_state: ResMut<GameState>) { ... }
+
+// can mix and match
+fn score_check_system(game_rules: Res<GameRules>,
+    mut game_state: ResMut<GameState>,
+    query: Query<(&Player, &Score)>,
+) { ... }
+
+// registration
+App::new()
+    .add_startup_system(startup_system)
+    .add_system(print_message_system)
+```
+
+### Storage
+
+``` Rust
+// can register anything that implements the IntoSystemDescriptor trait
+
+trait IntoSystemDescriptor<Params> {
+    fn into_descriptor(self) -> SystemDescriptor;
+}
+
+enum SystemDescriptor {
+    Parallel(ParallelSystemDescriptor),
+    Exclusive(ExclusiveSystemDescriptor), // no input, has access to world only
+}
+
+struct ParallelSystemDescriptor {
+    system: BoxedSystem<(), ()>,
+    ...
+}
+
+type BoxedSystem<In = (), Out = ()> = Box<dyn System<In = In, Out = Out>>;
+
+pub trait System: Send + Sync + 'static {
+    type In;
+    type Out;
+    ...
+    unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out;
+    fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {
+        unsafe { self.run_unsafe(input, world) }
+    }
+    ...
+}
+
+// converting function to System
+
+impl<Params, S> IntoSystemDescriptor<Params> for S
+where
+    S: IntoSystem<(), (), Params>,
+{
+    fn into_descriptor(self) -> SystemDescriptor {
+        new_parallel_descriptor(Box::new(self.system())).into_descriptor()
+    }
+}
+
+trait IntoSystem<In, Out, Params> {
+    type System: System<In = In, Out = Out>;
+    fn system(self) -> Self::System;
+}
+
+struct FunctionSystem<In, Out, Param, Marker, F>
+where
+    Param: SystemParam,
+{
+    func: F,
+    ...
+}
+
+impl<In, Out, Param, Marker, F> IntoSystem<In, Out, (IsFunctionSystem, Param, Marker)> for F
+where
+    ...
+    F: SystemParamFunction<In, Out, Param, Marker> + Send + Sync + 'static,
+{
+    type System = FunctionSystem<In, Out, Param, Marker, F>;
+    fn system(self) -> Self::System {
+        FunctionSystem {
+            func: self,
+            ...
+        }
+    }
+}
+
+// all parameters must implement the SystemParam trait, which can be derived
+pub trait SystemParam: Sized {
+    type Fetch: for<'a> SystemParamFetch<'a>;
+}
+```
+The `impl_system_function!` macro (in combination with `all_tuples!`) is used to implement `SystemParamFunction` for all function types with arity up to 16. The implementations take care of packing/unpacking the argument list to a tuple. (See [`function_system.rs`](https://github.com/bevyengine/bevy/blob/main/crates/bevy_ecs/src/system/function_system.rs) for code)
+
+The function types match with this pattern:
+```Rust
+for <'a> &'a mut Func:
+    FnMut(In<Input>, $($param),*) -> Out +
+    FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch>::Item),*) -> Out
+```
+
+### References
+
+* Bevy the book, [section 2.3. ecs](https://bevyengine.org/learn/book/getting-started/ecs/)
+* [ecs crate README](https://github.com/bevyengine/bevy/blob/main/crates/bevy_ecs/README.md)
+* [ECS guided introduction](https://github.com/bevyengine/bevy/blob/latest/examples/ecs/ecs_guide.rs)
 
 ## DCES
 
