@@ -3,14 +3,14 @@ use crate::TaskPool;
 mod adapters;
 pub use adapters::*;
 
-/// ParallelIterator closely emulates the std::iter::Iterator
-/// interface. However, it uses bevy_task to compute batches in parallel.
+/// `ParallelIterator` closely emulates the `std::iter::Iterator`
+/// interface. However, it uses `legion_tasks` to compute batches in parallel.
 ///
-/// Note that the overhead of ParallelIterator is high relative to some
+/// Note that the overhead of `ParallelIterator` is high relative to some
 /// workloads. In particular, if the batch size is too small or task being
-/// run in parallel is inexpensive, *a ParallelIterator could take longer
+/// run in parallel is inexpensive, *a `ParallelIterator` could take longer
 /// than a normal Iterator*. Therefore, you should profile your code before
-/// using ParallelIterator.
+/// using `ParallelIterator`.
 pub trait ParallelIterator<B>
 where
     B: Iterator<Item = Self::Item> + Send,
@@ -21,7 +21,7 @@ where
     /// Returns the next batch of items for processing.
     ///
     /// Each batch is an iterator with items of the same type as the
-    /// ParallelIterator. Returns `None` when there are no batches left.
+    /// `ParallelIterator`. Returns `None` when there are no batches left.
     fn next_batch(&mut self) -> Option<B>;
 
     /// Returns the bounds on the remaining number of items in the
@@ -38,7 +38,7 @@ where
     fn count(mut self, pool: &TaskPool) -> usize {
         pool.scope(|s| {
             while let Some(batch) = self.next_batch() {
-                s.spawn(async move { batch.count() })
+                s.spawn(async move { batch.count() });
             }
         })
         .iter()
@@ -221,7 +221,7 @@ where
         pool.scope(|s| {
             while let Some(batch) = self.next_batch() {
                 let newf = f.clone();
-                s.spawn(async move { batch.partition::<Vec<_>, F>(newf) })
+                s.spawn(async move { batch.partition::<Vec<_>, F>(newf) });
             }
         })
         .into_iter()

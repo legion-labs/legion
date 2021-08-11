@@ -10,7 +10,7 @@ use futures_lite::{future, pin};
 
 use crate::Task;
 
-/// Used to create a TaskPool
+/// Used to create a `TaskPool`
 #[derive(Debug, Default, Clone)]
 pub struct TaskPoolBuilder {
     /// If set, we'll set up the thread pool to use at most n threads. Otherwise use
@@ -24,7 +24,7 @@ pub struct TaskPoolBuilder {
 }
 
 impl TaskPoolBuilder {
-    /// Creates a new TaskPoolBuilder instance
+    /// Creates a new `TaskPoolBuilder` instance
     pub fn new() -> Self {
         Self::default()
     }
@@ -43,13 +43,13 @@ impl TaskPoolBuilder {
     }
 
     /// Override the name of the threads created for the pool. If set, threads will
-    /// be named <thread_name> (<thread_index>), i.e. "MyThreadPool (2)"
+    /// be named <`thread_name`> (<`thread_index`>), i.e. "`MyThreadPool` (2)"
     pub fn thread_name(mut self, thread_name: String) -> Self {
         self.thread_name = Some(thread_name);
         self
     }
 
-    /// Creates a new ThreadPoolBuilder based on the current options.
+    /// Creates a new `ThreadPoolBuilder` based on the current options.
     pub fn build(self) -> TaskPool {
         TaskPool::new_internal(
             self.num_threads,
@@ -85,9 +85,9 @@ impl Drop for TaskPoolInner {
 pub struct TaskPool {
     /// The executor for the pool
     ///
-    /// This has to be separate from TaskPoolInner because we have to create an Arc<Executor> to
+    /// This has to be separate from `TaskPoolInner` because we have to create an Arc<Executor> to
     /// pass into the worker threads, and we must create the worker threads before we can create
-    /// the Vec<Task<T>> contained within TaskPoolInner
+    /// the `Vec<Task<T>>` contained within `TaskPoolInner`
     executor: Arc<async_executor::Executor<'static>>,
 
     /// Inner state of the pool
@@ -161,19 +161,21 @@ impl TaskPool {
     /// to spawn tasks. This function will await the completion of all tasks before returning.
     ///
     /// This is similar to `rayon::scope` and `crossbeam::scope`
+    #[allow(unsafe_code, clippy::useless_transmute)]
     pub fn scope<'scope, F, T>(&self, f: F) -> Vec<T>
     where
         F: FnOnce(&mut Scope<'scope, T>) + 'scope + Send,
         T: Send + 'static,
     {
-        TaskPool::LOCAL_EXECUTOR.with(|local_executor| {
+        Self::LOCAL_EXECUTOR.with(|local_executor| {
             // SAFETY: This function blocks until all futures complete, so this future must return
             // before this function returns. However, rust has no way of knowing
             // this so we must convert to 'static here to appease the compiler as it is unable to
             // validate safety.
-            let executor: &async_executor::Executor = &*self.executor;
-            let executor: &'scope async_executor::Executor = unsafe { mem::transmute(executor) };
-            let local_executor: &'scope async_executor::LocalExecutor =
+            let executor: &async_executor::Executor<'_> = &*self.executor;
+            let executor: &'scope async_executor::Executor<'_> =
+                unsafe { mem::transmute(executor) };
+            let local_executor: &'scope async_executor::LocalExecutor<'_> =
                 unsafe { mem::transmute(local_executor) };
             let mut scope = Scope {
                 executor,
@@ -236,11 +238,12 @@ impl TaskPool {
         Task::new(self.executor.spawn(future))
     }
 
+    #[allow(clippy::unused_self)]
     pub fn spawn_local<T>(&self, future: impl Future<Output = T> + 'static) -> Task<T>
     where
         T: 'static,
     {
-        Task::new(TaskPool::LOCAL_EXECUTOR.with(|executor| executor.spawn(future)))
+        Task::new(Self::LOCAL_EXECUTOR.with(|executor| executor.spawn(future)))
     }
 }
 
