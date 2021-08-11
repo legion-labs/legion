@@ -203,12 +203,10 @@ pub async fn find_branch_commits(
     let mut commits = Vec::new();
     let query = connection.query();
     let mut c = query.read_commit(&branch.head).await?;
-    println!("{}", c.id);
     commits.push(c.clone());
     while !c.parents.is_empty() {
         let id = &c.parents[0]; //first parent is assumed to be branch trunk
         c = query.read_commit(id).await?;
-        println!("{}", c.id);
         commits.push(c.clone());
     }
     Ok(commits)

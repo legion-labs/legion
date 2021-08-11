@@ -1,6 +1,6 @@
 use crate::{sql::*, *};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use url::Url;
 
 pub async fn init_workspace_command(
@@ -14,7 +14,7 @@ pub async fn init_workspace_command(
     let db_uri = format!("sqlite://{}", db_path.display());
 
     let repo_addr = if Path::new(repo_location).exists() {
-        RepositoryAddr::Local(PathBuf::from(repo_location))
+        RepositoryAddr::Local(make_path_absolute(Path::new(repo_location)))
     } else {
         match Url::parse(repo_location) {
             Ok(_uri) => RepositoryAddr::Remote(String::from(repo_location)),

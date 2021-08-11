@@ -240,6 +240,10 @@ impl RepositoryQuery for SqlRepositoryQuery {
         let mut transaction = self.pool.begin().await?;
         let stored_branch = read_branch_tr(&mut transaction, &branch.name).await?;
         if &stored_branch != branch {
+            //rollback is implicit but there is bug in sqlx: https://github.com/launchbadge/sqlx/issues/1358
+            if let Err(e) = transaction.rollback().await {
+                println!("Error in rollback: {}", e);
+            }
             return Err(format!(
                 "Error: commit on stale branch. Branch {} is now at commit {}",
                 branch.name, stored_branch.head
@@ -550,10 +554,19 @@ async fn update_branch_tr(
     Ok(())
 }
 
+//read_branch_tr: locks the row
 async fn read_branch_tr(
     tr: &mut sqlx::Transaction<'_, sqlx::Any>,
     name: &str,
 ) -> Result<Branch, String> {
+    //mysql version:
+    // match sqlx::query(
+    //     "SELECT head, parent, lock_domain_id
+    //          FROM branches
+    //          WHERE name = ?
+    //          FOR UPDATE;",
+    // )
+    //sqlite version:
     match sqlx::query(
         "SELECT head, parent, lock_domain_id 
              FROM branches
