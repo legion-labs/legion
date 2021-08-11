@@ -18,7 +18,7 @@ impl RepositoryConnection {
             RepositoryAddr::Local(local_path) => {
                 let sqlite_url = format!("sqlite://{}/repo.db3", local_path.display());
                 let pool = Arc::new(SqlConnectionPool::new(&sqlite_url).await?);
-                repo_query = Box::new(SqlRepositoryQuery::new(pool));
+                repo_query = Box::new(SqlRepositoryQuery::new(pool, Databases::Sqlite));
             }
             RepositoryAddr::Remote(spec_uri) => {
                 let uri = Url::parse(spec_uri).unwrap();
@@ -33,7 +33,7 @@ impl RepositoryConnection {
                     }
                     "mysql" => {
                         let pool = Arc::new(SqlConnectionPool::new(spec_uri).await?);
-                        repo_query = Box::new(SqlRepositoryQuery::new(pool));
+                        repo_query = Box::new(SqlRepositoryQuery::new(pool, Databases::Mysql));
                     }
                     unknown => {
                         return Err(format!("unknown remote url scheme {}", unknown));

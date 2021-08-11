@@ -1,6 +1,6 @@
 use http::response::Response;
 use hyper::body::Body;
-use legion_src_ctl::sql_repository_query::SqlRepositoryQuery;
+use legion_src_ctl::sql_repository_query::{Databases, SqlRepositoryQuery};
 use legion_src_ctl::{sql::*, *};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -56,14 +56,21 @@ async fn get_connection_pool(repo_name: &str) -> Result<Arc<SqlConnectionPool>, 
     Ok(p)
 }
 
-async fn insert_workspace_req(repo_name: &str, spec: &Workspace) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(repo_name).await?);
-    query.insert_workspace(spec).await?;
+async fn get_sql_query_interface(repo_name: &str) -> Result<SqlRepositoryQuery, String> {
+    Ok(SqlRepositoryQuery::new(
+        get_connection_pool(repo_name).await?,
+        Databases::Mysql,
+    ))
+}
+
+async fn insert_workspace_req(args: &InsertWorkspaceRequest) -> Result<String, String> {
+    let query = get_sql_query_interface(&args.repo_name).await?;
+    query.insert_workspace(&args.spec).await?;
     Ok(String::from(""))
 }
 
 async fn find_branch_req(args: &FindBranchRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.find_branch(&args.branch_name).await?;
     match serde_json::to_string(&res) {
         Ok(json) => Ok(json),
@@ -72,7 +79,7 @@ async fn find_branch_req(args: &FindBranchRequest) -> Result<String, String> {
 }
 
 async fn read_branches_req(args: &ReadBranchesRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.read_branches().await?;
     match serde_json::to_string(&res) {
         Ok(json) => Ok(json),
@@ -83,7 +90,7 @@ async fn read_branches_req(args: &ReadBranchesRequest) -> Result<String, String>
 async fn find_branches_in_lock_domain(
     args: &FindBranchesInLockDomainRequest,
 ) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query
         .find_branches_in_lock_domain(&args.lock_domain_id)
         .await?;
@@ -96,26 +103,26 @@ async fn find_branches_in_lock_domain(
     }
 }
 
-async fn read_commit_req(repo_name: &str, commit_id: &str) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(repo_name).await?);
-    let commit = query.read_commit(commit_id).await?;
+async fn read_commit_req(args: &ReadCommitRequest) -> Result<String, String> {
+    let query = get_sql_query_interface(&args.repo_name).await?;
+    let commit = query.read_commit(&args.commit_id).await?;
     commit.to_json()
 }
 
-async fn read_tree_req(repo_name: &str, tree_hash: &str) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(repo_name).await?);
-    let tree = query.read_tree(tree_hash).await?;
+async fn read_tree_req(args: &ReadTreeRequest) -> Result<String, String> {
+    let query = get_sql_query_interface(&args.repo_name).await?;
+    let tree = query.read_tree(&args.tree_hash).await?;
     tree.to_json()
 }
 
-async fn insert_lock_req(repo_name: &str, lock: &Lock) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(repo_name).await?);
-    query.insert_lock(lock).await?;
+async fn insert_lock_req(args: &InsertLockRequest) -> Result<String, String> {
+    let query = get_sql_query_interface(&args.repo_name).await?;
+    query.insert_lock(&args.lock).await?;
     Ok(String::from(""))
 }
 
 async fn find_lock_req(args: &FindLockRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query
         .find_lock(&args.lock_domain_id, &args.canonical_relative_path)
         .await?;
@@ -126,7 +133,7 @@ async fn find_lock_req(args: &FindLockRequest) -> Result<String, String> {
 }
 
 async fn find_locks_in_domain_req(args: &FindLocksInDomainRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.find_locks_in_domain(&args.lock_domain_id).await?;
     match serde_json::to_string(&res) {
         Ok(json) => Ok(json),
@@ -138,25 +145,25 @@ async fn find_locks_in_domain_req(args: &FindLocksInDomainRequest) -> Result<Str
 }
 
 async fn save_tree_req(args: &SaveTreeRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let _res = query.save_tree(&args.tree, &args.hash).await?;
     Ok(String::from(""))
 }
 
 async fn insert_commit_req(args: &InsertCommitRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let _res = query.insert_commit(&args.commit).await?;
     Ok(String::from(""))
 }
 
 async fn insert_commit_to_branch_req(args: &CommitToBranchRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let _res = query.commit_to_branch(&args.commit, &args.branch).await?;
     Ok(String::from(""))
 }
 
 async fn commit_exists_req(args: &CommitExistsRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.commit_exists(&args.commit_id).await?;
     match serde_json::to_string(&res) {
         Ok(json) => Ok(json),
@@ -165,19 +172,19 @@ async fn commit_exists_req(args: &CommitExistsRequest) -> Result<String, String>
 }
 
 async fn update_branch_req(args: &UpdateBranchRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let _res = query.update_branch(&args.branch).await?;
     Ok(String::from(""))
 }
 
 async fn insert_branch_req(args: &InsertBranchRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let _res = query.insert_branch(&args.branch).await?;
     Ok(String::from(""))
 }
 
 async fn clear_lock_req(args: &ClearLockRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let _res = query
         .clear_lock(&args.lock_domain_id, &args.canonical_relative_path)
         .await?;
@@ -185,7 +192,7 @@ async fn clear_lock_req(args: &ClearLockRequest) -> Result<String, String> {
 }
 
 async fn count_locks_in_domain_req(args: &ClountLocksInDomainRequest) -> Result<String, String> {
-    let query = SqlRepositoryQuery::new(get_connection_pool(&args.repo_name).await?);
+    let query = get_sql_query_interface(&args.repo_name).await?;
     let res = query.count_locks_in_domain(&args.lock_domain_id).await?;
     match serde_json::to_string(&res) {
         Ok(json) => Ok(json),
@@ -204,15 +211,13 @@ async fn dispatch_request_impl(body: bytes::Bytes) -> Result<String, String> {
         ServerRequest::InitRepo(req) => init_remote_repository_req(&req.repo_name).await,
         ServerRequest::DestroyRepo(req) => destroy_repository_req(&req.repo_name).await,
         ServerRequest::ReadBlobStorageSpec(req) => read_blob_storage_spec_req(&req.repo_name),
-        ServerRequest::InsertWorkspace(req) => {
-            insert_workspace_req(&req.repo_name, &req.spec).await
-        }
+        ServerRequest::InsertWorkspace(req) => insert_workspace_req(&req).await,
         ServerRequest::FindBranch(req) => find_branch_req(&req).await,
         ServerRequest::ReadBranches(req) => read_branches_req(&req).await,
         ServerRequest::FindBranchesInLockDomain(req) => find_branches_in_lock_domain(&req).await,
-        ServerRequest::ReadCommit(req) => read_commit_req(&req.repo_name, &req.commit_id).await,
-        ServerRequest::ReadTree(req) => read_tree_req(&req.repo_name, &req.tree_hash).await,
-        ServerRequest::InsertLock(req) => insert_lock_req(&req.repo_name, &req.lock).await,
+        ServerRequest::ReadCommit(req) => read_commit_req(&req).await,
+        ServerRequest::ReadTree(req) => read_tree_req(&req).await,
+        ServerRequest::InsertLock(req) => insert_lock_req(&req).await,
         ServerRequest::FindLock(req) => find_lock_req(&req).await,
         ServerRequest::FindLocksInDomain(req) => find_locks_in_domain_req(&req).await,
         ServerRequest::SaveTree(req) => save_tree_req(&req).await,

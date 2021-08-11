@@ -3,14 +3,23 @@ use async_trait::async_trait;
 use sqlx::Row;
 use std::sync::Arc;
 
+pub enum Databases {
+    Sqlite,
+    Mysql,
+}
+
 // access to repository metadata inside a mysql or sqlite database
 pub struct SqlRepositoryQuery {
     pool: Arc<SqlConnectionPool>,
+    database_kind: Databases,
 }
 
 impl SqlRepositoryQuery {
-    pub fn new(pool: Arc<SqlConnectionPool>) -> Self {
-        Self { pool }
+    pub fn new(pool: Arc<SqlConnectionPool>, database_kind: Databases) -> Self {
+        Self {
+            pool,
+            database_kind,
+        }
     }
 }
 
@@ -238,7 +247,10 @@ impl RepositoryQuery for SqlRepositoryQuery {
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<(), String> {
         let mut transaction = self.pool.begin().await?;
-        let stored_branch = read_branch_tr(&mut transaction, &branch.name).await?;
+        let stored_branch = match self.database_kind {
+            Databases::Sqlite => sqlite_read_branch_tr(&mut transaction, &branch.name).await?,
+            Databases::Mysql => mysql_read_branch_tr(&mut transaction, &branch.name).await?,
+        };
         if &stored_branch != branch {
             //rollback is implicit but there is bug in sqlx: https://github.com/launchbadge/sqlx/issues/1358
             if let Err(e) = transaction.rollback().await {
@@ -554,8 +566,7 @@ async fn update_branch_tr(
     Ok(())
 }
 
-//read_branch_tr: locks the row
-async fn read_branch_tr(
+async fn sqlite_read_branch_tr(
     tr: &mut sqlx::Transaction<'_, sqlx::Any>,
     name: &str,
 ) -> Result<Branch, String> {
@@ -571,6 +582,33 @@ async fn read_branch_tr(
         "SELECT head, parent, lock_domain_id 
              FROM branches
              WHERE name = ?;",
+    )
+    .bind(name)
+    .fetch_one(tr)
+    .await
+    {
+        Ok(row) => {
+            let branch = Branch::new(
+                String::from(name),
+                row.get("head"),
+                row.get("parent"),
+                row.get("lock_domain_id"),
+            );
+            Ok(branch)
+        }
+        Err(e) => Err(format!("Error fetching branch {}: {}", name, e)),
+    }
+}
+
+async fn mysql_read_branch_tr(
+    tr: &mut sqlx::Transaction<'_, sqlx::Any>,
+    name: &str,
+) -> Result<Branch, String> {
+    match sqlx::query(
+        "SELECT head, parent, lock_domain_id
+             FROM branches
+             WHERE name = ?
+             FOR UPDATE;",
     )
     .bind(name)
     .fetch_one(tr)

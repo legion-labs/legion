@@ -1,4 +1,4 @@
-use crate::sql_repository_query::SqlRepositoryQuery;
+use crate::sql_repository_query::{Databases, SqlRepositoryQuery};
 use crate::{sql::*, *};
 use std::fs;
 use std::path::Path;
@@ -20,8 +20,11 @@ pub async fn init_repo_database(
     Ok(())
 }
 
-pub async fn push_init_repo_data(pool: Arc<SqlConnectionPool>) -> Result<(), String> {
-    let query = SqlRepositoryQuery::new(pool);
+pub async fn push_init_repo_data(
+    pool: Arc<SqlConnectionPool>,
+    database_kind: Databases,
+) -> Result<(), String> {
+    let query = SqlRepositoryQuery::new(pool, database_kind);
     let lock_domain_id = uuid::Uuid::new_v4().to_string();
     let root_tree = Tree::empty();
     let root_hash = root_tree.hash();
@@ -76,6 +79,6 @@ pub async fn init_local_repository_command(
         &BlobStorageSpec::LocalDirectory(blob_dir),
     )
     .await?;
-    push_init_repo_data(pool.clone()).await?;
+    push_init_repo_data(pool.clone(), Databases::Sqlite).await?;
     Ok(pool)
 }

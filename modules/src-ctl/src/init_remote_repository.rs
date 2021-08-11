@@ -1,4 +1,4 @@
-use crate::{sql::*, *};
+use crate::{sql::*, sql_repository_query::Databases, *};
 use std::{fs, sync::Arc};
 use url::Url;
 
@@ -26,7 +26,7 @@ pub async fn init_mysql_repo_db(
     let pool = Arc::new(SqlConnectionPool::new(db_uri).await?);
     let mut sql_connection = pool.acquire().await?;
     init_repo_database(&mut sql_connection, db_uri, blob_storage).await?;
-    push_init_repo_data(pool.clone()).await?;
+    push_init_repo_data(pool.clone(), Databases::Mysql).await?;
     Ok(pool)
 }
 
