@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::GfxApi;
-use legion_core::decimal::DecimalF32;
+use legion_utils::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
 use fnv::FnvHasher;
@@ -74,7 +74,7 @@ impl BufferDef {
 
     pub fn for_staging_buffer_data<T: Copy>(data: &[T], resource_type: ResourceType) -> Self {
         Self::for_staging_buffer(
-            legion_core::memory::slice_size_in_bytes(data),
+            legion_utils::memory::slice_size_in_bytes(data),
             resource_type,
         )
     }

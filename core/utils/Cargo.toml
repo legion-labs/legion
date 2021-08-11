@@ -1,5 +1,5 @@
 [package]
-name = "legion-core"
+name = "legion-utils"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2018"

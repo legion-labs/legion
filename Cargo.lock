@@ -1191,14 +1191,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-core"
-version = "0.1.0"
-dependencies = [
- "cgmath",
- "num-traits",
-]
-
-[[package]]
 name = "legion-data-build"
 version = "0.1.0"
 dependencies = [
@@ -1246,7 +1238,7 @@ dependencies = [
  "bitflags",
  "crossbeam-channel",
  "fnv",
- "legion-core",
+ "legion-utils",
  "log",
  "raw-window-handle",
  "serde",
@@ -1328,6 +1320,14 @@ name = "legion-streamer"
 version = "0.1.0"
 dependencies = [
  "legion-codec-api",
+]
+
+[[package]]
+name = "legion-utils"
+version = "0.1.0"
+dependencies = [
+ "cgmath",
+ "num-traits",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{Buffer, BufferDef, Format, GfxResult, MemoryUsage, ResourceType};
 use ash::vk;
-use legion_core::trust_cell::TrustCell;
+use legion_utils::trust_cell::TrustCell;
 
 #[derive(Copy, Clone, Debug)]
 pub struct BufferRaw {
@@ -46,7 +46,7 @@ impl VulkanBuffer {
             .resource_type
             .intersects(ResourceType::UNIFORM_BUFFER)
         {
-            allocation_size = legion_core::memory::round_size_up_to_alignment_u64(
+            allocation_size = legion_utils::memory::round_size_up_to_alignment_u64(
                 buffer_def.size,
                 device_context.limits().min_uniform_buffer_offset_alignment,
             );
@@ -248,7 +248,7 @@ impl Buffer<VulkanApi> for VulkanBuffer {
         data: &[T],
         buffer_byte_offset: u64,
     ) -> GfxResult<()> {
-        let data_size_in_bytes = legion_core::memory::slice_size_in_bytes(data) as u64;
+        let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
         assert!(buffer_byte_offset + data_size_in_bytes <= self.buffer_def.size);
 
         let src = data.as_ptr().cast::<u8>();

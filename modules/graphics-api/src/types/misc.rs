@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::GfxApi;
-use legion_core::decimal::DecimalF32;
+use legion_utils::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
 /// Controls if validation is enabled or not. The requirements/behaviors of validation is
