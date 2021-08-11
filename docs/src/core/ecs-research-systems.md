@@ -145,8 +145,54 @@ for <'a> &'a mut Func:
 
 ## hecs
 
-(to do)
+In hecs, there are no explicit systems per se.
 
+You can use queries directly on the world, and the scheduling / sequencing of system-like functions is up to the developer.
+
+### Usage
+
+```Rust
+fn system_integrate_motion(world: &mut World, query: &mut PreparedQuery<(&mut Position, &Speed)>) {
+    for (id, (pos, s)) in query.query_mut(world) {
+        ...
+    }
+}
+
+fn system_fire_at_closest(world: &mut World) {
+    for (id0, (pos0, dmg0, kc0)) in
+        &mut world.query::<With<Health, (&Position, &Damage, &mut KillCount)>>()
+    {
+        // Find closest:
+        // Nested queries are O(n^2) and you usually want to avoid that by using some sort of
+        // spatial index like a quadtree or more general BVH
+        let closest = world
+            .query::<With<Health, &Position>>()
+            .iter()
+            .filter(|(id1, _)| *id1 != id0)
+            .min_by_key(|(_, pos1)| manhattan_dist(pos0.x, pos1.x, pos0.y, pos1.y))
+            .map(|(entity, _pos)| entity);
+        ...
+        let mut hp1 = world.get_mut::<Health>(closest).unwrap();
+        ...
+    }
+}
+
+fn main() {
+    let mut world = World::new();
+    ...
+    let mut motion_query = PreparedQuery::<(&mut Position, &Speed)>::default();
+
+    loop {
+        ...
+        // Run all simulation systems:
+        system_integrate_motion(&mut world, &mut motion_query);
+        system_fire_at_closest(&mut world);
+        ...
+    }
+}
+```
+### References
+* [hecs README](https://github.com/Ralith/hecs)
 ## Legion
 
 (to do)
