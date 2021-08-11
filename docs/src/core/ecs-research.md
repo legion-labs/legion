@@ -69,7 +69,7 @@ See [Entitas](https://github.com/sschmid/Entitas-CSharp)
 | [Planck](https://jojolepro.com/blog/2021-01-13_planck_ecs/) | [GitHub](https://github.com/jojolepro/planck_ecs) | ? | <1k | Adds resources, which are independent of entites, ex: game-time |
 | [Rustic](https://crates.io/crates/recs) | [GitHub](https://github.com/andybarron/rustic-ecs) | ? | 4k | |
 | Shipyard | [GitHub](https://github.com/leudz/shipyard)  | sparse set | 4k | |
-| [Specs](https://specs.amethyst.rs/docs) | [GitHub](https://github.com/amethyst/specs) | bitset | 229k | Part of [Amethyst](https://amethyst.rs/) engine. Dependency on [hibitset](https://docs.rs/hibitset/0.6.3/hibitset/). Implement Component trait for each struct (ex: Position, Velocity); sub-type Storage implements the serialization. Implement System trait for system structs; sub-type SystemData defines access to different components, in a tuple; implement run method. World object acts as registry for components and systems |	
+| [Specs](https://specs.amethyst.rs/docs) | [GitHub](https://github.com/amethyst/specs) | bitset | 229k | Part of [Amethyst](https://amethyst.rs/) engine. Intro in [The Specs book](https://specs.amethyst.rs/docs/tutorials/01_intro.html). Dependency on [hibitset](https://docs.rs/hibitset/0.6.3/hibitset/). Implement Component trait for each struct (ex: Position, Velocity); sub-type Storage implements the serialization. Implement System trait for system structs; sub-type SystemData defines access to different components, in a tuple; implement run method. World object acts as registry for components and systems |	
 
 ### Performance
 
