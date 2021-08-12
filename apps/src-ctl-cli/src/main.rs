@@ -294,7 +294,7 @@ fn main_impl() -> Result<(), String> {
                 .about("Prints the path to the configuration file and its content")
         )
         .subcommand(
-            SubCommand::with_name("import-git-repo")
+            SubCommand::with_name("import-git-branch")
                 .about("Replicates branches and commits from a git repo")
                 .arg(
                     Arg::with_name("path")
@@ -302,7 +302,8 @@ fn main_impl() -> Result<(), String> {
                         .help("Path to the root of a git repository. Should contain a .git subfolder"))
                 .arg(
                     Arg::with_name("branch")
-                        .help("Name of the branch to import. If omitted will default to first valid branch found"))
+                        .required(true)
+                        .help("Name of the branch to import"))
         )
         .subcommand(
             SubCommand::with_name("ping")
@@ -440,9 +441,9 @@ fn main_impl() -> Result<(), String> {
         },
         ("log", Some(_command_match)) => tokio_runtime.block_on(log_command()),
         ("config", Some(_command_match)) => print_config_command(),
-        ("import-git-repo", Some(command_match)) => import_git_repo_command(
+        ("import-git-branch", Some(command_match)) => import_git_branch_command(
             Path::new(command_match.value_of("path").unwrap()),
-            command_match.value_of("branch"),
+            command_match.value_of("branch").unwrap(),
         ),
         ("ping", Some(command_match)) => tokio_runtime.block_on(ping_console_command(
             command_match.value_of("server_uri").unwrap(),

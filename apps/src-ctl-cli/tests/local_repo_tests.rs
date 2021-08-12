@@ -513,6 +513,6 @@ fn test_import_git() {
 
     lsc_cli_sys(
         &work1,
-        &["import-git-repo", root_dir.to_str().unwrap(), "main"],
+        &["import-git-branch", root_dir.to_str().unwrap(), "main"],
     );
 }

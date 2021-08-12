@@ -33,7 +33,6 @@ async fn add_file_from_git(
     workspace_root: &Path,
     workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     repo_connection: &RepositoryConnection,
-    runtime: &tokio::runtime::Runtime,
     git_repo: &git2::Repository,
     new_file: &git2::DiffFile<'_>,
 ) -> Result<(), String> {
@@ -41,10 +40,7 @@ async fn add_file_from_git(
     let local_path = workspace_root.join(relative_path);
     let canonical_relative_path = make_canonical_relative_path(workspace_root, &local_path)?;
 
-    match runtime.block_on(find_local_change(
-        workspace_transaction,
-        &canonical_relative_path,
-    )) {
+    match find_local_change(workspace_transaction, &canonical_relative_path).await {
         Ok(Some(change)) => {
             if change.change_type == ChangeType::Delete {
                 println!("adding of file being deleted - reverting change and editing");
@@ -165,7 +161,6 @@ fn import_commit_diff(
                         workspace_root,
                         workspace_transaction,
                         repo_connection,
-                        runtime,
                         git_repo,
                         &new_file,
                     )) {
@@ -397,7 +392,7 @@ fn import_branch(
     Ok(())
 }
 
-pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Result<(), String> {
+pub fn import_git_branch_command(git_root_path: &Path, branch_name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
@@ -407,58 +402,18 @@ pub fn import_git_repo_command(git_root_path: &Path, branch: Option<&str>) -> Re
     match git2::Repository::open(git_root_path) {
         Ok(git_repo) => {
             println!("git repository state: {:?}", git_repo.state());
-            // todo: instead of discovering branches, the user should specify which one to import
-            // https://github.com/legion-labs/legion/issues/21
-            match git_repo.branches(Some(git2::BranchType::Local)) {
-                Ok(mut branches) => {
-                    let git_branch = match branch {
-                        Some(branch) => branches.find(|result| {
-                            if let Ok((git_branch, _branch_type)) = result {
-                                if let Some(branch_shorthand) = git_branch.get().shorthand() {
-                                    return branch_shorthand.eq(branch);
-                                }
-                            }
-                            false
-                        }),
-                        None => {
-                            // if no branch specified, then just import the first valid discovered branch
-                            branches.next()
-                        }
-                    };
-
-                    match git_branch {
-                        Some(branch_result) => match branch_result {
-                            Ok((git_branch, _branch_type)) => {
-                                import_branch(
-                                    &repo_connection,
-                                    &mut workspace_connection,
-                                    &tokio_runtime,
-                                    &git_repo,
-                                    &git_branch,
-                                )?;
-                            }
-                            Err(e) => {
-                                return Err(format!("Error iterating in branches: {}", e));
-                            }
-                        },
-                        None => {
-                            match branch {
-                                Some(branch) => {
-                                    return Err(format!(
-                                        "Cannot find branch '{}' in repository",
-                                        branch
-                                    ));
-                                }
-                                None => {
-                                    // ? not sure if should return Ok ?
-                                    return Err("No valid branches found in repository".to_string());
-                                }
-                            }
-                        }
-                    }
+            match git_repo.find_branch(branch_name, git2::BranchType::Local) {
+                Ok(git_branch) => {
+                    import_branch(
+                        &repo_connection,
+                        &mut workspace_connection,
+                        &tokio_runtime,
+                        &git_repo,
+                        &git_branch,
+                    )?;
                 }
                 Err(e) => {
-                    return Err(format!("Error listing branches: {}", e));
+                    return Err(format!("Error finding branch {} :{}", branch_name, e));
                 }
             }
         }
