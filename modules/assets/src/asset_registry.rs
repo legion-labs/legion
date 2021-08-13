@@ -130,6 +130,21 @@ impl AssetRegistry {
     /// Unloads assets based on their reference counts.
     pub fn update(&mut self) {
         self.process_refcount_ops();
+
+        while let Some(result) = self.loader.try_result() {
+            // todo: add success/failure callbacks using the provided LoadId.
+            match result {
+                LoaderResult::Loaded(asset_id, asset, _load_id) => {
+                    self.assets.insert(asset_id, asset);
+                }
+                LoaderResult::Unloaded(asset_id) => {
+                    self.assets.remove(&asset_id);
+                }
+                LoaderResult::LoadError(asset_id, _load_id, error_kind) => {
+                    self.load_errors.insert(asset_id, error_kind);
+                }
+            }
+        }
     }
 
     fn process_refcount_ops(&mut self) {
@@ -145,21 +160,6 @@ impl AssetRegistry {
                     if *count == 0 {
                         self.remove_handle(id);
                     }
-                }
-            }
-        }
-
-        while let Some(result) = self.loader.try_result() {
-            // todo: add success/failure callbacks using the provided LoadId.
-            match result {
-                LoaderResult::Loaded(asset_id, asset, _load_id) => {
-                    self.assets.insert(asset_id, asset);
-                }
-                LoaderResult::Unloaded(asset_id) => {
-                    self.assets.remove(&asset_id);
-                }
-                LoaderResult::LoadError(asset_id, _load_id, error_kind) => {
-                    self.load_errors.insert(asset_id, error_kind);
                 }
             }
         }
@@ -193,18 +193,50 @@ impl AssetRegistry {
 
 #[cfg(test)]
 mod tests {
-    /*
-    use std::path::PathBuf;
 
-    use crate::{test_asset, AssetId, AssetRegistry};
+    use std::{thread, time::Duration};
+
+    use legion_asset_store::compiled_asset_store::{
+        CompiledAssetStore, InMemoryCompiledAssetStore,
+    };
+
+    use crate::{
+        manifest::Manifest, test_asset, AssetId, AssetRegistry, AssetRegistryOptions, Handle,
+    };
+
+    fn setup_test() -> (AssetId, AssetRegistry) {
+        let mut asset_store = Box::new(InMemoryCompiledAssetStore::default());
+        let mut manifest = Manifest::default();
+
+        let binary_assetfile = [
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,
+            0, 0, 0, 99, 104, 105, 108, 100,
+        ];
+
+        let asset_id = {
+            let id = AssetId::new(test_asset::TYPE_ID, 1);
+            let checksum = asset_store.store(&binary_assetfile).unwrap();
+            manifest.insert(id, checksum, binary_assetfile.len());
+            id
+        };
+
+        let reg = AssetRegistryOptions::default()
+            .add_creator(
+                test_asset::TYPE_ID,
+                Box::new(test_asset::TestAssetCreator {}),
+            )
+            .create(asset_store, manifest);
+
+        (asset_id, reg)
+    }
+
     #[test]
     fn ref_count() {
-        let mut reg = AssetRegistry::new(PathBuf::new());
-        let id = AssetId::new(test_asset::TYPE_ID, 2);
+        let (asset_id, mut reg) = setup_test();
 
         let internal_id;
         {
-            let a = reg.create_handle(id);
+            let a = reg.load(asset_id);
             internal_id = a.id;
             assert_eq!(reg.ref_counts.get(&a.id).unwrap().1, 1);
 
@@ -222,5 +254,25 @@ mod tests {
         reg.process_refcount_ops();
         assert!(!reg.ref_counts.contains_key(&internal_id));
     }
-    */
+
+    #[test]
+    fn typed_ref() {
+        let (asset_id, mut reg) = setup_test();
+
+        let untyped = reg.load(asset_id);
+        assert_eq!(reg.ref_counts.get(&untyped.id).unwrap().1, 1);
+
+        let typed: Handle<test_asset::TestAsset> = untyped.into();
+        reg.update();
+        assert_eq!(reg.ref_counts.get(&typed.id).unwrap().1, 1);
+
+        let mut test_timeout = Duration::from_millis(500);
+        while test_timeout > Duration::ZERO && typed.get(&reg).is_none() {
+            let sleep_time = Duration::from_millis(10);
+            thread::sleep(sleep_time);
+            test_timeout -= sleep_time;
+            reg.update();
+        }
+        assert!(typed.get(&reg).is_some());
+    }
 }
