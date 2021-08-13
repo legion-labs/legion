@@ -72,7 +72,7 @@ impl AssetType {
 }
 
 /// Types implementing `Asset` represent non-mutable runtime data.
-pub trait Asset: Any {
+pub trait Asset: Any + Send {
     /// Cast to &dyn Any type.
     fn as_any(&self) -> &dyn Any;
 
@@ -87,9 +87,9 @@ pub trait AssetCreator {
         &mut self,
         kind: AssetType,
         reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Asset>, io::Error>;
+    ) -> Result<Box<dyn Asset + Send + Sync>, io::Error>;
 
     /// Asset initialization executed after the asset and all its dependencies
     /// have been loaded.
-    fn load_init(&mut self, asset: &mut dyn Asset);
+    fn load_init(&mut self, asset: &mut (dyn Asset + Send + Sync));
 }

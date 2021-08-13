@@ -126,7 +126,12 @@
 #![warn(missing_docs)]
 
 mod asset_loader;
-pub use asset_loader::*;
+
+mod asset_registry;
+pub use asset_registry::*;
+
+mod handle;
+pub use handle::*;
 
 mod types;
 pub use types::*;
