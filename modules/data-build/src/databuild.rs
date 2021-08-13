@@ -301,7 +301,7 @@ impl DataBuild {
                 .map(|kind| {
                     compilers
                         .iter()
-                        .find(|info| info.1.resource_type.contains(&kind))
+                        .find(|info| info.1.transforms.contains(&(kind, kind)))
                         .map_or(Err(Error::CompilerNotFound), |e| {
                             let res = compiler_hash_cmd
                                 .execute(&e.0.path)

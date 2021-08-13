@@ -24,7 +24,7 @@
 //!    build_version: DATA_BUILD_VERSION,
 //!    code_version: "",
 //!    data_version: "",
-//!    resource_types: &[],
+//!    transforms: &[],
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
@@ -179,8 +179,8 @@ pub struct CompilerDescriptor {
     pub code_version: &'static str,
     /// Version of resource and asset data formats.
     pub data_version: &'static str,
-    /// Compiler supported resource types.
-    pub resource_types: &'static [ResourceType],
+    /// Compiler supported resource transformations `Vec<f(.0)->.1>`.
+    pub transforms: &'static [(ResourceType, ResourceType)],
     /// Function returning a list of `CompilerHash` for a given context.
     pub compiler_hash_func: fn(
         code: &'static str,

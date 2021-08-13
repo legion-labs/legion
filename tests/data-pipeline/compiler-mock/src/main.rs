@@ -22,7 +22,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    resource_types: &[mock_offline::TYPE_ID],
+    transforms: &[(mock_offline::TYPE_ID, mock_offline::TYPE_ID)],
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
