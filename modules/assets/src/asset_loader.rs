@@ -1,19 +1,15 @@
 use std::{
     collections::HashMap,
-    fs, io,
-    path::{Path, PathBuf},
+    io,
     sync::{mpsc, Arc},
     time::Duration,
 };
 
-use crate::{Asset, AssetCreator, AssetId, AssetType};
+use crate::{manifest::Manifest, Asset, AssetCreator, AssetId, AssetType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use legion_asset_store::compiled_asset_store::CompiledAssetStore;
 use serde::{Deserialize, Serialize};
-
-fn asset_path(id: AssetId) -> PathBuf {
-    PathBuf::from(id.to_string())
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AssetReference {
@@ -48,11 +44,20 @@ struct LoaderPending {
     references: Vec<AssetReference>,
 }
 
-pub(crate) fn create_loader(work_dir: PathBuf) -> (AssetLoader, AssetLoaderIO) {
+pub(crate) fn create_loader(
+    asset_store: Box<dyn CompiledAssetStore>,
+    manifest: Manifest,
+) -> (AssetLoader, AssetLoaderIO) {
     let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
     let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
 
-    let io = AssetLoaderIO::new(work_dir, request_tx.clone(), request_rx, result_tx);
+    let io = AssetLoaderIO::new(
+        asset_store,
+        manifest,
+        request_tx.clone(),
+        request_rx,
+        result_tx,
+    );
     let loader = AssetLoader::new(request_tx, result_rx);
     (loader, io)
 }
@@ -113,13 +118,19 @@ pub(crate) struct AssetLoaderIO {
     /// List of primary asset's references to other primary assets .
     primary_asset_references: HashMap<AssetId, Vec<AssetId>>,
 
-    /// Directory where the assets are located.
-    ///
-    /// todo: change to dyn CompiledAssetStore.
-    work_dir: PathBuf,
+    /// Where assets are stored.
+    asset_store: Box<dyn CompiledAssetStore>,
 
+    /// List of known assets.
+    manifest: Manifest,
+
+    /// Loopback for load requests.
     request_tx: mpsc::Sender<LoaderRequest>,
+
+    /// Entry point for load requests.
     request_rx: Option<mpsc::Receiver<LoaderRequest>>,
+
+    /// Output of loader results.
     result_tx: mpsc::Sender<LoaderResult>,
 }
 
@@ -130,7 +141,8 @@ pub(crate) struct AssetLoaderIO {
 
 impl AssetLoaderIO {
     pub(crate) fn new(
-        work_dir: impl AsRef<Path>,
+        asset_store: Box<dyn CompiledAssetStore>,
+        manifest: Manifest,
         request_tx: mpsc::Sender<LoaderRequest>,
         request_rx: mpsc::Receiver<LoaderRequest>,
         result_tx: mpsc::Sender<LoaderResult>,
@@ -140,9 +152,10 @@ impl AssetLoaderIO {
             request_await: Vec::new(),
             asset_refcounts: HashMap::new(),
             asset_storage: HashMap::new(),
+            manifest,
             secondary_assets: HashMap::new(),
             primary_asset_references: HashMap::new(),
-            work_dir: work_dir.as_ref().to_path_buf(),
+            asset_store,
             request_tx,
             request_rx: Some(request_rx),
             result_tx,
@@ -160,44 +173,58 @@ impl AssetLoaderIO {
     fn process(&mut self, request: LoaderRequest) -> Option<(AssetId, Option<LoadId>, io::Error)> {
         match request {
             LoaderRequest::Load(primary_id, load_id) => {
-                let file_path = self.work_dir.join(asset_path(primary_id));
-                match fs::File::open(file_path) {
-                    Ok(mut file) => {
-                        match Self::load_internal(
-                            primary_id,
-                            &mut file,
-                            &self.asset_refcounts,
-                            &mut self.creators,
-                        ) {
-                            Ok(output) => {
-                                for (asset_id, asset) in &output.assets {
-                                    match asset {
-                                        Some(_) => {
-                                            let res = self.asset_refcounts.insert(*asset_id, 1);
-                                            assert!(res.is_none());
-                                        }
-                                        None => {
-                                            *self.asset_refcounts.get_mut(asset_id).unwrap() += 1;
+                if let Some((checksum, size)) = self.manifest.find(primary_id) {
+                    match self.asset_store.read(checksum) {
+                        Some(asset_data) => {
+                            assert_eq!(asset_data.len(), size);
+
+                            match Self::load_internal(
+                                primary_id,
+                                &mut &asset_data[..],
+                                &self.asset_refcounts,
+                                &mut self.creators,
+                            ) {
+                                Ok(output) => {
+                                    for (asset_id, asset) in &output.assets {
+                                        match asset {
+                                            Some(_) => {
+                                                let res = self.asset_refcounts.insert(*asset_id, 1);
+                                                assert!(res.is_none());
+                                            }
+                                            None => {
+                                                *self.asset_refcounts.get_mut(asset_id).unwrap() +=
+                                                    1;
+                                            }
                                         }
                                     }
+                                    for reference in &output.load_dependencies {
+                                        self.request_tx
+                                            .send(LoaderRequest::Load(reference.primary, None))
+                                            .unwrap();
+                                    }
+                                    self.request_await.push(LoaderPending {
+                                        primary_id,
+                                        load_id,
+                                        assets: output.assets,
+                                        references: output.load_dependencies,
+                                    });
+                                    None
                                 }
-                                for reference in &output.load_dependencies {
-                                    self.request_tx
-                                        .send(LoaderRequest::Load(reference.primary, None))
-                                        .unwrap();
-                                }
-                                self.request_await.push(LoaderPending {
-                                    primary_id,
-                                    load_id,
-                                    assets: output.assets,
-                                    references: output.load_dependencies,
-                                });
-                                None
+                                Err(e) => Some((primary_id, load_id, e)),
                             }
-                            Err(e) => Some((primary_id, load_id, e)),
                         }
+                        None => Some((
+                            primary_id,
+                            load_id,
+                            io::Error::new(io::ErrorKind::NotFound, "CompiledAssetStore Miss"),
+                        )),
                     }
-                    Err(e) => Some((primary_id, load_id, e)),
+                } else {
+                    Some((
+                        primary_id,
+                        load_id,
+                        io::Error::new(io::ErrorKind::NotFound, "Manifest Miss"),
+                    ))
                 }
             }
             LoaderRequest::Unload(primary_id, user_requested, err) => {
@@ -401,10 +428,15 @@ impl AssetLoaderIO {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, io::Write, sync::mpsc, time::Duration};
+    use std::{sync::mpsc, time::Duration};
+
+    use legion_asset_store::compiled_asset_store::{
+        CompiledAssetStore, InMemoryCompiledAssetStore,
+    };
 
     use crate::{
-        asset_loader::{asset_path, LoaderRequest, LoaderResult},
+        asset_loader::{LoaderRequest, LoaderResult},
+        manifest::Manifest,
         test_asset::{self},
         AssetId,
     };
@@ -413,7 +445,8 @@ mod tests {
 
     #[test]
     fn load_no_dependencies() {
-        let work_dir = tempfile::tempdir().unwrap();
+        let mut asset_store = Box::new(InMemoryCompiledAssetStore::default());
+        let mut manifest = Manifest::default();
 
         let binary_assetfile = [
             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,
@@ -421,17 +454,21 @@ mod tests {
         ];
 
         let asset_id = {
-            let asset_id = AssetId::new(test_asset::TYPE_ID, 1);
-            let asset_path = work_dir.path().join(asset_path(asset_id));
-            let mut file = fs::File::create(asset_path).expect("new file");
-            file.write_all(&binary_assetfile).expect("successful write");
-            asset_id
+            let id = AssetId::new(test_asset::TYPE_ID, 1);
+            let checksum = asset_store.store(&binary_assetfile).unwrap();
+            manifest.insert(id, checksum, binary_assetfile.len());
+            id
         };
 
         let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
         let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
-        let mut loader =
-            AssetLoaderIO::new(work_dir.path(), request_tx.clone(), request_rx, result_tx);
+        let mut loader = AssetLoaderIO::new(
+            asset_store,
+            manifest,
+            request_tx.clone(),
+            request_rx,
+            result_tx,
+        );
         loader.register_creator(
             test_asset::TYPE_ID,
             Box::new(test_asset::TestAssetCreator {}),
@@ -482,7 +519,8 @@ mod tests {
 
     #[test]
     fn load_failed_dependency() {
-        let work_dir = tempfile::tempdir().unwrap();
+        let mut asset_store = Box::new(InMemoryCompiledAssetStore::default());
+        let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [
             1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0,
@@ -492,18 +530,20 @@ mod tests {
         let parent_id = AssetId::new(test_asset::TYPE_ID, 2);
 
         let asset_id = {
-            let parent_path = work_dir.path().join(asset_path(parent_id));
-
-            let mut file = fs::File::create(parent_path).expect("new file");
-            file.write_all(&binary_parent_assetfile)
-                .expect("successful write");
+            let checksum = asset_store.store(&binary_parent_assetfile).unwrap();
+            manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
             parent_id
         };
 
         let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
         let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
-        let mut loader =
-            AssetLoaderIO::new(work_dir.path(), request_tx.clone(), request_rx, result_tx);
+        let mut loader = AssetLoaderIO::new(
+            asset_store,
+            manifest,
+            request_tx.clone(),
+            request_rx,
+            result_tx,
+        );
         loader.register_creator(
             test_asset::TYPE_ID,
             Box::new(test_asset::TestAssetCreator {}),
@@ -532,7 +572,8 @@ mod tests {
 
     #[test]
     fn load_with_dependency() {
-        let work_dir = tempfile::tempdir().unwrap();
+        let mut asset_store = Box::new(InMemoryCompiledAssetStore::default());
+        let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [
             1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0,
@@ -548,24 +589,26 @@ mod tests {
         let child_id = AssetId::new(test_asset::TYPE_ID, 1);
 
         let asset_id = {
-            let parent_path = work_dir.path().join(asset_path(parent_id));
-
-            let mut file = fs::File::create(parent_path).expect("new file");
-            file.write_all(&binary_parent_assetfile)
-                .expect("successful write");
-
-            let child_path = work_dir.path().join(asset_path(child_id));
-            let mut file = fs::File::create(child_path).expect("new file");
-            file.write_all(&binary_child_assetfile)
-                .expect("successful write");
+            manifest.insert(
+                child_id,
+                asset_store.store(&binary_child_assetfile).unwrap(),
+                binary_child_assetfile.len(),
+            );
+            let checksum = asset_store.store(&binary_parent_assetfile).unwrap();
+            manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
 
             parent_id
         };
 
         let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
         let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
-        let mut loader =
-            AssetLoaderIO::new(work_dir.path(), request_tx.clone(), request_rx, result_tx);
+        let mut loader = AssetLoaderIO::new(
+            asset_store,
+            manifest,
+            request_tx.clone(),
+            request_rx,
+            result_tx,
+        );
         loader.register_creator(
             test_asset::TYPE_ID,
             Box::new(test_asset::TestAssetCreator {}),

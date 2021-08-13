@@ -54,7 +54,7 @@ impl fmt::Display for CompiledAssetStoreAddr {
 
 /// A content-addressable storage interface for dealing with compiled assets.
 // todo: change Option to Error
-pub trait CompiledAssetStore {
+pub trait CompiledAssetStore: Send {
     /// Write asset to the backing storage.
     fn write(&mut self, id: i128, data: &[u8]) -> Option<()>;
 

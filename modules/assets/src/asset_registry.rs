@@ -1,14 +1,16 @@
 use std::{
     collections::HashMap,
     io,
-    path::PathBuf,
     sync::{mpsc, Arc},
     thread::{self, JoinHandle},
     time::Duration,
 };
 
+use legion_asset_store::compiled_asset_store::CompiledAssetStore;
+
 use crate::{
     asset_loader::{create_loader, AssetLoader, LoaderResult},
+    manifest::Manifest,
     Asset, AssetCreator, AssetId, AssetType, HandleId, HandleUntyped, RefOp,
 };
 
@@ -36,8 +38,12 @@ impl AssetRegistryOptions {
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
-    pub fn create(self, work_dir: impl Into<PathBuf>) -> AssetRegistry {
-        let (loader, mut io) = create_loader(work_dir.into());
+    pub fn create(
+        self,
+        asset_store: Box<dyn CompiledAssetStore>,
+        manifest: Manifest,
+    ) -> AssetRegistry {
+        let (loader, mut io) = create_loader(asset_store, manifest);
 
         for (kind, creator) in self.creators {
             io.register_creator(kind, creator);
@@ -84,11 +90,9 @@ impl Drop for AssetRegistry {
 }
 
 impl AssetRegistry {
-    /// Creates new [`AssetRegistry`] for which assets are stored in `work_dir` directory.
-    ///
-    /// todo: use `CompiledAssetStore` instead of `PathBuf`
-    pub fn new(work_dir: PathBuf) -> Self {
-        let (loader, io) = create_loader(work_dir);
+    /// Creates new [`AssetRegistry`] for which assets are stored in `asset_store` directory.
+    pub fn new(asset_store: Box<dyn CompiledAssetStore>, manifest: Manifest) -> Self {
+        let (loader, io) = create_loader(asset_store, manifest);
 
         let load_thread = thread::spawn(move || {
             let mut loader = io;
