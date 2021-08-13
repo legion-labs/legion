@@ -11,7 +11,7 @@ use legion_asset_store::compiled_asset_store::CompiledAssetStore;
 use crate::{
     asset_loader::{create_loader, AssetLoader, LoaderResult},
     manifest::Manifest,
-    Asset, AssetCreator, AssetId, AssetType, HandleId, HandleUntyped, RefOp,
+    Asset, AssetCreator, AssetId, AssetType, Handle, HandleId, HandleUntyped, RefOp,
 };
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
@@ -111,10 +111,19 @@ impl AssetRegistry {
     }
 
     /// Requests an asset load.
-    pub fn load(&mut self, id: AssetId) -> HandleUntyped {
+    ///
+    /// The asset will be unloaded after all instances of [`HandleUntyped`] and
+    /// [`Handle`] that refer to that asset go out of scope.
+    pub fn load_untyped(&mut self, id: AssetId) -> HandleUntyped {
         let handle = self.create_handle(id);
         self.loader.load(id, handle.id);
         handle
+    }
+
+    /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T`.
+    pub fn load<T: Asset>(&mut self, id: AssetId) -> Handle<T> {
+        let handle = self.load_untyped(id);
+        Handle::<T>::from(handle)
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
@@ -236,7 +245,7 @@ mod tests {
 
         let internal_id;
         {
-            let a = reg.load(asset_id);
+            let a = reg.load_untyped(asset_id);
             internal_id = a.id;
             assert_eq!(reg.ref_counts.get(&a.id).unwrap().1, 1);
 
@@ -259,12 +268,32 @@ mod tests {
     fn typed_ref() {
         let (asset_id, mut reg) = setup_test();
 
-        let untyped = reg.load(asset_id);
-        assert_eq!(reg.ref_counts.get(&untyped.id).unwrap().1, 1);
+        let internal_id;
+        {
+            let untyped = reg.load_untyped(asset_id);
+            assert_eq!(reg.ref_counts.get(&untyped.id).unwrap().1, 1);
 
-        let typed: Handle<test_asset::TestAsset> = untyped.into();
-        reg.update();
-        assert_eq!(reg.ref_counts.get(&typed.id).unwrap().1, 1);
+            internal_id = untyped.id;
+
+            let typed: Handle<test_asset::TestAsset> = untyped.into();
+            reg.update();
+            assert_eq!(reg.ref_counts.get(&typed.id).unwrap().1, 1);
+
+            let mut test_timeout = Duration::from_millis(500);
+            while test_timeout > Duration::ZERO && typed.get(&reg).is_none() {
+                let sleep_time = Duration::from_millis(10);
+                thread::sleep(sleep_time);
+                test_timeout -= sleep_time;
+                reg.update();
+            }
+            assert!(typed.get(&reg).is_some());
+        }
+
+        reg.update(); // to drop the refcount to zero.
+
+        assert!(!reg.ref_counts.contains_key(&internal_id));
+
+        let typed = reg.load::<test_asset::TestAsset>(asset_id);
 
         let mut test_timeout = Duration::from_millis(500);
         while test_timeout > Duration::ZERO && typed.get(&reg).is_none() {
