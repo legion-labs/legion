@@ -3,11 +3,11 @@ use crate::metadata::ResourceHash;
 use crate::types::ResourceId;
 use crate::types::ResourceType;
 use crate::ResourceHandle;
-use crate::ResourcePathRef;
+use crate::ResourceNameRef;
 use crate::ResourceRegistry;
 use crate::RESOURCE_EXT;
 
-use crate::ResourcePath;
+use crate::ResourceName;
 
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
@@ -150,7 +150,7 @@ impl Project {
     }
 
     /// Finds resource by its name and returns its `ResourceId`.
-    pub fn find_resource(&self, name: &ResourcePathRef) -> Result<ResourceId, Error> {
+    pub fn find_resource(&self, name: &ResourceNameRef) -> Result<ResourceId, Error> {
         let all_resources = [&self.db.remote_resources, &self.db.local_resources];
         let mut references = all_resources.iter().flat_map(|v| v.iter());
 
@@ -173,7 +173,7 @@ impl Project {
     }
 
     /// Checks if a resource exists.
-    pub fn exists(&self, name: &ResourcePathRef) -> bool {
+    pub fn exists(&self, name: &ResourceNameRef) -> bool {
         self.find_resource(name).is_ok()
     }
 
@@ -186,7 +186,7 @@ impl Project {
     /// Use [`Self::commit()`] to push changes to remote.
     pub fn add_resource(
         &mut self,
-        name: ResourcePath,
+        name: ResourceName,
         kind: ResourceType,
         handle: &ResourceHandle,
         registry: &mut ResourceRegistry,
@@ -389,11 +389,11 @@ impl Project {
     pub fn rename_resource(
         &mut self,
         id: ResourceId,
-        new_name: &ResourcePathRef,
-    ) -> Result<ResourcePath, Error> {
+        new_name: &ResourceNameRef,
+    ) -> Result<ResourceName, Error> {
         self.checkout(id)?;
 
-        let mut old_name = ResourcePath::new();
+        let mut old_name = ResourceName::new();
         self.update_meta(id, |data| {
             old_name = data.rename(new_name.to_owned());
         });
@@ -429,7 +429,7 @@ mod tests {
     use tempfile::TempDir;
 
     use crate::{
-        project::Project, Resource, ResourceId, ResourcePath, ResourceProcessor, ResourceRegistry,
+        project::Project, Resource, ResourceId, ResourceName, ResourceProcessor, ResourceRegistry,
         ResourceType,
     };
 
@@ -547,7 +547,7 @@ mod tests {
 
         let texture = project
             .add_resource(
-                ResourcePath::from("albedo.texture"),
+                ResourceName::from("albedo.texture"),
                 RESOURCE_TEXTURE,
                 &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
                 &mut resources,
@@ -562,7 +562,7 @@ mod tests {
             .push(texture);
         let material = project
             .add_resource(
-                ResourcePath::from("body.material"),
+                ResourceName::from("body.material"),
                 RESOURCE_MATERIAL,
                 &material,
                 &mut resources,
@@ -577,7 +577,7 @@ mod tests {
             .push(material);
         let geometry = project
             .add_resource(
-                ResourcePath::from("hero.geometry"),
+                ResourceName::from("hero.geometry"),
                 RESOURCE_GEOMETRY,
                 &geometry,
                 &mut resources,
@@ -586,7 +586,7 @@ mod tests {
 
         let skeleton = project
             .add_resource(
-                ResourcePath::from("hero.skeleton"),
+                ResourceName::from("hero.skeleton"),
                 RESOURCE_SKELETON,
                 &resources.new_resource(RESOURCE_SKELETON).unwrap(),
                 &mut resources,
@@ -600,7 +600,7 @@ mod tests {
             .build_deps = vec![geometry, skeleton];
         let _actor = project
             .add_resource(
-                ResourcePath::from("hero.actor"),
+                ResourceName::from("hero.actor"),
                 RESOURCE_ACTOR,
                 &actor,
                 &mut resources,
@@ -613,7 +613,7 @@ mod tests {
     fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
         let texture = project
             .add_resource(
-                ResourcePath::from("sky.texture"),
+                ResourceName::from("sky.texture"),
                 RESOURCE_TEXTURE,
                 &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
                 resources,
@@ -629,7 +629,7 @@ mod tests {
 
         let _material = project
             .add_resource(
-                ResourcePath::from("sky.material"),
+                ResourceName::from("sky.material"),
                 RESOURCE_MATERIAL,
                 &material,
                 resources,
@@ -687,7 +687,7 @@ mod tests {
         let (project, _) = create_actor(project_dir.path());
 
         let top_level_resource = project
-            .find_resource(&ResourcePath::from("hero.actor"))
+            .find_resource(&ResourceName::from("hero.actor"))
             .unwrap();
 
         let (_, dependencies) = project.resource_info(top_level_resource).unwrap();
@@ -697,7 +697,7 @@ mod tests {
 
     #[test]
     fn rename() {
-        let rename_assert = |proj: &mut Project, old_name: ResourcePath, new_name: ResourcePath| {
+        let rename_assert = |proj: &mut Project, old_name: ResourceName, new_name: ResourceName| {
             let skeleton_id = proj.find_resource(&old_name);
             assert!(skeleton_id.is_ok());
             let skeleton_id = skeleton_id.unwrap();
@@ -718,13 +718,13 @@ mod tests {
 
         rename_assert(
             &mut project,
-            ResourcePath::from("hero.skeleton"),
-            ResourcePath::from("boss.skeleton"),
+            ResourceName::from("hero.skeleton"),
+            ResourceName::from("boss.skeleton"),
         );
         rename_assert(
             &mut project,
-            ResourcePath::from("sky.material"),
-            ResourcePath::from("clouds.material"),
+            ResourceName::from("sky.material"),
+            ResourceName::from("clouds.material"),
         );
     }
 }

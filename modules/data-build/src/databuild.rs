@@ -16,7 +16,7 @@ use legion_data_compiler::compiler_cmd::{
 use legion_data_compiler::CompilerHash;
 use legion_data_compiler::{CompiledAsset, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
-use legion_resources::{Project, ResourceId, ResourcePathRef, ResourceType};
+use legion_resources::{Project, ResourceId, ResourceNameRef, ResourceType};
 
 use crate::asset_file_writer::write_assetfile;
 use crate::buildindex::{BuildIndex, CompiledAssetInfo, CompiledAssetReference};
@@ -202,7 +202,7 @@ impl DataBuild {
     /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
     pub fn compile_named(
         &mut self,
-        root_resource_name: &ResourcePathRef,
+        root_resource_name: &ResourceNameRef,
         manifest_file: &Path,
         target: Target,
         platform: Platform,
@@ -299,9 +299,10 @@ impl DataBuild {
             resource_types
                 .into_iter()
                 .map(|kind| {
+                    let transform = (kind, kind);
                     compilers
                         .iter()
-                        .find(|info| info.1.transforms.contains(&(kind, kind)))
+                        .find(|info| info.1.transforms.contains(&transform))
                         .map_or(Err(Error::CompilerNotFound), |e| {
                             let res = compiler_hash_cmd
                                 .execute(&e.0.path)
@@ -506,7 +507,7 @@ mod tests {
         CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
     };
     use legion_data_compiler::{Locale, Manifest, Platform, Target};
-    use legion_resources::{test_resource, Project, ResourceId, ResourcePath, ResourceRegistry};
+    use legion_resources::{test_resource, Project, ResourceId, ResourceName, ResourceRegistry};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
@@ -564,7 +565,7 @@ mod tests {
 
             let texture = project
                 .add_resource(
-                    ResourcePath::from("child"),
+                    ResourceName::from("child"),
                     test_resource::TYPE_ID,
                     &resources.new_resource(test_resource::TYPE_ID).unwrap(),
                     &mut resources,
@@ -581,7 +582,7 @@ mod tests {
             };
             let _material = project
                 .add_resource(
-                    ResourcePath::from("parent"),
+                    ResourceName::from("parent"),
                     test_resource::TYPE_ID,
                     &resource,
                     &mut resources,
@@ -606,7 +607,7 @@ mod tests {
             let mut project = Project::open(project_dir).unwrap();
             project
                 .add_resource(
-                    ResourcePath::from("orphan"),
+                    ResourceName::from("orphan"),
                     test_resource::TYPE_ID,
                     &resources.new_resource(test_resource::TYPE_ID).unwrap(),
                     &mut resources,
@@ -644,7 +645,7 @@ mod tests {
 
             let child_id = project
                 .add_resource(
-                    ResourcePath::from("child"),
+                    ResourceName::from("child"),
                     test_resource::TYPE_ID,
                     &resources.new_resource(test_resource::TYPE_ID).unwrap(),
                     &mut resources,
@@ -658,7 +659,7 @@ mod tests {
                 .build_deps
                 .push(child_id);
 
-            let parent_path = ResourcePath::from("parent");
+            let parent_path = ResourceName::from("parent");
 
             let _parent_id = project
                 .add_resource(
@@ -732,7 +733,7 @@ mod tests {
             let resource_handle = resources.new_resource(test_resource::TYPE_ID).unwrap();
             let resource_id = project
                 .add_resource(
-                    ResourcePath::from("resource"),
+                    ResourceName::from("resource"),
                     test_resource::TYPE_ID,
                     &resource_handle,
                     &mut resources,
@@ -811,7 +812,7 @@ mod tests {
     }
 
     fn create_resource(
-        name: ResourcePath,
+        name: ResourceName,
         deps: &[ResourceId],
         project: &mut Project,
         resources: &mut ResourceRegistry,
@@ -860,22 +861,22 @@ mod tests {
 
         let mut resources = setup_registry();
 
-        let res_c = create_resource(ResourcePath::from("C"), &[], &mut project, &mut resources);
-        let res_e = create_resource(ResourcePath::from("E"), &[], &mut project, &mut resources);
+        let res_c = create_resource(ResourceName::from("C"), &[], &mut project, &mut resources);
+        let res_e = create_resource(ResourceName::from("E"), &[], &mut project, &mut resources);
         let res_d = create_resource(
-            ResourcePath::from("D"),
+            ResourceName::from("D"),
             &[res_e],
             &mut project,
             &mut resources,
         );
         let res_b = create_resource(
-            ResourcePath::from("B"),
+            ResourceName::from("B"),
             &[res_c, res_e],
             &mut project,
             &mut resources,
         );
         let res_a = create_resource(
-            ResourcePath::from("A"),
+            ResourceName::from("A"),
             &[res_b, res_d],
             &mut project,
             &mut resources,
@@ -991,7 +992,7 @@ mod tests {
             child.content = String::from("test child content");
             let child_id = project
                 .add_resource(
-                    ResourcePath::from("child"),
+                    ResourceName::from("child"),
                     test_resource::TYPE_ID,
                     &child_handle,
                     &mut resources,
@@ -1008,7 +1009,7 @@ mod tests {
             parent.build_deps = vec![child_id];
             project
                 .add_resource(
-                    ResourcePath::from("parent"),
+                    ResourceName::from("parent"),
                     test_resource::TYPE_ID,
                     &parent_handle,
                     &mut resources,

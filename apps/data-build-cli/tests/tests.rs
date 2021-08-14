@@ -1,7 +1,7 @@
 use std::fs;
 
 use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
-use legion_data_build::{DataBuildOptions, ResourcePath};
+use legion_data_build::{DataBuildOptions, ResourceName};
 use legion_resources::{test_resource, Project, ResourceRegistry};
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
@@ -34,7 +34,7 @@ fn data_build() {
 
             project
                 .add_resource(
-                    ResourcePath::from(resource_name),
+                    ResourceName::from(resource_name),
                     test_resource::TYPE_ID,
                     &resource,
                     &mut resources,

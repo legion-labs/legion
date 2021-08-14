@@ -10,10 +10,10 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 /// Name identifier of a resource.
-pub type ResourcePath = PathBuf;
+pub type ResourceName = PathBuf;
 
-/// Temporarily a reference to `ResourcePath` to silence lints.
-pub type ResourcePathRef = Path;
+/// Temporarily a reference to `ResourceName` to silence lints.
+pub type ResourceNameRef = Path;
 
 /// Extension of a resource file.
 pub const RESOURCE_EXT: &str = "blob";

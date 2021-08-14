@@ -247,5 +247,5 @@ mod options;
 use std::io;
 
 pub use databuild::*;
-pub use legion_resources::ResourcePath;
+pub use legion_resources::ResourceName;
 pub use options::*;

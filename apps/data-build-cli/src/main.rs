@@ -2,7 +2,7 @@ use std::{path::PathBuf, str::FromStr};
 
 use clap::{AppSettings, Arg, SubCommand};
 use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
-use legion_data_build::{DataBuildOptions, ResourcePath};
+use legion_data_build::{DataBuildOptions, ResourceName};
 use legion_data_compiler::{Locale, Platform, Target};
 
 const ARG_NAME_RESOURCE: &str = "resource";
@@ -78,7 +78,7 @@ fn main() -> Result<(), String> {
         let target = cmd_args.value_of(ARG_NAME_TARGET).unwrap();
         let platform = cmd_args.value_of(ARG_NAME_PLATFORM).unwrap();
         let locale = cmd_args.value_of(ARG_NAME_LOCALE).unwrap();
-        let source_name = ResourcePath::from_str(source).map_err(|_e| "Invalid ResourcePath")?;
+        let source_name = ResourceName::from_str(source).map_err(|_e| "Invalid ResourcePath")?;
         let manifest_file = PathBuf::from_str(manifest).map_err(|_e| "Invalid Manifest name")?;
         let target = Target::from_str(target).map_err(|_e| "Invalid Target")?;
         let platform = Platform::from_str(platform).map_err(|_e| "Invalid Platform")?;
