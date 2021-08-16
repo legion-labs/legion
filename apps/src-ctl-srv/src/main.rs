@@ -70,7 +70,7 @@
 )]
 // END - Legion Labs standard lints v0.2
 // crate-specific exceptions:
-#![allow(clippy::semicolon_if_nothing_returned)]
+#![allow()]
 
 use http::response::Response;
 use hyper::body::Body;
@@ -327,6 +327,7 @@ fn get_sql_uri() -> String {
     format!("mysql://{}:{}@{}", db_user, db_pass, db_host)
 }
 
+#[allow(clippy::semicolon_if_nothing_returned)]
 #[tokio::main]
 async fn main() {
     let _s3_uri = std::env::var("LEGION_SRC_CTL_BLOB_STORAGE_URI")
@@ -342,5 +343,6 @@ async fn main() {
     let addr: std::net::SocketAddr = server_addr_str
         .parse()
         .expect("Error parsing server address");
+
     warp::serve(command_filter).run(addr).await;
 }
