@@ -191,39 +191,51 @@ async fn find_commit_ancestors(
     Ok(ancestors)
 }
 
-pub async fn merge_branch_command(name: &str) -> Result<(), String> {
+pub fn merge_branch_command(runtime: &tokio::runtime::Runtime, name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
-    let mut workspace_transaction = workspace_connection.begin().await?;
+    let mut workspace_transaction = runtime.block_on(workspace_connection.begin())?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let connection = connect_to_server(&workspace_spec).await?;
+    let connection = runtime.block_on(connect_to_server(&workspace_spec))?;
     let query = connection.query();
-    let src_branch = query.read_branch(name).await?;
+    let src_branch = runtime.block_on(query.read_branch(name))?;
     let (current_branch_name, current_commit) =
-        read_current_branch(&mut workspace_transaction).await?;
-    let mut destination_branch = query.read_branch(&current_branch_name).await?;
+        runtime.block_on(read_current_branch(&mut workspace_transaction))?;
+    let old_commit = runtime.block_on(query.read_commit(&current_commit))?;
+    let mut destination_branch = runtime.block_on(query.read_branch(&current_branch_name))?;
 
-    let merge_source_ancestors = find_commit_ancestors(&connection, &src_branch.head).await?;
-    let src_commit_history = find_branch_commits(&connection, &src_branch).await?;
+    let merge_source_ancestors =
+        runtime.block_on(find_commit_ancestors(&connection, &src_branch.head))?;
+    let src_commit_history = runtime.block_on(find_branch_commits(&connection, &src_branch))?;
     if merge_source_ancestors.contains(&destination_branch.head) {
         //fast forward case
         destination_branch.head = src_branch.head;
-        update_current_branch(
+        runtime.block_on(update_current_branch(
             &mut workspace_transaction,
             &destination_branch.name,
             &destination_branch.head,
-        )
-        .await?;
-        query.update_branch(&destination_branch).await?;
-        if let Err(e) = workspace_transaction.commit().await {
+        ))?;
+        runtime.block_on(query.update_branch(&destination_branch))?;
+        println!("Fast-forward merge: branch updated, synching");
+        println!("current commit: {}", current_commit);
+        let new_commit = runtime.block_on(query.read_commit(&destination_branch.head))?;
+
+        if let Err(e) = runtime.block_on(workspace_transaction.commit()) {
             return Err(format!(
                 "Error in transaction commit for merge_branch_command: {}",
                 e
             ));
         }
-        println!("Fast-forward merge: branch updated, synching");
-        return sync_command().await;
+
+        return sync_tree_diff(
+            runtime,
+            &connection,
+            &old_commit.root_hash,
+            &new_commit.root_hash,
+            Path::new(""),
+            &workspace_root,
+        );
     }
 
     if current_commit != destination_branch.head {
@@ -233,7 +245,8 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
     }
 
     let mut errors: Vec<String> = Vec::new();
-    let destination_commit_history = find_branch_commits(&connection, &destination_branch).await?;
+    let destination_commit_history =
+        runtime.block_on(find_branch_commits(&connection, &destination_branch))?;
     if let Some(common_ancestor_id) =
         find_latest_common_ancestor(&destination_commit_history, &merge_source_ancestors)
     {
@@ -270,31 +283,28 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
                 );
                 errors.push(format!("{} conflicts, please resolve before commit", path));
                 let full_path = workspace_root.join(path);
-                if let Err(e) = edit_file(
+                if let Err(e) = runtime.block_on(edit_file(
                     &workspace_root,
                     &mut workspace_transaction,
                     connection.query(),
                     &full_path,
-                )
-                .await
-                {
+                )) {
                     errors.push(format!("Error editing {}: {}", full_path.display(), e));
                 }
-                if let Err(e) =
-                    save_resolve_pending(&mut workspace_transaction, &resolve_pending).await
-                {
+                if let Err(e) = runtime.block_on(save_resolve_pending(
+                    &mut workspace_transaction,
+                    &resolve_pending,
+                )) {
                     errors.push(format!("Error saving pending resolve {}: {}", path, e));
                 }
             } else {
-                match change_file_to(
+                match runtime.block_on(change_file_to(
                     &workspace_root,
                     &mut workspace_transaction,
                     &connection,
                     Path::new(path),
                     hash,
-                )
-                .await
-                {
+                )) {
                     Ok(message) => {
                         println!("{}", message);
                     }
@@ -312,12 +322,15 @@ pub async fn merge_branch_command(name: &str) -> Result<(), String> {
 
     //record pending merge to record all parents in upcoming commit
     let pending = PendingBranchMerge::new(&src_branch);
-    if let Err(e) = save_pending_branch_merge(&mut workspace_transaction, &pending).await {
+    if let Err(e) = runtime.block_on(save_pending_branch_merge(
+        &mut workspace_transaction,
+        &pending,
+    )) {
         errors.push(e);
     }
 
     //commit transaction even when errors occur, pending resolves need to be saved
-    if let Err(e) = workspace_transaction.commit().await {
+    if let Err(e) = runtime.block_on(workspace_transaction.commit()) {
         return Err(format!(
             "Error in transaction commit for merge_branch_command: {}",
             e

@@ -348,11 +348,13 @@ fn test_branch() {
     lsc_cli_sys(&work1, &["edit", "file3.txt"]);
     append_text_to_file(&work1.join("file3.txt"), "from task branch\n");
     lsc_cli_sys(&work1, &["commit", r#"-m"work on task""#]);
+    lsc_cli_sys(&work1, &["log"]);
 
     lsc_cli_sys(&work1, &["switch-branch", "main"]);
     lsc_cli_sys(&work1, &["merge-branch", "task"]); //conflict-free merge
     lsc_cli_sys(&work1, &["local-changes"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"merge task branch""#]);
+    lsc_cli_sys(&work1, &["log"]);
 
     //now that task has been merge into main, doing the merge the other way should be a ff merge
     //but for ff detection to work, the previous commit has to have the two parents

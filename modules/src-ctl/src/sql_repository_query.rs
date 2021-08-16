@@ -570,14 +570,6 @@ async fn sqlite_read_branch_tr(
     tr: &mut sqlx::Transaction<'_, sqlx::Any>,
     name: &str,
 ) -> Result<Branch, String> {
-    //mysql version:
-    // match sqlx::query(
-    //     "SELECT head, parent, lock_domain_id
-    //          FROM branches
-    //          WHERE name = ?
-    //          FOR UPDATE;",
-    // )
-    //sqlite version:
     match sqlx::query(
         "SELECT head, parent, lock_domain_id 
              FROM branches

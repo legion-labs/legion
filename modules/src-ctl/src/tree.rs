@@ -153,7 +153,7 @@ pub async fn fetch_tree_subdir(
 }
 
 pub async fn find_file_hash_in_tree(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     relative_path: &Path,
     root_tree: &Tree,
 ) -> Result<Option<String>, String> {
@@ -273,7 +273,7 @@ pub async fn update_tree_from_changes(
 
 pub fn remove_dir_rec(
     runtime: &tokio::runtime::Runtime, //todo: remove recursion, make async
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     local_path: &Path,
     tree_hash: &str,
 ) -> Result<String, String> {

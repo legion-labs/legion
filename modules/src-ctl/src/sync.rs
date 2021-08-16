@@ -7,7 +7,7 @@ use std::fs;
 use std::path::Path;
 
 async fn find_commit_range(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     branch_name: &str,
     start_commit_id: &str,
     end_commit_id: &str,
@@ -18,8 +18,8 @@ async fn find_commit_range(
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
             return Err(format!(
-                "commits {} and {} not found in current branch",
-                &start_commit_id, &end_commit_id
+                "commits {} and {} not found in branch {}",
+                start_commit_id, end_commit_id, branch_name
             ));
         }
         current_commit = query.read_commit(&current_commit.parents[0]).await?;
@@ -33,8 +33,8 @@ async fn find_commit_range(
     while current_commit.id != start_commit_id && current_commit.id != end_commit_id {
         if current_commit.parents.is_empty() {
             return Err(format!(
-                "commit {} or {} not found in current branch",
-                &start_commit_id, &end_commit_id
+                "commit {} or {} not found in branch {}",
+                &start_commit_id, &end_commit_id, branch_name
             ));
         }
         current_commit = query.read_commit(&current_commit.parents[0]).await?;
@@ -50,7 +50,7 @@ pub fn compute_file_hash(p: &Path) -> Result<String, String> {
 }
 
 pub async fn sync_file(
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     local_path: &Path,
     hash_to_sync: &str,
 ) -> Result<String, String> {
@@ -139,41 +139,36 @@ pub async fn sync_file(
     }
 }
 
-pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
-    let current_dir = std::env::current_dir().unwrap();
-    let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
-    let mut workspace_transaction = workspace_connection.begin().await?;
-    let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let mut connection = connect_to_server(&workspace_spec).await?;
-    let (current_branch_name, current_commit) =
-        read_current_branch(&mut workspace_transaction).await?;
-    let commits = find_commit_range(
-        &mut connection,
-        &current_branch_name,
-        &current_commit,
-        commit_id,
-    )
-    .await?;
+pub async fn sync_workspace(
+    workspace_root: &Path,
+    workspace_transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+    connection: &RepositoryConnection,
+    branch_name: &str,
+    current_commit: &str,
+    destination_commit: &str,
+) -> Result<(), String> {
+    let commits =
+        find_commit_range(connection, branch_name, current_commit, destination_commit).await?;
     let mut to_download: BTreeMap<String, String> = BTreeMap::new();
-    if commits[0].id == commit_id {
+    let (_last, commits_to_process) = commits.split_last().unwrap();
+    if commits[0].id == destination_commit {
         //sync forwards
-        for commit in commits {
-            for change in commit.changes {
+        for commit in commits_to_process {
+            for change in &commit.changes {
                 to_download
                     .entry(change.relative_path.clone())
-                    .or_insert(change.hash);
+                    .or_insert_with(|| change.hash.clone());
             }
         }
     } else {
         //sync backwards is slower and could be optimized if we had before&after hashes in changes
         let ref_commit = &commits.last().unwrap();
-        assert!(ref_commit.id == commit_id);
+        assert!(ref_commit.id == destination_commit);
         let root_tree = connection.query().read_tree(&ref_commit.root_hash).await?;
 
         let mut to_update: BTreeSet<String> = BTreeSet::new();
-        for commit in commits {
-            for change in commit.changes {
+        for commit in commits_to_process {
+            for change in &commit.changes {
                 to_update.insert(change.relative_path.clone());
             }
         }
@@ -181,7 +176,7 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
             to_download.insert(
                 path.clone(),
                 //todo: find_file_hash_in_tree should flag NotFound as a distinct case and we should fail on error
-                match find_file_hash_in_tree(&mut connection, Path::new(&path), &root_tree).await {
+                match find_file_hash_in_tree(connection, Path::new(&path), &root_tree).await {
                     Ok(Some(hash)) => hash,
                     Ok(None) => String::new(),
                     Err(e) => {
@@ -190,10 +185,10 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
                 },
             );
         }
-    };
+    }
 
     let mut local_changes_map = HashMap::new();
-    match read_local_changes(&mut workspace_transaction).await {
+    match read_local_changes(workspace_transaction).await {
         Ok(changes_vec) => {
             for change in changes_vec {
                 local_changes_map.insert(change.relative_path.clone(), change.clone());
@@ -213,12 +208,10 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
                 //todo: validate how we want to deal with merge pending with syncing backwards
                 let merge_pending = ResolvePending::new(
                     relative_path.clone(),
-                    current_commit.clone(),
-                    String::from(commit_id),
+                    String::from(current_commit),
+                    String::from(destination_commit),
                 );
-                if let Err(e) =
-                    save_resolve_pending(&mut workspace_transaction, &merge_pending).await
-                {
+                if let Err(e) = save_resolve_pending(workspace_transaction, &merge_pending).await {
                     errors.push(format!(
                         "Error saving pending merge {}: {}",
                         relative_path, e
@@ -228,7 +221,7 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
             None => {
                 //no local change, ok to sync
                 let local_path = workspace_root.join(relative_path);
-                match sync_file(&mut connection, &local_path, &latest_hash).await {
+                match sync_file(connection, &local_path, &latest_hash).await {
                     Ok(message) => {
                         println!("{}", message);
                     }
@@ -239,20 +232,53 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
             }
         }
     }
+    if !errors.is_empty() {
+        let message = errors.join("\n");
+        return Err(message);
+    }
+    Ok(())
+}
+
+pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
+    let current_dir = std::env::current_dir().unwrap();
+    let workspace_root = find_workspace_root(&current_dir)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_transaction = workspace_connection.begin().await?;
+    let workspace_spec = read_workspace_spec(&workspace_root)?;
+    let connection = connect_to_server(&workspace_spec).await?;
+    let (current_branch_name, current_commit) =
+        read_current_branch(&mut workspace_transaction).await?;
+
+    let mut errors: Vec<String> = Vec::new();
+    if let Err(e) = sync_workspace(
+        &workspace_root,
+        &mut workspace_transaction,
+        &connection,
+        &current_branch_name,
+        &current_commit,
+        commit_id,
+    )
+    .await
+    {
+        errors.push(e);
+    }
+
     if let Err(e) =
         update_current_branch(&mut workspace_transaction, &current_branch_name, commit_id).await
     {
         errors.push(e);
     }
-    if !errors.is_empty() {
-        let message = errors.join("\n");
-        return Err(message);
-    }
+
     if let Err(e) = workspace_transaction.commit().await {
-        return Err(format!(
+        errors.push(format!(
             "Error in transaction commit for sync_to_command: {}",
             e
         ));
+    }
+
+    if !errors.is_empty() {
+        let message = errors.join("\n");
+        return Err(message);
     }
     Ok(())
 }

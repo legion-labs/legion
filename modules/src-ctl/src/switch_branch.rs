@@ -3,9 +3,9 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-fn sync_tree_diff(
+pub fn sync_tree_diff(
     runtime: &tokio::runtime::Runtime,
-    connection: &mut RepositoryConnection,
+    connection: &RepositoryConnection,
     current_tree_hash: &str,
     new_tree_hash: &str,
     relative_path_tree: &Path,
@@ -114,28 +114,27 @@ fn sync_tree_diff(
 }
 
 // not yet async because of sync_tree_diff
-pub fn switch_branch_command(name: &str) -> Result<(), String> {
+pub fn switch_branch_command(runtime: &tokio::runtime::Runtime, name: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
-    let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut connection = tokio_runtime.block_on(connect_to_server(&workspace_spec))?;
+    let connection = runtime.block_on(connect_to_server(&workspace_spec))?;
     let query = connection.query();
     let (_current_branch_name, current_commit) =
-        tokio_runtime.block_on(read_current_branch(workspace_connection.sql()))?;
-    let old_commit = tokio_runtime.block_on(query.read_commit(&current_commit))?;
+        runtime.block_on(read_current_branch(workspace_connection.sql()))?;
+    let old_commit = runtime.block_on(query.read_commit(&current_commit))?;
     let query = connection.query();
-    let new_branch = tokio_runtime.block_on(query.read_branch(name))?;
-    let new_commit = tokio_runtime.block_on(query.read_commit(&new_branch.head))?;
-    tokio_runtime.block_on(update_current_branch(
+    let new_branch = runtime.block_on(query.read_branch(name))?;
+    let new_commit = runtime.block_on(query.read_commit(&new_branch.head))?;
+    runtime.block_on(update_current_branch(
         workspace_connection.sql(),
         &new_branch.name,
         &new_branch.head,
     ))?;
     sync_tree_diff(
-        &tokio_runtime,
-        &mut connection,
+        runtime,
+        &connection,
         &old_commit.root_hash,
         &new_commit.root_hash,
         Path::new(""),

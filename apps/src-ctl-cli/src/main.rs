@@ -379,11 +379,11 @@ fn main_impl() -> Result<(), String> {
         }
         ("merge-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
-            tokio_runtime.block_on(merge_branch_command(name))
+            merge_branch_command(&tokio_runtime, name)
         }
         ("switch-branch", Some(command_match)) => {
             let name = command_match.value_of("name").unwrap();
-            switch_branch_command(name)
+            switch_branch_command(&tokio_runtime, name)
         }
         ("detach-branch", Some(_command_match)) => tokio_runtime.block_on(detach_branch_command()),
         ("attach-branch", Some(command_match)) => {
