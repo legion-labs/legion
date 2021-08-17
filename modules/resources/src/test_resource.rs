@@ -4,7 +4,7 @@
 
 use std::str::FromStr;
 
-use crate::{Resource,  ResourcePathId, ResourceProcessor, ResourceType};
+use crate::{Resource, ResourcePathId, ResourceProcessor, ResourceType};
 
 /// Type id of test resource. Used until we have proper resource types.
 pub const TYPE_ID: ResourceType = ResourceType::new(b"test_resource");

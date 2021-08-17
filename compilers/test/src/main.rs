@@ -61,7 +61,11 @@ fn compile(
     let guid = primary_asset_id(&source, test_asset::TYPE_ID);
 
     // todo: source_resource is wrong here
-    let resource = compiler_load_resource(source.source_resource_deprecated(), resource_dir, &mut resources)?;
+    let resource = compiler_load_resource(
+        source.source_resource_deprecated(),
+        resource_dir,
+        &mut resources,
+    )?;
     let resource = resource
         .get::<test_resource::TestResource>(&resources)
         .unwrap();
