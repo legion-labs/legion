@@ -29,6 +29,33 @@ pub const RESOURCE_EXT: &str = "blob";
 ///
 /// `ResourcePathId` identifies a concrete resource with a `ResourceId` - that also defines `ResourceType` of the resource.
 /// It also defines an ordered list of `ResourceType`s this source resource must be transformed into during the data build process.
+///
+/// # Example
+///
+/// The following example illustrates creation of *source resource* containing geometry and
+/// definition of a path representing a *derived resource* of a runtime geometry data after LOD-generation process.
+///
+/// ```no_run
+/// # use legion_resources::{ResourceRegistry, ResourceType};
+/// # use legion_resources::ResourcePathId;
+/// # use legion_resources::ResourceName;
+/// # use legion_resources::test_resource;
+/// # use legion_resources::Project;
+/// # use std::path::PathBuf;
+/// # let mut resources = ResourceRegistry::default();
+/// # let mut project = Project::create_new(&PathBuf::new()).unwrap();
+/// # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
+/// # pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
+/// # pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
+/// // create a resource and add it to the project
+/// let resource = resources.new_resource(SOURCE_GEOMETRY).unwrap();
+/// let id = project.add_resource(ResourceName::from("new resource"),
+///                              SOURCE_GEOMETRY, &resource, &mut resources).unwrap();
+///
+/// // create a resource path
+/// let source_path = ResourcePathId::from(id);
+/// let target = source_path.transform(LOD_GEOMETRY).transform(BINARY_GEOMETRY);
+/// ```
 #[derive(Hash, PartialEq, Eq, Debug, Serialize, Deserialize, Clone, PartialOrd, Ord)]
 pub struct ResourcePathId {
     source: ResourceId,
