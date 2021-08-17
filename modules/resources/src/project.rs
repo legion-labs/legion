@@ -4,6 +4,7 @@ use crate::types::ResourceId;
 use crate::types::ResourceType;
 use crate::ResourceHandle;
 use crate::ResourceNameRef;
+use crate::ResourcePathId;
 use crate::ResourceRegistry;
 use crate::RESOURCE_EXT;
 
@@ -283,7 +284,7 @@ impl Project {
         };
 
         metadata.content_checksum = content_checksum;
-        metadata.build_deps = build_dependencies;
+        metadata.dependencies = build_dependencies;
 
         meta_file.set_len(0).unwrap();
         meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
@@ -310,10 +311,13 @@ impl Project {
     }
 
     /// Returns information about a given resource from its `.meta` file.
-    pub fn resource_info(&self, id: ResourceId) -> Result<(ResourceHash, Vec<ResourceId>), Error> {
+    pub fn resource_info(
+        &self,
+        id: ResourceId,
+    ) -> Result<(ResourceHash, Vec<ResourcePathId>), Error> {
         let meta = self.read_meta(id)?;
         let resource_hash = meta.resource_hash();
-        let dependencies = meta.build_deps;
+        let dependencies = meta.dependencies;
 
         Ok((resource_hash, dependencies))
     }
@@ -424,13 +428,13 @@ impl Drop for Project {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::File, path::Path};
+    use std::{fs::File, path::Path, str::FromStr};
 
     use tempfile::TempDir;
 
     use crate::{
-        project::Project, Resource, ResourceId, ResourceName, ResourceProcessor, ResourceRegistry,
-        ResourceType,
+        project::Project, Resource, ResourceName, ResourcePathId, ResourceProcessor,
+        ResourceRegistry, ResourceType,
     };
 
     use super::ResourceDb;
@@ -453,7 +457,7 @@ mod tests {
 
     struct NullResource {
         content: isize,
-        build_deps: Vec<ResourceId>,
+        dependencies: Vec<ResourcePathId>,
     }
     impl Resource for NullResource {
         fn as_any(&self) -> &dyn std::any::Any {
@@ -469,16 +473,16 @@ mod tests {
         fn new_resource(&mut self) -> Box<dyn Resource> {
             Box::new(NullResource {
                 content: 0,
-                build_deps: vec![],
+                dependencies: vec![],
             })
         }
 
-        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourceId> {
+        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
             resource
                 .as_any()
                 .downcast_ref::<NullResource>()
                 .unwrap()
-                .build_deps
+                .dependencies
                 .clone()
         }
 
@@ -494,14 +498,18 @@ mod tests {
             nbytes += bytes.len();
             writer.write_all(&bytes)?;
 
-            let bytes = resource.build_deps.len().to_ne_bytes();
+            let bytes = resource.dependencies.len().to_ne_bytes();
             nbytes += bytes.len();
             writer.write_all(&bytes)?;
 
-            for dep in &resource.build_deps {
-                let bytes = dep.get_internal().to_ne_bytes();
-                nbytes += bytes.len();
+            for dep in &resource.dependencies {
+                let str = format!("{}", dep);
+                let str = str.as_bytes();
+                let bytes = str.len().to_ne_bytes();
                 writer.write_all(&bytes)?;
+                nbytes += bytes.len();
+                writer.write_all(str)?;
+                nbytes += str.len();
             }
 
             Ok(nbytes)
@@ -521,14 +529,16 @@ mod tests {
             reader.read_exact(&mut buf[..])?;
             res.content = isize::from_ne_bytes(buf);
 
-            let mut buf = res.build_deps.len().to_ne_bytes();
+            let mut buf = res.dependencies.len().to_ne_bytes();
             reader.read_exact(&mut buf[..])?;
 
             for _ in 0..usize::from_ne_bytes(buf) {
-                let mut buf = 0u64.to_ne_bytes();
-                reader.read_exact(&mut buf[..])?;
-                res.build_deps
-                    .push(ResourceId::from_raw(u64::from_ne_bytes(buf)).unwrap());
+                let mut nbytes = 0u64.to_ne_bytes();
+                reader.read_exact(&mut nbytes[..])?;
+                let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
+                reader.read_exact(&mut buf)?;
+                res.dependencies
+                    .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
             }
 
             Ok(resource)
@@ -558,8 +568,8 @@ mod tests {
         material
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
-            .build_deps
-            .push(texture);
+            .dependencies
+            .push(ResourcePathId::from(texture));
         let material = project
             .add_resource(
                 ResourceName::from("body.material"),
@@ -573,8 +583,8 @@ mod tests {
         geometry
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
-            .build_deps
-            .push(material);
+            .dependencies
+            .push(ResourcePathId::from(material));
         let geometry = project
             .add_resource(
                 ResourceName::from("hero.geometry"),
@@ -597,7 +607,10 @@ mod tests {
         actor
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
-            .build_deps = vec![geometry, skeleton];
+            .dependencies = vec![
+            ResourcePathId::from(geometry),
+            ResourcePathId::from(skeleton),
+        ];
         let _actor = project
             .add_resource(
                 ResourceName::from("hero.actor"),
@@ -624,8 +637,8 @@ mod tests {
         material
             .get_mut::<NullResource>(resources)
             .unwrap()
-            .build_deps
-            .push(texture);
+            .dependencies
+            .push(ResourcePathId::from(texture));
 
         let _material = project
             .add_resource(

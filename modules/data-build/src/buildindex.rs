@@ -11,19 +11,20 @@ use std::{
 };
 
 use crate::Error;
-use legion_resources::{Project, ResourceHash, ResourceId};
+use legion_resources::{Project, ResourceHash, ResourcePathId};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ResourceInfo {
-    id: ResourceId,
-    build_deps: Vec<ResourceId>,
-    resource_hash: ResourceHash, // hash of this asset
+    id: ResourcePathId,
+    dependencies: Vec<ResourcePathId>,
+    // hash of the content of this resource, None for derived resources.
+    resource_hash: Option<ResourceHash>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledAssetInfo {
     pub(crate) context_hash: u64,
-    pub(crate) source_guid: ResourceId,
+    pub(crate) source_guid: ResourcePathId,
     pub(crate) source_hash: u64,
     pub(crate) compiled_guid: AssetId,
     pub(crate) compiled_checksum: i128,
@@ -33,7 +34,7 @@ pub(crate) struct CompiledAssetInfo {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledAssetReference {
     pub(crate) context_hash: u64,
-    pub(crate) source_guid: ResourceId,
+    pub(crate) source_guid: ResourcePathId,
     pub(crate) source_hash: u64,
     pub(crate) compiled_guid: AssetId,
     pub(crate) compiled_reference: AssetId,
@@ -133,43 +134,61 @@ impl BuildIndex {
     /// Returns ordered list of dependencies starting from leaf-dependencies ending with `resource_id` - the root.
     pub(crate) fn evaluation_order(
         &self,
-        resource_id: ResourceId,
-    ) -> Result<Vec<ResourceId>, Error> {
-        let mut dep_graph = Graph::<ResourceId, (), Directed>::new();
-
-        let mut indices = HashMap::<ResourceId, petgraph::prelude::NodeIndex>::new();
+        derived: ResourcePathId,
+    ) -> Result<Vec<ResourcePathId>, Error> {
+        let mut dep_graph = Graph::<ResourcePathId, (), Directed>::new();
+        let mut indices = HashMap::<ResourcePathId, petgraph::prelude::NodeIndex>::new();
         let mut processed = vec![];
-        let mut queue = VecDeque::<ResourceId>::new();
+        let mut queue = VecDeque::<ResourcePathId>::new();
 
-        queue.push_back(resource_id);
+        // we process the whole path as derived resources might not exist in
+        // the build index as those are never refered to as dependencies.
+        let mut resource_path = Some(derived);
+        while let Some(path) = resource_path {
+            let direct_dependency = path.direct_dependency();
+            queue.push_back(path);
+            resource_path = direct_dependency;
+        }
 
-        let mut get_or_create_index = |res, dep_graph: &mut Graph<ResourceId, ()>| {
+        let mut get_or_create_index = |res, dep_graph: &mut Graph<ResourcePathId, ()>| {
             if let Some(own_index) = indices.get(&res) {
                 *own_index
             } else {
-                let own_index = dep_graph.add_node(res);
+                let own_index = dep_graph.add_node(res.clone());
                 indices.insert(res, own_index);
                 own_index
             }
         };
 
         while let Some(res) = queue.pop_front() {
-            processed.push(res);
+            processed.push(res.clone());
 
-            let own_index = get_or_create_index(res, &mut dep_graph);
+            let own_index = get_or_create_index(res.clone(), &mut dep_graph);
 
-            let deps = self.find_dependencies(res).ok_or(Error::IntegrityFailure)?;
+            //
+            // todo: this does not include transitive dependencies now.
+            // this means that all the derived resources only depend on their
+            // direct dependency
+            //
+            if let Some(deps) = self.find_dependencies(&res) {
+                assert!(
+                    res.direct_dependency().is_none()
+                        || deps.contains(&res.direct_dependency().unwrap())
+                );
+                for d in &deps {
+                    let other_index = get_or_create_index(d.clone(), &mut dep_graph);
+                    dep_graph.add_edge(own_index, other_index, ());
+                }
 
-            for d in &deps {
-                let other_index = get_or_create_index(*d, &mut dep_graph);
+                let unprocessed: VecDeque<ResourcePathId> = deps
+                    .into_iter()
+                    .filter(|r| !processed.contains(r))
+                    .collect();
+                queue.extend(unprocessed);
+            } else if let Some(direct_dependency) = res.direct_dependency() {
+                let other_index = get_or_create_index(direct_dependency, &mut dep_graph);
                 dep_graph.add_edge(own_index, other_index, ());
             }
-
-            let unprocessed: VecDeque<ResourceId> = deps
-                .into_iter()
-                .filter(|r| !processed.contains(r))
-                .collect();
-            queue.extend(unprocessed);
         }
 
         let topological_order =
@@ -177,8 +196,9 @@ impl BuildIndex {
 
         let evaluation_order = topological_order
             .iter()
-            .map(|i| *dep_graph.node_weight(*i).unwrap())
+            .map(|i| *dep_graph.node_weight(*i).as_ref().unwrap())
             .rev()
+            .cloned()
             .collect();
         Ok(evaluation_order)
     }
@@ -187,32 +207,40 @@ impl BuildIndex {
     /// * `id` resource's content.
     /// * content of all `id`'s dependencies.
     /// todo: at one point dependency filtering here will be useful.
-    pub(crate) fn compute_source_hash(&self, id: ResourceId) -> Result<ResourceHash, Error> {
+    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> Result<ResourceHash, Error> {
         let sorted_unique_resource_hashes: Vec<ResourceHash> = {
             let mut unique_resources = HashMap::new();
             let mut queue: VecDeque<_> = VecDeque::new();
+
+            // path-based dedepndencies are indexed therefore it's enough to process `id`
             queue.push_back(id);
 
             while let Some(resource) = queue.pop_front() {
-                let resource_info = self
-                    .content
-                    .resources
-                    .iter()
-                    .find(|r| r.id == resource)
-                    .ok_or(Error::NotFound)?;
+                if let Some(resource_info) =
+                    self.content.resources.iter().find(|r| r.id == resource)
+                {
+                    unique_resources.insert(resource, resource_info.resource_hash);
 
-                unique_resources.insert(resource, resource_info.resource_hash);
+                    let newly_discovered_deps: Vec<_> = resource_info
+                        .dependencies
+                        .iter()
+                        .filter(|r| !unique_resources.contains_key(*r))
+                        .cloned()
+                        .collect();
 
-                let newly_discovered_deps: Vec<_> = resource_info
-                    .build_deps
-                    .iter()
-                    .filter(|r| !unique_resources.contains_key(*r))
-                    .collect();
-
-                queue.extend(newly_discovered_deps);
+                    queue.extend(newly_discovered_deps);
+                } else {
+                    // follow the path otherwise.
+                    if let Some(dep) = resource.direct_dependency() {
+                        if !unique_resources.contains_key(&dep) {
+                            queue.push_back(dep);
+                        }
+                    }
+                }
             }
 
-            let mut hashes: Vec<ResourceHash> = unique_resources.into_iter().map(|t| t.1).collect();
+            let mut hashes: Vec<ResourceHash> =
+                unique_resources.into_iter().filter_map(|t| t.1).collect();
             hashes.sort_unstable();
             hashes
         };
@@ -226,15 +254,15 @@ impl BuildIndex {
 
     pub(crate) fn update_resource(
         &mut self,
-        id: ResourceId,
-        resource_hash: ResourceHash,
-        mut deps: Vec<ResourceId>,
+        id: ResourcePathId,
+        resource_hash: Option<ResourceHash>,
+        mut deps: Vec<ResourcePathId>,
     ) -> bool {
         if let Some(existing_res) = self.content.resources.iter_mut().find(|r| r.id == id) {
             deps.sort();
 
             let matching = existing_res
-                .build_deps
+                .dependencies
                 .iter()
                 .zip(deps.iter())
                 .filter(|&(a, b)| a == b)
@@ -242,14 +270,14 @@ impl BuildIndex {
             if deps.len() == matching && existing_res.resource_hash == resource_hash {
                 false
             } else {
-                existing_res.build_deps = deps;
+                existing_res.dependencies = deps;
                 existing_res.resource_hash = resource_hash;
                 true
             }
         } else {
             let info = ResourceInfo {
                 id,
-                build_deps: deps,
+                dependencies: deps,
                 resource_hash,
             };
             self.content.resources.push(info);
@@ -257,27 +285,39 @@ impl BuildIndex {
         }
     }
 
-    pub(crate) fn find_dependencies(&self, id: ResourceId) -> Option<Vec<ResourceId>> {
+    // all path-based depdendencies are indexed (included in `ResourceInfo`).
+    pub(crate) fn find_dependencies(&self, id: &ResourcePathId) -> Option<Vec<ResourcePathId>> {
         self.content
             .resources
             .iter()
-            .find(|r| r.id == id)
-            .map(|resource| resource.build_deps.clone())
+            .find(|r| &r.id == id)
+            .map(|resource| resource.dependencies.clone())
     }
 
     pub(crate) fn insert_compiled(
         &mut self,
         context_hash: u64,
-        source_guid: ResourceId,
+        source_guid: &ResourcePathId,
         source_hash: u64,
         compiled_assets: &[CompiledAsset],
         compiled_references: &[(AssetId, AssetId)],
     ) {
+        // For now we assume there is not concurrent compilation
+        // so there is no way to compile the same resources twice.
+        // Once we support it we will have to make sure the result of the compilation
+        // is exactly the same for all compiled_assets.
+        assert_eq!(
+            self.find_compiled(source_guid, context_hash, source_hash)
+                .0
+                .len(),
+            0
+        );
+
         let mut compiled_assets_desc: Vec<_> = compiled_assets
             .iter()
             .map(|asset| CompiledAssetInfo {
                 context_hash,
-                source_guid,
+                source_guid: source_guid.clone(),
                 source_hash,
                 compiled_guid: asset.guid,
                 compiled_checksum: asset.checksum,
@@ -290,24 +330,13 @@ impl BuildIndex {
             .map(
                 |&(compiled_guid, compiled_reference)| CompiledAssetReference {
                     context_hash,
-                    source_guid,
+                    source_guid: source_guid.clone(),
                     source_hash,
                     compiled_guid,
                     compiled_reference,
                 },
             )
             .collect();
-
-        // For now we assume there is not concurrent compilation
-        // so there is no way to compile the same resources twice.
-        // Once we support it we will have to make sure the result of the compilation
-        // is exactly the same for all compiled_assets.
-        assert_eq!(
-            self.find_compiled(source_guid, context_hash, source_hash)
-                .0
-                .len(),
-            0
-        );
 
         self.content
             .compiled_assets
@@ -320,7 +349,7 @@ impl BuildIndex {
 
     pub(crate) fn find_compiled(
         &self,
-        source_guid: ResourceId,
+        source_guid: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
     ) -> (Vec<CompiledAssetInfo>, Vec<CompiledAssetReference>) {
@@ -329,7 +358,7 @@ impl BuildIndex {
             .compiled_assets
             .iter()
             .filter(|asset| {
-                asset.source_guid == source_guid
+                &asset.source_guid == source_guid
                     && asset.context_hash == context_hash
                     && asset.source_hash == source_hash
             })
@@ -341,7 +370,7 @@ impl BuildIndex {
             .compiled_asset_references
             .iter()
             .filter(|reference| {
-                reference.source_guid == source_guid
+                &reference.source_guid == source_guid
                     && reference.context_hash == context_hash
                     && reference.source_hash == source_hash
             })
@@ -362,7 +391,7 @@ impl BuildIndex {
 mod tests {
 
     use super::BuildIndex;
-    use legion_resources::{Project, ResourceId, ResourceType};
+    use legion_resources::{test_resource, Project, ResourceId, ResourcePathId};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
@@ -387,32 +416,42 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let project = Project::create_new(work_dir.path()).expect("failed to create project");
 
-        const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
-
         // dummy ids - the actual project structure is irrelevant in this test.
-        let child = ResourceId::generate_new(RESOURCE_ACTOR);
-        let parent = ResourceId::generate_new(RESOURCE_ACTOR);
+        let source_id = ResourceId::generate_new(test_resource::TYPE_ID);
+        let source_resource = ResourcePathId::from(source_id);
+        let intermediate_resource = source_resource.transform(test_resource::TYPE_ID);
+        let output_resources = intermediate_resource.transform(test_resource::TYPE_ID);
 
         let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
         let projectindex_path = project.indexfile_path();
 
         let mut db = BuildIndex::create_new(&buildindex_path, &projectindex_path, "0.0.1").unwrap();
 
-        let parent_deps = vec![child];
+        // all dependencies need to be explicitly specified
+        let intermediate_deps = vec![source_resource.clone()];
+        let output_deps = vec![intermediate_resource.clone()];
 
-        let resource_hash = 0; // this is irrelevant to the test
+        let resource_hash = Some(0); // this is irrelevant to the test
 
-        db.update_resource(parent, resource_hash, parent_deps.clone());
+        db.update_resource(
+            intermediate_resource.clone(),
+            resource_hash,
+            intermediate_deps.clone(),
+        );
         assert_eq!(db.content.resources.len(), 1);
-        assert_eq!(db.content.resources[0].build_deps.len(), 1);
+        assert_eq!(db.content.resources[0].dependencies.len(), 1);
 
-        db.update_resource(child, resource_hash, vec![]);
+        db.update_resource(source_resource, resource_hash, vec![]);
         assert_eq!(db.content.resources.len(), 2);
-        assert_eq!(db.content.resources[1].build_deps.len(), 0);
+        assert_eq!(db.content.resources[1].dependencies.len(), 0);
 
-        db.update_resource(parent, resource_hash, parent_deps);
+        db.update_resource(intermediate_resource, resource_hash, intermediate_deps);
         assert_eq!(db.content.resources.len(), 2);
-        assert_eq!(db.content.resources[0].build_deps.len(), 1);
+        assert_eq!(db.content.resources[0].dependencies.len(), 1);
+
+        db.update_resource(output_resources, resource_hash, output_deps);
+        assert_eq!(db.content.resources.len(), 3);
+        assert_eq!(db.content.resources[2].dependencies.len(), 1);
 
         db.flush().unwrap();
     }

@@ -34,12 +34,12 @@
 //! # use legion_data_compiler::compiler_cmd::CompilerCompileCmd;
 //! # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 //! # use legion_data_compiler::{Locale, Platform, Target};
-//! # use legion_resources::ResourceId;
+//! # use legion_resources::ResourcePathId;
 //! # use std::path::PathBuf;
-//! fn compile_resource(id: ResourceId, dependencies: &[ResourceId]) {
+//! fn compile_resource(derived: ResourcePathId, dependencies: &[ResourcePathId]) {
 //!     let asset_store = CompiledAssetStoreAddr::from("./asset_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
-//!     let mut command = CompilerCompileCmd::new(id, dependencies, &asset_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
+//!     let mut command = CompilerCompileCmd::new(&derived, dependencies, &asset_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
 //!     let output = command.execute("my_compiler.exe", "./").expect("compiled assets");
 //!}
 //! ```
@@ -62,7 +62,7 @@ use crate::{
 
 use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 use legion_assets::AssetId;
-use legion_resources::{ResourceId, ResourceType};
+use legion_resources::{ResourcePathId, ResourceType};
 
 use serde::{Deserialize, Serialize};
 
@@ -166,8 +166,15 @@ impl CommandBuilder {
         if output.status.success() {
             Ok(output)
         } else {
-            println!("{}", String::from_utf8(output.stdout).expect("valid utf8"));
-            println!("{}", String::from_utf8(output.stderr).expect("valid utf8"));
+            println!("Process Exited With Code: {}", output.status);
+            println!(
+                "Stdout: '{}'",
+                String::from_utf8(output.stdout).expect("valid utf8")
+            );
+            println!(
+                "Stdrr: '{}'",
+                String::from_utf8(output.stderr).expect("valid utf8")
+            );
             Err(io::Error::new(io::ErrorKind::Other, "Status Error"))
         }
     }
@@ -306,8 +313,8 @@ pub struct CompilerCompileCmd(CommandBuilder);
 impl CompilerCompileCmd {
     /// Creates a new command.
     pub fn new(
-        source: ResourceId,
-        deps: &[ResourceId],
+        source: &ResourcePathId,
+        deps: &[ResourcePathId],
         cas_addr: &CompiledAssetStoreAddr,
         resource_dir: &Path,
         target: Target,

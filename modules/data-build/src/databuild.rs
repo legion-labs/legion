@@ -16,7 +16,7 @@ use legion_data_compiler::compiler_cmd::{
 use legion_data_compiler::CompilerHash;
 use legion_data_compiler::{CompiledAsset, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
-use legion_resources::{Project, ResourceId, ResourceNameRef, ResourceType};
+use legion_resources::{Project, ResourceNameRef, ResourcePathId, ResourceType};
 
 use crate::asset_file_writer::write_assetfile;
 use crate::buildindex::{BuildIndex, CompiledAssetInfo, CompiledAssetReference};
@@ -42,7 +42,7 @@ struct CompileOutput {
 /// yield the same compilation outcome.
 // todo(kstasik): `context_hash` should also include localization_id
 fn compute_context_hash(
-    resource_type: ResourceType,
+    resource_type: (ResourceType, ResourceType),
     compiler_hash: CompilerHash,
     databuild_version: &'static str,
 ) -> u64 {
@@ -66,7 +66,7 @@ fn compute_context_hash(
 /// # use legion_data_build::{DataBuild, DataBuildOptions};
 /// # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 /// # use legion_data_compiler::{Locale, Platform, Target};
-/// # use legion_resources::ResourcePath;
+/// # use legion_resources::ResourceName;
 /// let mut build = DataBuildOptions::new("./build.index")
 ///         .asset_store(&CompiledAssetStoreAddr::from("./asset_store/"))
 ///         .compiler_dir("./compilers/")
@@ -75,8 +75,8 @@ fn compute_context_hash(
 /// build.source_pull().expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();
 ///
-/// let manifest = build.compile_named(
-///                         &ResourcePath::from("child"),
+/// let manifest = build.compile_named_deprecated(
+///                         &ResourceName::from("child"),
 ///                         &manifest_file,
 ///                         Target::Game,
 ///                         Platform::Windows,
@@ -150,16 +150,6 @@ impl DataBuild {
         }
     }
 
-    fn map_resource_reference(
-        id: ResourceId,
-        references: &[ResourceId],
-    ) -> Result<ResourceId, Error> {
-        if let Some(p) = references.iter().find(|&e| *e == id) {
-            return Ok(*p);
-        }
-        Err(Error::IntegrityFailure)
-    }
-
     fn open_project(project_dir: &Path) -> Result<Project, Error> {
         Project::open(project_dir).map_err(|e| match e {
             legion_resources::Error::ParseError => Error::IntegrityFailure,
@@ -176,18 +166,27 @@ impl DataBuild {
 
         let all_resources = self.project.resource_list();
 
-        for res in &all_resources {
-            let (resource_hash, deps) = self.project.resource_info(*res)?;
-            let dependencies = deps
-                .into_iter()
-                .map(|d| Self::map_resource_reference(d, &all_resources))
-                .collect::<Result<Vec<ResourceId>, Error>>()?;
+        for resource_id in &all_resources {
+            let (resource_hash, resource_deps) = self.project.resource_info(*resource_id)?;
 
-            if self
-                .build_index
-                .update_resource(*res, resource_hash, dependencies)
-            {
+            if self.build_index.update_resource(
+                ResourcePathId::from(*resource_id),
+                Some(resource_hash),
+                resource_deps.clone(),
+            ) {
                 updated_resources += 1;
+            }
+
+            // add each derived dependency with it's direct dependency listed in deps.
+            for dependency in resource_deps {
+                if let Some(direct_dependency) = dependency.direct_dependency() {
+                    if self
+                        .build_index
+                        .update_resource(dependency, None, vec![direct_dependency])
+                    {
+                        updated_resources += 1;
+                    }
+                }
             }
         }
 
@@ -200,15 +199,16 @@ impl DataBuild {
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
     ///
     /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
-    pub fn compile_named(
+    // todo: this should be removed in favor of ResourceName + transformation? or just resoure path would be better? or keep both.
+    pub fn compile_named_deprecated(
         &mut self,
-        root_resource_name: &ResourceNameRef,
+        source_name: &ResourceNameRef,
         manifest_file: &Path,
         target: Target,
         platform: Platform,
         locale: &Locale,
     ) -> Result<Manifest, Error> {
-        let resource_id = self.project.find_resource(root_resource_name)?;
+        let source = self.project.find_resource(source_name)?;
 
         let (mut manifest, mut file) = {
             if let Ok(file) = OpenOptions::new()
@@ -232,11 +232,15 @@ impl DataBuild {
             }
         };
 
+        // this is temporary, until `compile_named_deprecated` function is removed.
+        let transform = source.resource_type();
+        let derived = ResourcePathId::from(source).transform(transform);
+
         let CompileOutput {
             asset_objects,
             references,
             statistics: _stats,
-        } = self.compile(resource_id, target, platform, locale)?;
+        } = self.compile_path(derived, target, platform, locale)?;
 
         let assets = self.link(&asset_objects, &references)?;
 
@@ -259,18 +263,122 @@ impl DataBuild {
         Ok(manifest)
     }
 
-    /// Compiles a resource by [`ResourceId`]. Returns a list of ids of `Asset Objects` compiled.
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
+    fn compile_node(
+        &mut self,
+        derived: &ResourcePathId,
+        context_hash: u64,
+        source_hash: u64,
+        dependencies: &[ResourcePathId],
+        target: Target,
+        platform: Platform,
+        locale: &Locale,
+        compiler_path: &Path,
+    ) -> Result<
+        (
+            Vec<CompiledAssetInfo>,
+            Vec<CompiledAssetReference>,
+            Vec<CompileStat>,
+        ),
+        Error,
+    > {
+        let (asset_objects, asset_object_references, stats): (
+            Vec<CompiledAssetInfo>,
+            Vec<CompiledAssetReference>,
+            _,
+        ) = {
+            let now = SystemTime::now();
+            let (cached_asset_objects, cached_references) =
+                self.build_index
+                    .find_compiled(derived, context_hash, source_hash);
+            if !cached_asset_objects.is_empty() {
+                let asset_count = cached_asset_objects.len();
+                (
+                    cached_asset_objects,
+                    cached_references,
+                    std::iter::repeat(CompileStat {
+                        time: now.elapsed().unwrap(),
+                        from_cache: true,
+                    })
+                    .take(asset_count)
+                    .collect::<Vec<_>>(),
+                )
+            } else {
+                let mut compile_cmd = CompilerCompileCmd::new(
+                    derived,
+                    dependencies,
+                    &self.asset_store.address(),
+                    &self.project.resource_dir(),
+                    target,
+                    platform,
+                    locale,
+                );
+
+                // todo: what is the cwd for if we provide resource_dir() ?
+                let CompilerCompileCmdOutput {
+                    compiled_assets,
+                    asset_references,
+                } = compile_cmd
+                    .execute(compiler_path, &self.project.resource_dir())
+                    .map_err(Error::CompilerError)?;
+
+                self.build_index.insert_compiled(
+                    context_hash,
+                    derived,
+                    source_hash,
+                    &compiled_assets,
+                    &asset_references,
+                );
+                let asset_count = compiled_assets.len();
+                (
+                    compiled_assets
+                        .iter()
+                        .map(|asset| CompiledAssetInfo {
+                            context_hash,
+                            source_guid: derived.clone(),
+                            source_hash,
+                            compiled_guid: asset.guid,
+                            compiled_checksum: asset.checksum,
+                            compiled_size: asset.size,
+                        })
+                        .collect(),
+                    asset_references
+                        .iter()
+                        .map(|reference| CompiledAssetReference {
+                            context_hash,
+                            source_guid: derived.clone(),
+                            source_hash,
+                            compiled_guid: reference.0,
+                            compiled_reference: reference.1,
+                        })
+                        .collect(),
+                    std::iter::repeat(CompileStat {
+                        time: now.elapsed().unwrap(),
+                        from_cache: false,
+                    })
+                    .take(asset_count)
+                    .collect::<Vec<_>>(),
+                )
+            }
+        };
+
+        Ok((asset_objects, asset_object_references, stats))
+    }
+
+    /// Compiles a resource by [`ResourcePathId`]. Returns a list of ids of `Asset Objects` compiled.
     /// The list might contain many versions of the same [`AssetId`] compiled for many contexts (platform, target, locale, etc).
     /// Those results are in [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`)
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
-    fn compile(
+    fn compile_path(
         &mut self,
-        resource_id: ResourceId,
+        derived: ResourcePathId,
         target: Target,
         platform: Platform,
         locale: &Locale,
     ) -> Result<CompileOutput, Error> {
-        let all_resources = self.build_index.evaluation_order(resource_id)?;
+        // todo: rename this: `compile order`?
+        let ordered_nodes = self.build_index.evaluation_order(derived)?;
 
         let compiler_details = {
             let compilers = list_compilers(&self.config.compiler_search_paths);
@@ -287,19 +395,27 @@ impl DataBuild {
                 })
                 .collect();
 
-            let resource_types = {
-                let mut types: Vec<_> = all_resources.iter().map(|e| e.resource_type()).collect();
-                types.sort();
-                types.dedup();
-                types
+            let unique_transforms = {
+                let mut transforms = vec![];
+                for node in &ordered_nodes {
+                    if node.is_source() {
+                        continue;
+                    }
+
+                    if let Some(transform) = node.last_transform() {
+                        transforms.push(transform);
+                    }
+                }
+                transforms.sort();
+                transforms.dedup();
+                transforms
             };
 
             let compiler_hash_cmd = CompilerHashCmd::new(target, platform, locale);
 
-            resource_types
+            unique_transforms
                 .into_iter()
-                .map(|kind| {
-                    let transform = (kind, kind);
+                .map(|transform| {
                     compilers
                         .iter()
                         .find(|info| info.1.transforms.contains(&transform))
@@ -308,7 +424,7 @@ impl DataBuild {
                                 .execute(&e.0.path)
                                 .map_err(Error::CompilerError)?;
 
-                            Ok((kind, (e.0.path.clone(), res.compiler_hash_list)))
+                            Ok((transform, (e.0.path.clone(), res.compiler_hash_list)))
                         })
                 })
                 .collect::<Result<HashMap<_, _>, _>>()?
@@ -317,112 +433,48 @@ impl DataBuild {
         let mut compiled_references = vec![];
         let mut compile_stats = vec![];
 
-        for resource_id in all_resources {
-            let dependencies = self
-                .build_index
-                .find_dependencies(resource_id)
-                .ok_or(Error::NotFound)?;
+        for output_id in ordered_nodes {
+            // compile non-source dependencies.
+            if let Some(input_id) = output_id.direct_dependency() {
+                let transform = output_id.last_transform().unwrap();
+                let dependencies = self
+                    .build_index
+                    .find_dependencies(&input_id)
+                    .ok_or(Error::NotFound)?;
 
-            let (compiler_path, compiler_hash_list) =
-                compiler_details.get(&resource_id.resource_type()).unwrap();
+                let (compiler_path, compiler_hash_list) = compiler_details.get(&transform).unwrap();
 
-            // todo(kstasik): support triggering compilation for multiple platforms
+                // todo(kstasik): support triggering compilation for multiple platforms
 
-            assert_eq!(compiler_hash_list.len(), 1); // todo: support more.
-            let compiler_hash = compiler_hash_list[0];
-            let context_hash =
-                compute_context_hash(resource_id.resource_type(), compiler_hash, Self::version());
+                assert_eq!(compiler_hash_list.len(), 1); // todo: support more.
+                let compiler_hash = compiler_hash_list[0];
 
-            //
-            // todo(kstasik): source_hash computation can include filtering of resource types in the future.
-            // the same resource can have a different source_hash depending on the compiler
-            // used as compilers can filter dependencies out.
-            //
-            let source_hash = self.build_index.compute_source_hash(resource_id)?;
+                // todo: not sure if transofrm is the right thing here. resource_path_id better? transform is already defined by the compiler_hash so it seems redundant.
+                let context_hash = compute_context_hash(transform, compiler_hash, Self::version());
 
-            let (asset_objects, asset_object_references, stats): (
-                Vec<CompiledAssetInfo>,
-                Vec<CompiledAssetReference>,
-                _,
-            ) = {
-                let now = SystemTime::now();
-                let (cached_asset_objects, cached_references) =
-                    self.build_index
-                        .find_compiled(resource_id, context_hash, source_hash);
-                if !cached_asset_objects.is_empty() {
-                    let asset_count = cached_asset_objects.len();
-                    (
-                        cached_asset_objects,
-                        cached_references,
-                        std::iter::repeat(CompileStat {
-                            time: now.elapsed().unwrap(),
-                            from_cache: true,
-                        })
-                        .take(asset_count)
-                        .collect::<Vec<_>>(),
-                    )
-                } else {
-                    let mut compile_cmd = CompilerCompileCmd::new(
-                        resource_id,
-                        &dependencies[..],
-                        &self.asset_store.address(),
-                        &self.project.resource_dir(),
-                        target,
-                        platform,
-                        locale,
-                    );
+                //
+                // todo(kstasik): source_hash computation can include filtering of resource types in the future.
+                // the same resource can have a different source_hash depending on the compiler
+                // used as compilers can filter dependencies out.
+                //
+                // todo: is `output_id` correct here? of `input_id` should be used? (seems correct)
+                let source_hash = self.build_index.compute_source_hash(output_id.clone())?;
 
-                    // todo: what is the cwd for if we provide resource_dir() ?
-                    let CompilerCompileCmdOutput {
-                        compiled_assets,
-                        asset_references,
-                    } = compile_cmd
-                        .execute(compiler_path, &self.project.resource_dir())
-                        .map_err(Error::CompilerError)?;
+                let (asset_objects, asset_object_references, stats) = self.compile_node(
+                    &output_id,
+                    context_hash,
+                    source_hash,
+                    &dependencies,
+                    target,
+                    platform,
+                    locale,
+                    compiler_path,
+                )?;
 
-                    self.build_index.insert_compiled(
-                        context_hash,
-                        resource_id,
-                        source_hash,
-                        &compiled_assets,
-                        &asset_references,
-                    );
-                    let asset_count = compiled_assets.len();
-                    (
-                        compiled_assets
-                            .iter()
-                            .map(|asset| CompiledAssetInfo {
-                                context_hash,
-                                source_guid: resource_id,
-                                source_hash,
-                                compiled_guid: asset.guid,
-                                compiled_checksum: asset.checksum,
-                                compiled_size: asset.size,
-                            })
-                            .collect(),
-                        asset_references
-                            .iter()
-                            .map(|reference| CompiledAssetReference {
-                                context_hash,
-                                source_guid: resource_id,
-                                source_hash,
-                                compiled_guid: reference.0,
-                                compiled_reference: reference.1,
-                            })
-                            .collect(),
-                        std::iter::repeat(CompileStat {
-                            time: now.elapsed().unwrap(),
-                            from_cache: false,
-                        })
-                        .take(asset_count)
-                        .collect::<Vec<_>>(),
-                    )
-                }
-            };
-
-            compiled_assets.extend(asset_objects);
-            compile_stats.extend(stats);
-            compiled_references.extend(asset_object_references);
+                compiled_assets.extend(asset_objects);
+                compile_stats.extend(stats);
+                compiled_references.extend(asset_object_references);
+            }
         }
         Ok(CompileOutput {
             asset_objects: compiled_assets,
@@ -507,7 +559,9 @@ mod tests {
         CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
     };
     use legion_data_compiler::{Locale, Manifest, Platform, Target};
-    use legion_resources::{test_resource, Project, ResourceId, ResourceName, ResourceRegistry};
+    use legion_resources::{
+        test_resource, Project, ResourceId, ResourceName, ResourcePathId, ResourceRegistry,
+    };
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
@@ -563,7 +617,7 @@ mod tests {
         {
             let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
-            let texture = project
+            let child_id = project
                 .add_resource(
                     ResourceName::from("child"),
                     test_resource::TYPE_ID,
@@ -572,19 +626,19 @@ mod tests {
                 )
                 .unwrap();
 
-            let resource = {
+            let parent_handle = {
                 let res = resources.new_resource(test_resource::TYPE_ID).unwrap();
                 res.get_mut::<test_resource::TestResource>(&mut resources)
                     .unwrap()
                     .build_deps
-                    .push(texture);
+                    .push(ResourcePathId::from(child_id));
                 res
             };
-            let _material = project
+            let _parent_id = project
                 .add_resource(
                     ResourceName::from("parent"),
                     test_resource::TYPE_ID,
-                    &resource,
+                    &parent_handle,
                     &mut resources,
                 )
                 .unwrap();
@@ -620,6 +674,48 @@ mod tests {
             let updated_count = build.source_pull().unwrap();
             assert_eq!(updated_count, 1);
         }
+
+        {
+            let mut project = Project::open(project_dir).unwrap();
+
+            let child_id = project
+                .add_resource(
+                    ResourceName::from("intermediate_child"),
+                    test_resource::TYPE_ID,
+                    &resources.new_resource(test_resource::TYPE_ID).unwrap(),
+                    &mut resources,
+                )
+                .unwrap();
+
+            let parent_handle = {
+                let intermediate_id =
+                    ResourcePathId::from(child_id).transform(test_resource::TYPE_ID);
+
+                let res = resources.new_resource(test_resource::TYPE_ID).unwrap();
+                res.get_mut::<test_resource::TestResource>(&mut resources)
+                    .unwrap()
+                    .build_deps
+                    .push(intermediate_id);
+                res
+            };
+            let _parent_id = project
+                .add_resource(
+                    ResourceName::from("intermetidate_parent"),
+                    test_resource::TYPE_ID,
+                    &parent_handle,
+                    &mut resources,
+                )
+                .unwrap();
+        }
+
+        {
+            let mut build = config.open().expect("to open index");
+            let updated_count = build.source_pull().unwrap();
+            assert_eq!(updated_count, 3);
+
+            let updated_count = build.source_pull().unwrap();
+            assert_eq!(updated_count, 0);
+        }
     }
 
     fn target_dir() -> PathBuf {
@@ -640,9 +736,10 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let project_dir = work_dir.path();
         let mut resources = setup_registry();
-        let parent_path = {
-            let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
+        // child_id <- test(child_id) <- parent_id = test(parent_id)
+        let parent_path = {
+            let mut project = Project::create_new(project_dir).expect("new project");
             let child_id = project
                 .add_resource(
                     ResourceName::from("child"),
@@ -657,7 +754,7 @@ mod tests {
                 .get_mut::<test_resource::TestResource>(&mut resources)
                 .unwrap()
                 .build_deps
-                .push(child_id);
+                .push(ResourcePathId::from(child_id).transform(test_resource::TYPE_ID));
 
             let parent_path = ResourceName::from("parent");
 
@@ -684,7 +781,7 @@ mod tests {
         let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
         let manifest = build
-            .compile_named(
+            .compile_named_deprecated(
                 &parent_path,
                 &output_manifest_file,
                 Target::Game,
@@ -693,7 +790,7 @@ mod tests {
             )
             .unwrap();
 
-        // both child and parent are separate assets.
+        // both test(child_id) and test(parent_id) are separate assets.
         assert_eq!(manifest.compiled_assets.len(), 2);
 
         let asset_store =
@@ -748,13 +845,15 @@ mod tests {
             .asset_store(&assetstore_path)
             .compiler_dir(target_dir());
 
+        let target = ResourcePathId::from(resource_id).transform(test_resource::TYPE_ID);
+
         let original_checksum = {
             let mut build = config.create(project_dir).expect("to create index");
             build.source_pull().expect("failed to pull from project");
 
             let compile_output = build
-                .compile(
-                    resource_id,
+                .compile_path(
+                    target.clone(),
                     Target::Game,
                     Platform::Windows,
                     &Locale::new("en"),
@@ -788,12 +887,7 @@ mod tests {
             let mut build = config.open().expect("to open index");
             build.source_pull().expect("failed to pull from project");
             let compile_output = build
-                .compile(
-                    resource_id,
-                    Target::Game,
-                    Platform::Windows,
-                    &Locale::new("en"),
-                )
+                .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
                 .unwrap();
 
             assert_eq!(compile_output.asset_objects.len(), 1);
@@ -813,7 +907,7 @@ mod tests {
 
     fn create_resource(
         name: ResourceName,
-        deps: &[ResourceId],
+        deps: &[ResourcePathId],
         project: &mut Project,
         resources: &mut ResourceRegistry,
     ) -> ResourceId {
@@ -865,19 +959,25 @@ mod tests {
         let res_e = create_resource(ResourceName::from("E"), &[], &mut project, &mut resources);
         let res_d = create_resource(
             ResourceName::from("D"),
-            &[res_e],
+            &[ResourcePathId::from(res_e).transform(test_resource::TYPE_ID)],
             &mut project,
             &mut resources,
         );
         let res_b = create_resource(
             ResourceName::from("B"),
-            &[res_c, res_e],
+            &[
+                ResourcePathId::from(res_c).transform(test_resource::TYPE_ID),
+                ResourcePathId::from(res_e).transform(test_resource::TYPE_ID),
+            ],
             &mut project,
             &mut resources,
         );
         let res_a = create_resource(
             ResourceName::from("A"),
-            &[res_b, res_d],
+            &[
+                ResourcePathId::from(res_b).transform(test_resource::TYPE_ID),
+                ResourcePathId::from(res_d).transform(test_resource::TYPE_ID),
+            ],
             &mut project,
             &mut resources,
         );
@@ -890,7 +990,8 @@ mod tests {
         let project_dir = work_dir.path();
 
         let resource_list = setup_project(project_dir);
-        let root = resource_list[0];
+
+        let root_resource = resource_list[0];
 
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
             .asset_store(&CompiledAssetStoreAddr::from(work_dir.path()))
@@ -899,11 +1000,28 @@ mod tests {
             .expect("new build index");
         build.source_pull().expect("successful pull");
 
+        //
+        // test(A) -> A -> test(B) -> B -> test(C) -> C
+        //            |               |
+        //            V               |
+        //          test(D)           |
+        //            |               |
+        //            V               V
+        //            D ---------> test(E) -> E
+        //
+        const NUM_NODES: usize = 10;
+        const NUM_OUTPUTS: usize = 5;
+        let target = ResourcePathId::from(root_resource).transform(test_resource::TYPE_ID);
+
         //  test of evaluation order computation.
         {
-            let order = build.build_index.evaluation_order(root).expect("no cycles");
-            assert_eq!(order.len(), 5);
-            assert_eq!(order[4], root);
+            let order = build
+                .build_index
+                .evaluation_order(target.clone())
+                .expect("no cycles");
+            assert_eq!(order.len(), NUM_NODES);
+            assert_eq!(order[NUM_NODES - 1], target);
+            assert_eq!(order[NUM_NODES - 2], ResourcePathId::from(root_resource));
         }
 
         // first run - none of the assets from cache.
@@ -913,11 +1031,16 @@ mod tests {
                 references,
                 statistics,
             } = build
-                .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
+                .compile_path(
+                    target.clone(),
+                    Target::Game,
+                    Platform::Windows,
+                    &Locale::new("en"),
+                )
                 .expect("successful compilation");
 
-            assert_eq!(asset_objects.len(), 5);
-            assert_eq!(references.len(), 5);
+            assert_eq!(asset_objects.len(), NUM_OUTPUTS);
+            assert_eq!(references.len(), NUM_OUTPUTS);
             assert!(statistics.iter().all(|s| !s.from_cache));
         }
 
@@ -928,17 +1051,22 @@ mod tests {
                 references,
                 statistics,
             } = build
-                .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
+                .compile_path(
+                    target.clone(),
+                    Target::Game,
+                    Platform::Windows,
+                    &Locale::new("en"),
+                )
                 .expect("successful compilation");
 
-            assert_eq!(asset_objects.len(), 5);
-            assert_eq!(references.len(), 5);
+            assert_eq!(asset_objects.len(), NUM_OUTPUTS);
+            assert_eq!(references.len(), NUM_OUTPUTS);
             assert!(statistics.iter().all(|s| s.from_cache));
         }
 
         // change root resource, one asset re-compiled.
         {
-            change_resource(root, project_dir);
+            change_resource(root_resource, project_dir);
             build.source_pull().expect("to pull changes");
 
             let CompileOutput {
@@ -946,11 +1074,16 @@ mod tests {
                 references,
                 statistics,
             } = build
-                .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
+                .compile_path(
+                    target.clone(),
+                    Target::Game,
+                    Platform::Windows,
+                    &Locale::new("en"),
+                )
                 .expect("successful compilation");
 
-            assert_eq!(asset_objects.len(), 5);
-            assert_eq!(references.len(), 5);
+            assert_eq!(asset_objects.len(), NUM_OUTPUTS);
+            assert_eq!(references.len(), NUM_OUTPUTS);
             assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 1);
         }
 
@@ -965,7 +1098,7 @@ mod tests {
                 references,
                 statistics,
             } = build
-                .compile(root, Target::Game, Platform::Windows, &Locale::new("en"))
+                .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
             assert_eq!(asset_objects.len(), 5);
@@ -1006,7 +1139,8 @@ mod tests {
                 .get_mut::<test_resource::TestResource>(&mut resources)
                 .expect("existing resource");
             parent.content = String::from("test parent content");
-            parent.build_deps = vec![child_id];
+            parent.build_deps =
+                vec![ResourcePathId::from(child_id).transform(test_resource::TYPE_ID)];
             project
                 .add_resource(
                     ResourceName::from("parent"),
@@ -1028,13 +1162,9 @@ mod tests {
 
         // for now each asset is a separate file so we need to validate that the compile output and link output produce the same number of assets
 
+        let target = ResourcePathId::from(parent_id).transform(test_resource::TYPE_ID);
         let compile_output = build
-            .compile(
-                parent_id,
-                Target::Game,
-                Platform::Windows,
-                &Locale::new("en"),
-            )
+            .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
             .expect("successful compilation");
 
         assert_eq!(compile_output.asset_objects.len(), 2);

@@ -1,4 +1,4 @@
-use resources::{Resource, ResourceProcessor, ResourceType};
+use resources::{Resource, ResourcePathId, ResourceProcessor, ResourceType};
 
 pub const TYPE_ID: ResourceType = ResourceType::new(b"mock_resource");
 
@@ -23,10 +23,7 @@ impl ResourceProcessor for MockResourceProc {
         Box::new(MockResource { magic_value: 0 })
     }
 
-    fn extract_build_dependencies(
-        &mut self,
-        _resource: &dyn Resource,
-    ) -> Vec<resources::ResourceId> {
+    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
         vec![]
     }
 

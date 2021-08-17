@@ -16,7 +16,7 @@ use legion_data_compiler::{
     },
     CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
-use legion_resources::{ResourceId, ResourceRegistry};
+use legion_resources::{ResourcePathId, ResourceRegistry};
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
@@ -41,8 +41,8 @@ fn compiler_hash(
 }
 
 fn compile(
-    source: ResourceId,
-    _dependencies: &[ResourceId],
+    source: ResourcePathId,
+    _dependencies: &[ResourcePathId],
     _target: Target,
     _platform: Platform,
     _locale: &Locale,
@@ -58,9 +58,10 @@ fn compile(
     let mut asset_store = LocalCompiledAssetStore::open(compiled_asset_store_path)
         .ok_or(CompilerError::AssetStoreError)?;
 
-    let guid = primary_asset_id(source, test_asset::TYPE_ID);
+    let guid = primary_asset_id(&source, test_asset::TYPE_ID);
 
-    let resource = compiler_load_resource(source, resource_dir, &mut resources)?;
+    // todo: source_resource is wrong
+    let resource = compiler_load_resource(source.source_resource_deprecated(), resource_dir, &mut resources)?;
     let resource = resource
         .get::<mock_offline::MockResource>(&resources)
         .unwrap();

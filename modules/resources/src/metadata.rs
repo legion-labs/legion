@@ -1,4 +1,4 @@
-use crate::{ResourceId, ResourceName};
+use crate::{ResourceName, ResourcePathId};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::hash_map::DefaultHasher,
@@ -13,7 +13,7 @@ pub type ResourceHash = u64;
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Metadata {
     pub(crate) name: ResourceName,
-    pub(crate) build_deps: Vec<ResourceId>,
+    pub(crate) dependencies: Vec<ResourcePathId>,
     pub(crate) content_checksum: i128, // this needs to be updated on every asset change.
 }
 
@@ -27,11 +27,11 @@ impl Metadata {
     pub(crate) fn new_with_dependencies(
         name: ResourceName,
         content_checksum: i128,
-        deps: &[ResourceId],
+        deps: &[ResourcePathId],
     ) -> Self {
         Self {
             name,
-            build_deps: deps.to_vec(),
+            dependencies: deps.to_vec(),
             content_checksum,
         }
     }

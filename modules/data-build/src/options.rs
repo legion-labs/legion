@@ -61,7 +61,7 @@ impl DataBuildOptions {
     /// The following conditions need to be met to successfully open a build index:
     /// * [`CompiledAssetStore`](`legion_asset_store::compiled_asset_store::CompiledAssetStore`) must exist under address set by [`DataBuildOptions::asset_store()`].
     /// * Build index must exist and be of a supported version provided by [`DataBuildOptions::new()`].
-    /// * The build index must point to an existing [`Project`].
+    /// * The build index must point to an existing [`legion_resources::Project`].
     pub fn open(&self) -> Result<DataBuild, Error> {
         DataBuild::open(self)
     }
