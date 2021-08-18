@@ -9,7 +9,7 @@ pub async fn revert_glob_command(pattern: &str) -> Result<(), String> {
             let workspace_root = find_workspace_root(&current_dir)?;
             let workspace_spec = read_workspace_spec(&workspace_root)?;
             let connection = connect_to_server(&workspace_spec).await?;
-            let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+            let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
             let mut workspace_transaction = workspace_connection.begin().await?;
             for change in read_local_changes(&mut workspace_transaction).await? {
                 if matcher.matches(&change.relative_path) {
@@ -106,7 +106,7 @@ pub async fn revert_file(
 pub async fn revert_file_command(path: &Path) -> Result<(), String> {
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let repo_connection = connect_to_server(&workspace_spec).await?;

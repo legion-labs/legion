@@ -183,7 +183,7 @@ pub async fn commit_local_changes(
 pub async fn commit_command(message: &str) -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
     let id = uuid::Uuid::new_v4().to_string();
     commit_local_changes(&workspace_root, &mut workspace_transaction, &id, message).await?;

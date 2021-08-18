@@ -41,7 +41,7 @@ pub async fn init_workspace_command(
     }
     create_database(&db_uri).await?;
 
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_directory)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_directory).await?;
     create_workspace_branch_table(workspace_connection.sql()).await?;
     init_local_changes_database(&mut workspace_connection).await?;
     init_resolve_pending_database(&mut workspace_connection).await?;
