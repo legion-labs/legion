@@ -9,7 +9,7 @@ pub fn type_uuid_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     // Construct a representation of Rust code as a syntax tree
     // that we can manipulate
     let ast: DeriveInput = syn::parse(input).unwrap();
-    let bevy_reflect_path: Path = LegionManifest::default().get_path("legion_reflect");
+    let legion_reflect_path: Path = LegionManifest::default().get_path("legion_reflect");
 
     // Build the trait implementation
     let name = &ast.ident;
@@ -56,8 +56,8 @@ pub fn type_uuid_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
         .map(|byte_str| syn::parse_str::<LitInt>(&byte_str).unwrap());
 
     let gen = quote! {
-        impl #bevy_reflect_path::TypeUuid for #name {
-            const TYPE_UUID: #bevy_reflect_path::Uuid = #bevy_reflect_path::Uuid::from_bytes([
+        impl #legion_reflect_path::TypeUuid for #name {
+            const TYPE_UUID: #legion_reflect_path::Uuid = #legion_reflect_path::Uuid::from_bytes([
                 #( #bytes ),*
             ]);
         }

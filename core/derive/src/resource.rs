@@ -13,7 +13,7 @@ pub fn derive_from_resources(input: TokenStream) -> TokenStream {
         _ => panic!("Expected a struct with named fields."),
     };
 
-    let bevy_app_path = LegionManifest::default().get_path(crate::modules::LEGION_APP);
+    let legion_app_path = LegionManifest::default().get_path(crate::modules::LEGION_APP);
     let field_types = fields.iter().map(|field| &field.ty);
     let fields = fields.iter().map(|field| field.ident.as_ref().unwrap());
     let generics = ast.generics;
@@ -21,9 +21,9 @@ pub fn derive_from_resources(input: TokenStream) -> TokenStream {
     let struct_name = &ast.ident;
 
     TokenStream::from(quote! {
-        impl #impl_generics #bevy_app_path::FromResources for #struct_name#ty_generics {
+        impl #impl_generics #legion_app_path::FromResources for #struct_name#ty_generics {
             fn from_resources(resources: &Resources) -> Self {
-                use #bevy_app_path::FromResources;
+                use #legion_app_path::FromResources;
                 #struct_name {
                     #(#fields: <#field_types>::from_resources(resources),)*
                 }

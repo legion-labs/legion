@@ -28,27 +28,27 @@ pub fn reflect_trait(_args: TokenStream, input: TokenStream) -> TokenStream {
     let trait_ident = &item_trait.ident;
     let reflect_trait_ident =
         Ident::new(&format!("Reflect{}", item_trait.ident), Span::call_site());
-    let bevy_reflect_path = LegionManifest::default().get_path("legion_reflect");
+    let legion_reflect_path = LegionManifest::default().get_path("legion_reflect");
     TokenStream::from(quote! {
         #item_trait
 
         #[derive(Clone)]
         pub struct #reflect_trait_ident {
-            get_func: fn(&dyn #bevy_reflect_path::Reflect) -> Option<&dyn #trait_ident>,
-            get_mut_func: fn(&mut dyn #bevy_reflect_path::Reflect) -> Option<&mut dyn #trait_ident>,
+            get_func: fn(&dyn #legion_reflect_path::Reflect) -> Option<&dyn #trait_ident>,
+            get_mut_func: fn(&mut dyn #legion_reflect_path::Reflect) -> Option<&mut dyn #trait_ident>,
         }
 
         impl #reflect_trait_ident {
-            fn get<'a>(&self, reflect_value: &'a dyn #bevy_reflect_path::Reflect) -> Option<&'a dyn #trait_ident> {
+            fn get<'a>(&self, reflect_value: &'a dyn #legion_reflect_path::Reflect) -> Option<&'a dyn #trait_ident> {
                 (self.get_func)(reflect_value)
             }
 
-            fn get_mut<'a>(&self, reflect_value: &'a mut dyn #bevy_reflect_path::Reflect) -> Option<&'a mut dyn #trait_ident> {
+            fn get_mut<'a>(&self, reflect_value: &'a mut dyn #legion_reflect_path::Reflect) -> Option<&'a mut dyn #trait_ident> {
                 (self.get_mut_func)(reflect_value)
             }
         }
 
-        impl<T: #trait_ident + #bevy_reflect_path::Reflect> #bevy_reflect_path::FromType<T> for #reflect_trait_ident {
+        impl<T: #trait_ident + #legion_reflect_path::Reflect> #legion_reflect_path::FromType<T> for #reflect_trait_ident {
             fn from_type() -> Self {
                 Self {
                     get_func: |reflect_value| {

@@ -1,9 +1,9 @@
 extern crate proc_macro;
 
 mod app_plugin;
-mod bevy_main;
 mod bytes;
 mod enum_variant_meta;
+mod legion_main;
 mod modules;
 mod render_resource;
 mod render_resources;
@@ -52,8 +52,8 @@ pub fn derive_dynamic_plugin(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn bevy_main(attr: TokenStream, item: TokenStream) -> TokenStream {
-    bevy_main::bevy_main(attr, item)
+pub fn legion_main(attr: TokenStream, item: TokenStream) -> TokenStream {
+    legion_main::legion_main(attr, item)
 }
 
 #[proc_macro_derive(EnumVariantMeta)]

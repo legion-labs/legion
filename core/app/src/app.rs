@@ -76,9 +76,9 @@ impl App {
 
     pub fn update(&mut self) {
         #[cfg(feature = "trace")]
-        let bevy_frame_update_span = info_span!("frame");
+        let legion_frame_update_span = info_span!("frame");
         #[cfg(feature = "trace")]
-        let _bevy_frame_update_guard = bevy_frame_update_span.enter();
+        let _legion_frame_update_guard = legion_frame_update_span.enter();
         self.schedule.run(&mut self.world);
     }
 
@@ -100,9 +100,9 @@ impl App {
     /// ```
     pub fn run(&mut self) {
         #[cfg(feature = "trace")]
-        let bevy_app_run_span = info_span!("legion_app");
+        let legion_app_run_span = info_span!("legion_app");
         #[cfg(feature = "trace")]
-        let _bevy_app_run_guard = bevy_app_run_span.enter();
+        let _legion_app_run_guard = legion_app_run_span.enter();
 
         let mut app = std::mem::replace(self, App::empty());
         let runner = std::mem::replace(&mut app.runner, Box::new(run_once));
@@ -475,7 +475,7 @@ impl App {
     /// ```
     /// # use legion_app::prelude::*;
     /// #
-    /// App::new().add_plugin(bevy_log::LogPlugin::default());
+    /// App::new().add_plugin(legion_log::LogPlugin::default());
     /// ```
     pub fn add_plugin<T>(&mut self, plugin: T) -> &mut Self
     where
@@ -497,7 +497,7 @@ impl App {
     /// ```
     /// # use legion_app::{prelude::*, PluginGroupBuilder};
     /// #
-    /// # // Dummy created to avoid using bevy_internal, which pulls in to many dependencies.
+    /// # // Dummy created to avoid using legion_internal, which pulls in to many dependencies.
     /// # struct MinimalPlugins;
     /// # impl PluginGroup for MinimalPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){;}
@@ -524,11 +524,11 @@ impl App {
     /// ```
     /// # use legion_app::{prelude::*, PluginGroupBuilder};
     /// #
-    /// # // Dummies created to avoid using bevy_internal which pulls in to many dependencies.
+    /// # // Dummies created to avoid using legion_internal which pulls in to many dependencies.
     /// # struct DefaultPlugins;
     /// # impl PluginGroup for DefaultPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){
-    /// #         group.add(bevy_log::LogPlugin::default());
+    /// #         group.add(legion_log::LogPlugin::default());
     /// #     }
     /// # }
     /// #
@@ -539,7 +539,7 @@ impl App {
     /// #
     /// App::new()
     ///      .add_plugins_with(DefaultPlugins, |group| {
-    ///             group.add_before::<bevy_log::LogPlugin, _>(MyOwnPlugin)
+    ///             group.add_before::<legion_log::LogPlugin, _>(MyOwnPlugin)
     ///         });
     /// ```
     pub fn add_plugins_with<T, F>(&mut self, mut group: T, func: F) -> &mut Self

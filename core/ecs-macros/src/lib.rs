@@ -82,7 +82,7 @@ static BUNDLE_ATTRIBUTE_NAME: &str = "bundle";
 #[proc_macro_derive(Bundle, attributes(bundle))]
 pub fn derive_bundle(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
-    let ecs_path = bevy_ecs_path();
+    let ecs_path = legion_ecs_path();
 
     let named_fields = match &ast.data {
         Data::Struct(DataStruct {
@@ -317,7 +317,7 @@ pub fn derive_system_param(input: TokenStream) -> TokenStream {
         }) => &fields.named,
         _ => panic!("Expected a struct with named fields."),
     };
-    let path = bevy_ecs_path();
+    let path = legion_ecs_path();
 
     let field_attributes = fields
         .iter()
@@ -459,7 +459,7 @@ pub fn derive_run_criteria_label(input: TokenStream) -> TokenStream {
 
 fn derive_label(input: DeriveInput, label_type: Ident) -> TokenStream2 {
     let ident = input.ident;
-    let ecs_path: Path = bevy_ecs_path();
+    let ecs_path: Path = legion_ecs_path();
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let mut where_clause = where_clause.cloned().unwrap_or_else(|| syn::WhereClause {
@@ -477,6 +477,6 @@ fn derive_label(input: DeriveInput, label_type: Ident) -> TokenStream2 {
     }
 }
 
-fn bevy_ecs_path() -> syn::Path {
+fn legion_ecs_path() -> syn::Path {
     LegionManifest::default().get_path("legion_ecs")
 }

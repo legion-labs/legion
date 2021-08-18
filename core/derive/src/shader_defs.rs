@@ -8,7 +8,8 @@ static SHADER_DEF_ATTRIBUTE_NAME: &str = "shader_def";
 
 pub fn derive_shader_defs(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
-    let bevy_render_path: Path = LegionManifest::default().get_path(crate::modules::LEGION_RENDER);
+    let legion_render_path: Path =
+        LegionManifest::default().get_path(crate::modules::LEGION_RENDER);
 
     let fields = match &ast.data {
         Data::Struct(DataStruct {
@@ -40,13 +41,13 @@ pub fn derive_shader_defs(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, _where_clause) = generics.split_for_impl();
 
     TokenStream::from(quote! {
-        impl #impl_generics #bevy_render_path::shader::ShaderDefs for #struct_name#ty_generics {
+        impl #impl_generics #legion_render_path::shader::ShaderDefs for #struct_name#ty_generics {
             fn shader_defs_len(&self) -> usize {
                 #shader_defs_len
             }
 
             fn get_shader_def(&self, index: usize) -> Option<&str> {
-                use #bevy_render_path::shader::ShaderDef;
+                use #legion_render_path::shader::ShaderDef;
                 match index {
                     #(#shader_def_indices => if self.#shader_def_idents.is_defined() {
                         Some(#shader_defs)
@@ -57,8 +58,8 @@ pub fn derive_shader_defs(input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn iter_shader_defs(&self) -> #bevy_render_path::shader::ShaderDefIterator {
-                #bevy_render_path::shader::ShaderDefIterator::new(self)
+            fn iter_shader_defs(&self) -> #legion_render_path::shader::ShaderDefIterator {
+                #legion_render_path::shader::ShaderDefIterator::new(self)
             }
         }
     })

@@ -104,7 +104,7 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
         .map(|(f, _attr, i)| (*f, *i))
         .collect::<Vec<(&Field, usize)>>();
 
-    let bevy_reflect_path = LegionManifest::default().get_path("legion_reflect");
+    let legion_reflect_path = LegionManifest::default().get_path("legion_reflect");
     let type_name = &ast.ident;
 
     let mut reflect_attrs = ReflectAttrs::default();
@@ -128,7 +128,7 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
     let registration_data = &reflect_attrs.data;
     let get_type_registration_impl = impl_get_type_registration(
         type_name,
-        &bevy_reflect_path,
+        &legion_reflect_path,
         registration_data,
         &ast.generics,
     );
@@ -138,7 +138,7 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
             type_name,
             &ast.generics,
             get_type_registration_impl,
-            &bevy_reflect_path,
+            &legion_reflect_path,
             &reflect_attrs,
             &active_fields,
         ),
@@ -146,7 +146,7 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
             type_name,
             &ast.generics,
             get_type_registration_impl,
-            &bevy_reflect_path,
+            &legion_reflect_path,
             &reflect_attrs,
             &active_fields,
         ),
@@ -154,7 +154,7 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
             type_name,
             &ast.generics,
             get_type_registration_impl,
-            &bevy_reflect_path,
+            &legion_reflect_path,
             &reflect_attrs,
         ),
     }
@@ -164,7 +164,7 @@ fn impl_struct(
     struct_name: &Ident,
     generics: &Generics,
     get_type_registration_impl: proc_macro2::TokenStream,
-    bevy_reflect_path: &Path,
+    legion_reflect_path: &Path,
     reflect_attrs: &ReflectAttrs,
     active_fields: &[(&Field, usize)],
 ) -> TokenStream {
@@ -191,12 +191,12 @@ fn impl_struct(
     let field_count = active_fields.len();
     let field_indices = (0..field_count).collect::<Vec<usize>>();
 
-    let hash_fn = reflect_attrs.get_hash_impl(bevy_reflect_path);
-    let serialize_fn = reflect_attrs.get_serialize_impl(bevy_reflect_path);
+    let hash_fn = reflect_attrs.get_hash_impl(legion_reflect_path);
+    let serialize_fn = reflect_attrs.get_serialize_impl(legion_reflect_path);
     let partial_eq_fn = match reflect_attrs.reflect_partial_eq {
         TraitImpl::NotImplemented => quote! {
-            use #bevy_reflect_path::Struct;
-            #bevy_reflect_path::struct_partial_eq(self, value)
+            use #legion_reflect_path::Struct;
+            #legion_reflect_path::struct_partial_eq(self, value)
         },
         TraitImpl::Implemented | TraitImpl::Custom(_) => reflect_attrs.get_partial_eq_impl(),
     };
@@ -206,29 +206,29 @@ fn impl_struct(
     TokenStream::from(quote! {
         #get_type_registration_impl
 
-        impl #impl_generics #bevy_reflect_path::Struct for #struct_name#ty_generics #where_clause {
-            fn field(&self, name: &str) -> Option<&dyn #bevy_reflect_path::Reflect> {
+        impl #impl_generics #legion_reflect_path::Struct for #struct_name#ty_generics #where_clause {
+            fn field(&self, name: &str) -> Option<&dyn #legion_reflect_path::Reflect> {
                 match name {
                     #(#field_names => Some(&self.#field_idents),)*
                     _ => None,
                 }
             }
 
-            fn field_mut(&mut self, name: &str) -> Option<&mut dyn #bevy_reflect_path::Reflect> {
+            fn field_mut(&mut self, name: &str) -> Option<&mut dyn #legion_reflect_path::Reflect> {
                 match name {
                     #(#field_names => Some(&mut self.#field_idents),)*
                     _ => None,
                 }
             }
 
-            fn field_at(&self, index: usize) -> Option<&dyn #bevy_reflect_path::Reflect> {
+            fn field_at(&self, index: usize) -> Option<&dyn #legion_reflect_path::Reflect> {
                 match index {
                     #(#field_indices => Some(&self.#field_idents),)*
                     _ => None,
                 }
             }
 
-            fn field_at_mut(&mut self, index: usize) -> Option<&mut dyn #bevy_reflect_path::Reflect> {
+            fn field_at_mut(&mut self, index: usize) -> Option<&mut dyn #legion_reflect_path::Reflect> {
                 match index {
                     #(#field_indices => Some(&mut self.#field_idents),)*
                     _ => None,
@@ -246,12 +246,12 @@ fn impl_struct(
                 #field_count
             }
 
-            fn iter_fields(&self) -> #bevy_reflect_path::FieldIter {
-                #bevy_reflect_path::FieldIter::new(self)
+            fn iter_fields(&self) -> #legion_reflect_path::FieldIter {
+                #legion_reflect_path::FieldIter::new(self)
             }
 
-            fn clone_dynamic(&self) -> #bevy_reflect_path::DynamicStruct {
-                let mut dynamic = #bevy_reflect_path::DynamicStruct::default();
+            fn clone_dynamic(&self) -> #legion_reflect_path::DynamicStruct {
+                let mut dynamic = #legion_reflect_path::DynamicStruct::default();
                 dynamic.set_name(self.type_name().to_string());
                 #(dynamic.insert_boxed(#field_names, self.#field_idents.clone_value());)*
                 dynamic
@@ -259,7 +259,7 @@ fn impl_struct(
         }
 
         // SAFE: any and any_mut both return self
-        unsafe impl #impl_generics #bevy_reflect_path::Reflect for #struct_name#ty_generics #where_clause {
+        unsafe impl #impl_generics #legion_reflect_path::Reflect for #struct_name#ty_generics #where_clause {
             #[inline]
             fn type_name(&self) -> &str {
                 std::any::type_name::<Self>()
@@ -274,20 +274,20 @@ fn impl_struct(
                 self
             }
             #[inline]
-            fn clone_value(&self) -> Box<dyn #bevy_reflect_path::Reflect> {
-                use #bevy_reflect_path::Struct;
+            fn clone_value(&self) -> Box<dyn #legion_reflect_path::Reflect> {
+                use #legion_reflect_path::Struct;
                 Box::new(self.clone_dynamic())
             }
             #[inline]
-            fn set(&mut self, value: Box<dyn #bevy_reflect_path::Reflect>) -> Result<(), Box<dyn #bevy_reflect_path::Reflect>> {
+            fn set(&mut self, value: Box<dyn #legion_reflect_path::Reflect>) -> Result<(), Box<dyn #legion_reflect_path::Reflect>> {
                 *self = value.take()?;
                 Ok(())
             }
 
             #[inline]
-            fn apply(&mut self, value: &dyn #bevy_reflect_path::Reflect) {
-                use #bevy_reflect_path::Struct;
-                if let #bevy_reflect_path::ReflectRef::Struct(struct_value) = value.reflect_ref() {
+            fn apply(&mut self, value: &dyn #legion_reflect_path::Reflect) {
+                use #legion_reflect_path::Struct;
+                if let #legion_reflect_path::ReflectRef::Struct(struct_value) = value.reflect_ref() {
                     for (i, value) in struct_value.iter_fields().enumerate() {
                         let name = struct_value.name_at(i).unwrap();
                         self.field_mut(name).map(|v| v.apply(value));
@@ -297,15 +297,15 @@ fn impl_struct(
                 }
             }
 
-            fn reflect_ref(&self) -> #bevy_reflect_path::ReflectRef {
-                #bevy_reflect_path::ReflectRef::Struct(self)
+            fn reflect_ref(&self) -> #legion_reflect_path::ReflectRef {
+                #legion_reflect_path::ReflectRef::Struct(self)
             }
 
-            fn reflect_mut(&mut self) -> #bevy_reflect_path::ReflectMut {
-                #bevy_reflect_path::ReflectMut::Struct(self)
+            fn reflect_mut(&mut self) -> #legion_reflect_path::ReflectMut {
+                #legion_reflect_path::ReflectMut::Struct(self)
             }
 
-            fn serializable(&self) -> Option<#bevy_reflect_path::serde::Serializable> {
+            fn serializable(&self) -> Option<#legion_reflect_path::serde::Serializable> {
                 #serialize_fn
             }
 
@@ -313,7 +313,7 @@ fn impl_struct(
                 #hash_fn
             }
 
-            fn reflect_partial_eq(&self, value: &dyn #bevy_reflect_path::Reflect) -> Option<bool> {
+            fn reflect_partial_eq(&self, value: &dyn #legion_reflect_path::Reflect) -> Option<bool> {
                 #partial_eq_fn
             }
         }
@@ -324,7 +324,7 @@ fn impl_tuple_struct(
     struct_name: &Ident,
     generics: &Generics,
     get_type_registration_impl: proc_macro2::TokenStream,
-    bevy_reflect_path: &Path,
+    legion_reflect_path: &Path,
     reflect_attrs: &ReflectAttrs,
     active_fields: &[(&Field, usize)],
 ) -> TokenStream {
@@ -335,12 +335,12 @@ fn impl_tuple_struct(
     let field_count = active_fields.len();
     let field_indices = (0..field_count).collect::<Vec<usize>>();
 
-    let hash_fn = reflect_attrs.get_hash_impl(bevy_reflect_path);
-    let serialize_fn = reflect_attrs.get_serialize_impl(bevy_reflect_path);
+    let hash_fn = reflect_attrs.get_hash_impl(legion_reflect_path);
+    let serialize_fn = reflect_attrs.get_serialize_impl(legion_reflect_path);
     let partial_eq_fn = match reflect_attrs.reflect_partial_eq {
         TraitImpl::NotImplemented => quote! {
-            use #bevy_reflect_path::TupleStruct;
-            #bevy_reflect_path::tuple_struct_partial_eq(self, value)
+            use #legion_reflect_path::TupleStruct;
+            #legion_reflect_path::tuple_struct_partial_eq(self, value)
         },
         TraitImpl::Implemented | TraitImpl::Custom(_) => reflect_attrs.get_partial_eq_impl(),
     };
@@ -349,15 +349,15 @@ fn impl_tuple_struct(
     TokenStream::from(quote! {
         #get_type_registration_impl
 
-        impl #impl_generics #bevy_reflect_path::TupleStruct for #struct_name#ty_generics {
-            fn field(&self, index: usize) -> Option<&dyn #bevy_reflect_path::Reflect> {
+        impl #impl_generics #legion_reflect_path::TupleStruct for #struct_name#ty_generics {
+            fn field(&self, index: usize) -> Option<&dyn #legion_reflect_path::Reflect> {
                 match index {
                     #(#field_indices => Some(&self.#field_idents),)*
                     _ => None,
                 }
             }
 
-            fn field_mut(&mut self, index: usize) -> Option<&mut dyn #bevy_reflect_path::Reflect> {
+            fn field_mut(&mut self, index: usize) -> Option<&mut dyn #legion_reflect_path::Reflect> {
                 match index {
                     #(#field_indices => Some(&mut self.#field_idents),)*
                     _ => None,
@@ -368,12 +368,12 @@ fn impl_tuple_struct(
                 #field_count
             }
 
-            fn iter_fields(&self) -> #bevy_reflect_path::TupleStructFieldIter {
-                #bevy_reflect_path::TupleStructFieldIter::new(self)
+            fn iter_fields(&self) -> #legion_reflect_path::TupleStructFieldIter {
+                #legion_reflect_path::TupleStructFieldIter::new(self)
             }
 
-            fn clone_dynamic(&self) -> #bevy_reflect_path::DynamicTupleStruct {
-                let mut dynamic = #bevy_reflect_path::DynamicTupleStruct::default();
+            fn clone_dynamic(&self) -> #legion_reflect_path::DynamicTupleStruct {
+                let mut dynamic = #legion_reflect_path::DynamicTupleStruct::default();
                 dynamic.set_name(self.type_name().to_string());
                 #(dynamic.insert_boxed(self.#field_idents.clone_value());)*
                 dynamic
@@ -381,7 +381,7 @@ fn impl_tuple_struct(
         }
 
         // SAFE: any and any_mut both return self
-        unsafe impl #impl_generics #bevy_reflect_path::Reflect for #struct_name#ty_generics {
+        unsafe impl #impl_generics #legion_reflect_path::Reflect for #struct_name#ty_generics {
             #[inline]
             fn type_name(&self) -> &str {
                 std::any::type_name::<Self>()
@@ -396,20 +396,20 @@ fn impl_tuple_struct(
                 self
             }
             #[inline]
-            fn clone_value(&self) -> Box<dyn #bevy_reflect_path::Reflect> {
-                use #bevy_reflect_path::TupleStruct;
+            fn clone_value(&self) -> Box<dyn #legion_reflect_path::Reflect> {
+                use #legion_reflect_path::TupleStruct;
                 Box::new(self.clone_dynamic())
             }
             #[inline]
-            fn set(&mut self, value: Box<dyn #bevy_reflect_path::Reflect>) -> Result<(), Box<dyn #bevy_reflect_path::Reflect>> {
+            fn set(&mut self, value: Box<dyn #legion_reflect_path::Reflect>) -> Result<(), Box<dyn #legion_reflect_path::Reflect>> {
                 *self = value.take()?;
                 Ok(())
             }
 
             #[inline]
-            fn apply(&mut self, value: &dyn #bevy_reflect_path::Reflect) {
-                use #bevy_reflect_path::TupleStruct;
-                if let #bevy_reflect_path::ReflectRef::TupleStruct(struct_value) = value.reflect_ref() {
+            fn apply(&mut self, value: &dyn #legion_reflect_path::Reflect) {
+                use #legion_reflect_path::TupleStruct;
+                if let #legion_reflect_path::ReflectRef::TupleStruct(struct_value) = value.reflect_ref() {
                     for (i, value) in struct_value.iter_fields().enumerate() {
                         self.field_mut(i).map(|v| v.apply(value));
                     }
@@ -418,15 +418,15 @@ fn impl_tuple_struct(
                 }
             }
 
-            fn reflect_ref(&self) -> #bevy_reflect_path::ReflectRef {
-                #bevy_reflect_path::ReflectRef::TupleStruct(self)
+            fn reflect_ref(&self) -> #legion_reflect_path::ReflectRef {
+                #legion_reflect_path::ReflectRef::TupleStruct(self)
             }
 
-            fn reflect_mut(&mut self) -> #bevy_reflect_path::ReflectMut {
-                #bevy_reflect_path::ReflectMut::TupleStruct(self)
+            fn reflect_mut(&mut self) -> #legion_reflect_path::ReflectMut {
+                #legion_reflect_path::ReflectMut::TupleStruct(self)
             }
 
-            fn serializable(&self) -> Option<#bevy_reflect_path::serde::Serializable> {
+            fn serializable(&self) -> Option<#legion_reflect_path::serde::Serializable> {
                 #serialize_fn
             }
 
@@ -434,7 +434,7 @@ fn impl_tuple_struct(
                 #hash_fn
             }
 
-            fn reflect_partial_eq(&self, value: &dyn #bevy_reflect_path::Reflect) -> Option<bool> {
+            fn reflect_partial_eq(&self, value: &dyn #legion_reflect_path::Reflect) -> Option<bool> {
                 #partial_eq_fn
             }
         }
@@ -445,19 +445,19 @@ fn impl_value(
     type_name: &Ident,
     generics: &Generics,
     get_type_registration_impl: proc_macro2::TokenStream,
-    bevy_reflect_path: &Path,
+    legion_reflect_path: &Path,
     reflect_attrs: &ReflectAttrs,
 ) -> TokenStream {
-    let hash_fn = reflect_attrs.get_hash_impl(bevy_reflect_path);
+    let hash_fn = reflect_attrs.get_hash_impl(legion_reflect_path);
     let partial_eq_fn = reflect_attrs.get_partial_eq_impl();
-    let serialize_fn = reflect_attrs.get_serialize_impl(bevy_reflect_path);
+    let serialize_fn = reflect_attrs.get_serialize_impl(legion_reflect_path);
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     TokenStream::from(quote! {
         #get_type_registration_impl
 
         // SAFE: any and any_mut both return self
-        unsafe impl #impl_generics #bevy_reflect_path::Reflect for #type_name#ty_generics #where_clause  {
+        unsafe impl #impl_generics #legion_reflect_path::Reflect for #type_name#ty_generics #where_clause  {
             #[inline]
             fn type_name(&self) -> &str {
                 std::any::type_name::<Self>()
@@ -474,12 +474,12 @@ fn impl_value(
             }
 
             #[inline]
-            fn clone_value(&self) -> Box<dyn #bevy_reflect_path::Reflect> {
+            fn clone_value(&self) -> Box<dyn #legion_reflect_path::Reflect> {
                 Box::new(self.clone())
             }
 
             #[inline]
-            fn apply(&mut self, value: &dyn #bevy_reflect_path::Reflect) {
+            fn apply(&mut self, value: &dyn #legion_reflect_path::Reflect) {
                 let value = value.any();
                 if let Some(value) = value.downcast_ref::<Self>() {
                     *self = value.clone();
@@ -489,28 +489,28 @@ fn impl_value(
             }
 
             #[inline]
-            fn set(&mut self, value: Box<dyn #bevy_reflect_path::Reflect>) -> Result<(), Box<dyn #bevy_reflect_path::Reflect>> {
+            fn set(&mut self, value: Box<dyn #legion_reflect_path::Reflect>) -> Result<(), Box<dyn #legion_reflect_path::Reflect>> {
                 *self = value.take()?;
                 Ok(())
             }
 
-            fn reflect_ref(&self) -> #bevy_reflect_path::ReflectRef {
-                #bevy_reflect_path::ReflectRef::Value(self)
+            fn reflect_ref(&self) -> #legion_reflect_path::ReflectRef {
+                #legion_reflect_path::ReflectRef::Value(self)
             }
 
-            fn reflect_mut(&mut self) -> #bevy_reflect_path::ReflectMut {
-                #bevy_reflect_path::ReflectMut::Value(self)
+            fn reflect_mut(&mut self) -> #legion_reflect_path::ReflectMut {
+                #legion_reflect_path::ReflectMut::Value(self)
             }
 
             fn reflect_hash(&self) -> Option<u64> {
                 #hash_fn
             }
 
-            fn reflect_partial_eq(&self, value: &dyn #bevy_reflect_path::Reflect) -> Option<bool> {
+            fn reflect_partial_eq(&self, value: &dyn #legion_reflect_path::Reflect) -> Option<bool> {
                 #partial_eq_fn
             }
 
-            fn serializable(&self) -> Option<#bevy_reflect_path::serde::Serializable> {
+            fn serializable(&self) -> Option<#legion_reflect_path::serde::Serializable> {
                 #serialize_fn
             }
         }
@@ -555,7 +555,7 @@ impl Parse for ReflectDef {
 pub fn impl_reflect_value(input: TokenStream) -> TokenStream {
     let reflect_value_def = parse_macro_input!(input as ReflectDef);
 
-    let bevy_reflect_path = LegionManifest::default().get_path("legion_reflect");
+    let legion_reflect_path = LegionManifest::default().get_path("legion_reflect");
     let ty = &reflect_value_def.type_name;
     let reflect_attrs = reflect_value_def
         .attrs
@@ -563,7 +563,7 @@ pub fn impl_reflect_value(input: TokenStream) -> TokenStream {
     let registration_data = &reflect_attrs.data;
     let get_type_registration_impl = impl_get_type_registration(
         ty,
-        &bevy_reflect_path,
+        &legion_reflect_path,
         registration_data,
         &reflect_value_def.generics,
     );
@@ -571,7 +571,7 @@ pub fn impl_reflect_value(input: TokenStream) -> TokenStream {
         ty,
         &reflect_value_def.generics,
         get_type_registration_impl,
-        &bevy_reflect_path,
+        &legion_reflect_path,
         &reflect_attrs,
     )
 }
@@ -710,17 +710,17 @@ impl Parse for ReflectAttrs {
 
 fn impl_get_type_registration(
     type_name: &Ident,
-    bevy_reflect_path: &Path,
+    legion_reflect_path: &Path,
     registration_data: &[Ident],
     generics: &Generics,
 ) -> proc_macro2::TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     quote! {
         #[allow(unused_mut)]
-        impl #impl_generics #bevy_reflect_path::GetTypeRegistration for #type_name#ty_generics #where_clause {
-            fn get_type_registration() -> #bevy_reflect_path::TypeRegistration {
-                let mut registration = #bevy_reflect_path::TypeRegistration::of::<#type_name#ty_generics>();
-                #(registration.insert::<#registration_data>(#bevy_reflect_path::FromType::<#type_name#ty_generics>::from_type());)*
+        impl #impl_generics #legion_reflect_path::GetTypeRegistration for #type_name#ty_generics #where_clause {
+            fn get_type_registration() -> #legion_reflect_path::TypeRegistration {
+                let mut registration = #legion_reflect_path::TypeRegistration::of::<#type_name#ty_generics>();
+                #(registration.insert::<#registration_data>(#legion_reflect_path::FromType::<#type_name#ty_generics>::from_type());)*
                 registration
             }
         }

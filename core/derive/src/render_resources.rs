@@ -22,7 +22,8 @@ static RENDER_RESOURCE_ATTRIBUTE_NAME: &str = "render_resources";
 pub fn derive_render_resources(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
 
-    let bevy_render_path: Path = LegionManifest::default().get_path(crate::modules::LEGION_RENDER);
+    let legion_render_path: Path =
+        LegionManifest::default().get_path(crate::modules::LEGION_RENDER);
     let attributes = ast
         .attrs
         .iter()
@@ -46,12 +47,12 @@ pub fn derive_render_resources(input: TokenStream) -> TokenStream {
 
     if attributes.from_self {
         TokenStream::from(quote! {
-            impl #impl_generics #bevy_render_path::renderer::RenderResources for #struct_name #type_generics #where_clause {
+            impl #impl_generics #legion_render_path::renderer::RenderResources for #struct_name #type_generics #where_clause {
                 fn render_resources_len(&self) -> usize {
                     1
                 }
 
-                fn get_render_resource(&self, index: usize) -> Option<&dyn #bevy_render_path::renderer::RenderResource> {
+                fn get_render_resource(&self, index: usize) -> Option<&dyn #legion_render_path::renderer::RenderResource> {
                     if index == 0 {
                         Some(self)
                     } else {
@@ -67,8 +68,8 @@ pub fn derive_render_resources(input: TokenStream) -> TokenStream {
                     }
                 }
 
-                fn iter(&self) -> #bevy_render_path::renderer::RenderResourceIterator {
-                    #bevy_render_path::renderer::RenderResourceIterator::new(self)
+                fn iter(&self) -> #legion_render_path::renderer::RenderResourceIterator {
+                    #legion_render_path::renderer::RenderResourceIterator::new(self)
                 }
             }
         })
@@ -130,7 +131,7 @@ pub fn derive_render_resources(input: TokenStream) -> TokenStream {
             render_resource_names.push(format!("{}_{}", struct_name, field_name));
             if attrs.buffer {
                 render_resource_hints
-                    .push(quote! {Some(#bevy_render_path::renderer::RenderResourceHints::BUFFER)})
+                    .push(quote! {Some(#legion_render_path::renderer::RenderResourceHints::BUFFER)})
             } else {
                 render_resource_hints.push(quote! {None})
             }
@@ -150,16 +151,16 @@ pub fn derive_render_resources(input: TokenStream) -> TokenStream {
                 #(#render_resource_names,)*
             ];
 
-            static #render_resource_hints_ident: &[Option<#bevy_render_path::renderer::RenderResourceHints>] = &[
+            static #render_resource_hints_ident: &[Option<#legion_render_path::renderer::RenderResourceHints>] = &[
                 #(#render_resource_hints,)*
             ];
 
-            impl #impl_generics #bevy_render_path::renderer::RenderResources for #struct_name #type_generics #where_clause {
+            impl #impl_generics #legion_render_path::renderer::RenderResources for #struct_name #type_generics #where_clause {
                 fn render_resources_len(&self) -> usize {
                     #render_resource_count
                 }
 
-                fn get_render_resource(&self, index: usize) -> Option<&dyn #bevy_render_path::renderer::RenderResource> {
+                fn get_render_resource(&self, index: usize) -> Option<&dyn #legion_render_path::renderer::RenderResource> {
                     match index {
                         #(#render_resource_indices => Some(&self.#render_resource_fields),)*
                         _ => None,
@@ -170,12 +171,12 @@ pub fn derive_render_resources(input: TokenStream) -> TokenStream {
                     #render_resource_names_ident.get(index).copied()
                 }
 
-                fn get_render_resource_hints(&self, index: usize) -> Option<#bevy_render_path::renderer::RenderResourceHints> {
+                fn get_render_resource_hints(&self, index: usize) -> Option<#legion_render_path::renderer::RenderResourceHints> {
                     #render_resource_hints_ident.get(index).and_then(|o| *o)
                 }
 
-                fn iter(&self) -> #bevy_render_path::renderer::RenderResourceIterator {
-                    #bevy_render_path::renderer::RenderResourceIterator::new(self)
+                fn iter(&self) -> #legion_render_path::renderer::RenderResourceIterator {
+                    #legion_render_path::renderer::RenderResourceIterator::new(self)
                 }
             }
         })

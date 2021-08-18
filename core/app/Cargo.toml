@@ -30,4 +30,4 @@ ron = { version = "0.6.2", optional = true }
 
 [dev-dependencies]
 # legion
-#bevy_log = { path = "../bevy_log", version = "0.5.0" }
+#legion_log = { path = "../legion_log", version = "0.5.0" }

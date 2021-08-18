@@ -25,7 +25,7 @@ impl Default for LegionManifest {
 impl LegionManifest {
     pub fn get_path(&self, name: &str) -> syn::Path {
         const LEGION: &str = "legion";
-        const LEGION_INTERNAL: &str = "bevy_internal";
+        const LEGION_INTERNAL: &str = "legion_internal";
 
         let find_in_deps = |deps: &DepsSet| -> Option<syn::Path> {
             let package = if let Some(dep) = deps.get(LEGION) {
@@ -37,7 +37,7 @@ impl LegionManifest {
             };
 
             let mut path = get_path(package);
-            if let Some(module) = name.strip_prefix("bevy_") {
+            if let Some(module) = name.strip_prefix("legion_") {
                 path.segments.push(parse_str(module));
             }
             Some(path)
