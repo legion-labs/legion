@@ -48,12 +48,12 @@ pub const RESOURCE_EXT: &str = "blob";
 /// # pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
 /// # pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
 /// // create a resource and add it to the project
-/// let resource = resources.new_resource(SOURCE_GEOMETRY).unwrap();
-/// let id = project.add_resource(ResourceName::from("new resource"),
-///                              SOURCE_GEOMETRY, &resource, &mut resources).unwrap();
+/// let resource_handle = resources.new_resource(SOURCE_GEOMETRY).unwrap();
+/// let resource_id = project.add_resource(ResourceName::from("new resource"),
+///                              SOURCE_GEOMETRY, &resource_handle, &mut resources).unwrap();
 ///
 /// // create a resource path
-/// let source_path = ResourcePathId::from(id);
+/// let source_path = ResourcePathId::from(resource_id);
 /// let target = source_path.transform(LOD_GEOMETRY).transform(BINARY_GEOMETRY);
 /// ```
 #[derive(Hash, PartialEq, Eq, Debug, Serialize, Deserialize, Clone, PartialOrd, Ord)]

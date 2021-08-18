@@ -2,10 +2,11 @@ use std::{path::PathBuf, str::FromStr};
 
 use clap::{AppSettings, Arg, SubCommand};
 use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
-use legion_data_build::{DataBuildOptions, ResourceName};
+use legion_data_build::DataBuildOptions;
 use legion_data_compiler::{Locale, Platform, Target};
+use legion_resources::ResourcePathId;
 
-const ARG_NAME_RESOURCE: &str = "resource";
+const ARG_NAME_RESOURCE_PATH: &str = "resource";
 const ARG_NAME_BUILDINDEX: &str = "buildindex";
 const ARG_NAME_CAS: &str = "cas";
 const ARG_NAME_MANIFEST: &str = "manifest";
@@ -22,9 +23,9 @@ fn main() -> Result<(), String> {
             SubCommand::with_name("compile")
                 .about("Compile input resource.")
                 .arg(
-                    Arg::with_name(ARG_NAME_RESOURCE)
+                    Arg::with_name(ARG_NAME_RESOURCE_PATH)
                         .required(true)
-                        .help("Source to compile"),
+                        .help("Path in build graph to compile."),
                 )
                 .arg(
                     Arg::with_name(ARG_NAME_BUILDINDEX)
@@ -73,12 +74,12 @@ fn main() -> Result<(), String> {
         .get_matches();
 
     if let ("compile", Some(cmd_args)) = matches.subcommand() {
-        let source = cmd_args.value_of(ARG_NAME_RESOURCE).unwrap();
+        let derived = cmd_args.value_of(ARG_NAME_RESOURCE_PATH).unwrap();
         let manifest = cmd_args.value_of(ARG_NAME_MANIFEST).unwrap();
         let target = cmd_args.value_of(ARG_NAME_TARGET).unwrap();
         let platform = cmd_args.value_of(ARG_NAME_PLATFORM).unwrap();
         let locale = cmd_args.value_of(ARG_NAME_LOCALE).unwrap();
-        let source_name = ResourceName::from_str(source).map_err(|_e| "Invalid ResourcePath")?;
+        let derived = ResourcePathId::from_str(derived).map_err(|_e| "Invalid ResourcePathId")?;
         let manifest_file = PathBuf::from_str(manifest).map_err(|_e| "Invalid Manifest name")?;
         let target = Target::from_str(target).map_err(|_e| "Invalid Target")?;
         let platform = Platform::from_str(platform).map_err(|_e| "Invalid Platform")?;
@@ -100,7 +101,7 @@ fn main() -> Result<(), String> {
 
         let mut build = config.open().map_err(|_e| "Failed to open build index")?;
         let output = build
-            .compile_named_deprecated(&source_name, &manifest_file, target, platform, &locale)
+            .compile(derived, &manifest_file, target, platform, &locale)
             .map_err(|e| format!("Compilation Failed: '{}'", e))?;
 
         println!("{:?}", output);

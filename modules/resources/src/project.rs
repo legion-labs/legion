@@ -173,9 +173,18 @@ impl Project {
         }
     }
 
-    /// Checks if a resource exists.
-    pub fn exists(&self, name: &ResourceNameRef) -> bool {
+    /// Checks if a resource with a given name is part of the project.
+    pub fn exists_named(&self, name: &ResourceNameRef) -> bool {
         self.find_resource(name).is_ok()
+    }
+
+    /// Checks if a resource is part of the project.
+    pub fn exists(&self, id: ResourceId) -> bool {
+        let all_resources = [&self.db.remote_resources, &self.db.local_resources];
+        all_resources
+            .iter()
+            .flat_map(|v| v.iter())
+            .any(|v| v == &id)
     }
 
     /// Add a given resource of a given type with an associated `.meta`.

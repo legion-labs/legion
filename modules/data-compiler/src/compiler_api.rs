@@ -131,8 +131,8 @@ use crate::{
     compiler_cmd::{
         CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
         COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DEPENDENCIES, COMMAND_ARG_LOCALE,
-        COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_TARGET,
-        COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
+        COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_RESOURCE_PATH,
+        COMMAND_ARG_TARGET, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
     CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
@@ -274,7 +274,7 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             Ok(())
         }
         (COMMAND_NAME_COMPILE, Some(cmd_args)) => {
-            let source = cmd_args.value_of(COMMAND_ARG_RESOURCE).unwrap();
+            let source = cmd_args.value_of(COMMAND_ARG_RESOURCE_PATH).unwrap();
             let target = cmd_args.value_of(COMMAND_ARG_TARGET).unwrap();
             let platform = cmd_args.value_of(COMMAND_ARG_PLATFORM).unwrap();
             let locale = cmd_args.value_of(COMMAND_ARG_LOCALE).unwrap();
@@ -366,9 +366,9 @@ pub fn compiler_main(
             SubCommand::with_name(COMMAND_NAME_COMPILE)
                 .about("Compile given resource.")
                 .arg(
-                    Arg::with_name(COMMAND_ARG_RESOURCE)
+                    Arg::with_name(COMMAND_ARG_RESOURCE_PATH)
                         .required(true)
-                        .help("Source to compile."),
+                        .help("Path in build graph to compile."),
                 )
                 .arg(
                     Arg::with_name(COMMAND_ARG_DEPENDENCIES)

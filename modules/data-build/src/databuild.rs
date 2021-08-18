@@ -16,7 +16,7 @@ use legion_data_compiler::compiler_cmd::{
 use legion_data_compiler::CompilerHash;
 use legion_data_compiler::{CompiledAsset, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
-use legion_resources::{Project, ResourceNameRef, ResourcePathId, ResourceType};
+use legion_resources::{Project, ResourcePathId, ResourceType};
 
 use crate::asset_file_writer::write_assetfile;
 use crate::buildindex::{BuildIndex, CompiledAssetInfo, CompiledAssetReference};
@@ -66,7 +66,10 @@ fn compute_context_hash(
 /// # use legion_data_build::{DataBuild, DataBuildOptions};
 /// # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 /// # use legion_data_compiler::{Locale, Platform, Target};
-/// # use legion_resources::ResourceName;
+/// # use legion_resources::{ResourceId, ResourcePathId, ResourceType};
+/// # use std::str::FromStr;
+/// # let offline_anim = ResourceId::from_str("invalid").unwrap();
+/// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// let mut build = DataBuildOptions::new("./build.index")
 ///         .asset_store(&CompiledAssetStoreAddr::from("./asset_store/"))
 ///         .compiler_dir("./compilers/")
@@ -74,9 +77,10 @@ fn compute_context_hash(
 ///
 /// build.source_pull().expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();
+/// let derived = ResourcePathId::from(offline_anim).transform(RUNTIME_ANIM);
 ///
-/// let manifest = build.compile_named_deprecated(
-///                         &ResourceName::from("child"),
+/// let manifest = build.compile(
+///                         derived,
 ///                         &manifest_file,
 ///                         Target::Game,
 ///                         Platform::Windows,
@@ -193,22 +197,27 @@ impl DataBuild {
         Ok(updated_resources)
     }
 
-    /// Compiles a named resource and updates the `manifest_file` at specified path.
+    /// Compiles a resource at `derived` node in compilation graph.
+    ///
+    /// To compile a given `ResourcePathId` it compiles all its dependent derived resources.
+    /// The specified `manifest_file` is updated with information about changed assets.
     ///
     /// Compilation results are stored in [`CompiledAssetStore`](`legion_asset_store::compiled_asset_store::CompiledAssetStore`)
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
     ///
     /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
-    // todo: this should be removed in favor of ResourceName + transformation? or just resoure path would be better? or keep both.
-    pub fn compile_named_deprecated(
+    pub fn compile(
         &mut self,
-        source_name: &ResourceNameRef,
+        derived: ResourcePathId,
         manifest_file: &Path,
         target: Target,
         platform: Platform,
         locale: &Locale,
     ) -> Result<Manifest, Error> {
-        let source = self.project.find_resource(source_name)?;
+        let source = derived.source_resource_deprecated();
+        if !self.project.exists(source) {
+            return Err(Error::NotFound);
+        }
 
         let (mut manifest, mut file) = {
             if let Ok(file) = OpenOptions::new()
@@ -231,10 +240,6 @@ impl DataBuild {
                 (Manifest::default(), file)
             }
         };
-
-        // this is temporary, until `compile_named_deprecated` function is removed.
-        let transform = source.resource_type();
-        let derived = ResourcePathId::from(source).transform(transform);
 
         let CompileOutput {
             asset_objects,
@@ -738,7 +743,7 @@ mod tests {
         let mut resources = setup_registry();
 
         // child_id <- test(child_id) <- parent_id = test(parent_id)
-        let parent_path = {
+        let parent_resource = {
             let mut project = Project::create_new(project_dir).expect("new project");
             let child_id = project
                 .add_resource(
@@ -756,17 +761,14 @@ mod tests {
                 .build_deps
                 .push(ResourcePathId::from(child_id).transform(test_resource::TYPE_ID));
 
-            let parent_path = ResourceName::from("parent");
-
-            let _parent_id = project
+            project
                 .add_resource(
-                    parent_path.clone(),
+                    ResourceName::from("parent"),
                     test_resource::TYPE_ID,
                     &child_handle,
                     &mut resources,
                 )
-                .unwrap();
-            parent_path
+                .unwrap()
         };
 
         let assetstore_path = CompiledAssetStoreAddr::from(work_dir.path());
@@ -780,9 +782,10 @@ mod tests {
 
         let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
+        let derived = ResourcePathId::from(parent_resource).transform(test_resource::TYPE_ID);
         let manifest = build
-            .compile_named_deprecated(
-                &parent_path,
+            .compile(
+                derived,
                 &output_manifest_file,
                 Target::Game,
                 Platform::Windows,
