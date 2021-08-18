@@ -17,7 +17,6 @@ categories = ["game-engines", "data-structures"]
 trace = []
 
 [dependencies]
-legion-reflect = { path = "../reflect", version = "0.1.0", optional = true }
 legion-tasks = { path = "../tasks", version = "0.1.0" }
 legion-utils = { path = "../utils", version = "0.1.0" }
 legion-ecs-macros = { path = "../ecs-macros", version = "0.1.0" }
