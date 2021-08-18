@@ -6,30 +6,18 @@ assignees: ''
 ---
 
 <!--
-Fill in sections relevant to the issue.
+Fill in sections relevant to the issue, remove the rest
 -->
 
 # Summary
-
-<!--
-A brief description of the task/feature
--->
 
 The goal is ...
 
 # Current State
 
-<!--
-Current state of the feature/system and relevant limitations.
--->
-
 Currently, ...
 
 # Design
-
-<!--
-Design of the feature/system. A good start of the book chapter or crate's documentation. 
--->
 
 Overview ...
 
@@ -39,17 +27,9 @@ Description ...
 
 # Steps / History
 
-<!--
-For larger features, more steps might be involved.
--->
-
 - [ ] First step: #...
 - [ ] Stabilization
 
 # Unresolved Questions
 
-<!--
-Include any open questions.
--->
-
-- To choose ...
+- Choose between ...
