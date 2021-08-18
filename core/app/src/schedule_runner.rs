@@ -15,7 +15,7 @@ pub enum RunMode {
 
 impl Default for RunMode {
     fn default() -> Self {
-        RunMode::Loop { wait: None }
+        Self::Loop { wait: None }
     }
 }
 
@@ -26,13 +26,13 @@ pub struct ScheduleRunnerSettings {
 
 impl ScheduleRunnerSettings {
     pub fn run_once() -> Self {
-        ScheduleRunnerSettings {
+        Self {
             run_mode: RunMode::Once,
         }
     }
 
     pub fn run_loop(wait_duration: Duration) -> Self {
-        ScheduleRunnerSettings {
+        Self {
             run_mode: RunMode::Loop {
                 wait: Some(wait_duration),
             },
@@ -41,7 +41,7 @@ impl ScheduleRunnerSettings {
 }
 
 /// Configures an App to run its [Schedule](legion_ecs::schedule::Schedule) according to a given
-/// [RunMode]
+/// [`RunMode`]
 #[derive(Default)]
 pub struct ScheduleRunnerPlugin;
 

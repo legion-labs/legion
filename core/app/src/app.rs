@@ -44,7 +44,7 @@ pub struct App {
 
 impl Default for App {
     fn default() -> Self {
-        let mut app = App::empty();
+        let mut app = Self::empty();
 
         app.add_default_stages()
             .add_event::<AppExit>()
@@ -60,11 +60,11 @@ impl Default for App {
 }
 
 impl App {
-    pub fn new() -> App {
-        App::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    pub fn empty() -> App {
+    pub fn empty() -> Self {
         Self {
             world: Default::default(),
             schedule: Default::default(),
@@ -102,7 +102,7 @@ impl App {
         #[cfg(feature = "trace")]
         let _legion_app_run_guard = legion_app_run_span.enter();
 
-        let mut app = std::mem::replace(self, App::empty());
+        let mut app = std::mem::replace(self, Self::empty());
         let runner = std::mem::replace(&mut app.runner, Box::new(run_once));
         (runner)(app);
     }
@@ -284,10 +284,10 @@ impl App {
     }
 
     /// Adds a new [State] with the given `initial` value.
-    /// This inserts a new `State<T>` resource and adds a new "driver" to [CoreStage::Update].
+    /// This inserts a new `State<T>` resource and adds a new "driver" to [`CoreStage::Update`].
     /// Each stage that uses `State<T>` for system run criteria needs a driver. If you need to use
-    /// your state in a different stage, consider using [Self::add_state_to_stage] or manually
-    /// adding [State::get_driver] to additional stages you need it in.
+    /// your state in a different stage, consider using [`Self::add_state_to_stage`] or manually
+    /// adding [`State::get_driver`] to additional stages you need it in.
     pub fn add_state<T>(&mut self, initial: T) -> &mut Self
     where
         T: Component + Debug + Clone + Eq + Hash,
@@ -298,7 +298,7 @@ impl App {
     /// Adds a new [State] with the given `initial` value.
     /// This inserts a new `State<T>` resource and adds a new "driver" to the given stage.
     /// Each stage that uses `State<T>` for system run criteria needs a driver. If you need to use
-    /// your state in more than one stage, consider manually adding [State::get_driver] to the
+    /// your state in more than one stage, consider manually adding [`State::get_driver`] to the
     /// stages you need it in.
     pub fn add_state_to_stage<T>(&mut self, stage: impl StageLabel, initial: T) -> &mut Self
     where
@@ -457,7 +457,7 @@ impl App {
     /// App::new()
     ///     .set_runner(my_runner);
     /// ```
-    pub fn set_runner(&mut self, run_fn: impl Fn(App) + 'static) -> &mut Self {
+    pub fn set_runner(&mut self, run_fn: impl Fn(Self) + 'static) -> &mut Self {
         self.runner = Box::new(run_fn);
         self
     }
@@ -481,13 +481,14 @@ impl App {
     {
         debug!("added plugin: {}", plugin.name());
         plugin.build(self);
+        drop(plugin);
         self
     }
 
     /// Adds a group of plugins
     ///
     /// Bevy plugins can be grouped into a set of plugins. Bevy provides
-    /// built-in PluginGroups that provide core engine functionality.
+    /// built-in `PluginGroups` that provide core engine functionality.
     ///
     /// The plugin groups available by default are [`DefaultPlugins`] and [`MinimalPlugins`].
     ///
@@ -552,12 +553,12 @@ impl App {
         self
     }
 
-    /// Registers a new component using the given [ComponentDescriptor]. Components do not need to
+    /// Registers a new component using the given [`ComponentDescriptor`]. Components do not need to
     /// be manually registered. This just provides a way to override default configuration.
     /// Attempting to register a component with a type that has already been used by [World]
     /// will result in an error.
     ///
-    /// See [World::register_component]
+    /// See [`World::register_component`]
     pub fn register_component(&mut self, descriptor: ComponentDescriptor) -> &mut Self {
         self.world.register_component(descriptor).unwrap();
         self
