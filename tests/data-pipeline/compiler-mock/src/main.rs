@@ -61,11 +61,7 @@ fn compile(
     let guid = primary_asset_id(&source, test_asset::TYPE_ID);
 
     // todo: source_resource is wrong
-    let resource = compiler_load_resource(
-        source.source_resource(),
-        resource_dir,
-        &mut resources,
-    )?;
+    let resource = compiler_load_resource(source.source_resource(), resource_dir, &mut resources)?;
     let resource = resource
         .get::<mock_offline::MockResource>(&resources)
         .unwrap();
