@@ -4,11 +4,7 @@ use legion_ecs::{
     system::{Query, RemovedComponents, ResMut},
 };
 use legion_utils::{HashMap, HashSet};
-use std::{
-    borrow::Cow,
-    fmt::Debug,
-    ops::{Deref, DerefMut},
-};
+use std::{borrow::Cow, fmt::Debug};
 
 /// A collection of labels
 #[derive(Default)]
@@ -54,7 +50,7 @@ impl Labels {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &str> {
-        self.labels.iter().map(|label| label.deref())
+        self.labels.iter().map(|label| &**label)
     }
 }
 
@@ -70,17 +66,16 @@ impl EntityLabels {
     pub fn get(&self, label: &str) -> &[Entity] {
         self.label_entities
             .get(label)
-            .map(|entities| entities.as_slice())
-            .unwrap_or(&[])
+            .map_or(&[], |entities| entities.as_slice())
     }
 }
 
 pub(crate) fn entity_labels_system(
-    mut entity_labels: ResMut<EntityLabels>,
-    removed_labels: RemovedComponents<Labels>,
-    query: Query<(Entity, &Labels), Changed<Labels>>,
+    mut entity_labels: ResMut<'_, EntityLabels>,
+    removed_labels: RemovedComponents<'_, Labels>,
+    query: Query<'_, (Entity, &Labels), Changed<Labels>>,
 ) {
-    let entity_labels = entity_labels.deref_mut();
+    let entity_labels = &mut *entity_labels;
 
     for entity in removed_labels.iter() {
         if let Some(labels) = entity_labels.entity_labels.get(&entity) {
@@ -91,6 +86,7 @@ pub(crate) fn entity_labels_system(
             }
         }
     }
+    drop(removed_labels);
 
     for (entity, labels) in query.iter() {
         let current_labels = entity_labels
@@ -114,6 +110,7 @@ pub(crate) fn entity_labels_system(
 
         *current_labels = labels.labels.clone();
     }
+    drop(query);
 }
 
 #[cfg(test)]

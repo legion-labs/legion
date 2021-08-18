@@ -13,8 +13,8 @@ pub struct Time {
 }
 
 impl Default for Time {
-    fn default() -> Time {
-        Time {
+    fn default() -> Self {
+        Self {
             delta: Duration::from_secs(0),
             last_update: None,
             startup: Instant::now(),
@@ -84,7 +84,7 @@ impl Time {
     }
 }
 
-pub(crate) fn time_system(mut time: ResMut<Time>) {
+pub(crate) fn time_system(mut time: ResMut<'_, Time>) {
     time.update();
 }
 

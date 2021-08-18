@@ -14,21 +14,21 @@ pub struct Name {
 
 impl Default for Name {
     fn default() -> Self {
-        Name::new("")
+        Self::new("")
     }
 }
 
 impl Name {
     pub fn new(name: impl Into<Cow<'static, str>>) -> Self {
         let name = name.into();
-        let mut name = Name { name, hash: 0 };
+        let mut name = Self { name, hash: 0 };
         name.update_hash();
         name
     }
 
     #[inline(always)]
     pub fn set(&mut self, name: impl Into<Cow<'static, str>>) {
-        *self = Name::new(name);
+        *self = Self::new(name);
     }
 
     #[inline(always)]
@@ -52,7 +52,7 @@ impl Name {
 impl From<&str> for Name {
     #[inline(always)]
     fn from(name: &str) -> Self {
-        Name::new(name.to_owned())
+        Self::new(name.to_owned())
     }
 }
 

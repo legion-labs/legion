@@ -42,10 +42,10 @@ impl Hash for FloatOrd {
     fn hash<H: Hasher>(&self, state: &mut H) {
         if self.0.is_nan() {
             // Ensure all NaN representations hash to the same value
-            state.write(bytes_of(&f32::NAN))
+            state.write(bytes_of(&f32::NAN));
         } else if self.0 == 0.0 {
             // Ensure both zeroes hash to the same value
-            state.write(bytes_of(&0.0f32))
+            state.write(bytes_of(&0.0f32));
         } else {
             state.write(bytes_of(&self.0));
         }
@@ -53,9 +53,9 @@ impl Hash for FloatOrd {
 }
 
 impl Neg for FloatOrd {
-    type Output = FloatOrd;
+    type Output = Self;
 
     fn neg(self) -> Self::Output {
-        FloatOrd(-self.0)
+        Self(-self.0)
     }
 }

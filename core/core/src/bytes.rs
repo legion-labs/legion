@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 pub use legion_derive::Bytes;
 
 // NOTE: we can reexport common traits and methods from bytemuck to avoid requiring dependency most of
@@ -23,7 +25,7 @@ where
     T: Pod,
 {
     fn write_bytes(&self, buffer: &mut [u8]) {
-        buffer[0..self.byte_len()].copy_from_slice(bytes_of(self))
+        buffer[0..self.byte_len()].copy_from_slice(bytes_of(self));
     }
 
     fn byte_len(&self) -> usize {
@@ -44,11 +46,11 @@ where
     fn from_bytes(bytes: &[u8]) -> Self {
         assert_eq!(
             bytes.len(),
-            std::mem::size_of::<T>(),
+            std::mem::size_of::<Self>(),
             "Cannot convert byte slice `&[u8]` to type `{}`. They are not the same size.",
-            std::any::type_name::<T>()
+            std::any::type_name::<Self>()
         );
-        unsafe { bytes.as_ptr().cast::<T>().read_unaligned() }
+        unsafe { bytes.as_ptr().cast::<Self>().read_unaligned() }
     }
 }
 
@@ -63,6 +65,7 @@ mod tests {
         value.write_bytes(&mut bytes);
         let result = T::from_bytes(&bytes);
         assert_eq!(value, result);
+        drop(value);
     }
 
     #[test]

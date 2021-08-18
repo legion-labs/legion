@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::Time;
 use legion_ecs::{
     archetype::{Archetype, ArchetypeComponentId},
@@ -89,11 +91,12 @@ impl FixedTimestep {
     }
 
     fn prepare_system(
-        mut state: Local<State>,
-        time: Res<Time>,
-        mut fixed_timesteps: ResMut<FixedTimesteps>,
+        mut state: Local<'_, State>,
+        time: Res<'_, Time>,
+        mut fixed_timesteps: ResMut<'_, FixedTimesteps>,
     ) -> ShouldRun {
         let should_run = state.update(&time);
+        drop(time);
         if let Some(ref label) = state.label {
             let res_state = fixed_timesteps.fixed_timesteps.get_mut(label).unwrap();
             res_state.step = state.step;
@@ -145,7 +148,7 @@ impl System for FixedTimestep {
     type Out = ShouldRun;
 
     fn name(&self) -> Cow<'static, str> {
-        Cow::Borrowed(std::any::type_name::<FixedTimestep>())
+        Cow::Borrowed(std::any::type_name::<Self>())
     }
 
     fn id(&self) -> SystemId {
@@ -175,7 +178,7 @@ impl System for FixedTimestep {
     }
 
     fn apply_buffers(&mut self, world: &mut World) {
-        self.internal_system.apply_buffers(world)
+        self.internal_system.apply_buffers(world);
     }
 
     fn initialize(&mut self, world: &mut World) {
