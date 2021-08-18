@@ -28,7 +28,7 @@
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
-//!car
+//!
 //! fn compiler_hash(
 //!    code: &'static str,
 //!    data: &'static str,
