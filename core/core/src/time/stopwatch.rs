@@ -1,7 +1,3 @@
-#[cfg(feature = "legion-reflect")]
-use legion_ecs::reflect::ReflectComponent;
-#[cfg(feature = "legion-reflect")]
-use legion_reflect::Reflect;
 use legion_utils::Duration;
 
 /// A Stopwatch is a struct that track elapsed time when started.
@@ -26,8 +22,6 @@ use legion_utils::Duration;
 /// assert_eq!(stopwatch.elapsed_secs(), 0.0);
 /// ```
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "legion-reflect", derive(Reflect))]
-#[cfg_attr(feature = "legion-reflect", reflect(Component))]
 pub struct Stopwatch {
     elapsed: Duration,
     paused: bool,

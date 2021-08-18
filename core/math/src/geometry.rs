@@ -1,33 +1,20 @@
 use glam::Vec2;
-#[cfg(feature = "legion-reflect")]
-use legion_reflect::Reflect;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
-
-#[cfg(feature = "legion-reflect")]
-pub trait RequiredTraits: Reflect + PartialEq {}
-#[cfg(feature = "legion-reflect")]
-impl<T> RequiredTraits for T where T: Reflect + PartialEq {}
-#[cfg(not(feature = "legion-reflect"))]
-pub trait RequiredTraits: PartialEq {}
-#[cfg(not(feature = "legion-reflect"))]
-impl<T> RequiredTraits for T where T: PartialEq {}
 
 /// A two dimensional "size" as defined by a width and height
 #[derive(Copy, Clone, PartialEq, Debug)]
-#[cfg_attr(feature = "legion-reflect", derive(Reflect))]
-#[cfg_attr(feature = "legion-reflect", reflect(PartialEq))]
-pub struct Size<T: RequiredTraits = f32> {
+pub struct Size<T: PartialEq = f32> {
     pub width: T,
     pub height: T,
 }
 
-impl<T: RequiredTraits> Size<T> {
+impl<T: PartialEq> Size<T> {
     pub fn new(width: T, height: T) -> Self {
         Size { width, height }
     }
 }
 
-impl<T: Default + RequiredTraits> Default for Size<T> {
+impl<T: Default + PartialEq> Default for Size<T> {
     fn default() -> Self {
         Self {
             width: Default::default(),
@@ -38,16 +25,14 @@ impl<T: Default + RequiredTraits> Default for Size<T> {
 
 /// A rect, as defined by its "side" locations
 #[derive(Copy, Clone, PartialEq, Debug)]
-#[cfg_attr(feature = "legion-reflect", derive(Reflect))]
-#[cfg_attr(feature = "legion-reflect", reflect(PartialEq))]
-pub struct Rect<T: RequiredTraits> {
+pub struct Rect<T: PartialEq> {
     pub left: T,
     pub right: T,
     pub top: T,
     pub bottom: T,
 }
 
-impl<T: RequiredTraits> Rect<T> {
+impl<T: PartialEq> Rect<T> {
     pub fn all(value: T) -> Self
     where
         T: Clone,
@@ -61,7 +46,7 @@ impl<T: RequiredTraits> Rect<T> {
     }
 }
 
-impl<T: Default + RequiredTraits> Default for Rect<T> {
+impl<T: Default + PartialEq> Default for Rect<T> {
     fn default() -> Self {
         Self {
             left: Default::default(),
@@ -72,7 +57,7 @@ impl<T: Default + RequiredTraits> Default for Rect<T> {
     }
 }
 
-impl<T: RequiredTraits> Add<Vec2> for Size<T>
+impl<T: PartialEq> Add<Vec2> for Size<T>
 where
     T: Add<f32, Output = T>,
 {
@@ -86,7 +71,7 @@ where
     }
 }
 
-impl<T: RequiredTraits> AddAssign<Vec2> for Size<T>
+impl<T: PartialEq> AddAssign<Vec2> for Size<T>
 where
     T: AddAssign<f32>,
 {
@@ -96,7 +81,7 @@ where
     }
 }
 
-impl<T: RequiredTraits> Sub<Vec2> for Size<T>
+impl<T: PartialEq> Sub<Vec2> for Size<T>
 where
     T: Sub<f32, Output = T>,
 {
@@ -110,7 +95,7 @@ where
     }
 }
 
-impl<T: RequiredTraits> SubAssign<Vec2> for Size<T>
+impl<T: PartialEq> SubAssign<Vec2> for Size<T>
 where
     T: SubAssign<f32>,
 {
@@ -120,7 +105,7 @@ where
     }
 }
 
-impl<T: RequiredTraits> Mul<f32> for Size<T>
+impl<T: PartialEq> Mul<f32> for Size<T>
 where
     T: Mul<f32, Output = T>,
 {
@@ -134,7 +119,7 @@ where
     }
 }
 
-impl<T: RequiredTraits> MulAssign<f32> for Size<T>
+impl<T: PartialEq> MulAssign<f32> for Size<T>
 where
     T: MulAssign<f32>,
 {
@@ -144,7 +129,7 @@ where
     }
 }
 
-impl<T: RequiredTraits> Div<f32> for Size<T>
+impl<T: PartialEq> Div<f32> for Size<T>
 where
     T: Div<f32, Output = T>,
 {
@@ -158,7 +143,7 @@ where
     }
 }
 
-impl<T: RequiredTraits> DivAssign<f32> for Size<T>
+impl<T: PartialEq> DivAssign<f32> for Size<T>
 where
     T: DivAssign<f32>,
 {

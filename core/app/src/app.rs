@@ -45,8 +45,6 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         let mut app = App::empty();
-        #[cfg(feature = "legion-reflect")]
-        app.init_resource::<legion_reflect::TypeRegistryArc>();
 
         app.add_default_stages()
             .add_event::<AppExit>()
@@ -562,18 +560,6 @@ impl App {
     /// See [World::register_component]
     pub fn register_component(&mut self, descriptor: ComponentDescriptor) -> &mut Self {
         self.world.register_component(descriptor).unwrap();
-        self
-    }
-
-    #[cfg(feature = "legion-reflect")]
-    pub fn register_type<T: legion_reflect::GetTypeRegistration>(&mut self) -> &mut Self {
-        {
-            let registry = self
-                .world
-                .get_resource_mut::<legion_reflect::TypeRegistryArc>()
-                .unwrap();
-            registry.write().register::<T>();
-        }
         self
     }
 }

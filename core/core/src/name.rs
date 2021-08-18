@@ -1,7 +1,3 @@
-#[cfg(feature = "legion-reflect")]
-use legion_ecs::reflect::ReflectComponent;
-#[cfg(feature = "legion-reflect")]
-use legion_reflect::Reflect;
 use legion_utils::AHasher;
 use std::{
     borrow::Cow,
@@ -11,8 +7,6 @@ use std::{
 
 /// Component used to identify an entity. Stores a hash for faster comparisons
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "legion-reflect", derive(Reflect))]
-#[cfg_attr(feature = "legion-reflect", reflect(Component))]
 pub struct Name {
     hash: u64, // TODO: Shouldn't be serialized
     name: Cow<'static, str>,

@@ -1,12 +1,8 @@
-#[cfg(feature = "legion-reflect")]
-use legion_ecs::reflect::ReflectComponent;
 use legion_ecs::{
     entity::Entity,
     query::Changed,
     system::{Query, RemovedComponents, ResMut},
 };
-#[cfg(feature = "legion-reflect")]
-use legion_reflect::Reflect;
 use legion_utils::{HashMap, HashSet};
 use std::{
     borrow::Cow,
@@ -16,8 +12,6 @@ use std::{
 
 /// A collection of labels
 #[derive(Default)]
-#[cfg_attr(feature = "legion-reflect", derive(Reflect))]
-#[cfg_attr(feature = "legion-reflect", reflect(Component))]
 pub struct Labels {
     labels: HashSet<Cow<'static, str>>,
 }
