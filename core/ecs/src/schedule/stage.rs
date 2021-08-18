@@ -1443,7 +1443,9 @@ mod tests {
         // Piping criteria.
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
         fn eot_piped(input: In<ShouldRun>, has_ran: Local<'_, bool>) -> ShouldRun {
-            if let ShouldRun::Yes | ShouldRun::YesAndCheckAgain = input.0 {
+            let should_run = input.0;
+            drop(input);
+            if let ShouldRun::Yes | ShouldRun::YesAndCheckAgain = should_run {
                 every_other_time(has_ran)
             } else {
                 ShouldRun::No
@@ -1944,6 +1946,7 @@ mod tests {
             query: Query<'_, crate::entity::Entity>,
         ) {
             *entity_count = query.iter().count();
+            drop(query);
         }
 
         let mut world = World::new();
@@ -1966,6 +1969,7 @@ mod tests {
             query: Query<'_, crate::entity::Entity>,
         ) {
             *entity_count = query.iter().count();
+            drop(query);
         }
 
         let mut world = World::new();
@@ -2053,7 +2057,9 @@ mod tests {
         struct Foo;
 
         fn even_number_of_entities_critiera(query: Query<'_, &Foo>) -> ShouldRun {
-            if query.iter().len() % 2 == 0 {
+            let count = query.iter().len();
+            drop(query);
+            if count % 2 == 0 {
                 ShouldRun::Yes
             } else {
                 ShouldRun::No
@@ -2065,7 +2071,9 @@ mod tests {
         }
 
         fn count_entities(query: Query<'_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
-            res.push(query.iter().len());
+            let count = query.iter().len();
+            drop(query);
+            res.push(count);
         }
 
         let mut world = World::new();
@@ -2089,7 +2097,9 @@ mod tests {
         struct Foo;
 
         fn even_number_of_entities_critiera(query: Query<'_, &Foo>) -> ShouldRun {
-            if query.iter().len() % 2 == 0 {
+            let count = query.iter().len();
+            drop(query);
+            if count % 2 == 0 {
                 ShouldRun::Yes
             } else {
                 ShouldRun::No
@@ -2101,7 +2111,9 @@ mod tests {
         }
 
         fn count_entities(query: Query<'_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
-            res.push(query.iter().len());
+            let count = query.iter().len();
+            drop(query);
+            res.push(count);
         }
 
         let mut world = World::new();

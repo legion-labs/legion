@@ -426,6 +426,7 @@ mod tests {
         world.insert_non_send(thread::current().id());
         fn non_send(thread_id: NonSend<'_, thread::ThreadId>) {
             assert_eq!(thread::current().id(), *thread_id);
+            drop(thread_id);
         }
         fn empty() {}
         let mut stage = SystemStage::parallel()

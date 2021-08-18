@@ -48,6 +48,7 @@ mod tests {
             for a in query.iter() {
                 println!("{:?}", a);
             }
+            drop(query);
         }
 
         let mut system = sys.system();
@@ -79,6 +80,7 @@ mod tests {
             d_query: Query<'_, &D>,
         ) {
             let entities = entity_query.iter().collect::<Vec<Entity>>();
+            drop(entity_query);
             assert!(
                 b_query.get_component::<B>(entities[0]).is_err(),
                 "entity 0 should not have B"
@@ -99,6 +101,7 @@ mod tests {
                 b_query.get_component::<C>(entities[2]).is_err(),
                 "entity 2 has C, but it shouldn't be accessible from b_query"
             );
+            drop(b_query);
             assert!(
                 a_c_query.get_component::<C>(entities[2]).is_ok(),
                 "entity 2 has C, and it should be accessible from a_c_query"
@@ -107,10 +110,12 @@ mod tests {
                 a_c_query.get_component::<D>(entities[3]).is_err(),
                 "entity 3 should have D, but it shouldn't be accessible from b_query"
             );
+            drop(a_c_query);
             assert!(
                 d_query.get_component::<D>(entities[3]).is_ok(),
                 "entity 3 should have D"
             );
+            drop(d_query);
 
             *ran = true;
         }
@@ -139,6 +144,7 @@ mod tests {
         ) {
             let changed = set.q0().iter().count();
             let added = set.q1().iter().count();
+            drop(set);
 
             assert_eq!(changed, 1);
             assert_eq!(added, 1);
@@ -171,6 +177,8 @@ mod tests {
             if value.is_changed() {
                 changed.0 += 1;
             }
+
+            drop(value);
         }
 
         let mut world = World::default();
@@ -204,7 +212,10 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_mut_system() {
-        fn sys(_q1: Query<'_, &mut A>, _q2: Query<'_, &mut A>) {}
+        fn sys(_q1: Query<'_, &mut A>, _q2: Query<'_, &mut A>) {
+            drop(_q1);
+            drop(_q2);
+        }
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -212,7 +223,10 @@ mod tests {
 
     #[test]
     fn disjoint_query_mut_system() {
-        fn sys(_q1: Query<'_, &mut A, With<B>>, _q2: Query<'_, &mut A, Without<B>>) {}
+        fn sys(_q1: Query<'_, &mut A, With<B>>, _q2: Query<'_, &mut A, Without<B>>) {
+            drop(_q1);
+            drop(_q2);
+        }
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -220,7 +234,10 @@ mod tests {
 
     #[test]
     fn disjoint_query_mut_read_component_system() {
-        fn sys(_q1: Query<'_, (&mut A, &B)>, _q2: Query<'_, &mut A, Without<B>>) {}
+        fn sys(_q1: Query<'_, (&mut A, &B)>, _q2: Query<'_, &mut A, Without<B>>) {
+            drop(_q1);
+            drop(_q2);
+        }
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -229,7 +246,10 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_immut_system() {
-        fn sys(_q1: Query<'_, &A>, _q2: Query<'_, &mut A>) {}
+        fn sys(_q1: Query<'_, &A>, _q2: Query<'_, &mut A>) {
+            drop(_q1);
+            drop(_q2);
+        }
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -245,7 +265,10 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_with_query_set_system() {
-        fn sys(_query: Query<'_, &mut A>, _set: QuerySet<(Query<'_, &mut A>, Query<'_, &B>)>) {}
+        fn sys(_query: Query<'_, &mut A>, _set: QuerySet<(Query<'_, &mut A>, Query<'_, &B>)>) {
+            drop(_query);
+            drop(_set);
+        }
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -258,6 +281,8 @@ mod tests {
             _set_1: QuerySet<(Query<'_, &mut A>,)>,
             _set_2: QuerySet<(Query<'_, &mut A>, Query<'_, &B>)>,
         ) {
+            drop(_set_1);
+            drop(_set_2);
         }
 
         let mut world = World::default();
@@ -329,6 +354,7 @@ mod tests {
 
         fn sys(local: Local<'_, Foo>, mut modified: ResMut<'_, bool>) {
             assert_eq!(local.value, 2);
+            drop(local);
             *modified = true;
         }
 
@@ -359,6 +385,8 @@ mod tests {
                 &[despawned.0],
                 "despawning results in 'removed component' state"
             );
+            drop(removed_i32);
+            drop(despawned);
 
             *ran = true;
         }
@@ -373,6 +401,7 @@ mod tests {
         world.insert_resource(false);
         fn sys(local: Local<'_, usize>, mut modified: ResMut<'_, bool>) {
             assert_eq!(*local, 42);
+            drop(local);
             *modified = true;
         }
 
@@ -417,6 +446,7 @@ mod tests {
                     "entity's bundle components exactly match entity's archetype components"
                 );
             }
+            drop(query);
             *modified = true;
         }
 
@@ -451,12 +481,16 @@ mod tests {
     fn query_is_empty() {
         fn without_filter(not_empty: Query<'_, &A>, empty: Query<'_, &B>) {
             assert!(!not_empty.is_empty());
+            drop(not_empty);
             assert!(empty.is_empty());
+            drop(empty);
         }
 
         fn with_filter(not_empty: Query<'_, &A, With<C>>, empty: Query<'_, &A, With<D>>) {
             assert!(!not_empty.is_empty());
+            drop(not_empty);
             assert!(empty.is_empty());
+            drop(empty);
         }
 
         let mut world = World::default();
