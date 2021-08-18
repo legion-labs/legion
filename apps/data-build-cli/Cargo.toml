@@ -17,7 +17,7 @@ clap = "2.33"
 legion-data-build = { path = "../../modules/data-build" }
 legion-data-compiler = { path = "../../modules/data-compiler" }
 legion-asset-store = { path = "../../modules/asset-store" }
+legion-resources = { path = "../../modules/resources" }
 
 [dev-dependencies]
 tempfile = "3.2.0"
-legion-resources = { path = "../../modules/resources" }

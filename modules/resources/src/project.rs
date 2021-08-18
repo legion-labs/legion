@@ -3,11 +3,12 @@ use crate::metadata::ResourceHash;
 use crate::types::ResourceId;
 use crate::types::ResourceType;
 use crate::ResourceHandle;
-use crate::ResourcePathRef;
+use crate::ResourceNameRef;
+use crate::ResourcePathId;
 use crate::ResourceRegistry;
 use crate::RESOURCE_EXT;
 
-use crate::ResourcePath;
+use crate::ResourceName;
 
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
@@ -150,7 +151,7 @@ impl Project {
     }
 
     /// Finds resource by its name and returns its `ResourceId`.
-    pub fn find_resource(&self, name: &ResourcePathRef) -> Result<ResourceId, Error> {
+    pub fn find_resource(&self, name: &ResourceNameRef) -> Result<ResourceId, Error> {
         let all_resources = [&self.db.remote_resources, &self.db.local_resources];
         let mut references = all_resources.iter().flat_map(|v| v.iter());
 
@@ -172,9 +173,18 @@ impl Project {
         }
     }
 
-    /// Checks if a resource exists.
-    pub fn exists(&self, name: &ResourcePathRef) -> bool {
+    /// Checks if a resource with a given name is part of the project.
+    pub fn exists_named(&self, name: &ResourceNameRef) -> bool {
         self.find_resource(name).is_ok()
+    }
+
+    /// Checks if a resource is part of the project.
+    pub fn exists(&self, id: ResourceId) -> bool {
+        let all_resources = [&self.db.remote_resources, &self.db.local_resources];
+        all_resources
+            .iter()
+            .flat_map(|v| v.iter())
+            .any(|v| v == &id)
     }
 
     /// Add a given resource of a given type with an associated `.meta`.
@@ -186,7 +196,7 @@ impl Project {
     /// Use [`Self::commit()`] to push changes to remote.
     pub fn add_resource(
         &mut self,
-        name: ResourcePath,
+        name: ResourceName,
         kind: ResourceType,
         handle: &ResourceHandle,
         registry: &mut ResourceRegistry,
@@ -283,7 +293,7 @@ impl Project {
         };
 
         metadata.content_checksum = content_checksum;
-        metadata.build_deps = build_dependencies;
+        metadata.dependencies = build_dependencies;
 
         meta_file.set_len(0).unwrap();
         meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
@@ -310,10 +320,13 @@ impl Project {
     }
 
     /// Returns information about a given resource from its `.meta` file.
-    pub fn resource_info(&self, id: ResourceId) -> Result<(ResourceHash, Vec<ResourceId>), Error> {
+    pub fn resource_info(
+        &self,
+        id: ResourceId,
+    ) -> Result<(ResourceHash, Vec<ResourcePathId>), Error> {
         let meta = self.read_meta(id)?;
         let resource_hash = meta.resource_hash();
-        let dependencies = meta.build_deps;
+        let dependencies = meta.dependencies;
 
         Ok((resource_hash, dependencies))
     }
@@ -389,11 +402,11 @@ impl Project {
     pub fn rename_resource(
         &mut self,
         id: ResourceId,
-        new_name: &ResourcePathRef,
-    ) -> Result<ResourcePath, Error> {
+        new_name: &ResourceNameRef,
+    ) -> Result<ResourceName, Error> {
         self.checkout(id)?;
 
-        let mut old_name = ResourcePath::new();
+        let mut old_name = ResourceName::new();
         self.update_meta(id, |data| {
             old_name = data.rename(new_name.to_owned());
         });
@@ -424,13 +437,13 @@ impl Drop for Project {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::File, path::Path};
+    use std::{fs::File, path::Path, str::FromStr};
 
     use tempfile::TempDir;
 
     use crate::{
-        project::Project, Resource, ResourceId, ResourcePath, ResourceProcessor, ResourceRegistry,
-        ResourceType,
+        project::Project, Resource, ResourceName, ResourcePathId, ResourceProcessor,
+        ResourceRegistry, ResourceType,
     };
 
     use super::ResourceDb;
@@ -453,7 +466,7 @@ mod tests {
 
     struct NullResource {
         content: isize,
-        build_deps: Vec<ResourceId>,
+        dependencies: Vec<ResourcePathId>,
     }
     impl Resource for NullResource {
         fn as_any(&self) -> &dyn std::any::Any {
@@ -469,16 +482,16 @@ mod tests {
         fn new_resource(&mut self) -> Box<dyn Resource> {
             Box::new(NullResource {
                 content: 0,
-                build_deps: vec![],
+                dependencies: vec![],
             })
         }
 
-        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourceId> {
+        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
             resource
                 .as_any()
                 .downcast_ref::<NullResource>()
                 .unwrap()
-                .build_deps
+                .dependencies
                 .clone()
         }
 
@@ -494,14 +507,18 @@ mod tests {
             nbytes += bytes.len();
             writer.write_all(&bytes)?;
 
-            let bytes = resource.build_deps.len().to_ne_bytes();
+            let bytes = resource.dependencies.len().to_ne_bytes();
             nbytes += bytes.len();
             writer.write_all(&bytes)?;
 
-            for dep in &resource.build_deps {
-                let bytes = dep.get_internal().to_ne_bytes();
-                nbytes += bytes.len();
+            for dep in &resource.dependencies {
+                let str = format!("{}", dep);
+                let str = str.as_bytes();
+                let bytes = str.len().to_ne_bytes();
                 writer.write_all(&bytes)?;
+                nbytes += bytes.len();
+                writer.write_all(str)?;
+                nbytes += str.len();
             }
 
             Ok(nbytes)
@@ -521,14 +538,16 @@ mod tests {
             reader.read_exact(&mut buf[..])?;
             res.content = isize::from_ne_bytes(buf);
 
-            let mut buf = res.build_deps.len().to_ne_bytes();
+            let mut buf = res.dependencies.len().to_ne_bytes();
             reader.read_exact(&mut buf[..])?;
 
             for _ in 0..usize::from_ne_bytes(buf) {
-                let mut buf = 0u64.to_ne_bytes();
-                reader.read_exact(&mut buf[..])?;
-                res.build_deps
-                    .push(ResourceId::from_raw(u64::from_ne_bytes(buf)).unwrap());
+                let mut nbytes = 0u64.to_ne_bytes();
+                reader.read_exact(&mut nbytes[..])?;
+                let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
+                reader.read_exact(&mut buf)?;
+                res.dependencies
+                    .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
             }
 
             Ok(resource)
@@ -547,7 +566,7 @@ mod tests {
 
         let texture = project
             .add_resource(
-                ResourcePath::from("albedo.texture"),
+                ResourceName::from("albedo.texture"),
                 RESOURCE_TEXTURE,
                 &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
                 &mut resources,
@@ -558,11 +577,11 @@ mod tests {
         material
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
-            .build_deps
-            .push(texture);
+            .dependencies
+            .push(ResourcePathId::from(texture));
         let material = project
             .add_resource(
-                ResourcePath::from("body.material"),
+                ResourceName::from("body.material"),
                 RESOURCE_MATERIAL,
                 &material,
                 &mut resources,
@@ -573,11 +592,11 @@ mod tests {
         geometry
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
-            .build_deps
-            .push(material);
+            .dependencies
+            .push(ResourcePathId::from(material));
         let geometry = project
             .add_resource(
-                ResourcePath::from("hero.geometry"),
+                ResourceName::from("hero.geometry"),
                 RESOURCE_GEOMETRY,
                 &geometry,
                 &mut resources,
@@ -586,7 +605,7 @@ mod tests {
 
         let skeleton = project
             .add_resource(
-                ResourcePath::from("hero.skeleton"),
+                ResourceName::from("hero.skeleton"),
                 RESOURCE_SKELETON,
                 &resources.new_resource(RESOURCE_SKELETON).unwrap(),
                 &mut resources,
@@ -597,10 +616,13 @@ mod tests {
         actor
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
-            .build_deps = vec![geometry, skeleton];
+            .dependencies = vec![
+            ResourcePathId::from(geometry),
+            ResourcePathId::from(skeleton),
+        ];
         let _actor = project
             .add_resource(
-                ResourcePath::from("hero.actor"),
+                ResourceName::from("hero.actor"),
                 RESOURCE_ACTOR,
                 &actor,
                 &mut resources,
@@ -613,7 +635,7 @@ mod tests {
     fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
         let texture = project
             .add_resource(
-                ResourcePath::from("sky.texture"),
+                ResourceName::from("sky.texture"),
                 RESOURCE_TEXTURE,
                 &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
                 resources,
@@ -624,12 +646,12 @@ mod tests {
         material
             .get_mut::<NullResource>(resources)
             .unwrap()
-            .build_deps
-            .push(texture);
+            .dependencies
+            .push(ResourcePathId::from(texture));
 
         let _material = project
             .add_resource(
-                ResourcePath::from("sky.material"),
+                ResourceName::from("sky.material"),
                 RESOURCE_MATERIAL,
                 &material,
                 resources,
@@ -687,7 +709,7 @@ mod tests {
         let (project, _) = create_actor(project_dir.path());
 
         let top_level_resource = project
-            .find_resource(&ResourcePath::from("hero.actor"))
+            .find_resource(&ResourceName::from("hero.actor"))
             .unwrap();
 
         let (_, dependencies) = project.resource_info(top_level_resource).unwrap();
@@ -697,7 +719,7 @@ mod tests {
 
     #[test]
     fn rename() {
-        let rename_assert = |proj: &mut Project, old_name: ResourcePath, new_name: ResourcePath| {
+        let rename_assert = |proj: &mut Project, old_name: ResourceName, new_name: ResourceName| {
             let skeleton_id = proj.find_resource(&old_name);
             assert!(skeleton_id.is_ok());
             let skeleton_id = skeleton_id.unwrap();
@@ -718,13 +740,13 @@ mod tests {
 
         rename_assert(
             &mut project,
-            ResourcePath::from("hero.skeleton"),
-            ResourcePath::from("boss.skeleton"),
+            ResourceName::from("hero.skeleton"),
+            ResourceName::from("boss.skeleton"),
         );
         rename_assert(
             &mut project,
-            ResourcePath::from("sky.material"),
-            ResourcePath::from("clouds.material"),
+            ResourceName::from("sky.material"),
+            ResourceName::from("clouds.material"),
         );
     }
 }

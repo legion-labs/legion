@@ -2,7 +2,9 @@
 //!
 //! It is used to test the data compilation process until we have a proper resource available.
 
-use crate::{Resource, ResourceId, ResourceProcessor, ResourceType};
+use std::str::FromStr;
+
+use crate::{Resource, ResourcePathId, ResourceProcessor, ResourceType};
 
 /// Type id of test resource. Used until we have proper resource types.
 pub const TYPE_ID: ResourceType = ResourceType::new(b"test_resource");
@@ -14,7 +16,7 @@ pub struct TestResource {
     /// Resource's content.
     pub content: String,
     /// Resource's build dependencies.
-    pub build_deps: Vec<ResourceId>,
+    pub build_deps: Vec<ResourcePathId>,
 }
 impl Resource for TestResource {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -38,7 +40,7 @@ impl ResourceProcessor for TestResourceProc {
         })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourceId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
         resource
             .as_any()
             .downcast_ref::<TestResource>()
@@ -68,9 +70,13 @@ impl ResourceProcessor for TestResourceProc {
         writer.write_all(&bytes)?;
 
         for dep in &resource.build_deps {
-            let bytes = dep.get_internal().to_ne_bytes();
-            nbytes += bytes.len();
+            let str = format!("{}", dep);
+            let str = str.as_bytes();
+            let bytes = str.len().to_ne_bytes();
             writer.write_all(&bytes)?;
+            nbytes += bytes.len();
+            writer.write_all(str)?;
+            nbytes += str.len();
         }
 
         Ok(nbytes)
@@ -99,10 +105,12 @@ impl ResourceProcessor for TestResourceProc {
         let dep_count = usize::from_ne_bytes(buf);
 
         for _ in 0..dep_count {
-            let mut buf = 0u64.to_ne_bytes();
-            reader.read_exact(&mut buf[..])?;
+            let mut nbytes = 0u64.to_ne_bytes();
+            reader.read_exact(&mut nbytes[..])?;
+            let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
+            reader.read_exact(&mut buf)?;
             res.build_deps
-                .push(ResourceId::from_raw(u64::from_ne_bytes(buf)).unwrap());
+                .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
         }
 
         Ok(resource)

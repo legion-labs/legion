@@ -16,13 +16,13 @@ use legion_data_compiler::{
     },
     CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
-use legion_resources::{test_resource, ResourceId, ResourceRegistry};
+use legion_resources::{test_resource, ResourcePathId, ResourceRegistry};
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    resource_types: &[test_resource::TYPE_ID],
+    transforms: &[(test_resource::TYPE_ID, test_resource::TYPE_ID)],
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -41,8 +41,8 @@ fn compiler_hash(
 }
 
 fn compile(
-    source: ResourceId,
-    dependencies: &[ResourceId],
+    source: ResourcePathId,
+    dependencies: &[ResourcePathId],
     _target: Target,
     _platform: Platform,
     _locale: &Locale,
@@ -58,9 +58,10 @@ fn compile(
     let mut asset_store = LocalCompiledAssetStore::open(compiled_asset_store_path)
         .ok_or(CompilerError::AssetStoreError)?;
 
-    let guid = primary_asset_id(source, test_asset::TYPE_ID);
+    let guid = primary_asset_id(&source, test_asset::TYPE_ID);
 
-    let resource = compiler_load_resource(source, resource_dir, &mut resources)?;
+    // todo: source_resource is wrong here
+    let resource = compiler_load_resource(source.source_resource(), resource_dir, &mut resources)?;
     let resource = resource
         .get::<test_resource::TestResource>(&resources)
         .unwrap();
@@ -84,7 +85,7 @@ fn compile(
     // in this test example every build dependency becomes a asset_reference/load-time dependency.
     let asset_references: Vec<_> = dependencies
         .iter()
-        .map(|dep| (guid, primary_asset_id(*dep, test_asset::TYPE_ID)))
+        .map(|dep| (guid, primary_asset_id(dep, test_asset::TYPE_ID)))
         .collect();
 
     Ok(CompilationOutput {

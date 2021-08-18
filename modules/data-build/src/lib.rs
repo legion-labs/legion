@@ -242,8 +242,10 @@ impl From<legion_resources::Error> for Error {
 mod asset_file_writer;
 mod buildindex;
 mod databuild;
+mod options;
 
 use std::io;
 
-pub use self::databuild::*;
-pub use legion_resources::ResourcePath;
+pub use databuild::*;
+pub use legion_resources::ResourceName;
+pub use options::*;

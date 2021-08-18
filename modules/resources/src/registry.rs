@@ -8,7 +8,7 @@ use std::{
 
 use slotmap::{SecondaryMap, SlotMap};
 
-use crate::{ResourceId, ResourceType};
+use crate::{ResourcePathId, ResourceType};
 
 slotmap::new_key_type!(
     struct ResourceHandleId;
@@ -29,7 +29,7 @@ pub trait ResourceProcessor {
     fn new_resource(&mut self) -> Box<dyn Resource>;
 
     /// Interface returning a list of resources that `resource` depends on for building.
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourceId>;
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId>;
 
     /// Interface defining serialization behavior of the resource.
     fn write_resource(
@@ -189,7 +189,7 @@ impl ResourceRegistry {
         kind: ResourceType,
         handle: &ResourceHandle,
         writer: &mut dyn io::Write,
-    ) -> io::Result<(usize, Vec<ResourceId>)> {
+    ) -> io::Result<(usize, Vec<ResourcePathId>)> {
         if let Some(processor) = self.processors.get_mut(&kind) {
             if self
                 .ref_counts
@@ -298,7 +298,7 @@ mod tests {
         sync::{Arc, Mutex},
     };
 
-    use crate::{ResourceId, ResourceProcessor, ResourceType};
+    use crate::{ResourcePathId, ResourceProcessor, ResourceType};
 
     use super::{Resource, ResourceHandle, ResourceRefCounter, ResourceRegistry};
 
@@ -371,7 +371,7 @@ mod tests {
             Ok(resource)
         }
 
-        fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourceId> {
+        fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
             vec![]
         }
     }

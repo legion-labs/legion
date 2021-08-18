@@ -15,7 +15,7 @@ use data_compiler::{
 };
 use mock_offline::MockResource;
 use mock_runtime::{MockAsset, MockAssetCreator};
-use resources::{test_resource, ResourceId, ResourceProcessor, RESOURCE_EXT};
+use resources::{test_resource, ResourceId, ResourcePathId, ResourceProcessor, RESOURCE_EXT};
 
 fn target_dir() -> PathBuf {
     env::current_exe()
@@ -92,8 +92,9 @@ fn compile_command() {
 
     let cas_addr = CompiledAssetStoreAddr::from(resource_dir.to_owned());
 
+    let derived = ResourcePathId::from(source).transform(test_resource::TYPE_ID);
     let mut command = CompilerCompileCmd::new(
-        source,
+        &derived,
         &[],
         &cas_addr,
         resource_dir,
@@ -153,8 +154,9 @@ fn mock_compile() {
         let exe_path = compiler_exe("mock");
         assert!(exe_path.exists());
 
+        let derived = ResourcePathId::from(source).transform(test_resource::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
-            source,
+            &derived,
             &[],
             &cas_addr,
             resource_dir,

@@ -34,12 +34,12 @@
 //! # use legion_data_compiler::compiler_cmd::CompilerCompileCmd;
 //! # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 //! # use legion_data_compiler::{Locale, Platform, Target};
-//! # use legion_resources::ResourceId;
+//! # use legion_resources::ResourcePathId;
 //! # use std::path::PathBuf;
-//! fn compile_resource(id: ResourceId, dependencies: &[ResourceId]) {
+//! fn compile_resource(derived: ResourcePathId, dependencies: &[ResourcePathId]) {
 //!     let asset_store = CompiledAssetStoreAddr::from("./asset_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
-//!     let mut command = CompilerCompileCmd::new(id, dependencies, &asset_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
+//!     let mut command = CompilerCompileCmd::new(&derived, dependencies, &asset_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
 //!     let output = command.execute("my_compiler.exe", "./").expect("compiled assets");
 //!}
 //! ```
@@ -62,7 +62,7 @@ use crate::{
 
 use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 use legion_assets::AssetId;
-use legion_resources::{ResourceId, ResourceType};
+use legion_resources::{ResourcePathId, ResourceType};
 
 use serde::{Deserialize, Serialize};
 
@@ -166,8 +166,15 @@ impl CommandBuilder {
         if output.status.success() {
             Ok(output)
         } else {
-            println!("{}", String::from_utf8(output.stdout).expect("valid utf8"));
-            println!("{}", String::from_utf8(output.stderr).expect("valid utf8"));
+            println!("Process Exited With Code: {}", output.status);
+            println!(
+                "Stdout: '{}'",
+                String::from_utf8(output.stdout).expect("valid utf8")
+            );
+            println!(
+                "Stdrr: '{}'",
+                String::from_utf8(output.stderr).expect("valid utf8")
+            );
             Err(io::Error::new(io::ErrorKind::Other, "Status Error"))
         }
     }
@@ -186,8 +193,8 @@ pub struct CompilerInfoCmdOutput {
     pub code_version: String,
     /// Resource and Asset data version.
     pub data_version: String,
-    /// Resource types supported by data compiler.
-    pub resource_type: Vec<ResourceType>,
+    /// Transformations supported by data compiler.
+    pub transforms: Vec<(ResourceType, ResourceType)>,
 }
 
 impl CompilerInfoCmdOutput {
@@ -196,7 +203,7 @@ impl CompilerInfoCmdOutput {
             build_version: descriptor.build_version.to_owned(),
             code_version: descriptor.code_version.to_owned(),
             data_version: descriptor.data_version.to_owned(),
-            resource_type: descriptor.resource_types.to_owned(),
+            transforms: descriptor.transforms.to_owned(),
         }
     }
     pub(crate) fn from_bytes(bytes: &[u8]) -> Option<Self> {
@@ -210,7 +217,7 @@ pub(crate) const COMMAND_NAME_COMPILE: &str = "compile";
 pub(crate) const COMMAND_ARG_PLATFORM: &str = "platform";
 pub(crate) const COMMAND_ARG_TARGET: &str = "target";
 pub(crate) const COMMAND_ARG_LOCALE: &str = "locale";
-pub(crate) const COMMAND_ARG_RESOURCE: &str = "resource";
+pub(crate) const COMMAND_ARG_RESOURCE_PATH: &str = "resource";
 pub(crate) const COMMAND_ARG_DEPENDENCIES: &str = "deps";
 pub(crate) const COMMAND_ARG_COMPILED_ASSET_STORE: &str = "cas";
 pub(crate) const COMMAND_ARG_RESOURCE_DIR: &str = "resource_dir";
@@ -306,8 +313,8 @@ pub struct CompilerCompileCmd(CommandBuilder);
 impl CompilerCompileCmd {
     /// Creates a new command.
     pub fn new(
-        source: ResourceId,
-        deps: &[ResourceId],
+        source: &ResourcePathId,
+        deps: &[ResourcePathId],
         cas_addr: &CompiledAssetStoreAddr,
         resource_dir: &Path,
         target: Target,

@@ -1,7 +1,9 @@
 use core::fmt;
 use std::{
+    collections::hash_map::DefaultHasher,
     fmt::LowerHex,
-    hash::Hash,
+    hash::{Hash, Hasher},
+    num::ParseIntError,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -10,13 +12,166 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 /// Name identifier of a resource.
-pub type ResourcePath = PathBuf;
+pub type ResourceName = PathBuf;
 
-/// Temporarily a reference to `ResourcePath` to silence lints.
-pub type ResourcePathRef = Path;
+/// Temporarily a reference to `ResourceName` to silence lints.
+pub type ResourceNameRef = Path;
 
 /// Extension of a resource file.
 pub const RESOURCE_EXT: &str = "blob";
+
+/// Identifier of a path in a build graph.
+///
+/// Considering a build graph where nodes represent *resources* and edges representing *transformations* between resources
+/// the `ResourcePathId` uniqely identifies any resource/node in the build graph.
+///
+/// A tuple (`ResourceType`, `ResourceType`) identifies a transformation type between two resource types.
+///
+/// `ResourcePathId` identifies a concrete resource with a `ResourceId` - that also defines `ResourceType` of the resource.
+/// It also defines an ordered list of `ResourceType`s this source resource must be transformed into during the data build process.
+///
+/// # Example
+///
+/// The following example illustrates creation of *source resource* containing geometry and
+/// definition of a path representing a *derived resource* of a runtime geometry data after LOD-generation process.
+///
+/// ```no_run
+/// # use legion_resources::{ResourceRegistry, ResourceType};
+/// # use legion_resources::ResourcePathId;
+/// # use legion_resources::ResourceName;
+/// # use legion_resources::test_resource;
+/// # use legion_resources::Project;
+/// # use std::path::PathBuf;
+/// # let mut resources = ResourceRegistry::default();
+/// # let mut project = Project::create_new(&PathBuf::new()).unwrap();
+/// # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
+/// # pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
+/// # pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
+/// // create a resource and add it to the project
+/// let resource_handle = resources.new_resource(SOURCE_GEOMETRY).unwrap();
+/// let resource_id = project.add_resource(ResourceName::from("new resource"),
+///                              SOURCE_GEOMETRY, &resource_handle, &mut resources).unwrap();
+///
+/// // create a resource path
+/// let source_path = ResourcePathId::from(resource_id);
+/// let target = source_path.transform(LOD_GEOMETRY).transform(BINARY_GEOMETRY);
+/// ```
+#[derive(Hash, PartialEq, Eq, Debug, Serialize, Deserialize, Clone, PartialOrd, Ord)]
+pub struct ResourcePathId {
+    source: ResourceId,
+    transforms: Vec<ResourceType>,
+}
+
+impl From<ResourceId> for ResourcePathId {
+    fn from(id: ResourceId) -> Self {
+        Self {
+            source: id,
+            transforms: vec![],
+        }
+    }
+}
+
+impl fmt::Display for ResourcePathId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}", self.source))?;
+        for kind in &self.transforms {
+            f.write_fmt(format_args!("|{}", kind))?;
+        }
+        Ok(())
+    }
+}
+
+impl FromStr for ResourcePathId {
+    type Err = ParseIntError;
+
+    fn from_str(mut s: &str) -> Result<Self, Self::Err> {
+        let end = s.find('|').unwrap_or(s.len());
+        let source = ResourceId::from_str(&s[0..end])?;
+        s = &s[end..];
+
+        let mut transforms = vec![];
+        while !s.is_empty() {
+            s = &s[1..]; // skip '|'
+            let end = s.find('|').unwrap_or(s.len());
+            let t = u32::from_str(&s[0..end])?;
+            transforms.push(ResourceType::from_raw(t));
+            s = &s[end..];
+        }
+        Ok(Self { source, transforms })
+    }
+}
+
+impl ResourcePathId {
+    /// Changes the `ResourceType` of the path by appending a new transformation to the build path
+    /// represented by this `ResourcePathId`.
+    pub fn transform(&self, kind: ResourceType) -> Self {
+        let mut cloned = self.clone();
+        cloned.transforms.push(kind);
+        cloned
+    }
+
+    /// Returns `ResourceType` of the resource identified by this path.
+    pub fn resource_type(&self) -> ResourceType {
+        if self.transforms.is_empty() {
+            self.source.resource_type()
+        } else {
+            self.transforms[self.transforms.len() - 1]
+        }
+    }
+
+    /// Returns an id of the build path's leaf node - the source resource.
+    pub fn source_resource(&self) -> ResourceId {
+        self.source
+    }
+
+    /// Returns true if the path identifies a `source resource`.
+    ///
+    /// Source resource has no transformations attached to it and is backed by user-defined data.
+    pub fn is_source(&self) -> bool {
+        self.transforms.is_empty()
+    }
+
+    /// Returns the last transformation that must be applied to produce the resource.
+    ///
+    /// Returns None if self is a `source resource`.
+    pub fn last_transform(&self) -> Option<(ResourceType, ResourceType)> {
+        match self.transforms.len() {
+            0 => None,
+            1 => Some((self.source.resource_type(), self.transforms[0])),
+            _ => {
+                let len = self.transforms.len();
+                Some((self.transforms[len - 2], self.transforms[len - 1]))
+            }
+        }
+    }
+
+    /// Returns a `ResourcePathId` that represents a direct dependency in the build graph.
+    ///
+    /// None if self represents a source dependency.
+    pub fn direct_dependency(&self) -> Option<Self> {
+        if self.is_source() {
+            return None;
+        }
+        let mut dependency = self.clone();
+        dependency.transforms.pop();
+        Some(dependency)
+    }
+
+    /// Returns a hash of the `ResourceIdPath`.
+    pub fn hash_id(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    /// Returns a hash of the name in the context of `ResourcePathId`.
+    pub fn hash_name(&self, name: &str) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        name.hash(&mut hasher);
+        hasher.finish()
+    }
+}
 
 /// A unique id of an offline resource.
 ///
@@ -90,6 +245,12 @@ impl FromStr for ResourceId {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
 pub struct ResourceType(u32);
 
+impl fmt::Display for ResourceType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
+    }
+}
+
 impl ResourceType {
     const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
@@ -112,5 +273,26 @@ impl ResourceType {
     /// Creates a 32 bit resource type id from a non-zero integer.
     pub fn from_raw(v: u32) -> Self {
         Self(v)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use crate::{test_resource, ResourceId, ResourcePathId};
+
+    #[test]
+    fn resource_path_name() {
+        let source = ResourceId::generate_new(test_resource::TYPE_ID);
+
+        let path_a = ResourcePathId::from(source);
+        let path_b = path_a.transform(test_resource::TYPE_ID);
+
+        let name_a = format!("{}", path_a);
+        assert_eq!(path_a, ResourcePathId::from_str(&name_a).unwrap());
+
+        let name_b = format!("{}", path_b);
+        assert_eq!(path_b, ResourcePathId::from_str(&name_b).unwrap());
     }
 }
