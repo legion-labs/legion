@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 mod entity_ref;
 mod spawn_batch;
 mod world_cell;
@@ -30,7 +32,7 @@ pub struct WorldId(u64);
 
 impl Default for WorldId {
     fn default() -> Self {
-        WorldId(rand::random())
+        Self(rand::random())
     }
 }
 
@@ -77,8 +79,8 @@ impl Default for World {
 impl World {
     /// Creates a new empty [World]
     #[inline]
-    pub fn new() -> World {
-        World::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Retrieves this world's unique ID
@@ -123,16 +125,16 @@ impl World {
         &self.bundles
     }
 
-    /// Retrieves a [WorldCell], which safely enables multiple mutable World accesses at the same
+    /// Retrieves a [`WorldCell`], which safely enables multiple mutable World accesses at the same
     /// time, provided those accesses do not conflict with each other.
     #[inline]
     pub fn cell(&mut self) -> WorldCell<'_> {
         WorldCell::new(self)
     }
 
-    /// Registers a new component using the given [ComponentDescriptor]. Components do not need to
+    /// Registers a new component using the given [`ComponentDescriptor`]. Components do not need to
     /// be manually registered. This just provides a way to override default configuration.
-    /// Attempting to register a component with a type that has already been used by [World]
+    /// Attempting to register a component with a type that has already been used by [`World`]
     /// will result in an error.
     ///
     /// The default component storage type can be overridden like this:
@@ -164,8 +166,8 @@ impl World {
         Ok(component_id)
     }
 
-    /// Retrieves an [EntityRef] that exposes read-only operations for the given `entity`.
-    /// This will panic if the `entity` does not exist. Use [World::get_entity] if you want
+    /// Retrieves an [`EntityRef`] that exposes read-only operations for the given `entity`.
+    /// This will panic if the `entity` does not exist. Use [`World::get_entity`] if you want
     /// to check for entity existence instead of implicitly panic-ing.
     ///
     /// ```
@@ -185,12 +187,12 @@ impl World {
     /// assert_eq!(position.x, 0.0);
     /// ```
     #[inline]
-    pub fn entity(&self, entity: Entity) -> EntityRef {
+    pub fn entity(&self, entity: Entity) -> EntityRef<'_> {
         self.get_entity(entity).expect("Entity does not exist")
     }
 
-    /// Retrieves an [EntityMut] that exposes read and write operations for the given `entity`.
-    /// This will panic if the `entity` does not exist. Use [World::get_entity_mut] if you want
+    /// Retrieves an [`EntityMut`] that exposes read and write operations for the given `entity`.
+    /// This will panic if the `entity` does not exist. Use [`World::get_entity_mut`] if you want
     /// to check for entity existence instead of implicitly panic-ing.
     ///
     /// ```
@@ -210,13 +212,13 @@ impl World {
     /// position.x = 1.0;
     /// ```
     #[inline]
-    pub fn entity_mut(&mut self, entity: Entity) -> EntityMut {
+    pub fn entity_mut(&mut self, entity: Entity) -> EntityMut<'_> {
         self.get_entity_mut(entity).expect("Entity does not exist")
     }
 
-    /// Retrieves an [EntityRef] that exposes read-only operations for the given `entity`.
-    /// Returns [None] if the `entity` does not exist. Use [World::entity] if you don't want
-    /// to unwrap the [EntityRef] yourself.
+    /// Retrieves an [`EntityRef`] that exposes read-only operations for the given `entity`.
+    /// Returns [None] if the `entity` does not exist. Use [`World::entity`] if you don't want
+    /// to unwrap the [`EntityRef`] yourself.
     ///
     /// ```
     /// use legion_ecs::world::World;
@@ -236,14 +238,14 @@ impl World {
     /// assert_eq!(position.x, 0.0);
     /// ```
     #[inline]
-    pub fn get_entity(&self, entity: Entity) -> Option<EntityRef> {
+    pub fn get_entity(&self, entity: Entity) -> Option<EntityRef<'_>> {
         let location = self.entities.get(entity)?;
         Some(EntityRef::new(self, entity, location))
     }
 
-    /// Retrieves an [EntityMut] that exposes read and write operations for the given `entity`.
-    /// Returns [None] if the `entity` does not exist. Use [World::entity_mut] if you don't want
-    /// to unwrap the [EntityMut] yourself.
+    /// Retrieves an [`EntityMut`] that exposes read and write operations for the given `entity`.
+    /// Returns [None] if the `entity` does not exist. Use [`World::entity_mut`] if you don't want
+    /// to unwrap the [`EntityMut`] yourself.
     ///
     /// ```
     /// use legion_ecs::world::World;
@@ -263,13 +265,13 @@ impl World {
     /// position.x = 1.0;
     /// ```
     #[inline]
-    pub fn get_entity_mut(&mut self, entity: Entity) -> Option<EntityMut> {
+    pub fn get_entity_mut(&mut self, entity: Entity) -> Option<EntityMut<'_>> {
         let location = self.entities.get(entity)?;
         // SAFE: `entity` exists and `location` is that entity's location
         Some(unsafe { EntityMut::new(self, entity, location) })
     }
 
-    /// Spawns a new [Entity] and returns a corresponding [EntityMut], which can be used
+    /// Spawns a new [Entity] and returns a corresponding [`EntityMut`], which can be used
     /// to add components to the entity or retrieve its id.
     ///
     /// ```
@@ -289,7 +291,7 @@ impl World {
     /// let position = world.entity(entity).get::<Position>().unwrap();
     /// assert_eq!(position.x, 0.0);
     /// ```
-    pub fn spawn(&mut self) -> EntityMut {
+    pub fn spawn(&mut self) -> EntityMut<'_> {
         self.flush();
         let entity = self.entities.alloc();
         let archetype = self.archetypes.empty_mut();
@@ -371,7 +373,7 @@ impl World {
     /// let mut position = world.get_mut::<Position>(entity).unwrap();
     /// position.x = 1.0;
     #[inline]
-    pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<Mut<T>> {
+    pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<Mut<'_, T>> {
         self.get_entity_mut(entity)?.get_mut()
     }
 
@@ -396,12 +398,10 @@ impl World {
     /// ```
     #[inline]
     pub fn despawn(&mut self, entity: Entity) -> bool {
-        self.get_entity_mut(entity)
-            .map(|e| {
-                e.despawn();
-                true
-            })
-            .unwrap_or(false)
+        self.get_entity_mut(entity).map_or(false, |e| {
+            e.despawn();
+            true
+        })
     }
 
     /// Clears component tracker state
@@ -413,8 +413,8 @@ impl World {
         self.last_change_tick = self.increment_change_tick();
     }
 
-    /// Returns [QueryState] for the given [WorldQuery], which is used to efficiently
-    /// run queries on the [World] by storing and reusing the [QueryState].
+    /// Returns [`QueryState`] for the given [`WorldQuery`], which is used to efficiently
+    /// run queries on the [World] by storing and reusing the [`QueryState`].
     /// ```
     /// use legion_ecs::{entity::Entity, world::World};
     ///
@@ -469,8 +469,8 @@ impl World {
         QueryState::new(self)
     }
 
-    /// Returns [QueryState] for the given filtered [WorldQuery], which is used to efficiently
-    /// run queries on the [World] by storing and reusing the [QueryState].
+    /// Returns [`QueryState`] for the given filtered [`WorldQuery`], which is used to efficiently
+    /// run queries on the [`World`] by storing and reusing the [`QueryState`].
     /// ```
     /// use legion_ecs::{entity::Entity, world::World, query::With};
     ///
@@ -495,7 +495,7 @@ impl World {
     }
 
     /// Returns an iterator of entities that had components of type `T` removed
-    /// since the last call to [World::clear_trackers].
+    /// since the last call to [`World::clear_trackers`].
     pub fn removed<T: Component>(&self) -> std::iter::Cloned<std::slice::Iter<'_, Entity>> {
         if let Some(component_id) = self.components.get_id(TypeId::of::<T>()) {
             self.removed_with_id(component_id)
@@ -505,7 +505,7 @@ impl World {
     }
 
     /// Returns an iterator of entities that had components with the given `component_id` removed
-    /// since the last call to [World::clear_trackers].
+    /// since the last call to [`World::clear_trackers`].
     pub fn removed_with_id(
         &self,
         component_id: ComponentId,
@@ -523,7 +523,9 @@ impl World {
     pub fn insert_resource<T: Component>(&mut self, value: T) {
         let component_id = self.components.get_or_insert_resource_id::<T>();
         // SAFE: component_id just initialized and corresponds to resource of type T
-        unsafe { self.insert_resource_with_id(component_id, value) };
+        unsafe {
+            self.insert_resource_with_id(component_id, value);
+        };
     }
 
     /// Inserts a new non-send resource with the given `value`.
@@ -533,7 +535,9 @@ impl World {
         self.validate_non_send_access::<T>();
         let component_id = self.components.get_or_insert_non_send_resource_id::<T>();
         // SAFE: component_id just initialized and corresponds to resource of type T
-        unsafe { self.insert_resource_with_id(component_id, value) };
+        unsafe {
+            self.insert_resource_with_id(component_id, value);
+        };
     }
 
     /// Removes the resource of a given type and returns it, if it exists. Otherwise returns [None].
@@ -688,7 +692,7 @@ impl World {
     /// ```
     pub fn resource_scope<T: Component, U>(
         &mut self,
-        f: impl FnOnce(&mut World, Mut<T>) -> U,
+        f: impl FnOnce(&mut Self, Mut<'_, T>) -> U,
     ) -> U {
         let component_id = self
             .components
@@ -944,7 +948,7 @@ pub trait FromWorld {
 
 impl<T: Default> FromWorld for T {
     fn from_world(_world: &mut World) -> Self {
-        T::default()
+        Self::default()
     }
 }
 

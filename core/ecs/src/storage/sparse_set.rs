@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     component::{ComponentId, ComponentInfo, ComponentTicks},
     entity::Entity,
@@ -47,22 +49,19 @@ impl<I: SparseSetIndex, V> SparseArray<I, V> {
     #[inline]
     pub fn contains(&self, index: I) -> bool {
         let index = index.sparse_set_index();
-        self.values.get(index).map(|v| v.is_some()).unwrap_or(false)
+        self.values.get(index).map_or(false, |v| v.is_some())
     }
 
     #[inline]
     pub fn get(&self, index: I) -> Option<&V> {
         let index = index.sparse_set_index();
-        self.values.get(index).map(|v| v.as_ref()).unwrap_or(None)
+        self.values.get(index).and_then(|v| v.as_ref())
     }
 
     #[inline]
     pub fn get_mut(&mut self, index: I) -> Option<&mut V> {
         let index = index.sparse_set_index();
-        self.values
-            .get_mut(index)
-            .map(|v| v.as_mut())
-            .unwrap_or(None)
+        self.values.get_mut(index).and_then(|v| v.as_mut())
     }
 
     #[inline]
@@ -194,7 +193,9 @@ impl ComponentSparseSet {
             self.entities.swap_remove(dense_index);
             let is_last = dense_index == self.dense.len() - 1;
             // SAFE: if the sparse index points to something in the dense vec, it exists
-            unsafe { self.dense.swap_remove_and_drop_unchecked(dense_index) }
+            unsafe {
+                self.dense.swap_remove_and_drop_unchecked(dense_index);
+            }
             if !is_last {
                 let swapped_entity = self.entities[dense_index];
                 *self.sparse.get_mut(swapped_entity).unwrap() = dense_index;
@@ -435,7 +436,7 @@ mod tests {
 
         {
             let iter_results = set.values().collect::<Vec<_>>();
-            assert_eq!(iter_results, vec![&Foo(1), &Foo(2), &Foo(3)])
+            assert_eq!(iter_results, vec![&Foo(1), &Foo(2), &Foo(3)]);
         }
 
         assert_eq!(set.remove(e2), Some(Foo(2)));

@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use super::Command;
 use crate::world::World;
 
@@ -58,7 +60,7 @@ impl CommandQueue {
             // when `apply` is called later, a double `drop` does not occur.
             unsafe {
                 std::ptr::copy_nonoverlapping(
-                    &command as *const C as *const u8,
+                    (&command as *const C).cast::<u8>(),
                     self.bytes.as_mut_ptr().add(old_len),
                     size,
                 );
@@ -79,7 +81,9 @@ impl CommandQueue {
         // SAFE: In the iteration below, `meta.func` will safely consume and drop each pushed command.
         // This operation is so that we can reuse the bytes `Vec<u8>`'s internal storage and prevent
         // unnecessary allocations.
-        unsafe { self.bytes.set_len(0) };
+        unsafe {
+            self.bytes.set_len(0);
+        };
 
         let byte_ptr = if self.bytes.as_mut_ptr().is_null() {
             // SAFE: If the vector's buffer pointer is `null` this mean nothing has been pushed to its bytes.

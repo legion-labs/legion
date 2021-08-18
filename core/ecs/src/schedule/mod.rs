@@ -103,8 +103,10 @@ impl Schedule {
             .iter()
             .enumerate()
             .find(|(_i, stage_label)| &***stage_label == target)
-            .map(|(i, _)| i)
-            .unwrap_or_else(|| panic!("Target stage does not exist: {:?}.", target));
+            .map_or_else(
+                || panic!("Target stage does not exist: {:?}.", target),
+                |(i, _)| i,
+            );
 
         self.stage_order.insert(target_index + 1, label.clone());
         let prev = self.stages.insert(label.clone(), Box::new(stage));
@@ -127,8 +129,10 @@ impl Schedule {
             .iter()
             .enumerate()
             .find(|(_i, stage_label)| &***stage_label == target)
-            .map(|(i, _)| i)
-            .unwrap_or_else(|| panic!("Target stage does not exist: {:?}.", target));
+            .map_or_else(
+                || panic!("Target stage does not exist: {:?}.", target),
+                |(i, _)| i,
+            );
 
         self.stage_order.insert(target_index, label.clone());
         let prev = self.stages.insert(label.clone(), Box::new(stage));
@@ -227,7 +231,7 @@ impl Stage for Schedule {
                     self.run_once(world);
                 }
                 ShouldRun::NoAndCheckAgain => {
-                    panic!("`NoAndCheckAgain` would loop infinitely in this situation.")
+                    panic!("`NoAndCheckAgain` would loop infinitely in this situation.");
                 }
             }
         }

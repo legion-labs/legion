@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     archetype::{Archetype, ArchetypeId, Archetypes, ComponentStatus},
     bundle::{Bundle, BundleInfo},
@@ -290,7 +292,7 @@ impl<'w> EntityMut<'w> {
                 bundle_status,
                 bundle,
                 change_tick,
-            )
+            );
         };
         self
     }
@@ -471,7 +473,7 @@ impl<'w> EntityMut<'w> {
                 archetypes,
                 storages,
                 new_archetype_id,
-            )
+            );
         }
     }
 
@@ -530,15 +532,15 @@ impl<'w> EntityMut<'w> {
 
     /// # Safety
     /// Caller must not modify the world in a way that changes the current entity's location
-    /// If the caller _does_ do something that could change the location, self.update_location()
-    /// must be called before using any other methods in EntityMut
+    /// If the caller _does_ do something that could change the location, `self.update_location()`
+    /// must be called before using any other methods in `EntityMut`
     #[inline]
     pub unsafe fn world_mut(&mut self) -> &mut World {
         self.world
     }
 
     /// Updates the internal entity location to match the current location in the internal [World].
-    /// This is only needed if the user called [EntityMut::world], which enables the location to
+    /// This is only needed if the user called [`EntityMut::world`], which enables the location to
     /// change.
     pub fn update_location(&mut self) {
         self.location = self.world.entities().get(self.entity).unwrap();
@@ -686,7 +688,7 @@ fn contains_component_with_id(
 }
 
 /// Adds a bundle to the given archetype and returns the resulting archetype. This could be the same
-/// [ArchetypeId], in the event that adding the given bundle does not result in an Archetype change.
+/// [`ArchetypeId`], in the event that adding the given bundle does not result in an Archetype change.
 /// Results are cached in the Archetype Graph to avoid redundant work.
 ///
 /// # Safety
@@ -719,7 +721,7 @@ pub(crate) unsafe fn add_bundle_to_archetype(
                 StorageType::Table => new_table_components.push(component_id),
                 StorageType::SparseSet => {
                     storages.sparse_sets.get_or_insert(component_info);
-                    new_sparse_set_components.push(component_id)
+                    new_sparse_set_components.push(component_id);
                 }
             }
         }
@@ -888,7 +890,7 @@ fn sorted_remove<T: Eq + Ord + Copy>(source: &mut Vec<T>, remove: &[T]) {
         } else {
             true
         }
-    })
+    });
 }
 
 #[cfg(test)]

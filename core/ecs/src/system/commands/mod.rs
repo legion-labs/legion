@@ -142,7 +142,7 @@ impl<'a> Commands<'a> {
 
     /// See [`World::insert_resource`].
     pub fn insert_resource<T: Component>(&mut self, resource: T) {
-        self.queue.push(InsertResource { resource })
+        self.queue.push(InsertResource { resource });
     }
 
     /// Queue a resource removal.
@@ -248,7 +248,7 @@ impl<'a, 'b> EntityCommands<'a, 'b> {
     pub fn despawn(&mut self) {
         self.commands.add(Despawn {
             entity: self.entity,
-        })
+        });
     }
 
     /// Returns the underlying `[Commands]`.
@@ -405,7 +405,7 @@ mod tests {
     impl DropCk {
         fn new_pair() -> (Self, Arc<AtomicUsize>) {
             let atomic = Arc::new(AtomicUsize::new(0));
-            (DropCk(atomic.clone()), atomic)
+            (Self(atomic.clone()), atomic)
         }
     }
 

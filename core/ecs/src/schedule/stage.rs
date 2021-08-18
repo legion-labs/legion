@@ -87,7 +87,7 @@ pub struct SystemStage {
 
 impl SystemStage {
     pub fn new(executor: Box<dyn ParallelSystemExecutor>) -> Self {
-        SystemStage {
+        Self {
             world_id: None,
             executor,
             stage_run_criteria: Default::default(),
@@ -258,7 +258,7 @@ impl SystemStage {
                         criteria. This is not supported. Consider moving the system into a \
                         different `SystemSet` or calling `add_system()` instead.",
                         name
-                    )
+                    );
                 }
             }
             match criteria {
@@ -270,11 +270,11 @@ impl SystemStage {
                         match system {
                             SystemDescriptor::Exclusive(descriptor) => {
                                 descriptor.run_criteria =
-                                    Some(RunCriteriaDescriptorOrLabel::Label(label.clone()))
+                                    Some(RunCriteriaDescriptorOrLabel::Label(label.clone()));
                             }
                             SystemDescriptor::Parallel(descriptor) => {
                                 descriptor.run_criteria =
-                                    Some(RunCriteriaDescriptorOrLabel::Label(label.clone()))
+                                    Some(RunCriteriaDescriptorOrLabel::Label(label.clone()));
                             }
                         }
                     }
@@ -725,7 +725,7 @@ fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<
                 if let (Some(a), Some(b)) = (a_access, b_access) {
                     let conflicts = a.get_conflicts(b);
                     if !conflicts.is_empty() {
-                        ambiguities.push((index_a, index_b, conflicts))
+                        ambiguities.push((index_a, index_b, conflicts));
                     }
                 } else {
                     ambiguities.push((index_a, index_b, Vec::new()));
@@ -802,8 +802,7 @@ impl Stage for SystemStage {
                     matches!(
                         container
                             .run_criteria()
-                            .map(|index| run_criteria[index].should_run)
-                            .unwrap_or(default),
+                            .map_or(default, |index| run_criteria[index].should_run),
                         ShouldRun::Yes | ShouldRun::YesAndCheckAgain
                     )
                 }
@@ -859,7 +858,7 @@ impl Stage for SystemStage {
                         ShouldRun::YesAndCheckAgain | ShouldRun::NoAndCheckAgain => {
                             match &mut criteria.inner {
                                 RunCriteriaInner::Single(system) => {
-                                    criteria.should_run = system.run((), world)
+                                    criteria.should_run = system.run((), world);
                                 }
                                 RunCriteriaInner::Piped {
                                     input: parent,
@@ -867,14 +866,13 @@ impl Stage for SystemStage {
                                     ..
                                 } => {
                                     criteria.should_run =
-                                        system.run(run_criteria[*parent].should_run, world)
+                                        system.run(run_criteria[*parent].should_run, world);
                                 }
                             }
                             match criteria.should_run {
-                                ShouldRun::Yes => {
-                                    run_system_loop = true;
-                                }
-                                ShouldRun::YesAndCheckAgain | ShouldRun::NoAndCheckAgain => {
+                                ShouldRun::Yes
+                                | ShouldRun::YesAndCheckAgain
+                                | ShouldRun::NoAndCheckAgain => {
                                     run_system_loop = true;
                                 }
                                 ShouldRun::No => (),
@@ -908,11 +906,11 @@ mod tests {
         move |world| world.get_resource_mut::<Vec<usize>>().unwrap().push(tag)
     }
 
-    fn make_parallel(tag: usize) -> impl FnMut(ResMut<Vec<usize>>) {
-        move |mut resource: ResMut<Vec<usize>>| resource.push(tag)
+    fn make_parallel(tag: usize) -> impl FnMut(ResMut<'_, Vec<usize>>) {
+        move |mut resource: ResMut<'_, Vec<usize>>| resource.push(tag)
     }
 
-    fn every_other_time(mut has_ran: Local<bool>) -> ShouldRun {
+    fn every_other_time(mut has_ran: Local<'_, bool>) -> ShouldRun {
         *has_ran = !*has_ran;
         if *has_ran {
             ShouldRun::Yes
@@ -1444,7 +1442,7 @@ mod tests {
 
         // Piping criteria.
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
-        fn eot_piped(input: In<ShouldRun>, has_ran: Local<bool>) -> ShouldRun {
+        fn eot_piped(input: In<ShouldRun>, has_ran: Local<'_, bool>) -> ShouldRun {
             if let ShouldRun::Yes | ShouldRun::YesAndCheckAgain = input.0 {
                 every_other_time(has_ran)
             } else {
@@ -1571,8 +1569,8 @@ mod tests {
         }
 
         fn empty() {}
-        fn resource(_: ResMut<usize>) {}
-        fn component(_: Query<&mut f32>) {}
+        fn resource(_: ResMut<'_, usize>) {}
+        fn component(_: Query<'_, &mut f32>) {}
 
         let mut world = World::new();
 
@@ -1942,8 +1940,8 @@ mod tests {
     #[test]
     fn archetype_update_single_executor() {
         fn query_count_system(
-            mut entity_count: ResMut<usize>,
-            query: Query<crate::entity::Entity>,
+            mut entity_count: ResMut<'_, usize>,
+            query: Query<'_, crate::entity::Entity>,
         ) {
             *entity_count = query.iter().count();
         }
@@ -1964,8 +1962,8 @@ mod tests {
     #[test]
     fn archetype_update_parallel_executor() {
         fn query_count_system(
-            mut entity_count: ResMut<usize>,
-            query: Query<crate::entity::Entity>,
+            mut entity_count: ResMut<'_, usize>,
+            query: Query<'_, crate::entity::Entity>,
         ) {
             *entity_count = query.iter().count();
         }
@@ -2054,7 +2052,7 @@ mod tests {
     fn run_criteria_with_query() {
         struct Foo;
 
-        fn even_number_of_entities_critiera(query: Query<&Foo>) -> ShouldRun {
+        fn even_number_of_entities_critiera(query: Query<'_, &Foo>) -> ShouldRun {
             if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
@@ -2062,11 +2060,11 @@ mod tests {
             }
         }
 
-        fn spawn_entity(mut commands: crate::prelude::Commands) {
+        fn spawn_entity(mut commands: crate::prelude::Commands<'_>) {
             commands.spawn().insert(Foo);
         }
 
-        fn count_entities(query: Query<&Foo>, mut res: ResMut<Vec<usize>>) {
+        fn count_entities(query: Query<'_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 
@@ -2090,7 +2088,7 @@ mod tests {
     fn stage_run_criteria_with_query() {
         struct Foo;
 
-        fn even_number_of_entities_critiera(query: Query<&Foo>) -> ShouldRun {
+        fn even_number_of_entities_critiera(query: Query<'_, &Foo>) -> ShouldRun {
             if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
@@ -2098,11 +2096,11 @@ mod tests {
             }
         }
 
-        fn spawn_entity(mut commands: crate::prelude::Commands) {
+        fn spawn_entity(mut commands: crate::prelude::Commands<'_>) {
             commands.spawn().insert(Foo);
         }
 
-        fn count_entities(query: Query<&Foo>, mut res: ResMut<Vec<usize>>) {
+        fn count_entities(query: Query<'_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 

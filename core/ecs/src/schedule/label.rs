@@ -22,7 +22,7 @@ where
     }
 
     fn dyn_eq(&self, other: &dyn DynEq) -> bool {
-        if let Some(other) = other.as_any().downcast_ref::<T>() {
+        if let Some(other) = other.as_any().downcast_ref::<Self>() {
             return self == other;
         }
         false
@@ -44,7 +44,7 @@ where
     }
 
     fn dyn_hash(&self, mut state: &mut dyn Hasher) {
-        T::hash(self, &mut state);
+        Self::hash(self, &mut state);
         self.type_id().hash(&mut state);
     }
 }

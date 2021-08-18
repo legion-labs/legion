@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 mod map_entities;
 mod serde;
 
@@ -28,8 +30,8 @@ pub struct Entity {
 
 impl Entity {
     /// Creates a new entity reference with a generation of 0.
-    pub fn new(id: u32) -> Entity {
-        Entity { id, generation: 0 }
+    pub fn new(id: u32) -> Self {
+        Self { id, generation: 0 }
     }
 
     /// Convert to a form convenient for passing outside of rust.
@@ -83,7 +85,7 @@ impl SparseSetIndex for Entity {
     }
 
     fn get_sparse_set_index(value: usize) -> Self {
-        Entity::new(value as u32)
+        Self::new(value as u32)
     }
 }
 
@@ -169,7 +171,7 @@ impl Entities {
     /// Reserve entity IDs concurrently.
     ///
     /// Storage for entity generation and location is lazily allocated by calling `flush`.
-    pub fn reserve_entities(&self, count: u32) -> ReserveEntitiesIterator {
+    pub fn reserve_entities(&self, count: u32) -> ReserveEntitiesIterator<'_> {
         // Use one atomic subtract to grab a range of new IDs. The range might be
         // entirely nonnegative, meaning all IDs come from the freelist, or entirely
         // negative, meaning they are all new IDs to allocate, or a mix of both.
@@ -234,7 +236,7 @@ impl Entities {
     }
 
     /// Check that we do not have pending work requiring `flush()` to be called.
-    fn verify_flushed(&mut self) {
+    fn verify_flushed(&self) {
         debug_assert!(
             !self.needs_flush(),
             "flush() needs to be called before this operation is legal"
@@ -396,8 +398,8 @@ impl Entities {
         }
     }
 
-    fn needs_flush(&mut self) -> bool {
-        *self.free_cursor.get_mut() != self.pending.len() as i64
+    fn needs_flush(&self) -> bool {
+        self.free_cursor.load(Ordering::Relaxed) != self.pending.len() as i64
     }
 
     /// Allocates space for entities previously reserved with `reserve_entity` or
@@ -458,7 +460,7 @@ pub struct EntityMeta {
 }
 
 impl EntityMeta {
-    const EMPTY: EntityMeta = EntityMeta {
+    const EMPTY: Self = Self {
         generation: 0,
         location: EntityLocation {
             archetype_id: ArchetypeId::empty(),

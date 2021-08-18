@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
@@ -134,7 +136,7 @@ where
     SystemA: IntoSystem<(), Payload, ParamA>,
     SystemB: IntoSystem<Payload, Out, ParamB>,
 {
-    fn chain(self, system: SystemB) -> ChainSystem<SystemA::System, SystemB::System> {
+    fn chain(self, system: SystemB) -> ChainSystem<Self::System, SystemB::System> {
         let system_a = self.system();
         let system_b = system.system();
         ChainSystem {

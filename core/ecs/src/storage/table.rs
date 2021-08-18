@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     component::{ComponentId, ComponentInfo, ComponentTicks, Components},
     entity::Entity,
@@ -17,7 +19,7 @@ pub struct TableId(usize);
 impl TableId {
     #[inline]
     pub fn new(index: usize) -> Self {
-        TableId(index)
+        Self(index)
     }
 
     #[inline]
@@ -26,8 +28,8 @@ impl TableId {
     }
 
     #[inline]
-    pub const fn empty() -> TableId {
-        TableId(0)
+    pub const fn empty() -> Self {
+        Self(0)
     }
 }
 
@@ -40,7 +42,7 @@ pub struct Column {
 impl Column {
     #[inline]
     pub fn with_capacity(component_info: &ComponentInfo, capacity: usize) -> Self {
-        Column {
+        Self {
             component_id: component_info.id(),
             data: BlobVec::new(component_info.layout(), component_info.drop(), capacity),
             ticks: Vec::with_capacity(capacity),
@@ -148,7 +150,7 @@ impl Column {
     #[inline]
     pub fn get_ticks_const_ptr(&self) -> *const ComponentTicks {
         // cast is valid, because UnsafeCell is repr(transparent)
-        self.get_ticks_ptr() as *const ComponentTicks
+        self.get_ticks_ptr().cast::<ComponentTicks>()
     }
 
     /// # Safety
@@ -193,14 +195,14 @@ pub struct Table {
 }
 
 impl Table {
-    pub const fn new() -> Table {
+    pub const fn new() -> Self {
         Self {
             columns: SparseSet::new(),
             entities: Vec::new(),
         }
     }
 
-    pub fn with_capacity(capacity: usize, column_capacity: usize) -> Table {
+    pub fn with_capacity(capacity: usize, column_capacity: usize) -> Self {
         Self {
             columns: SparseSet::with_capacity(column_capacity),
             entities: Vec::with_capacity(capacity),
@@ -216,7 +218,7 @@ impl Table {
         self.columns.insert(
             component_info.id(),
             Column::with_capacity(component_info, self.entities.capacity()),
-        )
+        );
     }
 
     /// Removes the entity at the given row and returns the entity swapped in to replace it (if an
@@ -247,7 +249,7 @@ impl Table {
     pub unsafe fn move_to_and_forget_missing_unchecked(
         &mut self,
         row: usize,
-        new_table: &mut Table,
+        new_table: &mut Self,
     ) -> TableMoveResult {
         debug_assert!(row < self.len());
         let is_last = row == self.entities.len() - 1;
@@ -277,7 +279,7 @@ impl Table {
     pub unsafe fn move_to_and_drop_missing_unchecked(
         &mut self,
         row: usize,
-        new_table: &mut Table,
+        new_table: &mut Self,
     ) -> TableMoveResult {
         debug_assert!(row < self.len());
         let is_last = row == self.entities.len() - 1;
@@ -309,7 +311,7 @@ impl Table {
     pub unsafe fn move_to_superset_unchecked(
         &mut self,
         row: usize,
-        new_table: &mut Table,
+        new_table: &mut Self,
     ) -> TableMoveResult {
         debug_assert!(row < self.len());
         let is_last = row == self.entities.len() - 1;
@@ -406,7 +408,7 @@ pub struct Tables {
 impl Default for Tables {
     fn default() -> Self {
         let empty_table = Table::with_capacity(0, 0);
-        Tables {
+        Self {
             tables: vec![empty_table],
             table_ids: HashMap::default(),
         }

@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration, ArchetypeId},
     component::ComponentId,
@@ -186,8 +188,8 @@ pub struct AlreadyWasSystem;
 
 // Systems implicitly implement IntoSystem
 impl<In, Out, Sys: System<In = In, Out = Out>> IntoSystem<In, Out, AlreadyWasSystem> for Sys {
-    type System = Sys;
-    fn system(self) -> Sys {
+    type System = Self;
+    fn system(self) -> Self {
         self
     }
 }
@@ -275,7 +277,7 @@ pub trait ConfigurableSystem<In, Out, Param: SystemParam, Marker>:
     ) -> Self::System;
 }
 
-impl<In, Out, Param: SystemParam, Marker, F> ConfigurableSystem<In, Out, Param, Marker> for F
+impl<In, Out, Param, Marker, F> ConfigurableSystem<In, Out, Param, Marker> for F
 where
     In: 'static,
     Out: 'static,
@@ -286,7 +288,7 @@ where
             In,
             Out,
             (IsFunctionSystem, Param, Marker),
-            System = FunctionSystem<In, Out, Param, Marker, F>,
+            System = FunctionSystem<In, Out, Param, Marker, Self>,
         > + Send
         + Sync
         + 'static,
@@ -309,13 +311,13 @@ where
     Marker: 'static,
     F: SystemParamFunction<In, Out, Param, Marker> + Send + Sync + 'static,
 {
-    type System = FunctionSystem<In, Out, Param, Marker, F>;
+    type System = FunctionSystem<In, Out, Param, Marker, Self>;
     fn system(self) -> Self::System {
         FunctionSystem {
             func: self,
             param_state: None,
             config: Some(<Param::Fetch as SystemParamState>::default_config()),
-            system_meta: SystemMeta::new::<F>(),
+            system_meta: SystemMeta::new::<Self>(),
             marker: PhantomData,
         }
     }
@@ -425,7 +427,7 @@ macro_rules! impl_system_function {
         where
         for <'a> &'a mut Func:
                 FnMut($($param),*) -> Out +
-                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch>::Item),*) -> Out, Out: 'static
+                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_>>::Item),*) -> Out, Out: 'static
         {
             #[inline]
             unsafe fn run(&mut self, _input: (), state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
@@ -448,7 +450,7 @@ macro_rules! impl_system_function {
         where
         for <'a> &'a mut Func:
                 FnMut(In<Input>, $($param),*) -> Out +
-                FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch>::Item),*) -> Out, Out: 'static
+                FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_>>::Item),*) -> Out, Out: 'static
         {
             #[inline]
             unsafe fn run(&mut self, input: Input, state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {

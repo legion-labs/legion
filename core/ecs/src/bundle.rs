@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 pub use legion_ecs_macros::Bundle;
 
 use crate::{
@@ -36,10 +38,10 @@ use std::{any::TypeId, collections::HashMap};
 /// ```
 ///
 /// # Safety
-/// [Bundle::component_id] must return the ComponentId for each component type in the bundle, in the
-/// _exact_ order that [Bundle::get_components] is called.
-/// [Bundle::from_components] must call `func` exactly once for each [ComponentId] returned by
-/// [Bundle::component_id]
+/// [`Bundle::component_id`] must return the `ComponentId` for each component type in the bundle, in the
+/// _exact_ order that [`Bundle::get_components`] is called.
+/// [`Bundle::from_components`] must call `func` exactly once for each [`ComponentId`] returned by
+/// [`Bundle::component_id`]
 pub unsafe trait Bundle: Send + Sync + 'static {
     /// Gets this [Bundle]'s component ids, in the order of this bundle's Components
     fn component_ids(components: &mut Components) -> Vec<ComponentId>;
@@ -55,14 +57,14 @@ pub unsafe trait Bundle: Send + Sync + 'static {
         Self: Sized;
 
     /// Calls `func` on each value, in the order of this bundle's Components. This will
-    /// "mem::forget" the bundle fields, so callers are responsible for dropping the fields if
+    /// `mem::forget` the bundle fields, so callers are responsible for dropping the fields if
     /// that is desirable.
     fn get_components(self, func: impl FnMut(*mut u8));
 }
 
 macro_rules! tuple_impl {
     ($($name: ident),*) => {
-        /// SAFE: TypeInfo is returned in tuple-order. [Bundle::from_components] and [Bundle::get_components] use tuple-order
+        /// SAFE: `TypeInfo` is returned in tuple-order. [`Bundle::from_components`] and [`Bundle::get_components`] use tuple-order
         unsafe impl<$($name: Component),*> Bundle for ($($name,)*) {
             #[allow(unused_variables)]
             fn component_ids(components: &mut Components) -> Vec<ComponentId> {
@@ -141,8 +143,8 @@ impl BundleInfo {
         let mut bundle_component = 0;
         bundle.get_components(|component_ptr| {
             let component_id = *self.component_ids.get_unchecked(bundle_component);
-            match self.storage_types[bundle_component] {
-                StorageType::Table => {
+            match self.storage_types.get(bundle_component) {
+                Some(StorageType::Table) => {
                     let column = table.get_column_mut(component_id).unwrap();
                     match bundle_status.get_unchecked(bundle_component) {
                         ComponentStatus::Added => {
@@ -157,10 +159,11 @@ impl BundleInfo {
                         }
                     }
                 }
-                StorageType::SparseSet => {
+                Some(StorageType::SparseSet) => {
                     let sparse_set = sparse_sets.get_mut(component_id).unwrap();
                     sparse_set.insert(entity, component_ptr, change_tick);
                 }
+                None => {}
             }
             bundle_component += 1;
         });
@@ -221,7 +224,7 @@ impl Bundles {
 
 /// # Safety
 ///
-/// `component_id` must be valid [ComponentId]'s
+/// `component_id` must be valid [`ComponentId`]'s
 unsafe fn initialize_bundle(
     bundle_type_name: &'static str,
     component_ids: Vec<ComponentId>,

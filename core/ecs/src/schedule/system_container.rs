@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     component::ComponentId,
     query::Access,
@@ -37,7 +39,7 @@ pub(super) struct ExclusiveSystemContainer {
 
 impl ExclusiveSystemContainer {
     pub fn from_descriptor(descriptor: ExclusiveSystemDescriptor) -> Self {
-        ExclusiveSystemContainer {
+        Self {
             system: descriptor.system,
             run_criteria_index: None,
             run_criteria_label: None,
@@ -122,7 +124,7 @@ unsafe impl Sync for ParallelSystemContainer {}
 
 impl ParallelSystemContainer {
     pub(crate) fn from_descriptor(descriptor: ParallelSystemDescriptor) -> Self {
-        ParallelSystemContainer {
+        Self {
             // SAFE: it is fine to wrap inner value with UnsafeCell, as it is repr(transparent)
             system: unsafe { Box::from_raw(Box::into_raw(descriptor.system) as *mut _) },
             should_run: false,

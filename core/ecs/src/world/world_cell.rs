@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     archetype::ArchetypeComponentId,
     component::Component,
@@ -74,7 +76,7 @@ impl<'w> Drop for WorldCell<'w> {
     fn drop(&mut self) {
         let mut access = self.access.borrow_mut();
         // give world ArchetypeComponentAccess back to reuse allocations
-        let _ = std::mem::swap(&mut self.world.archetype_component_access, &mut *access);
+        std::mem::swap(&mut self.world.archetype_component_access, &mut *access);
     }
 }
 
@@ -94,7 +96,7 @@ impl<'w, T> WorldBorrow<'w, T> {
             panic!(
                 "Attempted to immutably access {}, but it is already mutably borrowed",
                 std::any::type_name::<T>()
-            )
+            );
         }
         Self {
             value,
@@ -136,7 +138,7 @@ impl<'w, T> WorldBorrowMut<'w, T> {
             panic!(
                 "Attempted to mutably access {}, but it is already mutably borrowed",
                 std::any::type_name::<T>()
-            )
+            );
         }
         Self {
             value,
@@ -151,7 +153,7 @@ impl<'w, T> Deref for WorldBorrowMut<'w, T> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.value.deref()
+        &*self.value
     }
 }
 

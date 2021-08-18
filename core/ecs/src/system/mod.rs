@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn simple_system() {
-        fn sys(query: Query<&A>) {
+        fn sys(query: Query<'_, &A>) {
             for a in query.iter() {
                 println!("{:?}", a);
             }
@@ -72,11 +72,11 @@ mod tests {
     #[test]
     fn query_system_gets() {
         fn query_system(
-            mut ran: ResMut<bool>,
-            entity_query: Query<Entity, With<A>>,
-            b_query: Query<&B>,
-            a_c_query: Query<(&A, &C)>,
-            d_query: Query<&D>,
+            mut ran: ResMut<'_, bool>,
+            entity_query: Query<'_, Entity, With<A>>,
+            b_query: Query<'_, &B>,
+            a_c_query: Query<'_, (&A, &C)>,
+            d_query: Query<'_, &D>,
         ) {
             let entities = entity_query.iter().collect::<Vec<Entity>>();
             assert!(
@@ -131,10 +131,10 @@ mod tests {
     fn or_query_set_system() {
         // Regression test for issue #762
         fn query_system(
-            mut ran: ResMut<bool>,
+            mut ran: ResMut<'_, bool>,
             set: QuerySet<(
-                Query<(), Or<(Changed<A>, Changed<B>)>>,
-                Query<(), Or<(Added<A>, Added<B>)>>,
+                Query<'_, (), Or<(Changed<A>, Changed<B>)>>,
+                Query<'_, (), Or<(Added<A>, Added<B>)>>,
             )>,
         ) {
             let changed = set.q0().iter().count();
@@ -160,9 +160,9 @@ mod tests {
         struct Added(usize);
         struct Changed(usize);
         fn incr_e_on_flip(
-            value: Res<bool>,
-            mut changed: ResMut<Changed>,
-            mut added: ResMut<Added>,
+            value: Res<'_, bool>,
+            mut changed: ResMut<'_, Changed>,
+            mut added: ResMut<'_, Added>,
         ) {
             if value.is_added() {
                 added.0 += 1;
@@ -204,7 +204,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_mut_system() {
-        fn sys(_q1: Query<&mut A>, _q2: Query<&mut A>) {}
+        fn sys(_q1: Query<'_, &mut A>, _q2: Query<'_, &mut A>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn disjoint_query_mut_system() {
-        fn sys(_q1: Query<&mut A, With<B>>, _q2: Query<&mut A, Without<B>>) {}
+        fn sys(_q1: Query<'_, &mut A, With<B>>, _q2: Query<'_, &mut A, Without<B>>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -220,7 +220,7 @@ mod tests {
 
     #[test]
     fn disjoint_query_mut_read_component_system() {
-        fn sys(_q1: Query<(&mut A, &B)>, _q2: Query<&mut A, Without<B>>) {}
+        fn sys(_q1: Query<'_, (&mut A, &B)>, _q2: Query<'_, &mut A, Without<B>>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -229,7 +229,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_immut_system() {
-        fn sys(_q1: Query<&A>, _q2: Query<&mut A>) {}
+        fn sys(_q1: Query<'_, &A>, _q2: Query<'_, &mut A>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn query_set_system() {
-        fn sys(mut _set: QuerySet<(Query<&mut A>, Query<&A>)>) {}
+        fn sys(mut _set: QuerySet<(Query<'_, &mut A>, Query<'_, &A>)>) {}
         let mut world = World::default();
         run_system(&mut world, sys);
     }
@@ -245,7 +245,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_with_query_set_system() {
-        fn sys(_query: Query<&mut A>, _set: QuerySet<(Query<&mut A>, Query<&B>)>) {}
+        fn sys(_query: Query<'_, &mut A>, _set: QuerySet<(Query<'_, &mut A>, Query<'_, &B>)>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -254,7 +254,11 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_sets_system() {
-        fn sys(_set_1: QuerySet<(Query<&mut A>,)>, _set_2: QuerySet<(Query<&mut A>, Query<&B>)>) {}
+        fn sys(
+            _set_1: QuerySet<(Query<'_, &mut A>,)>,
+            _set_2: QuerySet<(Query<'_, &mut A>, Query<'_, &B>)>,
+        ) {
+        }
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -276,28 +280,34 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_system_resources() {
-        fn sys(_: ResMut<BufferRes>, _: Res<BufferRes>) {}
-        test_for_conflicting_resources(sys)
+        fn sys(_: ResMut<'_, BufferRes>, _: Res<'_, BufferRes>) {}
+        test_for_conflicting_resources(sys);
     }
 
     #[test]
     #[should_panic]
     fn conflicting_system_resources_reverse_order() {
-        fn sys(_: Res<BufferRes>, _: ResMut<BufferRes>) {}
-        test_for_conflicting_resources(sys)
+        fn sys(_: Res<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
+        test_for_conflicting_resources(sys);
     }
 
     #[test]
     #[should_panic]
     fn conflicting_system_resources_multiple_mutable() {
-        fn sys(_: ResMut<BufferRes>, _: ResMut<BufferRes>) {}
-        test_for_conflicting_resources(sys)
+        fn sys(_: ResMut<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
+        test_for_conflicting_resources(sys);
     }
 
     #[test]
     fn nonconflicting_system_resources() {
-        fn sys(_: Local<BufferRes>, _: ResMut<BufferRes>, _: Local<A>, _: ResMut<A>) {}
-        test_for_conflicting_resources(sys)
+        fn sys(
+            _: Local<'_, BufferRes>,
+            _: ResMut<'_, BufferRes>,
+            _: Local<'_, A>,
+            _: ResMut<'_, A>,
+        ) {
+        }
+        test_for_conflicting_resources(sys);
     }
 
     #[test]
@@ -311,13 +321,13 @@ mod tests {
 
         impl FromWorld for Foo {
             fn from_world(world: &mut World) -> Self {
-                Foo {
+                Self {
                     value: *world.get_resource::<u32>().unwrap() + 1,
                 }
             }
         }
 
-        fn sys(local: Local<Foo>, mut modified: ResMut<bool>) {
+        fn sys(local: Local<'_, Foo>, mut modified: ResMut<'_, bool>) {
             assert_eq!(local.value, 2);
             *modified = true;
         }
@@ -340,9 +350,9 @@ mod tests {
         world.entity_mut(a).despawn();
 
         fn validate_removed(
-            removed_i32: RemovedComponents<i32>,
-            despawned: Res<Despawned>,
-            mut ran: ResMut<bool>,
+            removed_i32: RemovedComponents<'_, i32>,
+            despawned: Res<'_, Despawned>,
+            mut ran: ResMut<'_, bool>,
         ) {
             assert_eq!(
                 removed_i32.iter().collect::<Vec<_>>(),
@@ -361,7 +371,7 @@ mod tests {
     fn configure_system_local() {
         let mut world = World::default();
         world.insert_resource(false);
-        fn sys(local: Local<usize>, mut modified: ResMut<bool>) {
+        fn sys(local: Local<'_, usize>, mut modified: ResMut<'_, bool>) {
             assert_eq!(*local, 42);
             *modified = true;
         }
@@ -382,8 +392,8 @@ mod tests {
             components: &Components,
             entities: &Entities,
             bundles: &Bundles,
-            query: Query<Entity, With<i32>>,
-            mut modified: ResMut<bool>,
+            query: Query<'_, Entity, With<i32>>,
+            mut modified: ResMut<'_, bool>,
         ) {
             assert_eq!(query.iter().count(), 1, "entity exists");
             for entity in query.iter() {
@@ -418,9 +428,9 @@ mod tests {
 
     #[test]
     fn get_system_conflicts() {
-        fn sys_x(_: Res<A>, _: Res<B>, _: Query<(&C, &D)>) {}
+        fn sys_x(_: Res<'_, A>, _: Res<'_, B>, _: Query<'_, (&C, &D)>) {}
 
-        fn sys_y(_: Res<A>, _: ResMut<B>, _: Query<(&C, &mut D)>) {}
+        fn sys_y(_: Res<'_, A>, _: ResMut<'_, B>, _: Query<'_, (&C, &mut D)>) {}
 
         let mut world = World::default();
         let mut x = sys_x.system();
@@ -439,12 +449,12 @@ mod tests {
 
     #[test]
     fn query_is_empty() {
-        fn without_filter(not_empty: Query<&A>, empty: Query<&B>) {
+        fn without_filter(not_empty: Query<'_, &A>, empty: Query<'_, &B>) {
             assert!(!not_empty.is_empty());
             assert!(empty.is_empty());
         }
 
-        fn with_filter(not_empty: Query<&A, With<C>>, empty: Query<&A, With<D>>) {
+        fn with_filter(not_empty: Query<'_, &A, With<C>>, empty: Query<'_, &A, With<D>>) {
             assert!(!not_empty.is_empty());
             assert!(empty.is_empty());
         }
@@ -465,40 +475,40 @@ mod tests {
     #[allow(clippy::too_many_arguments)]
     fn can_have_16_parameters() {
         fn sys_x(
-            _: Res<A>,
-            _: Res<B>,
-            _: Res<C>,
-            _: Res<D>,
-            _: Res<E>,
-            _: Res<F>,
-            _: Query<&A>,
-            _: Query<&B>,
-            _: Query<&C>,
-            _: Query<&D>,
-            _: Query<&E>,
-            _: Query<&F>,
-            _: Query<(&A, &B)>,
-            _: Query<(&C, &D)>,
-            _: Query<(&E, &F)>,
+            _: Res<'_, A>,
+            _: Res<'_, B>,
+            _: Res<'_, C>,
+            _: Res<'_, D>,
+            _: Res<'_, E>,
+            _: Res<'_, F>,
+            _: Query<'_, &A>,
+            _: Query<'_, &B>,
+            _: Query<'_, &C>,
+            _: Query<'_, &D>,
+            _: Query<'_, &E>,
+            _: Query<'_, &F>,
+            _: Query<'_, (&A, &B)>,
+            _: Query<'_, (&C, &D)>,
+            _: Query<'_, (&E, &F)>,
         ) {
         }
         fn sys_y(
             _: (
-                Res<A>,
-                Res<B>,
-                Res<C>,
-                Res<D>,
-                Res<E>,
-                Res<F>,
-                Query<&A>,
-                Query<&B>,
-                Query<&C>,
-                Query<&D>,
-                Query<&E>,
-                Query<&F>,
-                Query<(&A, &B)>,
-                Query<(&C, &D)>,
-                Query<(&E, &F)>,
+                Res<'_, A>,
+                Res<'_, B>,
+                Res<'_, C>,
+                Res<'_, D>,
+                Res<'_, E>,
+                Res<'_, F>,
+                Query<'_, &A>,
+                Query<'_, &B>,
+                Query<'_, &C>,
+                Query<'_, &D>,
+                Query<'_, &E>,
+                Query<'_, &F>,
+                Query<'_, (&A, &B)>,
+                Query<'_, (&C, &D)>,
+                Query<'_, (&E, &F)>,
             ),
         ) {
         }
@@ -521,8 +531,11 @@ mod tests {
         world.insert_resource(A(42));
         world.spawn().insert(B(7));
 
-        let mut system_state: SystemState<(Res<A>, Query<&B>, QuerySet<(Query<&C>, Query<&D>)>)> =
-            SystemState::new(&mut world);
+        let mut system_state: SystemState<(
+            Res<'_, A>,
+            Query<'_, &B>,
+            QuerySet<(Query<'_, &C>, Query<'_, &D>)>,
+        )> = SystemState::new(&mut world);
         let (a, query, _) = system_state.get(&world);
         assert_eq!(*a, A(42), "returned resource matches initial value");
         assert_eq!(
@@ -544,7 +557,7 @@ mod tests {
         world.insert_resource(A(42));
         world.spawn().insert(B(7));
 
-        let mut system_state: SystemState<(ResMut<A>, Query<&mut B>)> =
+        let mut system_state: SystemState<(ResMut<'_, A>, Query<'_, &mut B>)> =
             SystemState::new(&mut world);
 
         // The following line shouldn't compile because the parameters used are not ReadOnlySystemParam
@@ -567,7 +580,7 @@ mod tests {
         let mut world = World::default();
         let entity = world.spawn().insert(A(1)).id();
 
-        let mut system_state: SystemState<Query<&A, Changed<A>>> = SystemState::new(&mut world);
+        let mut system_state: SystemState<Query<'_, &A, Changed<A>>> = SystemState::new(&mut world);
         {
             let query = system_state.get(&world);
             assert_eq!(*query.single().unwrap(), A(1));
@@ -589,7 +602,7 @@ mod tests {
     #[should_panic]
     fn system_state_invalid_world() {
         let mut world = World::default();
-        let mut system_state = SystemState::<Query<&A>>::new(&mut world);
+        let mut system_state = SystemState::<Query<'_, &A>>::new(&mut world);
         let mismatched_world = World::default();
         system_state.get(&mismatched_world);
     }
@@ -605,7 +618,7 @@ mod tests {
         let mut world = World::default();
         world.spawn().insert(A(1));
 
-        let mut system_state = SystemState::<Query<&A>>::new(&mut world);
+        let mut system_state = SystemState::<Query<'_, &A>>::new(&mut world);
         {
             let query = system_state.get(&world);
             assert_eq!(

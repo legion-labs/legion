@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use std::{
     alloc::{handle_alloc_error, Layout},
     ptr::NonNull,
@@ -14,9 +16,9 @@ pub struct BlobVec {
 }
 
 impl BlobVec {
-    pub fn new(item_layout: Layout, drop: unsafe fn(*mut u8), capacity: usize) -> BlobVec {
+    pub fn new(item_layout: Layout, drop: unsafe fn(*mut u8), capacity: usize) -> Self {
         if item_layout.size() == 0 {
-            BlobVec {
+            Self {
                 swap_scratch: NonNull::dangling(),
                 data: NonNull::dangling(),
                 capacity: usize::MAX,
@@ -27,7 +29,7 @@ impl BlobVec {
         } else {
             let swap_scratch = NonNull::new(unsafe { std::alloc::alloc(item_layout) })
                 .unwrap_or_else(|| std::alloc::handle_alloc_error(item_layout));
-            let mut blob_vec = BlobVec {
+            let mut blob_vec = Self {
                 swap_scratch,
                 data: NonNull::dangling(),
                 capacity: 0,
@@ -121,7 +123,7 @@ impl BlobVec {
     /// # Safety
     /// len must be <= capacity. if length is decreased, "out of bounds" items must be dropped.
     /// Newly added items must be immediately populated with valid values and length must be
-    /// increased. For better unwind safety, call [BlobVec::set_len] _after_ populating a new
+    /// increased. For better unwind safety, call [`BlobVec::set_len`] _after_ populating a new
     /// value.
     pub unsafe fn set_len(&mut self, len: usize) {
         debug_assert!(len <= self.capacity());
@@ -129,7 +131,7 @@ impl BlobVec {
     }
 
     /// Performs a "swap remove" at the given `index`, which removes the item at `index` and moves
-    /// the last item in the [BlobVec] to `index` (if `index` is not the last item). It is the
+    /// the last item in the [`BlobVec`] to `index` (if `index` is not the last item). It is the
     /// caller's responsibility to drop the returned pointer, if that is desirable.
     ///
     /// # Safety
@@ -160,7 +162,7 @@ impl BlobVec {
     pub unsafe fn swap_remove_and_drop_unchecked(&mut self, index: usize) {
         debug_assert!(index < self.len());
         let value = self.swap_remove_and_forget_unchecked(index);
-        (self.drop)(value)
+        (self.drop)(value);
     }
 
     /// # Safety
@@ -210,7 +212,7 @@ impl Drop for BlobVec {
     }
 }
 
-/// From https://doc.rust-lang.org/beta/src/core/alloc/layout.rs.html
+/// From <https://doc.rust-lang.org/beta/src/core/alloc/layout.rs.html>
 fn array_layout(layout: &Layout, n: usize) -> Option<Layout> {
     let (array_layout, offset) = repeat_layout(layout, n)?;
     debug_assert_eq!(layout.size(), offset);
@@ -218,7 +220,7 @@ fn array_layout(layout: &Layout, n: usize) -> Option<Layout> {
 }
 
 // TODO: replace with Layout::repeat if/when it stabilizes
-/// From https://doc.rust-lang.org/beta/src/core/alloc/layout.rs.html
+/// From <https://doc.rust-lang.org/beta/src/core/alloc/layout.rs.html>
 fn repeat_layout(layout: &Layout, n: usize) -> Option<(Layout, usize)> {
     // This cannot overflow. Quoting from the invariant of Layout:
     // > `size`, when rounded up to the nearest multiple of `align`,
@@ -237,7 +239,7 @@ fn repeat_layout(layout: &Layout, n: usize) -> Option<(Layout, usize)> {
     }
 }
 
-/// From https://doc.rust-lang.org/beta/src/core/alloc/layout.rs.html
+/// From <https://doc.rust-lang.org/beta/src/core/alloc/layout.rs.html>
 const fn padding_needed_for(layout: &Layout, align: usize) -> usize {
     let len = layout.size();
 
@@ -271,12 +273,12 @@ mod tests {
 
     // SAFETY: The pointer points to a valid value of type `T` and it is safe to drop this value.
     unsafe fn drop_ptr<T>(x: *mut u8) {
-        x.cast::<T>().drop_in_place()
+        x.cast::<T>().drop_in_place();
     }
 
     /// # Safety
     ///
-    /// `blob_vec` must have a layout that matches Layout::new::<T>()
+    /// `blob_vec` must have a layout that matches `Layout::new::<T>()`
     unsafe fn push<T>(blob_vec: &mut BlobVec, mut value: T) {
         let index = blob_vec.push_uninit();
         blob_vec.initialize_unchecked(index, (&mut value as *mut T).cast::<u8>());
@@ -285,7 +287,7 @@ mod tests {
 
     /// # Safety
     ///
-    /// `blob_vec` must have a layout that matches Layout::new::<T>()
+    /// `blob_vec` must have a layout that matches `Layout::new::<T>()`
     unsafe fn swap_remove<T>(blob_vec: &mut BlobVec, index: usize) -> T {
         assert!(index < blob_vec.len());
         let value = blob_vec.swap_remove_and_forget_unchecked(index);
@@ -294,7 +296,7 @@ mod tests {
 
     /// # Safety
     ///
-    /// `blob_vec` must have a layout that matches Layout::new::<T>(), it most store a valid T value
+    /// `blob_vec` must have a layout that matches `Layout::new::<T>()`, it most store a valid T value
     /// at the given `index`
     unsafe fn get_mut<T>(blob_vec: &mut BlobVec, index: usize) -> &mut T {
         assert!(index < blob_vec.len());

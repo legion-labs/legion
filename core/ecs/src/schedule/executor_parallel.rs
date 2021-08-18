@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     archetype::{ArchetypeComponentId, ArchetypeGeneration},
     query::Access,
@@ -9,8 +11,7 @@ use fixedbitset::FixedBitSet;
 use legion_tasks::{ComputeTaskPool, Scope, TaskPool};
 
 #[cfg(test)]
-use SchedulingEvent::*;
-
+use SchedulingEvent::StartedSystems;
 struct SystemSchedulingMetadata {
     /// Used to signal the system's task to start the system.
     start_sender: Sender<()>,
@@ -147,8 +148,8 @@ impl ParallelSystemExecutor for ParallelExecutor {
 }
 
 impl ParallelExecutor {
-    /// Calls system.new_archetype() for each archetype added since the last call to
-    /// [update_archetypes] and updates cached archetype_component_access.
+    /// Calls `system.new_archetype()` for each archetype added since the last call to
+    /// [`update_archetypes`] and updates cached `archetype_component_access`.
     fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
         let archetypes = world.archetypes();
         let new_generation = archetypes.generation();
@@ -192,7 +193,9 @@ impl ParallelExecutor {
                         legion_utils::tracing::info_span!("system", name = &*system.name());
                     #[cfg(feature = "trace")]
                     let system_guard = system_span.enter();
-                    unsafe { system.run_unsafe((), world) };
+                    unsafe {
+                        system.run_unsafe((), world);
+                    };
                     #[cfg(feature = "trace")]
                     drop(system_guard);
                     finish_sender
@@ -313,7 +316,7 @@ enum SchedulingEvent {
 
 #[cfg(test)]
 mod tests {
-    use super::SchedulingEvent::{self, *};
+    use super::SchedulingEvent::{self, StartedSystems};
     use crate::{
         schedule::{SingleThreadedExecutor, Stage, SystemStage},
         system::{NonSend, Query, Res, ResMut},
@@ -346,15 +349,15 @@ mod tests {
         assert_eq!(
             receive_events(&world),
             vec![StartedSystems(3), StartedSystems(3),]
-        )
+        );
     }
 
     #[test]
     fn resources() {
         let mut world = World::new();
         world.insert_resource(0usize);
-        fn wants_mut(_: ResMut<usize>) {}
-        fn wants_ref(_: Res<usize>) {}
+        fn wants_mut(_: ResMut<'_, usize>) {}
+        fn wants_ref(_: Res<'_, usize>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut)
             .with_system(wants_mut);
@@ -382,8 +385,8 @@ mod tests {
     fn queries() {
         let mut world = World::new();
         world.spawn().insert(0usize);
-        fn wants_mut(_: Query<&mut usize>) {}
-        fn wants_ref(_: Query<&usize>) {}
+        fn wants_mut(_: Query<'_, &mut usize>) {}
+        fn wants_ref(_: Query<'_, &usize>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut)
             .with_system(wants_mut);
@@ -407,8 +410,8 @@ mod tests {
         assert_eq!(receive_events(&world), vec![StartedSystems(2),]);
         let mut world = World::new();
         world.spawn().insert_bundle((0usize, 0u32, 0f32));
-        fn wants_mut_usize(_: Query<(&mut usize, &f32)>) {}
-        fn wants_mut_u32(_: Query<(&mut u32, &f32)>) {}
+        fn wants_mut_usize(_: Query<'_, (&mut usize, &f32)>) {}
+        fn wants_mut_u32(_: Query<'_, (&mut u32, &f32)>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut_usize)
             .with_system(wants_mut_u32);
@@ -421,7 +424,7 @@ mod tests {
         use std::thread;
         let mut world = World::new();
         world.insert_non_send(thread::current().id());
-        fn non_send(thread_id: NonSend<thread::ThreadId>) {
+        fn non_send(thread_id: NonSend<'_, thread::ThreadId>) {
             assert_eq!(thread::current().id(), *thread_id);
         }
         fn empty() {}

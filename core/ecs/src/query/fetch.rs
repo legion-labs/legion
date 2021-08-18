@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     change_detection::Ticks,
@@ -21,13 +23,13 @@ use std::{
 ///
 /// See [`Query`](crate::system::Query) for a primer on queries.
 ///
-/// # Basic WorldQueries
+/// # Basic `WorldQueries`
 ///
 /// Here is a small list of the most important world queries to know about where `C` stands for a
 /// [`Component`] and `WQ` stands for a [`WorldQuery`]:
 /// - `&C`: Queries immutably for the component `C`
 /// - `&mut C`: Queries mutably for the component `C`
-/// - `Option<WQ>`: Queries the inner WorldQuery `WQ` but instead of discarding the entity if the world
+/// - `Option<WQ>`: Queries the inner `WorldQuery` `WQ` but instead of discarding the entity if the world
 ///     query fails it returns [`None`]. See [`Query`](crate::system::Query).
 /// - `(WQ1, WQ2, ...)`: Queries all contained world queries allowing to query for more than one thing.
 ///     This is the `And` operator for filters. See [`Or`].
@@ -53,7 +55,7 @@ pub trait Fetch<'world, 'state>: Sized {
     ///
     /// # Safety
     ///
-    /// `state` must have been initialized (via [FetchState::init]) using the same `world` passed in
+    /// `state` must have been initialized (via [`FetchState::init`]) using the same `world` passed in
     /// to this function.
     unsafe fn init(
         world: &World,
@@ -75,7 +77,7 @@ pub trait Fetch<'world, 'state>: Sized {
     /// # Safety
     ///
     /// `archetype` and `tables` must be from the [`World`] [`Fetch::init`] was called on. `state` must
-    /// be the [Self::State] this was initialized with.
+    /// be the [`Self::State`] this was initialized with.
     unsafe fn set_archetype(&mut self, state: &Self::State, archetype: &Archetype, tables: &Tables);
 
     /// Adjusts internal state to account for the next [`Table`]. This will always be called on tables
@@ -84,7 +86,7 @@ pub trait Fetch<'world, 'state>: Sized {
     /// # Safety
     ///
     /// `table` must be from the [`World`] [`Fetch::init`] was called on. `state` must be the
-    /// [Self::State] this was initialized with.
+    /// [`Self::State`] this was initialized with.
     unsafe fn set_table(&mut self, state: &Self::State, table: &Table);
 
     /// Fetch [`Self::Item`] for the given `archetype_index` in the current [`Archetype`]. This must
@@ -236,7 +238,7 @@ pub struct ReadState<T> {
 unsafe impl<T: Component> FetchState for ReadState<T> {
     fn init(world: &mut World) -> Self {
         let component_info = world.components.get_or_insert_info::<T>();
-        ReadState {
+        Self {
             component_id: component_info.id(),
             storage_type: component_info.storage_type(),
             marker: PhantomData,
@@ -248,7 +250,7 @@ unsafe impl<T: Component> FetchState for ReadState<T> {
             panic!("&{} conflicts with a previous access in this query. Shared access cannot coincide with exclusive access.",
                 std::any::type_name::<T>());
         }
-        access.add_read(self.component_id)
+        access.add_read(self.component_id);
     }
 
     fn update_archetype_component_access(
@@ -423,7 +425,7 @@ pub struct WriteState<T> {
 unsafe impl<T: Component> FetchState for WriteState<T> {
     fn init(world: &mut World) -> Self {
         let component_info = world.components.get_or_insert_info::<T>();
-        WriteState {
+        Self {
             component_id: component_info.id(),
             storage_type: component_info.storage_type(),
             marker: PhantomData,
@@ -578,7 +580,7 @@ pub struct OptionFetch<T> {
     matches: bool,
 }
 
-/// SAFETY: OptionFetch is read only because T is read only
+/// SAFETY: `OptionFetch` is read only because T is read only
 unsafe impl<T: ReadOnlyFetch> ReadOnlyFetch for OptionFetch<T> {}
 
 /// The [`FetchState`] of `Option<T>`.
@@ -606,7 +608,7 @@ unsafe impl<T: FetchState> FetchState for OptionState<T> {
     ) {
         if self.state.matches_archetype(archetype) {
             self.state
-                .update_archetype_component_access(archetype, access)
+                .update_archetype_component_access(archetype, access);
         }
     }
 
@@ -771,7 +773,7 @@ unsafe impl<T: Component> FetchState for ChangeTrackersState<T> {
             panic!("ChangeTrackers<{}> conflicts with a previous access in this query. Shared access cannot coincide with exclusive access.",
                 std::any::type_name::<T>());
         }
-        access.add_read(self.component_id)
+        access.add_read(self.component_id);
     }
 
     fn update_archetype_component_access(

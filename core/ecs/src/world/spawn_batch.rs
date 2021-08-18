@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     archetype::{Archetype, ArchetypeId, ComponentStatus},
     bundle::{Bundle, BundleInfo},

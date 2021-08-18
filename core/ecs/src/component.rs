@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::storage::SparseSetIndex;
 use std::{
     alloc::Layout,
@@ -46,7 +48,7 @@ pub enum StorageType {
 
 impl Default for StorageType {
     fn default() -> Self {
-        StorageType::Table
+        Self::Table
     }
 }
 
@@ -93,7 +95,7 @@ impl ComponentInfo {
     }
 
     fn new(id: ComponentId, descriptor: ComponentDescriptor) -> Self {
-        ComponentInfo { id, descriptor }
+        Self { id, descriptor }
     }
 }
 
@@ -102,8 +104,8 @@ pub struct ComponentId(usize);
 
 impl ComponentId {
     #[inline]
-    pub const fn new(index: usize) -> ComponentId {
-        ComponentId(index)
+    pub const fn new(index: usize) -> Self {
+        Self(index)
     }
 
     #[inline]
@@ -138,7 +140,7 @@ pub struct ComponentDescriptor {
 impl ComponentDescriptor {
     // SAFETY: The pointer points to a valid value of type `T` and it is safe to drop this value.
     unsafe fn drop_ptr<T>(x: *mut u8) {
-        x.cast::<T>().drop_in_place()
+        x.cast::<T>().drop_in_place();
     }
 
     pub fn new<T: Component>(storage_type: StorageType) -> Self {
@@ -248,7 +250,7 @@ impl Components {
 
     /// # Safety
     ///
-    /// `id` must be a valid [ComponentId]
+    /// `id` must be a valid [`ComponentId`]
     #[inline]
     pub unsafe fn get_info_unchecked(&self, id: ComponentId) -> &ComponentInfo {
         debug_assert!(id.index() < self.components.len());

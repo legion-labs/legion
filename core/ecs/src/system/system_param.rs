@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 pub use crate::change_detection::{NonSendMut, ResMut};
 use crate::{
     archetype::{Archetype, Archetypes},
@@ -51,7 +53,7 @@ pub trait SystemParam: Sized {
 /// It is the implementor's responsibility to ensure `system_meta` is populated with the _exact_
 /// [`World`] access used by the `SystemParamState` (and associated [`SystemParamFetch`]).
 /// Additionally, it is the implementor's responsibility to ensure there is no
-/// conflicting access across all SystemParams.
+/// conflicting access across all `SystemParams`.
 pub unsafe trait SystemParamState: Send + Sync + 'static {
     /// Values of this type can be used to adjust the behavior of the
     /// system parameter. For instance, this can be used to pass
@@ -118,7 +120,7 @@ where
     type Config = ();
 
     fn init(world: &mut World, system_meta: &mut SystemMeta, _config: Self::Config) -> Self {
-        let state = QueryState::new(world);
+        let state = Self::new(world);
         assert_component_access_compatibility(
             &system_meta.name,
             std::any::type_name::<Q>(),
@@ -241,7 +243,7 @@ impl<'w, T: Component> Deref for Res<'w, T> {
 impl<'w, T: Component> AsRef<T> for Res<'w, T> {
     #[inline]
     fn as_ref(&self) -> &T {
-        self.deref()
+        &*self
     }
 }
 
@@ -1171,7 +1173,7 @@ macro_rules! impl_system_param_tuple {
             }
         }
 
-        /// SAFE: implementors of each SystemParamState in the tuple have validated their impls
+        /// SAFE: implementors of each `SystemParamState` in the tuple have validated their impls
         #[allow(non_snake_case)]
         unsafe impl<$($param: SystemParamState),*> SystemParamState for ($($param,)*) {
             type Config = ($(<$param as SystemParamState>::Config,)*);

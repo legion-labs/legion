@@ -66,7 +66,7 @@ where
     fn exclusive_system(self) -> ExclusiveSystemFn {
         ExclusiveSystemFn {
             func: Box::new(self),
-            name: core::any::type_name::<F>().into(),
+            name: core::any::type_name::<Self>().into(),
             id: SystemId::new(),
             last_change_tick: 0,
         }
@@ -136,9 +136,9 @@ mod tests {
         let mut world = World::new();
 
         fn removal(
-            mut commands: Commands,
-            query: Query<Entity, With<f32>>,
-            mut counter: ResMut<usize>,
+            mut commands: Commands<'_>,
+            query: Query<'_, Entity, With<f32>>,
+            mut counter: ResMut<'_, usize>,
         ) {
             for entity in query.iter() {
                 *counter += 1;
@@ -165,11 +165,11 @@ mod tests {
     fn update_archetype_for_exclusive_system_coerced() {
         struct Foo;
 
-        fn spawn_entity(mut commands: crate::prelude::Commands) {
+        fn spawn_entity(mut commands: crate::prelude::Commands<'_>) {
             commands.spawn().insert(Foo);
         }
 
-        fn count_entities(query: Query<&Foo>, mut res: ResMut<Vec<usize>>) {
+        fn count_entities(query: Query<'_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 

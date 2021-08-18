@@ -28,13 +28,13 @@ impl<T> Clone for EventId<T> {
 }
 
 impl<T> fmt::Display for EventId<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <Self as fmt::Debug>::fmt(self, f)
     }
 }
 
 impl<T> fmt::Debug for EventId<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "event<{}>#{}",
@@ -104,15 +104,15 @@ enum State {
 ///
 /// # Details
 ///
-/// [Events] is implemented using a double buffer. Each call to [Events::update] swaps buffers and
-/// clears out the oldest buffer. [EventReader]s that read at least once per update will never drop
-/// events. [EventReader]s that read once within two updates might still receive some events.
-/// [EventReader]s that read after two updates are guaranteed to drop all events that occurred
+/// [`Events`] is implemented using a double buffer. Each call to [`Events::update`] swaps buffers and
+/// clears out the oldest buffer. [`EventReader`]s that read at least once per update will never drop
+/// events. [`EventReader`]s that read once within two updates might still receive some events.
+/// [`EventReader`]s that read after two updates are guaranteed to drop all events that occurred
 /// before those updates.
 ///
-/// The buffers in [Events] will grow indefinitely if [Events::update] is never called.
+/// The buffers in [`Events`] will grow indefinitely if [`Events::update`] is never called.
 ///
-/// An alternative call pattern would be to call [Events::update] manually across frames to control
+/// An alternative call pattern would be to call [`Events::update`] manually across frames to control
 /// when events are cleared.
 /// This complicates consumption and risks ever-expanding memory usage if not cleaned up,
 /// but can be done by adding your event as a resource instead of using [`App::add_event`].
@@ -130,7 +130,7 @@ pub struct Events<T> {
 
 impl<T> Default for Events<T> {
     fn default() -> Self {
-        Events {
+        Self {
             a_start_event_count: 0,
             b_start_event_count: 0,
             event_count: 0,
@@ -179,7 +179,7 @@ pub struct ManualEventReader<T> {
 
 impl<T> Default for ManualEventReader<T> {
     fn default() -> Self {
-        ManualEventReader {
+        Self {
             last_event_count: 0,
             _marker: Default::default(),
         }
@@ -253,7 +253,7 @@ fn internal_event_reader<'a, T>(
 }
 
 impl<'a, T: Component> EventReader<'a, T> {
-    /// Iterates over the events this EventReader has not seen yet. This updates the EventReader's
+    /// Iterates over the events this `EventReader` has not seen yet. This updates the `EventReader`'s
     /// event counter, which means subsequent event reads will not include events that happened
     /// before now.
     pub fn iter(&mut self) -> impl DoubleEndedIterator<Item = &T> {
@@ -289,7 +289,8 @@ impl<T: Component> Events<T> {
         self.event_count += 1;
     }
 
-    /// Gets a new [ManualEventReader]. This will include all events already in the event buffers.
+    /// Gets a new [`ManualEventReader`]. This will include all events already in the event buffers.
+    #[allow(clippy::unused_self)]
     pub fn get_reader(&self) -> ManualEventReader<T> {
         ManualEventReader {
             last_event_count: 0,
@@ -297,7 +298,7 @@ impl<T: Component> Events<T> {
         }
     }
 
-    /// Gets a new [ManualEventReader]. This will ignore all events already in the event buffers. It
+    /// Gets a new [`ManualEventReader`]. This will ignore all events already in the event buffers. It
     /// will read all future events.
     pub fn get_reader_current(&self) -> ManualEventReader<T> {
         ManualEventReader {
@@ -323,8 +324,8 @@ impl<T: Component> Events<T> {
         }
     }
 
-    /// A system that calls [Events::update] once per frame.
-    pub fn update_system(mut events: ResMut<Self>) {
+    /// A system that calls [`Events::update`] once per frame.
+    pub fn update_system(mut events: ResMut<'_, Self>) {
         events.update();
     }
 

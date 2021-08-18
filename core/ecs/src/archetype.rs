@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     bundle::BundleId,
     component::{ComponentId, StorageType},
@@ -17,17 +19,17 @@ pub struct ArchetypeId(usize);
 impl ArchetypeId {
     #[inline]
     pub const fn new(index: usize) -> Self {
-        ArchetypeId(index)
+        Self(index)
     }
 
     #[inline]
-    pub const fn empty() -> ArchetypeId {
-        ArchetypeId(0)
+    pub const fn empty() -> Self {
+        Self(0)
     }
 
     #[inline]
-    pub const fn resource() -> ArchetypeId {
-        ArchetypeId(1)
+    pub const fn resource() -> Self {
+        Self(1)
     }
 
     #[inline]
@@ -76,6 +78,7 @@ impl Edges {
     }
 
     #[inline]
+    #[allow(clippy::option_option)]
     pub fn get_remove_bundle(&self, bundle_id: BundleId) -> Option<Option<ArchetypeId>> {
         self.remove_bundle.get(bundle_id).cloned()
     }
@@ -86,6 +89,7 @@ impl Edges {
     }
 
     #[inline]
+    #[allow(clippy::option_option)]
     pub fn get_remove_bundle_intersection(
         &self,
         bundle_id: BundleId,
@@ -318,7 +322,7 @@ pub struct ArchetypeGeneration(usize);
 impl ArchetypeGeneration {
     #[inline]
     pub const fn initial() -> Self {
-        ArchetypeGeneration(0)
+        Self(0)
     }
 
     #[inline]
@@ -367,7 +371,7 @@ pub struct Archetypes {
 
 impl Default for Archetypes {
     fn default() -> Self {
-        let mut archetypes = Archetypes {
+        let mut archetypes = Self {
             archetypes: Vec::new(),
             archetype_ids: Default::default(),
             archetype_component_count: 0,
@@ -471,7 +475,7 @@ impl Archetypes {
     /// `table_components` and `sparse_set_components` must be sorted
     ///
     /// # Safety
-    /// TableId must exist in tables
+    /// `TableId` must exist in tables
     pub(crate) fn get_id_or_insert(
         &mut self,
         table_id: TableId,

@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::{
     component::Component,
     entity::Entity,
@@ -278,7 +280,7 @@ where
                 f,
                 self.last_change_tick,
                 self.change_tick,
-            )
+            );
         };
     }
 
@@ -294,7 +296,7 @@ where
                 f,
                 self.last_change_tick,
                 self.change_tick,
-            )
+            );
         };
     }
 
@@ -321,7 +323,7 @@ where
                 f,
                 self.last_change_tick,
                 self.change_tick,
-            )
+            );
         };
     }
 
@@ -343,7 +345,7 @@ where
                 f,
                 self.last_change_tick,
                 self.change_tick,
-            )
+            );
         };
     }
 
@@ -351,7 +353,7 @@ where
     ///
     /// This can only be called for read-only queries, see [`Self::get_mut`] for write-queries.
     #[inline]
-    pub fn get(&self, entity: Entity) -> Result<<Q::Fetch as Fetch>::Item, QueryEntityError>
+    pub fn get(&self, entity: Entity) -> Result<<Q::Fetch as Fetch<'_, '_>>::Item, QueryEntityError>
     where
         Q::Fetch: ReadOnlyFetch,
     {
@@ -372,7 +374,7 @@ where
     pub fn get_mut(
         &mut self,
         entity: Entity,
-    ) -> Result<<Q::Fetch as Fetch>::Item, QueryEntityError> {
+    ) -> Result<<Q::Fetch as Fetch<'_, '_>>::Item, QueryEntityError> {
         // SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         unsafe {
@@ -395,7 +397,7 @@ where
     pub unsafe fn get_unchecked(
         &self,
         entity: Entity,
-    ) -> Result<<Q::Fetch as Fetch>::Item, QueryEntityError> {
+    ) -> Result<<Q::Fetch as Fetch<'_, '_>>::Item, QueryEntityError> {
         // SEMI-SAFE: system runs without conflicts with other systems.
         // same-system queries have runtime borrow checks when they conflict
         self.state
