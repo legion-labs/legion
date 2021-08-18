@@ -18,12 +18,15 @@ pub mod prelude {
 }
 
 use legion_app::prelude::*;
+#[cfg(feature = "legion-reflect")]
+use legion_ecs::entity::Entity;
 use legion_ecs::{
-    entity::Entity,
     schedule::{ExclusiveSystemDescriptorCoercion, SystemLabel},
     system::IntoExclusiveSystem,
 };
+#[cfg(feature = "legion-reflect")]
 use legion_utils::HashSet;
+#[cfg(feature = "legion-reflect")]
 use std::ops::Range;
 
 /// Adds core functionality to Apps.
@@ -48,28 +51,34 @@ impl Plugin for CorePlugin {
 
         app.init_resource::<Time>()
             .init_resource::<EntityLabels>()
-            .init_resource::<FixedTimesteps>()
-            .register_type::<HashSet<String>>()
+            .init_resource::<FixedTimesteps>();
+
+        #[cfg(feature = "legion-reflect")]
+        app.register_type::<HashSet<String>>()
             .register_type::<Option<String>>()
             .register_type::<Entity>()
             .register_type::<Name>()
             .register_type::<Labels>()
             .register_type::<Range<f32>>()
-            .register_type::<Timer>()
-            // time system is added as an "exclusive system" to ensure it runs before other systems
-            // in CoreStage::First
-            .add_system_to_stage(
-                CoreStage::First,
-                time_system.exclusive_system().label(CoreSystem::Time),
-            )
-            .add_startup_system_to_stage(StartupStage::PostStartup, entity_labels_system)
-            .add_system_to_stage(CoreStage::PostUpdate, entity_labels_system);
+            .register_type::<Timer>();
 
+        // time system is added as an "exclusive system" to ensure it runs before other systems
+        // in CoreStage::First
+        app.add_system_to_stage(
+            CoreStage::First,
+            time_system.exclusive_system().label(CoreSystem::Time),
+        )
+        .add_startup_system_to_stage(StartupStage::PostStartup, entity_labels_system)
+        .add_system_to_stage(CoreStage::PostUpdate, entity_labels_system);
+
+        #[cfg(feature = "legion-reflect")]
         register_rust_types(app);
+        #[cfg(feature = "legion-reflect")]
         register_math_types(app);
     }
 }
 
+#[cfg(feature = "legion-reflect")]
 fn register_rust_types(app: &mut App) {
     app.register_type::<bool>()
         .register_type::<u8>()
@@ -90,6 +99,7 @@ fn register_rust_types(app: &mut App) {
         .register_type::<Option<String>>();
 }
 
+#[cfg(feature = "legion-reflect")]
 fn register_math_types(app: &mut App) {
     app.register_type::<legion_math::IVec2>()
         .register_type::<legion_math::IVec3>()

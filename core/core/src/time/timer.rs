@@ -1,5 +1,7 @@
 use crate::Stopwatch;
+#[cfg(feature = "legion-reflect")]
 use legion_ecs::reflect::ReflectComponent;
+#[cfg(feature = "legion-reflect")]
 use legion_reflect::Reflect;
 use legion_utils::Duration;
 
@@ -10,8 +12,9 @@ use legion_utils::Duration;
 /// exceeded, and can still be reset at any given point.
 ///
 /// Paused timers will not have elapsed time increased.
-#[derive(Clone, Debug, Default, Reflect)]
-#[reflect(Component)]
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "legion-reflect", derive(Reflect))]
+#[cfg_attr(feature = "legion-reflect", reflect(Component))]
 pub struct Timer {
     stopwatch: Stopwatch,
     duration: Duration,

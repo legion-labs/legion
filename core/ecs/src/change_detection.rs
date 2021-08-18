@@ -1,4 +1,5 @@
 use crate::component::{Component, ComponentTicks};
+#[cfg(feature = "legion-reflect")]
 use legion_reflect::Reflect;
 use std::ops::{Deref, DerefMut};
 
@@ -182,9 +183,11 @@ impl_into_inner!(Mut<'a, T>, T,);
 impl_debug!(Mut<'a, T>,);
 
 /// Unique mutable borrow of a Reflected component
+#[cfg(feature = "legion-reflect")]
 pub struct ReflectMut<'a> {
     pub(crate) value: &'a mut dyn Reflect,
     pub(crate) ticks: Ticks<'a>,
 }
 
+#[cfg(feature = "legion-reflect")]
 change_detection_impl!(ReflectMut<'a>, dyn Reflect,);

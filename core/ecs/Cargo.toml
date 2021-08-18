@@ -15,7 +15,6 @@ categories = ["game-engines", "data-structures"]
 
 [features]
 trace = []
-default = ["legion-reflect"]
 
 [dependencies]
 legion-reflect = { path = "../reflect", version = "0.1.0", optional = true }
