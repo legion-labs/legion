@@ -62,7 +62,7 @@ fn compile(
 
     // todo: source_resource is wrong here
     let resource = compiler_load_resource(
-        source.source_resource_deprecated(),
+        source.source_resource(),
         resource_dir,
         &mut resources,
     )?;

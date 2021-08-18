@@ -214,7 +214,7 @@ impl DataBuild {
         platform: Platform,
         locale: &Locale,
     ) -> Result<Manifest, Error> {
-        let source = derived.source_resource_deprecated();
+        let source = derived.source_resource();
         if !self.project.exists(source) {
             return Err(Error::NotFound);
         }

@@ -119,8 +119,8 @@ impl ResourcePathId {
         }
     }
 
-    /// Deprecated: temporarily used by the compilers to load resources.
-    pub fn source_resource_deprecated(&self) -> ResourceId {
+    /// Returns an id of the build path's leaf node - the source resource.
+    pub fn source_resource(&self) -> ResourceId {
         self.source
     }
 
