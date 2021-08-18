@@ -52,7 +52,7 @@ impl Default for App {
             .add_event::<AppExit>()
             .add_system_to_stage(CoreStage::Last, World::clear_trackers.exclusive_system());
 
-        #[cfg(feature = "bevy_ci_testing")]
+        #[cfg(feature = "legion_ci_testing")]
         {
             crate::ci_testing::setup_app(&mut app);
         }
