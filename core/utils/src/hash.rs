@@ -5,11 +5,7 @@ pub use uuid::Uuid;
 use ahash::RandomState;
 use std::{future::Future, pin::Pin};
 
-#[cfg(not(target_arch = "wasm32"))]
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
-
-#[cfg(target_arch = "wasm32")]
-pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 /// A hasher builder that will create a fixed hasher.
 #[derive(Default)]

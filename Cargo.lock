@@ -1301,8 +1301,6 @@ dependencies = [
  "legion-utils",
  "ron",
  "serde",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]
