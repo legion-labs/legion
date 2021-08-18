@@ -163,6 +163,14 @@ impl ResourcePathId {
         self.hash(&mut hasher);
         hasher.finish()
     }
+
+    /// Returns a hash of the name in the context of `ResourcePathId`.
+    pub fn hash_name(&self, name: &str) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        name.hash(&mut hasher);
+        hasher.finish()
+    }
 }
 
 /// A unique id of an offline resource.

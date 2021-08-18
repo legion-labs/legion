@@ -444,13 +444,26 @@ pub fn compiler_load_resource(
     Ok(handle)
 }
 
-/// Deterministically create an [`AssetId`] of provided `AssetType` from a [`ResourcePathId`].
+/// Deterministically create an id of an asset in context of resource.
 ///
 /// This function should be used when a resource creates one asset of a given type.
-/// Creating multiple assets of the same type from a resource is not supported at the moment.
 ///
 /// Calling this function multiple times with the same arguments will **always produce the same result**.
 pub fn primary_asset_id(resource_path: &ResourcePathId, kind: AssetType) -> AssetId {
     let internal = resource_path.hash_id();
+    AssetId::new(kind, (internal & 0xffffffff) as u32)
+}
+
+/// Deterministically create a named id of an asset in context of resource.
+///
+/// Different `ResourcePathId` will produce a different [`AssetId`] for the same `name`.
+///
+/// Calling this function multiple times with the same arguments will **always produce the same result**.
+pub fn named_asset_id(
+    resource_path: &ResourcePathId,
+    asset_name: &str,
+    kind: AssetType,
+) -> AssetId {
+    let internal = resource_path.hash_name(asset_name);
     AssetId::new(kind, (internal & 0xffffffff) as u32)
 }
