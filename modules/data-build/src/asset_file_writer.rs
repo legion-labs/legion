@@ -76,7 +76,7 @@ mod tests {
     use legion_asset_store::compiled_asset_store::{
         CompiledAssetStore, InMemoryCompiledAssetStore,
     };
-    use legion_assets::{test_asset, AssetId, AssetType};
+    use legion_assets::{AssetId, AssetType};
 
     use crate::asset_file_writer::{write_assetfile, ASSET_FILE_VERSION};
 

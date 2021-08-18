@@ -2,7 +2,7 @@ use std::fs;
 
 use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 use legion_data_build::{DataBuildOptions, ResourceName};
-use legion_resources::{test_resource, Project, ResourcePathId, ResourceRegistry};
+use legion_resources::{Project, ResourcePathId, ResourceRegistry};
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
 

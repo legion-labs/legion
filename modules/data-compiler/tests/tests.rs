@@ -5,17 +5,17 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use asset_store::compiled_asset_store::{
+use legion_asset_store::compiled_asset_store::{
     CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
 };
-use assets::AssetCreator;
-use data_compiler::{
+use legion_assets::AssetCreator;
+use legion_data_compiler::{
     compiler_cmd::{list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
     Locale, Platform, Target,
 };
-use mock_offline::MockResource;
-use mock_runtime::{MockAsset, MockAssetCreator};
-use resources::{test_resource, ResourceId, ResourcePathId, ResourceProcessor, RESOURCE_EXT};
+use legion_resources::{ResourceId, ResourcePathId, ResourceProcessor, RESOURCE_EXT};
+use mock_asset::{MockAsset, MockAssetCreator};
+use mock_resource::MockResource;
 
 fn target_dir() -> PathBuf {
     env::current_exe()
@@ -129,9 +129,9 @@ fn mock_compile() {
     let source_magic_value = 7;
 
     let source = {
-        let source = ResourceId::generate_new(mock_offline::TYPE_ID);
+        let source = ResourceId::generate_new(mock_resource::TYPE_ID);
 
-        let mut proc = mock_offline::MockResourceProc {};
+        let mut proc = mock_resource::MockResourceProc {};
 
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -183,7 +183,7 @@ fn mock_compile() {
 
     let mut creator = MockAssetCreator {};
     let asset = creator
-        .load(mock_runtime::TYPE_ID, &mut &asset_content[..])
+        .load(mock_asset::TYPE_ID, &mut &asset_content[..])
         .expect("loaded assets");
     let asset = asset.as_any().downcast_ref::<MockAsset>().unwrap();
 

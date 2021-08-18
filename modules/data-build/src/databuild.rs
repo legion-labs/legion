@@ -564,9 +564,7 @@ mod tests {
         CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
     };
     use legion_data_compiler::{Locale, Manifest, Platform, Target};
-    use legion_resources::{
-        test_resource, Project, ResourceId, ResourceName, ResourcePathId, ResourceRegistry,
-    };
+    use legion_resources::{Project, ResourceId, ResourceName, ResourcePathId, ResourceRegistry};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 

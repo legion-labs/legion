@@ -20,7 +20,7 @@ use crate::{DataBuild, Error};
 ///         .compiler_dir("./compilers/")
 ///         .create(".");
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DataBuildOptions {
     pub(crate) buildindex_path: PathBuf,
     pub(crate) assetstore_path: CompiledAssetStoreAddr,

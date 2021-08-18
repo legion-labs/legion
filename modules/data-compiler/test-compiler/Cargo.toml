@@ -1,0 +1,21 @@
+[package]
+name = "test-compiler"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+legion-data-compiler = { path = "../../data-compiler" }
+legion-resources = { path = "../../resources" }
+legion-assets = { path = "../../assets" }
+legion-asset-store = { path = "../../asset-store" }
+test-resource = { path = "../../resources/test-resource" }
+test-asset = { path = "../../assets/test-asset" }
+
+[[bin]]
+name = "compiler-test"
+path = "src/main.rs"
+doc = false

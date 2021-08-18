@@ -25,7 +25,7 @@ pub fn compute_asset_checksum(data: &[u8]) -> i128 {
 ///
 /// For now, it is equivalent to a `PathBuf` since there is only support for on-disk `LocalCompiledAssetStore`.
 /// In the future the address could be representing a remote machine or service.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CompiledAssetStoreAddr(PathBuf);
 
 impl From<&str> for CompiledAssetStoreAddr {

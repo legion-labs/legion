@@ -28,7 +28,7 @@
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
-//!
+//!car
 //! fn compiler_hash(
 //!    code: &'static str,
 //!    data: &'static str,
@@ -66,12 +66,19 @@
 //! Reading source `Resources` is done with [`compiler_load_resource`] function:
 //!
 //! ```no_run
-//! # use legion_resources::{ResourceId, ResourceRegistry};
-//! # use legion_resources::test_resource;
+//! # use legion_resources::{ResourceId, ResourceType, Resource, ResourcePathId, ResourceRegistry, ResourceProcessor};
 //! # use legion_data_compiler::compiler_api::compiler_load_resource;
+//! # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
 //! # let source = ResourceId::from_raw(1).unwrap();
+//! # pub struct SourceGeomProc {}
+//! # impl ResourceProcessor for SourceGeomProc {
+//! # fn new_resource(&mut self) -> Box<(dyn Resource + 'static)> { todo!() }
+//! # fn extract_build_dependencies(&mut self, _: &(dyn Resource + 'static)) -> Vec<ResourcePathId> { todo!() }
+//! # fn write_resource(&mut self, _: &(dyn Resource + 'static), _: &mut dyn std::io::Write) -> Result<usize, std::io::Error> { todo!() }
+//! # fn read_resource(&mut self, _: &mut dyn std::io::Read) -> Result<Box<(dyn Resource + 'static)>, std::io::Error> { todo!() }
+//! # }
 //! let mut registry = ResourceRegistry::default();
-//! registry.register_type(test_resource::TYPE_ID, Box::new(test_resource::TestResourceProc {}));
+//! registry.register_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}));
 //!
 //! let resource = compiler_load_resource(source, "./resources/", &mut registry).expect("loaded resource");
 //! let resource = resource.get::<test_resource::TestResource>(&registry).unwrap();
@@ -91,7 +98,8 @@
 //! # use legion_data_compiler::compiler_api::{primary_asset_id, CompilerError};
 //! # use legion_resources::ResourcePathId;
 //! # use legion_asset_store::{compiled_asset_store::CompiledAssetStoreAddr};
-//! # use legion_assets::test_asset;
+//! # use legion_assets::AssetType;
+//! # pub const BINARY_GEOMETRY: AssetType = AssetType::new(b"bin_geom");
 //! # use std::path::Path;
 //! # fn build_and_store_asset(_id: ResourcePathId) -> (i128, usize){(0,0)}
 //! fn compile(
@@ -104,7 +112,7 @@
 //! #    compiled_asset_store_path: CompiledAssetStoreAddr,
 //! #    resource_dir: &Path,
 //! ) -> Result<Vec<CompiledAsset>, CompilerError> {
-//!    let new_asset_id = primary_asset_id(&derived, test_asset::TYPE_ID);
+//!    let new_asset_id = primary_asset_id(&derived, BINARY_GEOMETRY);
 //!    let (checksum, size) = build_and_store_asset(derived);
 //!    let asset = CompiledAsset {
 //!          guid: new_asset_id,

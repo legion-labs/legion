@@ -437,8 +437,7 @@ mod tests {
     use crate::{
         asset_loader::{LoaderRequest, LoaderResult},
         manifest::Manifest,
-        test_asset::{self},
-        AssetId,
+        test_asset, AssetId,
     };
 
     use super::AssetLoaderIO;

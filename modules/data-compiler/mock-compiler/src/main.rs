@@ -8,7 +8,7 @@ use std::{
 use legion_asset_store::compiled_asset_store::{
     CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
 };
-use legion_assets::test_asset;
+
 use legion_data_compiler::{
     compiler_api::{
         compiler_load_resource, compiler_main, primary_asset_id, CompilationOutput,
@@ -22,7 +22,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transforms: &[(mock_offline::TYPE_ID, mock_offline::TYPE_ID)],
+    transforms: &[(mock_resource::TYPE_ID, mock_resource::TYPE_ID)],
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -51,19 +51,19 @@ fn compile(
 ) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
-        mock_offline::TYPE_ID,
-        Box::new(mock_offline::MockResourceProc {}),
+        mock_resource::TYPE_ID,
+        Box::new(mock_resource::MockResourceProc {}),
     );
 
     let mut asset_store = LocalCompiledAssetStore::open(compiled_asset_store_path)
         .ok_or(CompilerError::AssetStoreError)?;
 
-    let guid = primary_asset_id(&source, test_asset::TYPE_ID);
+    let guid = primary_asset_id(&source, mock_asset::TYPE_ID);
 
     // todo: source_resource is wrong
     let resource = compiler_load_resource(source.source_resource(), resource_dir, &mut resources)?;
     let resource = resource
-        .get::<mock_offline::MockResource>(&resources)
+        .get::<mock_resource::MockResource>(&resources)
         .unwrap();
 
     let magic_value = resource.magic_value * 2;
@@ -80,7 +80,6 @@ fn compile(
     };
 
     // in this mock build dependency are _not_ runtime references.
-
     Ok(CompilationOutput {
         compiled_assets: vec![asset],
         asset_references: vec![],
