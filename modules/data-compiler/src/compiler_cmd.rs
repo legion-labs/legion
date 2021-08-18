@@ -32,12 +32,12 @@
 //!
 //! ```no_run
 //! # use legion_data_compiler::compiler_cmd::CompilerCompileCmd;
-//! # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
+//! # use legion_content_store::ContentStoreAddr;
 //! # use legion_data_compiler::{Locale, Platform, Target};
 //! # use legion_resources::ResourcePathId;
 //! # use std::path::PathBuf;
 //! fn compile_resource(derived: ResourcePathId, dependencies: &[ResourcePathId]) {
-//!     let asset_store = CompiledAssetStoreAddr::from("./asset_store/");
+//!     let asset_store = ContentStoreAddr::from("./asset_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
 //!     let mut command = CompilerCompileCmd::new(&derived, dependencies, &asset_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
 //!     let output = command.execute("my_compiler.exe", "./").expect("compiled assets");
@@ -60,8 +60,8 @@ use crate::{
     compiler_api::CompilerDescriptor, CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
 
-use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 use legion_assets::AssetId;
+use legion_content_store::ContentStoreAddr;
 use legion_resources::{ResourcePathId, ResourceType};
 
 use serde::{Deserialize, Serialize};
@@ -315,7 +315,7 @@ impl CompilerCompileCmd {
     pub fn new(
         source: &ResourcePathId,
         deps: &[ResourcePathId],
-        cas_addr: &CompiledAssetStoreAddr,
+        cas_addr: &ContentStoreAddr,
         resource_dir: &Path,
         target: Target,
         platform: Platform,

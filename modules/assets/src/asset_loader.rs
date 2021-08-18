@@ -8,7 +8,7 @@ use std::{
 use crate::{manifest::Manifest, Asset, AssetCreator, AssetId, AssetType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use legion_asset_store::compiled_asset_store::CompiledAssetStore;
+use legion_content_store::ContentStore;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,7 +45,7 @@ struct LoaderPending {
 }
 
 pub(crate) fn create_loader(
-    asset_store: Box<dyn CompiledAssetStore>,
+    asset_store: Box<dyn ContentStore>,
     manifest: Manifest,
 ) -> (AssetLoader, AssetLoaderIO) {
     let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
@@ -119,7 +119,7 @@ pub(crate) struct AssetLoaderIO {
     primary_asset_references: HashMap<AssetId, Vec<AssetId>>,
 
     /// Where assets are stored.
-    asset_store: Box<dyn CompiledAssetStore>,
+    asset_store: Box<dyn ContentStore>,
 
     /// List of known assets.
     manifest: Manifest,
@@ -141,7 +141,7 @@ pub(crate) struct AssetLoaderIO {
 
 impl AssetLoaderIO {
     pub(crate) fn new(
-        asset_store: Box<dyn CompiledAssetStore>,
+        asset_store: Box<dyn ContentStore>,
         manifest: Manifest,
         request_tx: mpsc::Sender<LoaderRequest>,
         request_rx: mpsc::Receiver<LoaderRequest>,
@@ -216,7 +216,7 @@ impl AssetLoaderIO {
                         None => Some((
                             primary_id,
                             load_id,
-                            io::Error::new(io::ErrorKind::NotFound, "CompiledAssetStore Miss"),
+                            io::Error::new(io::ErrorKind::NotFound, "ContentStore Miss"),
                         )),
                     }
                 } else {
@@ -430,9 +430,7 @@ impl AssetLoaderIO {
 mod tests {
     use std::{sync::mpsc, time::Duration};
 
-    use legion_asset_store::compiled_asset_store::{
-        CompiledAssetStore, InMemoryCompiledAssetStore,
-    };
+    use legion_content_store::{ContentStore, RamContentStore};
 
     use crate::{
         asset_loader::{LoaderRequest, LoaderResult},
@@ -444,7 +442,7 @@ mod tests {
 
     #[test]
     fn load_no_dependencies() {
-        let mut asset_store = Box::new(InMemoryCompiledAssetStore::default());
+        let mut asset_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let binary_assetfile = [
@@ -518,7 +516,7 @@ mod tests {
 
     #[test]
     fn load_failed_dependency() {
-        let mut asset_store = Box::new(InMemoryCompiledAssetStore::default());
+        let mut asset_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [
@@ -571,7 +569,7 @@ mod tests {
 
     #[test]
     fn load_with_dependency() {
-        let mut asset_store = Box::new(InMemoryCompiledAssetStore::default());
+        let mut asset_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [

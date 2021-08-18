@@ -1,7 +1,7 @@
 //! Data compiler interface.
 //!
 //! Data compiler is a binary that takes as input a [`legion_resources::Resource`] and Resources it depends on and produces
-//! one or more [`legion_assets::Asset`]s that are stored in a [`CompiledAssetStore`]. As a results it creates new
+//! one or more [`legion_assets::Asset`]s that are stored in a [`ContentStore`]. As a results it creates new
 //! or updates existing [`Manifest`] file containing metadata about the compiled Assets.
 //!
 //! [`compiler_api`] allows to structure *data compiler* in a specific way.
@@ -18,7 +18,7 @@
 //! # use legion_data_compiler::{CompiledAsset, CompilerHash, Locale, Platform, Target};
 //! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerDescriptor, CompilationOutput, CompilerError};
 //! # use legion_resources::ResourcePathId;
-//! # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
+//! # use legion_content_store::ContentStoreAddr;
 //! # use std::path::Path;
 //! static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 //!    build_version: DATA_BUILD_VERSION,
@@ -45,7 +45,7 @@
 //!    target: Target,
 //!    platform: Platform,
 //!    locale: &Locale,
-//!    compiled_asset_store_path: CompiledAssetStoreAddr,
+//!    compiled_asset_store_path: ContentStoreAddr,
 //!    resource_dir: &Path,
 //!) -> Result<CompilationOutput, CompilerError> {
 //!    todo!()
@@ -97,7 +97,7 @@
 //! # use legion_data_compiler::{CompiledAsset, Locale, Platform, Target};
 //! # use legion_data_compiler::compiler_api::{primary_asset_id, CompilerError};
 //! # use legion_resources::ResourcePathId;
-//! # use legion_asset_store::{compiled_asset_store::CompiledAssetStoreAddr};
+//! # use legion_content_store::{ContentStoreAddr};
 //! # use legion_assets::AssetType;
 //! # pub const BINARY_GEOMETRY: AssetType = AssetType::new(b"bin_geom");
 //! # use std::path::Path;
@@ -109,7 +109,7 @@
 //! #    target: Target,
 //! #    platform: Platform,
 //! #    locale: &Locale,
-//! #    compiled_asset_store_path: CompiledAssetStoreAddr,
+//! #    compiled_asset_store_path: ContentStoreAddr,
 //! #    resource_dir: &Path,
 //! ) -> Result<Vec<CompiledAsset>, CompilerError> {
 //!    let new_asset_id = primary_asset_id(&derived, BINARY_GEOMETRY);
@@ -129,7 +129,7 @@
 //!
 //! [`legion_data_build`]: ../../legion_data_build/index.html
 //! [`compiler_api`]: ../compiler_api/index.html
-//! [`CompiledAssetStore`]: ../compiled_asset_store/index.html
+//! [`ContentStore`]: ../asset_store/index.html
 //! [`Manifest`]: ../struct.Manifest.html
 
 // This disables the lint crate-wide as a workaround to allow the doc above.
@@ -145,8 +145,8 @@ use crate::{
     CompiledAsset, CompilerHash, Locale, Platform, Target,
 };
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
-use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
 use legion_assets::{AssetId, AssetType};
+use legion_content_store::ContentStoreAddr;
 use legion_resources::{
     ResourceHandle, ResourceId, ResourcePathId, ResourceRegistry, ResourceType, RESOURCE_EXT,
 };
@@ -170,10 +170,10 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// `Data Compiler`'s output.
 ///
-/// Includes data which allows to load and validate [`legion_assets::Asset`]s stored in [`CompiledAssetStore`].
+/// Includes data which allows to load and validate [`legion_assets::Asset`]s stored in [`ContentStore`].
 /// As well as references between assets that define load-time dependencies.
 ///
-/// [`CompiledAssetStore`]: ../compiled_asset_store/index.html
+/// [`ContentStore`]: ../asset_store/index.html
 pub struct CompilationOutput {
     /// List of compiled asset's metadata.
     pub compiled_assets: Vec<CompiledAsset>,
@@ -207,7 +207,7 @@ pub struct CompilerDescriptor {
         target: Target,
         platform: Platform,
         locale: &Locale,
-        compiled_asset_store_path: CompiledAssetStoreAddr,
+        compiled_asset_store_path: ContentStoreAddr,
         resource_dir: &Path, // todo: assume sources are in the same directory? or cwd? or make this the resource dir?
     ) -> Result<CompilationOutput, CompilerError>,
 }
@@ -299,7 +299,7 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 .unwrap_or_default()
                 .filter_map(|s| ResourcePathId::from_str(s).ok())
                 .collect();
-            let asset_store_path = CompiledAssetStoreAddr::from(
+            let asset_store_path = ContentStoreAddr::from(
                 cmd_args.value_of(COMMAND_ARG_COMPILED_ASSET_STORE).unwrap(),
             );
             let resource_dir = PathBuf::from(cmd_args.value_of(COMMAND_ARG_RESOURCE_DIR).unwrap());

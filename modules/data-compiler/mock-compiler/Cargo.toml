@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 legion-data-compiler = { path = "../../data-compiler" }
-legion-asset-store = { path = "../../asset-store" }
+legion-content-store = { path = "../../content-store" }
 legion-resources = { path = "../../resources" }
 legion-assets = { path = "../../assets" }
 mock-resource = { path = "../../resources/mock-resource"}

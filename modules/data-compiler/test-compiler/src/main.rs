@@ -5,9 +5,7 @@ use std::{
     path::Path,
 };
 
-use legion_asset_store::compiled_asset_store::{
-    CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
-};
+use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{
     compiler_api::{
         compiler_load_resource, compiler_main, primary_asset_id, CompilationOutput,
@@ -45,7 +43,7 @@ fn compile(
     _target: Target,
     _platform: Platform,
     _locale: &Locale,
-    compiled_asset_store_path: CompiledAssetStoreAddr,
+    compiled_asset_store_path: ContentStoreAddr,
     resource_dir: &Path,
 ) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
@@ -54,8 +52,8 @@ fn compile(
         Box::new(test_resource::TestResourceProc {}),
     );
 
-    let mut asset_store = LocalCompiledAssetStore::open(compiled_asset_store_path)
-        .ok_or(CompilerError::AssetStoreError)?;
+    let mut asset_store =
+        HddContentStore::open(compiled_asset_store_path).ok_or(CompilerError::AssetStoreError)?;
 
     let guid = primary_asset_id(&source, test_asset::TYPE_ID);
 

@@ -1,7 +1,7 @@
 use std::{path::PathBuf, str::FromStr};
 
 use clap::{AppSettings, Arg, SubCommand};
-use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
+use legion_content_store::ContentStoreAddr;
 use legion_data_build::DataBuildOptions;
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::ResourcePathId;
@@ -84,8 +84,7 @@ fn main() -> Result<(), String> {
         let target = Target::from_str(target).map_err(|_e| "Invalid Target")?;
         let platform = Platform::from_str(platform).map_err(|_e| "Invalid Platform")?;
         let locale = Locale::new(locale);
-        let asset_store_path =
-            CompiledAssetStoreAddr::from(cmd_args.value_of(ARG_NAME_CAS).unwrap());
+        let asset_store_path = ContentStoreAddr::from(cmd_args.value_of(ARG_NAME_CAS).unwrap());
         let buildindex_path = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
 
         let mut config = DataBuildOptions::new(buildindex_path);

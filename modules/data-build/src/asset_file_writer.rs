@@ -1,7 +1,7 @@
 use crate::Error;
 use byteorder::{LittleEndian, WriteBytesExt};
-use legion_asset_store::compiled_asset_store::CompiledAssetStore;
 use legion_assets::{AssetId, AssetType};
+use legion_content_store::ContentStore;
 
 const ASSET_FILE_VERSION: u16 = 1;
 
@@ -9,7 +9,7 @@ const ASSET_FILE_VERSION: u16 = 1;
 pub fn write_assetfile<A, R>(
     asset_list: A,
     reference_list: R,
-    asset_store: &impl CompiledAssetStore,
+    asset_store: &impl ContentStore,
     mut writer: impl std::io::Write,
 ) -> Result<usize, Error>
 where
@@ -73,16 +73,14 @@ mod tests {
     use std::io::Read;
 
     use byteorder::{LittleEndian, ReadBytesExt};
-    use legion_asset_store::compiled_asset_store::{
-        CompiledAssetStore, InMemoryCompiledAssetStore,
-    };
     use legion_assets::{AssetId, AssetType};
+    use legion_content_store::{ContentStore, RamContentStore};
 
     use crate::asset_file_writer::{write_assetfile, ASSET_FILE_VERSION};
 
     #[test]
     fn one_asset_no_references() {
-        let mut asset_store = InMemoryCompiledAssetStore::default();
+        let mut asset_store = RamContentStore::default();
 
         let asset_id = AssetId::new(test_asset::TYPE_ID, 1);
         let reference_list: Vec<(AssetId, (AssetId, AssetId))> = Vec::new();
@@ -146,7 +144,7 @@ mod tests {
 
     #[test]
     fn two_dependent_assets() {
-        let mut asset_store = InMemoryCompiledAssetStore::default();
+        let mut asset_store = RamContentStore::default();
 
         let child_id = AssetId::new(test_asset::TYPE_ID, 1);
         let child_content = b"child".to_vec();

@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use legion_asset_store::compiled_asset_store::CompiledAssetStore;
+use legion_content_store::ContentStore;
 
 use crate::{
     asset_loader::{create_loader, AssetLoader, LoaderResult},
@@ -38,11 +38,7 @@ impl AssetRegistryOptions {
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
-    pub fn create(
-        self,
-        asset_store: Box<dyn CompiledAssetStore>,
-        manifest: Manifest,
-    ) -> AssetRegistry {
+    pub fn create(self, asset_store: Box<dyn ContentStore>, manifest: Manifest) -> AssetRegistry {
         let (loader, mut io) = create_loader(asset_store, manifest);
 
         for (kind, creator) in self.creators {
@@ -91,7 +87,7 @@ impl Drop for AssetRegistry {
 
 impl AssetRegistry {
     /// Creates new [`AssetRegistry`] for which assets are stored in `asset_store` directory.
-    pub fn new(asset_store: Box<dyn CompiledAssetStore>, manifest: Manifest) -> Self {
+    pub fn new(asset_store: Box<dyn ContentStore>, manifest: Manifest) -> Self {
         let (loader, io) = create_loader(asset_store, manifest);
 
         let load_thread = thread::spawn(move || {
@@ -205,16 +201,14 @@ mod tests {
 
     use std::{thread, time::Duration};
 
-    use legion_asset_store::compiled_asset_store::{
-        CompiledAssetStore, InMemoryCompiledAssetStore,
-    };
+    use legion_content_store::{ContentStore, RamContentStore};
 
     use crate::{
         manifest::Manifest, test_asset, AssetId, AssetRegistry, AssetRegistryOptions, Handle,
     };
 
     fn setup_test() -> (AssetId, AssetRegistry) {
-        let mut asset_store = Box::new(InMemoryCompiledAssetStore::default());
+        let mut asset_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let binary_assetfile = [

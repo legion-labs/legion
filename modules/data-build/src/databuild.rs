@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::{env, io};
 
-use legion_asset_store::compiled_asset_store::{CompiledAssetStore, LocalCompiledAssetStore};
+use legion_content_store::{ContentStore, HddContentStore};
 use legion_data_compiler::compiler_api::DATA_BUILD_VERSION;
 use legion_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
@@ -64,14 +64,14 @@ fn compute_context_hash(
 ///
 /// ```no_run
 /// # use legion_data_build::{DataBuild, DataBuildOptions};
-/// # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
+/// # use legion_content_store::ContentStoreAddr;
 /// # use legion_data_compiler::{Locale, Platform, Target};
 /// # use legion_resources::{ResourceId, ResourcePathId, ResourceType};
 /// # use std::str::FromStr;
 /// # let offline_anim = ResourceId::from_str("invalid").unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// let mut build = DataBuildOptions::new("./build.index")
-///         .asset_store(&CompiledAssetStoreAddr::from("./asset_store/"))
+///         .asset_store(&ContentStoreAddr::from("./asset_store/"))
 ///         .compiler_dir("./compilers/")
 ///         .create(".").expect("new build index");
 ///
@@ -90,7 +90,7 @@ fn compute_context_hash(
 pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
-    asset_store: LocalCompiledAssetStore,
+    asset_store: HddContentStore,
     config: DataBuildOptions,
 }
 
@@ -105,7 +105,7 @@ impl DataBuild {
         )
         .map_err(|_e| Error::IOError)?;
 
-        let asset_store = LocalCompiledAssetStore::open(config.assetstore_path.clone())
+        let asset_store = HddContentStore::open(config.assetstore_path.clone())
             .ok_or(Error::InvalidAssetStore)?;
 
         Ok(Self {
@@ -117,7 +117,7 @@ impl DataBuild {
     }
 
     pub(crate) fn open(config: &DataBuildOptions) -> Result<Self, Error> {
-        let asset_store = LocalCompiledAssetStore::open(config.assetstore_path.clone())
+        let asset_store = HddContentStore::open(config.assetstore_path.clone())
             .ok_or(Error::InvalidAssetStore)?;
 
         let build_index = BuildIndex::open(&config.buildindex_path, Self::version())?;
@@ -134,7 +134,7 @@ impl DataBuild {
     ///
     /// If the build index does not exist it creates one if a project is present in the directory.
     pub(crate) fn open_or_create(config: &DataBuildOptions) -> Result<Self, Error> {
-        let asset_store = LocalCompiledAssetStore::open(config.assetstore_path.clone())
+        let asset_store = HddContentStore::open(config.assetstore_path.clone())
             .ok_or(Error::InvalidAssetStore)?;
         match BuildIndex::open(&config.buildindex_path, Self::version()) {
             Ok(build_index) => {
@@ -202,7 +202,7 @@ impl DataBuild {
     /// To compile a given `ResourcePathId` it compiles all its dependent derived resources.
     /// The specified `manifest_file` is updated with information about changed assets.
     ///
-    /// Compilation results are stored in [`CompiledAssetStore`](`legion_asset_store::compiled_asset_store::CompiledAssetStore`)
+    /// Compilation results are stored in [`ContentStore`](`legion_content_store::ContentStore`)
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
     ///
     /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
@@ -373,7 +373,7 @@ impl DataBuild {
 
     /// Compiles a resource by [`ResourcePathId`]. Returns a list of ids of `Asset Objects` compiled.
     /// The list might contain many versions of the same [`AssetId`] compiled for many contexts (platform, target, locale, etc).
-    /// Those results are in [`CompiledAssetStore`](`legion_data_compiler::compiled_asset_store::CompiledAssetStore`)
+    /// Those results are in [`ContentStore`](`legion_data_compiler::ContentStore`)
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
     fn compile_path(
         &mut self,
@@ -560,9 +560,7 @@ mod tests {
 
     use crate::databuild::CompileOutput;
     use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
-    use legion_asset_store::compiled_asset_store::{
-        CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
-    };
+    use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
     use legion_data_compiler::{Locale, Manifest, Platform, Target};
     use legion_resources::{Project, ResourceId, ResourceName, ResourcePathId, ResourceRegistry};
 
@@ -589,7 +587,7 @@ mod tests {
             let project = Project::create_new(project_dir).expect("failed to create a project");
             project.indexfile_path()
         };
-        let cas_addr = CompiledAssetStoreAddr::from(work_dir.path().to_owned());
+        let cas_addr = ContentStoreAddr::from(work_dir.path().to_owned());
 
         let buildindex_path = project_dir.join(TEST_BUILDINDEX_FILENAME);
 
@@ -648,7 +646,7 @@ mod tests {
         }
 
         let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
-        config.asset_store(&CompiledAssetStoreAddr::from(project_dir.to_owned()));
+        config.asset_store(&ContentStoreAddr::from(project_dir.to_owned()));
 
         {
             let mut build = config.create(project_dir).expect("to create index");
@@ -769,7 +767,7 @@ mod tests {
                 .unwrap()
         };
 
-        let assetstore_path = CompiledAssetStoreAddr::from(work_dir.path());
+        let assetstore_path = ContentStoreAddr::from(work_dir.path());
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
             .asset_store(&assetstore_path)
             .compiler_dir(target_dir())
@@ -794,8 +792,7 @@ mod tests {
         // both test(child_id) and test(parent_id) are separate assets.
         assert_eq!(manifest.compiled_assets.len(), 2);
 
-        let asset_store =
-            LocalCompiledAssetStore::open(assetstore_path).expect("valid asset store");
+        let asset_store = HddContentStore::open(assetstore_path).expect("valid asset store");
         for checksum in manifest.compiled_assets.iter().map(|a| a.checksum) {
             assert!(asset_store.exists(checksum));
         }
@@ -840,7 +837,7 @@ mod tests {
             (resource_id, resource_handle)
         };
 
-        let assetstore_path = CompiledAssetStoreAddr::from(work_dir.path());
+        let assetstore_path = ContentStoreAddr::from(work_dir.path());
         let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
         config
             .asset_store(&assetstore_path)
@@ -867,7 +864,7 @@ mod tests {
             let original_checksum = compile_output.asset_objects[0].compiled_checksum;
 
             let asset_store =
-                LocalCompiledAssetStore::open(assetstore_path.clone()).expect("valid asset store");
+                HddContentStore::open(assetstore_path.clone()).expect("valid asset store");
             assert!(asset_store.exists(original_checksum));
 
             original_checksum
@@ -895,8 +892,7 @@ mod tests {
 
             let modified_checksum = compile_output.asset_objects[0].compiled_checksum;
 
-            let asset_store =
-                LocalCompiledAssetStore::open(assetstore_path).expect("valid asset store");
+            let asset_store = HddContentStore::open(assetstore_path).expect("valid asset store");
             assert!(asset_store.exists(original_checksum));
             assert!(asset_store.exists(modified_checksum));
 
@@ -995,7 +991,7 @@ mod tests {
         let root_resource = resource_list[0];
 
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-            .asset_store(&CompiledAssetStoreAddr::from(work_dir.path()))
+            .asset_store(&ContentStoreAddr::from(work_dir.path()))
             .compiler_dir(target_dir())
             .create(project_dir)
             .expect("new build index");
@@ -1152,7 +1148,7 @@ mod tests {
                 .unwrap()
         };
 
-        let assetstore_path = CompiledAssetStoreAddr::from(work_dir.path());
+        let assetstore_path = ContentStoreAddr::from(work_dir.path());
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
             .asset_store(&assetstore_path)
             .compiler_dir(target_dir())

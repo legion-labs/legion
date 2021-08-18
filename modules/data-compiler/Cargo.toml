@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 legion-resources = { path = "../resources" }
-legion-asset-store = { path = "../asset-store" }
+legion-content-store = { path = "../content-store" }
 legion-assets = { path = "../assets" }
 clap = "2.33"
 serde = { version = "1.0", features = ["derive"] }

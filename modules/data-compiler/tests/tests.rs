@@ -5,10 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_asset_store::compiled_asset_store::{
-    CompiledAssetStore, CompiledAssetStoreAddr, LocalCompiledAssetStore,
-};
 use legion_assets::AssetCreator;
+use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{
     compiler_cmd::{list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
     Locale, Platform, Target,
@@ -90,7 +88,7 @@ fn compile_command() {
     let exe_path = compiler_exe("test");
     assert!(exe_path.exists());
 
-    let cas_addr = CompiledAssetStoreAddr::from(resource_dir.to_owned());
+    let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
 
     let derived = ResourcePathId::from(source).transform(test_resource::TYPE_ID);
     let mut command = CompilerCompileCmd::new(
@@ -112,7 +110,7 @@ fn compile_command() {
 
     let asset_checksum = result.compiled_assets[0].checksum;
 
-    let cas = LocalCompiledAssetStore::open(cas_addr).expect("valid cas");
+    let cas = HddContentStore::open(cas_addr).expect("valid cas");
     assert!(cas.exists(asset_checksum));
 
     let asset_content = cas.read(asset_checksum).expect("asset content");
@@ -148,7 +146,7 @@ fn mock_compile() {
         source
     };
 
-    let cas_addr = CompiledAssetStoreAddr::from(resource_dir.to_owned());
+    let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
 
     let asset_info = {
         let exe_path = compiler_exe("mock");
@@ -176,7 +174,7 @@ fn mock_compile() {
 
     let asset_checksum = asset_info.checksum;
 
-    let cas = LocalCompiledAssetStore::open(cas_addr).expect("valid cas");
+    let cas = HddContentStore::open(cas_addr).expect("valid cas");
     assert!(cas.exists(asset_checksum));
 
     let asset_content = cas.read(asset_checksum).expect("asset content");

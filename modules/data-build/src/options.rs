@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
+use legion_content_store::ContentStoreAddr;
 
 use crate::{DataBuild, Error};
 
@@ -14,16 +14,16 @@ use crate::{DataBuild, Error};
 ///
 /// ```
 /// # use legion_data_build::DataBuildOptions;
-/// # use legion_asset_store::compiled_asset_store::CompiledAssetStoreAddr;
+/// # use legion_content_store::ContentStoreAddr;
 /// let mut build = DataBuildOptions::new("./build.index")
-///         .asset_store(&CompiledAssetStoreAddr::from("./asset_store/"))
+///         .asset_store(&ContentStoreAddr::from("./asset_store/"))
 ///         .compiler_dir("./compilers/")
 ///         .create(".");
 /// ```
 #[derive(Clone, Debug)]
 pub struct DataBuildOptions {
     pub(crate) buildindex_path: PathBuf,
-    pub(crate) assetstore_path: CompiledAssetStoreAddr,
+    pub(crate) assetstore_path: ContentStoreAddr,
     pub(crate) compiler_search_paths: Vec<PathBuf>,
 }
 
@@ -32,13 +32,13 @@ impl DataBuildOptions {
     pub fn new(buildindex_path: impl AsRef<Path>) -> Self {
         Self {
             buildindex_path: buildindex_path.as_ref().to_owned(),
-            assetstore_path: CompiledAssetStoreAddr::from(buildindex_path.as_ref()),
+            assetstore_path: ContentStoreAddr::from(buildindex_path.as_ref()),
             compiler_search_paths: vec![],
         }
     }
 
     /// Set asset store location for compiled assets.
-    pub fn asset_store(&mut self, assetstore_path: &CompiledAssetStoreAddr) -> &mut Self {
+    pub fn asset_store(&mut self, assetstore_path: &ContentStoreAddr) -> &mut Self {
         self.assetstore_path = assetstore_path.clone();
         self
     }
@@ -59,7 +59,7 @@ impl DataBuildOptions {
     /// Opens existing build index.
     ///
     /// The following conditions need to be met to successfully open a build index:
-    /// * [`CompiledAssetStore`](`legion_asset_store::compiled_asset_store::CompiledAssetStore`) must exist under address set by [`DataBuildOptions::asset_store()`].
+    /// * [`ContentStore`](`legion_content_store::ContentStore`) must exist under address set by [`DataBuildOptions::asset_store()`].
     /// * Build index must exist and be of a supported version provided by [`DataBuildOptions::new()`].
     /// * The build index must point to an existing [`legion_resources::Project`].
     pub fn open(&self) -> Result<DataBuild, Error> {
