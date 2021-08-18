@@ -1,4 +1,4 @@
-use bevy_macro_utils::BevyManifest;
+use legion_macro_utils::LegionManifest;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
@@ -22,7 +22,7 @@ static RENDER_RESOURCE_ATTRIBUTE_NAME: &str = "render_resources";
 pub fn derive_render_resources(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
 
-    let bevy_render_path: Path = BevyManifest::default().get_path(crate::modules::BEVY_RENDER);
+    let bevy_render_path: Path = LegionManifest::default().get_path(crate::modules::LEGION_RENDER);
     let attributes = ast
         .attrs
         .iter()

@@ -7,21 +7,21 @@ authors = [
     "Carter Anderson <mcanders1@gmail.com>",
 ]
 description = "Bevy Engine's entity component system"
-homepage = "https://bevyengine.org"
-repository = "https://github.com/bevyengine/bevy"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
 license = "MIT OR Apache-2.0"
-keywords = ["ecs", "game", "bevy"]
+keywords = ["ecs", "game", "legion"]
 categories = ["game-engines", "data-structures"]
 
 [features]
 trace = []
-default = ["legion_reflect"]
+default = ["legion-reflect"]
 
 [dependencies]
-legion_reflect = { path = "../reflect", package = "legion-reflect", version = "0.1.0", optional = true }
-legion_tasks = { path = "../tasks", package = "legion-tasks", version = "0.1.0" }
-legion_utils = { path = "../utils", package = "legion-utils", version = "0.1.0" }
-legion_ecs_macros = { path = "../ecs-macros", package = "legion-ecs-macros", version = "0.1.0" }
+legion-reflect = { path = "../reflect", version = "0.1.0", optional = true }
+legion-tasks = { path = "../tasks", version = "0.1.0" }
+legion-utils = { path = "../utils", version = "0.1.0" }
+legion-ecs-macros = { path = "../ecs-macros", version = "0.1.0" }
 
 async-channel = "1.4"
 fixedbitset = "0.4"

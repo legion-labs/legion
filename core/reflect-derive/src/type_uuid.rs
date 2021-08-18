@@ -1,6 +1,6 @@
 extern crate proc_macro;
 
-use bevy_macro_utils::BevyManifest;
+use legion_macro_utils::LegionManifest;
 use quote::{quote, ToTokens};
 use syn::{parse::*, *};
 use uuid::Uuid;
@@ -9,7 +9,7 @@ pub fn type_uuid_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     // Construct a representation of Rust code as a syntax tree
     // that we can manipulate
     let ast: DeriveInput = syn::parse(input).unwrap();
-    let bevy_reflect_path: Path = BevyManifest::default().get_path("legion_reflect");
+    let bevy_reflect_path: Path = LegionManifest::default().get_path("legion_reflect");
 
     // Build the trait implementation
     let name = &ast.ident;

@@ -45,7 +45,7 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         let mut app = App::empty();
-        #[cfg(feature = "legion_reflect")]
+        #[cfg(feature = "legion-reflect")]
         app.init_resource::<legion_reflect::TypeRegistryArc>();
 
         app.add_default_stages()
@@ -184,7 +184,7 @@ impl App {
     ///
     /// System functions can have parameters, through which one can query and
     /// mutate Bevy ECS states.
-    /// See [The Bevy Book](https://bevyengine.org/learn/book/introduction/) for more information.
+    /// See [The Bevy Book](https://legionengine.com/learn/book/introduction/) for more information.
     ///
     /// Systems are run in parallel, and the execution order is not deterministic.
     /// If you want more fine-grained control for order, see [`App::add_system_to_stage`].
@@ -565,7 +565,7 @@ impl App {
         self
     }
 
-    #[cfg(feature = "legion_reflect")]
+    #[cfg(feature = "legion-reflect")]
     pub fn register_type<T: legion_reflect::GetTypeRegistration>(&mut self) -> &mut Self {
         {
             let registry = self

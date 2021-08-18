@@ -7,23 +7,23 @@ authors = [
     "Carter Anderson <mcanders1@gmail.com>",
 ]
 description = "Provides core functionality for Bevy Engine"
-homepage = "https://bevyengine.org"
-repository = "https://github.com/bevyengine/bevy"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
 license = "MIT OR Apache-2.0"
-keywords = ["bevy"]
+keywords = ["legion"]
 
 
 [dependencies]
-# bevy
-legion_app = { path = "../app", package = "legion-app", version = "0.1.0" }
-legion_derive = { path = "../derive", package = "legion-derive", version = "0.1.0" }
-legion_ecs = { path = "../ecs", package = "legion-ecs", version = "0.1.0" }
-legion_math = { path = "../math", package = "legion-math", version = "0.1.0" }
-legion_reflect = { path = "../reflect", package = "legion-reflect", version = "0.1.0", features = [
-    "bevy",
+# legion
+legion-app = { path = "../app", version = "0.1.0" }
+legion-derive = { path = "../derive", version = "0.1.0" }
+legion-ecs = { path = "../ecs", version = "0.1.0" }
+legion-math = { path = "../math", version = "0.1.0" }
+legion-reflect = { path = "../reflect", version = "0.1.0", features = [
+    "legion",
 ] }
-legion_tasks = { path = "../tasks", package = "legion-tasks", version = "0.1.0" }
-legion_utils = { path = "../utils", package = "legion-utils", version = "0.1.0" }
+legion-tasks = { path = "../tasks", version = "0.1.0" }
+legion-utils = { path = "../utils", version = "0.1.0" }
 
 # other
 bytemuck = "1.5"

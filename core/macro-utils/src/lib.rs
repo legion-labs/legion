@@ -4,11 +4,11 @@ use cargo_manifest::{DepsSet, Manifest};
 use proc_macro::TokenStream;
 use std::{env, path::PathBuf};
 
-pub struct BevyManifest {
+pub struct LegionManifest {
     manifest: Manifest,
 }
 
-impl Default for BevyManifest {
+impl Default for LegionManifest {
     fn default() -> Self {
         Self {
             manifest: env::var_os("CARGO_MANIFEST_DIR")
@@ -22,16 +22,16 @@ impl Default for BevyManifest {
     }
 }
 
-impl BevyManifest {
+impl LegionManifest {
     pub fn get_path(&self, name: &str) -> syn::Path {
-        const BEVY: &str = "bevy";
-        const BEVY_INTERNAL: &str = "bevy_internal";
+        const LEGION: &str = "legion";
+        const LEGION_INTERNAL: &str = "bevy_internal";
 
         let find_in_deps = |deps: &DepsSet| -> Option<syn::Path> {
-            let package = if let Some(dep) = deps.get(BEVY) {
-                dep.package().unwrap_or(BEVY)
-            } else if let Some(dep) = deps.get(BEVY_INTERNAL) {
-                dep.package().unwrap_or(BEVY_INTERNAL)
+            let package = if let Some(dep) = deps.get(LEGION) {
+                dep.package().unwrap_or(LEGION)
+            } else if let Some(dep) = deps.get(LEGION_INTERNAL) {
+                dep.package().unwrap_or(LEGION_INTERNAL)
             } else {
                 return None;
             };

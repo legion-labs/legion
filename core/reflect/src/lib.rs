@@ -41,8 +41,8 @@ pub use tuple_struct::*;
 pub use type_registry::*;
 pub use type_uuid::*;
 
-pub use bevy_reflect_derive::*;
 pub use erased_serde;
+pub use legion_reflect_derive::*;
 
 #[cfg(test)]
 #[allow(clippy::blacklisted_name, clippy::approx_constant)]

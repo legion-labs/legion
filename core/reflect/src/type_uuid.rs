@@ -1,4 +1,4 @@
-pub use bevy_reflect_derive::TypeUuid;
+pub use legion_reflect_derive::TypeUuid;
 pub use legion_utils::Uuid;
 
 pub trait TypeUuid {

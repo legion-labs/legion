@@ -5,7 +5,7 @@ pub mod component;
 pub mod entity;
 pub mod event;
 pub mod query;
-#[cfg(feature = "legion_reflect")]
+#[cfg(feature = "legion-reflect")]
 pub mod reflect;
 pub mod schedule;
 pub mod storage;
@@ -14,7 +14,7 @@ pub mod world;
 
 pub mod prelude {
     #[doc(hidden)]
-    #[cfg(feature = "legion_reflect")]
+    #[cfg(feature = "legion-reflect")]
     pub use crate::reflect::ReflectComponent;
     #[doc(hidden)]
     pub use crate::{

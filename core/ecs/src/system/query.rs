@@ -106,7 +106,7 @@ use thiserror::Error;
 /// design your queries in such a way that they at least contain one non-optional [`WorldQuery`].
 ///
 /// This touches all the basics of queries, make sure to check out all the [`WorldQueries`](WorldQuery)
-/// bevy has to offer.
+/// legion has to offer.
 pub struct Query<'w, Q: WorldQuery, F: WorldQuery = ()>
 where
     F::Fetch: FilterFetch,

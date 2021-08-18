@@ -39,7 +39,7 @@ pub enum CoreSystem {
 
 impl Plugin for CorePlugin {
     fn build(&self, app: &mut App) {
-        // Setup the default bevy task pools
+        // Setup the default legion task pools
         app.world
             .get_resource::<DefaultTaskPoolOptions>()
             .cloned()

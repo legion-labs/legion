@@ -7,13 +7,13 @@ authors = [
     "Carter Anderson <mcanders1@gmail.com>",
 ]
 description = "Provides math functionality for Bevy Engine"
-homepage = "https://bevyengine.org"
-repository = "https://github.com/bevyengine/bevy"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
 license = "MIT OR Apache-2.0"
-keywords = ["bevy"]
+keywords = ["legion"]
 
 [dependencies]
 glam = { version = "0.15.1", features = ["serde", "bytemuck"] }
-legion_reflect = { path = "../reflect", package = "legion-reflect", version = "0.1.0", features = [
-    "bevy",
+legion-reflect = { path = "../reflect", version = "0.1.0", features = [
+    "legion",
 ] }

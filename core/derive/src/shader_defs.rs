@@ -1,5 +1,5 @@
-use bevy_macro_utils::BevyManifest;
 use inflector::Inflector;
+use legion_macro_utils::LegionManifest;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DataStruct, DeriveInput, Fields, Path};
@@ -8,7 +8,7 @@ static SHADER_DEF_ATTRIBUTE_NAME: &str = "shader_def";
 
 pub fn derive_shader_defs(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
-    let bevy_render_path: Path = BevyManifest::default().get_path(crate::modules::BEVY_RENDER);
+    let bevy_render_path: Path = LegionManifest::default().get_path(crate::modules::LEGION_RENDER);
 
     let fields = match &ast.data {
         Data::Struct(DataStruct {

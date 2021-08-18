@@ -16,7 +16,7 @@ pub fn bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
             saved_state: *mut std::os::raw::c_void,
             saved_state_size: usize,
         ) {
-            bevy::ndk_glue::init(
+            legion::ndk_glue::init(
                 activity as _,
                 saved_state as _,
                 saved_state_size as _,

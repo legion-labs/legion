@@ -1,7 +1,7 @@
 use crate as legion_reflect;
 use crate::ReflectDeserialize;
-use bevy_reflect_derive::impl_reflect_value;
 use glam::{IVec2, IVec3, IVec4, Mat3, Mat4, Quat, UVec2, UVec3, UVec4, Vec2, Vec3, Vec4};
+use legion_reflect_derive::impl_reflect_value;
 
 impl_reflect_value!(IVec2(PartialEq, Serialize, Deserialize));
 impl_reflect_value!(IVec3(PartialEq, Serialize, Deserialize));

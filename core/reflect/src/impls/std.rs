@@ -4,7 +4,7 @@ use crate::{
     Map, MapIter, Reflect, ReflectDeserialize, ReflectMut, ReflectRef, TypeRegistration,
 };
 
-use bevy_reflect_derive::impl_reflect_value;
+use legion_reflect_derive::impl_reflect_value;
 use legion_utils::{Duration, HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 use std::{

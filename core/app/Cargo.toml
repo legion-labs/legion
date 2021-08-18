@@ -7,27 +7,27 @@ authors = [
     "Carter Anderson <mcanders1@gmail.com>",
 ]
 description = "Provides core App functionality for Bevy Engine"
-homepage = "https://bevyengine.org"
-repository = "https://github.com/bevyengine/bevy"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
 license = "MIT OR Apache-2.0"
-keywords = ["bevy"]
+keywords = ["legion"]
 
 [features]
 trace = []
 legion_ci_testing = ["serde", "ron"]
-default = ["legion_reflect"]
+default = ["legion-reflect"]
 
 [dependencies]
-# bevy
-legion_derive = { path = "../derive", package = "legion-derive", version = "0.1.0" }
-legion_ecs = { path = "../ecs", package = "legion-ecs", version = "0.1.0" }
-legion_reflect = { path = "../reflect", package = "legion-reflect", version = "0.1.0", optional = true }
-legion_utils = { path = "../utils", package = "legion-utils", version = "0.1.0" }
+# legion
+legion-derive = { path = "../derive", version = "0.1.0" }
+legion-ecs = { path = "../ecs", version = "0.1.0" }
+legion-reflect = { path = "../reflect", version = "0.1.0", optional = true }
+legion-utils = { path = "../utils", version = "0.1.0" }
 
 # other
 serde = { version = "1.0", features = ["derive"], optional = true }
 ron = { version = "0.6.2", optional = true }
 
 [dev-dependencies]
-# bevy
+# legion
 #bevy_log = { path = "../bevy_log", version = "0.5.0" }

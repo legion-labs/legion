@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 cgmath = "0.18.0"
 num-traits = "0.2.14"
-legion_derive = { path = "../derive", package = "legion-derive", version = "0.1.0" }
+legion-derive = { path = "../derive", version = "0.1.0" }
 ahash = "0.7.0"
 tracing = { version = "0.1", features = ["release_max_level_info"] }
 instant = { version = "0.1" }

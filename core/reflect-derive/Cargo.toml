@@ -6,17 +6,17 @@ authors = [
     "Bevy Contributors <bevyengine@gmail.com>",
     "Carter Anderson <mcanders1@gmail.com>",
 ]
-description = "Derive implementations for legion_reflect"
-homepage = "https://bevyengine.org"
-repository = "https://github.com/bevyengine/bevy"
+description = "Derive implementations for legion-reflect"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
 license = "MIT OR Apache-2.0"
-keywords = ["bevy"]
+keywords = ["legion"]
 
 [lib]
 proc-macro = true
 
 [dependencies]
-bevy_macro_utils = { path = "../macro-utils", package = "legion-macro-utils", version = "0.1.0" }
+legion-macro-utils = { path = "../macro-utils", version = "0.1.0" }
 
 syn = "1.0"
 proc-macro2 = "1.0"

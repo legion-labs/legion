@@ -117,7 +117,7 @@ enum State {
 /// This complicates consumption and risks ever-expanding memory usage if not cleaned up,
 /// but can be done by adding your event as a resource instead of using [`App::add_event`].
 ///
-/// [`App::add_event`]: https://docs.rs/bevy/*/bevy/app/struct.App.html#method.add_event
+/// [`App::add_event`]: https://docs.rs/legion/*/legion/app/struct.App.html#method.add_event
 #[derive(Debug)]
 pub struct Events<T> {
     events_a: Vec<EventInstance<T>>,
