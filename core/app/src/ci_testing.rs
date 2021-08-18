@@ -9,10 +9,11 @@ pub struct CiTestingConfig {
     pub exit_after: Option<u32>,
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn ci_testing_exit_after(
-    mut current_frame: legion_ecs::prelude::Local<u32>,
-    ci_testing_config: legion_ecs::prelude::Res<CiTestingConfig>,
-    mut app_exit_events: crate::EventWriter<AppExit>,
+    mut current_frame: legion_ecs::prelude::Local<'_, u32>,
+    ci_testing_config: legion_ecs::prelude::Res<'_, CiTestingConfig>,
+    mut app_exit_events: crate::EventWriter<'_, AppExit>,
 ) {
     if let Some(exit_after) = ci_testing_config.exit_after {
         if *current_frame > exit_after {
