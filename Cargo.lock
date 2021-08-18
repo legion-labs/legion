@@ -3,6 +3,12 @@
 version = 3
 
 [[package]]
+name = "Inflector"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
+
+[[package]]
 name = "ahash"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -358,6 +364,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c59e7af012c713f529e7a3ee57ce9b31ddd858d4b512923602f74608b009631"
 
 [[package]]
+name = "bytemuck"
+version = "1.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72957246c41db82b8ef88a5486143830adeb8227ef9837740bdec67724cf2c5b"
+
+[[package]]
 name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -384,6 +396,17 @@ name = "cache-padded"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
+
+[[package]]
+name = "cargo-manifest"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27926b927dfe8eed84ff3cc47ebfdd57f7f02b955a7b431a622e5091c73cc2e0"
+dependencies = [
+ "serde",
+ "serde_derive",
+ "toml",
+]
 
 [[package]]
 name = "cc"
@@ -704,6 +727,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
+name = "downcast-rs"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
+
+[[package]]
 name = "editor"
 version = "0.1.0"
 dependencies = [
@@ -728,6 +757,15 @@ dependencies = [
 [[package]]
 name = "end-to-end-tests"
 version = "0.1.0"
+
+[[package]]
+name = "erased-serde"
+version = "0.3.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3de9ad4541d99dc22b59134e7ff8dc3d6c988c89ecd7324bf10a8362b07a2afa"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "event-listener"
@@ -909,6 +947,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fxhash"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -953,6 +1000,16 @@ dependencies = [
  "openssl-probe",
  "openssl-sys",
  "url",
+]
+
+[[package]]
+name = "glam"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3abb554f8ee44336b72d522e0a7fe86a29e09f839a36022fa869a7dfe941a54b"
+dependencies = [
+ "bytemuck",
+ "serde",
 ]
 
 [[package]]
@@ -1235,6 +1292,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
+name = "legion-app"
+version = "0.1.0"
+dependencies = [
+ "legion-derive",
+ "legion-ecs",
+ "legion-reflect",
+ "legion-utils",
+ "ron",
+ "serde",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "legion-asset-store"
 version = "0.1.0"
 
@@ -1256,6 +1327,20 @@ name = "legion-codec-api"
 version = "0.1.0"
 dependencies = [
  "ash",
+]
+
+[[package]]
+name = "legion-core"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "legion-app",
+ "legion-derive",
+ "legion-ecs",
+ "legion-math",
+ "legion-reflect",
+ "legion-tasks",
+ "legion-utils",
 ]
 
 [[package]]
@@ -1298,6 +1383,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-derive"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "legion-macro-utils",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "legion-ecs"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "downcast-rs",
+ "fixedbitset",
+ "fxhash",
+ "legion-ecs-macros",
+ "legion-reflect",
+ "legion-tasks",
+ "legion-utils",
+ "parking_lot",
+ "rand 0.8.4",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "legion-ecs-macros"
+version = "0.1.0"
+dependencies = [
+ "legion-macro-utils",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "legion-graphics-api"
 version = "0.1.0"
 dependencies = [
@@ -1311,6 +1434,22 @@ dependencies = [
  "raw-window-handle",
  "serde",
  "vk-mem",
+]
+
+[[package]]
+name = "legion-macro-utils"
+version = "0.1.0"
+dependencies = [
+ "cargo-manifest",
+ "syn",
+]
+
+[[package]]
+name = "legion-math"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "legion-reflect",
 ]
 
 [[package]]
@@ -1334,6 +1473,33 @@ version = "0.1.0"
 dependencies = [
  "hassle-rs",
  "spirv-reflect",
+]
+
+[[package]]
+name = "legion-reflect"
+version = "0.1.0"
+dependencies = [
+ "downcast-rs",
+ "erased-serde",
+ "glam",
+ "legion-reflect-derive",
+ "legion-utils",
+ "parking_lot",
+ "ron",
+ "serde",
+ "smallvec",
+ "thiserror",
+]
+
+[[package]]
+name = "legion-reflect-derive"
+version = "0.1.0"
+dependencies = [
+ "legion-macro-utils",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "uuid",
 ]
 
 [[package]]
@@ -1391,15 +1557,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-utils"
-version = "0.1.0"
-dependencies = [
- "cgmath",
- "num-traits",
-]
-
-[[package]]
-name = "legion_tasks"
+name = "legion-tasks"
 version = "0.1.0"
 dependencies = [
  "async-channel",
@@ -1408,6 +1566,19 @@ dependencies = [
  "futures-lite",
  "instant",
  "num_cpus",
+]
+
+[[package]]
+name = "legion-utils"
+version = "0.1.0"
+dependencies = [
+ "ahash",
+ "cgmath",
+ "instant",
+ "legion-derive",
+ "num-traits",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -2262,6 +2433,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ron"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "064ea8613fb712a19faf920022ec8ddf134984f100090764a4e1d768f3827f1f"
+dependencies = [
+ "base64",
+ "bitflags",
+ "serde",
+]
+
+[[package]]
 name = "roxmltree"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2558,6 +2740,9 @@ name = "smallvec"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "smithy-client"
@@ -3025,6 +3210,16 @@ dependencies = [
  "log",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "toml"
+version = "0.5.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a31142970826733df8241ef35dc040ef98c679ab14d7c3e54d827099b3acecaa"
+dependencies = [
+ "indexmap",
+ "serde",
 ]
 
 [[package]]

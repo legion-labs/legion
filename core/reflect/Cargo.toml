@@ -1,0 +1,38 @@
+[package]
+name = "legion-reflect"
+version = "0.1.0"
+edition = "2018"
+authors = [
+    "Bevy Contributors <bevyengine@gmail.com>",
+    "Carter Anderson <mcanders1@gmail.com>",
+]
+description = "Dynamically interact with rust types"
+homepage = "https://bevyengine.org"
+repository = "https://github.com/bevyengine/bevy"
+license = "MIT OR Apache-2.0"
+keywords = ["bevy"]
+readme = "README.md"
+
+[features]
+bevy = ["glam", "smallvec"]
+
+[dependencies]
+# bevy
+bevy_reflect_derive = { path = "../reflect-derive", package = "legion-reflect-derive", version = "0.1.0" }
+legion_utils = { path = "../utils", package = "legion-utils", version = "0.1.0" }
+
+# other
+erased-serde = "0.3"
+downcast-rs = "1.2"
+parking_lot = "0.11.0"
+thiserror = "1.0"
+serde = "1"
+smallvec = { version = "1.6", features = [
+    "serde",
+    "union",
+    "const_generics",
+], optional = true }
+glam = { version = "0.15.1", features = ["serde"], optional = true }
+
+[dev-dependencies]
+ron = "0.6.2"
