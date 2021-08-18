@@ -144,6 +144,7 @@ mod tests {
                 *counter += 1;
                 commands.entity(entity).remove::<f32>();
             }
+            drop(query);
         }
 
         let mut stage = SystemStage::parallel().with_system(removal);
@@ -171,6 +172,7 @@ mod tests {
 
         fn count_entities(query: Query<'_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
+            drop(query);
         }
 
         let mut world = World::new();

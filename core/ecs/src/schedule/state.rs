@@ -389,7 +389,9 @@ fn should_run_adapter<T: Component + Clone + Eq>(
     In(cmp_result): In<bool>,
     state: Res<'_, State<T>>,
 ) -> ShouldRun {
-    if state.end_next_loop {
+    let end_next_loop = state.end_next_loop;
+    drop(state);
+    if end_next_loop {
         return ShouldRun::No;
     }
     if cmp_result {
@@ -636,6 +638,7 @@ mod test {
 
         fn should_run_once(mut flag: ResMut<'_, bool>, test_name: Res<'_, &'static str>) {
             assert!(!*flag, "{:?}", *test_name);
+            drop(test_name);
             *flag = true;
         }
 

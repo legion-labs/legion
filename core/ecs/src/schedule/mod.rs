@@ -97,16 +97,17 @@ impl Schedule {
         stage: S,
     ) -> &mut Self {
         let label: Box<dyn StageLabel> = Box::new(label);
-        let target = &target as &dyn StageLabel;
+        let target_ref = &target as &dyn StageLabel;
         let target_index = self
             .stage_order
             .iter()
             .enumerate()
-            .find(|(_i, stage_label)| &***stage_label == target)
+            .find(|(_i, stage_label)| &***stage_label == target_ref)
             .map_or_else(
-                || panic!("Target stage does not exist: {:?}.", target),
+                || panic!("Target stage does not exist: {:?}.", target_ref),
                 |(i, _)| i,
             );
+        drop(target);
 
         self.stage_order.insert(target_index + 1, label.clone());
         let prev = self.stages.insert(label.clone(), Box::new(stage));
@@ -123,16 +124,17 @@ impl Schedule {
         stage: S,
     ) -> &mut Self {
         let label: Box<dyn StageLabel> = Box::new(label);
-        let target = &target as &dyn StageLabel;
+        let target_ref = &target as &dyn StageLabel;
         let target_index = self
             .stage_order
             .iter()
             .enumerate()
-            .find(|(_i, stage_label)| &***stage_label == target)
+            .find(|(_i, stage_label)| &***stage_label == target_ref)
             .map_or_else(
-                || panic!("Target stage does not exist: {:?}.", target),
+                || panic!("Target stage does not exist: {:?}.", target_ref),
                 |(i, _)| i,
             );
+        drop(target);
 
         self.stage_order.insert(target_index, label.clone());
         let prev = self.stages.insert(label.clone(), Box::new(stage));
