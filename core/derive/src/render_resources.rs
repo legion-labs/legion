@@ -31,7 +31,7 @@ pub fn derive_render_resources(input: TokenStream) -> TokenStream {
         .map_or_else(RenderResourceAttributes::default, |a| {
             syn::custom_keyword!(from_self);
             let mut attributes = RenderResourceAttributes::default();
-            a.parse_args_with(|input: ParseStream| {
+            a.parse_args_with(|input: ParseStream<'_>| {
                 if input.parse::<Option<from_self>>()?.is_some() {
                     attributes.from_self = true;
                 }
@@ -102,7 +102,7 @@ pub fn derive_render_resources(input: TokenStream) -> TokenStream {
                             syn::custom_keyword!(ignore);
                             syn::custom_keyword!(buffer);
                             let mut attributes = RenderResourceFieldAttributes::default();
-                            a.parse_args_with(|input: ParseStream| {
+                            a.parse_args_with(|input: ParseStream<'_>| {
                                 if input.parse::<Option<ignore>>()?.is_some() {
                                     attributes.ignore = true;
                                 } else if input.parse::<Option<buffer>>()?.is_some() {
@@ -130,10 +130,11 @@ pub fn derive_render_resources(input: TokenStream) -> TokenStream {
             render_resource_fields.push(field_ident);
             render_resource_names.push(format!("{}_{}", struct_name, field_name));
             if attrs.buffer {
-                render_resource_hints
-                    .push(quote! {Some(#legion_render_path::renderer::RenderResourceHints::BUFFER)})
+                render_resource_hints.push(
+                    quote! {Some(#legion_render_path::renderer::RenderResourceHints::BUFFER)},
+                );
             } else {
-                render_resource_hints.push(quote! {None})
+                render_resource_hints.push(quote! {None});
             }
         }
 
