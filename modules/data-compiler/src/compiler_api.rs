@@ -16,7 +16,7 @@
 //!
 //! ```no_run
 //! # use legion_data_compiler::{CompilerHash, Locale, Platform, Target};
-//! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerDescriptor, CompilationOutput, CompilerError};
+//! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
 //! # use legion_resources::ResourcePathId;
 //! # use legion_content_store::{ContentStoreAddr, ContentType};
 //! # use std::path::Path;
@@ -41,15 +41,7 @@
 //!    todo!()
 //!}
 //!
-//! fn compile(
-//!    derived: ResourcePathId,
-//!    dependencies: &[ResourcePathId],
-//!    target: Target,
-//!    platform: Platform,
-//!    locale: &Locale,
-//!    compiled_asset_store_path: ContentStoreAddr,
-//!    resource_dir: &Path,
-//!) -> Result<CompilationOutput, CompilerError> {
+//! fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
 //!    todo!()
 //! }
 //!
@@ -65,13 +57,12 @@
 //!
 //! Compilation process transforms [`legion_resources::Resource`] into [`legion_assets::Asset`]s.
 //!
-//! Reading source `Resources` is done with [`compiler_load_resource`] function:
+//! Reading source `Resources` is done with [`CompilerContext::load_resource`] function:
 //!
 //! ```no_run
 //! # use legion_resources::{ResourceId, ResourceType, Resource, ResourcePathId, ResourceRegistry, ResourceProcessor};
-//! # use legion_data_compiler::compiler_api::compiler_load_resource;
+//! # use legion_data_compiler::compiler_api::{CompilerContext, CompilationOutput, CompilerError};
 //! # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
-//! # let source = ResourceId::from_raw(1).unwrap();
 //! # pub struct SourceGeomProc {}
 //! # impl ResourceProcessor for SourceGeomProc {
 //! # fn new_resource(&mut self) -> Box<(dyn Resource + 'static)> { todo!() }
@@ -79,11 +70,15 @@
 //! # fn write_resource(&mut self, _: &(dyn Resource + 'static), _: &mut dyn std::io::Write) -> Result<usize, std::io::Error> { todo!() }
 //! # fn read_resource(&mut self, _: &mut dyn std::io::Read) -> Result<Box<(dyn Resource + 'static)>, std::io::Error> { todo!() }
 //! # }
-//! let mut registry = ResourceRegistry::default();
-//! registry.register_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}));
+//! fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
+//!   let mut registry = ResourceRegistry::default();
+//!   registry.register_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}));
 //!
-//! let resource = compiler_load_resource(source, "./resources/", &mut registry).expect("loaded resource");
-//! let resource = resource.get::<test_resource::TestResource>(&registry).unwrap();
+//!   let resource = context.load_resource(context.derived.source_resource(), &mut registry).expect("loaded resource");
+//!   let resource = resource.get::<test_resource::TestResource>(&registry).unwrap();
+//! # todo!();
+//!   // ...
+//! }
 //! ```
 //!
 //! For more about `Assets` and `Resources` see [`legion_resources`] and [`legion_assets`] crates.
@@ -106,7 +101,7 @@ use crate::{
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
-use legion_content_store::{ContentStoreAddr, ContentType};
+use legion_content_store::{ContentStore, ContentStoreAddr, ContentType, HddContentStore};
 use legion_resources::{
     ResourceHandle, ResourceId, ResourcePathId, ResourceRegistry, RESOURCE_EXT,
 };
@@ -141,6 +136,42 @@ pub struct CompilationOutput {
     pub resource_references: Vec<(ResourcePathId, ResourcePathId)>,
 }
 
+/// Context of the current compilation process.
+pub struct CompilerContext<'a> {
+    /// The desired compilation output.
+    pub derived: ResourcePathId,
+    /// Compilation depenency list.
+    pub dependencies: &'a [ResourcePathId],
+    /// Compilation target.
+    pub target: Target,
+    /// Compilation platform.
+    pub platform: Platform,
+    /// Compilation locale.
+    pub locale: &'a Locale,
+    /// Content-addressable storage of compilation output.
+    pub content_store: &'a mut dyn ContentStore,
+    /// Directory where `derived` and `dependencies` are assumed to be stored.
+    // todo: this should be chanaged to ContentStore with filtering.
+    pub resource_dir: &'a Path,
+}
+
+impl CompilerContext<'_> {
+    /// Synchronously loades a resource from current working directory.
+    pub fn load_resource(
+        &self,
+        id: ResourceId,
+        resources: &mut ResourceRegistry,
+    ) -> Result<ResourceHandle, CompilerError> {
+        let resource_path = resource_path(self.resource_dir, id);
+        let mut resource_file =
+            File::open(resource_path).map_err(CompilerError::ResourceLoadFailed)?;
+        let handle = resources
+            .deserialize_resource(id.resource_type(), &mut resource_file)
+            .map_err(CompilerError::ResourceLoadFailed)?;
+        Ok(handle)
+    }
+}
+
 /// Defines data compiler properties.
 pub struct CompilerDescriptor {
     /// Data build version of data compiler.
@@ -161,15 +192,7 @@ pub struct CompilerDescriptor {
     ) -> Vec<CompilerHash>,
     /// Data compilation function.
     #[allow(clippy::type_complexity)]
-    pub compile_func: fn(
-        derived: ResourcePathId,
-        dependencies: &[ResourcePathId],
-        target: Target,
-        platform: Platform,
-        locale: &Locale,
-        compiled_asset_store_path: ContentStoreAddr,
-        resource_dir: &Path, // todo: assume sources are in the same directory? or cwd? or make this the resource dir?
-    ) -> Result<CompilationOutput, CompilerError>,
+    pub compile_func: fn(context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError>,
 }
 
 /// Compiler error.
@@ -257,7 +280,7 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
             let locale = Locale::new(locale);
 
-            let deps: Vec<ResourcePathId> = cmd_args
+            let dependencies: Vec<ResourcePathId> = cmd_args
                 .values_of(COMMAND_ARG_DEPENDENCIES)
                 .unwrap_or_default()
                 .filter_map(|s| ResourcePathId::from_str(s).ok())
@@ -274,15 +297,20 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 return Err(CompilerError::InvalidTransform);
             }
 
-            let compilation_output = (descriptor.compile_func)(
+            let mut content_store =
+                HddContentStore::open(asset_store_path).ok_or(CompilerError::AssetStoreError)?;
+
+            let context = CompilerContext {
                 derived,
-                &deps,
+                dependencies: &dependencies,
                 target,
                 platform,
-                &locale,
-                asset_store_path,
-                &resource_dir,
-            )?;
+                locale: &locale,
+                content_store: &mut content_store,
+                resource_dir: &resource_dir,
+            };
+
+            let compilation_output = (descriptor.compile_func)(context)?;
 
             let output = CompilerCompileCmdOutput {
                 compiled_resources: compilation_output.compiled_resources,
@@ -408,19 +436,6 @@ fn resource_path(dir: &Path, id: ResourceId) -> PathBuf {
     path
 }
 
-/// Synchronously loades a resource from current working directory.
-pub fn compiler_load_resource(
-    id: ResourceId,
-    dir: impl AsRef<Path>,
-    resources: &mut ResourceRegistry,
-) -> Result<ResourceHandle, CompilerError> {
-    let resource_path = resource_path(dir.as_ref(), id);
-    let mut resource_file = File::open(resource_path).map_err(CompilerError::ResourceLoadFailed)?;
-    let handle = resources
-        .deserialize_resource(id.resource_type(), &mut resource_file)
-        .map_err(CompilerError::ResourceLoadFailed)?;
-    Ok(handle)
-}
 /*
 /// Deterministically create a named id of an asset in context of resource.
 ///

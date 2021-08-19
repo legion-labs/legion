@@ -2,19 +2,16 @@ use std::{
     collections::hash_map::DefaultHasher,
     env,
     hash::{Hash, Hasher},
-    path::Path,
 };
-
-use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 
 use legion_data_compiler::{
     compiler_api::{
-        compiler_load_resource, compiler_main, CompilationOutput, CompilerDescriptor,
-        CompilerError, DATA_BUILD_VERSION,
+        compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
+        DATA_BUILD_VERSION,
     },
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
-use legion_resources::{ResourcePathId, ResourceRegistry};
+use legion_resources::ResourceRegistry;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
@@ -38,26 +35,15 @@ fn compiler_hash(
     vec![CompilerHash(hasher.finish())]
 }
 
-fn compile(
-    derived: ResourcePathId,
-    _dependencies: &[ResourcePathId],
-    _target: Target,
-    _platform: Platform,
-    _locale: &Locale,
-    compiled_asset_store_path: ContentStoreAddr,
-    resource_dir: &Path,
-) -> Result<CompilationOutput, CompilerError> {
+fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
         mock_resource::TEXT_RESOURCE,
         Box::new(mock_resource::TextResourceProc {}),
     );
 
-    let mut content_store =
-        HddContentStore::open(compiled_asset_store_path).ok_or(CompilerError::AssetStoreError)?;
-
     // todo: source_resource is wrong
-    let resource = compiler_load_resource(derived.source_resource(), resource_dir, &mut resources)?;
+    let resource = context.load_resource(context.derived.source_resource(), &mut resources)?;
     let resource = resource
         .get::<mock_resource::TextResource>(&resources)
         .unwrap();
@@ -65,12 +51,13 @@ fn compile(
     let parsed_value = resource.content.parse::<usize>().unwrap_or(0);
     let compiled_asset = parsed_value.to_ne_bytes();
 
-    let checksum = content_store
+    let checksum = context
+        .content_store
         .store(&compiled_asset)
         .ok_or(CompilerError::AssetStoreError)?;
 
     let asset = CompiledResource {
-        path: derived,
+        path: context.derived,
         checksum,
         size: compiled_asset.len(),
     };
