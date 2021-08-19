@@ -192,8 +192,8 @@ pub struct CompilerInfoCmdOutput {
     pub code_version: String,
     /// Resource and Asset data version.
     pub data_version: String,
-    /// Transformations supported by data compiler.
-    pub transforms: Vec<(ContentType, ContentType)>,
+    /// Transformation supported by data compiler.
+    pub transform: (ContentType, ContentType),
 }
 
 impl CompilerInfoCmdOutput {
@@ -202,7 +202,7 @@ impl CompilerInfoCmdOutput {
             build_version: descriptor.build_version.to_owned(),
             code_version: descriptor.code_version.to_owned(),
             data_version: descriptor.data_version.to_owned(),
-            transforms: descriptor.transforms.to_owned(),
+            transform: descriptor.transform.to_owned(),
         }
     }
     pub(crate) fn from_bytes(bytes: &[u8]) -> Option<Self> {

@@ -18,13 +18,15 @@
 //! # use legion_data_compiler::{CompilerHash, Locale, Platform, Target};
 //! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerDescriptor, CompilationOutput, CompilerError};
 //! # use legion_resources::ResourcePathId;
-//! # use legion_content_store::ContentStoreAddr;
+//! # use legion_content_store::{ContentStoreAddr, ContentType};
 //! # use std::path::Path;
+//! #  const INPUT_TYPE: ContentType = ContentType::new(b"src");
+//! # const OUTPUT_TYPE: ContentType = ContentType::new(b"dst");
 //! static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 //!    build_version: DATA_BUILD_VERSION,
 //!    code_version: "",
 //!    data_version: "",
-//!    transforms: &[],
+//!    transform: &(INPUT_TYPE, OUTPUT_TYPE),
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
@@ -147,8 +149,8 @@ pub struct CompilerDescriptor {
     pub code_version: &'static str,
     /// Version of resource data formats.
     pub data_version: &'static str,
-    /// Compiler supported resource transformations `Vec<f(.0)->.1>`.
-    pub transforms: &'static [(ContentType, ContentType)],
+    /// Compiler supported resource transformation `f(.0)->.1`.
+    pub transform: &'static (ContentType, ContentType),
     /// Function returning a list of `CompilerHash` for a given context.
     pub compiler_hash_func: fn(
         code: &'static str,
@@ -268,7 +270,7 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             let transform = derived
                 .last_transform()
                 .ok_or(CompilerError::InvalidTransform)?;
-            if !descriptor.transforms.iter().any(|&t| t == transform) {
+            if descriptor.transform != &transform {
                 return Err(CompilerError::InvalidTransform);
             }
 

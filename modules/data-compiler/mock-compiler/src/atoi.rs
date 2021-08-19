@@ -20,7 +20,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transforms: &[(mock_resource::TEXT_RESOURCE, mock_asset::INTEGER_ASSET)],
+    transform: &(mock_resource::TEXT_RESOURCE, mock_asset::INTEGER_ASSET),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };

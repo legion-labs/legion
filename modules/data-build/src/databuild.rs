@@ -424,7 +424,7 @@ impl DataBuild {
                 .map(|transform| {
                     compilers
                         .iter()
-                        .find(|info| info.1.transforms.contains(&transform))
+                        .find(|info| info.1.transform == transform)
                         .map_or(Err(Error::CompilerNotFound), |e| {
                             let res = compiler_hash_cmd
                                 .execute(&e.0.path)
