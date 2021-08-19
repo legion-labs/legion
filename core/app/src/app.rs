@@ -470,7 +470,7 @@ impl App {
     /// Bevy also provides a few sets of default plugins. See [`App::add_plugins`].
     ///
     /// ## Example
-    /// ```
+    /// ```ignore
     /// # use legion_app::prelude::*;
     /// #
     /// App::new().add_plugin(legion_log::LogPlugin::default());
@@ -520,7 +520,7 @@ impl App {
     /// specific plugins while keeping the rest.
     ///
     /// ## Example
-    /// ```
+    /// ```ignore
     /// # use legion_app::{prelude::*, PluginGroupBuilder};
     /// #
     /// # // Dummies created to avoid using legion_internal which pulls in to many dependencies.
