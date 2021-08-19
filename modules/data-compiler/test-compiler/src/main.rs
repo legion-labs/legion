@@ -8,10 +8,10 @@ use std::{
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{
     compiler_api::{
-        compiler_load_resource, compiler_main, primary_asset_id, CompilationOutput,
-        CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
+        compiler_load_resource, compiler_main, CompilationOutput, CompilerDescriptor,
+        CompilerError, DATA_BUILD_VERSION,
     },
-    CompiledAsset, CompilerHash, Locale, Platform, Target,
+    CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use legion_resources::{ResourcePathId, ResourceRegistry};
 
@@ -38,7 +38,7 @@ fn compiler_hash(
 }
 
 fn compile(
-    source: ResourcePathId,
+    derived: ResourcePathId,
     dependencies: &[ResourcePathId],
     _target: Target,
     _platform: Platform,
@@ -55,10 +55,8 @@ fn compile(
     let mut asset_store =
         HddContentStore::open(compiled_asset_store_path).ok_or(CompilerError::AssetStoreError)?;
 
-    let guid = primary_asset_id(&source, test_asset::TYPE_ID);
-
     // todo: source_resource is wrong here
-    let resource = compiler_load_resource(source.source_resource(), resource_dir, &mut resources)?;
+    let resource = compiler_load_resource(derived.source_resource(), resource_dir, &mut resources)?;
     let resource = resource
         .get::<test_resource::TestResource>(&resources)
         .unwrap();
@@ -73,21 +71,21 @@ fn compile(
         .store(&compiled_asset)
         .ok_or(CompilerError::AssetStoreError)?;
 
-    let asset = CompiledAsset {
-        guid,
+    let asset = CompiledResource {
+        path: derived.clone(),
         checksum,
         size: compiled_asset.len(),
     };
 
-    // in this test example every build dependency becomes a asset_reference/load-time dependency.
+    // in this test example every build dependency becomes a reference/load-time dependency.
     let asset_references: Vec<_> = dependencies
         .iter()
-        .map(|dep| (guid, primary_asset_id(dep, test_asset::TYPE_ID)))
+        .map(|dep| (derived.clone(), dep.clone()))
         .collect();
 
     Ok(CompilationOutput {
-        compiled_assets: vec![asset],
-        asset_references,
+        compiled_resources: vec![asset],
+        resource_references: asset_references,
     })
 }
 

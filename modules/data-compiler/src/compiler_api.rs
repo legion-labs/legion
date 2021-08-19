@@ -15,7 +15,7 @@
 //! Below you can see a minimum code required to compile a data compiler:
 //!
 //! ```no_run
-//! # use legion_data_compiler::{CompiledAsset, CompilerHash, Locale, Platform, Target};
+//! # use legion_data_compiler::{CompilerHash, Locale, Platform, Target};
 //! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerDescriptor, CompilationOutput, CompilerError};
 //! # use legion_resources::ResourcePathId;
 //! # use legion_content_store::ContentStoreAddr;
@@ -40,7 +40,7 @@
 //!}
 //!
 //! fn compile(
-//!    source: ResourcePathId,
+//!    derived: ResourcePathId,
 //!    dependencies: &[ResourcePathId],
 //!    target: Target,
 //!    platform: Platform,
@@ -84,47 +84,6 @@
 //! let resource = resource.get::<test_resource::TestResource>(&registry).unwrap();
 //! ```
 //!
-//! # Deterministic [`AssetId`] Generation
-//!
-//! **Data Pipeline** is deterministic. Therefore all **data compilers** must be deterministic.
-//!
-//! Because of that the [`AssetId`]s generated during the compilation must be created by a deterministic process.
-//! The function [`primary_asset_id`] exists to facilitate this process. Called with the same arguments it will always return the same [`AssetId`].
-//!
-//! The following example shows its usage:
-//!
-//! ```
-//! # use legion_data_compiler::{CompiledAsset, Locale, Platform, Target};
-//! # use legion_data_compiler::compiler_api::{primary_asset_id, CompilerError};
-//! # use legion_resources::ResourcePathId;
-//! # use legion_content_store::{ContentStoreAddr};
-//! # use legion_assets::AssetType;
-//! # pub const BINARY_GEOMETRY: AssetType = AssetType::new(b"bin_geom");
-//! # use std::path::Path;
-//! # fn build_and_store_asset(_id: ResourcePathId) -> (i128, usize){(0,0)}
-//! fn compile(
-//!    derived: ResourcePathId,
-//!    // ...
-//! #    dependencies: &[ResourcePathId],
-//! #    target: Target,
-//! #    platform: Platform,
-//! #    locale: &Locale,
-//! #    compiled_asset_store_path: ContentStoreAddr,
-//! #    resource_dir: &Path,
-//! ) -> Result<Vec<CompiledAsset>, CompilerError> {
-//!    let new_asset_id = primary_asset_id(&derived, BINARY_GEOMETRY);
-//!    let (checksum, size) = build_and_store_asset(derived);
-//!    let asset = CompiledAsset {
-//!          guid: new_asset_id,
-//!          checksum,
-//!          size,
-//!    };
-//!    Ok(vec![asset])
-//! }
-//! ```
-//!
-//! > **NOTE**: For now, only one asset of given [`AssetType`] can be generated from a resource of a given [`ResourceId`].
-//!
 //! For more about `Assets` and `Resources` see [`legion_resources`] and [`legion_assets`] crates.
 //!
 //! [`legion_data_build`]: ../../legion_data_build/index.html
@@ -142,10 +101,9 @@ use crate::{
         COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_RESOURCE_PATH,
         COMMAND_ARG_TARGET, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
-    CompiledAsset, CompilerHash, Locale, Platform, Target,
+    CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
-use legion_assets::{AssetId, AssetType};
 use legion_content_store::ContentStoreAddr;
 use legion_resources::{
     ResourceHandle, ResourceId, ResourcePathId, ResourceRegistry, ResourceType, RESOURCE_EXT,
@@ -171,14 +129,14 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// `Data Compiler`'s output.
 ///
 /// Includes data which allows to load and validate [`legion_assets::Asset`]s stored in [`ContentStore`].
-/// As well as references between assets that define load-time dependencies.
+/// As well as references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../asset_store/index.html
 pub struct CompilationOutput {
-    /// List of compiled asset's metadata.
-    pub compiled_assets: Vec<CompiledAsset>,
-    /// List of references between compiled assets.
-    pub asset_references: Vec<(AssetId, AssetId)>,
+    /// List of compiled resource's metadata.
+    pub compiled_resources: Vec<CompiledResource>,
+    /// List of references between compiled resources.
+    pub resource_references: Vec<(ResourcePathId, ResourcePathId)>,
 }
 
 /// Defines data compiler properties.
@@ -187,7 +145,7 @@ pub struct CompilerDescriptor {
     pub build_version: &'static str,
     /// Version of compiler's code.
     pub code_version: &'static str,
-    /// Version of resource and asset data formats.
+    /// Version of resource data formats.
     pub data_version: &'static str,
     /// Compiler supported resource transformations `Vec<f(.0)->.1>`.
     pub transforms: &'static [(ResourceType, ResourceType)],
@@ -202,7 +160,7 @@ pub struct CompilerDescriptor {
     /// Data compilation function.
     #[allow(clippy::type_complexity)]
     pub compile_func: fn(
-        source: ResourcePathId,
+        derived: ResourcePathId,
         dependencies: &[ResourcePathId],
         target: Target,
         platform: Platform,
@@ -282,13 +240,13 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             Ok(())
         }
         (COMMAND_NAME_COMPILE, Some(cmd_args)) => {
-            let source = cmd_args.value_of(COMMAND_ARG_RESOURCE_PATH).unwrap();
+            let derived = cmd_args.value_of(COMMAND_ARG_RESOURCE_PATH).unwrap();
             let target = cmd_args.value_of(COMMAND_ARG_TARGET).unwrap();
             let platform = cmd_args.value_of(COMMAND_ARG_PLATFORM).unwrap();
             let locale = cmd_args.value_of(COMMAND_ARG_LOCALE).unwrap();
 
-            let source =
-                ResourcePathId::from_str(source).map_err(|_e| CompilerError::InvalidResourceId)?;
+            let derived =
+                ResourcePathId::from_str(derived).map_err(|_e| CompilerError::InvalidResourceId)?;
             let target = Target::from_str(target).map_err(|_e| CompilerError::InvalidPlatform)?;
             let platform =
                 Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
@@ -305,7 +263,7 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             let resource_dir = PathBuf::from(cmd_args.value_of(COMMAND_ARG_RESOURCE_DIR).unwrap());
 
             let compilation_output = (descriptor.compile_func)(
-                source,
+                derived,
                 &deps,
                 target,
                 platform,
@@ -315,8 +273,8 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             )?;
 
             let output = CompilerCompileCmdOutput {
-                compiled_assets: compilation_output.compiled_assets,
-                asset_references: compilation_output.asset_references,
+                compiled_resources: compilation_output.compiled_resources,
+                resource_references: compilation_output.resource_references,
             };
             serde_json::to_writer_pretty(stdout(), &output)
                 .map_err(|_e| CompilerError::StdoutError)?;
@@ -398,7 +356,7 @@ pub fn compiler_main(
                         .long(COMMAND_ARG_COMPILED_ASSET_STORE)
                         .required(true)
                         .multiple(true)
-                        .help("Compiled Asset Store addresses where assets will be output."),
+                        .help("Content Store addresses where resources will be output."),
                 )
                 .arg(
                     Arg::with_name(COMMAND_ARG_TARGET)
@@ -451,17 +409,7 @@ pub fn compiler_load_resource(
         .map_err(CompilerError::ResourceLoadFailed)?;
     Ok(handle)
 }
-
-/// Deterministically create an id of an asset in context of resource.
-///
-/// This function should be used when a resource creates one asset of a given type.
-///
-/// Calling this function multiple times with the same arguments will **always produce the same result**.
-pub fn primary_asset_id(resource_path: &ResourcePathId, kind: AssetType) -> AssetId {
-    let internal = resource_path.hash_id();
-    AssetId::new(kind, (internal & 0xffffffff) as u32)
-}
-
+/*
 /// Deterministically create a named id of an asset in context of resource.
 ///
 /// Different `ResourcePathId` will produce a different [`AssetId`] for the same `name`.
@@ -470,8 +418,6 @@ pub fn primary_asset_id(resource_path: &ResourcePathId, kind: AssetType) -> Asse
 pub fn named_asset_id(
     resource_path: &ResourcePathId,
     asset_name: &str,
-    kind: AssetType,
-) -> AssetId {
-    let internal = resource_path.hash_name(asset_name);
-    AssetId::new(kind, (internal & 0xffffffff) as u32)
-}
+) -> ResourcePathId {
+    todo!();
+}*/

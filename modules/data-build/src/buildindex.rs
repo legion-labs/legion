@@ -1,5 +1,4 @@
-use legion_assets::AssetId;
-use legion_data_compiler::CompiledAsset;
+use legion_data_compiler::CompiledResource;
 use petgraph::{algo, Directed, Graph};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -22,35 +21,36 @@ struct ResourceInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct CompiledAssetInfo {
+pub(crate) struct CompiledResourceInfo {
+    pub(crate) source_path: ResourcePathId,
     pub(crate) context_hash: u64,
-    pub(crate) source_guid: ResourcePathId,
     pub(crate) source_hash: u64,
-    pub(crate) compiled_guid: AssetId,
+    pub(crate) compiled_path: ResourcePathId,
     pub(crate) compiled_checksum: i128,
     pub(crate) compiled_size: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct CompiledAssetReference {
+pub(crate) struct CompiledResourceReference {
     pub(crate) context_hash: u64,
-    pub(crate) source_guid: ResourcePathId,
+    pub(crate) source_path: ResourcePathId,
     pub(crate) source_hash: u64,
-    pub(crate) compiled_guid: AssetId,
-    pub(crate) compiled_reference: AssetId,
+    pub(crate) compiled_path: ResourcePathId,
+    pub(crate) compiled_reference: ResourcePathId,
 }
 
-impl CompiledAssetReference {
-    pub fn is_same_context(&self, asset_info: &CompiledAssetInfo) -> bool {
-        self.context_hash == asset_info.context_hash && self.source_hash == asset_info.source_hash
+impl CompiledResourceReference {
+    pub fn is_same_context(&self, resource_info: &CompiledResourceInfo) -> bool {
+        self.context_hash == resource_info.context_hash
+            && self.source_hash == resource_info.source_hash
     }
 
-    pub fn is_from_same_source(&self, asset_info: &CompiledAssetInfo) -> bool {
-        self.is_same_context(asset_info) && self.source_guid == asset_info.source_guid
+    pub fn is_from_same_source(&self, resource_info: &CompiledResourceInfo) -> bool {
+        self.is_same_context(resource_info) && self.source_path == resource_info.source_path
     }
 
-    pub fn is_reference_of(&self, asset_info: &CompiledAssetInfo) -> bool {
-        self.is_from_same_source(asset_info) && self.compiled_guid == asset_info.compiled_guid
+    pub fn is_reference_of(&self, resource_info: &CompiledResourceInfo) -> bool {
+        self.is_from_same_source(resource_info) && self.compiled_path == resource_info.compiled_path
     }
 }
 
@@ -59,8 +59,8 @@ struct BuildIndexContent {
     version: String,
     project_index: PathBuf,
     resources: Vec<ResourceInfo>,
-    compiled_assets: Vec<CompiledAssetInfo>,
-    compiled_asset_references: Vec<CompiledAssetReference>,
+    compiled_resources: Vec<CompiledResourceInfo>,
+    compiled_resource_references: Vec<CompiledResourceReference>,
 }
 
 #[derive(Debug)]
@@ -90,8 +90,8 @@ impl BuildIndex {
             version: String::from(version),
             project_index: projectindex_path.to_owned(),
             resources: vec![],
-            compiled_assets: vec![],
-            compiled_asset_references: vec![],
+            compiled_resources: vec![],
+            compiled_resource_references: vec![],
         };
 
         serde_json::to_writer(&file, &content).map_err(|_e| Error::IOError)?;
@@ -296,30 +296,30 @@ impl BuildIndex {
 
     pub(crate) fn insert_compiled(
         &mut self,
+        source_path: &ResourcePathId,
         context_hash: u64,
-        source_guid: &ResourcePathId,
         source_hash: u64,
-        compiled_assets: &[CompiledAsset],
-        compiled_references: &[(AssetId, AssetId)],
+        compiled_resources: &[CompiledResource],
+        compiled_references: &[(ResourcePathId, ResourcePathId)],
     ) {
         // For now we assume there is not concurrent compilation
         // so there is no way to compile the same resources twice.
         // Once we support it we will have to make sure the result of the compilation
         // is exactly the same for all compiled_assets.
         assert_eq!(
-            self.find_compiled(source_guid, context_hash, source_hash)
+            self.find_compiled(source_path, context_hash, source_hash)
                 .0
                 .len(),
             0
         );
 
-        let mut compiled_assets_desc: Vec<_> = compiled_assets
+        let mut compiled_assets_desc: Vec<_> = compiled_resources
             .iter()
-            .map(|asset| CompiledAssetInfo {
+            .map(|asset| CompiledResourceInfo {
+                source_path: source_path.clone(),
                 context_hash,
-                source_guid: source_guid.clone(),
                 source_hash,
-                compiled_guid: asset.guid,
+                compiled_path: asset.path.clone(),
                 compiled_checksum: asset.checksum,
                 compiled_size: asset.size,
             })
@@ -328,22 +328,22 @@ impl BuildIndex {
         let mut compiled_references_desc: Vec<_> = compiled_references
             .iter()
             .map(
-                |&(compiled_guid, compiled_reference)| CompiledAssetReference {
+                |(compiled_guid, compiled_reference)| CompiledResourceReference {
                     context_hash,
-                    source_guid: source_guid.clone(),
+                    source_path: source_path.clone(),
                     source_hash,
-                    compiled_guid,
-                    compiled_reference,
+                    compiled_path: compiled_guid.clone(),
+                    compiled_reference: compiled_reference.clone(),
                 },
             )
             .collect();
 
         self.content
-            .compiled_assets
+            .compiled_resources
             .append(&mut compiled_assets_desc);
 
         self.content
-            .compiled_asset_references
+            .compiled_resource_references
             .append(&mut compiled_references_desc);
     }
 
@@ -352,25 +352,25 @@ impl BuildIndex {
         source_guid: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
-    ) -> (Vec<CompiledAssetInfo>, Vec<CompiledAssetReference>) {
-        let asset_objects: Vec<CompiledAssetInfo> = self
+    ) -> (Vec<CompiledResourceInfo>, Vec<CompiledResourceReference>) {
+        let asset_objects: Vec<CompiledResourceInfo> = self
             .content
-            .compiled_assets
+            .compiled_resources
             .iter()
             .filter(|asset| {
-                &asset.source_guid == source_guid
+                &asset.source_path == source_guid
                     && asset.context_hash == context_hash
                     && asset.source_hash == source_hash
             })
             .cloned()
             .collect();
 
-        let asset_references: Vec<CompiledAssetReference> = self
+        let asset_references: Vec<CompiledResourceReference> = self
             .content
-            .compiled_asset_references
+            .compiled_resource_references
             .iter()
             .filter(|reference| {
-                &reference.source_guid == source_guid
+                &reference.source_path == source_guid
                     && reference.context_hash == context_hash
                     && reference.source_hash == source_hash
             })

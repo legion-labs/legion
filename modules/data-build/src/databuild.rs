@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::{env, io};
 
+use legion_assets::AssetId;
 use legion_content_store::{ContentStore, HddContentStore};
 use legion_data_compiler::compiler_api::DATA_BUILD_VERSION;
 use legion_data_compiler::compiler_cmd::{
@@ -14,12 +15,12 @@ use legion_data_compiler::compiler_cmd::{
     CompilerInfoCmd, CompilerInfoCmdOutput,
 };
 use legion_data_compiler::CompilerHash;
-use legion_data_compiler::{CompiledAsset, Manifest};
+use legion_data_compiler::{CompiledResource, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_resources::{Project, ResourcePathId, ResourceType};
 
 use crate::asset_file_writer::write_assetfile;
-use crate::buildindex::{BuildIndex, CompiledAssetInfo, CompiledAssetReference};
+use crate::buildindex::{BuildIndex, CompiledResourceInfo, CompiledResourceReference};
 use crate::{DataBuildOptions, Error};
 
 #[derive(Clone, Debug)]
@@ -29,8 +30,8 @@ struct CompileStat {
 }
 
 struct CompileOutput {
-    asset_objects: Vec<CompiledAssetInfo>,
-    references: Vec<CompiledAssetReference>,
+    resources: Vec<CompiledResourceInfo>,
+    references: Vec<CompiledResourceReference>,
     statistics: Vec<CompileStat>,
 }
 
@@ -242,22 +243,22 @@ impl DataBuild {
         };
 
         let CompileOutput {
-            asset_objects,
+            resources,
             references,
             statistics: _stats,
         } = self.compile_path(derived, target, platform, locale)?;
 
-        let assets = self.link(&asset_objects, &references)?;
+        let assets = self.link(&resources, &references)?;
 
         for asset in assets {
             if let Some(existing) = manifest
-                .compiled_assets
+                .compiled_resources
                 .iter_mut()
-                .find(|existing| existing.guid == asset.guid)
+                .find(|existing| existing.path == asset.path)
             {
                 *existing = asset;
             } else {
-                manifest.compiled_assets.push(asset);
+                manifest.compiled_resources.push(asset);
             }
         }
 
@@ -282,15 +283,15 @@ impl DataBuild {
         compiler_path: &Path,
     ) -> Result<
         (
-            Vec<CompiledAssetInfo>,
-            Vec<CompiledAssetReference>,
+            Vec<CompiledResourceInfo>,
+            Vec<CompiledResourceReference>,
             Vec<CompileStat>,
         ),
         Error,
     > {
         let (asset_objects, asset_object_references, stats): (
-            Vec<CompiledAssetInfo>,
-            Vec<CompiledAssetReference>,
+            Vec<CompiledResourceInfo>,
+            Vec<CompiledResourceReference>,
             _,
         ) = {
             let now = SystemTime::now();
@@ -322,15 +323,15 @@ impl DataBuild {
 
                 // todo: what is the cwd for if we provide resource_dir() ?
                 let CompilerCompileCmdOutput {
-                    compiled_assets,
-                    asset_references,
+                    compiled_resources: compiled_assets,
+                    resource_references: asset_references,
                 } = compile_cmd
                     .execute(compiler_path, &self.project.resource_dir())
                     .map_err(Error::CompilerError)?;
 
                 self.build_index.insert_compiled(
-                    context_hash,
                     derived,
+                    context_hash,
                     source_hash,
                     &compiled_assets,
                     &asset_references,
@@ -339,23 +340,23 @@ impl DataBuild {
                 (
                     compiled_assets
                         .iter()
-                        .map(|asset| CompiledAssetInfo {
+                        .map(|asset| CompiledResourceInfo {
                             context_hash,
-                            source_guid: derived.clone(),
+                            source_path: derived.clone(),
                             source_hash,
-                            compiled_guid: asset.guid,
+                            compiled_path: asset.path.clone(),
                             compiled_checksum: asset.checksum,
                             compiled_size: asset.size,
                         })
                         .collect(),
                     asset_references
                         .iter()
-                        .map(|reference| CompiledAssetReference {
+                        .map(|reference| CompiledResourceReference {
                             context_hash,
-                            source_guid: derived.clone(),
+                            source_path: derived.clone(),
                             source_hash,
-                            compiled_guid: reference.0,
-                            compiled_reference: reference.1,
+                            compiled_path: reference.0.clone(),
+                            compiled_reference: reference.1.clone(),
                         })
                         .collect(),
                     std::iter::repeat(CompileStat {
@@ -462,7 +463,6 @@ impl DataBuild {
                 // the same resource can have a different source_hash depending on the compiler
                 // used as compilers can filter dependencies out.
                 //
-                // todo: is `output_id` correct here? of `input_id` should be used? (seems correct)
                 let source_hash = self.build_index.compute_source_hash(output_id.clone())?;
 
                 let (asset_objects, asset_object_references, stats) = self.compile_node(
@@ -482,7 +482,7 @@ impl DataBuild {
             }
         }
         Ok(CompileOutput {
-            asset_objects: compiled_assets,
+            resources: compiled_assets,
             references: compiled_references,
             statistics: compile_stats,
         })
@@ -490,40 +490,50 @@ impl DataBuild {
 
     fn link(
         &mut self,
-        asset_objects: &[CompiledAssetInfo],
-        references: &[CompiledAssetReference],
-    ) -> Result<Vec<CompiledAsset>, Error> {
-        let mut asset_files = Vec::with_capacity(asset_objects.len());
-        for asset_object in asset_objects {
+        resources: &[CompiledResourceInfo],
+        references: &[CompiledResourceReference],
+    ) -> Result<Vec<CompiledResource>, Error> {
+        let mut resource_files = Vec::with_capacity(resources.len());
+        for resource in resources {
             let mut output: Vec<u8> = vec![];
-            let asset_list =
-                std::iter::once((asset_object.compiled_guid, asset_object.compiled_checksum));
+            let resource_list = std::iter::once((
+                AssetId::from_hash_id(resource.compiled_path.hash_id()).unwrap(),
+                resource.compiled_checksum,
+            ));
             let reference_list = references
                 .iter()
-                .filter(|r| r.is_reference_of(asset_object))
+                .filter(|r| r.is_reference_of(resource))
                 .map(|r| {
                     (
-                        asset_object.compiled_guid,
-                        (r.compiled_reference, r.compiled_reference),
+                        AssetId::from_hash_id(resource.compiled_path.hash_id()).unwrap(),
+                        (
+                            AssetId::from_hash_id(r.compiled_reference.hash_id()).unwrap(),
+                            AssetId::from_hash_id(r.compiled_reference.hash_id()).unwrap(),
+                        ),
                     )
                 });
-            let bytes_written =
-                write_assetfile(asset_list, reference_list, &self.asset_store, &mut output)?;
+            //todo!();
+            let bytes_written = write_assetfile(
+                resource_list,
+                reference_list,
+                &self.asset_store,
+                &mut output,
+            )?;
 
             let checksum = self
                 .asset_store
                 .store(&output)
                 .ok_or(Error::InvalidAssetStore)?;
 
-            let asset_file = CompiledAsset {
-                guid: asset_object.compiled_guid,
+            let asset_file = CompiledResource {
+                path: resource.compiled_path.clone(),
                 checksum,
                 size: bytes_written,
             };
-            asset_files.push(asset_file);
+            resource_files.push(asset_file);
         }
 
-        Ok(asset_files)
+        Ok(resource_files)
     }
 
     /// Returns the global version of the databuild module.
@@ -790,10 +800,10 @@ mod tests {
             .unwrap();
 
         // both test(child_id) and test(parent_id) are separate assets.
-        assert_eq!(manifest.compiled_assets.len(), 2);
+        assert_eq!(manifest.compiled_resources.len(), 2);
 
         let asset_store = HddContentStore::open(assetstore_path).expect("valid asset store");
-        for checksum in manifest.compiled_assets.iter().map(|a| a.checksum) {
+        for checksum in manifest.compiled_resources.iter().map(|a| a.checksum) {
             assert!(asset_store.exists(checksum));
         }
 
@@ -804,13 +814,13 @@ mod tests {
         };
 
         assert_eq!(
-            read_manifest.compiled_assets.len(),
-            manifest.compiled_assets.len()
+            read_manifest.compiled_resources.len(),
+            manifest.compiled_resources.len()
         );
 
-        for asset in read_manifest.compiled_assets {
+        for asset in read_manifest.compiled_resources {
             assert!(manifest
-                .compiled_assets
+                .compiled_resources
                 .iter()
                 .any(|a| a.checksum == asset.checksum));
         }
@@ -858,10 +868,10 @@ mod tests {
                 )
                 .unwrap();
 
-            assert_eq!(compile_output.asset_objects.len(), 1);
+            assert_eq!(compile_output.resources.len(), 1);
             assert_eq!(compile_output.references.len(), 0);
 
-            let original_checksum = compile_output.asset_objects[0].compiled_checksum;
+            let original_checksum = compile_output.resources[0].compiled_checksum;
 
             let asset_store =
                 HddContentStore::open(assetstore_path.clone()).expect("valid asset store");
@@ -888,9 +898,9 @@ mod tests {
                 .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
                 .unwrap();
 
-            assert_eq!(compile_output.asset_objects.len(), 1);
+            assert_eq!(compile_output.resources.len(), 1);
 
-            let modified_checksum = compile_output.asset_objects[0].compiled_checksum;
+            let modified_checksum = compile_output.resources[0].compiled_checksum;
 
             let asset_store = HddContentStore::open(assetstore_path).expect("valid asset store");
             assert!(asset_store.exists(original_checksum));
@@ -1024,7 +1034,7 @@ mod tests {
         // first run - none of the assets from cache.
         {
             let CompileOutput {
-                asset_objects,
+                resources: asset_objects,
                 references,
                 statistics,
             } = build
@@ -1044,7 +1054,7 @@ mod tests {
         // no change, second run - all assets from cache.
         {
             let CompileOutput {
-                asset_objects,
+                resources: asset_objects,
                 references,
                 statistics,
             } = build
@@ -1067,7 +1077,7 @@ mod tests {
             build.source_pull().expect("to pull changes");
 
             let CompileOutput {
-                asset_objects,
+                resources: asset_objects,
                 references,
                 statistics,
             } = build
@@ -1091,7 +1101,7 @@ mod tests {
             build.source_pull().expect("to pull changes");
 
             let CompileOutput {
-                asset_objects,
+                resources: asset_objects,
                 references,
                 statistics,
             } = build
@@ -1164,17 +1174,17 @@ mod tests {
             .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
             .expect("successful compilation");
 
-        assert_eq!(compile_output.asset_objects.len(), 2);
+        assert_eq!(compile_output.resources.len(), 2);
         assert_eq!(compile_output.references.len(), 1);
 
         let link_output = build
-            .link(&compile_output.asset_objects, &compile_output.references)
+            .link(&compile_output.resources, &compile_output.references)
             .expect("successful linking");
 
-        assert_eq!(compile_output.asset_objects.len(), link_output.len());
+        assert_eq!(compile_output.resources.len(), link_output.len());
 
         // link output checksum must be different from compile output checksum...
-        for obj in &compile_output.asset_objects {
+        for obj in &compile_output.resources {
             assert!(!link_output
                 .iter()
                 .any(|compiled| compiled.checksum == obj.compiled_checksum));
@@ -1184,9 +1194,9 @@ mod tests {
         for output in link_output {
             assert_eq!(
                 compile_output
-                    .asset_objects
+                    .resources
                     .iter()
-                    .filter(|obj| obj.compiled_guid == output.guid)
+                    .filter(|obj| obj.compiled_path == output.path)
                     .count(),
                 1
             );

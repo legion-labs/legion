@@ -23,6 +23,11 @@ impl AssetId {
         }
     }
 
+    /// Creates an asset id from a raw hash value.
+    pub fn from_hash_id(id: u64) -> Option<Self> {
+        std::num::NonZeroU64::new(id).map(|id| Self { id })
+    }
+
     /// Returns the type of the asset.
     pub fn asset_type(&self) -> AssetType {
         let type_id = (u64::from(self.id) >> 32) as u32;

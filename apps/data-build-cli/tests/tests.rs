@@ -89,5 +89,5 @@ fn data_build() {
     assert!(output.status.success());
 
     let output = std::str::from_utf8(&output.stdout).expect("valid utf8");
-    assert!(output.contains("CompiledAsset"));
+    assert!(output.contains("CompiledResource"));
 }

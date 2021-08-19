@@ -9,10 +9,10 @@ use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 
 use legion_data_compiler::{
     compiler_api::{
-        compiler_load_resource, compiler_main, primary_asset_id, CompilationOutput,
-        CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
+        compiler_load_resource, compiler_main, CompilationOutput, CompilerDescriptor,
+        CompilerError, DATA_BUILD_VERSION,
     },
-    CompiledAsset, CompilerHash, Locale, Platform, Target,
+    CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use legion_resources::{ResourcePathId, ResourceRegistry};
 
@@ -39,7 +39,7 @@ fn compiler_hash(
 }
 
 fn compile(
-    source: ResourcePathId,
+    derived: ResourcePathId,
     _dependencies: &[ResourcePathId],
     _target: Target,
     _platform: Platform,
@@ -56,10 +56,8 @@ fn compile(
     let mut asset_store =
         HddContentStore::open(compiled_asset_store_path).ok_or(CompilerError::AssetStoreError)?;
 
-    let guid = primary_asset_id(&source, mock_asset::TYPE_ID);
-
     // todo: source_resource is wrong
-    let resource = compiler_load_resource(source.source_resource(), resource_dir, &mut resources)?;
+    let resource = compiler_load_resource(derived.source_resource(), resource_dir, &mut resources)?;
     let resource = resource
         .get::<mock_resource::MockResource>(&resources)
         .unwrap();
@@ -71,16 +69,16 @@ fn compile(
         .store(&compiled_asset)
         .ok_or(CompilerError::AssetStoreError)?;
 
-    let asset = CompiledAsset {
-        guid,
+    let asset = CompiledResource {
+        path: derived,
         checksum,
         size: compiled_asset.len(),
     };
 
     // in this mock build dependency are _not_ runtime references.
     Ok(CompilationOutput {
-        compiled_assets: vec![asset],
-        asset_references: vec![],
+        compiled_resources: vec![asset],
+        resource_references: vec![],
     })
 }
 

@@ -37,10 +37,10 @@
 //! # use legion_resources::ResourcePathId;
 //! # use std::path::PathBuf;
 //! fn compile_resource(derived: ResourcePathId, dependencies: &[ResourcePathId]) {
-//!     let asset_store = ContentStoreAddr::from("./asset_store/");
+//!     let content_store = ContentStoreAddr::from("./content_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
-//!     let mut command = CompilerCompileCmd::new(&derived, dependencies, &asset_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
-//!     let output = command.execute("my_compiler.exe", "./").expect("compiled assets");
+//!     let mut command = CompilerCompileCmd::new(&derived, dependencies, &content_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
+//!     let output = command.execute("my_compiler.exe", "./").expect("compiled resources");
 //!}
 //! ```
 //!
@@ -57,10 +57,9 @@ use std::{
 };
 
 use crate::{
-    compiler_api::CompilerDescriptor, CompiledAsset, CompilerHash, Locale, Platform, Target,
+    compiler_api::CompilerDescriptor, CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 
-use legion_assets::AssetId;
 use legion_content_store::ContentStoreAddr;
 use legion_resources::{ResourcePathId, ResourceType};
 
@@ -295,10 +294,10 @@ impl CompilerHashCmd {
 /// Output of `compile` command.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CompilerCompileCmdOutput {
-    /// Generated assets.
-    pub compiled_assets: Vec<CompiledAsset>,
-    /// References between generated assets.
-    pub asset_references: Vec<(AssetId, AssetId)>,
+    /// Generated resources.
+    pub compiled_resources: Vec<CompiledResource>,
+    /// References between generated resources.
+    pub resource_references: Vec<(ResourcePathId, ResourcePathId)>,
 }
 
 impl CompilerCompileCmdOutput {

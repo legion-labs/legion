@@ -106,17 +106,17 @@ fn compile_command() {
         .expect("compile result");
     println!("{:?}", result);
 
-    assert_eq!(result.compiled_assets.len(), 1);
+    assert_eq!(result.compiled_resources.len(), 1);
 
-    let asset_checksum = result.compiled_assets[0].checksum;
+    let checksum = result.compiled_resources[0].checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(asset_checksum));
+    assert!(cas.exists(checksum));
 
-    let asset_content = cas.read(asset_checksum).expect("asset content");
+    let resource_content = cas.read(checksum).expect("asset content");
     let mut reversed = content.as_bytes().to_owned();
     reversed.reverse();
-    assert_eq!(&asset_content[..], &reversed[..]);
+    assert_eq!(&resource_content[..], &reversed[..]);
 }
 
 #[test]
@@ -168,20 +168,20 @@ fn mock_compile() {
             .expect("compile result");
         println!("{:?}", result);
 
-        assert_eq!(result.compiled_assets.len(), 1);
-        result.compiled_assets[0].clone()
+        assert_eq!(result.compiled_resources.len(), 1);
+        result.compiled_resources[0].clone()
     };
 
-    let asset_checksum = asset_info.checksum;
+    let checksum = asset_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(asset_checksum));
+    assert!(cas.exists(checksum));
 
-    let asset_content = cas.read(asset_checksum).expect("asset content");
+    let resource_content = cas.read(checksum).expect("asset content");
 
     let mut creator = MockAssetCreator {};
     let asset = creator
-        .load(mock_asset::TYPE_ID, &mut &asset_content[..])
+        .load(mock_asset::TYPE_ID, &mut &resource_content[..])
         .expect("loaded assets");
     let asset = asset.as_any().downcast_ref::<MockAsset>().unwrap();
 
