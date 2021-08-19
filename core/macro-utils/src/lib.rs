@@ -1,7 +1,3 @@
-//! Legion core crate, contains core services and systems used by other modules
-//! The crate is not allowed to depend on other legion modules
-//!
-
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
@@ -77,28 +73,64 @@
 // crate-specific exceptions:
 #![allow()]
 
-pub mod decimal;
-pub mod ecs;
-pub mod math;
-pub mod memory;
-pub mod prelude;
-pub mod trust_cell;
+extern crate proc_macro;
 
-mod enum_variant_meta;
-pub use enum_variant_meta::*;
+use cargo_manifest::{DepsSet, Manifest};
+use proc_macro::TokenStream;
+use std::{env, path::PathBuf};
 
-mod hash;
-pub use hash::*;
+pub struct LegionManifest {
+    manifest: Manifest,
+}
 
-pub use ecs::*;
-
-pub use tracing;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let four = 2 + 2;
-        assert_eq!(four, 4);
+impl Default for LegionManifest {
+    fn default() -> Self {
+        Self {
+            manifest: env::var_os("CARGO_MANIFEST_DIR")
+                .map(PathBuf::from)
+                .map(|mut path| {
+                    path.push("Cargo.toml");
+                    Manifest::from_path(path).unwrap()
+                })
+                .unwrap(),
+        }
     }
+}
+
+impl LegionManifest {
+    pub fn get_path(&self, name: &str) -> syn::Path {
+        const LEGION: &str = "legion";
+        const LEGION_INTERNAL: &str = "legion_internal";
+
+        let find_in_deps = |deps: &DepsSet| -> Option<syn::Path> {
+            let package = if let Some(dep) = deps.get(LEGION) {
+                dep.package().unwrap_or(LEGION)
+            } else if let Some(dep) = deps.get(LEGION_INTERNAL) {
+                dep.package().unwrap_or(LEGION_INTERNAL)
+            } else {
+                return None;
+            };
+
+            let mut path = get_path(package);
+            if let Some(module) = name.strip_prefix("legion_") {
+                path.segments.push(parse_str(module));
+            }
+            Some(path)
+        };
+
+        let deps = self.manifest.dependencies.as_ref();
+        let deps_dev = self.manifest.dev_dependencies.as_ref();
+
+        deps.and_then(find_in_deps)
+            .or_else(|| deps_dev.and_then(find_in_deps))
+            .unwrap_or_else(|| get_path(name))
+    }
+}
+
+fn get_path(path: &str) -> syn::Path {
+    parse_str(path)
+}
+
+fn parse_str<T: syn::parse::Parse>(path: &str) -> T {
+    syn::parse(path.parse::<TokenStream>().unwrap()).unwrap()
 }

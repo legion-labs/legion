@@ -116,7 +116,7 @@ pub trait SystemParam: Sized {
     type Fetch: for<'a> SystemParamFetch<'a>;
 }
 ```
-The `impl_system_function!` macro (in combination with `all_tuples!`) is used to implement `SystemParamFunction` for all function types with arity up to 16. The implementations take care of packing/unpacking the argument list to a tuple. (See [`function_system.rs`](https://github.com/bevyengine/bevy/blob/main/crates/bevy_ecs/src/system/function_system.rs) for code)
+The `impl_system_function!` macro (in combination with `all_tuples!`) is used to implement `SystemParamFunction` for all function types with arity up to 16. The implementations take care of packing/unpacking the argument list to a tuple. (See [`function_system.rs`](https://github.com/bevyengine/bevy/blob/main/crates/legion_ecs/src/system/function_system.rs) for code)
 
 The function types match with this pattern:
 ```Rust
@@ -128,7 +128,7 @@ for <'a> &'a mut Func:
 ### References
 
 * Bevy the book, [section 2.3. ecs](https://bevyengine.org/learn/book/getting-started/ecs/)
-* [ecs crate README](https://github.com/bevyengine/bevy/blob/main/crates/bevy_ecs/README.md)
+* [ecs crate README](https://github.com/bevyengine/bevy/blob/main/crates/legion_ecs/README.md)
 * [ECS guided introduction](https://github.com/bevyengine/bevy/blob/latest/examples/ecs/ecs_guide.rs)
 
 ## DCES

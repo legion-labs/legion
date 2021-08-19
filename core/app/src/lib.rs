@@ -1,7 +1,3 @@
-//! Legion core crate, contains core services and systems used by other modules
-//! The crate is not allowed to depend on other legion modules
-//!
-
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
@@ -77,28 +73,52 @@
 // crate-specific exceptions:
 #![allow()]
 
-pub mod decimal;
-pub mod ecs;
-pub mod math;
-pub mod memory;
-pub mod prelude;
-pub mod trust_cell;
+mod app;
+mod plugin;
+mod plugin_group;
+mod schedule_runner;
 
-mod enum_variant_meta;
-pub use enum_variant_meta::*;
+#[cfg(feature = "legion_ci_testing")]
+mod ci_testing;
 
-mod hash;
-pub use hash::*;
+pub use app::*;
+pub use legion_derive::DynamicPlugin;
+pub use legion_ecs::event::*;
+pub use plugin::*;
+pub use plugin_group::*;
+pub use schedule_runner::*;
 
-pub use ecs::*;
+pub mod prelude {
+    #[doc(hidden)]
+    pub use crate::{app::App, CoreStage, DynamicPlugin, Plugin, PluginGroup, StartupStage};
+}
 
-pub use tracing;
+use legion_ecs::schedule::StageLabel;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let four = 2 + 2;
-        assert_eq!(four, 4);
-    }
+/// The names of the default App stages
+#[derive(Debug, Hash, PartialEq, Eq, Clone, StageLabel)]
+pub enum CoreStage {
+    /// Runs once at the beginning of the app.
+    Startup,
+    /// Name of app stage that runs before all other app stages
+    First,
+    /// Name of app stage responsible for performing setup before an update. Runs before UPDATE.
+    PreUpdate,
+    /// Name of app stage responsible for doing most app logic. Systems should be registered here
+    /// by default.
+    Update,
+    /// Name of app stage responsible for processing the results of UPDATE. Runs after UPDATE.
+    PostUpdate,
+    /// Name of app stage that runs after all other app stages
+    Last,
+}
+/// The names of the default App startup stages
+#[derive(Debug, Hash, PartialEq, Eq, Clone, StageLabel)]
+pub enum StartupStage {
+    /// Name of app stage that runs once before the startup stage
+    PreStartup,
+    /// Name of app stage that runs once when an app starts up
+    Startup,
+    /// Name of app stage that runs once after the startup stage
+    PostStartup,
 }

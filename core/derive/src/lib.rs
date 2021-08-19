@@ -1,7 +1,3 @@
-//! Legion core crate, contains core services and systems used by other modules
-//! The crate is not allowed to depend on other legion modules
-//!
-
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
@@ -77,28 +73,40 @@
 // crate-specific exceptions:
 #![allow()]
 
-pub mod decimal;
-pub mod ecs;
-pub mod math;
-pub mod memory;
-pub mod prelude;
-pub mod trust_cell;
-
+mod app_plugin;
+mod bytes;
 mod enum_variant_meta;
-pub use enum_variant_meta::*;
+mod legion_main;
+mod modules;
+mod resource;
 
-mod hash;
-pub use hash::*;
+use proc_macro::TokenStream;
 
-pub use ecs::*;
+/// Derives the `FromResources` trait. Each field must also implement the `FromResources` trait or this
+/// will fail. `FromResources` is automatically implemented for types that implement `Default`.
+#[proc_macro_derive(FromResources)]
+pub fn derive_from_resources(input: TokenStream) -> TokenStream {
+    resource::derive_from_resources(input)
+}
 
-pub use tracing;
+/// Derives the Bytes trait. Each field must also implements Bytes or this will fail.
+#[proc_macro_derive(Bytes)]
+pub fn derive_bytes(input: TokenStream) -> TokenStream {
+    bytes::derive_bytes(input)
+}
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let four = 2 + 2;
-        assert_eq!(four, 4);
-    }
+/// Generates a dynamic plugin entry point function for the given `Plugin` type.  
+#[proc_macro_derive(DynamicPlugin)]
+pub fn derive_dynamic_plugin(input: TokenStream) -> TokenStream {
+    app_plugin::derive_dynamic_plugin(input)
+}
+
+#[proc_macro_attribute]
+pub fn legion_main(attr: TokenStream, item: TokenStream) -> TokenStream {
+    legion_main::legion_main(attr, item)
+}
+
+#[proc_macro_derive(EnumVariantMeta)]
+pub fn derive_enum_variant_meta(input: TokenStream) -> TokenStream {
+    enum_variant_meta::derive_enum_variant_meta(input)
 }

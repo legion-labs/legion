@@ -1,7 +1,3 @@
-//! Legion core crate, contains core services and systems used by other modules
-//! The crate is not allowed to depend on other legion modules
-//!
-
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
@@ -77,28 +73,17 @@
 // crate-specific exceptions:
 #![allow()]
 
-pub mod decimal;
-pub mod ecs;
-pub mod math;
-pub mod memory;
-pub mod prelude;
-pub mod trust_cell;
+mod face_toward;
+mod geometry;
 
-mod enum_variant_meta;
-pub use enum_variant_meta::*;
+pub use face_toward::*;
+pub use geometry::*;
+pub use glam::*;
 
-mod hash;
-pub use hash::*;
-
-pub use ecs::*;
-
-pub use tracing;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let four = 2 + 2;
-        assert_eq!(four, 4);
-    }
+pub mod prelude {
+    #[doc(hidden)]
+    pub use crate::{
+        BVec2, BVec3, BVec4, FaceToward, IVec2, IVec3, IVec4, Mat3, Mat4, Quat, Rect, Size, UVec2,
+        UVec3, UVec4, Vec2, Vec3, Vec4,
+    };
 }
