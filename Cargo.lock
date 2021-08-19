@@ -1266,6 +1266,7 @@ version = "0.1.0"
 dependencies = [
  "legion-derive",
  "legion-ecs",
+ "legion-transform",
  "legion-utils",
  "ron",
  "serde",

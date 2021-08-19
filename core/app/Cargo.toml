@@ -28,4 +28,4 @@ ron = { version = "0.6.2", optional = true }
 
 [dev-dependencies]
 # legion
-#legion_log = { path = "../legion_log", version = "0.5.0" }
+legion-transform = { path = "../transform", version = "0.1.0" }
