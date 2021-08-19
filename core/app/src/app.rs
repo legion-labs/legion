@@ -21,7 +21,7 @@ use legion_utils::tracing::info_span;
 /// builder pattern.
 ///
 /// ## Example
-/// Here is a simple "Hello World" Bevy app:
+/// Here is a simple "Hello World" Legion app:
 /// ```
 /// # use legion_app::prelude::*;
 /// # use legion_ecs::prelude::*;
@@ -84,7 +84,7 @@ impl App {
     ///
     /// Runs the application main loop.
     ///
-    /// Usually the main loop is handled by Bevy integrated plugins (`winit`), but
+    /// Usually the main loop is handled by Legion integrated plugins (`winit`), but
     /// one can also set the runner function through [`App::set_runner`].
     ///
     /// ## Example
@@ -177,12 +177,12 @@ impl App {
 
     /// Adds a system that runs every time `app.update()` is called by the runner
     ///
-    /// Systems are the main building block in the Bevy ECS app model. You can define
-    /// normal rust functions, and use them as a Bevy system.
+    /// Systems are the main building block in the Legion ECS app model. You can define
+    /// normal rust functions, and use them as a Legion system.
     ///
     /// System functions can have parameters, through which one can query and
-    /// mutate Bevy ECS states.
-    /// See [The Bevy Book](https://legionengine.com/learn/book/introduction/) for more information.
+    /// mutate Legion ECS states.
+    /// See [The Legion Book](https://legionengine.com/learn/book/introduction/) for more information.
     ///
     /// Systems are run in parallel, and the execution order is not deterministic.
     /// If you want more fine-grained control for order, see [`App::add_system_to_stage`].
@@ -338,7 +338,7 @@ impl App {
 
     /// Inserts a resource to the current [App] and overwrites any resource previously added of the same type.
     ///
-    /// A resource in Bevy represents globally unique data. Resources must be added to Bevy Apps
+    /// A resource in Legion represents globally unique data. Resources must be added to Legion Apps
     /// before using them. This happens with [`App::insert_resource`].
     ///
     /// See also `init_resource` for resources that implement `Default` or [`FromResources`].
@@ -436,9 +436,9 @@ impl App {
         self
     }
 
-    /// Sets the main runner loop function for this Bevy App
+    /// Sets the main runner loop function for this Legion App
     ///
-    /// Usually the main loop is handled by Bevy integrated plugins ([`WinitPlugin`]), but
+    /// Usually the main loop is handled by Legion integrated plugins ([`WinitPlugin`]), but
     /// in some cases one might wish to implement their own main loop.
     ///
     /// This method sets the main loop function, overwriting a previous runner if any.
@@ -464,16 +464,16 @@ impl App {
 
     /// Adds a single plugin
     ///
-    /// One of Bevy's core principles is modularity. All Bevy engine features are implemented
+    /// One of Legion's core principles is modularity. All Legion engine features are implemented
     /// as plugins. This includes internal features like the renderer.
     ///
-    /// Bevy also provides a few sets of default plugins. See [`App::add_plugins`].
+    /// Legion also provides a few sets of default plugins. See [`App::add_plugins`].
     ///
     /// ## Example
-    /// ```ignore
+    /// ```
     /// # use legion_app::prelude::*;
     /// #
-    /// App::new().add_plugin(legion_log::LogPlugin::default());
+    /// App::new().add_plugin(legion_transform::TransformPlugin::default());
     /// ```
     pub fn add_plugin<T>(&mut self, plugin: T) -> &mut Self
     where
@@ -487,7 +487,7 @@ impl App {
 
     /// Adds a group of plugins
     ///
-    /// Bevy plugins can be grouped into a set of plugins. Bevy provides
+    /// Legion plugins can be grouped into a set of plugins. Legion provides
     /// built-in `PluginGroups` that provide core engine functionality.
     ///
     /// The plugin groups available by default are [`DefaultPlugins`] and [`MinimalPlugins`].
@@ -515,19 +515,19 @@ impl App {
     /// Adds a group of plugins with an initializer method
     ///
     /// Can be used to add a group of plugins, where the group is modified
-    /// before insertion into Bevy application. For example, you can add
+    /// before insertion into Legion application. For example, you can add
     /// extra plugins at a specific place in the plugin group, or deactivate
     /// specific plugins while keeping the rest.
     ///
     /// ## Example
-    /// ```ignore
+    /// ```
     /// # use legion_app::{prelude::*, PluginGroupBuilder};
     /// #
     /// # // Dummies created to avoid using legion_internal which pulls in to many dependencies.
     /// # struct DefaultPlugins;
     /// # impl PluginGroup for DefaultPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){
-    /// #         group.add(legion_log::LogPlugin::default());
+    /// #         group.add(legion_transform::TransformPlugin::default());
     /// #     }
     /// # }
     /// #
@@ -538,7 +538,7 @@ impl App {
     /// #
     /// App::new()
     ///      .add_plugins_with(DefaultPlugins, |group| {
-    ///             group.add_before::<legion_log::LogPlugin, _>(MyOwnPlugin)
+    ///             group.add_before::<legion_transform::TransformPlugin, _>(MyOwnPlugin)
     ///         });
     /// ```
     pub fn add_plugins_with<T, F>(&mut self, mut group: T, func: F) -> &mut Self
