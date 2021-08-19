@@ -55,7 +55,7 @@ impl Transform {
     /// all axes.
     #[inline]
     pub const fn identity() -> Self {
-        Transform {
+        Self {
             translation: Vec3::ZERO,
             rotation: Quat::IDENTITY,
             scale: Vec3::ONE,
@@ -68,7 +68,7 @@ impl Transform {
     pub fn from_matrix(matrix: Mat4) -> Self {
         let (scale, rotation, translation) = matrix.to_scale_rotation_translation();
 
-        Transform {
+        Self {
             translation,
             rotation,
             scale,
@@ -79,7 +79,7 @@ impl Transform {
     /// all axes.
     #[inline]
     pub fn from_translation(translation: Vec3) -> Self {
-        Transform {
+        Self {
             translation,
             ..Default::default()
         }
@@ -89,7 +89,7 @@ impl Transform {
     /// all axes.
     #[inline]
     pub fn from_rotation(rotation: Quat) -> Self {
-        Transform {
+        Self {
             rotation,
             ..Default::default()
         }
@@ -99,7 +99,7 @@ impl Transform {
     /// all axes.
     #[inline]
     pub fn from_scale(scale: Vec3) -> Self {
-        Transform {
+        Self {
             scale,
             ..Default::default()
         }
@@ -127,13 +127,13 @@ impl Transform {
         self.rotation * Vec3::X
     }
 
-    /// Equivalent to -local_x()
+    /// Equivalent to `-local_x()`
     #[inline]
     pub fn left(&self) -> Vec3 {
         -self.local_x()
     }
 
-    /// Equivalent to local_x()
+    /// Equivalent to `local_x()`
     #[inline]
     pub fn right(&self) -> Vec3 {
         self.local_x()
@@ -145,13 +145,13 @@ impl Transform {
         self.rotation * Vec3::Y
     }
 
-    /// Equivalent to local_y()
+    /// Equivalent to `local_y()`
     #[inline]
     pub fn up(&self) -> Vec3 {
         self.local_y()
     }
 
-    /// Equivalent to -local_y()
+    /// Equivalent to `-local_y()`
     #[inline]
     pub fn down(&self) -> Vec3 {
         -self.local_y()
@@ -163,13 +163,13 @@ impl Transform {
         self.rotation * Vec3::Z
     }
 
-    /// Equivalent to -local_z()
+    /// Equivalent to `-local_z()`
     #[inline]
     pub fn forward(&self) -> Vec3 {
         -self.local_z()
     }
 
-    /// Equivalent to local_z()
+    /// Equivalent to `local_z()`
     #[inline]
     pub fn back(&self) -> Vec3 {
         self.local_z()
@@ -184,11 +184,11 @@ impl Transform {
     /// Multiplies `self` with `transform` component by component, returning the
     /// resulting [`Transform`]
     #[inline]
-    pub fn mul_transform(&self, transform: Transform) -> Self {
+    pub fn mul_transform(&self, transform: Self) -> Self {
         let translation = self.mul_vec3(transform.translation);
         let rotation = self.rotation * transform.rotation;
         let scale = self.scale * transform.scale;
-        Transform {
+        Self {
             translation,
             rotation,
             scale,
@@ -238,10 +238,10 @@ impl From<GlobalTransform> for Transform {
     }
 }
 
-impl Mul<Transform> for Transform {
-    type Output = Transform;
+impl Mul<Self> for Transform {
+    type Output = Self;
 
-    fn mul(self, transform: Transform) -> Self::Output {
+    fn mul(self, transform: Self) -> Self::Output {
         self.mul_transform(transform)
     }
 }

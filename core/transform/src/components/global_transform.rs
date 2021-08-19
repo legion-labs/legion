@@ -49,7 +49,7 @@ impl GlobalTransform {
     /// on all axes.
     #[inline]
     pub const fn identity() -> Self {
-        GlobalTransform {
+        Self {
             translation: Vec3::ZERO,
             rotation: Quat::IDENTITY,
             scale: Vec3::ONE,
@@ -61,7 +61,7 @@ impl GlobalTransform {
     pub fn from_matrix(matrix: Mat4) -> Self {
         let (scale, rotation, translation) = matrix.to_scale_rotation_translation();
 
-        GlobalTransform {
+        Self {
             translation,
             rotation,
             scale,
@@ -71,7 +71,7 @@ impl GlobalTransform {
     #[doc(hidden)]
     #[inline]
     pub fn from_translation(translation: Vec3) -> Self {
-        GlobalTransform {
+        Self {
             translation,
             ..Default::default()
         }
@@ -80,7 +80,7 @@ impl GlobalTransform {
     #[doc(hidden)]
     #[inline]
     pub fn from_rotation(rotation: Quat) -> Self {
-        GlobalTransform {
+        Self {
             rotation,
             ..Default::default()
         }
@@ -89,7 +89,7 @@ impl GlobalTransform {
     #[doc(hidden)]
     #[inline]
     pub fn from_scale(scale: Vec3) -> Self {
-        GlobalTransform {
+        Self {
             scale,
             ..Default::default()
         }
@@ -115,13 +115,13 @@ impl GlobalTransform {
         self.rotation * Vec3::X
     }
 
-    /// Equivalent to -local_x()
+    /// Equivalent to `-local_x()`
     #[inline]
     pub fn left(&self) -> Vec3 {
         -self.local_x()
     }
 
-    /// Equivalent to local_x()
+    /// Equivalent to `local_x()`
     #[inline]
     pub fn right(&self) -> Vec3 {
         self.local_x()
@@ -133,13 +133,13 @@ impl GlobalTransform {
         self.rotation * Vec3::Y
     }
 
-    /// Equivalent to local_y()
+    /// Equivalent to `local_y()`
     #[inline]
     pub fn up(&self) -> Vec3 {
         self.local_y()
     }
 
-    /// Equivalent to -local_y()
+    /// Equivalent to `-local_y()`
     #[inline]
     pub fn down(&self) -> Vec3 {
         -self.local_y()
@@ -151,13 +151,13 @@ impl GlobalTransform {
         self.rotation * Vec3::Z
     }
 
-    /// Equivalent to -local_z()
+    /// Equivalent to `-local_z()`
     #[inline]
     pub fn forward(&self) -> Vec3 {
         -self.local_z()
     }
 
-    /// Equivalent to local_z()
+    /// Equivalent to `local_z()`
     #[inline]
     pub fn back(&self) -> Vec3 {
         self.local_z()
@@ -172,11 +172,11 @@ impl GlobalTransform {
     /// Multiplies `self` with `transform` component by component, returning the
     /// resulting [`GlobalTransform`]
     #[inline]
-    pub fn mul_transform(&self, transform: Transform) -> GlobalTransform {
+    pub fn mul_transform(&self, transform: Transform) -> Self {
         let translation = self.mul_vec3(transform.translation);
         let rotation = self.rotation * transform.rotation;
         let scale = self.scale * transform.scale;
-        GlobalTransform {
+        Self {
             translation,
             rotation,
             scale,
@@ -224,17 +224,17 @@ impl From<Transform> for GlobalTransform {
     }
 }
 
-impl Mul<GlobalTransform> for GlobalTransform {
-    type Output = GlobalTransform;
+impl Mul<Self> for GlobalTransform {
+    type Output = Self;
 
     #[inline]
-    fn mul(self, global_transform: GlobalTransform) -> Self::Output {
+    fn mul(self, global_transform: Self) -> Self::Output {
         self.mul_transform(global_transform.into())
     }
 }
 
 impl Mul<Transform> for GlobalTransform {
-    type Output = GlobalTransform;
+    type Output = Self;
 
     #[inline]
     fn mul(self, transform: Transform) -> Self::Output {

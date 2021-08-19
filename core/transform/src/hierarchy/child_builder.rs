@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use crate::prelude::{Children, Parent, PreviousParent};
 use legion_ecs::{
     bundle::Bundle,
@@ -95,13 +97,16 @@ impl<'a, 'b> ChildBuilder<'a, 'b> {
 }
 
 pub trait BuildChildren {
-    fn with_children(&mut self, f: impl FnOnce(&mut ChildBuilder)) -> &mut Self;
+    fn with_children(&mut self, f: impl FnOnce(&mut ChildBuilder<'_, '_>)) -> &mut Self;
     fn push_children(&mut self, children: &[Entity]) -> &mut Self;
     fn insert_children(&mut self, index: usize, children: &[Entity]) -> &mut Self;
 }
 
 impl<'a, 'b> BuildChildren for EntityCommands<'a, 'b> {
-    fn with_children(&mut self, spawn_children: impl FnOnce(&mut ChildBuilder)) -> &mut Self {
+    fn with_children(
+        &mut self,
+        spawn_children: impl FnOnce(&mut ChildBuilder<'_, '_>),
+    ) -> &mut Self {
         let parent = self.id();
         let push_children = {
             let mut builder = ChildBuilder {
@@ -193,13 +198,19 @@ impl<'w> WorldChildBuilder<'w> {
 }
 
 pub trait BuildWorldChildren {
-    fn with_children(&mut self, spawn_children: impl FnOnce(&mut WorldChildBuilder)) -> &mut Self;
+    fn with_children(
+        &mut self,
+        spawn_children: impl FnOnce(&mut WorldChildBuilder<'_>),
+    ) -> &mut Self;
     fn push_children(&mut self, children: &[Entity]) -> &mut Self;
     fn insert_children(&mut self, index: usize, children: &[Entity]) -> &mut Self;
 }
 
 impl<'w> BuildWorldChildren for EntityMut<'w> {
-    fn with_children(&mut self, spawn_children: impl FnOnce(&mut WorldChildBuilder)) -> &mut Self {
+    fn with_children(
+        &mut self,
+        spawn_children: impl FnOnce(&mut WorldChildBuilder<'_>),
+    ) -> &mut Self {
         {
             let entity = self.id();
             let mut builder = WorldChildBuilder {

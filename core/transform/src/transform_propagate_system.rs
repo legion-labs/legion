@@ -9,12 +9,13 @@ use legion_ecs::{
 /// [`Transform`] component.
 pub fn transform_propagate_system(
     mut root_query: Query<
+        '_,
         (Entity, Option<&Children>, &Transform, &mut GlobalTransform),
         Without<Parent>,
     >,
-    mut transform_query: Query<(&Transform, &mut GlobalTransform), With<Parent>>,
-    changed_transform_query: Query<Entity, Changed<Transform>>,
-    children_query: Query<Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
+    mut transform_query: Query<'_, (&Transform, &mut GlobalTransform), With<Parent>>,
+    changed_transform_query: Query<'_, Entity, Changed<Transform>>,
+    children_query: Query<'_, Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
 ) {
     for (entity, children, transform, mut global_transform) in root_query.iter_mut() {
         let mut changed = false;
@@ -36,13 +37,15 @@ pub fn transform_propagate_system(
             }
         }
     }
+    drop(changed_transform_query);
+    drop(children_query);
 }
 
 fn propagate_recursive(
     parent: &GlobalTransform,
-    changed_transform_query: &Query<Entity, Changed<Transform>>,
-    transform_query: &mut Query<(&Transform, &mut GlobalTransform), With<Parent>>,
-    children_query: &Query<Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
+    changed_transform_query: &Query<'_, Entity, Changed<Transform>>,
+    transform_query: &mut Query<'_, (&Transform, &mut GlobalTransform), With<Parent>>,
+    children_query: &Query<'_, Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
     entity: Entity,
     mut changed: bool,
 ) {
