@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{manifest::Manifest, Asset, AssetCreator, AssetId, AssetType};
+use crate::{manifest::Manifest, Asset, AssetId, AssetLoader, AssetType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use legion_content_store::ContentStore;
@@ -47,7 +47,7 @@ struct LoaderPending {
 pub(crate) fn create_loader(
     content_store: Box<dyn ContentStore>,
     manifest: Manifest,
-) -> (AssetLoader, AssetLoaderIO) {
+) -> (AssetLoaderStub, AssetLoaderIO) {
     let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
     let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
 
@@ -58,18 +58,18 @@ pub(crate) fn create_loader(
         request_rx,
         result_tx,
     );
-    let loader = AssetLoader::new(request_tx, result_rx);
+    let loader = AssetLoaderStub::new(request_tx, result_rx);
     (loader, io)
 }
 
-pub(crate) struct AssetLoader {
+pub(crate) struct AssetLoaderStub {
     request_tx: mpsc::Sender<LoaderRequest>,
     result_rx: mpsc::Receiver<LoaderResult>,
 }
 
 type LoadId = u32;
 
-impl AssetLoader {
+impl AssetLoaderStub {
     fn new(
         request_tx: mpsc::Sender<LoaderRequest>,
         result_rx: mpsc::Receiver<LoaderResult>,
@@ -102,7 +102,7 @@ impl AssetLoader {
 }
 
 pub(crate) struct AssetLoaderIO {
-    creators: HashMap<AssetType, Box<dyn AssetCreator + Send>>,
+    creators: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
 
     request_await: Vec<LoaderPending>,
 
@@ -164,7 +164,7 @@ impl AssetLoaderIO {
     pub(crate) fn register_creator(
         &mut self,
         kind: AssetType,
-        creator: Box<dyn AssetCreator + Send>,
+        creator: Box<dyn AssetLoader + Send>,
     ) {
         self.creators.insert(kind, creator);
     }
@@ -374,7 +374,7 @@ impl AssetLoaderIO {
         primary_id: AssetId,
         reader: &mut dyn io::Read,
         asset_refcounts: &HashMap<AssetId, isize>,
-        creators: &mut HashMap<AssetType, Box<dyn AssetCreator + Send>>,
+        creators: &mut HashMap<AssetType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
         const ASSET_FILE_VERSION: u16 = 1;
 

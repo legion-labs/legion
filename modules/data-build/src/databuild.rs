@@ -902,7 +902,8 @@ mod tests {
 
             let modified_checksum = compile_output.resources[0].compiled_checksum;
 
-            let content_store = HddContentStore::open(assetstore_path).expect("valid content store");
+            let content_store =
+                HddContentStore::open(assetstore_path).expect("valid content store");
             assert!(content_store.exists(original_checksum));
             assert!(content_store.exists(modified_checksum));
 

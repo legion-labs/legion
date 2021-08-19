@@ -1277,7 +1277,6 @@ name = "legion-assets"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "crc 2.0.0",
  "legion-content-store",
  "rand 0.8.4",
  "serde",
@@ -1295,6 +1294,11 @@ dependencies = [
 [[package]]
 name = "legion-content-store"
 version = "0.1.0"
+dependencies = [
+ "crc 2.0.0",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "legion-core"
@@ -1461,7 +1465,7 @@ dependencies = [
 name = "legion-resources"
 version = "0.1.0"
 dependencies = [
- "crc 2.0.0",
+ "legion-content-store",
  "rand 0.8.4",
  "serde",
  "serde_json",

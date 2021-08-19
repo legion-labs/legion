@@ -104,9 +104,9 @@ use crate::{
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
-use legion_content_store::ContentStoreAddr;
+use legion_content_store::{ContentStoreAddr, ContentType};
 use legion_resources::{
-    ResourceHandle, ResourceId, ResourcePathId, ResourceRegistry, ResourceType, RESOURCE_EXT,
+    ResourceHandle, ResourceId, ResourcePathId, ResourceRegistry, RESOURCE_EXT,
 };
 use std::{
     env,
@@ -148,7 +148,7 @@ pub struct CompilerDescriptor {
     /// Version of resource data formats.
     pub data_version: &'static str,
     /// Compiler supported resource transformations `Vec<f(.0)->.1>`.
-    pub transforms: &'static [(ResourceType, ResourceType)],
+    pub transforms: &'static [(ContentType, ContentType)],
     /// Function returning a list of `CompilerHash` for a given context.
     pub compiler_hash_func: fn(
         code: &'static str,
@@ -179,6 +179,8 @@ pub enum CompilerError {
     InvalidArgs,
     /// Invalid resource id.
     InvalidResourceId,
+    /// Invalid input/output resource type pair.
+    InvalidTransform,
     /// Unknown platform.
     InvalidPlatform,
     /// Unknown target.
@@ -198,6 +200,7 @@ impl std::fmt::Display for CompilerError {
             CompilerError::StdoutError => write!(f, "IOError"),
             CompilerError::InvalidArgs => write!(f, "InvalidArgs"),
             CompilerError::InvalidResourceId => write!(f, "InvalidResourceId"),
+            CompilerError::InvalidTransform => write!(f, "InvalidResourceType"),
             CompilerError::InvalidTarget => write!(f, "InvalidTarget"),
             CompilerError::InvalidPlatform => write!(f, "InvalidPlatform"),
             CompilerError::UnknownCommand => write!(f, "UnknownCommand"),
@@ -261,6 +264,13 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 cmd_args.value_of(COMMAND_ARG_COMPILED_ASSET_STORE).unwrap(),
             );
             let resource_dir = PathBuf::from(cmd_args.value_of(COMMAND_ARG_RESOURCE_DIR).unwrap());
+
+            let transform = derived
+                .last_transform()
+                .ok_or(CompilerError::InvalidTransform)?;
+            if !descriptor.transforms.iter().any(|&t| t == transform) {
+                return Err(CompilerError::InvalidTransform);
+            }
 
             let compilation_output = (descriptor.compile_func)(
                 derived,

@@ -9,14 +9,14 @@ use std::{
 use legion_content_store::ContentStore;
 
 use crate::{
-    asset_loader::{create_loader, AssetLoader, LoaderResult},
+    asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    Asset, AssetCreator, AssetId, AssetType, Handle, HandleId, HandleUntyped, RefOp,
+    Asset, AssetId, AssetLoader, AssetType, Handle, HandleId, HandleUntyped, RefOp,
 };
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
-    creators: HashMap<AssetType, Box<dyn AssetCreator + Send>>,
+    creators: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
 }
 
 impl AssetRegistryOptions {
@@ -27,11 +27,11 @@ impl AssetRegistryOptions {
         }
     }
 
-    /// Enables support of a given [`Asset`] by adding corresponding [`AssetCreator`].
+    /// Enables support of a given [`Asset`] by adding corresponding [`AssetLoader`].
     pub fn add_creator(
         mut self,
         asset_kind: AssetType,
-        creator: Box<dyn AssetCreator + Send>,
+        creator: Box<dyn AssetLoader + Send>,
     ) -> Self {
         self.creators.insert(asset_kind, creator);
         self
@@ -75,7 +75,7 @@ pub struct AssetRegistry {
     assets: HashMap<AssetId, Arc<dyn Asset>>,
     load_errors: HashMap<AssetId, io::ErrorKind>,
     load_thread: Option<JoinHandle<()>>,
-    loader: AssetLoader,
+    loader: AssetLoaderStub,
 }
 
 impl Drop for AssetRegistry {

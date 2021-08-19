@@ -16,6 +16,6 @@ mock-resource = { path = "../../resources/mock-resource"}
 mock-asset = { path = "../../assets/mock-asset"}
 
 [[bin]]
-name = "compiler-mock"
-path = "src/main.rs"
+name = "compiler-mock-atoi"
+path = "src/atoi.rs"
 doc = false

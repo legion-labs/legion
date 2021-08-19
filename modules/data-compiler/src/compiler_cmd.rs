@@ -60,8 +60,8 @@ use crate::{
     compiler_api::CompilerDescriptor, CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 
-use legion_content_store::ContentStoreAddr;
-use legion_resources::{ResourcePathId, ResourceType};
+use legion_content_store::{ContentStoreAddr, ContentType};
+use legion_resources::ResourcePathId;
 
 use serde::{Deserialize, Serialize};
 
@@ -193,7 +193,7 @@ pub struct CompilerInfoCmdOutput {
     /// Resource and Asset data version.
     pub data_version: String,
     /// Transformations supported by data compiler.
-    pub transforms: Vec<(ResourceType, ResourceType)>,
+    pub transforms: Vec<(ContentType, ContentType)>,
 }
 
 impl CompilerInfoCmdOutput {

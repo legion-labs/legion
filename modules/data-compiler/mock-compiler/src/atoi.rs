@@ -20,7 +20,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transforms: &[(mock_resource::TYPE_ID, mock_resource::TYPE_ID)],
+    transforms: &[(mock_resource::TEXT_RESOURCE, mock_asset::INTEGER_ASSET)],
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -49,8 +49,8 @@ fn compile(
 ) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
-        mock_resource::TYPE_ID,
-        Box::new(mock_resource::MockResourceProc {}),
+        mock_resource::TEXT_RESOURCE,
+        Box::new(mock_resource::TextResourceProc {}),
     );
 
     let mut content_store =
@@ -59,11 +59,11 @@ fn compile(
     // todo: source_resource is wrong
     let resource = compiler_load_resource(derived.source_resource(), resource_dir, &mut resources)?;
     let resource = resource
-        .get::<mock_resource::MockResource>(&resources)
+        .get::<mock_resource::TextResource>(&resources)
         .unwrap();
 
-    let magic_value = resource.magic_value * 2;
-    let compiled_asset = magic_value.to_ne_bytes();
+    let parsed_value = resource.content.parse::<usize>().unwrap_or(0);
+    let compiled_asset = parsed_value.to_ne_bytes();
 
     let checksum = content_store
         .store(&compiled_asset)

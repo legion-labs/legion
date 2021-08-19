@@ -8,6 +8,7 @@ use std::{
     str::FromStr,
 };
 
+use legion_content_store::ContentType;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -185,10 +186,9 @@ pub struct ResourceId {
 impl ResourceId {
     /// Creates a new random id.
     pub fn generate_new(kind: ResourceType) -> Self {
-        let rand_id: u32 = rand::thread_rng().gen();
-        let type_id = kind.0 as u32;
+        let rand_id: u64 = rand::thread_rng().gen();
 
-        let internal = ((type_id as u64) << 32) | rand_id as u64;
+        let internal = kind.stamp(rand_id);
         Self {
             id: std::num::NonZeroU64::new(internal).unwrap(),
         }
@@ -241,39 +241,7 @@ impl FromStr for ResourceId {
 }
 
 /// Type identifier of an offline resource.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
-pub struct ResourceType(u32);
-
-impl fmt::Display for ResourceType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))
-    }
-}
-
-impl ResourceType {
-    const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
-
-    const fn crc32(v: &[u8]) -> u32 {
-        Self::CRC32_ALGO.checksum(v)
-    }
-
-    /// Creates a new 32 bit resource type id from series of bytes.
-    ///
-    /// It is recommended to use this method to define a public constant
-    /// which can be used to identify an resource type.
-    pub const fn new(v: &[u8]) -> Self {
-        // TODO: A std::num::NonZeroU32 would be more suitable as an internal representation
-        // however a value of 0 is as likely as any other value returned by `crc32`
-        // and const-fn-friendly panic is not available yet.
-        // See https://github.com/rust-lang/rfcs/pull/2345.
-        Self(Self::crc32(v))
-    }
-
-    /// Creates a 32 bit resource type id from a non-zero integer.
-    pub fn from_raw(v: u32) -> Self {
-        Self(v)
-    }
-}
+pub type ResourceType = ContentType;
 
 #[cfg(test)]
 mod tests {

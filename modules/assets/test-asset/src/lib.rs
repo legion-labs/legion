@@ -2,7 +2,7 @@
 //!
 //! It is used to test the data compilation process until we have a proper asset available.
 
-use assets::{Asset, AssetCreator, AssetType};
+use assets::{Asset, AssetLoader, AssetType};
 
 /// Type id of test asset.
 pub const TYPE_ID: AssetType = AssetType::new(b"test_asset");
@@ -30,7 +30,7 @@ impl Asset for TestAsset {
 /// To be removed once real asset types exists.
 pub struct TestAssetCreator {}
 
-impl AssetCreator for TestAssetCreator {
+impl AssetLoader for TestAssetCreator {
     fn load(
         &mut self,
         _kind: AssetType,

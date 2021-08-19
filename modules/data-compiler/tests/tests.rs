@@ -5,15 +5,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_assets::AssetCreator;
+use legion_assets::AssetLoader;
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{
     compiler_cmd::{list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
     Locale, Platform, Target,
 };
 use legion_resources::{ResourceId, ResourcePathId, ResourceProcessor, RESOURCE_EXT};
-use mock_asset::{MockAsset, MockAssetCreator};
-use mock_resource::MockResource;
+use mock_asset::{IntegerAsset, IntegerAssetLoader};
+use mock_resource::TextResource;
 
 fn target_dir() -> PathBuf {
     env::current_exe()
@@ -124,20 +124,20 @@ fn mock_compile() {
     let work_dir = tempfile::tempdir().unwrap();
     let resource_dir = work_dir.path();
 
-    let source_magic_value = 7;
+    let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::generate_new(mock_resource::TYPE_ID);
+        let source = ResourceId::generate_new(mock_resource::TEXT_RESOURCE);
 
-        let mut proc = mock_resource::MockResourceProc {};
+        let mut proc = mock_resource::TextResourceProc {};
 
         let mut resource = proc.new_resource();
         let mut resource = resource
             .as_any_mut()
-            .downcast_mut::<MockResource>()
+            .downcast_mut::<TextResource>()
             .expect("valid resource");
 
-        resource.magic_value = source_magic_value;
+        resource.content = source_magic_value.clone();
 
         let path = resource_dir.join(format!("{:x}.{}", source, RESOURCE_EXT));
         let mut file = File::create(path).expect("new file");
@@ -149,10 +149,10 @@ fn mock_compile() {
     let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
 
     let asset_info = {
-        let exe_path = compiler_exe("mock");
+        let exe_path = compiler_exe("mock-atoi");
         assert!(exe_path.exists());
 
-        let derived = ResourcePathId::from(source).transform(test_resource::TYPE_ID);
+        let derived = ResourcePathId::from(source).transform(mock_asset::INTEGER_ASSET);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -179,11 +179,12 @@ fn mock_compile() {
 
     let resource_content = cas.read(checksum).expect("asset content");
 
-    let mut creator = MockAssetCreator {};
+    let mut creator = IntegerAssetLoader {};
     let asset = creator
-        .load(mock_asset::TYPE_ID, &mut &resource_content[..])
+        .load(mock_asset::INTEGER_ASSET, &mut &resource_content[..])
         .expect("loaded assets");
-    let asset = asset.as_any().downcast_ref::<MockAsset>().unwrap();
+    let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
 
-    assert_eq!(source_magic_value * 2, asset.magic_value);
+    let stringified = asset.magic_value.to_string();
+    assert_eq!(source_magic_value, stringified);
 }

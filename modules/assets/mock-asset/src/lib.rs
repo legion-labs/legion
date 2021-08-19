@@ -1,13 +1,13 @@
-use assets::{Asset, AssetCreator, AssetType};
+use assets::{Asset, AssetLoader, AssetType};
 
 /// Type id of test asset.
-pub const TYPE_ID: AssetType = AssetType::new(b"mock_asset");
+pub const INTEGER_ASSET: AssetType = AssetType::new(b"integer_asset");
 
-pub struct MockAsset {
+pub struct IntegerAsset {
     pub magic_value: i32,
 }
 
-impl Asset for MockAsset {
+impl Asset for IntegerAsset {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -17,9 +17,9 @@ impl Asset for MockAsset {
     }
 }
 
-pub struct MockAssetCreator {}
+pub struct IntegerAssetLoader {}
 
-impl AssetCreator for MockAssetCreator {
+impl AssetLoader for IntegerAssetLoader {
     fn load(
         &mut self,
         _kind: AssetType,
@@ -28,7 +28,7 @@ impl AssetCreator for MockAssetCreator {
         let mut buf = 0i32.to_ne_bytes();
         reader.read_exact(&mut buf)?;
         let magic_value = i32::from_ne_bytes(buf);
-        Ok(Box::new(MockAsset { magic_value }))
+        Ok(Box::new(IntegerAsset { magic_value }))
     }
 
     fn load_init(&mut self, _asset: &mut (dyn Asset + Sync + Send)) {
