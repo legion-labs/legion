@@ -1,13 +1,10 @@
 use legion_ecs::{
     entity::{Entity, EntityMap, MapEntities, MapEntitiesError},
-    reflect::{ReflectComponent, ReflectMapEntities},
     world::{FromWorld, World},
 };
-use legion_reflect::Reflect;
 use std::ops::{Deref, DerefMut};
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Reflect)]
-#[reflect(Component, MapEntities, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Parent(pub Entity);
 
 // TODO: We need to impl either FromWorld or Default so Parent can be registered as Properties.
@@ -41,8 +38,7 @@ impl DerefMut for Parent {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Reflect)]
-#[reflect(Component, MapEntities, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct PreviousParent(pub(crate) Entity);
 
 impl MapEntities for PreviousParent {

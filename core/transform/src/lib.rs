@@ -9,7 +9,7 @@ pub mod prelude {
 
 use legion_app::prelude::*;
 use legion_ecs::schedule::{ParallelSystemDescriptorCoercion, SystemLabel};
-use prelude::{parent_update_system, Children, GlobalTransform, Parent, PreviousParent, Transform};
+use prelude::parent_update_system;
 
 #[derive(Default)]
 pub struct TransformPlugin;
@@ -22,11 +22,7 @@ pub enum TransformSystem {
 
 impl Plugin for TransformPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Children>()
-            .register_type::<Parent>()
-            .register_type::<PreviousParent>()
-            .register_type::<Transform>()
-            .register_type::<GlobalTransform>()
+        app
             // add transform systems to startup so the first update is "correct"
             .add_startup_system_to_stage(
                 StartupStage::PostStartup,
