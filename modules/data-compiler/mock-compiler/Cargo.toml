@@ -1,0 +1,21 @@
+[package]
+name = "mock-compiler"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+legion-data-compiler = { path = "../../data-compiler" }
+legion-asset-store = { path = "../../asset-store" }
+legion-resources = { path = "../../resources" }
+legion-assets = { path = "../../assets" }
+mock-resource = { path = "../../resources/mock-resource"}
+mock-asset = { path = "../../assets/mock-asset"}
+
+[[bin]]
+name = "compiler-mock"
+path = "src/main.rs"
+doc = false

@@ -420,21 +420,23 @@ fn main_impl() -> Result<(), String> {
                 Err(e) => Err(e),
             }
         }
-        ("resolves-pending", Some(_command_match)) => match find_resolves_pending_command() {
-            Ok(resolves_pending) => {
-                if resolves_pending.is_empty() {
-                    println!("No local changes need to be resolved");
+        ("resolves-pending", Some(_command_match)) => {
+            match tokio_runtime.block_on(find_resolves_pending_command()) {
+                Ok(resolves_pending) => {
+                    if resolves_pending.is_empty() {
+                        println!("No local changes need to be resolved");
+                    }
+                    for m in resolves_pending {
+                        println!(
+                            "{} {} {}",
+                            m.relative_path, &m.base_commit_id, &m.theirs_commit_id
+                        );
+                    }
+                    Ok(())
                 }
-                for m in resolves_pending {
-                    println!(
-                        "{} {} {}",
-                        m.relative_path, &m.base_commit_id, &m.theirs_commit_id
-                    );
-                }
-                Ok(())
+                Err(e) => Err(e),
             }
-            Err(e) => Err(e),
-        },
+        }
         ("sync", Some(command_match)) => match command_match.value_of("commit-id") {
             Some(commit_id) => tokio_runtime.block_on(sync_to_command(commit_id)),
             None => tokio_runtime.block_on(sync_command()),

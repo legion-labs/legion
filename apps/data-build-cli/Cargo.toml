@@ -21,3 +21,4 @@ legion-resources = { path = "../../modules/resources" }
 
 [dev-dependencies]
 tempfile = "3.2.0"
+test-resource = { path = "../../modules/resources/test-resource" }

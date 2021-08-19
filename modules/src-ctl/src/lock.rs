@@ -33,7 +33,7 @@ pub async fn verify_empty_lock_domain(
 
 pub async fn lock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
@@ -50,7 +50,7 @@ pub async fn lock_file_command(path_specified: &Path) -> Result<(), String> {
 
 pub async fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;
@@ -65,7 +65,7 @@ pub async fn unlock_file_command(path_specified: &Path) -> Result<(), String> {
 pub async fn list_locks_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let (branch_name, _current_commit) = read_current_branch(workspace_connection.sql()).await?;
     let connection = connect_to_server(&workspace_spec).await?;

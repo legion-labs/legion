@@ -519,28 +519,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf43edc576402991846b093a7ca18a3477e0ef9c588cde84964b5d3e43016642"
 
 [[package]]
-name = "compiler-mock"
-version = "0.1.0"
-dependencies = [
- "legion-asset-store",
- "legion-assets",
- "legion-data-compiler",
- "legion-resources",
- "mock-offline",
- "mock-runtime",
-]
-
-[[package]]
-name = "compiler-test"
-version = "0.1.0"
-dependencies = [
- "legion-asset-store",
- "legion-assets",
- "legion-data-compiler",
- "legion-resources",
-]
-
-[[package]]
 name = "concurrent-queue"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1343,6 +1321,9 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "test-asset",
+ "test-compiler",
+ "test-resource",
 ]
 
 [[package]]
@@ -1355,6 +1336,7 @@ dependencies = [
  "legion-data-compiler",
  "legion-resources",
  "tempfile",
+ "test-resource",
 ]
 
 [[package]]
@@ -1365,8 +1347,14 @@ dependencies = [
  "legion-asset-store",
  "legion-assets",
  "legion-resources",
+ "mock-asset",
+ "mock-compiler",
+ "mock-resource",
  "serde",
  "serde_json",
+ "tempfile",
+ "test-compiler",
+ "test-resource",
 ]
 
 [[package]]
@@ -1744,17 +1732,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "mock-offline"
-version = "0.1.0"
-dependencies = [
- "legion-resources",
-]
-
-[[package]]
-name = "mock-runtime"
+name = "mock-asset"
 version = "0.1.0"
 dependencies = [
  "legion-assets",
+]
+
+[[package]]
+name = "mock-compiler"
+version = "0.1.0"
+dependencies = [
+ "legion-asset-store",
+ "legion-assets",
+ "legion-data-compiler",
+ "legion-resources",
+ "mock-asset",
+ "mock-resource",
+]
+
+[[package]]
+name = "mock-resource"
+version = "0.1.0"
+dependencies = [
+ "legion-resources",
 ]
 
 [[package]]
@@ -3009,18 +3009,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "test-compilers"
+name = "test-asset"
 version = "0.1.0"
 dependencies = [
- "compiler-mock",
+ "legion-assets",
+]
+
+[[package]]
+name = "test-compiler"
+version = "0.1.0"
+dependencies = [
  "legion-asset-store",
  "legion-assets",
- "legion-data-build",
  "legion-data-compiler",
  "legion-resources",
- "mock-offline",
- "mock-runtime",
- "tempfile",
+ "test-asset",
+ "test-resource",
+]
+
+[[package]]
+name = "test-resource"
+version = "0.1.0"
+dependencies = [
+ "legion-resources",
 ]
 
 [[package]]

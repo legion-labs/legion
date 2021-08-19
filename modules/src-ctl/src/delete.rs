@@ -58,7 +58,7 @@ pub async fn delete_file_command(path_specified: &Path) -> Result<(), String> {
         return Err(format!("Error: file not found {}", abs_path.display()));
     }
     let workspace_root = find_workspace_root(&abs_path)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
     delete_local_file(&workspace_root, &mut workspace_transaction, path_specified).await?;
     if let Err(e) = workspace_transaction.commit().await {

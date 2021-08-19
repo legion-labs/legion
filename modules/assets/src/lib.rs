@@ -137,4 +137,5 @@ mod types;
 pub use types::*;
 pub mod manifest;
 
-pub mod test_asset;
+#[cfg(test)]
+mod test_asset;

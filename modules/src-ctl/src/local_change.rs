@@ -121,7 +121,7 @@ pub async fn read_local_changes(
 pub async fn find_local_changes_command() -> Result<Vec<LocalChange>, String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
     read_local_changes(&mut workspace_transaction).await
 }
@@ -207,7 +207,7 @@ pub async fn track_new_file(
 
 pub async fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
@@ -267,7 +267,7 @@ pub async fn edit_file(
 
 pub async fn edit_file_command(path_specified: &Path) -> Result<(), String> {
     let workspace_root = find_workspace_root(path_specified)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;

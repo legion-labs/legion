@@ -391,7 +391,7 @@ impl BuildIndex {
 mod tests {
 
     use super::BuildIndex;
-    use legion_resources::{test_resource, Project, ResourceId, ResourcePathId};
+    use legion_resources::{Project, ResourceId, ResourcePathId};
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 

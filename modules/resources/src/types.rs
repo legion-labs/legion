@@ -39,7 +39,6 @@ pub const RESOURCE_EXT: &str = "blob";
 /// # use legion_resources::{ResourceRegistry, ResourceType};
 /// # use legion_resources::ResourcePathId;
 /// # use legion_resources::ResourceName;
-/// # use legion_resources::test_resource;
 /// # use legion_resources::Project;
 /// # use std::path::PathBuf;
 /// # let mut resources = ResourceRegistry::default();

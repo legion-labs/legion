@@ -1,6 +1,7 @@
 //! This module defines a test asset.
 //!
 //! It is used to test the data compilation process until we have a proper asset available.
+
 use crate::{Asset, AssetCreator, AssetType};
 
 /// Type id of test asset.

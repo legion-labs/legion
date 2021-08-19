@@ -1,4 +1,3 @@
-use futures::executor::block_on;
 use sqlx::Connection;
 use std::path::{Path, PathBuf};
 
@@ -8,10 +7,10 @@ pub struct LocalWorkspaceConnection {
 }
 
 impl LocalWorkspaceConnection {
-    pub fn new(workspace_path: &Path) -> Result<Self, String> {
+    pub async fn new(workspace_path: &Path) -> Result<Self, String> {
         let db_path = workspace_path.join(".lsc/workspace.db3");
         let url = format!("sqlite://{}", db_path.display());
-        match block_on(sqlx::AnyConnection::connect(&url)) {
+        match sqlx::AnyConnection::connect(&url).await {
             Err(e) => Err(format!("Error opening database {}: {}", url, e)),
             Ok(c) => Ok(Self {
                 workspace_path: workspace_path.to_path_buf(),

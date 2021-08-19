@@ -14,3 +14,11 @@ legion-assets = { path = "../assets" }
 clap = "2.33"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[dev-dependencies]
+tempfile = "3.2.0"
+test-resource = { path = "../resources/test-resource" }
+mock-resource = { path = "../resources/mock-resource" }
+mock-asset = { path = "../assets/mock-asset" }
+mock-compiler = { path = "../data-compiler/mock-compiler" }
+test-compiler = { path = "../data-compiler/test-compiler" }

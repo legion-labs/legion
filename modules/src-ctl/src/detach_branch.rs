@@ -25,7 +25,7 @@ async fn find_branch_descendants(
 pub async fn detach_branch_command() -> Result<(), String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
     let query = connection.query();

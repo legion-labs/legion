@@ -1,55 +1,23 @@
 ---
 name: Task
-about: A larger work item including a brief explanation, design, work history. Good way of starting a book chapter or crate's documentation.
+about: A work item to be tracked on a project
+title: '(Title)'
 labels: ""
 assignees: ''
 ---
 
 <!--
-Fill in sections relevant to the issue.
+Fill in relevant sections, remove the rest.
 -->
 
 # Summary
 
-<!--
-A brief description of the task/feature
--->
-
-The goal is ...
+Provide a short high level overview of the work item.
 
 # Current State
 
-<!--
-Current state of the feature/system and relevant limitations.
--->
-
 Currently, ...
-
-# Design
-
-<!--
-Design of the feature/system. A good start of the book chapter or crate's documentation. 
--->
-
-Overview ...
-
-### Component 1
-
-Description ...
-
-# Steps / History
-
-<!--
-For larger features, more steps might be involved.
--->
-
-- [ ] First step: #...
-- [ ] Stabilization
 
 # Unresolved Questions
 
-<!--
-Include any open questions.
--->
-
-- To choose ...
+- Choose between ...

@@ -231,6 +231,20 @@ Eventually, the analytics app could be hybrid like the editor.
 Great bandwidth to read data, native rendering of complex graphs, stream result.
 
 ---
+# Architecture
+## Integration/reuse of existing solutions
+
+Many ideas in common with `tracing` crate from the `tokio` project.
+https://docs.rs/tracing/0.1.26/tracing/
+But `Collect` trait at the center of the system is a poor fit.
+
+Could support the interface to get visibility into crates that are already instrumented.
+
+![width:400px](figures/tracing.svg)
+![width:400px](figures/bevy_logo_dark.svg)
+
+
+---
 # Legion Performance Analytics
 - Introduction
 - Requirements

@@ -133,10 +133,10 @@ fn read_resolves_pending(
     }
 }
 
-pub fn find_resolves_pending_command() -> Result<Vec<ResolvePending>, String> {
+pub async fn find_resolves_pending_command() -> Result<Vec<ResolvePending>, String> {
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     read_resolves_pending(&mut workspace_connection)
 }
 
@@ -234,7 +234,7 @@ fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> R
 pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
     let abs_path = make_path_absolute(p);
     let workspace_root = find_workspace_root(&abs_path)?;
-    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root)?;
+    let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
     let workspace_spec = read_workspace_spec(&workspace_root)?;
     let connection = connect_to_server(&workspace_spec).await?;
