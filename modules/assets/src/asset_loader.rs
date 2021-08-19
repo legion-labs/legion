@@ -45,14 +45,14 @@ struct LoaderPending {
 }
 
 pub(crate) fn create_loader(
-    asset_store: Box<dyn ContentStore>,
+    content_store: Box<dyn ContentStore>,
     manifest: Manifest,
 ) -> (AssetLoader, AssetLoaderIO) {
     let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
     let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
 
     let io = AssetLoaderIO::new(
-        asset_store,
+        content_store,
         manifest,
         request_tx.clone(),
         request_rx,
@@ -119,7 +119,7 @@ pub(crate) struct AssetLoaderIO {
     primary_asset_references: HashMap<AssetId, Vec<AssetId>>,
 
     /// Where assets are stored.
-    asset_store: Box<dyn ContentStore>,
+    content_store: Box<dyn ContentStore>,
 
     /// List of known assets.
     manifest: Manifest,
@@ -141,7 +141,7 @@ pub(crate) struct AssetLoaderIO {
 
 impl AssetLoaderIO {
     pub(crate) fn new(
-        asset_store: Box<dyn ContentStore>,
+        content_store: Box<dyn ContentStore>,
         manifest: Manifest,
         request_tx: mpsc::Sender<LoaderRequest>,
         request_rx: mpsc::Receiver<LoaderRequest>,
@@ -155,7 +155,7 @@ impl AssetLoaderIO {
             manifest,
             secondary_assets: HashMap::new(),
             primary_asset_references: HashMap::new(),
-            asset_store,
+            content_store,
             request_tx,
             request_rx: Some(request_rx),
             result_tx,
@@ -174,7 +174,7 @@ impl AssetLoaderIO {
         match request {
             LoaderRequest::Load(primary_id, load_id) => {
                 if let Some((checksum, size)) = self.manifest.find(primary_id) {
-                    match self.asset_store.read(checksum) {
+                    match self.content_store.read(checksum) {
                         Some(asset_data) => {
                             assert_eq!(asset_data.len(), size);
 
@@ -442,7 +442,7 @@ mod tests {
 
     #[test]
     fn load_no_dependencies() {
-        let mut asset_store = Box::new(RamContentStore::default());
+        let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let binary_assetfile = [
@@ -452,7 +452,7 @@ mod tests {
 
         let asset_id = {
             let id = AssetId::new(test_asset::TYPE_ID, 1);
-            let checksum = asset_store.store(&binary_assetfile).unwrap();
+            let checksum = content_store.store(&binary_assetfile).unwrap();
             manifest.insert(id, checksum, binary_assetfile.len());
             id
         };
@@ -460,7 +460,7 @@ mod tests {
         let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
         let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            asset_store,
+            content_store,
             manifest,
             request_tx.clone(),
             request_rx,
@@ -516,7 +516,7 @@ mod tests {
 
     #[test]
     fn load_failed_dependency() {
-        let mut asset_store = Box::new(RamContentStore::default());
+        let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [
@@ -527,7 +527,7 @@ mod tests {
         let parent_id = AssetId::new(test_asset::TYPE_ID, 2);
 
         let asset_id = {
-            let checksum = asset_store.store(&binary_parent_assetfile).unwrap();
+            let checksum = content_store.store(&binary_parent_assetfile).unwrap();
             manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
             parent_id
         };
@@ -535,7 +535,7 @@ mod tests {
         let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
         let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            asset_store,
+            content_store,
             manifest,
             request_tx.clone(),
             request_rx,
@@ -569,7 +569,7 @@ mod tests {
 
     #[test]
     fn load_with_dependency() {
-        let mut asset_store = Box::new(RamContentStore::default());
+        let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [
@@ -588,10 +588,10 @@ mod tests {
         let asset_id = {
             manifest.insert(
                 child_id,
-                asset_store.store(&binary_child_assetfile).unwrap(),
+                content_store.store(&binary_child_assetfile).unwrap(),
                 binary_child_assetfile.len(),
             );
-            let checksum = asset_store.store(&binary_parent_assetfile).unwrap();
+            let checksum = content_store.store(&binary_parent_assetfile).unwrap();
             manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
 
             parent_id
@@ -600,7 +600,7 @@ mod tests {
         let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
         let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            asset_store,
+            content_store,
             manifest,
             request_tx.clone(),
             request_rx,

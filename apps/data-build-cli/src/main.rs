@@ -88,7 +88,7 @@ fn main() -> Result<(), String> {
         let buildindex_path = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
 
         let mut config = DataBuildOptions::new(buildindex_path);
-        config.asset_store(&asset_store_path);
+        config.content_store(&asset_store_path);
         if let Ok(cwd) = std::env::current_dir() {
             config.compiler_dir(cwd);
         }

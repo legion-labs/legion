@@ -88,7 +88,7 @@
 //!
 //! [`legion_data_build`]: ../../legion_data_build/index.html
 //! [`compiler_api`]: ../compiler_api/index.html
-//! [`ContentStore`]: ../asset_store/index.html
+//! [`ContentStore`]: ../content_store/index.html
 //! [`Manifest`]: ../struct.Manifest.html
 
 // This disables the lint crate-wide as a workaround to allow the doc above.
@@ -131,7 +131,7 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Includes data which allows to load and validate [`legion_assets::Asset`]s stored in [`ContentStore`].
 /// As well as references between resources that define load-time dependencies.
 ///
-/// [`ContentStore`]: ../asset_store/index.html
+/// [`ContentStore`]: ../content_store/index.html
 pub struct CompilationOutput {
     /// List of compiled resource's metadata.
     pub compiled_resources: Vec<CompiledResource>,

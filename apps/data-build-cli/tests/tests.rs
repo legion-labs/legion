@@ -10,7 +10,7 @@ static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
 fn data_build() {
     let work_dir = tempfile::tempdir().unwrap();
 
-    let cas = work_dir.path().join("asset_store");
+    let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
     let buildindex_path = work_dir.path().join("build.index");
     let manifest_path = work_dir.path().join("output.manifest");
@@ -41,7 +41,7 @@ fn data_build() {
                 .expect("adding the resource")
         };
         let mut build = DataBuildOptions::new(&buildindex_path)
-            .asset_store(&ContentStoreAddr::from(cas.clone()))
+            .content_store(&ContentStoreAddr::from(cas.clone()))
             .create(project_dir)
             .expect("new build index");
         build.source_pull().expect("successful pull");

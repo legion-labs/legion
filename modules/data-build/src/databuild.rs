@@ -72,7 +72,7 @@ fn compute_context_hash(
 /// # let offline_anim = ResourceId::from_str("invalid").unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// let mut build = DataBuildOptions::new("./build.index")
-///         .asset_store(&ContentStoreAddr::from("./asset_store/"))
+///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .compiler_dir("./compilers/")
 ///         .create(".").expect("new build index");
 ///
@@ -91,7 +91,7 @@ fn compute_context_hash(
 pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
-    asset_store: HddContentStore,
+    content_store: HddContentStore,
     config: DataBuildOptions,
 }
 
@@ -106,19 +106,19 @@ impl DataBuild {
         )
         .map_err(|_e| Error::IOError)?;
 
-        let asset_store = HddContentStore::open(config.assetstore_path.clone())
+        let content_store = HddContentStore::open(config.assetstore_path.clone())
             .ok_or(Error::InvalidAssetStore)?;
 
         Ok(Self {
             build_index,
             project,
-            asset_store,
+            content_store,
             config: config.clone(),
         })
     }
 
     pub(crate) fn open(config: &DataBuildOptions) -> Result<Self, Error> {
-        let asset_store = HddContentStore::open(config.assetstore_path.clone())
+        let content_store = HddContentStore::open(config.assetstore_path.clone())
             .ok_or(Error::InvalidAssetStore)?;
 
         let build_index = BuildIndex::open(&config.buildindex_path, Self::version())?;
@@ -126,7 +126,7 @@ impl DataBuild {
         Ok(Self {
             build_index,
             project,
-            asset_store,
+            content_store,
             config: config.clone(),
         })
     }
@@ -135,7 +135,7 @@ impl DataBuild {
     ///
     /// If the build index does not exist it creates one if a project is present in the directory.
     pub(crate) fn open_or_create(config: &DataBuildOptions) -> Result<Self, Error> {
-        let asset_store = HddContentStore::open(config.assetstore_path.clone())
+        let content_store = HddContentStore::open(config.assetstore_path.clone())
             .ok_or(Error::InvalidAssetStore)?;
         match BuildIndex::open(&config.buildindex_path, Self::version()) {
             Ok(build_index) => {
@@ -143,7 +143,7 @@ impl DataBuild {
                 Ok(Self {
                     build_index,
                     project,
-                    asset_store,
+                    content_store,
                     config: config.clone(),
                 })
             }
@@ -314,7 +314,7 @@ impl DataBuild {
                 let mut compile_cmd = CompilerCompileCmd::new(
                     derived,
                     dependencies,
-                    &self.asset_store.address(),
+                    &self.content_store.address(),
                     &self.project.resource_dir(),
                     target,
                     platform,
@@ -516,12 +516,12 @@ impl DataBuild {
             let bytes_written = write_assetfile(
                 resource_list,
                 reference_list,
-                &self.asset_store,
+                &self.content_store,
                 &mut output,
             )?;
 
             let checksum = self
-                .asset_store
+                .content_store
                 .store(&output)
                 .ok_or(Error::InvalidAssetStore)?;
 
@@ -603,7 +603,7 @@ mod tests {
 
         {
             let _build = DataBuildOptions::new(&buildindex_path)
-                .asset_store(&cas_addr)
+                .content_store(&cas_addr)
                 .create(project_dir)
                 .expect("valid data build index");
         }
@@ -656,7 +656,7 @@ mod tests {
         }
 
         let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
-        config.asset_store(&ContentStoreAddr::from(project_dir.to_owned()));
+        config.content_store(&ContentStoreAddr::from(project_dir.to_owned()));
 
         {
             let mut build = config.create(project_dir).expect("to create index");
@@ -779,7 +779,7 @@ mod tests {
 
         let assetstore_path = ContentStoreAddr::from(work_dir.path());
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-            .asset_store(&assetstore_path)
+            .content_store(&assetstore_path)
             .compiler_dir(target_dir())
             .create(project_dir)
             .expect("to create index");
@@ -802,9 +802,9 @@ mod tests {
         // both test(child_id) and test(parent_id) are separate assets.
         assert_eq!(manifest.compiled_resources.len(), 2);
 
-        let asset_store = HddContentStore::open(assetstore_path).expect("valid asset store");
+        let content_store = HddContentStore::open(assetstore_path).expect("valid content store");
         for checksum in manifest.compiled_resources.iter().map(|a| a.checksum) {
-            assert!(asset_store.exists(checksum));
+            assert!(content_store.exists(checksum));
         }
 
         assert!(output_manifest_file.exists());
@@ -850,7 +850,7 @@ mod tests {
         let assetstore_path = ContentStoreAddr::from(work_dir.path());
         let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
         config
-            .asset_store(&assetstore_path)
+            .content_store(&assetstore_path)
             .compiler_dir(target_dir());
 
         let target = ResourcePathId::from(resource_id).transform(test_resource::TYPE_ID);
@@ -873,9 +873,9 @@ mod tests {
 
             let original_checksum = compile_output.resources[0].compiled_checksum;
 
-            let asset_store =
-                HddContentStore::open(assetstore_path.clone()).expect("valid asset store");
-            assert!(asset_store.exists(original_checksum));
+            let content_store =
+                HddContentStore::open(assetstore_path.clone()).expect("valid content store");
+            assert!(content_store.exists(original_checksum));
 
             original_checksum
         };
@@ -902,9 +902,9 @@ mod tests {
 
             let modified_checksum = compile_output.resources[0].compiled_checksum;
 
-            let asset_store = HddContentStore::open(assetstore_path).expect("valid asset store");
-            assert!(asset_store.exists(original_checksum));
-            assert!(asset_store.exists(modified_checksum));
+            let content_store = HddContentStore::open(assetstore_path).expect("valid content store");
+            assert!(content_store.exists(original_checksum));
+            assert!(content_store.exists(modified_checksum));
 
             modified_checksum
         };
@@ -1001,7 +1001,7 @@ mod tests {
         let root_resource = resource_list[0];
 
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-            .asset_store(&ContentStoreAddr::from(work_dir.path()))
+            .content_store(&ContentStoreAddr::from(work_dir.path()))
             .compiler_dir(target_dir())
             .create(project_dir)
             .expect("new build index");
@@ -1160,7 +1160,7 @@ mod tests {
 
         let assetstore_path = ContentStoreAddr::from(work_dir.path());
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-            .asset_store(&assetstore_path)
+            .content_store(&assetstore_path)
             .compiler_dir(target_dir())
             .create(project_dir)
             .expect("to create index");

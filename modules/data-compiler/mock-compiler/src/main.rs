@@ -53,7 +53,7 @@ fn compile(
         Box::new(mock_resource::MockResourceProc {}),
     );
 
-    let mut asset_store =
+    let mut content_store =
         HddContentStore::open(compiled_asset_store_path).ok_or(CompilerError::AssetStoreError)?;
 
     // todo: source_resource is wrong
@@ -65,7 +65,7 @@ fn compile(
     let magic_value = resource.magic_value * 2;
     let compiled_asset = magic_value.to_ne_bytes();
 
-    let checksum = asset_store
+    let checksum = content_store
         .store(&compiled_asset)
         .ok_or(CompilerError::AssetStoreError)?;
 

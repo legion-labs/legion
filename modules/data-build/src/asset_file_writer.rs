@@ -9,7 +9,7 @@ const ASSET_FILE_VERSION: u16 = 1;
 pub fn write_assetfile<A, R>(
     asset_list: A,
     reference_list: R,
-    asset_store: &impl ContentStore,
+    content_store: &impl ContentStore,
     mut writer: impl std::io::Write,
 ) -> Result<usize, Error>
 where
@@ -56,7 +56,9 @@ where
 
     // assets
     for asset in asset_list {
-        let source_data = asset_store.read(asset.1).ok_or(Error::InvalidAssetStore)?;
+        let source_data = content_store
+            .read(asset.1)
+            .ok_or(Error::InvalidAssetStore)?;
 
         writer
             .write_u64::<LittleEndian>(source_data.len() as u64)
@@ -80,20 +82,20 @@ mod tests {
 
     #[test]
     fn one_asset_no_references() {
-        let mut asset_store = RamContentStore::default();
+        let mut content_store = RamContentStore::default();
 
         let asset_id = AssetId::new(test_asset::TYPE_ID, 1);
         let reference_list: Vec<(AssetId, (AssetId, AssetId))> = Vec::new();
         let asset_content = b"test_content".to_vec();
-        let asset_checksum = asset_store.store(&asset_content).expect("to store asset");
-        assert_eq!(asset_store.read(asset_checksum).unwrap(), asset_content);
+        let asset_checksum = content_store.store(&asset_content).expect("to store asset");
+        assert_eq!(content_store.read(asset_checksum).unwrap(), asset_content);
 
         let binary_assetfile = {
             let mut output = vec![];
             let nbytes = write_assetfile(
                 std::iter::once((asset_id, asset_checksum)),
                 reference_list.iter().cloned(),
-                &asset_store,
+                &content_store,
                 &mut output,
             )
             .expect("asset file");
@@ -144,17 +146,19 @@ mod tests {
 
     #[test]
     fn two_dependent_assets() {
-        let mut asset_store = RamContentStore::default();
+        let mut content_store = RamContentStore::default();
 
         let child_id = AssetId::new(test_asset::TYPE_ID, 1);
         let child_content = b"child".to_vec();
-        let child_checksum = asset_store.store(&child_content).expect("to store asset");
-        assert_eq!(asset_store.read(child_checksum).unwrap(), child_content);
+        let child_checksum = content_store.store(&child_content).expect("to store asset");
+        assert_eq!(content_store.read(child_checksum).unwrap(), child_content);
 
         let parent_id = AssetId::new(test_asset::TYPE_ID, 2);
         let parent_content = b"parent".to_vec();
-        let parent_checksum = asset_store.store(&parent_content).expect("to store asset");
-        assert_eq!(asset_store.read(parent_checksum).unwrap(), parent_content);
+        let parent_checksum = content_store
+            .store(&parent_content)
+            .expect("to store asset");
+        assert_eq!(content_store.read(parent_checksum).unwrap(), parent_content);
 
         let reference_list = vec![(parent_id, (child_id, child_id))];
 
@@ -163,7 +167,7 @@ mod tests {
             let nbytes = write_assetfile(
                 std::iter::once((parent_id, parent_checksum)),
                 reference_list.iter().cloned(),
-                &asset_store,
+                &content_store,
                 &mut output,
             )
             .expect("asset file");
@@ -177,7 +181,7 @@ mod tests {
             let nbytes = write_assetfile(
                 std::iter::once((child_id, child_checksum)),
                 std::iter::empty(),
-                &asset_store,
+                &content_store,
                 &mut output,
             )
             .expect("asset file");

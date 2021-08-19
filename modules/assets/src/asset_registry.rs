@@ -38,8 +38,8 @@ impl AssetRegistryOptions {
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
-    pub fn create(self, asset_store: Box<dyn ContentStore>, manifest: Manifest) -> AssetRegistry {
-        let (loader, mut io) = create_loader(asset_store, manifest);
+    pub fn create(self, content_store: Box<dyn ContentStore>, manifest: Manifest) -> AssetRegistry {
+        let (loader, mut io) = create_loader(content_store, manifest);
 
         for (kind, creator) in self.creators {
             io.register_creator(kind, creator);
@@ -86,9 +86,9 @@ impl Drop for AssetRegistry {
 }
 
 impl AssetRegistry {
-    /// Creates new [`AssetRegistry`] for which assets are stored in `asset_store` directory.
-    pub fn new(asset_store: Box<dyn ContentStore>, manifest: Manifest) -> Self {
-        let (loader, io) = create_loader(asset_store, manifest);
+    /// Creates new [`AssetRegistry`] for which assets are stored in `content_store` directory.
+    pub fn new(content_store: Box<dyn ContentStore>, manifest: Manifest) -> Self {
+        let (loader, io) = create_loader(content_store, manifest);
 
         let load_thread = thread::spawn(move || {
             let mut loader = io;
@@ -208,7 +208,7 @@ mod tests {
     };
 
     fn setup_test() -> (AssetId, AssetRegistry) {
-        let mut asset_store = Box::new(RamContentStore::default());
+        let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let binary_assetfile = [
@@ -218,7 +218,7 @@ mod tests {
 
         let asset_id = {
             let id = AssetId::new(test_asset::TYPE_ID, 1);
-            let checksum = asset_store.store(&binary_assetfile).unwrap();
+            let checksum = content_store.store(&binary_assetfile).unwrap();
             manifest.insert(id, checksum, binary_assetfile.len());
             id
         };
@@ -228,7 +228,7 @@ mod tests {
                 test_asset::TYPE_ID,
                 Box::new(test_asset::TestAssetCreator {}),
             )
-            .create(asset_store, manifest);
+            .create(content_store, manifest);
 
         (asset_id, reg)
     }

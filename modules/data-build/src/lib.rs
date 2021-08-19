@@ -37,7 +37,7 @@
 //!  | |- a81fb4498cd04368.meta
 //!  | |- 8063daaf864780d6
 //!  | |- 8063daaf864780d6.meta
-//!  |- asset_store/
+//!  |- content_store/
 //!  |  |- 561fd98d4d97405a
 //!  |  |- a00438b586a19d4f
 //! ```
