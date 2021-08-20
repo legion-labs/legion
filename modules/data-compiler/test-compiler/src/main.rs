@@ -14,6 +14,7 @@ use legion_data_compiler::{
 use legion_resources::ResourceRegistry;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
+    name: env!("CARGO_CRATE_NAME"),
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",

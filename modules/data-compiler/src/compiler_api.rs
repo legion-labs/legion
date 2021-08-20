@@ -23,6 +23,7 @@
 //! #  const INPUT_TYPE: ContentType = ContentType::new(b"src");
 //! # const OUTPUT_TYPE: ContentType = ContentType::new(b"dst");
 //! static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
+//!    name: env!("CARGO_CRATE_NAME"),
 //!    build_version: DATA_BUILD_VERSION,
 //!    code_version: "",
 //!    data_version: "",
@@ -53,9 +54,15 @@
 //! }
 //! ```
 //!
-//! # Reading Resources and Writing Assets
+//! # Reading Resources
 //!
-//! Compilation process transforms [`legion_resources::Resource`] into [`legion_assets::Asset`]s.
+//! A **data compiler** is able to load and read certain *resources* that are available through [`CompilerContext`].
+//!
+//! The main *resource* is the leaf of the **build graph** being currently compiled. It is accessable by
+//! calling [`ResourcePathId::source_resource_path`] on [`CompilerContext::derived`].
+//!
+//! It can also access any *intermediate resource* that is part of the [`CompilerContext::derived`]'s [`ResourcePathId`] provided that
+//! it was whitelisted as a *derived depenendency* during the compilation process.
 //!
 //! Reading source `Resources` is done with [`CompilerContext::load_resource`] function:
 //!
@@ -74,14 +81,14 @@
 //!   let mut registry = ResourceRegistry::default();
 //!   registry.register_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}));
 //!
-//!   let resource = context.load_resource(&context.derived.direct_dependency().unwrap(), &mut registry).expect("loaded resource");
+//!   let resource = context.load_resource(&context.derived.source_resource_path(), &mut registry).expect("loaded resource");
 //!   let resource = resource.get::<test_resource::TestResource>(&registry).unwrap();
 //! # todo!();
 //!   // ...
 //! }
 //! ```
 //!
-//! For more about `Assets` and `Resources` see [`legion_resources`] and [`legion_assets`] crates.
+//! > For more about `Assets` and `Resources` see [`legion_resources`] and [`legion_assets`] crates.
 //!
 //! [`legion_data_build`]: ../../legion_data_build/index.html
 //! [`compiler_api`]: ../compiler_api/index.html
@@ -94,9 +101,10 @@
 use crate::{
     compiler_cmd::{
         CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
-        COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DEPENDENCIES, COMMAND_ARG_LOCALE,
+        COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
         COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_RESOURCE_PATH,
-        COMMAND_ARG_TARGET, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
+        COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH,
+        COMMAND_NAME_INFO,
     },
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
@@ -123,7 +131,7 @@ use std::{
 /// * Invalidate all `build index` files.
 pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// `Data Compiler`'s output.
+/// *Data Compiler's* output.
 ///
 /// Includes data which allows to load and validate [`legion_assets::Asset`]s stored in [`ContentStore`].
 /// As well as references between resources that define load-time dependencies.
@@ -142,6 +150,8 @@ pub struct CompilerContext<'a> {
     pub derived: ResourcePathId,
     /// Compilation depenency list.
     pub dependencies: &'a [ResourcePathId],
+    /// List of derived dependencies accumulated in this compilation pass.
+    derived_deps: &'a [CompiledResource],
     /// Compilation target.
     pub target: Target,
     /// Compilation platform.
@@ -156,25 +166,53 @@ pub struct CompilerContext<'a> {
 }
 
 impl CompilerContext<'_> {
-    /// Synchronously loades a resource from current working directory.
+    /// Synchronously loads a resource.
+    ///
+    /// Resource `id` can be loaded in two different ways:
+    /// * from [`Self::resource_dir`] in case of a *source resource*.
+    /// * from [`Self::content_store`] in case of a *derived resource*
+    ///
+    /// Derived resource must appear in `derived_deps` list of derived dependencies to be successfully loaded.
     pub fn load_resource(
         &self,
         id: &ResourcePathId,
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandle, CompilerError> {
-        // todo: source_resource() is wrong here
-        let resource_path = resource_path(self.resource_dir, id.source_resource());
-        let mut resource_file =
-            File::open(resource_path).map_err(CompilerError::ResourceLoadFailed)?;
-        let handle = resources
-            .deserialize_resource(id.resource_type(), &mut resource_file)
-            .map_err(CompilerError::ResourceLoadFailed)?;
-        Ok(handle)
+        if id.is_source() {
+            //
+            // for now, we only allow to load the `derived` resource's source.
+            //
+            // in the future we might want to load different leaves of this build path.
+            // in this case we would need to additionally check `self.dependencies`.
+            //
+            if self.derived.source_resource() != id.source_resource() {
+                return Err(CompilerError::ResourceNotFound);
+            }
+            let resource_path = resource_path(self.resource_dir, id.source_resource());
+            let mut resource_file =
+                File::open(resource_path).map_err(CompilerError::ResourceReadFailed)?;
+            let handle = resources
+                .deserialize_resource(id.resource_type(), &mut resource_file)
+                .map_err(CompilerError::ResourceReadFailed)?;
+            Ok(handle)
+        } else if let Some(derived) = self.derived_deps.iter().find(|&dep| &dep.path == id) {
+            if let Some(content) = self.content_store.read(derived.checksum) {
+                Ok(resources
+                    .deserialize_resource(id.resource_type(), &mut &content[..])
+                    .map_err(CompilerError::ResourceReadFailed)?)
+            } else {
+                Err(CompilerError::AssetStoreError)
+            }
+        } else {
+            Err(CompilerError::ResourceNotFound)
+        }
     }
 }
 
 /// Defines data compiler properties.
 pub struct CompilerDescriptor {
+    /// Compiler name
+    pub name: &'static str,
     /// Data build version of data compiler.
     pub build_version: &'static str,
     /// Version of compiler's code.
@@ -205,6 +243,8 @@ pub enum CompilerError {
     InvalidArgs,
     /// Invalid resource id.
     InvalidResourceId,
+    /// Resource not found.
+    ResourceNotFound,
     /// Invalid input/output resource type pair.
     InvalidTransform,
     /// Unknown platform.
@@ -216,7 +256,9 @@ pub enum CompilerError {
     /// Asset read/write failure.
     AssetStoreError,
     /// IO failure.
-    ResourceLoadFailed(io::Error),
+    ResourceReadFailed(io::Error),
+    /// IO failure.
+    ResourceWriteFailed(io::Error),
 }
 
 impl std::error::Error for CompilerError {}
@@ -226,12 +268,14 @@ impl std::fmt::Display for CompilerError {
             CompilerError::StdoutError => write!(f, "IOError"),
             CompilerError::InvalidArgs => write!(f, "InvalidArgs"),
             CompilerError::InvalidResourceId => write!(f, "InvalidResourceId"),
+            CompilerError::ResourceNotFound => write!(f, "ResourceNotFound"),
             CompilerError::InvalidTransform => write!(f, "InvalidResourceType"),
             CompilerError::InvalidTarget => write!(f, "InvalidTarget"),
             CompilerError::InvalidPlatform => write!(f, "InvalidPlatform"),
             CompilerError::UnknownCommand => write!(f, "UnknownCommand"),
             CompilerError::AssetStoreError => write!(f, "AssetStoreError"),
-            CompilerError::ResourceLoadFailed(_) => write!(f, "ResourceLoadFailed"),
+            CompilerError::ResourceReadFailed(_) => write!(f, "ResourceReadFailed"),
+            CompilerError::ResourceWriteFailed(_) => write!(f, "ResourceWriteFailed"),
         }
     }
 }
@@ -280,11 +324,15 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             let platform =
                 Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
             let locale = Locale::new(locale);
-
             let dependencies: Vec<ResourcePathId> = cmd_args
-                .values_of(COMMAND_ARG_DEPENDENCIES)
+                .values_of(COMMAND_ARG_SRC_DEPS)
                 .unwrap_or_default()
                 .filter_map(|s| ResourcePathId::from_str(s).ok())
+                .collect();
+            let derived_deps: Vec<CompiledResource> = cmd_args
+                .values_of(COMMAND_ARG_DER_DEPS)
+                .unwrap_or_default()
+                .filter_map(|s| CompiledResource::from_str(s).ok())
                 .collect();
             let asset_store_path = ContentStoreAddr::from(
                 cmd_args.value_of(COMMAND_ARG_COMPILED_ASSET_STORE).unwrap(),
@@ -304,6 +352,7 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             let context = CompilerContext {
                 derived,
                 dependencies: &dependencies,
+                derived_deps: &derived_deps,
                 target,
                 platform,
                 locale: &locale,
@@ -378,11 +427,18 @@ pub fn compiler_main(
                         .help("Path in build graph to compile."),
                 )
                 .arg(
-                    Arg::with_name(COMMAND_ARG_DEPENDENCIES)
+                    Arg::with_name(COMMAND_ARG_SRC_DEPS)
                         .takes_value(true)
-                        .long(COMMAND_ARG_DEPENDENCIES)
+                        .long(COMMAND_ARG_SRC_DEPS)
                         .multiple(true)
                         .help("Source dependencies to include."),
+                )
+                .arg(
+                    Arg::with_name(COMMAND_ARG_DER_DEPS)
+                        .takes_value(true)
+                        .long(COMMAND_ARG_DER_DEPS)
+                        .multiple(true)
+                        .help("List of derived dependencies (id, hash, size)."),
                 )
                 .arg(
                     Arg::with_name(COMMAND_ARG_RESOURCE_DIR)

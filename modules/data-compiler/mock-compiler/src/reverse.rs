@@ -14,6 +14,7 @@ use legion_data_compiler::{
 use legion_resources::ResourceRegistry;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
+    name: env!("CARGO_CRATE_NAME"),
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
@@ -42,27 +43,31 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         Box::new(mock_resource::TextResourceProc {}),
     );
 
-    let resource = context.load_resource(
+    let handle = context.load_resource(
         &context.derived.direct_dependency().unwrap(),
         &mut resources,
     )?;
-    let resource = resource
-        .get::<mock_resource::TextResource>(&resources)
+    let mut resource = handle
+        .get_mut::<mock_resource::TextResource>(&mut resources)
         .unwrap();
 
-    let mut content = resource.content.clone();
-    content = content.chars().rev().collect();
-    let compiled_asset = content.as_bytes();
+    resource.content = resource.content.chars().rev().collect();
+
+    let mut bytes = vec![];
+
+    let (nbytes, _) = resources
+        .serialize_resource(mock_resource::TEXT_RESOURCE, &handle, &mut bytes)
+        .map_err(CompilerError::ResourceWriteFailed)?;
 
     let checksum = context
         .content_store
-        .store(compiled_asset)
+        .store(&bytes)
         .ok_or(CompilerError::AssetStoreError)?;
 
     let asset = CompiledResource {
         path: context.derived,
         checksum,
-        size: compiled_asset.len(),
+        size: nbytes,
     };
 
     // in this mock build dependency are _not_ runtime references.

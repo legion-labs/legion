@@ -119,9 +119,14 @@ impl ResourcePathId {
         }
     }
 
-    /// Returns an id of the build path's leaf node - the source resource.
+    /// Returns resource id of the build path's source resource.
     pub fn source_resource(&self) -> ResourceId {
         self.source
+    }
+
+    /// Returns an id of the build path's leaf node - the source resource.
+    pub fn source_resource_path(&self) -> Self {
+        Self::from(self.source)
     }
 
     /// Returns true if the path identifies a `source resource`.

@@ -94,6 +94,7 @@ fn compile_command() {
     let mut command = CompilerCompileCmd::new(
         &derived,
         &[],
+        &[],
         &cas_addr,
         resource_dir,
         Target::Game,
@@ -156,6 +157,7 @@ fn mock_compile() {
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
+            &[],
             &cas_addr,
             resource_dir,
             Target::Game,
@@ -216,15 +218,13 @@ fn intermediate_resource() {
 
     let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
 
-    let asset_info = {
-        let exe_path = compiler_exe("mock-atoi");
+    let intermediate_info = {
+        let exe_path = compiler_exe("mock-reverse");
         assert!(exe_path.exists());
-
-        let derived = ResourcePathId::from(source)
-            .transform(mock_resource::TEXT_RESOURCE)
-            .transform(mock_asset::INTEGER_ASSET);
+        let derived = ResourcePathId::from(source).transform(mock_resource::TEXT_RESOURCE);
         let mut command = CompilerCompileCmd::new(
             &derived,
+            &[],
             &[],
             &cas_addr,
             resource_dir,
@@ -236,13 +236,37 @@ fn intermediate_resource() {
         let result = command
             .execute(&exe_path, resource_dir)
             .expect("compile result");
-        println!("{:?}", result);
 
         assert_eq!(result.compiled_resources.len(), 1);
         result.compiled_resources[0].clone()
     };
 
-    let checksum = asset_info.checksum;
+    let derived_info = {
+        let exe_path = compiler_exe("mock-atoi");
+        assert!(exe_path.exists());
+        let derived = ResourcePathId::from(source)
+            .transform(mock_resource::TEXT_RESOURCE)
+            .transform(mock_asset::INTEGER_ASSET);
+        let mut command = CompilerCompileCmd::new(
+            &derived,
+            &[],
+            &[intermediate_info],
+            &cas_addr,
+            resource_dir,
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        );
+
+        let result = command
+            .execute(&exe_path, resource_dir)
+            .expect("compile result");
+
+        assert_eq!(result.compiled_resources.len(), 1);
+        result.compiled_resources[0].clone()
+    };
+
+    let checksum = derived_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
     assert!(cas.exists(checksum));

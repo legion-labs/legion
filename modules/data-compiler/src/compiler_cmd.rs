@@ -39,7 +39,7 @@
 //! fn compile_resource(derived: ResourcePathId, dependencies: &[ResourcePathId]) {
 //!     let content_store = ContentStoreAddr::from("./content_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
-//!     let mut command = CompilerCompileCmd::new(&derived, dependencies, &content_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
+//!     let mut command = CompilerCompileCmd::new(&derived, dependencies, &[], &content_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
 //!     let output = command.execute("my_compiler.exe", "./").expect("compiled resources");
 //!}
 //! ```
@@ -217,7 +217,8 @@ pub(crate) const COMMAND_ARG_PLATFORM: &str = "platform";
 pub(crate) const COMMAND_ARG_TARGET: &str = "target";
 pub(crate) const COMMAND_ARG_LOCALE: &str = "locale";
 pub(crate) const COMMAND_ARG_RESOURCE_PATH: &str = "resource";
-pub(crate) const COMMAND_ARG_DEPENDENCIES: &str = "deps";
+pub(crate) const COMMAND_ARG_SRC_DEPS: &str = "deps";
+pub(crate) const COMMAND_ARG_DER_DEPS: &str = "derdeps";
 pub(crate) const COMMAND_ARG_COMPILED_ASSET_STORE: &str = "cas";
 pub(crate) const COMMAND_ARG_RESOURCE_DIR: &str = "resource_dir";
 
@@ -311,9 +312,11 @@ pub struct CompilerCompileCmd(CommandBuilder);
 
 impl CompilerCompileCmd {
     /// Creates a new command.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
-        source: &ResourcePathId,
-        deps: &[ResourcePathId],
+        derived: &ResourcePathId,
+        source_deps: &[ResourcePathId],
+        derived_deps: &[CompiledResource],
         cas_addr: &ContentStoreAddr,
         resource_dir: &Path,
         target: Target,
@@ -322,14 +325,19 @@ impl CompilerCompileCmd {
     ) -> Self {
         let mut builder = CommandBuilder::default();
         builder.arg(COMMAND_NAME_COMPILE);
-        builder.arg(format!("{}", source));
-        if !deps.is_empty() {
-            builder.arg(format!("--{}", COMMAND_ARG_DEPENDENCIES));
-            for res in deps {
+        builder.arg(format!("{}", derived));
+        if !source_deps.is_empty() {
+            builder.arg(format!("--{}", COMMAND_ARG_SRC_DEPS));
+            for res in source_deps {
                 builder.arg(format!("{}", res));
             }
         }
-
+        if !derived_deps.is_empty() {
+            builder.arg(format!("--{}", COMMAND_ARG_DER_DEPS));
+            for res in derived_deps {
+                builder.arg(format!("{}", res));
+            }
+        }
         builder.arg(format!(
             "--{}={}",
             COMMAND_ARG_COMPILED_ASSET_STORE, cas_addr

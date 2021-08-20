@@ -277,6 +277,7 @@ impl DataBuild {
         context_hash: u64,
         source_hash: u64,
         dependencies: &[ResourcePathId],
+        derived_deps: &[CompiledResource],
         target: Target,
         platform: Platform,
         locale: &Locale,
@@ -295,10 +296,10 @@ impl DataBuild {
             _,
         ) = {
             let now = SystemTime::now();
-            let (cached_infos, cached_references) =
+            if let Some((cached_infos, cached_references)) =
                 self.build_index
-                    .find_compiled(derived, context_hash, source_hash);
-            if !cached_infos.is_empty() {
+                    .find_compiled(derived, context_hash, source_hash)
+            {
                 let resource_count = cached_infos.len();
                 (
                     cached_infos,
@@ -314,6 +315,7 @@ impl DataBuild {
                 let mut compile_cmd = CompilerCompileCmd::new(
                     derived,
                     dependencies,
+                    derived_deps,
                     &self.content_store.address(),
                     &self.project.resource_dir(),
                     target,
@@ -439,6 +441,14 @@ impl DataBuild {
         let mut compiled_references = vec![];
         let mut compile_stats = vec![];
 
+        //
+        // for now, each node's compilation output contribues to `derived dependencies`
+        // as a whole. consecutive nodes will have all derived outputs available.
+        //
+        // in the future this should be improved.
+        //
+        let mut accumulated_dependencies = vec![];
+
         for derived in ordered_nodes {
             // compile non-source dependencies.
             if let Some(direct_dependency) = derived.direct_dependency() {
@@ -470,11 +480,20 @@ impl DataBuild {
                     context_hash,
                     source_hash,
                     &dependencies,
+                    &accumulated_dependencies,
                     target,
                     platform,
                     locale,
                     compiler_path,
                 )?;
+
+                accumulated_dependencies.extend(resource_infos.iter().map(|res| {
+                    CompiledResource {
+                        path: res.compiled_path.clone(),
+                        checksum: res.compiled_checksum,
+                        size: res.compiled_size,
+                    }
+                }));
 
                 compiled_resources.extend(resource_infos);
                 compile_stats.extend(stats);
