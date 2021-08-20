@@ -188,3 +188,76 @@ fn mock_compile() {
     let stringified = asset.magic_value.to_string();
     assert_eq!(source_magic_value, stringified);
 }
+
+#[test]
+fn intermediate_resource() {
+    let work_dir = tempfile::tempdir().unwrap();
+    let resource_dir = work_dir.path();
+
+    let source_magic_value = String::from("47");
+
+    let source = {
+        let source = ResourceId::generate_new(mock_resource::TEXT_RESOURCE);
+        let mut proc = mock_resource::TextResourceProc {};
+        let mut resource = proc.new_resource();
+        let mut resource = resource
+            .as_any_mut()
+            .downcast_mut::<TextResource>()
+            .expect("valid resource");
+
+        resource.content = source_magic_value.clone();
+
+        let path = resource_dir.join(format!("{:x}.{}", source, RESOURCE_EXT));
+        let mut file = File::create(path).expect("new file");
+        proc.write_resource(resource, &mut file)
+            .expect("written to disk");
+        source
+    };
+
+    let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
+
+    let asset_info = {
+        let exe_path = compiler_exe("mock-atoi");
+        assert!(exe_path.exists());
+
+        let derived = ResourcePathId::from(source)
+            .transform(mock_resource::TEXT_RESOURCE)
+            .transform(mock_asset::INTEGER_ASSET);
+        let mut command = CompilerCompileCmd::new(
+            &derived,
+            &[],
+            &cas_addr,
+            resource_dir,
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        );
+
+        let result = command
+            .execute(&exe_path, resource_dir)
+            .expect("compile result");
+        println!("{:?}", result);
+
+        assert_eq!(result.compiled_resources.len(), 1);
+        result.compiled_resources[0].clone()
+    };
+
+    let checksum = asset_info.checksum;
+
+    let cas = HddContentStore::open(cas_addr).expect("valid cas");
+    assert!(cas.exists(checksum));
+
+    let resource_content = cas.read(checksum).expect("asset content");
+
+    let mut creator = IntegerAssetLoader {};
+    let asset = creator
+        .load(mock_asset::INTEGER_ASSET, &mut &resource_content[..])
+        .expect("loaded assets");
+    let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
+
+    let stringified = asset.magic_value.to_string();
+    assert_eq!(
+        source_magic_value.chars().rev().collect::<String>(),
+        stringified
+    );
+}

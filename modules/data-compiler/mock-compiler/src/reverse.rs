@@ -17,7 +17,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(test_resource::TYPE_ID, test_resource::TYPE_ID),
+    transform: &(mock_resource::TEXT_RESOURCE, mock_resource::TEXT_RESOURCE),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -38,8 +38,8 @@ fn compiler_hash(
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
-        test_resource::TYPE_ID,
-        Box::new(test_resource::TestResourceProc {}),
+        mock_resource::TEXT_RESOURCE,
+        Box::new(mock_resource::TextResourceProc {}),
     );
 
     let resource = context.load_resource(
@@ -47,37 +47,28 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         &mut resources,
     )?;
     let resource = resource
-        .get::<test_resource::TestResource>(&resources)
+        .get::<mock_resource::TextResource>(&resources)
         .unwrap();
 
-    let compiled_asset = {
-        let mut content = resource.content.as_bytes().to_owned();
-        content.reverse();
-        content
-    };
+    let mut content = resource.content.clone();
+    content = content.chars().rev().collect();
+    let compiled_asset = content.as_bytes();
 
     let checksum = context
         .content_store
-        .store(&compiled_asset)
+        .store(compiled_asset)
         .ok_or(CompilerError::AssetStoreError)?;
 
     let asset = CompiledResource {
-        path: context.derived.clone(),
+        path: context.derived,
         checksum,
         size: compiled_asset.len(),
     };
 
-    // in this test example every build dependency becomes a reference/load-time dependency.
-    let derived = context.derived.clone();
-    let asset_references: Vec<_> = context
-        .dependencies
-        .iter()
-        .map(|dep| (derived.clone(), dep.clone()))
-        .collect();
-
+    // in this mock build dependency are _not_ runtime references.
     Ok(CompilationOutput {
         compiled_resources: vec![asset],
-        resource_references: asset_references,
+        resource_references: vec![],
     })
 }
 

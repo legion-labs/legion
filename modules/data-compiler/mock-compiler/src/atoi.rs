@@ -43,7 +43,10 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
     );
 
     // todo: source_resource is wrong
-    let resource = context.load_resource(context.derived.source_resource(), &mut resources)?;
+    let resource = context.load_resource(
+        &context.derived.direct_dependency().unwrap(),
+        &mut resources,
+    )?;
     let resource = resource
         .get::<mock_resource::TextResource>(&resources)
         .unwrap();

@@ -74,7 +74,7 @@
 //!   let mut registry = ResourceRegistry::default();
 //!   registry.register_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}));
 //!
-//!   let resource = context.load_resource(context.derived.source_resource(), &mut registry).expect("loaded resource");
+//!   let resource = context.load_resource(&context.derived.direct_dependency().unwrap(), &mut registry).expect("loaded resource");
 //!   let resource = resource.get::<test_resource::TestResource>(&registry).unwrap();
 //! # todo!();
 //!   // ...
@@ -159,10 +159,11 @@ impl CompilerContext<'_> {
     /// Synchronously loades a resource from current working directory.
     pub fn load_resource(
         &self,
-        id: ResourceId,
+        id: &ResourcePathId,
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandle, CompilerError> {
-        let resource_path = resource_path(self.resource_dir, id);
+        // todo: source_resource() is wrong here
+        let resource_path = resource_path(self.resource_dir, id.source_resource());
         let mut resource_file =
             File::open(resource_path).map_err(CompilerError::ResourceLoadFailed)?;
         let handle = resources

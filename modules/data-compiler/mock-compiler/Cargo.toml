@@ -19,3 +19,7 @@ mock-asset = { path = "../../assets/mock-asset"}
 name = "compiler-mock-atoi"
 path = "src/atoi.rs"
 doc = false
+[[bin]]
+name = "compiler-mock-reverse"
+path = "src/reverse.rs"
+doc = false
