@@ -24,17 +24,17 @@ fn data_build() {
             let mut project = Project::create_new(project_dir).expect("new project");
             let mut resources = ResourceRegistry::default();
             resources.register_type(
-                test_resource::TYPE_ID,
-                Box::new(test_resource::TestResourceProc {}),
+                refs_resource::TYPE_ID,
+                Box::new(refs_resource::TestResourceProc {}),
             );
             let resource = resources
-                .new_resource(test_resource::TYPE_ID)
+                .new_resource(refs_resource::TYPE_ID)
                 .expect("new resource");
 
             project
                 .add_resource(
                     ResourceName::from("test_source"),
-                    test_resource::TYPE_ID,
+                    refs_resource::TYPE_ID,
                     &resource,
                     &mut resources,
                 )
@@ -49,7 +49,7 @@ fn data_build() {
         resource_id
     };
 
-    let compile_path = ResourcePathId::from(resource_id).transform(test_resource::TYPE_ID);
+    let compile_path = ResourcePathId::from(resource_id).transform(refs_resource::TYPE_ID);
 
     let mut command = {
         let target = "game";

@@ -598,12 +598,12 @@ mod tests {
     fn setup_registry() -> ResourceRegistry {
         let mut resources = ResourceRegistry::default();
         resources.register_type(
-            test_resource::TYPE_ID,
-            Box::new(test_resource::TestResourceProc {}),
+            refs_resource::TYPE_ID,
+            Box::new(refs_resource::TestResourceProc {}),
         );
         resources.register_type(
-            test_resource::TYPE_ID,
-            Box::new(test_resource::TestResourceProc {}),
+            refs_resource::TYPE_ID,
+            Box::new(refs_resource::TestResourceProc {}),
         );
         resources
     }
@@ -650,15 +650,15 @@ mod tests {
             let child_id = project
                 .add_resource(
                     ResourceName::from("child"),
-                    test_resource::TYPE_ID,
-                    &resources.new_resource(test_resource::TYPE_ID).unwrap(),
+                    refs_resource::TYPE_ID,
+                    &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
                     &mut resources,
                 )
                 .unwrap();
 
             let parent_handle = {
-                let res = resources.new_resource(test_resource::TYPE_ID).unwrap();
-                res.get_mut::<test_resource::TestResource>(&mut resources)
+                let res = resources.new_resource(refs_resource::TYPE_ID).unwrap();
+                res.get_mut::<refs_resource::TestResource>(&mut resources)
                     .unwrap()
                     .build_deps
                     .push(ResourcePathId::from(child_id));
@@ -667,7 +667,7 @@ mod tests {
             let _parent_id = project
                 .add_resource(
                     ResourceName::from("parent"),
-                    test_resource::TYPE_ID,
+                    refs_resource::TYPE_ID,
                     &parent_handle,
                     &mut resources,
                 )
@@ -692,8 +692,8 @@ mod tests {
             project
                 .add_resource(
                     ResourceName::from("orphan"),
-                    test_resource::TYPE_ID,
-                    &resources.new_resource(test_resource::TYPE_ID).unwrap(),
+                    refs_resource::TYPE_ID,
+                    &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
                     &mut resources,
                 )
                 .unwrap();
@@ -711,18 +711,18 @@ mod tests {
             let child_id = project
                 .add_resource(
                     ResourceName::from("intermediate_child"),
-                    test_resource::TYPE_ID,
-                    &resources.new_resource(test_resource::TYPE_ID).unwrap(),
+                    refs_resource::TYPE_ID,
+                    &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
                     &mut resources,
                 )
                 .unwrap();
 
             let parent_handle = {
                 let intermediate_id =
-                    ResourcePathId::from(child_id).transform(test_resource::TYPE_ID);
+                    ResourcePathId::from(child_id).transform(refs_resource::TYPE_ID);
 
-                let res = resources.new_resource(test_resource::TYPE_ID).unwrap();
-                res.get_mut::<test_resource::TestResource>(&mut resources)
+                let res = resources.new_resource(refs_resource::TYPE_ID).unwrap();
+                res.get_mut::<refs_resource::TestResource>(&mut resources)
                     .unwrap()
                     .build_deps
                     .push(intermediate_id);
@@ -731,7 +731,7 @@ mod tests {
             let _parent_id = project
                 .add_resource(
                     ResourceName::from("intermetidate_parent"),
-                    test_resource::TYPE_ID,
+                    refs_resource::TYPE_ID,
                     &parent_handle,
                     &mut resources,
                 )
@@ -773,23 +773,23 @@ mod tests {
             let child_id = project
                 .add_resource(
                     ResourceName::from("child"),
-                    test_resource::TYPE_ID,
-                    &resources.new_resource(test_resource::TYPE_ID).unwrap(),
+                    refs_resource::TYPE_ID,
+                    &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
                     &mut resources,
                 )
                 .unwrap();
 
-            let child_handle = resources.new_resource(test_resource::TYPE_ID).unwrap();
+            let child_handle = resources.new_resource(refs_resource::TYPE_ID).unwrap();
             child_handle
-                .get_mut::<test_resource::TestResource>(&mut resources)
+                .get_mut::<refs_resource::TestResource>(&mut resources)
                 .unwrap()
                 .build_deps
-                .push(ResourcePathId::from(child_id).transform(test_resource::TYPE_ID));
+                .push(ResourcePathId::from(child_id).transform(refs_resource::TYPE_ID));
 
             project
                 .add_resource(
                     ResourceName::from("parent"),
-                    test_resource::TYPE_ID,
+                    refs_resource::TYPE_ID,
                     &child_handle,
                     &mut resources,
                 )
@@ -807,7 +807,7 @@ mod tests {
 
         let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
-        let derived = ResourcePathId::from(parent_resource).transform(test_resource::TYPE_ID);
+        let derived = ResourcePathId::from(parent_resource).transform(refs_resource::TYPE_ID);
         let manifest = build
             .compile(
                 derived,
@@ -854,11 +854,11 @@ mod tests {
         let (resource_id, resource_handle) = {
             let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
-            let resource_handle = resources.new_resource(test_resource::TYPE_ID).unwrap();
+            let resource_handle = resources.new_resource(refs_resource::TYPE_ID).unwrap();
             let resource_id = project
                 .add_resource(
                     ResourceName::from("resource"),
-                    test_resource::TYPE_ID,
+                    refs_resource::TYPE_ID,
                     &resource_handle,
                     &mut resources,
                 )
@@ -872,7 +872,7 @@ mod tests {
             .content_store(&contentstore_path)
             .compiler_dir(target_dir());
 
-        let target = ResourcePathId::from(resource_id).transform(test_resource::TYPE_ID);
+        let target = ResourcePathId::from(resource_id).transform(refs_resource::TYPE_ID);
 
         let original_checksum = {
             let mut build = config.create(project_dir).expect("to create index");
@@ -902,7 +902,7 @@ mod tests {
         let mut project = Project::open(project_dir).expect("failed to open project");
 
         resource_handle
-            .get_mut::<test_resource::TestResource>(&mut resources)
+            .get_mut::<refs_resource::TestResource>(&mut resources)
             .unwrap()
             .content = String::from("new content");
 
@@ -939,16 +939,16 @@ mod tests {
         resources: &mut ResourceRegistry,
     ) -> ResourceId {
         let resource_b = {
-            let res = resources.new_resource(test_resource::TYPE_ID).unwrap();
+            let res = resources.new_resource(refs_resource::TYPE_ID).unwrap();
             let resource = res
-                .get_mut::<test_resource::TestResource>(resources)
+                .get_mut::<refs_resource::TestResource>(resources)
                 .unwrap();
             resource.content = name.display().to_string(); // each resource needs unique content to generate a unique resource.
             resource.build_deps.extend_from_slice(deps);
             res
         };
         project
-            .add_resource(name, test_resource::TYPE_ID, &resource_b, resources)
+            .add_resource(name, refs_resource::TYPE_ID, &resource_b, resources)
             .unwrap()
     }
 
@@ -961,7 +961,7 @@ mod tests {
             .expect("to load resource");
 
         let resource = handle
-            .get_mut::<test_resource::TestResource>(&mut resources)
+            .get_mut::<refs_resource::TestResource>(&mut resources)
             .expect("resource instance");
         resource.content.push_str(" more content");
         project
@@ -986,15 +986,15 @@ mod tests {
         let res_e = create_resource(ResourceName::from("E"), &[], &mut project, &mut resources);
         let res_d = create_resource(
             ResourceName::from("D"),
-            &[ResourcePathId::from(res_e).transform(test_resource::TYPE_ID)],
+            &[ResourcePathId::from(res_e).transform(refs_resource::TYPE_ID)],
             &mut project,
             &mut resources,
         );
         let res_b = create_resource(
             ResourceName::from("B"),
             &[
-                ResourcePathId::from(res_c).transform(test_resource::TYPE_ID),
-                ResourcePathId::from(res_e).transform(test_resource::TYPE_ID),
+                ResourcePathId::from(res_c).transform(refs_resource::TYPE_ID),
+                ResourcePathId::from(res_e).transform(refs_resource::TYPE_ID),
             ],
             &mut project,
             &mut resources,
@@ -1002,8 +1002,8 @@ mod tests {
         let res_a = create_resource(
             ResourceName::from("A"),
             &[
-                ResourcePathId::from(res_b).transform(test_resource::TYPE_ID),
-                ResourcePathId::from(res_d).transform(test_resource::TYPE_ID),
+                ResourcePathId::from(res_b).transform(refs_resource::TYPE_ID),
+                ResourcePathId::from(res_d).transform(refs_resource::TYPE_ID),
             ],
             &mut project,
             &mut resources,
@@ -1038,7 +1038,7 @@ mod tests {
         //
         const NUM_NODES: usize = 10;
         const NUM_OUTPUTS: usize = 5;
-        let target = ResourcePathId::from(root_resource).transform(test_resource::TYPE_ID);
+        let target = ResourcePathId::from(root_resource).transform(refs_resource::TYPE_ID);
 
         //  test of evaluation order computation.
         {
@@ -1144,34 +1144,34 @@ mod tests {
             let mut project = Project::create_new(project_dir).expect("new project");
 
             let child_handle = resources
-                .new_resource(test_resource::TYPE_ID)
+                .new_resource(refs_resource::TYPE_ID)
                 .expect("valid resource");
             let child = child_handle
-                .get_mut::<test_resource::TestResource>(&mut resources)
+                .get_mut::<refs_resource::TestResource>(&mut resources)
                 .expect("existing resource");
             child.content = String::from("test child content");
             let child_id = project
                 .add_resource(
                     ResourceName::from("child"),
-                    test_resource::TYPE_ID,
+                    refs_resource::TYPE_ID,
                     &child_handle,
                     &mut resources,
                 )
                 .unwrap();
 
             let parent_handle = resources
-                .new_resource(test_resource::TYPE_ID)
+                .new_resource(refs_resource::TYPE_ID)
                 .expect("valid resource");
             let parent = parent_handle
-                .get_mut::<test_resource::TestResource>(&mut resources)
+                .get_mut::<refs_resource::TestResource>(&mut resources)
                 .expect("existing resource");
             parent.content = String::from("test parent content");
             parent.build_deps =
-                vec![ResourcePathId::from(child_id).transform(test_resource::TYPE_ID)];
+                vec![ResourcePathId::from(child_id).transform(refs_resource::TYPE_ID)];
             project
                 .add_resource(
                     ResourceName::from("parent"),
-                    test_resource::TYPE_ID,
+                    refs_resource::TYPE_ID,
                     &parent_handle,
                     &mut resources,
                 )
@@ -1189,7 +1189,7 @@ mod tests {
 
         // for now each resource is a separate file so we need to validate that the compile output and link output produce the same number of resources
 
-        let target = ResourcePathId::from(parent_id).transform(test_resource::TYPE_ID);
+        let target = ResourcePathId::from(parent_id).transform(refs_resource::TYPE_ID);
         let compile_output = build
             .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
             .expect("successful compilation");

@@ -18,7 +18,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(mock_resource::TEXT_RESOURCE, mock_asset::INTEGER_ASSET),
+    transform: &(text_resource::TEXT_RESOURCE, integer_asset::INTEGER_ASSET),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -39,8 +39,8 @@ fn compiler_hash(
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
-        mock_resource::TEXT_RESOURCE,
-        Box::new(mock_resource::TextResourceProc {}),
+        text_resource::TEXT_RESOURCE,
+        Box::new(text_resource::TextResourceProc {}),
     );
 
     // todo: source_resource is wrong
@@ -49,7 +49,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         &mut resources,
     )?;
     let resource = resource
-        .get::<mock_resource::TextResource>(&resources)
+        .get::<text_resource::TextResource>(&resources)
         .unwrap();
 
     let parsed_value = resource.content.parse::<usize>().unwrap_or(0);

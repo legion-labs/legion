@@ -18,7 +18,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(test_resource::TYPE_ID, test_resource::TYPE_ID),
+    transform: &(refs_resource::TYPE_ID, refs_resource::TYPE_ID),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -39,8 +39,8 @@ fn compiler_hash(
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
-        test_resource::TYPE_ID,
-        Box::new(test_resource::TestResourceProc {}),
+        refs_resource::TYPE_ID,
+        Box::new(refs_resource::TestResourceProc {}),
     );
 
     let resource = context.load_resource(
@@ -48,7 +48,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         &mut resources,
     )?;
     let resource = resource
-        .get::<test_resource::TestResource>(&resources)
+        .get::<refs_resource::TestResource>(&resources)
         .unwrap();
 
     let compiled_asset = {

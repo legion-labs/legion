@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use legion_assets::AssetLoader;
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{
@@ -12,8 +13,7 @@ use legion_data_compiler::{
     Locale, Platform, Target,
 };
 use legion_resources::{ResourceId, ResourcePathId, ResourceProcessor, RESOURCE_EXT};
-use mock_asset::{IntegerAsset, IntegerAssetLoader};
-use mock_resource::TextResource;
+use text_resource::TextResource;
 
 fn target_dir() -> PathBuf {
     env::current_exe()
@@ -34,7 +34,7 @@ fn compiler_exe(name: &str) -> PathBuf {
 
 #[test]
 fn find_compiler() {
-    let exe_path = compiler_exe("test");
+    let exe_path = compiler_exe("test-refs");
     assert!(exe_path.exists());
 
     let compilers = list_compilers(slice::from_ref(&target_dir()));
@@ -43,7 +43,7 @@ fn find_compiler() {
 
 #[test]
 fn info_command() {
-    let exe_path = compiler_exe("test");
+    let exe_path = compiler_exe("test-refs");
     assert!(exe_path.exists());
 
     let command = CompilerInfoCmd::default();
@@ -52,7 +52,7 @@ fn info_command() {
 
 #[test]
 fn compiler_hash_command() {
-    let exe_path = compiler_exe("test");
+    let exe_path = compiler_exe("test-refs");
     assert!(exe_path.exists());
 
     let command = CompilerHashCmd::new(Target::Game, Platform::Windows, &Locale::new("en"));
@@ -63,12 +63,12 @@ fn create_test_resource(id: ResourceId, dir: &Path, content: &str) {
     let path = dir.join(format!("{:x}.{}", id, RESOURCE_EXT));
     let mut file = File::create(path).expect("new file");
 
-    let mut proc = test_resource::TestResourceProc {};
+    let mut proc = refs_resource::TestResourceProc {};
     let mut resource = proc.new_resource();
 
     resource
         .as_any_mut()
-        .downcast_mut::<test_resource::TestResource>()
+        .downcast_mut::<refs_resource::TestResource>()
         .unwrap()
         .content = String::from(content);
     proc.write_resource(resource.as_ref(), &mut file)
@@ -82,15 +82,15 @@ fn compile_command() {
 
     let content = "test content";
 
-    let source = ResourceId::generate_new(test_resource::TYPE_ID);
+    let source = ResourceId::generate_new(refs_resource::TYPE_ID);
     create_test_resource(source, resource_dir, content);
 
-    let exe_path = compiler_exe("test");
+    let exe_path = compiler_exe("test-refs");
     assert!(exe_path.exists());
 
     let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
 
-    let derived = ResourcePathId::from(source).transform(test_resource::TYPE_ID);
+    let derived = ResourcePathId::from(source).transform(refs_resource::TYPE_ID);
     let mut command = CompilerCompileCmd::new(
         &derived,
         &[],
@@ -128,9 +128,9 @@ fn mock_compile() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::generate_new(mock_resource::TEXT_RESOURCE);
+        let source = ResourceId::generate_new(text_resource::TEXT_RESOURCE);
 
-        let mut proc = mock_resource::TextResourceProc {};
+        let mut proc = text_resource::TextResourceProc {};
 
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -150,10 +150,10 @@ fn mock_compile() {
     let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
 
     let asset_info = {
-        let exe_path = compiler_exe("mock-atoi");
+        let exe_path = compiler_exe("test-atoi");
         assert!(exe_path.exists());
 
-        let derived = ResourcePathId::from(source).transform(mock_asset::INTEGER_ASSET);
+        let derived = ResourcePathId::from(source).transform(integer_asset::INTEGER_ASSET);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -183,7 +183,7 @@ fn mock_compile() {
 
     let mut creator = IntegerAssetLoader {};
     let asset = creator
-        .load(mock_asset::INTEGER_ASSET, &mut &resource_content[..])
+        .load(integer_asset::INTEGER_ASSET, &mut &resource_content[..])
         .expect("loaded assets");
     let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
 
@@ -199,8 +199,8 @@ fn intermediate_resource() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::generate_new(mock_resource::TEXT_RESOURCE);
-        let mut proc = mock_resource::TextResourceProc {};
+        let source = ResourceId::generate_new(text_resource::TEXT_RESOURCE);
+        let mut proc = text_resource::TextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
             .as_any_mut()
@@ -219,9 +219,9 @@ fn intermediate_resource() {
     let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
 
     let intermediate_info = {
-        let exe_path = compiler_exe("mock-reverse");
+        let exe_path = compiler_exe("test-reverse");
         assert!(exe_path.exists());
-        let derived = ResourcePathId::from(source).transform(mock_resource::TEXT_RESOURCE);
+        let derived = ResourcePathId::from(source).transform(text_resource::TEXT_RESOURCE);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -242,11 +242,11 @@ fn intermediate_resource() {
     };
 
     let derived_info = {
-        let exe_path = compiler_exe("mock-atoi");
+        let exe_path = compiler_exe("test-atoi");
         assert!(exe_path.exists());
         let derived = ResourcePathId::from(source)
-            .transform(mock_resource::TEXT_RESOURCE)
-            .transform(mock_asset::INTEGER_ASSET);
+            .transform(text_resource::TEXT_RESOURCE)
+            .transform(integer_asset::INTEGER_ASSET);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -275,7 +275,7 @@ fn intermediate_resource() {
 
     let mut creator = IntegerAssetLoader {};
     let asset = creator
-        .load(mock_asset::INTEGER_ASSET, &mut &resource_content[..])
+        .load(integer_asset::INTEGER_ASSET, &mut &resource_content[..])
         .expect("loaded assets");
     let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
 

@@ -82,7 +82,7 @@
 //!   registry.register_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}));
 //!
 //!   let resource = context.load_resource(&context.derived.source_resource_path(), &mut registry).expect("loaded resource");
-//!   let resource = resource.get::<test_resource::TestResource>(&registry).unwrap();
+//!   let resource = resource.get::<refs_resource::TestResource>(&registry).unwrap();
 //! # todo!();
 //!   // ...
 //! }

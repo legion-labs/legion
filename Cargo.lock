@@ -1216,6 +1216,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "integer-asset"
+version = "0.1.0"
+dependencies = [
+ "legion-assets",
+]
+
+[[package]]
 name = "ipnet"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1323,12 +1330,12 @@ dependencies = [
  "legion-data-compiler",
  "legion-resources",
  "petgraph",
+ "refs-asset",
+ "refs-resource",
  "serde",
  "serde_json",
  "tempfile",
- "test-asset",
- "test-compiler",
- "test-resource",
+ "test-compilers",
 ]
 
 [[package]]
@@ -1340,8 +1347,8 @@ dependencies = [
  "legion-data-build",
  "legion-data-compiler",
  "legion-resources",
+ "refs-resource",
  "tempfile",
- "test-resource",
 ]
 
 [[package]]
@@ -1349,17 +1356,16 @@ name = "legion-data-compiler"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "integer-asset",
  "legion-assets",
  "legion-content-store",
  "legion-resources",
- "mock-asset",
- "mock-compiler",
- "mock-resource",
+ "refs-resource",
  "serde",
  "serde_json",
  "tempfile",
- "test-compiler",
- "test-resource",
+ "test-compilers",
+ "text-resource",
 ]
 
 [[package]]
@@ -1745,32 +1751,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "mock-asset"
-version = "0.1.0"
-dependencies = [
- "legion-assets",
-]
-
-[[package]]
-name = "mock-compiler"
-version = "0.1.0"
-dependencies = [
- "legion-assets",
- "legion-content-store",
- "legion-data-compiler",
- "legion-resources",
- "mock-asset",
- "mock-resource",
-]
-
-[[package]]
-name = "mock-resource"
-version = "0.1.0"
-dependencies = [
- "legion-resources",
 ]
 
 [[package]]
@@ -2329,6 +2309,20 @@ checksum = "528532f3d801c87aec9def2add9ca802fe569e44a544afe633765267840abe64"
 dependencies = [
  "getrandom 0.2.3",
  "redox_syscall",
+]
+
+[[package]]
+name = "refs-asset"
+version = "0.1.0"
+dependencies = [
+ "legion-assets",
+]
+
+[[package]]
+name = "refs-resource"
+version = "0.1.0"
+dependencies = [
+ "legion-resources",
 ]
 
 [[package]]
@@ -3028,26 +3022,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "test-asset"
+name = "test-compilers"
 version = "0.1.0"
 dependencies = [
- "legion-assets",
-]
-
-[[package]]
-name = "test-compiler"
-version = "0.1.0"
-dependencies = [
+ "integer-asset",
  "legion-assets",
  "legion-content-store",
  "legion-data-compiler",
  "legion-resources",
- "test-asset",
- "test-resource",
+ "refs-asset",
+ "refs-resource",
+ "text-resource",
 ]
 
 [[package]]
-name = "test-resource"
+name = "text-resource"
 version = "0.1.0"
 dependencies = [
  "legion-resources",

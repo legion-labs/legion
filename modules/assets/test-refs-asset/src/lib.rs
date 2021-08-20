@@ -5,7 +5,7 @@
 use assets::{Asset, AssetLoader, AssetType};
 
 /// Type id of test asset.
-pub const TYPE_ID: AssetType = AssetType::new(b"test_asset");
+pub const TYPE_ID: AssetType = AssetType::new(b"refs_asset");
 
 /// Asset temporarily used for testing.
 ///

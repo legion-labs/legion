@@ -18,7 +18,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(mock_resource::TEXT_RESOURCE, mock_resource::TEXT_RESOURCE),
+    transform: &(text_resource::TEXT_RESOURCE, text_resource::TEXT_RESOURCE),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -39,8 +39,8 @@ fn compiler_hash(
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
-        mock_resource::TEXT_RESOURCE,
-        Box::new(mock_resource::TextResourceProc {}),
+        text_resource::TEXT_RESOURCE,
+        Box::new(text_resource::TextResourceProc {}),
     );
 
     let handle = context.load_resource(
@@ -48,7 +48,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         &mut resources,
     )?;
     let mut resource = handle
-        .get_mut::<mock_resource::TextResource>(&mut resources)
+        .get_mut::<text_resource::TextResource>(&mut resources)
         .unwrap();
 
     resource.content = resource.content.chars().rev().collect();
@@ -56,7 +56,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
     let mut bytes = vec![];
 
     let (nbytes, _) = resources
-        .serialize_resource(mock_resource::TEXT_RESOURCE, &handle, &mut bytes)
+        .serialize_resource(text_resource::TEXT_RESOURCE, &handle, &mut bytes)
         .map_err(CompilerError::ResourceWriteFailed)?;
 
     let checksum = context

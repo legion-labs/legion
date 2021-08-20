@@ -1,5 +1,5 @@
 [package]
-name = "mock-compiler"
+name = "test-compilers"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2018"
@@ -12,14 +12,22 @@ legion-data-compiler = { path = "../../data-compiler" }
 legion-content-store = { path = "../../content-store" }
 legion-resources = { path = "../../resources" }
 legion-assets = { path = "../../assets" }
-mock-resource = { path = "../../resources/mock-resource"}
-mock-asset = { path = "../../assets/mock-asset"}
+text-resource = { path = "../../resources/test-text-resource"}
+integer-asset = { path = "../../assets/test-integer-asset"}
+refs-resource = { path = "../../resources/test-refs-resource"}
+refs-asset = { path = "../../assets/test-refs-asset"}
 
 [[bin]]
-name = "compiler-mock-atoi"
+name = "compiler-test-atoi"
 path = "src/atoi.rs"
 doc = false
+
 [[bin]]
-name = "compiler-mock-reverse"
+name = "compiler-test-reverse"
 path = "src/reverse.rs"
+doc = false
+
+[[bin]]
+name = "compiler-test-refs"
+path = "src/refs.rs"
 doc = false
