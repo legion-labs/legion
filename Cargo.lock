@@ -1324,12 +1324,14 @@ name = "legion-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "integer-asset",
  "legion-content-store",
  "legion-data-build",
  "legion-data-compiler",
  "legion-resources",
  "refs-resource",
  "tempfile",
+ "text-resource",
 ]
 
 [[package]]

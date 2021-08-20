@@ -453,10 +453,22 @@ impl DataBuild {
             // compile non-source dependencies.
             if let Some(direct_dependency) = derived.direct_dependency() {
                 let transform = derived.last_transform().unwrap();
+
+                //
+                // for derived resources the build index will not have dependencies for.
+                // for now derived resources do not inherit depenencies from resources down the
+                // resource path.
+                //
+                // this is compensated by the fact that the compilation output of each node
+                // contributes to `derived depenencies`. we might still want to inherit the
+                // regular depenencies.
+                //
+                // this has to be reevaluated in the future.
+                //
                 let dependencies = self
                     .build_index
                     .find_dependencies(&direct_dependency)
-                    .ok_or(Error::NotFound)?;
+                    .unwrap_or_default();
 
                 let (compiler_path, compiler_hash_list) = compiler_details.get(&transform).unwrap();
 

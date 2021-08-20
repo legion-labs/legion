@@ -22,3 +22,5 @@ legion-resources = { path = "../../libs/resources" }
 [dev-dependencies]
 tempfile = "3.2.0"
 refs-resource = { path = "../../libs/resources/test-refs-resource" }
+text-resource = { path = "../../libs/resources/test-text-resource" }
+integer-asset = { path = "../../libs/assets/test-integer-asset" }
