@@ -289,25 +289,25 @@ impl DataBuild {
         ),
         Error,
     > {
-        let (asset_objects, asset_object_references, stats): (
+        let (resource_infos, resource_references, stats): (
             Vec<CompiledResourceInfo>,
             Vec<CompiledResourceReference>,
             _,
         ) = {
             let now = SystemTime::now();
-            let (cached_asset_objects, cached_references) =
+            let (cached_infos, cached_references) =
                 self.build_index
                     .find_compiled(derived, context_hash, source_hash);
-            if !cached_asset_objects.is_empty() {
-                let asset_count = cached_asset_objects.len();
+            if !cached_infos.is_empty() {
+                let resource_count = cached_infos.len();
                 (
-                    cached_asset_objects,
+                    cached_infos,
                     cached_references,
                     std::iter::repeat(CompileStat {
                         time: now.elapsed().unwrap(),
                         from_cache: true,
                     })
-                    .take(asset_count)
+                    .take(resource_count)
                     .collect::<Vec<_>>(),
                 )
             } else {
@@ -323,8 +323,8 @@ impl DataBuild {
 
                 // todo: what is the cwd for if we provide resource_dir() ?
                 let CompilerCompileCmdOutput {
-                    compiled_resources: compiled_assets,
-                    resource_references: asset_references,
+                    compiled_resources,
+                    resource_references,
                 } = compile_cmd
                     .execute(compiler_path, &self.project.resource_dir())
                     .map_err(Error::CompilerError)?;
@@ -333,23 +333,23 @@ impl DataBuild {
                     derived,
                     context_hash,
                     source_hash,
-                    &compiled_assets,
-                    &asset_references,
+                    &compiled_resources,
+                    &resource_references,
                 );
-                let asset_count = compiled_assets.len();
+                let resource_count = compiled_resources.len();
                 (
-                    compiled_assets
+                    compiled_resources
                         .iter()
-                        .map(|asset| CompiledResourceInfo {
+                        .map(|resource| CompiledResourceInfo {
                             context_hash,
                             source_path: derived.clone(),
                             source_hash,
-                            compiled_path: asset.path.clone(),
-                            compiled_checksum: asset.checksum,
-                            compiled_size: asset.size,
+                            compiled_path: resource.path.clone(),
+                            compiled_checksum: resource.checksum,
+                            compiled_size: resource.size,
                         })
                         .collect(),
-                    asset_references
+                    resource_references
                         .iter()
                         .map(|reference| CompiledResourceReference {
                             context_hash,
@@ -363,13 +363,13 @@ impl DataBuild {
                         time: now.elapsed().unwrap(),
                         from_cache: false,
                     })
-                    .take(asset_count)
+                    .take(resource_count)
                     .collect::<Vec<_>>(),
                 )
             }
         };
 
-        Ok((asset_objects, asset_object_references, stats))
+        Ok((resource_infos, resource_references, stats))
     }
 
     /// Compiles a resource by [`ResourcePathId`]. Returns a list of ids of `Asset Objects` compiled.
@@ -435,17 +435,17 @@ impl DataBuild {
                 })
                 .collect::<Result<HashMap<_, _>, _>>()?
         };
-        let mut compiled_assets = vec![];
+        let mut compiled_resources = vec![];
         let mut compiled_references = vec![];
         let mut compile_stats = vec![];
 
-        for output_id in ordered_nodes {
+        for derived in ordered_nodes {
             // compile non-source dependencies.
-            if let Some(input_id) = output_id.direct_dependency() {
-                let transform = output_id.last_transform().unwrap();
+            if let Some(direct_dependency) = derived.direct_dependency() {
+                let transform = derived.last_transform().unwrap();
                 let dependencies = self
                     .build_index
-                    .find_dependencies(&input_id)
+                    .find_dependencies(&direct_dependency)
                     .ok_or(Error::NotFound)?;
 
                 let (compiler_path, compiler_hash_list) = compiler_details.get(&transform).unwrap();
@@ -463,10 +463,10 @@ impl DataBuild {
                 // the same resource can have a different source_hash depending on the compiler
                 // used as compilers can filter dependencies out.
                 //
-                let source_hash = self.build_index.compute_source_hash(output_id.clone())?;
+                let source_hash = self.build_index.compute_source_hash(derived.clone())?;
 
-                let (asset_objects, asset_object_references, stats) = self.compile_node(
-                    &output_id,
+                let (resource_infos, resource_references, stats) = self.compile_node(
+                    &derived,
                     context_hash,
                     source_hash,
                     &dependencies,
@@ -476,13 +476,13 @@ impl DataBuild {
                     compiler_path,
                 )?;
 
-                compiled_assets.extend(asset_objects);
+                compiled_resources.extend(resource_infos);
                 compile_stats.extend(stats);
-                compiled_references.extend(asset_object_references);
+                compiled_references.extend(resource_references);
             }
         }
         Ok(CompileOutput {
-            resources: compiled_assets,
+            resources: compiled_resources,
             references: compiled_references,
             statistics: compile_stats,
         })
@@ -777,9 +777,9 @@ mod tests {
                 .unwrap()
         };
 
-        let assetstore_path = ContentStoreAddr::from(work_dir.path());
+        let contentstore_path = ContentStoreAddr::from(work_dir.path());
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-            .content_store(&assetstore_path)
+            .content_store(&contentstore_path)
             .compiler_dir(target_dir())
             .create(project_dir)
             .expect("to create index");
@@ -799,10 +799,10 @@ mod tests {
             )
             .unwrap();
 
-        // both test(child_id) and test(parent_id) are separate assets.
+        // both test(child_id) and test(parent_id) are separate resources.
         assert_eq!(manifest.compiled_resources.len(), 2);
 
-        let content_store = HddContentStore::open(assetstore_path).expect("valid content store");
+        let content_store = HddContentStore::open(contentstore_path).expect("valid content store");
         for checksum in manifest.compiled_resources.iter().map(|a| a.checksum) {
             assert!(content_store.exists(checksum));
         }
@@ -818,11 +818,11 @@ mod tests {
             manifest.compiled_resources.len()
         );
 
-        for asset in read_manifest.compiled_resources {
+        for resource in read_manifest.compiled_resources {
             assert!(manifest
                 .compiled_resources
                 .iter()
-                .any(|a| a.checksum == asset.checksum));
+                .any(|res| res.checksum == resource.checksum));
         }
     }
 
@@ -847,10 +847,10 @@ mod tests {
             (resource_id, resource_handle)
         };
 
-        let assetstore_path = ContentStoreAddr::from(work_dir.path());
+        let contentstore_path = ContentStoreAddr::from(work_dir.path());
         let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
         config
-            .content_store(&assetstore_path)
+            .content_store(&contentstore_path)
             .compiler_dir(target_dir());
 
         let target = ResourcePathId::from(resource_id).transform(test_resource::TYPE_ID);
@@ -874,7 +874,7 @@ mod tests {
             let original_checksum = compile_output.resources[0].compiled_checksum;
 
             let content_store =
-                HddContentStore::open(assetstore_path.clone()).expect("valid content store");
+                HddContentStore::open(contentstore_path.clone()).expect("valid content store");
             assert!(content_store.exists(original_checksum));
 
             original_checksum
@@ -903,7 +903,7 @@ mod tests {
             let modified_checksum = compile_output.resources[0].compiled_checksum;
 
             let content_store =
-                HddContentStore::open(assetstore_path).expect("valid content store");
+                HddContentStore::open(contentstore_path).expect("valid content store");
             assert!(content_store.exists(original_checksum));
             assert!(content_store.exists(modified_checksum));
 
@@ -924,7 +924,7 @@ mod tests {
             let resource = res
                 .get_mut::<test_resource::TestResource>(resources)
                 .unwrap();
-            resource.content = name.display().to_string(); // each resource needs unique content to generate a unique asset.
+            resource.content = name.display().to_string(); // each resource needs unique content to generate a unique resource.
             resource.build_deps.extend_from_slice(deps);
             res
         };
@@ -1032,10 +1032,10 @@ mod tests {
             assert_eq!(order[NUM_NODES - 2], ResourcePathId::from(root_resource));
         }
 
-        // first run - none of the assets from cache.
+        // first run - none of the resources from cache.
         {
             let CompileOutput {
-                resources: asset_objects,
+                resources,
                 references,
                 statistics,
             } = build
@@ -1047,15 +1047,15 @@ mod tests {
                 )
                 .expect("successful compilation");
 
-            assert_eq!(asset_objects.len(), NUM_OUTPUTS);
+            assert_eq!(resources.len(), NUM_OUTPUTS);
             assert_eq!(references.len(), NUM_OUTPUTS);
             assert!(statistics.iter().all(|s| !s.from_cache));
         }
 
-        // no change, second run - all assets from cache.
+        // no change, second run - all resources from cache.
         {
             let CompileOutput {
-                resources: asset_objects,
+                resources,
                 references,
                 statistics,
             } = build
@@ -1067,18 +1067,18 @@ mod tests {
                 )
                 .expect("successful compilation");
 
-            assert_eq!(asset_objects.len(), NUM_OUTPUTS);
+            assert_eq!(resources.len(), NUM_OUTPUTS);
             assert_eq!(references.len(), NUM_OUTPUTS);
             assert!(statistics.iter().all(|s| s.from_cache));
         }
 
-        // change root resource, one asset re-compiled.
+        // change root resource, one resource re-compiled.
         {
             change_resource(root_resource, project_dir);
             build.source_pull().expect("to pull changes");
 
             let CompileOutput {
-                resources: asset_objects,
+                resources,
                 references,
                 statistics,
             } = build
@@ -1090,7 +1090,7 @@ mod tests {
                 )
                 .expect("successful compilation");
 
-            assert_eq!(asset_objects.len(), NUM_OUTPUTS);
+            assert_eq!(resources.len(), NUM_OUTPUTS);
             assert_eq!(references.len(), NUM_OUTPUTS);
             assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 1);
         }
@@ -1102,14 +1102,14 @@ mod tests {
             build.source_pull().expect("to pull changes");
 
             let CompileOutput {
-                resources: asset_objects,
+                resources,
                 references,
                 statistics,
             } = build
                 .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
                 .expect("successful compilation");
 
-            assert_eq!(asset_objects.len(), 5);
+            assert_eq!(resources.len(), 5);
             assert_eq!(references.len(), 5);
             assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 4);
         }
@@ -1159,16 +1159,16 @@ mod tests {
                 .unwrap()
         };
 
-        let assetstore_path = ContentStoreAddr::from(work_dir.path());
+        let contentstore_path = ContentStoreAddr::from(work_dir.path());
         let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-            .content_store(&assetstore_path)
+            .content_store(&contentstore_path)
             .compiler_dir(target_dir())
             .create(project_dir)
             .expect("to create index");
 
         build.source_pull().unwrap();
 
-        // for now each asset is a separate file so we need to validate that the compile output and link output produce the same number of assets
+        // for now each resource is a separate file so we need to validate that the compile output and link output produce the same number of resources
 
         let target = ResourcePathId::from(parent_id).transform(test_resource::TYPE_ID);
         let compile_output = build
@@ -1191,7 +1191,7 @@ mod tests {
                 .any(|compiled| compiled.checksum == obj.compiled_checksum));
         }
 
-        // ... and each output asset need to exist as exactly one asset object (although having different checksum).
+        // ... and each output resource need to exist as exactly one resource object (although having different checksum).
         for output in link_output {
             assert_eq!(
                 compile_output
