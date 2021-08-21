@@ -2,3 +2,8 @@
 name = "Legion Labs"
 email = "devs@legionlabs.com"
 vcs = "none"
+
+[build]
+# 
+# make rustdoc treat warnings as errors.
+rustdocflags = ["-Dwarnings"]

@@ -341,7 +341,7 @@ impl App {
     /// A resource in Legion represents globally unique data. Resources must be added to Legion Apps
     /// before using them. This happens with [`App::insert_resource`].
     ///
-    /// See also `init_resource` for resources that implement `Default` or [`FromResources`].
+    /// See also `init_resource` for resources that implement `Default` or `FromResources`.
     ///
     /// ## Example
     /// ```
@@ -388,7 +388,7 @@ impl App {
 
     /// Initialize a resource in the current [App], if it does not exist yet
     ///
-    /// Adds a resource that implements `Default` or [`FromResources`] trait.
+    /// Adds a resource that implements `Default` or `FromResources` trait.
     /// If the resource already exists, `init_resource` does nothing.
     ///
     /// ## Example
@@ -438,7 +438,7 @@ impl App {
 
     /// Sets the main runner loop function for this Legion App
     ///
-    /// Usually the main loop is handled by Legion integrated plugins ([`WinitPlugin`]), but
+    /// Usually the main loop is handled by Legion integrated plugins, but
     /// in some cases one might wish to implement their own main loop.
     ///
     /// This method sets the main loop function, overwriting a previous runner if any.
@@ -489,8 +489,6 @@ impl App {
     ///
     /// Legion plugins can be grouped into a set of plugins. Legion provides
     /// built-in `PluginGroups` that provide core engine functionality.
-    ///
-    /// The plugin groups available by default are [`DefaultPlugins`] and [`MinimalPlugins`].
     ///
     /// ## Example
     /// ```
