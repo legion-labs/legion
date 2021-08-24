@@ -167,8 +167,6 @@ skip = [
   { name = "rand_core", version = "=0.5.1" },
   { name = "rand_hc", version = "=0.2.0" },
   { name = "wasi", version = "=0.9.0" },
-  { name = "crc", version = "=1.8.1" },         # waiting for sqlx release to include https://github.com/launchbadge/sqlx/pull/1256
-
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 
