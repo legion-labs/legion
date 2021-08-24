@@ -36,4 +36,6 @@
 
 - [Roadmap](./roadmap/README.md)
 
+- [High level flows](./high-level-flows/README.md)
+
 - [API Reference](reference.md)
