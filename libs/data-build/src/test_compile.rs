@@ -36,92 +36,6 @@ fn target_dir() -> PathBuf {
     )
 }
 
-#[test]
-fn compile_change_no_deps() {
-    let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
-    let mut resources = setup_registry();
-
-    let (resource_id, resource_handle) = {
-        let mut project = Project::create_new(project_dir).expect("failed to create a project");
-
-        let resource_handle = resources.new_resource(refs_resource::TYPE_ID).unwrap();
-        let resource_id = project
-            .add_resource(
-                ResourceName::from("resource"),
-                refs_resource::TYPE_ID,
-                &resource_handle,
-                &mut resources,
-            )
-            .unwrap();
-        (resource_id, resource_handle)
-    };
-
-    let contentstore_path = ContentStoreAddr::from(work_dir.path());
-    let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
-    config
-        .content_store(&contentstore_path)
-        .compiler_dir(target_dir());
-
-    let target = ResourcePathId::from(resource_id).transform(refs_resource::TYPE_ID);
-
-    let original_checksum = {
-        let mut build = config.create(project_dir).expect("to create index");
-        build.source_pull().expect("failed to pull from project");
-
-        let compile_output = build
-            .compile_path(
-                target.clone(),
-                Target::Game,
-                Platform::Windows,
-                &Locale::new("en"),
-            )
-            .unwrap();
-
-        assert_eq!(compile_output.resources.len(), 1);
-        assert_eq!(compile_output.references.len(), 0);
-
-        let original_checksum = compile_output.resources[0].compiled_checksum;
-
-        let content_store =
-            HddContentStore::open(contentstore_path.clone()).expect("valid content store");
-        assert!(content_store.exists(original_checksum));
-
-        original_checksum
-    };
-
-    let mut project = Project::open(project_dir).expect("failed to open project");
-
-    resource_handle
-        .get_mut::<refs_resource::TestResource>(&mut resources)
-        .unwrap()
-        .content = String::from("new content");
-
-    project
-        .save_resource(resource_id, &resource_handle, &mut resources)
-        .unwrap();
-
-    let modified_checksum = {
-        let mut build = config.open().expect("to open index");
-        build.source_pull().expect("failed to pull from project");
-        let compile_output = build
-            .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
-            .unwrap();
-
-        assert_eq!(compile_output.resources.len(), 1);
-
-        let modified_checksum = compile_output.resources[0].compiled_checksum;
-
-        let content_store = HddContentStore::open(contentstore_path).expect("valid content store");
-        assert!(content_store.exists(original_checksum));
-        assert!(content_store.exists(modified_checksum));
-
-        modified_checksum
-    };
-
-    assert_ne!(original_checksum, modified_checksum);
-}
-
 fn create_resource(
     name: ResourceName,
     deps: &[ResourcePathId],
@@ -159,13 +73,109 @@ fn change_resource(resource_id: ResourceId, project_dir: &Path) {
         .expect("successful save");
 }
 
+#[test]
+fn compile_change_no_deps() {
+    let work_dir = tempfile::tempdir().unwrap();
+    let project_dir = work_dir.path();
+    let mut resources = setup_registry();
+
+    let (resource_id, resource_handle) = {
+        let mut project = Project::create_new(project_dir).expect("failed to create a project");
+
+        let resource_handle = resources.new_resource(refs_resource::TYPE_ID).unwrap();
+        let resource_id = project
+            .add_resource(
+                ResourceName::from("resource"),
+                refs_resource::TYPE_ID,
+                &resource_handle,
+                &mut resources,
+            )
+            .unwrap();
+        (resource_id, resource_handle)
+    };
+
+    let contentstore_path = ContentStoreAddr::from(work_dir.path());
+    let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
+    config
+        .content_store(&contentstore_path)
+        .compiler_dir(target_dir());
+
+    let target = ResourcePathId::from(resource_id).transform(refs_resource::TYPE_ID);
+
+    // compile the resource..
+    let original_checksum = {
+        let mut build = config.create(project_dir).expect("to create index");
+        build.source_pull().expect("failed to pull from project");
+
+        let compile_output = build
+            .compile_path(
+                target.clone(),
+                Target::Game,
+                Platform::Windows,
+                &Locale::new("en"),
+            )
+            .unwrap();
+
+        assert_eq!(compile_output.resources.len(), 1);
+        assert_eq!(compile_output.references.len(), 0);
+
+        let original_checksum = compile_output.resources[0].compiled_checksum;
+
+        let content_store =
+            HddContentStore::open(contentstore_path.clone()).expect("valid content store");
+        assert!(content_store.exists(original_checksum));
+
+        original_checksum
+    };
+
+    // ..change resource..
+    {
+        let mut project = Project::open(project_dir).expect("failed to open project");
+
+        resource_handle
+            .get_mut::<refs_resource::TestResource>(&mut resources)
+            .unwrap()
+            .content = String::from("new content");
+
+        project
+            .save_resource(resource_id, &resource_handle, &mut resources)
+            .unwrap();
+    }
+
+    // ..re-compile changed resource..
+    let modified_checksum = {
+        let mut build = config.open().expect("to open index");
+        build.source_pull().expect("failed to pull from project");
+        let compile_output = build
+            .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
+            .unwrap();
+
+        assert_eq!(compile_output.resources.len(), 1);
+
+        let modified_checksum = compile_output.resources[0].compiled_checksum;
+
+        let content_store = HddContentStore::open(contentstore_path).expect("valid content store");
+        assert!(content_store.exists(original_checksum));
+        assert!(content_store.exists(modified_checksum));
+
+        modified_checksum
+    };
+
+    assert_ne!(original_checksum, modified_checksum);
+}
+
 /// Creates a project with 5 resources with dependencies setup as depicted below.
+/// t(A) depicts a dependency on a `derived resource A` transformed  by `t`.
 /// Returns an array of resources from A to E where A is at index 0.
-///
-/// A -> B -> C
-/// |    |
-/// D -> E
-///
+//
+// t(A) -> A -> t(B) -> B -> t(C) -> C
+//         |            |
+//         V            |
+//       t(D)           |
+//         |            |
+//         V            V
+//         D -------> t(E) -> E
+//
 fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     let mut project =
         Project::create_new(project_dir.as_ref()).expect("failed to create a project");
@@ -202,12 +212,11 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
 }
 
 #[test]
-fn dependency_invalidation() {
+fn compile_cache() {
     let work_dir = tempfile::tempdir().unwrap();
     let project_dir = work_dir.path();
 
     let resource_list = setup_project(project_dir);
-
     let root_resource = resource_list[0];
 
     let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))

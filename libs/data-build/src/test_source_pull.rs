@@ -159,10 +159,10 @@ fn with_derived_dependency() {
             .unwrap();
     }
 
-    let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
-    config.content_store(&ContentStoreAddr::from(project_dir.to_owned()));
-
-    let mut build = config.create(project_dir).expect("to create index");
+    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+        .content_store(&ContentStoreAddr::from(project_dir.to_owned()))
+        .create(project_dir)
+        .expect("to create index");
 
     let updated_count = build.source_pull().unwrap();
     assert_eq!(updated_count, 3);
