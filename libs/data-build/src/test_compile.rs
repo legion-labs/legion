@@ -100,7 +100,8 @@ fn compile_change_no_deps() {
         .content_store(&contentstore_path)
         .compiler_dir(target_dir());
 
-    let target = ResourcePathId::from(resource_id).transform(refs_resource::TYPE_ID);
+    let source = ResourcePathId::from(resource_id);
+    let target = source.transform(refs_resource::TYPE_ID);
 
     // compile the resource..
     let original_checksum = {
@@ -118,6 +119,11 @@ fn compile_change_no_deps() {
 
         assert_eq!(compile_output.resources.len(), 1);
         assert_eq!(compile_output.references.len(), 0);
+        assert_eq!(compile_output.resources[0].compile_path, target);
+        assert_eq!(
+            compile_output.resources[0].compile_path,
+            compile_output.resources[0].compiled_path
+        );
 
         let original_checksum = compile_output.resources[0].compiled_checksum;
 
@@ -147,10 +153,20 @@ fn compile_change_no_deps() {
         let mut build = config.open().expect("to open index");
         build.source_pull().expect("failed to pull from project");
         let compile_output = build
-            .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
+            .compile_path(
+                target.clone(),
+                Target::Game,
+                Platform::Windows,
+                &Locale::new("en"),
+            )
             .unwrap();
 
         assert_eq!(compile_output.resources.len(), 1);
+        assert_eq!(compile_output.resources[0].compile_path, target);
+        assert_eq!(
+            compile_output.resources[0].compile_path,
+            compile_output.resources[0].compiled_path
+        );
 
         let modified_checksum = compile_output.resources[0].compiled_checksum;
 

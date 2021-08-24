@@ -209,13 +209,13 @@ impl DataBuild {
     /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
     pub fn compile(
         &mut self,
-        derived: ResourcePathId,
+        compile_path: ResourcePathId,
         manifest_file: &Path,
         target: Target,
         platform: Platform,
         locale: &Locale,
     ) -> Result<Manifest, Error> {
-        let source = derived.source_resource();
+        let source = compile_path.source_resource();
         if !self.project.exists(source) {
             return Err(Error::NotFound);
         }
@@ -246,7 +246,7 @@ impl DataBuild {
             resources,
             references,
             statistics: _stats,
-        } = self.compile_path(derived, target, platform, locale)?;
+        } = self.compile_path(compile_path, target, platform, locale)?;
 
         let assets = self.link(&resources, &references)?;
 
@@ -273,7 +273,7 @@ impl DataBuild {
     #[allow(clippy::type_complexity)]
     fn compile_node(
         &mut self,
-        derived: &ResourcePathId,
+        compile_path: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
         dependencies: &[ResourcePathId],
@@ -298,7 +298,7 @@ impl DataBuild {
             let now = SystemTime::now();
             if let Some((cached_infos, cached_references)) =
                 self.build_index
-                    .find_compiled(derived, context_hash, source_hash)
+                    .find_compiled(compile_path, context_hash, source_hash)
             {
                 let resource_count = cached_infos.len();
                 (
@@ -313,7 +313,7 @@ impl DataBuild {
                 )
             } else {
                 let mut compile_cmd = CompilerCompileCmd::new(
-                    derived,
+                    compile_path,
                     dependencies,
                     derived_deps,
                     &self.content_store.address(),
@@ -332,7 +332,7 @@ impl DataBuild {
                     .map_err(Error::CompilerError)?;
 
                 self.build_index.insert_compiled(
-                    derived,
+                    compile_path,
                     context_hash,
                     source_hash,
                     &compiled_resources,
@@ -344,7 +344,7 @@ impl DataBuild {
                         .iter()
                         .map(|resource| CompiledResourceInfo {
                             context_hash,
-                            source_path: derived.clone(),
+                            compile_path: compile_path.clone(),
                             source_hash,
                             compiled_path: resource.path.clone(),
                             compiled_checksum: resource.checksum,
@@ -355,7 +355,7 @@ impl DataBuild {
                         .iter()
                         .map(|reference| CompiledResourceReference {
                             context_hash,
-                            source_path: derived.clone(),
+                            compile_path: compile_path.clone(),
                             source_hash,
                             compiled_path: reference.0.clone(),
                             compiled_reference: reference.1.clone(),
@@ -380,13 +380,13 @@ impl DataBuild {
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
     fn compile_path(
         &mut self,
-        derived: ResourcePathId,
+        compile_path: ResourcePathId,
         target: Target,
         platform: Platform,
         locale: &Locale,
     ) -> Result<CompileOutput, Error> {
         // todo: rename this: `compile order`?
-        let ordered_nodes = self.build_index.evaluation_order(derived)?;
+        let ordered_nodes = self.build_index.evaluation_order(compile_path)?;
 
         let compiler_details = {
             let compilers = list_compilers(&self.config.compiler_search_paths);

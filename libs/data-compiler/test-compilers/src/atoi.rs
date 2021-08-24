@@ -45,7 +45,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
 
     // todo: source_resource is wrong
     let resource = context.load_resource(
-        &context.derived.direct_dependency().unwrap(),
+        &context.compile_path.direct_dependency().unwrap(),
         &mut resources,
     )?;
     let resource = resource
@@ -61,7 +61,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         .ok_or(CompilerError::AssetStoreError)?;
 
     let asset = CompiledResource {
-        path: context.derived,
+        path: context.compile_path,
         checksum,
         size: compiled_asset.len(),
     };

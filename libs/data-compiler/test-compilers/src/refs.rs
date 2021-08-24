@@ -44,7 +44,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
     );
 
     let resource = context.load_resource(
-        &context.derived.direct_dependency().unwrap(),
+        &context.compile_path.direct_dependency().unwrap(),
         &mut resources,
     )?;
     let resource = resource
@@ -63,22 +63,22 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         .ok_or(CompilerError::AssetStoreError)?;
 
     let asset = CompiledResource {
-        path: context.derived.clone(),
+        path: context.compile_path.clone(),
         checksum,
         size: compiled_asset.len(),
     };
 
     // in this test example every build dependency becomes a reference/load-time dependency.
-    let derived = context.derived.clone();
-    let asset_references: Vec<_> = context
+    let source = context.compile_path.clone();
+    let references: Vec<_> = context
         .dependencies
         .iter()
-        .map(|dep| (derived.clone(), dep.clone()))
+        .map(|destination| (source.clone(), destination.clone()))
         .collect();
 
     Ok(CompilationOutput {
         compiled_resources: vec![asset],
-        resource_references: asset_references,
+        resource_references: references,
     })
 }
 

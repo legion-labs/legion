@@ -36,10 +36,10 @@
 //! # use legion_data_compiler::{Locale, Platform, Target};
 //! # use legion_resources::ResourcePathId;
 //! # use std::path::PathBuf;
-//! fn compile_resource(derived: ResourcePathId, dependencies: &[ResourcePathId]) {
+//! fn compile_resource(compile_path: ResourcePathId, dependencies: &[ResourcePathId]) {
 //!     let content_store = ContentStoreAddr::from("./content_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
-//!     let mut command = CompilerCompileCmd::new(&derived, dependencies, &[], &content_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
+//!     let mut command = CompilerCompileCmd::new(&compile_path, dependencies, &[], &content_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
 //!     let output = command.execute("my_compiler.exe", "./").expect("compiled resources");
 //!}
 //! ```
@@ -314,7 +314,7 @@ impl CompilerCompileCmd {
     /// Creates a new command.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        derived: &ResourcePathId,
+        compile_path: &ResourcePathId,
         source_deps: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         cas_addr: &ContentStoreAddr,
@@ -325,7 +325,7 @@ impl CompilerCompileCmd {
     ) -> Self {
         let mut builder = CommandBuilder::default();
         builder.arg(COMMAND_NAME_COMPILE);
-        builder.arg(format!("{}", derived));
+        builder.arg(format!("{}", compile_path));
         if !source_deps.is_empty() {
             builder.arg(format!("--{}", COMMAND_ARG_SRC_DEPS));
             for res in source_deps {

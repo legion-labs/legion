@@ -147,7 +147,7 @@ pub struct CompilationOutput {
 /// Context of the current compilation process.
 pub struct CompilerContext<'a> {
     /// The desired compilation output.
-    pub derived: ResourcePathId,
+    pub compile_path: ResourcePathId,
     /// Compilation depenency list.
     pub dependencies: &'a [ResourcePathId],
     /// List of derived dependencies accumulated in this compilation pass.
@@ -185,7 +185,7 @@ impl CompilerContext<'_> {
             // in the future we might want to load different leaves of this build path.
             // in this case we would need to additionally check `self.dependencies`.
             //
-            if self.derived.source_resource() != id.source_resource() {
+            if self.compile_path.source_resource() != id.source_resource() {
                 return Err(CompilerError::ResourceNotFound);
             }
             let resource_path = resource_path(self.resource_dir, id.source_resource());
@@ -350,7 +350,7 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 HddContentStore::open(asset_store_path).ok_or(CompilerError::AssetStoreError)?;
 
             let context = CompilerContext {
-                derived,
+                compile_path: derived,
                 dependencies: &dependencies,
                 derived_deps: &derived_deps,
                 target,

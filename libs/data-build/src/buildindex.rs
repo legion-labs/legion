@@ -22,9 +22,11 @@ struct ResourceInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledResourceInfo {
-    pub(crate) source_path: ResourcePathId,
+    /// The path the resource was compiled from, i.e.: "ResourcePathId("anim.fbx").transform("anim.offline")
+    pub(crate) compile_path: ResourcePathId,
     pub(crate) context_hash: u64,
     pub(crate) source_hash: u64,
+    /// The path the resource was compiled into, i.e.: "ResourcePathId("anim.fbx").transform("anim.offline")["idle"]
     pub(crate) compiled_path: ResourcePathId,
     pub(crate) compiled_checksum: i128,
     pub(crate) compiled_size: usize,
@@ -32,8 +34,8 @@ pub(crate) struct CompiledResourceInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledResourceReference {
+    pub(crate) compile_path: ResourcePathId,
     pub(crate) context_hash: u64,
-    pub(crate) source_path: ResourcePathId,
     pub(crate) source_hash: u64,
     pub(crate) compiled_path: ResourcePathId,
     pub(crate) compiled_reference: ResourcePathId,
@@ -46,7 +48,7 @@ impl CompiledResourceReference {
     }
 
     pub fn is_from_same_source(&self, resource_info: &CompiledResourceInfo) -> bool {
-        self.is_same_context(resource_info) && self.source_path == resource_info.source_path
+        self.is_same_context(resource_info) && self.compile_path == resource_info.compile_path
     }
 
     pub fn is_reference_of(&self, resource_info: &CompiledResourceInfo) -> bool {
@@ -134,7 +136,7 @@ impl BuildIndex {
     /// Returns ordered list of dependencies starting from leaf-dependencies ending with `resource_id` - the root.
     pub(crate) fn evaluation_order(
         &self,
-        derived: ResourcePathId,
+        compile_path: ResourcePathId,
     ) -> Result<Vec<ResourcePathId>, Error> {
         let mut dep_graph = Graph::<ResourcePathId, (), Directed>::new();
         let mut indices = HashMap::<ResourcePathId, petgraph::prelude::NodeIndex>::new();
@@ -143,7 +145,7 @@ impl BuildIndex {
 
         // we process the whole path as derived resources might not exist in
         // the build index as those are never refered to as dependencies.
-        let mut resource_path = Some(derived);
+        let mut resource_path = Some(compile_path);
         while let Some(path) = resource_path {
             let direct_dependency = path.direct_dependency();
             queue.push_back(path);
@@ -296,7 +298,7 @@ impl BuildIndex {
 
     pub(crate) fn insert_compiled(
         &mut self,
-        source_path: &ResourcePathId,
+        compile_path: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
         compiled_resources: &[CompiledResource],
@@ -307,13 +309,13 @@ impl BuildIndex {
         // Once we support it we will have to make sure the result of the compilation
         // is exactly the same for all compiled_assets.
         assert!(self
-            .find_compiled(source_path, context_hash, source_hash)
+            .find_compiled(compile_path, context_hash, source_hash)
             .is_none());
 
         let mut compiled_assets_desc: Vec<_> = compiled_resources
             .iter()
             .map(|asset| CompiledResourceInfo {
-                source_path: source_path.clone(),
+                compile_path: compile_path.clone(),
                 context_hash,
                 source_hash,
                 compiled_path: asset.path.clone(),
@@ -327,7 +329,7 @@ impl BuildIndex {
             .map(
                 |(compiled_guid, compiled_reference)| CompiledResourceReference {
                     context_hash,
-                    source_path: source_path.clone(),
+                    compile_path: compile_path.clone(),
                     source_hash,
                     compiled_path: compiled_guid.clone(),
                     compiled_reference: compiled_reference.clone(),
@@ -346,7 +348,7 @@ impl BuildIndex {
 
     pub(crate) fn find_compiled(
         &self,
-        source_guid: &ResourcePathId,
+        compile_path: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
     ) -> Option<(Vec<CompiledResourceInfo>, Vec<CompiledResourceReference>)> {
@@ -355,7 +357,7 @@ impl BuildIndex {
             .compiled_resources
             .iter()
             .filter(|asset| {
-                &asset.source_path == source_guid
+                &asset.compile_path == compile_path
                     && asset.context_hash == context_hash
                     && asset.source_hash == source_hash
             })
@@ -370,7 +372,7 @@ impl BuildIndex {
                 .compiled_resource_references
                 .iter()
                 .filter(|reference| {
-                    &reference.source_path == source_guid
+                    &reference.compile_path == compile_path
                         && reference.context_hash == context_hash
                         && reference.source_hash == source_hash
                 })
