@@ -1,5 +1,5 @@
 [workspace]
-members = ["clients/*", "servers/*", "core/*", "modules/*", "apps/*", "tests/*"]
+members = ["clients/*", "servers/*", "core/*", "modules/*", "tests/*"]
 
 [profile.release]
 opt-level = 3
