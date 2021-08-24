@@ -9,5 +9,5 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 clap = "2.33"
-legion-source-control = { path = "../../modules/source-control" }
+legion-source-control = { path = "../../libs/source-control" }
 tokio = { version = "1", features = ["full"] }

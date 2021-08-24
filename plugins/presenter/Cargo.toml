@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-graphics-api = { path = "../graphics-api", package = "legion-graphics-api" }
+graphics-api = { path = "../../libs/graphics-api", package = "legion-graphics-api" }
 log = "0.4"
 crossbeam-channel = "0.5"
 instant = "0.1"

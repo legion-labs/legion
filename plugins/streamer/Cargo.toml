@@ -8,4 +8,4 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-codec-api = { path = "../codec-api", package = "legion-codec-api" }
+codec-api = { path = "../../libs/codec-api", package = "legion-codec-api" }

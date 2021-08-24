@@ -14,11 +14,11 @@ doc = false
 
 [dependencies]
 clap = "2.33"
-legion-data-build = { path = "../../modules/data-build" }
-legion-data-compiler = { path = "../../modules/data-compiler" }
-legion-content-store = { path = "../../modules/content-store" }
-legion-resources = { path = "../../modules/resources" }
+legion-data-build = { path = "../../libs/data-build" }
+legion-data-compiler = { path = "../../libs/data-compiler" }
+legion-content-store = { path = "../../libs/content-store" }
+legion-resources = { path = "../../libs/resources" }
 
 [dev-dependencies]
 tempfile = "3.2.0"
-refs-resource = { path = "../../modules/resources/test-refs-resource" }
+refs-resource = { path = "../../libs/resources/test-refs-resource" }
