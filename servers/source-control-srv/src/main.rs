@@ -78,8 +78,8 @@
 
 use http::response::Response;
 use hyper::body::Body;
-use legion_src_ctl::sql_repository_query::{Databases, SqlRepositoryQuery};
-use legion_src_ctl::{sql::*, *};
+use legion_source_control::sql_repository_query::{Databases, SqlRepositoryQuery};
+use legion_source_control::{sql::*, *};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use warp::Filter;

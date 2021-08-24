@@ -1,5 +1,5 @@
 [package]
-name = "legion-src-ctl"
+name = "legion-source-control"
 version = "0.1.0"
 authors = ["mad-legion <mad@legionlabs.com>"]
 edition = "2018"

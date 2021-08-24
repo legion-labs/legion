@@ -1,18 +1,13 @@
 [package]
-name = "src-ctl-srv"
+name = "lsc"
 version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-legion-src-ctl = { path = "../../modules/src-ctl" }
+clap = "2.33"
+legion-source-control = { path = "../../modules/source-control" }
 tokio = { version = "1", features = ["full"] }
-warp = "0.3"
-bytes = "1.0"
-http = { version = "0.2.4" }
-hyper = "0.14"
-futures = "0.3"
-lazy_static = "1.4"
-serde_json = "1.0"

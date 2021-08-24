@@ -76,7 +76,7 @@
 #![allow()]
 
 use clap::{App, AppSettings, Arg, SubCommand};
-use legion_src_ctl::*;
+use legion_source_control::*;
 use std::path::Path;
 
 fn main() {
@@ -320,9 +320,9 @@ fn main_impl() -> Result<(), String> {
     match matches.subcommand() {
         ("init-local-repository", Some(command_match)) => {
             let path = command_match.value_of("directory").unwrap();
-            if let Err(e) = tokio_runtime.block_on(legion_src_ctl::init_local_repository_command(
-                Path::new(&path),
-            )) {
+            if let Err(e) = tokio_runtime.block_on(
+                legion_source_control::init_local_repository_command(Path::new(&path)),
+            ) {
                 return Err(e);
             }
             Ok(())
@@ -330,14 +330,15 @@ fn main_impl() -> Result<(), String> {
         ("init-remote-repository", Some(command_match)) => {
             let repo_uri = command_match.value_of("uri").unwrap();
             let blob_uri = command_match.value_of("blob-storage");
-            tokio_runtime.block_on(legion_src_ctl::init_remote_repository_command(
+            tokio_runtime.block_on(legion_source_control::init_remote_repository_command(
                 repo_uri, blob_uri,
             ))
         }
         ("destroy-repository", Some(command_match)) => {
             let repo_uri = command_match.value_of("uri").unwrap();
-            tokio_runtime
-                .block_on(legion_src_ctl::destroy_repository::destroy_repository_command(repo_uri))
+            tokio_runtime.block_on(
+                legion_source_control::destroy_repository::destroy_repository_command(repo_uri),
+            )
         }
         ("init-workspace", Some(command_match)) => tokio_runtime.block_on(init_workspace_command(
             Path::new(command_match.value_of("workspace-directory").unwrap()),
