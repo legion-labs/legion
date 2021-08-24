@@ -59,9 +59,9 @@
 //! A **data compiler** is able to load and read certain *resources* that are available through [`CompilerContext`].
 //!
 //! The main *resource* is the leaf of the **build graph** being currently compiled. It is accessable by
-//! calling [`ResourcePathId::source_resource_path`] on [`CompilerContext::derived`].
+//! calling [`ResourcePathId::source_resource_path`] on [`CompilerContext::compile_path`].
 //!
-//! It can also access any *intermediate resource* that is part of the [`CompilerContext::derived`]'s [`ResourcePathId`] provided that
+//! It can also access any *intermediate resource* that is part of the [`CompilerContext::compile_path`]'s [`ResourcePathId`] provided that
 //! it was whitelisted as a *derived depenendency* during the compilation process.
 //!
 //! Reading source `Resources` is done with [`CompilerContext::load_resource`] function:
@@ -81,7 +81,7 @@
 //!   let mut registry = ResourceRegistry::default();
 //!   registry.register_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}));
 //!
-//!   let resource = context.load_resource(&context.derived.source_resource_path(), &mut registry).expect("loaded resource");
+//!   let resource = context.load_resource(&context.compile_path.source_resource_path(), &mut registry).expect("loaded resource");
 //!   let resource = resource.get::<refs_resource::TestResource>(&registry).unwrap();
 //! # todo!();
 //!   // ...
