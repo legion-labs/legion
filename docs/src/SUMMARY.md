@@ -4,6 +4,12 @@
 
 # Features
 
+- [Core](./core/README.md)
+    - [Entity Component Systems](./core/ecs-research.md)
+        - [Additional research on systems](./core/ecs-research-systems.md)
+    - [ECS design](./core/ecs-design.md)
+    - [Physics engine research](./core/physics-research.md)
+
 - [Data Pipeline](./data-pipeline/README.md)
     - [Design overview](./data-pipeline/design-overview.md)
     - [Project resources](./data-pipeline/project-resources.md)
