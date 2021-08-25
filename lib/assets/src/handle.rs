@@ -45,7 +45,7 @@ impl HandleUntyped {
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
     pub fn get<'a, T: Asset>(&'_ self, registry: &'a AssetRegistry) -> Option<&'a T> {
-        registry.get::<T>(self.id)
+        registry.get_untyped::<T>(self)
     }
 
     /// Returns true if [`Asset`] load failed.
@@ -105,7 +105,7 @@ impl<T: Asset> Handle<T> {
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
     pub fn get<'a>(&'_ self, registry: &'a AssetRegistry) -> Option<&'a T> {
-        registry.get::<T>(self.id)
+        registry.get::<T>(self)
     }
 
     /// Returns true if [`Asset`] load failed.

@@ -96,15 +96,27 @@ impl AssetRegistry {
         handle
     }
 
-    /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T`.
+    /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T` for convenience.
     pub fn load<T: Asset>(&mut self, id: AssetId) -> Handle<T> {
         let handle = self.load_untyped(id);
         Handle::<T>::from(handle)
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub fn get<T: Asset>(&self, handle_id: HandleId) -> Option<&T> {
-        if let Some((asset_id, _)) = self.ref_counts.get(&handle_id) {
+    pub fn get_untyped<T: Asset>(&self, handle: &HandleUntyped) -> Option<&T> {
+        if let Some((asset_id, _)) = self.ref_counts.get(&handle.id) {
+            if let Some(asset) = self.assets.get(asset_id) {
+                return asset.as_any().downcast_ref::<T>();
+            }
+        }
+        None
+    }
+
+    /// Same as [`Self::get_untyped`] but the handle is generic over `T` for convenience.
+    ///
+    /// [`Handle::get`] should be preferred over calling this function directly.
+    pub fn get<T: Asset>(&self, handle: &Handle<T>) -> Option<&T> {
+        if let Some((asset_id, _)) = self.ref_counts.get(&handle.id) {
             if let Some(asset) = self.assets.get(asset_id) {
                 return asset.as_any().downcast_ref::<T>();
             }
