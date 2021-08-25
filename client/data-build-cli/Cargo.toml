@@ -1,0 +1,26 @@
+[package]
+name = "legion-data-build-cli"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "data-build"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+clap = "2.33"
+legion-data-build = { path = "../../lib/data-build" }
+legion-data-compiler = { path = "../../lib/data-compiler" }
+legion-content-store = { path = "../../lib/content-store" }
+legion-resources = { path = "../../lib/resources" }
+
+[dev-dependencies]
+tempfile = "3.2.0"
+refs-resource = { path = "../../lib/resources/test-refs-resource" }
+text-resource = { path = "../../lib/resources/test-text-resource" }
+integer-asset = { path = "../../lib/assets/test-integer-asset" }

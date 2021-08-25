@@ -1,18 +1,13 @@
 [package]
-name = "legion-renderer"
+name = "lsc"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
-build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-graphics-api = { path = "../../libs/graphics-api", package = "legion-graphics-api" }
-log = "0.4"
-
-
-[features]
-default = []
-vulkan = ["graphics-api/vulkan"]
+clap = "2.33"
+legion-source-control = { path = "../../lib/source-control" }
+tokio = { version = "1", features = ["full"] }
