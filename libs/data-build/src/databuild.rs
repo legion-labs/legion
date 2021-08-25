@@ -593,13 +593,13 @@ impl Drop for DataBuild {
 }
 
 #[cfg(test)]
-#[path = "./test_general.rs"]
+#[path = "test_general.rs"]
 mod test_general;
 
 #[cfg(test)]
-#[path = "./test_source_pull.rs"]
+#[path = "test_source_pull.rs"]
 mod test_source_pull;
 
 #[cfg(test)]
-#[path = "./test_compile.rs"]
+#[path = "test_compile.rs"]
 mod test_compile;
