@@ -198,7 +198,7 @@ impl DataBuild {
         Ok(updated_resources)
     }
 
-    /// Compiles a resource at `derived` node in compilation graph.
+    /// Compile `compile_path` resource and all its dependencies in the build graph.
     ///
     /// To compile a given `ResourcePathId` it compiles all its dependent derived resources.
     /// The specified `manifest_file` is updated with information about changed assets.
@@ -269,11 +269,12 @@ impl DataBuild {
         Ok(manifest)
     }
 
+    /// Compile `compile_node` of the build graph and update *build-index* one or more compilation results.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     fn compile_node(
         &mut self,
-        compile_path: &ResourcePathId,
+        compile_node: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
         dependencies: &[ResourcePathId],
@@ -298,7 +299,7 @@ impl DataBuild {
             let now = SystemTime::now();
             if let Some((cached_infos, cached_references)) =
                 self.build_index
-                    .find_compiled(compile_path, context_hash, source_hash)
+                    .find_compiled(compile_node, context_hash, source_hash)
             {
                 let resource_count = cached_infos.len();
                 (
@@ -313,7 +314,7 @@ impl DataBuild {
                 )
             } else {
                 let mut compile_cmd = CompilerCompileCmd::new(
-                    compile_path,
+                    compile_node,
                     dependencies,
                     derived_deps,
                     &self.content_store.address(),
@@ -332,7 +333,7 @@ impl DataBuild {
                     .map_err(Error::CompilerError)?;
 
                 self.build_index.insert_compiled(
-                    compile_path,
+                    compile_node,
                     context_hash,
                     source_hash,
                     &compiled_resources,
@@ -344,7 +345,7 @@ impl DataBuild {
                         .iter()
                         .map(|resource| CompiledResourceInfo {
                             context_hash,
-                            compile_path: compile_path.clone(),
+                            compile_path: compile_node.clone(),
                             source_hash,
                             compiled_path: resource.path.clone(),
                             compiled_checksum: resource.checksum,
@@ -355,7 +356,7 @@ impl DataBuild {
                         .iter()
                         .map(|reference| CompiledResourceReference {
                             context_hash,
-                            compile_path: compile_path.clone(),
+                            compile_path: compile_node.clone(),
                             source_hash,
                             compiled_path: reference.0.clone(),
                             compiled_reference: reference.1.clone(),
@@ -374,10 +375,10 @@ impl DataBuild {
         Ok((resource_infos, resource_references, stats))
     }
 
-    /// Compiles a resource by [`ResourcePathId`]. Returns a list of ids of `Asset Objects` compiled.
-    /// The list might contain many versions of the same [`AssetId`] compiled for many contexts (platform, target, locale, etc).
-    /// Those results are in [`ContentStore`](`legion_data_compiler::ContentStore`)
-    /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
+    /// Compile a resource identified by [`ResourcePathId`] and all its dependencies and update the *build-index* with compilation results.
+    /// Returns a list of (id, checksum, size) of created resources and information about their dependencies.
+    /// The returned results can be accessed by  [`legion_content_store::ContentStore`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
+    // TODO: The list might contain many versions of the same [`AssetId`] compiled for many contexts (platform, target, locale, etc).
     fn compile_path(
         &mut self,
         compile_path: ResourcePathId,
@@ -449,10 +450,10 @@ impl DataBuild {
         //
         let mut accumulated_dependencies = vec![];
 
-        for derived in ordered_nodes {
+        for compile_node in ordered_nodes {
             // compile non-source dependencies.
-            if let Some(direct_dependency) = derived.direct_dependency() {
-                let transform = derived.last_transform().unwrap();
+            if let Some(direct_dependency) = compile_node.direct_dependency() {
+                let transform = compile_node.last_transform().unwrap();
 
                 //
                 // for derived resources the build index will not have dependencies for.
@@ -485,10 +486,10 @@ impl DataBuild {
                 // the same resource can have a different source_hash depending on the compiler
                 // used as compilers can filter dependencies out.
                 //
-                let source_hash = self.build_index.compute_source_hash(derived.clone())?;
+                let source_hash = self.build_index.compute_source_hash(compile_node.clone())?;
 
                 let (resource_infos, resource_references, stats) = self.compile_node(
-                    &derived,
+                    &compile_node,
                     context_hash,
                     source_hash,
                     &dependencies,
@@ -519,6 +520,9 @@ impl DataBuild {
         })
     }
 
+    /// Create asset files in runtime format containing compiled resources that include reference (load-time dependency) information
+    /// based on provided compilation information.
+    /// Currently each resource is linked into a separate *asset file*.
     fn link(
         &mut self,
         resources: &[CompiledResourceInfo],
@@ -543,7 +547,7 @@ impl DataBuild {
                         ),
                     )
                 });
-            //todo!();
+
             let bytes_written = write_assetfile(
                 resource_list,
                 reference_list,

@@ -365,9 +365,7 @@ fn intermediate_resource() {
     let source_id = {
         let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
-        let resource_handle = resources
-            .new_resource(text_resource::TYPE_ID)
-            .unwrap();
+        let resource_handle = resources.new_resource(text_resource::TYPE_ID).unwrap();
         resource_handle
             .get_mut::<TextResource>(&mut resources)
             .unwrap()
