@@ -20,5 +20,7 @@ byteorder = "1"
 [dev-dependencies]
 tempfile = "3.2.0"
 refs-asset = { path = "../assets/test-refs-asset" }
+integer-asset = { path = "../assets/test-integer-asset" }
 refs-resource = { path = "../resources/test-refs-resource" }
+text-resource = { path = "../resources/test-text-resource" }
 test-compilers = { path = "../data-compiler/test-compilers", package="test-compilers" }

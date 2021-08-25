@@ -4,9 +4,14 @@ use std::{env, vec};
 
 use crate::databuild::CompileOutput;
 use crate::{databuild::DataBuild, DataBuildOptions};
+use integer_asset::{IntegerAsset, IntegerAssetLoader};
+use legion_assets::AssetLoader;
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{Locale, Manifest, Platform, Target};
-use legion_resources::{Project, ResourceId, ResourceName, ResourcePathId, ResourceRegistry};
+use legion_resources::{
+    Project, ResourceId, ResourceName, ResourcePathId, ResourceProcessor, ResourceRegistry,
+};
+use text_resource::{TextResource, TextResourceProc};
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
@@ -17,8 +22,8 @@ fn setup_registry() -> ResourceRegistry {
         Box::new(refs_resource::TestResourceProc {}),
     );
     resources.register_type(
-        refs_resource::TYPE_ID,
-        Box::new(refs_resource::TestResourceProc {}),
+        text_resource::TEXT_RESOURCE,
+        Box::new(text_resource::TextResourceProc {}),
     );
     resources
 }
@@ -346,6 +351,106 @@ fn compile_cache() {
         assert_eq!(resources.len(), 5);
         assert_eq!(references.len(), 5);
         assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 4);
+    }
+}
+
+#[test]
+fn intermediate_resource() {
+    let work_dir = tempfile::tempdir().unwrap();
+    let project_dir = work_dir.path();
+    let mut resources = setup_registry();
+
+    let source_magic_value = String::from("47");
+
+    let source_id = {
+        let mut project = Project::create_new(project_dir).expect("failed to create a project");
+
+        let resource_handle = resources
+            .new_resource(text_resource::TEXT_RESOURCE)
+            .unwrap();
+        resource_handle
+            .get_mut::<TextResource>(&mut resources)
+            .unwrap()
+            .content = source_magic_value.clone();
+        project
+            .add_resource(
+                ResourceName::from("resource"),
+                text_resource::TEXT_RESOURCE,
+                &resource_handle,
+                &mut resources,
+            )
+            .unwrap()
+    };
+
+    let cas_addr = ContentStoreAddr::from(work_dir.path());
+
+    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+        .content_store(&cas_addr)
+        .compiler_dir(target_dir())
+        .create(project_dir)
+        .expect("new build index");
+
+    let pulled = build.source_pull().expect("successful pull");
+    assert_eq!(pulled, 1);
+
+    let source_path = ResourcePathId::from(source_id);
+    let reversed_path = source_path.transform(text_resource::TEXT_RESOURCE);
+    let integer_path = reversed_path.transform(integer_asset::INTEGER_ASSET);
+
+    let compile_output = build
+        .compile_path(
+            integer_path.clone(),
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        )
+        .unwrap();
+
+    assert_eq!(compile_output.resources.len(), 2); // intermediate and final result
+    assert_eq!(compile_output.resources[0].compile_path, reversed_path);
+    assert_eq!(compile_output.resources[1].compile_path, integer_path);
+    assert!(compile_output
+        .resources
+        .iter()
+        .all(|compiled| compiled.compile_path == compiled.compiled_path));
+
+    let content_store = HddContentStore::open(cas_addr).expect("valid cas");
+
+    // validate reversed
+    {
+        let checksum = compile_output.resources[0].compiled_checksum;
+        assert!(content_store.exists(checksum));
+        let resource_content = content_store.read(checksum).expect("asset content");
+
+        let mut creator = TextResourceProc {};
+        let resource = creator
+            .read_resource(&mut &resource_content[..])
+            .expect("loaded assets");
+        let resource = resource.as_any().downcast_ref::<TextResource>().unwrap();
+
+        assert_eq!(
+            source_magic_value.chars().rev().collect::<String>(),
+            resource.content
+        );
+    }
+
+    // validate integer
+    {
+        let checksum = compile_output.resources[1].compiled_checksum;
+        assert!(content_store.exists(checksum));
+        let resource_content = content_store.read(checksum).expect("asset content");
+
+        let mut creator = IntegerAssetLoader {};
+        let resource = creator
+            .load(integer_asset::INTEGER_ASSET, &mut &resource_content[..])
+            .expect("loaded assets");
+        let resource = resource.as_any().downcast_ref::<IntegerAsset>().unwrap();
+
+        let stringified = resource.magic_value.to_string();
+        assert_eq!(
+            source_magic_value.chars().rev().collect::<String>(),
+            stringified
+        );
     }
 }
 
