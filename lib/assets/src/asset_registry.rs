@@ -86,26 +86,6 @@ impl Drop for AssetRegistry {
 }
 
 impl AssetRegistry {
-    /// Creates new [`AssetRegistry`] for which assets are stored in `content_store` directory.
-    pub fn new(content_store: Box<dyn ContentStore>, manifest: Manifest) -> Self {
-        let (loader, io) = create_loader(content_store, manifest);
-
-        let load_thread = thread::spawn(move || {
-            let mut loader = io;
-
-            while loader.wait(Duration::from_millis(100)).is_some() {}
-        });
-        Self {
-            id_generator: 0,
-            refcount_channel: mpsc::channel(),
-            ref_counts: HashMap::new(),
-            assets: HashMap::new(),
-            load_errors: HashMap::new(),
-            load_thread: Some(load_thread),
-            loader,
-        }
-    }
-
     /// Requests an asset load.
     ///
     /// The asset will be unloaded after all instances of [`HandleUntyped`] and
