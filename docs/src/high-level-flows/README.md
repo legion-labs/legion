@@ -1,6 +1,8 @@
 # High level flows
 
-The following use cases will help contextualize and understand the overall flow between the different applications making up the Legion engine and its clients.
+The following use cases will help contextualize and understand the overall flow between the different applications making up the Legion engine and its client applications.
+
+Some paragraphs are prefixed with the :large_orange_diamond: symbol to indicate that they are still are undecided and need to be confirmed.
 
 ## Game production / development
 
@@ -30,21 +32,33 @@ By choosing to use shared virtual workspaces, users have the advantage of always
 
 Many types of resources will be edited outside of the Legion Labs editor.
 
-This includes:
+This includes (but is not limited to):
 * Textures
 * Visual meshes
 * Animations
 * Sound
 
-These will be created and edited in dedicated applications, such as Maya or 3ds Max for visual meshes, and then imported into the source-control system.
+These will be created and edited in dedicated applications, such as Autodesk Maya or 3D Studio Max for visual meshes, and then imported into the source-control system.
 
-A DCC exporter (one per resource type) will convert the data to an offline format that is usable in the editor.
+A DCC (Digital Content Creator) importer, one per resource type, will convert the data to an offline format that is usable in the editor.
 
-### Scripting game logic
+Users can also import data from external content management systems such as [Quixel Bridge](https://help.quixel.com/hc/en-us/articles/115000613105-What-is-Quixel-Bridge-).
 
-!todo
+Changes in source data (external formats) will trigger an update of the offline data.
 
 ### Testing changes
+
+At any time, users can launch a play session from the editor. This will open up a new viewport in which allows interactions with a running game engine.
+
+The engine will used compiled runtime data, that contains all the changes local to the shared virtual workspace.
+
+:large_orange_diamond: The game session can also be joined by other users, allowing multiplayer interactions.
+
+Other than savegames, these game sessions do not persist data. Any changes to the game environment, such as destruction effects for example, will not affect the offline data and remain circumscribed to the lifetime of the game session.
+
+:large_orange_diamond: When offline data is modified, either directly in the editor or when associated source data gets updated, this in turn will incrementally recompile the runtime data. Updated runtime data will be hot-reloaded in active game sessions.
+
+### Scripting game logic
 
 !todo
 
