@@ -109,17 +109,17 @@ fn with_intermediate_resource() {
             let mut project = Project::create_new(project_dir).expect("new project");
             let mut resources = ResourceRegistry::default();
             resources.register_type(
-                text_resource::TEXT_RESOURCE,
+                text_resource::TYPE_ID,
                 Box::new(text_resource::TextResourceProc {}),
             );
             let resource = resources
-                .new_resource(text_resource::TEXT_RESOURCE)
+                .new_resource(text_resource::TYPE_ID)
                 .expect("new resource");
 
             project
                 .add_resource(
                     ResourceName::from("test_source"),
-                    text_resource::TEXT_RESOURCE,
+                    text_resource::TYPE_ID,
                     &resource,
                     &mut resources,
                 )
@@ -135,8 +135,8 @@ fn with_intermediate_resource() {
     };
 
     let compile_path = ResourcePathId::from(resource_id)
-        .transform(text_resource::TEXT_RESOURCE)
-        .transform(integer_asset::INTEGER_ASSET);
+        .transform(text_resource::TYPE_ID)
+        .transform(integer_asset::TYPE_ID);
 
     let mut command = {
         let target = "game";

@@ -128,7 +128,7 @@ fn mock_compile() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::generate_new(text_resource::TEXT_RESOURCE);
+        let source = ResourceId::generate_new(text_resource::TYPE_ID);
 
         let mut proc = text_resource::TextResourceProc {};
 
@@ -153,7 +153,7 @@ fn mock_compile() {
         let exe_path = compiler_exe("test-atoi");
         assert!(exe_path.exists());
 
-        let derived = ResourcePathId::from(source).transform(integer_asset::INTEGER_ASSET);
+        let derived = ResourcePathId::from(source).transform(integer_asset::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -183,7 +183,7 @@ fn mock_compile() {
 
     let mut creator = IntegerAssetLoader {};
     let asset = creator
-        .load(integer_asset::INTEGER_ASSET, &mut &resource_content[..])
+        .load(integer_asset::TYPE_ID, &mut &resource_content[..])
         .expect("loaded assets");
     let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
 
@@ -199,7 +199,7 @@ fn intermediate_resource() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::generate_new(text_resource::TEXT_RESOURCE);
+        let source = ResourceId::generate_new(text_resource::TYPE_ID);
         let mut proc = text_resource::TextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -221,7 +221,7 @@ fn intermediate_resource() {
     let intermediate_info = {
         let exe_path = compiler_exe("test-reverse");
         assert!(exe_path.exists());
-        let derived = ResourcePathId::from(source).transform(text_resource::TEXT_RESOURCE);
+        let derived = ResourcePathId::from(source).transform(text_resource::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -245,8 +245,8 @@ fn intermediate_resource() {
         let exe_path = compiler_exe("test-atoi");
         assert!(exe_path.exists());
         let derived = ResourcePathId::from(source)
-            .transform(text_resource::TEXT_RESOURCE)
-            .transform(integer_asset::INTEGER_ASSET);
+            .transform(text_resource::TYPE_ID)
+            .transform(integer_asset::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -275,7 +275,7 @@ fn intermediate_resource() {
 
     let mut creator = IntegerAssetLoader {};
     let asset = creator
-        .load(integer_asset::INTEGER_ASSET, &mut &resource_content[..])
+        .load(integer_asset::TYPE_ID, &mut &resource_content[..])
         .expect("loaded assets");
     let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
 

@@ -18,7 +18,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(text_resource::TEXT_RESOURCE, text_resource::TEXT_RESOURCE),
+    transform: &(text_resource::TYPE_ID, text_resource::TYPE_ID),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -39,7 +39,7 @@ fn compiler_hash(
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
-        text_resource::TEXT_RESOURCE,
+        text_resource::TYPE_ID,
         Box::new(text_resource::TextResourceProc {}),
     );
 
@@ -56,7 +56,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
     let mut bytes = vec![];
 
     let (nbytes, _) = resources
-        .serialize_resource(text_resource::TEXT_RESOURCE, &handle, &mut bytes)
+        .serialize_resource(text_resource::TYPE_ID, &handle, &mut bytes)
         .map_err(CompilerError::ResourceWriteFailed)?;
 
     let checksum = context

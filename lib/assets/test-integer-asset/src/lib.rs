@@ -1,7 +1,7 @@
 use assets::{Asset, AssetLoader, AssetType};
 
 /// Type id of test asset.
-pub const INTEGER_ASSET: AssetType = AssetType::new(b"integer_asset");
+pub const TYPE_ID: AssetType = AssetType::new(b"integer_asset");
 
 pub struct IntegerAsset {
     pub magic_value: i32,

@@ -22,7 +22,7 @@ fn setup_registry() -> ResourceRegistry {
         Box::new(refs_resource::TestResourceProc {}),
     );
     resources.register_type(
-        text_resource::TEXT_RESOURCE,
+        text_resource::TYPE_ID,
         Box::new(text_resource::TextResourceProc {}),
     );
     resources
@@ -366,7 +366,7 @@ fn intermediate_resource() {
         let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
         let resource_handle = resources
-            .new_resource(text_resource::TEXT_RESOURCE)
+            .new_resource(text_resource::TYPE_ID)
             .unwrap();
         resource_handle
             .get_mut::<TextResource>(&mut resources)
@@ -375,7 +375,7 @@ fn intermediate_resource() {
         project
             .add_resource(
                 ResourceName::from("resource"),
-                text_resource::TEXT_RESOURCE,
+                text_resource::TYPE_ID,
                 &resource_handle,
                 &mut resources,
             )
@@ -394,8 +394,8 @@ fn intermediate_resource() {
     assert_eq!(pulled, 1);
 
     let source_path = ResourcePathId::from(source_id);
-    let reversed_path = source_path.transform(text_resource::TEXT_RESOURCE);
-    let integer_path = reversed_path.transform(integer_asset::INTEGER_ASSET);
+    let reversed_path = source_path.transform(text_resource::TYPE_ID);
+    let integer_path = reversed_path.transform(integer_asset::TYPE_ID);
 
     let compile_output = build
         .compile_path(
@@ -442,7 +442,7 @@ fn intermediate_resource() {
 
         let mut creator = IntegerAssetLoader {};
         let resource = creator
-            .load(integer_asset::INTEGER_ASSET, &mut &resource_content[..])
+            .load(integer_asset::TYPE_ID, &mut &resource_content[..])
             .expect("loaded assets");
         let resource = resource.as_any().downcast_ref::<IntegerAsset>().unwrap();
 

@@ -1,6 +1,6 @@
 use resources::{Resource, ResourcePathId, ResourceProcessor, ResourceType};
 
-pub const TEXT_RESOURCE: ResourceType = ResourceType::new(b"text_resource");
+pub const TYPE_ID: ResourceType = ResourceType::new(b"text_resource");
 
 pub struct TextResource {
     pub content: String,

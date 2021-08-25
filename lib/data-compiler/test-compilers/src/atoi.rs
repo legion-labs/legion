@@ -18,7 +18,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(text_resource::TEXT_RESOURCE, integer_asset::INTEGER_ASSET),
+    transform: &(text_resource::TYPE_ID, integer_asset::TYPE_ID),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -39,7 +39,7 @@ fn compiler_hash(
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistry::default();
     resources.register_type(
-        text_resource::TEXT_RESOURCE,
+        text_resource::TYPE_ID,
         Box::new(text_resource::TextResourceProc {}),
     );
 
