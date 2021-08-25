@@ -46,12 +46,12 @@ build:
 build-release:
 	cargo build --release
 
-docs:
+doc:
 	cargo doc --workspace --no-deps --all-features
-	mdbook build ./docs/
+	mdbook build ./doc/
 	echo "<meta http-equiv=\"refresh\" content=\"0; URL=book/index.html\"/>" > target/doc/index.html
 
 clean:
 	cargo clean
 
-.PHONY: check-format check-build check-clippy check-deps check-env test test-build test-run bench bench-build bench-run build-all build build-release docs clean
+.PHONY: check-format check-build check-clippy check-deps check-env test test-build test-run bench bench-build bench-run build-all build build-release doc clean
