@@ -10,11 +10,11 @@ The following use cases will help contextualize and understand the overall flow 
 
 The Legion engine provides a full production pipeline for the creation of games and interactive environments.
 
-In these game production scenarios, the user is part of the game development team in a company that is a client of Legion Labs.
+In these game production scenarios, the user is assumed to be part of a game development team in a company that is a client of Legion Labs.
 
 ### Startup sequence
 
-The user starts up the Legion Labs editor.
+Users begin working in the game production environment by starting up the Legion Labs editor.
 
 👍/👎 The editor will be accessible as either a light-weight client application, or through a web browser. Whichever the case, its contents will be streamed from Legion Labs servers.
 
@@ -44,11 +44,11 @@ This includes (but is not limited to):
 
 These will be created and edited in dedicated applications, such as Autodesk Maya or 3D Studio Max for visual meshes, and then imported into the source-control system.
 
-A DCC (*Digital Content Creator*) importer, one per resource type, will convert the data to an offline format that is usable in the editor.
-
-Users can also import data from external content management systems such as [Quixel Bridge](https://help.quixel.com/hc/en-us/articles/115000613105-What-is-Quixel-Bridge-).
+A DCC (*Digital Content Creator*) importer, one per resource type, will convert the data to an offline format that is usable in the editor. Users can also import data from external content management systems such as [Quixel Bridge](https://help.quixel.com/hc/en-us/articles/115000613105-What-is-Quixel-Bridge-).
 
 Changes in source data (external formats) will trigger an update of the offline data.
+
+![Editor and external DCC](figures/editor-and-dcc.png)
 
 ### Entities and components
 
@@ -68,7 +68,7 @@ To do so, the user must start by associating a game logic component to an entity
 
 ### Testing changes
 
-At any time, users can launch a play session from the editor. This will open up a new viewport in which allows interactions with a running game engine.
+At any time, users can launch a play session from the editor. This will open up a new viewport which allows interaction with a running game engine.
 
 The engine will used compiled runtime data, that contains all the changes local to the shared virtual workspace.
 
@@ -76,7 +76,7 @@ The engine will used compiled runtime data, that contains all the changes local 
 
 Other than savegames, these game sessions do not persist data. Any changes to the game environment, such as destruction effects for example, will not affect the offline data and remain circumscribed to the lifetime of the game session.
 
-👍/👎 When offline data is modified, either directly in the editor or when associated source data gets updated, this in turn will incrementally recompile the runtime data. Updated runtime data will be hot-reloaded in active game sessions.
+👍/👎 When offline data is modified, either directly in the editor or when associated source data gets updated, this in turn will incrementally recompile the runtime data. Updated runtime data will be hot-reloaded into active game sessions.
 
 ### Production analytics
 
