@@ -13,6 +13,7 @@ legion-content-store = { path = "../../content-store" }
 legion-data-offline = { path = "../../data-offline" }
 legion-data-runtime = { path = "../../data-runtime" }
 text-resource = { path = "../../data-offline/test-text-resource"}
+multitext-resource = { path = "../../data-offline/test-multitext-resource"}
 integer-asset = { path = "../../data-runtime/test-integer-asset"}
 refs-resource = { path = "../../data-offline/test-refs-resource"}
 refs-asset = { path = "../../data-runtime/test-refs-asset"}
@@ -30,4 +31,9 @@ doc = false
 [[bin]]
 name = "compiler-test-refs"
 path = "src/refs.rs"
+doc = false
+
+[[bin]]
+name = "compiler-test-split"
+path = "src/split.rs"
 doc = false
