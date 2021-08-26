@@ -23,7 +23,7 @@
 //! - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
 //! - Records of compiled assets that are stored in a [`ContentStore`](`legion_content_store::ContentStore`).
 //!
-//! For other parts of the data pipeline see [`legion_resources`] and [`legion_assets`] modules.
+//! For other parts of the data pipeline see [`legion_data_offline`] and [`legion_data_runtime`] modules.
 //!
 //! # Structure on disk
 //!
@@ -226,15 +226,13 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl From<legion_resources::Error> for Error {
-    fn from(err: legion_resources::Error) -> Self {
+impl From<legion_data_offline::resource::Error> for Error {
+    fn from(err: legion_data_offline::resource::Error) -> Self {
         match err {
-            legion_resources::Error::NotFound | legion_resources::Error::InvalidPath => {
-                Self::NotFound
-            }
-            legion_resources::Error::ParseError | legion_resources::Error::IOError(_) => {
-                Self::ProjectError
-            }
+            legion_data_offline::resource::Error::NotFound
+            | legion_data_offline::resource::Error::InvalidPath => Self::NotFound,
+            legion_data_offline::resource::Error::ParseError
+            | legion_data_offline::resource::Error::IOError(_) => Self::ProjectError,
         }
     }
 }
@@ -247,5 +245,4 @@ mod options;
 use std::io;
 
 pub use databuild::*;
-pub use legion_resources::ResourceName;
 pub use options::*;

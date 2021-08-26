@@ -10,12 +10,12 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 legion-data-compiler = { path = "../../data-compiler" }
 legion-content-store = { path = "../../content-store" }
-legion-resources = { path = "../../resources" }
-legion-assets = { path = "../../assets" }
-text-resource = { path = "../../resources/test-text-resource"}
-integer-asset = { path = "../../assets/test-integer-asset"}
-refs-resource = { path = "../../resources/test-refs-resource"}
-refs-asset = { path = "../../assets/test-refs-asset"}
+legion-data-offline = { path = "../../data-offline" }
+legion-data-runtime = { path = "../../data-runtime" }
+text-resource = { path = "../../data-offline/test-text-resource"}
+integer-asset = { path = "../../data-runtime/test-integer-asset"}
+refs-resource = { path = "../../data-offline/test-refs-resource"}
+refs-asset = { path = "../../data-runtime/test-refs-asset"}
 
 [[bin]]
 name = "compiler-test-atoi"

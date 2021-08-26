@@ -8,16 +8,16 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-legion-resources = { path = "../resources" }
+legion-data-offline = { path = "../data-offline" }
 legion-content-store = { path = "../content-store" }
-legion-assets = { path = "../assets" }
+legion-data-runtime = { path = "../data-runtime" }
 clap = "2.33"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [dev-dependencies]
 tempfile = "3.2.0"
-refs-resource = { path = "../resources/test-refs-resource" }
-text-resource = { path = "../resources/test-text-resource" }
-integer-asset = { path = "../assets/test-integer-asset" }
+refs-resource = { path = "../data-offline/test-refs-resource" }
+text-resource = { path = "../data-offline/test-text-resource" }
+integer-asset = { path = "../data-runtime/test-integer-asset" }
 test-compilers = { path = "../data-compiler/test-compilers" }

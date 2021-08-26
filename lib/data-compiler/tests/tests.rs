@@ -6,13 +6,16 @@ use std::{
 };
 
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use legion_assets::AssetLoader;
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{
     compiler_cmd::{list_compilers, CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
     Locale, Platform, Target,
 };
-use legion_resources::{ResourceId, ResourcePathId, ResourceProcessor, RESOURCE_EXT};
+use legion_data_offline::{
+    asset::AssetPathId,
+    resource::{ResourceId, ResourceProcessor, RESOURCE_EXT},
+};
+use legion_data_runtime::AssetLoader;
 use text_resource::TextResource;
 
 fn target_dir() -> PathBuf {
@@ -90,7 +93,7 @@ fn compile_command() {
 
     let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
 
-    let derived = ResourcePathId::from(source).transform(refs_resource::TYPE_ID);
+    let derived = AssetPathId::from(source).transform(refs_resource::TYPE_ID);
     let mut command = CompilerCompileCmd::new(
         &derived,
         &[],
@@ -153,7 +156,7 @@ fn mock_compile() {
         let exe_path = compiler_exe("test-atoi");
         assert!(exe_path.exists());
 
-        let derived = ResourcePathId::from(source).transform(integer_asset::TYPE_ID);
+        let derived = AssetPathId::from(source).transform(integer_asset::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -221,7 +224,7 @@ fn intermediate_resource() {
     let intermediate_info = {
         let exe_path = compiler_exe("test-reverse");
         assert!(exe_path.exists());
-        let derived = ResourcePathId::from(source).transform(text_resource::TYPE_ID);
+        let derived = AssetPathId::from(source).transform(text_resource::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -244,7 +247,7 @@ fn intermediate_resource() {
     let derived_info = {
         let exe_path = compiler_exe("test-atoi");
         assert!(exe_path.exists());
-        let derived = ResourcePathId::from(source)
+        let derived = AssetPathId::from(source)
             .transform(text_resource::TYPE_ID)
             .transform(integer_asset::TYPE_ID);
         let mut command = CompilerCompileCmd::new(

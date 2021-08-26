@@ -1200,7 +1200,7 @@ dependencies = [
 name = "integer-asset"
 version = "0.1.0"
 dependencies = [
- "legion-assets",
+ "legion-data-runtime",
 ]
 
 [[package]]
@@ -1261,18 +1261,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-assets"
-version = "0.1.0"
-dependencies = [
- "byteorder",
- "legion-content-store",
- "rand 0.8.4",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "legion-codec-api"
 version = "0.1.0"
 dependencies = [
@@ -1307,10 +1295,10 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "integer-asset",
- "legion-assets",
  "legion-content-store",
  "legion-data-compiler",
- "legion-resources",
+ "legion-data-offline",
+ "legion-data-runtime",
  "petgraph",
  "refs-asset",
  "refs-resource",
@@ -1330,7 +1318,7 @@ dependencies = [
  "legion-content-store",
  "legion-data-build",
  "legion-data-compiler",
- "legion-resources",
+ "legion-data-offline",
  "refs-resource",
  "tempfile",
  "text-resource",
@@ -1342,15 +1330,39 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "integer-asset",
- "legion-assets",
  "legion-content-store",
- "legion-resources",
+ "legion-data-offline",
+ "legion-data-runtime",
  "refs-resource",
  "serde",
  "serde_json",
  "tempfile",
  "test-compilers",
  "text-resource",
+]
+
+[[package]]
+name = "legion-data-offline"
+version = "0.1.0"
+dependencies = [
+ "legion-content-store",
+ "rand 0.8.4",
+ "serde",
+ "serde_json",
+ "slotmap",
+ "tempfile",
+]
+
+[[package]]
+name = "legion-data-runtime"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "legion-content-store",
+ "rand 0.8.4",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -1450,18 +1462,6 @@ version = "0.1.0"
 dependencies = [
  "legion-graphics-api",
  "log",
-]
-
-[[package]]
-name = "legion-resources"
-version = "0.1.0"
-dependencies = [
- "legion-content-store",
- "rand 0.8.4",
- "serde",
- "serde_json",
- "slotmap",
- "tempfile",
 ]
 
 [[package]]
@@ -2298,14 +2298,14 @@ dependencies = [
 name = "refs-asset"
 version = "0.1.0"
 dependencies = [
- "legion-assets",
+ "legion-data-runtime",
 ]
 
 [[package]]
 name = "refs-resource"
 version = "0.1.0"
 dependencies = [
- "legion-resources",
+ "legion-data-offline",
 ]
 
 [[package]]
@@ -3010,10 +3010,10 @@ name = "test-compilers"
 version = "0.1.0"
 dependencies = [
  "integer-asset",
- "legion-assets",
  "legion-content-store",
  "legion-data-compiler",
- "legion-resources",
+ "legion-data-offline",
+ "legion-data-runtime",
  "refs-asset",
  "refs-resource",
  "text-resource",
@@ -3023,7 +3023,7 @@ dependencies = [
 name = "text-resource"
 version = "0.1.0"
 dependencies = [
- "legion-resources",
+ "legion-data-offline",
 ]
 
 [[package]]

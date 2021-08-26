@@ -1,7 +1,7 @@
 //! Data compiler interface.
 //!
-//! Data compiler is a binary that takes as input a [`legion_resources::Resource`] and Resources it depends on and produces
-//! one or more [`legion_assets::Asset`]s that are stored in a [`ContentStore`]. As a results it creates new
+//! Data compiler is a binary that takes as input a [`legion_data_offline::resource::Resource`] and Resources it depends on and produces
+//! one or more [`legion_data_runtime::Asset`]s that are stored in a [`ContentStore`]. As a results it creates new
 //! or updates existing [`Manifest`] file containing metadata about the compiled Assets.
 //!
 //! [`compiler_api`] allows to structure *data compiler* in a specific way.
@@ -17,7 +17,7 @@
 //! ```no_run
 //! # use legion_data_compiler::{CompilerHash, Locale, Platform, Target};
 //! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
-//! # use legion_resources::ResourcePathId;
+//! # use legion_data_offline::asset::AssetPathId;
 //! # use legion_content_store::{ContentStoreAddr, ContentType};
 //! # use std::path::Path;
 //! #  const INPUT_TYPE: ContentType = ContentType::new(b"src");
@@ -59,21 +59,21 @@
 //! A **data compiler** is able to load and read certain *resources* that are available through [`CompilerContext`].
 //!
 //! The main *resource* is the leaf of the **build graph** being currently compiled. It is accessable by
-//! calling [`ResourcePathId::source_resource_path`] on [`CompilerContext::compile_path`].
+//! calling [`AssetPathId::source_resource_path`] on [`CompilerContext::compile_path`].
 //!
-//! It can also access any *intermediate resource* that is part of the [`CompilerContext::compile_path`]'s [`ResourcePathId`] provided that
+//! It can also access any *intermediate resource* that is part of the [`CompilerContext::compile_path`]'s [`AssetPathId`] provided that
 //! it was whitelisted as a *derived depenendency* during the compilation process.
 //!
 //! Reading source `Resources` is done with [`CompilerContext::load_resource`] function:
 //!
 //! ```no_run
-//! # use legion_resources::{ResourceId, ResourceType, Resource, ResourcePathId, ResourceRegistry, ResourceProcessor};
+//! # use legion_data_offline::{resource::{ResourceId, ResourceType, Resource, ResourceRegistry, ResourceProcessor}, asset::AssetPathId};
 //! # use legion_data_compiler::compiler_api::{CompilerContext, CompilationOutput, CompilerError};
 //! # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
 //! # pub struct SourceGeomProc {}
 //! # impl ResourceProcessor for SourceGeomProc {
 //! # fn new_resource(&mut self) -> Box<(dyn Resource + 'static)> { todo!() }
-//! # fn extract_build_dependencies(&mut self, _: &(dyn Resource + 'static)) -> Vec<ResourcePathId> { todo!() }
+//! # fn extract_build_dependencies(&mut self, _: &(dyn Resource + 'static)) -> Vec<AssetPathId> { todo!() }
 //! # fn write_resource(&mut self, _: &(dyn Resource + 'static), _: &mut dyn std::io::Write) -> Result<usize, std::io::Error> { todo!() }
 //! # fn read_resource(&mut self, _: &mut dyn std::io::Read) -> Result<Box<(dyn Resource + 'static)>, std::io::Error> { todo!() }
 //! # }
@@ -88,7 +88,7 @@
 //! }
 //! ```
 //!
-//! > For more about `Assets` and `Resources` see [`legion_resources`] and [`legion_assets`] crates.
+//! > For more about `Assets` and `Resources` see [`legion_data_offline`] and [`legion_data_runtime`] crates.
 //!
 //! [`legion_data_build`]: ../../legion_data_build/index.html
 //! [`compiler_api`]: ../compiler_api/index.html
@@ -110,8 +110,9 @@ use crate::{
 };
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
 use legion_content_store::{ContentStore, ContentStoreAddr, ContentType, HddContentStore};
-use legion_resources::{
-    ResourceHandle, ResourceId, ResourcePathId, ResourceRegistry, RESOURCE_EXT,
+use legion_data_offline::{
+    asset::AssetPathId,
+    resource::{ResourceHandle, ResourceId, ResourceRegistry, RESOURCE_EXT},
 };
 use std::{
     env,
@@ -133,7 +134,7 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// *Data Compiler's* output.
 ///
-/// Includes data which allows to load and validate [`legion_assets::Asset`]s stored in [`ContentStore`].
+/// Includes data which allows to load and validate [`legion_data_runtime::Asset`]s stored in [`ContentStore`].
 /// As well as references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../content_store/index.html
@@ -141,15 +142,15 @@ pub struct CompilationOutput {
     /// List of compiled resource's metadata.
     pub compiled_resources: Vec<CompiledResource>,
     /// List of references between compiled resources.
-    pub resource_references: Vec<(ResourcePathId, ResourcePathId)>,
+    pub resource_references: Vec<(AssetPathId, AssetPathId)>,
 }
 
 /// Context of the current compilation process.
 pub struct CompilerContext<'a> {
     /// The desired compilation output.
-    pub compile_path: ResourcePathId,
+    pub compile_path: AssetPathId,
     /// Compilation depenency list.
-    pub dependencies: &'a [ResourcePathId],
+    pub dependencies: &'a [AssetPathId],
     /// List of derived dependencies accumulated in this compilation pass.
     derived_deps: &'a [CompiledResource],
     /// Compilation target.
@@ -175,7 +176,7 @@ impl CompilerContext<'_> {
     /// Derived resource must appear in `derived_deps` list of derived dependencies to be successfully loaded.
     pub fn load_resource(
         &self,
-        id: &ResourcePathId,
+        id: &AssetPathId,
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandle, CompilerError> {
         if id.is_source() {
@@ -319,15 +320,15 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             let locale = cmd_args.value_of(COMMAND_ARG_LOCALE).unwrap();
 
             let derived =
-                ResourcePathId::from_str(derived).map_err(|_e| CompilerError::InvalidResourceId)?;
+                AssetPathId::from_str(derived).map_err(|_e| CompilerError::InvalidResourceId)?;
             let target = Target::from_str(target).map_err(|_e| CompilerError::InvalidPlatform)?;
             let platform =
                 Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
             let locale = Locale::new(locale);
-            let dependencies: Vec<ResourcePathId> = cmd_args
+            let dependencies: Vec<AssetPathId> = cmd_args
                 .values_of(COMMAND_ARG_SRC_DEPS)
                 .unwrap_or_default()
-                .filter_map(|s| ResourcePathId::from_str(s).ok())
+                .filter_map(|s| AssetPathId::from_str(s).ok())
                 .collect();
             let derived_deps: Vec<CompiledResource> = cmd_args
                 .values_of(COMMAND_ARG_DER_DEPS)
@@ -496,12 +497,12 @@ fn resource_path(dir: &Path, id: ResourceId) -> PathBuf {
 /*
 /// Deterministically create a named id of an asset in context of resource.
 ///
-/// Different `ResourcePathId` will produce a different [`AssetId`] for the same `name`.
+/// Different `AssetPathId` will produce a different [`AssetId`] for the same `name`.
 ///
 /// Calling this function multiple times with the same arguments will **always produce the same result**.
 pub fn named_asset_id(
-    resource_path: &ResourcePathId,
+    resource_path: &AssetPathId,
     asset_name: &str,
-) -> ResourcePathId {
+) -> AssetPathId {
     todo!();
 }*/

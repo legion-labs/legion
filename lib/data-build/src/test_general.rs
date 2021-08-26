@@ -2,7 +2,7 @@ use std::fs::{self};
 
 use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
 use legion_content_store::ContentStoreAddr;
-use legion_resources::Project;
+use legion_data_offline::resource::Project;
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 

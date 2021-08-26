@@ -13,7 +13,7 @@ Fill in relevant sections, remove the rest.
 Tracking issue for `crate_name` crate.
 
 * [legion/book/feature_or_module_overview](https://legion-labs.github.io/legion/book/data-pipeline/project-resources.html)
-* [legion/docs/crate_name](https://legion-labs.github.io/legion/legion_resources/index.html)
+* [legion/docs/crate_name](https://legion-labs.github.io/legion/legion_data_offline/index.html)
 
 # Summary
 

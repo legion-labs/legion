@@ -1,24 +1,20 @@
-use crate::metadata::Metadata;
-use crate::metadata::ResourceHash;
-use crate::types::ResourceId;
-use crate::types::ResourceType;
-use crate::ResourceHandle;
-use crate::ResourceNameRef;
-use crate::ResourcePathId;
-use crate::ResourceRegistry;
-use crate::RESOURCE_EXT;
+use crate::asset::AssetPathId;
 
-use crate::ResourceName;
+use crate::resource::{
+    metadata::{Metadata, ResourceHash},
+    types::{ResourceId, ResourceType},
+    ResourceHandle, ResourceName, ResourceNameRef, ResourceRegistry, RESOURCE_EXT,
+};
 
 use std::collections::hash_map::DefaultHasher;
-use std::fs;
-use std::fs::File;
-use std::fs::OpenOptions;
-use std::hash::Hasher;
-use std::io::Read;
-use std::io::Seek;
-use std::path::Path;
-use std::path::PathBuf;
+use std::{
+    fs::{self, File, OpenOptions},
+    hash::Hasher,
+};
+use std::{
+    io::{Read, Seek},
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -320,10 +316,7 @@ impl Project {
     }
 
     /// Returns information about a given resource from its `.meta` file.
-    pub fn resource_info(
-        &self,
-        id: ResourceId,
-    ) -> Result<(ResourceHash, Vec<ResourcePathId>), Error> {
+    pub fn resource_info(&self, id: ResourceId) -> Result<(ResourceHash, Vec<AssetPathId>), Error> {
         let meta = self.read_meta(id)?;
         let resource_hash = meta.resource_hash();
         let dependencies = meta.dependencies;
@@ -441,9 +434,10 @@ mod tests {
 
     use tempfile::TempDir;
 
+    use crate::resource::project::Project;
     use crate::{
-        project::Project, Resource, ResourceName, ResourcePathId, ResourceProcessor,
-        ResourceRegistry, ResourceType,
+        asset::AssetPathId,
+        resource::{Resource, ResourceName, ResourceProcessor, ResourceRegistry, ResourceType},
     };
 
     use super::ResourceDb;
@@ -466,7 +460,7 @@ mod tests {
 
     struct NullResource {
         content: isize,
-        dependencies: Vec<ResourcePathId>,
+        dependencies: Vec<AssetPathId>,
     }
     impl Resource for NullResource {
         fn as_any(&self) -> &dyn std::any::Any {
@@ -486,7 +480,7 @@ mod tests {
             })
         }
 
-        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
             resource
                 .as_any()
                 .downcast_ref::<NullResource>()
@@ -547,7 +541,7 @@ mod tests {
                 let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
                 reader.read_exact(&mut buf)?;
                 res.dependencies
-                    .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
+                    .push(AssetPathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
             }
 
             Ok(resource)
@@ -578,7 +572,7 @@ mod tests {
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
             .dependencies
-            .push(ResourcePathId::from(texture));
+            .push(AssetPathId::from(texture));
         let material = project
             .add_resource(
                 ResourceName::from("body.material"),
@@ -593,7 +587,7 @@ mod tests {
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
             .dependencies
-            .push(ResourcePathId::from(material));
+            .push(AssetPathId::from(material));
         let geometry = project
             .add_resource(
                 ResourceName::from("hero.geometry"),
@@ -616,10 +610,7 @@ mod tests {
         actor
             .get_mut::<NullResource>(&mut resources)
             .unwrap()
-            .dependencies = vec![
-            ResourcePathId::from(geometry),
-            ResourcePathId::from(skeleton),
-        ];
+            .dependencies = vec![AssetPathId::from(geometry), AssetPathId::from(skeleton)];
         let _actor = project
             .add_resource(
                 ResourceName::from("hero.actor"),
@@ -647,7 +638,7 @@ mod tests {
             .get_mut::<NullResource>(resources)
             .unwrap()
             .dependencies
-            .push(ResourcePathId::from(texture));
+            .push(AssetPathId::from(texture));
 
         let _material = project
             .add_resource(

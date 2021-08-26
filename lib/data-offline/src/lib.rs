@@ -6,25 +6,25 @@
 //! The module is responsible for management of `resources` - data in offline format, optimized for editing and writing,
 //! which is operated on by the editor and various tools.
 //!
-//! The [`Project`] keeps track of resources that are part of the project and is responsible for their storage - which includes
-//! both on-disk storage and source control interactions. The [`ResourceRegistry`] on the other handle takes responsibility
+//! The [`resource::Project`] keeps track of resources that are part of the project and is responsible for their storage - which includes
+//! both on-disk storage and source control interactions. The [`resource::ResourceRegistry`] on the other handle takes responsibility
 //! of managing the in-memory representation of `resources`.
 //!
-//! From [`Project`]'s perspective there are two kinds of resources:
+//! From [`resource::Project`]'s perspective there are two kinds of resources:
 //! * *local resources* - those modified by local user
 //! * *remote resources* - those synced using backing source-control.
 //!
 //! # Project Index
 //!
-//! The state of the project is read from a file once [`Project`] is opened and kept in memory throughout its lifetime.
-//! The changes are written back to the file once [`Project`] is dropped.
+//! The state of the project is read from a file once [`resource::Project`] is opened and kept in memory throughout its lifetime.
+//! The changes are written back to the file once [`resource::Project`] is dropped.
 //!
-//! The state of a project consists of two sets of [`ResourceId`]s:
-//! - Local [`ResourceId`] list - locally modified resources.
-//! - Remote [`ResourceId`] list - synced resources.
+//! The state of a project consists of two sets of [`resource::ResourceId`]s:
+//! - Local [`resource::ResourceId`] list - locally modified resources.
+//! - Remote [`resource::ResourceId`] list - synced resources.
 //!
 //! A resource consists of a resource content file and a `.meta` file associated to it.
-//! [`ResourceId`] is enough to locate a resource content file and its associated `.meta` file on disk.
+//! [`resource::ResourceId`] is enough to locate a resource content file and its associated `.meta` file on disk.
 //!
 //! An example of a project with 2 offline resources on disk looks as follows:
 //! ```markdown
@@ -39,7 +39,7 @@
 //! ## Resource `.meta` file
 //!
 //! The information in `.meta` file includes:
-//! - List of [`ResourceId`]s of resource's build dependencies.
+//! - List of [`resource::ResourceId`]s of resource's build dependencies.
 //! - Resource's name/path.
 //! - Checksum of resource's content file.
 //!
@@ -120,17 +120,5 @@
 #![allow()]
 #![warn(missing_docs)]
 
-mod project;
-pub use self::project::*;
-
-mod metadata;
-pub use self::metadata::*;
-
-mod types;
-pub use self::types::*;
-
-mod registry;
-pub use self::registry::*;
-
-#[cfg(test)]
-mod test_resource;
+pub mod asset;
+pub mod resource;

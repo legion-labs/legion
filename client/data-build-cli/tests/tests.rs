@@ -1,8 +1,11 @@
 use std::fs;
 
 use legion_content_store::ContentStoreAddr;
-use legion_data_build::{DataBuildOptions, ResourceName};
-use legion_resources::{Project, ResourcePathId, ResourceRegistry};
+use legion_data_build::DataBuildOptions;
+use legion_data_offline::{
+    asset::AssetPathId,
+    resource::{Project, ResourceName, ResourceRegistry},
+};
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
 
@@ -49,7 +52,7 @@ fn no_intermediate_resource() {
         resource_id
     };
 
-    let compile_path = ResourcePathId::from(resource_id).transform(refs_resource::TYPE_ID);
+    let compile_path = AssetPathId::from(resource_id).transform(refs_resource::TYPE_ID);
 
     let mut command = {
         let target = "game";
@@ -134,7 +137,7 @@ fn with_intermediate_resource() {
         resource_id
     };
 
-    let compile_path = ResourcePathId::from(resource_id)
+    let compile_path = AssetPathId::from(resource_id)
         .transform(text_resource::TYPE_ID)
         .transform(integer_asset::TYPE_ID);
 

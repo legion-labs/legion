@@ -5,12 +5,13 @@ use std::{env, vec};
 use crate::databuild::CompileOutput;
 use crate::{databuild::DataBuild, DataBuildOptions};
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use legion_assets::AssetLoader;
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{Locale, Manifest, Platform, Target};
-use legion_resources::{
-    Project, ResourceId, ResourceName, ResourcePathId, ResourceProcessor, ResourceRegistry,
+use legion_data_offline::{
+    asset::AssetPathId,
+    resource::{Project, ResourceId, ResourceName, ResourceProcessor, ResourceRegistry},
 };
+use legion_data_runtime::AssetLoader;
 use text_resource::{TextResource, TextResourceProc};
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
@@ -43,7 +44,7 @@ fn target_dir() -> PathBuf {
 
 fn create_resource(
     name: ResourceName,
-    deps: &[ResourcePathId],
+    deps: &[AssetPathId],
     project: &mut Project,
     resources: &mut ResourceRegistry,
 ) -> ResourceId {
@@ -105,7 +106,7 @@ fn compile_change_no_deps() {
         .content_store(&contentstore_path)
         .compiler_dir(target_dir());
 
-    let source = ResourcePathId::from(resource_id);
+    let source = AssetPathId::from(resource_id);
     let target = source.transform(refs_resource::TYPE_ID);
 
     // compile the resource..
@@ -207,15 +208,15 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     let res_e = create_resource(ResourceName::from("E"), &[], &mut project, &mut resources);
     let res_d = create_resource(
         ResourceName::from("D"),
-        &[ResourcePathId::from(res_e).transform(refs_resource::TYPE_ID)],
+        &[AssetPathId::from(res_e).transform(refs_resource::TYPE_ID)],
         &mut project,
         &mut resources,
     );
     let res_b = create_resource(
         ResourceName::from("B"),
         &[
-            ResourcePathId::from(res_c).transform(refs_resource::TYPE_ID),
-            ResourcePathId::from(res_e).transform(refs_resource::TYPE_ID),
+            AssetPathId::from(res_c).transform(refs_resource::TYPE_ID),
+            AssetPathId::from(res_e).transform(refs_resource::TYPE_ID),
         ],
         &mut project,
         &mut resources,
@@ -223,8 +224,8 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     let res_a = create_resource(
         ResourceName::from("A"),
         &[
-            ResourcePathId::from(res_b).transform(refs_resource::TYPE_ID),
-            ResourcePathId::from(res_d).transform(refs_resource::TYPE_ID),
+            AssetPathId::from(res_b).transform(refs_resource::TYPE_ID),
+            AssetPathId::from(res_d).transform(refs_resource::TYPE_ID),
         ],
         &mut project,
         &mut resources,
@@ -258,7 +259,7 @@ fn compile_cache() {
     //
     const NUM_NODES: usize = 10;
     const NUM_OUTPUTS: usize = 5;
-    let target = ResourcePathId::from(root_resource).transform(refs_resource::TYPE_ID);
+    let target = AssetPathId::from(root_resource).transform(refs_resource::TYPE_ID);
 
     //  test of evaluation order computation.
     {
@@ -268,7 +269,7 @@ fn compile_cache() {
             .expect("no cycles");
         assert_eq!(order.len(), NUM_NODES);
         assert_eq!(order[NUM_NODES - 1], target);
-        assert_eq!(order[NUM_NODES - 2], ResourcePathId::from(root_resource));
+        assert_eq!(order[NUM_NODES - 2], AssetPathId::from(root_resource));
     }
 
     // first run - none of the resources from cache.
@@ -391,7 +392,7 @@ fn intermediate_resource() {
     let pulled = build.source_pull().expect("successful pull");
     assert_eq!(pulled, 1);
 
-    let source_path = ResourcePathId::from(source_id);
+    let source_path = AssetPathId::from(source_id);
     let reversed_path = source_path.transform(text_resource::TYPE_ID);
     let integer_path = reversed_path.transform(integer_asset::TYPE_ID);
 
@@ -484,7 +485,7 @@ fn link() {
             .get_mut::<refs_resource::TestResource>(&mut resources)
             .expect("existing resource");
         parent.content = String::from("test parent content");
-        parent.build_deps = vec![ResourcePathId::from(child_id).transform(refs_resource::TYPE_ID)];
+        parent.build_deps = vec![AssetPathId::from(child_id).transform(refs_resource::TYPE_ID)];
         project
             .add_resource(
                 ResourceName::from("parent"),
@@ -506,7 +507,7 @@ fn link() {
 
     // for now each resource is a separate file so we need to validate that the compile output and link output produce the same number of resources
 
-    let target = ResourcePathId::from(parent_id).transform(refs_resource::TYPE_ID);
+    let target = AssetPathId::from(parent_id).transform(refs_resource::TYPE_ID);
     let compile_output = build
         .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
         .expect("successful compilation");
@@ -563,7 +564,7 @@ fn verify_manifest() {
             .get_mut::<refs_resource::TestResource>(&mut resources)
             .unwrap()
             .build_deps
-            .push(ResourcePathId::from(child_id).transform(refs_resource::TYPE_ID));
+            .push(AssetPathId::from(child_id).transform(refs_resource::TYPE_ID));
 
         project
             .add_resource(
@@ -586,7 +587,7 @@ fn verify_manifest() {
 
     let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
-    let derived = ResourcePathId::from(parent_resource).transform(refs_resource::TYPE_ID);
+    let derived = AssetPathId::from(parent_resource).transform(refs_resource::TYPE_ID);
     let manifest = build
         .compile(
             derived,

@@ -1,4 +1,4 @@
-use assets::{Asset, AssetLoader, AssetType};
+use legion_data_runtime::{Asset, AssetLoader, AssetType};
 
 /// Type id of test asset.
 pub const TYPE_ID: AssetType = AssetType::new(b"integer_asset");

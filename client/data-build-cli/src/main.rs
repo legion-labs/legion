@@ -4,7 +4,7 @@ use clap::{AppSettings, Arg, SubCommand};
 use legion_content_store::ContentStoreAddr;
 use legion_data_build::DataBuildOptions;
 use legion_data_compiler::{Locale, Platform, Target};
-use legion_resources::ResourcePathId;
+use legion_data_offline::asset::AssetPathId;
 
 const ARG_NAME_RESOURCE_PATH: &str = "resource";
 const ARG_NAME_BUILDINDEX: &str = "buildindex";
@@ -79,7 +79,7 @@ fn main() -> Result<(), String> {
         let target = cmd_args.value_of(ARG_NAME_TARGET).unwrap();
         let platform = cmd_args.value_of(ARG_NAME_PLATFORM).unwrap();
         let locale = cmd_args.value_of(ARG_NAME_LOCALE).unwrap();
-        let derived = ResourcePathId::from_str(derived).map_err(|_e| "Invalid ResourcePathId")?;
+        let derived = AssetPathId::from_str(derived).map_err(|_e| "Invalid AssetPathId")?;
         let manifest_file = PathBuf::from_str(manifest).map_err(|_e| "Invalid Manifest name")?;
         let target = Target::from_str(target).map_err(|_e| "Invalid Target")?;
         let platform = Platform::from_str(platform).map_err(|_e| "Invalid Platform")?;

@@ -1,4 +1,7 @@
-use resources::{Resource, ResourcePathId, ResourceProcessor, ResourceType};
+use legion_data_offline::{
+    asset::AssetPathId,
+    resource::{Resource, ResourceProcessor, ResourceType},
+};
 
 pub const TYPE_ID: ResourceType = ResourceType::new(b"text_resource");
 
@@ -25,7 +28,7 @@ impl ResourceProcessor for TextResourceProc {
         })
     }
 
-    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
         vec![]
     }
 

@@ -1,34 +1,24 @@
-use core::fmt;
 use std::{
     collections::hash_map::DefaultHasher,
-    fmt::LowerHex,
+    fmt,
     hash::{Hash, Hasher},
     num::ParseIntError,
-    path::{Path, PathBuf},
     str::FromStr,
 };
 
+use crate::resource::ResourceId;
+
 use legion_content_store::ContentType;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
-
-/// Name identifier of a resource.
-pub type ResourceName = PathBuf;
-
-/// Temporarily a reference to `ResourceName` to silence lints.
-pub type ResourceNameRef = Path;
-
-/// Extension of a resource file.
-pub const RESOURCE_EXT: &str = "blob";
 
 /// Identifier of a path in a build graph.
 ///
 /// Considering a build graph where nodes represent *resources* and edges representing *transformations* between resources
-/// the `ResourcePathId` uniqely identifies any resource/node in the build graph.
+/// the `AssetPathId` uniqely identifies any resource/node in the build graph.
 ///
 /// A tuple (`ResourceType`, `ResourceType`) identifies a transformation type between two resource types.
 ///
-/// `ResourcePathId` identifies a concrete resource with a `ResourceId` - that also defines `ResourceType` of the resource.
+/// `AssetPathId` identifies a concrete resource with a `ResourceId` - that also defines `ResourceType` of the resource.
 /// It also defines an ordered list of `ResourceType`s this source resource must be transformed into during the data build process.
 ///
 /// # Example
@@ -37,10 +27,7 @@ pub const RESOURCE_EXT: &str = "blob";
 /// definition of a path representing a *derived resource* of a runtime geometry data after LOD-generation process.
 ///
 /// ```no_run
-/// # use legion_resources::{ResourceRegistry, ResourceType};
-/// # use legion_resources::ResourcePathId;
-/// # use legion_resources::ResourceName;
-/// # use legion_resources::Project;
+/// # use legion_data_offline::{resource::{Project, ResourceName, ResourceRegistry, ResourceType}, asset::AssetPathId};
 /// # use std::path::PathBuf;
 /// # let mut resources = ResourceRegistry::default();
 /// # let mut project = Project::create_new(&PathBuf::new()).unwrap();
@@ -53,16 +40,16 @@ pub const RESOURCE_EXT: &str = "blob";
 ///                              SOURCE_GEOMETRY, &resource_handle, &mut resources).unwrap();
 ///
 /// // create a resource path
-/// let source_path = ResourcePathId::from(resource_id);
+/// let source_path = AssetPathId::from(resource_id);
 /// let target = source_path.transform(LOD_GEOMETRY).transform(BINARY_GEOMETRY);
 /// ```
 #[derive(Hash, PartialEq, Eq, Debug, Serialize, Deserialize, Clone, PartialOrd, Ord)]
-pub struct ResourcePathId {
+pub struct AssetPathId {
     source: ResourceId,
-    transforms: Vec<ResourceType>,
+    transforms: Vec<ContentType>,
 }
 
-impl From<ResourceId> for ResourcePathId {
+impl From<ResourceId> for AssetPathId {
     fn from(id: ResourceId) -> Self {
         Self {
             source: id,
@@ -71,7 +58,7 @@ impl From<ResourceId> for ResourcePathId {
     }
 }
 
-impl fmt::Display for ResourcePathId {
+impl fmt::Display for AssetPathId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{}", self.source))?;
         for kind in &self.transforms {
@@ -81,7 +68,7 @@ impl fmt::Display for ResourcePathId {
     }
 }
 
-impl FromStr for ResourcePathId {
+impl FromStr for AssetPathId {
     type Err = ParseIntError;
 
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {
@@ -94,24 +81,24 @@ impl FromStr for ResourcePathId {
             s = &s[1..]; // skip '|'
             let end = s.find('|').unwrap_or(s.len());
             let t = u32::from_str(&s[0..end])?;
-            transforms.push(ResourceType::from_raw(t));
+            transforms.push(ContentType::from_raw(t));
             s = &s[end..];
         }
         Ok(Self { source, transforms })
     }
 }
 
-impl ResourcePathId {
+impl AssetPathId {
     /// Changes the `ResourceType` of the path by appending a new transformation to the build path
-    /// represented by this `ResourcePathId`.
-    pub fn transform(&self, kind: ResourceType) -> Self {
+    /// represented by this `AssetPathId`.
+    pub fn transform(&self, kind: ContentType) -> Self {
         let mut cloned = self.clone();
         cloned.transforms.push(kind);
         cloned
     }
 
     /// Returns `ResourceType` of the resource identified by this path.
-    pub fn resource_type(&self) -> ResourceType {
+    pub fn resource_type(&self) -> ContentType {
         if self.transforms.is_empty() {
             self.source.resource_type()
         } else {
@@ -139,7 +126,7 @@ impl ResourcePathId {
     /// Returns the last transformation that must be applied to produce the resource.
     ///
     /// Returns None if self is a `source resource`.
-    pub fn last_transform(&self) -> Option<(ResourceType, ResourceType)> {
+    pub fn last_transform(&self) -> Option<(ContentType, ContentType)> {
         match self.transforms.len() {
             0 => None,
             1 => Some((self.source.resource_type(), self.transforms[0])),
@@ -150,7 +137,7 @@ impl ResourcePathId {
         }
     }
 
-    /// Returns a `ResourcePathId` that represents a direct dependency in the build graph.
+    /// Returns a `AssetPathId` that represents a direct dependency in the build graph.
     ///
     /// None if self represents a source dependency.
     pub fn direct_dependency(&self) -> Option<Self> {
@@ -169,7 +156,7 @@ impl ResourcePathId {
         hasher.finish()
     }
 
-    /// Returns a hash of the name in the context of `ResourcePathId`.
+    /// Returns a hash of the name in the context of `AssetPathId`.
     pub fn hash_name(&self, name: &str) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);
@@ -178,93 +165,27 @@ impl ResourcePathId {
     }
 }
 
-/// A unique id of an offline resource.
-///
-/// This 64 bit id encodes the following information:
-/// - resource unique id - 32 bits
-/// - [`ResourceType`] - 32 bits
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Serialize, Deserialize, Hash)]
-pub struct ResourceId {
-    id: std::num::NonZeroU64,
-}
-
-impl ResourceId {
-    /// Creates a new random id.
-    pub fn generate_new(kind: ResourceType) -> Self {
-        let rand_id: u64 = rand::thread_rng().gen();
-
-        let internal = kind.stamp(rand_id);
-        Self {
-            id: std::num::NonZeroU64::new(internal).unwrap(),
-        }
-    }
-
-    /// Returns the type of the resource.
-    pub fn resource_type(&self) -> ResourceType {
-        let type_id = (u64::from(self.id) >> 32) as u32;
-        ResourceType::from_raw(type_id)
-    }
-
-    /// TODO: This should be removed. Exposed for serialization for now.
-    pub fn get_internal(&self) -> u64 {
-        self.id.get()
-    }
-
-    /// TODO: This should be removed. Exposed for deserialization for now.
-    pub fn from_raw(internal: u64) -> Option<Self> {
-        let id = std::num::NonZeroU64::new(internal)?;
-        Some(Self { id })
-    }
-}
-
-impl LowerHex for ResourceId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt::LowerHex::fmt(&self.id, f)
-    }
-}
-
-impl fmt::Display for ResourceId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{:#016x}", self.id))
-    }
-}
-
-impl FromStr for ResourceId {
-    type Err = std::num::ParseIntError;
-
-    fn from_str(mut s: &str) -> Result<Self, Self::Err> {
-        s = s.trim_start_matches("0x");
-        let id = u64::from_str_radix(s, 16)?;
-        if id == 0 {
-            Err("Z".parse::<i32>().expect_err("ParseIntError"))
-        } else {
-            // SAFETY: id is not zero in this else clause.
-            let id = unsafe { std::num::NonZeroU64::new_unchecked(id) };
-            Ok(Self { id })
-        }
-    }
-}
-
-/// Type identifier of an offline resource.
-pub type ResourceType = ContentType;
-
 #[cfg(test)]
 mod tests {
+
     use std::str::FromStr;
 
-    use crate::{test_resource, ResourceId, ResourcePathId};
+    use crate::{
+        asset::AssetPathId,
+        resource::{test_resource, ResourceId},
+    };
 
     #[test]
     fn resource_path_name() {
         let source = ResourceId::generate_new(test_resource::TYPE_ID);
 
-        let path_a = ResourcePathId::from(source);
+        let path_a = AssetPathId::from(source);
         let path_b = path_a.transform(test_resource::TYPE_ID);
 
         let name_a = format!("{}", path_a);
-        assert_eq!(path_a, ResourcePathId::from_str(&name_a).unwrap());
+        assert_eq!(path_a, AssetPathId::from_str(&name_a).unwrap());
 
         let name_b = format!("{}", path_b);
-        assert_eq!(path_b, ResourcePathId::from_str(&name_b).unwrap());
+        assert_eq!(path_b, AssetPathId::from_str(&name_b).unwrap());
     }
 }

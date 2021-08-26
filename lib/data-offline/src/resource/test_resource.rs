@@ -4,7 +4,10 @@
 
 use std::str::FromStr;
 
-use crate::{Resource, ResourcePathId, ResourceProcessor, ResourceType};
+use crate::{
+    asset::AssetPathId,
+    resource::{Resource, ResourceProcessor, ResourceType},
+};
 
 /// Type id of test resource. Used until we have proper resource types.
 pub const TYPE_ID: ResourceType = ResourceType::new(b"test_resource");
@@ -16,7 +19,7 @@ pub struct TestResource {
     /// Resource's content.
     pub content: String,
     /// Resource's build dependencies.
-    pub build_deps: Vec<ResourcePathId>,
+    pub build_deps: Vec<AssetPathId>,
 }
 impl Resource for TestResource {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -40,7 +43,7 @@ impl ResourceProcessor for TestResourceProc {
         })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
         resource
             .as_any()
             .downcast_ref::<TestResource>()
@@ -110,7 +113,7 @@ impl ResourceProcessor for TestResourceProc {
             let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
             reader.read_exact(&mut buf)?;
             res.build_deps
-                .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
+                .push(AssetPathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
         }
 
         Ok(resource)

@@ -61,7 +61,7 @@ impl DataBuildOptions {
     /// The following conditions need to be met to successfully open a build index:
     /// * [`ContentStore`](`legion_content_store::ContentStore`) must exist under address set by [`DataBuildOptions::content_store()`].
     /// * Build index must exist and be of a supported version provided by [`DataBuildOptions::new()`].
-    /// * The build index must point to an existing [`legion_resources::Project`].
+    /// * The build index must point to an existing [`legion_data_offline::resource::Project`].
     pub fn open(&self) -> Result<DataBuild, Error> {
         DataBuild::open(self)
     }
