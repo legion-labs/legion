@@ -66,7 +66,7 @@ impl fmt::Display for AssetPathId {
         f.write_fmt(format_args!("{}", self.source))?;
         for (kind, name) in &self.transforms {
             if let Some(name) = name {
-                f.write_fmt(format_args!("|{}-{}", kind, name))?;
+                f.write_fmt(format_args!("|{}_{}", kind, name))?;
             } else {
                 f.write_fmt(format_args!("|{}", kind))?;
             }
@@ -86,13 +86,13 @@ impl FromStr for AssetPathId {
         let mut transforms = vec![];
         while !s.is_empty() {
             s = &s[1..]; // skip '|'
-            let param = s.find('-').unwrap_or(s.len());
+            let name = s.find('_').unwrap_or(s.len());
             let end = s.find('|').unwrap_or(s.len());
 
-            let transform = if param < end {
+            let transform = if name < end {
                 let err = "Z".parse::<i32>().expect_err("ParseIntError");
-                let t = u32::from_str(&s[0..param])?;
-                let p = String::from_str(&s[param + 1..end]).map_err(|_e| err)?;
+                let t = u32::from_str(&s[0..name])?;
+                let p = String::from_str(&s[name + 1..end]).map_err(|_e| err)?;
                 (ContentType::from_raw(t), Some(p))
             } else {
                 let t = u32::from_str(&s[0..end])?;

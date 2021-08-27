@@ -265,7 +265,7 @@ pub enum CompilerError {
 impl std::error::Error for CompilerError {}
 impl std::fmt::Display for CompilerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
+        match &*self {
             CompilerError::StdoutError => write!(f, "IOError"),
             CompilerError::InvalidArgs => write!(f, "InvalidArgs"),
             CompilerError::InvalidResourceId => write!(f, "InvalidResourceId"),

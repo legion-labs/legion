@@ -12,6 +12,7 @@ use legion_data_offline::{
     resource::{Project, ResourceId, ResourceName, ResourceProcessor, ResourceRegistry},
 };
 use legion_data_runtime::AssetLoader;
+use multitext_resource::MultiTextResource;
 use text_resource::{TextResource, TextResourceProc};
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
@@ -25,6 +26,10 @@ fn setup_registry() -> ResourceRegistry {
     resources.register_type(
         text_resource::TYPE_ID,
         Box::new(text_resource::TextResourceProc {}),
+    );
+    resources.register_type(
+        multitext_resource::TYPE_ID,
+        Box::new(multitext_resource::MultiTextResourceProc {}),
     );
     resources
 }
@@ -454,6 +459,99 @@ fn intermediate_resource() {
 }
 
 #[test]
+fn named_path() {
+    let work_dir = tempfile::tempdir().unwrap();
+    let project_dir = work_dir.path();
+    let mut resources = setup_registry();
+
+    let magic_list = vec![String::from("47"), String::from("198")];
+
+    let source_id = {
+        let mut project = Project::create_new(project_dir).expect("failed to create a project");
+
+        let resource_handle = resources.new_resource(multitext_resource::TYPE_ID).unwrap();
+        resource_handle
+            .get_mut::<MultiTextResource>(&mut resources)
+            .unwrap()
+            .text_list = magic_list.clone();
+        project
+            .add_resource(
+                ResourceName::from("resource"),
+                multitext_resource::TYPE_ID,
+                &resource_handle,
+                &mut resources,
+            )
+            .unwrap()
+    };
+
+    let cas_addr = ContentStoreAddr::from(work_dir.path());
+
+    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+        .content_store(&cas_addr)
+        .compiler_dir(target_dir())
+        .create(project_dir)
+        .expect("new build index");
+
+    let pulled = build.source_pull().expect("successful pull");
+    assert_eq!(pulled, 1);
+
+    let source_path = AssetPathId::from(source_id);
+    let split_text0_path = source_path.push_named(text_resource::TYPE_ID, "text_0");
+    let integer_path = split_text0_path.push(integer_asset::TYPE_ID);
+
+    //
+    // multitext_resource -> text_resource("text_0") -> integer_asset
+    //                    -> text_resource("text_1")
+    //
+    let compile_output = build
+        .compile_path(
+            integer_path.clone(),
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        )
+        .unwrap();
+
+    assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
+    assert_eq!(compile_output.resources[0].compile_path, split_text0_path);
+
+    let compiled_text0 = compile_output
+        .resources
+        .iter()
+        .find(|&info| info.compiled_path == split_text0_path)
+        .unwrap();
+
+    assert_eq!(compiled_text0.compile_path, split_text0_path);
+
+    let compiled_integer = compile_output
+        .resources
+        .iter()
+        .find(|&info| info.compiled_path == integer_path)
+        .unwrap();
+
+    assert_eq!(compiled_integer.compile_path, integer_path);
+    assert_eq!(compiled_integer.compiled_path, integer_path);
+
+    let content_store = HddContentStore::open(cas_addr).expect("valid cas");
+
+    // validate integer
+    {
+        let checksum = compiled_integer.compiled_checksum;
+        assert!(content_store.exists(checksum));
+        let resource_content = content_store.read(checksum).expect("asset content");
+
+        let mut creator = IntegerAssetLoader {};
+        let resource = creator
+            .load(integer_asset::TYPE_ID, &mut &resource_content[..])
+            .expect("loaded assets");
+        let resource = resource.as_any().downcast_ref::<IntegerAsset>().unwrap();
+
+        let stringified = resource.magic_value.to_string();
+        assert_eq!(magic_list[0], stringified);
+    }
+}
+
+#[test]
 fn link() {
     let work_dir = tempfile::tempdir().unwrap();
     let project_dir = work_dir.path();
@@ -587,10 +685,10 @@ fn verify_manifest() {
 
     let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
-    let derived = AssetPathId::from(parent_resource).push(refs_resource::TYPE_ID);
+    let compile_path = AssetPathId::from(parent_resource).push(refs_resource::TYPE_ID);
     let manifest = build
         .compile(
-            derived,
+            compile_path,
             &output_manifest_file,
             Target::Game,
             Platform::Windows,

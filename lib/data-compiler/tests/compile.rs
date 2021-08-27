@@ -12,6 +12,7 @@ use legion_data_offline::{
     resource::{ResourceId, ResourceProcessor, RESOURCE_EXT},
 };
 use legion_data_runtime::AssetLoader;
+use multitext_resource::{MultiTextResource, MultiTextResourceProc};
 use text_resource::TextResource;
 
 mod common;
@@ -149,11 +150,11 @@ fn compile_intermediate() {
     let derived_info = {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
-        let derived = AssetPathId::from(source)
+        let compile_path = AssetPathId::from(source)
             .push(text_resource::TYPE_ID)
             .push(integer_asset::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
-            &derived,
+            &compile_path,
             &[],
             &[intermediate_info],
             &cas_addr,
@@ -200,11 +201,11 @@ fn compile_multi_resource() {
 
     let source = {
         let source = ResourceId::generate_new(multitext_resource::TYPE_ID);
-        let mut proc = multitext_resource::MultiTextResourceProc {};
+        let mut proc = MultiTextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
             .as_any_mut()
-            .downcast_mut::<multitext_resource::MultiTextResource>()
+            .downcast_mut::<MultiTextResource>()
             .expect("valid resource");
 
         resource.text_list = source_text_list.clone();

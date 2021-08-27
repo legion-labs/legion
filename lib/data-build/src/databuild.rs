@@ -385,7 +385,6 @@ impl DataBuild {
         platform: Platform,
         locale: &Locale,
     ) -> Result<CompileOutput, Error> {
-        // todo: rename this: `compile order`?
         let ordered_nodes = self.build_index.evaluation_order(compile_path)?;
 
         let compiler_details = {

@@ -1299,6 +1299,7 @@ dependencies = [
  "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
+ "multitext-resource",
  "petgraph",
  "refs-asset",
  "refs-resource",
