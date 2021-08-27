@@ -140,7 +140,7 @@ fn with_derived_dependency() {
             .unwrap();
 
         let parent_handle = {
-            let intermediate_id = AssetPathId::from(child_id).transform(refs_resource::TYPE_ID);
+            let intermediate_id = AssetPathId::from(child_id).push(refs_resource::TYPE_ID);
 
             let res = resources.new_resource(refs_resource::TYPE_ID).unwrap();
             res.get_mut::<refs_resource::TestResource>(&mut resources)

@@ -63,11 +63,11 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         resource_references: vec![],
     };
 
-    for content in source_text_list {
+    for (index, content) in source_text_list.iter().enumerate() {
         let output_resource = output_handle
             .get_mut::<text_resource::TextResource>(&mut resources)
             .unwrap();
-        output_resource.content = content;
+        output_resource.content = content.clone();
 
         let mut bytes = vec![];
         let (nbytes, _) = resources
@@ -80,7 +80,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
             .ok_or(CompilerError::AssetStoreError)?;
 
         output.compiled_resources.push(CompiledResource {
-            path: context.compile_path.clone(), // todo: add stuff here to have id uniqueness.
+            path: context.compile_path.new_named(&format!("text_{}", index)), // todo: add stuff here to have id uniqueness.
             checksum,
             size: nbytes,
         });

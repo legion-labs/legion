@@ -107,7 +107,7 @@ fn compile_change_no_deps() {
         .compiler_dir(target_dir());
 
     let source = AssetPathId::from(resource_id);
-    let target = source.transform(refs_resource::TYPE_ID);
+    let target = source.push(refs_resource::TYPE_ID);
 
     // compile the resource..
     let original_checksum = {
@@ -208,15 +208,15 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     let res_e = create_resource(ResourceName::from("E"), &[], &mut project, &mut resources);
     let res_d = create_resource(
         ResourceName::from("D"),
-        &[AssetPathId::from(res_e).transform(refs_resource::TYPE_ID)],
+        &[AssetPathId::from(res_e).push(refs_resource::TYPE_ID)],
         &mut project,
         &mut resources,
     );
     let res_b = create_resource(
         ResourceName::from("B"),
         &[
-            AssetPathId::from(res_c).transform(refs_resource::TYPE_ID),
-            AssetPathId::from(res_e).transform(refs_resource::TYPE_ID),
+            AssetPathId::from(res_c).push(refs_resource::TYPE_ID),
+            AssetPathId::from(res_e).push(refs_resource::TYPE_ID),
         ],
         &mut project,
         &mut resources,
@@ -224,8 +224,8 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     let res_a = create_resource(
         ResourceName::from("A"),
         &[
-            AssetPathId::from(res_b).transform(refs_resource::TYPE_ID),
-            AssetPathId::from(res_d).transform(refs_resource::TYPE_ID),
+            AssetPathId::from(res_b).push(refs_resource::TYPE_ID),
+            AssetPathId::from(res_d).push(refs_resource::TYPE_ID),
         ],
         &mut project,
         &mut resources,
@@ -259,7 +259,7 @@ fn compile_cache() {
     //
     const NUM_NODES: usize = 10;
     const NUM_OUTPUTS: usize = 5;
-    let target = AssetPathId::from(root_resource).transform(refs_resource::TYPE_ID);
+    let target = AssetPathId::from(root_resource).push(refs_resource::TYPE_ID);
 
     //  test of evaluation order computation.
     {
@@ -393,8 +393,8 @@ fn intermediate_resource() {
     assert_eq!(pulled, 1);
 
     let source_path = AssetPathId::from(source_id);
-    let reversed_path = source_path.transform(text_resource::TYPE_ID);
-    let integer_path = reversed_path.transform(integer_asset::TYPE_ID);
+    let reversed_path = source_path.push(text_resource::TYPE_ID);
+    let integer_path = reversed_path.push(integer_asset::TYPE_ID);
 
     let compile_output = build
         .compile_path(
@@ -485,7 +485,7 @@ fn link() {
             .get_mut::<refs_resource::TestResource>(&mut resources)
             .expect("existing resource");
         parent.content = String::from("test parent content");
-        parent.build_deps = vec![AssetPathId::from(child_id).transform(refs_resource::TYPE_ID)];
+        parent.build_deps = vec![AssetPathId::from(child_id).push(refs_resource::TYPE_ID)];
         project
             .add_resource(
                 ResourceName::from("parent"),
@@ -507,7 +507,7 @@ fn link() {
 
     // for now each resource is a separate file so we need to validate that the compile output and link output produce the same number of resources
 
-    let target = AssetPathId::from(parent_id).transform(refs_resource::TYPE_ID);
+    let target = AssetPathId::from(parent_id).push(refs_resource::TYPE_ID);
     let compile_output = build
         .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
         .expect("successful compilation");
@@ -564,7 +564,7 @@ fn verify_manifest() {
             .get_mut::<refs_resource::TestResource>(&mut resources)
             .unwrap()
             .build_deps
-            .push(AssetPathId::from(child_id).transform(refs_resource::TYPE_ID));
+            .push(AssetPathId::from(child_id).push(refs_resource::TYPE_ID));
 
         project
             .add_resource(
@@ -587,7 +587,7 @@ fn verify_manifest() {
 
     let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
-    let derived = AssetPathId::from(parent_resource).transform(refs_resource::TYPE_ID);
+    let derived = AssetPathId::from(parent_resource).push(refs_resource::TYPE_ID);
     let manifest = build
         .compile(
             derived,

@@ -1333,6 +1333,7 @@ dependencies = [
  "legion-content-store",
  "legion-data-offline",
  "legion-data-runtime",
+ "multitext-resource",
  "refs-resource",
  "serde",
  "serde_json",

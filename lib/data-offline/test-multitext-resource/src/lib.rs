@@ -42,7 +42,6 @@ impl ResourceProcessor for MultiTextResourceProc {
         let mut size = writer.write(&resource.text_list.len().to_ne_bytes())?;
         for content in &resource.text_list {
             size += writer.write(&content.len().to_ne_bytes())?;
-            assert_eq!(size, std::mem::size_of::<usize>());
             size += writer.write(content.as_bytes())?;
         }
 

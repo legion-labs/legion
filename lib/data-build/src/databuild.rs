@@ -78,10 +78,10 @@ fn compute_context_hash(
 ///
 /// build.source_pull().expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();
-/// let derived = AssetPathId::from(offline_anim).transform(RUNTIME_ANIM);
+/// let compile_path = AssetPathId::from(offline_anim).push(RUNTIME_ANIM);
 ///
 /// let manifest = build.compile(
-///                         derived,
+///                         compile_path,
 ///                         &manifest_file,
 ///                         Target::Game,
 ///                         Platform::Windows,

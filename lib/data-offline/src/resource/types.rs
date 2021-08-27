@@ -88,27 +88,3 @@ impl FromStr for ResourceId {
 
 /// Type identifier of an offline resource.
 pub type ResourceType = ContentType;
-
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
-
-    use crate::{
-        asset::AssetPathId,
-        resource::{test_resource, ResourceId},
-    };
-
-    #[test]
-    fn resource_path_name() {
-        let source = ResourceId::generate_new(test_resource::TYPE_ID);
-
-        let path_a = AssetPathId::from(source);
-        let path_b = path_a.transform(test_resource::TYPE_ID);
-
-        let name_a = format!("{}", path_a);
-        assert_eq!(path_a, AssetPathId::from_str(&name_a).unwrap());
-
-        let name_b = format!("{}", path_b);
-        assert_eq!(path_b, AssetPathId::from_str(&name_b).unwrap());
-    }
-}

@@ -58,9 +58,9 @@ fn compile_atoi() {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
 
-        let derived = AssetPathId::from(source).transform(integer_asset::TYPE_ID);
+        let compile_path = AssetPathId::from(source).push(integer_asset::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
-            &derived,
+            &compile_path,
             &[],
             &[],
             &cas_addr,
@@ -126,9 +126,9 @@ fn compile_intermediate() {
     let intermediate_info = {
         let exe_path = common::compiler_exe("test-reverse");
         assert!(exe_path.exists());
-        let derived = AssetPathId::from(source).transform(text_resource::TYPE_ID);
+        let compile_path = AssetPathId::from(source).push(text_resource::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
-            &derived,
+            &compile_path,
             &[],
             &[],
             &cas_addr,
@@ -150,8 +150,8 @@ fn compile_intermediate() {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
         let derived = AssetPathId::from(source)
-            .transform(text_resource::TYPE_ID)
-            .transform(integer_asset::TYPE_ID);
+            .push(text_resource::TYPE_ID)
+            .push(integer_asset::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
             &derived,
             &[],
@@ -189,4 +189,85 @@ fn compile_intermediate() {
         source_magic_value.chars().rev().collect::<String>(),
         stringified
     );
+}
+
+#[test]
+fn compile_multi_resource() {
+    let work_dir = tempfile::tempdir().unwrap();
+    let resource_dir = work_dir.path();
+
+    let source_text_list = vec![String::from("hello"), String::from("world")];
+
+    let source = {
+        let source = ResourceId::generate_new(multitext_resource::TYPE_ID);
+        let mut proc = multitext_resource::MultiTextResourceProc {};
+        let mut resource = proc.new_resource();
+        let mut resource = resource
+            .as_any_mut()
+            .downcast_mut::<multitext_resource::MultiTextResource>()
+            .expect("valid resource");
+
+        resource.text_list = source_text_list.clone();
+
+        let path = resource_dir.join(format!("{:x}.{}", source, RESOURCE_EXT));
+        let mut file = File::create(path).expect("new file");
+        proc.write_resource(resource, &mut file)
+            .expect("written to disk");
+        source
+    };
+
+    let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
+    let compile_path = AssetPathId::from(source).push(text_resource::TYPE_ID);
+
+    let compiled_resources = {
+        let exe_path = common::compiler_exe("test-split");
+        assert!(exe_path.exists());
+        let compile_path = AssetPathId::from(source).push(text_resource::TYPE_ID);
+        let mut command = CompilerCompileCmd::new(
+            &compile_path,
+            &[],
+            &[],
+            &cas_addr,
+            resource_dir,
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        );
+
+        let result = command
+            .execute(&exe_path, resource_dir)
+            .expect("compile result");
+
+        assert_eq!(result.compiled_resources.len(), source_text_list.len());
+        result.compiled_resources
+    };
+
+    assert!(!(1..compiled_resources.len()).any(|i| {
+        compiled_resources[i..]
+            .iter()
+            .any(|res| res.path == compiled_resources[i - 1].path)
+    }));
+
+    for (i, text_resource) in compiled_resources.iter().enumerate() {
+        assert_eq!(
+            text_resource.path,
+            compile_path.new_named(&format!("text_{}", i))
+        );
+    }
+
+    assert_eq!(compiled_resources.len(), source_text_list.len());
+    let content_store = HddContentStore::open(cas_addr).expect("valid cas");
+
+    for (resource, source_text) in compiled_resources.iter().zip(source_text_list.iter()) {
+        assert!(content_store.exists(resource.checksum));
+        let resource_content = content_store
+            .read(resource.checksum)
+            .expect("asset content");
+        let mut proc = text_resource::TextResourceProc {};
+        let resource = proc
+            .read_resource(&mut &resource_content[..])
+            .expect("loaded resource");
+        let resource = resource.as_any().downcast_ref::<TextResource>().unwrap();
+        assert_eq!(&resource.content, source_text);
+    }
 }

@@ -18,6 +18,7 @@ serde_json = "1.0"
 [dev-dependencies]
 tempfile = "3.2.0"
 refs-resource = { path = "../data-offline/test-refs-resource" }
+multitext-resource = { path = "../data-offline/test-multitext-resource" }
 text-resource = { path = "../data-offline/test-text-resource" }
 integer-asset = { path = "../data-runtime/test-integer-asset" }
 test-compilers = { path = "../data-compiler/test-compilers" }

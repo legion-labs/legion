@@ -25,11 +25,11 @@ struct ResourceInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledResourceInfo {
-    /// The path the resource was compiled from, i.e.: "AssetPathId("anim.fbx").transform("anim.offline")
+    /// The path the resource was compiled from, i.e.: "AssetPathId("anim.fbx").push("anim.offline")
     pub(crate) compile_path: AssetPathId,
     pub(crate) context_hash: u64,
     pub(crate) source_hash: u64,
-    /// The path the resource was compiled into, i.e.: "AssetPathId("anim.fbx").transform("anim.offline")["idle"]
+    /// The path the resource was compiled into, i.e.: "AssetPathId("anim.fbx").push("anim.offline")["idle"]
     pub(crate) compiled_path: AssetPathId,
     pub(crate) compiled_checksum: i128,
     pub(crate) compiled_size: usize,
@@ -428,8 +428,8 @@ mod tests {
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceId::generate_new(refs_resource::TYPE_ID);
         let source_resource = AssetPathId::from(source_id);
-        let intermediate_resource = source_resource.transform(refs_resource::TYPE_ID);
-        let output_resources = intermediate_resource.transform(refs_resource::TYPE_ID);
+        let intermediate_resource = source_resource.push(refs_resource::TYPE_ID);
+        let output_resources = intermediate_resource.push(refs_resource::TYPE_ID);
 
         let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
         let projectindex_path = project.indexfile_path();
