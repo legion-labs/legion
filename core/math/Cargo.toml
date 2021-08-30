@@ -13,4 +13,4 @@ license = "MIT OR Apache-2.0"
 keywords = ["legion"]
 
 [dependencies]
-glam = { version = "0.15.1", features = ["serde", "bytemuck"] }
+glam = { version = "0.18", features = ["serde", "bytemuck"] }
