@@ -239,128 +239,6 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
 }
 
 #[test]
-fn compile_cache() {
-    let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
-
-    let resource_list = setup_project(project_dir);
-    let root_resource = resource_list[0];
-
-    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-        .content_store(&ContentStoreAddr::from(work_dir.path()))
-        .compiler_dir(target_dir())
-        .create(project_dir)
-        .expect("new build index");
-    build.source_pull().expect("successful pull");
-
-    //
-    // test(A) -> A -> test(B) -> B -> test(C) -> C
-    //            |               |
-    //            V               |
-    //          test(D)           |
-    //            |               |
-    //            V               V
-    //            D ---------> test(E) -> E
-    //
-    const NUM_NODES: usize = 10;
-    const NUM_OUTPUTS: usize = 5;
-    let target = AssetPathId::from(root_resource).push(refs_resource::TYPE_ID);
-
-    //  test of evaluation order computation.
-    {
-        let order = build
-            .build_index
-            .evaluation_order(target.clone())
-            .expect("no cycles");
-        assert_eq!(order.len(), NUM_NODES);
-        assert_eq!(order[NUM_NODES - 1], target);
-        assert_eq!(order[NUM_NODES - 2], AssetPathId::from(root_resource));
-    }
-
-    // first run - none of the resources from cache.
-    {
-        let CompileOutput {
-            resources,
-            references,
-            statistics,
-        } = build
-            .compile_path(
-                target.clone(),
-                Target::Game,
-                Platform::Windows,
-                &Locale::new("en"),
-            )
-            .expect("successful compilation");
-
-        assert_eq!(resources.len(), NUM_OUTPUTS);
-        assert_eq!(references.len(), NUM_OUTPUTS);
-        assert!(statistics.iter().all(|s| !s.from_cache));
-    }
-
-    // no change, second run - all resources from cache.
-    {
-        let CompileOutput {
-            resources,
-            references,
-            statistics,
-        } = build
-            .compile_path(
-                target.clone(),
-                Target::Game,
-                Platform::Windows,
-                &Locale::new("en"),
-            )
-            .expect("successful compilation");
-
-        assert_eq!(resources.len(), NUM_OUTPUTS);
-        assert_eq!(references.len(), NUM_OUTPUTS);
-        assert!(statistics.iter().all(|s| s.from_cache));
-    }
-
-    // change root resource, one resource re-compiled.
-    {
-        change_resource(root_resource, project_dir);
-        build.source_pull().expect("to pull changes");
-
-        let CompileOutput {
-            resources,
-            references,
-            statistics,
-        } = build
-            .compile_path(
-                target.clone(),
-                Target::Game,
-                Platform::Windows,
-                &Locale::new("en"),
-            )
-            .expect("successful compilation");
-
-        assert_eq!(resources.len(), NUM_OUTPUTS);
-        assert_eq!(references.len(), NUM_OUTPUTS);
-        assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 1);
-    }
-
-    // change resource E - which invalides 4 resources in total (E included).
-    {
-        let resource_e = resource_list[4];
-        change_resource(resource_e, project_dir);
-        build.source_pull().expect("to pull changes");
-
-        let CompileOutput {
-            resources,
-            references,
-            statistics,
-        } = build
-            .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
-            .expect("successful compilation");
-
-        assert_eq!(resources.len(), 5);
-        assert_eq!(references.len(), 5);
-        assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 4);
-    }
-}
-
-#[test]
 fn intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
     let project_dir = work_dir.path();
@@ -459,7 +337,117 @@ fn intermediate_resource() {
 }
 
 #[test]
-fn named_path() {
+fn unnamed_cache_use() {
+    let work_dir = tempfile::tempdir().unwrap();
+    let project_dir = work_dir.path();
+
+    let resource_list = setup_project(project_dir);
+    let root_resource = resource_list[0];
+
+    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+        .content_store(&ContentStoreAddr::from(work_dir.path()))
+        .compiler_dir(target_dir())
+        .create(project_dir)
+        .expect("new build index");
+    build.source_pull().expect("successful pull");
+
+    //
+    // test(A) -> A -> test(B) -> B -> test(C) -> C
+    //            |               |
+    //            V               |
+    //          test(D)           |
+    //            |               |
+    //            V               V
+    //            D ---------> test(E) -> E
+    //
+    const NUM_OUTPUTS: usize = 5;
+    let target = AssetPathId::from(root_resource).push(refs_resource::TYPE_ID);
+
+    // first run - none of the resources from cache.
+    {
+        let CompileOutput {
+            resources,
+            references,
+            statistics,
+        } = build
+            .compile_path(
+                target.clone(),
+                Target::Game,
+                Platform::Windows,
+                &Locale::new("en"),
+            )
+            .expect("successful compilation");
+
+        assert_eq!(resources.len(), NUM_OUTPUTS);
+        assert_eq!(references.len(), NUM_OUTPUTS);
+        assert!(statistics.iter().all(|s| !s.from_cache));
+    }
+
+    // no change, second run - all resources from cache.
+    {
+        let CompileOutput {
+            resources,
+            references,
+            statistics,
+        } = build
+            .compile_path(
+                target.clone(),
+                Target::Game,
+                Platform::Windows,
+                &Locale::new("en"),
+            )
+            .expect("successful compilation");
+
+        assert_eq!(resources.len(), NUM_OUTPUTS);
+        assert_eq!(references.len(), NUM_OUTPUTS);
+        assert!(statistics.iter().all(|s| s.from_cache));
+    }
+
+    // change root resource, one resource re-compiled.
+    {
+        change_resource(root_resource, project_dir);
+        build.source_pull().expect("to pull changes");
+
+        let CompileOutput {
+            resources,
+            references,
+            statistics,
+        } = build
+            .compile_path(
+                target.clone(),
+                Target::Game,
+                Platform::Windows,
+                &Locale::new("en"),
+            )
+            .expect("successful compilation");
+
+        assert_eq!(resources.len(), NUM_OUTPUTS);
+        assert_eq!(references.len(), NUM_OUTPUTS);
+        assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 1);
+    }
+
+    // change resource E - which invalides 4 resources in total (E included).
+    {
+        let resource_e = resource_list[4];
+        change_resource(resource_e, project_dir);
+        build.source_pull().expect("to pull changes");
+
+        let CompileOutput {
+            resources,
+            references,
+            statistics,
+        } = build
+            .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
+            .expect("successful compilation");
+
+        assert_eq!(resources.len(), 5);
+        assert_eq!(references.len(), 5);
+        assert_eq!(statistics.iter().filter(|s| !s.from_cache).count(), 4);
+    }
+}
+
+#[test]
+fn named_path_cache_use() {
     let work_dir = tempfile::tempdir().unwrap();
     let project_dir = work_dir.path();
     let mut resources = setup_registry();
@@ -497,15 +485,19 @@ fn named_path() {
 
     let source_path = AssetPathId::from(source_id);
     let split_text0_path = source_path.push_named(text_resource::TYPE_ID, "text_0");
-    let integer_path = split_text0_path.push(integer_asset::TYPE_ID);
+    let split_text1_path = source_path.push_named(text_resource::TYPE_ID, "text_1");
+    let integer_path_0 = split_text0_path.push(integer_asset::TYPE_ID);
+    let integer_path_1 = split_text1_path.push(integer_asset::TYPE_ID);
 
     //
-    // multitext_resource -> text_resource("text_0") -> integer_asset
-    //                    -> text_resource("text_1")
+    // multitext_resource -> text_resource("text_0") -> integer_asset <= "integer path 0"
+    //                    -> text_resource("text_1") -> integer_asset <= "integer path 1"
     //
+
+    // compile "integer path 0"
     let compile_output = build
         .compile_path(
-            integer_path.clone(),
+            integer_path_0.clone(),
             Target::Game,
             Platform::Windows,
             &Locale::new("en"),
@@ -513,7 +505,11 @@ fn named_path() {
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
-    assert_eq!(compile_output.resources[0].compile_path, split_text0_path);
+    assert!(compile_output.statistics.iter().all(|s| !s.from_cache));
+    assert!(compile_output
+        .resources
+        .iter()
+        .all(|r| !r.compile_path.is_named()));
 
     let compiled_text0 = compile_output
         .resources
@@ -521,16 +517,16 @@ fn named_path() {
         .find(|&info| info.compiled_path == split_text0_path)
         .unwrap();
 
-    assert_eq!(compiled_text0.compile_path, split_text0_path);
+    assert_eq!(compiled_text0.compile_path, split_text0_path.to_unnamed());
 
     let compiled_integer = compile_output
         .resources
         .iter()
-        .find(|&info| info.compiled_path == integer_path)
+        .find(|&info| info.compiled_path == integer_path_0)
         .unwrap();
 
-    assert_eq!(compiled_integer.compile_path, integer_path);
-    assert_eq!(compiled_integer.compiled_path, integer_path);
+    assert_eq!(compiled_integer.compile_path, integer_path_0);
+    assert_eq!(compiled_integer.compiled_path, integer_path_0);
 
     let content_store = HddContentStore::open(cas_addr).expect("valid cas");
 
@@ -549,6 +545,167 @@ fn named_path() {
         let stringified = resource.magic_value.to_string();
         assert_eq!(magic_list[0], stringified);
     }
+
+    // compile "integer path 1"
+    let compile_output = build
+        .compile_path(
+            integer_path_1.clone(),
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        )
+        .unwrap();
+
+    assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
+    assert_eq!(
+        compile_output
+            .statistics
+            .iter()
+            .filter(|s| s.from_cache)
+            .count(),
+        2 // both "text_0" and "text_1"
+    );
+    assert!(compile_output
+        .resources
+        .iter()
+        .all(|r| !r.compile_path.is_named()));
+
+    // recompile "integer path 0" - all from cache
+    let compile_output = build
+        .compile_path(
+            integer_path_0.clone(),
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        )
+        .unwrap();
+
+    assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
+    assert!(compile_output.statistics.iter().all(|s| s.from_cache));
+    assert!(compile_output
+        .resources
+        .iter()
+        .all(|r| !r.compile_path.is_named()));
+
+    // change "text_1" of source resource multitext resource..
+    {
+        let mut project = Project::open(project_dir).expect("failed to open project");
+        let mut resources = setup_registry();
+
+        let handle = project
+            .load_resource(source_id, &mut resources)
+            .expect("to load resource");
+
+        let resource = handle
+            .get_mut::<multitext_resource::MultiTextResource>(&mut resources)
+            .expect("resource instance");
+        resource.text_list[1] = String::from("852");
+        project
+            .save_resource(source_id, &handle, &mut resources)
+            .expect("successful save");
+
+        let pulled = build.source_pull().expect("pulled change");
+        assert_eq!(pulled, 1);
+    }
+
+    let compile_output = build
+        .compile_path(
+            integer_path_0.clone(),
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        )
+        .unwrap();
+
+    // ..recompiled: multitext -> text_0, text_1
+    // ..from cache: text_0 -> integer
+    assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
+    assert_eq!(
+        compile_output
+            .statistics
+            .iter()
+            .filter(|s| s.from_cache)
+            .count(),
+        1
+    );
+    assert!(compile_output
+        .resources
+        .iter()
+        .all(|r| !r.compile_path.is_named()));
+
+    // change "text_0" and "text_1" of source resource multitext resource..
+    {
+        let mut project = Project::open(project_dir).expect("failed to open project");
+        let mut resources = setup_registry();
+
+        let handle = project
+            .load_resource(source_id, &mut resources)
+            .expect("to load resource");
+
+        let resource = handle
+            .get_mut::<multitext_resource::MultiTextResource>(&mut resources)
+            .expect("resource instance");
+        resource.text_list[0] = String::from("734");
+        resource.text_list[1] = String::from("1");
+        project
+            .save_resource(source_id, &handle, &mut resources)
+            .expect("successful save");
+
+        let pulled = build.source_pull().expect("pulled change");
+        assert_eq!(pulled, 1);
+    }
+
+    // compile from "text_0"
+    let compile_output = build
+        .compile_path(
+            integer_path_0.clone(),
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        )
+        .unwrap();
+
+    // ..recompiled: multitext -> text_0, text_1, text_0 -> integer
+    // ..from cache: none
+    assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
+    assert_eq!(
+        compile_output
+            .statistics
+            .iter()
+            .filter(|s| s.from_cache)
+            .count(),
+        0
+    );
+    assert!(compile_output
+        .resources
+        .iter()
+        .all(|r| !r.compile_path.is_named()));
+
+    // compile from "text_1"
+    let compile_output = build
+        .compile_path(
+            integer_path_1,
+            Target::Game,
+            Platform::Windows,
+            &Locale::new("en"),
+        )
+        .unwrap();
+
+    // ..recompiled: text_1 -> integer
+    // ..from cache: multitext -> text_0, text_1
+    assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
+    assert_eq!(
+        compile_output
+            .statistics
+            .iter()
+            .filter(|s| s.from_cache)
+            .count(),
+        2
+    );
+    assert!(compile_output
+        .resources
+        .iter()
+        .all(|r| !r.compile_path.is_named()));
 }
 
 #[test]

@@ -252,8 +252,8 @@ impl CompilerInfoCmd {
 /// Output of `compiler_hash` command.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CompilerHashCmdOutput {
-    /// List of [`CompilerHash`] values for given compilation context.
-    pub compiler_hash_list: Vec<CompilerHash>,
+    /// [`CompilerHash`] for given compilation context.
+    pub compiler_hash: CompilerHash,
 }
 
 impl CompilerHashCmdOutput {

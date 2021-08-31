@@ -29,11 +29,11 @@ fn compiler_hash(
     _target: Target,
     _platform: Platform,
     _locale: Locale,
-) -> Vec<CompilerHash> {
+) -> CompilerHash {
     let mut hasher = DefaultHasher::new();
     code.hash(&mut hasher);
     data.hash(&mut hasher);
-    vec![CompilerHash(hasher.finish())]
+    CompilerHash(hasher.finish())
 }
 
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {

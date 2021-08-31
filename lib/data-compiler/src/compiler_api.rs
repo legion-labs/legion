@@ -38,7 +38,7 @@
 //!    target: Target,
 //!    platform: Platform,
 //!    locale: Locale,
-//!) -> Vec<CompilerHash> {
+//!) -> CompilerHash {
 //!    todo!()
 //!}
 //!
@@ -229,7 +229,7 @@ pub struct CompilerDescriptor {
         target: Target,
         platform: Platform,
         locale: Locale,
-    ) -> Vec<CompilerHash>,
+    ) -> CompilerHash,
     /// Data compilation function.
     #[allow(clippy::type_complexity)]
     pub compile_func: fn(context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError>,
@@ -301,14 +301,14 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 Platform::from_str(platform).map_err(|_e| CompilerError::InvalidPlatform)?;
             let locale = Locale::new(locale);
 
-            let compiler_hash_list = (descriptor.compiler_hash_func)(
+            let compiler_hash = (descriptor.compiler_hash_func)(
                 descriptor.code_version,
                 descriptor.data_version,
                 target,
                 platform,
                 locale,
             );
-            let output = CompilerHashCmdOutput { compiler_hash_list };
+            let output = CompilerHashCmdOutput { compiler_hash };
             serde_json::to_writer_pretty(stdout(), &output)
                 .map_err(|_e| CompilerError::StdoutError)?;
             Ok(())

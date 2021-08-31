@@ -18,6 +18,7 @@ use legion_data_compiler::{CompiledResource, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{asset::AssetPathId, resource::Project};
 use legion_data_runtime::AssetId;
+use petgraph::algo;
 
 use crate::asset_file_writer::write_assetfile;
 use crate::buildindex::{BuildIndex, CompiledResourceInfo, CompiledResourceReference};
@@ -385,7 +386,10 @@ impl DataBuild {
         platform: Platform,
         locale: &Locale,
     ) -> Result<CompileOutput, Error> {
-        let ordered_nodes = self.build_index.evaluation_order(compile_path)?;
+        let build_graph = self.build_index.generate_build_graph(compile_path);
+
+        let topological_order: Vec<_> =
+            algo::toposort(&build_graph, None).map_err(|_e| Error::CircularDependency)?;
 
         let compiler_details = {
             let compilers = list_compilers(&self.config.compiler_search_paths);
@@ -404,12 +408,13 @@ impl DataBuild {
 
             let unique_transforms = {
                 let mut transforms = vec![];
-                for node in &ordered_nodes {
-                    if node.is_source() {
+                for node in &topological_order {
+                    let path = build_graph.node_weight(*node).unwrap();
+                    if path.is_source() {
                         continue;
                     }
 
-                    if let Some(transform) = node.last_transform() {
+                    if let Some(transform) = path.last_transform() {
                         transforms.push(transform);
                     }
                 }
@@ -431,7 +436,7 @@ impl DataBuild {
                                 .execute(&e.0.path)
                                 .map_err(Error::CompilerError)?;
 
-                            Ok((transform, (e.0.path.clone(), res.compiler_hash_list)))
+                            Ok((transform, (e.0.path.clone(), res.compiler_hash)))
                         })
                 })
                 .collect::<Result<HashMap<_, _>, _>>()?
@@ -447,11 +452,28 @@ impl DataBuild {
         // in the future this should be improved.
         //
         let mut accumulated_dependencies = vec![];
+        let mut node_hash = HashMap::<_, (u64, u64)>::new();
 
-        for compile_node in ordered_nodes {
+        for compile_node_index in topological_order {
+            let compile_node = build_graph.node_weight(compile_node_index).unwrap();
             // compile non-source dependencies.
             if let Some(direct_dependency) = compile_node.direct_dependency() {
+                let mut n = build_graph.neighbors_directed(compile_node_index, petgraph::Incoming);
+                let direct_dependency_index = n.next().unwrap();
+
+                // only one direct dependency supported now. it's ok for the path
+                // but it needs to be revisited for source (if this ever applies to source).
+                assert!(n.next().is_none());
+
+                assert_eq!(
+                    &direct_dependency,
+                    build_graph.node_weight(direct_dependency_index).unwrap()
+                );
+
                 let transform = compile_node.last_transform().unwrap();
+
+                //  'name' is dropped as we always compile input as a whole.
+                let compile_node = compile_node.to_unnamed();
 
                 //
                 // for derived resources the build index will not have dependencies for.
@@ -469,22 +491,57 @@ impl DataBuild {
                     .find_dependencies(&direct_dependency)
                     .unwrap_or_default();
 
-                let (compiler_path, compiler_hash_list) = compiler_details.get(&transform).unwrap();
-
-                // todo(kstasik): support triggering compilation for multiple platforms
-
-                assert_eq!(compiler_hash_list.len(), 1); // todo: support more.
-                let compiler_hash = compiler_hash_list[0];
+                let (compiler_path, compiler_hash) = compiler_details.get(&transform).unwrap();
 
                 // todo: not sure if transofrm is the right thing here. resource_path_id better? transform is already defined by the compiler_hash so it seems redundant.
-                let context_hash = compute_context_hash(transform, compiler_hash, Self::version());
+                let context_hash = compute_context_hash(transform, *compiler_hash, Self::version());
 
-                //
-                // todo(kstasik): source_hash computation can include filtering of resource types in the future.
-                // the same resource can have a different source_hash depending on the compiler
-                // used as compilers can filter dependencies out.
-                //
-                let source_hash = self.build_index.compute_source_hash(compile_node.clone())?;
+                let source_hash = {
+                    if direct_dependency.is_source() {
+                        //
+                        // todo(kstasik): source_hash computation can include filtering of resource types in the future.
+                        // the same resource can have a different source_hash depending on the compiler
+                        // used as compilers can filter dependencies out.
+                        //
+                        self.build_index.compute_source_hash(compile_node.clone())?
+                    } else {
+                        //
+                        // since this is a path-derived resource its hash is equal to the
+                        // checksum of its direct dependency.
+                        // this is because the direct dependency is the only dependency.
+                        // more thought needs to be put into this - this would mean this
+                        // resource should not read any other resources - but right now
+                        // `accumulated_dependencies` allows to read much more.
+                        //
+                        let (dep_context_hash, dep_source_hash) =
+                            node_hash.get(&direct_dependency_index).unwrap();
+
+                        // we can assume there are results of compilation of the `direct_dependency`
+                        let compiled = self
+                            .build_index
+                            .find_compiled(
+                                &direct_dependency.to_unnamed(),
+                                *dep_context_hash,
+                                *dep_source_hash,
+                            )
+                            .unwrap()
+                            .0;
+                        // can we assume there is a result of a requested name?
+                        // probably no, this should return a compile error.
+                        let source = compiled
+                            .iter()
+                            .find(|&compiled| compiled.compiled_path == direct_dependency)
+                            .unwrap();
+
+                        // this is how we truncate the 128 bit long checksum
+                        // and convert it to a 64 bit source_hash.
+                        let mut hasher = DefaultHasher::new();
+                        source.compiled_checksum.hash(&mut hasher);
+                        hasher.finish()
+                    }
+                };
+
+                node_hash.insert(compile_node_index, (context_hash, source_hash));
 
                 let (resource_infos, resource_references, stats) = self.compile_node(
                     &compile_node,

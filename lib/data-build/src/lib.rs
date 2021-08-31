@@ -192,6 +192,8 @@ pub enum Error {
     IOError,
     /// Index integrity error.
     IntegrityFailure,
+    /// Circular dependency in build graph.
+    CircularDependency,
     /// Index version mismatch.
     VersionMismatch,
     /// Compiled Asset Store invalid.
@@ -216,6 +218,7 @@ impl std::fmt::Display for Error {
             Error::CompilerNotFound => write!(f, "CompilerNotFound"),
             Error::IOError => write!(f, "IOError"),
             Error::IntegrityFailure => write!(f, "IntegrityFailure"),
+            Error::CircularDependency => write!(f, "CircularDependency"),
             Error::VersionMismatch => write!(f, "VersionMismatch"),
             Error::InvalidAssetStore => write!(f, "InvalidCompiledAssetStore"),
             Error::InvalidProject => write!(f, "InvalidProject"),

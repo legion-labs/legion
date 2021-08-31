@@ -1,5 +1,5 @@
 use legion_data_compiler::CompiledResource;
-use petgraph::{algo, Directed, Graph};
+use petgraph::{Directed, Graph};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map::DefaultHasher, HashMap, VecDeque},
@@ -136,11 +136,8 @@ impl BuildIndex {
         self.content.project_index.exists()
     }
 
-    /// Returns ordered list of dependencies starting from leaf-dependencies ending with `resource_id` - the root.
-    pub(crate) fn evaluation_order(
-        &self,
-        compile_path: AssetPathId,
-    ) -> Result<Vec<AssetPathId>, Error> {
+    /// Create an ordered build graph with edges directed towards `compile_path`.
+    pub(crate) fn generate_build_graph(&self, compile_path: AssetPathId) -> Graph<AssetPathId, ()> {
         let mut dep_graph = Graph::<AssetPathId, (), Directed>::new();
         let mut indices = HashMap::<AssetPathId, petgraph::prelude::NodeIndex>::new();
         let mut processed = vec![];
@@ -155,7 +152,7 @@ impl BuildIndex {
             resource_path = direct_dependency;
         }
 
-        let mut get_or_create_index = |res, dep_graph: &mut Graph<AssetPathId, ()>| {
+        let mut get_or_create_index = |res, dep_graph: &mut Graph<_, _>| {
             if let Some(own_index) = indices.get(&res) {
                 *own_index
             } else {
@@ -182,7 +179,7 @@ impl BuildIndex {
                 );
                 for d in &deps {
                     let other_index = get_or_create_index(d.clone(), &mut dep_graph);
-                    dep_graph.add_edge(own_index, other_index, ());
+                    dep_graph.update_edge(other_index, own_index, ());
                 }
 
                 let unprocessed: VecDeque<AssetPathId> = deps
@@ -192,20 +189,10 @@ impl BuildIndex {
                 queue.extend(unprocessed);
             } else if let Some(direct_dependency) = res.direct_dependency() {
                 let other_index = get_or_create_index(direct_dependency, &mut dep_graph);
-                dep_graph.add_edge(own_index, other_index, ());
+                dep_graph.update_edge(other_index, own_index, ());
             }
         }
-
-        let topological_order =
-            algo::toposort(&dep_graph, None).map_err(|_e| Error::IntegrityFailure)?;
-
-        let evaluation_order = topological_order
-            .iter()
-            .map(|i| *dep_graph.node_weight(*i).as_ref().unwrap())
-            .rev()
-            .cloned()
-            .collect();
-        Ok(evaluation_order)
+        dep_graph
     }
 
     /// Returns a combined hash of:
@@ -217,7 +204,6 @@ impl BuildIndex {
             let mut unique_resources = HashMap::new();
             let mut queue: VecDeque<_> = VecDeque::new();
 
-            // path-based dedepndencies are indexed therefore it's enough to process `id`
             queue.push_back(id);
 
             while let Some(resource) = queue.pop_front() {
@@ -290,7 +276,6 @@ impl BuildIndex {
         }
     }
 
-    // all path-based depdendencies are indexed (included in `ResourceInfo`).
     pub(crate) fn find_dependencies(&self, id: &AssetPathId) -> Option<Vec<AssetPathId>> {
         self.content
             .resources

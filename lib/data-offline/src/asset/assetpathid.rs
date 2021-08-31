@@ -46,7 +46,7 @@ use serde::{Deserialize, Serialize};
 /// let source_path = AssetPathId::from(resource_id);
 /// let target = source_path.push(LOD_GEOMETRY).push(BINARY_GEOMETRY);
 /// ```
-#[derive(Hash, PartialEq, Eq, Debug, Serialize, Deserialize, Clone, PartialOrd, Ord)]
+#[derive(Hash, PartialEq, Eq, Serialize, Deserialize, Clone, PartialOrd, Ord)]
 pub struct AssetPathId {
     source: ResourceId,
     transforms: Vec<(ContentType, Option<String>)>,
@@ -62,6 +62,20 @@ impl From<ResourceId> for AssetPathId {
 }
 
 impl fmt::Display for AssetPathId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}", self.source))?;
+        for (kind, name) in &self.transforms {
+            if let Some(name) = name {
+                f.write_fmt(format_args!("|{}_{}", kind, name))?;
+            } else {
+                f.write_fmt(format_args!("|{}", kind))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Debug for AssetPathId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{}", self.source))?;
         for (kind, name) in &self.transforms {
@@ -133,6 +147,24 @@ impl AssetPathId {
         let last_transform = cloned.transforms.last_mut().unwrap();
         last_transform.1 = Some(name.to_string());
         cloned
+    }
+
+    /// Creates a new id without the 'name` part.
+    pub fn to_unnamed(&self) -> Self {
+        let mut cloned = self.clone();
+        if let Some((_, name)) = cloned.transforms.last_mut() {
+            *name = None;
+        }
+        cloned
+    }
+
+    /// Returns true if there is 'name' part in the path, false otherwise.
+    pub fn is_named(&self) -> bool {
+        if let Some((_, name)) = self.transforms.last() {
+            !name.is_none()
+        } else {
+            false
+        }
     }
 
     /// Returns `ResourceType` of the resource identified by this path.
