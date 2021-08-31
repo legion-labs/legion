@@ -16,7 +16,7 @@
     - [Data build](./data-pipeline/data-build.md)
     - [Runtime asset management](./data-pipeline/runtime-assets.md)
     - [Packaging](./data-pipeline/packaging.md)
-    - [Data Model](./data-pipeline/data-model.md)
+    - [Structured Data Model](./data-pipeline/data-model.md)
     - [Example use cases](./data-pipeline/examples.md)
 
 - [Rendering](./rendering/README.md)

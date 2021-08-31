@@ -6,27 +6,34 @@ This component is responsible for adding/removing/moving resources in a form of 
 
 It provides a view of the resources present under source control and keeps track of local resource modifications (including adds, removes) before those are committed. To do all this it closely interacts with the source control system.
 
-An example of file structure related to the component looks like this (GUIDs would be used for offline file names; here changed to 'name' to illustrate the example):
+Example below illustrates file structure related to **source** and **offline** resources:
 
 ```ignore
-+ data/
-  - project.index       // index of .meta & .export files
-  - textures.psd		// source asset
-  - textures.export		// parameters of .psd export process
-  - albedo.texture		// output of the export process
-  - albedo.texture.meta	// meta information of the output asset (name, dependencies, checksum)
-  - normal.texture
-  - normal.texture.meta 
++ project/
+| + source/
+| | - textures.psd        // source asset
+| | - textures.export     // parameters of .psd export process
+| + offline/
+| | - albedo.texture      // output of the export process
+| | - albedo.texture.meta // meta information of the output asset (name, dependencies, checksum)
+| | - normal.texture
+| | - normal.texture.meta 
+| - project.index         // index of .meta & .export files
 ```
+###### NOTE: GUIDs would be used for offline file names; here changed to 'name' to illustrate the example
 
-##### Sources with Export Properties
+##### Source Files with Export Properties
 
-DCC source files are stored in source-control with export metadata inside `.export` file. Those are exported by the user into `offline format` that must be kept in source-control in sync with source files.
+Source files usually are in form of DCC files stored in source-control with export metadata inside `.export` file. Those are exported by the user into `offline format` that must be kept in sync with its source files.
 
-##### Index of Offline Resources
+> DCC files are not exclusively treated as `source files`. It is possible to have them as `source files` and be part of the data compilation process.
 
-It provides an index of offline resources that can be inspected in the tool's 'Resource View'. Each resource is identifiable by a GUID.
+##### Project Index
+
+It provides an index of *offline resources* that can be inspected in the tool's 'Resource View'. Each resource is identifiable by a GUID while its name/path is stored as a property in an associated `.meta` file.
+
+> All file names use resources's GUID instead of a human-readable name. This is to allow for easy renaming and moving of resources.
 
 ##### Build Dependency Tracking
 
-It tracks build dependencies and stores them in a `.meta` file for each resource. This way the asset build system does not need to open the content of the asset to extract dependencies.
+Project resource management tracks build dependencies and stores them in a `.meta` file for each resource. This way the asset build system does not need to open the content of the asset to extract dependencies.
