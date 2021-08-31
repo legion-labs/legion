@@ -4,11 +4,11 @@ This part of the data pipeline is responsible for taking the output of the `asse
 
 During the development it is responsible for executing this process in a 'just-in-time' manner
 
-##### 	"Virtual Filesystem" Archive
+##### "Virtual Filesystem" Archive
 
 To reduce file operations and seek overhead the game uses `.archive` files in a zip-like format (depending on the platform). It needs to support .archive prioritization and overriding of runtime resources (files) to support data patching.
 
-##### 	Expandable Archive
+##### Expandable Archive
 
 When running a development build the assets are never present at boot. A game executable and a `.manifest` file is enough to run. 
 

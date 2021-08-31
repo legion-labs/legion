@@ -28,12 +28,13 @@
 //!
 //! An example of a project with 2 offline resources on disk looks as follows:
 //! ```markdown
-//! ./
+//!  ./
+//!  | + offline/
+//!  | |- a81fb4498cd04368
+//!  | |- a81fb4498cd04368.meta
+//!  | |- 8063daaf864780d6
+//!  | |- 8063daaf864780d6.meta
 //!  |- project.index
-//!  |- a81fb4498cd04368
-//!  |- a81fb4498cd04368.meta
-//!  |- 8063daaf864780d6
-//!  |- 8063daaf864780d6.meta
 //! ```
 //!
 //! ## Resource `.meta` file

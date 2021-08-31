@@ -269,7 +269,7 @@ impl DataBuild {
         Ok(manifest)
     }
 
-    /// Compile `compile_node` of the build graph and update *build-index* one or more compilation results.
+    /// Compile `compile_node` of the build graph and update *build index* one or more compilation results.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     fn compile_node(
@@ -375,7 +375,7 @@ impl DataBuild {
         Ok((resource_infos, resource_references, stats))
     }
 
-    /// Compile a resource identified by [`AssetPathId`] and all its dependencies and update the *build-index* with compilation results.
+    /// Compile a resource identified by [`AssetPathId`] and all its dependencies and update the *build index* with compilation results.
     /// Returns a list of (id, checksum, size) of created resources and information about their dependencies.
     /// The returned results can be accessed by  [`legion_content_store::ContentStore`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
     // TODO: The list might contain many versions of the same [`AssetId`] compiled for many contexts (platform, target, locale, etc).
