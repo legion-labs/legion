@@ -82,7 +82,7 @@ mod default_plugins;
 pub use default_plugins::*;
 
 pub mod app {
-    //! Build bevy apps, create plugins, and read events.
+    //! Build Legion apps, create plugins, and read events.
     pub use legion_app::*;
 }
 
@@ -92,7 +92,7 @@ pub mod core {
 }
 
 pub mod ecs {
-    //! Bevy's entity-component-system.
+    //! Legion's entity-component-system.
     pub use legion_ecs::*;
 }
 

@@ -37,7 +37,7 @@ use std::{
 /// - [`Entity`]: Using the entity type as a world query will grant access to the entity that is
 ///     being queried for. See [`Entity`].
 ///
-/// Bevy also offers a few filters like [`Added`](crate::query::Added), [`Changed`](crate::query::Changed),
+/// Legion also offers a few filters like [`Added`](crate::query::Added), [`Changed`](crate::query::Changed),
 /// [`With`](crate::query::With), [`Without`](crate::query::Without) and [`Or`].
 /// For more information on these consult the item's corresponding documentation.
 ///

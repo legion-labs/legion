@@ -5,7 +5,7 @@ use crate::{app::AppExit, App};
 /// Configuration for automated testing on CI
 #[derive(Deserialize)]
 pub struct CiTestingConfig {
-    /// Number of frames after wich Bevy should exit
+    /// Number of frames after which Legion should exit
     pub exit_after: Option<u32>,
 }
 
