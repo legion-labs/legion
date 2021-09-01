@@ -82,6 +82,7 @@ mod bytes;
 mod enum_variant_meta;
 mod legion_main;
 mod modules;
+mod type_uuid;
 
 use proc_macro::TokenStream;
 
@@ -105,4 +106,15 @@ pub fn legion_main(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_derive(EnumVariantMeta)]
 pub fn derive_enum_variant_meta(input: TokenStream) -> TokenStream {
     enum_variant_meta::derive_enum_variant_meta(input)
+}
+
+// From https://github.com/randomPoison/type-uuid
+#[proc_macro_derive(TypeUuid, attributes(uuid))]
+pub fn type_uuid_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    type_uuid::type_uuid_derive(input)
+}
+
+#[proc_macro]
+pub fn external_type_uuid(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    type_uuid::external_type_uuid(tokens)
 }

@@ -82,12 +82,13 @@ pub mod memory;
 pub mod trust_cell;
 
 mod enum_variant_meta;
-pub use enum_variant_meta::*;
-
 mod hash;
-pub use hash::*;
+mod type_uuid;
 
+pub use enum_variant_meta::*;
+pub use hash::*;
 pub use tracing;
+pub use type_uuid::*;
 
 #[cfg(test)]
 mod tests {

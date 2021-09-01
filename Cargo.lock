@@ -1375,6 +1375,7 @@ dependencies = [
  "legion-macro-utils",
  "quote",
  "syn",
+ "uuid",
 ]
 
 [[package]]
