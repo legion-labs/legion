@@ -1,0 +1,9 @@
+{
+    "ignoreRegExpList": [
+        "clippy::[a-z_]+"
+    ],
+    "words": [
+        "sciter",
+        "thiserror"
+    ]
+}
