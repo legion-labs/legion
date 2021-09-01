@@ -2,11 +2,6 @@
 name = "legion-tasks"
 version = "0.1.0"
 edition = "2018"
-authors = [
-    "Bevy Contributors <bevyengine@gmail.com>",
-    "Lachlan Sneff <lachlan.sneff@gmail.com>",
-    "Philip Degarmo <aclysma@gmail.com>",
-]
 description = "A task executor for the Legion Engine"
 license = "MIT OR Apache-2.0"
 
