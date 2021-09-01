@@ -80,10 +80,11 @@
 // crate-specific exceptions:
 #![allow()]
 
-use legion::app::{ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use legion::core::CorePlugin;
-use legion::prelude::*;
-use legion::utils::Duration;
+use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use legion_core::CorePlugin;
+use legion_ecs::prelude::*;
+use legion_transform::prelude::*;
+use legion_utils::Duration;
 
 fn main() {
     println!("Legion Labs runtime engine");
