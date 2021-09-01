@@ -2543,6 +2543,7 @@ name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
  "legion-app",
+ "legion-asset",
  "legion-core",
  "legion-ecs",
  "legion-transform",

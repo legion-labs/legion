@@ -81,6 +81,7 @@
 #![allow()]
 
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use legion_asset::AssetPlugin;
 use legion_core::CorePlugin;
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
@@ -99,6 +100,7 @@ fn main() {
         .add_plugin(CorePlugin::default())
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(TransformPlugin::default())
+        .add_plugin(AssetPlugin::default())
         .add_system(frame_counter)
         .run();
 }
