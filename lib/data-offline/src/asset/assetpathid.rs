@@ -30,9 +30,9 @@ use serde::{Deserialize, Serialize};
 /// definition of a path representing a *derived resource* of a runtime geometry data after LOD-generation process.
 ///
 /// ```no_run
-/// # use legion_data_offline::{resource::{Project, ResourceName, ResourceRegistry, ResourceType}, asset::AssetPathId};
+/// # use legion_data_offline::{resource::{Project, ResourceName, ResourceRegistryOptions, ResourceType}, asset::AssetPathId};
 /// # use std::path::PathBuf;
-/// # let mut resources = ResourceRegistry::default();
+/// # let mut resources = ResourceRegistryOptions::new().create_registry();
 /// # let mut project = Project::create_new(&PathBuf::new()).unwrap();
 /// # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
 /// # pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");

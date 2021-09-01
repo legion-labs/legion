@@ -75,8 +75,8 @@ impl Project {
     ///
     /// This method replaces the filename in `work_dir` (if one exists) with
     /// the file name of the project index.
-    pub fn root_to_index_path(project_dir: &Path) -> PathBuf {
-        let mut path = project_dir.to_owned();
+    pub fn root_to_index_path(project_dir: impl AsRef<Path>) -> PathBuf {
+        let mut path = project_dir.as_ref().to_owned();
         if path.is_dir() {
             path.push(PROJECT_INDEX_FILENAME);
         } else {
@@ -91,8 +91,8 @@ impl Project {
     }
 
     /// Creates a new project index file turining the containing directory into a project.
-    pub fn create_new(project_dir: &Path) -> Result<Self, Error> {
-        let index_path = Self::root_to_index_path(project_dir);
+    pub fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+        let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -112,8 +112,8 @@ impl Project {
     }
 
     /// Opens the project index specified
-    pub fn open(project_dir: &Path) -> Result<Self, Error> {
-        let index_path = Self::root_to_index_path(project_dir);
+    pub fn open(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+        let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -437,7 +437,10 @@ mod tests {
     use crate::resource::project::Project;
     use crate::{
         asset::AssetPathId,
-        resource::{Resource, ResourceName, ResourceProcessor, ResourceRegistry, ResourceType},
+        resource::{
+            Resource, ResourceName, ResourceProcessor, ResourceRegistry, ResourceRegistryOptions,
+            ResourceType,
+        },
     };
 
     use super::ResourceDb;
@@ -551,12 +554,13 @@ mod tests {
     fn create_actor(project_dir: &Path) -> (Project, ResourceRegistry) {
         let index_path = Project::root_to_index_path(project_dir);
         let mut project = Project::open(&index_path).unwrap();
-        let mut resources = ResourceRegistry::default();
-        resources.register_type(RESOURCE_TEXTURE, Box::new(NullResourceProc {}));
-        resources.register_type(RESOURCE_MATERIAL, Box::new(NullResourceProc {}));
-        resources.register_type(RESOURCE_GEOMETRY, Box::new(NullResourceProc {}));
-        resources.register_type(RESOURCE_SKELETON, Box::new(NullResourceProc {}));
-        resources.register_type(RESOURCE_ACTOR, Box::new(NullResourceProc {}));
+        let mut resources = ResourceRegistryOptions::new()
+            .add_type(RESOURCE_TEXTURE, Box::new(NullResourceProc {}))
+            .add_type(RESOURCE_MATERIAL, Box::new(NullResourceProc {}))
+            .add_type(RESOURCE_GEOMETRY, Box::new(NullResourceProc {}))
+            .add_type(RESOURCE_SKELETON, Box::new(NullResourceProc {}))
+            .add_type(RESOURCE_ACTOR, Box::new(NullResourceProc {}))
+            .create_registry();
 
         let texture = project
             .add_resource(

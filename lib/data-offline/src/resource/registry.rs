@@ -133,13 +133,43 @@ impl ResourceRefCounter {
     }
 }
 
+/// Options which can be used to configure [`ResourceRegistry`] creation.
+pub struct ResourceRegistryOptions {
+    processors: HashMap<ResourceType, Box<dyn ResourceProcessor>>,
+}
+
+impl ResourceRegistryOptions {
+    /// Creates a blank set of options ready for configuration.
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {
+            processors: HashMap::new(),
+        }
+    }
+
+    /// Registers a new resource processor for a given `ResourceType`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a processor for a resource of type `kind` is already registerd.
+    pub fn add_type(mut self, kind: ResourceType, proc: Box<dyn ResourceProcessor>) -> Self {
+        let v = self.processors.insert(kind, proc).is_none();
+        assert!(v);
+        self
+    }
+
+    /// Creates a new registry with the options specified by `self`.
+    pub fn create_registry(self) -> ResourceRegistry {
+        ResourceRegistry::create(self.processors)
+    }
+}
+
 /// The registry of resources currently available in memory.
 ///
 /// While `Project` is responsible for managing on disk/source control resources
 /// the `ResourceRegisry` manages resources that are in memory. Therefore it is possible
 /// that some resources are in memory but not known to `Project` or are part of the `Project`
 /// but are not currently loaded to memory.
-#[derive(Default)]
 pub struct ResourceRegistry {
     ref_counts: Arc<Mutex<ResourceRefCounter>>,
     resources: SecondaryMap<ResourceHandleId, Option<Box<dyn Resource>>>,
@@ -147,11 +177,12 @@ pub struct ResourceRegistry {
 }
 
 impl ResourceRegistry {
-    /// Register a processor for a resource type.
-    ///
-    /// A [`ResourceProcessor`] will allow to serialize/deserialize and extract load dependecies from a resource.
-    pub fn register_type(&mut self, kind: ResourceType, proc: Box<dyn ResourceProcessor>) {
-        self.processors.insert(kind, proc);
+    fn create(processors: HashMap<ResourceType, Box<dyn ResourceProcessor>>) -> Self {
+        Self {
+            ref_counts: Arc::new(Mutex::new(ResourceRefCounter::default())),
+            resources: SecondaryMap::new(),
+            processors,
+        }
     }
 
     /// Create a new resource of a given type in a default state.
@@ -300,10 +331,10 @@ mod tests {
 
     use crate::{
         asset::AssetPathId,
-        resource::{ResourceProcessor, ResourceType},
+        resource::{registry::ResourceRegistryOptions, ResourceProcessor, ResourceType},
     };
 
-    use super::{Resource, ResourceHandle, ResourceRefCounter, ResourceRegistry};
+    use super::{Resource, ResourceHandle, ResourceRefCounter};
 
     #[test]
     fn ref_count() {
@@ -383,7 +414,7 @@ mod tests {
 
     #[test]
     fn reference_count() {
-        let mut resources = ResourceRegistry::default();
+        let mut resources = ResourceRegistryOptions::new().create_registry();
 
         {
             let handle = resources.insert(Box::new(SampleResource {
@@ -418,17 +449,14 @@ mod tests {
     fn create_save_load() {
         let default_content = "default content";
 
-        let mut resources = {
-            let mut reg = ResourceRegistry::default();
-
-            reg.register_type(
+        let mut resources = ResourceRegistryOptions::new()
+            .add_type(
                 RESOURCE_SAMPLE,
                 Box::new(SampleProcessor {
                     default_content: String::from(default_content),
                 }),
-            );
-            reg
-        };
+            )
+            .create_registry();
 
         let created_handle = resources
             .new_resource(RESOURCE_SAMPLE)

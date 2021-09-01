@@ -11,7 +11,7 @@ use legion_data_compiler::{
     },
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::ResourceRegistry;
+use legion_data_offline::resource::ResourceRegistryOptions;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -37,15 +37,16 @@ fn compiler_hash(
 }
 
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = ResourceRegistry::default();
-    resources.register_type(
-        multitext_resource::TYPE_ID,
-        Box::new(multitext_resource::MultiTextResourceProc {}),
-    );
-    resources.register_type(
-        text_resource::TYPE_ID,
-        Box::new(text_resource::TextResourceProc {}),
-    );
+    let mut resources = ResourceRegistryOptions::new()
+        .add_type(
+            multitext_resource::TYPE_ID,
+            Box::new(multitext_resource::MultiTextResourceProc {}),
+        )
+        .add_type(
+            text_resource::TYPE_ID,
+            Box::new(text_resource::TextResourceProc {}),
+        )
+        .create_registry();
 
     let source_handle = context.load_resource(
         &context.compile_path.direct_dependency().unwrap(),

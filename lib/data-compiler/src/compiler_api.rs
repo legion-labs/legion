@@ -67,7 +67,7 @@
 //! Reading source `Resources` is done with [`CompilerContext::load_resource`] function:
 //!
 //! ```no_run
-//! # use legion_data_offline::{resource::{ResourceId, ResourceType, Resource, ResourceRegistry, ResourceProcessor}, asset::AssetPathId};
+//! # use legion_data_offline::{resource::{ResourceId, ResourceType, Resource, ResourceRegistryOptions, ResourceProcessor}, asset::AssetPathId};
 //! # use legion_data_compiler::compiler_api::{CompilerContext, CompilationOutput, CompilerError};
 //! # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
 //! # pub struct SourceGeomProc {}
@@ -78,8 +78,9 @@
 //! # fn read_resource(&mut self, _: &mut dyn std::io::Read) -> Result<Box<(dyn Resource + 'static)>, std::io::Error> { todo!() }
 //! # }
 //! fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-//!   let mut registry = ResourceRegistry::default();
-//!   registry.register_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}));
+//!   let mut registry = ResourceRegistryOptions::new()
+//!     .add_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}))
+//!     .create_registry();
 //!
 //!   let resource = context.load_resource(&context.compile_path.source_resource_path(), &mut registry).expect("loaded resource");
 //!   let resource = resource.get::<refs_resource::TestResource>(&registry).unwrap();

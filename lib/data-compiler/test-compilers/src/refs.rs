@@ -11,7 +11,7 @@ use legion_data_compiler::{
     },
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::ResourceRegistry;
+use legion_data_offline::resource::ResourceRegistryOptions;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -37,11 +37,12 @@ fn compiler_hash(
 }
 
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = ResourceRegistry::default();
-    resources.register_type(
-        refs_resource::TYPE_ID,
-        Box::new(refs_resource::TestResourceProc {}),
-    );
+    let mut resources = ResourceRegistryOptions::new()
+        .add_type(
+            refs_resource::TYPE_ID,
+            Box::new(refs_resource::TestResourceProc {}),
+        )
+        .create_registry();
 
     let resource = context.load_resource(
         &context.compile_path.direct_dependency().unwrap(),

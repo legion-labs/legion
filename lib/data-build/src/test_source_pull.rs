@@ -2,22 +2,18 @@ use crate::DataBuildOptions;
 use legion_content_store::ContentStoreAddr;
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Project, ResourceName, ResourceRegistry},
+    resource::{Project, ResourceName, ResourceRegistry, ResourceRegistryOptions},
 };
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
 fn setup_registry() -> ResourceRegistry {
-    let mut resources = ResourceRegistry::default();
-    resources.register_type(
-        refs_resource::TYPE_ID,
-        Box::new(refs_resource::TestResourceProc {}),
-    );
-    resources.register_type(
-        refs_resource::TYPE_ID,
-        Box::new(refs_resource::TestResourceProc {}),
-    );
-    resources
+    ResourceRegistryOptions::new()
+        .add_type(
+            refs_resource::TYPE_ID,
+            Box::new(refs_resource::TestResourceProc {}),
+        )
+        .create_registry()
 }
 
 #[test]

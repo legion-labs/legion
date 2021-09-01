@@ -7,6 +7,7 @@ use crate::{databuild::DataBuild, DataBuildOptions};
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{Locale, Manifest, Platform, Target};
+use legion_data_offline::resource::ResourceRegistryOptions;
 use legion_data_offline::{
     asset::AssetPathId,
     resource::{Project, ResourceId, ResourceName, ResourceProcessor, ResourceRegistry},
@@ -18,20 +19,20 @@ use text_resource::{TextResource, TextResourceProc};
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
 fn setup_registry() -> ResourceRegistry {
-    let mut resources = ResourceRegistry::default();
-    resources.register_type(
-        refs_resource::TYPE_ID,
-        Box::new(refs_resource::TestResourceProc {}),
-    );
-    resources.register_type(
-        text_resource::TYPE_ID,
-        Box::new(text_resource::TextResourceProc {}),
-    );
-    resources.register_type(
-        multitext_resource::TYPE_ID,
-        Box::new(multitext_resource::MultiTextResourceProc {}),
-    );
-    resources
+    ResourceRegistryOptions::new()
+        .add_type(
+            refs_resource::TYPE_ID,
+            Box::new(refs_resource::TestResourceProc {}),
+        )
+        .add_type(
+            text_resource::TYPE_ID,
+            Box::new(text_resource::TextResourceProc {}),
+        )
+        .add_type(
+            multitext_resource::TYPE_ID,
+            Box::new(multitext_resource::MultiTextResourceProc {}),
+        )
+        .create_registry()
 }
 
 fn target_dir() -> PathBuf {

@@ -4,7 +4,7 @@ use legion_content_store::ContentStoreAddr;
 use legion_data_build::DataBuildOptions;
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Project, ResourceName, ResourceRegistry},
+    resource::{Project, ResourceName, ResourceRegistryOptions},
 };
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
@@ -25,11 +25,12 @@ fn no_intermediate_resource() {
     let resource_id = {
         let resource_id = {
             let mut project = Project::create_new(project_dir).expect("new project");
-            let mut resources = ResourceRegistry::default();
-            resources.register_type(
-                refs_resource::TYPE_ID,
-                Box::new(refs_resource::TestResourceProc {}),
-            );
+            let mut resources = ResourceRegistryOptions::new()
+                .add_type(
+                    refs_resource::TYPE_ID,
+                    Box::new(refs_resource::TestResourceProc {}),
+                )
+                .create_registry();
             let resource = resources
                 .new_resource(refs_resource::TYPE_ID)
                 .expect("new resource");
@@ -110,11 +111,12 @@ fn with_intermediate_resource() {
     let resource_id = {
         let resource_id = {
             let mut project = Project::create_new(project_dir).expect("new project");
-            let mut resources = ResourceRegistry::default();
-            resources.register_type(
-                text_resource::TYPE_ID,
-                Box::new(text_resource::TextResourceProc {}),
-            );
+            let mut resources = ResourceRegistryOptions::new()
+                .add_type(
+                    text_resource::TYPE_ID,
+                    Box::new(text_resource::TextResourceProc {}),
+                )
+                .create_registry();
             let resource = resources
                 .new_resource(text_resource::TYPE_ID)
                 .expect("new resource");
