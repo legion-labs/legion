@@ -465,15 +465,6 @@ mod tests {
         content: isize,
         dependencies: Vec<AssetPathId>,
     }
-    impl Resource for NullResource {
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-
-        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-            self
-        }
-    }
     struct NullResourceProc {}
     impl ResourceProcessor for NullResourceProc {
         fn new_resource(&mut self) -> Box<dyn Resource> {

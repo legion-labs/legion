@@ -58,6 +58,19 @@ pub trait Asset: Any + Send {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
+impl<T> Asset for T
+where
+    T: 'static + Sized + Send,
+{
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
 /// An interface allowing to create and initialize assets.
 pub trait AssetLoader {
     /// Asset loading interface.

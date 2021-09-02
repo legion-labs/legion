@@ -21,15 +21,6 @@ pub struct TestResource {
     /// Resource's build dependencies.
     pub build_deps: Vec<AssetPathId>,
 }
-impl Resource for TestResource {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
 
 /// [`TestResource`]'s resource processor temporarily used for testings.
 ///

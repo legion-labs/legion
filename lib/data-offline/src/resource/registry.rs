@@ -23,6 +23,19 @@ pub trait Resource: Any {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
+impl<T> Resource for T
+where
+    T: 'static + Sized,
+{
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
 /// The `ResourceProcessor` trait allows to process an offline resource.
 pub trait ResourceProcessor {
     /// Interface returning a resource in a default state. Useful when creating a new resource.
@@ -348,16 +361,6 @@ mod tests {
 
     struct SampleResource {
         content: String,
-    }
-
-    impl Resource for SampleResource {
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-
-        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-            self
-        }
     }
 
     struct SampleProcessor {

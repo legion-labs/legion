@@ -15,16 +15,6 @@ pub struct TestAsset {
     pub content: String,
 }
 
-impl Asset for TestAsset {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
-
 /// [`TestAsset`]'s asset creator temporarily used for testings.
 ///
 /// To be removed once real asset types exists.

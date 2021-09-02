@@ -9,16 +9,6 @@ pub struct MultiTextResource {
     pub text_list: Vec<String>,
 }
 
-impl Resource for MultiTextResource {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
-
 pub struct MultiTextResourceProc {}
 
 impl ResourceProcessor for MultiTextResourceProc {
