@@ -1,7 +1,9 @@
+use std::marker::PhantomData;
+
 use legion_data_runtime::{Asset, AssetLoader, AssetRegistryOptions, AssetType};
 use legion_math::prelude::*;
 use legion_utils::HashMap;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 struct Instance {
@@ -86,7 +88,7 @@ struct Mesh {
     sub_meshes: Vec<SubMesh>,
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize)]
 struct Material {
     albedo: String,
     normal: String,
@@ -102,30 +104,6 @@ impl Asset for Material {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-}
-
-pub const TEXT_MATERIAL: AssetType = AssetType::new(b"text_material");
-
-struct MaterialCreator {}
-
-impl AssetLoader for MaterialCreator {
-    fn load(
-        &mut self,
-        kind: legion_data_runtime::AssetType,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn legion_data_runtime::Asset + Send + Sync>, std::io::Error> {
-        assert_eq!(kind, TEXT_MATERIAL);
-        let deserialize: Result<Material, ron::Error> = ron::de::from_reader(reader);
-        match deserialize {
-            Ok(material) => Ok(Box::new(material)),
-            Err(_ron_err) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "unable to read RON data",
-            )),
-        }
-    }
-
-    fn load_init(&mut self, _asset: &mut (dyn legion_data_runtime::Asset + Send + Sync)) {}
 }
 
 #[derive(Serialize, Deserialize)]
@@ -164,8 +142,45 @@ struct Metadata {
     content_checksum: String,
 }
 
+pub struct RONAssetCreator<T> {
+    _phantom: PhantomData<T>,
+}
+
+impl<T> RONAssetCreator<T> {
+    fn new() -> Self {
+        Self {
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<T> AssetLoader for RONAssetCreator<T>
+where
+    T: Asset + Send + Sync + DeserializeOwned,
+{
+    fn load(
+        &mut self,
+        _kind: AssetType,
+        reader: &mut dyn std::io::Read,
+    ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
+        let deserialize: Result<T, ron::Error> = ron::de::from_reader(reader);
+        match deserialize {
+            Ok(asset) => Ok(Box::new(asset)),
+            Err(_ron_err) => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "unable to read RON data",
+            )),
+        }
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn legion_data_runtime::Asset + Send + Sync)) {}
+}
+
 pub fn register_asset_loaders(asset_options: AssetRegistryOptions) -> AssetRegistryOptions {
-    asset_options.add_creator(TEXT_MATERIAL, Box::new(MaterialCreator {}))
+    asset_options.add_creator(
+        AssetType::new(b"ron_material"),
+        Box::new(RONAssetCreator::<Material>::new()),
+    )
 }
 
 #[cfg(test)]
