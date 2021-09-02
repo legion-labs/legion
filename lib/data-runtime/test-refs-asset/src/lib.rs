@@ -28,7 +28,8 @@ impl Asset for TestAsset {
 /// [`TestAsset`]'s asset creator temporarily used for testings.
 ///
 /// To be removed once real asset types exists.
-pub fn load_test_asset(_kind: AssetType, reader: &mut dyn std::io::Read) -> AssetLoadResult {
+pub fn load_test_asset(kind: AssetType, reader: &mut dyn std::io::Read) -> AssetLoadResult {
+    assert_eq!(kind, TYPE_ID);
     let mut content = String::new();
     reader.read_to_string(&mut content)?;
     let asset = Box::new(TestAsset { content });

@@ -107,9 +107,10 @@ impl Asset for Material {
 pub const TEXT_MATERIAL: AssetType = AssetType::new(b"text_material");
 
 fn load_material(
-    _kind: legion_data_runtime::AssetType,
+    kind: legion_data_runtime::AssetType,
     reader: &mut dyn std::io::Read,
-) -> Result<Box<dyn legion_data_runtime::Asset + Send + Sync>, std::io::Error> {
+) -> legion_data_runtime::AssetLoadResult {
+    assert_eq!(kind, TEXT_MATERIAL);
     let deserialize: Result<Material, ron::Error> = ron::de::from_reader(reader);
     match deserialize {
         Ok(material) => Ok(Box::new(material)),

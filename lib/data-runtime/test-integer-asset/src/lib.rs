@@ -17,7 +17,8 @@ impl Asset for IntegerAsset {
     }
 }
 
-pub fn load_integer_asset(_kind: AssetType, reader: &mut dyn std::io::Read) -> AssetLoadResult {
+pub fn load_integer_asset(kind: AssetType, reader: &mut dyn std::io::Read) -> AssetLoadResult {
+    assert_eq!(kind, TYPE_ID);
     let mut buf = 0i32.to_ne_bytes();
     reader.read_exact(&mut buf)?;
     let magic_value = i32::from_ne_bytes(buf);
