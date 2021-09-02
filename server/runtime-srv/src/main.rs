@@ -87,9 +87,19 @@ use legion_transform::prelude::*;
 use legion_utils::Duration;
 
 fn main() {
-    println!("Legion Labs runtime engine");
+    const ARG_NAME_ROOT: &str = "root";
+
+    let args = clap::App::new("Legion Labs runtime engine")
+        .author(clap::crate_authors!())
+        .version(clap::crate_version!())
+        .about("Server that will run with runtime data, and execute world simulation, ready to be streamed to a runtime client.")
+        .arg(clap::Arg::with_name(ARG_NAME_ROOT)
+                .help("Root object to load, usually a world"))
+        .get_matches();
 
     // Need a root entity (world) as a context
+    let root = args.value_of(ARG_NAME_ROOT).unwrap_or("/");
+    println!("root: {}", root);
 
     // Start app with 60 fps
     App::new()

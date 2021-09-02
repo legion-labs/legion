@@ -2436,8 +2436,10 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "legion-app",
  "legion-core",
+ "legion-data-runtime",
  "legion-ecs",
  "legion-transform",
  "legion-utils",
