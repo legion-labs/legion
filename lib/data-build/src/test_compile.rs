@@ -4,7 +4,7 @@ use std::{env, vec};
 
 use crate::databuild::CompileOutput;
 use crate::{databuild::DataBuild, DataBuildOptions};
-use integer_asset::{IntegerAsset, IntegerAssetLoader};
+use integer_asset::IntegerAsset;
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{Locale, Manifest, Platform, Target};
 use legion_data_offline::{
@@ -322,10 +322,9 @@ fn intermediate_resource() {
         assert!(content_store.exists(checksum));
         let resource_content = content_store.read(checksum).expect("asset content");
 
-        let mut creator = IntegerAssetLoader {};
-        let resource = creator
-            .load(integer_asset::TYPE_ID, &mut &resource_content[..])
-            .expect("loaded assets");
+        let creator: AssetLoader = integer_asset::load_integer_asset;
+        let resource =
+            creator(integer_asset::TYPE_ID, &mut &resource_content[..]).expect("loaded assets");
         let resource = resource.as_any().downcast_ref::<IntegerAsset>().unwrap();
 
         let stringified = resource.magic_value.to_string();
@@ -536,10 +535,9 @@ fn named_path_cache_use() {
         assert!(content_store.exists(checksum));
         let resource_content = content_store.read(checksum).expect("asset content");
 
-        let mut creator = IntegerAssetLoader {};
-        let resource = creator
-            .load(integer_asset::TYPE_ID, &mut &resource_content[..])
-            .expect("loaded assets");
+        let creator: AssetLoader = integer_asset::load_integer_asset;
+        let resource =
+            creator(integer_asset::TYPE_ID, &mut &resource_content[..]).expect("loaded assets");
         let resource = resource.as_any().downcast_ref::<IntegerAsset>().unwrap();
 
         let stringified = resource.magic_value.to_string();

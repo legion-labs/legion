@@ -1,7 +1,7 @@
 use core::slice;
 use std::fs::File;
 
-use integer_asset::{IntegerAsset, IntegerAssetLoader};
+use integer_asset::IntegerAsset;
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{
     compiler_cmd::{list_compilers, CompilerCompileCmd},
@@ -87,10 +87,8 @@ fn compile_atoi() {
 
     let resource_content = cas.read(checksum).expect("asset content");
 
-    let mut creator = IntegerAssetLoader {};
-    let asset = creator
-        .load(integer_asset::TYPE_ID, &mut &resource_content[..])
-        .expect("loaded assets");
+    let creator: AssetLoader = integer_asset::load_integer_asset;
+    let asset = creator(integer_asset::TYPE_ID, &mut &resource_content[..]).expect("loaded assets");
     let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
 
     let stringified = asset.magic_value.to_string();
@@ -179,10 +177,8 @@ fn compile_intermediate() {
 
     let resource_content = cas.read(checksum).expect("asset content");
 
-    let mut creator = IntegerAssetLoader {};
-    let asset = creator
-        .load(integer_asset::TYPE_ID, &mut &resource_content[..])
-        .expect("loaded assets");
+    let creator: AssetLoader = integer_asset::load_integer_asset;
+    let asset = creator(integer_asset::TYPE_ID, &mut &resource_content[..]).expect("loaded assets");
     let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
 
     let stringified = asset.magic_value.to_string();

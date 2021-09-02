@@ -1,7 +1,7 @@
 use core::fmt;
 use legion_content_store::ContentType;
 use serde::{Deserialize, Serialize};
-use std::{any::Any, fmt::LowerHex, hash::Hash, io};
+use std::{any::Any, fmt::LowerHex, hash::Hash};
 
 /// A unique id of a runtime asset.
 ///
@@ -64,12 +64,8 @@ pub trait Asset: Any + Send {
     }
 }
 
-/// An interface allowing to create and initialize assets.
-pub trait AssetLoader {
-    /// Asset loading interface.
-    fn load(
-        &mut self,
-        kind: AssetType,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Asset + Send + Sync>, io::Error>;
-}
+/// A callback allowing to create assets.
+pub type AssetLoader = fn(AssetType, &mut dyn std::io::Read) -> AssetLoadResult;
+
+/// Return type for asset loading callbacks
+pub type AssetLoadResult = Result<Box<dyn Asset + Send + Sync>, std::io::Error>;

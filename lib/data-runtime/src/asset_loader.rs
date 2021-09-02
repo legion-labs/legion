@@ -102,7 +102,7 @@ impl AssetLoaderStub {
 }
 
 pub(crate) struct AssetLoaderIO {
-    creators: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
+    creators: HashMap<AssetType, AssetLoader>,
 
     request_await: Vec<LoaderPending>,
 
@@ -161,11 +161,7 @@ impl AssetLoaderIO {
             result_tx,
         }
     }
-    pub(crate) fn register_creator(
-        &mut self,
-        kind: AssetType,
-        creator: Box<dyn AssetLoader + Send>,
-    ) {
+    pub(crate) fn register_creator(&mut self, kind: AssetType, creator: AssetLoader) {
         self.creators.insert(kind, creator);
     }
 
@@ -372,7 +368,7 @@ impl AssetLoaderIO {
         primary_id: AssetId,
         reader: &mut dyn io::Read,
         asset_refcounts: &HashMap<AssetId, isize>,
-        creators: &mut HashMap<AssetType, Box<dyn AssetLoader + Send>>,
+        creators: &mut HashMap<AssetType, AssetLoader>,
     ) -> Result<LoadOutput, io::Error> {
         const ASSET_FILE_VERSION: u16 = 1;
 
@@ -415,7 +411,7 @@ impl AssetLoaderIO {
         reader.read_exact(&mut content).expect("valid data");
 
         let creator = creators.get_mut(&asset_type).unwrap();
-        let boxed_asset = creator.load(asset_type, &mut &content[..]).unwrap();
+        let boxed_asset = creator(asset_type, &mut &content[..]).unwrap();
 
         Ok(LoadOutput {
             assets: vec![(primary_id, Some(Arc::from(boxed_asset)))],
@@ -464,10 +460,7 @@ mod tests {
             request_rx,
             result_tx,
         );
-        loader.register_creator(
-            test_asset::TYPE_ID,
-            Box::new(test_asset::TestAssetCreator {}),
-        );
+        loader.register_creator(test_asset::TYPE_ID, test_asset::load_test_asset);
 
         let load_id = Some(0);
         request_tx
@@ -539,10 +532,7 @@ mod tests {
             request_rx,
             result_tx,
         );
-        loader.register_creator(
-            test_asset::TYPE_ID,
-            Box::new(test_asset::TestAssetCreator {}),
-        );
+        loader.register_creator(test_asset::TYPE_ID, test_asset::load_test_asset);
 
         let load_id = Some(0);
         request_tx
@@ -604,10 +594,7 @@ mod tests {
             request_rx,
             result_tx,
         );
-        loader.register_creator(
-            test_asset::TYPE_ID,
-            Box::new(test_asset::TestAssetCreator {}),
-        );
+        loader.register_creator(test_asset::TYPE_ID, test_asset::load_test_asset);
 
         let load_id = Some(0);
         request_tx

@@ -16,7 +16,7 @@ use crate::{
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
-    creators: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
+    creators: HashMap<AssetType, AssetLoader>,
 }
 
 impl AssetRegistryOptions {
@@ -28,11 +28,7 @@ impl AssetRegistryOptions {
     }
 
     /// Enables support of a given [`Asset`] by adding corresponding [`AssetLoader`].
-    pub fn add_creator(
-        mut self,
-        asset_kind: AssetType,
-        creator: Box<dyn AssetLoader + Send>,
-    ) -> Self {
+    pub fn add_creator(mut self, asset_kind: AssetType, creator: AssetLoader) -> Self {
         self.creators.insert(asset_kind, creator);
         self
     }
@@ -216,10 +212,7 @@ mod tests {
         };
 
         let reg = AssetRegistryOptions::default()
-            .add_creator(
-                test_asset::TYPE_ID,
-                Box::new(test_asset::TestAssetCreator {}),
-            )
+            .add_creator(test_asset::TYPE_ID, test_asset::load_test_asset)
             .create(content_store, manifest);
 
         (asset_id, reg)
