@@ -256,7 +256,7 @@ impl ResourceRegistry {
 
     /// Inserts a resource into the registry and returns a handle
     /// that identifies that resource.
-    pub fn insert(&mut self, resource: Box<dyn Resource>) -> ResourceHandle {
+    fn insert(&mut self, resource: Box<dyn Resource>) -> ResourceHandle {
         let handle = ResourceHandle::new(self.ref_counts.clone());
         self.resources.insert(handle.handle_id, Some(resource));
         handle
