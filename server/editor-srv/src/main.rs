@@ -1,3 +1,3 @@
 fn main() {
-    println!("Hello, world!");
+    legion_app::App::new().run();
 }

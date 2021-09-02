@@ -680,12 +680,16 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 name = "editor"
 version = "0.1.0"
 dependencies = [
+ "legion-app",
  "sciter-js",
 ]
 
 [[package]]
 name = "editor-srv"
 version = "0.1.0"
+dependencies = [
+ "legion-app",
+]
 
 [[package]]
 name = "either"
@@ -1464,6 +1468,14 @@ version = "0.1.0"
 dependencies = [
  "legion-graphics-api",
  "log",
+]
+
+[[package]]
+name = "legion-sciter"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+ "sciter-js",
 ]
 
 [[package]]
