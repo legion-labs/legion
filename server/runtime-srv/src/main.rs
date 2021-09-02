@@ -80,8 +80,12 @@
 // crate-specific exceptions:
 #![allow()]
 
+mod data_types;
+
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use legion_content_store::RamContentStore;
 use legion_core::CorePlugin;
+use legion_data_runtime::{manifest::Manifest, AssetRegistryOptions};
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
 use legion_utils::Duration;
@@ -100,6 +104,13 @@ fn main() {
     // Need a root entity (world) as a context
     let root = args.value_of(ARG_NAME_ROOT).unwrap_or("/");
     println!("root: {}", root);
+
+    // setup data-runtime lib
+    let content_store = Box::new(RamContentStore::default());
+    let manifest = Manifest::default();
+    let asset_options = AssetRegistryOptions::default();
+    let asset_options = data_types::register_asset_loaders(asset_options);
+    let _asset_registry = asset_options.create(content_store, manifest);
 
     // Start app with 60 fps
     App::new()

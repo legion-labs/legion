@@ -2450,11 +2450,15 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "legion-app",
+ "legion-content-store",
  "legion-core",
  "legion-data-runtime",
  "legion-ecs",
+ "legion-math",
  "legion-transform",
  "legion-utils",
+ "ron",
+ "serde",
 ]
 
 [[package]]

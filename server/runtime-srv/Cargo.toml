@@ -15,11 +15,15 @@ license = "MIT OR Apache-2.0"
 legion-app = { path = "../../core/app", version = "0.1.0" }
 legion-core = { path = "../../core/core", version = "0.1.0" }
 legion-ecs = { path = "../../core/ecs", version = "0.1.0" }
+legion-math = { path = "../../core/math", version = "0.1.0" }
 legion-transform = { path = "../../core/transform", version = "0.1.0" }
 legion-utils = { path = "../../core/utils", version = "0.1.0" }
 
 ## libs
+legion-content-store = { path = "../../lib/content-store" }
 legion-data-runtime = { path = "../../lib/data-runtime" }
 
 # other
 clap = "2.33"
+ron = "0.6.4"
+serde = { version = "1.0", features = ["derive"] }
