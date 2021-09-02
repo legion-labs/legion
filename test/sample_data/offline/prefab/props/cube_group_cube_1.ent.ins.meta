@@ -1,0 +1,7 @@
+(
+    name: "data/offline/prefab/props/cube_group_cube_1.ent.ins",
+    dependencies: [
+        "data/offline/prefab/props/cube.ent",
+    ],
+    content_checksum: "3e09e133002983a5ef6021a6e0c176b8a7804b5ba5a9af989f8e89c463a4f5a2",
+)

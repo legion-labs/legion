@@ -1,0 +1,28 @@
+(
+    name: "Sample 1",
+    children: [
+        "data/offline/world/sample_1/ground.ent",
+        "data/offline/world/sample_1/camera.ent",
+        "data/offline/world/sample_1/light.ent",
+        "data/offline/world/sample_1/cube_1.ent.ins",
+        "data/offline/world/sample_1/cube_2.ent.ins",
+        "data/offline/world/sample_1/cube_3.ent.ins",
+        "data/offline/world/sample_1/cube_group_1.ent.ins",
+    ],
+    parent: None,
+    components: [
+        Transform((
+            position: (0, 0, 0),
+            rotation: (0, 0, 0, 1),
+            scale: (1, 1, 1),
+            apply_to_children: true,
+        )),
+        GlobalIllumination(()),
+        Navmesh((
+            voxelisation_config: (),
+            layer_config: [
+                (),
+            ],
+        )),
+    ],
+)

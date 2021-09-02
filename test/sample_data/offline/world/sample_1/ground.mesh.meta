@@ -1,0 +1,7 @@
+(
+    name: "data/offline/world/sample_1/ground.mesh",
+    dependencies: [
+        "data/offline/world/sample_1/ground.mat",
+    ],
+    content_checksum: "b80411a30ec93a225bd1988ab7d37abf7c1a683ce18d4cf7815a75e996b42543",
+)

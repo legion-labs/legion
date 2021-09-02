@@ -1,0 +1,13 @@
+(
+    name: "data/offline/world/sample_1.ent",
+    dependencies: [
+        "data/offline/world/sample_1/ground.ent",
+        "data/offline/world/sample_1/camera.ent",
+        "data/offline/world/sample_1/light.ent",
+        "data/offline/world/sample_1/cube_1.ent.ins",
+        "data/offline/world/sample_1/cube_2.ent.ins",
+        "data/offline/world/sample_1/cube_3.ent.ins",
+        "data/offline/world/sample_1/cube_group_1.ent.ins",
+    ],
+    content_checksum: "df18e54832cfc47bdb1fde2eb6e1051ac7c9c3f7478e1662a5e2de442dc06bbd",
+)

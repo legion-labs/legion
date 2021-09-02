@@ -1,0 +1,16 @@
+(
+    name: "Cube Group",
+    children: [
+        "data/offline/prefab/props/cube_group_cube_1.ent.ins",
+        "data/offline/prefab/props/cube_group_cube_2.ent.ins",
+    ],
+    parent: None,
+    components: [
+        Transform((
+            position: (0, 0, 0),
+            rotation: (0, 0, 0, 1),
+            scale: (1, 1, 1),
+            apply_to_children: true,
+        )),
+    ],
+)
