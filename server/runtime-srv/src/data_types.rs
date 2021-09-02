@@ -106,13 +106,16 @@ impl Asset for Material {
 
 pub const TEXT_MATERIAL: AssetType = AssetType::new(b"text_material");
 
-impl AssetLoader for Material {
+struct MaterialCreator {}
+
+impl AssetLoader for MaterialCreator {
     fn load(
         &mut self,
-        _kind: legion_data_runtime::AssetType,
+        kind: legion_data_runtime::AssetType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn legion_data_runtime::Asset + Send + Sync>, std::io::Error> {
-        let deserialize: Result<Self, ron::Error> = ron::de::from_reader(reader);
+        assert_eq!(kind, TEXT_MATERIAL);
+        let deserialize: Result<Material, ron::Error> = ron::de::from_reader(reader);
         match deserialize {
             Ok(material) => Ok(Box::new(material)),
             Err(_ron_err) => Err(std::io::Error::new(
@@ -162,7 +165,7 @@ struct Metadata {
 }
 
 pub fn register_asset_loaders(asset_options: AssetRegistryOptions) -> AssetRegistryOptions {
-    asset_options.add_creator(TEXT_MATERIAL, Box::new(Material::default()))
+    asset_options.add_creator(TEXT_MATERIAL, Box::new(MaterialCreator {}))
 }
 
 #[cfg(test)]
