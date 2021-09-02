@@ -320,15 +320,13 @@ impl AssetLoaderIO {
             if finished {
                 let mut loaded = self.request_await.swap_remove(index);
 
-                for (asset_id, asset) in &mut loaded.assets {
+                for (_asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
-                        let creator = self.creators.get_mut(&asset_id.asset_type()).unwrap();
-
                         // SAFETY: this is safe because loaded asset is only referenced by the loader.
                         // it hasn't been made available to other systems yet.
                         //let boxed = unsafe { Arc::get_mut_unchecked(boxed) };
                         let boxed = Arc::get_mut(boxed).unwrap();
-                        creator.load_init(boxed);
+                        boxed.load_init();
                     }
                 }
 

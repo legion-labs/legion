@@ -56,6 +56,12 @@ pub trait Asset: Any + Send {
 
     /// Cast to &mut dyn Any type.
     fn as_any_mut(&mut self) -> &mut dyn Any;
+
+    /// Asset initialization executed after the asset and all its dependencies
+    /// have been loaded.
+    fn load_init(&mut self) {
+        // by default, do nothing
+    }
 }
 
 /// An interface allowing to create and initialize assets.
@@ -66,8 +72,4 @@ pub trait AssetLoader {
         kind: AssetType,
         reader: &mut dyn io::Read,
     ) -> Result<Box<dyn Asset + Send + Sync>, io::Error>;
-
-    /// Asset initialization executed after the asset and all its dependencies
-    /// have been loaded.
-    fn load_init(&mut self, asset: &mut (dyn Asset + Send + Sync));
 }

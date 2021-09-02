@@ -121,8 +121,6 @@ impl AssetLoader for Material {
             )),
         }
     }
-
-    fn load_init(&mut self, _asset: &mut (dyn legion_data_runtime::Asset + Send + Sync)) {}
 }
 
 #[derive(Serialize, Deserialize)]

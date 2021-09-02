@@ -30,8 +30,4 @@ impl AssetLoader for IntegerAssetLoader {
         let magic_value = i32::from_ne_bytes(buf);
         Ok(Box::new(IntegerAsset { magic_value }))
     }
-
-    fn load_init(&mut self, _asset: &mut (dyn Asset + Sync + Send)) {
-        // nothing to do
-    }
 }

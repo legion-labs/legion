@@ -41,6 +41,4 @@ impl AssetLoader for TestAssetCreator {
         let asset = Box::new(TestAsset { content });
         Ok(asset)
     }
-
-    fn load_init(&mut self, _asset: &mut (dyn Asset + Send + Sync)) {}
 }
