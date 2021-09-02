@@ -21,7 +21,8 @@ pub struct AssetRegistryOptions {
 
 impl AssetRegistryOptions {
     /// Creates a blank set of options for [`AssetRegistry`] configuration.
-    pub fn default() -> Self {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
         Self {
             creators: HashMap::new(),
         }
@@ -215,7 +216,7 @@ mod tests {
             id
         };
 
-        let reg = AssetRegistryOptions::default()
+        let reg = AssetRegistryOptions::new()
             .add_creator(
                 test_asset::TYPE_ID,
                 Box::new(test_asset::TestAssetCreator {}),

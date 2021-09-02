@@ -46,7 +46,7 @@ use serde::{Deserialize, Serialize};
 /// let source_path = AssetPathId::from(resource_id);
 /// let target = source_path.push(LOD_GEOMETRY).push(BINARY_GEOMETRY);
 /// ```
-#[derive(Hash, PartialEq, Eq, Serialize, Deserialize, Clone, PartialOrd, Ord)]
+#[derive(Hash, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct AssetPathId {
     source: ResourceId,
     transforms: Vec<(ContentType, Option<String>)>,
@@ -116,6 +116,26 @@ impl FromStr for AssetPathId {
             s = &s[end..];
         }
         Ok(Self { source, transforms })
+    }
+}
+
+impl Serialize for AssetPathId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let str = format!("{}", self);
+        serializer.serialize_str(&str)
+    }
+}
+
+impl<'de> Deserialize<'de> for AssetPathId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let str = String::deserialize(deserializer)?;
+        Self::from_str(&str).map_err(|_e| serde::de::Error::custom("Parse Error"))
     }
 }
 
