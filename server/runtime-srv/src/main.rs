@@ -108,7 +108,7 @@ fn main() {
     // setup data-runtime lib
     let content_store = Box::new(RamContentStore::default());
     let manifest = Manifest::default();
-    let asset_options = AssetRegistryOptions::default();
+    let asset_options = AssetRegistryOptions::new();
     let asset_options = data_types::register_asset_loaders(asset_options);
     let _asset_registry = asset_options.create(content_store, manifest);
 
