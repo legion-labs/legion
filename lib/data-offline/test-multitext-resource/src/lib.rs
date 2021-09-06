@@ -9,6 +9,8 @@ pub struct MultiTextResource {
     pub text_list: Vec<String>,
 }
 
+impl Resource for MultiTextResource {}
+
 pub struct MultiTextResourceProc {}
 
 impl ResourceProcessor for MultiTextResourceProc {

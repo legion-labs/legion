@@ -465,6 +465,9 @@ mod tests {
         content: isize,
         dependencies: Vec<AssetPathId>,
     }
+
+    impl Resource for NullResource {}
+
     struct NullResourceProc {}
     impl ResourceProcessor for NullResourceProc {
         fn new_resource(&mut self) -> Box<dyn Resource> {

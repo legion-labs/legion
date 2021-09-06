@@ -96,6 +96,8 @@ struct Material {
     metalness: String,
 }
 
+impl Asset for Material {}
+
 #[derive(Serialize, Deserialize)]
 struct Physics {
     dynamic: bool,

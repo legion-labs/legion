@@ -15,6 +15,8 @@ pub struct TestAsset {
     pub content: String,
 }
 
+impl Asset for TestAsset {}
+
 /// [`TestAsset`]'s asset creator temporarily used for testings.
 ///
 /// To be removed once real asset types exists.

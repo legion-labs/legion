@@ -1,7 +1,8 @@
 use core::fmt;
 use legion_content_store::ContentType;
+use legion_utils::AsAny;
 use serde::{Deserialize, Serialize};
-use std::{any::Any, fmt::LowerHex, hash::Hash, io};
+use std::{fmt::LowerHex, hash::Hash, io};
 
 /// A unique id of a runtime asset.
 ///
@@ -50,26 +51,7 @@ impl ToString for AssetId {
 pub type AssetType = ContentType;
 
 /// Types implementing `Asset` represent non-mutable runtime data.
-pub trait Asset: Any + Send {
-    /// Cast to &dyn Any type.
-    fn as_any(&self) -> &dyn Any;
-
-    /// Cast to &mut dyn Any type.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-impl<T> Asset for T
-where
-    T: 'static + Sized + Send,
-{
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
+pub trait Asset: AsAny + Send {}
 
 /// An interface allowing to create and initialize assets.
 pub trait AssetLoader {

@@ -7,6 +7,8 @@ pub struct IntegerAsset {
     pub magic_value: i32,
 }
 
+impl Asset for IntegerAsset {}
+
 pub struct IntegerAssetLoader {}
 
 impl AssetLoader for IntegerAssetLoader {

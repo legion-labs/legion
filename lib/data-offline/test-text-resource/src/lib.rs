@@ -9,6 +9,8 @@ pub struct TextResource {
     pub content: String,
 }
 
+impl Resource for TextResource {}
+
 pub struct TextResourceProc {}
 
 impl ResourceProcessor for TextResourceProc {

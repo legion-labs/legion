@@ -1,6 +1,6 @@
 use core::fmt;
+use legion_utils::AsAny;
 use std::{
-    any::Any,
     collections::HashMap,
     io,
     sync::{Arc, Mutex},
@@ -15,26 +15,7 @@ slotmap::new_key_type!(
 );
 
 /// Types implementing `Resource` represent editor data.
-pub trait Resource: Any {
-    /// Cast to &dyn Any type.
-    fn as_any(&self) -> &dyn Any;
-
-    /// Cast to &mut dyn Any type.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-impl<T> Resource for T
-where
-    T: 'static + Sized,
-{
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
+pub trait Resource: AsAny {}
 
 /// The `ResourceProcessor` trait allows to process an offline resource.
 pub trait ResourceProcessor {
@@ -362,6 +343,8 @@ mod tests {
     struct SampleResource {
         content: String,
     }
+
+    impl Resource for SampleResource {}
 
     struct SampleProcessor {
         default_content: String,

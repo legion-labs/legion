@@ -22,6 +22,8 @@ pub struct TestResource {
     pub build_deps: Vec<AssetPathId>,
 }
 
+impl Resource for TestResource {}
+
 /// [`TestResource`]'s resource processor temporarily used for testings.
 ///
 /// To be removed once real resource types exists.
