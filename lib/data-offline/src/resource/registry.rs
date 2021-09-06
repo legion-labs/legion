@@ -1,137 +1,8 @@
-use core::fmt;
-use std::{
-    any::Any,
-    collections::HashMap,
-    io,
-    sync::{Arc, Mutex},
-};
-
-use slotmap::{SecondaryMap, SlotMap};
+use std::{collections::HashMap, io, sync::mpsc};
 
 use crate::{asset::AssetPathId, resource::ResourceType};
 
-slotmap::new_key_type!(
-    struct ResourceHandleId;
-);
-
-/// Types implementing `Resource` represent editor data.
-pub trait Resource: Any {
-    /// Cast to &dyn Any type.
-    fn as_any(&self) -> &dyn Any;
-
-    /// Cast to &mut dyn Any type.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-/// The `ResourceProcessor` trait allows to process an offline resource.
-pub trait ResourceProcessor {
-    /// Interface returning a resource in a default state. Useful when creating a new resource.
-    fn new_resource(&mut self) -> Box<dyn Resource>;
-
-    /// Interface returning a list of resources that `resource` depends on for building.
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId>;
-
-    /// Interface defining serialization behavior of the resource.
-    fn write_resource(
-        &mut self,
-        resource: &dyn Resource,
-        writer: &mut dyn io::Write,
-    ) -> io::Result<usize>;
-
-    /// Interface defining deserialization behavior of the resource.
-    fn read_resource(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Resource>>;
-}
-
-/// Reference counted handle to a resource.
-pub struct ResourceHandle {
-    handle_id: ResourceHandleId,
-    shared: Arc<Mutex<ResourceRefCounter>>,
-}
-
-impl ResourceHandle {
-    fn new(shared: Arc<Mutex<ResourceRefCounter>>) -> Self {
-        let id = shared.lock().unwrap().ref_counts.insert(1);
-        Self {
-            handle_id: id,
-            shared,
-        }
-    }
-
-    /// Returns a reference to the resource behind the handle if one exists.
-    pub fn get<'a, T: Resource>(&'_ self, registry: &'a ResourceRegistry) -> Option<&'a T> {
-        let resource = registry.get(self)?;
-        resource.as_any().downcast_ref::<T>()
-    }
-
-    /// Returns a reference to the resource behind the handle if one exists.
-    pub fn get_mut<'a, T: Resource>(
-        &'_ self,
-        registry: &'a mut ResourceRegistry,
-    ) -> Option<&'a mut T> {
-        let resource = registry.get_mut(self)?;
-        resource.as_any_mut().downcast_mut::<T>()
-    }
-}
-
-impl fmt::Debug for ResourceHandle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ResourceHandle")
-            .field("handle_id", &self.handle_id)
-            .finish()
-    }
-}
-
-impl PartialEq for ResourceHandle {
-    fn eq(&self, other: &Self) -> bool {
-        self.handle_id == other.handle_id
-    }
-}
-
-impl Eq for ResourceHandle {}
-
-impl Clone for ResourceHandle {
-    fn clone(&self) -> Self {
-        self.shared.lock().unwrap().increase(self.handle_id);
-        Self {
-            shared: self.shared.clone(),
-            handle_id: self.handle_id,
-        }
-    }
-}
-
-impl Drop for ResourceHandle {
-    fn drop(&mut self) {
-        self.shared.lock().unwrap().decrease(self.handle_id);
-    }
-}
-
-#[derive(Default)]
-struct ResourceRefCounter {
-    ref_counts: SlotMap<ResourceHandleId, isize>,
-    orphans: Vec<ResourceHandleId>,
-}
-
-impl ResourceRefCounter {
-    fn increase(&mut self, handle_id: ResourceHandleId) {
-        // SAFETY: This method is only called by an object containing a reference therefore
-        // it is safe to assume the reference count exists.
-        let ref_count = unsafe { self.ref_counts.get_unchecked_mut(handle_id) };
-        *ref_count += 1;
-    }
-
-    fn decrease(&mut self, handle_id: ResourceHandleId) {
-        // SAFETY: This method is only called by an object containing a reference therefore
-        // it is safe to assume the reference count exists. If the reference count reaches
-        // zero the slotmap entry is removed.
-        let ref_count = unsafe { self.ref_counts.get_unchecked_mut(handle_id) };
-        let count = *ref_count - 1;
-        *ref_count = count;
-        if count == 0 {
-            self.ref_counts.remove(handle_id);
-            self.orphans.push(handle_id);
-        }
-    }
-}
+use super::{RefOp, Resource, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
 
 /// Options which can be used to configure [`ResourceRegistry`] creation.
 pub struct ResourceRegistryOptions {
@@ -171,16 +42,20 @@ impl ResourceRegistryOptions {
 /// that some resources are in memory but not known to `Project` or are part of the `Project`
 /// but are not currently loaded to memory.
 pub struct ResourceRegistry {
-    ref_counts: Arc<Mutex<ResourceRefCounter>>,
-    resources: SecondaryMap<ResourceHandleId, Option<Box<dyn Resource>>>,
+    id_generator: ResourceHandleId,
+    refcount_channel: (mpsc::Sender<RefOp>, mpsc::Receiver<RefOp>),
+    ref_counts: HashMap<ResourceHandleId, isize>,
+    resources: HashMap<ResourceHandleId, Option<Box<dyn Resource>>>,
     processors: HashMap<ResourceType, Box<dyn ResourceProcessor>>,
 }
 
 impl ResourceRegistry {
     fn create(processors: HashMap<ResourceType, Box<dyn ResourceProcessor>>) -> Self {
         Self {
-            ref_counts: Arc::new(Mutex::new(ResourceRefCounter::default())),
-            resources: SecondaryMap::new(),
+            id_generator: 0,
+            refcount_channel: mpsc::channel(),
+            ref_counts: HashMap::new(),
+            resources: HashMap::new(),
             processors,
         }
     }
@@ -188,7 +63,7 @@ impl ResourceRegistry {
     /// Create a new resource of a given type in a default state.
     ///
     /// The default state of the resource is defined by the registered `ResourceProcessor`.
-    pub fn new_resource(&mut self, kind: ResourceType) -> Option<ResourceHandle> {
+    pub fn new_resource(&mut self, kind: ResourceType) -> Option<ResourceHandleUntyped> {
         if let Some(processor) = self.processors.get_mut(&kind) {
             let resource = processor.new_resource();
             Some(self.insert(resource))
@@ -202,7 +77,7 @@ impl ResourceRegistry {
         &mut self,
         kind: ResourceType,
         reader: &mut dyn io::Read,
-    ) -> io::Result<ResourceHandle> {
+    ) -> io::Result<ResourceHandleUntyped> {
         if let Some(processor) = self.processors.get_mut(&kind) {
             let resource = processor.read_resource(reader)?;
             Ok(self.insert(resource))
@@ -214,38 +89,33 @@ impl ResourceRegistry {
         }
     }
 
+    fn create_handle(&mut self) -> ResourceHandleUntyped {
+        self.id_generator += 1;
+        let new_id = self.id_generator;
+        // insert data
+        self.ref_counts.insert(new_id, 1);
+        ResourceHandleUntyped::create(new_id, self.refcount_channel.0.clone())
+    }
+
     /// Serializes the content of the resource into the writer.
     pub fn serialize_resource(
         &mut self,
         kind: ResourceType,
-        handle: &ResourceHandle,
+        handle: impl AsRef<ResourceHandleUntyped>,
         writer: &mut dyn io::Write,
     ) -> io::Result<(usize, Vec<AssetPathId>)> {
         if let Some(processor) = self.processors.get_mut(&kind) {
-            if self
-                .ref_counts
-                .lock()
+            let resource = self
+                .resources
+                .get(&handle.as_ref().id)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Resource not found."))?
+                .as_ref()
                 .unwrap()
-                .ref_counts
-                .contains_key(handle.handle_id)
-            {
-                let resource = self
-                    .resources
-                    .get(handle.handle_id)
-                    .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Resource not found."))?
-                    .as_ref()
-                    .unwrap()
-                    .as_ref();
+                .as_ref();
 
-                let build_deps = processor.extract_build_dependencies(&*resource);
-                let written = processor.write_resource(&*resource, writer)?;
-                Ok((written, build_deps))
-            } else {
-                Err(io::Error::new(
-                    io::ErrorKind::NotFound,
-                    "Resource not found.",
-                ))
-            }
+            let build_deps = processor.extract_build_dependencies(&*resource);
+            let written = processor.write_resource(&*resource, writer)?;
+            Ok((written, build_deps))
         } else {
             Err(io::Error::new(
                 io::ErrorKind::NotFound,
@@ -256,64 +126,61 @@ impl ResourceRegistry {
 
     /// Inserts a resource into the registry and returns a handle
     /// that identifies that resource.
-    fn insert(&mut self, resource: Box<dyn Resource>) -> ResourceHandle {
-        let handle = ResourceHandle::new(self.ref_counts.clone());
-        self.resources.insert(handle.handle_id, Some(resource));
+    fn insert(&mut self, resource: Box<dyn Resource>) -> ResourceHandleUntyped {
+        let handle = self.create_handle();
+        self.resources.insert(handle.id, Some(resource));
         handle
     }
 
     /// Frees all the resources that have no handles pointing to them.
     pub fn collect_garbage(&mut self) {
-        for orphan in std::mem::take(&mut self.ref_counts.lock().unwrap().orphans) {
-            self.resources[orphan] = None;
+        while let Ok(op) = self.refcount_channel.1.try_recv() {
+            match op {
+                RefOp::AddRef(id) => {
+                    let count = self.ref_counts.get_mut(&id).unwrap();
+                    *count += 1;
+                }
+                RefOp::RemoveRef(id) => {
+                    let count = self.ref_counts.get_mut(&id).unwrap();
+                    *count -= 1;
+                    if *count == 0 {
+                        self.remove_handle(id);
+                    }
+                }
+            }
+        }
+    }
+
+    fn remove_handle(&mut self, handle_id: ResourceHandleId) {
+        // remove data
+        if let Some(rc) = self.ref_counts.remove(&handle_id) {
+            self.resources.remove(&handle_id);
+            assert_eq!(rc, 0);
         }
     }
 
     /// Returns a reference to a resource behind the handle, None if the resource does not exist.
-    pub fn get<'a>(&'a self, handle: &ResourceHandle) -> Option<&'a dyn Resource> {
-        if self
-            .ref_counts
-            .lock()
-            .unwrap()
-            .ref_counts
-            .contains_key(handle.handle_id)
-        {
-            Some(
-                self.resources
-                    .get(handle.handle_id)?
-                    .as_ref()
-                    .unwrap()
-                    .as_ref(),
-            )
-        } else {
-            None
+    pub fn get<'a>(&'a self, handle: &ResourceHandleUntyped) -> Option<&'a dyn Resource> {
+        if let Some(Some(resource)) = self.resources.get(&handle.id) {
+            return Some(resource.as_ref());
         }
+        None
     }
 
     /// Returns a mutable reference to a resource behind the handle, None if the resource does not exist.
-    pub fn get_mut<'a>(&'a mut self, handle: &ResourceHandle) -> Option<&'a mut dyn Resource> {
-        if self
-            .ref_counts
-            .lock()
-            .unwrap()
-            .ref_counts
-            .contains_key(handle.handle_id)
-        {
-            Some(
-                self.resources
-                    .get_mut(handle.handle_id)?
-                    .as_mut()
-                    .unwrap()
-                    .as_mut(),
-            )
-        } else {
-            None
+    pub fn get_mut<'a>(
+        &'a mut self,
+        handle: &ResourceHandleUntyped,
+    ) -> Option<&'a mut dyn Resource> {
+        if let Some(Some(resource)) = self.resources.get_mut(&handle.id) {
+            return Some(resource.as_mut());
         }
+        None
     }
 
     /// Returns the number of loaded resources.
     pub fn len(&self) -> usize {
-        self.ref_counts.lock().unwrap().ref_counts.len()
+        self.ref_counts.len()
     }
 
     /// Checks if this `ResourceRegistry` is empty.
@@ -324,27 +191,14 @@ impl ResourceRegistry {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        io,
-        sync::{Arc, Mutex},
-    };
+    use std::io;
 
     use crate::{
         asset::AssetPathId,
         resource::{registry::ResourceRegistryOptions, ResourceProcessor, ResourceType},
     };
 
-    use super::{Resource, ResourceHandle, ResourceRefCounter};
-
-    #[test]
-    fn ref_count() {
-        let counter = Arc::new(Mutex::new(ResourceRefCounter::default()));
-
-        let ref_a = ResourceHandle::new(counter.clone());
-        let ref_b = ResourceHandle::new(counter);
-
-        assert_ne!(ref_a, ref_b);
-    }
+    use super::Resource;
 
     struct SampleResource {
         content: String,
@@ -413,34 +267,75 @@ mod tests {
     const RESOURCE_SAMPLE: ResourceType = ResourceType::new(b"sample");
 
     #[test]
-    fn reference_count() {
+    fn reference_count_untyped() {
         let mut resources = ResourceRegistryOptions::new().create_registry();
 
         {
-            let handle = resources.insert(Box::new(SampleResource {
-                content: String::from("test content"),
-            }));
-            assert!(handle.get::<SampleResource>(&resources).is_some());
+            let handle = resources
+                .insert(Box::new(SampleResource {
+                    content: String::from("test content"),
+                }))
+                .typed::<SampleResource>();
+            assert!(handle.get(&resources).is_some());
             assert_eq!(resources.len(), 1);
 
             {
                 let alias = handle.clone();
-                assert!(alias.get::<SampleResource>(&resources).is_some());
+                assert!(alias.get(&resources).is_some());
             }
             resources.collect_garbage();
             assert_eq!(resources.len(), 1);
 
-            assert!(handle.get::<SampleResource>(&resources).is_some());
+            assert!(handle.get(&resources).is_some());
         }
 
         resources.collect_garbage();
         assert_eq!(resources.len(), 0);
 
         {
-            let handle = resources.insert(Box::new(SampleResource {
-                content: String::from("more test content"),
-            }));
-            assert!(handle.get::<SampleResource>(&resources).is_some());
+            let handle = resources
+                .insert(Box::new(SampleResource {
+                    content: String::from("more test content"),
+                }))
+                .typed::<SampleResource>();
+            assert!(handle.get(&resources).is_some());
+            assert_eq!(resources.len(), 1);
+        }
+    }
+
+    #[test]
+    fn reference_count_typed() {
+        let mut resources = ResourceRegistryOptions::new().create_registry();
+
+        {
+            let handle = resources
+                .insert(Box::new(SampleResource {
+                    content: String::from("test content"),
+                }))
+                .typed::<SampleResource>();
+            assert!(handle.get(&resources).is_some());
+            assert_eq!(resources.len(), 1);
+
+            {
+                let alias = handle.clone();
+                assert!(alias.get(&resources).is_some());
+            }
+            resources.collect_garbage();
+            assert_eq!(resources.len(), 1);
+
+            assert!(handle.get(&resources).is_some());
+        }
+
+        resources.collect_garbage();
+        assert_eq!(resources.len(), 0);
+
+        {
+            let handle = resources
+                .insert(Box::new(SampleResource {
+                    content: String::from("more test content"),
+                }))
+                .typed::<SampleResource>();
+            assert!(handle.get(&resources).is_some());
             assert_eq!(resources.len(), 1);
         }
     }
@@ -460,12 +355,11 @@ mod tests {
 
         let created_handle = resources
             .new_resource(RESOURCE_SAMPLE)
-            .expect("failed to create a resource");
+            .expect("failed to create a resource")
+            .typed::<SampleResource>();
 
         {
-            let resource = created_handle
-                .get::<SampleResource>(&resources)
-                .expect("resource not found");
+            let resource = created_handle.get(&resources).expect("resource not found");
 
             assert_eq!(resource.content, default_content);
         }
@@ -478,15 +372,14 @@ mod tests {
 
         let loaded_handle = resources
             .deserialize_resource(RESOURCE_SAMPLE, &mut &buffer[..])
-            .expect("Resource load");
+            .expect("Resource load")
+            .typed::<SampleResource>();
 
         let loaded_resource = loaded_handle
-            .get::<SampleResource>(&resources)
+            .get(&resources)
             .expect("Loaded resource not found");
 
-        let created_resource = created_handle
-            .get::<SampleResource>(&resources)
-            .expect("resource not found");
+        let created_resource = created_handle.get(&resources).expect("resource not found");
 
         assert_eq!(loaded_resource.content, created_resource.content);
     }

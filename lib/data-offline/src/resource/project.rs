@@ -3,7 +3,7 @@ use crate::asset::AssetPathId;
 use crate::resource::{
     metadata::{Metadata, ResourceHash},
     types::{ResourceId, ResourceType},
-    ResourceHandle, ResourceName, ResourceNameRef, ResourceRegistry, RESOURCE_EXT,
+    ResourceHandleUntyped, ResourceName, ResourceNameRef, ResourceRegistry, RESOURCE_EXT,
 };
 
 use std::collections::hash_map::DefaultHasher;
@@ -194,7 +194,7 @@ impl Project {
         &mut self,
         name: ResourceName,
         kind: ResourceType,
-        handle: &ResourceHandle,
+        handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceId, Error> {
         let id = ResourceId::generate_new(kind);
@@ -244,7 +244,7 @@ impl Project {
     pub fn save_resource(
         &mut self,
         id: ResourceId,
-        handle: &ResourceHandle,
+        handle: impl AsRef<ResourceHandleUntyped>,
         resources: &mut ResourceRegistry,
     ) -> Result<(), Error> {
         let resource_path = self.resource_path(id);
@@ -305,7 +305,7 @@ impl Project {
         &self,
         id: ResourceId,
         resources: &mut ResourceRegistry,
-    ) -> Result<ResourceHandle, Error> {
+    ) -> Result<ResourceHandleUntyped, Error> {
         let resource_path = self.resource_path(id);
 
         let mut resource_file = File::open(resource_path).map_err(Error::IOError)?;
@@ -571,9 +571,12 @@ mod tests {
             )
             .unwrap();
 
-        let material = resources.new_resource(RESOURCE_MATERIAL).unwrap();
+        let material = resources
+            .new_resource(RESOURCE_MATERIAL)
+            .unwrap()
+            .typed::<NullResource>();
         material
-            .get_mut::<NullResource>(&mut resources)
+            .get_mut(&mut resources)
             .unwrap()
             .dependencies
             .push(AssetPathId::from(texture));
@@ -586,9 +589,12 @@ mod tests {
             )
             .unwrap();
 
-        let geometry = resources.new_resource(RESOURCE_GEOMETRY).unwrap();
+        let geometry = resources
+            .new_resource(RESOURCE_GEOMETRY)
+            .unwrap()
+            .typed::<NullResource>();
         geometry
-            .get_mut::<NullResource>(&mut resources)
+            .get_mut(&mut resources)
             .unwrap()
             .dependencies
             .push(AssetPathId::from(material));
@@ -610,11 +616,12 @@ mod tests {
             )
             .unwrap();
 
-        let actor = resources.new_resource(RESOURCE_ACTOR).unwrap();
-        actor
-            .get_mut::<NullResource>(&mut resources)
+        let actor = resources
+            .new_resource(RESOURCE_ACTOR)
             .unwrap()
-            .dependencies = vec![AssetPathId::from(geometry), AssetPathId::from(skeleton)];
+            .typed::<NullResource>();
+        actor.get_mut(&mut resources).unwrap().dependencies =
+            vec![AssetPathId::from(geometry), AssetPathId::from(skeleton)];
         let _actor = project
             .add_resource(
                 ResourceName::from("hero.actor"),
@@ -637,9 +644,12 @@ mod tests {
             )
             .unwrap();
 
-        let material = resources.new_resource(RESOURCE_MATERIAL).unwrap();
+        let material = resources
+            .new_resource(RESOURCE_MATERIAL)
+            .unwrap()
+            .typed::<NullResource>();
         material
-            .get_mut::<NullResource>(resources)
+            .get_mut(resources)
             .unwrap()
             .dependencies
             .push(AssetPathId::from(texture));

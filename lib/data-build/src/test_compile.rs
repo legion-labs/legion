@@ -55,10 +55,11 @@ fn create_resource(
     resources: &mut ResourceRegistry,
 ) -> ResourceId {
     let resource_b = {
-        let res = resources.new_resource(refs_resource::TYPE_ID).unwrap();
-        let resource = res
-            .get_mut::<refs_resource::TestResource>(resources)
-            .unwrap();
+        let res = resources
+            .new_resource(refs_resource::TYPE_ID)
+            .unwrap()
+            .typed::<refs_resource::TestResource>();
+        let resource = res.get_mut(resources).unwrap();
         resource.content = name.display().to_string(); // each resource needs unique content to generate a unique resource.
         resource.build_deps.extend_from_slice(deps);
         res
@@ -74,11 +75,10 @@ fn change_resource(resource_id: ResourceId, project_dir: &Path) {
 
     let handle = project
         .load_resource(resource_id, &mut resources)
-        .expect("to load resource");
+        .expect("to load resource")
+        .typed::<refs_resource::TestResource>();
 
-    let resource = handle
-        .get_mut::<refs_resource::TestResource>(&mut resources)
-        .expect("resource instance");
+    let resource = handle.get_mut(&mut resources).expect("resource instance");
     resource.content.push_str(" more content");
     project
         .save_resource(resource_id, &handle, &mut resources)
@@ -94,7 +94,10 @@ fn compile_change_no_deps() {
     let (resource_id, resource_handle) = {
         let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
-        let resource_handle = resources.new_resource(refs_resource::TYPE_ID).unwrap();
+        let resource_handle = resources
+            .new_resource(refs_resource::TYPE_ID)
+            .unwrap()
+            .typed::<refs_resource::TestResource>();
         let resource_id = project
             .add_resource(
                 ResourceName::from("resource"),
@@ -150,10 +153,7 @@ fn compile_change_no_deps() {
     {
         let mut project = Project::open(project_dir).expect("failed to open project");
 
-        resource_handle
-            .get_mut::<refs_resource::TestResource>(&mut resources)
-            .unwrap()
-            .content = String::from("new content");
+        resource_handle.get_mut(&mut resources).unwrap().content = String::from("new content");
 
         project
             .save_resource(resource_id, &resource_handle, &mut resources)
@@ -250,11 +250,11 @@ fn intermediate_resource() {
     let source_id = {
         let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
-        let resource_handle = resources.new_resource(text_resource::TYPE_ID).unwrap();
-        resource_handle
-            .get_mut::<TextResource>(&mut resources)
+        let resource_handle = resources
+            .new_resource(text_resource::TYPE_ID)
             .unwrap()
-            .content = source_magic_value.clone();
+            .typed::<TextResource>();
+        resource_handle.get_mut(&mut resources).unwrap().content = source_magic_value.clone();
         project
             .add_resource(
                 ResourceName::from("resource"),
@@ -458,11 +458,11 @@ fn named_path_cache_use() {
     let source_id = {
         let mut project = Project::create_new(project_dir).expect("failed to create a project");
 
-        let resource_handle = resources.new_resource(multitext_resource::TYPE_ID).unwrap();
-        resource_handle
-            .get_mut::<MultiTextResource>(&mut resources)
+        let resource_handle = resources
+            .new_resource(multitext_resource::TYPE_ID)
             .unwrap()
-            .text_list = magic_list.clone();
+            .typed::<MultiTextResource>();
+        resource_handle.get_mut(&mut resources).unwrap().text_list = magic_list.clone();
         project
             .add_resource(
                 ResourceName::from("resource"),
@@ -595,11 +595,10 @@ fn named_path_cache_use() {
 
         let handle = project
             .load_resource(source_id, &mut resources)
-            .expect("to load resource");
+            .expect("to load resource")
+            .typed::<multitext_resource::MultiTextResource>();
 
-        let resource = handle
-            .get_mut::<multitext_resource::MultiTextResource>(&mut resources)
-            .expect("resource instance");
+        let resource = handle.get_mut(&mut resources).expect("resource instance");
         resource.text_list[1] = String::from("852");
         project
             .save_resource(source_id, &handle, &mut resources)
@@ -641,11 +640,10 @@ fn named_path_cache_use() {
 
         let handle = project
             .load_resource(source_id, &mut resources)
-            .expect("to load resource");
+            .expect("to load resource")
+            .typed::<multitext_resource::MultiTextResource>();
 
-        let resource = handle
-            .get_mut::<multitext_resource::MultiTextResource>(&mut resources)
-            .expect("resource instance");
+        let resource = handle.get_mut(&mut resources).expect("resource instance");
         resource.text_list[0] = String::from("734");
         resource.text_list[1] = String::from("1");
         project
@@ -720,9 +718,10 @@ fn link() {
 
         let child_handle = resources
             .new_resource(refs_resource::TYPE_ID)
-            .expect("valid resource");
+            .expect("valid resource")
+            .typed::<refs_resource::TestResource>();
         let child = child_handle
-            .get_mut::<refs_resource::TestResource>(&mut resources)
+            .get_mut(&mut resources)
             .expect("existing resource");
         child.content = String::from("test child content");
         let child_id = project
@@ -736,9 +735,10 @@ fn link() {
 
         let parent_handle = resources
             .new_resource(refs_resource::TYPE_ID)
-            .expect("valid resource");
+            .expect("valid resource")
+            .typed::<refs_resource::TestResource>();
         let parent = parent_handle
-            .get_mut::<refs_resource::TestResource>(&mut resources)
+            .get_mut(&mut resources)
             .expect("existing resource");
         parent.content = String::from("test parent content");
         parent.build_deps = vec![AssetPathId::from(child_id).push(refs_resource::TYPE_ID)];
@@ -815,9 +815,12 @@ fn verify_manifest() {
             )
             .unwrap();
 
-        let child_handle = resources.new_resource(refs_resource::TYPE_ID).unwrap();
+        let child_handle = resources
+            .new_resource(refs_resource::TYPE_ID)
+            .unwrap()
+            .typed::<refs_resource::TestResource>();
         child_handle
-            .get_mut::<refs_resource::TestResource>(&mut resources)
+            .get_mut(&mut resources)
             .unwrap()
             .build_deps
             .push(AssetPathId::from(child_id).push(refs_resource::TYPE_ID));

@@ -113,7 +113,7 @@ use clap::{AppSettings, Arg, ArgMatches, SubCommand};
 use legion_content_store::{ContentStore, ContentStoreAddr, ContentType, HddContentStore};
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{ResourceHandle, ResourceId, ResourceRegistry, RESOURCE_EXT},
+    resource::{ResourceHandleUntyped, ResourceId, ResourceRegistry, RESOURCE_EXT},
 };
 use std::{
     env,
@@ -179,7 +179,7 @@ impl CompilerContext<'_> {
         &self,
         id: &AssetPathId,
         resources: &mut ResourceRegistry,
-    ) -> Result<ResourceHandle, CompilerError> {
+    ) -> Result<ResourceHandleUntyped, CompilerError> {
         if id.is_source() {
             //
             // for now, we only allow to load the `derived` resource's source.
