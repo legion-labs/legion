@@ -9,15 +9,7 @@ pub struct TextResource {
     pub content: String,
 }
 
-impl Resource for TextResource {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
+impl Resource for TextResource {}
 
 pub struct TextResourceProc {}
 
@@ -37,7 +29,7 @@ impl ResourceProcessor for TextResourceProc {
         resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
-        let resource = resource.as_any().downcast_ref::<TextResource>().unwrap();
+        let resource = resource.downcast_ref::<TextResource>().unwrap();
         let size = writer.write(&resource.content.len().to_ne_bytes())?;
         assert_eq!(size, std::mem::size_of::<usize>());
         let written = writer.write(resource.content.as_bytes())?;
@@ -50,7 +42,7 @@ impl ResourceProcessor for TextResourceProc {
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Resource>> {
         let mut boxed = self.new_resource();
-        let mut resource = boxed.as_any_mut().downcast_mut::<TextResource>().unwrap();
+        let mut resource = boxed.downcast_mut::<TextResource>().unwrap();
 
         let mut buf = 0usize.to_ne_bytes();
         reader.read_exact(&mut buf)?;

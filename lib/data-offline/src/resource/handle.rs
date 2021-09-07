@@ -52,7 +52,7 @@ impl ResourceHandleUntyped {
     /// Retrieve a reference to resource of type `T` from [`ResourceRegistry`].
     pub fn get<'a, T: Resource>(&'_ self, registry: &'a ResourceRegistry) -> Option<&'a T> {
         let resource = registry.get(self)?;
-        resource.as_any().downcast_ref::<T>()
+        resource.downcast_ref::<T>()
     }
 
     /// Retrieve a mutable reference to resource of type `T` from [`ResourceRegistry`].
@@ -61,7 +61,7 @@ impl ResourceHandleUntyped {
         registry: &'a mut ResourceRegistry,
     ) -> Option<&'a mut T> {
         let resource = registry.get_mut(self)?;
-        resource.as_any_mut().downcast_mut::<T>()
+        resource.downcast_mut::<T>()
     }
 
     /// Converts the untyped handle into a typed handle.
@@ -114,12 +114,12 @@ impl<T: Resource> ResourceHandle<T> {
     /// Retrieve a reference to resource of type `T` from [`ResourceRegistry`].
     pub fn get<'a>(&'_ self, registry: &'a ResourceRegistry) -> Option<&'a T> {
         let resource = registry.get(&self.internal)?;
-        resource.as_any().downcast_ref::<T>()
+        resource.downcast_ref::<T>()
     }
 
     /// Retrieve a mutable reference to resource of type `T` from [`ResourceRegistry`].
     pub fn get_mut<'a>(&'_ self, registry: &'a mut ResourceRegistry) -> Option<&'a mut T> {
         let resource = registry.get_mut(&self.internal)?;
-        resource.as_any_mut().downcast_mut::<T>()
+        resource.downcast_mut::<T>()
     }
 }

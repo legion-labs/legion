@@ -2,12 +2,40 @@
 //!
 
 /// Types implementing `Resource` represent editor data.
-pub trait Resource: Any {
-    /// Cast to &dyn Any type.
-    fn as_any(&self) -> &dyn Any;
+pub trait Resource: Any {}
 
-    /// Cast to &mut dyn Any type.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
+/// Note: Based on impl of dyn Any
+impl dyn Resource {
+    /// Returns `true` if the boxed type is the same as `T`.
+    /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
+    #[inline]
+    pub fn is<T: Resource>(&self) -> bool {
+        TypeId::of::<T>() == self.type_id()
+    }
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_ref`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref))
+    #[inline]
+    pub fn downcast_ref<T: Resource>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            unsafe { Some(&*((self as *const dyn Resource).cast::<T>())) }
+        } else {
+            None
+        }
+    }
+
+    /// Returns some mutable reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_mut`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut))
+    #[inline]
+    pub fn downcast_mut<T: Resource>(&mut self) -> Option<&mut T> {
+        if self.is::<T>() {
+            unsafe { Some(&mut *((self as *mut dyn Resource).cast::<T>())) }
+        } else {
+            None
+        }
+    }
 }
 
 /// The `ResourceProcessor` trait allows to process an offline resource.
@@ -31,6 +59,7 @@ pub trait ResourceProcessor {
 
 mod project;
 use std::any::Any;
+use std::any::TypeId;
 use std::io;
 
 use crate::asset::AssetPathId;

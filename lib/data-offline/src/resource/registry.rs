@@ -204,15 +204,7 @@ mod tests {
         content: String,
     }
 
-    impl Resource for SampleResource {
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-
-        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-            self
-        }
-    }
+    impl Resource for SampleResource {}
 
     struct SampleProcessor {
         default_content: String,
@@ -230,7 +222,7 @@ mod tests {
             resource: &dyn Resource,
             writer: &mut dyn std::io::Write,
         ) -> std::io::Result<usize> {
-            let resource = resource.as_any().downcast_ref::<SampleResource>().unwrap();
+            let resource = resource.downcast_ref::<SampleResource>().unwrap();
 
             let length = resource.content.len();
             writer.write_all(&length.to_ne_bytes())?;
@@ -243,10 +235,7 @@ mod tests {
             reader: &mut dyn std::io::Read,
         ) -> std::io::Result<Box<dyn Resource>> {
             let mut resource = self.new_resource();
-            let sample_resource = resource
-                .as_any_mut()
-                .downcast_mut::<SampleResource>()
-                .unwrap();
+            let sample_resource = resource.downcast_mut::<SampleResource>().unwrap();
 
             let mut bytes = 0usize.to_ne_bytes();
             reader.read_exact(&mut bytes)?;

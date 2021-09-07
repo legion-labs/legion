@@ -9,15 +9,7 @@ pub struct MultiTextResource {
     pub text_list: Vec<String>,
 }
 
-impl Resource for MultiTextResource {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
+impl Resource for MultiTextResource {}
 
 pub struct MultiTextResourceProc {}
 
@@ -35,10 +27,7 @@ impl ResourceProcessor for MultiTextResourceProc {
         resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
-        let resource = resource
-            .as_any()
-            .downcast_ref::<MultiTextResource>()
-            .unwrap();
+        let resource = resource.downcast_ref::<MultiTextResource>().unwrap();
         let mut size = writer.write(&resource.text_list.len().to_ne_bytes())?;
         for content in &resource.text_list {
             size += writer.write(&content.len().to_ne_bytes())?;
@@ -53,10 +42,7 @@ impl ResourceProcessor for MultiTextResourceProc {
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Resource>> {
         let mut boxed = self.new_resource();
-        let resource = boxed
-            .as_any_mut()
-            .downcast_mut::<MultiTextResource>()
-            .unwrap();
+        let resource = boxed.downcast_mut::<MultiTextResource>().unwrap();
 
         let mut buf = 0usize.to_ne_bytes();
         reader.read_exact(&mut buf)?;
