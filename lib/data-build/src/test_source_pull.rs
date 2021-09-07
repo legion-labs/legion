@@ -1,9 +1,12 @@
+use std::path::PathBuf;
+
 use crate::DataBuildOptions;
 use legion_content_store::ContentStoreAddr;
 use legion_data_offline::{
     asset::AssetPathId,
     resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
 };
+use tempfile::TempDir;
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
@@ -16,14 +19,21 @@ fn setup_registry() -> ResourceRegistry {
         .create_registry()
 }
 
+fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
+    let project_dir = work_dir.path();
+    let output_dir = project_dir.join("temp");
+    std::fs::create_dir(&output_dir).unwrap();
+    (project_dir.to_owned(), output_dir)
+}
+
 #[test]
 fn no_dependencies() {
     let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
+    let (project_dir, output_dir) = setup_dir(&work_dir);
     let mut resources = setup_registry();
 
     let resource = {
-        let mut project = Project::create_new(project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
         let id = project
             .add_resource(
                 ResourcePathName::new("resource"),
@@ -35,8 +45,8 @@ fn no_dependencies() {
         AssetPathId::from(id)
     };
 
-    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-        .content_store(&ContentStoreAddr::from(project_dir.to_owned()))
+    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+        .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("data build");
 
@@ -60,11 +70,11 @@ fn no_dependencies() {
 #[test]
 fn with_dependency() {
     let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
+    let (project_dir, output_dir) = setup_dir(&work_dir);
     let mut resources = setup_registry();
 
     let (child_id, parent_id) = {
-        let mut project = Project::create_new(project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
@@ -93,8 +103,8 @@ fn with_dependency() {
         (AssetPathId::from(child_id), AssetPathId::from(parent_id))
     };
 
-    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-        .content_store(&ContentStoreAddr::from(project_dir.to_owned()))
+    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+        .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("data build");
 
@@ -120,11 +130,11 @@ fn with_dependency() {
 #[test]
 fn with_derived_dependency() {
     let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
+    let (project_dir, output_dir) = setup_dir(&work_dir);
     let mut resources = setup_registry();
 
     {
-        let mut project = Project::create_new(project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
 
         let child_id = project
             .add_resource(
@@ -155,8 +165,8 @@ fn with_derived_dependency() {
             .unwrap();
     }
 
-    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-        .content_store(&ContentStoreAddr::from(project_dir.to_owned()))
+    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+        .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("to create index");
 

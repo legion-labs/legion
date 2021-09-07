@@ -14,6 +14,7 @@ use legion_data_offline::{
 };
 use legion_data_runtime::AssetLoader;
 use multitext_resource::MultiTextResource;
+use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
@@ -85,14 +86,21 @@ fn change_resource(resource_id: ResourceId, project_dir: &Path) {
         .expect("successful save");
 }
 
+fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
+    let project_dir = work_dir.path();
+    let output_dir = project_dir.join("temp");
+    std::fs::create_dir(&output_dir).unwrap();
+    (project_dir.to_owned(), output_dir)
+}
+
 #[test]
 fn compile_change_no_deps() {
     let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
+    let (project_dir, output_dir) = setup_dir(&work_dir);
     let mut resources = setup_registry();
 
     let (resource_id, resource_handle) = {
-        let mut project = Project::create_new(project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
 
         let resource_handle = resources
             .new_resource(refs_resource::TYPE_ID)
@@ -109,8 +117,8 @@ fn compile_change_no_deps() {
         (resource_id, resource_handle)
     };
 
-    let contentstore_path = ContentStoreAddr::from(work_dir.path());
-    let mut config = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME));
+    let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
+    let mut config = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME));
     config
         .content_store(&contentstore_path)
         .compiler_dir(target_dir());
@@ -120,7 +128,7 @@ fn compile_change_no_deps() {
 
     // compile the resource..
     let original_checksum = {
-        let mut build = config.create(project_dir).expect("to create index");
+        let mut build = config.create(&project_dir).expect("to create index");
         build.source_pull().expect("failed to pull from project");
 
         let compile_output = build
@@ -252,13 +260,13 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
 #[test]
 fn intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
+    let (project_dir, output_dir) = setup_dir(&work_dir);
     let mut resources = setup_registry();
 
     let source_magic_value = String::from("47");
 
     let source_id = {
-        let mut project = Project::create_new(project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
 
         let resource_handle = resources
             .new_resource(text_resource::TYPE_ID)
@@ -275,9 +283,9 @@ fn intermediate_resource() {
             .unwrap()
     };
 
-    let cas_addr = ContentStoreAddr::from(work_dir.path());
+    let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
         .content_store(&cas_addr)
         .compiler_dir(target_dir())
         .create(project_dir)
@@ -350,15 +358,15 @@ fn intermediate_resource() {
 #[test]
 fn unnamed_cache_use() {
     let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
+    let (project_dir, output_dir) = setup_dir(&work_dir);
 
-    let resource_list = setup_project(project_dir);
+    let resource_list = setup_project(&project_dir);
     let root_resource = resource_list[0];
 
-    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
-        .content_store(&ContentStoreAddr::from(work_dir.path()))
+    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+        .content_store(&ContentStoreAddr::from(output_dir))
         .compiler_dir(target_dir())
-        .create(project_dir)
+        .create(&project_dir)
         .expect("new build index");
     build.source_pull().expect("successful pull");
 
@@ -416,7 +424,7 @@ fn unnamed_cache_use() {
 
     // change root resource, one resource re-compiled.
     {
-        change_resource(root_resource, project_dir);
+        change_resource(root_resource, &project_dir);
         build.source_pull().expect("to pull changes");
 
         let CompileOutput {
@@ -440,7 +448,7 @@ fn unnamed_cache_use() {
     // change resource E - which invalides 4 resources in total (E included).
     {
         let resource_e = resource_list[4];
-        change_resource(resource_e, project_dir);
+        change_resource(resource_e, &project_dir);
         build.source_pull().expect("to pull changes");
 
         let CompileOutput {
@@ -460,13 +468,13 @@ fn unnamed_cache_use() {
 #[test]
 fn named_path_cache_use() {
     let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
+    let (project_dir, output_dir) = setup_dir(&work_dir);
     let mut resources = setup_registry();
 
     let magic_list = vec![String::from("47"), String::from("198")];
 
     let source_id = {
-        let mut project = Project::create_new(project_dir).expect("failed to create a project");
+        let mut project = Project::create_new(&project_dir).expect("failed to create a project");
 
         let resource_handle = resources
             .new_resource(multitext_resource::TYPE_ID)
@@ -483,12 +491,12 @@ fn named_path_cache_use() {
             .unwrap()
     };
 
-    let cas_addr = ContentStoreAddr::from(work_dir.path());
+    let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
         .content_store(&cas_addr)
         .compiler_dir(target_dir())
-        .create(project_dir)
+        .create(&project_dir)
         .expect("new build index");
 
     let pulled = build.source_pull().expect("successful pull");
@@ -600,7 +608,7 @@ fn named_path_cache_use() {
 
     // change "text_1" of source resource multitext resource..
     {
-        let mut project = Project::open(project_dir).expect("failed to open project");
+        let mut project = Project::open(&project_dir).expect("failed to open project");
         let mut resources = setup_registry();
 
         let handle = project
@@ -720,11 +728,11 @@ fn named_path_cache_use() {
 #[test]
 fn link() {
     let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
+    let (project_dir, output_dir) = setup_dir(&work_dir);
     let mut resources = setup_registry();
 
     let parent_id = {
-        let mut project = Project::create_new(project_dir).expect("new project");
+        let mut project = Project::create_new(&project_dir).expect("new project");
 
         let child_handle = resources
             .new_resource(refs_resource::TYPE_ID)
@@ -762,11 +770,11 @@ fn link() {
             .unwrap()
     };
 
-    let contentstore_path = ContentStoreAddr::from(work_dir.path());
-    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+    let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
+    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
         .content_store(&contentstore_path)
         .compiler_dir(target_dir())
-        .create(project_dir)
+        .create(&project_dir)
         .expect("to create index");
 
     build.source_pull().unwrap();
@@ -810,12 +818,12 @@ fn link() {
 #[test]
 fn verify_manifest() {
     let work_dir = tempfile::tempdir().unwrap();
-    let project_dir = work_dir.path();
+    let (project_dir, output_dir) = setup_dir(&work_dir);
     let mut resources = setup_registry();
 
     // child_id <- test(child_id) <- parent_id = test(parent_id)
     let parent_resource = {
-        let mut project = Project::create_new(project_dir).expect("new project");
+        let mut project = Project::create_new(&project_dir).expect("new project");
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
@@ -845,8 +853,8 @@ fn verify_manifest() {
             .unwrap()
     };
 
-    let contentstore_path = ContentStoreAddr::from(work_dir.path());
-    let mut build = DataBuildOptions::new(project_dir.join(TEST_BUILDINDEX_FILENAME))
+    let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
+    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
         .content_store(&contentstore_path)
         .compiler_dir(target_dir())
         .create(project_dir)
