@@ -2487,7 +2487,7 @@ dependencies = [
 [[package]]
 name = "sciter-js"
 version = "0.1.0"
-source = "git+https://github.com/legion-labs/sciter-js-rs?branch=main#a45ecff07ddd268817e72f9ab164605b6af2419e"
+source = "git+https://github.com/legion-labs/sciter-js-rs?branch=main#f41aac019dd552beefa2ad647ac9be99bdc81538"
 dependencies = [
  "bitflags",
  "lazy_static",
@@ -2501,12 +2501,12 @@ dependencies = [
 [[package]]
 name = "sciter-js-interop"
 version = "0.1.0"
-source = "git+https://github.com/legion-labs/sciter-js-rs?branch=main#a45ecff07ddd268817e72f9ab164605b6af2419e"
+source = "git+https://github.com/legion-labs/sciter-js-rs?branch=main#f41aac019dd552beefa2ad647ac9be99bdc81538"
 
 [[package]]
 name = "sciter-js-sys"
 version = "0.1.0"
-source = "git+https://github.com/legion-labs/sciter-js-rs?branch=main#a45ecff07ddd268817e72f9ab164605b6af2419e"
+source = "git+https://github.com/legion-labs/sciter-js-rs?branch=main#f41aac019dd552beefa2ad647ac9be99bdc81538"
 dependencies = [
  "bindgen",
 ]
