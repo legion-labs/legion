@@ -54,6 +54,8 @@ impl ToString for AssetId {
 /// Type id of a runtime asset.
 pub type AssetType = ContentType;
 
+pub use legion_data_runtime_macros::Asset;
+
 /// Types implementing `Asset` represent non-mutable runtime data.
 pub trait Asset: Any + Send {}
 

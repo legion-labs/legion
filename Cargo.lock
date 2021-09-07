@@ -1328,7 +1328,7 @@ name = "legion-data-offline"
 version = "0.1.0"
 dependencies = [
  "legion-content-store",
- "legion-data-offline-derive",
+ "legion-data-offline-macros",
  "rand 0.8.4",
  "serde",
  "serde_json",
@@ -1337,7 +1337,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-offline-derive"
+name = "legion-data-offline-macros"
 version = "0.1.0"
 dependencies = [
  "quote",
@@ -1350,7 +1350,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "legion-content-store",
- "legion-data-runtime-derive",
+ "legion-data-runtime-macros",
  "rand 0.8.4",
  "serde",
  "serde_json",
@@ -1358,7 +1358,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-runtime-derive"
+name = "legion-data-runtime-macros"
 version = "0.1.0"
 dependencies = [
  "quote",

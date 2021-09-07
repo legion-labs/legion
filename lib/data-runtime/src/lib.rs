@@ -125,8 +125,6 @@
 #![allow()]
 #![warn(missing_docs)]
 
-pub use legion_data_runtime_derive::Asset;
-
 mod asset_loader;
 
 mod asset_registry;
