@@ -48,17 +48,17 @@ fn command_compiler_hash() {
 #[test]
 fn command_compile() {
     let work_dir = tempfile::tempdir().unwrap();
-    let resource_dir = work_dir.path();
+    let (resource_dir, output_dir) = common::setup_dir(&work_dir);
 
     let content = "test content";
 
     let source = ResourceId::generate_new(refs_resource::TYPE_ID);
-    create_test_resource(source, resource_dir, content);
+    create_test_resource(source, &resource_dir, content);
 
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());
 
-    let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
+    let cas_addr = ContentStoreAddr::from(output_dir);
 
     let compile_path = AssetPathId::from(source).push(refs_resource::TYPE_ID);
     let mut command = CompilerCompileCmd::new(
@@ -66,7 +66,7 @@ fn command_compile() {
         &[],
         &[],
         &cas_addr,
-        resource_dir,
+        &resource_dir,
         Target::Game,
         Platform::Windows,
         &Locale::new("en"),

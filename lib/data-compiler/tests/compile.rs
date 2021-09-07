@@ -29,7 +29,7 @@ fn find_compiler() {
 #[test]
 fn compile_atoi() {
     let work_dir = tempfile::tempdir().unwrap();
-    let resource_dir = work_dir.path();
+    let (resource_dir, output_dir) = common::setup_dir(&work_dir);
 
     let source_magic_value = String::from("47");
 
@@ -52,7 +52,7 @@ fn compile_atoi() {
         source
     };
 
-    let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
+    let cas_addr = ContentStoreAddr::from(output_dir);
 
     let asset_info = {
         let exe_path = common::compiler_exe("test-atoi");
@@ -64,7 +64,7 @@ fn compile_atoi() {
             &[],
             &[],
             &cas_addr,
-            resource_dir,
+            &resource_dir,
             Target::Game,
             Platform::Windows,
             &Locale::new("en"),
@@ -99,7 +99,7 @@ fn compile_atoi() {
 #[test]
 fn compile_intermediate() {
     let work_dir = tempfile::tempdir().unwrap();
-    let resource_dir = work_dir.path();
+    let (resource_dir, output_dir) = common::setup_dir(&work_dir);
 
     let source_magic_value = String::from("47");
 
@@ -120,7 +120,7 @@ fn compile_intermediate() {
         source
     };
 
-    let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
+    let cas_addr = ContentStoreAddr::from(output_dir);
 
     let intermediate_info = {
         let exe_path = common::compiler_exe("test-reverse");
@@ -131,14 +131,14 @@ fn compile_intermediate() {
             &[],
             &[],
             &cas_addr,
-            resource_dir,
+            &resource_dir,
             Target::Game,
             Platform::Windows,
             &Locale::new("en"),
         );
 
         let result = command
-            .execute(&exe_path, resource_dir)
+            .execute(&exe_path, &resource_dir)
             .expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), 1);
@@ -156,7 +156,7 @@ fn compile_intermediate() {
             &[],
             &[intermediate_info],
             &cas_addr,
-            resource_dir,
+            &resource_dir,
             Target::Game,
             Platform::Windows,
             &Locale::new("en"),
@@ -193,7 +193,7 @@ fn compile_intermediate() {
 #[test]
 fn compile_multi_resource() {
     let work_dir = tempfile::tempdir().unwrap();
-    let resource_dir = work_dir.path();
+    let (resource_dir, output_dir) = common::setup_dir(&work_dir);
 
     let source_text_list = vec![String::from("hello"), String::from("world")];
 
@@ -214,7 +214,7 @@ fn compile_multi_resource() {
         source
     };
 
-    let cas_addr = ContentStoreAddr::from(resource_dir.to_owned());
+    let cas_addr = ContentStoreAddr::from(output_dir);
     let compile_path = AssetPathId::from(source).push(text_resource::TYPE_ID);
 
     let compiled_resources = {
@@ -226,7 +226,7 @@ fn compile_multi_resource() {
             &[],
             &[],
             &cas_addr,
-            resource_dir,
+            &resource_dir,
             Target::Game,
             Platform::Windows,
             &Locale::new("en"),

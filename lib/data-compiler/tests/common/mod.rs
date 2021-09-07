@@ -1,5 +1,7 @@
 use std::{env, path::PathBuf};
 
+use tempfile::TempDir;
+
 pub fn target_dir() -> PathBuf {
     env::current_exe()
         .ok()
@@ -15,4 +17,13 @@ pub fn target_dir() -> PathBuf {
 
 pub fn compiler_exe(name: &str) -> PathBuf {
     target_dir().join(format!("compiler-{}{}", name, env::consts::EXE_SUFFIX))
+}
+
+pub fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
+    let resource_dir = work_dir.path().join("offline");
+    let output_dir = work_dir.path().join("temp");
+
+    std::fs::create_dir(&resource_dir).unwrap();
+    std::fs::create_dir(&output_dir).unwrap();
+    (resource_dir, output_dir)
 }
