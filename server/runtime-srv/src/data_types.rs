@@ -74,7 +74,7 @@ enum Component {
     Physics(Physics),
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Asset, Serialize, Deserialize, Debug, Default, PartialEq)]
 struct SubMesh {
     positions: Vec<Vec3>,
     normals: Vec<Vec3>,
@@ -83,20 +83,18 @@ struct SubMesh {
     material: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct Mesh {
     sub_meshes: Vec<SubMesh>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct Material {
     albedo: String,
     normal: String,
     roughness: String,
     metalness: String,
 }
-
-impl Asset for Material {}
 
 #[derive(Serialize, Deserialize)]
 struct Physics {
@@ -169,10 +167,19 @@ where
 }
 
 pub fn register_asset_loaders(asset_options: AssetRegistryOptions) -> AssetRegistryOptions {
-    asset_options.add_creator(
-        AssetType::new(b"ron_material"),
-        Box::new(RONAssetCreator::<Material>::new()),
-    )
+    asset_options
+        .add_creator(
+            AssetType::new(b"ron_material"),
+            Box::new(RONAssetCreator::<Material>::new()),
+        )
+        .add_creator(
+            AssetType::new(b"ron_mesh"),
+            Box::new(RONAssetCreator::<Mesh>::new()),
+        )
+        .add_creator(
+            AssetType::new(b"ron_sub_mesh"),
+            Box::new(RONAssetCreator::<SubMesh>::new()),
+        )
 }
 
 #[cfg(test)]
@@ -180,7 +187,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn sub_mesh_read_write() {
+    fn sub_mesh_ron_roundtrip() {
         let sub_mesh = SubMesh::default();
         let serialized = ron::ser::to_string(&sub_mesh).unwrap();
         dbg!(&serialized);
