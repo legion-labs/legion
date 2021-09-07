@@ -3,11 +3,10 @@ use legion_data_runtime::{Asset, AssetLoader, AssetType};
 /// Type id of test asset.
 pub const TYPE_ID: AssetType = AssetType::new(b"integer_asset");
 
+#[derive(Asset)]
 pub struct IntegerAsset {
     pub magic_value: i32,
 }
-
-impl Asset for IntegerAsset {}
 
 pub struct IntegerAssetLoader {}
 

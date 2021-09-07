@@ -1341,10 +1341,19 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "legion-content-store",
+ "legion-data-runtime-derive",
  "rand 0.8.4",
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "legion-data-runtime-derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

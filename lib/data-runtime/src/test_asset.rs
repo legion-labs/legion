@@ -10,12 +10,11 @@ pub const TYPE_ID: AssetType = AssetType::new(b"test_asset");
 /// Asset temporarily used for testing.
 ///
 /// To be removed once real asset types exist.
+#[derive(Asset)]
 pub struct TestAsset {
     /// Test content.
     pub content: String,
 }
-
-impl Asset for TestAsset {}
 
 /// [`TestAsset`]'s asset creator temporarily used for testings.
 ///
