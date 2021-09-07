@@ -40,7 +40,6 @@ fn compile_atoi() {
 
         let mut resource = proc.new_resource();
         let mut resource = resource
-            .as_any_mut()
             .downcast_mut::<TextResource>()
             .expect("valid resource");
 
@@ -91,7 +90,7 @@ fn compile_atoi() {
     let asset = creator
         .load(integer_asset::TYPE_ID, &mut &resource_content[..])
         .expect("loaded assets");
-    let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
+    let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 
     let stringified = asset.magic_value.to_string();
     assert_eq!(source_magic_value, stringified);
@@ -109,7 +108,6 @@ fn compile_intermediate() {
         let mut proc = text_resource::TextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
-            .as_any_mut()
             .downcast_mut::<TextResource>()
             .expect("valid resource");
 
@@ -183,7 +181,7 @@ fn compile_intermediate() {
     let asset = creator
         .load(integer_asset::TYPE_ID, &mut &resource_content[..])
         .expect("loaded assets");
-    let asset = asset.as_any().downcast_ref::<IntegerAsset>().unwrap();
+    let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 
     let stringified = asset.magic_value.to_string();
     assert_eq!(
@@ -204,7 +202,6 @@ fn compile_multi_resource() {
         let mut proc = MultiTextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
-            .as_any_mut()
             .downcast_mut::<MultiTextResource>()
             .expect("valid resource");
 
@@ -268,7 +265,7 @@ fn compile_multi_resource() {
         let resource = proc
             .read_resource(&mut &resource_content[..])
             .expect("loaded resource");
-        let resource = resource.as_any().downcast_ref::<TextResource>().unwrap();
+        let resource = resource.downcast_ref::<TextResource>().unwrap();
         assert_eq!(&resource.content, source_text);
     }
 }

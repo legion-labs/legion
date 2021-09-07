@@ -77,9 +77,6 @@
 // crate-specific exceptions:
 #![allow()]
 
-mod as_any;
-pub use as_any::AsAny;
-
 pub mod decimal;
 pub mod memory;
 pub mod trust_cell;

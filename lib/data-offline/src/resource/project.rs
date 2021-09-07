@@ -479,7 +479,6 @@ mod tests {
 
         fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
             resource
-                .as_any()
                 .downcast_ref::<NullResource>()
                 .unwrap()
                 .dependencies
@@ -491,7 +490,7 @@ mod tests {
             resource: &dyn Resource,
             writer: &mut dyn std::io::Write,
         ) -> std::io::Result<usize> {
-            let resource = resource.as_any().downcast_ref::<NullResource>().unwrap();
+            let resource = resource.downcast_ref::<NullResource>().unwrap();
             let mut nbytes = 0;
 
             let bytes = resource.content.to_ne_bytes();
@@ -520,10 +519,7 @@ mod tests {
             reader: &mut dyn std::io::Read,
         ) -> std::io::Result<Box<dyn Resource>> {
             let mut resource = self.new_resource();
-            let mut res = resource
-                .as_any_mut()
-                .downcast_mut::<NullResource>()
-                .unwrap();
+            let mut res = resource.downcast_mut::<NullResource>().unwrap();
 
             let mut buf = res.content.to_ne_bytes();
             reader.read_exact(&mut buf[..])?;

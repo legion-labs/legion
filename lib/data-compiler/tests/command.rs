@@ -20,7 +20,6 @@ fn create_test_resource(id: ResourceId, dir: &Path, content: &str) {
     let mut resource = proc.new_resource();
 
     resource
-        .as_any_mut()
         .downcast_mut::<refs_resource::TestResource>()
         .unwrap()
         .content = String::from(content);

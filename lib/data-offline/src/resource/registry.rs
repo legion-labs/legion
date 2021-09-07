@@ -1,6 +1,6 @@
 use core::fmt;
-use legion_utils::AsAny;
 use std::{
+    any::{Any, TypeId},
     collections::HashMap,
     io,
     sync::{Arc, Mutex},
@@ -15,7 +15,41 @@ slotmap::new_key_type!(
 );
 
 /// Types implementing `Resource` represent editor data.
-pub trait Resource: AsAny {}
+pub trait Resource: Any {}
+
+/// Note: Based on impl of dyn Any
+impl dyn Resource {
+    /// Returns `true` if the boxed type is the same as `T`.
+    /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
+    #[inline]
+    pub fn is<T: Resource>(&self) -> bool {
+        TypeId::of::<T>() == self.type_id()
+    }
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_ref`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref))
+    #[inline]
+    pub fn downcast_ref<T: Resource>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            unsafe { Some(&*((self as *const dyn Resource).cast::<T>())) }
+        } else {
+            None
+        }
+    }
+
+    /// Returns some mutable reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_mut`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut))
+    #[inline]
+    pub fn downcast_mut<T: Resource>(&mut self) -> Option<&mut T> {
+        if self.is::<T>() {
+            unsafe { Some(&mut *((self as *mut dyn Resource).cast::<T>())) }
+        } else {
+            None
+        }
+    }
+}
 
 /// The `ResourceProcessor` trait allows to process an offline resource.
 pub trait ResourceProcessor {
@@ -54,7 +88,7 @@ impl ResourceHandle {
     /// Returns a reference to the resource behind the handle if one exists.
     pub fn get<'a, T: Resource>(&'_ self, registry: &'a ResourceRegistry) -> Option<&'a T> {
         let resource = registry.get(self)?;
-        resource.as_any().downcast_ref::<T>()
+        resource.downcast_ref::<T>()
     }
 
     /// Returns a reference to the resource behind the handle if one exists.
@@ -63,7 +97,7 @@ impl ResourceHandle {
         registry: &'a mut ResourceRegistry,
     ) -> Option<&'a mut T> {
         let resource = registry.get_mut(self)?;
-        resource.as_any_mut().downcast_mut::<T>()
+        resource.downcast_mut::<T>()
     }
 }
 
@@ -362,7 +396,7 @@ mod tests {
             resource: &dyn Resource,
             writer: &mut dyn std::io::Write,
         ) -> std::io::Result<usize> {
-            let resource = resource.as_any().downcast_ref::<SampleResource>().unwrap();
+            let resource = resource.downcast_ref::<SampleResource>().unwrap();
 
             let length = resource.content.len();
             writer.write_all(&length.to_ne_bytes())?;
@@ -375,10 +409,7 @@ mod tests {
             reader: &mut dyn std::io::Read,
         ) -> std::io::Result<Box<dyn Resource>> {
             let mut resource = self.new_resource();
-            let sample_resource = resource
-                .as_any_mut()
-                .downcast_mut::<SampleResource>()
-                .unwrap();
+            let sample_resource = resource.downcast_mut::<SampleResource>().unwrap();
 
             let mut bytes = 0usize.to_ne_bytes();
             reader.read_exact(&mut bytes)?;

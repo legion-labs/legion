@@ -658,10 +658,7 @@ mod tests {
         );
 
         if let LoaderResult::Loaded(id, asset, returned_load_id) = result {
-            let asset = asset
-                .as_any()
-                .downcast_ref::<test_asset::TestAsset>()
-                .unwrap();
+            let asset = asset.downcast_ref::<test_asset::TestAsset>().unwrap();
             assert_eq!(asset.content, parent_content);
             assert_eq!(asset_id, id);
             assert_eq!(returned_load_id, load_id);
@@ -685,7 +682,7 @@ mod tests {
 
             let (asset_id, asset) = &result.assets[0];
 
-            let asset = asset.as_any().downcast_ref::<TestAsset>().unwrap();
+            let asset = asset.downcast_ref::<TestAsset>().unwrap();
             assert_eq!(asset.content, expected_content);
             assert_eq!(asset_id, &id);
         */

@@ -1352,7 +1352,6 @@ name = "legion-data-offline"
 version = "0.1.0"
 dependencies = [
  "legion-content-store",
- "legion-utils",
  "rand 0.8.4",
  "serde",
  "serde_json",
@@ -1366,7 +1365,6 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "legion-content-store",
- "legion-utils",
  "rand 0.8.4",
  "serde",
  "serde_json",
