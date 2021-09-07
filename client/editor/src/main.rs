@@ -1,5 +1,10 @@
 //! Minimalistic Sciter sample.
 
+fn main() {
+    legion_app::App::new().run();
+}
+
+/*
 use sciter_js::{sciter, window};
 
 fn main() {
@@ -34,3 +39,4 @@ fn main() {
     // Step 5: Show window and run the main app message loop until window been closed.
     window.event_loop();
 }
+*/

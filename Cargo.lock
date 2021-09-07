@@ -682,6 +682,7 @@ name = "editor"
 version = "0.1.0"
 dependencies = [
  "legion-app",
+ "legion-sciter",
  "sciter-js",
 ]
 

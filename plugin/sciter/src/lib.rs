@@ -2,15 +2,20 @@ use legion_app::prelude::*;
 
 pub struct SciterPlugin;
 
-pub struct MainToolWindow {
-    pub main_tool_window: sciter_js::window::Window,
+pub struct Windows {
+    pub primary_window: sciter_js::window::Window,
+    pub additional_windows: sciter_js::window::Window,
 }
 
+pub struct CreateWindow {}
+
 impl Plugin for SciterPlugin {
-    fn build(&self, _app: &mut App) {
-        todo!()
+    fn build(&self, app: &mut App) {
+        app.set_runner(sciter_runner);
     }
 }
+
+pub fn sciter_runner(_app: App) {}
 
 #[cfg(test)]
 mod tests {
