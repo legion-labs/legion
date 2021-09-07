@@ -3,7 +3,7 @@ use crate::asset::AssetPathId;
 use crate::resource::{
     metadata::{Metadata, ResourceHash},
     types::{ResourceId, ResourceType},
-    ResourceHandleUntyped, ResourcePathName, ResourceRegistry, RESOURCE_EXT,
+    ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
 };
 
 use std::collections::hash_map::DefaultHasher;
@@ -241,8 +241,7 @@ impl Project {
     ) -> Result<ResourceId, Error> {
         let id = ResourceId::generate_new(kind);
         let meta_path = self.metadata_path(id);
-        let mut resource_path = meta_path.clone();
-        resource_path.set_extension(RESOURCE_EXT);
+        let resource_path = self.resource_path(id);
 
         let build_dependencies = {
             let mut resource_file = File::create(&resource_path).map_err(Error::IOError)?;
@@ -379,10 +378,7 @@ impl Project {
     }
 
     fn resource_path(&self, id: ResourceId) -> PathBuf {
-        let mut path = self.resource_dir();
-        path.push(format!("{:x}", id));
-        path.set_extension(RESOURCE_EXT);
-        path
+        self.resource_dir().join(format!("{:x}", id))
     }
 
     /// Moves a `remote` resources to the list of `local` resources.

@@ -9,7 +9,7 @@ use legion_data_compiler::{
 };
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{ResourceId, ResourceProcessor, RESOURCE_EXT},
+    resource::{ResourceId, ResourceProcessor},
 };
 use legion_data_runtime::AssetLoader;
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
@@ -45,7 +45,7 @@ fn compile_atoi() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(format!("{:x}.{}", source, RESOURCE_EXT));
+        let path = resource_dir.join(format!("{:x}", source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -113,7 +113,7 @@ fn compile_intermediate() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(format!("{:x}.{}", source, RESOURCE_EXT));
+        let path = resource_dir.join(format!("{:x}", source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -207,7 +207,7 @@ fn compile_multi_resource() {
 
         resource.text_list = source_text_list.clone();
 
-        let path = resource_dir.join(format!("{:x}.{}", source, RESOURCE_EXT));
+        let path = resource_dir.join(format!("{:x}", source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");

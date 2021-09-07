@@ -7,13 +7,13 @@ use legion_data_compiler::{
 };
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{ResourceId, ResourceProcessor, RESOURCE_EXT},
+    resource::{ResourceId, ResourceProcessor},
 };
 
 mod common;
 
 fn create_test_resource(id: ResourceId, dir: &Path, content: &str) {
-    let path = dir.join(format!("{:x}.{}", id, RESOURCE_EXT));
+    let path = dir.join(format!("{:x}", id));
     let mut file = File::create(path).expect("new file");
 
     let mut proc = refs_resource::TestResourceProc {};

@@ -113,7 +113,7 @@ use clap::{AppSettings, Arg, ArgMatches, SubCommand};
 use legion_content_store::{ContentStore, ContentStoreAddr, ContentType, HddContentStore};
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{ResourceHandleUntyped, ResourceId, ResourceRegistry, RESOURCE_EXT},
+    resource::{ResourceHandleUntyped, ResourceId, ResourceRegistry},
 };
 use std::{
     env,
@@ -489,21 +489,5 @@ pub fn compiler_main(
 }
 
 fn resource_path(dir: &Path, id: ResourceId) -> PathBuf {
-    let mut path = dir.to_owned();
-    path.push(format!("{:x}", id));
-    path.set_extension(RESOURCE_EXT);
-    path
+    dir.join(format!("{:x}", id))
 }
-
-/*
-/// Deterministically create a named id of an asset in context of resource.
-///
-/// Different `AssetPathId` will produce a different [`AssetId`] for the same `name`.
-///
-/// Calling this function multiple times with the same arguments will **always produce the same result**.
-pub fn named_asset_id(
-    resource_path: &AssetPathId,
-    asset_name: &str,
-) -> AssetPathId {
-    todo!();
-}*/
