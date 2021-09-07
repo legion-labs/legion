@@ -10,7 +10,7 @@ use legion_data_compiler::{Locale, Manifest, Platform, Target};
 use legion_data_offline::resource::ResourceRegistryOptions;
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Project, ResourceId, ResourceName, ResourceProcessor, ResourceRegistry},
+    resource::{Project, ResourceId, ResourcePathName, ResourceProcessor, ResourceRegistry},
 };
 use legion_data_runtime::AssetLoader;
 use multitext_resource::MultiTextResource;
@@ -49,7 +49,7 @@ fn target_dir() -> PathBuf {
 }
 
 fn create_resource(
-    name: ResourceName,
+    name: ResourcePathName,
     deps: &[AssetPathId],
     project: &mut Project,
     resources: &mut ResourceRegistry,
@@ -60,7 +60,7 @@ fn create_resource(
             .unwrap()
             .typed::<refs_resource::TestResource>();
         let resource = res.get_mut(resources).unwrap();
-        resource.content = name.display().to_string(); // each resource needs unique content to generate a unique resource.
+        resource.content = name.to_string(); // each resource needs unique content to generate a unique resource.
         resource.build_deps.extend_from_slice(deps);
         res
     };
@@ -100,7 +100,7 @@ fn compile_change_no_deps() {
             .typed::<refs_resource::TestResource>();
         let resource_id = project
             .add_resource(
-                ResourceName::from("resource"),
+                ResourcePathName::new("resource"),
                 refs_resource::TYPE_ID,
                 &resource_handle,
                 &mut resources,
@@ -210,16 +210,26 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
 
     let mut resources = setup_registry();
 
-    let res_c = create_resource(ResourceName::from("C"), &[], &mut project, &mut resources);
-    let res_e = create_resource(ResourceName::from("E"), &[], &mut project, &mut resources);
+    let res_c = create_resource(
+        ResourcePathName::new("C"),
+        &[],
+        &mut project,
+        &mut resources,
+    );
+    let res_e = create_resource(
+        ResourcePathName::new("E"),
+        &[],
+        &mut project,
+        &mut resources,
+    );
     let res_d = create_resource(
-        ResourceName::from("D"),
+        ResourcePathName::new("D"),
         &[AssetPathId::from(res_e).push(refs_resource::TYPE_ID)],
         &mut project,
         &mut resources,
     );
     let res_b = create_resource(
-        ResourceName::from("B"),
+        ResourcePathName::new("B"),
         &[
             AssetPathId::from(res_c).push(refs_resource::TYPE_ID),
             AssetPathId::from(res_e).push(refs_resource::TYPE_ID),
@@ -228,7 +238,7 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
         &mut resources,
     );
     let res_a = create_resource(
-        ResourceName::from("A"),
+        ResourcePathName::new("A"),
         &[
             AssetPathId::from(res_b).push(refs_resource::TYPE_ID),
             AssetPathId::from(res_d).push(refs_resource::TYPE_ID),
@@ -257,7 +267,7 @@ fn intermediate_resource() {
         resource_handle.get_mut(&mut resources).unwrap().content = source_magic_value.clone();
         project
             .add_resource(
-                ResourceName::from("resource"),
+                ResourcePathName::new("resource"),
                 text_resource::TYPE_ID,
                 &resource_handle,
                 &mut resources,
@@ -465,7 +475,7 @@ fn named_path_cache_use() {
         resource_handle.get_mut(&mut resources).unwrap().text_list = magic_list.clone();
         project
             .add_resource(
-                ResourceName::from("resource"),
+                ResourcePathName::new("resource"),
                 multitext_resource::TYPE_ID,
                 &resource_handle,
                 &mut resources,
@@ -726,7 +736,7 @@ fn link() {
         child.content = String::from("test child content");
         let child_id = project
             .add_resource(
-                ResourceName::from("child"),
+                ResourcePathName::new("child"),
                 refs_resource::TYPE_ID,
                 &child_handle,
                 &mut resources,
@@ -744,7 +754,7 @@ fn link() {
         parent.build_deps = vec![AssetPathId::from(child_id).push(refs_resource::TYPE_ID)];
         project
             .add_resource(
-                ResourceName::from("parent"),
+                ResourcePathName::new("parent"),
                 refs_resource::TYPE_ID,
                 &parent_handle,
                 &mut resources,
@@ -808,7 +818,7 @@ fn verify_manifest() {
         let mut project = Project::create_new(project_dir).expect("new project");
         let child_id = project
             .add_resource(
-                ResourceName::from("child"),
+                ResourcePathName::new("child"),
                 refs_resource::TYPE_ID,
                 &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
                 &mut resources,
@@ -827,7 +837,7 @@ fn verify_manifest() {
 
         project
             .add_resource(
-                ResourceName::from("parent"),
+                ResourcePathName::new("parent"),
                 refs_resource::TYPE_ID,
                 &child_handle,
                 &mut resources,

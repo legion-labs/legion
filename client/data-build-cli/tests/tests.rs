@@ -4,7 +4,7 @@ use legion_content_store::ContentStoreAddr;
 use legion_data_build::DataBuildOptions;
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Project, ResourceName, ResourceRegistryOptions},
+    resource::{Project, ResourcePathName, ResourceRegistryOptions},
 };
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
@@ -37,7 +37,7 @@ fn no_intermediate_resource() {
 
             project
                 .add_resource(
-                    ResourceName::from("test_source"),
+                    ResourcePathName::new("test_source"),
                     refs_resource::TYPE_ID,
                     &resource,
                     &mut resources,
@@ -123,7 +123,7 @@ fn with_intermediate_resource() {
 
             project
                 .add_resource(
-                    ResourceName::from("test_source"),
+                    ResourcePathName::new("test_source"),
                     text_resource::TYPE_ID,
                     &resource,
                     &mut resources,

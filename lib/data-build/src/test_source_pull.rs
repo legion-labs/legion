@@ -2,7 +2,7 @@ use crate::DataBuildOptions;
 use legion_content_store::ContentStoreAddr;
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Project, ResourceName, ResourceRegistry, ResourceRegistryOptions},
+    resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
 };
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
@@ -26,7 +26,7 @@ fn no_dependencies() {
         let mut project = Project::create_new(project_dir).expect("failed to create a project");
         let id = project
             .add_resource(
-                ResourceName::from("resource"),
+                ResourcePathName::new("resource"),
                 refs_resource::TYPE_ID,
                 &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
                 &mut resources,
@@ -67,7 +67,7 @@ fn with_dependency() {
         let mut project = Project::create_new(project_dir).expect("failed to create a project");
         let child_id = project
             .add_resource(
-                ResourceName::from("child"),
+                ResourcePathName::new("child"),
                 refs_resource::TYPE_ID,
                 &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
                 &mut resources,
@@ -84,7 +84,7 @@ fn with_dependency() {
         };
         let parent_id = project
             .add_resource(
-                ResourceName::from("parent"),
+                ResourcePathName::new("parent"),
                 refs_resource::TYPE_ID,
                 &parent_handle,
                 &mut resources,
@@ -128,7 +128,7 @@ fn with_derived_dependency() {
 
         let child_id = project
             .add_resource(
-                ResourceName::from("intermediate_child"),
+                ResourcePathName::new("intermediate_child"),
                 refs_resource::TYPE_ID,
                 &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
                 &mut resources,
@@ -147,7 +147,7 @@ fn with_derived_dependency() {
         };
         let _parent_id = project
             .add_resource(
-                ResourceName::from("intermetidate_parent"),
+                ResourcePathName::new("intermetidate_parent"),
                 refs_resource::TYPE_ID,
                 &parent_handle,
                 &mut resources,
