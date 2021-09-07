@@ -107,7 +107,7 @@ impl AssetRegistry {
     pub fn get_untyped<T: Asset>(&self, handle: &HandleUntyped) -> Option<&T> {
         if let Some((asset_id, _)) = self.ref_counts.get(&handle.id) {
             if let Some(asset) = self.assets.get(asset_id) {
-                return asset.as_any().downcast_ref::<T>();
+                return asset.downcast_ref::<T>();
             }
         }
         None
@@ -119,7 +119,7 @@ impl AssetRegistry {
     pub fn get<T: Asset>(&self, handle: &Handle<T>) -> Option<&T> {
         if let Some((asset_id, _)) = self.ref_counts.get(&handle.id) {
             if let Some(asset) = self.assets.get(asset_id) {
-                return asset.as_any().downcast_ref::<T>();
+                return asset.downcast_ref::<T>();
             }
         }
         None

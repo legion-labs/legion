@@ -96,15 +96,7 @@ struct Material {
     metalness: String,
 }
 
-impl Asset for Material {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
+impl Asset for Material {}
 
 #[derive(Serialize, Deserialize)]
 struct Physics {

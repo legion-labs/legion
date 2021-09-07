@@ -465,15 +465,7 @@ mod tests {
         content: isize,
         dependencies: Vec<AssetPathId>,
     }
-    impl Resource for NullResource {
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-
-        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-            self
-        }
-    }
+    impl Resource for NullResource {}
     struct NullResourceProc {}
     impl ResourceProcessor for NullResourceProc {
         fn new_resource(&mut self) -> Box<dyn Resource> {
@@ -485,7 +477,6 @@ mod tests {
 
         fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
             resource
-                .as_any()
                 .downcast_ref::<NullResource>()
                 .unwrap()
                 .dependencies
@@ -497,7 +488,7 @@ mod tests {
             resource: &dyn Resource,
             writer: &mut dyn std::io::Write,
         ) -> std::io::Result<usize> {
-            let resource = resource.as_any().downcast_ref::<NullResource>().unwrap();
+            let resource = resource.downcast_ref::<NullResource>().unwrap();
             let mut nbytes = 0;
 
             let bytes = resource.content.to_ne_bytes();
@@ -526,10 +517,7 @@ mod tests {
             reader: &mut dyn std::io::Read,
         ) -> std::io::Result<Box<dyn Resource>> {
             let mut resource = self.new_resource();
-            let mut res = resource
-                .as_any_mut()
-                .downcast_mut::<NullResource>()
-                .unwrap();
+            let mut res = resource.downcast_mut::<NullResource>().unwrap();
 
             let mut buf = res.content.to_ne_bytes();
             reader.read_exact(&mut buf[..])?;

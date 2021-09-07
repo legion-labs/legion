@@ -319,7 +319,7 @@ fn intermediate_resource() {
         let resource = creator
             .read_resource(&mut &resource_content[..])
             .expect("loaded assets");
-        let resource = resource.as_any().downcast_ref::<TextResource>().unwrap();
+        let resource = resource.downcast_ref::<TextResource>().unwrap();
 
         assert_eq!(
             source_magic_value.chars().rev().collect::<String>(),
@@ -337,7 +337,7 @@ fn intermediate_resource() {
         let resource = creator
             .load(integer_asset::TYPE_ID, &mut &resource_content[..])
             .expect("loaded assets");
-        let resource = resource.as_any().downcast_ref::<IntegerAsset>().unwrap();
+        let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 
         let stringified = resource.magic_value.to_string();
         assert_eq!(
@@ -551,7 +551,7 @@ fn named_path_cache_use() {
         let resource = creator
             .load(integer_asset::TYPE_ID, &mut &resource_content[..])
             .expect("loaded assets");
-        let resource = resource.as_any().downcast_ref::<IntegerAsset>().unwrap();
+        let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 
         let stringified = resource.magic_value.to_string();
         assert_eq!(magic_list[0], stringified);

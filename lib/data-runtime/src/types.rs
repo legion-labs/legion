@@ -1,7 +1,12 @@
 use core::fmt;
 use legion_content_store::ContentType;
 use serde::{Deserialize, Serialize};
-use std::{any::Any, fmt::LowerHex, hash::Hash, io};
+use std::{
+    any::{Any, TypeId},
+    fmt::LowerHex,
+    hash::Hash,
+    io,
+};
 
 /// A unique id of a runtime asset.
 ///
@@ -50,12 +55,66 @@ impl ToString for AssetId {
 pub type AssetType = ContentType;
 
 /// Types implementing `Asset` represent non-mutable runtime data.
-pub trait Asset: Any + Send {
-    /// Cast to &dyn Any type.
-    fn as_any(&self) -> &dyn Any;
+pub trait Asset: Any + Send {}
 
-    /// Cast to &mut dyn Any type.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
+/// Note: Based on impl of dyn Any
+impl dyn Asset {
+    /// Returns `true` if the boxed type is the same as `T`.
+    /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
+    #[inline]
+    pub fn is<T: Asset>(&self) -> bool {
+        TypeId::of::<T>() == self.type_id()
+    }
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_ref`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref))
+    #[inline]
+    pub fn downcast_ref<T: Asset>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            unsafe { Some(&*((self as *const dyn Asset).cast::<T>())) }
+        } else {
+            None
+        }
+    }
+
+    /// Returns some mutable reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_mut`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut))
+    #[inline]
+    pub fn downcast_mut<T: Asset>(&mut self) -> Option<&mut T> {
+        if self.is::<T>() {
+            unsafe { Some(&mut *((self as *mut dyn Asset).cast::<T>())) }
+        } else {
+            None
+        }
+    }
+}
+
+/// Note: Based on impl of dyn Any
+impl dyn Asset + Send + Sync {
+    /// Returns `true` if the boxed type is the same as `T`.
+    /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
+    #[inline]
+    pub fn is<T: Asset>(&self) -> bool {
+        <dyn Asset>::is::<T>(self)
+    }
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_ref`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref))
+    #[inline]
+    pub fn downcast_ref<T: Asset>(&self) -> Option<&T> {
+        <dyn Asset>::downcast_ref::<T>(self)
+    }
+
+    /// Returns some mutable reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_mut`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut))
+    #[inline]
+    pub fn downcast_mut<T: Asset>(&mut self) -> Option<&mut T> {
+        <dyn Asset>::downcast_mut::<T>(self)
+    }
 }
 
 /// An interface allowing to create and initialize assets.
