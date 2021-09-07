@@ -4,6 +4,8 @@
 //!
 //! [`ResourceRegistry`] takes responsibility of managing the in-memory representation of resources.
 
+pub use legion_data_offline_derive::Resource;
+
 /// Types implementing `Resource` represent editor data.
 pub trait Resource: Any {}
 

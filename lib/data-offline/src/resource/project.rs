@@ -500,11 +500,12 @@ mod tests {
     const RESOURCE_SKELETON: ResourceType = ResourceType::new(b"skeleton");
     const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
 
+    #[derive(Resource)]
     struct NullResource {
         content: isize,
         dependencies: Vec<AssetPathId>,
     }
-    impl Resource for NullResource {}
+
     struct NullResourceProc {}
     impl ResourceProcessor for NullResourceProc {
         fn new_resource(&mut self) -> Box<dyn Resource> {

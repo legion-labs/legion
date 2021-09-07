@@ -200,11 +200,10 @@ mod tests {
 
     use super::Resource;
 
+    #[derive(Resource)]
     struct SampleResource {
         content: String,
     }
-
-    impl Resource for SampleResource {}
 
     struct SampleProcessor {
         default_content: String,
