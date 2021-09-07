@@ -6,45 +6,13 @@
 //! The module is responsible for management of `resources` - data in offline format, optimized for editing and writing,
 //! which is operated on by the editor and various tools.
 //!
-//! The [`resource::Project`] keeps track of resources that are part of the project and is responsible for their storage - which includes
-//! both on-disk storage and source control interactions. The [`resource::ResourceRegistry`] on the other handle takes responsibility
+//! [`resource::Project`] keeps track of resources that are part of the project and is responsible for their storage - which includes
+//! both on-disk storage and source control interactions. [`resource::ResourceRegistry`] takes responsibility
 //! of managing the in-memory representation of `resources`.
 //!
 //! From [`resource::Project`]'s perspective there are two kinds of resources:
 //! * *local resources* - those modified by local user
 //! * *remote resources* - those synced using backing source-control.
-//!
-//! # Project Index
-//!
-//! The state of the project is read from a file once [`resource::Project`] is opened and kept in memory throughout its lifetime.
-//! The changes are written back to the file once [`resource::Project`] is dropped.
-//!
-//! The state of a project consists of two sets of [`resource::ResourceId`]s:
-//! - Local [`resource::ResourceId`] list - locally modified resources.
-//! - Remote [`resource::ResourceId`] list - synced resources.
-//!
-//! A resource consists of a resource content file and a `.meta` file associated to it.
-//! [`resource::ResourceId`] is enough to locate a resource content file and its associated `.meta` file on disk.
-//!
-//! An example of a project with 2 offline resources on disk looks as follows:
-//! ```markdown
-//!  ./
-//!  | + offline/
-//!  | |- a81fb4498cd04368
-//!  | |- a81fb4498cd04368.meta
-//!  | |- 8063daaf864780d6
-//!  | |- 8063daaf864780d6.meta
-//!  |- project.index
-//! ```
-//!
-//! ## Resource `.meta` file
-//!
-//! The information in `.meta` file includes:
-//! - List of [`resource::ResourceId`]s of resource's build dependencies.
-//! - Resource's name/path.
-//! - Checksum of resource's content file.
-//!
-//! Note: Resource's name/path is only used for display purposes and can be changed freely.
 
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section

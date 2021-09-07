@@ -78,7 +78,7 @@ impl<T: AsRef<str>> From<&T> for ResourcePathName {
 }
 
 /// Extension of a resource file.
-pub const RESOURCE_EXT: &str = "blob";
+pub const RESOURCE_EXT: &str = "";
 
 /// A unique id of an offline resource.
 ///

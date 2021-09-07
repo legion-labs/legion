@@ -1,5 +1,8 @@
 //! Offline management of resources.
 //!
+//! [`Project`] keeps track of resources that are part of the project and is responsible for their storage - which includes both on-disk storage and source control interactions.
+//!
+//! [`ResourceRegistry`] takes responsibility of managing the in-memory representation of resources.
 
 /// Types implementing `Resource` represent editor data.
 pub trait Resource: Any {}

@@ -37,11 +37,46 @@ struct ResourceDb {
 ///
 /// It provides a resource-oriented interface to source-control.
 ///
-/// For more about loading, saving and managing resources in the memory see [`ResourceRegistry`]
+/// # Project Index
+///
+/// The state of the project is read from a file once [`Project`] is opened and kept in memory throughout its lifetime.
+/// The changes are written back to the file once [`Project`] is dropped.
+///
+/// The state of a project consists of two sets of [`ResourceId`]s:
+/// - Local [`ResourceId`] list - locally modified resources.
+/// - Remote [`ResourceId`] list - synced resources.
+///
+/// A resource consists of a resource content file and a `.meta` file associated to it.
+/// [`ResourceId`] is enough to locate a resource content file and its associated `.meta` file on disk.
+///
+/// ## Example directory structure
+///
+/// An example of a project with 2 offline resources on disk looks as follows:
+/// ```markdown
+///  ./
+///  | + offline/
+///  | |- a81fb4498cd04368
+///  | |- a81fb4498cd04368.meta
+///  | |- 8063daaf864780d6
+///  | |- 8063daaf864780d6.meta
+///  |- project.index
+/// ```
+///
+/// ## Resource `.meta` file
+///
+/// The information in `.meta` file includes:
+/// - List of [`ResourceId`]s of resource's build dependencies.
+/// - Resource's name - [`ResourcePathName`].
+/// - Checksum of resource's content file.
+///
+/// Note: Resource's [`ResourcePathName`] is only used for display purposes and can be changed freely.
+///
+/// For more about loading, saving and managing resources in memory see [`ResourceRegistry`]
 pub struct Project {
     file: std::fs::File,
     db: ResourceDb,
     project_dir: PathBuf,
+    resource_dir: PathBuf,
 }
 
 #[derive(Debug)]
@@ -104,10 +139,14 @@ impl Project {
         serde_json::to_writer(&file, &db).map_err(|_e| Error::ParseError)?;
 
         let project_dir = index_path.parent().unwrap().to_owned();
+        let resource_dir = project_dir.join("offline");
+        std::fs::create_dir(&resource_dir).map_err(Error::IOError)?;
+
         Ok(Self {
             file,
             db,
             project_dir,
+            resource_dir,
         })
     }
 
@@ -124,15 +163,18 @@ impl Project {
         let db = serde_json::from_reader(&file).map_err(|_e| Error::ParseError)?;
 
         let project_dir = index_path.parent().unwrap().to_owned();
+        let resource_dir = project_dir.join("offline");
         Ok(Self {
             file,
             db,
             project_dir,
+            resource_dir,
         })
     }
 
     /// Deletes the project by deleting the index file.
     pub fn delete(self) {
+        std::fs::remove_dir_all(self.resource_dir()).unwrap_or(());
         let index_path = self.indexfile_path();
         let _res = fs::remove_file(index_path);
     }
@@ -326,7 +368,7 @@ impl Project {
 
     /// Returns the root directory where resources are located.
     pub fn resource_dir(&self) -> PathBuf {
-        self.project_dir.clone()
+        self.resource_dir.clone()
     }
 
     fn metadata_path(&self, id: ResourceId) -> PathBuf {
@@ -337,7 +379,7 @@ impl Project {
     }
 
     fn resource_path(&self, id: ResourceId) -> PathBuf {
-        let mut path = self.project_dir.clone();
+        let mut path = self.resource_dir();
         path.push(format!("{:x}", id));
         path.set_extension(RESOURCE_EXT);
         path
@@ -450,6 +492,7 @@ mod tests {
 
         let projectindex_path = Project::root_to_index_path(root.path());
         let projectindex_file = File::create(projectindex_path).unwrap();
+        std::fs::create_dir(root.path().join("offline")).unwrap();
 
         serde_json::to_writer(projectindex_file, &ResourceDb::default()).unwrap();
         root
