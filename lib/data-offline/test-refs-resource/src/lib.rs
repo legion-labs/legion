@@ -15,13 +15,13 @@ pub const TYPE_ID: ResourceType = ResourceType::new(b"test_resource");
 /// Resource temporarily used for testing.
 ///
 /// To be removed once real resource types exist.
+#[derive(Resource)]
 pub struct TestResource {
     /// Resource's content.
     pub content: String,
     /// Resource's build dependencies.
     pub build_deps: Vec<AssetPathId>,
 }
-impl Resource for TestResource {}
 
 /// [`TestResource`]'s resource processor temporarily used for testings.
 ///

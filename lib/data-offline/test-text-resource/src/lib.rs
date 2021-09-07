@@ -5,11 +5,10 @@ use legion_data_offline::{
 
 pub const TYPE_ID: ResourceType = ResourceType::new(b"text_resource");
 
+#[derive(Resource)]
 pub struct TextResource {
     pub content: String,
 }
-
-impl Resource for TextResource {}
 
 pub struct TextResourceProc {}
 

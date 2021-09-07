@@ -5,11 +5,10 @@ use legion_data_offline::{
 
 pub const TYPE_ID: ResourceType = ResourceType::new(b"multitext_resource");
 
+#[derive(Resource)]
 pub struct MultiTextResource {
     pub text_list: Vec<String>,
 }
-
-impl Resource for MultiTextResource {}
 
 pub struct MultiTextResourceProc {}
 
