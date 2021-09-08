@@ -175,7 +175,11 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: release
-          path: ./target
+          path: |
+            ./target
+            !./target/build
+            !./target/deps
+            !./target/incremental
 
   dockerize:
     name: Building docker images and deploying them
