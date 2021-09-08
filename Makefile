@@ -1,6 +1,6 @@
 # make takes the first target as the default target, so please keep it at the top
 # all the checks used in the CI
-check: check-format check-build check-clippy check-deps
+check: check-format check-build check-clippy check-deps check-dockerize
 
 check-env:
 	rustup --version
@@ -21,6 +21,9 @@ check-clippy:
 
 check-deps:
 	cargo deny check
+
+check-dockerize:
+	echo "cargo dockerize check"
 
 test: test-build test-run
 
@@ -51,7 +54,16 @@ doc:
 	mdbook build ./doc/
 	echo "<meta http-equiv=\"refresh\" content=\"0; URL=book/index.html\"/>" > target/doc/index.html
 
+dockerize:
+	echo "cargo dockerize build"
+
+dockerize-release:
+	echo "cargo dockerize build --release"
+
+dockerize-push:
+	echo "cargo dockerize push --provider=aws"
+
 clean:
 	cargo clean
 
-.PHONY: check-format check-build check-clippy check-deps check-env test test-build test-run bench bench-build bench-run build-all build build-release doc clean
+.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release doc dockerize dockerize-deploy clean

@@ -25,8 +25,12 @@ jobs:
       - name: Run clippy checks
         run: make check-clippy
 
+      - name: Run dockerize checks
+        run: make check-dockerize
+
       - name: Run dependencies checks
         run: make check-deps
+
 
   test:
     name: Running tests
@@ -152,3 +156,40 @@ jobs:
           publish_branch: gh-pages
           publish_dir: ./target/doc
           force_orphan: true
+
+  build_release:
+    name: Building release binaries
+    needs: lint
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build release
+        run: make build-release
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: release
+          path: ./target
+
+  dockerize:
+    name: Building docker images and deploying them
+    needs: [test, bench, build_docs, build_release]
+    runs-on: ubuntu-20.04
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: release
+          path: ./target
+
+      - name: Docker build
+        run: make dockerize-release
+
+      - name: Docker push
+        run: make dockerize-push
