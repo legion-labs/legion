@@ -5,28 +5,28 @@ use legion_math::prelude::*;
 use legion_utils::HashMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct Instance {
     original: String,
     overrides: HashMap<String, String>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Entity {
+#[derive(Asset, Serialize, Deserialize)]
+pub struct Entity {
     name: String,
     children: Vec<String>,
     parent: Option<String>,
     components: Vec<Component>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 enum GIContribution {
     Default,
     Blocker,
     Exclude,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct Visual {
     renderable_geometry: String,
     shadow_receiver: bool,
@@ -35,7 +35,7 @@ struct Visual {
     gi_contribution: GIContribution,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct Transform {
     position: Vec3,
     rotation: Quat,
@@ -43,16 +43,16 @@ struct Transform {
     apply_to_children: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct GlobalIllumination {}
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 enum ProjectionType {
     Orthogonal,
     Perspective,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct View {
     fov: f32,
     near: f32,
@@ -60,10 +60,10 @@ struct View {
     projection_type: ProjectionType,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct Light {}
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 enum Component {
     Transform(Transform),
     Visual(Visual),
@@ -96,36 +96,36 @@ struct Material {
     metalness: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct Physics {
     dynamic: bool,
     collision_geometry: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct Script {
     code: String,
     exposed_vars: HashMap<String, String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct CollisionMaterial {
     impact_script: Option<Script>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct VoxelisationConfig {}
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct NavMeshLayerConfig {}
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct NavMesh {
     voxelisation_config: VoxelisationConfig,
     layer_config: Vec<NavMeshLayerConfig>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Asset, Serialize, Deserialize)]
 struct Metadata {
     name: String,
     dependencies: Vec<String>,
@@ -163,21 +163,24 @@ where
         }
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn legion_data_runtime::Asset + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Asset + Send + Sync)) {}
 }
+
+pub const ENTITY_TYPE_ID: AssetType = AssetType::new(b"ron_entity");
+pub const MATERIAL_TYPE_ID: AssetType = AssetType::new(b"ron_material");
+pub const MESH_TYPE_ID: AssetType = AssetType::new(b"ron_mesh");
+pub const SUB_MESH_TYPE_ID: AssetType = AssetType::new(b"ron_sub_mesh");
 
 pub fn register_asset_loaders(asset_options: AssetRegistryOptions) -> AssetRegistryOptions {
     asset_options
+        .add_creator(ENTITY_TYPE_ID, Box::new(RONAssetCreator::<Entity>::new()))
         .add_creator(
-            AssetType::new(b"ron_material"),
+            MATERIAL_TYPE_ID,
             Box::new(RONAssetCreator::<Material>::new()),
         )
+        .add_creator(MESH_TYPE_ID, Box::new(RONAssetCreator::<Mesh>::new()))
         .add_creator(
-            AssetType::new(b"ron_mesh"),
-            Box::new(RONAssetCreator::<Mesh>::new()),
-        )
-        .add_creator(
-            AssetType::new(b"ron_sub_mesh"),
+            SUB_MESH_TYPE_ID,
             Box::new(RONAssetCreator::<SubMesh>::new()),
         )
 }

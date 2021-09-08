@@ -1,9 +1,24 @@
+use crate::data_types;
 use legion_app::Plugin;
-use legion_content_store::RamContentStore;
-use legion_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryOptions};
+use legion_content_store::{ContentStoreAddr, HddContentStore};
+use legion_data_runtime::{
+    manifest::Manifest, AssetId, AssetRegistry, AssetRegistryOptions, Handle,
+};
 use legion_ecs::prelude::*;
 
-use crate::data_types;
+pub struct AssetRegistrySettings {
+    content_store_addr: String,
+    _root_object: String,
+}
+
+impl AssetRegistrySettings {
+    pub fn new(content_store_addr: &str, root_object: &str) -> Self {
+        Self {
+            content_store_addr: content_store_addr.to_string(),
+            _root_object: root_object.to_string(),
+        }
+    }
+}
 
 pub struct AssetRegistryPlugin {}
 
@@ -15,19 +30,46 @@ impl Default for AssetRegistryPlugin {
 
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut legion_app::App) {
-        // construct default AssetRegistry
-        let content_store = Box::new(RamContentStore::default());
-        let manifest = Manifest::default();
-        let asset_options = AssetRegistryOptions::new();
-        let asset_options = data_types::register_asset_loaders(asset_options);
-        let registry = asset_options.create(content_store, manifest);
+        if let Some(settings) = app.world.get_resource::<AssetRegistrySettings>() {
+            let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.as_str());
+            if let Some(content_store) = HddContentStore::open(content_store_addr) {
+                let manifest = Manifest::default();
 
-        app.insert_non_send_resource(registry)
-            .add_system(update_asset_registry.exclusive_system());
+                let asset_options = AssetRegistryOptions::new();
+                let asset_options = data_types::register_asset_loaders(asset_options);
+                let registry = asset_options.create(Box::new(content_store), manifest);
+
+                app.insert_non_send_resource(registry)
+                    .add_startup_system(Self::setup.exclusive_system())
+                    .add_system(Self::update.exclusive_system());
+            } else {
+                eprintln!(
+                    "Unable to open content storage in {}",
+                    settings.content_store_addr
+                );
+            }
+        } else {
+            eprintln!("Missing AssetRegistrySettings resource, must add to app");
+        }
     }
 }
 
-fn update_asset_registry(world: &mut World) {
-    let mut registry = world.get_non_send_resource_mut::<AssetRegistry>().unwrap();
-    registry.update();
+impl AssetRegistryPlugin {
+    fn setup(world: &mut World) {
+        let world = world.cell();
+        let mut registry = world.get_non_send_mut::<AssetRegistry>().unwrap();
+
+        let id = AssetId::new(data_types::ENTITY_TYPE_ID, 0);
+        // if let Some(settings) = world.get_resource::<AssetRegistrySettings>() {
+        //     let root = settings.root_object;
+        // }
+
+        let _root_entity: Handle<data_types::Entity> = registry.load(id);
+    }
+
+    fn update(world: &mut World) {
+        let world = world.cell();
+        let mut registry = world.get_non_send_mut::<AssetRegistry>().unwrap();
+        registry.update();
+    }
 }
