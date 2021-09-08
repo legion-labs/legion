@@ -9,4 +9,4 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 hassle-rs = "0.5"
-spirv-reflect = "0.2"
+rspirv-reflect = "0.4"
