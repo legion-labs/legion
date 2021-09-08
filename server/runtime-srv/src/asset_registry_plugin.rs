@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use crate::data_types;
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
@@ -7,14 +9,14 @@ use legion_data_runtime::{
 use legion_ecs::prelude::*;
 
 pub struct AssetRegistrySettings {
-    content_store_addr: String,
+    content_store_addr: PathBuf,
     _root_object: String,
 }
 
 impl AssetRegistrySettings {
-    pub fn new(content_store_addr: &str, root_object: &str) -> Self {
+    pub fn new(content_store_addr: impl AsRef<Path>, root_object: &str) -> Self {
         Self {
-            content_store_addr: content_store_addr.to_string(),
+            content_store_addr: content_store_addr.as_ref().to_owned(),
             _root_object: root_object.to_string(),
         }
     }
@@ -31,7 +33,7 @@ impl Default for AssetRegistryPlugin {
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut legion_app::App) {
         if let Some(settings) = app.world.get_resource::<AssetRegistrySettings>() {
-            let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.as_str());
+            let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.clone());
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
                 let manifest = Manifest::default();
 
@@ -44,7 +46,7 @@ impl Plugin for AssetRegistryPlugin {
                     .add_system(Self::update.exclusive_system());
             } else {
                 eprintln!(
-                    "Unable to open content storage in {}",
+                    "Unable to open content storage in {:?}",
                     settings.content_store_addr
                 );
             }

@@ -101,7 +101,7 @@ fn main() {
         .version(clap::crate_version!())
         .about("Server that will run with runtime data, and execute world simulation, ready to be streamed to a runtime client.")
         .arg(Arg::with_name(ARG_NAME_CAS)
-            .long(ARG_NAME_CAS)    
+            .long(ARG_NAME_CAS)
             .takes_value(true)
             .help("Path to folder containing the content storage files"))
         .arg(Arg::with_name(ARG_NAME_ROOT)
