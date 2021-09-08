@@ -261,6 +261,8 @@ impl AssetLoaderIO {
                             }
                         }
                     }
+                } else {
+                    // todo(kstatik): tell the user that the id is invalid
                 }
                 None
             }
