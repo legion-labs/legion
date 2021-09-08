@@ -1779,6 +1779,8 @@ name = "multitext-resource"
 version = "0.1.0"
 dependencies = [
  "legion-data-offline",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2325,6 +2327,8 @@ name = "refs-resource"
 version = "0.1.0"
 dependencies = [
  "legion-data-offline",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3057,6 +3061,8 @@ name = "text-resource"
 version = "0.1.0"
 dependencies = [
  "legion-data-offline",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
