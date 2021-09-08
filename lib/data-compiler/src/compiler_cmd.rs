@@ -60,9 +60,10 @@ use crate::{
     compiler_api::CompilerDescriptor, CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 
-use legion_content_store::{ContentStoreAddr, ContentType};
+use legion_content_store::ContentStoreAddr;
 use legion_data_offline::asset::AssetPathId;
 
+use legion_data_runtime::ContentType;
 use serde::{Deserialize, Serialize};
 
 /// Description of a compiler.

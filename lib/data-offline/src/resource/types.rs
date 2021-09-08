@@ -1,7 +1,12 @@
 use core::fmt;
-use std::{fmt::LowerHex, hash::Hash, str::FromStr};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt::LowerHex,
+    hash::Hash,
+    str::FromStr,
+};
 
-use legion_content_store::ContentType;
+use legion_data_runtime::{ContentId, ContentType};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -83,66 +88,86 @@ impl<T: AsRef<str>> From<&T> for ResourcePathName {
 /// - resource unique id - 32 bits
 /// - [`ResourceType`] - 32 bits
 #[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Serialize, Deserialize, Hash)]
-pub struct ResourceId {
-    id: std::num::NonZeroU64,
-}
+pub struct ResourceId(ContentId);
 
 impl ResourceId {
     /// Creates a new random id.
     pub fn generate_new(kind: ResourceType) -> Self {
         let rand_id: u64 = rand::thread_rng().gen();
-
-        let internal = kind.stamp(rand_id);
-        Self {
-            id: std::num::NonZeroU64::new(internal).unwrap(),
-        }
+        Self(ContentId::new(kind.into(), rand_id))
     }
 
     /// Returns the type of the resource.
     pub fn resource_type(&self) -> ResourceType {
-        let type_id = (u64::from(self.id) >> 32) as u32;
-        ResourceType::from_raw(type_id)
-    }
-
-    /// TODO: This should be removed. Exposed for serialization for now.
-    pub fn get_internal(&self) -> u64 {
-        self.id.get()
-    }
-
-    /// TODO: This should be removed. Exposed for deserialization for now.
-    pub fn from_raw(internal: u64) -> Option<Self> {
-        let id = std::num::NonZeroU64::new(internal)?;
-        Some(Self { id })
+        ResourceType(self.0.kind())
     }
 }
 
 impl LowerHex for ResourceId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt::LowerHex::fmt(&self.id, f)
+        fmt::LowerHex::fmt(&self.0, f)
     }
 }
 
 impl fmt::Display for ResourceId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{:#016x}", self.id))
+        f.write_fmt(format_args!("{}", self.0))
     }
 }
 
 impl FromStr for ResourceId {
     type Err = std::num::ParseIntError;
 
-    fn from_str(mut s: &str) -> Result<Self, Self::Err> {
-        s = s.trim_start_matches("0x");
-        let id = u64::from_str_radix(s, 16)?;
-        if id == 0 {
-            Err("Z".parse::<i32>().expect_err("ParseIntError"))
-        } else {
-            // SAFETY: id is not zero in this else clause.
-            let id = unsafe { std::num::NonZeroU64::new_unchecked(id) };
-            Ok(Self { id })
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        ContentId::from_str(s)?
+            .try_into()
+            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))
+    }
+}
+
+impl TryFrom<ContentId> for ResourceId {
+    type Error = ();
+
+    fn try_from(value: ContentId) -> Result<Self, Self::Error> {
+        if value.kind().is_rt() {
+            return Err(());
         }
+        Ok(Self(value))
     }
 }
 
 /// Type identifier of an offline resource.
-pub type ResourceType = ContentType;
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
+pub struct ResourceType(ContentType);
+
+impl ResourceType {
+    /// Creates a new type id from a byte array.
+    ///
+    /// It is recommended to use this method to define a public constant
+    /// which can be used to identify a resource type.
+    pub const fn new(v: &[u8]) -> Self {
+        Self(ContentType::new(v, false))
+    }
+
+    /// Returns underlying id (at compile time).
+    pub const fn content(&self) -> ContentType {
+        self.0
+    }
+}
+
+impl TryFrom<ContentType> for ResourceType {
+    type Error = ();
+
+    fn try_from(value: ContentType) -> Result<Self, Self::Error> {
+        match value.is_rt() {
+            true => Err(()),
+            false => Ok(Self(value)),
+        }
+    }
+}
+
+impl From<ResourceType> for ContentType {
+    fn from(value: ResourceType) -> Self {
+        value.0
+    }
+}

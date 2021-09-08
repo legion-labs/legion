@@ -37,9 +37,9 @@ where
 
     for dep in primary_dependencies {
         writer
-            .write_u64::<LittleEndian>(unsafe { std::mem::transmute::<AssetId, u64>(dep) })
+            .write_u128::<LittleEndian>(unsafe { std::mem::transmute::<AssetId, u128>(dep) })
             .map_err(|_e| Error::LinkFailed)?;
-        written += std::mem::size_of::<u64>();
+        written += std::mem::size_of::<u128>();
     }
 
     // secion header
@@ -191,7 +191,7 @@ mod tests {
         };
 
         //println!("{:?} : {:?}", parent_id, parent_assetfile);
-        //println!("{:?} : {:?}", child_id,child_assetfile);
+        //println!("{:?} : {:?}", child_id, _child_assetfile);
 
         {
             let mut assetfile_reader = &parent_assetfile[..];
@@ -208,9 +208,9 @@ mod tests {
 
             for (_, (primary_ref, secondary_ref)) in &reference_list {
                 let asset_id = unsafe {
-                    std::mem::transmute::<u64, AssetId>(
+                    std::mem::transmute::<u128, AssetId>(
                         assetfile_reader
-                            .read_u64::<LittleEndian>()
+                            .read_u128::<LittleEndian>()
                             .expect("read asset id"),
                     )
                 };

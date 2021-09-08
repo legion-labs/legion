@@ -60,7 +60,7 @@ fn command_compile() {
 
     let cas_addr = ContentStoreAddr::from(output_dir);
 
-    let compile_path = AssetPathId::from(source).push(refs_resource::TYPE_ID);
+    let compile_path = AssetPathId::from(source).push(refs_asset::TYPE_ID);
     let mut command = CompilerCompileCmd::new(
         &compile_path,
         &[],
@@ -75,7 +75,6 @@ fn command_compile() {
     let result = command
         .execute(&exe_path, resource_dir)
         .expect("compile result");
-    println!("{:?}", result);
 
     assert_eq!(result.compiled_resources.len(), 1);
 

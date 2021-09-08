@@ -1,5 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::io::Seek;
@@ -7,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::{env, io};
 
-use legion_content_store::{ContentStore, ContentType, HddContentStore};
+use legion_content_store::{ContentStore, HddContentStore};
 use legion_data_compiler::compiler_api::DATA_BUILD_VERSION;
 use legion_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
@@ -17,7 +18,7 @@ use legion_data_compiler::CompilerHash;
 use legion_data_compiler::{CompiledResource, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{asset::AssetPathId, resource::Project};
-use legion_data_runtime::AssetId;
+use legion_data_runtime::{AssetId, ContentType};
 use petgraph::algo;
 
 use crate::asset_file_writer::write_assetfile;
@@ -585,42 +586,45 @@ impl DataBuild {
     ) -> Result<Vec<CompiledResource>, Error> {
         let mut resource_files = Vec::with_capacity(resources.len());
         for resource in resources {
-            let mut output: Vec<u8> = vec![];
-            let resource_list = std::iter::once((
-                AssetId::from_hash_id(resource.compiled_path.hash_id()).unwrap(),
-                resource.compiled_checksum,
-            ));
-            let reference_list = references
-                .iter()
-                .filter(|r| r.is_reference_of(resource))
-                .map(|r| {
-                    (
-                        AssetId::from_hash_id(resource.compiled_path.hash_id()).unwrap(),
+            //
+            // for now, non-asset resources are passed for linking
+            // this should be revisited.
+            //
+            if let Ok(asset_id) = AssetId::try_from(resource.compiled_path.content_id()) {
+                let mut output: Vec<u8> = vec![];
+                let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
+                let reference_list = references
+                    .iter()
+                    .filter(|r| r.is_reference_of(resource))
+                    .map(|r| {
                         (
-                            AssetId::from_hash_id(r.compiled_reference.hash_id()).unwrap(),
-                            AssetId::from_hash_id(r.compiled_reference.hash_id()).unwrap(),
-                        ),
-                    )
-                });
+                            AssetId::try_from(resource.compiled_path.content_id()).unwrap(),
+                            (
+                                AssetId::try_from(r.compiled_reference.content_id()).unwrap(),
+                                AssetId::try_from(r.compiled_reference.content_id()).unwrap(),
+                            ),
+                        )
+                    });
 
-            let bytes_written = write_assetfile(
-                resource_list,
-                reference_list,
-                &self.content_store,
-                &mut output,
-            )?;
+                let bytes_written = write_assetfile(
+                    resource_list,
+                    reference_list,
+                    &self.content_store,
+                    &mut output,
+                )?;
 
-            let checksum = self
-                .content_store
-                .store(&output)
-                .ok_or(Error::InvalidAssetStore)?;
+                let checksum = self
+                    .content_store
+                    .store(&output)
+                    .ok_or(Error::InvalidAssetStore)?;
 
-            let asset_file = CompiledResource {
-                path: resource.compiled_path.clone(),
-                checksum,
-                size: bytes_written,
-            };
-            resource_files.push(asset_file);
+                let asset_file = CompiledResource {
+                    path: resource.compiled_path.clone(),
+                    checksum,
+                    size: bytes_written,
+                };
+                resource_files.push(asset_file);
+            }
         }
 
         Ok(resource_files)

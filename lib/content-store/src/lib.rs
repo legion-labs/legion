@@ -163,56 +163,6 @@ pub trait ContentStore: Send {
     }
 }
 
-use serde::{Deserialize, Serialize};
-
-/// Type identifier of resource or asset.
-///
-/// It is currently generated randomly by hashing a byte array. It ises [`Self::num_bits`] number of bits.
-/// In the future, it can be optimized to use less bits to leave more bits for the asset/resource identifier.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
-pub struct ContentType(u32);
-
-impl fmt::Display for ContentType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))
-    }
-}
-
-impl ContentType {
-    const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
-
-    const fn crc32(v: &[u8]) -> u32 {
-        Self::CRC32_ALGO.checksum(v)
-    }
-
-    /// Number of bits used to represent `ContentType`.
-    pub const fn num_bits() -> usize {
-        32
-    }
-
-    /// Creates a new [`Self::num_bits`]-bit type id from series of bytes.
-    ///
-    /// It is recommended to use this method to define a public constant
-    /// which can be used to identify a resource or asset.
-    pub const fn new(v: &[u8]) -> Self {
-        // TODO: A std::num::NonZeroU32 would be more suitable as an internal representation
-        // however a value of 0 is as likely as any other value returned by `crc32`
-        // and const-fn-friendly panic is not available yet.
-        // See https://github.com/rust-lang/rfcs/pull/2345.
-        Self(Self::crc32(v))
-    }
-
-    /// Creates a [`Self::num_bits`]-bit type id from a non-zero integer.
-    pub fn from_raw(v: u32) -> Self {
-        Self(v)
-    }
-
-    /// Replaces [`Self::num_bits`] most significant bits of id with the content type id.
-    pub fn stamp(&self, id: u64) -> u64 {
-        ((self.0 as u64) << Self::num_bits()) | (id & ((1 << (64 - Self::num_bits())) - 1))
-    }
-}
-
 mod hdd_store;
 mod ram_store;
 

@@ -17,17 +17,18 @@
 //! ```no_run
 //! # use legion_data_compiler::{CompilerHash, Locale, Platform, Target};
 //! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
-//! # use legion_data_offline::asset::AssetPathId;
-//! # use legion_content_store::{ContentStoreAddr, ContentType};
+//! # use legion_data_offline::{asset::AssetPathId, resource::ResourceType};
+//! # use legion_data_runtime::AssetType;
+//! # use legion_content_store::ContentStoreAddr;
 //! # use std::path::Path;
-//! #  const INPUT_TYPE: ContentType = ContentType::new(b"src");
-//! # const OUTPUT_TYPE: ContentType = ContentType::new(b"dst");
+//! # const INPUT_TYPE: ResourceType = ResourceType::new(b"src");
+//! # const OUTPUT_TYPE: AssetType = AssetType::new(b"dst");
 //! static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 //!    name: env!("CARGO_CRATE_NAME"),
 //!    build_version: DATA_BUILD_VERSION,
 //!    code_version: "",
 //!    data_version: "",
-//!    transform: &(INPUT_TYPE, OUTPUT_TYPE),
+//!    transform: &(INPUT_TYPE.content(), OUTPUT_TYPE.content()),
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
@@ -110,12 +111,14 @@ use crate::{
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
-use legion_content_store::{ContentStore, ContentStoreAddr, ContentType, HddContentStore};
+use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{ResourceHandleUntyped, ResourceId, ResourceRegistry},
+    resource::{ResourceHandleUntyped, ResourceId, ResourceRegistry, ResourceType},
 };
+use legion_data_runtime::ContentType;
 use std::{
+    convert::TryFrom,
     env,
     fs::File,
     io::{self, stdout},
@@ -181,6 +184,7 @@ impl CompilerContext<'_> {
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandleUntyped, CompilerError> {
         if id.is_source() {
+            let kind = ResourceType::try_from(id.content_type()).unwrap();
             //
             // for now, we only allow to load the `derived` resource's source.
             //
@@ -194,13 +198,19 @@ impl CompilerContext<'_> {
             let mut resource_file =
                 File::open(resource_path).map_err(CompilerError::ResourceReadFailed)?;
             let handle = resources
-                .deserialize_resource(id.resource_type(), &mut resource_file)
+                .deserialize_resource(kind, &mut resource_file)
                 .map_err(CompilerError::ResourceReadFailed)?;
             Ok(handle)
         } else if let Some(derived) = self.derived_deps.iter().find(|&dep| &dep.path == id) {
             if let Some(content) = self.content_store.read(derived.checksum) {
+                //
+                // for now, only derived Resources can be loaded.
+                // this should be extended to Assets but would require
+                // a change in this fn's signature
+                //
+                let kind = ResourceType::try_from(id.content_type()).unwrap();
                 Ok(resources
-                    .deserialize_resource(id.resource_type(), &mut &content[..])
+                    .deserialize_resource(kind, &mut &content[..])
                     .map_err(CompilerError::ResourceReadFailed)?)
             } else {
                 Err(CompilerError::AssetStoreError)

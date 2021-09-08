@@ -133,9 +133,14 @@ pub use asset_registry::*;
 mod handle;
 pub use handle::*;
 
+mod content;
+pub use content::*;
+
 mod types;
 pub use types::*;
 pub mod manifest;
+
+pub use legion_data_runtime_macros::Asset;
 
 #[cfg(test)]
 mod test_asset;

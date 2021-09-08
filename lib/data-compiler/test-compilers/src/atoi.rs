@@ -18,7 +18,10 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(text_resource::TYPE_ID, integer_asset::TYPE_ID),
+    transform: &(
+        text_resource::TYPE_ID.content(),
+        integer_asset::TYPE_ID.content(),
+    ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };

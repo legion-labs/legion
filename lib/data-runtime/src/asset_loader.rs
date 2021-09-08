@@ -394,8 +394,9 @@ impl AssetLoaderIO {
         let reference_count = reader.read_u64::<LittleEndian>()?;
         let mut reference_list = Vec::with_capacity(reference_count as usize);
         for _ in 0..reference_count {
-            let asset_ref =
-                unsafe { std::mem::transmute::<u64, AssetId>(reader.read_u64::<LittleEndian>()?) };
+            let asset_ref = unsafe {
+                std::mem::transmute::<u128, AssetId>(reader.read_u128::<LittleEndian>()?)
+            };
             reference_list.push(AssetReference {
                 primary: asset_ref,
                 secondary: asset_ref,
@@ -450,8 +451,8 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let binary_assetfile = [
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,
-            0, 0, 0, 99, 104, 105, 108, 100,
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 181, 1, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0,
+            0, 0, 0, 116, 101, 115, 116, 95, 99, 111, 110, 116, 101, 110, 116,
         ];
 
         let asset_id = {
@@ -524,8 +525,9 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [
-            1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0,
-            0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110, 116,
+            1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 181, 86,
+            63, 214, 181, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110,
+            116,
         ];
 
         let parent_id = AssetId::new(test_asset::TYPE_ID, 2);
@@ -577,11 +579,12 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [
-            1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0,
-            0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110, 116,
+            1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 181, 86,
+            63, 214, 181, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110,
+            116,
         ];
         let binary_child_assetfile = [
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 181, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,
             0, 0, 0, 99, 104, 105, 108, 100,
         ];
         let parent_content = "parent";

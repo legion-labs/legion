@@ -124,7 +124,7 @@ fn compile_change_no_deps() {
         .compiler_dir(target_dir());
 
     let source = AssetPathId::from(resource_id);
-    let target = source.push(refs_resource::TYPE_ID);
+    let target = source.push(refs_asset::TYPE_ID);
 
     // compile the resource..
     let original_checksum = {
@@ -232,15 +232,15 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     );
     let res_d = create_resource(
         ResourcePathName::new("D"),
-        &[AssetPathId::from(res_e).push(refs_resource::TYPE_ID)],
+        &[AssetPathId::from(res_e).push(refs_asset::TYPE_ID)],
         &mut project,
         &mut resources,
     );
     let res_b = create_resource(
         ResourcePathName::new("B"),
         &[
-            AssetPathId::from(res_c).push(refs_resource::TYPE_ID),
-            AssetPathId::from(res_e).push(refs_resource::TYPE_ID),
+            AssetPathId::from(res_c).push(refs_asset::TYPE_ID),
+            AssetPathId::from(res_e).push(refs_asset::TYPE_ID),
         ],
         &mut project,
         &mut resources,
@@ -248,8 +248,8 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     let res_a = create_resource(
         ResourcePathName::new("A"),
         &[
-            AssetPathId::from(res_b).push(refs_resource::TYPE_ID),
-            AssetPathId::from(res_d).push(refs_resource::TYPE_ID),
+            AssetPathId::from(res_b).push(refs_asset::TYPE_ID),
+            AssetPathId::from(res_d).push(refs_asset::TYPE_ID),
         ],
         &mut project,
         &mut resources,
@@ -380,7 +380,7 @@ fn unnamed_cache_use() {
     //            D ---------> test(E) -> E
     //
     const NUM_OUTPUTS: usize = 5;
-    let target = AssetPathId::from(root_resource).push(refs_resource::TYPE_ID);
+    let target = AssetPathId::from(root_resource).push(refs_asset::TYPE_ID);
 
     // first run - none of the resources from cache.
     {
@@ -759,7 +759,7 @@ fn link() {
             .get_mut(&mut resources)
             .expect("existing resource");
         parent.content = String::from("test parent content");
-        parent.build_deps = vec![AssetPathId::from(child_id).push(refs_resource::TYPE_ID)];
+        parent.build_deps = vec![AssetPathId::from(child_id).push(refs_asset::TYPE_ID)];
         project
             .add_resource(
                 ResourcePathName::new("parent"),
@@ -781,7 +781,7 @@ fn link() {
 
     // for now each resource is a separate file so we need to validate that the compile output and link output produce the same number of resources
 
-    let target = AssetPathId::from(parent_id).push(refs_resource::TYPE_ID);
+    let target = AssetPathId::from(parent_id).push(refs_asset::TYPE_ID);
     let compile_output = build
         .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
         .expect("successful compilation");
@@ -841,7 +841,7 @@ fn verify_manifest() {
             .get_mut(&mut resources)
             .unwrap()
             .build_deps
-            .push(AssetPathId::from(child_id).push(refs_resource::TYPE_ID));
+            .push(AssetPathId::from(child_id).push(refs_asset::TYPE_ID));
 
         project
             .add_resource(
@@ -864,7 +864,7 @@ fn verify_manifest() {
 
     let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
-    let compile_path = AssetPathId::from(parent_resource).push(refs_resource::TYPE_ID);
+    let compile_path = AssetPathId::from(parent_resource).push(refs_asset::TYPE_ID);
     let manifest = build
         .compile(
             compile_path,

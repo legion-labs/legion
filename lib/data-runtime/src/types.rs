@@ -1,12 +1,15 @@
 use core::fmt;
-use legion_content_store::ContentType;
 use serde::{Deserialize, Serialize};
 use std::{
     any::{Any, TypeId},
+    convert::{TryFrom, TryInto},
     fmt::LowerHex,
     hash::Hash,
     io,
+    str::FromStr,
 };
+
+use crate::{ContentId, ContentType};
 
 /// A unique id of a runtime asset.
 ///
@@ -14,47 +17,82 @@ use std::{
 /// - asset unique id - 32 bits
 /// - [`AssetType`] - 32 bits
 #[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash, Serialize, Deserialize)]
-pub struct AssetId {
-    id: std::num::NonZeroU64,
-}
+pub struct AssetId(ContentId);
 
 impl AssetId {
     /// Creates an asset id of a given type.
-    pub fn new(kind: AssetType, id: u32) -> Self {
-        let internal = kind.stamp(id as u64);
-        Self {
-            id: std::num::NonZeroU64::new(internal).unwrap(),
-        }
-    }
-
-    /// Creates an asset id from a raw hash value.
-    pub fn from_hash_id(id: u64) -> Option<Self> {
-        std::num::NonZeroU64::new(id).map(|id| Self { id })
+    pub fn new(kind: AssetType, id: u64) -> Self {
+        Self(ContentId::new(kind.into(), id))
     }
 
     /// Returns the type of the asset.
     pub fn asset_type(&self) -> AssetType {
-        let type_id = (u64::from(self.id) >> 32) as u32;
-        AssetType::from_raw(type_id)
+        AssetType(self.0.kind())
     }
 }
 
 impl LowerHex for AssetId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt::LowerHex::fmt(&self.id, f)
+        fmt::LowerHex::fmt(&self.0, f)
     }
 }
 
-impl ToString for AssetId {
-    fn to_string(&self) -> String {
-        self.id.to_string()
+impl TryFrom<ContentId> for AssetId {
+    type Error = ();
+
+    fn try_from(value: ContentId) -> Result<Self, Self::Error> {
+        if !value.kind().is_rt() {
+            return Err(());
+        }
+        Ok(Self(value))
     }
 }
 
 /// Type id of a runtime asset.
-pub type AssetType = ContentType;
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
+pub struct AssetType(ContentType);
 
-pub use legion_data_runtime_macros::Asset;
+impl AssetType {
+    /// Creates a new type id from a byte array.
+    ///
+    /// It is recommended to use this method to define a public constant
+    /// which can be used to identify an asset type.
+    pub const fn new(v: &[u8]) -> Self {
+        Self(ContentType::new(v, true))
+    }
+
+    /// Returns underlying id (at compile-time).
+    pub const fn content(&self) -> ContentType {
+        self.0
+    }
+}
+
+impl TryFrom<ContentType> for AssetType {
+    type Error = ();
+
+    fn try_from(value: ContentType) -> Result<Self, Self::Error> {
+        match value.is_rt() {
+            true => Ok(Self(value)),
+            false => Err(()),
+        }
+    }
+}
+
+impl From<AssetType> for ContentType {
+    fn from(value: AssetType) -> Self {
+        value.0
+    }
+}
+
+impl FromStr for AssetId {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        ContentId::from_str(s)?
+            .try_into()
+            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))
+    }
+}
 
 /// Types implementing `Asset` represent non-mutable runtime data.
 pub trait Asset: Any + Send {}

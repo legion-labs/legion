@@ -8,7 +8,7 @@ use std::{
 
 use crate::resource::ResourceId;
 
-use legion_content_store::ContentType;
+use legion_data_runtime::{ContentId, ContentType};
 use serde::{Deserialize, Serialize};
 
 /// Identifier of a path in a build graph.
@@ -144,9 +144,9 @@ impl AssetPathId {
     ///
     /// The node is identified by the appended `kind`.
     /// The `AssetPathId`'s compilation output type changes to `kind`.
-    pub fn push(&self, kind: ContentType) -> Self {
+    pub fn push(&self, kind: impl Into<ContentType>) -> Self {
         let mut cloned = self.clone();
-        cloned.transforms.push((kind, None));
+        cloned.transforms.push((kind.into(), None));
         cloned
     }
 
@@ -154,9 +154,11 @@ impl AssetPathId {
     ///
     /// The node is identified by the appended tuple of (`kind`, `name`).
     /// The `AssetPathId`'s compilation output type changes to `kind`.
-    pub fn push_named(&self, kind: ContentType, name: &str) -> Self {
+    pub fn push_named(&self, kind: impl Into<ContentType>, name: &str) -> Self {
         let mut cloned = self.clone();
-        cloned.transforms.push((kind, Some(name.to_string())));
+        cloned
+            .transforms
+            .push((kind.into(), Some(name.to_string())));
         cloned
     }
 
@@ -188,9 +190,9 @@ impl AssetPathId {
     }
 
     /// Returns `ResourceType` of the resource identified by this path.
-    pub fn resource_type(&self) -> ContentType {
+    pub fn content_type(&self) -> ContentType {
         if self.transforms.is_empty() {
-            self.source.resource_type()
+            self.source.resource_type().into()
         } else {
             self.transforms[self.transforms.len() - 1].0
         }
@@ -219,7 +221,7 @@ impl AssetPathId {
     pub fn last_transform(&self) -> Option<(ContentType, ContentType)> {
         match self.transforms.len() {
             0 => None,
-            1 => Some((self.source.resource_type(), self.transforms[0].0)),
+            1 => Some((self.source.resource_type().into(), self.transforms[0].0)),
             _ => {
                 let len = self.transforms.len();
                 Some((self.transforms[len - 2].0, self.transforms[len - 1].0))
@@ -239,19 +241,14 @@ impl AssetPathId {
         Some(dependency)
     }
 
-    /// Returns a hash of the `ResourceIdPath`.
-    pub fn hash_id(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        hasher.finish()
-    }
-
-    /// Returns a hash of the name in the context of `AssetPathId`.
-    pub fn hash_name(&self, name: &str) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        name.hash(&mut hasher);
-        hasher.finish()
+    /// Returns `ContentId` representing the path.
+    pub fn content_id(&self) -> ContentId {
+        let id = {
+            let mut hasher = DefaultHasher::new();
+            self.hash(&mut hasher);
+            hasher.finish()
+        };
+        ContentId::new(self.content_type(), id)
     }
 }
 

@@ -21,4 +21,5 @@ refs-resource = { path = "../data-offline/test-refs-resource" }
 multitext-resource = { path = "../data-offline/test-multitext-resource" }
 text-resource = { path = "../data-offline/test-text-resource" }
 integer-asset = { path = "../data-runtime/test-integer-asset" }
+refs-asset = { path = "../data-runtime/test-refs-asset" }
 test-compilers = { path = "../data-compiler/test-compilers" }

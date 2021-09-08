@@ -24,3 +24,4 @@ tempfile = "3.2.0"
 refs-resource = { path = "../../lib/data-offline/test-refs-resource" }
 text-resource = { path = "../../lib/data-offline/test-text-resource" }
 integer-asset = { path = "../../lib/data-runtime/test-integer-asset" }
+refs-asset = { path = "../../lib/data-runtime/test-refs-asset" }
