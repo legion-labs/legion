@@ -80,15 +80,16 @@
 // crate-specific exceptions:
 #![allow()]
 
+mod asset_registry_plugin;
 mod data_types;
 
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use legion_content_store::RamContentStore;
 use legion_core::CorePlugin;
-use legion_data_runtime::{manifest::Manifest, AssetRegistryOptions};
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
 use legion_utils::Duration;
+
+use crate::asset_registry_plugin::AssetRegistryPlugin;
 
 fn main() {
     const ARG_NAME_ROOT: &str = "root";
@@ -105,13 +106,6 @@ fn main() {
     let root = args.value_of(ARG_NAME_ROOT).unwrap_or("/");
     println!("root: {}", root);
 
-    // setup data-runtime lib
-    let content_store = Box::new(RamContentStore::default());
-    let manifest = Manifest::default();
-    let asset_options = AssetRegistryOptions::new();
-    let asset_options = data_types::register_asset_loaders(asset_options);
-    let _asset_registry = asset_options.create(content_store, manifest);
-
     // Start app with 60 fps
     App::new()
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
@@ -120,6 +114,7 @@ fn main() {
         .add_plugin(CorePlugin::default())
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(TransformPlugin::default())
+        .add_plugin(AssetRegistryPlugin::default())
         .add_system(frame_counter)
         .run();
 }
