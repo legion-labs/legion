@@ -79,7 +79,9 @@
 #![allow(unsafe_code)]
 
 pub mod dispatch;
+pub mod event_block_sink;
 pub mod log_stream;
 
 pub use dispatch::*;
+pub use event_block_sink::*;
 pub use log_stream::*;

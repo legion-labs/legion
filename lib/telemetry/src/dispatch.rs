@@ -1,25 +1,25 @@
-use crate::log_stream::*;
-
-pub trait EventBlockSink {
-    fn on_log_buffer_full(log_stream: &mut LogStream);
-}
+use crate::*;
+use std::sync::Arc;
 
 struct Dispatch {
     log_buffer_size: usize,
     log_stream: LogStream,
+    sink: Arc<dyn EventBlockSink>,
 }
 
 impl Dispatch {
-    pub fn new(log_buffer_size: usize) -> Self {
+    pub fn new(log_buffer_size: usize, sink: Arc<dyn EventBlockSink>) -> Self {
         Self {
             log_buffer_size,
             log_stream: LogStream::new(log_buffer_size),
+            sink,
         }
     }
 
     fn log_str(&mut self, level: LogLevel, msg: &'static str) {
         self.log_stream.push(LogMsgEvent { level, msg });
         if self.log_stream.is_full() {
+            self.sink.on_log_buffer_full(&mut self.log_stream);
             self.log_stream = LogStream::new(self.log_buffer_size);
             assert!(!self.log_stream.is_full());
         }
@@ -28,12 +28,15 @@ impl Dispatch {
 
 static mut G_DISPATCH: Option<Dispatch> = None;
 
-pub fn init_event_dispatch(log_buffer_size: usize) -> Result<(), String> {
+pub fn init_event_dispatch(
+    log_buffer_size: usize,
+    sink: Arc<dyn EventBlockSink>,
+) -> Result<(), String> {
     unsafe {
         if G_DISPATCH.is_some() {
             panic!("event dispatch already initialized");
         }
-        G_DISPATCH = Some(Dispatch::new(log_buffer_size));
+        G_DISPATCH = Some(Dispatch::new(log_buffer_size, sink));
     }
     Ok(())
 }

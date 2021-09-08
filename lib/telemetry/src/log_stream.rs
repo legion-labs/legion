@@ -11,7 +11,7 @@ pub struct LogMsgEvent {
 }
 
 pub struct LogStream {
-    events: Vec<LogMsgEvent>,
+    pub events: Vec<LogMsgEvent>,
 }
 
 impl LogStream {
