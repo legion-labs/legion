@@ -10,10 +10,10 @@ keywords = ["legion"]
 
 [dependencies]
 # legion
-legion-app = { path = "../../core/app", version = "0.1.0" }
-legion-ecs = { path = "../../core/ecs", version = "0.1.0" }
-legion-math = { path = "../../core/math", version = "0.1.0" }
-legion-utils = { path = "../../core/utils", version = "0.1.0" }
+legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+legion-math = { path = "../../lib/math", version = "0.1.0" }
+legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
 smallvec = { version = "1.6", features = ["serde", "union", "const_generics"] }

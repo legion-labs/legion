@@ -12,7 +12,7 @@ default = []
 vulkan = ["ash", "vk-mem", "ash-window"]
 
 [dependencies]
-legion-utils = { path = "../../core/utils", package = "legion-utils" }
+legion-utils = { path = "../../lib/utils", package = "legion-utils" }
 raw-window-handle = "0.3"
 bitflags = "1.2"
 fnv = "1.0"

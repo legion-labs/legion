@@ -12,10 +12,10 @@ license = "MIT OR Apache-2.0"
 # Legion engine
 
 ## core
-legion-app = { path = "../../core/app", version = "0.1.0" }
-legion-ecs = { path = "../../core/ecs", version = "0.1.0" }
-legion-math = { path = "../../core/math", version = "0.1.0" }
-legion-utils = { path = "../../core/utils", version = "0.1.0" }
+legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+legion-math = { path = "../../lib/math", version = "0.1.0" }
+legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
 legion-core = { path = "../../plugin/core", version = "0.1.0" }
 
