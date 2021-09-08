@@ -2,9 +2,16 @@ use legion_app::prelude::*;
 
 pub struct SciterPlugin;
 
-pub struct Windows {
-    pub primary_window: sciter_js::window::Window,
-    pub additional_windows: sciter_js::window::Window,
+pub struct ToolWindows {
+    pub primary_tool_window: sciter_js::window::Window,
+    pub additional_tool_windows: Vec<sciter_js::window::Window>,
+}
+
+pub struct WindowDescriptor {
+    pub width: f32,
+    pub height: f32,
+    pub title: String,
+    pub html: String,
 }
 
 pub struct CreateWindow {}
