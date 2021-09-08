@@ -228,35 +228,37 @@ impl AssetLoaderIO {
                 }
             }
             LoaderRequest::Unload(primary_id, user_requested, err) => {
-                let r = self.asset_refcounts.remove(&primary_id).unwrap();
-                assert!(r <= 1);
+                if let Some(r) = self.asset_refcounts.remove(&primary_id) {
+                    assert!(r <= 1);
 
-                if let Some(primary_references) = self.primary_asset_references.remove(&primary_id)
-                {
-                    if user_requested {
-                        self.result_tx
-                            .send(LoaderResult::Unloaded(primary_id))
-                            .unwrap();
-                    }
-
-                    for ref_id in primary_references {
-                        let r = self.asset_refcounts.get_mut(&ref_id).unwrap();
-                        *r -= 1;
-                        if *r == 0 {
-                            // trigger internal unload
-                            self.request_tx
-                                .send(LoaderRequest::Unload(ref_id, false, err))
+                    if let Some(primary_references) =
+                        self.primary_asset_references.remove(&primary_id)
+                    {
+                        if user_requested {
+                            self.result_tx
+                                .send(LoaderResult::Unloaded(primary_id))
                                 .unwrap();
                         }
+
+                        for ref_id in primary_references {
+                            let r = self.asset_refcounts.get_mut(&ref_id).unwrap();
+                            *r -= 1;
+                            if *r == 0 {
+                                // trigger internal unload
+                                self.request_tx
+                                    .send(LoaderRequest::Unload(ref_id, false, err))
+                                    .unwrap();
+                            }
+                        }
                     }
-                }
-                if let Some(secondary_assets) = self.secondary_assets.remove(&primary_id) {
-                    for id in secondary_assets {
-                        let r = self.asset_refcounts.get_mut(&id).unwrap();
-                        *r -= 1;
-                        if *r == 0 {
-                            self.asset_refcounts.remove(&id);
-                            // todo: tell the user.
+                    if let Some(secondary_assets) = self.secondary_assets.remove(&primary_id) {
+                        for id in secondary_assets {
+                            let r = self.asset_refcounts.get_mut(&id).unwrap();
+                            *r -= 1;
+                            if *r == 0 {
+                                self.asset_refcounts.remove(&id);
+                                // todo: tell the user.
+                            }
                         }
                     }
                 }
