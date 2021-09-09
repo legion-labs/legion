@@ -1,7 +1,7 @@
 (
     name: "prefab/props/cube.ent",
     dependencies: [
-        "prefab/props/cube.obj",
+        "source/prefab/props/cube.obj",
     ],
     content_checksum: "4b633ece5cd59412c637df848f46322659714ae30a1cedbe1230a00b0c23ebc0",
 )
