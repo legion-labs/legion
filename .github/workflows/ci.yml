@@ -176,10 +176,10 @@ jobs:
         with:
           name: release
           path: |
-            ./target
-            !./target/build
-            !./target/deps
-            !./target/incremental
+            ./target/release
+            !./target/release/build
+            !./target/release/deps
+            !./target/release/incremental
 
   dockerize:
     name: Building docker images and deploying them
