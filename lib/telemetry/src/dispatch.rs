@@ -1,9 +1,9 @@
 use crate::*;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 struct Dispatch {
     log_buffer_size: usize,
-    log_stream: LogStream,
+    log_stream: Mutex<LogStream>,
     sink: Arc<dyn EventBlockSink>,
 }
 
@@ -11,17 +11,20 @@ impl Dispatch {
     pub fn new(log_buffer_size: usize, sink: Arc<dyn EventBlockSink>) -> Self {
         Self {
             log_buffer_size,
-            log_stream: LogStream::new(log_buffer_size),
+            log_stream: Mutex::new(LogStream::new(log_buffer_size)),
             sink,
         }
     }
 
     fn log_str(&mut self, level: LogLevel, msg: &'static str) {
-        self.log_stream.push(LogMsgEvent { level, msg });
-        if self.log_stream.is_full() {
-            self.sink.on_log_buffer_full(&mut self.log_stream);
-            self.log_stream = LogStream::new(self.log_buffer_size);
-            assert!(!self.log_stream.is_full());
+        let mut log_stream = self.log_stream.lock().unwrap();
+        log_stream.push(LogMsgEvent { level, msg });
+        if log_stream.is_full() {
+            self.sink.on_log_buffer_full(&mut log_stream);
+            // todo: replace current block in stream
+            // log_stream = LogStream::new(self.log_buffer_size);
+            log_stream.clear();
+            assert!(!log_stream.is_full());
         }
     }
 }

@@ -25,6 +25,10 @@ impl LogStream {
         self.events.push(event);
     }
 
+    pub fn clear(&mut self) {
+        self.events.clear();
+    }
+
     pub fn is_full(&self) -> bool {
         self.events.capacity() == self.events.len()
     }
