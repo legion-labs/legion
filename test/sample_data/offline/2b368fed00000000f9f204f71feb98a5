@@ -1,0 +1,1 @@
+{"albedo":"auto_lod(import_layer(source/ground.psd, albedo))","normal":"auto_lod(import_layer(source/ground.psd, normal))","roughness":"auto_lod(extract_layer(source/ground.psd, roughness))","metalness":"auto_lod(extract_layer(source/ground.psd, metalness))"}

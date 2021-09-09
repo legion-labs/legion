@@ -2549,6 +2549,7 @@ dependencies = [
  "legion-utils",
  "ron",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

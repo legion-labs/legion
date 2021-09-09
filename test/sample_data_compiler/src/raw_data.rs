@@ -87,10 +87,10 @@ pub struct Mesh {
 
 #[derive(Serialize, Deserialize)]
 pub struct Material {
-    albedo: String,
-    normal: String,
-    roughness: String,
-    metalness: String,
+    pub albedo: String,
+    pub normal: String,
+    pub roughness: String,
+    pub metalness: String,
 }
 
 #[derive(Serialize, Deserialize)]

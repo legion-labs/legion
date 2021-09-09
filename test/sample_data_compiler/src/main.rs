@@ -80,8 +80,9 @@
 // crate-specific exceptions:
 #![allow()]
 
-mod ron_data;
-mod ron_loader;
+mod offline_data;
+mod raw_data;
+mod raw_loader;
 
 use clap::{App, Arg};
 
@@ -99,5 +100,5 @@ fn main() {
 
     let root_folder = args.value_of(ARG_NAME_ROOT).unwrap_or("test/sample_data");
 
-    ron_loader::load_data(root_folder);
+    raw_loader::build_offline(root_folder);
 }
