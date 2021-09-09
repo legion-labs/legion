@@ -54,7 +54,7 @@ pub trait WindowApi: Sized {
     fn native_handle(&self) -> Self::WindowHandle;
 
     /// blocks to run the event loop
-    fn event_loop(&self);
+    fn event_loop<UpdateCallback: FnMut()>(&self, update_callback: UpdateCallback);
 }
 
 /// opaque native handle

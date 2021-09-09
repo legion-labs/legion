@@ -161,22 +161,30 @@ impl WindowApi for WindowsWindow {
         }
     }
 
-    fn event_loop(&self) {
+    fn event_loop<UpdateCallback: FnMut()>(&self, mut update_callback: UpdateCallback) {
         unsafe { winuser::ShowWindow(self.hwnd, winuser::SW_SHOW) };
-        let mut msg = winuser::MSG {
-            hwnd: std::ptr::null_mut(),
-            message: 0,
-            wParam: 0,
-            lParam: 0,
-            time: 0,
-            pt: windef::POINT { x: 0, y: 0 },
-        };
-        unsafe {
-            while winuser::GetMessageW(&mut msg, ::std::ptr::null_mut(), 0, 0) != 0 {
-                winuser::TranslateMessage(&msg);
-                winuser::DispatchMessageW(&msg);
-            }
-        };
+        let mut done = false;
+        while !done {
+            unsafe {
+                let mut msg: winuser::MSG = std::mem::zeroed();
+                while winuser::PeekMessageW(
+                    &mut msg,
+                    ::std::ptr::null_mut(),
+                    0,
+                    0,
+                    winuser::PM_REMOVE,
+                ) != 0
+                {
+                    if winuser::WM_QUIT == msg.message {
+                        done = true;
+                    } else {
+                        winuser::TranslateMessage(&msg);
+                        winuser::DispatchMessageW(&msg);
+                    }
+                }
+            };
+            update_callback();
+        }
     }
 }
 
@@ -245,6 +253,18 @@ extern "system" fn window_proc(
     wparam: minwindef::WPARAM,
     lparam: minwindef::LPARAM,
 ) -> minwindef::LRESULT {
+    match message {
+        winuser::WM_CLOSE => {
+            unsafe {
+                winuser::PostQuitMessage(0);
+            }
+            return 0;
+        }
+        winuser::WM_SIZE => {
+            println!("Resize HWND event");
+        }
+        _ => {}
+    }
     unsafe { winapi::um::winuser::DefWindowProcW(hwnd, message, wparam, lparam) }
 }
 

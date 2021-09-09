@@ -77,6 +77,7 @@ fn run() -> GfxResult<()> {
         // rendering hardware is shared among them)
         //
         let graphics_queue = device_context.create_queue(QueueType::Graphics)?;
+        let graphics_queue_cloned = graphics_queue.clone();
 
         //
         // Some default data we can render
@@ -279,138 +280,128 @@ fn run() -> GfxResult<()> {
 
         let start_time = std::time::Instant::now();
 
-        //
-        // SDL2 window pumping
-        //
         log::info!("Starting window event loop");
-        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let thread_stop = stop.clone();
-        let join_handle = std::thread::spawn(move || {
-            while !thread_stop.load(std::sync::atomic::Ordering::Acquire) {
-                let elapsed_seconds = start_time.elapsed().as_secs_f32();
+        window.event_loop(move || {
+            let elapsed_seconds = start_time.elapsed().as_secs_f32();
 
-                #[rustfmt::skip]
-                let vertex_data = [
-                    0.0f32, 0.5, 1.0, 0.0, 0.0,
-                    0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
-                    -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
-                ];
+            #[rustfmt::skip]
+            let vertex_data = [
+                0.0f32, 0.5, 1.0, 0.0, 0.0,
+                0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
+                -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
+            ];
 
-                let color = (elapsed_seconds.cos() + 1.0) / 2.0;
-                let uniform_data = [color, 0.0, 1.0 - color, 1.0];
+            let color = (elapsed_seconds.cos() + 1.0) / 2.0;
+            let uniform_data = [color, 0.0, 1.0 - color, 1.0];
 
-                //
-                // Acquire swapchain image
-                //
-                let (window_width, window_height) = (WINDOW_WIDTH, WINDOW_HEIGHT);
-                let presentable_frame = swapchain_helper
-                    .acquire_next_image(window_width, window_height, None)
-                    .unwrap();
-                let swapchain_texture = presentable_frame.swapchain_texture();
+            //
+            // Acquire swapchain image
+            //
+            let (window_width, window_height) = (WINDOW_WIDTH, WINDOW_HEIGHT);
+            let presentable_frame = swapchain_helper
+                .acquire_next_image(window_width, window_height, None)
+                .unwrap();
+            let swapchain_texture = presentable_frame.swapchain_texture();
 
-                //
-                // Use the command pool/buffer assigned to this frame
-                //
-                let cmd_pool = &mut command_pools[presentable_frame.rotating_frame_index()];
-                let cmd_buffer = &command_buffers[presentable_frame.rotating_frame_index()];
-                let vertex_buffer = &vertex_buffers[presentable_frame.rotating_frame_index()];
-                let uniform_buffer = &uniform_buffers[presentable_frame.rotating_frame_index()];
+            //
+            // Use the command pool/buffer assigned to this frame
+            //
+            let cmd_pool = &mut command_pools[presentable_frame.rotating_frame_index()];
+            let cmd_buffer = &command_buffers[presentable_frame.rotating_frame_index()];
+            let vertex_buffer = &vertex_buffers[presentable_frame.rotating_frame_index()];
+            let uniform_buffer = &uniform_buffers[presentable_frame.rotating_frame_index()];
 
-                //
-                // Update the buffers
-                //
-                vertex_buffer
-                    .copy_to_host_visible_buffer(&vertex_data)
-                    .unwrap();
-                uniform_buffer
-                    .copy_to_host_visible_buffer(&uniform_data)
-                    .unwrap();
+            //
+            // Update the buffers
+            //
+            vertex_buffer
+                .copy_to_host_visible_buffer(&vertex_data)
+                .unwrap();
+            uniform_buffer
+                .copy_to_host_visible_buffer(&uniform_data)
+                .unwrap();
 
-                //
-                // Record the command buffer. For now just transition it between layouts
-                //
-                cmd_pool.reset_command_pool().unwrap();
-                cmd_buffer.begin().unwrap();
+            //
+            // Record the command buffer. For now just transition it between layouts
+            //
+            cmd_pool.reset_command_pool().unwrap();
+            cmd_buffer.begin().unwrap();
 
-                // Put it into a layout where we can draw on it
-                cmd_buffer
-                    .cmd_resource_barrier(
-                        &[],
-                        &[TextureBarrier::<DefaultApi>::state_transition(
-                            swapchain_texture,
-                            ResourceState::PRESENT,
-                            ResourceState::RENDER_TARGET,
-                        )],
-                    )
-                    .unwrap();
+            // Put it into a layout where we can draw on it
+            cmd_buffer
+                .cmd_resource_barrier(
+                    &[],
+                    &[TextureBarrier::<DefaultApi>::state_transition(
+                        swapchain_texture,
+                        ResourceState::PRESENT,
+                        ResourceState::RENDER_TARGET,
+                    )],
+                )
+                .unwrap();
 
-                cmd_buffer
-                    .cmd_begin_render_pass(
-                        &[ColorRenderTargetBinding {
-                            texture: swapchain_texture,
-                            load_op: LoadOp::Clear,
-                            store_op: StoreOp::Store,
-                            array_slice: None,
-                            mip_slice: None,
-                            clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
-                            resolve_target: None,
-                            resolve_store_op: StoreOp::DontCare,
-                            resolve_mip_slice: None,
-                            resolve_array_slice: None,
-                        }],
-                        None,
-                    )
-                    .unwrap();
+            cmd_buffer
+                .cmd_begin_render_pass(
+                    &[ColorRenderTargetBinding {
+                        texture: swapchain_texture,
+                        load_op: LoadOp::Clear,
+                        store_op: StoreOp::Store,
+                        array_slice: None,
+                        mip_slice: None,
+                        clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
+                        resolve_target: None,
+                        resolve_store_op: StoreOp::DontCare,
+                        resolve_mip_slice: None,
+                        resolve_array_slice: None,
+                    }],
+                    None,
+                )
+                .unwrap();
 
-                cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
+            cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
 
-                cmd_buffer
-                    .cmd_bind_vertex_buffers(
-                        0,
-                        &[VertexBufferBinding {
-                            buffer: vertex_buffer,
-                            byte_offset: 0,
-                        }],
-                    )
-                    .unwrap();
-                cmd_buffer
-                    .cmd_bind_descriptor_set(
-                        &descriptor_set_array,
-                        presentable_frame.rotating_frame_index() as u32,
-                    )
-                    .unwrap();
-                cmd_buffer.cmd_draw(3, 0).unwrap();
+            cmd_buffer
+                .cmd_bind_vertex_buffers(
+                    0,
+                    &[VertexBufferBinding {
+                        buffer: vertex_buffer,
+                        byte_offset: 0,
+                    }],
+                )
+                .unwrap();
+            cmd_buffer
+                .cmd_bind_descriptor_set(
+                    &descriptor_set_array,
+                    presentable_frame.rotating_frame_index() as u32,
+                )
+                .unwrap();
+            cmd_buffer.cmd_draw(3, 0).unwrap();
 
-                // Put it into a layout where we can present it
+            // Put it into a layout where we can present it
 
-                cmd_buffer.cmd_end_render_pass().unwrap();
+            cmd_buffer.cmd_end_render_pass().unwrap();
 
-                cmd_buffer
-                    .cmd_resource_barrier(
-                        &[],
-                        &[TextureBarrier::<DefaultApi>::state_transition(
-                            swapchain_texture,
-                            ResourceState::RENDER_TARGET,
-                            ResourceState::PRESENT,
-                        )],
-                    )
-                    .unwrap();
-                cmd_buffer.end().unwrap();
+            cmd_buffer
+                .cmd_resource_barrier(
+                    &[],
+                    &[TextureBarrier::<DefaultApi>::state_transition(
+                        swapchain_texture,
+                        ResourceState::RENDER_TARGET,
+                        ResourceState::PRESENT,
+                    )],
+                )
+                .unwrap();
+            cmd_buffer.end().unwrap();
 
-                //
-                // Present the image
-                //
-                presentable_frame
-                    .present(&graphics_queue, &[cmd_buffer])
-                    .unwrap();
-            }
-            // Wait for all GPU work to complete before destroying resources it is using
-            graphics_queue.wait_for_queue_idle().unwrap();
+            //
+            // Present the image
+            //
+            presentable_frame
+                .present(&graphics_queue, &[cmd_buffer])
+                .unwrap();
         });
 
-        window.event_loop();
-        stop.store(true, std::sync::atomic::Ordering::Release);
-        join_handle.join().unwrap();
+        // Wait for all GPU work to complete before destroying resources it is using
+        graphics_queue_cloned.wait_for_queue_idle()?;
     }
 
     // Optional, but calling this verifies that all rafx objects/device contexts have been
