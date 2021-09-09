@@ -1,5 +1,21 @@
 //! Minimalistic Sciter sample.
 
+static HTML: &[u8] = include_bytes!("../resources/main_window.htm");
+
+fn main() {
+    legion_app::App::new()
+        .insert_resource(legion_sciter::ToolWindowDescription {
+            width: 0.0,
+            height: 0.0,
+            title: None,
+            html: Some(HTML),
+            url: None,
+        })
+        .add_plugin(legion_sciter::SciterPlugin::default())
+        .run();
+}
+
+/*
 use sciter_js::{sciter, window};
 
 fn main() {
@@ -34,3 +50,4 @@ fn main() {
     // Step 5: Show window and run the main app message loop until window been closed.
     window.event_loop();
 }
+*/
