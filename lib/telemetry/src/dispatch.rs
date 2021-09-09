@@ -20,11 +20,10 @@ impl Dispatch {
         let mut log_stream = self.log_stream.lock().unwrap();
         log_stream.push(LogMsgEvent { level, msg });
         if log_stream.is_full() {
-            self.sink.on_log_buffer_full(&mut log_stream);
-            // todo: replace current block in stream
-            // log_stream = LogStream::new(self.log_buffer_size);
-            log_stream.clear();
+            let old_event_block =
+                log_stream.replace_block(Arc::new(LogMsgBlock::new(self.log_buffer_size)));
             assert!(!log_stream.is_full());
+            self.sink.on_log_buffer_full(&old_event_block);
         }
     }
 }

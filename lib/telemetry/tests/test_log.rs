@@ -6,8 +6,8 @@ use telemetry::*;
 struct DebugEventSink {}
 
 impl EventBlockSink for DebugEventSink {
-    fn on_log_buffer_full(&self, log_stream: &mut LogStream) {
-        println!("log buffer full: {} events", log_stream.get_events().len());
+    fn on_log_buffer_full(&self, log_block: &LogMsgBlock) {
+        println!("log buffer full: {} events", log_block.events.len());
         // for evt in &log_stream.events {
         //     println!("{:?} {}", evt.level, evt.msg);
         // }
