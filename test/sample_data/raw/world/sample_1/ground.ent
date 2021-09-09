@@ -1,7 +1,7 @@
 (
     name: "Ground",
     children: [],
-    parent: Some("data/offline/world/sample_1.ent"),
+    parent: Some("world/sample_1.ent"),
     components: [
         Transform((
             position: (0, 0, 0),
@@ -10,7 +10,7 @@
             apply_to_children: true,
         )),
         Visual((
-            renderable_geometry: "cluster(auto_lod(optimize(\"data/offline/world/sample_1/ground.mesh\")))",
+            renderable_geometry: "cluster(auto_lod(optimize(\"world/sample_1/ground.mesh\")))",
             shadow_receiver: true,
             shadow_caster_sun: true,
             shadow_caster_local: true,
@@ -18,7 +18,7 @@
         )),
         Physics((
             dynamic: false,
-            collision_geometry: "collision(auto_lod(optimize(\"data/offline/world/sample_1/ground.mesh\").lod($)))",
+            collision_geometry: "collision(auto_lod(optimize(\"world/sample_1/ground.mesh\").lod($)))",
         )),
     ],
 )

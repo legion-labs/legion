@@ -117,7 +117,7 @@
                 15,
                 17,
             ],
-            material: "data/offline/world/sample_1/ground.mat",
+            material: "world/sample_1/ground.mat",
         ),
     ],
 )

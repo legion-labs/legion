@@ -1,5 +1,5 @@
 (
-    name: "data/offline/world/sample_1/ground.mat",
+    name: "world/sample_1/ground.mat",
     dependencies: [
         "source/ground.psd",
     ],

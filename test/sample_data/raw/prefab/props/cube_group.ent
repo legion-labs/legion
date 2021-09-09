@@ -1,8 +1,8 @@
 (
     name: "Cube Group",
     children: [
-        "data/offline/prefab/props/cube_group_cube_1.ent.ins",
-        "data/offline/prefab/props/cube_group_cube_2.ent.ins",
+        "prefab/props/cube_group_cube_1.ent.ins",
+        "prefab/props/cube_group_cube_2.ent.ins",
     ],
     parent: None,
     components: [
