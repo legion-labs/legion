@@ -1,22 +1,39 @@
-use std::vec;
-
 use legion_app::prelude::*;
-use sciter_js::window;
+use legion_utils::{HashMap, Uuid};
+use sciter_js::{sciter, window::run_event_loop, window::WindowBuilder};
 
 #[derive(Default)]
 pub struct SciterPlugin;
 
-pub struct ToolWindows {
-    pub primary_tool_window: sciter_js::window::Window,
-    pub additional_tool_windows: Vec<sciter_js::window::Window>,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ToolWindowId(Uuid);
+
+impl ToolWindowId {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+
+    pub fn primary() -> Self {
+        Self(Uuid::from_u128(0))
+    }
+
+    pub fn is_primary(&self) -> bool {
+        *self == Self::primary()
+    }
 }
 
-#[derive(Clone, Debug)]
+pub struct ToolWindows {
+    windows: HashMap<ToolWindowId, sciter_js::window::Window>,
+}
+
+//#[derive(Clone, Debug)]
 pub struct ToolWindowDescription {
     pub width: f32,
     pub height: f32,
     pub title: Option<String>,
-    pub html: Option<String>,
+    pub html: Option<&'static [u8]>,
+    pub url: Option<String>,
 }
 
 impl Default for ToolWindowDescription {
@@ -26,34 +43,46 @@ impl Default for ToolWindowDescription {
             height: 0.0,
             title: None,
             html: None,
+            url: None,
         }
     }
 }
 
-pub struct CreateWindow {
-    desc: ToolWindowDescription,
-}
-
 impl Plugin for SciterPlugin {
     fn build(&self, app: &mut App) {
-        let settings = app
-            .world
-            .get_resource_or_insert_with(ToolWindowDescription::default)
-            .to_owned();
-
-        let tool_windows = ToolWindows {
-            primary_tool_window: window::WindowBuilder::main().build(),
-            additional_tool_windows: vec![],
+        let mut tool_windows = ToolWindows {
+            windows: HashMap::default(),
         };
+        if let Some(setting) = app.world.get_resource_mut::<ToolWindowDescription>() {
+            let mut primary_window = WindowBuilder::main().build();
+            if let Some(html) = setting.html {
+                sciter::set_global_options(sciter::GlobalOption::ScriptRuntimeFeatures(
+                    sciter::ScriptRuntimeFeatures::ALLOW_FILE_IO // Enables `Sciter.machineName()`.  Required for opening file dialog (`view.selectFile()`)
+                     | sciter::ScriptRuntimeFeatures::ALLOW_SYSINFO, // Enables opening file dialog (`view.selectFile()`)
+                ))
+                .unwrap();
 
+                sciter::set_global_options(sciter::GlobalOption::UxTheming(true)).unwrap();
+
+                // Enable debug mode for all windows, so that we can inspect them via Inspector.
+                sciter::set_global_options(sciter::GlobalOption::DebugMode(true)).unwrap();
+
+                primary_window.load_html(html, None);
+                primary_window.show();
+            }
+            tool_windows
+                .windows
+                .insert(ToolWindowId::primary(), primary_window);
+        }
         app.insert_non_send_resource(tool_windows)
             .set_runner(sciter_runner);
     }
 }
 
-pub fn sciter_runner(app: App) {
-    let tool_windows = app.world.get_non_send_resource::<ToolWindows>().unwrap();
-    tool_windows.primary_tool_window.event_loop();
+pub fn sciter_runner(mut app: App) {
+    run_event_loop(move || {
+        app.update();
+    });
 }
 
 #[cfg(test)]
