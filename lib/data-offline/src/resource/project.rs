@@ -125,7 +125,7 @@ impl Project {
         Self::root_to_index_path(&self.project_dir)
     }
 
-    /// Creates a new project index file turining the containing directory into a project.
+    /// Creates a new project index file turning the containing directory into a project.
     pub fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let index_path = Self::root_to_index_path(project_dir.as_ref());
         let file = OpenOptions::new()
@@ -486,11 +486,11 @@ mod tests {
     fn setup_test() -> TempDir {
         let root = tempfile::tempdir().unwrap();
 
-        let projectindex_path = Project::root_to_index_path(root.path());
-        let projectindex_file = File::create(projectindex_path).unwrap();
+        let project_index_path = Project::root_to_index_path(root.path());
+        let project_index_file = File::create(project_index_path).unwrap();
         std::fs::create_dir(root.path().join("offline")).unwrap();
 
-        serde_json::to_writer(projectindex_file, &ResourceDb::default()).unwrap();
+        serde_json::to_writer(project_index_file, &ResourceDb::default()).unwrap();
         root
     }
 
@@ -695,7 +695,7 @@ mod tests {
     /*
     // + data-offline/
     //  - albedo.texture
-    //  - body.metarial // texture ref
+    //  - body.material // texture ref
     //  - hero.geometry // material ref
     //  - hero.actor // geometry ref, skeleton ref
     //  - hero.skeleton // no refs
@@ -705,21 +705,21 @@ mod tests {
     fn proj_create_delete() {
         let root = tempfile::tempdir().unwrap();
 
-        let project = Project::create_new(root.path()).expect("faild to create project");
+        let project = Project::create_new(root.path()).expect("failed to create project");
         let same_project = Project::create_new(root.path());
         assert!(same_project.is_err());
 
         project.delete();
 
-        let _project = Project::create_new(root.path()).expect("faild to re-create project");
+        let _project = Project::create_new(root.path()).expect("failed to re-create project");
         let same_project = Project::create_new(root.path());
         assert!(same_project.is_err());
     }
 
     #[test]
     fn local_changes() {
-        let projroot_path = setup_test();
-        let (project, _) = create_actor(projroot_path.path());
+        let proj_root_path = setup_test();
+        let (project, _) = create_actor(proj_root_path.path());
 
         assert_eq!(project.db.local_resources.len(), 5);
         assert_eq!(project.db.remote_resources.len(), 0);
@@ -727,8 +727,8 @@ mod tests {
 
     #[test]
     fn commit() {
-        let projroot_path = setup_test();
-        let (mut project, _) = create_actor(projroot_path.path());
+        let proj_root_path = setup_test();
+        let (mut project, _) = create_actor(proj_root_path.path());
 
         project.commit().unwrap();
 

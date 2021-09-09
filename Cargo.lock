@@ -2544,6 +2544,7 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "legion-data-offline",
  "legion-math",
  "legion-utils",
  "ron",
