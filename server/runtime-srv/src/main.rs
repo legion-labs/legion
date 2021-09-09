@@ -110,12 +110,14 @@ fn main() {
             .help("Root object to load, usually a world"))
         .get_matches();
 
-    let cas = args.value_of(ARG_NAME_CAS).unwrap_or("/");
-    let root = args.value_of(ARG_NAME_ROOT).unwrap_or("/");
+    let content_store_addr = args.value_of(ARG_NAME_CAS).unwrap_or("test/sample_data");
+    let root_object = args
+        .value_of(ARG_NAME_ROOT)
+        .unwrap_or("offline/world/sample_1.ent");
 
     // Start app with 60 fps
     App::new()
-        .insert_resource(AssetRegistrySettings::new(cas, root))
+        .insert_resource(AssetRegistrySettings::new(content_store_addr, root_object))
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
         )))

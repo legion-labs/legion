@@ -22,13 +22,8 @@ impl AssetRegistrySettings {
     }
 }
 
+#[derive(Default)]
 pub struct AssetRegistryPlugin {}
-
-impl Default for AssetRegistryPlugin {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut legion_app::App) {

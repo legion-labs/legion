@@ -2540,6 +2540,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef703b7cb59335eae2eb93ceb664c0eb7ea6bf567079d843e09420219668e072"
 
 [[package]]
+name = "sample-data-compiler"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "legion-math",
+ "legion-utils",
+ "ron",
+ "serde",
+]
+
+[[package]]
 name = "schannel"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"

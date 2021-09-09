@@ -59,11 +59,11 @@
 //!
 //! A **data compiler** is able to load and read certain *resources* that are available through [`CompilerContext`].
 //!
-//! The main *resource* is the leaf of the **build graph** being currently compiled. It is accessable by
+//! The main *resource* is the leaf of the **build graph** being currently compiled. It is accessible by
 //! calling [`AssetPathId::source_resource_path`] on [`CompilerContext::compile_path`].
 //!
 //! It can also access any *intermediate resource* that is part of the [`CompilerContext::compile_path`]'s [`AssetPathId`] provided that
-//! it was whitelisted as a *derived depenendency* during the compilation process.
+//! it was whitelisted as a *derived dependency* during the compilation process.
 //!
 //! Reading source `Resources` is done with [`CompilerContext::load_resource`] function:
 //!
@@ -153,7 +153,7 @@ pub struct CompilationOutput {
 pub struct CompilerContext<'a> {
     /// The desired compilation output.
     pub compile_path: AssetPathId,
-    /// Compilation depenency list.
+    /// Compilation dependency list.
     pub dependencies: &'a [AssetPathId],
     /// List of derived dependencies accumulated in this compilation pass.
     derived_deps: &'a [CompiledResource],
@@ -166,7 +166,7 @@ pub struct CompilerContext<'a> {
     /// Content-addressable storage of compilation output.
     pub content_store: &'a mut dyn ContentStore,
     /// Directory where `derived` and `dependencies` are assumed to be stored.
-    // todo: this should be chanaged to ContentStore with filtering.
+    // todo: this should be changed to ContentStore with filtering.
     pub resource_dir: &'a Path,
 }
 
