@@ -1,7 +1,9 @@
 //! Minimalistic Sciter sample.
 
 fn main() {
-    legion_app::App::new().run();
+    legion_app::App::new()
+        .add_plugin(legion_sciter::SciterPlugin::default())
+        .run();
 }
 
 /*
