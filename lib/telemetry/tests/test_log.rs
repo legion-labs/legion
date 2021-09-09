@@ -20,7 +20,13 @@ fn test_log_str() {
     }
 }
 
+fn type_name_of<T>(_: &T) -> &'static str {
+    //until type_name_of_val is out of nightly-only
+    std::any::type_name::<T>()
+}
+
 fn test_log_thread() {
+    trace_scope!();
     let mut threads = Vec::new();
     for _ in 1..5 {
         threads.push(thread::spawn(|| {
