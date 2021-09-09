@@ -31,7 +31,7 @@ impl WindowApi for LinuxWindow {
         LinuxWindowHandle {}
     }
 
-    fn event_loop(&self) {}
+    fn event_loop<UpdateCallback: FnMut()>(&self, _update_callback: UpdateCallback) {}
 }
 
 impl Monitor<LinuxWindow> for LinuxMonitor {
