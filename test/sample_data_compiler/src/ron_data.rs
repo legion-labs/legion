@@ -3,7 +3,7 @@ use legion_utils::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-struct Instance {
+pub struct Instance {
     original: String,
     overrides: HashMap<String, String>,
 }
@@ -17,14 +17,14 @@ pub struct Entity {
 }
 
 #[derive(Serialize, Deserialize)]
-enum GIContribution {
+pub enum GIContribution {
     Default,
     Blocker,
     Exclude,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Visual {
+pub struct Visual {
     renderable_geometry: String,
     shadow_receiver: bool,
     shadow_caster_sun: bool,
@@ -33,7 +33,7 @@ struct Visual {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Transform {
+pub struct Transform {
     position: Vec3,
     rotation: Quat,
     scale: Vec3,
@@ -41,16 +41,16 @@ struct Transform {
 }
 
 #[derive(Serialize, Deserialize)]
-struct GlobalIllumination {}
+pub struct GlobalIllumination {}
 
 #[derive(Serialize, Deserialize)]
-enum ProjectionType {
+pub enum ProjectionType {
     Orthogonal,
     Perspective,
 }
 
 #[derive(Serialize, Deserialize)]
-struct View {
+pub struct View {
     fov: f32,
     near: f32,
     far: f32,
@@ -58,10 +58,10 @@ struct View {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Light {}
+pub struct Light {}
 
 #[derive(Serialize, Deserialize)]
-enum Component {
+pub enum Component {
     Transform(Transform),
     Visual(Visual),
     GlobalIllumination(GlobalIllumination),
@@ -72,7 +72,7 @@ enum Component {
 }
 
 #[derive(Serialize, Deserialize)]
-struct SubMesh {
+pub struct SubMesh {
     positions: Vec<Vec3>,
     normals: Vec<Vec3>,
     uvs: Vec<Vec2>,
@@ -81,12 +81,12 @@ struct SubMesh {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Mesh {
+pub struct Mesh {
     sub_meshes: Vec<SubMesh>,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Material {
+pub struct Material {
     albedo: String,
     normal: String,
     roughness: String,
@@ -94,36 +94,36 @@ struct Material {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Physics {
+pub struct Physics {
     dynamic: bool,
     collision_geometry: String,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Script {
+pub struct Script {
     code: String,
     exposed_vars: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize)]
-struct CollisionMaterial {
+pub struct CollisionMaterial {
     impact_script: Option<Script>,
 }
 
 #[derive(Serialize, Deserialize)]
-struct VoxelisationConfig {}
+pub struct VoxelisationConfig {}
 
 #[derive(Serialize, Deserialize)]
-struct NavMeshLayerConfig {}
+pub struct NavMeshLayerConfig {}
 
 #[derive(Serialize, Deserialize)]
-struct NavMesh {
+pub struct NavMesh {
     voxelisation_config: VoxelisationConfig,
     layer_config: Vec<NavMeshLayerConfig>,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Metadata {
+pub struct Metadata {
     name: String,
     dependencies: Vec<String>,
     content_checksum: String,

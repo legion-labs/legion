@@ -1,5 +1,11 @@
+use crate::ron_data;
 use legion_data_offline::resource::Project;
-use std::path::Path;
+use serde::de::DeserializeOwned;
+use std::{
+    fs::File,
+    io::{BufReader, Read},
+    path::Path,
+};
 
 pub fn load_data(root_folder: impl AsRef<Path>) -> Option<Project> {
     let root_folder = root_folder.as_ref();
@@ -48,6 +54,42 @@ fn load_dir(dir: impl AsRef<Path>, project: &mut Project) {
 
 fn load_file(file: impl AsRef<Path>, _project: &mut Project) {
     let file = file.as_ref();
-    let name = file.file_name();
-    println!("processing file {:?}", name);
+    if let Some(ext) = file.extension() {
+        let ext = ext.to_string_lossy();
+        if ext == "meta" {
+            // do nothing
+        } else {
+            let name = file.file_name().unwrap().to_string_lossy();
+            //println!("processing file {}", name);
+
+            if let Ok(f) = File::open(file) {
+                let reader = BufReader::new(f);
+
+                fn deserialize<T, R>(reader: R) -> T
+                where
+                    T: DeserializeOwned,
+                    R: Read,
+                {
+                    ron::de::from_reader(reader).unwrap()
+                }
+
+                if ext == "ent" {
+                    // Entity
+                    let _entity: ron_data::Entity = deserialize(reader);
+                    //project.add_resource(name, kind, handle, registry);
+                } else if ext == "ins" {
+                    // Instance
+                    let _instance: ron_data::Instance = deserialize(reader);
+                } else if ext == "mat" {
+                    // Material
+                    let _material: ron_data::Material = deserialize(reader);
+                } else if ext == "mesh" {
+                    // Mesh
+                    let _mesh: ron_data::Mesh = deserialize(reader);
+                } else {
+                    eprintln!("unrecognized file extension '{}', for file {}", ext, name);
+                }
+            }
+        }
+    }
 }
