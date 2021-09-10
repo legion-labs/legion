@@ -161,10 +161,21 @@ where
 
         let raw_data: RawType = ron::de::from_reader(reader).unwrap();
 
-        let resource = resources
-            .new_resource(resource_kind)
-            .unwrap()
-            .typed::<OfflineType>();
+        let existing_resource = project.find_resource(&resource_path).ok();
+
+        let resource = {
+            match existing_resource {
+                Some(resource_id) => {
+                    // overwrite resource contents
+                    project.load_resource(resource_id, resources).ok()
+                }
+                None => {
+                    // new resource
+                    resources.new_resource(resource_kind)
+                }
+            }
+        };
+        let resource = resource.unwrap().typed::<OfflineType>();
 
         // remap extension
         resource_path.push(file_name + extension);
@@ -173,10 +184,19 @@ where
         let offline_data = resource.get_mut(resources).unwrap();
         *offline_data = raw_data.into();
 
-        let resource_id = project
-            .add_resource(resource_path, resource_kind, resource, resources)
-            .expect("failed to add resource to project");
-        Some(resource_id)
+        // check if resource exists
+        if let Some(resource_id) = existing_resource {
+            project
+                .save_resource(resource_id, resource, resources)
+                .unwrap();
+            Some(resource_id)
+        } else {
+            // new resource
+            let resource_id = project
+                .add_resource(resource_path, resource_kind, resource, resources)
+                .expect("failed to add resource to project");
+            Some(resource_id)
+        }
     } else {
         None
     }
