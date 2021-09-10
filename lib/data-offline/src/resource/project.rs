@@ -140,7 +140,9 @@ impl Project {
 
         let project_dir = index_path.parent().unwrap().to_owned();
         let resource_dir = project_dir.join("offline");
-        std::fs::create_dir(&resource_dir).map_err(Error::IOError)?;
+        if !resource_dir.exists() {
+            std::fs::create_dir(&resource_dir).map_err(Error::IOError)?;
+        }
 
         Ok(Self {
             file,
