@@ -22,7 +22,7 @@ const METADATA_EXT: &str = "meta";
 
 /// A project exists always within a given directory and this file
 /// will be created directly in that directory.
-const PROJECT_INDEX_FILENAME: &str = ".project.index";
+const PROJECT_INDEX_FILENAME: &str = "project.index";
 
 #[derive(Serialize, Deserialize, Default)]
 struct ResourceDb {
