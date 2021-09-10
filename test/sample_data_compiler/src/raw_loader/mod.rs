@@ -158,6 +158,7 @@ where
         for component in component_iter {
             resource_path.push(component);
         }
+        resource_path.push(file_name + extension);
 
         let raw_data: RawType = ron::de::from_reader(reader).unwrap();
 
@@ -176,9 +177,6 @@ where
             }
         };
         let resource = resource.unwrap().typed::<OfflineType>();
-
-        // remap extension
-        resource_path.push(file_name + extension);
 
         // convert raw to offline
         let offline_data = resource.get_mut(resources).unwrap();
