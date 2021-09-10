@@ -81,7 +81,6 @@
 #![allow()]
 
 mod offline_data;
-mod raw_data;
 mod raw_loader;
 
 use clap::{App, Arg};
