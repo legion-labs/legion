@@ -42,6 +42,10 @@ fn load_raw_dir(root_folder: &Path, raw_dir: &Path) {
             offline_data::MATERIAL_TYPE_ID,
             Box::new(offline_data::MaterialProcessor {}),
         )
+        .add_type(
+            offline_data::MESH_TYPE_ID,
+            Box::new(offline_data::MeshProcessor {}),
+        )
         .create_registry();
 
     load_dir(raw_dir, raw_dir, &mut project, &mut resources);
@@ -90,7 +94,6 @@ fn load_file(
             println!("todo Instance");
             //let _instance: raw_data::Instance = deserialize(reader);
         } else if ext == "mat" {
-            // Material
             create_resource::<raw_data::Material, offline_data::Material>(
                 raw_dir,
                 file,
@@ -100,9 +103,14 @@ fn load_file(
                 ".material",
             );
         } else if ext == "mesh" {
-            // Mesh
-            println!("todo Mesh");
-            //let _mesh: raw_data::Mesh = deserialize(reader);
+            create_resource::<raw_data::Mesh, offline_data::Mesh>(
+                raw_dir,
+                file,
+                project,
+                resources,
+                offline_data::MESH_TYPE_ID,
+                ".mesh",
+            );
         } else {
             eprintln!(
                 "unrecognized file extension '{}', for file {}",

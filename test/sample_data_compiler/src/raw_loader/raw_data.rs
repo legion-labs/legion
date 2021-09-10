@@ -73,16 +73,16 @@ pub enum Component {
 
 #[derive(Serialize, Deserialize)]
 pub struct SubMesh {
-    positions: Vec<Vec3>,
-    normals: Vec<Vec3>,
-    uvs: Vec<Vec2>,
-    indices: Vec<u16>,
-    material: String,
+    pub positions: Vec<Vec3>,
+    pub normals: Vec<Vec3>,
+    pub uvs: Vec<Vec2>,
+    pub indices: Vec<u16>,
+    pub material: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Mesh {
-    sub_meshes: Vec<SubMesh>,
+    pub sub_meshes: Vec<SubMesh>,
 }
 
 #[derive(Serialize, Deserialize)]
