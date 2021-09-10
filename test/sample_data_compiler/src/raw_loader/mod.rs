@@ -8,11 +8,14 @@ use legion_data_offline::resource::{
 };
 use serde::de::DeserializeOwned;
 use std::{
+    collections::HashMap,
     ffi::OsStr,
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
 };
+
+use self::raw_to_offline::FromRaw;
 
 pub fn build_offline(root_folder: impl AsRef<Path>) {
     let root_folder = root_folder.as_ref();
@@ -35,12 +38,14 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                 create_or_find_default(&file_paths, &resource_names, &mut project, &mut resources);
 
             for (i, path) in file_paths.iter().enumerate() {
-                let resource_id = resource_ids[i];
+                let resource_name = &resource_names[i];
+                let resource_id = *resource_ids.get(resource_name).unwrap();
                 match path.extension().unwrap().to_str().unwrap() {
                     "mat" => {
                         load_resource::<raw_data::Material, offline_data::Material>(
                             resource_id,
                             path,
+                            &resource_ids,
                             &mut project,
                             &mut resources,
                         );
@@ -49,6 +54,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                         load_resource::<raw_data::Mesh, offline_data::Mesh>(
                             resource_id,
                             path,
+                            &resource_ids,
                             &mut project,
                             &mut resources,
                         );
@@ -108,8 +114,8 @@ fn create_or_find_default(
     resource_names: &[ResourcePathName],
     project: &mut Project,
     resources: &mut ResourceRegistry,
-) -> Vec<ResourceId> {
-    let mut ids = vec![];
+) -> HashMap<ResourcePathName, ResourceId> {
+    let mut ids: HashMap<ResourcePathName, ResourceId> = HashMap::default();
 
     for (i, path) in file_paths.iter().enumerate() {
         let name = &resource_names[i];
@@ -129,7 +135,7 @@ fn create_or_find_default(
                     .unwrap()
             }
         };
-        ids.push(id);
+        ids.insert(name.clone(), id);
     }
     ids
 }
@@ -181,12 +187,13 @@ fn find_files(raw_dir: impl AsRef<Path>, extensions: &[&str]) -> Vec<PathBuf> {
 fn load_resource<RawType, OfflineType>(
     resource_id: ResourceId,
     file: &Path,
+    references: &HashMap<ResourcePathName, ResourceId>,
     project: &mut Project,
     resources: &mut ResourceRegistry,
 ) -> Option<ResourceId>
 where
     RawType: DeserializeOwned,
-    OfflineType: Resource + From<RawType>,
+    OfflineType: Resource + FromRaw<RawType>,
 {
     if let Ok(f) = File::open(file) {
         let reader = BufReader::new(f);
@@ -199,7 +206,7 @@ where
 
         // convert raw to offline
         let offline_data = resource.get_mut(resources).unwrap();
-        *offline_data = raw_data.into();
+        *offline_data = OfflineType::from_raw(raw_data, references);
 
         project
             .save_resource(resource_id, resource, resources)
