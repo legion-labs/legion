@@ -1,13 +1,18 @@
 mod raw_data;
 mod raw_to_offline;
 
-use crate::offline_data;
+use crate::offline_data::{self};
 use legion_data_offline::resource::{
     Project, Resource, ResourceId, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
     ResourceType,
 };
 use serde::de::DeserializeOwned;
-use std::{fs::File, io::BufReader, path::Path};
+use std::{
+    ffi::OsStr,
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+};
 
 pub fn build_offline(root_folder: impl AsRef<Path>) {
     let root_folder = root_folder.as_ref();
@@ -17,7 +22,40 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
             .filter(|e| e.file_type().unwrap().is_dir() && e.file_name() == "raw");
         if let Some(raw_dir) = raw_dir.next() {
             let raw_dir = raw_dir.path();
-            load_raw_dir(root_folder, &raw_dir);
+            let (mut project, mut resources) = setup_project(root_folder);
+
+            let file_paths = find_files(&raw_dir, &["mat", "mesh"]);
+
+            let resource_names = file_paths
+                .iter()
+                .map(|s| path_to_resource_name(s))
+                .collect::<Vec<_>>();
+
+            let resource_ids =
+                create_or_find_default(&file_paths, &resource_names, &mut project, &mut resources);
+
+            for (i, path) in file_paths.iter().enumerate() {
+                let resource_id = resource_ids[i];
+                match path.extension().unwrap().to_str().unwrap() {
+                    "mat" => {
+                        load_resource::<raw_data::Material, offline_data::Material>(
+                            resource_id,
+                            path,
+                            &mut project,
+                            &mut resources,
+                        );
+                    }
+                    "mesh" => {
+                        load_resource::<raw_data::Mesh, offline_data::Mesh>(
+                            resource_id,
+                            path,
+                            &mut project,
+                            &mut resources,
+                        );
+                    }
+                    _ => panic!(),
+                }
+            }
         } else {
             eprintln!(
                 "did not find a 'raw' sub-directory in {}",
@@ -29,15 +67,15 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
     }
 }
 
-fn load_raw_dir(root_folder: &Path, raw_dir: &Path) {
+fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
     // create/load project
-    let mut project = match Project::open(root_folder) {
+    let project = match Project::open(root_folder) {
         Ok(project) => Ok(project),
         Err(_) => Project::create_new(root_folder),
     }
     .unwrap();
 
-    let mut resources = ResourceRegistryOptions::new()
+    let resources = ResourceRegistryOptions::new()
         .add_type(
             offline_data::MATERIAL_TYPE_ID,
             Box::new(offline_data::MaterialProcessor {}),
@@ -48,153 +86,125 @@ fn load_raw_dir(root_folder: &Path, raw_dir: &Path) {
         )
         .create_registry();
 
-    load_dir(raw_dir, raw_dir, &mut project, &mut resources);
+    (project, resources)
 }
 
-fn load_dir(
-    raw_dir: &Path,
-    dir: impl AsRef<Path>,
+fn ext_to_resource_kind(ext: &str) -> ResourceType {
+    match ext {
+        "mat" => offline_data::MATERIAL_TYPE_ID,
+        "mesh" => offline_data::MESH_TYPE_ID,
+        _ => panic!(),
+    }
+}
+
+/// Creates resources for all `file_paths` containing default values (empty content).
+///
+/// The content of resources is loaded later.
+///
+/// This is done because we need to assign `ResourceId` for all resources before we load them
+/// in order to resolve references from a `ResourcePathName` (/path/to/resource) to `ResourceId` (125463453).
+fn create_or_find_default(
+    file_paths: &[PathBuf],
+    resource_names: &[ResourcePathName],
     project: &mut Project,
     resources: &mut ResourceRegistry,
-) {
-    let dir = dir.as_ref();
-    println!("loading folder {}", dir.display());
-    if let Ok(entries) = dir.read_dir() {
-        for entry in entries.flatten() {
-            if let Ok(file_type) = entry.file_type() {
-                if file_type.is_dir() {
-                    load_dir(raw_dir, entry.path(), project, resources);
-                } else {
-                    assert!(!file_type.is_symlink());
-                    load_file(raw_dir, entry.path(), project, resources);
-                }
+) -> Vec<ResourceId> {
+    let mut ids = vec![];
+
+    for (i, path) in file_paths.iter().enumerate() {
+        let name = &resource_names[i];
+        let kind = ext_to_resource_kind(path.extension().unwrap().to_str().unwrap());
+
+        let id = {
+            if let Ok(id) = project.find_resource(name) {
+                id
+            } else {
+                project
+                    .add_resource(
+                        name.clone(),
+                        kind,
+                        resources.new_resource(kind).unwrap(),
+                        resources,
+                    )
+                    .unwrap()
+            }
+        };
+        ids.push(id);
+    }
+    ids
+}
+
+fn path_to_resource_name(path: &Path) -> ResourcePathName {
+    let mut found = false;
+    let name = path
+        .iter()
+        .filter_map(|component| {
+            let was_found = found;
+            if !found && component == OsStr::new("raw") {
+                found = true;
+            }
+            if was_found {
+                let mut s = String::from("/");
+                s.push_str(&component.to_owned().into_string().unwrap());
+                Some(s)
+            } else {
+                None
+            }
+        })
+        .collect::<String>();
+    ResourcePathName::from(name)
+}
+
+fn find_files(raw_dir: impl AsRef<Path>, extensions: &[&str]) -> Vec<PathBuf> {
+    let dir = raw_dir.as_ref();
+
+    let mut files = vec![];
+
+    for entry in dir.read_dir().unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.is_dir() {
+            files.append(&mut find_files(&path, extensions));
+        } else if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+            //
+            // include only supported extensions
+            //
+            if extensions.contains(&ext) {
+                files.push(path);
             }
         }
     }
+
+    files
 }
 
-fn load_file(
-    raw_dir: &Path,
-    file: impl AsRef<Path>,
-    project: &mut Project,
-    resources: &mut ResourceRegistry,
-) {
-    let file = file.as_ref();
-    if let Some(ext) = file.extension() {
-        let ext = ext.to_string_lossy();
-        if ext == "meta" {
-            // do nothing
-        } else if ext == "ent" {
-            // Entity
-            println!("todo Entity");
-            //let _entity: raw_data::Entity = deserialize(reader);
-            //project.add_resource(name, kind, handle, registry);
-        } else if ext == "ins" {
-            // Instance
-            println!("todo Instance");
-            //let _instance: raw_data::Instance = deserialize(reader);
-        } else if ext == "mat" {
-            create_resource::<raw_data::Material, offline_data::Material>(
-                raw_dir,
-                file,
-                project,
-                resources,
-                offline_data::MATERIAL_TYPE_ID,
-                ".material",
-            );
-        } else if ext == "mesh" {
-            create_resource::<raw_data::Mesh, offline_data::Mesh>(
-                raw_dir,
-                file,
-                project,
-                resources,
-                offline_data::MESH_TYPE_ID,
-                ".mesh",
-            );
-        } else {
-            eprintln!(
-                "unrecognized file extension '{}', for file {}",
-                ext,
-                file.file_name().unwrap().to_string_lossy()
-            );
-        }
-    }
-}
-
-fn create_resource<RawType, OfflineType>(
-    raw_dir: &Path,
+fn load_resource<RawType, OfflineType>(
+    resource_id: ResourceId,
     file: &Path,
     project: &mut Project,
     resources: &mut ResourceRegistry,
-    resource_kind: ResourceType,
-    extension: &str,
 ) -> Option<ResourceId>
 where
     RawType: DeserializeOwned,
     OfflineType: Resource + From<RawType>,
 {
     if let Ok(f) = File::open(file) {
-        let file_name = file.file_stem().unwrap().to_string_lossy();
-
         let reader = BufReader::new(f);
-
-        // get path relative to root of raw data
-        let relative_path = file.strip_prefix(raw_dir).unwrap();
-
-        // split up into folder components
-        let mut path_components: Vec<String> = relative_path
-            .components()
-            .filter_map(|c| match c {
-                std::path::Component::Normal(s) => Some(s.to_string_lossy().to_string()),
-                _ => None,
-            })
-            .collect();
-        // remove file itself
-        path_components.truncate(path_components.len() - 1);
-        let mut component_iter = path_components.iter();
-
-        // build resource path from folder components
-        let mut resource_path = ResourcePathName::new(component_iter.next().unwrap());
-        for component in component_iter {
-            resource_path.push(component);
-        }
-        resource_path.push(file_name + extension);
-
         let raw_data: RawType = ron::de::from_reader(reader).unwrap();
 
-        let existing_resource = project.find_resource(&resource_path).ok();
-
-        let resource = {
-            match existing_resource {
-                Some(resource_id) => {
-                    // overwrite resource contents
-                    project.load_resource(resource_id, resources).ok()
-                }
-                None => {
-                    // new resource
-                    resources.new_resource(resource_kind)
-                }
-            }
-        };
-        let resource = resource.unwrap().typed::<OfflineType>();
+        let resource = project
+            .load_resource(resource_id, resources)
+            .unwrap()
+            .typed::<OfflineType>();
 
         // convert raw to offline
         let offline_data = resource.get_mut(resources).unwrap();
         *offline_data = raw_data.into();
 
-        // check if resource exists
-        if let Some(resource_id) = existing_resource {
-            project
-                .save_resource(resource_id, resource, resources)
-                .unwrap();
-            Some(resource_id)
-        } else {
-            // new resource
-            let resource_id = project
-                .add_resource(resource_path, resource_kind, resource, resources)
-                .expect("failed to add resource to project");
-            Some(resource_id)
-        }
+        project
+            .save_resource(resource_id, resource, resources)
+            .unwrap();
+        Some(resource_id)
     } else {
         None
     }
