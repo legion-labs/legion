@@ -692,6 +692,8 @@ version = "0.1.0"
 dependencies = [
  "legion-app",
  "legion-ecs",
+ "legion-online",
+ "tokio",
 ]
 
 [[package]]
@@ -1451,6 +1453,16 @@ name = "legion-math"
 version = "0.1.0"
 dependencies = [
  "glam",
+]
+
+[[package]]
+name = "legion-online"
+version = "0.1.0"
+dependencies = [
+ "futures-lite",
+ "legion-app",
+ "legion-ecs",
+ "tokio",
 ]
 
 [[package]]
