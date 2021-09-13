@@ -71,35 +71,31 @@ impl ContentType {
 
 /// Id of a runtime asset or source or derived resource.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash, Serialize, Deserialize)]
-pub struct ContentId {
-    id: std::num::NonZeroU128,
-}
+pub struct ContentId(std::num::NonZeroU128);
 
 impl ContentId {
     /// Creates a new id of a given type.
     pub fn new(kind: ContentType, id: u64) -> Self {
         let internal = kind.stamp(id as u128);
-        Self {
-            id: std::num::NonZeroU128::new(internal).unwrap(),
-        }
+        Self(std::num::NonZeroU128::new(internal).unwrap())
     }
 
     /// Returns the type of `ContentId`.
     pub fn kind(&self) -> ContentType {
-        let type_id = (u128::from(self.id) >> (u128::BITS - ContentType::num_bits())) as u32;
+        let type_id = (u128::from(self.0) >> (u128::BITS - ContentType::num_bits())) as u32;
         ContentType::from_raw(type_id)
     }
 }
 
 impl LowerHex for ContentId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.id, f)
+        fmt::LowerHex::fmt(&self.0, f)
     }
 }
 
 impl fmt::Display for ContentId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{:#032x}", self.id))
+        f.write_fmt(format_args!("{:#032x}", self.0))
     }
 }
 
@@ -114,7 +110,7 @@ impl FromStr for ContentId {
         } else {
             // SAFETY: id is not zero in this else clause.
             let id = unsafe { std::num::NonZeroU128::new_unchecked(id) };
-            Ok(Self { id })
+            Ok(Self(id))
         }
     }
 }
