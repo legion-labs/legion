@@ -13,3 +13,5 @@ ahash = "0.7.0"
 tracing = { version = "0.1", features = ["release_max_level_info"] }
 instant = { version = "0.1" }
 uuid = { version = "0.8", features = ["v4", "serde"] }
+lazy_static = "1.4.0"
+crc = "2.0.0"

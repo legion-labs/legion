@@ -88,6 +88,7 @@ mod hash;
 pub use hash::*;
 
 pub use tracing;
+pub mod string_id;
 
 #[cfg(test)]
 mod tests {

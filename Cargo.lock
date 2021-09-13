@@ -1556,7 +1556,9 @@ name = "legion-utils"
 version = "0.1.0"
 dependencies = [
  "ahash",
+ "crc",
  "instant",
+ "lazy_static",
  "legion-derive",
  "tracing",
  "uuid",
