@@ -1,93 +1,78 @@
-use std::cell::RefCell;
-use std::future::Future;
-use std::sync::mpsc::{sync_channel, Receiver};
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
+
+use tokio::runtime::{Builder, Runtime};
+
+pub trait OnlineRuntime {
+    fn start<F>(&self, future: F) -> OnlineFuture<F::Output>
+    where
+        F: Future + Send + 'static,
+        F::Output: Sized + Send + 'static;
+}
 
 // Wraps a tokio::runtime::Runtime to make it compatible with the 'systems'
 // system.
-pub struct Runtime {
-    tokio_runtime: tokio::runtime::Runtime,
+pub struct TokioOnlineRuntime {
+    tokio_runtime: Runtime,
 }
 
-impl Default for Runtime {
+impl Default for TokioOnlineRuntime {
     fn default() -> Self {
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
+        let rt = Builder::new_multi_thread().enable_all().build().unwrap();
 
-        Runtime { tokio_runtime: rt }
+        TokioOnlineRuntime { tokio_runtime: rt }
     }
 }
 
-impl Runtime {
-    pub fn spawn<F>(&self, f: F) -> Result<F::Output>
+impl OnlineRuntime for TokioOnlineRuntime {
+    fn start<F>(&self, future: F) -> OnlineFuture<F::Output>
     where
         F: Future + Send + 'static,
-        F::Output: Send + 'static,
+        F::Output: Sized + Send + 'static,
     {
-        let (setter, result) = Result::new();
+        let (sender, res) = OnlineFuture::new();
 
-        self.tokio_runtime.spawn(async {
-            setter(f.await);
+        // Dispatch the specified future in tokio's thread-pool. Once it
+        // completes, were are responsible for completing the OnlineFuture
+        // accordingly. This is what OnlineRuntimes do.
+        self.tokio_runtime.spawn(async move {
+            let _ = sender.send(future.await);
         });
 
-        result
+        res
     }
 }
 
-// Represents an online result that can be polled for values.
-pub struct Result<T: Send + 'static> {
-    receiver: Receiver<T>,
-    value: RefCell<Option<T>>,
+pub struct OnlineFuture<T> {
+    receiver: tokio::sync::oneshot::Receiver<T>,
 }
 
-unsafe impl<T: Send + 'static> Sync for Result<T> {}
+impl<T> OnlineFuture<T> {
+    fn new() -> (tokio::sync::oneshot::Sender<T>, OnlineFuture<T>) {
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        let future = OnlineFuture { receiver };
 
-impl<T: Send + 'static> Result<T> {
-    pub fn new() -> (impl FnOnce(T) -> (), Result<T>) {
-        let (sender, receiver) = sync_channel(1);
-        let setter = move |t| sender.send(t).unwrap();
-
-        (
-            setter,
-            Result {
-                receiver: receiver,
-                value: RefCell::new(None),
-            },
-        )
+        (sender, future)
     }
+}
 
-    fn receive_if_unset(&self) {
-        if self.value.borrow().is_none() {
-            if let Ok(v) = self.receiver.try_recv() {
-                *self.value.borrow_mut() = Some(v);
+impl<T> Future for OnlineFuture<T> {
+    type Output = T;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match self.get_mut().receiver.try_recv() {
+            Ok(v) => Poll::Ready(v),
+            Err(_) => {
+                // We actually want to poll all the time.
+                //
+                // TODO: This is good enough for now but we might want to make that
+                // smarter in the future.
+                cx.waker().wake_by_ref();
+                Poll::Pending
             }
         }
-    }
-
-    pub fn is_set(&self) -> bool {
-        self.receive_if_unset();
-        self.value.borrow().is_some()
-    }
-}
-
-impl<T: Send + 'static + Clone> Result<T> {
-    pub fn get(&self) -> Option<T> {
-        self.receive_if_unset();
-        self.value.borrow().clone()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn result_set_and_get() {
-        let (setter, ret) = Result::new();
-
-        assert!(ret.get().is_none());
-        setter(42);
-        assert!(ret.get().unwrap() == 42);
     }
 }

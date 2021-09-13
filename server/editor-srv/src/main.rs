@@ -2,7 +2,9 @@ use std::time::Duration;
 
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_ecs::prelude::*;
-use legion_online::{OnlinePlugin, Result, Runtime};
+use legion_online::{
+    OnlineOperation, OnlineOperationStatus::*, OnlinePlugin, OnlineRuntime, TokioOnlineRuntime,
+};
 
 fn main() {
     App::new()
@@ -12,8 +14,9 @@ fn main() {
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(OnlinePlugin)
         .add_startup_system(|mut commands: Commands| {
-            let (_, age) = Result::new();
-            commands.spawn().insert(Caller { age });
+            commands.spawn().insert(Caller {
+                get_age: OnlineOperation::default(),
+            });
         })
         .add_system(frame_counter)
         .add_system(online_loop_example)
@@ -28,19 +31,31 @@ fn frame_counter(mut state: Local<'_, CounterState>) {
 }
 
 struct Caller {
-    age: Result<u32>,
+    get_age: OnlineOperation<u32>,
 }
 
-fn online_loop_example(rt: Res<Runtime>, mut callers: Query<&mut Caller>) {
+fn online_loop_example(rt: Res<TokioOnlineRuntime>, mut callers: Query<&mut Caller>) {
     for mut caller in callers.iter_mut() {
-        if !caller.age.is_set() {
-            caller.age = rt.spawn(async {
-                tokio::time::sleep(Duration::from_secs(1)).await;
-                42
-            });
-        } else {
-            println!("age: {:?}", caller.age.get());
-        }
+        match caller.get_age.poll() {
+            Idle => {
+                println!("idle");
+                caller
+                    .get_age
+                    .start_with(rt.start(async {
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                        42
+                    }))
+                    .unwrap();
+            }
+            Completed(v) => {
+                println!("completed: {:?}", v);
+                caller.get_age.restart_with(rt.start(async {
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    43
+                }));
+            }
+            _ => {}
+        };
     }
 }
 
