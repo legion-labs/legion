@@ -13,6 +13,6 @@ legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
 clap = "2.33"
-ron = "0.6.4"
+ron = "0.6.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
