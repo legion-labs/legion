@@ -1,8 +1,4 @@
-use std::{
-    error::Error,
-    sync::Arc,
-    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-};
+use std::{error::Error, future::Future, sync::Arc, task::Poll};
 
 // An OperationStatus represents the current status of an operation.
 pub enum OnlineOperationStatus<T> {
@@ -12,10 +8,9 @@ pub enum OnlineOperationStatus<T> {
     Completed(Arc<T>),
 }
 
-use futures_lite::FutureExt;
 use OnlineOperationStatus::*;
 
-use crate::OnlineFuture;
+use crate::{OnlineFuture, OnlineRuntime};
 
 // Represents an online operation running in a separate thread pool, that can be
 // polled for completion.
@@ -25,14 +20,17 @@ pub struct OnlineOperation<T> {
     result: Option<Arc<T>>,
 }
 
-impl<T> OnlineOperation<T> {
-    pub fn new_started(future: OnlineFuture<T>) -> OnlineOperation<T> {
+impl<T: Send + 'static> OnlineOperation<T> {
+    pub fn new_started<Runtime: OnlineRuntime, F: Future<Output = T> + Send + 'static>(
+        rt: &Runtime,
+        future: F,
+    ) -> OnlineOperation<T> {
         let mut op = OnlineOperation::<T> {
             future: None,
             result: None,
         };
 
-        let _ = op.start_with(future);
+        let _ = op.start_with(rt, future);
 
         op
     }
@@ -42,13 +40,14 @@ impl<T> OnlineOperation<T> {
         self.result = None;
     }
 
-    pub fn start_with(
+    pub fn start_with<Runtime: OnlineRuntime, F: Future<Output = T> + Send + 'static>(
         &mut self,
-        future: OnlineFuture<T>,
+        rt: &Runtime,
+        future: F,
     ) -> Result<(), OnlineOperationAlreadyStartedError> {
         match self.future {
             None => {
-                self.future = Some(future);
+                self.future = Some(rt.start(future));
 
                 Ok(())
             }
@@ -56,12 +55,16 @@ impl<T> OnlineOperation<T> {
         }
     }
 
-    pub fn restart_with(&mut self, future: OnlineFuture<T>) {
+    pub fn restart_with<Runtime: OnlineRuntime, F: Future<Output = T> + Send + 'static>(
+        &mut self,
+        rt: &Runtime,
+        future: F,
+    ) {
         self.reset();
-        self.start_with(future).unwrap()
+        self.start_with(rt, future).unwrap()
     }
 
-    pub fn poll(&mut self) -> OnlineOperationStatus<T> {
+    pub fn poll<Runtime: OnlineRuntime>(&mut self, rt: &Runtime) -> OnlineOperationStatus<T> {
         // If we already have a result in store, let's return that: our job is
         // done.
         if let Some(v) = &self.result {
@@ -70,11 +73,7 @@ impl<T> OnlineOperation<T> {
 
         // If we have a future, we must check whether it is actually ready or not.
         if let Some(future) = &mut self.future {
-            let raw = RawWaker::new(std::ptr::null(), &VTABLE);
-            let waker = unsafe { Waker::from_raw(raw) };
-            let mut cx = Context::from_waker(&waker);
-
-            return match future.poll(&mut cx) {
+            return match rt.poll(future) {
                 Poll::Pending => Started,
                 Poll::Ready(v) => {
                     let v = Arc::new(v);
@@ -92,11 +91,3 @@ impl<T> OnlineOperation<T> {
 // Indicates that an operation was already started and could not be restarted.
 #[derive(Debug, Clone)]
 pub struct OnlineOperationAlreadyStartedError;
-
-fn do_nothing(_ptr: *const ()) {}
-
-fn clone(ptr: *const ()) -> RawWaker {
-    RawWaker::new(ptr, &VTABLE)
-}
-
-static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, do_nothing, do_nothing, do_nothing);

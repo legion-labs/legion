@@ -1,9 +1,10 @@
 use std::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
 
+use futures_lite::FutureExt;
 use tokio::runtime::{Builder, Runtime};
 
 pub trait OnlineRuntime {
@@ -11,6 +12,8 @@ pub trait OnlineRuntime {
     where
         F: Future + Send + 'static,
         F::Output: Sized + Send + 'static;
+
+    fn poll<T>(&self, future: &mut OnlineFuture<T>) -> Poll<T>;
 }
 
 // Wraps a tokio::runtime::Runtime to make it compatible with the 'systems'
@@ -44,6 +47,14 @@ impl OnlineRuntime for TokioOnlineRuntime {
 
         res
     }
+
+    fn poll<T>(&self, future: &mut OnlineFuture<T>) -> Poll<T> {
+        let raw = RawWaker::new(std::ptr::null(), &VTABLE);
+        let waker = unsafe { Waker::from_raw(raw) };
+        let mut cx = Context::from_waker(&waker);
+
+        future.poll(&mut cx)
+    }
 }
 
 pub struct OnlineFuture<T> {
@@ -76,3 +87,11 @@ impl<T> Future for OnlineFuture<T> {
         }
     }
 }
+
+fn do_nothing(_ptr: *const ()) {}
+
+fn clone(ptr: *const ()) -> RawWaker {
+    RawWaker::new(ptr, &VTABLE)
+}
+
+static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, do_nothing, do_nothing, do_nothing);

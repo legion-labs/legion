@@ -2,9 +2,7 @@ use std::time::Duration;
 
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_ecs::prelude::*;
-use legion_online::{
-    OnlineOperation, OnlineOperationStatus::*, OnlinePlugin, OnlineRuntime, TokioOnlineRuntime,
-};
+use legion_online::{OnlineOperation, OnlineOperationStatus::*, OnlinePlugin, TokioOnlineRuntime};
 
 fn main() {
     App::new()
@@ -36,23 +34,23 @@ struct Caller {
 
 fn online_loop_example(rt: Res<TokioOnlineRuntime>, mut callers: Query<&mut Caller>) {
     for mut caller in callers.iter_mut() {
-        match caller.get_age.poll() {
+        match caller.get_age.poll(rt.as_ref()) {
             Idle => {
                 println!("idle");
                 caller
                     .get_age
-                    .start_with(rt.start(async {
+                    .start_with(rt.as_ref(), async {
                         tokio::time::sleep(Duration::from_secs(1)).await;
                         42
-                    }))
+                    })
                     .unwrap();
             }
             Completed(v) => {
                 println!("completed: {:?}", v);
-                caller.get_age.restart_with(rt.start(async {
+                caller.get_age.restart_with(rt.as_ref(), async {
                     tokio::time::sleep(Duration::from_secs(1)).await;
                     43
-                }));
+                });
             }
             _ => {}
         };
