@@ -38,7 +38,7 @@ impl StringId {
     }
 
     /// Creates a new `StringId` from a string and adds that string to a dictionary for later lookup.
-    pub fn new(name: &'static str) -> Self {
+    pub fn new(name: &str) -> Self {
         let id = Self::compute_sid(name);
         let out = DICTIONARY.lock().unwrap().insert(id, name.to_owned());
         assert!(out.is_none() || out.unwrap() == name);
@@ -53,7 +53,7 @@ impl StringId {
         DICTIONARY.lock().unwrap().get(&sid).cloned()
     }
 
-    const fn compute_sid(name: &'static str) -> Self {
+    const fn compute_sid(name: &str) -> Self {
         let v = Self::CRC32_ALGO.checksum(name.as_bytes());
         Self(v)
     }
@@ -61,10 +61,12 @@ impl StringId {
 
 #[cfg(test)]
 mod tests {
+    use std::time::SystemTime;
+
     use super::StringId;
 
     #[test]
-    fn test() {
+    fn static_string() {
         let raw = StringId::from_raw(2357529937); // "hello world"
 
         assert!(StringId::lookup_name(raw).is_none());
@@ -73,5 +75,16 @@ mod tests {
         assert_eq!(StringId::lookup_name(sid).unwrap().as_str(), "hello world");
 
         assert_eq!(StringId::lookup_name(raw).unwrap().as_str(), "hello world");
+    }
+
+    #[test]
+    fn dynamic_string() {
+        let string = format!("{:?}", SystemTime::now());
+
+        let sid = StringId::new(string.as_str());
+        assert_eq!(
+            StringId::lookup_name(sid).unwrap().as_str(),
+            string.as_str()
+        );
     }
 }
