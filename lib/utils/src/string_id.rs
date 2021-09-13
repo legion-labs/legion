@@ -1,3 +1,20 @@
+//! Hashed string identifiers.
+//!
+//! Strings work well in many use cases because of their human-readable nature.
+//! The downside of using strings is that they take significant amount
+//! of memory and that comparison of two strings is costly.
+//!
+//! This module provides a hashed string representation that can be compared efficiently
+//! and provides a debugging readability.
+//!
+//! # Example
+//!
+//! ```
+//! # use legion_utils::string_id::StringId;
+//! let sid = StringId::new("world");
+//! println!("Hello {}", StringId::lookup_name(sid).unwrap());
+//! ```
+
 use lazy_static::lazy_static;
 use std::{collections::HashMap, sync::Mutex};
 
@@ -5,15 +22,22 @@ lazy_static! {
     static ref DICTIONARY: Mutex<HashMap<StringId, String>> = Mutex::new(HashMap::<_, _>::new());
 }
 
+/// Hashed string representation.
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 pub struct StringId(u32);
 
 impl StringId {
     const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
+    /// Creates a `StringId` from a raw integer value.
+    ///
+    /// This potentially results in a `StringId` without a string representation.
+    /// For such a `StringId` [`Self::lookup_name`] can return None.
     pub fn from_raw(id: u32) -> Self {
         Self(id)
     }
+
+    /// Creates a new `StringId` from a string and adds that string to a dictionary for later lookup.
     pub fn new(name: &'static str) -> Self {
         let id = Self::compute_sid(name);
         let out = DICTIONARY.lock().unwrap().insert(id, name.to_owned());
@@ -21,11 +45,15 @@ impl StringId {
         id
     }
 
+    /// Returns a string that is the source of sid.
+    ///
+    /// None is returned if such a string is unknown. This can happen when the dictionary is disabled or
+    /// provided `StringId` was created using [`Self::from_raw`].
     pub fn lookup_name(sid: Self) -> Option<String> {
         DICTIONARY.lock().unwrap().get(&sid).cloned()
     }
 
-    pub const fn compute_sid(name: &'static str) -> Self {
+    const fn compute_sid(name: &'static str) -> Self {
         let v = Self::CRC32_ALGO.checksum(name.as_bytes());
         Self(v)
     }

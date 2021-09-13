@@ -71,11 +71,12 @@
     broken_intra_doc_links,
     private_intra_doc_links,
     missing_crate_level_docs,
-    rust_2018_idioms
+    rust_2018_idioms,
+    missing_docs
 )]
 // END - Legion Labs standard lints v0.2
 // crate-specific exceptions:
-#![allow()]
+#![allow(missing_docs)]
 
 pub mod decimal;
 pub mod memory;
@@ -89,12 +90,3 @@ pub use hash::*;
 
 pub use tracing;
 pub mod string_id;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let four = 2 + 2;
-        assert_eq!(four, 4);
-    }
-}
