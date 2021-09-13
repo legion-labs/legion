@@ -25,7 +25,28 @@ fn type_name_of<T>(_: &T) -> &'static str {
     std::any::type_name::<T>()
 }
 
+fn get_tsc_frequency() -> Result<u64, String> {
+    use raw_cpuid::CpuId;
+    let cpuid = CpuId::new();
+    let cpu_brand = cpuid
+        .get_processor_brand_string()
+        .map(|b| b.as_str().to_owned())
+        .unwrap_or_else(|| "unknown".to_owned());
+
+    match cpuid.get_tsc_info() {
+        Some(tsc_info) => match tsc_info.tsc_frequency() {
+            Some(frequency) => Ok(frequency),
+            None => Err(format!(
+                "tsc frequency unavailable for processor {}",
+                cpu_brand
+            )),
+        },
+        None => Err(format!("tsc info unavailable for processor {}", cpu_brand)),
+    }
+}
+
 fn test_log_thread() {
+    println!("event frequency: {}", get_tsc_frequency().unwrap());
     trace_scope!();
     let mut threads = Vec::new();
     for _ in 1..5 {

@@ -1,3 +1,5 @@
+use core::arch::x86_64::_rdtsc;
+
 pub struct ScopeDesc {
     pub name: &'static str,
     pub filename: &'static str,
@@ -11,12 +13,21 @@ pub struct ScopeGuard {
     pub get_scope_desc: GetScopeDesc,
 }
 
+pub fn now() -> u64 {
+    //_rdtsc does not wait for previous instructions to be retired
+    // we could use __rdtscp if we needed more precision at the cost of slightly higher overhead
+    unsafe { _rdtsc() }
+}
+
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
         let scope_desc = (self.get_scope_desc)();
         println!(
-            "done {} in {} at line {}",
-            scope_desc.name, scope_desc.filename, scope_desc.line
+            "done {} in {} at line {} at time {}",
+            scope_desc.name,
+            scope_desc.filename,
+            scope_desc.line,
+            now()
         );
     }
 }
@@ -41,5 +52,16 @@ macro_rules! trace_scope {
         let guard = ScopeGuard {
             get_scope_desc: _scope,
         };
+        println!("begin @ {}", now());
     };
+}
+
+pub struct BeginScopeEvent {
+    pub time: u64,
+    pub get_scope_desc: GetScopeDesc,
+}
+
+pub struct EndScopeEvent {
+    pub time: u64,
+    pub get_scope_desc: GetScopeDesc,
 }
