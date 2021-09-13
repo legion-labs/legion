@@ -1,9 +1,10 @@
 use std::{
+    convert::TryInto,
     fmt::{self, LowerHex},
     str::FromStr,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Type identifier of resource or asset.
 ///
@@ -70,7 +71,7 @@ impl ContentType {
 }
 
 /// Id of a runtime asset or source or derived resource.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash)]
 pub struct ContentId(std::num::NonZeroU128);
 
 impl ContentId {
@@ -111,6 +112,44 @@ impl FromStr for ContentId {
             // SAFETY: id is not zero in this else clause.
             let id = unsafe { std::num::NonZeroU128::new_unchecked(id) };
             Ok(Self(id))
+        }
+    }
+}
+
+impl Serialize for ContentId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if serializer.is_human_readable() {
+            let bytes = self.0.get().to_be_bytes();
+            let hex = hex::encode(bytes);
+            serializer.serialize_str(&hex)
+        } else {
+            serializer.serialize_u128(self.0.get())
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ContentId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let id = {
+            if deserializer.is_human_readable() {
+                let hex = String::deserialize(deserializer)?;
+                let digits = hex::decode(hex).map_err(D::Error::custom)?;
+                u128::from_be_bytes(digits.try_into().unwrap())
+            } else {
+                u128::deserialize(deserializer)?
+            }
+        };
+        match std::num::NonZeroU128::new(id) {
+            Some(id) => Ok(Self(id)),
+            None => Err(D::Error::custom("invalid id")),
         }
     }
 }
