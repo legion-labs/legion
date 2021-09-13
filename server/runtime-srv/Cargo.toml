@@ -25,5 +25,5 @@ legion-data-runtime = { path = "../../lib/data-runtime" }
 
 # other
 clap = "2.33"
-ron = "0.6.4"
+ron = "0.6.5"
 serde = { version = "1.0", features = ["derive"] }
