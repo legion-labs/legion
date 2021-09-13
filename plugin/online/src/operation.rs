@@ -4,7 +4,7 @@ use std::{error::Error, future::Future, sync::Arc, task::Poll};
 pub enum OnlineOperationStatus<T> {
     Idle,
     Started,
-    Cancelled(&'static dyn Error),
+    Failed(&'static dyn Error),
     Completed(Arc<T>),
 }
 

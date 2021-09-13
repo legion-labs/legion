@@ -2,6 +2,11 @@
 name = "legion-online"
 version = "0.1.0"
 edition = "2018"
+description = "Legion's ECS Online plugin"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
+license = "MIT OR Apache-2.0"
+keywords = ["ecs", "game", "legion"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
