@@ -52,8 +52,8 @@ impl DataBuildOptions {
     /// Opens the existing build index.
     ///
     /// If the build index does not exist it creates one if a project is present in the same directory.
-    pub fn open_or_create(&self) -> Result<DataBuild, Error> {
-        DataBuild::open_or_create(self)
+    pub fn open_or_create(&self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
+        DataBuild::open_or_create(self, project_dir.as_ref())
     }
 
     /// Opens existing build index.
