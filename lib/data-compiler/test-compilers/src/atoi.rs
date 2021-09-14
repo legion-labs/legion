@@ -31,7 +31,7 @@ fn compiler_hash(
     data: &'static str,
     _target: Target,
     _platform: Platform,
-    _locale: Locale,
+    _locale: &Locale,
 ) -> CompilerHash {
     let mut hasher = DefaultHasher::new();
     code.hash(&mut hasher);

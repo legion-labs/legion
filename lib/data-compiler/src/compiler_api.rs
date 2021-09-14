@@ -239,7 +239,7 @@ pub struct CompilerDescriptor {
         data: &'static str,
         target: Target,
         platform: Platform,
-        locale: Locale,
+        locale: &Locale,
     ) -> CompilerHash,
     /// Data compilation function.
     #[allow(clippy::type_complexity)]
@@ -317,7 +317,7 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
                 descriptor.data_version,
                 target,
                 platform,
-                locale,
+                &locale,
             );
             let output = CompilerHashCmdOutput { compiler_hash };
             serde_json::to_writer_pretty(stdout(), &output)
