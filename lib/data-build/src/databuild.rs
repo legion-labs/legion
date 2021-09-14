@@ -330,12 +330,11 @@ impl DataBuild {
                     locale,
                 );
 
-                // todo: what is the cwd for if we provide resource_dir() ?
                 let CompilerCompileCmdOutput {
                     compiled_resources,
                     resource_references,
                 } = compile_cmd
-                    .execute(compiler_path, &self.project.resource_dir())
+                    .execute(compiler_path)
                     .map_err(Error::CompilerError)?;
 
                 self.build_index.insert_compiled(
