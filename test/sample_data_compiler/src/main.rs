@@ -80,6 +80,7 @@
 // crate-specific exceptions:
 #![allow()]
 
+mod offline_compiler;
 mod offline_data;
 mod raw_loader;
 
@@ -99,5 +100,9 @@ fn main() {
 
     let root_folder = args.value_of(ARG_NAME_ROOT).unwrap_or("test/sample_data");
 
+    // generate contents of offline folder, from raw RON content
     raw_loader::build_offline(root_folder);
+
+    // compile offline resources to runtime assets
+    offline_compiler::build(root_folder);
 }

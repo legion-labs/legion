@@ -1,0 +1,68 @@
+{
+  "version": "0.1.0",
+  "project_index": "test/sample_data\\project.index",
+  "resources": [
+    {
+      "id": "0x2b368fed00000000779bb4f05b3c9fc5",
+      "dependencies": [],
+      "resource_hash": 15724658723206175526
+    },
+    {
+      "id": "0x4e1dd44100000000c8458bbdf0a12ce2",
+      "dependencies": [],
+      "resource_hash": 4439663419458149032
+    },
+    {
+      "id": "0x5004cd1c00000000d42200e0cf45c438",
+      "dependencies": [],
+      "resource_hash": 3231202224162688270
+    },
+    {
+      "id": "0x5004cd1c00000000072cc1c343b260a7",
+      "dependencies": [],
+      "resource_hash": 10640382386917449806
+    },
+    {
+      "id": "0x5004cd1c00000000714eafa25b9467cc",
+      "dependencies": [],
+      "resource_hash": 5109805944616100919
+    },
+    {
+      "id": "0x5004cd1c00000000cc2e0e75fdc1bc61",
+      "dependencies": [],
+      "resource_hash": 9785240059131285242
+    },
+    {
+      "id": "0x417862e5000000005f3cba1e01fb1ab5",
+      "dependencies": [],
+      "resource_hash": 17930928919252759280
+    },
+    {
+      "id": "0x417862e50000000016a3174f187935a0",
+      "dependencies": [],
+      "resource_hash": 17930928919252759280
+    },
+    {
+      "id": "0x417862e500000000d1dc5fb0343a621a",
+      "dependencies": [],
+      "resource_hash": 17930928919252759280
+    },
+    {
+      "id": "0x417862e50000000072e0c3e9a5aa46c9",
+      "dependencies": [],
+      "resource_hash": 17930928919252759280
+    },
+    {
+      "id": "0x417862e500000000d9a83ec7317b20a3",
+      "dependencies": [],
+      "resource_hash": 17930928919252759280
+    },
+    {
+      "id": "0x417862e500000000ca59546947cacd26",
+      "dependencies": [],
+      "resource_hash": 17012302020215884922
+    }
+  ],
+  "compiled_resources": [],
+  "compiled_resource_references": []
+}

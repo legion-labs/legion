@@ -2597,6 +2597,9 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "legion-content-store",
+ "legion-data-build",
+ "legion-data-compiler",
  "legion-data-offline",
  "legion-math",
  "legion-utils",
