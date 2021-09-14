@@ -15,7 +15,7 @@
 //! ```
 //! # use legion_utils::{sid, string_id::StringId};
 //! let sid = sid!("world");
-//! println!("Hello {}", StringId::lookup_name(sid).unwrap());
+//! println!("Hello {}", sid.debug_name().unwrap());
 //! ```
 //!
 //! # Runtime hashing
@@ -27,7 +27,7 @@
 //! # use legion_utils::{sid, string_id::StringId};
 //! # let world_input = "world";
 //! let sid = StringId::compute_new(world_input);
-//! println!("Hello {}", StringId::lookup_name(sid).unwrap());
+//! println!("Hello {}", sid.debug_name().unwrap());
 //! ```
 
 #[cfg(feature = "stringid-debug")]
@@ -40,18 +40,18 @@ lazy_static! {
     static ref DICTIONARY: Mutex<HashMap<StringId, String>> = Mutex::new(HashMap::<_, _>::new());
 }
 
+const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
+
 /// Hashed string representation.
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 pub struct StringId(u32);
 
 impl StringId {
-    const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
-
     /// Creates a `StringId` from a raw integer value.
     ///
     /// This potentially results in a `StringId` without a string representation.
-    /// For such a `StringId` [`Self::lookup_name`] can return None.
-    pub fn from_raw(id: u32) -> Self {
+    /// For such a `StringId` [`Self::debug_name`] can return None.
+    pub const fn from_raw(id: u32) -> Self {
         Self(id)
     }
 
@@ -59,8 +59,8 @@ impl StringId {
     ///
     /// `sid!` macro should be preferred as it computes `StringId` at compile time.
     pub fn compute_new(name: &str) -> Self {
-        let id = Self::compute_sid(name);
-        Self::insert_name(id, name);
+        let id = compute_sid(name);
+        insert_debug_name(id, name);
         id
     }
 
@@ -68,40 +68,44 @@ impl StringId {
     ///
     /// None is returned if such a string is unknown. This can happen when the dictionary is disabled or
     /// provided `StringId` was created using [`Self::from_raw`].
-    #[cfg(feature = "stringid-debug")]
-    pub fn lookup_name(sid: Self) -> Option<String> {
-        DICTIONARY.lock().unwrap().get(&sid).cloned()
+    pub fn debug_name(&self) -> Option<String> {
+        lookup_debug_name(self)
     }
+}
 
-    #[cfg(not(feature = "stringid-debug"))]
-    pub fn lookup_name(sid: Self) -> Option<String> {
-        Some(format!("{}", sid.0))
-    }
+/// Inserts (id, name) tuple into the dictionary.
+#[cfg(feature = "stringid-debug")]
+pub fn insert_debug_name(id: StringId, name: &str) {
+    let out = DICTIONARY.lock().unwrap().insert(id, name.to_owned());
+    assert!(out.is_none() || out.unwrap() == name);
+}
 
-    /// Returns `StringId` representation of name without adding `name` to the dictionary.
-    pub const fn compute_sid(name: &str) -> Self {
-        let v = Self::CRC32_ALGO.checksum(name.as_bytes());
-        Self(v)
-    }
+/// Inserts (id, name) tuple into the dictionary.
+#[cfg(not(feature = "stringid-debug"))]
+pub fn insert_debug_name(_id: StringId, _name: &str) {}
 
-    /// Inserts (id, name) tuple into the dictionary.
-    #[cfg(feature = "stringid-debug")]
-    pub fn insert_name(id: Self, name: &str) {
-        let out = DICTIONARY.lock().unwrap().insert(id, name.to_owned());
-        assert!(out.is_none() || out.unwrap() == name);
-    }
+/// Returns a string behind the `StringId` if one is known, None otherwise.
+#[cfg(feature = "stringid-debug")]
+pub fn lookup_debug_name(sid: &StringId) -> Option<String> {
+    DICTIONARY.lock().unwrap().get(sid).cloned()
+}
 
-    /// Inserts (id, name) tuple into the dictionary.
-    #[cfg(not(feature = "stringid-debug"))]
-    pub fn insert_name(_id: Self, _name: &str) {}
+#[cfg(not(feature = "stringid-debug"))]
+pub fn lookup_debug_name(sid: StringId) -> Option<String> {
+    Some(format!("{}", sid.0))
+}
+
+/// Returns `StringId` representation of name without adding `name` to the dictionary.
+pub const fn compute_sid(name: &str) -> StringId {
+    StringId::from_raw(CRC32_ALGO.checksum(name.as_bytes()))
 }
 
 /// Computes `StringId` value at compile time and adds that string to a dictionary for later lookup.
 #[macro_export]
 macro_rules! sid {
     ($s:expr) => {{
-        const SID: StringId = StringId::compute_sid($s);
-        StringId::insert_name(SID, $s);
+        const SID: $crate::string_id::StringId = $crate::string_id::compute_sid($s);
+        $crate::string_id::insert_debug_name(SID, $s);
         SID
     }};
 }
@@ -121,7 +125,7 @@ mod tests {
     #[cfg(feature = "stringid-debug")]
     fn compile_time_dict() {
         let sid = sid!("hello");
-        assert_eq!(StringId::lookup_name(sid).unwrap().as_str(), "hello");
+        assert_eq!(sid.debug_name().unwrap().as_str(), "hello");
     }
 
     #[test]
@@ -129,18 +133,17 @@ mod tests {
     fn runtime_dict() {
         let raw = StringId::from_raw(4271552933); // "foo"
 
-        assert!(StringId::lookup_name(raw).is_none());
+        assert!(raw.debug_name().is_none());
 
         let sid = StringId::compute_new("foo");
-        assert_eq!(StringId::lookup_name(sid).unwrap().as_str(), "foo");
-
-        assert_eq!(StringId::lookup_name(raw).unwrap().as_str(), "foo");
+        assert_eq!(sid.debug_name().unwrap().as_str(), "foo");
+        assert_eq!(sid, raw);
     }
 
     #[test]
     #[cfg(not(feature = "stringid-debug"))]
     fn no_dict() {
         let raw = StringId::from_raw(3954879214); // "bar"
-        assert_eq!(StringId::lookup_name(raw).unwrap().as_str(), "3954879214");
+        assert_eq!(raw.debug_name().unwrap().as_str(), "3954879214");
     }
 }
