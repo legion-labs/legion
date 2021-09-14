@@ -30,12 +30,12 @@
 //! println!("Hello {}", StringId::lookup_name(sid).unwrap());
 //! ```
 
-#[cfg(feature = "stringid_dict")]
+#[cfg(feature = "stringid-debug")]
 use lazy_static::lazy_static;
-#[cfg(feature = "stringid_dict")]
+#[cfg(feature = "stringid-debug")]
 use std::{collections::HashMap, sync::Mutex};
 
-#[cfg(feature = "stringid_dict")]
+#[cfg(feature = "stringid-debug")]
 lazy_static! {
     static ref DICTIONARY: Mutex<HashMap<StringId, String>> = Mutex::new(HashMap::<_, _>::new());
 }
@@ -68,12 +68,12 @@ impl StringId {
     ///
     /// None is returned if such a string is unknown. This can happen when the dictionary is disabled or
     /// provided `StringId` was created using [`Self::from_raw`].
-    #[cfg(feature = "stringid_dict")]
+    #[cfg(feature = "stringid-debug")]
     pub fn lookup_name(sid: Self) -> Option<String> {
         DICTIONARY.lock().unwrap().get(&sid).cloned()
     }
 
-    #[cfg(not(feature = "stringid_dict"))]
+    #[cfg(not(feature = "stringid-debug"))]
     pub fn lookup_name(sid: Self) -> Option<String> {
         Some(format!("{}", sid.0))
     }
@@ -85,14 +85,14 @@ impl StringId {
     }
 
     /// Inserts (id, name) tuple into the dictionary.
-    #[cfg(feature = "stringid_dict")]
+    #[cfg(feature = "stringid-debug")]
     pub fn insert_name(id: Self, name: &str) {
         let out = DICTIONARY.lock().unwrap().insert(id, name.to_owned());
         assert!(out.is_none() || out.unwrap() == name);
     }
 
     /// Inserts (id, name) tuple into the dictionary.
-    #[cfg(not(feature = "stringid_dict"))]
+    #[cfg(not(feature = "stringid-debug"))]
     pub fn insert_name(_id: Self, _name: &str) {}
 }
 
@@ -118,14 +118,14 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "stringid_dict")]
+    #[cfg(feature = "stringid-debug")]
     fn compile_time_dict() {
         let sid = sid!("hello");
         assert_eq!(StringId::lookup_name(sid).unwrap().as_str(), "hello");
     }
 
     #[test]
-    #[cfg(feature = "stringid_dict")]
+    #[cfg(feature = "stringid-debug")]
     fn runtime_dict() {
         let raw = StringId::from_raw(4271552933); // "foo"
 
@@ -138,7 +138,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "stringid_dict"))]
+    #[cfg(not(feature = "stringid-debug"))]
     fn no_dict() {
         let raw = StringId::from_raw(3954879214); // "bar"
         assert_eq!(StringId::lookup_name(raw).unwrap().as_str(), "3954879214");

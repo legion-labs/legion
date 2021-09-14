@@ -17,5 +17,5 @@ lazy_static = "1.4.0"
 crc = "2.0.0"
 
 [features]
-stringid_dict = []
-default = ["stringid_dict"]
+stringid-debug = []
+default = ["stringid-debug"]
