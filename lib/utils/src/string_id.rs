@@ -34,11 +34,11 @@
 use lazy_static::lazy_static;
 use std::fmt;
 #[cfg(feature = "stringid-debug")]
-use std::{collections::HashMap, sync::Mutex};
+use std::{collections::HashMap, sync::RwLock};
 
 #[cfg(feature = "stringid-debug")]
 lazy_static! {
-    static ref DICTIONARY: Mutex<HashMap<StringId, String>> = Mutex::new(HashMap::<_, _>::new());
+    static ref DICTIONARY: RwLock<HashMap<StringId, String>> = RwLock::new(HashMap::<_, _>::new());
 }
 
 // Reference: https://preshing.com/20110504/hash-collision-probabilities/
@@ -88,7 +88,7 @@ impl fmt::Debug for StringId {
 pub fn insert_debug_name(id: StringId, name: &str) {
     #[cfg(feature = "stringid-debug")]
     {
-        let out = DICTIONARY.lock().unwrap().insert(id, name.to_owned());
+        let out = DICTIONARY.write().unwrap().insert(id, name.to_owned());
         assert!(out.is_none() || out.unwrap() == name);
     }
 
@@ -102,7 +102,7 @@ pub fn insert_debug_name(id: StringId, name: &str) {
 /// Returns a string behind the `StringId` if one is known, None otherwise.
 pub fn lookup_debug_name(sid: &StringId) -> Option<String> {
     #[cfg(feature = "stringid-debug")]
-    return DICTIONARY.lock().unwrap().get(sid).cloned();
+    return DICTIONARY.read().unwrap().get(sid).cloned();
 
     #[cfg(not(feature = "stringid-debug"))]
     return Some(format!("{}", sid.0));
