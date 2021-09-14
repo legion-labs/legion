@@ -78,6 +78,7 @@ jobs:
   bench:
     name: Running benchmarks
     needs: lint
+    if: ${{ false }} # Disable benchmarks for now
     strategy:
       matrix:
         include:
