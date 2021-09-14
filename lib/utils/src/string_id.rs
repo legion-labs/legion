@@ -32,6 +32,7 @@
 
 #[cfg(feature = "stringid-debug")]
 use lazy_static::lazy_static;
+use std::fmt;
 #[cfg(feature = "stringid-debug")]
 use std::{collections::HashMap, sync::Mutex};
 
@@ -43,7 +44,7 @@ lazy_static! {
 const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
 /// Hashed string representation.
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct StringId(u32);
 
 impl StringId {
@@ -73,6 +74,15 @@ impl StringId {
     }
 }
 
+impl fmt::Debug for StringId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("StringId")
+            .field(&self.0)
+            .field(&self.debug_name())
+            .finish()
+    }
+}
+
 /// Inserts (id, name) tuple into the dictionary.
 #[cfg(feature = "stringid-debug")]
 pub fn insert_debug_name(id: StringId, name: &str) {
@@ -91,7 +101,7 @@ pub fn lookup_debug_name(sid: &StringId) -> Option<String> {
 }
 
 #[cfg(not(feature = "stringid-debug"))]
-pub fn lookup_debug_name(sid: StringId) -> Option<String> {
+pub fn lookup_debug_name(sid: &StringId) -> Option<String> {
     Some(format!("{}", sid.0))
 }
 
