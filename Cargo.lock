@@ -683,6 +683,7 @@ version = "0.1.0"
 dependencies = [
  "legion-app",
  "legion-sciter",
+ "rust-embed",
  "sciter-js",
 ]
 

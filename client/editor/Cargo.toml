@@ -11,3 +11,4 @@ license = "MIT OR Apache-2.0"
 legion-app = { path = "../../lib/app" }
 legion-sciter = { path = "../../plugin/sciter" }
 sciter-js = { git = "https://github.com/legion-labs/sciter-js-rs", branch = "main" }
+rust-embed = "6.2"

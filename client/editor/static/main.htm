@@ -1,0 +1,58 @@
+<html window-frame="extended" window-blurbehind="dark" resizeable>
+<include src="fonts/font-awesome.inc.htm" />
+
+<head>
+  <title>Legion Editor</title>
+  <style>
+    @import url(styles/main.css);
+  </style>
+</head>
+
+<body>
+  <header id="window">
+    <menubar>
+      <include src="menu.htm" />
+    </menubar>
+    <caption role="window-caption">Legion Editor</caption>
+    <chrome-button.min role="window-minimize">
+      </chrome-button>
+      <chrome-button.max role="window-maximize">
+        </chrome-button>
+        <chrome-button.close role="window-close">
+          </chrome-button>
+  </header>
+
+  <main>
+    <frameset cols="200dip,*">
+      <section id="side-panel">
+        <p>Property Grid</p>
+
+        <label>Name:</label>
+        <input|text value="Triangle" />
+        <hr />
+        <form>
+          <label>speed:</label>
+          <input(speed) type="hslider" value=1.0 min=0.0 max=2.0 />
+          <label>color 1:</label>
+          <input.hue(hue1) type="hslider" value=0 min=0 max=360 />
+          <label>color 2:</label>
+          <input.hue(hue2) type="hslider" value=0 min=0 max=360 />
+          <label>color 3:</label>
+          <input.hue(hue3) type="hslider" value=0 min=0 max=360 />
+        </form>
+        <hr />
+      </section>
+      <splitter />
+      <section id="content">
+        <plaintext id="editor" type="html" />
+        <toolbar id="content-bar"></toolbar>
+      </section>
+    </frameset>
+    <toolbar id="sidebar">
+      <button>&fa-play-circle;</button>
+      <button>&fa-gear;</button>
+    </toolbar>
+  </main>
+</body>
+
+</html>
