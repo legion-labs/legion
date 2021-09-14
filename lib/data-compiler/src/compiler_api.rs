@@ -38,7 +38,7 @@
 //!    data: &'static str,
 //!    target: Target,
 //!    platform: Platform,
-//!    locale: Locale,
+//!    locale: &Locale,
 //!) -> CompilerHash {
 //!    todo!()
 //!}
