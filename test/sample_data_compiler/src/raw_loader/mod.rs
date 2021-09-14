@@ -27,7 +27,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
             let raw_dir = raw_dir.path();
             let (mut project, mut resources) = setup_project(root_folder);
 
-            let file_paths = find_files(&raw_dir, &["mat", "mesh"]);
+            let file_paths = find_files(&raw_dir, &["ent", "mat", "mesh"]);
 
             let resource_names = file_paths
                 .iter()
@@ -41,6 +41,15 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                 let resource_name = &resource_names[i];
                 let resource_id = *resource_ids.get(resource_name).unwrap();
                 match path.extension().unwrap().to_str().unwrap() {
+                    "ent" => {
+                        load_resource::<raw_data::Entity, offline_data::Entity>(
+                            resource_id,
+                            path,
+                            &resource_ids,
+                            &mut project,
+                            &mut resources,
+                        );
+                    }
                     "mat" => {
                         load_resource::<raw_data::Material, offline_data::Material>(
                             resource_id,
@@ -83,6 +92,10 @@ fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
 
     let resources = ResourceRegistryOptions::new()
         .add_type(
+            offline_data::ENTITY_TYPE_ID,
+            Box::new(offline_data::EntityProcessor {}),
+        )
+        .add_type(
             offline_data::MATERIAL_TYPE_ID,
             Box::new(offline_data::MaterialProcessor {}),
         )
@@ -97,6 +110,7 @@ fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
 
 fn ext_to_resource_kind(ext: &str) -> ResourceType {
     match ext {
+        "ent" => offline_data::ENTITY_TYPE_ID,
         "mat" => offline_data::MATERIAL_TYPE_ID,
         "mesh" => offline_data::MESH_TYPE_ID,
         _ => panic!(),

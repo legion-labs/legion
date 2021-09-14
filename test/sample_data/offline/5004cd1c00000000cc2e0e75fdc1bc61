@@ -1,0 +1,1 @@
+{"name":"Sample 1","children":["5004cd1c00000000714eafa25b9467cc"],"parent":null,"components":[{"Transform":{"position":[0.0,0.0,0.0],"rotation":[0.0,0.0,0.0,1.0],"scale":[1.0,1.0,1.0],"apply_to_children":true}},{"GlobalIllumination":{}},{"NavMesh":{"voxelisation_config":{},"layer_config":[{}]}}]}

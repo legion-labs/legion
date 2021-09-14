@@ -4,16 +4,16 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Instance {
-    original: String,
-    overrides: HashMap<String, String>,
+    pub original: String,
+    pub overrides: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Entity {
-    name: String,
-    children: Vec<String>,
-    parent: Option<String>,
-    components: Vec<Component>,
+    pub name: String,
+    pub children: Vec<String>,
+    pub parent: Option<String>,
+    pub components: Vec<Component>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -25,19 +25,19 @@ pub enum GIContribution {
 
 #[derive(Serialize, Deserialize)]
 pub struct Visual {
-    renderable_geometry: String,
-    shadow_receiver: bool,
-    shadow_caster_sun: bool,
-    shadow_caster_local: bool,
-    gi_contribution: GIContribution,
+    pub renderable_geometry: String,
+    pub shadow_receiver: bool,
+    pub shadow_caster_sun: bool,
+    pub shadow_caster_local: bool,
+    pub gi_contribution: GIContribution,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Transform {
-    position: Vec3,
-    rotation: Quat,
-    scale: Vec3,
-    apply_to_children: bool,
+    pub position: Vec3,
+    pub rotation: Quat,
+    pub scale: Vec3,
+    pub apply_to_children: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -51,10 +51,10 @@ pub enum ProjectionType {
 
 #[derive(Serialize, Deserialize)]
 pub struct View {
-    fov: f32,
-    near: f32,
-    far: f32,
-    projection_type: ProjectionType,
+    pub fov: f32,
+    pub near: f32,
+    pub far: f32,
+    pub projection_type: ProjectionType,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -95,19 +95,19 @@ pub struct Material {
 
 #[derive(Serialize, Deserialize)]
 pub struct Physics {
-    dynamic: bool,
-    collision_geometry: String,
+    pub dynamic: bool,
+    pub collision_geometry: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Script {
-    code: String,
-    exposed_vars: HashMap<String, String>,
+    pub code: String,
+    pub exposed_vars: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct CollisionMaterial {
-    impact_script: Option<Script>,
+    pub impact_script: Option<Script>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -118,13 +118,6 @@ pub struct NavMeshLayerConfig {}
 
 #[derive(Serialize, Deserialize)]
 pub struct NavMesh {
-    voxelisation_config: VoxelisationConfig,
-    layer_config: Vec<NavMeshLayerConfig>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Metadata {
-    name: String,
-    dependencies: Vec<String>,
-    content_checksum: String,
+    pub voxelisation_config: VoxelisationConfig,
+    pub layer_config: Vec<NavMeshLayerConfig>,
 }
