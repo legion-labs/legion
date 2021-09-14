@@ -85,25 +85,27 @@ impl fmt::Debug for StringId {
 }
 
 /// Inserts (id, name) tuple into the dictionary.
-#[cfg(feature = "stringid-debug")]
 pub fn insert_debug_name(id: StringId, name: &str) {
-    let out = DICTIONARY.lock().unwrap().insert(id, name.to_owned());
-    assert!(out.is_none() || out.unwrap() == name);
-}
+    #[cfg(feature = "stringid-debug")]
+    {
+        let out = DICTIONARY.lock().unwrap().insert(id, name.to_owned());
+        assert!(out.is_none() || out.unwrap() == name);
+    }
 
-/// Inserts (id, name) tuple into the dictionary.
-#[cfg(not(feature = "stringid-debug"))]
-pub fn insert_debug_name(_id: StringId, _name: &str) {}
+    #[cfg(not(feature = "stringid-debug"))]
+    {
+        let _id = id;
+        let _name = name;
+    }
+}
 
 /// Returns a string behind the `StringId` if one is known, None otherwise.
-#[cfg(feature = "stringid-debug")]
 pub fn lookup_debug_name(sid: &StringId) -> Option<String> {
-    DICTIONARY.lock().unwrap().get(sid).cloned()
-}
+    #[cfg(feature = "stringid-debug")]
+    return DICTIONARY.lock().unwrap().get(sid).cloned();
 
-#[cfg(not(feature = "stringid-debug"))]
-pub fn lookup_debug_name(sid: &StringId) -> Option<String> {
-    Some(format!("{}", sid.0))
+    #[cfg(not(feature = "stringid-debug"))]
+    return Some(format!("{}", sid.0));
 }
 
 /// Returns `StringId` representation of name without adding `name` to the dictionary.
