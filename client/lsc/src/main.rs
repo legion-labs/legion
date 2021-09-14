@@ -82,7 +82,7 @@ use telemetry::*;
 
 fn init_telemetry() {
     let sink: Arc<dyn EventBlockSink> = Arc::new(NullEventSink {});
-    init_event_dispatch(1024, sink).unwrap();
+    init_event_dispatch(1024, 1024, sink).unwrap();
 }
 
 fn main() {

@@ -12,6 +12,10 @@ impl EventBlockSink for DebugEventSink {
         //     println!("{:?} {}", evt.level, evt.msg);
         // }
     }
+
+    fn on_thread_buffer_full(&self, thread_block: &ThreadEventBlock) {
+        println!("thread buffer full: {} events", thread_block.events.len());
+    }
 }
 
 fn test_log_str() {
@@ -54,12 +58,12 @@ fn get_tsc_frequency() -> Result<u64, String> {
 
 fn test_log_thread() {
     println!("TSC frequency: {}", get_tsc_frequency().unwrap_or_default());
-    trace_scope!();
     let mut threads = Vec::new();
     for _ in 1..5 {
         threads.push(thread::spawn(|| {
-            println!("from thread {:?}", thread::current().id());
+            init_thread_stream();
             for _ in 1..1024 {
+                trace_scope!();
                 log_str(LogLevel::Info, "test_msg");
             }
         }));
@@ -72,7 +76,7 @@ fn test_log_thread() {
 #[test]
 fn test_log() {
     let sink: Arc<dyn EventBlockSink> = Arc::new(DebugEventSink {});
-    init_event_dispatch(1024, sink).unwrap();
+    init_event_dispatch(1024, 1024, sink).unwrap();
     test_log_str();
     test_log_thread();
 }
