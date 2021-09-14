@@ -16,3 +16,4 @@ crossbeam = "0.8"
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 tokio = { version = "1", features = ["full"] }
+retain_mut = "0.1.3"

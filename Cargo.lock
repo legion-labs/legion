@@ -1309,6 +1309,7 @@ dependencies = [
  "futures-lite",
  "legion-app",
  "legion-ecs",
+ "retain_mut",
  "tokio",
 ]
 
@@ -2452,6 +2453,12 @@ dependencies = [
  "web-sys",
  "winreg",
 ]
+
+[[package]]
+name = "retain_mut"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9c17925a9027d298a4603d286befe3f9dc0e8ed02523141914eb628798d6e5b"
 
 [[package]]
 name = "ring"
