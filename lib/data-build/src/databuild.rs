@@ -61,7 +61,7 @@ fn compute_context_hash(
 /// `DataBuild` provides methods to compile offline resources into runtime format.
 ///
 /// Data build uses file-based storage to persist the state of data builds and data compilation.
-/// It requires access to offline resources to retrieve resource metadata - throught  [`legion_data_offline::resource::Project`].
+/// It requires access to offline resources to retrieve resource metadata - through  [`legion_data_offline::resource::Project`].
 ///
 /// # Example Usage
 ///
@@ -164,6 +164,11 @@ impl DataBuild {
             | legion_data_offline::resource::Error::InvalidPath => Error::NotFound,
             legion_data_offline::resource::Error::IOError(_) => Error::IOError,
         })
+    }
+
+    /// Accessor for the project associated with this builder.
+    pub fn project(&self) -> &Project {
+        &self.project
     }
 
     /// Updates the build database with information about resources from provided resource database.
@@ -447,7 +452,7 @@ impl DataBuild {
         let mut compile_stats = vec![];
 
         //
-        // for now, each node's compilation output contribues to `derived dependencies`
+        // for now, each node's compilation output contributes to `derived dependencies`
         // as a whole. consecutive nodes will have all derived outputs available.
         //
         // in the future this should be improved.
@@ -478,12 +483,12 @@ impl DataBuild {
 
                 //
                 // for derived resources the build index will not have dependencies for.
-                // for now derived resources do not inherit depenencies from resources down the
+                // for now derived resources do not inherit dependencies from resources down the
                 // resource path.
                 //
                 // this is compensated by the fact that the compilation output of each node
-                // contributes to `derived depenencies`. we might still want to inherit the
-                // regular depenencies.
+                // contributes to `derived dependencies`. we might still want to inherit the
+                // regular dependencies.
                 //
                 // this has to be reevaluated in the future.
                 //
@@ -494,7 +499,7 @@ impl DataBuild {
 
                 let (compiler_path, compiler_hash) = compiler_details.get(&transform).unwrap();
 
-                // todo: not sure if transofrm is the right thing here. resource_path_id better? transform is already defined by the compiler_hash so it seems redundant.
+                // todo: not sure if transform is the right thing here. resource_path_id better? transform is already defined by the compiler_hash so it seems redundant.
                 let context_hash = compute_context_hash(transform, *compiler_hash, Self::version());
 
                 let source_hash = {
@@ -648,7 +653,7 @@ impl DataBuild {
     }
 }
 
-// todo(kstasik): file IO on descructor - is it ok?
+// todo(kstasik): file IO on destructor - is it ok?
 impl Drop for DataBuild {
     fn drop(&mut self) {
         self.build_index.flush().unwrap();
