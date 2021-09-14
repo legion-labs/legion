@@ -136,7 +136,10 @@ impl DataBuild {
     /// Opens the existing build index.
     ///
     /// If the build index does not exist it creates one if a project is present in the directory.
-    pub(crate) fn open_or_create(config: &DataBuildOptions) -> Result<Self, Error> {
+    pub(crate) fn open_or_create(
+        config: &DataBuildOptions,
+        project_dir: &Path,
+    ) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.assetstore_path.clone())
             .ok_or(Error::InvalidAssetStore)?;
         match BuildIndex::open(&config.buildindex_path, Self::version()) {
@@ -149,10 +152,7 @@ impl DataBuild {
                     config: config.clone(),
                 })
             }
-            Err(Error::NotFound) => {
-                let projectindex_path = config.buildindex_path.clone(); // we are going to try to locate the project index in the same directory
-                Self::new(config, &projectindex_path)
-            }
+            Err(Error::NotFound) => Self::new(config, project_dir),
             Err(e) => Err(e),
         }
     }
