@@ -7,36 +7,36 @@ use std::{
 use futures_lite::FutureExt;
 use tokio::runtime::{Builder, Runtime};
 
-pub trait OnlineRuntime {
-    fn start<F>(&self, future: F) -> OnlineFuture<F::Output>
+pub trait AsyncRuntime {
+    fn start<F>(&self, future: F) -> AsyncFuture<F::Output>
     where
         F: Future + Send + 'static,
         F::Output: Sized + Send + 'static;
 
-    fn poll<T>(&self, future: &mut OnlineFuture<T>) -> Poll<T>;
+    fn poll<T>(&self, future: &mut AsyncFuture<T>) -> Poll<T>;
 }
 
 // Wraps a tokio::runtime::Runtime to make it compatible with the 'systems'
 // system.
-pub struct TokioOnlineRuntime {
+pub struct TokioAsyncRuntime {
     tokio_runtime: Runtime,
 }
 
-impl Default for TokioOnlineRuntime {
+impl Default for TokioAsyncRuntime {
     fn default() -> Self {
         let rt = Builder::new_multi_thread().enable_all().build().unwrap();
 
-        TokioOnlineRuntime { tokio_runtime: rt }
+        TokioAsyncRuntime { tokio_runtime: rt }
     }
 }
 
-impl OnlineRuntime for TokioOnlineRuntime {
-    fn start<F>(&self, future: F) -> OnlineFuture<F::Output>
+impl AsyncRuntime for TokioAsyncRuntime {
+    fn start<F>(&self, future: F) -> AsyncFuture<F::Output>
     where
         F: Future + Send + 'static,
         F::Output: Sized + Send + 'static,
     {
-        let (sender, res) = OnlineFuture::new();
+        let (sender, res) = AsyncFuture::new();
 
         // Dispatch the specified future in tokio's thread-pool. Once it
         // completes, were are responsible for completing the OnlineFuture
@@ -48,7 +48,7 @@ impl OnlineRuntime for TokioOnlineRuntime {
         res
     }
 
-    fn poll<T>(&self, future: &mut OnlineFuture<T>) -> Poll<T> {
+    fn poll<T>(&self, future: &mut AsyncFuture<T>) -> Poll<T> {
         let raw = RawWaker::new(std::ptr::null(), &VTABLE);
         let waker = unsafe { Waker::from_raw(raw) };
         let mut cx = Context::from_waker(&waker);
@@ -57,20 +57,20 @@ impl OnlineRuntime for TokioOnlineRuntime {
     }
 }
 
-pub struct OnlineFuture<T> {
+pub struct AsyncFuture<T> {
     receiver: tokio::sync::oneshot::Receiver<T>,
 }
 
-impl<T> OnlineFuture<T> {
-    fn new() -> (tokio::sync::oneshot::Sender<T>, OnlineFuture<T>) {
+impl<T> AsyncFuture<T> {
+    fn new() -> (tokio::sync::oneshot::Sender<T>, AsyncFuture<T>) {
         let (sender, receiver) = tokio::sync::oneshot::channel();
-        let future = OnlineFuture { receiver };
+        let future = AsyncFuture { receiver };
 
         (sender, future)
     }
 }
 
-impl<T> Future for OnlineFuture<T> {
+impl<T> Future for AsyncFuture<T> {
     type Output = T;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

@@ -7,10 +7,10 @@ pub use operation::*;
 pub use runtime::*;
 
 // Provides async online capabilities via an online runtime.
-pub struct OnlinePlugin;
+pub struct AsyncPlugin;
 
-impl Plugin for OnlinePlugin {
+impl Plugin for AsyncPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(TokioOnlineRuntime::default());
+        app.insert_resource(TokioAsyncRuntime::default());
     }
 }

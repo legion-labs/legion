@@ -1,31 +1,31 @@
 use std::{error::Error, future::Future, sync::Arc, task::Poll};
 
 // An OperationStatus represents the current status of an operation.
-pub enum OnlineOperationStatus<T> {
+pub enum AsyncOperationStatus<T> {
     Idle,
     Started,
     Failed(&'static dyn Error),
     Completed(Arc<T>),
 }
 
-use OnlineOperationStatus::*;
+use AsyncOperationStatus::*;
 
-use crate::{OnlineFuture, OnlineRuntime};
+use crate::{AsyncFuture, AsyncRuntime};
 
 // Represents an online operation running in a separate thread pool, that can be
 // polled for completion.
 #[derive(Default)]
-pub struct OnlineOperation<T> {
-    future: Option<OnlineFuture<T>>,
+pub struct AsyncOperation<T> {
+    future: Option<AsyncFuture<T>>,
     result: Option<Arc<T>>,
 }
 
-impl<T: Send + 'static> OnlineOperation<T> {
-    pub fn new_started<Runtime: OnlineRuntime, F: Future<Output = T> + Send + 'static>(
+impl<T: Send + 'static> AsyncOperation<T> {
+    pub fn new_started<Runtime: AsyncRuntime, F: Future<Output = T> + Send + 'static>(
         rt: &Runtime,
         future: F,
-    ) -> OnlineOperation<T> {
-        let mut op = OnlineOperation::<T> {
+    ) -> AsyncOperation<T> {
+        let mut op = AsyncOperation::<T> {
             future: None,
             result: None,
         };
@@ -40,22 +40,22 @@ impl<T: Send + 'static> OnlineOperation<T> {
         self.result = None;
     }
 
-    pub fn start_with<Runtime: OnlineRuntime, F: Future<Output = T> + Send + 'static>(
+    pub fn start_with<Runtime: AsyncRuntime, F: Future<Output = T> + Send + 'static>(
         &mut self,
         rt: &Runtime,
         future: F,
-    ) -> Result<(), OnlineOperationAlreadyStartedError> {
+    ) -> Result<(), AsyncOperationAlreadyStartedError> {
         match self.future {
             None => {
                 self.future = Some(rt.start(future));
 
                 Ok(())
             }
-            Some(_) => Err(OnlineOperationAlreadyStartedError),
+            Some(_) => Err(AsyncOperationAlreadyStartedError),
         }
     }
 
-    pub fn restart_with<Runtime: OnlineRuntime, F: Future<Output = T> + Send + 'static>(
+    pub fn restart_with<Runtime: AsyncRuntime, F: Future<Output = T> + Send + 'static>(
         &mut self,
         rt: &Runtime,
         future: F,
@@ -64,7 +64,7 @@ impl<T: Send + 'static> OnlineOperation<T> {
         self.start_with(rt, future).unwrap()
     }
 
-    pub fn poll<Runtime: OnlineRuntime>(&mut self, rt: &Runtime) -> OnlineOperationStatus<T> {
+    pub fn poll<Runtime: AsyncRuntime>(&mut self, rt: &Runtime) -> AsyncOperationStatus<T> {
         // If we already have a result in store, let's return that: our job is
         // done.
         if let Some(v) = &self.result {
@@ -90,4 +90,4 @@ impl<T: Send + 'static> OnlineOperation<T> {
 
 // Indicates that an operation was already started and could not be restarted.
 #[derive(Debug, Clone)]
-pub struct OnlineOperationAlreadyStartedError;
+pub struct AsyncOperationAlreadyStartedError;

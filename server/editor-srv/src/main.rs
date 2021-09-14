@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use legion_async::{AsyncOperation, AsyncOperationStatus::*, AsyncPlugin, TokioAsyncRuntime};
 use legion_ecs::prelude::*;
-use legion_online::{OnlineOperation, OnlineOperationStatus::*, OnlinePlugin, TokioOnlineRuntime};
 
 fn main() {
     App::new()
@@ -10,10 +10,10 @@ fn main() {
             1.0 / 60.0,
         )))
         .add_plugin(ScheduleRunnerPlugin::default())
-        .add_plugin(OnlinePlugin)
+        .add_plugin(AsyncPlugin)
         .add_startup_system(|mut commands: Commands| {
             commands.spawn().insert(Caller {
-                get_age: OnlineOperation::default(),
+                get_age: AsyncOperation::default(),
             });
         })
         .add_system(frame_counter)
@@ -29,10 +29,10 @@ fn frame_counter(mut state: Local<'_, CounterState>) {
 }
 
 struct Caller {
-    get_age: OnlineOperation<u32>,
+    get_age: AsyncOperation<u32>,
 }
 
-fn online_loop_example(rt: Res<TokioOnlineRuntime>, mut callers: Query<&mut Caller>) {
+fn online_loop_example(rt: Res<TokioAsyncRuntime>, mut callers: Query<&mut Caller>) {
     for mut caller in callers.iter_mut() {
         match caller.get_age.poll(rt.as_ref()) {
             Idle => {

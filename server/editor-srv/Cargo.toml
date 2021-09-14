@@ -9,5 +9,5 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-online = { path = "../../plugin/online", version = "0.1.0" }
+legion-async = { path = "../../plugin/async", version = "0.1.0" }
 tokio = { version = "1", features = ["full"] }

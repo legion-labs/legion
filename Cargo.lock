@@ -729,8 +729,8 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "legion-app",
+ "legion-async",
  "legion-ecs",
- "legion-online",
  "tokio",
 ]
 
@@ -1302,6 +1302,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-async"
+version = "0.1.0"
+dependencies = [
+ "crossbeam",
+ "futures-lite",
+ "legion-app",
+ "legion-ecs",
+ "tokio",
+]
+
+[[package]]
 name = "legion-codec-api"
 version = "0.1.0"
 dependencies = [
@@ -1491,17 +1502,6 @@ name = "legion-math"
 version = "0.1.0"
 dependencies = [
  "glam",
-]
-
-[[package]]
-name = "legion-online"
-version = "0.1.0"
-dependencies = [
- "crossbeam",
- "futures-lite",
- "legion-app",
- "legion-ecs",
- "tokio",
 ]
 
 [[package]]
