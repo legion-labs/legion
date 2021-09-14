@@ -11,6 +11,7 @@ legion-content-store = { path = "../../lib/content-store", version = "0.1.0" }
 legion-data-build = { path = "../../lib/data-build", version = "0.1.0" }
 legion-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
 legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
@@ -20,3 +21,28 @@ ron = "0.6.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 typetag = "0.1.7"
+
+[[bin]]
+name = "sample-data-compiler"
+path = "src/main/main.rs"
+doc = true
+
+[[bin]]
+name = "compiler-runtime-entity"
+path = "src/runtime_compilers/entity.rs"
+doc = false
+
+[[bin]]
+name = "compiler-runtime-instance"
+path = "src/runtime_compilers/instance.rs"
+doc = false
+
+[[bin]]
+name = "compiler-runtime-mesh"
+path = "src/runtime_compilers/mesh.rs"
+doc = false
+
+[[bin]]
+name = "compiler-runtime-material"
+path = "src/runtime_compilers/material.rs"
+doc = false

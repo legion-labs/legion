@@ -2649,6 +2649,7 @@ dependencies = [
  "legion-data-build",
  "legion-data-compiler",
  "legion-data-offline",
+ "legion-data-runtime",
  "legion-math",
  "legion-utils",
  "ron",

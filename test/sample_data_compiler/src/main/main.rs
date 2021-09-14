@@ -80,11 +80,8 @@
 // crate-specific exceptions:
 #![allow()]
 
-mod offline_compiler;
-mod offline_data;
-mod raw_loader;
-
 use clap::{App, Arg};
+use sample_data_compiler::{offline_compiler, raw_loader};
 
 fn main() {
     const ARG_NAME_ROOT: &str = "root";

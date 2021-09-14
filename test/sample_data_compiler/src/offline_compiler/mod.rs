@@ -1,9 +1,11 @@
-use std::{fs, path::Path};
+use std::{env, fs, path::Path};
 
 use legion_content_store::ContentStoreAddr;
 use legion_data_build::DataBuildOptions;
-//use legion_data_compiler::{Locale, Platform, Target};
-//use legion_data_offline::asset::AssetPathId;
+use legion_data_compiler::{Locale, Platform, Target};
+use legion_data_offline::asset::AssetPathId;
+
+use crate::{offline_data, runtime_data};
 
 pub fn build(root_folder: impl AsRef<Path>) {
     let root_folder = root_folder.as_ref();
@@ -15,11 +17,13 @@ pub fn build(root_folder: impl AsRef<Path>) {
 
     let build_index_path = temp_dir.join("build.index");
     let asset_store_path = ContentStoreAddr::from(temp_dir);
+    let mut exe_path = env::current_exe().expect("cannot access current_exe");
+    exe_path.pop();
     let project_dir = root_folder.to_owned();
 
     let mut build = DataBuildOptions::new(build_index_path)
         .content_store(&asset_store_path)
-        //.compiler_dir(target_dir())
+        .compiler_dir(exe_path)
         .open_or_create(project_dir)
         .expect("new build index");
 
@@ -30,12 +34,32 @@ pub fn build(root_folder: impl AsRef<Path>) {
         fs::create_dir(&runtime_dir).expect("unable to create runtime sub-folder");
     }
 
-    //let root: AssetPathId = AssetPathId::default();
+    let manifest_path = runtime_dir.join("game.manifest");
 
-    // let manifest_path = runtime_dir.join("game.manifest");
+    let platform = Platform::Windows;
+    let locale = Locale::new("en");
 
-    // let platform = Platform::Windows;
-    // let locale = Locale::new("en");
+    let resource_list = build.project().resource_list();
+    for resource_id in resource_list {
+        let mut asset_path = AssetPathId::from(resource_id);
 
-    //let output = build.compile(root, &manifest_path, Target::Server, platform, &locale);
+        let source_type = asset_path.source_resource().resource_type();
+        if source_type == offline_data::ENTITY_TYPE_ID {
+            asset_path = asset_path.push(runtime_data::ENTITY_TYPE_ID);
+        } else if source_type == offline_data::INSTANCE_TYPE_ID {
+            asset_path = asset_path.push(runtime_data::INSTANCE_TYPE_ID);
+        } else if source_type == offline_data::MESH_TYPE_ID {
+            asset_path = asset_path.push(runtime_data::MESH_TYPE_ID);
+        } else if source_type == offline_data::MATERIAL_TYPE_ID {
+            asset_path = asset_path.push(runtime_data::MATERIAL_TYPE_ID);
+        }
+
+        let _manifest = build.compile(
+            asset_path,
+            &manifest_path,
+            Target::Server,
+            platform,
+            &locale,
+        );
+    }
 }
