@@ -4,11 +4,142 @@ use legion_data_offline::resource::{Resource, ResourceId, ResourceProcessor, Res
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
+// ------------------ Entity -----------------------------------
+
+pub const ENTITY_TYPE_ID: ResourceType = ResourceType::new(b"offline_entity");
+
+#[derive(Resource, Default, Serialize, Deserialize)]
+pub struct Entity {
+    pub name: String,
+    pub children: Vec<ResourceId>,
+    pub parent: Option<ResourceId>,
+    pub components: Vec<Box<dyn Component>>,
+}
+
+pub struct EntityProcessor {}
+
+impl ResourceProcessor for EntityProcessor {
+    fn new_resource(&mut self) -> Box<dyn Resource> {
+        Box::new(Entity::default())
+    }
+
+    fn extract_build_dependencies(
+        &mut self,
+        _resource: &dyn Resource,
+    ) -> Vec<legion_data_offline::asset::AssetPathId> {
+        Vec::new()
+    }
+
+    fn write_resource(
+        &mut self,
+        resource: &dyn Resource,
+        writer: &mut dyn std::io::Write,
+    ) -> std::io::Result<usize> {
+        let resource = resource.downcast_ref::<Entity>().unwrap();
+        serde_json::to_writer(writer, resource).unwrap();
+        Ok(1) // no bytes written exposed by serde.
+    }
+
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Resource>> {
+        let resource: Entity = serde_json::from_reader(reader).unwrap();
+        Ok(Box::new(resource))
+    }
+}
+
+#[typetag::serde]
+pub trait Component {}
+
+#[derive(Serialize, Deserialize)]
+pub struct Transform {
+    pub position: Vec3,
+    pub rotation: Quat,
+    pub scale: Vec3,
+    pub apply_to_children: bool,
+}
+
+#[typetag::serde]
+impl Component for Transform {}
+
+#[derive(Serialize, Deserialize)]
+pub struct Visual {
+    pub renderable_geometry: String,
+    pub shadow_receiver: bool,
+    pub shadow_caster_sun: bool,
+    pub shadow_caster_local: bool,
+    pub gi_contribution: GIContribution,
+}
+
+#[typetag::serde]
+impl Component for Visual {}
+
+#[derive(Serialize, Deserialize)]
+pub enum GIContribution {
+    Default,
+    Blocker,
+    Exclude,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GlobalIllumination {}
+
+#[typetag::serde]
+impl Component for GlobalIllumination {}
+
+#[derive(Serialize, Deserialize)]
+pub struct NavMesh {
+    pub voxelisation_config: VoxelisationConfig,
+    pub layer_config: Vec<NavMeshLayerConfig>,
+}
+
+#[typetag::serde]
+impl Component for NavMesh {}
+
+#[derive(Serialize, Deserialize)]
+pub struct VoxelisationConfig {}
+
+#[derive(Serialize, Deserialize)]
+pub struct NavMeshLayerConfig {}
+
+#[derive(Serialize, Deserialize)]
+pub struct View {
+    pub fov: f32,
+    pub near: f32,
+    pub far: f32,
+    pub projection_type: ProjectionType,
+}
+
+#[typetag::serde]
+impl Component for View {}
+
+#[derive(Serialize, Deserialize)]
+pub enum ProjectionType {
+    Orthogonal,
+    Perspective,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Light {}
+
+#[typetag::serde]
+impl Component for Light {}
+
+#[derive(Serialize, Deserialize)]
+pub struct Physics {
+    pub dynamic: bool,
+    pub collision_geometry: String,
+}
+
+#[typetag::serde]
+impl Component for Physics {}
+
 // ------------------ Material -----------------------------------
 
 pub const MATERIAL_TYPE_ID: ResourceType = ResourceType::new(b"offline_material");
 
-#[derive(Resource, Serialize, Deserialize)]
+#[derive(Resource, Default, Serialize, Deserialize)]
 pub struct Material {
     pub albedo: TextureReference,
     pub normal: TextureReference,
@@ -20,12 +151,7 @@ pub struct MaterialProcessor {}
 
 impl ResourceProcessor for MaterialProcessor {
     fn new_resource(&mut self) -> Box<dyn Resource> {
-        Box::new(Material {
-            albedo: TextureReference::default(),
-            normal: TextureReference::default(),
-            roughness: TextureReference::default(),
-            metalness: TextureReference::default(),
-        })
+        Box::new(Material::default())
     }
 
     fn extract_build_dependencies(
