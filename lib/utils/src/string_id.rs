@@ -41,6 +41,7 @@ lazy_static! {
     static ref DICTIONARY: Mutex<HashMap<StringId, String>> = Mutex::new(HashMap::<_, _>::new());
 }
 
+// Reference: https://preshing.com/20110504/hash-collision-probabilities/
 const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
 /// Hashed string representation.
