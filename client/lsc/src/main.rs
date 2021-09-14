@@ -82,11 +82,12 @@ use telemetry::*;
 
 fn init_telemetry() {
     let sink: Arc<dyn EventBlockSink> = Arc::new(NullEventSink {});
-    init_event_dispatch(1024, 1024, sink).unwrap();
+    init_event_dispatch(1024, 1024 * 1024, sink).unwrap();
 }
 
 fn main() {
     init_telemetry();
+    init_thread_stream();
     if let Err(e) = main_impl() {
         println!("{}", e);
         std::process::exit(1);
@@ -94,6 +95,7 @@ fn main() {
 }
 
 fn main_impl() -> Result<(), String> {
+    trace_scope!();
     let matches = App::new("Legion Source Control")
         .setting(AppSettings::ArgRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))

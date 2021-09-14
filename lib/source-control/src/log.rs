@@ -2,6 +2,7 @@ use crate::*;
 use chrono::{DateTime, Local};
 
 pub async fn log_command() -> Result<(), String> {
+    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

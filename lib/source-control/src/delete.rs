@@ -53,6 +53,7 @@ pub async fn delete_local_file(
 }
 
 pub async fn delete_file_command(path_specified: &Path) -> Result<(), String> {
+    trace_scope!();
     let abs_path = make_path_absolute(path_specified);
     if !abs_path.exists() {
         return Err(format!("Error: file not found {}", abs_path.display()));

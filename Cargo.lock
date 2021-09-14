@@ -1556,6 +1556,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "sqlx",
+ "telemetry",
  "tokio",
  "unicase",
  "url",

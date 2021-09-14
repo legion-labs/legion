@@ -119,6 +119,7 @@ pub async fn read_local_changes(
 }
 
 pub async fn find_local_changes_command() -> Result<Vec<LocalChange>, String> {
+    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -206,6 +207,7 @@ pub async fn track_new_file(
 }
 
 pub async fn track_new_file_command(path_specified: &Path) -> Result<(), String> {
+    trace_scope!();
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;
@@ -266,6 +268,7 @@ pub async fn edit_file(
 }
 
 pub async fn edit_file_command(path_specified: &Path) -> Result<(), String> {
+    trace_scope!();
     let workspace_root = find_workspace_root(path_specified)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
     let mut workspace_transaction = workspace_connection.begin().await?;

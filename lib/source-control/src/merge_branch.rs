@@ -192,6 +192,7 @@ async fn find_commit_ancestors(
 }
 
 pub fn merge_branch_command(runtime: &tokio::runtime::Runtime, name: &str) -> Result<(), String> {
+    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection =

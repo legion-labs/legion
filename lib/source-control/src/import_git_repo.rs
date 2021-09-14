@@ -393,6 +393,7 @@ fn import_branch(
 }
 
 pub fn import_git_branch_command(git_root_path: &Path, branch_name: &str) -> Result<(), String> {
+    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();

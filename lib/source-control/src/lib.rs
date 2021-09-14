@@ -149,3 +149,5 @@ pub use sync::*;
 pub use tree::*;
 pub use utils::*;
 pub use workspace::*;
+
+pub(crate) use telemetry::trace_scope;

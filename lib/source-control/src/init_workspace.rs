@@ -7,6 +7,7 @@ pub async fn init_workspace_command(
     specified_workspace_directory: &Path,
     repo_location: &str,
 ) -> Result<(), String> {
+    trace_scope!();
     let workspace_directory = make_path_absolute(specified_workspace_directory);
 
     let lsc_dir = workspace_directory.join(".lsc");

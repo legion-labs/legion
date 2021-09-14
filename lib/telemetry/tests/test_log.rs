@@ -24,11 +24,6 @@ fn test_log_str() {
     }
 }
 
-fn type_name_of<T>(_: &T) -> &'static str {
-    //until type_name_of_val is out of nightly-only
-    std::any::type_name::<T>()
-}
-
 fn get_tsc_frequency() -> Result<u64, String> {
     // does not work in WSL
     // more about the tsc frequency

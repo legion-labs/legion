@@ -2,6 +2,7 @@ use crate::*;
 use std::path::Path;
 
 pub async fn revert_glob_command(pattern: &str) -> Result<(), String> {
+    trace_scope!();
     let mut nb_errors = 0;
     match glob::Pattern::new(pattern) {
         Ok(matcher) => {
@@ -104,6 +105,7 @@ pub async fn revert_file(
 }
 
 pub async fn revert_file_command(path: &Path) -> Result<(), String> {
+    trace_scope!();
     let abs_path = make_path_absolute(path);
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

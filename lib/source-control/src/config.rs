@@ -74,6 +74,7 @@ impl Config {
 }
 
 pub fn print_config_command() -> Result<(), String> {
+    trace_scope!();
     let path = Config::config_file_path()?;
     println!("config file path is {}", path.display());
     let config = Config::read_config()?;

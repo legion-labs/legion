@@ -134,6 +134,7 @@ fn read_resolves_pending(
 }
 
 pub async fn find_resolves_pending_command() -> Result<Vec<ResolvePending>, String> {
+    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -169,6 +170,7 @@ fn run_merge_program(
     base_path: &str,
     output_path: &str,
 ) -> Result<(), String> {
+    trace_scope!();
     let config = Config::read_config()?;
     match config.find_merge_command(relative_path) {
         Some(mut external_command_vec) => {
@@ -232,6 +234,7 @@ fn run_diffy_merge(yours_path: &Path, theirs_path: &Path, base_path: &Path) -> R
 }
 
 pub async fn resolve_file_command(p: &Path, allow_tools: bool) -> Result<(), String> {
+    trace_scope!();
     let abs_path = make_path_absolute(p);
     let workspace_root = find_workspace_root(&abs_path)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

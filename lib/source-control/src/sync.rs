@@ -240,6 +240,7 @@ pub async fn sync_workspace(
 }
 
 pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
+    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;
@@ -284,6 +285,7 @@ pub async fn sync_to_command(commit_id: &str) -> Result<(), String> {
 }
 
 pub async fn sync_command() -> Result<(), String> {
+    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

@@ -1,6 +1,7 @@
 use crate::server_request::*;
 
 pub async fn ping_console_command(server_uri: &str) -> Result<(), String> {
+    telemetry::trace_scope!();
     let request = ServerRequest::Ping(PingRequest {
         specified_uri: String::from(server_uri),
     });
