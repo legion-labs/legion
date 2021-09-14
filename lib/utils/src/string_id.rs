@@ -70,9 +70,7 @@ impl StringId {
     /// provided `StringId` was created using [`Self::from_raw`].
     #[cfg(feature = "stringid_dict")]
     pub fn lookup_name(sid: Self) -> Option<String> {
-        let n = DICTIONARY.lock().unwrap().get(&sid).cloned();
-        println!("{:?}", n);
-        n
+        DICTIONARY.lock().unwrap().get(&sid).cloned()
     }
 
     #[cfg(not(feature = "stringid_dict"))]
@@ -130,9 +128,6 @@ mod tests {
     #[cfg(feature = "stringid_dict")]
     fn runtime_dict() {
         let raw = StringId::from_raw(4271552933); // "foo"
-
-        let b = sid!("bar");
-        println!("{:?}", b);
 
         assert!(StringId::lookup_name(raw).is_none());
 
