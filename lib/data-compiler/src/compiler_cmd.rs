@@ -40,7 +40,7 @@
 //!     let content_store = ContentStoreAddr::from("./content_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
 //!     let mut command = CompilerCompileCmd::new(&compile_path, dependencies, &[], &content_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
-//!     let output = command.execute("my_compiler.exe", "./").expect("compiled resources");
+//!     let output = command.execute("my_compiler.exe").expect("compiled resources");
 //!}
 //! ```
 //!
@@ -129,16 +129,12 @@ fn is_executable<P: AsRef<Path>>(path: P) -> bool {
 
 struct CommandBuilder {
     args: Vec<String>,
-    cwd: Option<PathBuf>,
 }
 
 impl CommandBuilder {
     /// Creates a new [`CommandBuilder`] with the given executable path.
     fn default() -> Self {
-        Self {
-            args: vec![],
-            cwd: None,
-        }
+        Self { args: vec![] }
     }
 
     /// Adds `arg` to the args list.
@@ -147,18 +143,9 @@ impl CommandBuilder {
         self
     }
 
-    /// Sets current working directory for the process.
-    fn cwd<T: AsRef<Path>>(&mut self, cwd: T) -> &mut Self {
-        self.cwd = Some(cwd.as_ref().to_owned());
-        self
-    }
-
-    /// Executes the process returing the stdio output or an error on non-zero exit status.
+    /// Executes the process returning the stdio output or an error on non-zero exit status.
     fn exec<T: AsRef<OsStr>>(&self, compiler_path: T) -> io::Result<std::process::Output> {
         let mut command = std::process::Command::new(compiler_path);
-        if let Some(cwd) = &self.cwd {
-            command.current_dir(cwd);
-        }
         command.args(&self.args);
 
         let output = command.output()?;
@@ -172,7 +159,7 @@ impl CommandBuilder {
                 String::from_utf8(output.stdout).expect("valid utf8")
             );
             println!(
-                "Stdrr: '{}'",
+                "Stderr: '{}'",
                 String::from_utf8(output.stderr).expect("valid utf8")
             );
             Err(io::Error::new(io::ErrorKind::Other, "Status Error"))
@@ -360,14 +347,19 @@ impl CompilerCompileCmd {
     pub fn execute(
         &mut self,
         compiler_path: impl AsRef<OsStr>,
-        cwd: impl AsRef<Path>,
     ) -> io::Result<CompilerCompileCmdOutput> {
-        let output = self.0.cwd(cwd).exec(compiler_path)?;
-        CompilerCompileCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Failed to parse CompilerCompileCmdOutput",
-            )
-        })
+        match self.0.exec(compiler_path) {
+            Ok(output) => CompilerCompileCmdOutput::from_bytes(output.stdout.as_slice())
+                .ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Failed to parse CompilerCompileCmdOutput",
+                    )
+                }),
+            Err(e) => {
+                eprintln!("Compiler command failed, args: {:?}", self.0.args);
+                Err(e)
+            }
+        }
     }
 }

@@ -72,9 +72,7 @@ fn command_compile() {
         &Locale::new("en"),
     );
 
-    let result = command
-        .execute(&exe_path, resource_dir)
-        .expect("compile result");
+    let result = command.execute(&exe_path).expect("compile result");
 
     assert_eq!(result.compiled_resources.len(), 1);
 

@@ -70,9 +70,7 @@ fn compile_atoi() {
             &Locale::new("en"),
         );
 
-        let result = command
-            .execute(&exe_path, resource_dir)
-            .expect("compile result");
+        let result = command.execute(&exe_path).expect("compile result");
         println!("{:?}", result);
 
         assert_eq!(result.compiled_resources.len(), 1);
@@ -137,9 +135,7 @@ fn compile_intermediate() {
             &Locale::new("en"),
         );
 
-        let result = command
-            .execute(&exe_path, &resource_dir)
-            .expect("compile result");
+        let result = command.execute(&exe_path).expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), 1);
         result.compiled_resources[0].clone()
@@ -162,9 +158,7 @@ fn compile_intermediate() {
             &Locale::new("en"),
         );
 
-        let result = command
-            .execute(&exe_path, resource_dir)
-            .expect("compile result");
+        let result = command.execute(&exe_path).expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), 1);
         result.compiled_resources[0].clone()
@@ -232,9 +226,7 @@ fn compile_multi_resource() {
             &Locale::new("en"),
         );
 
-        let result = command
-            .execute(&exe_path, resource_dir)
-            .expect("compile result");
+        let result = command.execute(&exe_path).expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), source_text_list.len());
         result.compiled_resources
