@@ -135,6 +135,48 @@ pub struct Physics {
 #[typetag::serde]
 impl Component for Physics {}
 
+// ------------------ Instance  -----------------------------------
+
+pub const INSTANCE_TYPE_ID: ResourceType = ResourceType::new(b"offline_instance");
+
+#[derive(Resource, Serialize, Deserialize)]
+pub struct Instance {
+    pub original: Option<ResourceId>,
+}
+
+pub struct InstanceProcessor {}
+
+impl ResourceProcessor for InstanceProcessor {
+    fn new_resource(&mut self) -> Box<dyn Resource> {
+        Box::new(Instance { original: None })
+    }
+
+    fn extract_build_dependencies(
+        &mut self,
+        _resource: &dyn Resource,
+    ) -> Vec<legion_data_offline::asset::AssetPathId> {
+        Vec::new()
+    }
+
+    fn write_resource(
+        &mut self,
+        resource: &dyn Resource,
+        writer: &mut dyn std::io::Write,
+    ) -> std::io::Result<usize> {
+        let resource = resource.downcast_ref::<Instance>().unwrap();
+        serde_json::to_writer(writer, resource).unwrap();
+        Ok(1) // no bytes written exposed by serde.
+    }
+
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Resource>> {
+        let resource: Instance = serde_json::from_reader(reader).unwrap();
+        Ok(Box::new(resource))
+    }
+}
+
 // ------------------ Material -----------------------------------
 
 pub const MATERIAL_TYPE_ID: ResourceType = ResourceType::new(b"offline_material");

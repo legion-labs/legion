@@ -167,6 +167,19 @@ impl From<raw_data::Physics> for offline_data::Physics {
     }
 }
 
+// ----- Instance conversions -----
+
+impl FromRaw<raw_data::Instance> for offline_data::Instance {
+    fn from_raw(
+        raw: raw_data::Instance,
+        references: &HashMap<ResourcePathName, ResourceId>,
+    ) -> Self {
+        Self {
+            original: lookup_reference(references, &raw.original),
+        }
+    }
+}
+
 // ----- Material conversions -----
 
 impl FromRaw<raw_data::Material> for offline_data::Material {
