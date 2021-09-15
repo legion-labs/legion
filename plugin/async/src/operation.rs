@@ -18,7 +18,7 @@ impl<T> AsyncOperation<T> {
 }
 
 impl<T: Send + 'static> AsyncOperation<T> {
-    pub fn get_result(&self) -> Option<Result<T, Box<dyn Error + Send + Sync>>> {
+    pub fn take_result(&self) -> Option<Result<T, Box<dyn Error + Send + Sync>>> {
         self.result.lock().unwrap().take()
     }
 }

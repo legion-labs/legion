@@ -40,7 +40,7 @@ struct Salesman {
 
 fn online_loop_example(callers: Query<&Salesman>) {
     for caller in callers.iter() {
-        if let Some(v) = caller.get_price.get_result() {
+        if let Some(v) = caller.get_price.take_result() {
             match v {
                 Ok(v) => println!("The price is: {:?}", v),
                 Err(e) => println!("Could not fetch the price: {:?}", e),
