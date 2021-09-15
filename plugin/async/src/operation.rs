@@ -3,9 +3,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+// Represents an async operation result.
+//
+// A lack of value indicates that the associated AsyncOperation is not done yet.
 pub type AsyncOperationResult<T> = Option<Result<T, Box<dyn Error + Send + Sync>>>;
 
-// Represents an online operation running in a separate thread pool, that can be
+// Represents an async operation running in a separate thread pool, that can be
 // polled for completion.
 pub struct AsyncOperation<T> {
     result: Arc<Mutex<AsyncOperationResult<T>>>,
