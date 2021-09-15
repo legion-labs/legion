@@ -14,10 +14,9 @@ use legion_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
     CompilerInfoCmd, CompilerInfoCmdOutput,
 };
-use legion_data_compiler::CompilerHash;
-use legion_data_compiler::{CompiledResource, Manifest};
-use legion_data_compiler::{Locale, Platform, Target};
+use legion_data_compiler::{CompiledResource, CompilerHash, Locale, Platform, Target};
 use legion_data_offline::{asset::AssetPathId, resource::Project};
+use legion_data_runtime::manifest::CompiledAsset;
 use legion_data_runtime::{AssetId, ContentType};
 use petgraph::algo;
 
@@ -216,24 +215,31 @@ impl DataBuild {
     pub fn compile(
         &mut self,
         compile_path: AssetPathId,
-        manifest_file: &Path,
+        resource_manifest_path: &Path,
+        asset_manifest_path: &Path,
         target: Target,
         platform: Platform,
         locale: &Locale,
-    ) -> Result<Manifest, Error> {
+    ) -> Result<
+        (
+            legion_data_compiler::Manifest,
+            legion_data_runtime::manifest::Manifest,
+        ),
+        Error,
+    > {
         let source = compile_path.source_resource();
         if !self.project.exists(source) {
             return Err(Error::NotFound);
         }
 
-        let (mut manifest, mut file) = {
+        let (mut resource_manifest, mut resource_manifest_file) = {
             if let Ok(file) = OpenOptions::new()
                 .read(true)
                 .write(true)
                 .append(false)
-                .open(manifest_file)
+                .open(resource_manifest_path)
             {
-                let manifest_content: Manifest =
+                let manifest_content: legion_data_compiler::Manifest =
                     serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
                 (manifest_content, file)
             } else {
@@ -241,10 +247,31 @@ impl DataBuild {
                     .read(true)
                     .write(true)
                     .create_new(true)
-                    .open(manifest_file)
+                    .open(resource_manifest_path)
                     .map_err(|_e| Error::InvalidManifest)?;
 
-                (Manifest::default(), file)
+                (legion_data_compiler::Manifest::default(), file)
+            }
+        };
+
+        let (mut asset_manifest, mut asset_manifest_file) = {
+            if let Ok(file) = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .append(false)
+                .open(asset_manifest_path)
+            {
+                let manifest = legion_data_runtime::manifest::Manifest::import(&file);
+                (manifest, file)
+            } else {
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create_new(true)
+                    .open(asset_manifest_path)
+                    .map_err(|_e| Error::InvalidManifest)?;
+
+                (legion_data_runtime::manifest::Manifest::default(), file)
             }
         };
 
@@ -256,23 +283,40 @@ impl DataBuild {
 
         let assets = self.link(&resources, &references)?;
 
-        for asset in assets {
-            if let Some(existing) = manifest
+        for compiled_resource in assets.0 {
+            if let Some(existing) = resource_manifest
                 .compiled_resources
                 .iter_mut()
-                .find(|existing| existing.path == asset.path)
+                .find(|existing| existing.path == compiled_resource.path)
             {
-                *existing = asset;
+                *existing = compiled_resource;
             } else {
-                manifest.compiled_resources.push(asset);
+                resource_manifest.compiled_resources.push(compiled_resource);
             }
         }
 
-        file.set_len(0).unwrap();
-        file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
+        for compiled_asset in assets.1 {
+            asset_manifest.insert(
+                compiled_asset.guid,
+                compiled_asset.checksum,
+                compiled_asset.size,
+            );
+        }
 
-        Ok(manifest)
+        resource_manifest_file.set_len(0).unwrap();
+        resource_manifest_file
+            .seek(std::io::SeekFrom::Start(0))
+            .unwrap();
+        serde_json::to_writer_pretty(&resource_manifest_file, &resource_manifest)
+            .map_err(|_e| Error::InvalidManifest)?;
+
+        asset_manifest_file.set_len(0).unwrap();
+        asset_manifest_file
+            .seek(std::io::SeekFrom::Start(0))
+            .unwrap();
+        asset_manifest.export(&asset_manifest_file);
+
+        Ok((resource_manifest, asset_manifest))
     }
 
     /// Compile `compile_node` of the build graph and update *build index* one or more compilation results.
@@ -587,8 +631,9 @@ impl DataBuild {
         &mut self,
         resources: &[CompiledResourceInfo],
         references: &[CompiledResourceReference],
-    ) -> Result<Vec<CompiledResource>, Error> {
+    ) -> Result<(Vec<CompiledResource>, Vec<CompiledAsset>), Error> {
         let mut resource_files = Vec::with_capacity(resources.len());
+        let mut asset_files = Vec::with_capacity(resources.len());
         for resource in resources {
             //
             // for now, non-asset resources are passed for linking
@@ -628,10 +673,17 @@ impl DataBuild {
                     size: bytes_written,
                 };
                 resource_files.push(asset_file);
+
+                let compiled_asset = CompiledAsset {
+                    guid: asset_id,
+                    checksum,
+                    size: bytes_written,
+                };
+                asset_files.push(compiled_asset);
             }
         }
 
-        Ok(resource_files)
+        Ok((resource_files, asset_files))
     }
 
     /// Returns the global version of the databuild module.

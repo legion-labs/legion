@@ -93,6 +93,7 @@ use crate::asset_registry_plugin::{AssetRegistryPlugin, AssetRegistrySettings};
 
 fn main() {
     const ARG_NAME_CAS: &str = "cas";
+    const ARG_NAME_MANIFEST: &str = "manifest";
     const ARG_NAME_ROOT: &str = "root";
 
     let args = clap::App::new("Legion Labs runtime engine")
@@ -103,6 +104,10 @@ fn main() {
             .long(ARG_NAME_CAS)
             .takes_value(true)
             .help("Path to folder containing the content storage files"))
+        .arg(Arg::with_name(ARG_NAME_MANIFEST)
+            .long(ARG_NAME_MANIFEST)
+            .takes_value(true)
+            .help("Path to the game manifest"))
         .arg(Arg::with_name(ARG_NAME_ROOT)
             .long(ARG_NAME_ROOT)
             .takes_value(true)
@@ -113,17 +118,25 @@ fn main() {
         .value_of(ARG_NAME_CAS)
         .unwrap_or("test/sample_data/temp");
 
+    let game_manifest = args
+        .value_of(ARG_NAME_MANIFEST)
+        .unwrap_or("test/sample_data/runtime/game.manifest");
+
     // default root object is in sample data
     // /world/sample_1.ent
     // resource-id: 5004cd1c00000000cc2e0e75fdc1bc61
     // current runtime/cas checksum: 917911064617515641
     let root_object = args
         .value_of(ARG_NAME_ROOT)
-        .unwrap_or("0x5004cd1c00000000cc2e0e75fdc1bc61|2174517795");
+        .unwrap_or("819c8223000000002355395392dd415c");
 
     // Start app with 60 fps
     App::new()
-        .insert_resource(AssetRegistrySettings::new(content_store_addr, root_object))
+        .insert_resource(AssetRegistrySettings::new(
+            content_store_addr,
+            game_manifest,
+            root_object,
+        ))
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
         )))

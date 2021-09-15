@@ -792,6 +792,7 @@ fn link() {
     let link_output = build
         .link(&compile_output.resources, &compile_output.references)
         .expect("successful linking");
+    let link_output = link_output.0;
 
     assert_eq!(compile_output.resources.len(), link_output.len());
 
@@ -863,17 +864,20 @@ fn verify_manifest() {
     build.source_pull().unwrap();
 
     let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
+    let game_manifest_file = work_dir.path().join("game.manifest");
 
     let compile_path = AssetPathId::from(parent_resource).push(refs_asset::TYPE_ID);
     let manifest = build
         .compile(
             compile_path,
             &output_manifest_file,
+            &game_manifest_file,
             Target::Game,
             Platform::Windows,
             &Locale::new("en"),
         )
         .unwrap();
+    let manifest = manifest.0;
 
     // both test(child_id) and test(parent_id) are separate resources.
     assert_eq!(manifest.compiled_resources.len(), 2);
