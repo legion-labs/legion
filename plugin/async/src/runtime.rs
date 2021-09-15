@@ -3,7 +3,9 @@ use std::{
     sync::{Arc, Mutex, Weak},
 };
 
-use super::operation::{AsyncOperation, AsyncOperationResult};
+use super::operation::{
+    AsyncOperation, AsyncOperationCanceller, AsyncOperationError, AsyncOperationResult,
+};
 
 use retain_mut::RetainMut;
 use tokio::runtime::{Builder, Runtime};
@@ -44,15 +46,18 @@ impl TokioAsyncRuntime {
     {
         let result = Arc::new(Mutex::new(None));
 
+        let (canceller, cancelled) = tokio::sync::mpsc::unbounded_channel();
+        let canceller = TokioFutureCanceller::new(canceller);
         let wrapper = Box::new(TokioFutureWrapper::new(
             self,
             future,
             Arc::downgrade(&result),
+            cancelled,
         ));
 
         self.wrappers.push(wrapper);
 
-        AsyncOperation::new(result)
+        AsyncOperation::new(result, Box::new(canceller))
     }
 
     pub fn poll(&mut self) {
@@ -76,7 +81,7 @@ trait TokioFutureWrapperAsyncResult: Send + Sync {
 }
 
 struct TokioFutureWrapper<T> {
-    receiver: tokio::sync::oneshot::Receiver<T>,
+    receiver: tokio::sync::oneshot::Receiver<Result<T, AsyncOperationError>>,
     result: Weak<Mutex<AsyncOperationResult<T>>>,
 }
 
@@ -85,6 +90,7 @@ impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
         rt: &TokioAsyncRuntime,
         future: F,
         result: Weak<Mutex<AsyncOperationResult<T>>>,
+        mut cancelled: tokio::sync::mpsc::UnboundedReceiver<AsyncOperationError>,
     ) -> Self
     where
         F: Future<Output = T> + Send + 'static,
@@ -93,7 +99,20 @@ impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
         let wrapper = Self { receiver, result };
 
         rt.spawn_in_tokio_thread_pool(async move {
-            let _ = sender.send(future.await);
+            let fut = async move {
+                tokio::select! {
+                    err = cancelled.recv() => {
+                        cancelled.close();
+
+                        Err(err.unwrap_or(AsyncOperationError::Dropped))
+                    }
+                    value = future => {
+                        Ok(value)
+                    }
+                }
+            };
+
+            let _ = sender.send(fut.await);
         });
 
         wrapper
@@ -105,7 +124,7 @@ impl<T: Send + Sync + 'static> TokioFutureWrapperAsyncResult for TokioFutureWrap
         if let Ok(v) = self.receiver.try_recv() {
             if let Some(result) = self.result.upgrade() {
                 let mut result = result.lock().unwrap();
-                *result = Some(Ok(v));
+                *result = Some(v);
             }
 
             // It doesn't matter that we could actually set the value in the
@@ -115,5 +134,21 @@ impl<T: Send + Sync + 'static> TokioFutureWrapperAsyncResult for TokioFutureWrap
         }
 
         TokioFutureWrapperPoll::Polling
+    }
+}
+
+struct TokioFutureCanceller {
+    canceller: tokio::sync::mpsc::UnboundedSender<AsyncOperationError>,
+}
+
+impl TokioFutureCanceller {
+    fn new(canceller: tokio::sync::mpsc::UnboundedSender<AsyncOperationError>) -> Self {
+        Self { canceller }
+    }
+}
+
+impl AsyncOperationCanceller for TokioFutureCanceller {
+    fn cancel(&self) {
+        let _ = self.canceller.send(AsyncOperationError::Cancelled);
     }
 }
