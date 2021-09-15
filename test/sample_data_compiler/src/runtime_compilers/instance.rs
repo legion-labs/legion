@@ -73,24 +73,18 @@
 // crate-specific exceptions:
 #![allow()]
 
+mod compiler_funcs;
 mod offline_to_runtime;
-use offline_to_runtime::FromOffline;
 
-use std::{
-    collections::hash_map::DefaultHasher,
-    env,
-    hash::{Hash, Hasher},
+use compiler_funcs::{compile, compiler_hash};
+use legion_data_compiler::compiler_api::{
+    compiler_main, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
 };
-
-use legion_data_compiler::{
-    compiler_api::{
-        compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
-        DATA_BUILD_VERSION,
-    },
-    CompiledResource, CompilerHash, Locale, Platform, Target,
+use sample_data_compiler::{
+    offline_data::{self, CompilableResource},
+    runtime_data::{self, CompilableAsset},
 };
-use legion_data_offline::resource::ResourceRegistryOptions;
-use sample_data_compiler::{offline_data, runtime_data};
+use std::env;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -98,60 +92,12 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        offline_data::INSTANCE_TYPE_ID.content(),
-        runtime_data::INSTANCE_TYPE_ID.content(),
+        offline_data::Instance::TYPE_ID.content(),
+        runtime_data::Instance::TYPE_ID.content(),
     ),
     compiler_hash_func: compiler_hash,
-    compile_func: compile,
+    compile_func: compile::<offline_data::Instance, runtime_data::Instance>,
 };
-
-fn compiler_hash(
-    code: &'static str,
-    data: &'static str,
-    _target: Target,
-    _platform: Platform,
-    _locale: &Locale,
-) -> CompilerHash {
-    let mut hasher = DefaultHasher::new();
-    code.hash(&mut hasher);
-    data.hash(&mut hasher);
-    CompilerHash(hasher.finish())
-}
-
-fn compile(context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = ResourceRegistryOptions::new()
-        .add_type(
-            offline_data::INSTANCE_TYPE_ID,
-            Box::new(offline_data::InstanceProcessor {}),
-        )
-        .create_registry();
-
-    // todo: source_resource is wrong
-    let resource = context.load_resource(
-        &context.compile_path.direct_dependency().unwrap(),
-        &mut resources,
-    )?;
-    let resource = resource.get::<offline_data::Instance>(&resources).unwrap();
-
-    let asset = runtime_data::Instance::from_offline(resource);
-    let compiled_asset = bincode::serialize(&asset).unwrap();
-
-    let checksum = context
-        .content_store
-        .store(&compiled_asset)
-        .ok_or(CompilerError::AssetStoreError)?;
-
-    let asset = CompiledResource {
-        path: context.compile_path,
-        checksum,
-        size: compiled_asset.len(),
-    };
-
-    Ok(CompilationOutput {
-        compiled_resources: vec![asset],
-        resource_references: vec![],
-    })
-}
 
 fn main() -> Result<(), CompilerError> {
     compiler_main(env::args(), &COMPILER_INFO)

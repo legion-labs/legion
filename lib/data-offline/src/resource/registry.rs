@@ -22,7 +22,7 @@ impl ResourceRegistryOptions {
     ///
     /// # Panics
     ///
-    /// Panics if a processor for a resource of type `kind` is already registerd.
+    /// Panics if a processor for a resource of type `kind` is already registered.
     pub fn add_type(mut self, kind: ResourceType, proc: Box<dyn ResourceProcessor>) -> Self {
         let v = self.processors.insert(kind, proc).is_none();
         assert!(v);
@@ -38,7 +38,7 @@ impl ResourceRegistryOptions {
 /// The registry of resources currently available in memory.
 ///
 /// While `Project` is responsible for managing on disk/source control resources
-/// the `ResourceRegisry` manages resources that are in memory. Therefore it is possible
+/// the `ResourceRegistry` manages resources that are in memory. Therefore it is possible
 /// that some resources are in memory but not known to `Project` or are part of the `Project`
 /// but are not currently loaded to memory.
 pub struct ResourceRegistry {

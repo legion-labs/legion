@@ -5,7 +5,10 @@ use legion_data_build::DataBuildOptions;
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::asset::AssetPathId;
 
-use crate::{offline_data, runtime_data};
+use crate::{
+    offline_data::{self, CompilableResource},
+    runtime_data::{self, CompilableAsset},
+};
 
 pub fn build(root_folder: impl AsRef<Path>) {
     let root_folder = root_folder.as_ref();
@@ -44,14 +47,14 @@ pub fn build(root_folder: impl AsRef<Path>) {
         let mut asset_path = AssetPathId::from(resource_id);
 
         let source_type = asset_path.source_resource().resource_type();
-        if source_type == offline_data::ENTITY_TYPE_ID {
-            asset_path = asset_path.push(runtime_data::ENTITY_TYPE_ID);
-        } else if source_type == offline_data::INSTANCE_TYPE_ID {
-            asset_path = asset_path.push(runtime_data::INSTANCE_TYPE_ID);
-        } else if source_type == offline_data::MESH_TYPE_ID {
-            asset_path = asset_path.push(runtime_data::MESH_TYPE_ID);
-        } else if source_type == offline_data::MATERIAL_TYPE_ID {
-            asset_path = asset_path.push(runtime_data::MATERIAL_TYPE_ID);
+        if source_type == offline_data::Entity::TYPE_ID {
+            asset_path = asset_path.push(runtime_data::Entity::TYPE_ID);
+        } else if source_type == offline_data::Instance::TYPE_ID {
+            asset_path = asset_path.push(runtime_data::Instance::TYPE_ID);
+        } else if source_type == offline_data::Mesh::TYPE_ID {
+            asset_path = asset_path.push(runtime_data::Mesh::TYPE_ID);
+        } else if source_type == offline_data::Material::TYPE_ID {
+            asset_path = asset_path.push(runtime_data::Material::TYPE_ID);
         }
 
         let _manifest = build.compile(

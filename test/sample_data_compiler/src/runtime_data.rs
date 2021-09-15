@@ -2,9 +2,12 @@ use legion_data_runtime::{Asset, AssetId, AssetLoader, AssetType};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
-// ------------------ Entity -----------------------------------
+pub trait CompilableAsset {
+    const TYPE_ID: AssetType;
+    type Creator: AssetLoader + Default + 'static;
+}
 
-pub const ENTITY_TYPE_ID: AssetType = AssetType::new(b"runtime_entity");
+// ------------------ Entity -----------------------------------
 
 #[derive(Asset, Serialize, Deserialize)]
 pub struct Entity {
@@ -14,6 +17,12 @@ pub struct Entity {
     pub components: Vec<Box<dyn Component>>,
 }
 
+impl CompilableAsset for Entity {
+    const TYPE_ID: AssetType = AssetType::new(b"runtime_entity");
+    type Creator = EntityCreator;
+}
+
+#[derive(Default)]
 pub struct EntityCreator {}
 
 impl AssetLoader for EntityCreator {
@@ -124,11 +133,15 @@ impl Component for Physics {}
 
 // ------------------ Instance  -----------------------------------
 
-pub const INSTANCE_TYPE_ID: AssetType = AssetType::new(b"runtime_instance");
-
 #[derive(Asset, Serialize, Deserialize)]
 pub struct Instance {}
 
+impl CompilableAsset for Instance {
+    const TYPE_ID: AssetType = AssetType::new(b"runtime_instance");
+    type Creator = InstanceCreator;
+}
+
+#[derive(Default)]
 pub struct InstanceCreator {}
 
 impl AssetLoader for InstanceCreator {
@@ -153,8 +166,6 @@ impl AssetLoader for InstanceCreator {
 
 // ------------------ Material -----------------------------------
 
-pub const MATERIAL_TYPE_ID: AssetType = AssetType::new(b"runtime_material");
-
 #[derive(Asset, Serialize, Deserialize)]
 pub struct Material {
     pub albedo: TextureReference,
@@ -163,6 +174,12 @@ pub struct Material {
     pub metalness: TextureReference,
 }
 
+impl CompilableAsset for Material {
+    const TYPE_ID: AssetType = AssetType::new(b"runtime_material");
+    type Creator = MaterialCreator;
+}
+
+#[derive(Default)]
 pub struct MaterialCreator {}
 
 impl AssetLoader for MaterialCreator {
@@ -189,11 +206,15 @@ pub type TextureReference = String;
 
 // ------------------ Mesh -----------------------------------
 
-pub const MESH_TYPE_ID: AssetType = AssetType::new(b"runtime_mesh");
-
 #[derive(Asset, Serialize, Deserialize)]
 pub struct Mesh {}
 
+impl CompilableAsset for Mesh {
+    const TYPE_ID: AssetType = AssetType::new(b"runtime_mesh");
+    type Creator = MeshCreator;
+}
+
+#[derive(Default)]
 pub struct MeshCreator {}
 
 impl AssetLoader for MeshCreator {

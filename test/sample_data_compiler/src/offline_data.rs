@@ -6,9 +6,12 @@ use legion_data_offline::resource::{Resource, ResourceId, ResourceProcessor, Res
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
-// ------------------ Entity -----------------------------------
+pub trait CompilableResource {
+    const TYPE_ID: ResourceType;
+    type Processor: ResourceProcessor + Default + 'static;
+}
 
-pub const ENTITY_TYPE_ID: ResourceType = ResourceType::new(b"offline_entity");
+// ------------------ Entity -----------------------------------
 
 #[derive(Resource, Default, Serialize, Deserialize)]
 pub struct Entity {
@@ -18,6 +21,12 @@ pub struct Entity {
     pub components: Vec<Box<dyn Component>>,
 }
 
+impl CompilableResource for Entity {
+    const TYPE_ID: ResourceType = ResourceType::new(b"offline_entity");
+    type Processor = EntityProcessor;
+}
+
+#[derive(Default)]
 pub struct EntityProcessor {}
 
 impl ResourceProcessor for EntityProcessor {
@@ -164,13 +173,17 @@ impl Component for Physics {}
 
 // ------------------ Instance  -----------------------------------
 
-pub const INSTANCE_TYPE_ID: ResourceType = ResourceType::new(b"offline_instance");
-
 #[derive(Resource, Serialize, Deserialize)]
 pub struct Instance {
     pub original: Option<ResourceId>,
 }
 
+impl CompilableResource for Instance {
+    const TYPE_ID: ResourceType = ResourceType::new(b"offline_instance");
+    type Processor = InstanceProcessor;
+}
+
+#[derive(Default)]
 pub struct InstanceProcessor {}
 
 impl ResourceProcessor for InstanceProcessor {
@@ -206,8 +219,6 @@ impl ResourceProcessor for InstanceProcessor {
 
 // ------------------ Material -----------------------------------
 
-pub const MATERIAL_TYPE_ID: ResourceType = ResourceType::new(b"offline_material");
-
 #[derive(Resource, Default, Serialize, Deserialize)]
 pub struct Material {
     pub albedo: TextureReference,
@@ -216,6 +227,12 @@ pub struct Material {
     pub metalness: TextureReference,
 }
 
+impl CompilableResource for Material {
+    const TYPE_ID: ResourceType = ResourceType::new(b"offline_material");
+    type Processor = MaterialProcessor;
+}
+
+#[derive(Default)]
 pub struct MaterialProcessor {}
 
 impl ResourceProcessor for MaterialProcessor {
@@ -254,22 +271,17 @@ pub type TextureReference = String;
 
 // ------------------ Mesh -----------------------------------
 
-pub const MESH_TYPE_ID: ResourceType = ResourceType::new(b"offline_mesh");
-
 #[derive(Resource, Serialize, Deserialize)]
 pub struct Mesh {
     pub sub_meshes: Vec<SubMesh>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct SubMesh {
-    pub positions: Vec<Vec3>,
-    pub normals: Vec<Vec3>,
-    pub uvs: Vec<Vec2>,
-    pub indices: Vec<u16>,
-    pub material: ResourceId,
+impl CompilableResource for Mesh {
+    const TYPE_ID: ResourceType = ResourceType::new(b"offline_mesh");
+    type Processor = MeshProcessor;
 }
 
+#[derive(Default)]
 pub struct MeshProcessor {}
 
 impl ResourceProcessor for MeshProcessor {
@@ -304,4 +316,13 @@ impl ResourceProcessor for MeshProcessor {
         let resource: Mesh = serde_json::from_reader(reader).unwrap();
         Ok(Box::new(resource))
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SubMesh {
+    pub positions: Vec<Vec3>,
+    pub normals: Vec<Vec3>,
+    pub uvs: Vec<Vec2>,
+    pub indices: Vec<u16>,
+    pub material: ResourceId,
 }

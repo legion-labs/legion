@@ -1,7 +1,7 @@
 mod raw_data;
 mod raw_to_offline;
 
-use crate::offline_data::{self};
+use crate::offline_data::{self, CompilableResource};
 use legion_data_offline::resource::{
     Project, Resource, ResourceId, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
     ResourceType,
@@ -99,34 +99,29 @@ fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
     }
     .unwrap();
 
-    let resources = ResourceRegistryOptions::new()
-        .add_type(
-            offline_data::ENTITY_TYPE_ID,
-            Box::new(offline_data::EntityProcessor {}),
-        )
-        .add_type(
-            offline_data::INSTANCE_TYPE_ID,
-            Box::new(offline_data::InstanceProcessor {}),
-        )
-        .add_type(
-            offline_data::MATERIAL_TYPE_ID,
-            Box::new(offline_data::MaterialProcessor {}),
-        )
-        .add_type(
-            offline_data::MESH_TYPE_ID,
-            Box::new(offline_data::MeshProcessor {}),
-        )
-        .create_registry();
+    fn add_resource<T>(resources: ResourceRegistryOptions) -> ResourceRegistryOptions
+    where
+        T: CompilableResource,
+    {
+        resources.add_type(T::TYPE_ID, Box::new(T::Processor::default()))
+    }
+
+    let mut resources = ResourceRegistryOptions::new();
+    resources = add_resource::<offline_data::Entity>(resources);
+    resources = add_resource::<offline_data::Instance>(resources);
+    resources = add_resource::<offline_data::Material>(resources);
+    resources = add_resource::<offline_data::Mesh>(resources);
+    let resources = resources.create_registry();
 
     (project, resources)
 }
 
 fn ext_to_resource_kind(ext: &str) -> ResourceType {
     match ext {
-        "ent" => offline_data::ENTITY_TYPE_ID,
-        "ins" => offline_data::INSTANCE_TYPE_ID,
-        "mat" => offline_data::MATERIAL_TYPE_ID,
-        "mesh" => offline_data::MESH_TYPE_ID,
+        "ent" => offline_data::Entity::TYPE_ID,
+        "ins" => offline_data::Instance::TYPE_ID,
+        "mat" => offline_data::Material::TYPE_ID,
+        "mesh" => offline_data::Mesh::TYPE_ID,
         _ => panic!(),
     }
 }
