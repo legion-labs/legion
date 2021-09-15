@@ -17,16 +17,6 @@ pub struct TokioAsyncRuntime {
     wrappers: Vec<Box<dyn TokioFutureWrapperAsyncResult>>,
 }
 
-impl TokioAsyncRuntime {
-    fn spawn_in_tokio_thread_pool<F>(&self, future: F)
-    where
-        F: Future + Send + 'static,
-        F::Output: Sized + Send + Sync + 'static,
-    {
-        self.tokio_runtime.spawn(future);
-    }
-}
-
 impl Default for TokioAsyncRuntime {
     fn default() -> Self {
         let rt = Builder::new_multi_thread().enable_all().build().unwrap();
@@ -39,6 +29,14 @@ impl Default for TokioAsyncRuntime {
 }
 
 impl TokioAsyncRuntime {
+    fn spawn_in_tokio_thread_pool<F>(&self, future: F)
+    where
+        F: Future + Send + 'static,
+        F::Output: Sized + Send + Sync + 'static,
+    {
+        self.tokio_runtime.spawn(future);
+    }
+
     pub fn start<F>(&mut self, future: F) -> AsyncOperation<F::Output>
     where
         F: Future + Send + 'static,
@@ -60,9 +58,22 @@ impl TokioAsyncRuntime {
         AsyncOperation::new(result, Box::new(canceller))
     }
 
-    pub fn poll(&mut self) {
-        self.wrappers
-            .retain_mut(|wrapper| wrapper.poll().is_polling());
+    // Polls the runtime for potential completed futures, returning the number
+    // of completed futures during the last call.
+    pub fn poll(&mut self) -> u32 {
+        let mut count = 0;
+
+        self.wrappers.retain_mut(|wrapper| {
+            let is_polling = wrapper.poll().is_polling();
+
+            if !is_polling {
+                count += 1;
+            }
+
+            is_polling
+        });
+
+        count
     }
 }
 pub enum TokioFutureWrapperPoll {
@@ -101,6 +112,17 @@ impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
         rt.spawn_in_tokio_thread_pool(async move {
             let fut = async move {
                 tokio::select! {
+                    // `biased` below ensures that the order of polling is deterministic
+                    // (from top to bottom) and is required for the following reasons:
+                    //
+                    // - Randomization has non-zero CPU cost.
+                    // - Cancellations should always win to make testing deterministic.
+                    //
+                    // Since the cancelled signal almost never unblocks, putting
+                    // it first is fine as it won't preempt any async-polling
+                    // time from the actual future.
+                    biased;
+
                     err = cancelled.recv() => {
                         cancelled.close();
 

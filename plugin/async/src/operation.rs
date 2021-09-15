@@ -10,7 +10,7 @@ use std::{
 pub type AsyncOperationResult<T> = Option<Result<T, AsyncOperationError>>;
 
 // An error that can happen to an AsyncOperation.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AsyncOperationError {
     Cancelled,
     Dropped,
