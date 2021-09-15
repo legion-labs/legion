@@ -5,8 +5,8 @@
 //! >
 //! > `StringId` is under development. The remaining issue are:
 //! > * [Feature unification](https://doc.rust-lang.org/cargo/reference/features.html#feature-unification) poses a problem of being able to compile the engine without *stringid-debug* feature.
-//! > * const `StringId` does not add the string name to the dictionary significantly limiting the usability of `StringId`.
-//! > * Performance of `DICTIONARY` needs to be evaluated with emphasis on [`lookup_debug_name`]
+//! > * [`sid!`] cannot be used in [const context](https://doc.rust-lang.org/reference/const_eval.html#const-context) limiting the usability of `StringId`.
+//! > * Performance of `DICTIONARY` needs to be evaluated with emphasis on [`lookup_debug_name`].
 //! > * Current implementation of [`lookup_debug_name`] allocates a String while it would be better if it returned a `&str`.
 //! >
 //! > Helpful resources around the topic include:
