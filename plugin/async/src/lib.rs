@@ -1,4 +1,3 @@
-// END - Legion Labs standard lints v0.2
 //! Async plugin for Legion's ECS.
 //!
 //! Provides an async <-> sync bridge between Legion's ECS systems and various
@@ -76,6 +75,8 @@
     rust_2018_idioms
 )]
 // END - Legion Labs standard lints v0.2
+// crate-specific exceptions:
+#![allow()]
 
 use legion_app::prelude::*;
 use legion_ecs::prelude::*;
