@@ -1,5 +1,7 @@
 // Types that will eventually moved to library crates
 
+use std::any::{Any, TypeId};
+
 use legion_data_offline::resource::{Resource, ResourceId, ResourceProcessor, ResourceType};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -50,7 +52,32 @@ impl ResourceProcessor for EntityProcessor {
 }
 
 #[typetag::serde]
-pub trait Component {}
+pub trait Component: Any {}
+
+/// Note: Based on impl of dyn Any
+impl dyn Component {
+    /// Returns `true` if the boxed type is the same as `T`.
+    /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
+    #[inline]
+    pub fn is<T: Component>(&self) -> bool {
+        TypeId::of::<T>() == self.type_id()
+    }
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_ref`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref))
+    #[inline]
+    pub fn downcast_ref<T: Component>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            #[allow(unsafe_code)]
+            unsafe {
+                Some(&*((self as *const dyn Component).cast::<T>()))
+            }
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Transform {

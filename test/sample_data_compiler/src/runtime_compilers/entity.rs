@@ -73,6 +73,9 @@
 // crate-specific exceptions:
 #![allow()]
 
+mod offline_to_runtime;
+use offline_to_runtime::FromOffline;
+
 use std::{
     collections::hash_map::DefaultHasher,
     env,
@@ -127,9 +130,10 @@ fn compile(context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerEr
         &context.compile_path.direct_dependency().unwrap(),
         &mut resources,
     )?;
-    let _resource = resource.get::<offline_data::Entity>(&resources).unwrap();
+    let resource = resource.get::<offline_data::Entity>(&resources).unwrap();
 
-    let compiled_asset = vec![0u8];
+    let asset = runtime_data::Entity::from_offline(resource);
+    let compiled_asset = bincode::serialize(&asset).unwrap();
 
     let checksum = context
         .content_store
@@ -142,7 +146,6 @@ fn compile(context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerEr
         size: compiled_asset.len(),
     };
 
-    // in this mock build dependency are _not_ runtime references.
     Ok(CompilationOutput {
         compiled_resources: vec![asset],
         resource_references: vec![],
