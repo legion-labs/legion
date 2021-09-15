@@ -106,9 +106,12 @@ impl<T: Send + Sync + 'static> TokioFutureWrapperAsyncResult for TokioFutureWrap
             if let Some(result) = self.result.upgrade() {
                 let mut result = result.lock().unwrap();
                 *result = Some(Ok(v));
-
-                return TokioFutureWrapperPoll::Ready;
             }
+
+            // It doesn't matter that we could actually set the value in the
+            // related AsyncOperation or not: we will only get that value once
+            // and should never be polled again.
+            return TokioFutureWrapperPoll::Ready;
         }
 
         TokioFutureWrapperPoll::Polling
