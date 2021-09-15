@@ -12,8 +12,8 @@ pub struct AsyncOperation<T> {
 }
 
 impl<T> AsyncOperation<T> {
-    pub fn new(result: Arc<Mutex<AsyncOperationResult<T>>>) -> AsyncOperation<T> {
-        AsyncOperation::<T> { result }
+    pub fn new(result: Arc<Mutex<AsyncOperationResult<T>>>) -> Self {
+        Self { result }
     }
 }
 

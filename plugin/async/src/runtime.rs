@@ -38,7 +38,7 @@ impl Default for TokioAsyncRuntime {
     fn default() -> Self {
         let rt = Builder::new_multi_thread().enable_all().build().unwrap();
 
-        TokioAsyncRuntime {
+        Self {
             tokio_runtime: rt,
             wrappers: vec![],
         }
@@ -94,12 +94,12 @@ impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
         rt: &TokioAsyncRuntime,
         future: F,
         result: Weak<Mutex<AsyncOperationResult<T>>>,
-    ) -> TokioFutureWrapper<T>
+    ) -> Self
     where
         F: Future<Output = T> + Send + 'static,
     {
         let (sender, receiver) = tokio::sync::oneshot::channel();
-        let wrapper = TokioFutureWrapper { receiver, result };
+        let wrapper = Self { receiver, result };
 
         rt.spawn_in_tokio_thread_pool(async move {
             let _ = sender.send(future.await);
