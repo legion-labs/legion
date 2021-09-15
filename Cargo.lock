@@ -656,6 +656,16 @@ name = "deployment-tests"
 version = "0.1.0"
 
 [[package]]
+name = "derive-transit"
+version = "0.1.0"
+dependencies = [
+ "memoffset",
+ "quote",
+ "syn",
+ "transit",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3533,6 +3543,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46125608c26121c81b0c6d693eab5a420e416da7e43c426d2e8f7df8da8a3acf"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "transit"
+version = "0.1.0"
+dependencies = [
+ "memoffset",
 ]
 
 [[package]]
