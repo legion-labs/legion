@@ -3,8 +3,8 @@
 //! Provides an async <-> sync bridge between Legion's ECS systems and various
 //! async runtimes, like `tokio`.
 
-use legion_app::prelude::{App, Plugin};
-use legion_ecs::prelude::ResMut;
+use legion_app::prelude::*;
+use legion_ecs::prelude::*;
 
 pub mod operation;
 pub mod runtime;
