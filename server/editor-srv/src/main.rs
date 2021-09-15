@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use legion_async::{AsyncOperation, AsyncPlugin, AsyncRuntime, TokioAsyncRuntime};
+use legion_async::{AsyncOperation, AsyncPlugin, TokioAsyncRuntime};
 use legion_ecs::prelude::*;
 
 fn main() {

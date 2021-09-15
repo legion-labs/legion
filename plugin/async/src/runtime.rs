@@ -8,15 +8,6 @@ use super::operation::{AsyncOperation, AsyncOperationResult};
 use retain_mut::RetainMut;
 use tokio::runtime::{Builder, Runtime};
 
-pub trait AsyncRuntime: Send + Sync + Default {
-    fn start<F>(&mut self, future: F) -> AsyncOperation<F::Output>
-    where
-        F: Future + Send + 'static,
-        F::Output: Sized + Send + Sync + 'static;
-
-    fn poll(&mut self);
-}
-
 // Wraps a tokio::runtime::Runtime to make it compatible with the 'systems'
 // system.
 pub struct TokioAsyncRuntime {
@@ -45,8 +36,8 @@ impl Default for TokioAsyncRuntime {
     }
 }
 
-impl AsyncRuntime for TokioAsyncRuntime {
-    fn start<F>(&mut self, future: F) -> AsyncOperation<F::Output>
+impl TokioAsyncRuntime {
+    pub fn start<F>(&mut self, future: F) -> AsyncOperation<F::Output>
     where
         F: Future + Send + 'static,
         F::Output: Sized + Send + Sync + 'static,
@@ -64,7 +55,7 @@ impl AsyncRuntime for TokioAsyncRuntime {
         AsyncOperation::new(result)
     }
 
-    fn poll(&mut self) {
+    pub fn poll(&mut self) {
         self.wrappers
             .retain_mut(|wrapper| wrapper.poll().is_polling());
     }
