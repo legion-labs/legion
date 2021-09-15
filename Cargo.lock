@@ -739,7 +739,6 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "legion-app",
- "legion-async",
  "legion-ecs",
  "tokio",
 ]
