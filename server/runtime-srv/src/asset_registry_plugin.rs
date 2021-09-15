@@ -1,23 +1,26 @@
-use std::path::{Path, PathBuf};
-
-use crate::data_types;
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
+use legion_data_offline::asset::AssetPathId;
 use legion_data_runtime::{
     manifest::Manifest, AssetId, AssetRegistry, AssetRegistryOptions, Handle,
 };
 use legion_ecs::prelude::*;
+use sample_data_compiler::runtime_data::{self, CompilableAsset};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 pub struct AssetRegistrySettings {
     content_store_addr: PathBuf,
-    _root_object: String,
+    root_object: String,
 }
 
 impl AssetRegistrySettings {
     pub fn new(content_store_addr: impl AsRef<Path>, root_object: &str) -> Self {
         Self {
             content_store_addr: content_store_addr.as_ref().to_owned(),
-            _root_object: root_object.to_string(),
+            root_object: root_object.to_string(),
         }
     }
 }
@@ -32,9 +35,20 @@ impl Plugin for AssetRegistryPlugin {
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
                 let manifest = Manifest::default();
 
-                let asset_options = AssetRegistryOptions::new();
-                let asset_options = data_types::register_asset_loaders(asset_options);
-                let registry = asset_options.create(Box::new(content_store), manifest);
+                fn add_asset<T>(registry: AssetRegistryOptions) -> AssetRegistryOptions
+                where
+                    T: CompilableAsset,
+                    T::Creator: Send,
+                {
+                    registry.add_creator(T::TYPE_ID, Box::new(T::Creator::default()))
+                }
+
+                let mut registry = AssetRegistryOptions::new();
+                registry = add_asset::<runtime_data::Entity>(registry);
+                registry = add_asset::<runtime_data::Instance>(registry);
+                registry = add_asset::<runtime_data::Material>(registry);
+                registry = add_asset::<runtime_data::Mesh>(registry);
+                let registry = registry.create(Box::new(content_store), manifest);
 
                 app.insert_non_send_resource(registry)
                     .add_startup_system(Self::setup.exclusive_system())
@@ -56,12 +70,14 @@ impl AssetRegistryPlugin {
         let world = world.cell();
         let mut registry = world.get_non_send_mut::<AssetRegistry>().unwrap();
 
-        let id = AssetId::new(data_types::ENTITY_TYPE_ID, 0);
-        // if let Some(settings) = world.get_resource::<AssetRegistrySettings>() {
-        //     let root = settings.root_object;
-        // }
+        if let Some(settings) = world.get_resource::<AssetRegistrySettings>() {
+            if let Ok(_asset_path) = AssetPathId::from_str(&settings.root_object) {
+                // let id = AssetId::try_from(asset_path.content_type());
+                let id = AssetId::new(runtime_data::Entity::TYPE_ID, 0);
 
-        let _root_entity: Handle<data_types::Entity> = registry.load(id);
+                let _root_entity: Handle<runtime_data::Entity> = registry.load(id);
+            }
+        };
     }
 
     fn update(world: &mut World) {

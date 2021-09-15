@@ -2662,12 +2662,14 @@ dependencies = [
  "legion-app",
  "legion-content-store",
  "legion-core",
+ "legion-data-offline",
  "legion-data-runtime",
  "legion-ecs",
  "legion-math",
  "legion-transform",
  "legion-utils",
  "ron",
+ "sample-data-compiler",
  "serde",
 ]
 

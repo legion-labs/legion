@@ -10,18 +10,18 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 
 # Legion engine
-
-## core
 legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-content-store = { path = "../../lib/content-store" }
+legion-core = { path = "../../plugin/core", version = "0.1.0" }
+legion-data-offline = { path = "../../lib/data-offline" }
+legion-data-runtime = { path = "../../lib/data-runtime" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
-legion-core = { path = "../../plugin/core", version = "0.1.0" }
+legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
-## libs
-legion-content-store = { path = "../../lib/content-store" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
+# temp dependency on sample-data, until runtime data moved to plugins
+sample-data-compiler = { path = "../../test/sample_data_compiler", version = "0.1.0" }
 
 # other
 clap = "2.33"

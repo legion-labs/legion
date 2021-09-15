@@ -81,7 +81,6 @@
 #![allow()]
 
 mod asset_registry_plugin;
-mod data_types;
 
 use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
@@ -110,10 +109,17 @@ fn main() {
             .help("Root object to load, usually a world"))
         .get_matches();
 
-    let content_store_addr = args.value_of(ARG_NAME_CAS).unwrap_or("test/sample_data");
+    let content_store_addr = args
+        .value_of(ARG_NAME_CAS)
+        .unwrap_or("test/sample_data/temp");
+
+    // default root object is in sample data
+    // /world/sample_1.ent
+    // resource-id: 5004cd1c00000000cc2e0e75fdc1bc61
+    // current runtime/cas checksum: 917911064617515641
     let root_object = args
         .value_of(ARG_NAME_ROOT)
-        .unwrap_or("offline/world/sample_1.ent");
+        .unwrap_or("0x5004cd1c00000000cc2e0e75fdc1bc61|2174517795");
 
     // Start app with 60 fps
     App::new()
