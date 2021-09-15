@@ -1,5 +1,18 @@
 //! Hashed string identifiers.
 //!
+//! > -----
+//! > # *WORK IN PROGRESS*
+//! >
+//! > `StringId` is under development. The remaining issue are:
+//! > * [Feature unification](https://doc.rust-lang.org/cargo/reference/features.html#feature-unification) poses a problem of being able to compile the engine without *stringid-debug* feature.
+//! > * const `StringId` does not add the string name to the dictionary significantly limiting the usability of `StringId`.
+//! > * Performance of `DICTIONARY` needs to be evaluated with emphasis on [`lookup_debug_name`]
+//! >
+//! > Helpful resources around the topic include:
+//! > * [Hash algorithm comparison](https://softwareengineering.stackexchange.com/questions/49550/which-hashing-algorithm-is-best-for-uniqueness-and-speed/145633#145633)
+//! > * [Hash collision probabilities](https://preshing.com/20110504/hash-collision-probabilities/)
+//! > -----
+//!
 //! Strings work well in many use cases because of their human-readable nature.
 //! The downside of using strings is that they take significant amount
 //! of memory and that comparison of two strings is costly.
@@ -41,7 +54,6 @@ lazy_static! {
     static ref DICTIONARY: RwLock<HashMap<StringId, String>> = RwLock::new(HashMap::<_, _>::new());
 }
 
-// Reference: https://preshing.com/20110504/hash-collision-probabilities/
 const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
 /// Hashed string representation.
