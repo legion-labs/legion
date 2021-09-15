@@ -200,17 +200,19 @@ impl FromRaw<raw_data::Material> for offline_data::Material {
 
 impl FromRaw<raw_data::Mesh> for offline_data::Mesh {
     fn from_raw(raw: raw_data::Mesh, references: &HashMap<ResourcePathName, ResourceId>) -> Self {
-        let mut sub_meshes: Vec<offline_data::SubMesh> = Vec::new();
-        for sub_mesh in raw.sub_meshes {
-            sub_meshes.push(offline_data::SubMesh::from_raw(sub_mesh, references));
+        Self {
+            sub_meshes: raw
+                .sub_meshes
+                .iter()
+                .map(|sub_mesh| offline_data::SubMesh::from_raw(sub_mesh, references))
+                .collect(),
         }
-        Self { sub_meshes }
     }
 }
 
-impl FromRaw<raw_data::SubMesh> for offline_data::SubMesh {
+impl FromRaw<&raw_data::SubMesh> for offline_data::SubMesh {
     fn from_raw(
-        raw: raw_data::SubMesh,
+        raw: &raw_data::SubMesh,
         references: &HashMap<ResourcePathName, ResourceId>,
     ) -> Self {
         Self {

@@ -134,7 +134,9 @@ impl Component for Physics {}
 // ------------------ Instance  -----------------------------------
 
 #[derive(Asset, Serialize, Deserialize)]
-pub struct Instance {}
+pub struct Instance {
+    pub original: Option<AssetId>,
+}
 
 impl CompilableAsset for Instance {
     const TYPE_ID: AssetType = AssetType::new(b"runtime_instance");
@@ -207,7 +209,9 @@ pub type TextureReference = String;
 // ------------------ Mesh -----------------------------------
 
 #[derive(Asset, Serialize, Deserialize)]
-pub struct Mesh {}
+pub struct Mesh {
+    pub sub_meshes: Vec<SubMesh>,
+}
 
 impl CompilableAsset for Mesh {
     const TYPE_ID: AssetType = AssetType::new(b"runtime_mesh");
@@ -234,4 +238,13 @@ impl AssetLoader for MeshCreator {
     }
 
     fn load_init(&mut self, _asset: &mut (dyn Asset + Send + Sync)) {}
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SubMesh {
+    pub positions: Vec<Vec3>,
+    pub normals: Vec<Vec3>,
+    pub uvs: Vec<Vec2>,
+    pub indices: Vec<u16>,
+    pub material: Option<AssetId>,
 }
