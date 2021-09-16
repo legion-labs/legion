@@ -79,11 +79,13 @@ fn compute_context_hash(
 ///
 /// build.source_pull().expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();
+/// let game_manifest_file = std::path::PathBuf::from("game.manifest");
 /// let compile_path = AssetPathId::from(offline_anim).push(RUNTIME_ANIM);
 ///
 /// let manifest = build.compile(
 ///                         compile_path,
 ///                         &manifest_file,
+///                         &game_manifest_file,
 ///                         Target::Game,
 ///                         Platform::Windows,
 ///                         &Locale::new("en"),
@@ -281,9 +283,9 @@ impl DataBuild {
             statistics: _stats,
         } = self.compile_path(compile_path, target, platform, locale)?;
 
-        let assets = self.link(&resources, &references)?;
+        let (compiled_resources, compiled_assets) = self.link(&resources, &references)?;
 
-        for compiled_resource in assets.0 {
+        for compiled_resource in compiled_resources {
             if let Some(existing) = resource_manifest
                 .compiled_resources
                 .iter_mut()
@@ -295,7 +297,7 @@ impl DataBuild {
             }
         }
 
-        for compiled_asset in assets.1 {
+        for compiled_asset in compiled_assets {
             asset_manifest.insert(
                 compiled_asset.guid,
                 compiled_asset.checksum,
@@ -303,6 +305,7 @@ impl DataBuild {
             );
         }
 
+        // write resource manifest file
         resource_manifest_file.set_len(0).unwrap();
         resource_manifest_file
             .seek(std::io::SeekFrom::Start(0))
@@ -310,11 +313,23 @@ impl DataBuild {
         serde_json::to_writer_pretty(&resource_manifest_file, &resource_manifest)
             .map_err(|_e| Error::InvalidManifest)?;
 
+        // write asset manifest file
         asset_manifest_file.set_len(0).unwrap();
         asset_manifest_file
             .seek(std::io::SeekFrom::Start(0))
             .unwrap();
-        asset_manifest.export(&asset_manifest_file);
+        let mut compiled_assets: Vec<CompiledAsset> = Vec::new();
+        for id in asset_manifest.ids() {
+            if let Some((checksum, size)) = asset_manifest.find(*id) {
+                compiled_assets.push(CompiledAsset {
+                    guid: *id,
+                    checksum,
+                    size,
+                });
+            }
+        }
+        compiled_assets.sort_by(|a, b| a.guid.cmp(&b.guid));
+        serde_json::to_writer_pretty(&asset_manifest_file, &compiled_assets).unwrap();
 
         Ok((resource_manifest, asset_manifest))
     }

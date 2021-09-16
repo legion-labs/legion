@@ -2,7 +2,10 @@
 
 use crate::AssetId;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs::File};
+use std::{
+    collections::{hash_map, HashMap},
+    fs::File,
+};
 
 /// Description of a compiled asset.
 #[derive(Serialize, Deserialize)]
@@ -34,6 +37,11 @@ impl Manifest {
         self.0.insert(id, (checksum, size));
     }
 
+    /// An iterator visiting all ids in manifest, in arbitrary order.
+    pub fn ids(&self) -> hash_map::Keys<'_, AssetId, (i128, usize)> {
+        self.0.keys()
+    }
+
     /// Construct `Manifest` by reading in persisted information
     pub fn import(file: &File) -> Self {
         let mut manifest = Self::default();
@@ -48,18 +56,5 @@ impl Manifest {
             }
         }
         manifest
-    }
-
-    /// Export to list of compiled assets
-    pub fn export(&self, file: &File) {
-        let mut compiled_assets = Vec::new();
-        for (id, info) in &self.0 {
-            compiled_assets.push(CompiledAsset {
-                guid: *id,
-                checksum: info.0,
-                size: info.1,
-            });
-        }
-        serde_json::to_writer_pretty(file, &compiled_assets).unwrap();
     }
 }
