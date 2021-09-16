@@ -7,19 +7,27 @@ use legion_data_runtime::{
 use legion_ecs::prelude::*;
 use sample_data_compiler::runtime_data::{self, CompilableAsset};
 use std::{
+    convert::TryFrom,
+    fs::File,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
 pub struct AssetRegistrySettings {
     content_store_addr: PathBuf,
+    game_manifest: PathBuf,
     root_object: String,
 }
 
 impl AssetRegistrySettings {
-    pub fn new(content_store_addr: impl AsRef<Path>, root_object: &str) -> Self {
+    pub fn new(
+        content_store_addr: impl AsRef<Path>,
+        game_manifest: impl AsRef<Path>,
+        root_object: &str,
+    ) -> Self {
         Self {
             content_store_addr: content_store_addr.as_ref().to_owned(),
+            game_manifest: game_manifest.as_ref().to_owned(),
             root_object: root_object.to_string(),
         }
     }
@@ -33,7 +41,7 @@ impl Plugin for AssetRegistryPlugin {
         if let Some(settings) = app.world.get_resource::<AssetRegistrySettings>() {
             let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.clone());
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
-                let manifest = Manifest::default();
+                let manifest = read_manifest(&settings.game_manifest);
 
                 fn add_asset<T>(registry: AssetRegistryOptions) -> AssetRegistryOptions
                 where
@@ -71,11 +79,10 @@ impl AssetRegistryPlugin {
         let mut registry = world.get_non_send_mut::<AssetRegistry>().unwrap();
 
         if let Some(settings) = world.get_resource::<AssetRegistrySettings>() {
-            if let Ok(_asset_path) = AssetPathId::from_str(&settings.root_object) {
-                // let id = AssetId::try_from(asset_path.content_type());
-                let id = AssetId::new(runtime_data::Entity::TYPE_ID, 0);
-
-                let _root_entity: Handle<runtime_data::Entity> = registry.load(id);
+            if let Ok(asset_path) = AssetPathId::from_str(&settings.root_object) {
+                if let Ok(asset_id) = AssetId::try_from(asset_path.content_id()) {
+                    let _root_entity: Handle<runtime_data::Entity> = registry.load(asset_id);
+                }
             }
         };
     }
@@ -85,4 +92,20 @@ impl AssetRegistryPlugin {
         let mut registry = world.get_non_send_mut::<AssetRegistry>().unwrap();
         registry.update();
     }
+}
+
+fn read_manifest(manifest_path: impl AsRef<Path>) -> Manifest {
+    let mut manifest = Manifest::default();
+    if let Ok(file) = File::open(manifest_path) {
+        let resource_manifest: serde_json::Result<legion_data_compiler::Manifest> =
+            serde_json::from_reader(file);
+        if let Ok(resource_manifest) = resource_manifest {
+            for resource in resource_manifest.compiled_resources {
+                if let Ok(asset_id) = AssetId::try_from(resource.path.content_id()) {
+                    manifest.insert(asset_id, resource.checksum, resource.size);
+                }
+            }
+        }
+    }
+    manifest
 }

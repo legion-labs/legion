@@ -2671,6 +2671,7 @@ dependencies = [
  "legion-app",
  "legion-content-store",
  "legion-core",
+ "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
  "legion-ecs",
@@ -2680,6 +2681,7 @@ dependencies = [
  "ron",
  "sample-data-compiler",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
