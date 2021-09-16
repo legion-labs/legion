@@ -1,4 +1,3 @@
-use derive_transit::*;
 use transit::*;
 
 #[derive(Reflect)]

@@ -8,3 +8,4 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 memoffset = "0.6"
+derive-transit = { path = "../derive-transit"}

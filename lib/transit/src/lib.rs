@@ -94,3 +94,8 @@ pub struct UserDefinedType {
 pub trait Reflect {
     fn reflect() -> UserDefinedType;
 }
+
+#[allow(unused_imports)]
+#[macro_use]
+extern crate derive_transit;
+pub use derive_transit::*;

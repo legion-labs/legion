@@ -662,7 +662,6 @@ dependencies = [
  "memoffset",
  "quote",
  "syn",
- "transit",
 ]
 
 [[package]]
@@ -3549,6 +3548,7 @@ dependencies = [
 name = "transit"
 version = "0.1.0"
 dependencies = [
+ "derive-transit",
  "memoffset",
 ]
 

@@ -132,7 +132,7 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
             syn::Fields::Unit => panic!("unit fields not expected"),
         },
         syn::Data::Enum(_) => panic!("enums not supported"),
-        syn::Data::Union(_) => panic!("unions not supported"),
+        syn::Data::Union(_) => panic!("bunions not supported"),
     }
 
     let members_toks = members.iter().map(|m| {

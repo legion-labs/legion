@@ -13,5 +13,4 @@ proc-macro = true
 [dependencies]
 quote = "1.0"
 syn = { version = "1.0", features = ["extra-traits"] }
-transit = { path = "../transit"}
 memoffset = "0.6"
