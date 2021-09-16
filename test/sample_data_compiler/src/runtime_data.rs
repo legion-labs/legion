@@ -1,10 +1,21 @@
-use legion_data_runtime::{Asset, AssetId, AssetLoader, AssetType};
+use legion_data_runtime::{Asset, AssetId, AssetLoader, AssetRegistryOptions, AssetType};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub trait CompilableAsset {
     const TYPE_ID: AssetType;
-    type Creator: AssetLoader + Default + 'static;
+    type Creator: AssetLoader + Send + Default + 'static;
+}
+
+pub fn add_creators(mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+    fn add_asset<T: CompilableAsset>(registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        registry.add_creator(T::TYPE_ID, Box::new(T::Creator::default()))
+    }
+
+    registry = add_asset::<Entity>(registry);
+    registry = add_asset::<Instance>(registry);
+    registry = add_asset::<Material>(registry);
+    add_asset::<Mesh>(registry)
 }
 
 // ------------------ Entity -----------------------------------

@@ -126,7 +126,7 @@ fn main() {
     // /world/sample_1.ent
     // resource-id: 5004cd1c00000000cc2e0e75fdc1bc61
     // current runtime/cas checksum: 917911064617515641
-    let root_object = args
+    let root_asset = args
         .value_of(ARG_NAME_ROOT)
         .unwrap_or("0x5004cd1c00000000cc2e0e75fdc1bc61|2174517795");
 
@@ -135,7 +135,7 @@ fn main() {
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,
             game_manifest,
-            root_object,
+            root_asset,
         ))
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
