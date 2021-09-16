@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, sync::mpsc};
+use std::marker::PhantomData;
 
 use crate::{Asset, AssetRegistry};
 
@@ -13,7 +13,7 @@ pub(crate) enum RefOp {
 #[derive(Debug)]
 pub struct HandleUntyped {
     pub(crate) id: HandleId,
-    refcount_tx: mpsc::Sender<RefOp>,
+    refcount_tx: crossbeam_channel::Sender<RefOp>,
 }
 
 impl Drop for HandleUntyped {
@@ -39,7 +39,7 @@ impl PartialEq for HandleUntyped {
 }
 
 impl HandleUntyped {
-    pub(crate) fn create(id: HandleId, refcount_tx: mpsc::Sender<RefOp>) -> Self {
+    pub(crate) fn create(id: HandleId, refcount_tx: crossbeam_channel::Sender<RefOp>) -> Self {
         Self { id, refcount_tx }
     }
 
@@ -57,7 +57,7 @@ impl HandleUntyped {
 /// Typed handle to [`Asset`] of type `T`.
 pub struct Handle<T: Asset> {
     pub(crate) id: HandleId,
-    refcount_tx: mpsc::Sender<RefOp>,
+    refcount_tx: crossbeam_channel::Sender<RefOp>,
     _pd: PhantomData<fn() -> T>,
 }
 
@@ -95,7 +95,7 @@ impl<T: Asset> From<HandleUntyped> for Handle<T> {
 }
 
 impl<T: Asset> Handle<T> {
-    pub(crate) fn create(id: HandleId, refcount_tx: mpsc::Sender<RefOp>) -> Self {
+    pub(crate) fn create(id: HandleId, refcount_tx: crossbeam_channel::Sender<RefOp>) -> Self {
         Self {
             id,
             refcount_tx,

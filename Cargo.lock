@@ -1491,6 +1491,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "crc",
+ "crossbeam-channel",
  "hex",
  "legion-content-store",
  "legion-data-runtime-macros",

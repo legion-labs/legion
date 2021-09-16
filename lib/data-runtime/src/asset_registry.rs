@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     io,
-    sync::{mpsc, Arc},
+    sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -53,7 +53,7 @@ impl AssetRegistryOptions {
 
         AssetRegistry {
             id_generator: 0,
-            refcount_channel: mpsc::channel(),
+            refcount_channel: crossbeam_channel::unbounded(),
             ref_counts: HashMap::new(),
             assets: HashMap::new(),
             load_errors: HashMap::new(),
@@ -71,7 +71,10 @@ impl AssetRegistryOptions {
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
     id_generator: HandleId,
-    refcount_channel: (mpsc::Sender<RefOp>, mpsc::Receiver<RefOp>),
+    refcount_channel: (
+        crossbeam_channel::Sender<RefOp>,
+        crossbeam_channel::Receiver<RefOp>,
+    ),
     ref_counts: HashMap<HandleId, (AssetId, isize)>,
     assets: HashMap<AssetId, Arc<dyn Asset>>,
     load_errors: HashMap<AssetId, io::ErrorKind>,
