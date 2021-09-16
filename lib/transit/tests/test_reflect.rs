@@ -1,6 +1,6 @@
 use transit::*;
 
-#[derive(Reflect)]
+#[derive(TransitReflect)]
 #[allow(dead_code)]
 struct MyTestEvent {
     some_64: u64,

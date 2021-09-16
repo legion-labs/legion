@@ -81,7 +81,7 @@ use proc_macro::TokenStream;
 use quote::*;
 use syn::{parse_macro_input, DeriveInput};
 
-#[proc_macro_derive(Reflect)]
+#[proc_macro_derive(TransitReflect)]
 pub fn derive_reflect(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let udt_identifier = ast.ident.clone();
