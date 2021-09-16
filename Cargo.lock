@@ -2782,7 +2782,6 @@ dependencies = [
  "legion-app",
  "legion-content-store",
  "legion-core",
- "legion-data-compiler",
  "legion-data-runtime",
  "legion-ecs",
  "legion-math",

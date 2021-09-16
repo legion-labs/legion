@@ -6,7 +6,6 @@ use legion_data_runtime::{
 use legion_ecs::prelude::*;
 use sample_data_compiler::runtime_data;
 use std::{
-    convert::TryFrom,
     fs::File,
     path::{Path, PathBuf},
     str::FromStr,
@@ -91,17 +90,8 @@ impl AssetRegistryPlugin {
 }
 
 fn read_manifest(manifest_path: impl AsRef<Path>) -> Manifest {
-    let mut manifest = Manifest::default();
-    if let Ok(file) = File::open(manifest_path) {
-        let resource_manifest: serde_json::Result<legion_data_compiler::Manifest> =
-            serde_json::from_reader(file);
-        if let Ok(resource_manifest) = resource_manifest {
-            for resource in resource_manifest.compiled_resources {
-                if let Ok(asset_id) = AssetId::try_from(resource.path.content_id()) {
-                    manifest.insert(asset_id, resource.checksum, resource.size);
-                }
-            }
-        }
+    match File::open(manifest_path) {
+        Ok(file) => serde_json::from_reader(file).unwrap_or_default(),
+        Err(_e) => Manifest::default(),
     }
-    manifest
 }
