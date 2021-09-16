@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use legion_data_offline::resource::{ResourceId, ResourcePathName};
+use legion_data_offline::{
+    asset::AssetPathId,
+    resource::{ResourceId, ResourcePathName},
+};
 
 use crate::offline_data;
 
@@ -16,6 +19,15 @@ fn lookup_reference(
 ) -> Option<ResourceId> {
     let path = ResourcePathName::new(path);
     references.get(&path).copied()
+}
+
+fn lookup_asset_path(
+    references: &HashMap<ResourcePathName, ResourceId>,
+    path: &str,
+) -> Option<AssetPathId> {
+    let path_name = ResourcePathName::new(path);
+    let resource = references.get(&path_name).cloned()?;
+    Some(AssetPathId::from(resource))
 }
 
 // ----- Entity conversions -----
@@ -220,7 +232,7 @@ impl FromRaw<&raw_data::SubMesh> for offline_data::SubMesh {
             normals: raw.normals.clone(),
             uvs: raw.uvs.clone(),
             indices: raw.indices.clone(),
-            material: lookup_reference(references, &raw.material).unwrap(),
+            material: lookup_asset_path(references, &raw.material),
         }
     }
 }

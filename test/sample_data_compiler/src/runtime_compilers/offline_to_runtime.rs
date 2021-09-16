@@ -1,9 +1,18 @@
+use std::convert::TryFrom;
+
+use legion_data_offline::asset::AssetPathId;
 use legion_data_runtime::AssetId;
 use sample_data_compiler::{offline_data, runtime_data};
 
 pub trait FromOffline<T> {
     fn from_offline(offline: &T) -> Self;
 }
+
+fn compile_path_id(path: &Option<AssetPathId>) -> Option<AssetId> {
+    path.as_ref()
+        .and_then(|path| AssetId::try_from(path.content_id()).ok())
+}
+
 
 // ----- Entity conversions -----
 
@@ -180,7 +189,7 @@ impl FromOffline<offline_data::SubMesh> for runtime_data::SubMesh {
             normals: offline.normals.clone(),
             uvs: offline.uvs.clone(),
             indices: offline.indices.clone(),
-            material: None,
+            material: compile_path_id(&offline.material),
         }
     }
 }
