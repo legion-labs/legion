@@ -82,33 +82,19 @@ use quote::*;
 use syn::{parse_macro_input, DeriveInput};
 type QuoteRes = quote::__private::TokenStream;
 
-fn typename_from_path(path: &syn::Path) -> QuoteRes {
-    let leading = &path.leading_colon;
-    let leading_tok = quote! {#leading};
-    let segments = path.segments.iter().map(|s| {
-        let ident = &s.ident;
-        quote! { #ident }
-    });
-
-    quote! { #leading_tok #( #segments)* }
-}
-
 fn metadata_from_type(t: &syn::Type) -> (QuoteRes, bool) {
     match t {
         syn::Type::Array(_) => panic!("Array field type not supported"),
-        syn::Type::BareFn(_) => panic!("BareFn field type not supported"),
+        syn::Type::BareFn(fun) => (quote! {#fun}, true),
         syn::Type::Group(_) => panic!("Group field type not supported"),
         syn::Type::ImplTrait(_) => panic!("ImplTrait field type not supported"),
         syn::Type::Infer(_) => panic!("Infer field type not supported"),
         syn::Type::Macro(_) => panic!("Macro field type not supported"),
         syn::Type::Never(_) => panic!("Never field type not supported"),
         syn::Type::Paren(_) => panic!("Paren field type not supported"),
-        syn::Type::Path(type_path) => (typename_from_path(&type_path.path), false),
+        syn::Type::Path(type_path) => (quote! {#type_path}, false),
         syn::Type::Ptr(_) => panic!("Ptr field type not supported"),
-        syn::Type::Reference(reference) => {
-            let (typename, _is_ref) = metadata_from_type(&reference.elem);
-            (quote! {&#typename}, true)
-        }
+        syn::Type::Reference(reference) => (quote! {#reference}, true),
         syn::Type::Slice(_) => panic!("Slice field type not supported"),
         syn::Type::TraitObject(_) => panic!("TraitObject field type not supported"),
         syn::Type::Tuple(_) => panic!("Tuple field type not supported"),

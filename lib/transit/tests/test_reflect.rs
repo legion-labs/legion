@@ -22,16 +22,20 @@ fn test_reflect_simple_struct() {
 }
 
 #[derive(TransitReflect)]
-pub struct ScopeDesc {
+struct ScopeDesc {
     pub name: &'static str,
     pub filename: &'static str,
     pub line: u32,
 }
 
-pub type GetScopeDesc = fn() -> ScopeDesc;
+#[derive(TransitReflect)]
+struct BeginScopeEvent {
+    pub time: u64,
+    pub get_scope_desc: fn() -> ScopeDesc,
+}
 
 #[test]
 fn test_reflect_scope_event() {
-    let res = ScopeDesc::reflect();
-    dbg!(res);
+    dbg!(ScopeDesc::reflect());
+    dbg!(BeginScopeEvent::reflect());
 }
