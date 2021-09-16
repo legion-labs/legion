@@ -20,3 +20,18 @@ fn test_reflect_simple_struct() {
     assert_eq!(4, res.members[1].size);
     assert_eq!(8, res.members[1].offset);
 }
+
+#[derive(TransitReflect)]
+pub struct ScopeDesc {
+    pub name: &'static str,
+    pub filename: &'static str,
+    pub line: u32,
+}
+
+pub type GetScopeDesc = fn() -> ScopeDesc;
+
+#[test]
+fn test_reflect_scope_event() {
+    let res = ScopeDesc::reflect();
+    dbg!(res);
+}

@@ -77,23 +77,8 @@
 // crate-specific exceptions:
 #![allow()]
 
-#[derive(Debug)]
-pub struct Member {
-    pub name: &'static str,
-    pub offset: usize,
-    pub size: usize,
-}
-
-#[derive(Debug)]
-pub struct UserDefinedType {
-    pub name: &'static str,
-    pub size: usize,
-    pub members: Vec<Member>,
-}
-
-pub trait Reflect {
-    fn reflect() -> UserDefinedType;
-}
+pub mod reflect;
+pub use reflect::*;
 
 #[allow(unused_imports)]
 #[macro_use]

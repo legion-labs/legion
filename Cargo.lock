@@ -3552,6 +3552,8 @@ version = "0.1.0"
 dependencies = [
  "derive-transit",
  "memoffset",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

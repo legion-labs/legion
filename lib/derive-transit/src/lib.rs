@@ -80,6 +80,44 @@
 use proc_macro::TokenStream;
 use quote::*;
 use syn::{parse_macro_input, DeriveInput};
+type QuoteRes = quote::__private::TokenStream;
+
+fn typename_from_path(path: &syn::Path) -> QuoteRes {
+    let leading = &path.leading_colon;
+    let leading_tok = quote! {#leading};
+    let segments = path.segments.iter().map(|s| {
+        let ident = &s.ident;
+        quote! { #ident }
+    });
+
+    quote! { #leading_tok #( #segments)* }
+}
+
+fn metadata_from_type(t: &syn::Type) -> (QuoteRes, bool) {
+    match t {
+        syn::Type::Array(_) => panic!("Array field type not supported"),
+        syn::Type::BareFn(_) => panic!("BareFn field type not supported"),
+        syn::Type::Group(_) => panic!("Group field type not supported"),
+        syn::Type::ImplTrait(_) => panic!("ImplTrait field type not supported"),
+        syn::Type::Infer(_) => panic!("Infer field type not supported"),
+        syn::Type::Macro(_) => panic!("Macro field type not supported"),
+        syn::Type::Never(_) => panic!("Never field type not supported"),
+        syn::Type::Paren(_) => panic!("Paren field type not supported"),
+        syn::Type::Path(type_path) => (typename_from_path(&type_path.path), false),
+        syn::Type::Ptr(_) => panic!("Ptr field type not supported"),
+        syn::Type::Reference(reference) => {
+            let (typename, _is_ref) = metadata_from_type(&reference.elem);
+            (quote! {&#typename}, true)
+        }
+        syn::Type::Slice(_) => panic!("Slice field type not supported"),
+        syn::Type::TraitObject(_) => panic!("TraitObject field type not supported"),
+        syn::Type::Tuple(_) => panic!("Tuple field type not supported"),
+        syn::Type::Verbatim(_) => panic!("Verbatim field type not supported"),
+        unknown_field_type => {
+            panic!("Unexpected field type: {:?}", unknown_field_type)
+        }
+    }
+}
 
 #[proc_macro_derive(TransitReflect)]
 pub fn derive_reflect(input: TokenStream) -> TokenStream {
@@ -93,39 +131,8 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
             syn::Fields::Named(named_fields) => {
                 for field in named_fields.named {
                     let field_name = field.ident.unwrap().to_string();
-                    let field_type_name = match field.ty {
-                        syn::Type::Array(_) => panic!("Array field type not supported"),
-                        syn::Type::BareFn(_) => panic!("BareFn field type not supported"),
-                        syn::Type::Group(_) => panic!("Group field type not supported"),
-                        syn::Type::ImplTrait(_) => panic!("ImplTrait field type not supported"),
-                        syn::Type::Infer(_) => panic!("Infer field type not supported"),
-                        syn::Type::Macro(_) => panic!("Macro field type not supported"),
-                        syn::Type::Never(_) => panic!("Never field type not supported"),
-                        syn::Type::Paren(_) => panic!("Paren field type not supported"),
-                        syn::Type::Path(type_path) => {
-                            let prefix = match type_path.path.leading_colon {
-                                Some(_) => "::",
-                                None => "",
-                            };
-                            let segments: Vec<String> = type_path
-                                .path
-                                .segments
-                                .iter()
-                                .map(|s| s.ident.to_string())
-                                .collect();
-                            String::from(prefix) + &segments.join("::")
-                        }
-                        syn::Type::Ptr(_) => panic!("Ptr field type not supported"),
-                        syn::Type::Reference(_) => panic!("Reference field type not supported"),
-                        syn::Type::Slice(_) => panic!("Slice field type not supported"),
-                        syn::Type::TraitObject(_) => panic!("TraitObject field type not supported"),
-                        syn::Type::Tuple(_) => panic!("Tuple field type not supported"),
-                        syn::Type::Verbatim(_) => panic!("Verbatim field type not supported"),
-                        unknown_field_type => {
-                            panic!("Unexpected field type: {:?}", unknown_field_type)
-                        }
-                    };
-                    members.push((field_name, field_type_name));
+                    let (field_type, is_reference) = metadata_from_type(&field.ty);
+                    members.push((field_name, field_type, is_reference));
                 }
             }
             syn::Fields::Unnamed(_) => panic!("only named fields are supported"),
@@ -138,17 +145,21 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
     let members_toks = members.iter().map(|m| {
         let member_name = &m.0;
         let member_ident = format_ident!("{}", &m.0);
-        let member_type_ident = format_ident!("{}", &m.1);
+        let member_type = &m.1;
+        let member_type_name = format!("{}", member_type);
+        let is_reference = &m.2;
         quote! {
             Member{ name: #member_name,
+                    type_name: #member_type_name,
                     offset: memoffset::offset_of!(#udt_identifier,#member_ident),
-                    size: std::mem::size_of::<#member_type_ident>()},
+                    size: std::mem::size_of::<#member_type>(),
+                    is_reference: #is_reference,
+        },
         }
     });
 
     TokenStream::from(quote! {
-        #[macro_use]
-        impl transit::Reflect for MyTestEvent{
+        impl transit::Reflect for #udt_identifier{
             fn reflect() -> UserDefinedType{
                 UserDefinedType{
                     name: #udt_name,
