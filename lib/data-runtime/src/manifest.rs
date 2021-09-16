@@ -15,6 +15,7 @@ pub struct CompiledAsset {
 }
 
 /// `Manifest` contains storage information about assets - their checksums and sizes.
+#[derive(Debug)]
 pub struct Manifest(HashMap<AssetId, (i128, usize)>);
 
 impl Manifest {

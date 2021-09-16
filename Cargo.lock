@@ -2783,7 +2783,6 @@ dependencies = [
  "legion-content-store",
  "legion-core",
  "legion-data-compiler",
- "legion-data-offline",
  "legion-data-runtime",
  "legion-ecs",
  "legion-math",

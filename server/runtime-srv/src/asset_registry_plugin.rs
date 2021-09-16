@@ -1,6 +1,5 @@
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
-use legion_data_offline::asset::AssetPathId;
 use legion_data_runtime::{
     manifest::Manifest, AssetId, AssetRegistry, AssetRegistryOptions, HandleUntyped,
 };
@@ -74,13 +73,11 @@ impl AssetRegistryPlugin {
         let mut registry = world.get_non_send_mut::<AssetRegistry>().unwrap();
 
         if let Some(settings) = world.get_resource::<AssetRegistrySettings>() {
-            if let Ok(asset_path) = AssetPathId::from_str(&settings.root_asset) {
-                if let Ok(asset_id) = AssetId::try_from(asset_path.content_id()) {
-                    let asset = registry.load_untyped(asset_id);
+            if let Ok(asset_id) = AssetId::from_str(&settings.root_asset) {
+                let asset = registry.load_untyped(asset_id);
 
-                    if let Some(mut state) = world.get_resource_mut::<AssetRegistryState>() {
-                        state.root_assets.push(asset);
-                    }
+                if let Some(mut state) = world.get_resource_mut::<AssetRegistryState>() {
+                    state.root_assets.push(asset);
                 }
             }
         };
