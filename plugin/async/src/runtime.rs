@@ -29,7 +29,9 @@ impl Default for TokioAsyncRuntime {
 }
 
 impl TokioAsyncRuntime {
-    fn spawn_in_tokio_thread_pool<F>(&self, future: F)
+    // Start a future on the tokio thread-pool with no implicit synchronization
+    // with the main game-loop or possibility for cancellation.
+    pub fn start_detached<F>(&self, future: F)
     where
         F: Future + Send + 'static,
         F::Output: Sized + Send + Sync + 'static,
@@ -37,6 +39,11 @@ impl TokioAsyncRuntime {
         self.tokio_runtime.spawn(future);
     }
 
+    // Start a future on the tokio thread-pool that is associated to the
+    // returned AsyncOperation.
+    //
+    // If the AsyncOperation is cancelled or dropped the future is implicitely
+    // cancelled.
     pub fn start<F>(&mut self, future: F) -> AsyncOperation<F::Output>
     where
         F: Future + Send + 'static,
@@ -109,7 +116,7 @@ impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
         let (sender, receiver) = tokio::sync::oneshot::channel();
         let wrapper = Self { receiver, result };
 
-        rt.spawn_in_tokio_thread_pool(async move {
+        rt.start_detached(async move {
             let fut = async move {
                 tokio::select! {
                     // `biased` below ensures that the order of polling is deterministic
