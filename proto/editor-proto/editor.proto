@@ -1,0 +1,15 @@
+syntax = "proto3";
+package editor;
+
+service Editor {
+  rpc UpdateProperties(UpdatePropertiesRequest)
+      returns (UpdatePropertiesResponse);
+}
+
+message UpdatePropertiesRequest {
+  uint64 updateId = 1;
+  string propertyPath = 2;
+  string value = 3;
+}
+
+message UpdatePropertiesResponse { uint64 updateId = 1; }

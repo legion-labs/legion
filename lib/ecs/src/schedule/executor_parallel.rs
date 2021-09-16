@@ -264,7 +264,18 @@ impl ParallelExecutor {
             self.emit_event(StartedSystems(started_systems));
         }
         // Remove now running systems from the queue.
-        self.queued.difference_with(&self.running);
+        // Revert the loop below to the following code once we can bump up
+        // petgraph's version again:
+        //self.queued.difference_with(&self.running);
+        for (x, y) in self
+            .queued
+            .as_mut_slice()
+            .iter_mut()
+            .zip(self.running.as_mut_slice().iter())
+        {
+            *x &= !*y;
+        }
+
         // Remove immediately processed systems from the queue.
         self.queued.intersect_with(&self.should_run);
     }
