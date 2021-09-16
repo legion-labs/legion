@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    io,
-    sync::{mpsc, Arc},
-    time::Duration,
-};
+use std::{collections::HashMap, io, sync::Arc, time::Duration};
 
 use crate::{manifest::Manifest, Asset, AssetId, AssetLoader, AssetType};
 
@@ -48,8 +43,8 @@ pub(crate) fn create_loader(
     content_store: Box<dyn ContentStore>,
     manifest: Manifest,
 ) -> (AssetLoaderStub, AssetLoaderIO) {
-    let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
-    let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
+    let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
+    let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
 
     let io = AssetLoaderIO::new(
         content_store,
@@ -63,16 +58,16 @@ pub(crate) fn create_loader(
 }
 
 pub(crate) struct AssetLoaderStub {
-    request_tx: mpsc::Sender<LoaderRequest>,
-    result_rx: mpsc::Receiver<LoaderResult>,
+    request_tx: crossbeam_channel::Sender<LoaderRequest>,
+    result_rx: crossbeam_channel::Receiver<LoaderResult>,
 }
 
 type LoadId = u32;
 
 impl AssetLoaderStub {
     fn new(
-        request_tx: mpsc::Sender<LoaderRequest>,
-        result_rx: mpsc::Receiver<LoaderResult>,
+        request_tx: crossbeam_channel::Sender<LoaderRequest>,
+        result_rx: crossbeam_channel::Receiver<LoaderResult>,
     ) -> Self {
         Self {
             request_tx,
@@ -125,13 +120,13 @@ pub(crate) struct AssetLoaderIO {
     manifest: Manifest,
 
     /// Loopback for load requests.
-    request_tx: mpsc::Sender<LoaderRequest>,
+    request_tx: crossbeam_channel::Sender<LoaderRequest>,
 
     /// Entry point for load requests.
-    request_rx: Option<mpsc::Receiver<LoaderRequest>>,
+    request_rx: Option<crossbeam_channel::Receiver<LoaderRequest>>,
 
     /// Output of loader results.
-    result_tx: mpsc::Sender<LoaderResult>,
+    result_tx: crossbeam_channel::Sender<LoaderResult>,
 }
 
 // Asset loading:
@@ -143,9 +138,9 @@ impl AssetLoaderIO {
     pub(crate) fn new(
         content_store: Box<dyn ContentStore>,
         manifest: Manifest,
-        request_tx: mpsc::Sender<LoaderRequest>,
-        request_rx: mpsc::Receiver<LoaderRequest>,
-        result_tx: mpsc::Sender<LoaderResult>,
+        request_tx: crossbeam_channel::Sender<LoaderRequest>,
+        request_rx: crossbeam_channel::Receiver<LoaderRequest>,
+        result_tx: crossbeam_channel::Sender<LoaderResult>,
     ) -> Self {
         Self {
             creators: HashMap::new(),
@@ -280,8 +275,8 @@ impl AssetLoaderIO {
             match &self.request_rx {
                 None => return None,
                 Some(request_rx) => match request_rx.recv_timeout(timeout) {
-                    Err(mpsc::RecvTimeoutError::Disconnected) => return None,
-                    Err(mpsc::RecvTimeoutError::Timeout) => break,
+                    Err(crossbeam_channel::RecvTimeoutError::Disconnected) => return None,
+                    Err(crossbeam_channel::RecvTimeoutError::Timeout) => break,
                     Ok(request) => {
                         if let Some(error) = self.process(request) {
                             errors.push(error);
@@ -433,7 +428,7 @@ impl AssetLoaderIO {
 
 #[cfg(test)]
 mod tests {
-    use std::{sync::mpsc, time::Duration};
+    use std::time::Duration;
 
     use legion_content_store::{ContentStore, RamContentStore};
 
@@ -462,8 +457,8 @@ mod tests {
             id
         };
 
-        let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
-        let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
+        let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
+        let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             content_store,
             manifest,
@@ -538,8 +533,8 @@ mod tests {
             parent_id
         };
 
-        let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
-        let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
+        let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
+        let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             content_store,
             manifest,
@@ -604,8 +599,8 @@ mod tests {
             parent_id
         };
 
-        let (request_tx, request_rx) = mpsc::channel::<LoaderRequest>();
-        let (result_tx, result_rx) = mpsc::channel::<LoaderResult>();
+        let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
+        let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             content_store,
             manifest,
