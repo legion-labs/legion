@@ -4,7 +4,7 @@ use crate::{
 };
 
 use legion_content_store::ContentStoreAddr;
-use legion_data_build::{DataBuild, DataBuildOptions};
+use legion_data_build::DataBuildOptions;
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::asset::AssetPathId;
 
@@ -19,7 +19,6 @@ pub fn build(root_folder: impl AsRef<Path>) {
     }
 
     let build_index_path = temp_dir.join("build.index");
-    let resource_manifest_path = temp_dir.join(DataBuild::default_output_file());
     let asset_store_path = ContentStoreAddr::from(temp_dir);
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
@@ -38,7 +37,7 @@ pub fn build(root_folder: impl AsRef<Path>) {
         fs::create_dir(&runtime_dir).expect("unable to create runtime sub-folder");
     }
 
-    let asset_manifest_path = runtime_dir.join("game.manifest");
+    let manifest_path = runtime_dir.join("game.manifest");
 
     let platform = Platform::Windows;
     let locale = Locale::new("en");
@@ -60,8 +59,7 @@ pub fn build(root_folder: impl AsRef<Path>) {
 
         let _manifest = build.compile(
             asset_path,
-            &resource_manifest_path,
-            &asset_manifest_path,
+            &manifest_path,
             Target::Server,
             platform,
             &locale,

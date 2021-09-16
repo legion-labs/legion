@@ -81,9 +81,6 @@ fn main() -> Result<(), String> {
         let locale = cmd_args.value_of(ARG_NAME_LOCALE).unwrap();
         let derived = AssetPathId::from_str(derived).map_err(|_e| "Invalid AssetPathId")?;
         let manifest_file = PathBuf::from_str(manifest).map_err(|_e| "Invalid Manifest name")?;
-        // todo: read from cmd_args
-        let game_manifest_file =
-            PathBuf::from_str("game.manifest").map_err(|_e| "Invalid Game Manifest name")?;
         let target = Target::from_str(target).map_err(|_e| "Invalid Target")?;
         let platform = Platform::from_str(platform).map_err(|_e| "Invalid Platform")?;
         let locale = Locale::new(locale);
@@ -103,17 +100,10 @@ fn main() -> Result<(), String> {
 
         let mut build = config.open().map_err(|_e| "Failed to open build index")?;
         let output = build
-            .compile(
-                derived,
-                &manifest_file,
-                &game_manifest_file,
-                target,
-                platform,
-                &locale,
-            )
+            .compile(derived, &manifest_file, target, platform, &locale)
             .map_err(|e| format!("Compilation Failed: '{}'", e))?;
 
-        println!("{:?}", output.0);
+        println!("{:?}", output);
     }
     Ok(())
 }

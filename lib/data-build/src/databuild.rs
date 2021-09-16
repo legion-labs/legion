@@ -14,9 +14,8 @@ use legion_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
     CompilerInfoCmd, CompilerInfoCmdOutput,
 };
-use legion_data_compiler::{CompiledResource, CompilerHash, Locale, Platform, Target};
+use legion_data_compiler::{CompiledResource, CompilerHash, Locale, Manifest, Platform, Target};
 use legion_data_offline::{asset::AssetPathId, resource::Project};
-use legion_data_runtime::manifest::CompiledAsset;
 use legion_data_runtime::{AssetId, ContentType};
 use petgraph::algo;
 
@@ -79,13 +78,11 @@ fn compute_context_hash(
 ///
 /// build.source_pull().expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();
-/// let game_manifest_file = std::path::PathBuf::from("game.manifest");
 /// let compile_path = AssetPathId::from(offline_anim).push(RUNTIME_ANIM);
 ///
 /// let manifest = build.compile(
 ///                         compile_path,
 ///                         &manifest_file,
-///                         &game_manifest_file,
 ///                         Target::Game,
 ///                         Platform::Windows,
 ///                         &Locale::new("en"),
@@ -217,31 +214,24 @@ impl DataBuild {
     pub fn compile(
         &mut self,
         compile_path: AssetPathId,
-        resource_manifest_path: &Path,
-        asset_manifest_path: &Path,
+        manifest_path: &Path,
         target: Target,
         platform: Platform,
         locale: &Locale,
-    ) -> Result<
-        (
-            legion_data_compiler::Manifest,
-            legion_data_runtime::manifest::Manifest,
-        ),
-        Error,
-    > {
+    ) -> Result<Manifest, Error> {
         let source = compile_path.source_resource();
         if !self.project.exists(source) {
             return Err(Error::NotFound);
         }
 
-        let (mut resource_manifest, mut resource_manifest_file) = {
+        let (mut manifest, mut file) = {
             if let Ok(file) = OpenOptions::new()
                 .read(true)
                 .write(true)
                 .append(false)
-                .open(resource_manifest_path)
+                .open(manifest_path)
             {
-                let manifest_content: legion_data_compiler::Manifest =
+                let manifest_content: Manifest =
                     serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
                 (manifest_content, file)
             } else {
@@ -249,31 +239,10 @@ impl DataBuild {
                     .read(true)
                     .write(true)
                     .create_new(true)
-                    .open(resource_manifest_path)
+                    .open(manifest_path)
                     .map_err(|_e| Error::InvalidManifest)?;
 
                 (legion_data_compiler::Manifest::default(), file)
-            }
-        };
-
-        let (mut asset_manifest, mut asset_manifest_file) = {
-            if let Ok(file) = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .append(false)
-                .open(asset_manifest_path)
-            {
-                let manifest = legion_data_runtime::manifest::Manifest::import(&file);
-                (manifest, file)
-            } else {
-                let file = OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .create_new(true)
-                    .open(asset_manifest_path)
-                    .map_err(|_e| Error::InvalidManifest)?;
-
-                (legion_data_runtime::manifest::Manifest::default(), file)
             }
         };
 
@@ -283,55 +252,26 @@ impl DataBuild {
             statistics: _stats,
         } = self.compile_path(compile_path, target, platform, locale)?;
 
-        let (compiled_resources, compiled_assets) = self.link(&resources, &references)?;
+        let assets = self.link(&resources, &references)?;
 
-        for compiled_resource in compiled_resources {
-            if let Some(existing) = resource_manifest
+        for asset in assets {
+            if let Some(existing) = manifest
                 .compiled_resources
                 .iter_mut()
-                .find(|existing| existing.path == compiled_resource.path)
+                .find(|existing| existing.path == asset.path)
             {
-                *existing = compiled_resource;
+                *existing = asset;
             } else {
-                resource_manifest.compiled_resources.push(compiled_resource);
+                manifest.compiled_resources.push(asset);
             }
-        }
-
-        for compiled_asset in compiled_assets {
-            asset_manifest.insert(
-                compiled_asset.guid,
-                compiled_asset.checksum,
-                compiled_asset.size,
-            );
         }
 
         // write resource manifest file
-        resource_manifest_file.set_len(0).unwrap();
-        resource_manifest_file
-            .seek(std::io::SeekFrom::Start(0))
-            .unwrap();
-        serde_json::to_writer_pretty(&resource_manifest_file, &resource_manifest)
-            .map_err(|_e| Error::InvalidManifest)?;
+        file.set_len(0).unwrap();
+        file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
 
-        // write asset manifest file
-        asset_manifest_file.set_len(0).unwrap();
-        asset_manifest_file
-            .seek(std::io::SeekFrom::Start(0))
-            .unwrap();
-        let mut compiled_assets: Vec<CompiledAsset> = Vec::new();
-        for id in asset_manifest.ids() {
-            if let Some((checksum, size)) = asset_manifest.find(*id) {
-                compiled_assets.push(CompiledAsset {
-                    guid: *id,
-                    checksum,
-                    size,
-                });
-            }
-        }
-        compiled_assets.sort_by(|a, b| a.guid.cmp(&b.guid));
-        serde_json::to_writer_pretty(&asset_manifest_file, &compiled_assets).unwrap();
-
-        Ok((resource_manifest, asset_manifest))
+        Ok(manifest)
     }
 
     /// Compile `compile_node` of the build graph and update *build index* one or more compilation results.
@@ -646,9 +586,8 @@ impl DataBuild {
         &mut self,
         resources: &[CompiledResourceInfo],
         references: &[CompiledResourceReference],
-    ) -> Result<(Vec<CompiledResource>, Vec<CompiledAsset>), Error> {
+    ) -> Result<Vec<CompiledResource>, Error> {
         let mut resource_files = Vec::with_capacity(resources.len());
-        let mut asset_files = Vec::with_capacity(resources.len());
         for resource in resources {
             //
             // for now, non-asset resources are passed for linking
@@ -688,17 +627,10 @@ impl DataBuild {
                     size: bytes_written,
                 };
                 resource_files.push(asset_file);
-
-                let compiled_asset = CompiledAsset {
-                    guid: asset_id,
-                    checksum,
-                    size: bytes_written,
-                };
-                asset_files.push(compiled_asset);
             }
         }
 
-        Ok((resource_files, asset_files))
+        Ok(resource_files)
     }
 
     /// Returns the global version of the databuild module.
