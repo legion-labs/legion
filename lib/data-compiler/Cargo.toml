@@ -23,3 +23,4 @@ text-resource = { path = "../data-offline/test-text-resource" }
 integer-asset = { path = "../data-runtime/test-integer-asset" }
 refs-asset = { path = "../data-runtime/test-refs-asset" }
 test-compilers = { path = "../data-compiler/test-compilers" }
+binary-resource = { path = "../data-offline/test-binary-resource" }

@@ -233,9 +233,13 @@ impl DataBuild {
                 .append(false)
                 .open(manifest_file)
             {
-                let manifest_content: Manifest =
-                    serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
-                (manifest_content, file)
+                if file.metadata().unwrap().len() != 0 {
+                    let manifest_content: Manifest =
+                        serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
+                    (manifest_content, file)
+                } else {
+                    (Manifest::default(), file)
+                }
             } else {
                 let file = OpenOptions::new()
                     .read(true)

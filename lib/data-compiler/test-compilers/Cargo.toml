@@ -8,15 +8,17 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+base64 = "0.13.0"
 legion-data-compiler = { path = "../../data-compiler" }
 legion-content-store = { path = "../../content-store" }
 legion-data-offline = { path = "../../data-offline" }
 legion-data-runtime = { path = "../../data-runtime" }
-text-resource = { path = "../../data-offline/test-text-resource"}
-multitext-resource = { path = "../../data-offline/test-multitext-resource"}
-integer-asset = { path = "../../data-runtime/test-integer-asset"}
-refs-resource = { path = "../../data-offline/test-refs-resource"}
-refs-asset = { path = "../../data-runtime/test-refs-asset"}
+text-resource = { path = "../../data-offline/test-text-resource" }
+binary-resource = { path = "../../data-offline/test-binary-resource" }
+multitext-resource = { path = "../../data-offline/test-multitext-resource" }
+integer-asset = { path = "../../data-runtime/test-integer-asset" }
+refs-resource = { path = "../../data-offline/test-refs-resource" }
+refs-asset = { path = "../../data-runtime/test-refs-asset" }
 
 [[bin]]
 name = "compiler-test-atoi"
@@ -36,4 +38,9 @@ doc = false
 [[bin]]
 name = "compiler-test-split"
 path = "src/split.rs"
+doc = false
+
+[[bin]]
+name = "compiler-test-base64"
+path = "src/base64.rs"
 doc = false

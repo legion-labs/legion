@@ -453,6 +453,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "binary-resource"
+version = "0.1.0"
+dependencies = [
+ "legion-data-offline",
+ "serde",
+]
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2766,6 +2774,7 @@ dependencies = [
 name = "legion-data-compiler"
 version = "0.1.0"
 dependencies = [
+ "binary-resource",
  "clap",
  "integer-asset",
  "legion-content-store",
@@ -5948,6 +5957,8 @@ dependencies = [
 name = "test-compilers"
 version = "0.1.0"
 dependencies = [
+ "base64",
+ "binary-resource",
  "integer-asset",
  "legion-content-store",
  "legion-data-compiler",
