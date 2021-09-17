@@ -1,13 +1,11 @@
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
-use legion_data_offline::asset::AssetPathId;
 use legion_data_runtime::{
     manifest::Manifest, AssetId, AssetRegistry, AssetRegistryOptions, HandleUntyped,
 };
 use legion_ecs::prelude::*;
 use sample_data_compiler::runtime_data;
 use std::{
-    convert::TryFrom,
     fs::File,
     path::{Path, PathBuf},
     str::FromStr,
@@ -74,13 +72,11 @@ impl AssetRegistryPlugin {
         let mut registry = world.get_non_send_mut::<AssetRegistry>().unwrap();
 
         if let Some(settings) = world.get_resource::<AssetRegistrySettings>() {
-            if let Ok(asset_path) = AssetPathId::from_str(&settings.root_asset) {
-                if let Ok(asset_id) = AssetId::try_from(asset_path.content_id()) {
-                    let asset = registry.load_untyped(asset_id);
+            if let Ok(asset_id) = AssetId::from_str(&settings.root_asset) {
+                let asset = registry.load_untyped(asset_id);
 
-                    if let Some(mut state) = world.get_resource_mut::<AssetRegistryState>() {
-                        state.root_assets.push(asset);
-                    }
+                if let Some(mut state) = world.get_resource_mut::<AssetRegistryState>() {
+                    state.root_assets.push(asset);
                 }
             }
         };
@@ -94,17 +90,8 @@ impl AssetRegistryPlugin {
 }
 
 fn read_manifest(manifest_path: impl AsRef<Path>) -> Manifest {
-    let mut manifest = Manifest::default();
-    if let Ok(file) = File::open(manifest_path) {
-        let resource_manifest: serde_json::Result<legion_data_compiler::Manifest> =
-            serde_json::from_reader(file);
-        if let Ok(resource_manifest) = resource_manifest {
-            for resource in resource_manifest.compiled_resources {
-                if let Ok(asset_id) = AssetId::try_from(resource.path.content_id()) {
-                    manifest.insert(asset_id, resource.checksum, resource.size);
-                }
-            }
-        }
+    match File::open(manifest_path) {
+        Ok(file) => serde_json::from_reader(file).unwrap_or_default(),
+        Err(_e) => Manifest::default(),
     }
-    manifest
 }

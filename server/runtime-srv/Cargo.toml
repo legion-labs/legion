@@ -13,8 +13,6 @@ license = "MIT OR Apache-2.0"
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-content-store = { path = "../../lib/content-store" }
 legion-core = { path = "../../plugin/core", version = "0.1.0" }
-legion-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
-legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }

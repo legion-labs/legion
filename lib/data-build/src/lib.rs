@@ -169,12 +169,15 @@
     broken_intra_doc_links,
     private_intra_doc_links,
     missing_crate_level_docs,
-    rust_2018_idioms
+    rust_2018_idioms,
+    missing_docs
 )]
 // END - Legion Labs standard lints v0.2
 // crate-specific exceptions:
 #![allow()]
-#![warn(missing_docs)]
+
+use legion_data_runtime::AssetId;
+use std::{convert::TryFrom, io};
 
 #[derive(Debug)]
 /// Data build error. todo(kstasik): revisit how errors are handled/propagated
@@ -237,12 +240,27 @@ impl From<legion_data_offline::resource::Error> for Error {
     }
 }
 
+/// Creates a runtime [`legion_data_runtime::manifest::Manifest`] from an offline [`legion_data_compiler::Manifest`].
+///
+/// This is a temporary solution that will be replaced by a **packaging** process.
+/// For now, we simply create a runtime manifest by filtering out non-asset resources
+/// and by identifying content by `AssetId` - which runtime operates on.
+pub fn generate_rt_manifest(
+    input: legion_data_compiler::Manifest,
+) -> legion_data_runtime::manifest::Manifest {
+    let mut output = legion_data_runtime::manifest::Manifest::default();
+    for resource in input.compiled_resources {
+        if let Ok(asset_id) = AssetId::try_from(resource.path.content_id()) {
+            output.insert(asset_id, resource.checksum, resource.size);
+        }
+    }
+    output
+}
+
 mod asset_file_writer;
 mod buildindex;
 mod databuild;
 mod options;
-
-use std::io;
 
 pub use databuild::*;
 pub use options::*;
