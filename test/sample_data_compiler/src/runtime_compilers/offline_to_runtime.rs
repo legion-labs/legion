@@ -13,7 +13,6 @@ fn compile_path_id(path: &Option<AssetPathId>) -> Option<AssetId> {
         .and_then(|path| AssetId::try_from(path.content_id()).ok())
 }
 
-
 // ----- Entity conversions -----
 
 impl FromOffline<offline_data::Entity> for runtime_data::Entity {
