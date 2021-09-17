@@ -36,6 +36,11 @@ struct BeginScopeEvent {
 
 #[test]
 fn test_reflect_scope_event() {
-    dbg!(ScopeDesc::reflect());
-    dbg!(BeginScopeEvent::reflect());
+    let scope_desc_reflection = ScopeDesc::reflect();
+    assert!(scope_desc_reflection.members[0].is_reference);
+    assert!(scope_desc_reflection.members[1].is_reference);
+    assert!(!scope_desc_reflection.members[2].is_reference);
+    let event_reflection = BeginScopeEvent::reflect();
+    assert!(!event_reflection.members[0].is_reference);
+    assert!(event_reflection.members[1].is_reference);
 }
