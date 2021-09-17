@@ -1,5 +1,13 @@
 [workspace]
-members = ["client/*", "server/*", "lib/*", "plugin/*", "proto/*", "test/*"]
+members = [
+    "client/*",
+    "server/*",
+    "lib/*",
+    "plugin/*",
+    "proto/*",
+    "test/*",
+    "client/editor/src-tauri",
+]
 exclude = ["test/sample_data", "client/editor"]
 
 [profile.release]
