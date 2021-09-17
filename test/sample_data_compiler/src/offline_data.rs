@@ -2,7 +2,10 @@
 
 use std::any::{Any, TypeId};
 
-use legion_data_offline::resource::{Resource, ResourceId, ResourceProcessor, ResourceType};
+use legion_data_offline::{
+    asset::AssetPathId,
+    resource::{Resource, ResourceId, ResourceProcessor, ResourceType},
+};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -324,5 +327,5 @@ pub struct SubMesh {
     pub normals: Vec<Vec3>,
     pub uvs: Vec<Vec2>,
     pub indices: Vec<u16>,
-    pub material: ResourceId,
+    pub material: Option<AssetPathId>,
 }
