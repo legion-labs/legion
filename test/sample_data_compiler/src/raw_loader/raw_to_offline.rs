@@ -25,9 +25,7 @@ fn lookup_asset_path(
     references: &HashMap<ResourcePathName, ResourceId>,
     path: &str,
 ) -> Option<AssetPathId> {
-    let path_name = ResourcePathName::new(path);
-    let resource = references.get(&path_name).cloned()?;
-    Some(AssetPathId::from(resource))
+    lookup_reference(references, path).map(AssetPathId::from)
 }
 
 // ----- Entity conversions -----
