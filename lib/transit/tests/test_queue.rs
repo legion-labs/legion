@@ -74,7 +74,7 @@ impl core::iter::Iterator for MyQueueIterator<'_> {
 }
 
 impl MyQueue {
-    pub fn iter<'a>(&'a self) -> MyQueueIterator<'a> {
+    pub fn iter(&self) -> MyQueueIterator {
         MyQueueIterator {
             queue: self,
             offset: 0,
