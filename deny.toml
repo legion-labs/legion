@@ -68,6 +68,7 @@ allow = [
   "ISC",
   "Zlib",
   "CC0-1.0",
+  "MPL-2.0",                        # Considered copyleft. Fine as long as you don't modify anything.
 ]
 # List of explictly disallowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
