@@ -1,23 +1,32 @@
 use editor_client::EditorClient;
 
+use std::io::{self, BufRead};
+
 tonic::include_proto!("editor");
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = EditorClient::connect("http://[::1]:50051").await?;
 
-    let request = tonic::Request::new(UpdatePropertiesRequest {
-        update_id: 1,
-        property_path: "/my/property/path".into(),
-        value: "foo".into(),
+    println!("Please enter the RTC session description:");
+
+    let stdin = io::stdin();
+    let rtc_session_description = base64::decode(stdin.lock().lines().next().unwrap().unwrap())?;
+
+    let request = tonic::Request::new(InitializeStreamRequest {
+        rtc_session_description,
     });
 
-    let response = client.update_properties(request).await?;
+    let response = client.initialize_stream(request).await?.into_inner();
 
-    println!(
-        "Property was updated ({}).",
-        response.into_inner().update_id
-    );
+    if response.error.is_empty() {
+        println!(
+            "Stream initialized: {}",
+            base64::encode(response.rtc_session_description),
+        );
+    } else {
+        println!("Failed to initialize stream: {}", response.error,);
+    }
 
     Ok(())
 }
