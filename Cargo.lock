@@ -1485,10 +1485,16 @@ dependencies = [
 name = "editor-client"
 version = "0.1.0"
 dependencies = [
+ "base64",
+ "legion-editor-proto",
+ "prost",
  "serde",
  "serde_json",
+ "simple-error",
  "tauri",
  "tauri-build",
+ "tokio",
+ "tonic",
 ]
 
 [[package]]
@@ -5151,6 +5157,12 @@ dependencies = [
  "digest",
  "rand_core 0.5.1",
 ]
+
+[[package]]
+name = "simple-error"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc47a29ce97772ca5c927f75bac34866b16d64e07f330c3248e2d7226623901b"
 
 [[package]]
 name = "simple_asn1"

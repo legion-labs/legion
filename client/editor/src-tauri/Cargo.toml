@@ -16,9 +16,15 @@ build = "src/build.rs"
 tauri-build = { version = "1.0.0-beta.4" }
 
 [dependencies]
+legion-editor-proto = { path = "../../../proto/editor-proto", version = "0.1.0" }
+tonic = "0.5.2"
+prost = "0.8"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+base64 = "0.13.0"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
+simple-error = "0.2.3"
 
 [features]
 default = ["custom-protocol"]
