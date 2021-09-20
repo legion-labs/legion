@@ -1,10 +1,15 @@
 #[allow(unsafe_code)]
 pub fn write_pod<T>(buffer: &mut Vec<u8>, value: &T) {
-    let ptr = std::ptr::addr_of!(value).cast::<u8>();
+    let ptr = std::ptr::addr_of!(*value).cast::<u8>();
     let slice = std::ptr::slice_from_raw_parts(ptr, std::mem::size_of::<T>());
     unsafe {
         buffer.extend_from_slice(&*slice);
     }
+}
+
+#[allow(unsafe_code)]
+pub fn read_pod<T>(ptr: *const u8) -> T {
+    unsafe { std::ptr::read_unaligned(ptr.cast::<T>()) }
 }
 
 pub trait Serialize {

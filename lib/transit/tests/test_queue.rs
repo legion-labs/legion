@@ -54,7 +54,7 @@ fn test_queue() {
     let mut q = MyQueue::new(1024);
     q.push_my_test_event(MyTestEvent {
         some_64: 2,
-        some_32: 1,
+        some_32: 3,
     });
     assert_eq!(17, q.len_bytes());
     q.push_other_event(OtherEvent { some_64: 3 });
@@ -64,4 +64,17 @@ fn test_queue() {
         string: String::from("allo"),
     });
     assert_eq!(35, q.len_bytes());
+
+    if let MyQueueAny::MyTestEvent(e) = q.read_value_at_offset(0) {
+        assert_eq!(e.some_64, 2);
+        assert_eq!(e.some_32, 3);
+    } else {
+        panic!("wrong enum type");
+    }
+
+    if let MyQueueAny::OtherEvent(e) = q.read_value_at_offset(17) {
+        assert_eq!(e.some_64, 3);
+    } else {
+        panic!("wrong enum type");
+    }
 }
