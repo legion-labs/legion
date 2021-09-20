@@ -42,8 +42,15 @@ fn gen_read_method(
         quote! {
             #index => {
                 unsafe{
-                    let begin_obj = self.buffer.as_ptr().add( offset+1 );
-                    #any_ident::#value_type_id( read_pod::<#value_type_id>(begin_obj) )
+                    let mut begin_obj = self.buffer.as_ptr().add( offset+1 );
+                    let value_size = if <#value_type_id as transit::Serialize>::is_size_static(){
+                        None
+                    }else{
+                        let size = Some( read_pod::<u32>(begin_obj) );
+                        begin_obj = begin_obj.add( std::mem::size_of::<u32>() );
+                        size
+                    };
+                    #any_ident::#value_type_id( <#value_type_id as transit::Serialize>::read_value(begin_obj, value_size) )
                 }
             },
         }
@@ -55,7 +62,7 @@ fn gen_read_method(
             match index{
                 #(#type_index_cases)*
                 _ => {
-                    panic!("any other");
+                    panic!("unknown type index");
                 }
             }
         }

@@ -19,7 +19,6 @@ impl Serialize for OtherEvent {
     type Value = OtherEvent;
 }
 
-#[allow(dead_code)]
 struct DynString {
     pub string: String,
 }
@@ -39,6 +38,15 @@ impl Serialize for DynString {
     fn write_value(buffer: &mut Vec<u8>, value: &DynString) {
         buffer.extend_from_slice(value.string.as_bytes());
     }
+
+    fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self::Value {
+        let buffer_size = value_size.unwrap();
+        let slice = std::ptr::slice_from_raw_parts(ptr, buffer_size as usize);
+        unsafe {
+            let string = String::from_utf8((*slice).to_vec()).unwrap();
+            DynString { string }
+        }
+    }
 }
 
 declare_queue_struct!(
@@ -57,6 +65,7 @@ fn test_queue() {
         some_32: 3,
     });
     assert_eq!(17, q.len_bytes());
+
     q.push_other_event(OtherEvent { some_64: 3 });
     assert_eq!(26, q.len_bytes());
 
@@ -74,6 +83,12 @@ fn test_queue() {
 
     if let MyQueueAny::OtherEvent(e) = q.read_value_at_offset(17) {
         assert_eq!(e.some_64, 3);
+    } else {
+        panic!("wrong enum type");
+    }
+
+    if let MyQueueAny::DynString(s) = q.read_value_at_offset(26) {
+        assert_eq!(s.string, "allo");
     } else {
         panic!("wrong enum type");
     }

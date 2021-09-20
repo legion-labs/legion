@@ -31,4 +31,8 @@ pub trait Serialize {
         //clippy complains here but we don't want to move or copy the value
         write_pod::<Self::Value>(buffer, &value);
     }
+
+    fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self::Value {
+        read_pod::<Self::Value>(ptr)
+    }
 }
