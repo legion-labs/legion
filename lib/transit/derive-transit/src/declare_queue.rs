@@ -61,7 +61,7 @@ fn gen_read_method(
     });
 
     quote! {
-        pub fn read_value_at_offset( &self, offset: usize ) -> (#any_ident, usize){
+        fn read_value_at_offset( &self, offset: usize ) -> (#any_ident, usize){
             let index = self.buffer[offset];
             match index{
                 #(#type_index_cases)*
@@ -110,14 +110,25 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
                 Self { buffer }
             }
 
-            pub fn len_bytes(&self) -> usize{
+            #(#push_methods)*
+
+        }
+
+        impl transit::IterableQueue for #struct_identifier {
+            type Item = #any_ident;
+            type Container = Self;
+
+            fn len_bytes(&self) -> usize{
                 self.buffer.len()
+            }
+
+            fn iter(&self) -> QueueIterator<'_, Self, #any_ident> {
+                QueueIterator::begin(self)
             }
 
             #read_method
 
-            #(#push_methods)*
-
         }
+
     })
 }

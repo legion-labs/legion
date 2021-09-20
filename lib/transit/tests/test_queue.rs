@@ -54,34 +54,6 @@ declare_queue_struct!(
     struct MyQueue<MyTestEvent, OtherEvent, DynString> {}
 );
 
-struct MyQueueIterator<'a> {
-    queue: &'a MyQueue,
-    offset: usize,
-}
-
-impl core::iter::Iterator for MyQueueIterator<'_> {
-    type Item = MyQueueAny;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.offset >= self.queue.len_bytes() {
-            None
-        } else {
-            let (obj, next_offset) = self.queue.read_value_at_offset(self.offset);
-            self.offset = next_offset;
-            Some(obj)
-        }
-    }
-}
-
-impl MyQueue {
-    pub fn iter(&self) -> MyQueueIterator {
-        MyQueueIterator {
-            queue: self,
-            offset: 0,
-        }
-    }
-}
-
 #[test]
 fn test_queue() {
     assert!(<MyTestEvent as Serialize>::is_size_static());
