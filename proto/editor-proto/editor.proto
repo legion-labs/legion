@@ -2,14 +2,13 @@ syntax = "proto3";
 package editor;
 
 service Editor {
-  rpc UpdateProperties(UpdatePropertiesRequest)
-      returns (UpdatePropertiesResponse);
+  rpc InitializeStream(InitializeStreamRequest)
+      returns (InitializeStreamResponse);
 }
 
-message UpdatePropertiesRequest {
-  uint64 updateId = 1;
-  string propertyPath = 2;
-  string value = 3;
-}
+message InitializeStreamRequest { bytes rtcSessionDescription = 1; }
 
-message UpdatePropertiesResponse { uint64 updateId = 1; }
+message InitializeStreamResponse {
+  bytes rtcSessionDescription = 1;
+  string error = 2;
+}
