@@ -1,28 +1,71 @@
 <template>
   <div class="hello">
     <h1>Legion Editor</h1>
-    <video></video>
+    <video id="view"></video>
+    <pre id="logs"></pre>
   </div>
 </template>
 
 <script>
 import { invoke } from "@tauri-apps/api/tauri";
 
-invoke("initialize_stream", { rtcSessionDescription: "" })
-  .then((res) => {
-    console.log(
-      "received RTC session description: ",
-      res.rtcSessionDescription
-    );
-  })
-  .catch((e) => {
-    console.error("failed to initialize stream: ", e);
-  });
-
 export default {
   name: "HelloWorld",
   props: {
     msg: String,
+  },
+  mounted() {
+    var videoElement = document.getElementById("view");
+    var logsElement = document.getElementById("logs");
+
+    videoElement.onclick = function () {
+      console.log("Initializing WebRTC...");
+
+      const pc = new RTCPeerConnection({
+        urls: [
+          //{ url: "stun:stun.l.google.com:19302" },
+          //{ url: "stun:stun1.l.google.com:19302" },
+          //{ url: "stun:stun2.l.google.com:19302" },
+          //{ url: "stun:stun3.l.google.com:19302" },
+        ],
+      });
+
+      pc.onnegotiationneeded = async () => {
+        pc.setLocalDescription(await pc.createOffer());
+      };
+
+      pc.onicecandidate = async (iceEvent) => {
+        console.log(iceEvent);
+
+        if (iceEvent.candidate === null) {
+          console.log(JSON.stringify(pc.localDescription.toJSON()));
+
+          const rtcSessionDescription = await invoke("initialize_stream", {
+            rtcSessionDescription: btoa(
+              JSON.stringify(pc.localDescription.toJSON())
+            ),
+          });
+
+          pc.setRemoteDescription(
+            new RTCSessionDescription(JSON.parse(atob(rtcSessionDescription)))
+          );
+        }
+      };
+
+      const dc = pc.createDataChannel("foo");
+
+      dc.onopen = async () => {
+        logsElement.append(document.createTextNode("Data channel opened.\n"));
+      };
+
+      dc.onclose = async () => {
+        logsElement.append(document.createTextNode("Data channel closed.\n"));
+      };
+
+      dc.onmessage = async (msg) => {
+        logsElement.append(document.createTextNode(msg.data + "\n"));
+      };
+    };
   },
 };
 </script>
@@ -35,5 +78,15 @@ video {
   background: url("../assets/logo.png") center center no-repeat #222;
   min-width: 320px;
   min-height: 240px;
+  cursor: pointer;
+}
+
+pre {
+  border: 1px solid black;
+  border-radius: 8px;
+  min-width: 320px;
+  min-height: 240px;
+  background-color: #222;
+  color: white;
 }
 </style>
