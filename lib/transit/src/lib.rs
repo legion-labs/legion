@@ -78,7 +78,9 @@
 #![allow()]
 
 pub mod reflect;
+pub mod serialize;
 pub use reflect::*;
+pub use serialize::*;
 
 #[allow(unused_imports)]
 #[macro_use]

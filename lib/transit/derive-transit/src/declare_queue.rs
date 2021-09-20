@@ -17,11 +17,19 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
             let push_id = format_ident!("push_{}", snake_type);
             quote! {
                 pub fn #push_id( &mut self, value: #t ){
-                    let ptr = std::ptr::addr_of!(value) as *const u8;
-                    let slice = std::ptr::slice_from_raw_parts(ptr, std::mem::size_of::<#value_type_id>());
                     self.buffer.push(#index);
-                    unsafe{
-                        self.buffer.extend_from_slice( &*slice );
+                    let buffer_size_before = self.buffer.len();
+                    if <#value_type_id as transit::Serialize>::is_size_static(){
+                        <#value_type_id as transit::Serialize>::write_value( &mut self.buffer, &value );
+                        assert!( self.buffer.len() == buffer_size_before + std::mem::size_of::<#value_type_id>());
+                    }
+                    else{
+                        // we force the dynamically sized object to first serialize their size as unsigned 32 bits
+                        // this will allow unparsable objects to be skipped by the reader
+                        let value_size = <#value_type_id as transit::Serialize>::get_value_size( &value ).unwrap();
+                        transit::write_pod( &mut self.buffer, &value_size );
+                        <#value_type_id as transit::Serialize>::write_value( &mut self.buffer, &value );
+                        assert!( self.buffer.len() == buffer_size_before + std::mem::size_of::<u32>() + value_size as usize);
                     }
                 }
             }
