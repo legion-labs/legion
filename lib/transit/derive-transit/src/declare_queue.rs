@@ -43,21 +43,25 @@ fn gen_read_method(
             #index => {
                 unsafe{
                     let mut begin_obj = self.buffer.as_ptr().add( offset+1 );
+                    let next_object_offset;
                     let value_size = if <#value_type_id as transit::Serialize>::is_size_static(){
+                        next_object_offset = offset + 1 + std::mem::size_of::<#value_type_id>();
                         None
                     }else{
-                        let size = Some( read_pod::<u32>(begin_obj) );
+                        let size_instance = read_pod::<u32>(begin_obj);
                         begin_obj = begin_obj.add( std::mem::size_of::<u32>() );
-                        size
+                        next_object_offset = offset + 1 + std::mem::size_of::<u32>() + size_instance as usize;
+                        Some(size_instance)
                     };
-                    #any_ident::#value_type_id( <#value_type_id as transit::Serialize>::read_value(begin_obj, value_size) )
+                    let obj = #any_ident::#value_type_id( <#value_type_id as transit::Serialize>::read_value(begin_obj, value_size) );
+                    (obj,next_object_offset)
                 }
             },
         }
     });
 
     quote! {
-        pub fn read_value_at_offset( &self, offset: usize ) -> #any_ident{
+        pub fn read_value_at_offset( &self, offset: usize ) -> (#any_ident, usize){
             let index = self.buffer[offset];
             match index{
                 #(#type_index_cases)*
@@ -90,6 +94,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
 
     TokenStream::from(quote! {
 
+        #[derive(Debug)]
         enum #any_ident{
             #(#type_args(#type_args),)*
         }

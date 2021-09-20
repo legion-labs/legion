@@ -19,6 +19,7 @@ impl Serialize for OtherEvent {
     type Value = OtherEvent;
 }
 
+#[derive(Debug)]
 struct DynString {
     pub string: String,
 }
@@ -53,6 +54,34 @@ declare_queue_struct!(
     struct MyQueue<MyTestEvent, OtherEvent, DynString> {}
 );
 
+struct MyQueueIterator<'a> {
+    queue: &'a MyQueue,
+    offset: usize,
+}
+
+impl core::iter::Iterator for MyQueueIterator<'_> {
+    type Item = MyQueueAny;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.offset >= self.queue.len_bytes() {
+            None
+        } else {
+            let (obj, next_offset) = self.queue.read_value_at_offset(self.offset);
+            self.offset = next_offset;
+            Some(obj)
+        }
+    }
+}
+
+impl MyQueue {
+    pub fn iter<'a>(&'a self) -> MyQueueIterator<'a> {
+        MyQueueIterator {
+            queue: self,
+            offset: 0,
+        }
+    }
+}
+
 #[test]
 fn test_queue() {
     assert!(<MyTestEvent as Serialize>::is_size_static());
@@ -74,22 +103,29 @@ fn test_queue() {
     });
     assert_eq!(35, q.len_bytes());
 
-    if let MyQueueAny::MyTestEvent(e) = q.read_value_at_offset(0) {
+    if let (MyQueueAny::MyTestEvent(e), next_obj_offset) = q.read_value_at_offset(0) {
         assert_eq!(e.some_64, 2);
         assert_eq!(e.some_32, 3);
+        assert_eq!(next_obj_offset, 17);
     } else {
         panic!("wrong enum type");
     }
 
-    if let MyQueueAny::OtherEvent(e) = q.read_value_at_offset(17) {
+    if let (MyQueueAny::OtherEvent(e), next_obj_offset) = q.read_value_at_offset(17) {
         assert_eq!(e.some_64, 3);
+        assert_eq!(next_obj_offset, 26);
     } else {
         panic!("wrong enum type");
     }
 
-    if let MyQueueAny::DynString(s) = q.read_value_at_offset(26) {
+    if let (MyQueueAny::DynString(s), next_obj_offset) = q.read_value_at_offset(26) {
         assert_eq!(s.string, "allo");
+        assert_eq!(next_obj_offset, 35);
     } else {
         panic!("wrong enum type");
+    }
+
+    for x in q.iter() {
+        dbg!(x);
     }
 }
