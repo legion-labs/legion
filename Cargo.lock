@@ -2767,9 +2767,9 @@ dependencies = [
 
 [[package]]
 name = "rspirv-reflect"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "596e8ac159bef7d11ba2cfd52569a267e51ecd231dbacf27b670441e08e5f7f7"
+checksum = "c8c009d56c79348f5143ed254b598c6b65c536f56e871dd8cf4fc19a53e8233c"
 dependencies = [
  "rspirv",
  "thiserror",
