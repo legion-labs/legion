@@ -1,6 +1,6 @@
 use transit::*;
 
-#[derive(TransitReflect, Debug)]
+#[derive(Debug)]
 struct MyTestEvent {
     some_64: u64,
     some_32: u32,
@@ -10,7 +10,7 @@ impl Serialize for MyTestEvent {
     type Value = MyTestEvent;
 }
 
-#[derive(TransitReflect, Debug)]
+#[derive(Debug)]
 struct OtherEvent {
     some_64: u64,
 }
@@ -20,9 +20,7 @@ impl Serialize for OtherEvent {
 }
 
 #[derive(Debug)]
-struct DynString {
-    pub string: String,
-}
+struct DynString(String);
 
 impl Serialize for DynString {
     type Value = DynString;
@@ -32,21 +30,18 @@ impl Serialize for DynString {
     }
 
     fn get_value_size(value: &Self::Value) -> Option<u32> {
-        Some(value.string.len() as u32)
+        Some(value.0.len() as u32)
     }
 
     #[allow(unsafe_code)]
     fn write_value(buffer: &mut Vec<u8>, value: &DynString) {
-        buffer.extend_from_slice(value.string.as_bytes());
+        buffer.extend_from_slice(value.0.as_bytes());
     }
 
     fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self::Value {
         let buffer_size = value_size.unwrap();
         let slice = std::ptr::slice_from_raw_parts(ptr, buffer_size as usize);
-        unsafe {
-            let string = String::from_utf8((*slice).to_vec()).unwrap();
-            DynString { string }
-        }
+        unsafe { DynString(String::from_utf8((*slice).to_vec()).unwrap()) }
     }
 }
 
@@ -70,9 +65,7 @@ fn test_queue() {
     q.push_other_event(OtherEvent { some_64: 3 });
     assert_eq!(26, q.len_bytes());
 
-    q.push_dyn_string(DynString {
-        string: String::from("allo"),
-    });
+    q.push_dyn_string(DynString(String::from("allo")));
     assert_eq!(35, q.len_bytes());
 
     if let (MyQueueAny::MyTestEvent(e), next_obj_offset) = q.read_value_at_offset(0) {
@@ -91,7 +84,7 @@ fn test_queue() {
     }
 
     if let (MyQueueAny::DynString(s), next_obj_offset) = q.read_value_at_offset(26) {
-        assert_eq!(s.string, "allo");
+        assert_eq!(s.0, "allo");
         assert_eq!(next_obj_offset, 35);
     } else {
         panic!("wrong enum type");
