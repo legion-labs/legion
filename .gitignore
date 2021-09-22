@@ -16,3 +16,6 @@
 
 # Emacs/Vim temp files
 *~
+
+# NPM/Yarn local cache
+node_modules
