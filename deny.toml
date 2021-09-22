@@ -167,7 +167,9 @@ skip = [
 # by default infinite
 skip-tree = [
   { name = "sqlx", version = "=0.5.7", depth = 5 },
-] #{ name = "ansi_term", version = "=0.11.0", depth = 20 },
+  { name = "tauri", version = "1.0.0-beta.8" },
+  { name = "webrtc", version = "0.0.13" },
+]
 
 # This section is considered when running `cargo deny check sources`.
 # More documentation about the 'sources' section can be found here:
