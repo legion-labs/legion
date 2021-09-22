@@ -14,7 +14,10 @@ impl EventBlockSink for DebugEventSink {
     }
 
     fn on_thread_buffer_full(&self, thread_block: &ThreadEventBlock) {
-        println!("thread buffer full: {} events", thread_block.events.len());
+        println!(
+            "thread buffer full: {} bytes",
+            thread_block.events.len_bytes()
+        );
     }
 }
 
@@ -71,7 +74,7 @@ fn test_log_thread() {
 #[test]
 fn test_log() {
     let sink: Arc<dyn EventBlockSink> = Arc::new(DebugEventSink {});
-    init_event_dispatch(1024 * 10, 1024, sink).unwrap();
+    init_event_dispatch(1024 * 10, 1024 * 12, sink).unwrap();
     test_log_str();
     test_log_thread();
 }

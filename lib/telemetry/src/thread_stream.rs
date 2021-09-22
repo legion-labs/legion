@@ -1,6 +1,7 @@
 use crate::*;
 use core::arch::x86_64::_rdtsc;
 use std::sync::Arc;
+use transit::*;
 
 pub struct ScopeDesc {
     pub name: &'static str,
@@ -64,29 +65,33 @@ macro_rules! trace_scope {
     };
 }
 
+#[derive(Debug)]
 pub struct BeginScopeEvent {
     pub time: u64,
     pub get_scope_desc: GetScopeDesc,
 }
 
+impl Serialize for BeginScopeEvent {}
+
+#[derive(Debug)]
 pub struct EndScopeEvent {
     pub time: u64,
     pub get_scope_desc: GetScopeDesc,
 }
 
-pub enum ThreadEvent {
-    BeginScope(BeginScopeEvent),
-    EndScope(EndScopeEvent),
-}
+impl Serialize for EndScopeEvent {}
+
+declare_queue_struct!(
+    struct ThreadEventQueue<BeginScopeEvent, EndScopeEvent> {}
+);
 
 pub struct ThreadEventBlock {
-    pub events: Vec<ThreadEvent>,
+    pub events: ThreadEventQueue,
 }
 
 impl ThreadEventBlock {
     pub fn new(buffer_size: usize) -> Self {
-        let mut events = Vec::new();
-        events.reserve(buffer_size);
+        let events = ThreadEventQueue::new(buffer_size);
         Self { events }
     }
 }
@@ -110,16 +115,20 @@ impl ThreadStream {
         old_block
     }
 
-    pub fn push(&mut self, event: ThreadEvent) {
-        self.get_events_mut().push(event);
+    pub fn push_begin_scope_event(&mut self, event: BeginScopeEvent) {
+        self.get_events_mut().push_begin_scope_event(event);
+    }
+
+    pub fn push_end_scope_event(&mut self, event: EndScopeEvent) {
+        self.get_events_mut().push_end_scope_event(event);
     }
 
     pub fn is_full(&self) -> bool {
         let max_object_size = 1;
-        self.current_block.events.len() + max_object_size > self.initial_size
+        self.current_block.events.len_bytes() + max_object_size > self.initial_size
     }
 
-    fn get_events_mut(&mut self) -> &mut Vec<ThreadEvent> {
+    fn get_events_mut(&mut self) -> &mut ThreadEventQueue {
         //get_mut_unchecked should be faster
         &mut Arc::get_mut(&mut self.current_block).unwrap().events
     }

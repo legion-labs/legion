@@ -95,10 +95,10 @@ pub fn on_begin_scope(scope: GetScopeDesc) {
         unsafe {
             let opt_stream = &mut *cell.as_ptr();
             if let Some(stream) = opt_stream {
-                stream.push(ThreadEvent::BeginScope(BeginScopeEvent {
+                stream.push_begin_scope_event(BeginScopeEvent {
                     time: now(),
                     get_scope_desc: scope,
-                }));
+                });
                 //todo: refac
                 if stream.is_full() {
                     match &mut G_DISPATCH {
@@ -120,10 +120,10 @@ pub fn on_end_scope(scope: GetScopeDesc) {
         unsafe {
             let opt_stream = &mut *cell.as_ptr();
             if let Some(stream) = opt_stream {
-                stream.push(ThreadEvent::EndScope(EndScopeEvent {
+                stream.push_end_scope_event(EndScopeEvent {
                     time: now(),
                     get_scope_desc: scope,
-                }));
+                });
                 //todo: refac
                 if stream.is_full() {
                     match &mut G_DISPATCH {
