@@ -351,6 +351,7 @@ impl CompilerCompileCmd {
         match self.0.exec(compiler_path) {
             Ok(output) => CompilerCompileCmdOutput::from_bytes(output.stdout.as_slice())
                 .ok_or_else(|| {
+                    eprintln!("Cannot parse compiler output, args: {:?}", self.0.args);
                     io::Error::new(
                         io::ErrorKind::InvalidData,
                         "Failed to parse CompilerCompileCmdOutput",

@@ -10,7 +10,7 @@
     {
       "id": "0x4e1dd44100000000c8458bbdf0a12ce2",
       "dependencies": [],
-      "resource_hash": 4439663419458149032
+      "resource_hash": 3405356258756011879
     },
     {
       "id": "0x5004cd1c00000000d42200e0cf45c438",
@@ -159,6 +159,14 @@
       "compiled_path": "0x417862e500000000ca59546947cacd26|2362464984",
       "compiled_checksum": 15877719499815107262,
       "compiled_size": 1
+    },
+    {
+      "compile_path": "0x4e1dd44100000000c8458bbdf0a12ce2|3928297704",
+      "context_hash": 13479133547479146834,
+      "source_hash": 482273047596469206,
+      "compiled_path": "0x4e1dd44100000000c8458bbdf0a12ce2|3928297704",
+      "compiled_checksum": 2161035682036290076,
+      "compiled_size": 881
     }
   ],
   "compiled_resource_references": []
