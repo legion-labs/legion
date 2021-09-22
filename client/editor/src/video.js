@@ -89,15 +89,21 @@ export class VideoPlayer {
   push(data) {
     const frame = new Uint8Array(data);
 
+    console.log(buf2hex(frame));
     if (frame[4] === 0x66) {
-    console.log(frame);
       this._reinit();
       this.waitingForKeyFrame = false;
     }
 
-    if (!this.waitingForKeyFrame) {
+    //if (!this.waitingForKeyFrame) {
       this.queue.push(frame);
       this._submit();
-    }
+    //}
   }
+}
+
+function buf2hex(buffer) { // buffer is an ArrayBuffer
+  return [...new Uint8Array(buffer)]
+      .map(x => x.toString(16).padStart(2, '0'))
+      .join('');
 }
