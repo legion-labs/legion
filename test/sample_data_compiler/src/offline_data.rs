@@ -4,7 +4,7 @@ use std::any::{Any, TypeId};
 
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Resource, ResourceId, ResourceProcessor, ResourceType},
+    resource::{Resource, ResourceProcessor, ResourceType},
 };
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -19,8 +19,8 @@ pub trait CompilableResource {
 #[derive(Resource, Default, Serialize, Deserialize)]
 pub struct Entity {
     pub name: String,
-    pub children: Vec<ResourceId>,
-    pub parent: Option<ResourceId>,
+    pub children: Vec<AssetPathId>,
+    pub parent: Option<AssetPathId>,
     pub components: Vec<Box<dyn Component>>,
 }
 
@@ -37,8 +37,9 @@ impl ResourceProcessor for EntityProcessor {
         Box::new(Entity::default())
     }
 
-    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
-        Vec::new()
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+        let entity = resource.downcast_ref::<Entity>().unwrap();
+        entity.parent.iter().cloned().collect()
     }
 
     fn write_resource(
@@ -55,8 +56,14 @@ impl ResourceProcessor for EntityProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Resource>> {
-        let resource: Entity = serde_json::from_reader(reader).unwrap();
-        Ok(Box::new(resource))
+        let result: Result<Entity, serde_json::Error> = serde_json::from_reader(reader);
+        match result {
+            Ok(resource) => Ok(Box::new(resource)),
+            Err(json_err) => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                json_err.to_string(),
+            )),
+        }
     }
 }
 
@@ -175,7 +182,7 @@ impl Component for Physics {}
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct Instance {
-    pub original: Option<ResourceId>,
+    pub original: Option<AssetPathId>,
 }
 
 impl CompilableResource for Instance {
@@ -191,8 +198,9 @@ impl ResourceProcessor for InstanceProcessor {
         Box::new(Instance { original: None })
     }
 
-    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
-        Vec::new()
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+        let instance = resource.downcast_ref::<Instance>().unwrap();
+        instance.original.iter().cloned().collect()
     }
 
     fn write_resource(
@@ -209,8 +217,14 @@ impl ResourceProcessor for InstanceProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Resource>> {
-        let resource: Instance = serde_json::from_reader(reader).unwrap();
-        Ok(Box::new(resource))
+        let result: Result<Instance, serde_json::Error> = serde_json::from_reader(reader);
+        match result {
+            Ok(resource) => Ok(Box::new(resource)),
+            Err(json_err) => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                json_err.to_string(),
+            )),
+        }
     }
 }
 
@@ -256,8 +270,14 @@ impl ResourceProcessor for MaterialProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Resource>> {
-        let resource: Material = serde_json::from_reader(reader).unwrap();
-        Ok(Box::new(resource))
+        let result: Result<Material, serde_json::Error> = serde_json::from_reader(reader);
+        match result {
+            Ok(resource) => Ok(Box::new(resource)),
+            Err(json_err) => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                json_err.to_string(),
+            )),
+        }
     }
 }
 
@@ -312,8 +332,14 @@ impl ResourceProcessor for MeshProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Resource>> {
-        let resource: Mesh = serde_json::from_reader(reader).unwrap();
-        Ok(Box::new(resource))
+        let result: Result<Mesh, serde_json::Error> = serde_json::from_reader(reader);
+        match result {
+            Ok(resource) => Ok(Box::new(resource)),
+            Err(json_err) => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                json_err.to_string(),
+            )),
+        }
     }
 }
 

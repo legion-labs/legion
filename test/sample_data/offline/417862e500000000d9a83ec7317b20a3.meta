@@ -1,5 +1,7 @@
 {
   "name": "/world/sample_1/cube_3.ent.ins",
-  "dependencies": [],
-  "content_checksum": 18153758853152338788
+  "dependencies": [
+    "0x5004cd1c00000000d42200e0cf45c438"
+  ],
+  "content_checksum": 10292113302340191949
 }

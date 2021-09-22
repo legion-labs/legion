@@ -17,7 +17,11 @@ fn compile_path_id(path: &Option<AssetPathId>) -> Option<AssetId> {
 
 impl FromOffline<offline_data::Entity> for runtime_data::Entity {
     fn from_offline(offline: &offline_data::Entity) -> Self {
-        let children: Vec<AssetId> = Vec::new();
+        let children = offline
+            .children
+            .iter()
+            .filter_map(|child_path| AssetId::try_from(child_path.content_id()).ok())
+            .collect();
         let mut components: Vec<Box<dyn runtime_data::Component>> = Vec::new();
         for component in &offline.components {
             if let Some(transform) = component.downcast_ref::<offline_data::Transform>() {
@@ -39,7 +43,7 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
         Self {
             name: offline.name.clone(),
             children,
-            parent: None,
+            parent: compile_path_id(&offline.parent),
             components,
         }
     }
@@ -149,8 +153,10 @@ impl FromOffline<offline_data::Physics> for runtime_data::Physics {
 // ----- Instance conversions -----
 
 impl FromOffline<offline_data::Instance> for runtime_data::Instance {
-    fn from_offline(_offline: &offline_data::Instance) -> Self {
-        Self { original: None }
+    fn from_offline(offline: &offline_data::Instance) -> Self {
+        Self {
+            original: compile_path_id(&offline.original),
+        }
     }
 }
 

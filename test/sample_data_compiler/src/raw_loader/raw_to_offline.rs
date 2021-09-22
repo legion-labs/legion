@@ -32,13 +32,13 @@ fn lookup_asset_path(
 
 impl FromRaw<raw_data::Entity> for offline_data::Entity {
     fn from_raw(raw: raw_data::Entity, references: &HashMap<ResourcePathName, ResourceId>) -> Self {
-        let children: Vec<ResourceId> = raw
+        let children: Vec<AssetPathId> = raw
             .children
             .iter()
-            .flat_map(|path| lookup_reference(references, path))
+            .flat_map(|path| lookup_asset_path(references, path))
             .collect();
         let parent = match raw.parent {
-            Some(parent) => lookup_reference(references, &parent),
+            Some(parent) => lookup_asset_path(references, &parent),
             None => None,
         };
         let mut components: Vec<Box<dyn offline_data::Component>> = Vec::new();
@@ -185,7 +185,7 @@ impl FromRaw<raw_data::Instance> for offline_data::Instance {
         references: &HashMap<ResourcePathName, ResourceId>,
     ) -> Self {
         Self {
-            original: lookup_reference(references, &raw.original),
+            original: lookup_asset_path(references, &raw.original),
         }
     }
 }
