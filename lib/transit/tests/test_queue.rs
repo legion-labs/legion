@@ -1,7 +1,7 @@
 use transit::*;
 
 #[derive(Debug)]
-struct MyTestEvent {
+pub struct MyTestEvent {
     some_64: u64,
     some_32: u32,
 }
@@ -9,14 +9,14 @@ struct MyTestEvent {
 impl Serialize for MyTestEvent {}
 
 #[derive(Debug)]
-struct OtherEvent {
+pub struct OtherEvent {
     some_64: u64,
 }
 
 impl Serialize for OtherEvent {}
 
 #[derive(Debug)]
-struct DynString(String);
+pub struct DynString(String);
 
 impl Serialize for DynString {
     fn is_size_static() -> bool {
