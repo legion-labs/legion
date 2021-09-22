@@ -36,7 +36,7 @@ impl Editor for Server {
         &self,
         request: Request<InitializeStreamRequest>,
     ) -> Result<Response<InitializeStreamResponse>, Status> {
-        let webrtc_server = self.webrtc_server.lock().await;
+        let mut webrtc_server = self.webrtc_server.lock().await;
         let rtc_session_description = webrtc_server
             .initialize_stream(request.into_inner().rtc_session_description)
             .await;

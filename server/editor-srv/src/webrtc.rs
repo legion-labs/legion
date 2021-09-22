@@ -1,7 +1,10 @@
-use std::{sync::Arc, time::Duration};
+use std::{borrow::Borrow, sync::Arc, time::Duration};
 
+use anyhow::bail;
 use interceptor::registry::Registry;
+use mp4::Mp4Reader;
 
+use std::{fs::File, io::BufReader};
 use webrtc::{
     api::{
         interceptor_registry::register_default_interceptors, media_engine::MediaEngine, APIBuilder,
@@ -15,11 +18,11 @@ use webrtc::{
         peer_connection_state::RTCPeerConnectionState,
         sdp::session_description::{RTCSessionDescription, RTCSessionDescriptionSerde},
     },
-    util::math_rand_alpha,
 };
 
 pub struct WebRTCServer {
     api: API,
+    peer_connections: Vec<RTCPeerConnection>,
 }
 
 impl WebRTCServer {
@@ -45,10 +48,13 @@ impl WebRTCServer {
             .with_interceptor_registry(registry)
             .build();
 
-        Ok(WebRTCServer { api })
+        Ok(WebRTCServer {
+            api,
+            peer_connections: vec![],
+        })
     }
 
-    pub async fn new_peer_connection(&self) -> Result<RTCPeerConnection, anyhow::Error> {
+    pub async fn new_peer_connection(&mut self) -> Result<&mut RTCPeerConnection, anyhow::Error> {
         // Prepare the configuration
         let config = RTCConfiguration {
             ice_servers: vec![RTCIceServer {
@@ -69,15 +75,7 @@ impl WebRTCServer {
         // This will notify you when the peer has connected/disconnected
         peer_connection
             .on_peer_connection_state_change(Box::new(|s: RTCPeerConnectionState| {
-                println!("Peer Connection State has changed: {}", s);
-
-                if s == RTCPeerConnectionState::Failed {
-                    // Wait until PeerConnection has had no network activity for 30 seconds or another failure. It may be reconnected using an ICE Restart.
-                    // Use webrtc.PeerConnectionStateDisconnected if you are interested in detecting faster timeout.
-                    // Note that the PeerConnection may come back from PeerConnectionStateDisconnected.
-                    println!("Peer Connection has gone to failed exiting");
-                    std::process::exit(0);
-                }
+                println!("Peer connection state has changed: {}", s);
 
                 Box::pin(async {})
             }))
@@ -85,56 +83,160 @@ impl WebRTCServer {
 
         // Register data channel creation handling
         peer_connection
-        .on_data_channel(Box::new(move |d: Arc<RTCDataChannel>| {
-            let d_label = d.label().to_owned();
-            let d_id = d.id();
-            println!("New DataChannel {} {}", d_label, d_id);
+            .on_data_channel(Box::new(
+                move |data_channel: Arc<RTCDataChannel>| match data_channel.label() {
+                    "control" => Box::pin(async move {
+                        Self::handle_control_data_channel(data_channel)
+                            .await
+                            .unwrap()
+                    }),
+                    "video" => Box::pin(async move {
+                        Self::handle_video_data_channel(data_channel).await.unwrap()
+                    }),
+                    _ => Box::pin(
+                        async move { Self::ignore_data_channel(data_channel).await.unwrap() },
+                    ),
+                },
+            ))
+            .await;
 
-            // Register channel opening handling
-            Box::pin(async move {
-                let d2 = Arc::clone(&d);
-                let d_label2 = d_label.clone();
-                let d_id2 = d_id;
-                d.on_open(Box::new(move || {
-                    println!("Data channel '{}'-'{}' open. Random messages will now be sent to any connected DataChannels every 5 seconds", d_label2, d_id2);
+        self.peer_connections.push(peer_connection);
 
-                    Box::pin(async move {
-                        let mut result = Ok(0);
-                        while result.is_ok() {
-                            let timeout = tokio::time::sleep(Duration::from_secs(5));
-                            tokio::pin!(timeout);
+        Ok(self.peer_connections.last_mut().unwrap())
+    }
 
-                            tokio::select! {
-                                _ = timeout.as_mut() =>{
-                                    let message = math_rand_alpha(15);
-                                    println!("Sending '{}'", message);
-                                    result = d2.send_text(message).await;
-                                }
-                            };
+    async fn ignore_data_channel(data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
+        println!(
+            "Ignoring unknown data channel type `{}`.",
+            data_channel.label()
+        );
+
+        data_channel.close().await
+    }
+
+    async fn handle_control_data_channel(_data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn get_video_track(
+        mp4: &Mp4Reader<BufReader<File>>,
+    ) -> anyhow::Result<(u32, u32, f64, u16, u16)> {
+        for (track_id, track) in mp4.tracks().iter() {
+            if let Ok(track_type) = track.track_type() {
+                if track_type == mp4::TrackType::Video {
+                    return Ok((
+                        *track_id,
+                        track.sample_count(),
+                        track.frame_rate(),
+                        track.width(),
+                        track.height(),
+                    ));
+                }
+            }
+        }
+
+        bail!("no video track found")
+    }
+
+    async fn handle_video_data_channel(data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
+        // Sample code to stream a video.
+        let f = File::open("assets/video.mp4").unwrap();
+        let size = f.metadata()?.len();
+        let reader = BufReader::new(f);
+        let mut mp4 = mp4::Mp4Reader::read_header(reader, size)?;
+
+        // Select the first video track we found.
+        let (track_id, sample_count, frame_rate, width, height) = Self::get_video_track(&mp4)?;
+
+        let on_close_name = data_channel.name();
+
+        data_channel
+            .on_close(Box::new(move || {
+                println!("Video data channel {} closed.", on_close_name);
+
+                Box::pin(async {})
+            }))
+            .await;
+
+        let on_open_data_channel = Arc::clone(&data_channel);
+
+        data_channel
+            .on_open(Box::new(move || {
+                println!("Video data channel opened.");
+
+                let data_channel = on_open_data_channel;
+
+                Box::pin(async move {
+                    println!(
+                        "Now streaming {} x {} mp4 video at {} fps.",
+                        width, height, frame_rate
+                    );
+
+                    //let encoder = x264::Encoder::builder()
+                    //    .fps(frame_rate, 1)
+                    //    .build(x264::Colorspace::RGB, width, height)
+                    //    .unwrap();
+
+                    //data_channel
+                    //    .send(encoder.headers().unwrap().entirety())
+                    //    .await
+                    //    .unwrap();
+
+                    for sample_id in 1..sample_count + 1 {
+                        let sample = mp4.read_sample(track_id, sample_id).unwrap().unwrap();
+
+                        println!("{}/{}: {}", sample_id, sample_count, sample);
+
+                        let b = bytes::Bytes::copy_from_slice(sample.bytes.borrow());
+                        if data_channel.send(&b).await.is_err() {
+                            println!("Failed to send sample {}: streaming will stop.", sample_id)
                         }
-                    })
-                })).await;
 
-                // Register text message handling
-                d.on_message(Box::new(move |msg: DataChannelMessage| {
-                    let msg_str = String::from_utf8(msg.data.to_vec()).unwrap();
-                    println!("Message from DataChannel '{}': '{}'", d_label, msg_str);
-                    Box::pin(async {})
-                })).await;
-            })
-        }))
-        .await;
+                        // Wait the right time before the next frame.
+                        let timeout = tokio::time::sleep(Duration::from_millis(
+                            ((sample.duration * 1000) as f64 / frame_rate).round() as u64,
+                        ));
+                        tokio::pin!(timeout);
 
-        Ok(peer_connection)
+                        tokio::select! {
+                            _ = timeout.as_mut() =>{
+                            }
+                        };
+                    }
+
+                    println!("Sending loop exited.")
+                })
+            }))
+            .await;
+
+        let on_message_name = data_channel.name();
+
+        // Register text message handling
+        data_channel
+            .on_message(Box::new(move |msg: DataChannelMessage| {
+                let msg_str = String::from_utf8(msg.data.to_vec()).unwrap();
+                println!("{}: {}", on_message_name, msg_str);
+
+                Box::pin(async {})
+            }))
+            .await;
+
+        Ok(())
     }
 
     pub async fn initialize_stream(
-        &self,
+        &mut self,
         remote_rtc_session_description: Vec<u8>,
     ) -> Result<Vec<u8>, anyhow::Error> {
         let mut offer = RTCSessionDescription::default();
         offer.serde =
             serde_json::from_slice::<RTCSessionDescriptionSerde>(&remote_rtc_session_description)?;
+
+        // Clear out old connections as we only allow one active connection to the current instance right now.
+        for old_peer_connection in self.peer_connections.iter() {
+            let _ = old_peer_connection.close().await;
+        }
+        self.peer_connections.clear();
 
         let peer_connection = self.new_peer_connection().await?;
 
@@ -159,5 +261,15 @@ impl WebRTCServer {
         let rtc_session_description = peer_connection.local_description().await.unwrap();
 
         Ok(serde_json::to_vec(&rtc_session_description.serde)?)
+    }
+}
+
+trait RTCDataChannelID {
+    fn name(&self) -> String;
+}
+
+impl RTCDataChannelID for webrtc::data::data_channel::RTCDataChannel {
+    fn name(&self) -> String {
+        format!("{}-{}", self.label(), self.id())
     }
 }
