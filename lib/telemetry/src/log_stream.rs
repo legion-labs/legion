@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use transit::*;
 
 #[derive(Debug, Clone)]
 pub enum LogLevel {
@@ -7,19 +8,25 @@ pub enum LogLevel {
     Error,
 }
 
+#[derive(Debug)]
 pub struct LogMsgEvent {
     pub level: LogLevel,
     pub msg: &'static str,
 }
 
+impl Serialize for LogMsgEvent {}
+
+declare_queue_struct!(
+    struct LogMsgQueue<LogMsgEvent> {}
+);
+
 pub struct LogMsgBlock {
-    pub events: Vec<LogMsgEvent>,
+    pub events: LogMsgQueue,
 }
 
 impl LogMsgBlock {
     pub fn new(buffer_size: usize) -> Self {
-        let mut events = Vec::new();
-        events.reserve(buffer_size);
+        let events = LogMsgQueue::new(buffer_size);
         Self { events }
     }
 }
@@ -44,15 +51,15 @@ impl LogStream {
     }
 
     pub fn push(&mut self, event: LogMsgEvent) {
-        self.get_events_mut().push(event);
+        self.get_events_mut().push_log_msg_event(event);
     }
 
     pub fn is_full(&self) -> bool {
         let max_object_size = 1;
-        self.current_block.events.len() + max_object_size > self.initial_size
+        self.current_block.events.len_bytes() + max_object_size > self.initial_size
     }
 
-    fn get_events_mut(&mut self) -> &mut Vec<LogMsgEvent> {
+    fn get_events_mut(&mut self) -> &mut LogMsgQueue {
         //get_mut_unchecked should be faster
         &mut Arc::get_mut(&mut self.current_block).unwrap().events
     }

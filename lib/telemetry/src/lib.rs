@@ -87,3 +87,5 @@ pub use dispatch::*;
 pub use event_block_sink::*;
 pub use log_stream::*;
 pub use thread_stream::*;
+
+pub use transit::IterableQueue;

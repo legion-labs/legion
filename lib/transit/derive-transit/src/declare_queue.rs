@@ -95,11 +95,11 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
 
         #[derive(Debug)]
-        enum #any_ident{
+        pub enum #any_ident{
             #(#type_args(#type_args),)*
         }
 
-        struct #struct_identifier {
+        pub struct #struct_identifier {
             buffer: Vec<u8>,
         }
 

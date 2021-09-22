@@ -7,7 +7,7 @@ struct DebugEventSink {}
 
 impl EventBlockSink for DebugEventSink {
     fn on_log_buffer_full(&self, log_block: &LogMsgBlock) {
-        println!("log buffer full: {} events", log_block.events.len());
+        println!("log buffer full: {} bytes", log_block.events.len_bytes());
         // for evt in &log_stream.events {
         //     println!("{:?} {}", evt.level, evt.msg);
         // }
@@ -71,7 +71,7 @@ fn test_log_thread() {
 #[test]
 fn test_log() {
     let sink: Arc<dyn EventBlockSink> = Arc::new(DebugEventSink {});
-    init_event_dispatch(1024, 1024, sink).unwrap();
+    init_event_dispatch(1024 * 10, 1024, sink).unwrap();
     test_log_str();
     test_log_thread();
 }
