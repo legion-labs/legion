@@ -172,16 +172,6 @@ impl WebRTCServer {
                         width, height, frame_rate
                     );
 
-                    //let encoder = x264::Encoder::builder()
-                    //    .fps(frame_rate, 1)
-                    //    .build(x264::Colorspace::RGB, width, height)
-                    //    .unwrap();
-
-                    //data_channel
-                    //    .send(encoder.headers().unwrap().entirety())
-                    //    .await
-                    //    .unwrap();
-
                     for sample_id in 1..sample_count + 1 {
                         let sample = mp4.read_sample(track_id, sample_id).unwrap().unwrap();
 
