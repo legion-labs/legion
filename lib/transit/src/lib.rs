@@ -77,10 +77,12 @@
 // crate-specific exceptions:
 #![allow()]
 
+pub mod dyn_string;
 pub mod iter;
 pub mod reflect;
 pub mod serialize;
 
+pub use dyn_string::*;
 pub use iter::*;
 pub use reflect::*;
 pub use serialize::*;

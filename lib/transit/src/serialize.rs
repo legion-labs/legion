@@ -17,20 +17,23 @@ pub trait Serialize {
         true
     }
 
-    fn get_value_size(_value: &Self) -> Option<u32> {
+    fn get_value_size(&self) -> Option<u32>
+    where
+        Self: Sized,
+    {
         // for POD serialization we don't write the size of each instance
         // the metadata will contain this size
         None
     }
 
-    fn write_value(buffer: &mut Vec<u8>, value: &Self)
+    fn write_value(&self, buffer: &mut Vec<u8>)
     where
         Self: Sized,
     {
         assert!(Self::is_size_static());
         #[allow(clippy::needless_borrow)]
         //clippy complains here but we don't want to move or copy the value
-        write_pod::<Self>(buffer, &value);
+        write_pod::<Self>(buffer, &self);
     }
 
     fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self

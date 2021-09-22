@@ -15,7 +15,7 @@ fn gen_push_methods(type_args: &[syn::Ident]) -> Vec<quote::__private::TokenStre
                     self.buffer.push(#index);
                     let buffer_size_before = self.buffer.len();
                     if <#value_type_id as transit::Serialize>::is_size_static(){
-                        <#value_type_id as transit::Serialize>::write_value( &mut self.buffer, &value );
+                        value.write_value( &mut self.buffer );
                         assert!( self.buffer.len() == buffer_size_before + std::mem::size_of::<#value_type_id>());
                     }
                     else{
@@ -23,7 +23,7 @@ fn gen_push_methods(type_args: &[syn::Ident]) -> Vec<quote::__private::TokenStre
                         // this will allow unparsable objects to be skipped by the reader
                         let value_size = <#value_type_id as transit::Serialize>::get_value_size( &value ).unwrap();
                         transit::write_pod( &mut self.buffer, &value_size );
-                        <#value_type_id as transit::Serialize>::write_value( &mut self.buffer, &value );
+                        value.write_value( &mut self.buffer );
                         assert!( self.buffer.len() == buffer_size_before + std::mem::size_of::<u32>() + value_size as usize);
                     }
                 }

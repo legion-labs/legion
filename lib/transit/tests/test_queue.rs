@@ -15,30 +15,6 @@ pub struct OtherEvent {
 
 impl Serialize for OtherEvent {}
 
-#[derive(Debug)]
-pub struct DynString(String);
-
-impl Serialize for DynString {
-    fn is_size_static() -> bool {
-        false
-    }
-
-    fn get_value_size(value: &Self) -> Option<u32> {
-        Some(value.0.len() as u32)
-    }
-
-    #[allow(unsafe_code)]
-    fn write_value(buffer: &mut Vec<u8>, value: &DynString) {
-        buffer.extend_from_slice(value.0.as_bytes());
-    }
-
-    fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
-        let buffer_size = value_size.unwrap();
-        let slice = std::ptr::slice_from_raw_parts(ptr, buffer_size as usize);
-        unsafe { DynString(String::from_utf8((*slice).to_vec()).unwrap()) }
-    }
-}
-
 declare_queue_struct!(
     struct MyQueue<MyTestEvent, OtherEvent, DynString> {}
 );
