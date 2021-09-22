@@ -116,7 +116,6 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
 
         impl transit::IterableQueue for #struct_identifier {
             type Item = #any_ident;
-            type Container = Self;
 
             fn len_bytes(&self) -> usize{
                 self.buffer.len()

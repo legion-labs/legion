@@ -59,8 +59,4 @@ fn test_queue() {
     } else {
         panic!("wrong enum type");
     }
-
-    for x in q.iter() {
-        dbg!(x);
-    }
 }

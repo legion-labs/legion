@@ -1,7 +1,8 @@
 pub trait IterableQueue {
     type Item;
-    type Container;
-    fn iter(&self) -> QueueIterator<'_, Self::Container, Self::Item>;
+    fn iter(&self) -> QueueIterator<'_, Self, Self::Item>
+    where
+        Self: Sized;
     fn len_bytes(&self) -> usize;
     fn read_value_at_offset(&self, offset: usize) -> (Self::Item, usize);
 }

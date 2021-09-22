@@ -80,11 +80,13 @@
 pub mod dyn_string;
 pub mod iter;
 pub mod reflect;
+pub mod reflective_queue;
 pub mod serialize;
 
 pub use dyn_string::*;
 pub use iter::*;
 pub use reflect::*;
+pub use reflective_queue::*;
 pub use serialize::*;
 
 #[allow(unused_imports)]
