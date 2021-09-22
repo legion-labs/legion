@@ -13,26 +13,30 @@ pub fn read_pod<T>(ptr: *const u8) -> T {
 }
 
 pub trait Serialize {
-    type Value;
-
     fn is_size_static() -> bool {
         true
     }
 
-    fn get_value_size(_value: &Self::Value) -> Option<u32> {
+    fn get_value_size(_value: &Self) -> Option<u32> {
         // for POD serialization we don't write the size of each instance
         // the metadata will contain this size
         None
     }
 
-    fn write_value(buffer: &mut Vec<u8>, value: &Self::Value) {
+    fn write_value(buffer: &mut Vec<u8>, value: &Self)
+    where
+        Self: Sized,
+    {
         assert!(Self::is_size_static());
         #[allow(clippy::needless_borrow)]
         //clippy complains here but we don't want to move or copy the value
-        write_pod::<Self::Value>(buffer, &value);
+        write_pod::<Self>(buffer, &value);
     }
 
-    fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self::Value {
-        read_pod::<Self::Value>(ptr)
+    fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self
+    where
+        Self: Sized,
+    {
+        read_pod::<Self>(ptr)
     }
 }

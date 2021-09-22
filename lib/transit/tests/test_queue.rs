@@ -6,30 +6,24 @@ struct MyTestEvent {
     some_32: u32,
 }
 
-impl Serialize for MyTestEvent {
-    type Value = MyTestEvent;
-}
+impl Serialize for MyTestEvent {}
 
 #[derive(Debug)]
 struct OtherEvent {
     some_64: u64,
 }
 
-impl Serialize for OtherEvent {
-    type Value = OtherEvent;
-}
+impl Serialize for OtherEvent {}
 
 #[derive(Debug)]
 struct DynString(String);
 
 impl Serialize for DynString {
-    type Value = DynString;
-
     fn is_size_static() -> bool {
         false
     }
 
-    fn get_value_size(value: &Self::Value) -> Option<u32> {
+    fn get_value_size(value: &Self) -> Option<u32> {
         Some(value.0.len() as u32)
     }
 
@@ -38,7 +32,7 @@ impl Serialize for DynString {
         buffer.extend_from_slice(value.0.as_bytes());
     }
 
-    fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self::Value {
+    fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
         let buffer_size = value_size.unwrap();
         let slice = std::ptr::slice_from_raw_parts(ptr, buffer_size as usize);
         unsafe { DynString(String::from_utf8((*slice).to_vec()).unwrap()) }
