@@ -8,6 +8,7 @@
 
 <script>
 import { invoke } from "@tauri-apps/api/tauri";
+import { VideoPlayer } from "@/video";
 
 export default {
   name: "HelloWorld",
@@ -15,19 +16,15 @@ export default {
     msg: String,
   },
   mounted() {
-    var videoElement = document.getElementById("view");
-    var logsElement = document.getElementById("logs");
+    const videoElement = document.getElementById("view");
+    const videoPlayer = new VideoPlayer(videoElement, () => {});
+    const logsElement = document.getElementById("logs");
 
     videoElement.onclick = function () {
       console.log("Initializing WebRTC...");
 
       const pc = new RTCPeerConnection({
-        urls: [
-          //{ url: "stun:stun.l.google.com:19302" },
-          //{ url: "stun:stun1.l.google.com:19302" },
-          //{ url: "stun:stun2.l.google.com:19302" },
-          //{ url: "stun:stun3.l.google.com:19302" },
-        ],
+        urls: [{ url: "stun:stun.l.google.com:19302" }],
       });
 
       pc.onnegotiationneeded = async () => {
@@ -52,18 +49,22 @@ export default {
         }
       };
 
-      const dc = pc.createDataChannel("foo");
+      const video_channel = pc.createDataChannel("video");
 
-      dc.onopen = async () => {
-        logsElement.append(document.createTextNode("Data channel opened.\n"));
+      video_channel.onopen = async () => {
+        logsElement.append(
+          document.createTextNode("Opened video data channel.\n")
+        );
       };
 
-      dc.onclose = async () => {
-        logsElement.append(document.createTextNode("Data channel closed.\n"));
+      video_channel.onclose = async () => {
+        logsElement.append(
+          document.createTextNode("Closed video data channel.\n")
+        );
       };
 
-      dc.onmessage = async (msg) => {
-        logsElement.append(document.createTextNode(msg.data + "\n"));
+      video_channel.onmessage = async (msg) => {
+        videoPlayer.push(msg.data);
       };
     };
   },
