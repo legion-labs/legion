@@ -9,7 +9,9 @@
     },
     {
       "id": "0x4e1dd44100000000c8458bbdf0a12ce2",
-      "dependencies": [],
+      "dependencies": [
+        "0x2b368fed00000000779bb4f05b3c9fc5"
+      ],
       "resource_hash": 3405356258756011879
     },
     {
@@ -164,6 +166,14 @@
       "compile_path": "0x4e1dd44100000000c8458bbdf0a12ce2|3928297704",
       "context_hash": 13479133547479146834,
       "source_hash": 482273047596469206,
+      "compiled_path": "0x4e1dd44100000000c8458bbdf0a12ce2|3928297704",
+      "compiled_checksum": 2161035682036290076,
+      "compiled_size": 881
+    },
+    {
+      "compile_path": "0x4e1dd44100000000c8458bbdf0a12ce2|3928297704",
+      "context_hash": 13479133547479146834,
+      "source_hash": 12750351602548087584,
       "compiled_path": "0x4e1dd44100000000c8458bbdf0a12ce2|3928297704",
       "compiled_checksum": 2161035682036290076,
       "compiled_size": 881

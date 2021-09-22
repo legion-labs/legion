@@ -37,10 +37,7 @@ impl ResourceProcessor for EntityProcessor {
         Box::new(Entity::default())
     }
 
-    fn extract_build_dependencies(
-        &mut self,
-        _resource: &dyn Resource,
-    ) -> Vec<legion_data_offline::asset::AssetPathId> {
+    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
         Vec::new()
     }
 
@@ -194,10 +191,7 @@ impl ResourceProcessor for InstanceProcessor {
         Box::new(Instance { original: None })
     }
 
-    fn extract_build_dependencies(
-        &mut self,
-        _resource: &dyn Resource,
-    ) -> Vec<legion_data_offline::asset::AssetPathId> {
+    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
         Vec::new()
     }
 
@@ -243,10 +237,7 @@ impl ResourceProcessor for MaterialProcessor {
         Box::new(Material::default())
     }
 
-    fn extract_build_dependencies(
-        &mut self,
-        _resource: &dyn Resource,
-    ) -> Vec<legion_data_offline::asset::AssetPathId> {
+    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
         // let material = resource.downcast_ref::<Material>().unwrap();
         Vec::new()
     }
@@ -294,12 +285,17 @@ impl ResourceProcessor for MeshProcessor {
         })
     }
 
-    fn extract_build_dependencies(
-        &mut self,
-        _resource: &dyn Resource,
-    ) -> Vec<legion_data_offline::asset::AssetPathId> {
-        // let mesh = resource.downcast_ref::<Mesh>().unwrap();
-        Vec::new()
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+        let mesh = resource.downcast_ref::<Mesh>().unwrap();
+        let mut material_refs: Vec<AssetPathId> = mesh
+            .sub_meshes
+            .iter()
+            .filter_map(|sub_mesh| sub_mesh.material.as_ref())
+            .cloned()
+            .collect();
+        material_refs.sort();
+        material_refs.dedup();
+        material_refs
     }
 
     fn write_resource(
