@@ -95,7 +95,7 @@ impl FromStr for AssetId {
 }
 
 /// Types implementing `Asset` represent non-mutable runtime data.
-pub trait Asset: Any + Send + Sync {}
+pub trait Asset: Send + Sync + 'static {}
 
 /// Note: Based on impl of dyn Any
 impl dyn Asset + Send + Sync {

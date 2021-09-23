@@ -68,7 +68,7 @@ impl ResourceProcessor for EntityProcessor {
 }
 
 #[typetag::serde]
-pub trait Component: Any {}
+pub trait Component: 'static {}
 
 /// Note: Based on impl of dyn Any
 impl dyn Component {

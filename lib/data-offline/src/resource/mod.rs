@@ -7,7 +7,7 @@
 pub use legion_data_offline_macros::Resource;
 
 /// Types implementing `Resource` represent editor data.
-pub trait Resource: Any {}
+pub trait Resource: 'static {}
 
 /// Note: Based on impl of dyn Any
 impl dyn Resource {
