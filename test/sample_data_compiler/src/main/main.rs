@@ -103,4 +103,3 @@ fn main() {
     // compile offline resources to runtime assets
     offline_compiler::build(root_folder);
 }
- 
