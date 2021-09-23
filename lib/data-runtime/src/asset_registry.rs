@@ -106,29 +106,22 @@ impl AssetRegistry {
         Handle::<T>::from(handle)
     }
 
-    // (Internal) Retrieves a reference to an untyped asset
-    fn get_from_handle_id(&self, handle_id: HandleId) -> Option<&Arc<dyn Asset + Send + Sync>> {
+    /// Retrieves a reference to an asset, None if asset is not loaded.
+    pub(crate) fn get<T: Asset>(&self, handle_id: HandleId) -> Option<&T> {
         if let Some((asset_id, _)) = self.ref_counts.get(&handle_id) {
             if let Some(asset) = self.assets.get(asset_id) {
-                return Some(asset);
+                return asset.downcast_ref::<T>();
             }
         }
         None
     }
 
-    /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub fn get_untyped(&self, handle: &HandleUntyped) -> Option<&Arc<dyn Asset + Send + Sync>> {
-        self.get_from_handle_id(handle.id)
-    }
-
-    /// Same as [`Self::get_untyped`] but the handle is generic over `T` for convenience.
-    ///
-    /// [`Handle::get`] should be preferred over calling this function directly.
-    pub fn get<T: Asset>(&self, handle: &Handle<T>) -> Option<&T> {
-        if let Some(asset) = self.get_from_handle_id(handle.id) {
-            return asset.downcast_ref::<T>();
+    /// Tests if an asset is loaded.
+    pub(crate) fn is_loaded(&self, handle_id: HandleId) -> bool {
+        if let Some((asset_id, _)) = self.ref_counts.get(&handle_id) {
+            return self.assets.get(asset_id).is_some();
         }
-        None
+        false
     }
 
     /// Unloads assets based on their reference counts.
