@@ -17,10 +17,7 @@ pub trait Serialize {
         true
     }
 
-    fn get_value_size(&self) -> Option<u32>
-    where
-        Self: Sized,
-    {
+    fn get_value_size(&self) -> Option<u32> {
         // for POD serialization we don't write the size of each instance
         // the metadata will contain this size
         None
