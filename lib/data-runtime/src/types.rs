@@ -95,10 +95,10 @@ impl FromStr for AssetId {
 }
 
 /// Types implementing `Asset` represent non-mutable runtime data.
-pub trait Asset: Any + Send {}
+pub trait Asset: Any + Send + Sync {}
 
 /// Note: Based on impl of dyn Any
-impl dyn Asset {
+impl dyn Asset + Send + Sync {
     /// Returns `true` if the boxed type is the same as `T`.
     /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
     #[inline]
@@ -128,32 +128,6 @@ impl dyn Asset {
         } else {
             None
         }
-    }
-}
-
-/// Note: Based on impl of dyn Any
-impl dyn Asset + Send + Sync {
-    /// Returns `true` if the boxed type is the same as `T`.
-    /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
-    #[inline]
-    pub fn is<T: Asset>(&self) -> bool {
-        <dyn Asset>::is::<T>(self)
-    }
-
-    /// Returns some reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    /// (See [`std::any::Any::downcast_ref`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref))
-    #[inline]
-    pub fn downcast_ref<T: Asset>(&self) -> Option<&T> {
-        <dyn Asset>::downcast_ref::<T>(self)
-    }
-
-    /// Returns some mutable reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    /// (See [`std::any::Any::downcast_mut`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut))
-    #[inline]
-    pub fn downcast_mut<T: Asset>(&mut self) -> Option<&mut T> {
-        <dyn Asset>::downcast_mut::<T>(self)
     }
 }
 

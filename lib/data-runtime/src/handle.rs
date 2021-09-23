@@ -44,7 +44,10 @@ impl HandleUntyped {
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a>(&'_ self, registry: &'a AssetRegistry) -> Option<&'a Arc<dyn Asset>> {
+    pub fn get<'a>(
+        &'_ self,
+        registry: &'a AssetRegistry,
+    ) -> Option<&'a Arc<dyn Asset + Send + Sync>> {
         registry.get_untyped(self)
     }
 

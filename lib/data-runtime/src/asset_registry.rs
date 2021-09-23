@@ -76,7 +76,7 @@ pub struct AssetRegistry {
         crossbeam_channel::Receiver<RefOp>,
     ),
     ref_counts: HashMap<HandleId, (AssetId, isize)>,
-    assets: HashMap<AssetId, Arc<dyn Asset>>,
+    assets: HashMap<AssetId, Arc<dyn Asset + Send + Sync>>,
     load_errors: HashMap<AssetId, io::ErrorKind>,
     load_thread: Option<JoinHandle<()>>,
     loader: AssetLoaderStub,
@@ -107,7 +107,7 @@ impl AssetRegistry {
     }
 
     // (Internal) Retrieves a reference to an untyped asset
-    fn get_from_handle_id(&self, handle_id: HandleId) -> Option<&Arc<dyn Asset>> {
+    fn get_from_handle_id(&self, handle_id: HandleId) -> Option<&Arc<dyn Asset + Send + Sync>> {
         if let Some((asset_id, _)) = self.ref_counts.get(&handle_id) {
             if let Some(asset) = self.assets.get(asset_id) {
                 return Some(asset);
@@ -117,7 +117,7 @@ impl AssetRegistry {
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub fn get_untyped(&self, handle: &HandleUntyped) -> Option<&Arc<dyn Asset>> {
+    pub fn get_untyped(&self, handle: &HandleUntyped) -> Option<&Arc<dyn Asset + Send + Sync>> {
         self.get_from_handle_id(handle.id)
     }
 
