@@ -1,35 +1,6 @@
-use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use quote::*;
 use syn::*;
-
-fn gen_push_methods(type_args: &[syn::Ident]) -> Vec<quote::__private::TokenStream> {
-    let mut value_tupe_counter: u8 = 0;
-    type_args.iter().map(|value_type_id| {
-            let index = value_tupe_counter;
-            value_tupe_counter += 1;
-            let snake_type = value_type_id.to_string().to_case(Case::Snake);
-            let push_id = format_ident!("push_{}", snake_type);
-            quote! {
-                pub fn #push_id( &mut self, value: #value_type_id ){
-                    self.buffer.push(#index);
-                    let buffer_size_before = self.buffer.len();
-                    if <#value_type_id as transit::Serialize>::is_size_static(){
-                        value.write_value( &mut self.buffer );
-                        assert!( self.buffer.len() == buffer_size_before + std::mem::size_of::<#value_type_id>());
-                    }
-                    else{
-                        // we force the dynamically sized object to first serialize their size as unsigned 32 bits
-                        // this will allow unparsable objects to be skipped by the reader
-                        let value_size = <#value_type_id as transit::Serialize>::get_value_size( &value ).unwrap();
-                        transit::write_pod( &mut self.buffer, &value_size );
-                        value.write_value( &mut self.buffer );
-                        assert!( self.buffer.len() == buffer_size_before + std::mem::size_of::<u32>() + value_size as usize);
-                    }
-                }
-            }
-    }).collect()
-}
 
 fn gen_read_method(
     type_args: &[syn::Ident],
@@ -73,6 +44,26 @@ fn gen_read_method(
     }
 }
 
+fn gen_type_index_impls(
+    type_args: &[syn::Ident],
+    type_index_ident: &syn::Ident,
+) -> quote::__private::TokenStream {
+    let mut value_tupe_counter: u8 = 0;
+    let type_index_impls = type_args.iter().map(|value_type_id| {
+        let index = value_tupe_counter;
+        value_tupe_counter += 1;
+        quote! {
+            impl #type_index_ident for #value_type_id {
+                const TYPE_INDEX: u8 = #index;
+            }
+        }
+    });
+
+    quote! {
+        #(#type_index_impls)*
+    }
+}
+
 pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
     let ast = parse::<DeriveInput>(input).unwrap();
     let struct_identifier = ast.ident.clone();
@@ -88,8 +79,9 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
         })
         .collect();
 
-    let push_methods = gen_push_methods(&type_args);
     let any_ident = format_ident!("{}Any", struct_identifier);
+    let type_index_ident = format_ident!("{}TypeIndex", struct_identifier);
+    let type_index_impls = gen_type_index_impls(&type_args, &type_index_ident);
     let read_method = gen_read_method(&type_args, &any_ident);
 
     TokenStream::from(quote! {
@@ -105,14 +97,39 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
 
         impl #struct_identifier {
             pub fn new(buffer_size: usize) -> Self {
-                let mut buffer: Vec<u8> = Vec::new();
-                buffer.reserve(buffer_size);
-                Self { buffer }
+                Self { buffer: Vec::with_capacity(buffer_size), }
             }
 
-            #(#push_methods)*
+            pub fn push<T>(&mut self, value: T)
+            where
+                T: transit::Serialize + #type_index_ident,
+            {
+                // write type discriminant
+                self.buffer.push(<T as #type_index_ident>::TYPE_INDEX);
 
+                let buffer_size_before = self.buffer.len();
+                if T::is_size_static() {
+                    value.write_value(&mut self.buffer);
+                    assert!(self.buffer.len() == buffer_size_before + std::mem::size_of::<T>());
+                } else {
+                    // we force the dynamically sized object to first serialize their size as unsigned 32 bits
+                    // this will allow unparsable objects to be skipped by the reader
+                    let value_size = T::get_value_size(&value).unwrap();
+                    transit::write_pod(&mut self.buffer, &value_size);
+                    value.write_value(&mut self.buffer);
+                    assert!(
+                        self.buffer.len()
+                            == buffer_size_before + std::mem::size_of::<u32>() + value_size as usize
+                    );
+                }
+            }
         }
+
+        pub trait #type_index_ident {
+            const TYPE_INDEX: u8;
+        }
+
+        #type_index_impls
 
         impl transit::IterableQueue for #struct_identifier {
             type Item = #any_ident;

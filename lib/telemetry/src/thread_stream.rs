@@ -115,12 +115,11 @@ impl ThreadStream {
         old_block
     }
 
-    pub fn push_begin_scope_event(&mut self, event: BeginScopeEvent) {
-        self.get_events_mut().push_begin_scope_event(event);
-    }
-
-    pub fn push_end_scope_event(&mut self, event: EndScopeEvent) {
-        self.get_events_mut().push_end_scope_event(event);
+    pub fn push_event<T>(&mut self, event: T)
+    where
+        T: Serialize + ThreadEventQueueTypeIndex,
+    {
+        self.get_events_mut().push(event);
     }
 
     pub fn is_full(&self) -> bool {
