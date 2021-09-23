@@ -8,16 +8,16 @@
 
 <script>
 import { invoke } from "@tauri-apps/api/tauri";
-import { VideoPlayer } from "@/video";
+//import { VideoPlayer } from "@/video";
 
 export default {
-  name: "HelloWorld",
+  name: "Video",
   props: {
     msg: String,
   },
   mounted() {
     const videoElement = document.getElementById("view");
-    const videoPlayer = new VideoPlayer(videoElement, () => {});
+    //const videoPlayer = new VideoPlayer(videoElement, () => {});
     const logsElement = document.getElementById("logs");
 
     videoElement.onclick = function () {
@@ -64,7 +64,7 @@ export default {
       };
 
       video_channel.onmessage = async (msg) => {
-        videoPlayer.push(msg.data);
+        //videoPlayer.push(msg.data);
       };
     };
   },
@@ -76,7 +76,7 @@ export default {
 video {
   border: 1px solid black;
   border-radius: 8px;
-  background: url("../assets/logo.png") center center no-repeat #222;
+  background: url("~assets/v.png") center center no-repeat #222;
   min-width: 320px;
   min-height: 240px;
   cursor: pointer;

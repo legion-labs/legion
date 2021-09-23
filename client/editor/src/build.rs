@@ -5,7 +5,7 @@ fn build_web_app() {
   let yarn_path = which("yarn").unwrap();
 
   Command::new(yarn_path)
-    .arg("build")
+    .arg("generate")
     .current_dir("frontend")
     .spawn()
     .unwrap();
