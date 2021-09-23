@@ -3400,11 +3400,14 @@ dependencies = [
 name = "telemetry"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "prost",
  "raw-cpuid",
  "tonic",
  "tonic-build",
  "transit",
+ "uuid",
+ "whoami",
 ]
 
 [[package]]
@@ -3415,6 +3418,7 @@ dependencies = [
  "tokio",
  "tonic",
  "uuid",
+ "whoami",
 ]
 
 [[package]]

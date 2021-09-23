@@ -6,6 +6,10 @@ use telemetry::*;
 struct DebugEventSink {}
 
 impl EventBlockSink for DebugEventSink {
+    fn on_init_process(&self, process_info: &ProcessInfo) {
+        dbg!(process_info);
+    }
+
     fn on_log_buffer_full(&self, log_block: &LogMsgBlock) {
         println!("log buffer full: {} bytes", log_block.events.len_bytes());
         // for evt in &log_stream.events {

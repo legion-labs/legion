@@ -1,4 +1,5 @@
 use crate::*;
+use chrono::Utc;
 use std::{
     cell::Cell,
     sync::{Arc, Mutex},
@@ -17,12 +18,44 @@ impl Dispatch {
         thread_buffer_size: usize,
         sink: Arc<dyn EventBlockSink>,
     ) -> Self {
-        Self {
+        let mut obj = Self {
             log_buffer_size,
             thread_buffer_size,
             log_stream: Mutex::new(LogStream::new(log_buffer_size)),
             sink,
-        }
+        };
+        obj.on_init_process();
+        obj
+    }
+
+    fn on_init_process(&mut self) {
+        use raw_cpuid::CpuId;
+        let start_time = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, false);
+        let cpuid = CpuId::new();
+        let cpu_brand = cpuid
+            .get_processor_brand_string()
+            .map_or_else(|| "unknown".to_owned(), |b| b.as_str().to_owned());
+
+        let tsc_frequency = match cpuid.get_tsc_info() {
+            Some(tsc_info) => tsc_info.tsc_frequency().unwrap_or(0),
+            None => 0,
+        };
+
+        let process_info = ProcessInfo {
+            id: uuid::Uuid::new_v4().to_string(),
+            username: whoami::username(),
+            realname: whoami::realname(),
+            exe: std::env::current_exe()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned(),
+            computer: whoami::devicename(),
+            distro: whoami::distro(),
+            cpu_brand,
+            tsc_frequency,
+            start_time,
+        };
+        self.sink.on_init_process(&process_info);
     }
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {

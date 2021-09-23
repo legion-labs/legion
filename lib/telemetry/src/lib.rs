@@ -93,3 +93,5 @@ pub use transit::IterableQueue;
 pub mod telemetry_ingestion_proto {
     tonic::include_proto!("telemetry_ingestion_proto");
 }
+
+pub type ProcessInfo = telemetry_ingestion_proto::InsertProcessRequest;

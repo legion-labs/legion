@@ -9,8 +9,12 @@ message InsertProcessRequest {
     string id = 1;
     string exe = 2;
     string username = 3;
-    string computer = 4;
-    int64  tsc_frequency = 5;
+    string realname = 4;
+    string computer = 5;
+    string distro = 6;
+    string cpu_brand = 7;
+    uint64 tsc_frequency = 8;
+    string start_time = 9; //RFC 3339
 }
 
 message InsertReply {
