@@ -686,7 +686,6 @@ version = "0.1.0"
 name = "derive-transit"
 version = "0.1.0"
 dependencies = [
- "convert_case",
  "memoffset",
  "quote",
  "syn",
