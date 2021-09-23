@@ -89,3 +89,7 @@ pub use log_stream::*;
 pub use thread_stream::*;
 
 pub use transit::IterableQueue;
+
+pub mod telemetry_ingestion_proto {
+    tonic::include_proto!("telemetry_ingestion_proto");
+}

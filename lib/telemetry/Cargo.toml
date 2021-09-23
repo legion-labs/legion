@@ -6,6 +6,11 @@ license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[build-dependencies]
+tonic-build = "0.5.2"
+
 [dependencies]
 raw-cpuid = "10.2.0"
 transit = { path = "../transit" }
+tonic = "0.5.2"
+prost = "0.8"

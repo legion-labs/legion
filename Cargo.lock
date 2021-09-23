@@ -3400,8 +3400,21 @@ dependencies = [
 name = "telemetry"
 version = "0.1.0"
 dependencies = [
+ "prost",
  "raw-cpuid",
+ "tonic",
+ "tonic-build",
  "transit",
+]
+
+[[package]]
+name = "telemetry-ingestion-srv"
+version = "0.1.0"
+dependencies = [
+ "telemetry",
+ "tokio",
+ "tonic",
+ "uuid",
 ]
 
 [[package]]
