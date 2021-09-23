@@ -61,12 +61,12 @@ declare_queue_struct!(
 #[test]
 fn test_deps() {
     let mut q = LogMsgQueue::new(1024);
-    q.push_log_msg_event(LogMsgEvent {
+    q.push(LogMsgEvent {
         level: 0,
         msg: "test_msg",
     });
-    q.push_null_event(NullEvent {});
-    q.push_log_msg_event(LogMsgEvent {
+    q.push(NullEvent {});
+    q.push(LogMsgEvent {
         level: 0,
         msg: "__test",
     });
@@ -79,7 +79,7 @@ fn test_deps() {
     for x in q.iter() {
         match x {
             LogMsgQueueAny::LogMsgEvent(evt) => {
-                deps.push_static_string(StaticString(evt.msg));
+                deps.push(StaticString(evt.msg));
             }
             LogMsgQueueAny::NullEvent(_evt) => {}
         }

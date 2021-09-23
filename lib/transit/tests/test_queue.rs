@@ -26,16 +26,16 @@ fn test_queue() {
     assert!(!<DynString as Serialize>::is_size_static());
 
     let mut q = MyQueue::new(1024);
-    q.push_my_test_event(MyTestEvent {
+    q.push(MyTestEvent {
         some_64: 2,
         some_32: 3,
     });
     assert_eq!(17, q.len_bytes());
 
-    q.push_other_event(OtherEvent { some_64: 3 });
+    q.push(OtherEvent { some_64: 3 });
     assert_eq!(26, q.len_bytes());
 
-    q.push_dyn_string(DynString(String::from("allo")));
+    q.push(DynString(String::from("allo")));
     assert_eq!(35, q.len_bytes());
 
     if let (MyQueueAny::MyTestEvent(e), next_obj_offset) = q.read_value_at_offset(0) {

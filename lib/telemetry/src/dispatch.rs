@@ -95,7 +95,7 @@ pub fn on_begin_scope(scope: GetScopeDesc) {
         unsafe {
             let opt_stream = &mut *cell.as_ptr();
             if let Some(stream) = opt_stream {
-                stream.push_begin_scope_event(BeginScopeEvent {
+                stream.push_event(BeginScopeEvent {
                     time: now(),
                     get_scope_desc: scope,
                 });
@@ -120,7 +120,7 @@ pub fn on_end_scope(scope: GetScopeDesc) {
         unsafe {
             let opt_stream = &mut *cell.as_ptr();
             if let Some(stream) = opt_stream {
-                stream.push_end_scope_event(EndScopeEvent {
+                stream.push_event(EndScopeEvent {
                     time: now(),
                     get_scope_desc: scope,
                 });

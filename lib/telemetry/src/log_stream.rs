@@ -51,7 +51,7 @@ impl LogStream {
     }
 
     pub fn push(&mut self, event: LogMsgEvent) {
-        self.get_events_mut().push_log_msg_event(event);
+        self.get_events_mut().push(event);
     }
 
     pub fn is_full(&self) -> bool {
