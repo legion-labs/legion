@@ -1,13 +1,7 @@
-//! The runtime server is the portion of the Legion Engine that runs off runtime
-//! data to simulate a world. It is tied to the lifetime of a runtime client.
-//!
-//! * Tracking Issue: [legion/crate/#xx](https://github.com/legion-labs/legion/issues/xx)
-//! * Design Doc: [legion/book/project-resources](/book/todo.html)
-//!
+//! Offline Graphics
 
 // BEGIN - Legion Labs lints v0.2
 // do not change or add/remove here, but one can add exceptions after this section
-#![deny(unsafe_code)]
 #![warn(
     clippy::all,
     clippy::await_holding_lock,
@@ -74,33 +68,12 @@
     broken_intra_doc_links,
     private_intra_doc_links,
     missing_crate_level_docs,
-    rust_2018_idioms
+    rust_2018_idioms,
+    missing_docs
 )]
 // END - Legion Labs standard lints v0.2
 // crate-specific exceptions:
 #![allow()]
 
-use clap::{App, Arg};
-use sample_data_compiler::{offline_compiler, raw_loader};
-
-fn main() {
-    const ARG_NAME_ROOT: &str = "root";
-
-    let args = App::new("Sample data compiler")
-        .version(clap::crate_version!())
-        .about("Will load RON files containing sample data, and generate offline resources and runtime assets, along with manifests.")
-        .arg(Arg::with_name(ARG_NAME_ROOT)
-            .long(ARG_NAME_ROOT)
-            .takes_value(true)
-            .help("Root folder containing sample data"))
-        .get_matches();
-
-    let root_folder = args.value_of(ARG_NAME_ROOT).unwrap_or("test/sample_data");
-
-    // generate contents of offline folder, from raw RON content
-    raw_loader::build_offline(root_folder);
-
-    // compile offline resources to runtime assets
-    offline_compiler::build(root_folder);
-}
- 
+pub mod psd;
+pub mod texture;

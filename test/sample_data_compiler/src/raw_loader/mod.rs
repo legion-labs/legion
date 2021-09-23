@@ -6,11 +6,12 @@ use legion_data_offline::resource::{
     Project, Resource, ResourceId, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
     ResourceType,
 };
+use legion_graphics_offline::psd::PsdFile;
 use serde::de::DeserializeOwned;
 use std::{
     collections::HashMap,
     ffi::OsStr,
-    fs::File,
+    fs::{self, File},
     io::BufReader,
     path::{Path, PathBuf},
 };
@@ -27,7 +28,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
             let raw_dir = raw_dir.path();
             let (mut project, mut resources) = setup_project(root_folder);
 
-            let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh"]);
+            let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd"]);
 
             let resource_names = file_paths
                 .iter()
@@ -77,6 +78,9 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                             &mut resources,
                         );
                     }
+                    "psd" => {
+                        load_psd(resource_id, path, &mut project, &mut resources);
+                    }
                     _ => panic!(),
                 }
             }
@@ -111,6 +115,12 @@ fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
     resources = add_resource::<offline_data::Instance>(resources);
     resources = add_resource::<offline_data::Material>(resources);
     resources = add_resource::<offline_data::Mesh>(resources);
+
+    resources = resources.add_type(
+        legion_graphics_offline::psd::TYPE_ID,
+        Box::new(legion_graphics_offline::psd::PsdFileProcessor {}),
+    );
+
     let resources = resources.create_registry();
 
     (project, resources)
@@ -122,6 +132,7 @@ fn ext_to_resource_kind(ext: &str) -> ResourceType {
         "ins" => offline_data::Instance::TYPE_ID,
         "mat" => offline_data::Material::TYPE_ID,
         "mesh" => offline_data::Mesh::TYPE_ID,
+        "psd" => legion_graphics_offline::psd::TYPE_ID,
         _ => panic!(),
     }
 }
@@ -238,4 +249,27 @@ where
     } else {
         None
     }
+}
+
+fn load_psd(
+    resource_id: ResourceId,
+    file: &Path,
+    project: &mut Project,
+    resources: &mut ResourceRegistry,
+) -> Option<ResourceId> {
+    let raw_data = fs::read(file).ok()?;
+    let loaded_psd = PsdFile::from_bytes(&raw_data)?;
+
+    let resource = project
+        .load_resource(resource_id, resources)
+        .unwrap()
+        .typed::<PsdFile>();
+
+    let initial_resource = resource.get_mut(resources).unwrap();
+    *initial_resource = loaded_psd;
+
+    project
+        .save_resource(resource_id, resource, resources)
+        .unwrap();
+    Some(resource_id)
 }
