@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 use crate::{Asset, AssetRegistry};
 
@@ -44,8 +44,8 @@ impl HandleUntyped {
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a, T: Asset>(&'_ self, registry: &'a AssetRegistry) -> Option<&'a T> {
-        registry.get_untyped::<T>(self)
+    pub fn get<'a>(&'_ self, registry: &'a AssetRegistry) -> Option<&'a Arc<dyn Asset>> {
+        registry.get_untyped(self)
     }
 
     /// Returns true if [`Asset`] load failed.

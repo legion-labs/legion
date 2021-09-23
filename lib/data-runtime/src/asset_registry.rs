@@ -106,24 +106,27 @@ impl AssetRegistry {
         Handle::<T>::from(handle)
     }
 
-    /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub fn get_untyped<T: Asset>(&self, handle: &HandleUntyped) -> Option<&T> {
-        if let Some((asset_id, _)) = self.ref_counts.get(&handle.id) {
+    // (Internal) Retrieves a reference to an untyped asset
+    fn get_from_handle_id(&self, handle_id: HandleId) -> Option<&Arc<dyn Asset>> {
+        if let Some((asset_id, _)) = self.ref_counts.get(&handle_id) {
             if let Some(asset) = self.assets.get(asset_id) {
-                return asset.downcast_ref::<T>();
+                return Some(asset);
             }
         }
         None
+    }
+
+    /// Retrieves a reference to an asset, None if asset is not loaded.
+    pub fn get_untyped(&self, handle: &HandleUntyped) -> Option<&Arc<dyn Asset>> {
+        self.get_from_handle_id(handle.id)
     }
 
     /// Same as [`Self::get_untyped`] but the handle is generic over `T` for convenience.
     ///
     /// [`Handle::get`] should be preferred over calling this function directly.
     pub fn get<T: Asset>(&self, handle: &Handle<T>) -> Option<&T> {
-        if let Some((asset_id, _)) = self.ref_counts.get(&handle.id) {
-            if let Some(asset) = self.assets.get(asset_id) {
-                return asset.downcast_ref::<T>();
-            }
+        if let Some(asset) = self.get_from_handle_id(handle.id) {
+            return asset.downcast_ref::<T>();
         }
         None
     }
