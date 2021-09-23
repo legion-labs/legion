@@ -76,7 +76,7 @@ pub struct AssetRegistry {
         crossbeam_channel::Receiver<RefOp>,
     ),
     ref_counts: HashMap<HandleId, (AssetId, isize)>,
-    assets: HashMap<AssetId, Arc<dyn Asset>>,
+    assets: HashMap<AssetId, Arc<dyn Asset + Send + Sync>>,
     load_errors: HashMap<AssetId, io::ErrorKind>,
     load_thread: Option<JoinHandle<()>>,
     loader: AssetLoaderStub,
@@ -107,8 +107,8 @@ impl AssetRegistry {
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub fn get_untyped<T: Asset>(&self, handle: &HandleUntyped) -> Option<&T> {
-        if let Some((asset_id, _)) = self.ref_counts.get(&handle.id) {
+    pub(crate) fn get<T: Asset>(&self, handle_id: HandleId) -> Option<&T> {
+        if let Some((asset_id, _)) = self.ref_counts.get(&handle_id) {
             if let Some(asset) = self.assets.get(asset_id) {
                 return asset.downcast_ref::<T>();
             }
@@ -116,16 +116,12 @@ impl AssetRegistry {
         None
     }
 
-    /// Same as [`Self::get_untyped`] but the handle is generic over `T` for convenience.
-    ///
-    /// [`Handle::get`] should be preferred over calling this function directly.
-    pub fn get<T: Asset>(&self, handle: &Handle<T>) -> Option<&T> {
-        if let Some((asset_id, _)) = self.ref_counts.get(&handle.id) {
-            if let Some(asset) = self.assets.get(asset_id) {
-                return asset.downcast_ref::<T>();
-            }
+    /// Tests if an asset is loaded.
+    pub(crate) fn is_loaded(&self, handle_id: HandleId) -> bool {
+        if let Some((asset_id, _)) = self.ref_counts.get(&handle_id) {
+            return self.assets.get(asset_id).is_some();
         }
-        None
+        false
     }
 
     /// Unloads assets based on their reference counts.
