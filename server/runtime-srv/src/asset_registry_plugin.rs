@@ -4,7 +4,7 @@ use legion_data_runtime::{
     manifest::Manifest, AssetId, AssetRegistry, AssetRegistryOptions, HandleUntyped,
 };
 use legion_ecs::prelude::*;
-use sample_data_compiler::runtime_data;
+use sample_data_compiler::runtime_data::{self, CompilableAsset};
 use std::{
     fs::File,
     path::{Path, PathBuf},
@@ -33,7 +33,13 @@ impl AssetRegistrySettings {
 
 #[derive(Default)]
 struct AssetRegistryState {
-    root_assets: Vec<HandleUntyped>,
+    assets: Vec<(HandleUntyped, AssetState)>,
+}
+
+#[derive(PartialEq)]
+enum AssetState {
+    PendingLoad,
+    Loaded,
 }
 
 #[derive(Default)]
@@ -51,9 +57,10 @@ impl Plugin for AssetRegistryPlugin {
                 let registry = registry.create(Box::new(content_store), manifest);
 
                 app.insert_resource(AssetRegistryState::default())
-                    .insert_non_send_resource(registry)
-                    .add_startup_system(Self::setup.exclusive_system())
-                    .add_system(Self::update.exclusive_system());
+                    .insert_resource(registry)
+                    .add_startup_system(Self::setup)
+                    .add_system(Self::update_registry)
+                    .add_system(Self::update_assets);
             } else {
                 eprintln!(
                     "Unable to open content storage in {:?}",
@@ -67,25 +74,69 @@ impl Plugin for AssetRegistryPlugin {
 }
 
 impl AssetRegistryPlugin {
-    fn setup(world: &mut World) {
-        let world = world.cell();
-        let mut registry = world.get_non_send_mut::<AssetRegistry>().unwrap();
+    fn setup(
+        mut state: ResMut<'_, AssetRegistryState>,
+        mut registry: ResMut<'_, AssetRegistry>,
+        settings: ResMut<'_, AssetRegistrySettings>,
+    ) {
+        if let Ok(asset_id) = AssetId::from_str(&settings.root_asset) {
+            let asset = registry.load_untyped(asset_id);
+            state.assets.push((asset, AssetState::PendingLoad));
+        }
 
-        if let Some(settings) = world.get_resource::<AssetRegistrySettings>() {
-            if let Ok(asset_id) = AssetId::from_str(&settings.root_asset) {
-                let asset = registry.load_untyped(asset_id);
-
-                if let Some(mut state) = world.get_resource_mut::<AssetRegistryState>() {
-                    state.root_assets.push(asset);
-                }
-            }
-        };
+        drop(settings);
     }
 
-    fn update(world: &mut World) {
-        let world = world.cell();
-        let mut registry = world.get_non_send_mut::<AssetRegistry>().unwrap();
+    fn update_registry(mut registry: ResMut<'_, AssetRegistry>) {
         registry.update();
+    }
+
+    fn update_assets(
+        mut commands: Commands<'_>,
+        mut state: ResMut<'_, AssetRegistryState>,
+        registry: ResMut<'_, AssetRegistry>,
+    ) {
+        state
+            .assets
+            .iter_mut()
+            .for_each(|(asset, state)| match *state {
+                AssetState::PendingLoad => {
+                    if asset.is_loaded(&registry) {
+                        if let Some(asset_id) = asset.get_asset_id(&registry) {
+                            match asset_id.asset_type() {
+                                runtime_data::Entity::TYPE_ID => {
+                                    if let Some(entity) =
+                                        asset.get::<runtime_data::Entity>(&registry)
+                                    {
+                                        Self::on_loaded_entity(&mut commands, entity);
+                                    }
+                                }
+                                runtime_data::Instance::TYPE_ID => {
+                                    if let Some(instance) =
+                                        asset.get::<runtime_data::Instance>(&registry)
+                                    {
+                                        Self::on_loaded_instance(&mut commands, instance);
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        *state = AssetState::Loaded;
+                    }
+                }
+                AssetState::Loaded => {}
+            });
+
+        drop(registry);
+    }
+
+    fn on_loaded_entity(_commands: &mut Commands<'_>, entity: &runtime_data::Entity) {
+        println!("Loaded entity {}", entity.name);
+        //commands.spawn();
+    }
+
+    fn on_loaded_instance(_commands: &mut Commands<'_>, _instance: &runtime_data::Instance) {
+        println!("Loaded instance");
     }
 }
 
