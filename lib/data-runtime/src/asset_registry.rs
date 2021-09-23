@@ -106,10 +106,17 @@ impl AssetRegistry {
         Handle::<T>::from(handle)
     }
 
+    /// Retrieves the asset id associated with a handle.
+    pub(crate) fn get_asset_id(&self, handle_id: HandleId) -> Option<AssetId> {
+        self.ref_counts
+            .get(&handle_id)
+            .map(|(asset_id, _)| *asset_id)
+    }
+
     /// Retrieves a reference to an asset, None if asset is not loaded.
     pub(crate) fn get<T: Asset>(&self, handle_id: HandleId) -> Option<&T> {
-        if let Some((asset_id, _)) = self.ref_counts.get(&handle_id) {
-            if let Some(asset) = self.assets.get(asset_id) {
+        if let Some(asset_id) = self.get_asset_id(handle_id) {
+            if let Some(asset) = self.assets.get(&asset_id) {
                 return asset.downcast_ref::<T>();
             }
         }
@@ -118,8 +125,8 @@ impl AssetRegistry {
 
     /// Tests if an asset is loaded.
     pub(crate) fn is_loaded(&self, handle_id: HandleId) -> bool {
-        if let Some((asset_id, _)) = self.ref_counts.get(&handle_id) {
-            return self.assets.get(asset_id).is_some();
+        if let Some(asset_id) = self.get_asset_id(handle_id) {
+            return self.assets.get(&asset_id).is_some();
         }
         false
     }
@@ -181,8 +188,8 @@ impl AssetRegistry {
     }
 
     pub(crate) fn is_err(&self, handle_id: HandleId) -> bool {
-        if let Some((id, _)) = self.ref_counts.get(&handle_id) {
-            return self.load_errors.contains_key(id);
+        if let Some(asset_id) = self.get_asset_id(handle_id) {
+            return self.load_errors.contains_key(&asset_id);
         }
         false
     }
