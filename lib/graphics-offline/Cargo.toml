@@ -23,4 +23,4 @@ legion-graphics-runtime = { path = "../graphics-runtime" }
 legion-data-compiler = { path = "../data-compiler" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-psd = { git = "https://github.com/legion-labs/psd", branch = "master" }
+psd = "0.2.0"

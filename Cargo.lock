@@ -2509,8 +2509,9 @@ dependencies = [
 
 [[package]]
 name = "psd"
-version = "0.1.9"
-source = "git+https://github.com/legion-labs/psd?branch=master#b31434b4562e54673170905d29c15404e4766688"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "534523d3880bf21e283625782adee7f8d703605118b4e2b7fb200e468c8a90ce"
 dependencies = [
  "thiserror",
 ]
