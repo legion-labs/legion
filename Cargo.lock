@@ -1616,6 +1616,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-graphics-offline"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-graphics-runtime",
+ "psd",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "legion-graphics-runtime"
+version = "0.1.0"
+dependencies = [
+ "legion-data-runtime",
+]
+
+[[package]]
 name = "legion-macro-utils"
 version = "0.1.0"
 dependencies = [
@@ -2471,6 +2490,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "psd"
+version = "0.1.9"
+source = "git+https://github.com/legion-labs/psd?branch=master#0a7abbd8f862edd35f477839f249cec38eb85af7"
+dependencies = [
+ "anyhow",
+ "thiserror",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2899,6 +2927,7 @@ dependencies = [
  "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
+ "legion-graphics-offline",
  "legion-math",
  "legion-utils",
  "ron",

@@ -271,6 +271,8 @@ pub enum CompilerError {
     ResourceReadFailed(io::Error),
     /// IO failure.
     ResourceWriteFailed(io::Error),
+    /// Compiler-specific compilation error.
+    CompilationError(&'static str),
 }
 
 impl std::error::Error for CompilerError {}
@@ -288,6 +290,9 @@ impl std::fmt::Display for CompilerError {
             CompilerError::AssetStoreError => write!(f, "AssetStoreError"),
             CompilerError::ResourceReadFailed(_) => write!(f, "ResourceReadFailed"),
             CompilerError::ResourceWriteFailed(_) => write!(f, "ResourceWriteFailed"),
+            CompilerError::CompilationError(content) => {
+                write!(f, "CompilationError: '{}'", content)
+            }
         }
     }
 }

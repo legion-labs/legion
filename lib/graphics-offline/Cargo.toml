@@ -1,0 +1,26 @@
+[package]
+name = "legion-graphics-offline"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "compiler-tex2bin"
+path = "src/compiler-tex2bin.rs"
+doc = false
+
+[[bin]]
+name = "compiler-psd2tex"
+path = "src/compiler-psd2tex.rs"
+doc = false
+
+[dependencies]
+legion-data-offline = { path = "../data-offline" }
+legion-graphics-runtime = { path = "../graphics-runtime" }
+legion-data-compiler = { path = "../data-compiler" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+psd = { git = "https://github.com/legion-labs/psd", branch = "master" }

@@ -77,6 +77,11 @@
         "0x5004cd1c00000000072cc1c343b260a7"
       ],
       "resource_hash": 639272385806645265
+    },
+    {
+      "id": "0x13b5a84e00000000e59b3aa6a1fd5aa1",
+      "dependencies": [],
+      "resource_hash": 10544384098633318951
     }
   ],
   "compiled_resources": [

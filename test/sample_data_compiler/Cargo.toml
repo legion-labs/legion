@@ -12,6 +12,7 @@ legion-data-build = { path = "../../lib/data-build", version = "0.1.0" }
 legion-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
 legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+legion-graphics-offline = { path = "../../lib/graphics-offline" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
