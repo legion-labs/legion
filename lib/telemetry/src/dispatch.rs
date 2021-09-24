@@ -28,6 +28,11 @@ impl Dispatch {
         obj
     }
 
+    fn on_shutdown(&mut self) {
+        self.sink.on_shutdown();
+        self.sink = Arc::new(NullEventSink {});
+    }
+
     fn on_init_process(&mut self) {
         use raw_cpuid::CpuId;
         let start_time = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, false);
@@ -55,7 +60,7 @@ impl Dispatch {
             tsc_frequency,
             start_time,
         };
-        self.sink.on_init_process(&process_info);
+        self.sink.on_init_process(process_info);
     }
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
@@ -102,6 +107,14 @@ pub fn init_event_dispatch(
         G_DISPATCH = Some(Dispatch::new(log_buffer_size, thread_buffer_size, sink));
     }
     Ok(())
+}
+
+pub fn shutdown_event_dispatch() {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.on_shutdown();
+        }
+    }
 }
 
 pub fn log_str(level: LogLevel, msg: &'static str) {

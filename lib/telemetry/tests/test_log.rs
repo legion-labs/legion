@@ -6,7 +6,7 @@ use telemetry::*;
 struct DebugEventSink {}
 
 impl EventBlockSink for DebugEventSink {
-    fn on_init_process(&self, process_info: &ProcessInfo) {
+    fn on_init_process(&self, process_info: ProcessInfo) {
         dbg!(process_info);
     }
 
@@ -23,6 +23,8 @@ impl EventBlockSink for DebugEventSink {
             thread_block.events.len_bytes()
         );
     }
+
+    fn on_shutdown(&self) {}
 }
 
 fn test_log_str() {
