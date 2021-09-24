@@ -20,6 +20,7 @@ declare_queue_struct!(
     struct LogMsgQueue<LogMsgEvent> {}
 );
 
+#[derive(Debug)]
 pub struct LogMsgBlock {
     pub events: LogMsgQueue,
 }

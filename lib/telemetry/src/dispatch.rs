@@ -29,7 +29,7 @@ impl Dispatch {
     }
 
     fn on_shutdown(&mut self) {
-        self.sink.on_shutdown();
+        self.sink.on_sink_event(TelemetrySinkEvent::OnShutdown);
         self.sink = Arc::new(NullEventSink {});
     }
 
@@ -60,7 +60,8 @@ impl Dispatch {
             tsc_frequency,
             start_time,
         };
-        self.sink.on_init_process(process_info);
+        self.sink
+            .on_sink_event(TelemetrySinkEvent::OnInitProcess(process_info));
     }
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
@@ -70,7 +71,8 @@ impl Dispatch {
             let old_event_block =
                 log_stream.replace_block(Arc::new(LogMsgBlock::new(self.log_buffer_size)));
             assert!(!log_stream.is_full());
-            self.sink.on_log_buffer_full(&old_event_block);
+            self.sink
+                .on_sink_event(TelemetrySinkEvent::OnLogBufferFull(old_event_block));
         }
     }
 
@@ -78,7 +80,8 @@ impl Dispatch {
         let old_event_block =
             stream.replace_block(Arc::new(ThreadEventBlock::new(self.log_buffer_size)));
         assert!(!stream.is_full());
-        self.sink.on_thread_buffer_full(&old_event_block);
+        self.sink
+            .on_sink_event(TelemetrySinkEvent::OnThreadBufferFull(old_event_block));
     }
 
     fn init_thread_stream(&mut self, cell: &Cell<Option<ThreadStream>>) {

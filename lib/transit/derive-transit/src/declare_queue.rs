@@ -67,6 +67,7 @@ fn gen_type_index_impls(
 pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
     let ast = parse::<DeriveInput>(input).unwrap();
     let struct_identifier = ast.ident.clone();
+    let struct_name_str = format!("{}", struct_identifier);
 
     let type_args: Vec<syn::Ident> = ast
         .generics
@@ -93,6 +94,13 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
 
         pub struct #struct_identifier {
             buffer: Vec<u8>,
+        }
+
+        impl std::fmt::Debug for #struct_identifier{
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error>{
+                f.debug_struct(#struct_name_str)
+                    .finish()
+            }
         }
 
         impl #struct_identifier {

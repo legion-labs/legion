@@ -2,14 +2,9 @@ use std::sync::Arc;
 use telemetry::*;
 use telemetry_ingestion_proto::telemetry_ingestion_client::TelemetryIngestionClient;
 
-enum TelemetrySinkMessage {
-    OnInitProcess(ProcessInfo),
-    OnShutdown,
-}
-
 struct GRPCEventSink {
     thread: Option<std::thread::JoinHandle<()>>,
-    sender: std::sync::mpsc::Sender<TelemetrySinkMessage>,
+    sender: std::sync::mpsc::Sender<TelemetrySinkEvent>,
 }
 
 impl Drop for GRPCEventSink {
@@ -21,7 +16,7 @@ impl Drop for GRPCEventSink {
 }
 
 impl GRPCEventSink {
-    fn thread_proc(addr: String, receiver: std::sync::mpsc::Receiver<TelemetrySinkMessage>) {
+    fn thread_proc(addr: String, receiver: std::sync::mpsc::Receiver<TelemetrySinkEvent>) {
         let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
         let mut client = match tokio_runtime.block_on(TelemetryIngestionClient::connect(addr)) {
             Ok(c) => c,
@@ -34,7 +29,7 @@ impl GRPCEventSink {
         loop {
             match receiver.recv() {
                 Ok(message) => match message {
-                    TelemetrySinkMessage::OnInitProcess(process_info) => {
+                    TelemetrySinkEvent::OnInitProcess(process_info) => {
                         match tokio_runtime.block_on(client.insert_process(process_info)) {
                             Ok(response) => {
                                 dbg!(response);
@@ -44,8 +39,14 @@ impl GRPCEventSink {
                             }
                         }
                     }
-                    TelemetrySinkMessage::OnShutdown => {
+                    TelemetrySinkEvent::OnShutdown => {
                         return;
+                    }
+                    TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
+                        dbg!(log_buffer);
+                    }
+                    TelemetrySinkEvent::OnThreadBufferFull(thread_buffer) => {
+                        dbg!(thread_buffer);
                     }
                 },
                 Err(e) => {
@@ -59,7 +60,7 @@ impl GRPCEventSink {
 
 pub fn make_telemetry_connection(addr_server: &str) -> Arc<dyn EventBlockSink> {
     let addr = addr_server.to_owned();
-    let (sender, receiver) = std::sync::mpsc::channel::<TelemetrySinkMessage>();
+    let (sender, receiver) = std::sync::mpsc::channel::<TelemetrySinkEvent>();
     Arc::new(GRPCEventSink {
         thread: Some(std::thread::spawn(move || {
             GRPCEventSink::thread_proc(addr, receiver)
@@ -69,28 +70,8 @@ pub fn make_telemetry_connection(addr_server: &str) -> Arc<dyn EventBlockSink> {
 }
 
 impl EventBlockSink for GRPCEventSink {
-    fn on_init_process(&self, process_info: ProcessInfo) {
-        if let Err(e) = self
-            .sender
-            .send(TelemetrySinkMessage::OnInitProcess(process_info))
-        {
-            dbg!(e);
-        }
-    }
-
-    fn on_log_buffer_full(&self, log_block: &LogMsgBlock) {
-        println!("log buffer full: {} bytes", log_block.events.len_bytes());
-    }
-
-    fn on_thread_buffer_full(&self, thread_block: &ThreadEventBlock) {
-        println!(
-            "thread buffer full: {} bytes",
-            thread_block.events.len_bytes()
-        );
-    }
-
-    fn on_shutdown(&self) {
-        if let Err(e) = self.sender.send(TelemetrySinkMessage::OnShutdown) {
+    fn on_sink_event(&self, event: TelemetrySinkEvent) {
+        if let Err(e) = self.sender.send(event) {
             dbg!(e);
         }
     }
