@@ -2492,9 +2492,8 @@ dependencies = [
 [[package]]
 name = "psd"
 version = "0.1.9"
-source = "git+https://github.com/legion-labs/psd?branch=master#0a7abbd8f862edd35f477839f249cec38eb85af7"
+source = "git+https://github.com/legion-labs/psd?branch=master#b31434b4562e54673170905d29c15404e4766688"
 dependencies = [
- "anyhow",
  "thiserror",
 ]
 
