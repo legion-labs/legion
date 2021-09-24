@@ -1,3 +1,4 @@
+#[cfg(feature = "custom-protocol")]
 fn build_web_app() {
   use std::process::Command;
   use which::which;
