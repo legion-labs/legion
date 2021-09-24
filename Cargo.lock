@@ -730,9 +730,9 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "3.0.2"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30baa043103c9d0c2a57cf537cc2f35623889dc0d405e6c3cccfadbc81c71309"
+checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
 dependencies = [
  "dirs-sys",
 ]
@@ -1215,9 +1215,9 @@ checksum = "6456b8a6c8f33fee7d958fcd1b60d55b11940a79e63ae87013e6d22e26034440"
 
 [[package]]
 name = "hyper"
-version = "0.14.12"
+version = "0.14.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13f67199e765030fa08fe0bd581af683f0d5bc04ea09c2b1102012c5fb90e7fd"
+checksum = "15d1cfb9e4f68655fa04c01f59edb405b6074a0f7118ea881e5026e4a1cd8593"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -2492,7 +2492,7 @@ dependencies = [
 [[package]]
 name = "psd"
 version = "0.1.9"
-source = "git+https://github.com/legion-labs/psd?branch=master#0a7abbd8f862edd35f477839f249cec38eb85af7"
+source = "git+https://github.com/legion-labs/psd?branch=master#05c02b6f1d23cd9aadd8649f01b859400727c94b"
 dependencies = [
  "anyhow",
  "thiserror",
@@ -2794,9 +2794,9 @@ dependencies = [
 
 [[package]]
 name = "rspirv-reflect"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "596e8ac159bef7d11ba2cfd52569a267e51ecd231dbacf27b670441e08e5f7f7"
+checksum = "c8c009d56c79348f5143ed254b598c6b65c536f56e871dd8cf4fc19a53e8233c"
 dependencies = [
  "rspirv",
  "thiserror",
