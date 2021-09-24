@@ -85,6 +85,7 @@ declare_queue_struct!(
     struct ThreadEventQueue<BeginScopeEvent, EndScopeEvent> {}
 );
 
+#[derive(Debug)]
 pub struct ThreadEventBlock {
     pub events: ThreadEventQueue,
 }
