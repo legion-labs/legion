@@ -3432,6 +3432,7 @@ dependencies = [
  "chrono",
  "prost",
  "raw-cpuid",
+ "tokio",
  "tonic",
  "tonic-build",
  "transit",
