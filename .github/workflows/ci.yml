@@ -31,7 +31,6 @@ jobs:
       - name: Run dependencies checks
         run: make check-deps
 
-
   test:
     name: Running tests
     needs: lint
@@ -141,7 +140,7 @@ jobs:
 
   deploy_docs:
     name: Deploying docs
-    needs: [test, bench, build_docs]
+    needs: [test, build_docs]
     runs-on: ubuntu-20.04
     if: github.ref == 'refs/heads/main'
     steps:
