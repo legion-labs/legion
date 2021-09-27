@@ -68,12 +68,12 @@
     rust_2018_idioms,
     rustdoc::private_intra_doc_links,
     rustdoc::missing_crate_level_docs,
-    rustdoc::broken_intra_doc_links,
-    missing_docs
+    rustdoc::broken_intra_doc_links
 )]
 // END - Legion Labs standard lints v0.3
 // crate-specific exceptions:
 #![allow()]
+#![warn(missing_docs)]
 
 pub mod psd;
 pub mod texture;

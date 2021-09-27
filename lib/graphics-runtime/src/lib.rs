@@ -65,14 +65,14 @@
     clippy::zero_sized_map_values,
     future_incompatible,
     nonstandard_style,
+    rust_2018_idioms,
     rustdoc::broken_intra_doc_links,
     rustdoc::private_intra_doc_links,
-    rustdoc::missing_crate_level_docs,
-    rust_2018_idioms,
-    missing_docs
+    rustdoc::missing_crate_level_docs
 )]
 // END - Legion Labs standard lints v0.3
 // crate-specific exceptions:
 #![allow()]
+#![warn(missing_docs)]
 
 pub mod texture;

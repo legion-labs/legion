@@ -64,12 +64,12 @@
     clippy::zero_sized_map_values,
     future_incompatible,
     nonstandard_style,
-    rustdoc::broken_intra_doc_links,
-    rustdoc::private_intra_doc_links,
+    rust_2018_idioms,
     rustdoc::missing_crate_level_docs,
-    rust_2018_idioms
+    rustdoc::private_intra_doc_links,
+    rustdoc::broken_intra_doc_links
 )]
-// END - Legion Labs standard lints v0.3
+// END - Legion Labs standard lints v0.2
 // crate-specific exceptions:
 #![allow()]
 
