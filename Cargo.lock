@@ -1650,6 +1650,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-mp4"
+version = "0.1.0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "legion-presenter"
 version = "0.1.0"
 dependencies = [
