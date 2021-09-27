@@ -75,6 +75,11 @@ impl Dispatch {
         ));
     }
 
+    fn on_init_thread_stream(&mut self, stream: &ThreadStream) {
+        self.sink
+            .on_sink_event(TelemetrySinkEvent::OnInitStream(stream.get_stream_info()));
+    }
+
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
         let mut log_stream = self.log_stream.lock().unwrap();
         log_stream.push(LogMsgEvent { level, msg });
@@ -96,9 +101,11 @@ impl Dispatch {
     }
 
     fn init_thread_stream(&mut self, cell: &Cell<Option<ThreadStream>>) {
+        let thread_stream = ThreadStream::new(self.thread_buffer_size, self.process_id.clone());
         unsafe {
             let opt_ref = &mut *cell.as_ptr();
-            *opt_ref = Some(ThreadStream::new(self.thread_buffer_size));
+            self.on_init_thread_stream(&thread_stream);
+            *opt_ref = Some(thread_stream);
         }
     }
 }
