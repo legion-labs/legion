@@ -9,8 +9,6 @@
 <script>
 import { invoke } from "@tauri-apps/api/tauri";
 
-//import { VideoPlayer } from "@/video";
-
 export default {
   name: "Video",
   props: {
@@ -18,7 +16,6 @@ export default {
   },
   mounted() {
     const videoElement = document.getElementById("view");
-    //const videoPlayer = new VideoPlayer(videoElement, () => {});
     const logsElement = document.getElementById("logs");
 
     videoElement.onclick = function () {
@@ -64,8 +61,10 @@ export default {
         );
       };
 
-      video_channel.onmessage = async (msg) => {
-        //videoPlayer.push(msg.data);
+      video_channel.ontrack = async (event) => {
+        videoElement.srcObject = event.streams[0];
+        logsElement.append(document.createTextNode("Received video track.\n"));
+        console.log("Video track: ", event.streams[0]);
       };
     };
   },
@@ -87,7 +86,7 @@ pre {
   border: 1px solid black;
   border-radius: 8px;
   min-width: 320px;
-  min-height: 240px;
+  height: 240px;
   background-color: #222;
   color: white;
 }
