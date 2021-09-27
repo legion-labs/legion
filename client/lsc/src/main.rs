@@ -1,7 +1,7 @@
 //! Source control CLI
 //!
 
-// BEGIN - Legion Labs lints v0.2
+// BEGIN - Legion Labs lints v0.3
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
 #![warn(
@@ -66,12 +66,12 @@
     clippy::zero_sized_map_values,
     future_incompatible,
     nonstandard_style,
-    broken_intra_doc_links,
-    private_intra_doc_links,
-    missing_crate_level_docs,
-    rust_2018_idioms
+    rust_2018_idioms,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::broken_intra_doc_links
 )]
-// END - Legion Labs standard lints v0.2
+// END - Legion Labs standard lints v0.3
 // crate-specific exceptions:
 #![allow()]
 
