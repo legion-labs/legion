@@ -17,7 +17,12 @@ tauri-build = { version = "1.0.0-beta.4" }
 which = "4.2.2"
 
 [dependencies]
+legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+legion-async = { path = "../../plugin/async", version = "0.1.0" }
 legion-editor-proto = { path = "../../proto/editor-proto", version = "0.1.0" }
+anyhow = "1.0.44"
+clap = "2"
 tonic = "0.5.2"
 prost = "0.8"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
