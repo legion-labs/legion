@@ -1,6 +1,6 @@
 #![cfg_attr(
-  all(not(debug_assertions), target_os = "windows"),
-  windows_subsystem = "windows"
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
 )]
 
 use clap::Arg;
@@ -13,85 +13,85 @@ use tokio::sync::Mutex;
 use tonic::transport::Channel;
 
 fn main() -> Result<(), Box<dyn Error>> {
-  let args = clap::App::new("Legion Labs editor")
-    .author(clap::crate_authors!())
-    .version(clap::crate_version!())
-    .about("Legion Labs editor.")
-    .arg(
-      Arg::with_name("server-addr")
-        .long("server-addr")
-        .takes_value(true)
-        .help("The address of the editor server to connect to"),
-    )
-    .get_matches();
+    let args = clap::App::new("Legion Labs editor")
+        .author(clap::crate_authors!())
+        .version(clap::crate_version!())
+        .about("Legion Labs editor.")
+        .arg(
+            Arg::with_name("server-addr")
+                .long("server-addr")
+                .takes_value(true)
+                .help("The address of the editor server to connect to"),
+        )
+        .get_matches();
 
-  let _server_addr: String = args
-    .value_of("server-addr")
-    .unwrap_or("http://[::1]:50051")
-    .parse()
-    .unwrap();
+    let _server_addr: String = args
+        .value_of("server-addr")
+        .unwrap_or("http://[::1]:50051")
+        .parse()
+        .unwrap();
 
-  //let client = Mutex::new(EditorClient::connect(server_addr).await?);
+    //let client = Mutex::new(EditorClient::connect(server_addr).await?);
 
-  let tauri_app = tauri::Builder::default()
-    //.manage(client)
-    .invoke_handler(tauri::generate_handler![initialize_stream])
-    .build(tauri::generate_context!())
-    .expect("failed to instanciate a Tauri App");
+    let tauri_app = tauri::Builder::default()
+        //.manage(client)
+        .invoke_handler(tauri::generate_handler![initialize_stream])
+        .build(tauri::generate_context!())
+        .expect("failed to instanciate a Tauri App");
 
-  App::new()
-    .set_runner(TauriRunner::build(tauri_app))
-    .add_plugin(AsyncPlugin {})
-    .run();
+    App::new()
+        .set_runner(TauriRunner::build(tauri_app))
+        .add_plugin(AsyncPlugin {})
+        .run();
 
-  Ok(())
+    Ok(())
 }
 
 struct TauriRunner {}
 
 impl TauriRunner {
-  fn build(tauri_app: tauri::App<tauri::Wry>) -> impl FnOnce(App) {
-    move |app: App| {
-      // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
-      // get rid of this and move the value directly instead.
-      let app = Rc::new(RefCell::new(app));
+    fn build(tauri_app: tauri::App<tauri::Wry>) -> impl FnOnce(App) {
+        move |app: App| {
+            // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
+            // get rid of this and move the value directly instead.
+            let app = Rc::new(RefCell::new(app));
 
-      tauri_app.run(move |_, event| {
-        if let Event::MainEventsCleared = event {
-          app.borrow_mut().update();
+            tauri_app.run(move |_, event| {
+                if let Event::MainEventsCleared = event {
+                    app.borrow_mut().update();
+                }
+            });
         }
-      });
     }
-  }
 }
 
 #[tauri::command]
 async fn initialize_stream(
-  client: tauri::State<'_, Mutex<EditorClient<Channel>>>,
-  rtc_session_description: String,
+    client: tauri::State<'_, Mutex<EditorClient<Channel>>>,
+    rtc_session_description: String,
 ) -> Result<String, String> {
-  let mut client = client.lock().await;
+    let mut client = client.lock().await;
 
-  match initialize_stream_impl(&mut client, rtc_session_description).await {
-    Ok(rtc_session_description) => Ok(rtc_session_description),
-    Err(e) => Err(format!("{}", e)),
-  }
+    match initialize_stream_impl(&mut client, rtc_session_description).await {
+        Ok(rtc_session_description) => Ok(rtc_session_description),
+        Err(e) => Err(format!("{}", e)),
+    }
 }
 
 async fn initialize_stream_impl(
-  client: &mut EditorClient<Channel>,
-  rtc_session_description: String,
+    client: &mut EditorClient<Channel>,
+    rtc_session_description: String,
 ) -> Result<String, Box<dyn Error>> {
-  let rtc_session_description = base64::decode(rtc_session_description)?;
-  let request = tonic::Request::new(InitializeStreamRequest {
-    rtc_session_description,
-  });
+    let rtc_session_description = base64::decode(rtc_session_description)?;
+    let request = tonic::Request::new(InitializeStreamRequest {
+        rtc_session_description,
+    });
 
-  let response = client.initialize_stream(request).await?.into_inner();
+    let response = client.initialize_stream(request).await?.into_inner();
 
-  if response.error.is_empty() {
-    Ok(base64::encode(response.rtc_session_description))
-  } else {
-    Err(response.error.into())
-  }
+    if response.error.is_empty() {
+        Ok(base64::encode(response.rtc_session_description))
+    } else {
+        Err(response.error.into())
+    }
 }
