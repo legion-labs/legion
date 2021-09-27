@@ -5,6 +5,8 @@ use crate::{CpuBuffer, GpuBuffer, VideoProcessor};
 pub mod null;
 /// `NvEnc` Encoder/Decoder
 pub mod nvenc;
+/// `NvEnc` Encoder/Decoder
+pub mod openh264;
 
 /// The hardware we want to run on, this maps to Amf/NvEnc/MediaSdk
 #[derive(Debug, PartialEq)]
