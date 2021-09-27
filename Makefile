@@ -14,60 +14,60 @@ check-env:
 	ninja --version
 	yarn --version
 
-check-format:
+check-format: init
 	cargo fmt --all -- --check
 
-check-build:
+check-build: init
 	cargo check --locked --all-targets --all-features
 
-check-clippy:
+check-clippy: init
 	cargo clippy --locked --all-targets --all-features -- -D warnings
 
-check-deps:
+check-deps: init
 	cargo deny check
 
-check-dockerize:
+check-dockerize: init
 	echo "cargo dockerize check"
 
 test: test-build test-run
 
-test-build:
+test-build: init
 	cargo test --no-run
 
-test-run:
+test-run: init
 	cargo test
 
 bench: bench-build bench-run
 
-bench-build:
+bench-build: init
 	cargo bench --no-run
 
-bench-run:
+bench-run: init
 	cargo bench
 
 build-all: build build-release
 
-build:
+build: init
 	cargo build
 
-build-release:
+build-release: init
 	cargo build --release
 
-doc:
+doc: init
 	cargo doc --workspace --no-deps --all-features
 	mdbook build ./doc/
 	echo "<meta http-equiv=\"refresh\" content=\"0; URL=book/index.html\"/>" > target/doc/index.html
 
-dockerize:
+dockerize: init
 	echo "cargo dockerize build"
 
-dockerize-release:
+dockerize-release: init
 	echo "cargo dockerize build --release"
 
-dockerize-push:
+dockerize-push: init
 	echo "cargo dockerize push --provider=aws"
 
 clean:
 	cargo clean
 
-.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release doc dockerize dockerize-deploy clean
+.PHONY: init check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release doc dockerize dockerize-deploy clean
