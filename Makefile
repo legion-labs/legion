@@ -2,6 +2,9 @@
 # all the checks used in the CI
 check: check-format check-build check-clippy check-deps check-dockerize
 
+init:
+	yarn install
+
 check-env:
 	rustup --version
 	cargo deny --version
@@ -9,6 +12,7 @@ check-env:
 	cmake --version
 	python3 --version
 	ninja --version
+	yarn --version
 
 check-format:
 	cargo fmt --all -- --check
