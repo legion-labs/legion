@@ -13,6 +13,8 @@ fn build_web_app() {
 }
 
 fn main() {
+  println!("cargo:rerun-if-changed=frontend/dist");
+
   #[cfg(feature = "custom-protocol")]
   build_web_app();
 
