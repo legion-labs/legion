@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Initializing
+        run: make init
+
       - name: Run formatting check
         run: make check-format
 
@@ -62,7 +65,7 @@ jobs:
           --workdir ${{ matrix.workdir }}
           -v ${{ github.workspace }}:${{ matrix.workdir }}
           ${{ matrix.container }}
-          make test-build
+          make init test-build
 
       - name: Run tests
         run: >-
@@ -72,7 +75,7 @@ jobs:
           --workdir ${{ matrix.workdir }}
           -v ${{ github.workspace }}:${{ matrix.workdir }}
           ${{ matrix.container }}
-          make test-run
+          make init test-run
 
   bench:
     name: Running benchmarks
@@ -106,7 +109,7 @@ jobs:
           --workdir ${{ matrix.workdir }}
           -v ${{ github.workspace }}:${{ matrix.workdir }}
           ${{ matrix.container }}
-          make bench-build
+          make init bench-build
 
       - name: Run benchmarks
         run: >-
@@ -116,7 +119,7 @@ jobs:
           --workdir ${{ matrix.workdir }}
           -v ${{ github.workspace }}:${{ matrix.workdir }}
           ${{ matrix.container }}
-          make bench-run
+          make init bench-run
 
   build_docs:
     name: Building docs
@@ -168,6 +171,9 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v2
+
+      - name: Initializing
+        run: make init
 
       - name: Build release
         run: make build-release
