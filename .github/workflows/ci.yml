@@ -183,7 +183,7 @@ jobs:
 
   dockerize:
     name: Building docker images and deploying them
-    needs: [test, bench, build_docs, build_release]
+    needs: [test, build_docs, build_release]
     runs-on: ubuntu-20.04
     if: github.ref == 'refs/heads/main'
     steps:
