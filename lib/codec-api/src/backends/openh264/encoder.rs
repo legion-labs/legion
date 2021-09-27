@@ -395,7 +395,7 @@ fn encode() -> Result<(), Error> {
     // Test video unit has good header and reasonable length.
     let video_unit = layer.nal_unit(0).unwrap();
     assert_eq!(&video_unit[..5], &[0u8, 0u8, 0u8, 1u8, 0x65u8]);
-    assert!(video_unit.len() > 1000);
+    assert!(video_unit.len() > 50);
     assert!(video_unit.len() < 100_000);
 
     Ok(())
