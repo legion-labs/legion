@@ -12,11 +12,9 @@ use webrtc::{
     },
     data::data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
     peer::{
-        configuration::RTCConfiguration,
-        ice::ice_server::RTCIceServer,
-        peer_connection::RTCPeerConnection,
-        peer_connection_state::RTCPeerConnectionState,
-        sdp::session_description::{RTCSessionDescription, RTCSessionDescriptionSerde},
+        configuration::RTCConfiguration, ice::ice_server::RTCIceServer,
+        peer_connection::RTCPeerConnection, peer_connection_state::RTCPeerConnectionState,
+        sdp::session_description::RTCSessionDescription,
     },
 };
 
@@ -218,9 +216,8 @@ impl WebRTCServer {
         &mut self,
         remote_rtc_session_description: Vec<u8>,
     ) -> Result<Vec<u8>, anyhow::Error> {
-        let mut offer = RTCSessionDescription::default();
-        offer.serde =
-            serde_json::from_slice::<RTCSessionDescriptionSerde>(&remote_rtc_session_description)?;
+        let offer =
+            serde_json::from_slice::<RTCSessionDescription>(&remote_rtc_session_description)?;
 
         // Clear out old connections as we only allow one active connection to the current instance right now.
         for old_peer_connection in self.peer_connections.iter() {
@@ -250,7 +247,7 @@ impl WebRTCServer {
         // Output the answer in base64 so we can paste it in browser
         let rtc_session_description = peer_connection.local_description().await.unwrap();
 
-        Ok(serde_json::to_vec(&rtc_session_description.serde)?)
+        Ok(serde_json::to_vec(&rtc_session_description)?)
     }
 }
 
