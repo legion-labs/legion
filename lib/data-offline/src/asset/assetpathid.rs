@@ -171,7 +171,7 @@ impl AssetPathId {
         cloned
     }
 
-    /// Creates a new id without the 'name` part.
+    /// Creates a new id without the `name` part.
     pub fn to_unnamed(&self) -> Self {
         let mut cloned = self.clone();
         if let Some((_, name)) = cloned.transforms.last_mut() {
