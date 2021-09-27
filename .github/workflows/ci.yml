@@ -133,6 +133,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Initializing
+        run: make init
+
       - name: Build docs
         run: make doc
 
