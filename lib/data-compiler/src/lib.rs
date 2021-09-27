@@ -5,7 +5,6 @@
 
 // BEGIN - Legion Labs lints v0.3
 // do not change or add/remove here, but one can add exceptions after this section
-#![deny(unsafe_code)]
 #![warn(
     clippy::all,
     clippy::await_holding_lock,
@@ -218,3 +217,4 @@ impl Locale {
 
 pub mod compiler_api;
 pub mod compiler_cmd;
+pub mod compiler_utils;

@@ -12,6 +12,7 @@ legion-data-build = { path = "../../lib/data-build", version = "0.1.0" }
 legion-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
 legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+legion-graphics-runtime = { path = "../../lib/graphics-runtime" }
 legion-graphics-offline = { path = "../../lib/graphics-offline" }
 legion-graphics-runtime = { path = "../../lib/graphics-runtime" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
@@ -43,9 +44,4 @@ doc = false
 [[bin]]
 name = "compiler-runtime-mesh"
 path = "src/runtime_compilers/mesh.rs"
-doc = false
-
-[[bin]]
-name = "compiler-runtime-material"
-path = "src/runtime_compilers/material.rs"
 doc = false

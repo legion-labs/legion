@@ -6,6 +6,7 @@ use crate::resource::{
     ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
 };
 
+use core::fmt;
 use std::collections::hash_map::DefaultHasher;
 use std::{
     fs::{self, File, OpenOptions},
@@ -367,6 +368,12 @@ impl Project {
         Ok((resource_hash, dependencies))
     }
 
+    /// Returns the name of the resource from its `.meta` file.
+    pub fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
+        let meta = self.read_meta(id)?;
+        Ok(meta.name)
+    }
+
     /// Returns the root directory where resources are located.
     pub fn resource_dir(&self) -> PathBuf {
         self.resource_dir.clone()
@@ -468,6 +475,14 @@ impl Drop for Project {
     fn drop(&mut self) {
         // todo(kstasik): writing to a file on drop can be problematic
         self.flush().unwrap();
+    }
+}
+
+impl fmt::Debug for Project {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let resources = self.resource_list();
+        let names = resources.iter().map(|r| self.resource_name(*r).unwrap());
+        f.debug_list().entries(names).finish()
     }
 }
 

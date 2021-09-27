@@ -1,5 +1,5 @@
 use std::{
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fmt::{self, LowerHex},
     str::FromStr,
 };
@@ -113,6 +113,15 @@ impl FromStr for ContentId {
             let id = unsafe { std::num::NonZeroU128::new_unchecked(id) };
             Ok(Self(id))
         }
+    }
+}
+
+impl TryFrom<u128> for ContentId {
+    type Error = ();
+
+    fn try_from(value: u128) -> Result<Self, Self::Error> {
+        let id = std::num::NonZeroU128::new(value).ok_or(())?;
+        Ok(Self(id))
     }
 }
 

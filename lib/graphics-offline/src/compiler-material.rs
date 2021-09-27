@@ -1,17 +1,17 @@
-use std::{
-    collections::hash_map::DefaultHasher,
-    env,
-    hash::{Hash, Hasher},
-};
-
 use legion_data_compiler::{
     compiler_api::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
+    compiler_utils::pathid_to_binary,
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use legion_data_offline::resource::ResourceRegistryOptions;
+use std::{
+    collections::hash_map::DefaultHasher,
+    env,
+    hash::{Hash, Hasher},
+};
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -19,8 +19,8 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        legion_graphics_offline::psd::TYPE_ID.content(),
-        legion_graphics_offline::texture::TYPE_ID.content(),
+        legion_graphics_offline::material::TYPE_ID.content(),
+        legion_graphics_runtime::material::TYPE_ID.content(),
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
@@ -42,8 +42,8 @@ fn compiler_hash(
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistryOptions::new()
         .add_type(
-            legion_graphics_offline::psd::TYPE_ID,
-            Box::new(legion_graphics_offline::psd::PsdFileProcessor {}),
+            legion_graphics_offline::material::TYPE_ID,
+            Box::new(legion_graphics_offline::material::MaterialProcessor {}),
         )
         .create_registry();
 
@@ -52,17 +52,17 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         &mut resources,
     )?;
     let resource = resource
-        .get::<legion_graphics_offline::psd::PsdFile>(&resources)
+        .get::<legion_graphics_offline::material::Material>(&resources)
         .unwrap();
 
-    let final_image = resource
-        .final_texture()
-        .ok_or(CompilerError::CompilationError(
-            "Failed to generate texture",
-        ))?;
-
-    let compiled_asset = serde_json::to_vec(&final_image)
-        .map_err(|_e| CompilerError::CompilationError("Failed to serialize"))?;
+    let compiled_asset = {
+        let mut c: Vec<u8> = vec![];
+        c.append(&mut pathid_to_binary(&resource.albedo).to_ne_bytes().to_vec());
+        c.append(&mut pathid_to_binary(&resource.roughness).to_ne_bytes().to_vec());
+        c.append(&mut pathid_to_binary(&resource.roughness).to_ne_bytes().to_vec());
+        c.append(&mut pathid_to_binary(&resource.metalness).to_ne_bytes().to_vec());
+        c
+    };
 
     let checksum = context
         .content_store

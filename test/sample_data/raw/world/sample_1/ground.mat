@@ -1,6 +1,6 @@
 (
-    albedo: "auto_lod(import_layer(source/ground.psd, albedo))",
-    normal: "auto_lod(import_layer(source/ground.psd, normal))",
-    roughness: "auto_lod(extract_layer(source/ground.psd, roughness))",
-    metalness: "auto_lod(extract_layer(source/ground.psd, metalness))",
+    albedo: "offline_texture(image/ground.psd, 'albedo')",
+    normal: "offline_texture(image/ground.psd, 'normal')",
+    roughness: "offline_texture(image/ground.psd, 'roughness')",
+    metalness: "offline_texture(image/ground.psd, 'metalness')",
 )

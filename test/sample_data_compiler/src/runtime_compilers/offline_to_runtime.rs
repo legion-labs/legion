@@ -157,19 +157,6 @@ impl FromOffline<offline_data::Instance> for runtime_data::Instance {
     }
 }
 
-// ----- Material conversions -----
-
-impl FromOffline<offline_data::Material> for runtime_data::Material {
-    fn from_offline(offline: &offline_data::Material) -> Self {
-        Self {
-            albedo: offline.albedo.clone(),
-            normal: offline.normal.clone(),
-            roughness: offline.roughness.clone(),
-            metalness: offline.metalness.clone(),
-        }
-    }
-}
-
 // ----- Mesh conversions -----
 
 impl FromOffline<offline_data::Mesh> for runtime_data::Mesh {

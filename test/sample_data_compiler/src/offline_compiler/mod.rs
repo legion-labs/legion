@@ -45,9 +45,18 @@ pub fn build(root_folder: impl AsRef<Path>) {
 
     let resource_list = build.project().resource_list();
     for resource_id in resource_list {
+        let mut asset_path = convert_offline_to_runtime_path(&AssetPathId::from(resource_id));
+
+        let source_name = build
+            .project()
+            .resource_name(asset_path.source_resource())
+            .ok();
+
+        println!("Compiling: {} from {:?}..", asset_path, source_name);
+
         let manifest = build
             .compile(
-                convert_offline_to_runtime_path(&AssetPathId::from(resource_id)),
+                asset_path,
                 &offline_manifest_path,
                 Target::Server,
                 platform,
