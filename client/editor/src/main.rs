@@ -33,30 +33,36 @@ fn main() -> Result<(), Box<dyn Error>> {
 
   //let client = Mutex::new(EditorClient::connect(server_addr).await?);
 
-  App::new()
-    .set_runner(tauri_runner)
-    .add_plugin(AsyncPlugin {})
-    .run();
-
-  Ok(())
-}
-
-fn tauri_runner(app: App) {
   let tauri_app = tauri::Builder::default()
     //.manage(client)
     .invoke_handler(tauri::generate_handler![initialize_stream])
     .build(tauri::generate_context!())
     .expect("failed to instanciate a Tauri App");
 
-  // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
-  // get rid of this and move the value directly instead.
-  let app = Rc::new(RefCell::new(app));
+  App::new()
+    .set_runner(TauriRunner::build(tauri_app))
+    .add_plugin(AsyncPlugin {})
+    .run();
 
-  tauri_app.run(move |_, event| {
-    if let Event::MainEventsCleared = event {
-      app.borrow_mut().update();
+  Ok(())
+}
+
+struct TauriRunner {}
+
+impl TauriRunner {
+  fn build(tauri_app: tauri::App<tauri::Wry>) -> impl FnOnce(App) {
+    move |app: App| {
+      // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
+      // get rid of this and move the value directly instead.
+      let app = Rc::new(RefCell::new(app));
+
+      tauri_app.run(move |_, event| {
+        if let Event::MainEventsCleared = event {
+          app.borrow_mut().update();
+        }
+      });
     }
-  });
+  }
 }
 
 #[tauri::command]

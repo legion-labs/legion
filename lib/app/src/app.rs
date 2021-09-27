@@ -38,7 +38,7 @@ use legion_utils::tracing::info_span;
 /// ```
 pub struct App {
     pub world: World,
-    pub runner: Box<dyn Fn(App)>,
+    pub runner: Box<dyn FnOnce(App)>,
     pub schedule: Schedule,
 }
 
@@ -457,7 +457,7 @@ impl App {
     /// App::new()
     ///     .set_runner(my_runner);
     /// ```
-    pub fn set_runner(&mut self, run_fn: impl Fn(Self) + 'static) -> &mut Self {
+    pub fn set_runner(&mut self, run_fn: impl FnOnce(Self) + 'static) -> &mut Self {
         self.runner = Box::new(run_fn);
         self
     }
