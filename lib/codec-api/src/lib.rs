@@ -109,12 +109,14 @@
 // END - Legion Labs standard lints v0.3
 // crate-specific exceptions:
 #![allow()]
-#![warn(missing_docs)]
+//#![warn(missing_docs)]
 
 use std::sync::Arc;
 
 /// Contains the hardware implementation of multiple encoding/decoding algorithms
 pub mod backends;
+
+pub mod formats;
 
 /// doc
 #[derive(Debug, Clone, Copy)]
