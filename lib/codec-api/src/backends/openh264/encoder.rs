@@ -2,10 +2,13 @@
 //! Converts YUV / RGB images to NAL packets.
 
 use super::error::NativeErrorExt;
-use crate::formats::YUVSource;
 use super::Error;
+use crate::formats::YUVSource;
 use openh264_sys2::{
-    videoFormatI420, EVideoFormatType, ISVCEncoder, ISVCEncoderVtbl, SEncParamBase, SEncParamExt, SFrameBSInfo, SLayerBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder, ENCODER_OPTION, ENCODER_OPTION_DATAFORMAT, ENCODER_OPTION_TRACE_LEVEL, VIDEO_CODING_LAYER, WELS_LOG_DETAIL, WELS_LOG_QUIET
+    videoFormatI420, EVideoFormatType, ISVCEncoder, ISVCEncoderVtbl, SEncParamBase, SEncParamExt,
+    SFrameBSInfo, SLayerBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder,
+    ENCODER_OPTION, ENCODER_OPTION_DATAFORMAT, ENCODER_OPTION_TRACE_LEVEL, VIDEO_CODING_LAYER,
+    WELS_LOG_DETAIL, WELS_LOG_QUIET,
 };
 use std::os::raw::{c_int, c_uchar, c_void};
 use std::ptr::{addr_of_mut, null, null_mut};
@@ -18,14 +21,29 @@ use std::ptr::{addr_of_mut, null, null_mut};
 pub struct EncoderRawAPI {
     encoder_ptr: *mut *const ISVCEncoderVtbl,
     initialize: unsafe extern "C" fn(arg1: *mut ISVCEncoder, pParam: *const SEncParamBase) -> c_int,
-    initialize_ext: unsafe extern "C" fn(arg1: *mut ISVCEncoder, pParam: *const SEncParamExt) -> c_int,
-    get_default_params: unsafe extern "C" fn(arg1: *mut ISVCEncoder, pParam: *mut SEncParamExt) -> c_int,
+    initialize_ext:
+        unsafe extern "C" fn(arg1: *mut ISVCEncoder, pParam: *const SEncParamExt) -> c_int,
+    get_default_params:
+        unsafe extern "C" fn(arg1: *mut ISVCEncoder, pParam: *mut SEncParamExt) -> c_int,
     uninitialize: unsafe extern "C" fn(arg1: *mut ISVCEncoder) -> c_int,
-    encode_frame: unsafe extern "C" fn(arg1: *mut ISVCEncoder, kpSrcPic: *const SSourcePicture, pBsInfo: *mut SFrameBSInfo) -> c_int,
-    encode_parameter_sets: unsafe extern "C" fn(arg1: *mut ISVCEncoder, pBsInfo: *mut SFrameBSInfo) -> c_int,
+    encode_frame: unsafe extern "C" fn(
+        arg1: *mut ISVCEncoder,
+        kpSrcPic: *const SSourcePicture,
+        pBsInfo: *mut SFrameBSInfo,
+    ) -> c_int,
+    encode_parameter_sets:
+        unsafe extern "C" fn(arg1: *mut ISVCEncoder, pBsInfo: *mut SFrameBSInfo) -> c_int,
     force_intra_frame: unsafe extern "C" fn(arg1: *mut ISVCEncoder, bIDR: bool) -> c_int,
-    set_option: unsafe extern "C" fn(arg1: *mut ISVCEncoder, eOptionId: ENCODER_OPTION, pOption: *mut c_void) -> c_int,
-    get_option: unsafe extern "C" fn(arg1: *mut ISVCEncoder, eOptionId: ENCODER_OPTION, pOption: *mut c_void) -> c_int,
+    set_option: unsafe extern "C" fn(
+        arg1: *mut ISVCEncoder,
+        eOptionId: ENCODER_OPTION,
+        pOption: *mut c_void,
+    ) -> c_int,
+    get_option: unsafe extern "C" fn(
+        arg1: *mut ISVCEncoder,
+        eOptionId: ENCODER_OPTION,
+        pOption: *mut c_void,
+    ) -> c_int,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -39,9 +57,7 @@ impl EncoderRawAPI {
 
             WelsCreateSVCEncoder(&mut encoder_ptr as *mut *mut *const ISVCEncoderVtbl).ok()?;
 
-            let e = || {
-                Error::msg("VTable missing function.")
-            };
+            let e = || Error::msg("VTable missing function.");
 
             Ok(Self {
                 encoder_ptr,
@@ -59,16 +75,38 @@ impl EncoderRawAPI {
     }
 
     // Exposing these will probably do more harm than good.
-    unsafe fn uninitialize(&self) -> c_int { (self.uninitialize)(self.encoder_ptr) }
-    unsafe fn initialize(&self, pParam: *const SEncParamBase) -> c_int { (self.initialize)(self.encoder_ptr, pParam) }
-    unsafe fn initialize_ext(&self, pParam: *const SEncParamExt) -> c_int { (self.initialize_ext)(self.encoder_ptr, pParam) }
+    unsafe fn uninitialize(&self) -> c_int {
+        (self.uninitialize)(self.encoder_ptr)
+    }
+    unsafe fn initialize(&self, pParam: *const SEncParamBase) -> c_int {
+        (self.initialize)(self.encoder_ptr, pParam)
+    }
+    unsafe fn initialize_ext(&self, pParam: *const SEncParamExt) -> c_int {
+        (self.initialize_ext)(self.encoder_ptr, pParam)
+    }
 
-    pub unsafe fn get_default_params(&self, pParam: *mut SEncParamExt) -> c_int { (self.get_default_params)(self.encoder_ptr, pParam) }
-    pub unsafe fn encode_frame(&self, kpSrcPic: *const SSourcePicture, pBsInfo: *mut SFrameBSInfo) -> c_int { (self.encode_frame)(self.encoder_ptr, kpSrcPic, pBsInfo) }
-    pub unsafe fn encode_parameter_sets(&self, pBsInfo: *mut SFrameBSInfo) -> c_int { (self.encode_parameter_sets)(self.encoder_ptr, pBsInfo) }
-    pub unsafe fn force_intra_frame(&self, bIDR: bool) -> c_int { (self.force_intra_frame)(self.encoder_ptr, bIDR) }
-    pub unsafe fn set_option(&self, eOptionId: ENCODER_OPTION, pOption: *mut c_void) -> c_int { (self.set_option)(self.encoder_ptr, eOptionId, pOption) }
-    pub unsafe fn get_option(&self, eOptionId: ENCODER_OPTION, pOption: *mut c_void) -> c_int { (self.get_option)(self.encoder_ptr, eOptionId, pOption) }
+    pub unsafe fn get_default_params(&self, pParam: *mut SEncParamExt) -> c_int {
+        (self.get_default_params)(self.encoder_ptr, pParam)
+    }
+    pub unsafe fn encode_frame(
+        &self,
+        kpSrcPic: *const SSourcePicture,
+        pBsInfo: *mut SFrameBSInfo,
+    ) -> c_int {
+        (self.encode_frame)(self.encoder_ptr, kpSrcPic, pBsInfo)
+    }
+    pub unsafe fn encode_parameter_sets(&self, pBsInfo: *mut SFrameBSInfo) -> c_int {
+        (self.encode_parameter_sets)(self.encoder_ptr, pBsInfo)
+    }
+    pub unsafe fn force_intra_frame(&self, bIDR: bool) -> c_int {
+        (self.force_intra_frame)(self.encoder_ptr, bIDR)
+    }
+    pub unsafe fn set_option(&self, eOptionId: ENCODER_OPTION, pOption: *mut c_void) -> c_int {
+        (self.set_option)(self.encoder_ptr, eOptionId, pOption)
+    }
+    pub unsafe fn get_option(&self, eOptionId: ENCODER_OPTION, pOption: *mut c_void) -> c_int {
+        (self.get_option)(self.encoder_ptr, eOptionId, pOption)
+    }
 }
 
 impl Drop for EncoderRawAPI {
@@ -115,7 +153,11 @@ impl EncoderConfig {
     }
 
     pub fn debug(mut self, value: bool) -> Self {
-        self.debug = if value { WELS_LOG_DETAIL } else { WELS_LOG_QUIET };
+        self.debug = if value {
+            WELS_LOG_DETAIL
+        } else {
+            WELS_LOG_QUIET
+        };
         self
     }
 }
@@ -133,7 +175,6 @@ impl Encoder {
         let raw_api = EncoderRawAPI::new()?;
         let mut params = SEncParamExt::default();
 
-        #[rustfmt::skip]
         unsafe {
             raw_api.get_default_params(&mut params).ok()?;
             params.iPicWidth = config.width as c_int;
@@ -141,12 +182,22 @@ impl Encoder {
             params.bEnableFrameSkip = config.enable_skip_frame;
             params.iTargetBitrate = config.target_bitrate as c_int;
             params.bEnableDenoise = config.enable_denoise;
-            
+
             //dbg!(params);
             raw_api.initialize_ext(&params).ok()?;
 
-            raw_api.set_option(ENCODER_OPTION_TRACE_LEVEL, addr_of_mut!(config.debug).cast()).ok()?;
-            raw_api.set_option(ENCODER_OPTION_DATAFORMAT, addr_of_mut!(config.data_format).cast()).ok()?;
+            raw_api
+                .set_option(
+                    ENCODER_OPTION_TRACE_LEVEL,
+                    addr_of_mut!(config.debug).cast(),
+                )
+                .ok()?;
+            raw_api
+                .set_option(
+                    ENCODER_OPTION_DATAFORMAT,
+                    addr_of_mut!(config.data_format).cast(),
+                )
+                .ok()?;
         };
 
         Ok(Self {
@@ -169,7 +220,12 @@ impl Encoder {
         // only read these arrays (TOOD: needs verification).
         let source = SSourcePicture {
             iColorFormat: videoFormatI420,
-            iStride: [yuv_source.y_stride(), yuv_source.u_stride(), yuv_source.v_stride(), 0],
+            iStride: [
+                yuv_source.y_stride(),
+                yuv_source.u_stride(),
+                yuv_source.v_stride(),
+                0,
+            ],
             pData: [
                 yuv_source.y().as_ptr() as *mut c_uchar,
                 yuv_source.u().as_ptr() as *mut c_uchar,
@@ -182,7 +238,9 @@ impl Encoder {
         };
 
         unsafe {
-            self.raw_api.encode_frame(&source, &mut self.bit_stream_info).ok()?;
+            self.raw_api
+                .encode_frame(&source, &mut self.bit_stream_info)
+                .ok()?;
 
             Ok(EncodedBitStream {
                 bit_stream_info: &self.bit_stream_info,
@@ -335,7 +393,8 @@ pub enum FrameType {
 impl FrameType {
     fn from_c_int(native: std::os::raw::c_int) -> Self {
         use openh264_sys2::{
-            videoFrameTypeI, videoFrameTypeIDR, videoFrameTypeIPMixed, videoFrameTypeP, videoFrameTypeSkip
+            videoFrameTypeI, videoFrameTypeIDR, videoFrameTypeIPMixed, videoFrameTypeP,
+            videoFrameTypeSkip,
         };
 
         #[allow(non_upper_case_globals)]
@@ -353,51 +412,59 @@ impl FrameType {
 #[cfg(test)]
 mod test {
 
+    //use super::encoder::{Encoder, EncoderConfig, FrameType};
+    use super::super::Error;
+    use crate::{
+        backends::openh264::encoder::{Encoder, EncoderConfig, FrameType},
+        formats::RBGYUVConverter,
+    };
 
-//use super::encoder::{Encoder, EncoderConfig, FrameType};
-use crate::{backends::openh264::encoder::{Encoder, EncoderConfig, FrameType}, formats::RBGYUVConverter};
-use super::super::Error;
+    #[test]
+    fn can_get_encoder() -> Result<(), Error> {
+        let config = EncoderConfig::new(300, 200);
+        let _encoder = Encoder::with_config(config)?;
 
-#[test]
-fn can_get_encoder() -> Result<(), Error> {
-    let config = EncoderConfig::new(300, 200);
-    let _encoder = Encoder::with_config(config)?;
+        Ok(())
+    }
 
-    Ok(())
-}
+    #[test]
+    fn encode() -> Result<(), Error> {
+        let src = &[0u8; 128 * 128 * 3];
 
-#[test]
-fn encode() -> Result<(), Error> {
-    let src = &[0u8; 128*128*3];
+        let config = EncoderConfig::new(128, 128);
+        let mut encoder = Encoder::with_config(config)?;
+        let mut converter = RBGYUVConverter::new(128, 128);
 
-    let config = EncoderConfig::new(128, 128);
-    let mut encoder = Encoder::with_config(config)?;
-    let mut converter = RBGYUVConverter::new(128, 128);
+        converter.convert(src);
 
-    converter.convert(src);
+        let stream = encoder.encode(&converter)?;
 
-    let stream = encoder.encode(&converter)?;
+        assert_eq!(stream.frame_type(), FrameType::IDR);
+        assert_eq!(stream.num_layers(), 2);
 
-    assert_eq!(stream.frame_type(), FrameType::IDR);
-    assert_eq!(stream.num_layers(), 2);
+        // Test NAL headers available.
+        let layer = stream.layer(0).unwrap();
+        assert!(!layer.is_video());
+        assert_eq!(layer.nal_count(), 2);
+        assert_eq!(
+            &layer.nal_unit(0).unwrap()[..5],
+            &[0u8, 0u8, 0u8, 1u8, 0x67u8]
+        );
+        assert_eq!(
+            &layer.nal_unit(1).unwrap()[..5],
+            &[0u8, 0u8, 0u8, 1u8, 0x68u8]
+        );
 
-    // Test NAL headers available.
-    let layer = stream.layer(0).unwrap();
-    assert!(!layer.is_video());
-    assert_eq!(layer.nal_count(), 2);
-    assert_eq!(&layer.nal_unit(0).unwrap()[..5], &[0u8, 0u8, 0u8, 1u8, 0x67u8]);
-    assert_eq!(&layer.nal_unit(1).unwrap()[..5], &[0u8, 0u8, 0u8, 1u8, 0x68u8]);
+        let layer = stream.layer(1).unwrap();
+        assert!(layer.is_video());
+        assert_eq!(layer.nal_count(), 1);
 
-    let layer = stream.layer(1).unwrap();
-    assert!(layer.is_video());
-    assert_eq!(layer.nal_count(), 1);
+        // Test video unit has good header and reasonable length.
+        let video_unit = layer.nal_unit(0).unwrap();
+        assert_eq!(&video_unit[..5], &[0u8, 0u8, 0u8, 1u8, 0x65u8]);
+        assert!(video_unit.len() > 50);
+        assert!(video_unit.len() < 100_000);
 
-    // Test video unit has good header and reasonable length.
-    let video_unit = layer.nal_unit(0).unwrap();
-    assert_eq!(&video_unit[..5], &[0u8, 0u8, 0u8, 1u8, 0x65u8]);
-    assert!(video_unit.len() > 50);
-    assert!(video_unit.len() < 100_000);
-
-    Ok(())
-}
+        Ok(())
+    }
 }
