@@ -3,22 +3,60 @@
   windows_subsystem = "windows"
 )]
 
-use std::error::Error;
-use tokio::sync::Mutex;
-
+use clap::Arg;
+use legion_app::prelude::*;
+use legion_async::AsyncPlugin;
 use legion_editor_proto::{editor_client::*, InitializeStreamRequest};
+use std::{cell::RefCell, error::Error, rc::Rc};
+use tauri::Event;
+use tokio::sync::Mutex;
 use tonic::transport::Channel;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-  let client = Mutex::new(EditorClient::connect("http://[::1]:50051").await?);
+fn main() -> Result<(), Box<dyn Error>> {
+  let args = clap::App::new("Legion Labs editor")
+    .author(clap::crate_authors!())
+    .version(clap::crate_version!())
+    .about("Legion Labs editor.")
+    .arg(
+      Arg::with_name("server-addr")
+        .long("server-addr")
+        .takes_value(true)
+        .help("The address of the editor server to connect to"),
+    )
+    .get_matches();
 
-  tauri::Builder::default()
-    .manage(client)
-    .invoke_handler(tauri::generate_handler![initialize_stream])
-    .run(tauri::generate_context!())?;
+  let _server_addr: String = args
+    .value_of("server-addr")
+    .unwrap_or("http://[::1]:50051")
+    .parse()
+    .unwrap();
+
+  //let client = Mutex::new(EditorClient::connect(server_addr).await?);
+
+  App::new()
+    .set_runner(tauri_runner)
+    .add_plugin(AsyncPlugin {})
+    .run();
 
   Ok(())
+}
+
+fn tauri_runner(app: App) {
+  let tauri_app = tauri::Builder::default()
+    //.manage(client)
+    .invoke_handler(tauri::generate_handler![initialize_stream])
+    .build(tauri::generate_context!())
+    .expect("failed to instanciate a Tauri App");
+
+  // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
+  // get rid of this and move the value directly instead.
+  let app = Rc::new(RefCell::new(app));
+
+  tauri_app.run(move |_, event| {
+    if let Event::MainEventsCleared = event {
+      app.borrow_mut().update();
+    }
+  });
 }
 
 #[tauri::command]
