@@ -81,12 +81,14 @@
 pub mod dispatch;
 pub mod event_block_sink;
 pub mod grpc_event_sink;
+pub mod guard;
 pub mod log_stream;
 pub mod thread_stream;
 
 pub use dispatch::*;
 pub use event_block_sink::*;
 pub use grpc_event_sink::*;
+pub use guard::*;
 pub use log_stream::*;
 pub use thread_stream::*;
 

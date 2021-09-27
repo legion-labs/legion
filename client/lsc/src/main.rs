@@ -77,16 +77,11 @@
 
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_source_control::*;
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 use telemetry::*;
 
-fn init_telemetry() {
-    let sink: Arc<dyn EventBlockSink> = Arc::new(NullEventSink {});
-    init_event_dispatch(1024, 1024 * 1024, sink).unwrap();
-}
-
 fn main() {
-    init_telemetry();
+    let _telemetry_guard = TelemetrySystemGuard::new();
     init_thread_stream();
     if let Err(e) = main_impl() {
         println!("{}", e);
