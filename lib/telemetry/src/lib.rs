@@ -98,4 +98,5 @@ pub mod telemetry_ingestion_proto {
     tonic::include_proto!("telemetry_ingestion_proto");
 }
 
-pub type ProcessInfo = telemetry_ingestion_proto::InsertProcessRequest;
+pub type ProcessInfo = telemetry_ingestion_proto::Process;
+pub type StreamInfo = telemetry_ingestion_proto::Stream;

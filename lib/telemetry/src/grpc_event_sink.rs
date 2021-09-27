@@ -50,6 +50,16 @@ impl GRPCEventSink {
                             }
                         }
                     }
+                    TelemetrySinkEvent::OnNewStream(stream_info) => {
+                        match tokio_runtime.block_on(client.insert_stream(stream_info)) {
+                            Ok(response) => {
+                                dbg!(response);
+                            }
+                            Err(e) => {
+                                println!("insert_process failed: {}", e);
+                            }
+                        }
+                    }
                     TelemetrySinkEvent::OnShutdown => {
                         return;
                     }
