@@ -6,6 +6,7 @@ use std::{
 };
 
 struct Dispatch {
+    process_id: String,
     log_buffer_size: usize,
     thread_buffer_size: usize,
     log_stream: Mutex<LogStream>,
@@ -18,13 +19,16 @@ impl Dispatch {
         thread_buffer_size: usize,
         sink: Arc<dyn EventBlockSink>,
     ) -> Self {
+        let process_id = uuid::Uuid::new_v4().to_string();
         let mut obj = Self {
+            process_id,
             log_buffer_size,
             thread_buffer_size,
             log_stream: Mutex::new(LogStream::new(log_buffer_size)),
             sink,
         };
         obj.on_init_process();
+        obj.on_init_log_stream();
         obj
     }
 
@@ -47,7 +51,7 @@ impl Dispatch {
         };
 
         let process_info = ProcessInfo {
-            id: uuid::Uuid::new_v4().to_string(),
+            id: self.process_id.clone(),
             username: whoami::username(),
             realname: whoami::realname(),
             exe: std::env::current_exe()
@@ -62,6 +66,21 @@ impl Dispatch {
         };
         self.sink
             .on_sink_event(TelemetrySinkEvent::OnInitProcess(process_info));
+    }
+
+    fn on_init_log_stream(&mut self) {
+        let stream_id = uuid::Uuid::new_v4().to_string();
+        let stream_info = StreamInfo {
+            process_id: self.process_id.clone(),
+            stream_id,
+            dependencies_metadata: Some(telemetry_ingestion_proto::ContainerMetadata {
+                types: vec![],
+            }),
+            objects_metadata: Some(telemetry_ingestion_proto::ContainerMetadata { types: vec![] }),
+            tags: vec![String::from("log")],
+        };
+        self.sink
+            .on_sink_event(TelemetrySinkEvent::OnInitStream(stream_info));
     }
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {

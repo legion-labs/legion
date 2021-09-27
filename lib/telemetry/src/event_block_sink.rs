@@ -6,7 +6,7 @@ use std::sync::Arc;
 #[derive(Debug)]
 pub enum TelemetrySinkEvent {
     OnInitProcess(ProcessInfo),
-    OnNewStream(StreamInfo),
+    OnInitStream(StreamInfo),
     OnLogBufferFull(Arc<LogMsgBlock>),
     OnThreadBufferFull(Arc<ThreadEventBlock>),
     OnShutdown,
