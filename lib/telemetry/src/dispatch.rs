@@ -21,10 +21,10 @@ impl Dispatch {
     ) -> Self {
         let process_id = uuid::Uuid::new_v4().to_string();
         let mut obj = Self {
-            process_id,
+            process_id: process_id.clone(),
             log_buffer_size,
             thread_buffer_size,
-            log_stream: Mutex::new(LogStream::new(log_buffer_size)),
+            log_stream: Mutex::new(LogStream::new(log_buffer_size, process_id)),
             sink,
         };
         obj.on_init_process();
@@ -69,18 +69,10 @@ impl Dispatch {
     }
 
     fn on_init_log_stream(&mut self) {
-        let stream_id = uuid::Uuid::new_v4().to_string();
-        let stream_info = StreamInfo {
-            process_id: self.process_id.clone(),
-            stream_id,
-            dependencies_metadata: Some(telemetry_ingestion_proto::ContainerMetadata {
-                types: vec![],
-            }),
-            objects_metadata: Some(telemetry_ingestion_proto::ContainerMetadata { types: vec![] }),
-            tags: vec![String::from("log")],
-        };
-        self.sink
-            .on_sink_event(TelemetrySinkEvent::OnInitStream(stream_info));
+        let log_stream = self.log_stream.lock().unwrap();
+        self.sink.on_sink_event(TelemetrySinkEvent::OnInitStream(
+            log_stream.get_stream_info(),
+        ));
     }
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
