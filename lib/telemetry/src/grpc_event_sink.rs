@@ -1,5 +1,5 @@
 use crate::telemetry_ingestion_proto::telemetry_ingestion_client::TelemetryIngestionClient;
-use crate::{EventBlockSink, TelemetrySinkEvent};
+use crate::*;
 
 pub struct GRPCEventSink {
     thread: Option<std::thread::JoinHandle<()>>,
@@ -64,7 +64,8 @@ impl GRPCEventSink {
                         return;
                     }
                     TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
-                        dbg!(log_buffer);
+                        let encoded = log_buffer.encode();
+                        dbg!(encoded);
                     }
                     TelemetrySinkEvent::OnThreadBufferFull(thread_buffer) => {
                         dbg!(thread_buffer);

@@ -7,7 +7,22 @@ struct DebugEventSink {}
 
 impl EventBlockSink for DebugEventSink {
     fn on_sink_event(&self, event: TelemetrySinkEvent) {
-        dbg!(event);
+        match event {
+            TelemetrySinkEvent::OnInitProcess(process_info) => {
+                dbg!(process_info);
+            }
+            TelemetrySinkEvent::OnInitStream(stream_info) => {
+                dbg!(stream_info);
+            }
+            TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
+                let encoded = log_buffer.encode();
+                dbg!(encoded);
+            }
+            TelemetrySinkEvent::OnThreadBufferFull(_) => {
+                println!("thread buffer full");
+            }
+            TelemetrySinkEvent::OnShutdown => todo!(),
+        }
     }
 }
 

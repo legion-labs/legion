@@ -79,17 +79,21 @@
 #![allow(unsafe_code)]
 
 pub mod dispatch;
+pub mod dual_time;
 pub mod event_block_sink;
 pub mod grpc_event_sink;
 pub mod guard;
+pub mod log_block;
 pub mod log_stream;
 pub mod stream;
 pub mod thread_stream;
 
 pub use dispatch::*;
+pub use dual_time::*;
 pub use event_block_sink::*;
 pub use grpc_event_sink::*;
 pub use guard::*;
+pub use log_block::*;
 pub use log_stream::*;
 pub use stream::*;
 pub use thread_stream::*;
@@ -102,3 +106,4 @@ pub mod telemetry_ingestion_proto {
 
 pub type ProcessInfo = telemetry_ingestion_proto::Process;
 pub type StreamInfo = telemetry_ingestion_proto::Stream;
+pub type EncodedBlock = telemetry_ingestion_proto::Block;

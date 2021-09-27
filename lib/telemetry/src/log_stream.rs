@@ -2,39 +2,8 @@ use crate::*;
 use std::sync::Arc;
 use transit::*;
 
-#[derive(Debug, Clone)]
-pub enum LogLevel {
-    Info,
-    Warning,
-    Error,
-}
-
-#[derive(Debug)]
-pub struct LogMsgEvent {
-    pub level: LogLevel,
-    pub msg: &'static str,
-}
-
-impl Serialize for LogMsgEvent {}
-
-declare_queue_struct!(
-    struct LogMsgQueue<LogMsgEvent> {}
-);
-
-#[derive(Debug)]
-pub struct LogMsgBlock {
-    pub events: LogMsgQueue,
-}
-
-impl LogMsgBlock {
-    pub fn new(buffer_size: usize) -> Self {
-        let events = LogMsgQueue::new(buffer_size);
-        Self { events }
-    }
-}
-
 pub struct LogStream {
-    current_block: Arc<LogMsgBlock>,
+    current_block: Arc<LogBlock>,
     initial_size: usize,
     stream_id: String,
     process_id: String,
@@ -52,20 +21,24 @@ impl Stream for LogStream {
             tags: vec![String::from("log")],
         }
     }
+
+    fn get_stream_id(&self) -> String {
+        self.stream_id.clone()
+    }
 }
 
 impl LogStream {
     pub fn new(buffer_size: usize, process_id: String) -> Self {
         let stream_id = uuid::Uuid::new_v4().to_string();
         Self {
-            current_block: Arc::new(LogMsgBlock::new(buffer_size)),
+            current_block: Arc::new(LogBlock::new(buffer_size, stream_id.clone())),
             initial_size: buffer_size,
             stream_id,
             process_id,
         }
     }
 
-    pub fn replace_block(&mut self, new_block: Arc<LogMsgBlock>) -> Arc<LogMsgBlock> {
+    pub fn replace_block(&mut self, new_block: Arc<LogBlock>) -> Arc<LogBlock> {
         let old_block = self.current_block.clone();
         self.current_block = new_block;
         old_block

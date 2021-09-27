@@ -151,4 +151,8 @@ impl Stream for ThreadStream {
             tags: vec![String::from("cpu")],
         }
     }
+
+    fn get_stream_id(&self) -> String {
+        self.stream_id.clone()
+    }
 }

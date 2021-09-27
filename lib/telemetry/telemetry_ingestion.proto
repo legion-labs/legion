@@ -49,14 +49,18 @@ message Stream{
     repeated string tags = 5;
 }
 
+message BlockPayload{
+    bytes dependencies = 1;
+    bytes objects = 2;
+}
+
 message Block{
     string stream_id = 1;
     string block_id = 2;
-    bytes dependencies = 3;
-    bytes objects = 4;
     //we send both RFC3339 times and ticks to be able to calibrate the tick frequency
-    string begin_time = 5;
-    uint64 begin_ticks = 6;
-    string end_time = 7;
-    uint64 end_ticks = 8;
+    string begin_time = 3;
+    uint64 begin_ticks = 4;
+    string end_time = 5;
+    uint64 end_ticks = 6;
+    BlockPayload payload = 7;
 }

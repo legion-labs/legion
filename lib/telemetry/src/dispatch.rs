@@ -84,9 +84,11 @@ impl Dispatch {
         let mut log_stream = self.log_stream.lock().unwrap();
         log_stream.push(LogMsgEvent { level, msg });
         if log_stream.is_full() {
-            let old_event_block =
-                log_stream.replace_block(Arc::new(LogMsgBlock::new(self.log_buffer_size)));
+            let stream_id = log_stream.get_stream_id();
+            let mut old_event_block =
+                log_stream.replace_block(Arc::new(LogBlock::new(self.log_buffer_size, stream_id)));
             assert!(!log_stream.is_full());
+            Arc::get_mut(&mut old_event_block).unwrap().close();
             self.sink
                 .on_sink_event(TelemetrySinkEvent::OnLogBufferFull(old_event_block));
         }
