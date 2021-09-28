@@ -4,6 +4,7 @@ use legion_data_runtime::{
     manifest::Manifest, AssetId, AssetRegistry, AssetRegistryOptions, HandleUntyped,
 };
 use legion_ecs::prelude::*;
+use legion_transform::prelude::*;
 use sample_data_compiler::runtime_data::{self, CompilableAsset};
 use std::{
     fs::File,
@@ -130,9 +131,25 @@ impl AssetRegistryPlugin {
         drop(registry);
     }
 
-    fn on_loaded_entity(_commands: &mut Commands<'_>, entity: &runtime_data::Entity) {
-        println!("Loaded entity {}", entity.name);
-        //commands.spawn();
+    fn on_loaded_entity(commands: &mut Commands<'_>, runtime_entity: &runtime_data::Entity) {
+        let mut entity = commands.spawn();
+        for component in &runtime_entity.components {
+            if let Some(transform) = component.downcast_ref::<runtime_data::Transform>() {
+                entity.insert(Transform {
+                    translation: transform.position,
+                    rotation: transform.rotation,
+                    scale: transform.scale,
+                });
+                // } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
+                // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
+                // } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
+                // } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
+                // } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
+                // } else if let Some(physics) = component.downcast_ref::<runtime_data::Physics>() {
+            }
+        }
+        let id = entity.id();
+        println!("Loaded entity {}, ECS id: {:?}", runtime_entity.name, id);
     }
 
     fn on_loaded_instance(_commands: &mut Commands<'_>, _instance: &runtime_data::Instance) {
