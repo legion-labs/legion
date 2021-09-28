@@ -52,7 +52,7 @@ export class VideoPlayer {
     this.listeners.push(
       addListener(this.mediaSource, "sourceopen", () => {
         this.videoSource = this.mediaSource.addSourceBuffer(
-          'video/mp4; codecs="avc1.64001e"'
+          'video/mp4; codecs="avc1.42C01F";'
         );
         this.listeners.push(
           addListener(this.videoSource, "update", this._submit, this)
@@ -89,21 +89,14 @@ export class VideoPlayer {
   push(data) {
     const frame = new Uint8Array(data);
 
-    console.log(buf2hex(frame));
     if (frame[4] === 0x66) {
       this._reinit();
       this.waitingForKeyFrame = false;
     }
 
-    //if (!this.waitingForKeyFrame) {
+    if (!this.waitingForKeyFrame) {
       this.queue.push(frame);
       this._submit();
-    //}
+    }
   }
-}
-
-function buf2hex(buffer) { // buffer is an ArrayBuffer
-  return [...new Uint8Array(buffer)]
-      .map(x => x.toString(16).padStart(2, '0'))
-      .join('');
 }

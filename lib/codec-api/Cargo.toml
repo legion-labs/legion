@@ -13,3 +13,4 @@ openh264-sys2 = { version = "0.1", default-features = false, features = [
     "decoder",
     "encoder",
 ] }
+smallvec = { version = "1.6" }

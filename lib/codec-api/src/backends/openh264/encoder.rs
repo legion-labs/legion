@@ -6,12 +6,13 @@ use super::Error;
 use crate::formats::YUVSource;
 use openh264_sys2::{
     videoFormatI420, EVideoFormatType, ISVCEncoder, ISVCEncoderVtbl, SEncParamBase, SEncParamExt,
-    SFrameBSInfo, SLayerBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder,
-    ENCODER_OPTION, ENCODER_OPTION_DATAFORMAT, ENCODER_OPTION_TRACE_LEVEL, VIDEO_CODING_LAYER,
-    WELS_LOG_DETAIL, WELS_LOG_QUIET,
+    SFrameBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder, ENCODER_OPTION,
+    ENCODER_OPTION_DATAFORMAT, ENCODER_OPTION_TRACE_LEVEL, VIDEO_CODING_LAYER, WELS_LOG_DETAIL,
+    WELS_LOG_QUIET,
 };
+use smallvec::SmallVec;
 use std::os::raw::{c_int, c_uchar, c_void};
-use std::ptr::{addr_of_mut, null, null_mut};
+use std::ptr::{addr_of_mut, null};
 
 /// Convenience wrapper with guaranteed function pointers for easy access.
 ///
@@ -45,6 +46,9 @@ pub struct EncoderRawAPI {
         pOption: *mut c_void,
     ) -> c_int,
 }
+
+unsafe impl Send for EncoderRawAPI {}
+unsafe impl Sync for EncoderRawAPI {}
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::missing_safety_doc)]
@@ -166,7 +170,6 @@ impl EncoderConfig {
 pub struct Encoder {
     params: SEncParamExt,
     raw_api: EncoderRawAPI,
-    bit_stream_info: SFrameBSInfo,
 }
 
 impl Encoder {
@@ -200,11 +203,7 @@ impl Encoder {
                 .ok()?;
         };
 
-        Ok(Self {
-            params,
-            raw_api,
-            bit_stream_info: Default::default(),
-        })
+        Ok(Self { params, raw_api })
     }
 
     /// Encodes a YUV source and returns the encoded bitstream.
@@ -216,34 +215,50 @@ impl Encoder {
         assert_eq!(yuv_source.width(), self.params.iPicWidth);
         assert_eq!(yuv_source.height(), self.params.iPicHeight);
 
-        // Converting *const u8 to *mut u8 should be fine because the encoder _should_
-        // only read these arrays (TOOD: needs verification).
-        let source = SSourcePicture {
-            iColorFormat: videoFormatI420,
-            iStride: [
-                yuv_source.y_stride(),
-                yuv_source.u_stride(),
-                yuv_source.v_stride(),
-                0,
-            ],
-            pData: [
-                yuv_source.y().as_ptr() as *mut c_uchar,
-                yuv_source.u().as_ptr() as *mut c_uchar,
-                yuv_source.v().as_ptr() as *mut c_uchar,
-                null_mut(),
-            ],
-            iPicWidth: self.params.iPicWidth,
-            iPicHeight: self.params.iPicHeight,
-            ..Default::default()
-        };
+        let mut source = SSourcePicture::default();
+        let mut bit_stream_info = SFrameBSInfo::default();
+
+        source.iColorFormat = videoFormatI420;
+        source.iPicWidth = self.params.iPicWidth;
+        source.iPicHeight = self.params.iPicHeight;
+        source.iStride[0] = yuv_source.y_stride();
+        source.iStride[1] = yuv_source.u_stride();
+        source.iStride[2] = yuv_source.v_stride();
 
         unsafe {
+            // Converting *const u8 to *mut u8 should be fine because the encoder _should_
+            // only read these arrays (TOOD: needs verification).
+            source.pData[0] = yuv_source.y().as_ptr() as *mut c_uchar;
+            source.pData[1] = yuv_source.u().as_ptr() as *mut c_uchar;
+            source.pData[2] = yuv_source.v().as_ptr() as *mut c_uchar;
+
             self.raw_api
-                .encode_frame(&source, &mut self.bit_stream_info)
+                .encode_frame(&source, &mut bit_stream_info)
                 .ok()?;
 
+            let num_layers = bit_stream_info.iLayerNum as usize;
+            let layers: SmallVec<[Layer<'_>; 4]> = bit_stream_info.sLayerInfo[0..num_layers]
+                .iter()
+                .map(|layer| {
+                    let mut offset = 0;
+                    let mut nal_units = SmallVec::<[&[u8]; 4]>::new();
+                    for nal_idx in 0..layer.iNalCount {
+                        // pNalLengthInByte is a c_int C array containing the nal unit sizes
+                        let size = *layer.pNalLengthInByte.offset(nal_idx as isize) as usize;
+                        let nal_unit = std::slice::from_raw_parts(layer.pBsBuf.add(offset), size);
+                        nal_units.push(nal_unit);
+                        offset += size;
+                    }
+                    Layer {
+                        nal_units,
+                        is_video: layer.uiLayerType == VIDEO_CODING_LAYER as u8,
+                    }
+                })
+                .collect();
+
             Ok(EncodedBitStream {
-                bit_stream_info: &self.bit_stream_info,
+                layers,
+                frame_type: FrameType::from_c_int(bit_stream_info.eFrameType),
             })
         }
     }
@@ -269,106 +284,20 @@ impl Drop for Encoder {
     }
 }
 
-/// Bitstream output resulting from an [encode()](Encoder::encode) operation.
-pub struct EncodedBitStream<'a> {
-    /// Holds the bitstream info just encoded.
-    bit_stream_info: &'a SFrameBSInfo,
-}
-
-impl<'a> EncodedBitStream<'a> {
-    /// Raw bitstream info returned by the encoder.
-    pub fn raw_info(&self) -> &'a SFrameBSInfo {
-        self.bit_stream_info
-    }
-
-    /// Frame type of the encoded packet.
-    pub fn frame_type(&self) -> FrameType {
-        FrameType::from_c_int(self.bit_stream_info.eFrameType)
-    }
-
-    /// Number of layers in the encoded packet.
-    pub fn num_layers(&self) -> usize {
-        self.bit_stream_info.iLayerNum as usize
-    }
-
-    /// Returns ith layer of this bitstream.
-    pub fn layer(&self, i: usize) -> Option<Layer<'a>> {
-        if i < self.num_layers() {
-            Some(Layer {
-                layer_info: &self.bit_stream_info.sLayerInfo[i],
-            })
-        } else {
-            None
-        }
-    }
-
-    /// Writes the current bitstream into the given Vec.
-    pub fn write_vec(&self, dst: &mut Vec<u8>) {
-        for l in 0..self.num_layers() {
-            let layer = self.layer(l).unwrap();
-
-            for n in 0..layer.nal_count() {
-                let nal = layer.nal_unit(n).unwrap();
-
-                dst.extend_from_slice(nal);
-            }
-        }
-    }
-
-    /// Convenience method returning a Vec containing the encoded bitstream.
-    pub fn to_vec(&self) -> Vec<u8> {
-        let mut rval = Vec::new();
-        self.write_vec(&mut rval);
-        rval
-    }
-}
-
-/// An encoded layer, contains the Network Abstraction Layer inputs.
-#[derive(Debug)]
+/// A Encoded Layer, contains the Network Abstraction Layer inputs
 pub struct Layer<'a> {
-    /// Native layer info.
-    layer_info: &'a SLayerBSInfo,
+    /// Network Abstraction Layer Units for a given layer
+    pub nal_units: SmallVec<[&'a [u8]; 4]>,
+    /// Set to true if the layer contains video data, false otherwise
+    pub is_video: bool,
 }
 
-impl<'a> Layer<'a> {
-    /// Raw layer info contained in a bitstream.
-    pub fn raw_info(&self) -> &'a SLayerBSInfo {
-        self.layer_info
-    }
-
-    /// NAL count of this layer.
-    pub fn nal_count(&self) -> usize {
-        self.layer_info.iNalCount as usize
-    }
-
-    /// Returns NAL unit data for the ith element.
-    pub fn nal_unit(&self, i: usize) -> Option<&[u8]> {
-        if i < self.nal_count() {
-            let mut offset = 0;
-
-            let slice = unsafe {
-                // Fast forward through all NALs we didn't request
-                // TODO: We can probably do this math a bit more efficiently, not counting up all the time.
-                // pNalLengthInByte is a c_int C array containing the nal unit sizes
-                for nal_idx in 0..i {
-                    let size = *self.layer_info.pNalLengthInByte.add(nal_idx) as usize;
-                    offset += size;
-                }
-
-                let size = *self.layer_info.pNalLengthInByte.add(i) as usize;
-                std::slice::from_raw_parts(self.layer_info.pBsBuf.add(offset), size)
-            };
-
-            Some(slice)
-        } else {
-            None
-        }
-    }
-
-    /// If this is a video layer or not.
-    pub fn is_video(&self) -> bool {
-        self.layer_info.uiLayerType == VIDEO_CODING_LAYER as c_uchar
-    }
+/// Encoding output, currently takes only the first video layer.
+pub struct EncodedBitStream<'a> {
+    /// Obtains the bitstream as a byte slice.
+    pub layers: SmallVec<[Layer<'a>; 4]>,
+    /// What this bitstream encodes.
+    pub frame_type: FrameType,
 }
 
 /// Frame type returned by the encoder.
@@ -438,32 +367,27 @@ mod test {
         converter.convert(src);
 
         let stream = encoder.encode(&converter)?;
-
-        assert_eq!(stream.frame_type(), FrameType::IDR);
-        assert_eq!(stream.num_layers(), 2);
-
-        // Test NAL headers available.
-        let layer = stream.layer(0).unwrap();
-        assert!(!layer.is_video());
-        assert_eq!(layer.nal_count(), 2);
+        assert_eq!(stream.frame_type, FrameType::IDR);
+        assert_eq!(stream.layers.len(), 2);
+        assert!(!stream.layers[0].is_video);
+        assert_eq!(stream.layers[0].nal_units.len(), 2);
         assert_eq!(
-            &layer.nal_unit(0).unwrap()[..5],
+            &stream.layers[0].nal_units[0][..5],
             &[0u8, 0u8, 0u8, 1u8, 0x67u8]
         );
         assert_eq!(
-            &layer.nal_unit(1).unwrap()[..5],
+            &stream.layers[0].nal_units[1][..5],
             &[0u8, 0u8, 0u8, 1u8, 0x68u8]
         );
-
-        let layer = stream.layer(1).unwrap();
-        assert!(layer.is_video());
-        assert_eq!(layer.nal_count(), 1);
-
-        // Test video unit has good header and reasonable length.
-        let video_unit = layer.nal_unit(0).unwrap();
-        assert_eq!(&video_unit[..5], &[0u8, 0u8, 0u8, 1u8, 0x65u8]);
-        assert!(video_unit.len() > 50);
-        assert!(video_unit.len() < 100_000);
+        assert!(stream.layers[1].is_video);
+        assert_eq!(stream.layers[1].nal_units.len(), 1);
+        assert_eq!(
+            &stream.layers[1].nal_units[0][..5],
+            &[0u8, 0u8, 0u8, 1u8, 0x65u8]
+        );
+        // Test length reasonable.
+        assert!(stream.layers[1].nal_units[0].len() > 1000);
+        assert!(stream.layers[1].nal_units[0].len() < 100_000);
 
         Ok(())
     }

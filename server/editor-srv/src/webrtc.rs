@@ -1,10 +1,8 @@
-use std::{borrow::Borrow, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
-use anyhow::bail;
 use interceptor::registry::Registry;
-use mp4::Mp4Reader;
+use legion_mp4::Mp4Stream;
 
-use std::{fs::File, io::BufReader};
 use webrtc::{
     api::{
         interceptor_registry::register_default_interceptors, media_engine::MediaEngine, APIBuilder,
@@ -17,6 +15,8 @@ use webrtc::{
         sdp::session_description::RTCSessionDescription,
     },
 };
+
+use legion_codec_api::{backends::openh264::encoder, formats};
 
 pub struct WebRTCServer {
     api: API,
@@ -116,35 +116,15 @@ impl WebRTCServer {
         Ok(())
     }
 
-    fn get_video_track(
-        mp4: &Mp4Reader<BufReader<File>>,
-    ) -> anyhow::Result<(u32, u32, f64, u16, u16)> {
-        for (track_id, track) in mp4.tracks().iter() {
-            if let Ok(track_type) = track.track_type() {
-                if track_type == mp4::TrackType::Video {
-                    return Ok((
-                        *track_id,
-                        track.sample_count(),
-                        track.frame_rate(),
-                        track.width(),
-                        track.height(),
-                    ));
-                }
-            }
-        }
-
-        bail!("no video track found")
-    }
-
     async fn handle_video_data_channel(data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
         // Sample code to stream a video.
-        let f = File::open("assets/video.mp4").unwrap();
-        let size = f.metadata()?.len();
-        let reader = BufReader::new(f);
-        let mut mp4 = mp4::Mp4Reader::read_header(reader, size)?;
+        let src = &include_bytes!("../assets/lenna_512x512.rgb")[..];
 
-        // Select the first video track we found.
-        let (track_id, sample_count, frame_rate, width, height) = Self::get_video_track(&mp4)?;
+        let config = encoder::EncoderConfig::new(512, 512);
+        let mut encoder = encoder::Encoder::with_config(config)?;
+        let mut converter = formats::RBGYUVConverter::new(512, 512);
+
+        converter.convert(src);
 
         let on_close_name = data_channel.name();
 
@@ -163,26 +143,59 @@ impl WebRTCServer {
                 println!("Video data channel opened.");
 
                 let data_channel = on_open_data_channel;
-
                 Box::pin(async move {
-                    println!(
-                        "Now streaming {} x {} mp4 video at {} fps.",
-                        width, height, frame_rate
-                    );
+                    let mut mp4 = Mp4Stream::new(30);
+                    let track_id = mp4.add_track(512, 512).unwrap();
+                    mp4.set_sps(
+                        track_id,
+                        &[
+                            103, 66, 192, 31, 140, 141, 64, 64, 8, 52, 3, 194, 33, 26, 128,
+                        ],
+                    )
+                    .unwrap();
+                    mp4.set_pps(track_id, &[104, 206, 60, 128]).unwrap();
+                    if data_channel
+                        .send(&bytes::Bytes::copy_from_slice(mp4.get_content()))
+                        .await
+                        .is_err()
+                    {
+                        println!("Failed to send sample {}: streaming will stop.", 0)
+                    }
+                    mp4.clean();
+                    for sample_id in 0..100 {
+                        let stream = encoder.encode(&converter).unwrap();
+                        for layer in &stream.layers {
+                            if !layer.is_video {
+                                continue;
+                            }
+                            for nalu in &layer.nal_units {
+                                let size = nalu.len() - 4;
+                                let mut vec = vec![];
+                                vec.extend_from_slice(nalu);
+                                vec[0] = (size >> 24) as u8;
+                                vec[1] = ((size >> 16) & 0xFF) as u8;
+                                vec[2] = ((size >> 8) & 0xFF) as u8;
+                                vec[3] = (size & 0xFF) as u8;
 
-                    for sample_id in 1..sample_count + 1 {
-                        let sample = mp4.read_sample(track_id, sample_id).unwrap().unwrap();
-
-                        println!("{}/{}: {}", sample_id, sample_count, sample);
-
-                        let b = bytes::Bytes::copy_from_slice(sample.bytes.borrow());
-                        if data_channel.send(&b).await.is_err() {
+                                mp4.add_frame(
+                                    track_id,
+                                    stream.frame_type == encoder::FrameType::IDR,
+                                    &vec,
+                                )
+                                .unwrap();
+                            }
+                        }
+                        if data_channel
+                            .send(&bytes::Bytes::copy_from_slice(mp4.get_content()))
+                            .await
+                            .is_err()
+                        {
                             println!("Failed to send sample {}: streaming will stop.", sample_id)
                         }
-
+                        mp4.clean();
                         // Wait the right time before the next frame.
                         let timeout = tokio::time::sleep(Duration::from_millis(
-                            ((sample.duration * 1000) as f64 / frame_rate).round() as u64,
+                            ((16 * 1000) as f64 / 60.0).round() as u64,
                         ));
                         tokio::pin!(timeout);
 
@@ -191,8 +204,6 @@ impl WebRTCServer {
                             }
                         };
                     }
-
-                    println!("Sending loop exited.")
                 })
             }))
             .await;
