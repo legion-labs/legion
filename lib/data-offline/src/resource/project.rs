@@ -457,6 +457,9 @@ impl Project {
     fn flush(&mut self) -> Result<(), Error> {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        // sort resource ids, so result is deterministic
+        self.db.remote_resources.sort();
+        self.db.local_resources.sort();
         serde_json::to_writer_pretty(&self.file, &self.db).map_err(|_e| Error::ParseError)
     }
 }
