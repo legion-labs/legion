@@ -4,6 +4,7 @@ use legion_data_offline::{
     asset::AssetPathId,
     resource::{ResourceId, ResourcePathName},
 };
+use legion_data_runtime::ContentType;
 
 use crate::offline_data;
 
@@ -21,11 +22,81 @@ fn lookup_reference(
     references.get(&path).copied()
 }
 
+fn source_resource(path: &str) -> &str {
+    if let (Some(l), Some(r)) = { (path.find('('), path.rfind(')')) } {
+        return source_resource(&path[(l + 1)..r]);
+    }
+    if let Some(sep) = path.find(',') {
+        &path[..sep]
+    } else {
+        path
+    }
+}
+
+fn push_transforms(mut id: AssetPathId, path: &str) -> AssetPathId {
+    let mut l = path.rfind('(').unwrap_or(0);
+    let r = l + {
+        let path = &path[l..];
+        let s = path.find(',').unwrap_or(path.len());
+        let b = path.find(')').unwrap_or(path.len());
+        s.min(b)
+    };
+
+    let mut left = &path[..l];
+    let mut right = &path[r..];
+
+    loop {
+        if left.is_empty() {
+            break;
+        }
+
+        l = left.rfind('(').unwrap_or(0);
+        let asset_type = &left[l..];
+
+        let name = {
+            let r = right.find(')').unwrap_or(right.len() - 1);
+            let name = &right[..r];
+            right = &right[r + 1..];
+
+            if let (Some(l), Some(r)) = (name.find('\''), name.rfind('\'')) {
+                if l != r {
+                    Some(&name[l + 1..r])
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
+        let kind = ContentType::new(asset_type.as_bytes(), false);
+        if let Some(name) = name {
+            id = id.push_named(kind, name);
+        } else {
+            id = id.push(kind);
+        }
+
+        left = &left[0..l];
+    }
+
+    id
+}
+
+// Resolved a raw representation of asset_path such as "runtime_texture(offline_texture(image/ground.psd, 'albedo'))"
+// into a offline AssetPathId such as "Some(0x13b5a84e000000007f8d831386fd3fef|1960578643_albedo)"
 fn lookup_asset_path(
     references: &HashMap<ResourcePathName, ResourceId>,
     path: &str,
 ) -> Option<AssetPathId> {
-    lookup_reference(references, path).map(AssetPathId::from)
+    let source = source_resource(path);
+    let output = lookup_reference(references, source).map(AssetPathId::from);
+    let output = if let Some(id) = output {
+        Some(push_transforms(id, path))
+    } else {
+        output
+    };
+    println!("Path Resolved: {} -> {:?}", path, output);
+    output
 }
 
 // ----- Entity conversions -----
@@ -192,16 +263,16 @@ impl FromRaw<raw_data::Instance> for offline_data::Instance {
 
 // ----- Material conversions -----
 
-impl FromRaw<raw_data::Material> for offline_data::Material {
+impl FromRaw<raw_data::Material> for legion_graphics_offline::material::Material {
     fn from_raw(
         raw: raw_data::Material,
-        _references: &HashMap<ResourcePathName, ResourceId>,
+        references: &HashMap<ResourcePathName, ResourceId>,
     ) -> Self {
         Self {
-            albedo: raw.albedo,
-            normal: raw.normal,
-            roughness: raw.roughness,
-            metalness: raw.metalness,
+            albedo: lookup_asset_path(references, &raw.albedo),
+            normal: lookup_asset_path(references, &raw.normal),
+            roughness: lookup_asset_path(references, &raw.roughness),
+            metalness: lookup_asset_path(references, &raw.metalness),
         }
     }
 }

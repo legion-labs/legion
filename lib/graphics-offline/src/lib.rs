@@ -75,5 +75,6 @@
 #![allow()]
 #![warn(missing_docs)]
 
+pub mod material;
 pub mod psd;
 pub mod texture;

@@ -9,7 +9,7 @@ use legion_data_build::{generate_rt_manifest, DataBuildOptions};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::asset::AssetPathId;
 
-use crate::offline_to_runtime::convert_offline_to_runtime_path;
+use crate::offline_to_runtime::convert_offline_to_content_path;
 
 pub fn build(root_folder: impl AsRef<Path>) {
     let root_folder = root_folder.as_ref();
@@ -45,9 +45,17 @@ pub fn build(root_folder: impl AsRef<Path>) {
 
     let resource_list = build.project().resource_list();
     for resource_id in resource_list {
+        let asset_path = convert_offline_to_content_path(&AssetPathId::from(resource_id));
+        let source_name = build
+            .project()
+            .resource_name(asset_path.source_resource())
+            .ok();
+
+        println!("Compiling: {} from {:?}..", asset_path, source_name);
+
         let manifest = build
             .compile(
-                convert_offline_to_runtime_path(&AssetPathId::from(resource_id)),
+                asset_path,
                 &offline_manifest_path,
                 Target::Server,
                 platform,

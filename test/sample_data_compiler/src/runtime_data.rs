@@ -16,8 +16,12 @@ pub fn add_creators(mut registry: AssetRegistryOptions) -> AssetRegistryOptions 
 
     registry = add_asset::<Entity>(registry);
     registry = add_asset::<Instance>(registry);
-    registry = add_asset::<Material>(registry);
-    add_asset::<Mesh>(registry)
+    registry = add_asset::<Mesh>(registry);
+
+    registry.add_creator(
+        legion_graphics_runtime::material::TYPE_ID,
+        Box::new(legion_graphics_runtime::material::MaterialCreator {}),
+    )
 }
 
 // ------------------ Entity -----------------------------------
@@ -203,46 +207,6 @@ impl AssetLoader for InstanceCreator {
 
     fn load_init(&mut self, _asset: &mut (dyn Asset + Send + Sync)) {}
 }
-
-// ------------------ Material -----------------------------------
-
-#[derive(Asset, Serialize, Deserialize)]
-pub struct Material {
-    pub albedo: TextureReference,
-    pub normal: TextureReference,
-    pub roughness: TextureReference,
-    pub metalness: TextureReference,
-}
-
-impl CompilableAsset for Material {
-    const TYPE_ID: AssetType = AssetType::new(b"runtime_material");
-    type Creator = MaterialCreator;
-}
-
-#[derive(Default)]
-pub struct MaterialCreator {}
-
-impl AssetLoader for MaterialCreator {
-    fn load(
-        &mut self,
-        _kind: AssetType,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
-        let deserialize: Result<Material, Box<bincode::ErrorKind>> =
-            bincode::deserialize_from(reader);
-        match deserialize {
-            Ok(asset) => Ok(Box::new(asset)),
-            Err(err) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                err.to_string(),
-            )),
-        }
-    }
-
-    fn load_init(&mut self, _asset: &mut (dyn Asset + Send + Sync)) {}
-}
-
-pub type TextureReference = String;
 
 // ------------------ Mesh -----------------------------------
 

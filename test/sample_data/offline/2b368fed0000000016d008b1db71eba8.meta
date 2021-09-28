@@ -1,0 +1,10 @@
+{
+  "name": "/world/sample_1/ground.mat",
+  "dependencies": [
+    "0x13b5a84e000000002222570ee9d353da|1960578643_albedo",
+    "0x13b5a84e000000002222570ee9d353da|1960578643_normal",
+    "0x13b5a84e000000002222570ee9d353da|1960578643_roughness",
+    "0x13b5a84e000000002222570ee9d353da|1960578643_metalness"
+  ],
+  "content_checksum": 5842090196271023295
+}

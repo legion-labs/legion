@@ -38,12 +38,14 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
             let resource_ids =
                 create_or_find_default(&file_paths, &resource_names, &mut project, &mut resources);
 
+            println!("Created resources: {:#?}", project);
+
             for (i, path) in file_paths.iter().enumerate() {
                 let resource_name = &resource_names[i];
                 let resource_id = *resource_ids.get(resource_name).unwrap();
                 match path.extension().unwrap().to_str().unwrap() {
                     "ent" => {
-                        load_resource::<raw_data::Entity, offline_data::Entity>(
+                        load_ron_resource::<raw_data::Entity, offline_data::Entity>(
                             resource_id,
                             path,
                             &resource_ids,
@@ -52,7 +54,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                         );
                     }
                     "ins" => {
-                        load_resource::<raw_data::Instance, offline_data::Instance>(
+                        load_ron_resource::<raw_data::Instance, offline_data::Instance>(
                             resource_id,
                             path,
                             &resource_ids,
@@ -61,7 +63,10 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                         );
                     }
                     "mat" => {
-                        load_resource::<raw_data::Material, offline_data::Material>(
+                        load_ron_resource::<
+                            raw_data::Material,
+                            legion_graphics_offline::material::Material,
+                        >(
                             resource_id,
                             path,
                             &resource_ids,
@@ -70,7 +75,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                         );
                     }
                     "mesh" => {
-                        load_resource::<raw_data::Mesh, offline_data::Mesh>(
+                        load_ron_resource::<raw_data::Mesh, offline_data::Mesh>(
                             resource_id,
                             path,
                             &resource_ids,
@@ -79,10 +84,12 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                         );
                     }
                     "psd" => {
-                        load_psd(resource_id, path, &mut project, &mut resources);
+                        load_psd_resource(resource_id, path, &mut project, &mut resources);
                     }
                     _ => panic!(),
                 }
+
+                println!("Loaded: {}. id: {}", resource_name, resource_id);
             }
         } else {
             eprintln!(
@@ -113,15 +120,18 @@ fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
     let mut resources = ResourceRegistryOptions::new();
     resources = add_resource::<offline_data::Entity>(resources);
     resources = add_resource::<offline_data::Instance>(resources);
-    resources = add_resource::<offline_data::Material>(resources);
     resources = add_resource::<offline_data::Mesh>(resources);
 
-    resources = resources.add_type(
-        legion_graphics_offline::psd::TYPE_ID,
-        Box::new(legion_graphics_offline::psd::PsdFileProcessor {}),
-    );
-
-    let resources = resources.create_registry();
+    let resources = resources
+        .add_type(
+            legion_graphics_offline::material::TYPE_ID,
+            Box::new(legion_graphics_offline::material::MaterialProcessor {}),
+        )
+        .add_type(
+            legion_graphics_offline::psd::TYPE_ID,
+            Box::new(legion_graphics_offline::psd::PsdFileProcessor {}),
+        )
+        .create_registry();
 
     (project, resources)
 }
@@ -130,7 +140,7 @@ fn ext_to_resource_kind(ext: &str) -> ResourceType {
     match ext {
         "ent" => offline_data::Entity::TYPE_ID,
         "ins" => offline_data::Instance::TYPE_ID,
-        "mat" => offline_data::Material::TYPE_ID,
+        "mat" => legion_graphics_offline::material::TYPE_ID,
         "mesh" => offline_data::Mesh::TYPE_ID,
         "psd" => legion_graphics_offline::psd::TYPE_ID,
         _ => panic!(),
@@ -218,7 +228,7 @@ fn find_files(raw_dir: impl AsRef<Path>, extensions: &[&str]) -> Vec<PathBuf> {
     files
 }
 
-fn load_resource<RawType, OfflineType>(
+fn load_ron_resource<RawType, OfflineType>(
     resource_id: ResourceId,
     file: &Path,
     references: &HashMap<ResourcePathName, ResourceId>,
@@ -251,7 +261,7 @@ where
     }
 }
 
-fn load_psd(
+fn load_psd_resource(
     resource_id: ResourceId,
     file: &Path,
     project: &mut Project,

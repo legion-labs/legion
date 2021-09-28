@@ -17,8 +17,14 @@ name = "compiler-psd2tex"
 path = "src/compiler-psd2tex.rs"
 doc = false
 
+[[bin]]
+name = "compiler-material"
+path = "src/compiler-material.rs"
+doc = false
+
 [dependencies]
 legion-data-offline = { path = "../data-offline" }
+legion-data-runtime = { path = "../data-runtime" }
 legion-graphics-runtime = { path = "../graphics-runtime" }
 legion-data-compiler = { path = "../data-compiler" }
 serde = { version = "1.0", features = ["derive"] }
