@@ -148,7 +148,7 @@ fn compile_change_no_deps() {
             compile_output.resources[0].compiled_path
         );
 
-        let original_checksum = compile_output.resources[0].compiled_checksum;
+        let original_checksum = compile_output.resources[0].compiled_checksum.get();
 
         let content_store =
             HddContentStore::open(contentstore_path.clone()).expect("valid content store");
@@ -188,7 +188,7 @@ fn compile_change_no_deps() {
             compile_output.resources[0].compiled_path
         );
 
-        let modified_checksum = compile_output.resources[0].compiled_checksum;
+        let modified_checksum = compile_output.resources[0].compiled_checksum.get();
 
         let content_store = HddContentStore::open(contentstore_path).expect("valid content store");
         assert!(content_store.exists(original_checksum));
@@ -319,7 +319,7 @@ fn intermediate_resource() {
 
     // validate reversed
     {
-        let checksum = compile_output.resources[0].compiled_checksum;
+        let checksum = compile_output.resources[0].compiled_checksum.get();
         assert!(content_store.exists(checksum));
         let resource_content = content_store.read(checksum).expect("asset content");
 
@@ -337,7 +337,7 @@ fn intermediate_resource() {
 
     // validate integer
     {
-        let checksum = compile_output.resources[1].compiled_checksum;
+        let checksum: i128 = compile_output.resources[1].compiled_checksum.get();
         assert!(content_store.exists(checksum));
         let resource_content = content_store.read(checksum).expect("asset content");
 
@@ -551,7 +551,7 @@ fn named_path_cache_use() {
 
     // validate integer
     {
-        let checksum = compiled_integer.compiled_checksum;
+        let checksum = compiled_integer.compiled_checksum.get();
         assert!(content_store.exists(checksum));
         let resource_content = content_store.read(checksum).expect("asset content");
 
@@ -799,7 +799,7 @@ fn link() {
     for obj in &compile_output.resources {
         assert!(!link_output
             .iter()
-            .any(|compiled| compiled.checksum == obj.compiled_checksum));
+            .any(|compiled| compiled.checksum == obj.compiled_checksum.get()));
     }
 
     // ... and each output resource need to exist as exactly one resource object (although having different checksum).

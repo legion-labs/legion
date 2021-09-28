@@ -2730,6 +2730,7 @@ name = "legion-data-build"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "hex",
  "integer-asset",
  "legion-content-store",
  "legion-data-compiler",
@@ -2785,6 +2786,7 @@ dependencies = [
 name = "legion-data-offline"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "legion-content-store",
  "legion-data-offline-macros",
  "legion-data-runtime",

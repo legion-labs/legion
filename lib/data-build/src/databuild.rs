@@ -350,20 +350,20 @@ impl DataBuild {
                     compiled_resources
                         .iter()
                         .map(|resource| CompiledResourceInfo {
-                            context_hash,
+                            context_hash: context_hash.into(),
                             compile_path: compile_node.clone(),
-                            source_hash,
+                            source_hash: source_hash.into(),
                             compiled_path: resource.path.clone(),
-                            compiled_checksum: resource.checksum,
+                            compiled_checksum: resource.checksum.into(),
                             compiled_size: resource.size,
                         })
                         .collect(),
                     resource_references
                         .iter()
                         .map(|reference| CompiledResourceReference {
-                            context_hash,
+                            context_hash: context_hash.into(),
                             compile_path: compile_node.clone(),
-                            source_hash,
+                            source_hash: source_hash.into(),
                             compiled_path: reference.0.clone(),
                             compiled_reference: reference.1.clone(),
                         })
@@ -564,7 +564,7 @@ impl DataBuild {
                 accumulated_dependencies.extend(resource_infos.iter().map(|res| {
                     CompiledResource {
                         path: res.compiled_path.clone(),
-                        checksum: res.compiled_checksum,
+                        checksum: res.compiled_checksum.get(),
                         size: res.compiled_size,
                     }
                 }));
@@ -597,7 +597,7 @@ impl DataBuild {
             //
             if let Ok(asset_id) = AssetId::try_from(resource.compiled_path.content_id()) {
                 let mut output: Vec<u8> = vec![];
-                let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
+                let resource_list = std::iter::once((asset_id, resource.compiled_checksum.get()));
                 let reference_list = references
                     .iter()
                     .filter(|r| r.is_reference_of(resource))

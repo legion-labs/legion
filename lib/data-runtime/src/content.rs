@@ -15,7 +15,7 @@ pub struct ContentType(u32);
 
 impl fmt::Display for ContentType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))
+        f.write_fmt(format_args!("{:08x}", self.0))
     }
 }
 
@@ -96,7 +96,7 @@ impl LowerHex for ContentId {
 
 impl fmt::Display for ContentId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{:#032x}", self.0))
+        f.write_fmt(format_args!("{:032x}", self.0))
     }
 }
 
