@@ -218,7 +218,7 @@ mod tests {
         let asset_id = {
             let id = AssetId::new(test_asset::TYPE_ID, 1);
             let checksum = content_store.store(&binary_assetfile).unwrap();
-            manifest.insert(id, checksum, binary_assetfile.len());
+            manifest.insert(id, checksum.into(), binary_assetfile.len());
             id
         };
 

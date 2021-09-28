@@ -1,4 +1,5 @@
 use legion_data_compiler::CompiledResource;
+use legion_data_runtime::AssetChecksum;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -526,74 +527,6 @@ impl<'de> Deserialize<'de> for AssetHash {
                 u64::from_be_bytes(digits.try_into().unwrap())
             } else {
                 u64::deserialize(deserializer)?
-            }
-        };
-        Ok(value.into())
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct AssetChecksum(i128);
-
-impl AssetChecksum {
-    pub(crate) fn get(&self) -> i128 {
-        self.0
-    }
-}
-
-impl PartialEq for AssetChecksum {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl Hash for AssetChecksum {
-    fn hash<H: Hasher>(&self, mut state: &mut H) {
-        self.0.hash(&mut state);
-    }
-}
-
-impl From<i128> for AssetChecksum {
-    fn from(value: i128) -> Self {
-        Self(value)
-    }
-}
-
-impl From<AssetChecksum> for i128 {
-    fn from(value: AssetChecksum) -> Self {
-        value.0
-    }
-}
-
-impl Serialize for AssetChecksum {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if serializer.is_human_readable() {
-            let bytes = self.0.to_be_bytes();
-            let hex = hex::encode(bytes);
-            serializer.serialize_str(&hex)
-        } else {
-            serializer.serialize_i128(self.0)
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for AssetChecksum {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        use serde::de::Error;
-
-        let value = {
-            if deserializer.is_human_readable() {
-                let hex = String::deserialize(deserializer)?;
-                let digits = hex::decode(hex).map_err(D::Error::custom)?;
-                i128::from_be_bytes(digits.try_into().unwrap())
-            } else {
-                i128::deserialize(deserializer)?
             }
         };
         Ok(value.into())
