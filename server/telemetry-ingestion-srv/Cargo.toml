@@ -10,6 +10,14 @@ tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 telemetry = { path = "../../lib/telemetry" }
 uuid = { version = "0.8", features = ["v4"] }
 whoami = "1.1"
+anyhow = "1.0"
+sqlx = { version = "0.5", features = [
+    "sqlite",
+    "any",
+    "mysql",
+    "runtime-tokio-native-tls",
+] }
+
 
 [[bin]]
 name = "telemetry-ingestion-srv"
