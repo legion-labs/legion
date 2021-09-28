@@ -81,39 +81,13 @@
 #![allow()]
 
 mod local_ingestion_service;
-use local_ingestion_service::*;
+mod local_telemetry_db;
 
 use anyhow::{Context, Result};
-use sqlx::migrate::MigrateDatabase;
-use std::path::{Path, PathBuf};
+use local_ingestion_service::*;
+use local_telemetry_db::*;
 use telemetry::telemetry_ingestion_proto::telemetry_ingestion_server::TelemetryIngestionServer;
 use tonic::transport::Server;
-
-fn get_data_directory() -> Result<PathBuf> {
-    let folder =
-        std::env::var("LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY").with_context(|| {
-            String::from("Error reading env variable LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY")
-        })?;
-    Ok(PathBuf::from(folder))
-}
-
-async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
-    let db_path = data_folder.join("telemetry.db3");
-    let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
-    if !sqlx::Any::database_exists(&db_uri)
-        .await
-        .with_context(|| String::from("Searching for telemetry database"))?
-    {
-        sqlx::Any::create_database(&db_uri)
-            .await
-            .with_context(|| String::from("Creating telemetry database"))?;
-    }
-    let pool = sqlx::any::AnyPoolOptions::new()
-        .connect(&db_uri)
-        .await
-        .with_context(|| String::from("Connecting to telemetry database"))?;
-    Ok(pool)
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
