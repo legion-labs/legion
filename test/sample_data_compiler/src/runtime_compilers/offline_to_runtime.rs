@@ -1,16 +1,31 @@
 use std::convert::TryFrom;
 
 use legion_data_offline::asset::AssetPathId;
-use legion_data_runtime::AssetId;
-use sample_data_compiler::{offline_data, runtime_data};
+use legion_data_runtime::{AssetId, AssetType};
+use sample_data_compiler::{
+    offline_data,
+    runtime_data::{self, CompilableAsset},
+};
 
 pub trait FromOffline<T> {
     fn from_offline(offline: &T) -> Self;
 }
 
-fn compile_path_id(path: &Option<AssetPathId>) -> Option<AssetId> {
-    path.as_ref()
-        .and_then(|path| AssetId::try_from(path.content_id()).ok())
+fn compile_path_id(path: &AssetPathId, runtime_type: AssetType) -> Option<AssetId> {
+    let mut path = path.clone();
+    path = path.push(runtime_type);
+    AssetId::try_from(path.content_id()).ok()
+}
+
+fn compile_optional_path_id(
+    path: &Option<AssetPathId>,
+    runtime_type: AssetType,
+) -> Option<AssetId> {
+    if let Some(path) = path {
+        compile_path_id(path, runtime_type)
+    } else {
+        None
+    }
 }
 
 // ----- Entity conversions -----
@@ -20,7 +35,7 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
         let children = offline
             .children
             .iter()
-            .filter_map(|child_path| AssetId::try_from(child_path.content_id()).ok())
+            .filter_map(|child_path| compile_path_id(child_path, Self::TYPE_ID))
             .collect();
         let mut components: Vec<Box<dyn runtime_data::Component>> = Vec::new();
         for component in &offline.components {
@@ -43,7 +58,7 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
         Self {
             name: offline.name.clone(),
             children,
-            parent: compile_path_id(&offline.parent),
+            parent: compile_optional_path_id(&offline.parent, Self::TYPE_ID),
             components,
         }
     }
@@ -155,7 +170,7 @@ impl FromOffline<offline_data::Physics> for runtime_data::Physics {
 impl FromOffline<offline_data::Instance> for runtime_data::Instance {
     fn from_offline(offline: &offline_data::Instance) -> Self {
         Self {
-            original: compile_path_id(&offline.original),
+            original: compile_optional_path_id(&offline.original, runtime_data::Entity::TYPE_ID),
         }
     }
 }
@@ -194,7 +209,7 @@ impl FromOffline<offline_data::SubMesh> for runtime_data::SubMesh {
             normals: offline.normals.clone(),
             uvs: offline.uvs.clone(),
             indices: offline.indices.clone(),
-            material: compile_path_id(&offline.material),
+            material: compile_optional_path_id(&offline.material, runtime_data::Material::TYPE_ID),
         }
     }
 }
