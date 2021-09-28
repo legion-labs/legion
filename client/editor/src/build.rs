@@ -5,6 +5,18 @@ fn build_web_app() {
 
     let yarn_path = which("yarn").unwrap();
 
+    let mut process = Command::new(&yarn_path)
+        .arg("install")
+        .current_dir("frontend")
+        .spawn()
+        .unwrap();
+
+    let ec = process.wait().unwrap().code().unwrap();
+
+    if ec != 0 {
+        std::process::exit(ec);
+    }
+
     let mut process = Command::new(yarn_path)
         .arg("generate")
         .current_dir("frontend")
@@ -15,10 +27,11 @@ fn build_web_app() {
 }
 
 fn main() {
-    println!("cargo:rerun-if-changed=frontend/dist");
-
     #[cfg(feature = "custom-protocol")]
-    build_web_app();
+    {
+        println!("cargo:rerun-if-changed=frontend/dist");
+        build_web_app();
+    }
 
     tauri_build::build()
 }

@@ -1,12 +1,8 @@
 <template>
-  <div class="hello">
-    <h1>Legion Editor</h1>
-    <video id="view"></video>
-    <pre id="logs"></pre>
-  </div>
+  <video id="video" fill-height fluid></video>
 </template>
 
-<script>
+<script scoped>
 import { invoke } from "@tauri-apps/api/tauri";
 
 export default {
@@ -15,8 +11,7 @@ export default {
     msg: String,
   },
   mounted() {
-    const videoElement = document.getElementById("view");
-    const logsElement = document.getElementById("logs");
+    const videoElement = document.getElementById("video");
 
     videoElement.onclick = function () {
       console.log("Initializing WebRTC...");
@@ -49,21 +44,12 @@ export default {
 
       const video_channel = pc.createDataChannel("video");
 
-      video_channel.onopen = async () => {
-        logsElement.append(
-          document.createTextNode("Opened video data channel.\n")
-        );
-      };
+      video_channel.onopen = async () => {};
 
-      video_channel.onclose = async () => {
-        logsElement.append(
-          document.createTextNode("Closed video data channel.\n")
-        );
-      };
+      video_channel.onclose = async () => {};
 
       video_channel.ontrack = async (event) => {
         videoElement.srcObject = event.streams[0];
-        logsElement.append(document.createTextNode("Received video track.\n"));
         console.log("Video track: ", event.streams[0]);
       };
     };
@@ -74,20 +60,10 @@ export default {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 video {
-  border: 1px solid black;
-  border-radius: 8px;
-  background: url("~assets/v.png") center center no-repeat #222;
-  min-width: 320px;
-  min-height: 240px;
   cursor: pointer;
-}
-
-pre {
-  border: 1px solid black;
-  border-radius: 8px;
-  min-width: 320px;
-  height: 240px;
-  background-color: #222;
-  color: white;
+  background: url("~assets/images/disconnected.png") center center no-repeat;
+  background-color: black;
+  background-size: 20%;
+  width: 100%;
 }
 </style>
