@@ -5,7 +5,7 @@ use telemetry::telemetry_ingestion_proto::{
 use tonic::{Request, Response, Status};
 
 pub struct LocalIngestionService {
-    db_pool: sqlx::AnyPool,
+    db_pool: sqlx::any::AnyPool,
 }
 
 impl LocalIngestionService {
@@ -23,11 +23,38 @@ impl TelemetryIngestion for LocalIngestionService {
         dbg!(&request);
         dbg!(&self.db_pool);
 
-        let reply = InsertReply {
-            msg: format!("Hello {}!", request.into_inner().id),
-        };
+        let process_info = request.into_inner();
+        match self.db_pool.acquire().await {
+            Ok(mut connection) => {
+                if let Err(e) = sqlx::query("INSERT INTO processes VALUES(?,?,?,?,?,?,?,?,?);")
+                    .bind(process_info.id.clone())
+                    .bind(process_info.exe)
+                    .bind(process_info.username)
+                    .bind(process_info.realname)
+                    .bind(process_info.computer)
+                    .bind(process_info.distro)
+                    .bind(process_info.cpu_brand)
+                    .bind(process_info.tsc_frequency as i64)
+                    .bind(process_info.start_time)
+                    .execute(&mut connection)
+                    .await
+                {
+                    return Err(Status::internal(format!(
+                        "Error inserting into processes: {}",
+                        e
+                    )));
+                }
 
-        Ok(Response::new(reply))
+                let reply = InsertReply {
+                    msg: format!("OK {}", process_info.id),
+                };
+
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                return Err(Status::internal(format!("Error connecting to db: {}", e)));
+            }
+        }
     }
 
     async fn insert_stream(
