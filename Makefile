@@ -2,9 +2,6 @@
 # all the checks used in the CI
 check: check-format check-build check-clippy check-deps check-dockerize
 
-init:
-	yarn install
-
 check-env:
 	rustup --version
 	cargo deny --version
