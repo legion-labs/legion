@@ -5909,6 +5909,8 @@ dependencies = [
 name = "telemetry-ingestion-srv"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "sqlx",
  "telemetry",
  "tokio",
  "tonic",
