@@ -70,7 +70,6 @@ fn push_transforms(mut id: AssetPathId, path: &str) -> AssetPathId {
         };
 
         let kind = ContentType::new(asset_type.as_bytes(), false);
-        println!("{:?} {:?}", kind, legion_graphics_offline::texture::TYPE_ID);
         if let Some(name) = name {
             id = id.push_named(kind, name);
         } else {
