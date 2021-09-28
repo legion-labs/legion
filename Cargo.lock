@@ -4889,6 +4889,7 @@ dependencies = [
  "legion-data-offline",
  "legion-data-runtime",
  "legion-graphics-offline",
+ "legion-graphics-runtime",
  "legion-math",
  "legion-utils",
  "ron",
