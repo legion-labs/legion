@@ -386,7 +386,7 @@ mod test {
             &[0u8, 0u8, 0u8, 1u8, 0x65u8]
         );
         // Test length reasonable.
-        assert!(stream.layers[1].nal_units[0].len() > 1000);
+        assert!(stream.layers[1].nal_units[0].len() > 50);
         assert!(stream.layers[1].nal_units[0].len() < 100_000);
 
         Ok(())
