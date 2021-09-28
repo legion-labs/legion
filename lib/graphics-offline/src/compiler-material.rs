@@ -3,7 +3,7 @@ use legion_data_compiler::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
-    compiler_utils::pathid_to_binary,
+    compiler_utils::path_id_to_binary,
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use legion_data_offline::resource::ResourceRegistryOptions;
@@ -57,10 +57,10 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
 
     let compiled_asset = {
         let mut c: Vec<u8> = vec![];
-        c.append(&mut pathid_to_binary(&resource.albedo).to_ne_bytes().to_vec());
-        c.append(&mut pathid_to_binary(&resource.roughness).to_ne_bytes().to_vec());
-        c.append(&mut pathid_to_binary(&resource.roughness).to_ne_bytes().to_vec());
-        c.append(&mut pathid_to_binary(&resource.metalness).to_ne_bytes().to_vec());
+        c.append(&mut path_id_to_binary(&resource.albedo).to_ne_bytes().to_vec());
+        c.append(&mut path_id_to_binary(&resource.roughness).to_ne_bytes().to_vec());
+        c.append(&mut path_id_to_binary(&resource.roughness).to_ne_bytes().to_vec());
+        c.append(&mut path_id_to_binary(&resource.metalness).to_ne_bytes().to_vec());
         c
     };
 
