@@ -9,10 +9,7 @@ use legion_data_build::{generate_rt_manifest, DataBuildOptions};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::asset::AssetPathId;
 
-use crate::{
-    offline_data::{self, CompilableResource},
-    runtime_data::{self, CompilableAsset},
-};
+use crate::offline_to_runtime::convert_offline_to_runtime_path;
 
 pub fn build(root_folder: impl AsRef<Path>) {
     let root_folder = root_folder.as_ref();
@@ -48,22 +45,9 @@ pub fn build(root_folder: impl AsRef<Path>) {
 
     let resource_list = build.project().resource_list();
     for resource_id in resource_list {
-        let mut asset_path = AssetPathId::from(resource_id);
-
-        let source_type = asset_path.source_resource().resource_type();
-        if source_type == offline_data::Entity::TYPE_ID {
-            asset_path = asset_path.push(runtime_data::Entity::TYPE_ID);
-        } else if source_type == offline_data::Instance::TYPE_ID {
-            asset_path = asset_path.push(runtime_data::Instance::TYPE_ID);
-        } else if source_type == offline_data::Mesh::TYPE_ID {
-            asset_path = asset_path.push(runtime_data::Mesh::TYPE_ID);
-        } else if source_type == offline_data::Material::TYPE_ID {
-            asset_path = asset_path.push(runtime_data::Material::TYPE_ID);
-        }
-
         let manifest = build
             .compile(
-                asset_path,
+                convert_offline_to_runtime_path(&AssetPathId::from(resource_id)),
                 &offline_manifest_path,
                 Target::Server,
                 platform,

@@ -82,5 +82,6 @@
 
 pub mod offline_compiler;
 pub mod offline_data;
+pub mod offline_to_runtime;
 pub mod raw_loader;
 pub mod runtime_data;
