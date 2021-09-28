@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 ash = ">= 0.32.0"
-openh264-sys2 = { version = "0.1", default-features = false, features = [
+openh264-sys2 = { version = "0.2", default-features = false, features = [
     "decoder",
     "encoder",
 ] }
