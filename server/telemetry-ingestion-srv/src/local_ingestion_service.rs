@@ -1,8 +1,8 @@
-use anyhow::{ Result};
-use tonic::{Request, Response, Status};
+use anyhow::Result;
 use telemetry::telemetry_ingestion_proto::{
     telemetry_ingestion_server::TelemetryIngestion, Block, InsertReply, Process, Stream,
 };
+use tonic::{Request, Response, Status};
 
 pub struct LocalIngestionService {
     db_pool: sqlx::AnyPool,
