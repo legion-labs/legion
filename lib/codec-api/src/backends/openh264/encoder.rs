@@ -142,8 +142,8 @@ impl EncoderConfig {
         Self {
             width,
             height,
-            enable_skip_frame: true,
-            target_bitrate: 120_000,
+            enable_skip_frame: false,
+            target_bitrate: 1_200_000,
             enable_denoise: false,
             debug: 0,
             data_format: videoFormatI420,
@@ -211,7 +211,11 @@ impl Encoder {
     /// # Panics
     ///
     /// Panics if the source image dimension don't match the configured format.
-    pub fn encode<T: YUVSource>(&mut self, yuv_source: &T) -> Result<EncodedBitStream<'_>, Error> {
+    pub fn encode<T: YUVSource>(
+        &mut self,
+        yuv_source: &T,
+        force_i_frame: bool,
+    ) -> Result<EncodedBitStream<'_>, Error> {
         assert_eq!(yuv_source.width(), self.params.iPicWidth);
         assert_eq!(yuv_source.height(), self.params.iPicHeight);
 
@@ -231,6 +235,7 @@ impl Encoder {
             source.pData[0] = yuv_source.y().as_ptr() as *mut c_uchar;
             source.pData[1] = yuv_source.u().as_ptr() as *mut c_uchar;
             source.pData[2] = yuv_source.v().as_ptr() as *mut c_uchar;
+            self.raw_api.force_intra_frame(force_i_frame);
 
             self.raw_api
                 .encode_frame(&source, &mut bit_stream_info)
@@ -366,7 +371,7 @@ mod test {
 
         converter.convert(src);
 
-        let stream = encoder.encode(&converter)?;
+        let stream = encoder.encode(&converter, false)?;
         assert_eq!(stream.frame_type, FrameType::IDR);
         assert_eq!(stream.layers.len(), 2);
         assert!(!stream.layers[0].is_video);

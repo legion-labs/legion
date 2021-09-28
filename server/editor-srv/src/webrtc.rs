@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{io::Write, sync::Arc, time::Duration};
 
 use interceptor::registry::Registry;
 use legion_mp4::Mp4Stream;
@@ -120,11 +120,13 @@ impl WebRTCServer {
         // Sample code to stream a video.
         let src = &include_bytes!("../assets/lenna_512x512.rgb")[..];
 
-        let config = encoder::EncoderConfig::new(512, 512);
+        let config = encoder::EncoderConfig::new(512, 512).debug(true);
         let mut encoder = encoder::Encoder::with_config(config)?;
         let mut converter = formats::RBGYUVConverter::new(512, 512);
+        let mut converter2 = formats::RBGYUVConverter::new(512, 512);
 
         converter.convert(src);
+        converter2.convert2(src);
 
         let on_close_name = data_channel.name();
 
@@ -144,6 +146,7 @@ impl WebRTCServer {
 
                 let data_channel = on_open_data_channel;
                 Box::pin(async move {
+                    let mut file = std::fs::File::create("/mnt/d/test.mp4").unwrap();
                     let mut mp4 = Mp4Stream::new(30);
                     let track_id = mp4.add_track(512, 512).unwrap();
                     mp4.set_sps(
@@ -161,9 +164,15 @@ impl WebRTCServer {
                     {
                         println!("Failed to send sample {}: streaming will stop.", 0)
                     }
+                    file.write_all(mp4.get_content()).unwrap();
                     mp4.clean();
                     for sample_id in 0..100 {
-                        let stream = encoder.encode(&converter).unwrap();
+                        let stream = if sample_id % 2 == 0 {
+                            encoder.encode(&converter, sample_id % 8 == 0).unwrap()
+                        } else {
+                            encoder.encode(&converter2, sample_id % 8 == 0).unwrap()
+                        };
+
                         for layer in &stream.layers {
                             if !layer.is_video {
                                 continue;
@@ -177,12 +186,7 @@ impl WebRTCServer {
                                 vec[2] = ((size >> 8) & 0xFF) as u8;
                                 vec[3] = (size & 0xFF) as u8;
 
-                                mp4.add_frame(
-                                    track_id,
-                                    stream.frame_type == encoder::FrameType::IDR,
-                                    &vec,
-                                )
-                                .unwrap();
+                                mp4.add_frame(track_id, sample_id % 8 == 0, &vec).unwrap();
                             }
                         }
                         if data_channel
@@ -192,6 +196,7 @@ impl WebRTCServer {
                         {
                             println!("Failed to send sample {}: streaming will stop.", sample_id)
                         }
+                        file.write_all(mp4.get_content()).unwrap();
                         mp4.clean();
                         // Wait the right time before the next frame.
                         let timeout = tokio::time::sleep(Duration::from_millis(
@@ -203,6 +208,8 @@ impl WebRTCServer {
                             _ = timeout.as_mut() =>{
                             }
                         };
+
+                        println!("Sent sample {}.", sample_id)
                     }
                 })
             }))
