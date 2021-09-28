@@ -7,7 +7,7 @@ on:
 jobs:
   lint:
     name: Running code checks
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, ubuntu]
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
       credentials:
