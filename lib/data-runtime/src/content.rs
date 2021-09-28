@@ -103,8 +103,7 @@ impl fmt::Display for ContentId {
 impl FromStr for ContentId {
     type Err = std::num::ParseIntError;
 
-    fn from_str(mut s: &str) -> Result<Self, Self::Err> {
-        s = s.trim_start_matches("0x");
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let id = u128::from_str_radix(s, 16)?;
         if id == 0 {
             Err("Z".parse::<i32>().expect_err("ParseIntError"))

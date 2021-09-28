@@ -105,11 +105,11 @@ impl FromStr for AssetPathId {
 
             let transform = if name < end {
                 let err = "Z".parse::<i32>().expect_err("ParseIntError");
-                let t = u32::from_str(&s[0..name])?;
+                let t = u32::from_str_radix(&s[0..name], 16)?;
                 let p = String::from_str(&s[name + 1..end]).map_err(|_e| err)?;
                 (ContentType::from_raw(t), Some(p))
             } else {
-                let t = u32::from_str(&s[0..end])?;
+                let t = u32::from_str_radix(&s[0..end], 16)?;
                 (ContentType::from_raw(t), None)
             };
             transforms.push(transform);
