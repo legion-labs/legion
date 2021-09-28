@@ -14,7 +14,6 @@ legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 legion-graphics-runtime = { path = "../../lib/graphics-runtime" }
 legion-graphics-offline = { path = "../../lib/graphics-offline" }
-legion-graphics-runtime = { path = "../../lib/graphics-runtime" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
