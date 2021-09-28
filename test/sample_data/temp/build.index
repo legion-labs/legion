@@ -3,9 +3,56 @@
   "project_index": "test/sample_data\\project.index",
   "resources": [
     {
+      "id": "0x13b5a84e00000000e59b3aa6a1fd5aa1",
+      "dependencies": [],
+      "resource_hash": 10544384098633318951
+    },
+    {
       "id": "0x2b368fed00000000779bb4f05b3c9fc5",
       "dependencies": [],
       "resource_hash": 15724658723206175526
+    },
+    {
+      "id": "0x417862e50000000016a3174f187935a0",
+      "dependencies": [
+        "0x5004cd1c00000000d42200e0cf45c438"
+      ],
+      "resource_hash": 195965611663861875
+    },
+    {
+      "id": "0x417862e5000000005f3cba1e01fb1ab5",
+      "dependencies": [
+        "0x5004cd1c00000000d42200e0cf45c438"
+      ],
+      "resource_hash": 195965611663861875
+    },
+    {
+      "id": "0x417862e50000000072e0c3e9a5aa46c9",
+      "dependencies": [
+        "0x5004cd1c00000000d42200e0cf45c438"
+      ],
+      "resource_hash": 195965611663861875
+    },
+    {
+      "id": "0x417862e500000000ca59546947cacd26",
+      "dependencies": [
+        "0x5004cd1c00000000072cc1c343b260a7"
+      ],
+      "resource_hash": 639272385806645265
+    },
+    {
+      "id": "0x417862e500000000d1dc5fb0343a621a",
+      "dependencies": [
+        "0x5004cd1c00000000d42200e0cf45c438"
+      ],
+      "resource_hash": 195965611663861875
+    },
+    {
+      "id": "0x417862e500000000d9a83ec7317b20a3",
+      "dependencies": [
+        "0x5004cd1c00000000d42200e0cf45c438"
+      ],
+      "resource_hash": 195965611663861875
     },
     {
       "id": "0x4e1dd44100000000c8458bbdf0a12ce2",
@@ -13,11 +60,6 @@
         "0x2b368fed00000000779bb4f05b3c9fc5"
       ],
       "resource_hash": 3405356258756011879
-    },
-    {
-      "id": "0x5004cd1c00000000d42200e0cf45c438",
-      "dependencies": [],
-      "resource_hash": 3231202224162688270
     },
     {
       "id": "0x5004cd1c00000000072cc1c343b260a7",
@@ -37,54 +79,20 @@
       "resource_hash": 12895434460434342083
     },
     {
-      "id": "0x417862e5000000005f3cba1e01fb1ab5",
-      "dependencies": [
-        "0x5004cd1c00000000d42200e0cf45c438"
-      ],
-      "resource_hash": 195965611663861875
-    },
-    {
-      "id": "0x417862e50000000016a3174f187935a0",
-      "dependencies": [
-        "0x5004cd1c00000000d42200e0cf45c438"
-      ],
-      "resource_hash": 195965611663861875
-    },
-    {
-      "id": "0x417862e500000000d1dc5fb0343a621a",
-      "dependencies": [
-        "0x5004cd1c00000000d42200e0cf45c438"
-      ],
-      "resource_hash": 195965611663861875
-    },
-    {
-      "id": "0x417862e50000000072e0c3e9a5aa46c9",
-      "dependencies": [
-        "0x5004cd1c00000000d42200e0cf45c438"
-      ],
-      "resource_hash": 195965611663861875
-    },
-    {
-      "id": "0x417862e500000000d9a83ec7317b20a3",
-      "dependencies": [
-        "0x5004cd1c00000000d42200e0cf45c438"
-      ],
-      "resource_hash": 195965611663861875
-    },
-    {
-      "id": "0x417862e500000000ca59546947cacd26",
-      "dependencies": [
-        "0x5004cd1c00000000072cc1c343b260a7"
-      ],
-      "resource_hash": 639272385806645265
-    },
-    {
-      "id": "0x13b5a84e00000000e59b3aa6a1fd5aa1",
+      "id": "0x5004cd1c00000000d42200e0cf45c438",
       "dependencies": [],
-      "resource_hash": 10544384098633318951
+      "resource_hash": 3231202224162688270
     }
   ],
   "compiled_resources": [
+    {
+      "compile_path": "0x13b5a84e00000000e59b3aa6a1fd5aa1|4190725901",
+      "context_hash": 6576047231589056604,
+      "source_hash": 6107856088465066924,
+      "compiled_path": "0x13b5a84e00000000e59b3aa6a1fd5aa1|4190725901",
+      "compiled_checksum": 8993619814023879973,
+      "compiled_size": 2674109
+    },
     {
       "compile_path": "0x2b368fed00000000779bb4f05b3c9fc5|3869161424",
       "context_hash": 4173572083234762063,
@@ -92,6 +100,54 @@
       "compiled_path": "0x2b368fed00000000779bb4f05b3c9fc5|3869161424",
       "compiled_checksum": 715108662359319426,
       "compiled_size": 236
+    },
+    {
+      "compile_path": "0x417862e50000000016a3174f187935a0|2362464984",
+      "context_hash": 7079428752469810925,
+      "source_hash": 17114655724447619556,
+      "compiled_path": "0x417862e50000000016a3174f187935a0|2362464984",
+      "compiled_checksum": 17284419676969417484,
+      "compiled_size": 17
+    },
+    {
+      "compile_path": "0x417862e5000000005f3cba1e01fb1ab5|2362464984",
+      "context_hash": 7079428752469810925,
+      "source_hash": 17114655724447619556,
+      "compiled_path": "0x417862e5000000005f3cba1e01fb1ab5|2362464984",
+      "compiled_checksum": 17284419676969417484,
+      "compiled_size": 17
+    },
+    {
+      "compile_path": "0x417862e50000000072e0c3e9a5aa46c9|2362464984",
+      "context_hash": 7079428752469810925,
+      "source_hash": 17114655724447619556,
+      "compiled_path": "0x417862e50000000072e0c3e9a5aa46c9|2362464984",
+      "compiled_checksum": 17284419676969417484,
+      "compiled_size": 17
+    },
+    {
+      "compile_path": "0x417862e500000000ca59546947cacd26|2362464984",
+      "context_hash": 7079428752469810925,
+      "source_hash": 6246670113351051872,
+      "compiled_path": "0x417862e500000000ca59546947cacd26|2362464984",
+      "compiled_checksum": 13156359585725754797,
+      "compiled_size": 17
+    },
+    {
+      "compile_path": "0x417862e500000000d1dc5fb0343a621a|2362464984",
+      "context_hash": 7079428752469810925,
+      "source_hash": 17114655724447619556,
+      "compiled_path": "0x417862e500000000d1dc5fb0343a621a|2362464984",
+      "compiled_checksum": 17284419676969417484,
+      "compiled_size": 17
+    },
+    {
+      "compile_path": "0x417862e500000000d9a83ec7317b20a3|2362464984",
+      "context_hash": 7079428752469810925,
+      "source_hash": 17114655724447619556,
+      "compiled_path": "0x417862e500000000d9a83ec7317b20a3|2362464984",
+      "compiled_checksum": 17284419676969417484,
+      "compiled_size": 17
     },
     {
       "compile_path": "0x4e1dd44100000000c8458bbdf0a12ce2|3928297704",
@@ -102,19 +158,11 @@
       "compiled_size": 897
     },
     {
-      "compile_path": "0x5004cd1c00000000d42200e0cf45c438|2174517795",
-      "context_hash": 1648018350299315280,
-      "source_hash": 11655337073894932267,
-      "compiled_path": "0x5004cd1c00000000d42200e0cf45c438|2174517795",
-      "compiled_checksum": 13095796872325024344,
-      "compiled_size": 291
-    },
-    {
       "compile_path": "0x5004cd1c00000000072cc1c343b260a7|2174517795",
       "context_hash": 1648018350299315280,
       "source_hash": 9467763913188332664,
       "compiled_path": "0x5004cd1c00000000072cc1c343b260a7|2174517795",
-      "compiled_checksum": 13513672242025707604,
+      "compiled_checksum": 10308617040379268907,
       "compiled_size": 133
     },
     {
@@ -130,64 +178,16 @@
       "context_hash": 1648018350299315280,
       "source_hash": 1703518313691879517,
       "compiled_path": "0x5004cd1c00000000cc2e0e75fdc1bc61|2174517795",
-      "compiled_checksum": 3686528210929289207,
+      "compiled_checksum": 2231725853843307974,
       "compiled_size": 244
     },
     {
-      "compile_path": "0x417862e5000000005f3cba1e01fb1ab5|2362464984",
-      "context_hash": 7079428752469810925,
-      "source_hash": 17114655724447619556,
-      "compiled_path": "0x417862e5000000005f3cba1e01fb1ab5|2362464984",
-      "compiled_checksum": 17284419676969417484,
-      "compiled_size": 17
-    },
-    {
-      "compile_path": "0x417862e50000000016a3174f187935a0|2362464984",
-      "context_hash": 7079428752469810925,
-      "source_hash": 17114655724447619556,
-      "compiled_path": "0x417862e50000000016a3174f187935a0|2362464984",
-      "compiled_checksum": 17284419676969417484,
-      "compiled_size": 17
-    },
-    {
-      "compile_path": "0x417862e500000000d1dc5fb0343a621a|2362464984",
-      "context_hash": 7079428752469810925,
-      "source_hash": 17114655724447619556,
-      "compiled_path": "0x417862e500000000d1dc5fb0343a621a|2362464984",
-      "compiled_checksum": 17284419676969417484,
-      "compiled_size": 17
-    },
-    {
-      "compile_path": "0x417862e50000000072e0c3e9a5aa46c9|2362464984",
-      "context_hash": 7079428752469810925,
-      "source_hash": 17114655724447619556,
-      "compiled_path": "0x417862e50000000072e0c3e9a5aa46c9|2362464984",
-      "compiled_checksum": 17284419676969417484,
-      "compiled_size": 17
-    },
-    {
-      "compile_path": "0x417862e500000000d9a83ec7317b20a3|2362464984",
-      "context_hash": 7079428752469810925,
-      "source_hash": 17114655724447619556,
-      "compiled_path": "0x417862e500000000d9a83ec7317b20a3|2362464984",
-      "compiled_checksum": 17284419676969417484,
-      "compiled_size": 17
-    },
-    {
-      "compile_path": "0x417862e500000000ca59546947cacd26|2362464984",
-      "context_hash": 7079428752469810925,
-      "source_hash": 6246670113351051872,
-      "compiled_path": "0x417862e500000000ca59546947cacd26|2362464984",
-      "compiled_checksum": 13156359585725754797,
-      "compiled_size": 17
-    },
-    {
-      "compile_path": "0x13b5a84e00000000e59b3aa6a1fd5aa1|4190725901",
-      "context_hash": 6576047231589056604,
-      "source_hash": 6107856088465066924,
-      "compiled_path": "0x13b5a84e00000000e59b3aa6a1fd5aa1|4190725901",
-      "compiled_checksum": 8993619814023879973,
-      "compiled_size": 2674109
+      "compile_path": "0x5004cd1c00000000d42200e0cf45c438|2174517795",
+      "context_hash": 1648018350299315280,
+      "source_hash": 11655337073894932267,
+      "compiled_path": "0x5004cd1c00000000d42200e0cf45c438|2174517795",
+      "compiled_checksum": 13095796872325024344,
+      "compiled_size": 291
     }
   ],
   "compiled_resource_references": []
