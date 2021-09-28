@@ -270,6 +270,7 @@ impl DataBuild {
 
         file.set_len(0).unwrap();
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        manifest.pre_serialize();
         serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
 
         Ok(manifest)

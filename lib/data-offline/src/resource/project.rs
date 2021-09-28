@@ -31,6 +31,14 @@ struct ResourceDb {
     local_resources: Vec<ResourceId>,
 }
 
+impl ResourceDb {
+    // sort contents so serialization is deterministic
+    fn pre_serialize(&mut self) {
+        self.remote_resources.sort();
+        self.local_resources.sort();
+    }
+}
+
 /// A file-backed state of the project
 ///
 /// This structure captures the state of the project. This includes `remote resources`
@@ -461,12 +469,14 @@ impl Project {
         self.flush()
     }
 
+    fn pre_serialize(&mut self) {
+        self.db.pre_serialize();
+    }
+
     fn flush(&mut self) -> Result<(), Error> {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        // sort resource ids, so result is deterministic
-        self.db.remote_resources.sort();
-        self.db.local_resources.sort();
+        self.pre_serialize();
         serde_json::to_writer_pretty(&self.file, &self.db).map_err(|_e| Error::ParseError)
     }
 }

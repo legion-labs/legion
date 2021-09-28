@@ -135,6 +135,14 @@ pub struct Manifest {
     pub compiled_resources: Vec<CompiledResource>,
 }
 
+impl Manifest {
+    /// Prepare manifest for serialization.
+    /// Will sort contents to guarantee that the serialization is deterministic
+    pub fn pre_serialize(&mut self) {
+        self.compiled_resources.sort_by(|a, b| a.path.cmp(&b.path));
+    }
+}
+
 /// Build target enumeration.
 ///
 /// `TODO`: This needs to be more extensible.

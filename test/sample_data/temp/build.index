@@ -8,17 +8,14 @@
       "resource_hash": 10544384098633318951
     },
     {
-      "id": "0x2b368fed0000000016d008b1db71eba8",
+      "id": "0x13b5a84e000000002222570ee9d353da|1960578643_albedo",
       "dependencies": [
-        "0x13b5a84e000000002222570ee9d353da|1960578643_albedo",
-        "0x13b5a84e000000002222570ee9d353da|1960578643_normal",
-        "0x13b5a84e000000002222570ee9d353da|1960578643_roughness",
-        "0x13b5a84e000000002222570ee9d353da|1960578643_metalness"
+        "0x13b5a84e000000002222570ee9d353da"
       ],
-      "resource_hash": 14284442070317677751
+      "resource_hash": null
     },
     {
-      "id": "0x13b5a84e000000002222570ee9d353da|1960578643_albedo",
+      "id": "0x13b5a84e000000002222570ee9d353da|1960578643_metalness",
       "dependencies": [
         "0x13b5a84e000000002222570ee9d353da"
       ],
@@ -39,11 +36,14 @@
       "resource_hash": null
     },
     {
-      "id": "0x13b5a84e000000002222570ee9d353da|1960578643_metalness",
+      "id": "0x2b368fed0000000016d008b1db71eba8",
       "dependencies": [
-        "0x13b5a84e000000002222570ee9d353da"
+        "0x13b5a84e000000002222570ee9d353da|1960578643_albedo",
+        "0x13b5a84e000000002222570ee9d353da|1960578643_metalness",
+        "0x13b5a84e000000002222570ee9d353da|1960578643_normal",
+        "0x13b5a84e000000002222570ee9d353da|1960578643_roughness"
       ],
-      "resource_hash": null
+      "resource_hash": 14284442070317677751
     },
     {
       "id": "0x417862e500000000121efb023b96900e",

@@ -2,6 +2,7 @@ use legion_data_compiler::CompiledResource;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Serialize};
 use std::{
+    cmp::Ordering,
     collections::{hash_map::DefaultHasher, HashMap, VecDeque},
     fs::{File, OpenOptions},
     hash::{Hash, Hasher},
@@ -66,6 +67,30 @@ struct BuildIndexContent {
     resources: Vec<ResourceInfo>,
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
+}
+
+impl BuildIndexContent {
+    // sort contents so serialization is deterministic
+    fn pre_serialize(&mut self) {
+        self.resources.sort_by(|a, b| a.id.cmp(&b.id));
+        self.compiled_resources.sort_by(|a, b| {
+            let mut result = a.compile_path.cmp(&b.compile_path);
+            if result == Ordering::Equal {
+                result = a.compiled_path.cmp(&b.compiled_path);
+            }
+            result
+        });
+        self.compiled_resource_references.sort_by(|a, b| {
+            let mut result = a.compile_path.cmp(&b.compile_path);
+            if result == Ordering::Equal {
+                result = a.compiled_path.cmp(&b.compiled_path);
+                if result == Ordering::Equal {
+                    result = a.compiled_reference.cmp(&b.compiled_path);
+                }
+            }
+            result
+        });
+    }
 }
 
 #[derive(Debug)]
@@ -371,9 +396,14 @@ impl BuildIndex {
         }
     }
 
+    fn pre_serialize(&mut self) {
+        self.content.pre_serialize();
+    }
+
     pub(crate) fn flush(&mut self) -> Result<(), Error> {
         self.file.set_len(0).unwrap();
         self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        self.pre_serialize();
         serde_json::to_writer_pretty(&self.file, &self.content).map_err(|_e| Error::IOError)
     }
 }
