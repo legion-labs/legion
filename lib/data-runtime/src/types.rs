@@ -42,6 +42,16 @@ impl fmt::Display for AssetId {
     }
 }
 
+impl FromStr for AssetId {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        ContentId::from_str(s)?
+            .try_into()
+            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))
+    }
+}
+
 impl TryFrom<ContentId> for AssetId {
     type Error = ();
 
@@ -83,19 +93,15 @@ impl TryFrom<ContentType> for AssetType {
     }
 }
 
-impl From<AssetType> for ContentType {
-    fn from(value: AssetType) -> Self {
-        value.0
+impl fmt::Display for AssetType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
-impl FromStr for AssetId {
-    type Err = std::num::ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        ContentId::from_str(s)?
-            .try_into()
-            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))
+impl From<AssetType> for ContentType {
+    fn from(value: AssetType) -> Self {
+        value.0
     }
 }
 
