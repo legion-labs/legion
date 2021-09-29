@@ -3,27 +3,30 @@ fn build_web_app() {
     use std::process::Command;
     use which::which;
 
-    let yarn_path = which("yarn").unwrap();
+    if let Ok(yarn_path) = which("yarn") {
+        let mut process = Command::new(&yarn_path)
+            .arg("install")
+            .current_dir("frontend")
+            .spawn()
+            .unwrap();
 
-    let mut process = Command::new(&yarn_path)
-        .arg("install")
-        .current_dir("frontend")
-        .spawn()
-        .unwrap();
+        let ec = process.wait().unwrap().code().unwrap();
 
-    let ec = process.wait().unwrap().code().unwrap();
+        if ec != 0 {
+            std::process::exit(ec);
+        }
 
-    if ec != 0 {
-        std::process::exit(ec);
+        let mut process = Command::new(yarn_path)
+            .arg("generate")
+            .current_dir("frontend")
+            .spawn()
+            .unwrap();
+
+        std::process::exit(process.wait().unwrap().code().unwrap());
+    } else {
+        std::fs::create_dir_all("frontend/dist").unwrap();
+        std::fs::write("frontend/dist/index.html", "Yarn missing from path").unwrap();
     }
-
-    let mut process = Command::new(yarn_path)
-        .arg("generate")
-        .current_dir("frontend")
-        .spawn()
-        .unwrap();
-
-    std::process::exit(process.wait().unwrap().code().unwrap());
 }
 
 fn main() {
