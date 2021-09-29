@@ -104,6 +104,7 @@ fn legion_tauri_command_impl(mut function: syn::ItemFn) -> TokenStream {
 
             let args = get_arguments(&function);
             let mut exposed_function = function.clone();
+            exposed_function.vis = syn::Visibility::Inherited;
             exposed_function.sig.output = syn::ReturnType::Type(
                 syn::token::RArrow::default(),
                 Box::new(to_tauri_result_type(&raw_return_type)),
