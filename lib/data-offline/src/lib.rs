@@ -90,4 +90,5 @@
 #![warn(missing_docs)]
 
 pub mod asset;
+pub mod data_container;
 pub mod resource;
