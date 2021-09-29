@@ -210,12 +210,7 @@ bitflags::bitflags! {
         // Vulkan-only stuff
         const INPUT_ATTACHMENT = 1<<16;
         const TEXEL_BUFFER = 1<<17;
-        const TEXEL_BUFFER_READ_WRITE = 1<<18;
-        const COMBINED_IMAGE_SAMPLER = 1<<19;
-        // Metal-only stuff
-        const ARGUMENT_BUFFER = 1<<20;
-        const INDIRECT_COMMAND_BUFFER = 1<<21;
-        const RENDER_PIPELINE_STATE = 1<<22;
+        const TEXEL_BUFFER_READ_WRITE = 1<<18;                
         // Render target types
         /// A color attachment in a renderpass
         const RENDER_TARGET_COLOR = 1<<23;
@@ -805,8 +800,6 @@ pub struct DescriptorIndex(pub(crate) u32);
 pub enum DescriptorKey<'a> {
     Undefined,
     Name(&'a str),
-    Binding(u32),
-    DescriptorIndex(DescriptorIndex),
 }
 
 impl<'a> Default for DescriptorKey<'a> {

@@ -297,9 +297,9 @@ pub mod types;
 pub mod prelude {
     pub use crate::types::*;
     pub use crate::{
-        Buffer, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray, DescriptorSetHandle,
+        Buffer, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray, DescriptorSetHandle, 
         DeviceContext, Fence, GfxApi, GfxResult, Pipeline, Queue, RootSignature, Sampler,
-        Semaphore, Shader, ShaderModule, Swapchain, Texture,
+        Semaphore, Shader, ShaderModule, Swapchain, Texture, DescriptorSetLayout,
     };
 }
 
@@ -344,6 +344,7 @@ pub trait GfxApi: Sized {
     type Sampler: Sampler<Self>;
     type ShaderModule: ShaderModule<Self>;
     type Shader: Shader<Self>;
+    type DescriptorSetLayout : DescriptorSetLayout<Self>;
     type RootSignature: RootSignature<Self>;
     type Pipeline: Pipeline<Self>;
     type DescriptorSetHandle: DescriptorSetHandle<Self>;
@@ -370,10 +371,11 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<A::Texture>;
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<A::Buffer>;
     fn create_shader(&self, stages: Vec<ShaderStageDef<A>>) -> GfxResult<A::Shader>;
+    fn create_descriptorset_layout(&self, def: &DescriptorSetLayoutDef)-> GfxResult<A::DescriptorSetLayout>;    
     fn create_root_signature(
         &self,
-        root_signature_def: &RootSignatureDef<'_, A>,
-    ) -> GfxResult<A::RootSignature>;
+        root_signature_def: &RootSignatureDef<A>,
+    ) -> GfxResult<A::RootSignature>;    
     fn create_descriptor_set_array(
         &self,
         descriptor_set_array_def: &DescriptorSetArrayDef<'_, A>,
@@ -431,6 +433,10 @@ pub trait Shader<A: GfxApi>: Clone + std::fmt::Debug {
     fn pipeline_reflection(&self) -> &PipelineReflection;
 }
 
+pub trait DescriptorSetLayout<A: GfxApi>: Clone + std::fmt::Debug {
+    fn pipeline_type(&self) -> PipelineType;
+}
+
 pub trait RootSignature<A: GfxApi>: Clone + std::fmt::Debug {
     fn pipeline_type(&self) -> PipelineType;
 }
@@ -447,7 +453,6 @@ pub trait DescriptorSetHandle<A: GfxApi>: std::fmt::Debug {}
 
 pub trait DescriptorSetArray<A: GfxApi>: std::fmt::Debug {
     fn handle(&self, array_index: u32) -> Option<A::DescriptorSetHandle>;
-    fn root_signature(&self) -> &A::RootSignature;
     fn update_descriptor_set(&mut self, params: &[DescriptorUpdate<'_, A>]) -> GfxResult<()>;
     fn queue_descriptor_set_update(&mut self, update: &DescriptorUpdate<'_, A>) -> GfxResult<()>;
     fn flush_descriptor_set_updates(&mut self) -> GfxResult<()>;
@@ -518,6 +523,7 @@ pub trait CommandBuffer<A: GfxApi>: std::fmt::Debug {
     fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_, A>) -> GfxResult<()>;
     fn cmd_bind_descriptor_set(
         &self,
+        root_signature: &A::RootSignature,
         descriptor_set_array: &A::DescriptorSetArray,
         index: u32,
     ) -> GfxResult<()>;

@@ -2,7 +2,7 @@ use super::{internal::*, VulkanApi};
 use crate::{
     BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DeviceContext, DeviceInfo, Fence, Format,
     GfxResult, GraphicsPipelineDef, QueueType, ResourceType, RootSignatureDef, SampleCount,
-    SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
+    SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef, DescriptorSetLayoutDef
 };
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use super::{
     VulkanBuffer, VulkanDescriptorSetArray, VulkanFence, VulkanPipeline, VulkanQueue,
     VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule,
-    VulkanSwapchain, VulkanTexture,
+    VulkanSwapchain, VulkanTexture, VulkanDescriptorSetLayout
 };
 
 use ash::extensions::khr;
@@ -387,9 +387,14 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
         VulkanShader::new(self, stages)
     }
 
+    fn create_descriptorset_layout( &self, descriptorset_layout_def: &DescriptorSetLayoutDef) 
+        -> GfxResult<VulkanDescriptorSetLayout> {
+        VulkanDescriptorSetLayout::new(self, descriptorset_layout_def)        
+    }
+
     fn create_root_signature(
         &self,
-        root_signature_def: &RootSignatureDef<'_, VulkanApi>,
+        root_signature_def: &RootSignatureDef<VulkanApi>,
     ) -> GfxResult<VulkanRootSignature> {
         VulkanRootSignature::new(self, root_signature_def)
     }

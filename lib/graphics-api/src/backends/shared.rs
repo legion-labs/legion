@@ -1,52 +1,22 @@
 use fnv::FnvHashMap;
 
-use crate::{
-    GfxApi, GfxResult, ImmutableSamplerKey, ImmutableSamplers, PipelineType, RootSignatureDef,
-    Shader, ShaderResource, ShaderStageFlags,
-};
+use crate::{DescriptorDef, DescriptorSetLayoutDef, DeviceContext, GfxApi, GfxResult, MAX_DESCRIPTOR_SET_LAYOUTS, PipelineType, RootSignatureDef, Shader, ShaderResource, ShaderStageFlags, ResourceType};
 
 pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
 
-pub(crate) fn find_immutable_sampler_index<A: GfxApi>(
-    samplers: &[ImmutableSamplers<'_, A>],
-    name: &Option<String>,
-    set_index: u32,
-    binding: u32,
-) -> Option<usize> {
-    for (sampler_index, sampler) in samplers.iter().enumerate() {
-        match &sampler.key {
-            ImmutableSamplerKey::Name(sampler_name) => {
-                if let Some(name) = name {
-                    if name == sampler_name {
-                        return Some(sampler_index);
-                    }
-                }
-            }
-            ImmutableSamplerKey::Binding(sampler_set_index, sampler_binding) => {
-                if set_index == *sampler_set_index && binding == *sampler_binding {
-                    return Some(sampler_index);
-                }
-            }
-        }
-    }
-
-    None
-}
-
-pub(crate) fn merge_resources<'a, A: GfxApi>(
-    root_signature_def: &RootSignatureDef<'a, A>,
+pub(crate) fn extract_resources<A: GfxApi>(
+    shaders: &[A::Shader],
 ) -> GfxResult<(
     PipelineType,
-    Vec<ShaderResource>,
-    FnvHashMap<&'a String, usize>,
+    Vec<ShaderResource>
 )> {
     let mut merged_resources: Vec<ShaderResource> = vec![];
     let mut merged_resources_name_index_map = FnvHashMap::default();
     let mut pipeline_type = None;
 
     // Make sure all shaders are compatible/build lookup of shared data from them
-    for shader in root_signature_def.shaders {
+    for shader in shaders {
         log::trace!(
             "Merging resources from shader with reflection info: {:?}",
             shader.pipeline_reflection()
@@ -179,8 +149,7 @@ pub(crate) fn merge_resources<'a, A: GfxApi>(
 
     Ok((
         pipeline_type.unwrap(),
-        merged_resources,
-        merged_resources_name_index_map,
+        merged_resources
     ))
 }
 
@@ -228,4 +197,52 @@ fn verify_resources_can_overlap(
     }
 
     Ok(())
+}
+
+pub fn tmp_extract_root_signature_def<'a, A: GfxApi>(device_context:&A::DeviceContext, shaders: &[A::Shader]) -> GfxResult<RootSignatureDef<A>> {            
+
+    let (pipeline_type, shader_resources) = extract_resources::<A>(shaders)?;
+    
+    for shader_resource in &shader_resources {
+        shader_resource.validate()?;
+    }
+
+    let mut layouts: [Option<A::DescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS] = [None, None, None, None];
+
+    for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
+
+        let mut set_resources =
+            shader_resources.
+            iter().
+            filter(|sr| sr.set_index as usize == set_index  && sr.resource_type != ResourceType::ROOT_CONSTANT ).
+            collect::<Vec<_>>();
+
+        if !set_resources.is_empty() {
+
+            set_resources.sort_by(|a, b | a.binding.cmp(&b.binding));
+
+            let mut layout_def = DescriptorSetLayoutDef::new();                
+            
+            let mut add_descriptor = |d: &ShaderResource| {
+
+                let descriptor_def = DescriptorDef{
+                    name: d.name.as_ref().unwrap().clone(),
+                    binding : d.binding,
+                    resource_type : d.resource_type,
+                    array_size : d.element_count
+                };
+                layout_def.descriptor_defs.push(descriptor_def);
+            }; 
+    
+            set_resources.iter().for_each( |x| add_descriptor(x) );
+            
+            layouts[set_index as usize] = Some(device_context.create_descriptorset_layout(&layout_def)?);
+        }        
+    }       
+
+    Ok( RootSignatureDef{
+        pipeline_type,
+        descriptor_set_layouts : layouts,
+        push_constant_defs : Vec::new()
+    } )
 }

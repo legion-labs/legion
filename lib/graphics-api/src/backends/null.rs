@@ -26,6 +26,7 @@ impl GfxApi for NullApi {
     type Sampler = NullSampler;
     type ShaderModule = NullShaderModule;
     type Shader = NullShader;
+    type DescriptorSetLayout = NullDescriptorSetLayout;
     type RootSignature = NullRootSignature;
     type Pipeline = NullPipeline;
     type DescriptorSetHandle = NullDescriptorSetHandle;
@@ -73,9 +74,15 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     fn create_shader(&self, stages: Vec<ShaderStageDef<NullApi>>) -> GfxResult<NullShader> {
         unimplemented!();
     }
+    fn create_descriptorset_layout(
+        &self,
+        descriptorset_layout_def: &DescriptorSetLayoutDef,
+    ) -> GfxResult<NullDescriptorSetLayout> {
+        unimplemented!();
+    }
     fn create_root_signature(
         &self,
-        root_signature_def: &RootSignatureDef<'_, NullApi>,
+        root_signature_def: &RootSignatureDef<NullApi>,
     ) -> GfxResult<NullRootSignature> {
         unimplemented!();
     }
@@ -181,6 +188,14 @@ impl Shader<NullApi> for NullShader {
 }
 
 #[derive(Clone, Debug)]
+pub struct NullDescriptorSetLayout;
+impl DescriptorSetLayout<NullApi> for NullDescriptorSetLayout {
+    fn pipeline_type(&self) -> PipelineType {
+        unimplemented!()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct NullRootSignature;
 impl RootSignature<NullApi> for NullRootSignature {
     fn pipeline_type(&self) -> PipelineType {
@@ -210,9 +225,6 @@ impl DescriptorSetHandle<NullApi> for NullDescriptorSetHandle {}
 pub struct NullDescriptorSetArray;
 impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
     fn handle(&self, array_index: u32) -> Option<NullDescriptorSetHandle> {
-        unimplemented!();
-    }
-    fn root_signature(&self) -> &NullRootSignature {
         unimplemented!();
     }
     fn update_descriptor_set(&mut self, params: &[DescriptorUpdate<'_, NullApi>]) -> GfxResult<()> {
@@ -342,6 +354,7 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     }
     fn cmd_bind_descriptor_set(
         &self,
+        root_signature: &NullRootSignature,
         descriptor_set_array: &NullDescriptorSetArray,
         index: u32,
     ) -> GfxResult<()> {

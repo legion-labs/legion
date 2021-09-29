@@ -102,7 +102,6 @@ pub fn resource_type_to_descriptor_type(resource_type: ResourceType) -> Option<v
         ResourceType::INPUT_ATTACHMENT => Some(vk::DescriptorType::INPUT_ATTACHMENT),
         ResourceType::TEXEL_BUFFER => Some(vk::DescriptorType::UNIFORM_TEXEL_BUFFER),
         ResourceType::TEXEL_BUFFER_READ_WRITE => Some(vk::DescriptorType::STORAGE_TEXEL_BUFFER),
-        ResourceType::COMBINED_IMAGE_SAMPLER => Some(vk::DescriptorType::COMBINED_IMAGE_SAMPLER),
         _ => None,
     }
 }
