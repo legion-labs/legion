@@ -12,6 +12,7 @@ fn main() {
         .file("csrc/minimp4.c")
         .debug(debug)
         .opt_level(opt_level)
+        .warnings(false)
         .compile("minimp4");
 
     println!("cargo:rustc-link-lib=static=minimp4");
