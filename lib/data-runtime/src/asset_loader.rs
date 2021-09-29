@@ -97,7 +97,7 @@ impl AssetLoaderStub {
 }
 
 pub(crate) struct AssetLoaderIO {
-    creators: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
+    loaders: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
 
     request_await: Vec<LoaderPending>,
 
@@ -143,7 +143,7 @@ impl AssetLoaderIO {
         result_tx: crossbeam_channel::Sender<LoaderResult>,
     ) -> Self {
         Self {
-            creators: HashMap::new(),
+            loaders: HashMap::new(),
             request_await: Vec::new(),
             asset_refcounts: HashMap::new(),
             asset_storage: HashMap::new(),
@@ -156,12 +156,8 @@ impl AssetLoaderIO {
             result_tx,
         }
     }
-    pub(crate) fn register_creator(
-        &mut self,
-        kind: AssetType,
-        creator: Box<dyn AssetLoader + Send>,
-    ) {
-        self.creators.insert(kind, creator);
+    pub(crate) fn register_loader(&mut self, kind: AssetType, loader: Box<dyn AssetLoader + Send>) {
+        self.loaders.insert(kind, loader);
     }
 
     #[allow(clippy::needless_pass_by_value)]
@@ -177,7 +173,7 @@ impl AssetLoaderIO {
                                 primary_id,
                                 &mut &asset_data[..],
                                 &self.asset_refcounts,
-                                &mut self.creators,
+                                &mut self.loaders,
                             ) {
                                 Ok(output) => {
                                     for (asset_id, asset) in &output.assets {
@@ -325,13 +321,13 @@ impl AssetLoaderIO {
 
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
-                        let creator = self.creators.get_mut(&asset_id.asset_type()).unwrap();
+                        let loader = self.loaders.get_mut(&asset_id.asset_type()).unwrap();
 
                         // SAFETY: this is safe because loaded asset is only referenced by the loader.
                         // it hasn't been made available to other systems yet.
                         //let boxed = unsafe { Arc::get_mut_unchecked(boxed) };
                         let boxed = Arc::get_mut(boxed).unwrap();
-                        creator.load_init(boxed);
+                        loader.load_init(boxed);
                     }
                 }
 
@@ -377,7 +373,7 @@ impl AssetLoaderIO {
         primary_id: AssetId,
         reader: &mut dyn io::Read,
         asset_refcounts: &HashMap<AssetId, isize>,
-        creators: &mut HashMap<AssetType, Box<dyn AssetLoader + Send>>,
+        loaders: &mut HashMap<AssetType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
         const ASSET_FILE_VERSION: u16 = 1;
 
@@ -420,8 +416,8 @@ impl AssetLoaderIO {
         content.resize(nbytes as usize, 0);
         reader.read_exact(&mut content).expect("valid data");
 
-        let creator = creators.get_mut(&asset_type).unwrap();
-        let boxed_asset = creator.load(asset_type, &mut &content[..]).unwrap();
+        let loader = loaders.get_mut(&asset_type).unwrap();
+        let boxed_asset = loader.load(asset_type, &mut &content[..]).unwrap();
 
         Ok(LoadOutput {
             assets: vec![(primary_id, Some(Arc::from(boxed_asset)))],
@@ -470,9 +466,9 @@ mod tests {
             request_rx,
             result_tx,
         );
-        loader.register_creator(
+        loader.register_loader(
             test_asset::TestAsset::TYPE,
-            Box::new(test_asset::TestAssetCreator {}),
+            Box::new(test_asset::TestAssetLoader {}),
         );
 
         let load_id = Some(0);
@@ -546,9 +542,9 @@ mod tests {
             request_rx,
             result_tx,
         );
-        loader.register_creator(
+        loader.register_loader(
             test_asset::TestAsset::TYPE,
-            Box::new(test_asset::TestAssetCreator {}),
+            Box::new(test_asset::TestAssetLoader {}),
         );
 
         let load_id = Some(0);
@@ -612,9 +608,9 @@ mod tests {
             request_rx,
             result_tx,
         );
-        loader.register_creator(
+        loader.register_loader(
             test_asset::TestAsset::TYPE,
-            Box::new(test_asset::TestAssetCreator {}),
+            Box::new(test_asset::TestAssetLoader {}),
         );
 
         let load_id = Some(0);

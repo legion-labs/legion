@@ -54,7 +54,7 @@ fn no_intermediate_resource() {
         resource_id
     };
 
-    let compile_path = AssetPathId::from(resource_id).push(refs_asset::TestAsset::TYPE);
+    let compile_path = AssetPathId::from(resource_id).push(refs_asset::RefsAsset::TYPE);
 
     let mut command = {
         let target = "game";

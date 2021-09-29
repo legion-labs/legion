@@ -6,15 +6,12 @@ use legion_data_runtime::{
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
-pub fn add_creators(mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    fn add_asset<T: AssetDescriptor>(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        registry.add_creator(T::TYPE, Box::new(T::Loader::default()))
-    }
-
-    registry = add_asset::<Entity>(registry);
-    registry = add_asset::<Instance>(registry);
-    registry = add_asset::<Mesh>(registry);
-    add_asset::<legion_graphics_runtime::material::Material>(registry)
+pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
+    registry
+        .add_loader::<Entity>()
+        .add_loader::<Instance>()
+        .add_loader::<Mesh>()
+        .add_loader::<legion_graphics_runtime::material::Material>()
 }
 
 // ------------------ Entity -----------------------------------
@@ -29,13 +26,13 @@ pub struct Entity {
 
 impl AssetDescriptor for Entity {
     const TYPENAME: &'static str = "runtime_entity";
-    type Loader = EntityCreator;
+    type Loader = EntityLoader;
 }
 
 #[derive(Default)]
-pub struct EntityCreator {}
+pub struct EntityLoader {}
 
-impl AssetLoader for EntityCreator {
+impl AssetLoader for EntityLoader {
     fn load(
         &mut self,
         _kind: AssetType,
@@ -175,13 +172,13 @@ pub struct Instance {
 
 impl AssetDescriptor for Instance {
     const TYPENAME: &'static str = "runtime_instance";
-    type Loader = InstanceCreator;
+    type Loader = InstanceLoader;
 }
 
 #[derive(Default)]
-pub struct InstanceCreator {}
+pub struct InstanceLoader {}
 
-impl AssetLoader for InstanceCreator {
+impl AssetLoader for InstanceLoader {
     fn load(
         &mut self,
         _kind: AssetType,
@@ -210,13 +207,13 @@ pub struct Mesh {
 
 impl AssetDescriptor for Mesh {
     const TYPENAME: &'static str = "runtime_mesh";
-    type Loader = MeshCreator;
+    type Loader = MeshLoader;
 }
 
 #[derive(Default)]
-pub struct MeshCreator {}
+pub struct MeshLoader {}
 
-impl AssetLoader for MeshCreator {
+impl AssetLoader for MeshLoader {
     fn load(
         &mut self,
         _kind: AssetType,

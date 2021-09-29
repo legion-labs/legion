@@ -11,12 +11,13 @@ use legion_content_store::ContentStore;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    Asset, AssetId, AssetLoader, AssetType, Handle, HandleId, HandleUntyped, RefOp,
+    Asset, AssetDescriptor, AssetId, AssetLoader, AssetType, Handle, HandleId, HandleUntyped,
+    RefOp,
 };
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
-    creators: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
+    loaders: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
 }
 
 impl AssetRegistryOptions {
@@ -24,17 +25,13 @@ impl AssetRegistryOptions {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            creators: HashMap::new(),
+            loaders: HashMap::new(),
         }
     }
 
     /// Enables support of a given [`Asset`] by adding corresponding [`AssetLoader`].
-    pub fn add_creator(
-        mut self,
-        asset_kind: AssetType,
-        creator: Box<dyn AssetLoader + Send>,
-    ) -> Self {
-        self.creators.insert(asset_kind, creator);
+    pub fn add_loader<A: AssetDescriptor>(mut self) -> Self {
+        self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
         self
     }
 
@@ -42,8 +39,8 @@ impl AssetRegistryOptions {
     pub fn create(self, content_store: Box<dyn ContentStore>, manifest: Manifest) -> AssetRegistry {
         let (loader, mut io) = create_loader(content_store, manifest);
 
-        for (kind, creator) in self.creators {
-            io.register_creator(kind, creator);
+        for (kind, loader) in self.loaders {
+            io.register_loader(kind, loader);
         }
 
         let load_thread = thread::spawn(move || {
@@ -224,10 +221,7 @@ mod tests {
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_creator(
-                test_asset::TestAsset::TYPE,
-                Box::new(test_asset::TestAssetCreator {}),
-            )
+            .add_loader::<test_asset::TestAsset>()
             .create(content_store, manifest);
 
         (asset_id, reg)

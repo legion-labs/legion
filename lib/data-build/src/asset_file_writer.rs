@@ -84,7 +84,7 @@ mod tests {
     fn one_asset_no_references() {
         let mut content_store = RamContentStore::default();
 
-        let asset_id = AssetId::new(refs_asset::TestAsset::TYPE, 1);
+        let asset_id = AssetId::new(refs_asset::RefsAsset::TYPE, 1);
         let reference_list: Vec<(AssetId, (AssetId, AssetId))> = Vec::new();
         let asset_content = b"test_content".to_vec();
         let asset_checksum = content_store.store(&asset_content).expect("to store asset");
@@ -124,7 +124,7 @@ mod tests {
                         .expect("valid data"),
                 )
             };
-            assert_eq!(asset_type, refs_asset::TestAsset::TYPE);
+            assert_eq!(asset_type, refs_asset::RefsAsset::TYPE);
 
             let asset_count = assetfile_reader
                 .read_u64::<LittleEndian>()
@@ -148,12 +148,12 @@ mod tests {
     fn two_dependent_assets() {
         let mut content_store = RamContentStore::default();
 
-        let child_id = AssetId::new(refs_asset::TestAsset::TYPE, 1);
+        let child_id = AssetId::new(refs_asset::RefsAsset::TYPE, 1);
         let child_content = b"child".to_vec();
         let child_checksum = content_store.store(&child_content).expect("to store asset");
         assert_eq!(content_store.read(child_checksum).unwrap(), child_content);
 
-        let parent_id = AssetId::new(refs_asset::TestAsset::TYPE, 2);
+        let parent_id = AssetId::new(refs_asset::RefsAsset::TYPE, 2);
         let parent_content = b"parent".to_vec();
         let parent_checksum = content_store
             .store(&parent_content)
@@ -226,7 +226,7 @@ mod tests {
                         .expect("valid data"),
                 )
             };
-            assert_eq!(asset_type, refs_asset::TestAsset::TYPE);
+            assert_eq!(asset_type, refs_asset::RefsAsset::TYPE);
 
             let asset_count = assetfile_reader
                 .read_u64::<LittleEndian>()

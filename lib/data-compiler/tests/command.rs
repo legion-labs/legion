@@ -61,7 +61,7 @@ fn command_compile() {
 
     let cas_addr = ContentStoreAddr::from(output_dir);
 
-    let compile_path = AssetPathId::from(source).push(refs_asset::TestAsset::TYPE);
+    let compile_path = AssetPathId::from(source).push(refs_asset::RefsAsset::TYPE);
     let mut command = CompilerCompileCmd::new(
         &compile_path,
         &[],

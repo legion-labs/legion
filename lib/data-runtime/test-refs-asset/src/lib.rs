@@ -8,23 +8,23 @@ use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, AssetType};
 ///
 /// To be removed once real asset types exist.
 #[derive(Asset)]
-pub struct TestAsset {
+pub struct RefsAsset {
     /// Test content.
     pub content: String,
 }
 
-impl AssetDescriptor for TestAsset {
+impl AssetDescriptor for RefsAsset {
     const TYPENAME: &'static str = "refs_asset";
-    type Loader = TestAssetCreator;
+    type Loader = RefsAssetLoader;
 }
 
-/// [`TestAsset`]'s asset creator temporarily used for testings.
+/// [`RefsAsset`]'s asset creator temporarily used for testings.
 ///
 /// To be removed once real asset types exists.
 #[derive(Default)]
-pub struct TestAssetCreator {}
+pub struct RefsAssetLoader {}
 
-impl AssetLoader for TestAssetCreator {
+impl AssetLoader for RefsAssetLoader {
     fn load(
         &mut self,
         _kind: AssetType,
@@ -32,7 +32,7 @@ impl AssetLoader for TestAssetCreator {
     ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
         let mut content = String::new();
         reader.read_to_string(&mut content)?;
-        let asset = Box::new(TestAsset { content });
+        let asset = Box::new(RefsAsset { content });
         Ok(asset)
     }
 

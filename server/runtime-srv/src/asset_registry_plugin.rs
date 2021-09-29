@@ -84,7 +84,7 @@ impl Plugin for AssetRegistryPlugin {
                 let manifest = read_manifest(&settings.game_manifest);
 
                 let mut registry = AssetRegistryOptions::new();
-                registry = runtime_data::add_creators(registry);
+                registry = runtime_data::add_loaders(registry);
                 let registry = registry.create(Box::new(content_store), manifest);
 
                 app.insert_resource(AssetRegistryState::default())

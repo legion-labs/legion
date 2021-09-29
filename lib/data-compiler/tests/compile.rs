@@ -84,8 +84,8 @@ fn compile_atoi() {
 
     let resource_content = cas.read(checksum.get()).expect("asset content");
 
-    let mut creator = IntegerAssetLoader {};
-    let asset = creator
+    let mut loader = IntegerAssetLoader {};
+    let asset = loader
         .load(
             integer_asset::IntegerAsset::TYPE,
             &mut &resource_content[..],
@@ -174,8 +174,8 @@ fn compile_intermediate() {
 
     let resource_content = cas.read(checksum.get()).expect("asset content");
 
-    let mut creator = IntegerAssetLoader {};
-    let asset = creator
+    let mut loader = IntegerAssetLoader {};
+    let asset = loader
         .load(
             integer_asset::IntegerAsset::TYPE,
             &mut &resource_content[..],

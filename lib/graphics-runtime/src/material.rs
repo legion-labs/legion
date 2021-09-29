@@ -21,12 +21,12 @@ pub struct Material {
 
 impl AssetDescriptor for Material {
     const TYPENAME: &'static str = "runtime_material";
-    type Loader = MaterialCreator;
+    type Loader = MaterialLoader;
 }
 
 /// Creator of [`Material`].
 #[derive(Default)]
-pub struct MaterialCreator {}
+pub struct MaterialLoader {}
 
 fn read_asset_id(reader: &mut dyn std::io::Read) -> Result<Option<AssetId>, std::io::Error> {
     let underlying = reader.read_u128::<LittleEndian>()?;
@@ -36,7 +36,7 @@ fn read_asset_id(reader: &mut dyn std::io::Read) -> Result<Option<AssetId>, std:
     Ok(id)
 }
 
-impl AssetLoader for MaterialCreator {
+impl AssetLoader for MaterialLoader {
     fn load(
         &mut self,
         _kind: AssetType,

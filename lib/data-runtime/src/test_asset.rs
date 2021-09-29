@@ -15,16 +15,16 @@ pub struct TestAsset {
 
 impl AssetDescriptor for TestAsset {
     const TYPENAME: &'static str = "test_asset";
-    type Loader = TestAssetCreator;
+    type Loader = TestAssetLoader;
 }
 
 /// [`TestAsset`]'s asset creator temporarily used for testings.
 ///
 /// To be removed once real asset types exists.
 #[derive(Default)]
-pub struct TestAssetCreator {}
+pub struct TestAssetLoader {}
 
-impl AssetLoader for TestAssetCreator {
+impl AssetLoader for TestAssetLoader {
     fn load(
         &mut self,
         _kind: AssetType,
