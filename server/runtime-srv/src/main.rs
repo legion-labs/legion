@@ -125,10 +125,11 @@ fn main() {
     // default root object is in sample data
     // /world/sample_1.ent
     // resource-id: 5004cd1c00000000550f3ccdcaeb6553
-    // asset-id: 819c8223000000002355395392dd415c
+    // asset-id: 819c822300000000fd07368cd2f1b933
+    // checksum: 0000000000000000dcf8ac543496e5b2
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
-        .unwrap_or("819c8223000000002355395392dd415c");
+        .unwrap_or("819c822300000000fd07368cd2f1b933");
 
     // Start app with 60 fps
     App::new()

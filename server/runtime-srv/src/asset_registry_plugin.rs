@@ -126,7 +126,7 @@ impl AssetRegistryPlugin {
                         *state = AssetState::Loaded;
                     } else if asset.is_err(&registry) {
                         if let Some(asset_id) = asset.get_asset_id(&registry) {
-                            eprint!("Failed to load asset {}", asset_id);
+                            eprintln!("Failed to load asset {}", asset_id);
                         }
                         *state = AssetState::FailedToLoad;
                     }
