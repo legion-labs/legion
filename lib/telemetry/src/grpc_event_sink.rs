@@ -26,10 +26,11 @@ impl GRPCEventSink {
         }
     }
 
-    #[allow(clippy::needless_pass_by_value)] // we don't want to leave the receiver in the calling thread
-    fn thread_proc(addr: String, receiver: std::sync::mpsc::Receiver<TelemetrySinkEvent>) {
-        let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
-        let mut client = match tokio_runtime.block_on(TelemetryIngestionClient::connect(addr)) {
+    async fn thread_proc_impl(
+        addr: String,
+        receiver: std::sync::mpsc::Receiver<TelemetrySinkEvent>,
+    ) {
+        let mut client = match TelemetryIngestionClient::connect(addr).await {
             Ok(c) => c,
             Err(e) => {
                 println!("Error connecting to telemetry server: {}", e);
@@ -41,7 +42,7 @@ impl GRPCEventSink {
             match receiver.recv() {
                 Ok(message) => match message {
                     TelemetrySinkEvent::OnInitProcess(process_info) => {
-                        match tokio_runtime.block_on(client.insert_process(process_info)) {
+                        match client.insert_process(process_info).await {
                             Ok(response) => {
                                 dbg!(response);
                             }
@@ -51,7 +52,7 @@ impl GRPCEventSink {
                         }
                     }
                     TelemetrySinkEvent::OnInitStream(stream_info) => {
-                        match tokio_runtime.block_on(client.insert_stream(stream_info)) {
+                        match client.insert_stream(stream_info).await {
                             Ok(response) => {
                                 dbg!(response);
                             }
@@ -60,12 +61,9 @@ impl GRPCEventSink {
                             }
                         }
                     }
-                    TelemetrySinkEvent::OnShutdown => {
-                        return;
-                    }
                     TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
                         let encoded_block = log_buffer.encode();
-                        match tokio_runtime.block_on(client.insert_block(encoded_block)) {
+                        match client.insert_block(encoded_block).await {
                             Ok(response) => {
                                 dbg!(response);
                             }
@@ -77,6 +75,9 @@ impl GRPCEventSink {
                     TelemetrySinkEvent::OnThreadBufferFull(thread_buffer) => {
                         dbg!(thread_buffer);
                     }
+                    TelemetrySinkEvent::OnShutdown => {
+                        return;
+                    }
                 },
                 Err(e) => {
                     println!("Error in telemetry thread: {}", e);
@@ -84,6 +85,12 @@ impl GRPCEventSink {
                 }
             }
         }
+    }
+
+    #[allow(clippy::needless_pass_by_value)] // we don't want to leave the receiver in the calling thread
+    fn thread_proc(addr: String, receiver: std::sync::mpsc::Receiver<TelemetrySinkEvent>) {
+        let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
+        tokio_runtime.block_on(Self::thread_proc_impl(addr, receiver));
     }
 }
 
