@@ -82,12 +82,14 @@ pub mod iter;
 pub mod reflect;
 pub mod reflective_queue;
 pub mod serialize;
+pub mod static_string;
 
 pub use dyn_string::*;
 pub use iter::*;
 pub use reflect::*;
 pub use reflective_queue::*;
 pub use serialize::*;
+pub use static_string::*;
 
 #[allow(unused_imports)]
 #[macro_use]

@@ -2,6 +2,10 @@ use crate::*;
 use std::sync::Arc;
 use transit::*;
 
+declare_queue_struct!(
+    struct LogDepsQueue<StaticString> {}
+);
+
 pub struct LogStream {
     current_block: Arc<LogBlock>,
     initial_size: usize,
@@ -9,9 +13,10 @@ pub struct LogStream {
     process_id: String,
 }
 
-impl Stream for LogStream {
-    fn get_stream_info(&self) -> StreamInfo {
-        let dependencies_udts = <LogMsgQueue as ReflectiveQueue>::reflect_contained()
+fn make_queue_metedata<Queue: transit::ReflectiveQueue>(
+) -> telemetry_ingestion_proto::ContainerMetadata {
+    telemetry_ingestion_proto::ContainerMetadata {
+        types: Queue::reflect_contained()
             .iter()
             .map(|udt| telemetry_ingestion_proto::UserDefinedType {
                 name: udt.name.to_owned(),
@@ -28,14 +33,19 @@ impl Stream for LogStream {
                     })
                     .collect(),
             })
-            .collect();
+            .collect(),
+    }
+}
+
+impl Stream for LogStream {
+    fn get_stream_info(&self) -> StreamInfo {
+        let dependencies_meta = make_queue_metedata::<LogDepsQueue>();
+        let obj_meta = make_queue_metedata::<LogMsgQueue>();
         StreamInfo {
             process_id: self.process_id.clone(),
             stream_id: self.stream_id.clone(),
-            dependencies_metadata: Some(telemetry_ingestion_proto::ContainerMetadata {
-                types: dependencies_udts,
-            }),
-            objects_metadata: Some(telemetry_ingestion_proto::ContainerMetadata { types: vec![] }),
+            dependencies_metadata: Some(dependencies_meta),
+            objects_metadata: Some(obj_meta),
             tags: vec![String::from("log")],
         }
     }
