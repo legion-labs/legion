@@ -7,9 +7,16 @@ use clap::Arg;
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
 use legion_editor_proto::{editor_client::*, InitializeStreamRequest};
-use std::{cell::RefCell, error::Error, rc::Rc};
+use std::{
+    cell::RefCell,
+    error::Error,
+    future::Future,
+    ops::{Deref, DerefMut},
+    pin::Pin,
+    rc::Rc,
+};
 use tauri::Event;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 use tonic::transport::Channel;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -25,16 +32,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         )
         .get_matches();
 
-    let _server_addr: String = args
+    let server_addr: String = args
         .value_of("server-addr")
         .unwrap_or("http://[::1]:50051")
         .parse()
         .unwrap();
 
-    //let client = Mutex::new(EditorClient::connect(server_addr).await?);
+    let client = LazyMutex::new(async move { EditorClient::connect(server_addr).await.unwrap() });
 
     let tauri_app = tauri::Builder::default()
-        //.manage(client)
+        .manage(client)
         .invoke_handler(tauri::generate_handler![initialize_stream])
         .build(tauri::generate_context!())
         .expect("failed to instanciate a Tauri App");
@@ -45,6 +52,74 @@ fn main() -> Result<(), Box<dyn Error>> {
         .run();
 
     Ok(())
+}
+
+struct LazyMutex<T> {
+    value: Mutex<LazyMutexValue<T>>,
+}
+
+struct LazyMutexGuard<'a, T> {
+    guard: MutexGuard<'a, LazyMutexValue<T>>,
+}
+
+impl<'a, T> Deref for LazyMutexGuard<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.guard.value()
+    }
+}
+
+impl<'a, T> DerefMut for LazyMutexGuard<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.guard.value_mut()
+    }
+}
+
+enum LazyMutexValue<T> {
+    Future(Pin<Box<dyn Future<Output = T> + Send + 'static>>),
+    Value(T),
+}
+
+impl<T> LazyMutexValue<T> {
+    fn value(&self) -> &T {
+        match self {
+            LazyMutexValue::Value(v) => v,
+            _ => {
+                panic!("not a value");
+            }
+        }
+    }
+
+    fn value_mut(&mut self) -> &mut T {
+        match self {
+            LazyMutexValue::Value(v) => v,
+            _ => {
+                panic!("not a value");
+            }
+        }
+    }
+}
+
+impl<T> LazyMutex<T> {
+    fn new<F>(f: F) -> Self
+    where
+        F: Future<Output = T> + Send + 'static,
+    {
+        Self {
+            value: Mutex::new(LazyMutexValue::Future(Box::pin(f))),
+        }
+    }
+
+    async fn lock(&self) -> LazyMutexGuard<'_, T> {
+        let mut guard = self.value.lock().await;
+
+        if let LazyMutexValue::Future(f) = guard.deref_mut() {
+            *guard.deref_mut() = LazyMutexValue::Value(f.await);
+        }
+
+        LazyMutexGuard { guard }
+    }
 }
 
 struct TauriRunner {}
@@ -67,7 +142,7 @@ impl TauriRunner {
 
 #[tauri::command]
 async fn initialize_stream(
-    client: tauri::State<'_, Mutex<EditorClient<Channel>>>,
+    client: tauri::State<'_, LazyMutex<EditorClient<Channel>>>,
     rtc_session_description: String,
 ) -> Result<String, String> {
     let mut client = client.lock().await;
