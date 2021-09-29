@@ -6,41 +6,47 @@
 use async_std::future::timeout;
 use clap::Arg;
 use legion_app::prelude::*;
-use legion_async::{sync::LazyMutex, AsyncPlugin};
+use legion_async::AsyncPlugin;
 use legion_editor_proto::{editor_client::*, InitializeStreamRequest};
 use std::{cell::RefCell, error::Error, rc::Rc, time::Duration};
 use tauri::Event;
-use tonic::transport::Channel;
+
+struct Config {
+    server_addr: String,
+}
+
+impl Config {
+    fn new(args: clap::ArgMatches) -> anyhow::Result<Self> {
+        Ok(Self {
+            server_addr: args
+                .value_of("server-addr")
+                .unwrap_or("http://[::1]:50051")
+                .parse()?,
+        })
+    }
+
+    fn new_from_environment() -> anyhow::Result<Self> {
+        let args = clap::App::new("Legion Labs editor")
+            .author(clap::crate_authors!())
+            .version(clap::crate_version!())
+            .about("Legion Labs editor.")
+            .arg(
+                Arg::with_name("server-addr")
+                    .long("server-addr")
+                    .takes_value(true)
+                    .help("The address of the editor server to connect to"),
+            )
+            .get_matches();
+
+        Self::new(args)
+    }
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args = clap::App::new("Legion Labs editor")
-        .author(clap::crate_authors!())
-        .version(clap::crate_version!())
-        .about("Legion Labs editor.")
-        .arg(
-            Arg::with_name("server-addr")
-                .long("server-addr")
-                .takes_value(true)
-                .help("The address of the editor server to connect to"),
-        )
-        .get_matches();
-
-    let server_addr: String = args
-        .value_of("server-addr")
-        .unwrap_or("http://[::1]:50051")
-        .parse()
-        .unwrap();
-
-    let client = LazyMutex::new(async move {
-        loop {
-            if let Ok(client) = EditorClient::connect(server_addr.clone()).await {
-                return client;
-            }
-        }
-    });
+    let config = Config::new_from_environment()?;
 
     let tauri_app = tauri::Builder::default()
-        .manage(client)
+        .manage(config)
         .invoke_handler(tauri::generate_handler![initialize_stream])
         .build(tauri::generate_context!())
         .expect("failed to instanciate a Tauri App");
@@ -73,20 +79,24 @@ impl TauriRunner {
 
 #[tauri::command]
 async fn initialize_stream(
-    client: tauri::State<'_, LazyMutex<EditorClient<Channel>>>,
+    config: tauri::State<'_, Config>,
     rtc_session_description: String,
 ) -> Result<String, String> {
-    match initialize_stream_impl(client, rtc_session_description).await {
+    match initialize_stream_impl(config, rtc_session_description).await {
         Ok(rtc_session_description) => Ok(rtc_session_description),
         Err(e) => Err(format!("{}", e)),
     }
 }
 
 async fn initialize_stream_impl(
-    client: tauri::State<'_, LazyMutex<EditorClient<Channel>>>,
+    config: tauri::State<'_, Config>,
     rtc_session_description: String,
 ) -> Result<String, Box<dyn Error>> {
-    let mut client = timeout(Duration::from_secs(3), client.lock()).await?;
+    let mut client = timeout(
+        Duration::from_secs(3),
+        EditorClient::connect(config.server_addr.clone()),
+    )
+    .await??;
 
     let rtc_session_description = base64::decode(rtc_session_description)?;
     let request = tonic::Request::new(InitializeStreamRequest {
