@@ -1,9 +1,8 @@
-use core::fmt;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     any::{Any, TypeId},
     convert::{TryFrom, TryInto},
-    fmt::LowerHex,
+    fmt,
     hash::{Hash, Hasher},
     io,
     str::FromStr,
@@ -31,9 +30,15 @@ impl AssetId {
     }
 }
 
-impl LowerHex for AssetId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::LowerHex for AssetId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Display for AssetId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
     }
 }
 

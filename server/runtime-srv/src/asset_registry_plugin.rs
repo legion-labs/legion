@@ -41,6 +41,7 @@ struct AssetRegistryState {
 enum AssetState {
     PendingLoad,
     Loaded,
+    FailedToLoad,
 }
 
 #[derive(Default)]
@@ -123,9 +124,14 @@ impl AssetRegistryPlugin {
                             }
                         }
                         *state = AssetState::Loaded;
+                    } else if asset.is_err(&registry) {
+                        if let Some(asset_id) = asset.get_asset_id(&registry) {
+                            eprint!("Failed to load asset {}", asset_id);
+                        }
+                        *state = AssetState::FailedToLoad;
                     }
                 }
-                AssetState::Loaded => {}
+                AssetState::Loaded | AssetState::FailedToLoad => {}
             });
 
         drop(registry);

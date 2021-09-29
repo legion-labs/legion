@@ -1,6 +1,6 @@
 use std::{
     convert::{TryFrom, TryInto},
-    fmt::{self, LowerHex},
+    fmt,
     str::FromStr,
 };
 
@@ -88,7 +88,7 @@ impl ContentId {
     }
 }
 
-impl LowerHex for ContentId {
+impl fmt::LowerHex for ContentId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)
     }
