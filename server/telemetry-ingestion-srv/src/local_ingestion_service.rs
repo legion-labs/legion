@@ -103,6 +103,9 @@ impl TelemetryIngestion for LocalIngestionService {
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
         let block = request.into_inner();
+        if block.payload.is_none() {
+            return Err(Status::internal(String::from("Payload not found in block")));
+        }
         match self.db_pool.acquire().await {
             Ok(mut connection) => {
                 if let Err(e) = sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?);")

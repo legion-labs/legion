@@ -20,6 +20,10 @@ declare_queue_struct!(
     struct LogMsgQueue<LogMsgEvent> {}
 );
 
+declare_queue_struct!(
+    struct LogDepsQueue<StaticString> {}
+);
+
 #[derive(Debug)]
 pub struct LogBlock {
     pub stream_id: String,
@@ -48,6 +52,21 @@ impl StreamBlock for LogBlock {
     fn encode(&self) -> EncodedBlock {
         let block_id = uuid::Uuid::new_v4().to_string();
         let end = self.end.as_ref().unwrap();
+
+        let mut deps = LogDepsQueue::new(1024 * 1024);
+        for x in self.events.iter() {
+            match x {
+                LogMsgQueueAny::LogMsgEvent(evt) => {
+                    deps.push(StaticString(evt.msg));
+                }
+            }
+        }
+
+        let payload = telemetry_ingestion_proto::BlockPayload {
+            dependencies: deps.into_vec(),
+            objects: self.events.get_buffer().to_vec(),
+        };
+
         EncodedBlock {
             stream_id: self.stream_id.clone(),
             block_id,
@@ -60,7 +79,7 @@ impl StreamBlock for LogBlock {
                 .time
                 .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
             end_ticks: end.ticks,
-            payload: None,
+            payload: Some(payload),
         }
     }
 }

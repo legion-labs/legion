@@ -2,10 +2,6 @@ use crate::*;
 use std::sync::Arc;
 use transit::*;
 
-declare_queue_struct!(
-    struct LogDepsQueue<StaticString> {}
-);
-
 pub struct LogStream {
     current_block: Arc<LogBlock>,
     initial_size: usize,

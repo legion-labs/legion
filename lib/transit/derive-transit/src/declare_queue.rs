@@ -124,6 +124,14 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
                 Self { buffer: Vec::with_capacity(buffer_size), }
             }
 
+            pub fn get_buffer(&self) -> &[u8]{
+                &self.buffer
+            }
+
+            pub fn into_vec(self) -> Vec<u8>{
+                self.buffer
+            }
+
             pub fn push<T>(&mut self, value: T)
             where
                 T: transit::Serialize + #type_index_ident,
