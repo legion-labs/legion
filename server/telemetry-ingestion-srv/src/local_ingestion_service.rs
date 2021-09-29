@@ -73,7 +73,7 @@ impl TelemetryIngestion for LocalIngestionService {
                     Some(metadata) => metadata.encode_to_vec(),
                     None => Vec::new(),
                 };
-                let tags = String::from("test tags");
+                let tags = stream_info.tags.join(" ");
                 if let Err(e) = sqlx::query("INSERT INTO streams VALUES(?,?,?,?,?);")
                     .bind(stream_info.stream_id.clone())
                     .bind(stream_info.process_id)
