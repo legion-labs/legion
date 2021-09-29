@@ -260,23 +260,12 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
     let offline_members_json_writes = members.iter().map(|m| {
         let member_ident = format_ident!("{}", &m.name);
         let prop_id = format!("\t\"{}\" : ", &m.name);
-
-        if let Some(default_value) = &m.default_literal {
-            quote! {
-                if self.#member_ident != #default_value {
-                    if let Ok(json_string) = serde_json::to_string(&self.#member_ident) {
-                        writer.write_all(",\n".as_bytes());
-                        writer.write_all(#prop_id.as_bytes());
-                        writer.write_all(&json_string.as_bytes());
-                    }
-                }
-            }
-        } else {
-            quote! {
+        quote! {
+            if self.#member_ident != default_obj.#member_ident {
                 if let Ok(json_string) = serde_json::to_string(&self.#member_ident) {
-                    writer.write_all(",\n".as_bytes());
-                    writer.write_all(#prop_id.as_bytes());
-                    writer.write_all(&json_string.as_bytes());
+                    writer.write_all(",\n".as_bytes())?;
+                    writer.write_all(#prop_id.as_bytes())?;
+                    writer.write_all(&json_string.as_bytes())?;
                 }
             }
         }
@@ -294,7 +283,6 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
 
         // Runtime Structure
         #[derive(Debug, Serialize, Deserialize)]
-        #[repr(C)]
         struct #runtime_ident#life_time {
             #(#runtime_members)*
         }
@@ -317,10 +305,10 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
         }
 
         // Offline Json serialization
-        impl #offline_identifer {
+        impl OfflineDataContainer for #offline_identifer {
 
-            fn create_from_json(json_data: &str) -> #offline_identifer {
-                let mut new_obj = #offline_identifer { ..Default::default() };
+            fn create_from_json(json_data: &str) -> Self {
+                let mut new_obj = Self { ..Default::default() };
                 let values: serde_json::Value = serde_json::from_str(json_data).unwrap();
                 if values["_class"] == #offline_name {
                     #(#offline_members_json_reads)*
@@ -328,17 +316,18 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
                 new_obj
             }
 
-            fn write_to_json(&self, writer: &mut dyn std::io::Write)  {
-                writer.write_all("{\n\t\"_class\" : \"".as_bytes());
-                writer.write_all(#offline_name.as_bytes());
-                writer.write_all("\"".as_bytes());
+            #[allow(clippy::float_cmp)]
+            fn write_to_json(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
+                let default_obj = #offline_identifer { ..Default::default() };
+                writer.write_all("{\n\t\"_class\" : \"".as_bytes())?;
+                writer.write_all(#offline_name.as_bytes())?;
+                writer.write_all("\"".as_bytes())?;
                 #(#offline_members_json_writes)*
-                writer.write_all("\n}\n".as_bytes());
+                writer.write_all("\n}\n".as_bytes())?;
+                Ok(())
             }
 
-            const fn signature_hash() -> u64 {
-                #signature_hash
-            }
+            const SIGNATURE_HASH: u64 = #signature_hash;
         }
     })
 }

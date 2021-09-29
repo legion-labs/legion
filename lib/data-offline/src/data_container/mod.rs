@@ -1,14 +1,17 @@
-//! ['DataContainer] Test
-use serde::{Deserialize, Serialize};
+//! `DataContainer`
 
-#[allow(unused_imports)]
-#[allow(dead_code)]
-#[allow(missing_docs)]
-use crate::{asset::*, resource::*};
 pub use legion_data_offline_macros::DataContainer;
 use legion_math::prelude::*;
+use serde::{Deserialize, Serialize};
+
+trait OfflineDataContainer {
+    fn create_from_json(json_data: &str) -> Self;
+    fn write_to_json(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()>;
+    const SIGNATURE_HASH: u64;
+}
 
 #[derive(Debug, DataContainer)]
+#[allow(missing_docs)]
 pub struct Transform {
     pub position: Vec3,
     pub rotation: Quat,
@@ -17,7 +20,8 @@ pub struct Transform {
 }
 
 #[derive(Debug, DataContainer)]
-/// Base Entity
+#[allow(dead_code)]
+#[allow(missing_docs)]
 pub struct Entity {
     #[legion(default = "Entity", readonly, category = "Name")]
     name: String,
@@ -53,7 +57,7 @@ fn test_entity_serialization() {
         ..Default::default()
     };
 
-    let test = RuntimeEntity {
+    let _test = RuntimeEntity {
         ..Default::default()
     };
 
