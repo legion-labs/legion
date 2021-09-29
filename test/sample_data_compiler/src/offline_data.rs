@@ -108,7 +108,7 @@ impl Component for Transform {}
 
 #[derive(Serialize, Deserialize)]
 pub struct Visual {
-    pub renderable_geometry: String,
+    pub renderable_geometry: Option<AssetPathId>,
     pub shadow_receiver: bool,
     pub shadow_caster_sun: bool,
     pub shadow_caster_local: bool,
@@ -172,7 +172,7 @@ impl Component for Light {}
 #[derive(Serialize, Deserialize)]
 pub struct Physics {
     pub dynamic: bool,
-    pub collision_geometry: String,
+    pub collision_geometry: Option<AssetPathId>,
 }
 
 #[typetag::serde]

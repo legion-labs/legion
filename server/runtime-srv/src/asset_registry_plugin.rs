@@ -224,13 +224,16 @@ impl AssetRegistryPlugin {
                     rotation: transform.rotation,
                     scale: transform.scale,
                 });
-                // } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
-                // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
-                // } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
-                // } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
-                // } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
-                // } else if let Some(physics) = component.downcast_ref::<runtime_data::Physics>() {
+            } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
+                if let Some(geometry) = visual.renderable_geometry {
+                    secondary_assets.push(geometry);
+                }
             }
+            // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
+            // } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
+            // } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
+            // } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
+            // } else if let Some(physics) = component.downcast_ref::<runtime_data::Physics>() {
         }
 
         secondary_assets.extend(runtime_entity.children.iter());

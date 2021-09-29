@@ -119,7 +119,7 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                     components.push(Box::new(Into::<offline_data::Transform>::into(raw)));
                 }
                 raw_data::Component::Visual(raw) => {
-                    components.push(Box::new(Into::<offline_data::Visual>::into(raw)));
+                    components.push(Box::new(offline_data::Visual::from_raw(raw, references)));
                 }
                 raw_data::Component::GlobalIllumination(raw) => {
                     components.push(Box::new(Into::<offline_data::GlobalIllumination>::into(
@@ -136,7 +136,7 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                     components.push(Box::new(Into::<offline_data::Light>::into(raw)));
                 }
                 raw_data::Component::Physics(raw) => {
-                    components.push(Box::new(Into::<offline_data::Physics>::into(raw)));
+                    components.push(Box::new(offline_data::Physics::from_raw(raw, references)));
                 }
             }
         }
@@ -160,10 +160,10 @@ impl From<raw_data::Transform> for offline_data::Transform {
     }
 }
 
-impl From<raw_data::Visual> for offline_data::Visual {
-    fn from(raw: raw_data::Visual) -> Self {
+impl FromRaw<raw_data::Visual> for offline_data::Visual {
+    fn from_raw(raw: raw_data::Visual, references: &HashMap<ResourcePathName, ResourceId>) -> Self {
         Self {
-            renderable_geometry: raw.renderable_geometry,
+            renderable_geometry: lookup_asset_path(references, &raw.renderable_geometry),
             shadow_receiver: raw.shadow_receiver,
             shadow_caster_sun: raw.shadow_caster_sun,
             shadow_caster_local: raw.shadow_caster_local,
@@ -239,11 +239,14 @@ impl From<raw_data::Light> for offline_data::Light {
     }
 }
 
-impl From<raw_data::Physics> for offline_data::Physics {
-    fn from(raw: raw_data::Physics) -> Self {
+impl FromRaw<raw_data::Physics> for offline_data::Physics {
+    fn from_raw(
+        raw: raw_data::Physics,
+        references: &HashMap<ResourcePathName, ResourceId>,
+    ) -> Self {
         Self {
             dynamic: raw.dynamic,
-            collision_geometry: raw.collision_geometry,
+            collision_geometry: lookup_asset_path(references, &raw.collision_geometry),
         }
     }
 }

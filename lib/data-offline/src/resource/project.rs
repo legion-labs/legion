@@ -251,6 +251,24 @@ impl Project {
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceId, Error> {
         let id = ResourceId::generate_new(kind);
+        self.add_resource_with_id(name, kind, id, handle, registry)
+    }
+
+    /// Add a given resource of a given type and id with an associated `.meta`.
+    ///
+    /// The created `.meta` file contains a checksum of the resource content.
+    /// `TODO`: the checksum of content needs to be updated when file is modified.
+    ///
+    /// Both resource file and its corresponding `.meta` file are `staged`.
+    /// Use [`Self::commit()`] to push changes to remote.
+    pub fn add_resource_with_id(
+        &mut self,
+        name: ResourcePathName,
+        kind: ResourceType,
+        id: ResourceId,
+        handle: impl AsRef<ResourceHandleUntyped>,
+        registry: &mut ResourceRegistry,
+    ) -> Result<ResourceId, Error> {
         let meta_path = self.metadata_path(id);
         let resource_path = self.resource_path(id);
 

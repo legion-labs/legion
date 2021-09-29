@@ -6,12 +6,15 @@ use legion_data_offline::resource::{
     Project, Resource, ResourceId, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
     ResourceType,
 };
+use legion_data_runtime::ContentId;
 use legion_graphics_offline::psd::PsdFile;
 use serde::de::DeserializeOwned;
 use std::{
-    collections::HashMap,
+    collections::{hash_map::DefaultHasher, HashMap},
+    convert::TryFrom,
     ffi::OsStr,
     fs::{self, File},
+    hash::{Hash, Hasher},
     io::BufReader,
     path::{Path, PathBuf},
 };
@@ -169,10 +172,16 @@ fn create_or_find_default(
             if let Ok(id) = project.find_resource(name) {
                 id
             } else {
+                let mut hasher = DefaultHasher::new();
+                name.hash(&mut hasher);
+                let resource_hash = hasher.finish();
+                let id = ContentId::new(kind.into(), resource_hash);
+                let id = ResourceId::try_from(id).unwrap();
                 project
-                    .add_resource(
+                    .add_resource_with_id(
                         name.clone(),
                         kind,
+                        id,
                         resources.new_resource(kind).unwrap(),
                         resources,
                     )

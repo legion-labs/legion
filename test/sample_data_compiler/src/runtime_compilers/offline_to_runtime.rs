@@ -60,7 +60,9 @@ impl FromOffline<offline_data::Transform> for runtime_data::Transform {
 impl FromOffline<offline_data::Visual> for runtime_data::Visual {
     fn from_offline(offline: &offline_data::Visual) -> Self {
         Self {
-            renderable_geometry: offline.renderable_geometry.clone(),
+            renderable_geometry: convert_optional_offline_path_to_runtime_id(
+                &offline.renderable_geometry,
+            ),
             shadow_receiver: offline.shadow_receiver,
             shadow_caster_sun: offline.shadow_caster_sun,
             shadow_caster_local: offline.shadow_caster_local,
@@ -142,7 +144,9 @@ impl FromOffline<offline_data::Physics> for runtime_data::Physics {
     fn from_offline(offline: &offline_data::Physics) -> Self {
         Self {
             dynamic: offline.dynamic,
-            collision_geometry: offline.collision_geometry.clone(),
+            collision_geometry: convert_optional_offline_path_to_runtime_id(
+                &offline.collision_geometry,
+            ),
         }
     }
 }
