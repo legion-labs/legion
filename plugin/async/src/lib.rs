@@ -83,6 +83,7 @@ use legion_ecs::prelude::*;
 
 pub mod operation;
 pub mod runtime;
+pub mod sync;
 
 pub use operation::*;
 pub use runtime::*;
