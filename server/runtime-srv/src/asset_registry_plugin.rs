@@ -1,11 +1,12 @@
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
 use legion_data_runtime::{
-    manifest::Manifest, AssetId, AssetRegistry, AssetRegistryOptions, HandleUntyped,
+    manifest::Manifest, AssetDescriptor, AssetId, AssetRegistry, AssetRegistryOptions,
+    HandleUntyped,
 };
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
-use sample_data_compiler::runtime_data::{self, CompilableAsset};
+use sample_data_compiler::runtime_data::{self};
 use std::{
     cmp,
     fs::File,
@@ -157,7 +158,7 @@ impl AssetRegistryPlugin {
                 AssetState::PendingLoad => {
                     if asset_info.handle.is_loaded(&registry) {
                         match asset_info.id.asset_type() {
-                            runtime_data::Entity::TYPE_ID => {
+                            runtime_data::Entity::TYPE => {
                                 if let Some(runtime_entity) =
                                     asset_info.handle.get::<runtime_data::Entity>(&registry)
                                 {
@@ -173,7 +174,7 @@ impl AssetRegistryPlugin {
                                     asset_info.entity = Some(entity);
                                 }
                             }
-                            runtime_data::Instance::TYPE_ID => {
+                            runtime_data::Instance::TYPE => {
                                 if let Some(runtime_instance) =
                                     asset_info.handle.get::<runtime_data::Instance>(&registry)
                                 {

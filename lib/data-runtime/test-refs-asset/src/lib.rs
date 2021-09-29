@@ -2,10 +2,7 @@
 //!
 //! It is used to test the data compilation process until we have a proper asset available.
 
-use legion_data_runtime::{Asset, AssetLoader, AssetType};
-
-/// Type id of test asset.
-pub const TYPE_ID: AssetType = AssetType::new(b"refs_asset");
+use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, AssetType};
 
 /// Asset temporarily used for testing.
 ///
@@ -16,9 +13,15 @@ pub struct TestAsset {
     pub content: String,
 }
 
+impl AssetDescriptor for TestAsset {
+    const TYPENAME: &'static str = "refs_asset";
+    type Loader = TestAssetCreator;
+}
+
 /// [`TestAsset`]'s asset creator temporarily used for testings.
 ///
 /// To be removed once real asset types exists.
+#[derive(Default)]
 pub struct TestAssetCreator {}
 
 impl AssetLoader for TestAssetCreator {

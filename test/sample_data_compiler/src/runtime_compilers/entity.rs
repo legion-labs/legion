@@ -80,9 +80,10 @@ use compiler_funcs::{compile, compiler_hash};
 use legion_data_compiler::compiler_api::{
     compiler_main, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
 };
+use legion_data_runtime::AssetDescriptor;
 use sample_data_compiler::{
     offline_data::{self, CompilableResource},
-    runtime_data::{self, CompilableAsset},
+    runtime_data::{self},
 };
 use std::env;
 
@@ -93,7 +94,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &(
         offline_data::Entity::TYPE_ID.content(),
-        runtime_data::Entity::TYPE_ID.content(),
+        runtime_data::Entity::TYPE.content(),
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile::<offline_data::Entity, runtime_data::Entity>,

@@ -203,7 +203,8 @@ mod tests {
     use legion_content_store::{ContentStore, RamContentStore};
 
     use crate::{
-        manifest::Manifest, test_asset, AssetId, AssetRegistry, AssetRegistryOptions, Handle,
+        manifest::Manifest, test_asset, AssetDescriptor, AssetId, AssetRegistry,
+        AssetRegistryOptions, Handle,
     };
 
     fn setup_test() -> (AssetId, AssetRegistry) {
@@ -216,7 +217,7 @@ mod tests {
         ];
 
         let asset_id = {
-            let id = AssetId::new(test_asset::TYPE_ID, 1);
+            let id = AssetId::new(test_asset::TestAsset::TYPE, 1);
             let checksum = content_store.store(&binary_assetfile).unwrap();
             manifest.insert(id, checksum.into(), binary_assetfile.len());
             id
@@ -224,7 +225,7 @@ mod tests {
 
         let reg = AssetRegistryOptions::new()
             .add_creator(
-                test_asset::TYPE_ID,
+                test_asset::TestAsset::TYPE,
                 Box::new(test_asset::TestAssetCreator {}),
             )
             .create(content_store, manifest);

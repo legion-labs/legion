@@ -6,6 +6,7 @@ use legion_data_offline::{
     asset::AssetPathId,
     resource::{Project, ResourcePathName, ResourceRegistryOptions},
 };
+use legion_data_runtime::AssetDescriptor;
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
 
@@ -53,7 +54,7 @@ fn no_intermediate_resource() {
         resource_id
     };
 
-    let compile_path = AssetPathId::from(resource_id).push(refs_asset::TYPE_ID);
+    let compile_path = AssetPathId::from(resource_id).push(refs_asset::TestAsset::TYPE);
 
     let mut command = {
         let target = "game";
@@ -141,7 +142,7 @@ fn with_intermediate_resource() {
 
     let compile_path = AssetPathId::from(resource_id)
         .push(text_resource::TYPE_ID)
-        .push(integer_asset::TYPE_ID);
+        .push(integer_asset::IntegerAsset::TYPE);
 
     let mut command = {
         let target = "game";

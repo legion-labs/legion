@@ -1,6 +1,6 @@
 //! A module providing runtime texture related functionality.
 
-use legion_data_runtime::{Asset, AssetLoader, AssetType};
+use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, AssetType};
 
 /// `Texture` type id.
 pub const TYPE_ID: AssetType = AssetType::new(b"runtime_texture");
@@ -12,7 +12,13 @@ pub struct Texture {
     pub rgba: Vec<u8>,
 }
 
+impl AssetDescriptor for Texture {
+    const TYPENAME: &'static str = "runtime_texture";
+    type Loader = TextureLoader;
+}
+
 /// Loader of [`Texture`].
+#[derive(Default)]
 pub struct TextureLoader {}
 
 impl AssetLoader for TextureLoader {

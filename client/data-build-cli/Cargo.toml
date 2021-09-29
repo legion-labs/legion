@@ -18,6 +18,7 @@ legion-data-build = { path = "../../lib/data-build" }
 legion-data-compiler = { path = "../../lib/data-compiler" }
 legion-content-store = { path = "../../lib/content-store" }
 legion-data-offline = { path = "../../lib/data-offline" }
+legion-data-runtime = { path = "../../lib/data-runtime" }
 
 [dev-dependencies]
 tempfile = "3.2.0"

@@ -11,7 +11,7 @@ use legion_data_offline::{
     asset::AssetPathId,
     resource::{ResourceId, ResourceProcessor},
 };
-use legion_data_runtime::AssetLoader;
+use legion_data_runtime::{AssetDescriptor, AssetLoader};
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
 use text_resource::TextResource;
 
@@ -58,7 +58,7 @@ fn compile_atoi() {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
 
-        let compile_path = AssetPathId::from(source).push(integer_asset::TYPE_ID);
+        let compile_path = AssetPathId::from(source).push(integer_asset::IntegerAsset::TYPE);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
             &[],
@@ -86,7 +86,10 @@ fn compile_atoi() {
 
     let mut creator = IntegerAssetLoader {};
     let asset = creator
-        .load(integer_asset::TYPE_ID, &mut &resource_content[..])
+        .load(
+            integer_asset::IntegerAsset::TYPE,
+            &mut &resource_content[..],
+        )
         .expect("loaded assets");
     let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 
@@ -146,7 +149,7 @@ fn compile_intermediate() {
         assert!(exe_path.exists());
         let compile_path = AssetPathId::from(source)
             .push(text_resource::TYPE_ID)
-            .push(integer_asset::TYPE_ID);
+            .push(integer_asset::IntegerAsset::TYPE);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
             &[],
@@ -173,7 +176,10 @@ fn compile_intermediate() {
 
     let mut creator = IntegerAssetLoader {};
     let asset = creator
-        .load(integer_asset::TYPE_ID, &mut &resource_content[..])
+        .load(
+            integer_asset::IntegerAsset::TYPE,
+            &mut &resource_content[..],
+        )
         .expect("loaded assets");
     let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 

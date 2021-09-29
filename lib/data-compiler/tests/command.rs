@@ -9,6 +9,7 @@ use legion_data_offline::{
     asset::AssetPathId,
     resource::{ResourceId, ResourceProcessor},
 };
+use legion_data_runtime::AssetDescriptor;
 
 mod common;
 
@@ -60,7 +61,7 @@ fn command_compile() {
 
     let cas_addr = ContentStoreAddr::from(output_dir);
 
-    let compile_path = AssetPathId::from(source).push(refs_asset::TYPE_ID);
+    let compile_path = AssetPathId::from(source).push(refs_asset::TestAsset::TYPE);
     let mut command = CompilerCompileCmd::new(
         &compile_path,
         &[],

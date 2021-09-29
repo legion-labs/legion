@@ -2,12 +2,9 @@
 
 use std::convert::TryFrom;
 
-use legion_data_runtime::{Asset, AssetId, AssetLoader, AssetType, ContentId};
+use legion_data_runtime::{Asset, AssetDescriptor, AssetId, AssetLoader, AssetType, ContentId};
 
 use byteorder::{LittleEndian, ReadBytesExt};
-
-/// Type id.
-pub const TYPE_ID: AssetType = AssetType::new(b"runtime_material");
 
 /// Runtime material.
 #[derive(Asset)]
@@ -20,6 +17,11 @@ pub struct Material {
     pub roughness: Option<AssetId>,
     /// Metalness texture reference.
     pub metalness: Option<AssetId>,
+}
+
+impl AssetDescriptor for Material {
+    const TYPENAME: &'static str = "runtime_material";
+    type Loader = MaterialCreator;
 }
 
 /// Creator of [`Material`].

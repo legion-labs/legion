@@ -1,13 +1,16 @@
-use legion_data_runtime::{Asset, AssetLoader, AssetType};
-
-/// Type id of test asset.
-pub const TYPE_ID: AssetType = AssetType::new(b"integer_asset");
+use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, AssetType};
 
 #[derive(Asset)]
 pub struct IntegerAsset {
     pub magic_value: i32,
 }
 
+impl AssetDescriptor for IntegerAsset {
+    const TYPENAME: &'static str = "integer_asset";
+    type Loader = IntegerAssetLoader;
+}
+
+#[derive(Default)]
 pub struct IntegerAssetLoader {}
 
 impl AssetLoader for IntegerAssetLoader {

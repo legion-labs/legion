@@ -1,27 +1,20 @@
 use std::any::{Any, TypeId};
 
-use legion_data_runtime::{Asset, AssetId, AssetLoader, AssetRegistryOptions, AssetType};
+use legion_data_runtime::{
+    Asset, AssetDescriptor, AssetId, AssetLoader, AssetRegistryOptions, AssetType,
+};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
-pub trait CompilableAsset {
-    const TYPE_ID: AssetType;
-    type Creator: AssetLoader + Send + Default + 'static;
-}
-
 pub fn add_creators(mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    fn add_asset<T: CompilableAsset>(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        registry.add_creator(T::TYPE_ID, Box::new(T::Creator::default()))
+    fn add_asset<T: AssetDescriptor>(registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        registry.add_creator(T::TYPE, Box::new(T::Loader::default()))
     }
 
     registry = add_asset::<Entity>(registry);
     registry = add_asset::<Instance>(registry);
     registry = add_asset::<Mesh>(registry);
-
-    registry.add_creator(
-        legion_graphics_runtime::material::TYPE_ID,
-        Box::new(legion_graphics_runtime::material::MaterialCreator {}),
-    )
+    add_asset::<legion_graphics_runtime::material::Material>(registry)
 }
 
 // ------------------ Entity -----------------------------------
@@ -34,9 +27,9 @@ pub struct Entity {
     pub components: Vec<Box<dyn Component>>,
 }
 
-impl CompilableAsset for Entity {
-    const TYPE_ID: AssetType = AssetType::new(b"runtime_entity");
-    type Creator = EntityCreator;
+impl AssetDescriptor for Entity {
+    const TYPENAME: &'static str = "runtime_entity";
+    type Loader = EntityCreator;
 }
 
 #[derive(Default)]
@@ -180,9 +173,9 @@ pub struct Instance {
     pub original: Option<AssetId>,
 }
 
-impl CompilableAsset for Instance {
-    const TYPE_ID: AssetType = AssetType::new(b"runtime_instance");
-    type Creator = InstanceCreator;
+impl AssetDescriptor for Instance {
+    const TYPENAME: &'static str = "runtime_instance";
+    type Loader = InstanceCreator;
 }
 
 #[derive(Default)]
@@ -215,9 +208,9 @@ pub struct Mesh {
     pub sub_meshes: Vec<SubMesh>,
 }
 
-impl CompilableAsset for Mesh {
-    const TYPE_ID: AssetType = AssetType::new(b"runtime_mesh");
-    type Creator = MeshCreator;
+impl AssetDescriptor for Mesh {
+    const TYPENAME: &'static str = "runtime_mesh";
+    type Loader = MeshCreator;
 }
 
 #[derive(Default)]

@@ -12,7 +12,7 @@ use legion_data_offline::{
     asset::AssetPathId,
     resource::{Project, ResourceId, ResourcePathName, ResourceProcessor, ResourceRegistry},
 };
-use legion_data_runtime::AssetLoader;
+use legion_data_runtime::{AssetDescriptor, AssetLoader};
 use multitext_resource::MultiTextResource;
 use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};
@@ -124,7 +124,7 @@ fn compile_change_no_deps() {
         .compiler_dir(target_dir());
 
     let source = AssetPathId::from(resource_id);
-    let target = source.push(refs_asset::TYPE_ID);
+    let target = source.push(refs_asset::TestAsset::TYPE);
 
     // compile the resource..
     let original_checksum = {
@@ -232,15 +232,15 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     );
     let res_d = create_resource(
         ResourcePathName::new("D"),
-        &[AssetPathId::from(res_e).push(refs_asset::TYPE_ID)],
+        &[AssetPathId::from(res_e).push(refs_asset::TestAsset::TYPE)],
         &mut project,
         &mut resources,
     );
     let res_b = create_resource(
         ResourcePathName::new("B"),
         &[
-            AssetPathId::from(res_c).push(refs_asset::TYPE_ID),
-            AssetPathId::from(res_e).push(refs_asset::TYPE_ID),
+            AssetPathId::from(res_c).push(refs_asset::TestAsset::TYPE),
+            AssetPathId::from(res_e).push(refs_asset::TestAsset::TYPE),
         ],
         &mut project,
         &mut resources,
@@ -248,8 +248,8 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     let res_a = create_resource(
         ResourcePathName::new("A"),
         &[
-            AssetPathId::from(res_b).push(refs_asset::TYPE_ID),
-            AssetPathId::from(res_d).push(refs_asset::TYPE_ID),
+            AssetPathId::from(res_b).push(refs_asset::TestAsset::TYPE),
+            AssetPathId::from(res_d).push(refs_asset::TestAsset::TYPE),
         ],
         &mut project,
         &mut resources,
@@ -296,7 +296,7 @@ fn intermediate_resource() {
 
     let source_path = AssetPathId::from(source_id);
     let reversed_path = source_path.push(text_resource::TYPE_ID);
-    let integer_path = reversed_path.push(integer_asset::TYPE_ID);
+    let integer_path = reversed_path.push(integer_asset::IntegerAsset::TYPE);
 
     let compile_output = build
         .compile_path(
@@ -343,7 +343,10 @@ fn intermediate_resource() {
 
         let mut creator = IntegerAssetLoader {};
         let resource = creator
-            .load(integer_asset::TYPE_ID, &mut &resource_content[..])
+            .load(
+                integer_asset::IntegerAsset::TYPE,
+                &mut &resource_content[..],
+            )
             .expect("loaded assets");
         let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 
@@ -380,7 +383,7 @@ fn unnamed_cache_use() {
     //            D ---------> test(E) -> E
     //
     const NUM_OUTPUTS: usize = 5;
-    let target = AssetPathId::from(root_resource).push(refs_asset::TYPE_ID);
+    let target = AssetPathId::from(root_resource).push(refs_asset::TestAsset::TYPE);
 
     // first run - none of the resources from cache.
     {
@@ -505,8 +508,8 @@ fn named_path_cache_use() {
     let source_path = AssetPathId::from(source_id);
     let split_text0_path = source_path.push_named(text_resource::TYPE_ID, "text_0");
     let split_text1_path = source_path.push_named(text_resource::TYPE_ID, "text_1");
-    let integer_path_0 = split_text0_path.push(integer_asset::TYPE_ID);
-    let integer_path_1 = split_text1_path.push(integer_asset::TYPE_ID);
+    let integer_path_0 = split_text0_path.push(integer_asset::IntegerAsset::TYPE);
+    let integer_path_1 = split_text1_path.push(integer_asset::IntegerAsset::TYPE);
 
     //
     // multitext_resource -> text_resource("text_0") -> integer_asset <= "integer path 0"
@@ -557,7 +560,10 @@ fn named_path_cache_use() {
 
         let mut creator = IntegerAssetLoader {};
         let resource = creator
-            .load(integer_asset::TYPE_ID, &mut &resource_content[..])
+            .load(
+                integer_asset::IntegerAsset::TYPE,
+                &mut &resource_content[..],
+            )
             .expect("loaded assets");
         let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 
@@ -759,7 +765,7 @@ fn link() {
             .get_mut(&mut resources)
             .expect("existing resource");
         parent.content = String::from("test parent content");
-        parent.build_deps = vec![AssetPathId::from(child_id).push(refs_asset::TYPE_ID)];
+        parent.build_deps = vec![AssetPathId::from(child_id).push(refs_asset::TestAsset::TYPE)];
         project
             .add_resource(
                 ResourcePathName::new("parent"),
@@ -781,7 +787,7 @@ fn link() {
 
     // for now each resource is a separate file so we need to validate that the compile output and link output produce the same number of resources
 
-    let target = AssetPathId::from(parent_id).push(refs_asset::TYPE_ID);
+    let target = AssetPathId::from(parent_id).push(refs_asset::TestAsset::TYPE);
     let compile_output = build
         .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
         .expect("successful compilation");
@@ -841,7 +847,7 @@ fn verify_manifest() {
             .get_mut(&mut resources)
             .unwrap()
             .build_deps
-            .push(AssetPathId::from(child_id).push(refs_asset::TYPE_ID));
+            .push(AssetPathId::from(child_id).push(refs_asset::TestAsset::TYPE));
 
         project
             .add_resource(
@@ -864,7 +870,7 @@ fn verify_manifest() {
 
     let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
-    let compile_path = AssetPathId::from(parent_resource).push(refs_asset::TYPE_ID);
+    let compile_path = AssetPathId::from(parent_resource).push(refs_asset::TestAsset::TYPE);
     let manifest = build
         .compile(
             compile_path,

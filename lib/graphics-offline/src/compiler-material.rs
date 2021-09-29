@@ -7,6 +7,7 @@ use legion_data_compiler::{
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use legion_data_offline::resource::ResourceRegistryOptions;
+use legion_data_runtime::AssetDescriptor;
 use std::{
     collections::hash_map::DefaultHasher,
     env,
@@ -20,7 +21,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &(
         legion_graphics_offline::material::TYPE_ID.content(),
-        legion_graphics_runtime::material::TYPE_ID.content(),
+        legion_graphics_runtime::material::Material::TYPE.content(),
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,

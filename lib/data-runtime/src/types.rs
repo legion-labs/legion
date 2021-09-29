@@ -187,6 +187,16 @@ impl<'de> Deserialize<'de> for AssetChecksum {
 /// Types implementing `Asset` represent non-mutable runtime data.
 pub trait Asset: Any + Send + Sync {}
 
+/// Trait describing assets type and its loader
+pub trait AssetDescriptor {
+    /// Name of the asset type.
+    const TYPENAME: &'static str;
+    /// Type of the asset.
+    const TYPE: AssetType = AssetType::new(Self::TYPENAME.as_bytes());
+    /// Loader of the asset.
+    type Loader: AssetLoader + Send + Default + 'static;
+}
+
 /// Note: Based on impl of dyn Any
 impl dyn Asset + Send + Sync {
     /// Returns `true` if the boxed type is the same as `T`.

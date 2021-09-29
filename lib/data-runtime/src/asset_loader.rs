@@ -439,7 +439,7 @@ mod tests {
     use crate::{
         asset_loader::{LoaderRequest, LoaderResult},
         manifest::Manifest,
-        test_asset, AssetId,
+        test_asset, AssetDescriptor, AssetId,
     };
 
     use super::AssetLoaderIO;
@@ -455,7 +455,7 @@ mod tests {
         ];
 
         let asset_id = {
-            let id = AssetId::new(test_asset::TYPE_ID, 1);
+            let id = AssetId::new(test_asset::TestAsset::TYPE, 1);
             let checksum = content_store.store(&binary_assetfile).unwrap();
             manifest.insert(id, checksum.into(), binary_assetfile.len());
             id
@@ -471,7 +471,7 @@ mod tests {
             result_tx,
         );
         loader.register_creator(
-            test_asset::TYPE_ID,
+            test_asset::TestAsset::TYPE,
             Box::new(test_asset::TestAssetCreator {}),
         );
 
@@ -529,7 +529,7 @@ mod tests {
             116,
         ];
 
-        let parent_id = AssetId::new(test_asset::TYPE_ID, 2);
+        let parent_id = AssetId::new(test_asset::TestAsset::TYPE, 2);
 
         let asset_id = {
             let checksum = content_store.store(&binary_parent_assetfile).unwrap();
@@ -547,7 +547,7 @@ mod tests {
             result_tx,
         );
         loader.register_creator(
-            test_asset::TYPE_ID,
+            test_asset::TestAsset::TYPE,
             Box::new(test_asset::TestAssetCreator {}),
         );
 
@@ -588,8 +588,8 @@ mod tests {
         ];
         let parent_content = "parent";
 
-        let parent_id = AssetId::new(test_asset::TYPE_ID, 2);
-        let child_id = AssetId::new(test_asset::TYPE_ID, 1);
+        let parent_id = AssetId::new(test_asset::TestAsset::TYPE, 2);
+        let child_id = AssetId::new(test_asset::TestAsset::TYPE, 1);
 
         let asset_id = {
             manifest.insert(
@@ -613,7 +613,7 @@ mod tests {
             result_tx,
         );
         loader.register_creator(
-            test_asset::TYPE_ID,
+            test_asset::TestAsset::TYPE,
             Box::new(test_asset::TestAssetCreator {}),
         );
 
