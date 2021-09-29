@@ -7,6 +7,7 @@ use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
 use sample_data_compiler::runtime_data::{self, CompilableAsset};
 use std::{
+    cmp,
     fs::File,
     path::{Path, PathBuf},
     str::FromStr,
@@ -34,8 +35,35 @@ impl AssetRegistrySettings {
 
 #[derive(Default)]
 struct AssetRegistryState {
-    assets: Vec<(HandleUntyped, AssetState)>,
+    assets: Vec<AssetInfo>,
 }
+
+struct AssetInfo {
+    id: AssetId,
+    handle: HandleUntyped,
+    state: AssetState,
+    entity: Option<Entity>, // todo: should be enum, to cover other types?
+}
+
+impl cmp::PartialOrd for AssetInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.id.partial_cmp(&other.id)
+    }
+}
+
+impl cmp::Ord for AssetInfo {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl cmp::PartialEq for AssetInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl cmp::Eq for AssetInfo {}
 
 #[derive(PartialEq)]
 enum AssetState {
@@ -82,11 +110,33 @@ impl AssetRegistryPlugin {
         settings: ResMut<'_, AssetRegistrySettings>,
     ) {
         if let Ok(asset_id) = AssetId::from_str(&settings.root_asset) {
-            let asset = registry.load_untyped(asset_id);
-            state.assets.push((asset, AssetState::PendingLoad));
+            Self::load_asset(&mut state, &mut registry, asset_id);
         }
 
         drop(settings);
+    }
+
+    fn load_asset(
+        state: &mut ResMut<'_, AssetRegistryState>,
+        registry: &mut ResMut<'_, AssetRegistry>,
+        asset_id: AssetId,
+    ) {
+        if let Ok(_index) = state
+            .assets
+            .binary_search_by(|asset_info| asset_info.id.cmp(&asset_id))
+        {
+            // already in asset list
+            println!("New reference to loaded asset: {}", asset_id);
+        } else {
+            println!("Request load of asset: {}", asset_id);
+            state.assets.push(AssetInfo {
+                id: asset_id,
+                handle: registry.load_untyped(asset_id),
+                state: AssetState::PendingLoad,
+                entity: None,
+            });
+            state.assets.sort();
+        }
     }
 
     fn update_registry(mut registry: ResMut<'_, AssetRegistry>) {
@@ -94,51 +144,78 @@ impl AssetRegistryPlugin {
     }
 
     fn update_assets(
-        mut commands: Commands<'_>,
         mut state: ResMut<'_, AssetRegistryState>,
-        registry: ResMut<'_, AssetRegistry>,
+        mut registry: ResMut<'_, AssetRegistry>,
+        mut commands: Commands<'_>,
     ) {
+        let mut secondary_assets = Vec::new();
+
         state
             .assets
             .iter_mut()
-            .for_each(|(asset, state)| match *state {
+            .for_each(|asset_info| match asset_info.state {
                 AssetState::PendingLoad => {
-                    if asset.is_loaded(&registry) {
-                        if let Some(asset_id) = asset.get_asset_id(&registry) {
-                            match asset_id.asset_type() {
-                                runtime_data::Entity::TYPE_ID => {
-                                    if let Some(entity) =
-                                        asset.get::<runtime_data::Entity>(&registry)
-                                    {
-                                        Self::on_loaded_entity(&mut commands, entity);
-                                    }
+                    if asset_info.handle.is_loaded(&registry) {
+                        match asset_info.id.asset_type() {
+                            runtime_data::Entity::TYPE_ID => {
+                                if let Some(runtime_entity) =
+                                    asset_info.handle.get::<runtime_data::Entity>(&registry)
+                                {
+                                    let entity = Self::create_entity(
+                                        &mut commands,
+                                        &mut secondary_assets,
+                                        runtime_entity,
+                                    );
+                                    println!(
+                                        "Loaded entity \"{}\", ECS id: {:?}, asset: {}",
+                                        runtime_entity.name, entity, asset_info.id
+                                    );
+                                    asset_info.entity = Some(entity);
                                 }
-                                runtime_data::Instance::TYPE_ID => {
-                                    if let Some(instance) =
-                                        asset.get::<runtime_data::Instance>(&registry)
-                                    {
-                                        Self::on_loaded_instance(&mut commands, instance);
-                                    }
+                            }
+                            runtime_data::Instance::TYPE_ID => {
+                                if let Some(runtime_instance) =
+                                    asset_info.handle.get::<runtime_data::Instance>(&registry)
+                                {
+                                    let instance = Self::create_instance(
+                                        &mut commands,
+                                        &mut secondary_assets,
+                                        runtime_instance,
+                                    );
+                                    println!(
+                                        "Loaded instance, ECS id: {:?}, asset: {}",
+                                        instance, asset_info.id
+                                    );
+                                    asset_info.entity = Some(instance);
                                 }
-                                _ => {}
+                            }
+                            _ => {
+                                eprintln!("Unhandled asset loaded: {:?}", asset_info.id);
                             }
                         }
-                        *state = AssetState::Loaded;
-                    } else if asset.is_err(&registry) {
-                        if let Some(asset_id) = asset.get_asset_id(&registry) {
-                            eprintln!("Failed to load asset {}", asset_id);
-                        }
-                        *state = AssetState::FailedToLoad;
+                        asset_info.state = AssetState::Loaded;
+                    } else if asset_info.handle.is_err(&registry) {
+                        eprintln!("Failed to load asset {}", asset_info.id);
+                        asset_info.state = AssetState::FailedToLoad;
                     }
                 }
                 AssetState::Loaded | AssetState::FailedToLoad => {}
             });
 
+        for asset_id in secondary_assets {
+            Self::load_asset(&mut state, &mut registry, asset_id);
+        }
+
         drop(registry);
     }
 
-    fn on_loaded_entity(commands: &mut Commands<'_>, runtime_entity: &runtime_data::Entity) {
+    fn create_entity(
+        commands: &mut Commands<'_>,
+        secondary_assets: &mut Vec<AssetId>,
+        runtime_entity: &runtime_data::Entity,
+    ) -> Entity {
         let mut entity = commands.spawn();
+
         for component in &runtime_entity.components {
             if let Some(transform) = component.downcast_ref::<runtime_data::Transform>() {
                 entity.insert(Transform {
@@ -154,12 +231,24 @@ impl AssetRegistryPlugin {
                 // } else if let Some(physics) = component.downcast_ref::<runtime_data::Physics>() {
             }
         }
-        let id = entity.id();
-        println!("Loaded entity {}, ECS id: {:?}", runtime_entity.name, id);
+
+        secondary_assets.extend(runtime_entity.children.iter());
+
+        entity.id()
     }
 
-    fn on_loaded_instance(_commands: &mut Commands<'_>, _instance: &runtime_data::Instance) {
-        println!("Loaded instance");
+    fn create_instance(
+        commands: &mut Commands<'_>,
+        secondary_assets: &mut Vec<AssetId>,
+        instance: &runtime_data::Instance,
+    ) -> Entity {
+        let entity = commands.spawn();
+
+        if let Some(original) = instance.original {
+            secondary_assets.push(original);
+        }
+
+        entity.id()
     }
 }
 
