@@ -334,7 +334,7 @@ impl BuildIndex {
                 context_hash: context_hash.into(),
                 source_hash: source_hash.into(),
                 compiled_path: asset.path.clone(),
-                compiled_checksum: asset.checksum.into(),
+                compiled_checksum: asset.checksum,
                 compiled_size: asset.size,
             })
             .collect();

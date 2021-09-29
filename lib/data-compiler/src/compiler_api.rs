@@ -202,7 +202,7 @@ impl CompilerContext<'_> {
                 .map_err(CompilerError::ResourceReadFailed)?;
             Ok(handle)
         } else if let Some(derived) = self.derived_deps.iter().find(|&dep| &dep.path == id) {
-            if let Some(content) = self.content_store.read(derived.checksum) {
+            if let Some(content) = self.content_store.read(derived.checksum.get()) {
                 //
                 // for now, only derived Resources can be loaded.
                 // this should be extended to Assets but would require

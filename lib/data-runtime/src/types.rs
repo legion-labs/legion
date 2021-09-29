@@ -95,7 +95,7 @@ impl FromStr for AssetId {
 }
 
 /// Checksum of a runtime asset.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq)]
 pub struct AssetChecksum(i128);
 
 impl AssetChecksum {
@@ -126,6 +126,21 @@ impl From<i128> for AssetChecksum {
 impl From<AssetChecksum> for i128 {
     fn from(value: AssetChecksum) -> Self {
         value.0
+    }
+}
+
+impl fmt::Display for AssetChecksum {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{:032x}", self.0))
+    }
+}
+
+impl FromStr for AssetChecksum {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let value = i128::from_str_radix(s, 16)?;
+        Ok(Self(value))
     }
 }
 

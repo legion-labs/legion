@@ -251,7 +251,7 @@ pub fn generate_rt_manifest(
     let mut output = legion_data_runtime::manifest::Manifest::default();
     for resource in input.compiled_resources {
         if let Ok(asset_id) = AssetId::try_from(resource.path.content_id()) {
-            output.insert(asset_id, resource.checksum.into(), resource.size);
+            output.insert(asset_id, resource.checksum, resource.size);
         }
     }
     output

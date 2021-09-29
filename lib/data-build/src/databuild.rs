@@ -354,7 +354,7 @@ impl DataBuild {
                             compile_path: compile_node.clone(),
                             source_hash: source_hash.into(),
                             compiled_path: resource.path.clone(),
-                            compiled_checksum: resource.checksum.into(),
+                            compiled_checksum: resource.checksum,
                             compiled_size: resource.size,
                         })
                         .collect(),
@@ -564,7 +564,7 @@ impl DataBuild {
                 accumulated_dependencies.extend(resource_infos.iter().map(|res| {
                     CompiledResource {
                         path: res.compiled_path.clone(),
-                        checksum: res.compiled_checksum.get(),
+                        checksum: res.compiled_checksum,
                         size: res.compiled_size,
                     }
                 }));
@@ -625,7 +625,7 @@ impl DataBuild {
 
                 let asset_file = CompiledResource {
                     path: resource.compiled_path.clone(),
-                    checksum,
+                    checksum: checksum.into(),
                     size: bytes_written,
                 };
                 resource_files.push(asset_file);

@@ -799,7 +799,7 @@ fn link() {
     for obj in &compile_output.resources {
         assert!(!link_output
             .iter()
-            .any(|compiled| compiled.checksum == obj.compiled_checksum.get()));
+            .any(|compiled| compiled.checksum == obj.compiled_checksum));
     }
 
     // ... and each output resource need to exist as exactly one resource object (although having different checksum).
@@ -880,7 +880,7 @@ fn verify_manifest() {
 
     let content_store = HddContentStore::open(contentstore_path).expect("valid content store");
     for checksum in manifest.compiled_resources.iter().map(|a| a.checksum) {
-        assert!(content_store.exists(checksum));
+        assert!(content_store.exists(checksum.get()));
     }
 
     assert!(output_manifest_file.exists());

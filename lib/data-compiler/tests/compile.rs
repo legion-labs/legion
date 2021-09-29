@@ -80,9 +80,9 @@ fn compile_atoi() {
     let checksum = asset_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum));
+    assert!(cas.exists(checksum.get()));
 
-    let resource_content = cas.read(checksum).expect("asset content");
+    let resource_content = cas.read(checksum.get()).expect("asset content");
 
     let mut creator = IntegerAssetLoader {};
     let asset = creator
@@ -167,9 +167,9 @@ fn compile_intermediate() {
     let checksum = derived_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum));
+    assert!(cas.exists(checksum.get()));
 
-    let resource_content = cas.read(checksum).expect("asset content");
+    let resource_content = cas.read(checksum.get()).expect("asset content");
 
     let mut creator = IntegerAssetLoader {};
     let asset = creator
@@ -249,9 +249,9 @@ fn compile_multi_resource() {
     let content_store = HddContentStore::open(cas_addr).expect("valid cas");
 
     for (resource, source_text) in compiled_resources.iter().zip(source_text_list.iter()) {
-        assert!(content_store.exists(resource.checksum));
+        assert!(content_store.exists(resource.checksum.get()));
         let resource_content = content_store
-            .read(resource.checksum)
+            .read(resource.checksum.get())
             .expect("asset content");
         let mut proc = text_resource::TextResourceProc {};
         let resource = proc
