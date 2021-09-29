@@ -165,8 +165,10 @@ impl WebRTCServer {
                         .await
                         .is_err()
                     {
-                        println!("Failed to send moov: streaming will stop.")
+                        println!("Failed to send moov: streaming will stop.");
+                        return;
                     }
+
                     mp4.clean();
                     let mut rgb_modulation = (1.0, 1.0, 1.0);
                     let mut increments = (0.01, 0.02, 0.04);
@@ -211,9 +213,12 @@ impl WebRTCServer {
                             .await
                             .is_err()
                         {
-                            println!("Failed to send sample {}: streaming will stop.", frame_id)
+                            println!("Failed to send sample {}: streaming will stop.", frame_id);
+                            return;
                         }
+
                         mp4.clean();
+
                         let elapsed = now.elapsed().as_micros() as u64;
                         if elapsed < 16 * 1000 {
                             let timeout =
@@ -227,6 +232,7 @@ impl WebRTCServer {
                         } else {
                             println!("frame {:?} took {}ms", frame_id, elapsed / 1000);
                         }
+
                         frame_id += 1;
                     }
                 })
