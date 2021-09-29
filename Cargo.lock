@@ -2852,11 +2852,8 @@ dependencies = [
 name = "legion-data-offline"
 version = "0.1.0"
 dependencies = [
-<<<<<<< HEAD
- "hex",
-=======
  "bincode",
->>>>>>> 5476f008 (Initial implementation of DataContainer proc-macro)
+ "hex",
  "legion-content-store",
  "legion-data-offline-macros",
  "legion-data-runtime",
