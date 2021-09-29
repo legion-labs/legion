@@ -1,6 +1,4 @@
-use crate::{
-    init_event_dispatch, shutdown_event_dispatch, EventBlockSink, GRPCEventSink, NullEventSink,
-};
+use crate::*;
 use std::sync::Arc;
 
 pub struct TelemetrySystemGuard {}
@@ -33,5 +31,6 @@ pub fn init_telemetry() {
 }
 
 pub fn shutdown_telemetry() {
+    flush_log_buffer();
     shutdown_event_dispatch();
 }

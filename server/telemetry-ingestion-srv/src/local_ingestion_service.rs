@@ -102,8 +102,10 @@ impl TelemetryIngestion for LocalIngestionService {
     }
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
+        let block = request.into_inner();
+        dbg!(&block);
         let reply = InsertReply {
-            msg: format!("Hello {}!", request.into_inner().block_id),
+            msg: format!("Hello {}!", block.block_id),
         };
 
         Ok(Response::new(reply))

@@ -84,22 +84,28 @@ impl Dispatch {
         let mut log_stream = self.log_stream.lock().unwrap();
         log_stream.push(LogMsgEvent { level, msg });
         if log_stream.is_full() {
-            let stream_id = log_stream.get_stream_id();
-            let mut old_event_block =
-                log_stream.replace_block(Arc::new(LogBlock::new(self.log_buffer_size, stream_id)));
-            assert!(!log_stream.is_full());
-            Arc::get_mut(&mut old_event_block).unwrap().close();
-            self.sink
-                .on_sink_event(TelemetrySinkEvent::OnLogBufferFull(old_event_block));
+            drop(log_stream);
+            self.on_log_buffer_full();
         }
     }
 
+    fn on_log_buffer_full(&mut self) {
+        let mut log_stream = self.log_stream.lock().unwrap();
+        let stream_id = log_stream.get_stream_id();
+        let mut old_event_block =
+            log_stream.replace_block(Arc::new(LogBlock::new(self.log_buffer_size, stream_id)));
+        assert!(!log_stream.is_full());
+        Arc::get_mut(&mut old_event_block).unwrap().close();
+        self.sink
+            .on_sink_event(TelemetrySinkEvent::OnLogBufferFull(old_event_block));
+    }
+
     fn on_thread_buffer_full(&mut self, stream: &mut ThreadStream) {
-        let old_event_block =
-            stream.replace_block(Arc::new(ThreadEventBlock::new(self.log_buffer_size)));
+        let old_block =
+            stream.replace_block(Arc::new(ThreadEventBlock::new(self.thread_buffer_size)));
         assert!(!stream.is_full());
         self.sink
-            .on_sink_event(TelemetrySinkEvent::OnThreadBufferFull(old_event_block));
+            .on_sink_event(TelemetrySinkEvent::OnThreadBufferFull(old_block));
     }
 
     fn init_thread_stream(&mut self, cell: &Cell<Option<ThreadStream>>) {
@@ -144,6 +150,14 @@ pub fn log_str(level: LogLevel, msg: &'static str) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.on_log_str(level, msg);
+        }
+    }
+}
+
+pub fn flush_log_buffer() {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.on_log_buffer_full();
         }
     }
 }

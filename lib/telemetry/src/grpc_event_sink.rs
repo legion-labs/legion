@@ -64,8 +64,15 @@ impl GRPCEventSink {
                         return;
                     }
                     TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
-                        let encoded = log_buffer.encode();
-                        dbg!(encoded);
+                        let encoded_block = log_buffer.encode();
+                        match tokio_runtime.block_on(client.insert_block(encoded_block)) {
+                            Ok(response) => {
+                                dbg!(response);
+                            }
+                            Err(e) => {
+                                println!("insert_block failed: {}", e);
+                            }
+                        }
                     }
                     TelemetrySinkEvent::OnThreadBufferFull(thread_buffer) => {
                         dbg!(thread_buffer);
