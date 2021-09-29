@@ -16,9 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Initializing
-        run: make init
-
       - name: Run formatting check
         run: make check-format
 
