@@ -324,9 +324,9 @@ fn compile_base64() {
     let checksum = asset_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum));
+    assert!(cas.exists(checksum.get()));
 
-    let resource_content = cas.read(checksum).expect("asset content");
+    let resource_content = cas.read(checksum.get()).expect("asset content");
 
     let base64str = String::from_utf8_lossy(&resource_content);
     assert_eq!(base64str, expected_base64_value);
