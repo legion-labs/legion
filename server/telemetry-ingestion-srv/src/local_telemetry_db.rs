@@ -10,6 +10,10 @@ pub fn get_data_directory() -> Result<PathBuf> {
     Ok(PathBuf::from(folder))
 }
 
+pub fn get_blocks_directory() -> Result<PathBuf> {
+    get_data_directory().map(|data_dir| data_dir.join("blobs"))
+}
+
 async fn create_processes_table(connection: &mut sqlx::AnyConnection) -> Result<()> {
     let sql = "
          CREATE TABLE processes(

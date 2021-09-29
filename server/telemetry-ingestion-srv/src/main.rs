@@ -93,14 +93,14 @@ use tonic::transport::Server;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "127.0.0.1:8080".parse()?;
 
-    let data_folder = get_data_directory()?;
-    if !data_folder.exists() {
-        std::fs::create_dir_all(&data_folder)
-            .with_context(|| format!("Error creating data folder {}", data_folder.display()))?;
+    let blocks_folder = get_blocks_directory()?;
+    if !blocks_folder.exists() {
+        std::fs::create_dir_all(&blocks_folder)
+            .with_context(|| format!("Error creating blocks folder {}", blocks_folder.display()))?;
     }
 
-    let db_pool = alloc_sql_pool(&data_folder).await?;
-    let service = LocalIngestionService::new(db_pool);
+    let db_pool = alloc_sql_pool(get_data_directory().as_ref().unwrap()).await?;
+    let service = LocalIngestionService::new(db_pool, blocks_folder);
 
     Server::builder()
         .add_service(TelemetryIngestionServer::new(service))
