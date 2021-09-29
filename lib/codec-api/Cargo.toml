@@ -12,5 +12,6 @@ ash = ">= 0.32.0"
 openh264-sys2 = { version = "0.2", default-features = false, features = [
     "decoder",
     "encoder",
+    "asm",
 ] }
 smallvec = { version = "1.6" }

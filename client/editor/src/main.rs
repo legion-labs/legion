@@ -9,8 +9,6 @@ use legion_async::AsyncPlugin;
 use legion_editor_proto::{editor_client::*, InitializeStreamRequest};
 use std::{cell::RefCell, error::Error, rc::Rc};
 use tauri::Event;
-use tokio::sync::Mutex;
-use tonic::transport::Channel;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = clap::App::new("Legion Labs editor")
@@ -66,27 +64,20 @@ impl TauriRunner {
 }
 
 #[tauri::command]
-async fn initialize_stream(
-    client: tauri::State<'_, Mutex<EditorClient<Channel>>>,
-    rtc_session_description: String,
-) -> Result<String, String> {
-    let mut client = client.lock().await;
-
-    match initialize_stream_impl(&mut client, rtc_session_description).await {
+async fn initialize_stream(rtc_session_description: String) -> Result<String, String> {
+    match initialize_stream_impl(rtc_session_description).await {
         Ok(rtc_session_description) => Ok(rtc_session_description),
         Err(e) => Err(format!("{}", e)),
     }
 }
 
-async fn initialize_stream_impl(
-    client: &mut EditorClient<Channel>,
-    rtc_session_description: String,
-) -> Result<String, Box<dyn Error>> {
+async fn initialize_stream_impl(rtc_session_description: String) -> Result<String, Box<dyn Error>> {
     let rtc_session_description = base64::decode(rtc_session_description)?;
     let request = tonic::Request::new(InitializeStreamRequest {
         rtc_session_description,
     });
 
+    let mut client = EditorClient::connect("http://[::1]:50051").await?;
     let response = client.initialize_stream(request).await?.into_inner();
 
     if response.error.is_empty() {
