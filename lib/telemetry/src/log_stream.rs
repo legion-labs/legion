@@ -11,11 +11,29 @@ pub struct LogStream {
 
 impl Stream for LogStream {
     fn get_stream_info(&self) -> StreamInfo {
+        let dependencies_udts = <LogMsgQueue as ReflectiveQueue>::reflect_contained()
+            .iter()
+            .map(|udt| telemetry_ingestion_proto::UserDefinedType {
+                name: udt.name.to_owned(),
+                size: udt.size as u32,
+                members: udt
+                    .members
+                    .iter()
+                    .map(|member| telemetry_ingestion_proto::UdtMember {
+                        name: member.name.to_owned(),
+                        type_name: member.type_name.to_owned(),
+                        offset: member.offset as u32,
+                        size: member.size as u32,
+                        is_reference: member.is_reference,
+                    })
+                    .collect(),
+            })
+            .collect();
         StreamInfo {
             process_id: self.process_id.clone(),
             stream_id: self.stream_id.clone(),
             dependencies_metadata: Some(telemetry_ingestion_proto::ContainerMetadata {
-                types: vec![],
+                types: dependencies_udts,
             }),
             objects_metadata: Some(telemetry_ingestion_proto::ContainerMetadata { types: vec![] }),
             tags: vec![String::from("log")],

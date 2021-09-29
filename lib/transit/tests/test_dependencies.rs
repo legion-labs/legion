@@ -17,15 +17,20 @@ declare_queue_struct!(
     struct LogMsgQueue<LogMsgEvent, NullEvent> {}
 );
 
-impl ReflectiveQueue for LogMsgQueue {
-    fn reflect_contained() -> Vec<UserDefinedType> {
-        vec![LogMsgEvent::reflect(), NullEvent::reflect()]
-    }
-}
-
 // StaticString serializes the value of the pointer and the contents of the string
 #[derive(Debug)]
 pub struct StaticString(pub &'static str);
+
+// dummy impl for Reflect
+impl Reflect for StaticString {
+    fn reflect() -> UserDefinedType {
+        UserDefinedType {
+            name: "StaticString",
+            size: 0,
+            members: vec![],
+        }
+    }
+}
 
 impl Serialize for StaticString {
     fn is_size_static() -> bool {

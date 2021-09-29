@@ -1,4 +1,4 @@
-use crate::Serialize;
+use crate::*;
 
 #[derive(Debug)]
 pub struct DynString(pub String);
@@ -21,5 +21,15 @@ impl Serialize for DynString {
         let buffer_size = value_size.unwrap();
         let slice = std::ptr::slice_from_raw_parts(ptr, buffer_size as usize);
         unsafe { Self(String::from_utf8((*slice).to_vec()).unwrap()) }
+    }
+}
+
+impl Reflect for DynString {
+    fn reflect() -> UserDefinedType {
+        UserDefinedType {
+            name: "String",
+            size: 0,
+            members: vec![],
+        }
     }
 }

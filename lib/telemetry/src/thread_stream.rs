@@ -65,7 +65,7 @@ macro_rules! trace_scope {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, TransitReflect)]
 pub struct BeginScopeEvent {
     pub time: u64,
     pub get_scope_desc: GetScopeDesc,
@@ -73,7 +73,7 @@ pub struct BeginScopeEvent {
 
 impl Serialize for BeginScopeEvent {}
 
-#[derive(Debug)]
+#[derive(Debug, TransitReflect)]
 pub struct EndScopeEvent {
     pub time: u64,
     pub get_scope_desc: GetScopeDesc,

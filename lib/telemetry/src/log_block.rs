@@ -8,7 +8,7 @@ pub enum LogLevel {
     Error,
 }
 
-#[derive(Debug)]
+#[derive(Debug, TransitReflect)]
 pub struct LogMsgEvent {
     pub level: LogLevel,
     pub msg: &'static str,

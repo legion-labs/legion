@@ -1,6 +1,6 @@
 use transit::*;
 
-#[derive(Debug)]
+#[derive(Debug, TransitReflect)]
 pub struct MyTestEvent {
     some_64: u64,
     some_32: u32,
@@ -8,7 +8,7 @@ pub struct MyTestEvent {
 
 impl Serialize for MyTestEvent {}
 
-#[derive(Debug)]
+#[derive(Debug, TransitReflect)]
 pub struct OtherEvent {
     some_64: u64,
 }

@@ -64,6 +64,19 @@ fn gen_type_index_impls(
     }
 }
 
+fn gen_reflective_queue_impl(
+    struct_identifier: &syn::Ident,
+    type_args: &[syn::Ident],
+) -> quote::__private::TokenStream {
+    quote! {
+        impl transit::ReflectiveQueue for #struct_identifier {
+            fn reflect_contained() -> Vec<UserDefinedType> {
+                vec![ #(#type_args::reflect(),)* ]
+            }
+        }
+    }
+}
+
 pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
     let ast = parse::<DeriveInput>(input).unwrap();
     let struct_identifier = ast.ident.clone();
@@ -84,6 +97,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
     let type_index_ident = format_ident!("{}TypeIndex", struct_identifier);
     let type_index_impls = gen_type_index_impls(&type_args, &type_index_ident);
     let read_method = gen_read_method(&type_args, &any_ident);
+    let reflective_queue_impl = gen_reflective_queue_impl(&struct_identifier, &type_args);
 
     TokenStream::from(quote! {
 
@@ -95,6 +109,8 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
         pub struct #struct_identifier {
             buffer: Vec<u8>,
         }
+
+        #reflective_queue_impl
 
         impl std::fmt::Debug for #struct_identifier{
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error>{

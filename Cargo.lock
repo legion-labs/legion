@@ -5770,6 +5770,7 @@ name = "telemetry"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "memoffset",
  "prost",
  "raw-cpuid",
  "tokio",
