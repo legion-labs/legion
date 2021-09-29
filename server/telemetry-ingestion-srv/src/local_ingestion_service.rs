@@ -1,4 +1,5 @@
 use anyhow::Result;
+use prost::Message;
 use telemetry::telemetry_ingestion_proto::{
     telemetry_ingestion_server::TelemetryIngestion, Block, InsertReply, Process, Stream,
 };
@@ -61,11 +62,43 @@ impl TelemetryIngestion for LocalIngestionService {
         &self,
         request: Request<Stream>,
     ) -> Result<Response<InsertReply>, Status> {
-        let reply = InsertReply {
-            msg: format!("Hello {}!", request.into_inner().stream_id),
-        };
+        let stream_info = request.into_inner();
+        match self.db_pool.acquire().await {
+            Ok(mut connection) => {
+                let dependencies_metadata = match stream_info.dependencies_metadata {
+                    Some(metadata) => metadata.encode_to_vec(),
+                    None => Vec::new(),
+                };
+                let objects_metadata = match stream_info.objects_metadata {
+                    Some(metadata) => metadata.encode_to_vec(),
+                    None => Vec::new(),
+                };
+                let tags = String::from("test tags");
+                if let Err(e) = sqlx::query("INSERT INTO streams VALUES(?,?,?,?,?);")
+                    .bind(stream_info.stream_id.clone())
+                    .bind(stream_info.process_id)
+                    .bind(dependencies_metadata)
+                    .bind(objects_metadata)
+                    .bind(tags)
+                    .execute(&mut connection)
+                    .await
+                {
+                    dbg!(&e);
+                    return Err(Status::internal(format!(
+                        "Error inserting into streams: {}",
+                        e
+                    )));
+                }
 
-        Ok(Response::new(reply))
+                let reply = InsertReply {
+                    msg: format!("OK {}", stream_info.stream_id),
+                };
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                return Err(Status::internal(format!("Error connecting to db: {}", e)));
+            }
+        }
     }
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
