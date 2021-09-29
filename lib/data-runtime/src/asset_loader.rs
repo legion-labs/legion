@@ -306,6 +306,10 @@ impl AssetLoaderIO {
                     ))
                     .unwrap();
             }
+            self.result_tx
+                .send(LoaderResult::LoadError(failed_asset_id, None, err.kind()))
+                .unwrap();
+
             self.request_await = pending;
         }
 
