@@ -103,11 +103,30 @@ impl TelemetryIngestion for LocalIngestionService {
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
         let block = request.into_inner();
-        dbg!(&block);
-        let reply = InsertReply {
-            msg: format!("Hello {}!", block.block_id),
-        };
-
-        Ok(Response::new(reply))
+        match self.db_pool.acquire().await {
+            Ok(mut connection) => {
+                if let Err(e) = sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?);")
+                    .bind(block.block_id.clone())
+                    .bind(block.stream_id)
+                    .bind(block.begin_time)
+                    .bind(block.begin_ticks as i64)
+                    .bind(block.end_time)
+                    .bind(block.end_ticks as i64)
+                    .execute(&mut connection)
+                    .await
+                {
+                    dbg!(&e);
+                    return Err(Status::internal(format!(
+                        "Error inserting into blocks: {}",
+                        e
+                    )));
+                }
+                let reply = InsertReply {
+                    msg: format!("OK {}", block.block_id),
+                };
+                Ok(Response::new(reply))
+            }
+            Err(e) => Err(Status::internal(format!("Error connecting to db: {}", e))),
+        }
     }
 }
