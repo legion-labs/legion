@@ -26,6 +26,13 @@ struct ResourceInfo {
     resource_hash: Option<ResourceHash>,
 }
 
+impl ResourceInfo {
+    // sort contents so serialization is deterministic
+    fn pre_serialize(&mut self) {
+        self.dependencies.sort();
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledResourceInfo {
     /// The path the resource was compiled from, i.e.: "AssetPathId("anim.fbx").push("anim.offline")
@@ -75,6 +82,9 @@ impl BuildIndexContent {
     // sort contents so serialization is deterministic
     fn pre_serialize(&mut self) {
         self.resources.sort_by(|a, b| a.id.cmp(&b.id));
+        for resource in &mut self.resources {
+            resource.pre_serialize();
+        }
         self.compiled_resources.sort_by(|a, b| {
             let mut result = a.compile_path.cmp(&b.compile_path);
             if result == Ordering::Equal {
@@ -267,7 +277,7 @@ impl BuildIndex {
         for h in sorted_unique_resource_hashes {
             h.hash(&mut hasher);
         }
-        Ok(hasher.finish())
+        Ok(hasher.finish().into())
     }
 
     pub(crate) fn update_resource(
@@ -457,7 +467,7 @@ mod tests {
         let intermediate_deps = vec![source_resource.clone()];
         let output_deps = vec![intermediate_resource.clone()];
 
-        let resource_hash = Some(0); // this is irrelevant to the test
+        let resource_hash = Some(0.into()); // this is irrelevant to the test
 
         db.update_resource(
             intermediate_resource.clone(),
