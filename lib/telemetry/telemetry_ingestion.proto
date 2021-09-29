@@ -8,7 +8,7 @@ service TelemetryIngestion {
 }
 
 message Process{
-    string id = 1;
+    string process_id = 1;
     string exe = 2;
     string username = 3;
     string realname = 4;
@@ -42,8 +42,8 @@ message ContainerMetadata{
 }
 
 message Stream{
-    string process_id = 1;
-    string stream_id = 2;
+    string stream_id = 1;
+    string process_id = 2;
     ContainerMetadata dependencies_metadata = 3;
     ContainerMetadata objects_metadata = 4;
     repeated string tags = 5;
@@ -55,8 +55,8 @@ message BlockPayload{
 }
 
 message Block{
-    string stream_id = 1;
-    string block_id = 2;
+    string block_id = 1;
+    string stream_id = 2;
     //we send both RFC3339 times and ticks to be able to calibrate the tick frequency
     string begin_time = 3;
     uint64 begin_ticks = 4;

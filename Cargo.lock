@@ -5784,6 +5784,7 @@ name = "telemetry-ingestion-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "sqlx",
  "telemetry",
  "tokio",
