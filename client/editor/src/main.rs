@@ -8,6 +8,7 @@ use clap::Arg;
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
 use legion_editor_proto::{editor_client::*, InitializeStreamRequest};
+use legion_tauri::legion_tauri_command;
 use std::{cell::RefCell, error::Error, rc::Rc, time::Duration};
 use tauri::Event;
 
@@ -77,21 +78,11 @@ impl TauriRunner {
     }
 }
 
-#[tauri::command]
+#[legion_tauri_command]
 async fn initialize_stream(
     config: tauri::State<'_, Config>,
     rtc_session_description: String,
-) -> Result<String, String> {
-    match initialize_stream_impl(config, rtc_session_description).await {
-        Ok(rtc_session_description) => Ok(rtc_session_description),
-        Err(e) => Err(format!("{}", e)),
-    }
-}
-
-async fn initialize_stream_impl(
-    config: tauri::State<'_, Config>,
-    rtc_session_description: String,
-) -> Result<String, Box<dyn Error>> {
+) -> anyhow::Result<String> {
     let mut client = timeout(
         Duration::from_secs(3),
         EditorClient::connect(config.server_addr.clone()),
@@ -108,6 +99,6 @@ async fn initialize_stream_impl(
     if response.error.is_empty() {
         Ok(base64::encode(response.rtc_session_description))
     } else {
-        Err(response.error.into())
+        Err(anyhow::format_err!("{}", response.error))
     }
 }
