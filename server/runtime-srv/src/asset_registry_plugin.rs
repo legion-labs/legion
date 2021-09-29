@@ -190,8 +190,20 @@ impl AssetRegistryPlugin {
                                     asset_info.entity = Some(instance);
                                 }
                             }
+                            runtime_data::Mesh::TYPE => {
+                                if let Some(runtime_mesh) =
+                                    asset_info.handle.get::<runtime_data::Mesh>(&registry)
+                                {
+                                    Self::create_mesh(
+                                        &mut commands,
+                                        &mut secondary_assets,
+                                        runtime_mesh,
+                                    );
+                                    println!("Loaded mesh, asset: {}", asset_info.id);
+                                }
+                            }
                             _ => {
-                                eprintln!("Unhandled asset loaded: {:?}", asset_info.id);
+                                eprintln!("Unhandled asset loaded: {}", asset_info.id);
                             }
                         }
                         asset_info.state = AssetState::Loaded;
@@ -253,6 +265,18 @@ impl AssetRegistryPlugin {
         }
 
         entity.id()
+    }
+
+    fn create_mesh(
+        _commands: &mut Commands<'_>,
+        secondary_assets: &mut Vec<AssetId>,
+        mesh: &runtime_data::Mesh,
+    ) {
+        for sub_mesh in &mesh.sub_meshes {
+            if let Some(material) = sub_mesh.material {
+                secondary_assets.push(material);
+            }
+        }
     }
 }
 
