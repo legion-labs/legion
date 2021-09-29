@@ -85,7 +85,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
 
         output.compiled_resources.push(CompiledResource {
             path: context.compile_path.new_named(&format!("text_{}", index)), // todo: add stuff here to have id uniqueness.
-            checksum,
+            checksum: checksum.into(),
             size: nbytes,
         });
     }

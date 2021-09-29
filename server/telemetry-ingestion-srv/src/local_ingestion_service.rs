@@ -20,14 +20,12 @@ impl TelemetryIngestion for LocalIngestionService {
         &self,
         request: Request<Process>,
     ) -> Result<Response<InsertReply>, Status> {
-        dbg!(&request);
-        dbg!(&self.db_pool);
-
         let process_info = request.into_inner();
         match self.db_pool.acquire().await {
             Ok(mut connection) => {
-                if let Err(e) = sqlx::query("INSERT INTO processes VALUES(?,?,?,?,?,?,?,?,?);")
-                    .bind(process_info.id.clone())
+                let current_date: chrono::DateTime<chrono::Utc> = chrono::Utc::now();
+                if let Err(e) = sqlx::query("INSERT INTO processes VALUES(?,?,?,?,?,?,?,?,?,?);")
+                    .bind(process_info.process_id.clone())
                     .bind(process_info.exe)
                     .bind(process_info.username)
                     .bind(process_info.realname)
@@ -36,9 +34,11 @@ impl TelemetryIngestion for LocalIngestionService {
                     .bind(process_info.cpu_brand)
                     .bind(process_info.tsc_frequency as i64)
                     .bind(process_info.start_time)
+                    .bind(current_date.format("%Y-%m-%d").to_string())
                     .execute(&mut connection)
                     .await
                 {
+                    dbg!(&e);
                     return Err(Status::internal(format!(
                         "Error inserting into processes: {}",
                         e
@@ -46,7 +46,7 @@ impl TelemetryIngestion for LocalIngestionService {
                 }
 
                 let reply = InsertReply {
-                    msg: format!("OK {}", process_info.id),
+                    msg: format!("OK {}", process_info.process_id),
                 };
 
                 Ok(Response::new(reply))
@@ -61,8 +61,6 @@ impl TelemetryIngestion for LocalIngestionService {
         &self,
         request: Request<Stream>,
     ) -> Result<Response<InsertReply>, Status> {
-        dbg!(&request);
-
         let reply = InsertReply {
             msg: format!("Hello {}!", request.into_inner().stream_id),
         };
@@ -71,8 +69,6 @@ impl TelemetryIngestion for LocalIngestionService {
     }
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
-        dbg!(&request);
-
         let reply = InsertReply {
             msg: format!("Hello {}!", request.into_inner().block_id),
         };

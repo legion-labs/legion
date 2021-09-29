@@ -340,7 +340,7 @@ impl Project {
             hasher.finish() as i128
         };
 
-        metadata.content_checksum = content_checksum;
+        metadata.content_checksum = content_checksum.into();
         metadata.dependencies = build_dependencies;
 
         meta_file.set_len(0).unwrap();

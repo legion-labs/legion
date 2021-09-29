@@ -64,7 +64,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
 
     let asset = CompiledResource {
         path: context.compile_path,
-        checksum,
+        checksum: checksum.into(),
         size: compiled_asset.len(),
     };
 

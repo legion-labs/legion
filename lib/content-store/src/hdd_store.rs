@@ -23,7 +23,9 @@ impl HddContentStore {
     }
 
     fn asset_path(&self, id: i128) -> PathBuf {
-        self.address.0.clone().join(id.to_string())
+        let bytes = id.to_be_bytes();
+        let hex = hex::encode(bytes);
+        self.address.0.clone().join(hex)
     }
 
     /// Address of the [`HddContentStore`]

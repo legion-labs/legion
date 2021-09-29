@@ -6,9 +6,9 @@ use super::Error;
 use crate::formats::YUVSource;
 use openh264_sys2::{
     videoFormatI420, EVideoFormatType, ISVCEncoder, ISVCEncoderVtbl, SEncParamBase, SEncParamExt,
-    SFrameBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder, ENCODER_OPTION,
-    ENCODER_OPTION_DATAFORMAT, ENCODER_OPTION_TRACE_LEVEL, VIDEO_CODING_LAYER, WELS_LOG_DETAIL,
-    WELS_LOG_QUIET,
+    SFrameBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder, CONSTANT_ID,
+    ENCODER_OPTION, ENCODER_OPTION_DATAFORMAT, ENCODER_OPTION_TRACE_LEVEL, VIDEO_CODING_LAYER,
+    WELS_LOG_DETAIL, WELS_LOG_QUIET,
 };
 use smallvec::SmallVec;
 use std::os::raw::{c_int, c_uchar, c_void};
@@ -133,6 +133,8 @@ pub struct EncoderConfig {
     target_bitrate: u32,
     enable_denoise: bool,
     debug: i32,
+    constant_sps: bool,
+    max_fps: f32,
     data_format: EVideoFormatType,
 }
 
@@ -142,17 +144,34 @@ impl EncoderConfig {
         Self {
             width,
             height,
-            enable_skip_frame: false,
-            target_bitrate: 1_200_000,
+            enable_skip_frame: true,
+            target_bitrate: 2_000_000,
             enable_denoise: false,
             debug: 0,
+            constant_sps: false,
+            max_fps: 60.0,
             data_format: videoFormatI420,
         }
     }
 
     /// Sets the requested bit rate in bits per second.
-    pub fn set_bitrate_bps(mut self, bps: u32) -> Self {
+    pub fn bitrate_bps(mut self, bps: u32) -> Self {
         self.target_bitrate = bps;
+        self
+    }
+
+    pub fn skip_frame(mut self, skip_frame: bool) -> Self {
+        self.enable_skip_frame = skip_frame;
+        self
+    }
+
+    pub fn constant_sps(mut self, constant: bool) -> Self {
+        self.constant_sps = constant;
+        self
+    }
+
+    pub fn max_fps(mut self, max_fps: f32) -> Self {
+        self.max_fps = max_fps;
         self
     }
 
@@ -185,8 +204,11 @@ impl Encoder {
             params.bEnableFrameSkip = config.enable_skip_frame;
             params.iTargetBitrate = config.target_bitrate as c_int;
             params.bEnableDenoise = config.enable_denoise;
+            params.fMaxFrameRate = config.max_fps;
+            if config.constant_sps {
+                params.eSpsPpsIdStrategy = CONSTANT_ID;
+            }
 
-            //dbg!(params);
             raw_api.initialize_ext(&params).ok()?;
 
             raw_api
@@ -206,16 +228,20 @@ impl Encoder {
         Ok(Self { params, raw_api })
     }
 
+    pub fn force_intra_frame(&mut self, force: bool) {
+        if force {
+            unsafe {
+                self.raw_api.force_intra_frame(force);
+            }
+        }
+    }
+
     /// Encodes a YUV source and returns the encoded bitstream.
     ///
     /// # Panics
     ///
     /// Panics if the source image dimension don't match the configured format.
-    pub fn encode<T: YUVSource>(
-        &mut self,
-        yuv_source: &T,
-        force_i_frame: bool,
-    ) -> Result<EncodedBitStream<'_>, Error> {
+    pub fn encode<T: YUVSource>(&mut self, yuv_source: &T) -> Result<EncodedBitStream<'_>, Error> {
         assert_eq!(yuv_source.width(), self.params.iPicWidth);
         assert_eq!(yuv_source.height(), self.params.iPicHeight);
 
@@ -235,7 +261,7 @@ impl Encoder {
             source.pData[0] = yuv_source.y().as_ptr() as *mut c_uchar;
             source.pData[1] = yuv_source.u().as_ptr() as *mut c_uchar;
             source.pData[2] = yuv_source.v().as_ptr() as *mut c_uchar;
-            self.raw_api.force_intra_frame(force_i_frame);
+            //self.raw_api.force_intra_frame(force_i_frame);
 
             self.raw_api
                 .encode_frame(&source, &mut bit_stream_info)
@@ -305,6 +331,18 @@ pub struct EncodedBitStream<'a> {
     pub frame_type: FrameType,
 }
 
+impl<'a> EncodedBitStream<'a> {
+    pub fn write_vec(&self) -> Vec<u8> {
+        let mut dst = vec![];
+        for layer in &self.layers {
+            for nal in &layer.nal_units {
+                dst.extend_from_slice(nal);
+            }
+        }
+        dst
+    }
+}
+
 /// Frame type returned by the encoder.
 ///
 /// The variant documentation was directly taken from `OpenH264` project.
@@ -369,9 +407,9 @@ mod test {
         let mut encoder = Encoder::with_config(config)?;
         let mut converter = RBGYUVConverter::new(128, 128);
 
-        converter.convert(src);
+        converter.convert(src, (1.0, 1.0, 1.0));
 
-        let stream = encoder.encode(&converter, false)?;
+        let stream = encoder.encode(&converter)?;
         assert_eq!(stream.frame_type, FrameType::IDR);
         assert_eq!(stream.layers.len(), 2);
         assert!(!stream.layers[0].is_video);

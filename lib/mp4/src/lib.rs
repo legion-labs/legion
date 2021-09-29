@@ -195,7 +195,7 @@ impl Mp4Stream {
                 nalu.as_ptr().cast::<std::ffi::c_void>(),
                 nalu.len() as i32,
                 90000 / self.fps,
-                if idr { 1 } else { 2 },
+                if idr { 1 } else { 0 },
             ))
             .into()
         }

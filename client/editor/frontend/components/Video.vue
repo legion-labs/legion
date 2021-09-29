@@ -120,10 +120,10 @@ class VideoPlayer {
       this.waitingForKeyFrame = false;
     }
 
-    //if (!this.waitingForKeyFrame) {
-    this.queue.push(frame);
-    this._submit();
-    //}
+    if (!this.waitingForKeyFrame) {
+      this.queue.push(frame);
+      this._submit();
+    }
   }
 }
 
@@ -171,9 +171,8 @@ export default {
 
       video_channel.onclose = async () => {};
 
-      video_channel.ontrack = async (event) => {
-        videoElement.srcObject = event.streams[0];
-        console.log("Video track: ", event.streams[0]);
+      video_channel.onmessage = async (msg) => {
+        videoPlayer.push(msg.data);
       };
 
       video_channel.onmessage = async (msg) => {

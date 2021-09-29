@@ -350,9 +350,9 @@ impl DataBuild {
                     compiled_resources
                         .iter()
                         .map(|resource| CompiledResourceInfo {
-                            context_hash,
+                            context_hash: context_hash.into(),
                             compile_path: compile_node.clone(),
-                            source_hash,
+                            source_hash: source_hash.into(),
                             compiled_path: resource.path.clone(),
                             compiled_checksum: resource.checksum,
                             compiled_size: resource.size,
@@ -361,9 +361,9 @@ impl DataBuild {
                     resource_references
                         .iter()
                         .map(|reference| CompiledResourceReference {
-                            context_hash,
+                            context_hash: context_hash.into(),
                             compile_path: compile_node.clone(),
-                            source_hash,
+                            source_hash: source_hash.into(),
                             compiled_path: reference.0.clone(),
                             compiled_reference: reference.1.clone(),
                         })
@@ -597,7 +597,7 @@ impl DataBuild {
             //
             if let Ok(asset_id) = AssetId::try_from(resource.compiled_path.content_id()) {
                 let mut output: Vec<u8> = vec![];
-                let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
+                let resource_list = std::iter::once((asset_id, resource.compiled_checksum.get()));
                 let reference_list = references
                     .iter()
                     .filter(|r| r.is_reference_of(resource))
@@ -625,7 +625,7 @@ impl DataBuild {
 
                 let asset_file = CompiledResource {
                     path: resource.compiled_path.clone(),
-                    checksum,
+                    checksum: checksum.into(),
                     size: bytes_written,
                 };
                 resource_files.push(asset_file);

@@ -1,7 +1,6 @@
-use core::fmt;
 use std::{
     convert::{TryFrom, TryInto},
-    fmt::LowerHex,
+    fmt,
     hash::Hash,
     str::FromStr,
 };
@@ -103,8 +102,8 @@ impl ResourceId {
     }
 }
 
-impl LowerHex for ResourceId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::LowerHex for ResourceId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)
     }
 }

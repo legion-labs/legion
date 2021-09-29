@@ -1,9 +1,11 @@
 use legion_data_compiler::CompiledResource;
+use legion_data_runtime::AssetChecksum;
 use petgraph::{Directed, Graph};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     cmp::Ordering,
     collections::{hash_map::DefaultHasher, HashMap, VecDeque},
+    convert::TryInto,
     fs::{File, OpenOptions},
     hash::{Hash, Hasher},
     io::Seek,
@@ -28,19 +30,19 @@ struct ResourceInfo {
 pub(crate) struct CompiledResourceInfo {
     /// The path the resource was compiled from, i.e.: "AssetPathId("anim.fbx").push("anim.offline")
     pub(crate) compile_path: AssetPathId,
-    pub(crate) context_hash: u64,
-    pub(crate) source_hash: u64,
+    pub(crate) context_hash: AssetHash,
+    pub(crate) source_hash: AssetHash,
     /// The path the resource was compiled into, i.e.: "AssetPathId("anim.fbx").push("anim.offline")["idle"]
     pub(crate) compiled_path: AssetPathId,
-    pub(crate) compiled_checksum: i128,
+    pub(crate) compiled_checksum: AssetChecksum,
     pub(crate) compiled_size: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledResourceReference {
     pub(crate) compile_path: AssetPathId,
-    pub(crate) context_hash: u64,
-    pub(crate) source_hash: u64,
+    pub(crate) context_hash: AssetHash,
+    pub(crate) source_hash: AssetHash,
     pub(crate) compiled_path: AssetPathId,
     pub(crate) compiled_reference: AssetPathId,
 }
@@ -329,8 +331,8 @@ impl BuildIndex {
             .iter()
             .map(|asset| CompiledResourceInfo {
                 compile_path: compile_path.clone(),
-                context_hash,
-                source_hash,
+                context_hash: context_hash.into(),
+                source_hash: source_hash.into(),
                 compiled_path: asset.path.clone(),
                 compiled_checksum: asset.checksum,
                 compiled_size: asset.size,
@@ -341,9 +343,9 @@ impl BuildIndex {
             .iter()
             .map(
                 |(compiled_guid, compiled_reference)| CompiledResourceReference {
-                    context_hash,
+                    context_hash: context_hash.into(),
                     compile_path: compile_path.clone(),
-                    source_hash,
+                    source_hash: source_hash.into(),
                     compiled_path: compiled_guid.clone(),
                     compiled_reference: compiled_reference.clone(),
                 },
@@ -371,8 +373,8 @@ impl BuildIndex {
             .iter()
             .filter(|asset| {
                 &asset.compile_path == compile_path
-                    && asset.context_hash == context_hash
-                    && asset.source_hash == source_hash
+                    && asset.context_hash.get() == context_hash
+                    && asset.source_hash.get() == source_hash
             })
             .cloned()
             .collect();
@@ -386,8 +388,8 @@ impl BuildIndex {
                 .iter()
                 .filter(|reference| {
                     &reference.compile_path == compile_path
-                        && reference.context_hash == context_hash
-                        && reference.source_hash == source_hash
+                        && reference.context_hash.get() == context_hash
+                        && reference.source_hash.get() == source_hash
                 })
                 .cloned()
                 .collect();
@@ -478,5 +480,55 @@ mod tests {
         assert_eq!(db.content.resources[2].dependencies.len(), 1);
 
         db.flush().unwrap();
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct AssetHash(u64);
+
+impl AssetHash {
+    pub(crate) fn get(&self) -> u64 {
+        self.0
+    }
+}
+
+impl From<u64> for AssetHash {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
+impl Serialize for AssetHash {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if serializer.is_human_readable() {
+            let bytes = self.0.to_be_bytes();
+            let hex = hex::encode(bytes);
+            serializer.serialize_str(&hex)
+        } else {
+            serializer.serialize_u64(self.0)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for AssetHash {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let value = {
+            if deserializer.is_human_readable() {
+                let hex = String::deserialize(deserializer)?;
+                let digits = hex::decode(hex).map_err(D::Error::custom)?;
+                u64::from_be_bytes(digits.try_into().unwrap())
+            } else {
+                u64::deserialize(deserializer)?
+            }
+        };
+        Ok(value.into())
     }
 }

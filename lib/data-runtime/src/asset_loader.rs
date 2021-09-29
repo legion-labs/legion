@@ -169,7 +169,7 @@ impl AssetLoaderIO {
         match request {
             LoaderRequest::Load(primary_id, load_id) => {
                 if let Some((checksum, size)) = self.manifest.find(primary_id) {
-                    match self.content_store.read(checksum) {
+                    match self.content_store.read(checksum.get()) {
                         Some(asset_data) => {
                             assert_eq!(asset_data.len(), size);
 
@@ -453,7 +453,7 @@ mod tests {
         let asset_id = {
             let id = AssetId::new(test_asset::TYPE_ID, 1);
             let checksum = content_store.store(&binary_assetfile).unwrap();
-            manifest.insert(id, checksum, binary_assetfile.len());
+            manifest.insert(id, checksum.into(), binary_assetfile.len());
             id
         };
 
@@ -529,7 +529,7 @@ mod tests {
 
         let asset_id = {
             let checksum = content_store.store(&binary_parent_assetfile).unwrap();
-            manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
+            manifest.insert(parent_id, checksum.into(), binary_parent_assetfile.len());
             parent_id
         };
 
@@ -590,11 +590,11 @@ mod tests {
         let asset_id = {
             manifest.insert(
                 child_id,
-                content_store.store(&binary_child_assetfile).unwrap(),
+                content_store.store(&binary_child_assetfile).unwrap().into(),
                 binary_child_assetfile.len(),
             );
             let checksum = content_store.store(&binary_parent_assetfile).unwrap();
-            manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
+            manifest.insert(parent_id, checksum.into(), binary_parent_assetfile.len());
 
             parent_id
         };

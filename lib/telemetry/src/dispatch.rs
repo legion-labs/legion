@@ -51,7 +51,7 @@ impl Dispatch {
         };
 
         let process_info = ProcessInfo {
-            id: self.process_id.clone(),
+            process_id: self.process_id.clone(),
             username: whoami::username(),
             realname: whoami::realname(),
             exe: std::env::current_exe()

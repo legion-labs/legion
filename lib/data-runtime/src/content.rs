@@ -1,6 +1,6 @@
 use std::{
     convert::{TryFrom, TryInto},
-    fmt::{self, LowerHex},
+    fmt,
     str::FromStr,
 };
 
@@ -15,7 +15,7 @@ pub struct ContentType(u32);
 
 impl fmt::Display for ContentType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))
+        f.write_fmt(format_args!("{:08x}", self.0))
     }
 }
 
@@ -88,7 +88,7 @@ impl ContentId {
     }
 }
 
-impl LowerHex for ContentId {
+impl fmt::LowerHex for ContentId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)
     }
@@ -96,15 +96,14 @@ impl LowerHex for ContentId {
 
 impl fmt::Display for ContentId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{:#032x}", self.0))
+        f.write_fmt(format_args!("{:032x}", self.0))
     }
 }
 
 impl FromStr for ContentId {
     type Err = std::num::ParseIntError;
 
-    fn from_str(mut s: &str) -> Result<Self, Self::Err> {
-        s = s.trim_start_matches("0x");
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let id = u128::from_str_radix(s, 16)?;
         if id == 0 {
             Err("Z".parse::<i32>().expect_err("ParseIntError"))
