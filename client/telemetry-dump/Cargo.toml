@@ -10,3 +10,10 @@ telemetry = { path = "../../lib/telemetry" }
 test-utils = { path = "../../lib/test-utils" }
 tokio = { version = "1", features = ["full"] }
 fs_extra = "1.2"
+sqlx = { version = "0.5", features = [
+    "sqlite",
+    "any",
+    "mysql",
+    "runtime-tokio-native-tls",
+] }
+anyhow = "1.0"

@@ -5975,8 +5975,10 @@ dependencies = [
 name = "telemetry-dump"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "fs_extra",
+ "sqlx",
  "telemetry",
  "test-utils",
  "tokio",
