@@ -1,7 +1,11 @@
 use super::{VulkanApi, VulkanDeviceContext};
-use crate::{Extents3D, GfxResult, ResourceType, Texture, TextureDef, TextureDimensions};
+use crate::{
+    Extents3D, GfxResult, MemoryUsage, ResourceType, Texture, TextureDef, TextureDimensions,
+    TextureSubResource,
+};
 use ash::vk;
 use std::hash::{Hash, Hasher};
+use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -264,13 +268,18 @@ impl VulkanTexture {
                 create_flags |= vk::ImageCreateFlags::TYPE_2D_ARRAY_COMPATIBLE_KHR;
             }
 
+            let required_flags = if texture_def.mem_usage != MemoryUsage::GpuOnly {
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT
+            } else {
+                vk::MemoryPropertyFlags::empty()
+            };
+
             //TODO: Could check vkGetPhysicalDeviceFormatProperties for if we support the format for
             // the various ways we might use it
-
             let allocation_create_info = vk_mem::AllocationCreateInfo {
-                usage: vk_mem::MemoryUsage::GpuOnly,
+                usage: texture_def.mem_usage.into(),
                 flags: vk_mem::AllocationCreateFlags::NONE,
-                required_flags: vk::MemoryPropertyFlags::empty(),
+                required_flags,
                 preferred_flags: vk::MemoryPropertyFlags::empty(),
                 memory_type_bits: 0, // Do not exclude any memory types
                 pool: None,
@@ -289,7 +298,7 @@ impl VulkanTexture {
                 .mip_levels(texture_def.mip_count)
                 .array_layers(texture_def.array_length)
                 .format(format_vk)
-                .tiling(vk::ImageTiling::OPTIMAL)
+                .tiling(texture_def.tiling.into())
                 .initial_layout(vk::ImageLayout::UNDEFINED)
                 .usage(usage_flags)
                 .sharing_mode(vk::SharingMode::EXCLUSIVE)
@@ -510,5 +519,43 @@ impl VulkanTexture {
 impl Texture<VulkanApi> for VulkanTexture {
     fn texture_def(&self) -> &TextureDef {
         &self.inner.texture_def
+    }
+    fn map_texture(&self) -> GfxResult<TextureSubResource<'_>> {
+        let ptr = self
+            .inner
+            .device_context
+            .allocator()
+            .map_memory(&self.vk_allocation().unwrap())?;
+
+        let sub_res = vk::ImageSubresource::builder()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .build();
+
+        unsafe {
+            let sub_res_layout = self
+                .inner
+                .device_context
+                .device()
+                .get_image_subresource_layout(self.inner.image.image, sub_res);
+
+            Ok(TextureSubResource {
+                data: &*slice_from_raw_parts(
+                    ptr.add(sub_res_layout.offset as usize),
+                    sub_res_layout.size as usize,
+                ),
+                row_pitch: sub_res_layout.row_pitch as u32,
+                array_pitch: sub_res_layout.array_pitch as u32,
+                depth_pitch: sub_res_layout.depth_pitch as u32,
+            })
+        }
+    }
+
+    fn unmap_texture(&self) -> GfxResult<()> {
+        self.inner
+            .device_context
+            .allocator()
+            .unmap_memory(&self.vk_allocation().unwrap());
+
+        Ok(())
     }
 }

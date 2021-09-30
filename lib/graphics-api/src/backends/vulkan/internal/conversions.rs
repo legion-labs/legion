@@ -2,7 +2,7 @@ use crate::{
     AddressMode, BlendFactor, BlendOp, ColorClearValue, ColorFlags, CompareOp, CullMode,
     DepthStencilClearValue, FillMode, FilterType, FrontFace, IndexType, LoadOp, MemoryUsage,
     MipMapMode, PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, StoreOp,
-    VertexAttributeRate,
+    TextureTiling, VertexAttributeRate,
 };
 use ash::vk;
 
@@ -14,6 +14,15 @@ impl From<SampleCount> for vk::SampleCountFlags {
             SampleCount::SampleCount4 => Self::TYPE_4,
             SampleCount::SampleCount8 => Self::TYPE_8,
             SampleCount::SampleCount16 => Self::TYPE_16,
+        }
+    }
+}
+
+impl From<TextureTiling> for vk::ImageTiling {
+    fn from(val: TextureTiling) -> Self {
+        match val {
+            TextureTiling::Optimal => Self::OPTIMAL,
+            TextureTiling::Linear => Self::LINEAR,
         }
     }
 }

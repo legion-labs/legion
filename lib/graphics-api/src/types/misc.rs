@@ -148,6 +148,14 @@ impl Extents3D {
     }
 }
 
+/// A 3d offset, textures, etc.
+#[derive(Default, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Offset3D {
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+}
+
 /// Number of MSAA samples to use. 1xMSAA and 4xMSAA are most broadly supported
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
@@ -765,11 +773,24 @@ pub struct CmdCopyBufferToTextureParams {
 pub struct CmdBlitParams {
     pub src_state: ResourceState,
     pub dst_state: ResourceState,
-    pub src_extents: [Extents3D; 2],
-    pub dst_extents: [Extents3D; 2],
+    pub src_offsets: [Offset3D; 2],
+    pub dst_offsets: [Offset3D; 2],
     pub src_mip_level: u8,
     pub dst_mip_level: u8,
     pub array_slices: Option<[u16; 2]>,
+    pub filtering: FilterType,
+}
+
+/// Parameters for copying one image data to another (vulkan backend only)
+pub struct CmdCopyTextureParams {
+    pub src_state: ResourceState,
+    pub dst_state: ResourceState,
+    pub src_offset: Offset3D,
+    pub dst_offset: Offset3D,
+    pub src_mip_level: u8,
+    pub dst_mip_level: u8,
+    pub array_slices: Option<[u16; 2]>,
+    pub extent: Extents3D,
 }
 
 /// A legion-specific index that refers to a particular binding. Instead of doing name/binding lookups
@@ -854,4 +875,23 @@ impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {
             texture_bind_type: None,
         }
     }
+}
+
+/// Set the texture tiling (internally swizzled, linear)
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TextureTiling {
+    /// Optimal for the underlying format, probably swizzled for efficient sampling
+    Optimal,
+    /// Linear, usefull
+    Linear,
+}
+
+// notes: this should probably have a mut version (see how to be generic over mutability)
+// notes: having drop implement unmap would be wise, and do the same for buffer map/unmap
+/// Used when mapping a texture
+pub struct TextureSubResource<'a> {
+    pub data: &'a [u8],
+    pub row_pitch: u32,
+    pub array_pitch: u32,
+    pub depth_pitch: u32,
 }

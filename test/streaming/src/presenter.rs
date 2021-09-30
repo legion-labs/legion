@@ -1,6 +1,13 @@
 use graphics_api::prelude::*;
+use log::LevelFilter;
+use simple_logger::SimpleLogger;
 
 fn main() {
+    SimpleLogger::new()
+        .with_level(LevelFilter::Warn)
+        .init()
+        .unwrap();
+
     run().unwrap();
 }
 
@@ -35,7 +42,7 @@ fn run() -> GfxResult<()> {
     #[allow(unsafe_code)]
     let mut api = unsafe {
         DefaultApi::new(
-            &window.native_handle(),
+            Some(&window.native_handle()),
             &Default::default(),
             &Default::default(),
         )?

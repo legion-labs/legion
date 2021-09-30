@@ -3,8 +3,9 @@ use super::{
 };
 use crate::{
     CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DeviceContext, Extents3D, Format,
-    GfxError, GfxResult, Queue, QueueType, ResourceState, ResourceType, SampleCount, Swapchain,
-    SwapchainDef, SwapchainImage, TextureBarrier, TextureDef, TextureDimensions,
+    GfxError, GfxResult, MemoryUsage, Queue, QueueType, ResourceState, ResourceType, SampleCount,
+    Swapchain, SwapchainDef, SwapchainImage, TextureBarrier, TextureDef, TextureDimensions,
+    TextureTiling,
 };
 
 use ash::vk;
@@ -430,10 +431,12 @@ impl SwapchainVulkanInstance {
                     mip_count: 1,
                     format,
                     resource_type,
+                    mem_usage: MemoryUsage::GpuOnly,
                     //clear_value,
                     sample_count: SampleCount::SampleCount1,
                     //sample_quality
                     dimensions: TextureDimensions::Dim2D,
+                    tiling: TextureTiling::Optimal,
                 },
             )?;
 

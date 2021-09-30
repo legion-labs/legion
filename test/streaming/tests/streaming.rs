@@ -19,6 +19,7 @@ static STREAMER_CLIENT_EXE: &str = env!("CARGO_BIN_EXE_streamer-client-test");
 static STREAMER_SERVER_EXE: &str = env!("CARGO_BIN_EXE_streamer-server-test");
 
 #[test]
+#[ignore = "Needs gpu workers"]
 fn streaming_test() {
     let client_handler = std::thread::spawn(|| {
         run_command(STREAMER_CLIENT_EXE, &[]);
