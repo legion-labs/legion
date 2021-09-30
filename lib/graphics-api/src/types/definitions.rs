@@ -155,9 +155,11 @@ pub struct TextureDef {
     pub sample_count: SampleCount,
     pub format: Format,
     pub resource_type: ResourceType,
+    pub mem_usage: MemoryUsage,
     // descriptors?
     // pointer to image?
     pub dimensions: TextureDimensions,
+    pub tiling: TextureTiling,
 }
 
 impl Default for TextureDef {
@@ -173,7 +175,9 @@ impl Default for TextureDef {
             sample_count: SampleCount::SampleCount1,
             format: Format::UNDEFINED,
             resource_type: ResourceType::TEXTURE,
+            mem_usage: MemoryUsage::GpuOnly,
             dimensions: TextureDimensions::Auto,
+            tiling: TextureTiling::Optimal,
         }
     }
 }

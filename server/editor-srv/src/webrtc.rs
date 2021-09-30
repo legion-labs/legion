@@ -152,24 +152,6 @@ impl WebRTCServer {
                 Box::pin(async move {
                     let mut mp4 = Mp4Stream::new(60);
                     let track_id = mp4.add_track(512, 512).unwrap();
-                    mp4.set_sps(
-                        track_id,
-                        &[
-                            103, 66, 192, 31, 140, 141, 64, 64, 8, 52, 3, 194, 33, 26, 128,
-                        ],
-                    )
-                    .unwrap();
-                    mp4.set_pps(track_id, &[104, 206, 60, 128]).unwrap();
-                    if data_channel
-                        .send(&bytes::Bytes::copy_from_slice(mp4.get_content()))
-                        .await
-                        .is_err()
-                    {
-                        println!("Failed to send moov: streaming will stop.");
-                        return;
-                    }
-
-                    mp4.clean();
                     let mut rgb_modulation = (1.0, 1.0, 1.0);
                     let mut increments = (0.01, 0.02, 0.04);
                     fn modulate(input: &mut f32, increment: &mut f32) {
@@ -188,11 +170,18 @@ impl WebRTCServer {
                         modulate(&mut rgb_modulation.0, &mut increments.0);
                         modulate(&mut rgb_modulation.1, &mut increments.1);
                         modulate(&mut rgb_modulation.2, &mut increments.2);
-                        converter.convert(src, rgb_modulation);
+                        converter.convert_rgb(src, rgb_modulation);
                         let stream = encoder.encode(&converter).unwrap();
 
                         for layer in &stream.layers {
                             if !layer.is_video {
+                                for nalu in &layer.nal_units {
+                                    if nalu[4] == 103 {
+                                        mp4.set_sps(track_id, &nalu[4..]).unwrap();
+                                    } else if nalu[4] == 104 {
+                                        mp4.set_pps(track_id, &nalu[4..]).unwrap();
+                                    }
+                                }
                                 continue;
                             }
                             for nalu in &layer.nal_units {

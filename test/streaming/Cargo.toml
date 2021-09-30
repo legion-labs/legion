@@ -24,7 +24,10 @@ doc = false
 [dependencies]
 graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
 presenter = { path = "../../plugin/presenter", package = "legion-presenter" }
+codec-api = { path = "../../lib/codec-api", package = "legion-codec-api" }
+mp4 = { path = "../../lib/mp4", package = "legion-mp4" }
 log = "0.4"
+simple_logger = "1"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 presenter = { path = "../../plugin/presenter", package = "legion-presenter", features = [

@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     BarrierQueueTransition, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
-    ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
+    CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
     DepthStencilRenderTargetBinding, DescriptorSetArray, GfxResult, IndexBufferBinding, Pipeline,
     QueueType, ResourceState, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
 };
@@ -739,7 +739,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         Ok(())
     }
 
-    fn cmd_blit_image(
+    fn cmd_blit_texture(
         &self,
         src_texture: &VulkanTexture,
         dst_texture: &VulkanTexture,
@@ -773,27 +773,27 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
 
         let src_offsets = [
             vk::Offset3D {
-                x: params.src_extents[0].width as i32,
-                y: params.src_extents[0].height as i32,
-                z: params.src_extents[0].depth as i32,
+                x: params.src_offsets[0].x as i32,
+                y: params.src_offsets[0].y as i32,
+                z: params.src_offsets[0].z as i32,
             },
             vk::Offset3D {
-                x: params.src_extents[1].width as i32,
-                y: params.src_extents[1].height as i32,
-                z: params.src_extents[1].depth as i32,
+                x: params.src_offsets[1].x as i32,
+                y: params.src_offsets[1].y as i32,
+                z: params.src_offsets[1].z as i32,
             },
         ];
 
         let dst_offsets = [
             vk::Offset3D {
-                x: params.dst_extents[0].width as i32,
-                y: params.dst_extents[0].height as i32,
-                z: params.dst_extents[0].depth as i32,
+                x: params.dst_offsets[0].x as i32,
+                y: params.dst_offsets[0].y as i32,
+                z: params.dst_offsets[0].z as i32,
             },
             vk::Offset3D {
-                x: params.dst_extents[1].width as i32,
-                y: params.dst_extents[1].height as i32,
-                z: params.dst_extents[1].depth as i32,
+                x: params.dst_offsets[1].x as i32,
+                y: params.dst_offsets[1].y as i32,
+                z: params.dst_offsets[1].z as i32,
             },
         ];
 
@@ -811,7 +811,69 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 dst_texture.vk_image(),
                 super::util::resource_state_to_image_layout(params.dst_state).unwrap(),
                 &[*image_blit],
-                vk::Filter::LINEAR,
+                params.filtering.into(),
+            );
+        }
+
+        Ok(())
+    }
+
+    fn cmd_copy_image(
+        &self,
+        src_texture: &VulkanTexture,
+        dst_texture: &VulkanTexture,
+        params: &CmdCopyTextureParams,
+    ) -> GfxResult<()> {
+        let src_aspect_mask =
+            super::util::image_format_to_aspect_mask(src_texture.texture_def().format);
+        let dst_aspect_mask =
+            super::util::image_format_to_aspect_mask(dst_texture.texture_def().format);
+
+        let mut src_subresource = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(src_aspect_mask)
+            .mip_level(params.src_mip_level as u32)
+            .build();
+        let mut dst_subresource = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(dst_aspect_mask)
+            .mip_level(params.dst_mip_level as u32)
+            .build();
+
+        src_subresource.base_array_layer = params.src_array_slice as u32;
+        dst_subresource.base_array_layer = params.dst_array_slice as u32;
+        src_subresource.layer_count = 1;
+        dst_subresource.layer_count = 1;
+
+        let src_offset = vk::Offset3D {
+            x: params.src_offset.x,
+            y: params.src_offset.y,
+            z: params.src_offset.z,
+        };
+
+        let dst_offset = vk::Offset3D {
+            x: params.dst_offset.x,
+            y: params.dst_offset.y,
+            z: params.dst_offset.z,
+        };
+
+        let image_copy = vk::ImageCopy::builder()
+            .src_offset(src_offset)
+            .src_subresource(src_subresource)
+            .dst_offset(dst_offset)
+            .dst_subresource(dst_subresource)
+            .extent(vk::Extent3D {
+                width: params.extent.width,
+                height: params.extent.height,
+                depth: params.extent.depth,
+            });
+
+        unsafe {
+            self.device_context.device().cmd_copy_image(
+                self.vk_command_buffer,
+                src_texture.vk_image(),
+                super::util::resource_state_to_image_layout(params.src_state).unwrap(),
+                dst_texture.vk_image(),
+                super::util::resource_state_to_image_layout(params.dst_state).unwrap(),
+                &[*image_copy],
             );
         }
 

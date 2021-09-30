@@ -56,7 +56,7 @@ impl VkInstance {
     /// Creates a vulkan instance.
     pub fn new(
         entry: ash::Entry,
-        window: &dyn HasRawWindowHandle,
+        window: Option<&dyn HasRawWindowHandle>,
         app_name: &CString,
         require_validation_layers_present: bool,
         validation_layer_debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
@@ -103,7 +103,12 @@ impl VkInstance {
             .api_version(vulkan_version);
 
         let mut layer_names = vec![];
-        let mut extension_names = ash_window::enumerate_required_extensions(window)?;
+        let mut extension_names = if let Some(window) = window {
+            ash_window::enumerate_required_extensions(window)?
+        } else {
+            // add vulkan video encode extension if available
+            vec![]
+        };
         if !validation_layer_debug_report_flags.is_empty() {
             // Find the best validation layer that's available
             let best_validation_layer = Self::find_best_validation_layer(&layers);

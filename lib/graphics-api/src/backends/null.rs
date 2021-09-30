@@ -153,6 +153,12 @@ impl Texture<NullApi> for NullTexture {
     fn texture_def(&self) -> &TextureDef {
         unimplemented!()
     }
+    fn map_texture(&self) -> GfxResult<TextureSubResource<'_>> {
+        unimplemented!()
+    }
+    fn unmap_texture(&self) -> GfxResult<()> {
+        unimplemented!()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -415,11 +421,21 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     ) -> GfxResult<()> {
         unimplemented!()
     }
-    fn cmd_blit_image(
+
+    fn cmd_blit_texture(
         &self,
         src_texture: &NullTexture,
         dst_texture: &NullTexture,
         params: &CmdBlitParams,
+    ) -> GfxResult<()> {
+        unimplemented!()
+    }
+
+    fn cmd_copy_image(
+        &self,
+        src_texture: &NullTexture,
+        dst_texture: &NullTexture,
+        params: &CmdCopyTextureParams,
     ) -> GfxResult<()> {
         unimplemented!()
     }

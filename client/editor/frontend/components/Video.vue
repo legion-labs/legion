@@ -78,7 +78,7 @@ class VideoPlayer {
     this.listeners.push(
       addListener(this.mediaSource, "sourceopen", () => {
         this.videoSource = this.mediaSource.addSourceBuffer(
-          'video/mp4; codecs="avc1.42C01F";'
+          'video/mp4; codecs="avc1.640C34";'
         );
         this.listeners.push(
           addListener(this.videoSource, "update", this._submit, this)

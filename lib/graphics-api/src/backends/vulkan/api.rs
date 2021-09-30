@@ -127,7 +127,7 @@ impl VulkanApi {
     /// be considered unsafe. However,  APIs are only gated by unsafe if they can cause undefined
     /// behavior on the CPU for reasons other than interacting with the GPU.
     pub unsafe fn new(
-        window: &dyn HasRawWindowHandle,
+        window: Option<&dyn HasRawWindowHandle>,
         _api_def: &ApiDef,
         vk_api_def: &ApiDefVulkan,
     ) -> GfxResult<Self> {

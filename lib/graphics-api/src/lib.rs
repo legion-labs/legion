@@ -416,6 +416,8 @@ pub trait Buffer<A: GfxApi>: std::fmt::Debug {
 
 pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
     fn texture_def(&self) -> &TextureDef;
+    fn map_texture(&self) -> GfxResult<TextureSubResource<'_>>;
+    fn unmap_texture(&self) -> GfxResult<()>;
 }
 
 pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
@@ -575,11 +577,17 @@ pub trait CommandBuffer<A: GfxApi>: std::fmt::Debug {
         dst_texture: &A::Texture,
         params: &CmdCopyBufferToTextureParams,
     ) -> GfxResult<()>;
-    fn cmd_blit_image(
+    fn cmd_blit_texture(
         &self,
         src_texture: &A::Texture,
         dst_texture: &A::Texture,
         params: &CmdBlitParams,
+    ) -> GfxResult<()>;
+    fn cmd_copy_image(
+        &self,
+        src_texture: &A::Texture,
+        dst_texture: &A::Texture,
+        params: &CmdCopyTextureParams,
     ) -> GfxResult<()>;
 }
 

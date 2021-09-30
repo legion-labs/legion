@@ -7,8 +7,8 @@ use crate::formats::YUVSource;
 use openh264_sys2::{
     videoFormatI420, EVideoFormatType, ISVCEncoder, ISVCEncoderVtbl, SEncParamBase, SEncParamExt,
     SFrameBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder, CONSTANT_ID,
-    ENCODER_OPTION, ENCODER_OPTION_DATAFORMAT, ENCODER_OPTION_TRACE_LEVEL, VIDEO_CODING_LAYER,
-    WELS_LOG_DETAIL, WELS_LOG_QUIET,
+    ENCODER_OPTION, ENCODER_OPTION_DATAFORMAT, ENCODER_OPTION_TRACE_LEVEL, HIGH_COMPLEXITY,
+    LEVEL_5_2, PRO_HIGH, RC_QUALITY_MODE, VIDEO_CODING_LAYER, WELS_LOG_DETAIL, WELS_LOG_QUIET,
 };
 use smallvec::SmallVec;
 use std::os::raw::{c_int, c_uchar, c_void};
@@ -205,6 +205,14 @@ impl Encoder {
             params.iTargetBitrate = config.target_bitrate as c_int;
             params.bEnableDenoise = config.enable_denoise;
             params.fMaxFrameRate = config.max_fps;
+            params.iRCMode = RC_QUALITY_MODE;
+            params.iComplexityMode = HIGH_COMPLEXITY;
+            params.sSpatialLayers[0].iVideoWidth = config.width as c_int;
+            params.sSpatialLayers[0].iVideoHeight = config.width as c_int;
+            params.sSpatialLayers[0].uiLevelIdc = LEVEL_5_2;
+            params.sSpatialLayers[0].uiProfileIdc = PRO_HIGH;
+            params.uiIntraPeriod = 16;
+
             if config.constant_sps {
                 params.eSpsPpsIdStrategy = CONSTANT_ID;
             }
@@ -407,7 +415,7 @@ mod test {
         let mut encoder = Encoder::with_config(config)?;
         let mut converter = RBGYUVConverter::new(128, 128);
 
-        converter.convert(src, (1.0, 1.0, 1.0));
+        converter.convert_rgb(src, (1.0, 1.0, 1.0));
 
         let stream = encoder.encode(&converter)?;
         assert_eq!(stream.frame_type, FrameType::IDR);
