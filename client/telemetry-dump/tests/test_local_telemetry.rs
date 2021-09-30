@@ -9,7 +9,7 @@ fn test_dir(test_name: &str) -> PathBuf {
     let parent = Path::new(DUMP_EXE_VAR)
         .parent()
         .unwrap()
-        .join("telemetry-dump");
+        .join("telemetry-dump-test-scratch");
     create_test_dir(&parent, test_name)
 }
 
