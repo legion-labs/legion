@@ -1,10 +1,17 @@
 {
     // See http://go.microsoft.com/fwlink/?LinkId=827846 to learn about workspace recommendations.
     // Extension identifier format: ${publisher}.${name}. Example: vscode.csharp
-
     // List of extensions which should be recommended for users of this workspace.
     "recommendations": [
         // Rust language support.
         "matklad.rust-analyzer",
+        // Rust debugging
+        "ms-vscode.cpptools",
+        // Toml linting
+        "tamasfe.even-better-toml",
+        // Inspect Hex file
+        "ms-vscode.hexeditor",
+        // Protobuf file linting
+        "zxh404.vscode-proto3"
     ]
 }
