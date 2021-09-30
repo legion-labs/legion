@@ -128,8 +128,8 @@ impl WebRTCServer {
             height: u32,
         }
         let resolution = Resolution {
-            width: 1920,
-            height: 1440,
+            width: 1024,
+            height: 768,
         };
 
         let config = encoder::EncoderConfig::new(resolution.width, resolution.height)
