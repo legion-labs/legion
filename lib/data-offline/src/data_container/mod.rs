@@ -1,48 +1,52 @@
 //! `DataContainer`
 
-pub use legion_data_offline_macros::DataContainer;
-use legion_math::prelude::*;
-use serde::{Deserialize, Serialize};
-
 trait OfflineDataContainer {
     fn create_from_json(json_data: &str) -> Self;
     fn write_to_json(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()>;
     const SIGNATURE_HASH: u64;
 }
 
-#[derive(Debug, DataContainer)]
-#[allow(missing_docs)]
-pub struct Transform {
-    pub position: Vec3,
-    pub rotation: Quat,
-    pub scale: Vec3,
-    pub apply_to_children: bool,
-}
+#[cfg(test)]
+mod tests {
 
-#[derive(Debug, DataContainer)]
-#[allow(dead_code)]
-#[allow(missing_docs)]
-pub struct Entity {
-    #[legion(default = "Entity", readonly, category = "Name")]
-    name: String,
+    use crate::data_container::OfflineDataContainer;
+    pub use legion_data_offline_macros::DataContainer;
+    use legion_math::prelude::*;
+    use serde::{Deserialize, Serialize};
 
-    #[legion(default = false)]
-    test_bool: bool,
+    #[derive(Debug, DataContainer)]
+    #[allow(missing_docs)]
+    pub struct Transform {
+        pub position: Vec3,
+        pub rotation: Quat,
+        pub scale: Vec3,
+        pub apply_to_children: bool,
+    }
 
-    #[legion(default = 42.56, offline)]
-    test_float: f32,
+    #[derive(Debug, DataContainer)]
+    #[allow(dead_code)]
+    #[allow(missing_docs)]
+    pub struct Entity {
+        #[legion(default = "Entity", readonly, category = "Name")]
+        name: String,
 
-    #[legion(default = 123)]
-    test_int: i32,
+        #[legion(default = false)]
+        test_bool: bool,
 
-    test_vec3: Vec3,
+        #[legion(default = 42.56, offline)]
+        test_float: f32,
 
-    test_blob: Vec<u8>,
-}
+        #[legion(default = 123)]
+        test_int: i32,
 
-#[test]
-fn test_entity_serialization() {
-    let json_data = r#"
+        test_vec3: Vec3,
+
+        test_blob: Vec<u8>,
+    }
+
+    #[test]
+    fn test_entity_serialization() {
+        let json_data = r#"
         {
             "_class" : "Entity",
             "_base" : "AssetPathId",
@@ -53,18 +57,19 @@ fn test_entity_serialization() {
             "test_vec3" : [2,2,2]
         }"#;
 
-    let _default_instance = Entity {
-        ..Default::default()
-    };
+        let _default_instance = Entity {
+            ..Default::default()
+        };
 
-    let _test = RuntimeEntity {
-        ..Default::default()
-    };
+        let _test = RuntimeEntity {
+            ..Default::default()
+        };
 
-    let new_entity = Entity::create_from_json(json_data);
-    dbg!(&new_entity);
+        let new_entity = Entity::create_from_json(json_data);
+        dbg!(&new_entity);
 
-    //let mut file = File::create("d:\\test.json").expect("new file");
-    //new_entity.write_to_json(&mut file);
-    //_default_instance.write_to_json(&mut file);
+        //let mut file = File::create("d:\\test.json").expect("new file");
+        //new_entity.write_to_json(&mut file);
+        //_default_instance.write_to_json(&mut file);
+    }
 }

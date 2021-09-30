@@ -318,7 +318,7 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
 
             #[allow(clippy::float_cmp)]
             fn write_to_json(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
-                let default_obj = #offline_identifer { ..Default::default() };
+                let default_obj = Self { ..Default::default() };
                 writer.write_all("{\n\t\"_class\" : \"".as_bytes())?;
                 writer.write_all(#offline_name.as_bytes())?;
                 writer.write_all("\"".as_bytes())?;
