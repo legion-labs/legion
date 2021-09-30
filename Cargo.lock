@@ -2864,10 +2864,12 @@ dependencies = [
 name = "legion-data-offline"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "hex",
  "legion-content-store",
  "legion-data-offline-macros",
  "legion-data-runtime",
+ "legion-math",
  "rand 0.8.4",
  "serde",
  "serde_json",
