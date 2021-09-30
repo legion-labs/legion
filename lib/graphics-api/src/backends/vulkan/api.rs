@@ -1,8 +1,8 @@
 use super::{
     internal::*, VulkanBuffer, VulkanCommandBuffer, VulkanCommandPool, VulkanDescriptorSetArray,
-    VulkanDescriptorSetHandle, VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature,
-    VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule, VulkanSwapchain,
-    VulkanTexture, VulkanDescriptorSetLayout
+    VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline, VulkanQueue,
+    VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule,
+    VulkanSwapchain, VulkanTexture,
 };
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;

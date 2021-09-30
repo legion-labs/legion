@@ -43,7 +43,7 @@ pub struct VulkanDescriptorSetArray {
 impl std::fmt::Debug for VulkanDescriptorSetArray {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("VulkanDescriptorSetArray")
-            .field("descriptor_set_layout", &self.descriptor_set_layout)            
+            .field("descriptor_set_layout", &self.descriptor_set_layout)
             .field("pending_write_count", &self.pending_writes.len())
             .finish()
     }

@@ -303,7 +303,7 @@ impl DescriptorSetLayoutDef {
 
 pub struct PushConstantDef {}
 
-pub struct RootSignatureDef<A : GfxApi> {
+pub struct RootSignatureDef<A: GfxApi> {
     pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: [Option<A::DescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
     pub push_constant_defs: Vec<PushConstantDef>,
@@ -623,7 +623,7 @@ pub struct ComputePipelineDef<'a, A: GfxApi> {
 
 /// Used to create a `DescriptorSetArray`
 pub struct DescriptorSetArrayDef<'a, A: GfxApi> {
-    pub descriptor_set_layout: &'a A::DescriptorSetLayout,    
+    pub descriptor_set_layout: &'a A::DescriptorSetLayout,
     /// The number of descriptor sets in the array
     pub array_length: usize,
 }

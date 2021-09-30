@@ -1,16 +1,17 @@
 use fnv::FnvHashMap;
 
-use crate::{DescriptorDef, DescriptorSetLayoutDef, DeviceContext, GfxApi, GfxResult, MAX_DESCRIPTOR_SET_LAYOUTS, PipelineType, RootSignatureDef, Shader, ShaderResource, ShaderStageFlags, ResourceType};
+use crate::{
+    DescriptorDef, DescriptorSetLayoutDef, DeviceContext, GfxApi, GfxResult, PipelineType,
+    ResourceType, RootSignatureDef, Shader, ShaderResource, ShaderStageFlags,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 
 pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
 
 pub(crate) fn extract_resources<A: GfxApi>(
     shaders: &[A::Shader],
-) -> GfxResult<(
-    PipelineType,
-    Vec<ShaderResource>
-)> {
+) -> GfxResult<(PipelineType, Vec<ShaderResource>)> {
     let mut merged_resources: Vec<ShaderResource> = vec![];
     let mut merged_resources_name_index_map = FnvHashMap::default();
     let mut pipeline_type = None;
@@ -147,10 +148,7 @@ pub(crate) fn extract_resources<A: GfxApi>(
         }
     }
 
-    Ok((
-        pipeline_type.unwrap(),
-        merged_resources
-    ))
+    Ok((pipeline_type.unwrap(), merged_resources))
 }
 
 fn verify_resources_can_overlap(
@@ -199,50 +197,53 @@ fn verify_resources_can_overlap(
     Ok(())
 }
 
-pub fn tmp_extract_root_signature_def<'a, A: GfxApi>(device_context:&A::DeviceContext, shaders: &[A::Shader]) -> GfxResult<RootSignatureDef<A>> {            
-
+pub fn tmp_extract_root_signature_def<'a, A: GfxApi>(
+    device_context: &A::DeviceContext,
+    shaders: &[A::Shader],
+) -> GfxResult<RootSignatureDef<A>> {
     let (pipeline_type, shader_resources) = extract_resources::<A>(shaders)?;
-    
+
     for shader_resource in &shader_resources {
         shader_resource.validate()?;
     }
 
-    let mut layouts: [Option<A::DescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS] = [None, None, None, None];
+    let mut layouts: [Option<A::DescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS] =
+        [None, None, None, None];
 
     for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-
-        let mut set_resources =
-            shader_resources.
-            iter().
-            filter(|sr| sr.set_index as usize == set_index  && sr.resource_type != ResourceType::ROOT_CONSTANT ).
-            collect::<Vec<_>>();
+        let mut set_resources = shader_resources
+            .iter()
+            .filter(|sr| {
+                sr.set_index as usize == set_index
+                    && sr.resource_type != ResourceType::ROOT_CONSTANT
+            })
+            .collect::<Vec<_>>();
 
         if !set_resources.is_empty() {
+            set_resources.sort_by(|a, b| a.binding.cmp(&b.binding));
 
-            set_resources.sort_by(|a, b | a.binding.cmp(&b.binding));
+            let mut layout_def = DescriptorSetLayoutDef::new();
 
-            let mut layout_def = DescriptorSetLayoutDef::new();                
-            
             let mut add_descriptor = |d: &ShaderResource| {
-
-                let descriptor_def = DescriptorDef{
+                let descriptor_def = DescriptorDef {
                     name: d.name.as_ref().unwrap().clone(),
-                    binding : d.binding,
-                    resource_type : d.resource_type,
-                    array_size : d.element_count
+                    binding: d.binding,
+                    resource_type: d.resource_type,
+                    array_size: d.element_count,
                 };
                 layout_def.descriptor_defs.push(descriptor_def);
-            }; 
-    
-            set_resources.iter().for_each( |x| add_descriptor(x) );
-            
-            layouts[set_index as usize] = Some(device_context.create_descriptorset_layout(&layout_def)?);
-        }        
-    }       
+            };
 
-    Ok( RootSignatureDef{
+            set_resources.iter().for_each(|x| add_descriptor(x));
+
+            layouts[set_index as usize] =
+                Some(device_context.create_descriptorset_layout(&layout_def)?);
+        }
+    }
+
+    Ok(RootSignatureDef {
         pipeline_type,
-        descriptor_set_layouts : layouts,
-        push_constant_defs : Vec::new()
-    } )
+        descriptor_set_layouts: layouts,
+        push_constant_defs: Vec::new(),
+    })
 }

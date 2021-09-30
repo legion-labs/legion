@@ -1,8 +1,5 @@
 use super::{VulkanApi, VulkanDescriptorSetLayout, VulkanDeviceContext};
-use crate::{
-    GfxResult, PipelineType,
-    RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS,
-};
+use crate::{GfxResult, PipelineType, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 
 use ash::vk;
 use std::sync::Arc;
@@ -16,9 +13,9 @@ pub(crate) struct PushConstantIndex(pub(crate) u32);
 #[derive(Debug)]
 pub(crate) struct RootSignatureVulkanInner {
     pub(crate) device_context: VulkanDeviceContext,
-    pub(crate) pipeline_type: PipelineType,    
+    pub(crate) pipeline_type: PipelineType,
     pub(crate) layouts: [Option<VulkanDescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
-    pub(crate) pipeline_layout: vk::PipelineLayout,    
+    pub(crate) pipeline_layout: vk::PipelineLayout,
 }
 
 impl Drop for RootSignatureVulkanInner {
@@ -50,21 +47,25 @@ impl VulkanRootSignature {
         root_signature_def: &RootSignatureDef<VulkanApi>,
     ) -> GfxResult<Self> {
         log::trace!("Create VulkanRootSignature");
-        
+
         //
         // Create pipeline layout
         //
         let mut vk_descriptor_set_layouts =
             [vk::DescriptorSetLayout::null(); MAX_DESCRIPTOR_SET_LAYOUTS];
-            
+
         let mut descriptor_set_layout_count = 0;
-        for layout in root_signature_def.descriptor_set_layouts.iter().filter_map(|x| x.as_ref()) {
+        for layout in root_signature_def
+            .descriptor_set_layouts
+            .iter()
+            .filter_map(|x| x.as_ref())
+        {
             vk_descriptor_set_layouts[descriptor_set_layout_count] = layout.vk_layout();
             descriptor_set_layout_count += 1;
-        }        
+        }
 
         let pipeline_layout_create_info = vk::PipelineLayoutCreateInfo::builder()
-            .set_layouts(&vk_descriptor_set_layouts[0..descriptor_set_layout_count]);        
+            .set_layouts(&vk_descriptor_set_layouts[0..descriptor_set_layout_count]);
 
         let pipeline_layout = unsafe {
             device_context
@@ -74,9 +75,9 @@ impl VulkanRootSignature {
 
         let inner = RootSignatureVulkanInner {
             device_context: device_context.clone(),
-            pipeline_type : root_signature_def.pipeline_type,
+            pipeline_type: root_signature_def.pipeline_type,
             layouts: root_signature_def.descriptor_set_layouts.clone(),
-            pipeline_layout,            
+            pipeline_layout,
         };
 
         Ok(Self {

@@ -17,7 +17,7 @@ fn run() -> GfxResult<()> {
 }
 
 #[cfg(target_os = "windows")]
-fn run() -> GfxResult<()> {    
+fn run() -> GfxResult<()> {
     use presenter::window::*;
     const WINDOW_WIDTH: u32 = 900;
     const WINDOW_HEIGHT: u32 = 600;
@@ -211,20 +211,25 @@ fn run() -> GfxResult<()> {
             device_context.create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])?;
 
         //
-        // TMP: TMP_extract_root_signature_def will create the root signature definition. 
+        // TMP: TMP_extract_root_signature_def will create the root signature definition.
         // In the process, it will instanciate the DescriptorSetLayout(s).
         //
-        let root_signature_def = graphics_api::backends::tmp_extract_root_signature_def(device_context, &[shader.clone()])?;
+        let root_signature_def = graphics_api::backends::tmp_extract_root_signature_def(
+            device_context,
+            &[shader.clone()],
+        )?;
 
         //
         // TMP: Get a ref on the DescriptorSetLayout
-        // 
-        let descriptor_set_layout= root_signature_def.descriptor_set_layouts[0].as_ref().unwrap();
+        //
+        let descriptor_set_layout = root_signature_def.descriptor_set_layouts[0]
+            .as_ref()
+            .unwrap();
 
         //
         // Create the root signature object - it represents the pipeline layout and can be shared among
         // shaders. But one per shader is fine.
-        //        
+        //
         let root_signature = device_context.create_root_signature(&root_signature_def)?;
 
         //
@@ -234,7 +239,7 @@ fn run() -> GfxResult<()> {
         //
         let mut descriptor_set_array =
             device_context.create_descriptor_set_array(&DescriptorSetArrayDef {
-                descriptor_set_layout : &descriptor_set_layout,                
+                descriptor_set_layout: &descriptor_set_layout,
                 array_length: 3, // One per swapchain image.
             })?;
 
