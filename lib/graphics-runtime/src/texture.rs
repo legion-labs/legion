@@ -2,9 +2,6 @@
 
 use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, AssetType};
 
-/// `Texture` type id.
-pub const TYPE_ID: AssetType = AssetType::new(b"runtime_texture");
-
 /// Runtime texture.
 #[derive(Asset)]
 pub struct Texture {
