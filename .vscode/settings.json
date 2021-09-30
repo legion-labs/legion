@@ -6,8 +6,4 @@
     "rust-analyzer.diagnostics.disabled": [
         "unresolved-macro-call"
     ],
-    "workbench.colorCustomizations": {
-        "tab.activeBorder": "#14e036",
-        "tab.unfocusedActiveBorder": "#000000"
-    },
 }
