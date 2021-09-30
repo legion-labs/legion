@@ -15,10 +15,9 @@ Legion depends on the following for building:
 * cmake
 * ninja
 * python3
-* Cuda
 * Vulkan SDK
 
-On windows and using `scoop`:
+On windows we recommand using scoop using `scoop`:
 
 ```powershell
 scoop install cmake ninja python
