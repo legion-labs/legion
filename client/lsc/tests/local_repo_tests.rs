@@ -77,7 +77,10 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
 }
 
 fn test_dir(test_name: &str) -> PathBuf {
-    let parent = Path::new(LSC_CLI_EXE_VAR).parent().unwrap().join("lsc");
+    let parent = Path::new(LSC_CLI_EXE_VAR)
+        .parent()
+        .unwrap()
+        .join("lsc-test-scratch");
     create_test_dir(&parent, test_name)
 }
 
