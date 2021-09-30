@@ -63,8 +63,8 @@ impl StreamBlock for LogBlock {
         }
 
         let payload = telemetry_ingestion_proto::BlockPayload {
-            dependencies: deps.into_vec(),
-            objects: self.events.get_buffer().to_vec(),
+            dependencies: deps.into_bytes(),
+            objects: self.events.as_bytes().to_vec(),
         };
 
         EncodedBlock {
