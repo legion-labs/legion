@@ -3138,6 +3138,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-window"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+ "legion-math",
+ "legion-utils",
+ "web-sys",
+]
+
+[[package]]
 name = "lexical-core"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
