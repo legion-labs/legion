@@ -426,7 +426,8 @@ fn run() -> GfxResult<()> {
                     dst_offset: Offset3D { x: 0, y: 0, z: 0 },
                     src_mip_level: 0,
                     dst_mip_level: 0,
-                    array_slices: Some([0, 0]),
+                    src_array_slice: 0,
+                    dst_array_slice: 0,
                     extent: Extents3D {
                         width: TARGET_WIDTH,
                         height: TARGET_HEIGHT,

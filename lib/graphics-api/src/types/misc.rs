@@ -789,7 +789,8 @@ pub struct CmdCopyTextureParams {
     pub dst_offset: Offset3D,
     pub src_mip_level: u8,
     pub dst_mip_level: u8,
-    pub array_slices: Option<[u16; 2]>,
+    pub src_array_slice: u16,
+    pub dst_array_slice: u16,
     pub extent: Extents3D,
 }
 

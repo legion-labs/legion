@@ -838,17 +838,10 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             .mip_level(params.dst_mip_level as u32)
             .build();
 
-        if let Some(array_slices) = params.array_slices {
-            src_subresource.base_array_layer = array_slices[0] as u32;
-            dst_subresource.base_array_layer = array_slices[1] as u32;
-            src_subresource.layer_count = 1;
-            dst_subresource.layer_count = 1;
-        } else {
-            src_subresource.base_array_layer = 0;
-            dst_subresource.base_array_layer = 0;
-            src_subresource.layer_count = vk::REMAINING_ARRAY_LAYERS;
-            dst_subresource.layer_count = vk::REMAINING_ARRAY_LAYERS;
-        }
+        src_subresource.base_array_layer = params.src_array_slice as u32;
+        dst_subresource.base_array_layer = params.dst_array_slice as u32;
+        src_subresource.layer_count = 1;
+        dst_subresource.layer_count = 1;
 
         let src_offset = vk::Offset3D {
             x: params.src_offset.x,
