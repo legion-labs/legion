@@ -8,9 +8,8 @@ use clap::Arg;
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
 use legion_editor_proto::{editor_client::*, InitializeStreamRequest};
-use legion_tauri::legion_tauri_command;
-use std::{cell::RefCell, error::Error, rc::Rc, time::Duration};
-use tauri::Event;
+use legion_tauri::{build_tauri_runner, legion_tauri_command};
+use std::{error::Error, time::Duration};
 
 struct Config {
     server_addr: String,
@@ -53,29 +52,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         .expect("failed to instanciate a Tauri App");
 
     App::new()
-        .set_runner(TauriRunner::build(tauri_app))
+        .set_runner(build_tauri_runner(tauri_app))
         .add_plugin(AsyncPlugin {})
         .run();
 
     Ok(())
-}
-
-struct TauriRunner {}
-
-impl TauriRunner {
-    fn build(tauri_app: tauri::App<tauri::Wry>) -> impl FnOnce(App) {
-        move |app: App| {
-            // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
-            // get rid of this and move the value directly instead.
-            let app = Rc::new(RefCell::new(app));
-
-            tauri_app.run(move |_, event| {
-                if let Event::MainEventsCleared = event {
-                    app.borrow_mut().update();
-                }
-            });
-        }
-    }
 }
 
 #[legion_tauri_command]

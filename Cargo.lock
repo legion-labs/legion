@@ -3139,6 +3139,8 @@ name = "legion-tauri"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "legion-app",
+ "legion-ecs",
  "legion-tauri-macros",
  "ntest",
  "tauri",
