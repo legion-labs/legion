@@ -252,6 +252,12 @@ impl AssetRegistryPlugin {
         drop(registry);
     }
 
+    fn add_secondary_asset(secondary_assets: &mut Vec<AssetId>, asset_id: Option<AssetId>) {
+        if let Some(asset_id) = asset_id {
+            secondary_assets.push(asset_id);
+        }
+    }
+
     fn create_entity(
         commands: &mut Commands<'_>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
@@ -270,9 +276,7 @@ impl AssetRegistryPlugin {
                 });
                 transform_inserted = true;
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
-                if let Some(geometry) = visual.renderable_geometry {
-                    secondary_assets.push(geometry);
-                }
+                Self::add_secondary_asset(secondary_assets, visual.renderable_geometry);
             }
             // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
             // } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
@@ -316,18 +320,20 @@ impl AssetRegistryPlugin {
     ) -> Entity {
         let entity = commands.spawn();
 
-        if let Some(original) = instance.original {
-            secondary_assets.push(original);
-        }
+        Self::add_secondary_asset(secondary_assets, instance.original);
 
         entity.id()
     }
 
     fn create_material(
         _commands: &mut Commands<'_>,
-        _secondary_assets: &mut Vec<AssetId>,
-        _material: &legion_graphics_runtime::Material,
+        secondary_assets: &mut Vec<AssetId>,
+        material: &legion_graphics_runtime::Material,
     ) {
+        Self::add_secondary_asset(secondary_assets, material.albedo);
+        Self::add_secondary_asset(secondary_assets, material.normal);
+        Self::add_secondary_asset(secondary_assets, material.roughness);
+        Self::add_secondary_asset(secondary_assets, material.metalness);
     }
 
     fn create_mesh(
@@ -336,9 +342,7 @@ impl AssetRegistryPlugin {
         mesh: &runtime_data::Mesh,
     ) {
         for sub_mesh in &mesh.sub_meshes {
-            if let Some(material) = sub_mesh.material {
-                secondary_assets.push(material);
-            }
+            Self::add_secondary_asset(secondary_assets, sub_mesh.material);
         }
     }
 }

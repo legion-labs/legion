@@ -59,23 +59,23 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
     let compiled_asset = {
         let mut c: Vec<u8> = vec![];
         c.append(
-            &mut path_id_to_binary(&resource.albedo, legion_graphics_runtime::Material::TYPE)
-                .to_ne_bytes()
+            &mut path_id_to_binary(&resource.albedo, legion_graphics_runtime::Texture::TYPE)
+                .to_le_bytes()
                 .to_vec(),
         );
         c.append(
-            &mut path_id_to_binary(&resource.normal, legion_graphics_runtime::Material::TYPE)
-                .to_ne_bytes()
+            &mut path_id_to_binary(&resource.normal, legion_graphics_runtime::Texture::TYPE)
+                .to_le_bytes()
                 .to_vec(),
         );
         c.append(
-            &mut path_id_to_binary(&resource.roughness, legion_graphics_runtime::Material::TYPE)
-                .to_ne_bytes()
+            &mut path_id_to_binary(&resource.roughness, legion_graphics_runtime::Texture::TYPE)
+                .to_le_bytes()
                 .to_vec(),
         );
         c.append(
-            &mut path_id_to_binary(&resource.metalness, legion_graphics_runtime::Material::TYPE)
-                .to_ne_bytes()
+            &mut path_id_to_binary(&resource.metalness, legion_graphics_runtime::Texture::TYPE)
+                .to_le_bytes()
                 .to_vec(),
         );
         c
