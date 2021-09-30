@@ -115,12 +115,43 @@ impl WebRTCServer {
         data_channel.close().await
     }
 
-    async fn handle_control_data_channel(_data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
+    async fn handle_control_data_channel(data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
+        let on_close_name = data_channel.name();
+
+        data_channel
+            .on_close(Box::new(move || {
+                println!("Control data channel {} closed.", on_close_name);
+
+                Box::pin(async {})
+            }))
+            .await;
+
+        data_channel
+            .on_open(Box::new(move || {
+                println!("Control data channel opened.");
+
+                Box::pin(async {})
+            }))
+            .await;
+
+        let on_message_name = data_channel.name();
+
+        // Register text message handling
+        data_channel
+            .on_message(Box::new(move |msg: DataChannelMessage| {
+                let msg_str = String::from_utf8(msg.data.to_vec()).unwrap();
+                println!("{}: {}", on_message_name, msg_str);
+
+                Box::pin(async {})
+            }))
+            .await;
+
         Ok(())
     }
 
     async fn handle_video_data_channel(data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
         // Sample code to stream a video.
+        //let src = &include_bytes!("../assets/lenna_512x512.rgb")[..];
         let src = &include_bytes!("../assets/pencils_1024x768.rgb")[..];
 
         struct Resolution {
@@ -142,6 +173,16 @@ impl WebRTCServer {
         let mut converter =
             formats::RBGYUVConverter::new(resolution.width as usize, resolution.height as usize);
 
+        let on_error_name = data_channel.name();
+
+        data_channel
+            .on_error(Box::new(move |err| {
+                println!("Video data channel {} error: {}.", on_error_name, err);
+
+                Box::pin(async {})
+            }))
+            .await;
+
         let on_close_name = data_channel.name();
 
         data_channel
@@ -152,102 +193,15 @@ impl WebRTCServer {
             }))
             .await;
 
-        let on_open_data_channel = Arc::clone(&data_channel);
+        let ready = Arc::new(tokio::sync::Semaphore::new(0));
+        let on_open_ready = Arc::clone(&ready);
 
         data_channel
             .on_open(Box::new(move || {
                 println!("Video data channel opened.");
 
-                let data_channel = on_open_data_channel;
                 Box::pin(async move {
-                    let mut mp4 = Mp4Stream::new(60);
-                    let track_id = mp4
-                        .add_track(resolution.width as i32, resolution.height as i32)
-                        .unwrap();
-                    let mut rgb_modulation = (1.0, 1.0, 1.0);
-                    let mut increments = (0.01, 0.02, 0.04);
-                    fn modulate(input: &mut f32, increment: &mut f32) {
-                        *input += *increment;
-                        if *input > 1.0 {
-                            *input = 1.0;
-                            *increment *= -1.0;
-                        } else if *input < 0.0 {
-                            *input = 0.0;
-                            *increment *= -1.0;
-                        }
-                    }
-
-                    let mut frame_id = 0;
-
-                    loop {
-                        let now = tokio::time::Instant::now();
-                        modulate(&mut rgb_modulation.0, &mut increments.0);
-                        modulate(&mut rgb_modulation.1, &mut increments.1);
-                        modulate(&mut rgb_modulation.2, &mut increments.2);
-                        converter.convert_rgb(src, rgb_modulation);
-                        let stream = encoder.encode(&converter).unwrap();
-
-                        for layer in &stream.layers {
-                            if !layer.is_video {
-                                for nalu in &layer.nal_units {
-                                    if nalu[4] == 103 {
-                                        mp4.set_sps(track_id, &nalu[4..]).unwrap();
-                                    } else if nalu[4] == 104 {
-                                        mp4.set_pps(track_id, &nalu[4..]).unwrap();
-                                    }
-                                }
-                                continue;
-                            }
-
-                            for nalu in &layer.nal_units {
-                                let size = nalu.len() - 4;
-                                let mut vec = vec![];
-                                vec.extend_from_slice(nalu);
-                                vec[0] = (size >> 24) as u8;
-                                vec[1] = ((size >> 16) & 0xFF) as u8;
-                                vec[2] = ((size >> 8) & 0xFF) as u8;
-                                vec[3] = (size & 0xFF) as u8;
-
-                                mp4.add_frame(track_id, stream.frame_type == FrameType::IDR, &vec)
-                                    .unwrap();
-                            }
-                        }
-
-                        let data = mp4.get_content();
-
-                        for (i, data) in data.chunks(65536).enumerate() {
-                            let data = &bytes::Bytes::copy_from_slice(data);
-
-                            if let Err(err) = data_channel.send(data).await {
-                                println!(
-                                    "Failed to send sample {}-{} ({} bytes): streaming will stop: {}",
-                                    frame_id,
-                                    i,
-                                    data.len(),
-                                    err.to_string()
-                                );
-                                return;
-                            }
-                        }
-
-                        mp4.clean();
-
-                        let elapsed = now.elapsed().as_micros() as u64;
-                        if elapsed < 16 * 1000 {
-                            let timeout =
-                                tokio::time::sleep(Duration::from_micros(16 * 1000 - elapsed));
-                            tokio::pin!(timeout);
-
-                            tokio::select! {
-                                _ = timeout.as_mut() =>{
-                                }
-                            };
-                        } else {
-                            println!("frame {:?} took {}ms", frame_id, elapsed / 1000);
-                        }
-
-                        frame_id += 1;
-                    }
+                    on_open_ready.add_permits(1);
                 })
             }))
             .await;
@@ -263,6 +217,99 @@ impl WebRTCServer {
                 Box::pin(async {})
             }))
             .await;
+
+        tokio::spawn(async move {
+            println!("Waiting for the video data channel to open...");
+            let _ = ready.acquire().await.unwrap();
+            println!("Video data channel is now opened.");
+
+            let mut mp4 = Mp4Stream::new(60);
+            let track_id = mp4
+                .add_track(resolution.width as i32, resolution.height as i32)
+                .unwrap();
+            let mut rgb_modulation = (1.0, 1.0, 1.0);
+            let mut increments = (0.01, 0.02, 0.04);
+
+            fn modulate(input: &mut f32, increment: &mut f32) {
+                *input += *increment;
+                if *input > 1.0 {
+                    *input = 1.0;
+                    *increment *= -1.0;
+                } else if *input < 0.0 {
+                    *input = 0.0;
+                    *increment *= -1.0;
+                }
+            }
+
+            let mut frame_id = 0;
+
+            loop {
+                let now = tokio::time::Instant::now();
+
+                modulate(&mut rgb_modulation.0, &mut increments.0);
+                modulate(&mut rgb_modulation.1, &mut increments.1);
+                modulate(&mut rgb_modulation.2, &mut increments.2);
+                converter.convert_rgb(src, rgb_modulation);
+                let stream = encoder.encode(&converter).unwrap();
+
+                for layer in &stream.layers {
+                    if !layer.is_video {
+                        for nalu in &layer.nal_units {
+                            if nalu[4] == 103 {
+                                mp4.set_sps(track_id, &nalu[4..]).unwrap();
+                            } else if nalu[4] == 104 {
+                                mp4.set_pps(track_id, &nalu[4..]).unwrap();
+                            }
+                        }
+                        continue;
+                    }
+
+                    for nalu in &layer.nal_units {
+                        let size = nalu.len() - 4;
+                        let mut vec = vec![];
+                        vec.extend_from_slice(nalu);
+                        vec[0] = (size >> 24) as u8;
+                        vec[1] = ((size >> 16) & 0xFF) as u8;
+                        vec[2] = ((size >> 8) & 0xFF) as u8;
+                        vec[3] = (size & 0xFF) as u8;
+
+                        mp4.add_frame(track_id, stream.frame_type == FrameType::IDR, &vec)
+                            .unwrap();
+                    }
+                }
+
+                let data = mp4.get_content();
+
+                for (i, data) in data.chunks(65536).enumerate() {
+                    let data = &bytes::Bytes::copy_from_slice(data);
+
+                    if let Err(err) = data_channel.send(data).await {
+                        println!(
+                            "Failed to send sample {}-{} ({} bytes): streaming will stop: {}",
+                            frame_id,
+                            i,
+                            data.len(),
+                            err.to_string(),
+                        );
+
+                        return;
+                    }
+                }
+
+                mp4.clean();
+
+                let elapsed = now.elapsed().as_micros() as u64;
+                let max_frame_time: u64 = 16_000;
+
+                if elapsed < max_frame_time {
+                    tokio::time::sleep(Duration::from_micros(max_frame_time - elapsed)).await;
+                } else {
+                    println!("frame {:?} took {}ms", frame_id, elapsed / 1000);
+                }
+
+                frame_id += 1;
+            }
+        });
 
         Ok(())
     }
