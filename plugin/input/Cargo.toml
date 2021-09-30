@@ -1,0 +1,23 @@
+[package]
+name = "legion-input"
+version = "0.1.0"
+edition = "2018"
+description = "Provides hierarchy and transform functionality for Legion Engine"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
+license = "MIT OR Apache-2.0"
+keywords = ["legion"]
+
+[features]
+default = []
+serialize = ["serde"]
+
+[dependencies]
+# legion
+legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+legion-math = { path = "../../lib/math", version = "0.1.0" }
+legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+
+# other
+serde = { version = "1", features = ["derive"], optional = true }

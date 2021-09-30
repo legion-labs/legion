@@ -2993,6 +2993,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-input"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+ "legion-ecs",
+ "legion-math",
+ "legion-utils",
+ "serde",
+]
+
+[[package]]
 name = "legion-macro-utils"
 version = "0.1.0"
 dependencies = [
