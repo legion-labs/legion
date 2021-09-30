@@ -1,16 +1,11 @@
 [package]
-name = "telemetry-dump"
+name = "analytics"
 version = "0.1.0"
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-clap = "2.33"
 telemetry = { path = "../../lib/telemetry" }
-analytics = { path = "../../lib/analytics" }
-test-utils = { path = "../../lib/test-utils" }
-tokio = { version = "1", features = ["full"] }
-fs_extra = "1.2"
 sqlx = { version = "0.5", features = [
     "sqlite",
     "any",
