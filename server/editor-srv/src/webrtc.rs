@@ -121,16 +121,26 @@ impl WebRTCServer {
 
     async fn handle_video_data_channel(data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
         // Sample code to stream a video.
-        let src = &include_bytes!("../assets/lenna_512x512.rgb")[..];
+        let src = &include_bytes!("../assets/pencils_1920x1440.rgb")[..];
 
-        let config = encoder::EncoderConfig::new(512, 512)
+        struct Resolution {
+            width: u32,
+            height: u32,
+        }
+        let resolution = Resolution {
+            width: 1920,
+            height: 1440,
+        };
+
+        let config = encoder::EncoderConfig::new(resolution.width, resolution.height)
             .constant_sps(true)
             .max_fps(60.0)
             .skip_frame(false)
             .bitrate_bps(8_000_000);
 
         let mut encoder = encoder::Encoder::with_config(config)?;
-        let mut converter = formats::RBGYUVConverter::new(512, 512);
+        let mut converter =
+            formats::RBGYUVConverter::new(resolution.width as usize, resolution.height as usize);
 
         let on_close_name = data_channel.name();
 
@@ -151,7 +161,9 @@ impl WebRTCServer {
                 let data_channel = on_open_data_channel;
                 Box::pin(async move {
                     let mut mp4 = Mp4Stream::new(60);
-                    let track_id = mp4.add_track(512, 512).unwrap();
+                    let track_id = mp4
+                        .add_track(resolution.width as i32, resolution.height as i32)
+                        .unwrap();
                     let mut rgb_modulation = (1.0, 1.0, 1.0);
                     let mut increments = (0.01, 0.02, 0.04);
                     fn modulate(input: &mut f32, increment: &mut f32) {
@@ -164,7 +176,9 @@ impl WebRTCServer {
                             *increment *= -1.0;
                         }
                     }
+
                     let mut frame_id = 0;
+
                     loop {
                         let now = tokio::time::Instant::now();
                         modulate(&mut rgb_modulation.0, &mut increments.0);
@@ -184,6 +198,7 @@ impl WebRTCServer {
                                 }
                                 continue;
                             }
+
                             for nalu in &layer.nal_units {
                                 let size = nalu.len() - 4;
                                 let mut vec = vec![];
@@ -197,13 +212,22 @@ impl WebRTCServer {
                                     .unwrap();
                             }
                         }
-                        if data_channel
-                            .send(&bytes::Bytes::copy_from_slice(mp4.get_content()))
-                            .await
-                            .is_err()
-                        {
-                            println!("Failed to send sample {}: streaming will stop.", frame_id);
-                            return;
+
+                        let data = mp4.get_content();
+
+                        for (i, data) in data.chunks(65536).enumerate() {
+                            let data = &bytes::Bytes::copy_from_slice(data);
+
+                            if let Err(err) = data_channel.send(data).await {
+                                println!(
+                                    "Failed to send sample {}-{} ({} bytes): streaming will stop: {}",
+                                    frame_id,
+                                    i,
+                                    data.len(),
+                                    err.to_string()
+                                );
+                                return;
+                            }
                         }
 
                         mp4.clean();
