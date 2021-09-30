@@ -121,7 +121,7 @@ impl WebRTCServer {
 
     async fn handle_video_data_channel(data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
         // Sample code to stream a video.
-        let src = &include_bytes!("../assets/pencils_1920x1440.rgb")[..];
+        let src = &include_bytes!("../assets/pencils_1024x768.rgb")[..];
 
         struct Resolution {
             width: u32,
