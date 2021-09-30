@@ -4,11 +4,7 @@ use crate::{
     system::{Local, Res, ResMut, SystemParam},
 };
 use legion_utils::tracing::trace;
-use std::{
-    fmt::{self},
-    hash::Hash,
-    marker::PhantomData,
-};
+use std::{fmt, hash::Hash, marker::PhantomData};
 
 /// An `EventId` uniquely identifies an event.
 ///

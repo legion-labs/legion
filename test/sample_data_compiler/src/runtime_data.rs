@@ -11,7 +11,6 @@ pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
         .add_loader::<Entity>()
         .add_loader::<Instance>()
         .add_loader::<Mesh>()
-        .add_loader::<legion_graphics_runtime::material::Material>()
 }
 
 // ------------------ Entity -----------------------------------

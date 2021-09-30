@@ -6,7 +6,7 @@ use legion_data_runtime::{
 };
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
-use sample_data_compiler::runtime_data::{self};
+use sample_data_compiler::runtime_data;
 use std::{
     cmp,
     fs::File,
@@ -85,6 +85,7 @@ impl Plugin for AssetRegistryPlugin {
 
                 let mut registry = AssetRegistryOptions::new();
                 registry = runtime_data::add_loaders(registry);
+                registry = legion_graphics_runtime::add_loaders(registry);
                 let registry = registry.create(Box::new(content_store), manifest);
 
                 app.insert_resource(AssetRegistryState::default())
@@ -190,6 +191,20 @@ impl AssetRegistryPlugin {
                                     asset_info.entity = Some(instance);
                                 }
                             }
+                            legion_graphics_runtime::Material::TYPE => {
+                                if let Some(runtime_material) =
+                                    asset_info
+                                        .handle
+                                        .get::<legion_graphics_runtime::Material>(&registry)
+                                {
+                                    Self::create_material(
+                                        &mut commands,
+                                        &mut secondary_assets,
+                                        runtime_material,
+                                    );
+                                    println!("Loaded material, asset: {}", asset_info.id);
+                                }
+                            }
                             runtime_data::Mesh::TYPE => {
                                 if let Some(runtime_mesh) =
                                     asset_info.handle.get::<runtime_data::Mesh>(&registry)
@@ -203,7 +218,11 @@ impl AssetRegistryPlugin {
                                 }
                             }
                             _ => {
-                                eprintln!("Unhandled asset loaded: {}", asset_info.id);
+                                eprintln!(
+                                    "Unhandled type: {}, asset: {}",
+                                    asset_info.id.asset_type(),
+                                    asset_info.id
+                                );
                             }
                         }
                         asset_info.state = AssetState::Loaded;
@@ -265,6 +284,13 @@ impl AssetRegistryPlugin {
         }
 
         entity.id()
+    }
+
+    fn create_material(
+        _commands: &mut Commands<'_>,
+        _secondary_assets: &mut Vec<AssetId>,
+        _material: &legion_graphics_runtime::Material,
+    ) {
     }
 
     fn create_mesh(

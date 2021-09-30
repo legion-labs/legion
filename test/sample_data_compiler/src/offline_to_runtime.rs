@@ -5,7 +5,7 @@ use legion_data_runtime::{AssetDescriptor, AssetId};
 
 use crate::{
     offline_data::{self, CompilableResource},
-    runtime_data::{self},
+    runtime_data,
 };
 
 pub fn convert_offline_to_content_path(path: &AssetPathId) -> AssetPathId {
@@ -18,7 +18,7 @@ pub fn convert_offline_to_content_path(path: &AssetPathId) -> AssetPathId {
             legion_graphics_offline::texture::TYPE_ID.content()
         }
         legion_graphics_offline::material::TYPE_ID => {
-            legion_graphics_runtime::material::Material::TYPE.content()
+            legion_graphics_runtime::Material::TYPE.content()
         }
         _ => {
             panic!("unrecognized offline type {}", offline_type.content());

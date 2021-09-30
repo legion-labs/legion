@@ -21,7 +21,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &(
         legion_graphics_offline::material::TYPE_ID.content(),
-        legion_graphics_runtime::material::Material::TYPE.content(),
+        legion_graphics_runtime::Material::TYPE.content(),
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
@@ -59,36 +59,24 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
     let compiled_asset = {
         let mut c: Vec<u8> = vec![];
         c.append(
-            &mut path_id_to_binary(
-                &resource.albedo,
-                legion_graphics_runtime::material::Material::TYPE,
-            )
-            .to_ne_bytes()
-            .to_vec(),
+            &mut path_id_to_binary(&resource.albedo, legion_graphics_runtime::Material::TYPE)
+                .to_ne_bytes()
+                .to_vec(),
         );
         c.append(
-            &mut path_id_to_binary(
-                &resource.normal,
-                legion_graphics_runtime::material::Material::TYPE,
-            )
-            .to_ne_bytes()
-            .to_vec(),
+            &mut path_id_to_binary(&resource.normal, legion_graphics_runtime::Material::TYPE)
+                .to_ne_bytes()
+                .to_vec(),
         );
         c.append(
-            &mut path_id_to_binary(
-                &resource.roughness,
-                legion_graphics_runtime::material::Material::TYPE,
-            )
-            .to_ne_bytes()
-            .to_vec(),
+            &mut path_id_to_binary(&resource.roughness, legion_graphics_runtime::Material::TYPE)
+                .to_ne_bytes()
+                .to_vec(),
         );
         c.append(
-            &mut path_id_to_binary(
-                &resource.metalness,
-                legion_graphics_runtime::material::Material::TYPE,
-            )
-            .to_ne_bytes()
-            .to_vec(),
+            &mut path_id_to_binary(&resource.metalness, legion_graphics_runtime::Material::TYPE)
+                .to_ne_bytes()
+                .to_vec(),
         );
         c
     };

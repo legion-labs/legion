@@ -1,7 +1,4 @@
-use std::{
-    fs::{self},
-    path::PathBuf,
-};
+use std::{fs, path::PathBuf};
 
 use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
 use legion_content_store::ContentStoreAddr;

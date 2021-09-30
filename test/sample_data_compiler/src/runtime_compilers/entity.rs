@@ -83,7 +83,7 @@ use legion_data_compiler::compiler_api::{
 use legion_data_runtime::AssetDescriptor;
 use sample_data_compiler::{
     offline_data::{self, CompilableResource},
-    runtime_data::{self},
+    runtime_data,
 };
 use std::env;
 

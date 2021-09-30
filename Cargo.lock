@@ -4858,6 +4858,7 @@ dependencies = [
  "legion-core",
  "legion-data-runtime",
  "legion-ecs",
+ "legion-graphics-runtime",
  "legion-math",
  "legion-transform",
  "legion-utils",
