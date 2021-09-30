@@ -210,12 +210,12 @@ bitflags::bitflags! {
         // Vulkan-only stuff
         const INPUT_ATTACHMENT = 1<<16;
         const TEXEL_BUFFER = 1<<17;
-        const TEXEL_BUFFER_READ_WRITE = 1<<18;                
+        const TEXEL_BUFFER_READ_WRITE = 1<<18;
         // Render target types
         /// A color attachment in a renderpass
-        const RENDER_TARGET_COLOR = 1<<23;
+        const RENDER_TARGET_COLOR = 1<<19;
         /// A depth/stencil attachment in a renderpass
-        const RENDER_TARGET_DEPTH_STENCIL = 1<<24;
+        const RENDER_TARGET_DEPTH_STENCIL = 1<<20;
     }
 }
 
