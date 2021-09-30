@@ -40,7 +40,7 @@ jobs:
           - os: windows-2019
             container: ghcr.io/legion-labs/build-env-win-rust:0.1.0
             workdir: C:\github\workspace
-          - os: ubuntu-20.04
+          - os: [self-hosted, ubuntu]
             container: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
             workdir: /github/workspace
     runs-on: ${{ matrix.os }}
@@ -84,7 +84,7 @@ jobs:
           - os: windows-2019
             container: ghcr.io/legion-labs/build-env-win-rust:0.1.0
             workdir: C:\github\workspace
-          - os: ubuntu-20.04
+          - os: [self-hosted, ubuntu]
             container: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
             workdir: /github/workspace
     runs-on: ${{ matrix.os }}
@@ -121,7 +121,7 @@ jobs:
   build_docs:
     name: Building docs
     needs: lint
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, ubuntu]
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
       credentials:
@@ -141,7 +141,7 @@ jobs:
   deploy_docs:
     name: Deploying docs
     needs: [test, build_docs]
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, ubuntu]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/download-artifact@v2
@@ -160,7 +160,7 @@ jobs:
   build_release:
     name: Building release binaries
     needs: lint
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, ubuntu]
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
       credentials:
@@ -184,7 +184,7 @@ jobs:
   dockerize:
     name: Building docker images and deploying them
     needs: [test, build_docs, build_release]
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, ubuntu]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
