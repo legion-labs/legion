@@ -32,7 +32,25 @@ fn build_web_app() {
 fn main() {
     #[cfg(feature = "custom-protocol")]
     {
-        println!("cargo:rerun-if-changed=frontend/dist");
+        // JS ecosystem forces us to have output files in our sources hiearchy
+        // we are filtering files
+        std::fs::read_dir("frontend")
+            .unwrap()
+            .map(|res| res.map(|entry| entry.path()))
+            .filter(|path| {
+                if let Ok(path) = path {
+                    if let Some(file_name) = path.file_name() {
+                        return file_name != "dist"
+                            && file_name != "node_modules"
+                            && file_name != ".nuxt";
+                    }
+                }
+                false
+            })
+            .for_each(|path| {
+                // to_string_lossy should be fine here, our filrst level folder names are clean
+                println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy())
+            });
         build_web_app();
     }
 
