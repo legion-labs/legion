@@ -294,10 +294,16 @@ pub struct DescriptorSetLayoutDef {
 
 impl DescriptorSetLayoutDef {
     pub fn new() -> Self {
-        DescriptorSetLayoutDef {
+        Self {
             frequency: 0,
             descriptor_defs: Vec::new(),
         }
+    }
+}
+
+impl Default for DescriptorSetLayoutDef {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

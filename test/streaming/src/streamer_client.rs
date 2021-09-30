@@ -243,7 +243,7 @@ fn run() -> GfxResult<()> {
         //
         let mut descriptor_set_array =
             device_context.create_descriptor_set_array(&DescriptorSetArrayDef {
-                descriptor_set_layout: &descriptor_set_layout,
+                descriptor_set_layout,
                 array_length: 3, // One per swapchain image.
             })?;
 

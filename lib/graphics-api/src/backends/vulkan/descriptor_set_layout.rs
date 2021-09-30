@@ -30,7 +30,7 @@ impl Drop for VulkanDescriptorSetLayoutInner {
         unsafe {
             self.device_context
                 .device()
-                .destroy_descriptor_set_layout(self.vk_layout, None)
+                .destroy_descriptor_set_layout(self.vk_layout, None);
         }
     }
 }
@@ -61,7 +61,7 @@ impl VulkanDescriptorSetLayout {
         self.inner
             .descriptors
             .iter()
-            .position(|descriptor| &descriptor.name == name)
+            .position(|descriptor| name == descriptor.name)
             .map(|opt| opt as u32)
     }
 
@@ -69,7 +69,7 @@ impl VulkanDescriptorSetLayout {
         self.inner
             .descriptors
             .get(index as usize)
-            .ok_or(GfxError::from("Invalid descriptor index"))
+            .ok_or_else(|| GfxError::from("Invalid descriptor index"))
     }
 
     pub(crate) fn new(
@@ -113,7 +113,7 @@ impl VulkanDescriptorSetLayout {
             )?
         };
 
-        let result = VulkanDescriptorSetLayout {
+        let result = Self {
             inner: Arc::new(VulkanDescriptorSetLayoutInner {
                 device_context: device_context.clone(),
                 set_index: descriptor_set_layout_def.frequency,
@@ -127,8 +127,4 @@ impl VulkanDescriptorSetLayout {
     }
 }
 
-impl DescriptorSetLayout<VulkanApi> for VulkanDescriptorSetLayout {
-    fn pipeline_type(&self) -> crate::PipelineType {
-        todo!()
-    }
-}
+impl DescriptorSetLayout<VulkanApi> for VulkanDescriptorSetLayout {}

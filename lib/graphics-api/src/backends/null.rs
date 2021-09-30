@@ -189,11 +189,7 @@ impl Shader<NullApi> for NullShader {
 
 #[derive(Clone, Debug)]
 pub struct NullDescriptorSetLayout;
-impl DescriptorSetLayout<NullApi> for NullDescriptorSetLayout {
-    fn pipeline_type(&self) -> PipelineType {
-        unimplemented!()
-    }
-}
+impl DescriptorSetLayout<NullApi> for NullDescriptorSetLayout {}
 
 #[derive(Clone, Debug)]
 pub struct NullRootSignature;

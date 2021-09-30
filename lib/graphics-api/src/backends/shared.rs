@@ -197,7 +197,7 @@ fn verify_resources_can_overlap(
     Ok(())
 }
 
-pub fn tmp_extract_root_signature_def<'a, A: GfxApi>(
+pub fn tmp_extract_root_signature_def<A: GfxApi>(
     device_context: &A::DeviceContext,
     shaders: &[A::Shader],
 ) -> GfxResult<RootSignatureDef<A>> {

@@ -436,9 +436,7 @@ pub trait Shader<A: GfxApi>: Clone + std::fmt::Debug {
     fn pipeline_reflection(&self) -> &PipelineReflection;
 }
 
-pub trait DescriptorSetLayout<A: GfxApi>: Clone + std::fmt::Debug {
-    fn pipeline_type(&self) -> PipelineType;
-}
+pub trait DescriptorSetLayout<A: GfxApi>: Clone + std::fmt::Debug {}
 
 pub trait RootSignature<A: GfxApi>: Clone + std::fmt::Debug {
     fn pipeline_type(&self) -> PipelineType;
