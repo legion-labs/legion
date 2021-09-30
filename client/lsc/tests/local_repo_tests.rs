@@ -1,7 +1,8 @@
-use std::fs::{self, DirEntry};
-use std::io::{self, Write};
+use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use test_utils::*;
 
 fn write_lorem_ipsum(p: &Path) {
     let contents = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In iaculis odio ac nulla porta, eget dictum nulla euismod. Vivamus congue eros vitae velit feugiat lacinia. Curabitur mi lectus, semper in posuere nec, eleifend eu magna. Morbi egestas magna eget ligula aliquet, vitae mattis urna pellentesque. Maecenas sem risus, scelerisque id semper ut, ornare id diam. Integer ut urna varius, lobortis sapien id, ullamcorper mi. Donec pulvinar ante ligula, in interdum turpis tempor a. Maecenas malesuada turpis orci, vitae efficitur tortor laoreet sit amet.
@@ -44,53 +45,6 @@ fn lsc_cli_sys_fail(wd: &Path, args: &[&str]) {
     syscall(LSC_CLI_EXE_VAR, wd, args, false);
 }
 
-//std::fs::remove_dir_all leaves read-only files and reports an error
-fn force_delete_all(dir: &Path) {
-    fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
-        if dir.is_dir() {
-            for entry in fs::read_dir(dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_dir() {
-                    visit_dirs(&path, cb)?;
-                }
-                cb(&entry);
-            }
-        }
-        Ok(())
-    }
-
-    visit_dirs(dir, &|entry| {
-        let p = entry.path();
-        let meta = entry.metadata().unwrap();
-        if meta.is_dir() {
-            fs::remove_dir(p).unwrap();
-        } else {
-            let mut perm = meta.permissions();
-            if perm.readonly() {
-                perm.set_readonly(false);
-                fs::set_permissions(&p, perm).unwrap();
-            }
-            fs::remove_file(&p).unwrap();
-        }
-    })
-    .unwrap();
-}
-
-fn test_dir(test_name: &str) -> PathBuf {
-    let path = Path::new(LSC_CLI_EXE_VAR)
-        .parent()
-        .unwrap()
-        .join("test_scratch")
-        .join(test_name);
-
-    if path.exists() {
-        force_delete_all(&path);
-    }
-    std::fs::create_dir_all(&path).unwrap();
-    path
-}
-
 async fn init_test_repo(test_dir: &Path, name: &str) -> String {
     match std::env::var("legion_source_control_TEST_HOST") {
         Ok(test_host_uri) => {
@@ -120,6 +74,11 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
             String::from(repo_dir.to_str().unwrap())
         }
     }
+}
+
+fn test_dir(test_name: &str) -> PathBuf {
+    let parent = Path::new(LSC_CLI_EXE_VAR).parent().unwrap().join("lsc");
+    create_test_dir(&parent, test_name)
 }
 
 #[test]

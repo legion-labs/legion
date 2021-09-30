@@ -15,8 +15,7 @@ impl EventBlockSink for DebugEventSink {
                 dbg!(stream_info);
             }
             TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
-                let encoded = log_buffer.encode();
-                dbg!(encoded);
+                let _encoded = log_buffer.encode();
             }
             TelemetrySinkEvent::OnThreadBufferFull(_) => {
                 println!("thread buffer full");
