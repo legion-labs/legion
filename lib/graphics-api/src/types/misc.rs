@@ -211,16 +211,11 @@ bitflags::bitflags! {
         const INPUT_ATTACHMENT = 1<<16;
         const TEXEL_BUFFER = 1<<17;
         const TEXEL_BUFFER_READ_WRITE = 1<<18;
-        const COMBINED_IMAGE_SAMPLER = 1<<19;
-        // Metal-only stuff
-        const ARGUMENT_BUFFER = 1<<20;
-        const INDIRECT_COMMAND_BUFFER = 1<<21;
-        const RENDER_PIPELINE_STATE = 1<<22;
         // Render target types
         /// A color attachment in a renderpass
-        const RENDER_TARGET_COLOR = 1<<23;
+        const RENDER_TARGET_COLOR = 1<<19;
         /// A depth/stencil attachment in a renderpass
-        const RENDER_TARGET_DEPTH_STENCIL = 1<<24;
+        const RENDER_TARGET_DEPTH_STENCIL = 1<<20;
     }
 }
 
@@ -805,8 +800,6 @@ pub struct DescriptorIndex(pub(crate) u32);
 pub enum DescriptorKey<'a> {
     Undefined,
     Name(&'a str),
-    Binding(u32),
-    DescriptorIndex(DescriptorIndex),
 }
 
 impl<'a> Default for DescriptorKey<'a> {

@@ -1,10 +1,9 @@
 use super::*;
 
-use crate::GfxApi;
+use crate::{GfxApi, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_utils::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
-use fnv::FnvHasher;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
@@ -275,90 +274,45 @@ impl<A: GfxApi> ShaderStageDef<A> {
     }
 }
 
-/// Indicates which immutable sampler is being set
-#[derive(Clone, Hash)]
-pub enum ImmutableSamplerKey<'a> {
-    Name(&'a str),
-    Binding(u32, u32),
+pub struct DescriptorDef {
+    pub name: String,
+    pub binding: u32,
+    pub resource_type: ResourceType,
+    pub array_size: u32,
 }
 
-impl<'a> ImmutableSamplerKey<'a> {
-    pub fn from_name(name: &'a str) -> ImmutableSamplerKey<'a> {
-        ImmutableSamplerKey::Name(name)
-    }
-
-    pub fn from_binding(set_index: u32, binding: u32) -> ImmutableSamplerKey<'a> {
-        ImmutableSamplerKey::Binding(set_index, binding)
+impl DescriptorDef {
+    pub fn array_size_normalized(&self) -> u32 {
+        self.array_size.max(1u32)
     }
 }
 
-/// Describes an immutable sampler key/value pair
-pub struct ImmutableSamplers<'a, A: GfxApi> {
-    pub key: ImmutableSamplerKey<'a>,
-    pub samplers: &'a [A::Sampler],
+pub struct DescriptorSetLayoutDef {
+    pub frequency: u32,
+    pub descriptor_defs: Vec<DescriptorDef>,
 }
 
-impl<'a, A: GfxApi> ImmutableSamplers<'a, A> {
-    pub fn from_name(name: &'a str, samplers: &'a [A::Sampler]) -> ImmutableSamplers<'a, A> {
-        ImmutableSamplers {
-            key: ImmutableSamplerKey::from_name(name),
-            samplers,
-        }
-    }
-
-    pub fn from_binding(
-        set_index: u32,
-        binding: u32,
-        samplers: &'a [A::Sampler],
-    ) -> ImmutableSamplers<'a, A> {
-        ImmutableSamplers {
-            key: ImmutableSamplerKey::from_binding(set_index, binding),
-            samplers,
+impl DescriptorSetLayoutDef {
+    pub fn new() -> Self {
+        Self {
+            frequency: 0,
+            descriptor_defs: Vec::new(),
         }
     }
 }
 
-/// Used to create a `RootSignature`
-pub struct RootSignatureDef<'a, A: GfxApi> {
-    pub shaders: &'a [A::Shader],
-    pub immutable_samplers: &'a [ImmutableSamplers<'a, A>],
+impl Default for DescriptorSetLayoutDef {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
-impl<'a, A: GfxApi> RootSignatureDef<'a, A> {
-    // The current implementation here is minimal. It will produce different hash values for
-    // shader orderings and immutable samplers.
-    pub fn hash_definition<
-        HasherT: std::hash::Hasher,
-        ShaderHashT: Hash,
-        ImmutableSamplerHashT: Hash,
-    >(
-        hasher: &mut HasherT,
-        shader_hashes: &[ShaderHashT],
-        immutable_sampler_keys: &[ImmutableSamplerKey<'_>],
-        immutable_sampler_hashes: &[Vec<ImmutableSamplerHashT>],
-    ) {
-        // Hash all the shader hashes and xor them together, this keeps them order-independent
-        let mut combined_shaders_hash = 0;
-        for shader_hash in shader_hashes {
-            let mut h = FnvHasher::default();
-            shader_hash.hash(&mut h);
-            combined_shaders_hash ^= h.finish();
-        }
+pub struct PushConstantDef {}
 
-        // Hash all the sampler key/value pairs and xor them together, this keeps them
-        // order-independent
-        let mut combined_immutable_samplers_hash = 0;
-        for (key, samplers) in immutable_sampler_keys.iter().zip(immutable_sampler_hashes) {
-            let mut h = FnvHasher::default();
-            key.hash(&mut h);
-            samplers.hash(&mut h);
-            combined_immutable_samplers_hash ^= h.finish();
-        }
-
-        // Hash both combined hashes to produce the final hash
-        combined_shaders_hash.hash(hasher);
-        combined_immutable_samplers_hash.hash(hasher);
-    }
+pub struct RootSignatureDef<A: GfxApi> {
+    pub pipeline_type: PipelineType,
+    pub descriptor_set_layouts: [Option<A::DescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    pub push_constant_defs: Vec<PushConstantDef>,
 }
 
 /// Used to create a `Sampler`
@@ -675,10 +629,7 @@ pub struct ComputePipelineDef<'a, A: GfxApi> {
 
 /// Used to create a `DescriptorSetArray`
 pub struct DescriptorSetArrayDef<'a, A: GfxApi> {
-    /// The root signature the descriptor set will be based on
-    pub root_signature: &'a A::RootSignature,
-    /// Which descriptor set to create the descriptor set array for
-    pub set_index: u32,
+    pub descriptor_set_layout: &'a A::DescriptorSetLayout,
     /// The number of descriptor sets in the array
     pub array_length: usize,
 }

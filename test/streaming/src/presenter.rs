@@ -211,13 +211,26 @@ fn run() -> GfxResult<()> {
             device_context.create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])?;
 
         //
+        // TMP: TMP_extract_root_signature_def will create the root signature definition.
+        // In the process, it will instanciate the DescriptorSetLayout(s).
+        //
+        let root_signature_def = graphics_api::backends::tmp_extract_root_signature_def(
+            device_context,
+            &[shader.clone()],
+        )?;
+
+        //
+        // TMP: Get a ref on the DescriptorSetLayout
+        //
+        let descriptor_set_layout = root_signature_def.descriptor_set_layouts[0]
+            .as_ref()
+            .unwrap();
+
+        //
         // Create the root signature object - it represents the pipeline layout and can be shared among
         // shaders. But one per shader is fine.
         //
-        let root_signature = device_context.create_root_signature(&RootSignatureDef {
-            shaders: &[shader.clone()],
-            immutable_samplers: &[],
-        })?;
+        let root_signature = device_context.create_root_signature(&root_signature_def)?;
 
         //
         // Descriptors are allocated in blocks and never freed. Normally you will want to build a
@@ -226,8 +239,7 @@ fn run() -> GfxResult<()> {
         //
         let mut descriptor_set_array =
             device_context.create_descriptor_set_array(&DescriptorSetArrayDef {
-                set_index: 0,
-                root_signature: &root_signature,
+                descriptor_set_layout,
                 array_length: 3, // One per swapchain image.
             })?;
 
@@ -377,6 +389,7 @@ fn run() -> GfxResult<()> {
                 .unwrap();
             cmd_buffer
                 .cmd_bind_descriptor_set(
+                    &root_signature,
                     &descriptor_set_array,
                     presentable_frame.rotating_frame_index() as u32,
                 )
