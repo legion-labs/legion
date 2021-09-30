@@ -10,21 +10,21 @@ use crate::{
 
 pub fn convert_offline_to_content_path(path: &AssetPathId) -> AssetPathId {
     let offline_type = ResourceType::try_from(path.content_type()).ok().unwrap();
-    let runtime_type = match offline_type {
-        offline_data::Entity::TYPE_ID => runtime_data::Entity::TYPE.content(),
-        offline_data::Instance::TYPE_ID => runtime_data::Instance::TYPE.content(),
-        offline_data::Mesh::TYPE_ID => runtime_data::Mesh::TYPE.content(),
-        legion_graphics_offline::psd::TYPE_ID => {
-            legion_graphics_offline::texture::TYPE_ID.content()
-        }
+    match offline_type {
+        offline_data::Entity::TYPE_ID => path.push(runtime_data::Entity::TYPE.content()),
+        offline_data::Instance::TYPE_ID => path.push(runtime_data::Instance::TYPE.content()),
+        offline_data::Mesh::TYPE_ID => path.push(runtime_data::Mesh::TYPE.content()),
+        legion_graphics_offline::psd::TYPE_ID => path
+            .push(legion_graphics_offline::texture::TYPE_ID.content())
+            .push(legion_graphics_runtime::Texture::TYPE),
         legion_graphics_offline::material::TYPE_ID => {
-            legion_graphics_runtime::Material::TYPE.content()
+            path.push(legion_graphics_runtime::Material::TYPE.content())
         }
+
         _ => {
             panic!("unrecognized offline type {}", offline_type.content());
         }
-    };
-    path.push(runtime_type)
+    }
 }
 
 pub fn convert_offline_path_to_runtime_id(path: &AssetPathId) -> Option<AssetId> {

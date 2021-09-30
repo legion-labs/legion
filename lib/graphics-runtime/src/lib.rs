@@ -79,6 +79,7 @@ pub mod material;
 pub use material::Material;
 
 pub mod texture;
+pub use texture::Texture;
 
 use legion_data_runtime::AssetRegistryOptions;
 
