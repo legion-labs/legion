@@ -5,8 +5,7 @@ use legion_data_runtime::{AssetId, AssetType};
 
 /// Converts `AssetPathId` to `AssetId`.
 pub fn path_id_to_asset_id(path: &Option<AssetPathId>, asset_type: AssetType) -> Option<AssetId> {
-    path.as_ref()
-        .map(|p| p.push(asset_type).content_id())
+    path.as_ref().map(|p| p.push(asset_type).content_id())
 }
 
 /// Converts `AssetId` to underlying binary representation.
