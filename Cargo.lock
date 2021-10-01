@@ -6009,10 +6009,12 @@ dependencies = [
  "anyhow",
  "clap",
  "fs_extra",
+ "prost",
  "sqlx",
  "telemetry",
  "test-utils",
  "tokio",
+ "transit",
 ]
 
 [[package]]

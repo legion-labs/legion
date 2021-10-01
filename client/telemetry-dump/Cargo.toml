@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 clap = "2.33"
 telemetry = { path = "../../lib/telemetry" }
 analytics = { path = "../../lib/analytics" }
+transit = { path = "../../lib/transit" }
 test-utils = { path = "../../lib/test-utils" }
 tokio = { version = "1", features = ["full"] }
 fs_extra = "1.2"
@@ -18,3 +19,4 @@ sqlx = { version = "0.5", features = [
     "runtime-tokio-native-tls",
 ] }
 anyhow = "1.0"
+prost = "0.8"
