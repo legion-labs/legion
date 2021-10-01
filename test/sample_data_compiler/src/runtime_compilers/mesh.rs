@@ -93,8 +93,8 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        offline_data::Mesh::TYPE_ID.content(),
-        runtime_data::Mesh::TYPE.content(),
+        offline_data::Mesh::TYPE_ID,
+        runtime_data::Mesh::TYPE,
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile::<offline_data::Mesh, runtime_data::Mesh>,

@@ -93,8 +93,8 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        offline_data::Instance::TYPE_ID.content(),
-        runtime_data::Instance::TYPE.content(),
+        offline_data::Instance::TYPE_ID,
+        runtime_data::Instance::TYPE,
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile::<offline_data::Instance, runtime_data::Instance>,

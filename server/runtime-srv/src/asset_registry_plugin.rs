@@ -156,7 +156,7 @@ impl AssetRegistryPlugin {
                 LoadingState::Pending => {
                     let handle = asset_handles.get(*asset_id).unwrap();
                     if handle.is_loaded(&registry) {
-                        match asset_id.asset_type() {
+                        match asset_id.kind() {
                             runtime_data::Entity::TYPE => {
                                 if let Some(runtime_entity) =
                                     handle.get::<runtime_data::Entity>(&registry)
@@ -223,7 +223,7 @@ impl AssetRegistryPlugin {
                             _ => {
                                 eprintln!(
                                     "Unhandled type: {}, asset: {}",
-                                    asset_id.asset_type(),
+                                    asset_id.kind(),
                                     asset_id
                                 );
                             }

@@ -76,6 +76,9 @@ impl<T: AsRef<str>> From<&T> for ResourcePathName {
     }
 }
 
+/// Type identifier of an offline resource.
+pub type ResourceType = ContentType;
+
 /// A unique id of an offline resource.
 ///
 /// This 64 bit id encodes the following information:
@@ -88,12 +91,12 @@ impl ResourceId {
     /// Creates a new random id.
     pub fn generate_new(kind: ResourceType) -> Self {
         let rand_id: u64 = rand::thread_rng().gen();
-        Self(ContentId::new(kind.into(), rand_id))
+        Self(ContentId::new(kind, rand_id))
     }
 
     /// Returns the type of the resource.
     pub fn resource_type(&self) -> ResourceType {
-        ResourceType(self.0.kind())
+        self.0.kind()
     }
 }
 
@@ -122,36 +125,5 @@ impl FromStr for ResourceId {
 impl From<ContentId> for ResourceId {
     fn from(value: ContentId) -> Self {
         Self(value)
-    }
-}
-
-/// Type identifier of an offline resource.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
-pub struct ResourceType(ContentType);
-
-impl ResourceType {
-    /// Creates a new type id from a byte array.
-    ///
-    /// It is recommended to use this method to define a public constant
-    /// which can be used to identify a resource type.
-    pub const fn new(v: &[u8]) -> Self {
-        Self(ContentType::new(v))
-    }
-
-    /// Returns underlying id (at compile time).
-    pub const fn content(&self) -> ContentType {
-        self.0
-    }
-}
-
-impl From<ContentType> for ResourceType {
-    fn from(value: ContentType) -> Self {
-        Self(value)
-    }
-}
-
-impl From<ResourceType> for ContentType {
-    fn from(value: ResourceType) -> Self {
-        value.0
     }
 }

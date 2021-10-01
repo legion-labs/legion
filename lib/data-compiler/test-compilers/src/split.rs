@@ -19,8 +19,8 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        multitext_resource::TYPE_ID.content(),
-        text_resource::TYPE_ID.content(),
+        multitext_resource::TYPE_ID,
+        text_resource::TYPE_ID,
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,

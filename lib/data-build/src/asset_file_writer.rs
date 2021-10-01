@@ -43,7 +43,7 @@ where
     }
 
     // secion header
-    let kind = asset_list.clone().next().unwrap().0.asset_type();
+    let kind = asset_list.clone().next().unwrap().0.kind();
     writer
         .write_u32::<LittleEndian>(unsafe { std::mem::transmute::<AssetType, u32>(kind) })
         .map_err(|_e| Error::LinkFailed)?;

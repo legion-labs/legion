@@ -321,7 +321,7 @@ impl AssetLoaderIO {
 
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
-                        let loader = self.loaders.get_mut(&asset_id.asset_type()).unwrap();
+                        let loader = self.loaders.get_mut(&asset_id.kind()).unwrap();
 
                         // SAFETY: this is safe because loaded asset is only referenced by the loader.
                         // it hasn't been made available to other systems yet.

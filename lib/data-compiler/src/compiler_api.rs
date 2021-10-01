@@ -28,7 +28,7 @@
 //!    build_version: DATA_BUILD_VERSION,
 //!    code_version: "",
 //!    data_version: "",
-//!    transform: &(INPUT_TYPE.content(), OUTPUT_TYPE.content()),
+//!    transform: &(INPUT_TYPE, OUTPUT_TYPE),
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
@@ -114,7 +114,7 @@ use clap::{AppSettings, Arg, ArgMatches, SubCommand};
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{ResourceHandleUntyped, ResourceId, ResourceRegistry, ResourceType},
+    resource::{ResourceHandleUntyped, ResourceId, ResourceRegistry},
 };
 use legion_data_runtime::ContentType;
 use std::{
@@ -183,7 +183,7 @@ impl CompilerContext<'_> {
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandleUntyped, CompilerError> {
         if id.is_source() {
-            let kind = ResourceType::from(id.content_type());
+            let kind = id.content_type();
             //
             // for now, we only allow to load the `derived` resource's source.
             //
@@ -207,7 +207,7 @@ impl CompilerContext<'_> {
                 // this should be extended to Assets but would require
                 // a change in this fn's signature
                 //
-                let kind = ResourceType::from(id.content_type());
+                let kind = id.content_type();
                 Ok(resources
                     .deserialize_resource(kind, &mut &content[..])
                     .map_err(CompilerError::ResourceReadFailed)?)

@@ -8,7 +8,7 @@ use legion_content_store::ContentStoreAddr;
 use legion_data_build::{generate_rt_manifest, DataBuildOptions};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::asset::AssetPathId;
-use legion_data_runtime::{AssetDescriptor, AssetType};
+use legion_data_runtime::AssetDescriptor;
 
 use crate::{offline_to_runtime::find_derived_path, runtime_data};
 
@@ -78,7 +78,7 @@ pub fn build(root_folder: impl AsRef<Path>) {
 
         let filter = |p: &AssetPathId| {
             matches!(
-                AssetType::from(p.content_type()),
+                p.content_type(),
                 runtime_data::Entity::TYPE
                     | runtime_data::Instance::TYPE
                     | runtime_data::Mesh::TYPE

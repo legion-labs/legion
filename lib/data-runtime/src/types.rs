@@ -10,90 +10,15 @@ use std::{
 
 use crate::{ContentId, ContentType};
 
+/// Type id of a runtime asset.
+pub type AssetType = ContentType;
+
 /// A unique id of a runtime asset.
 ///
 /// This 64 bit id encodes the following information:
 /// - asset unique id - 32 bits
 /// - [`AssetType`] - 32 bits
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash, Serialize, Deserialize)]
-pub struct AssetId(ContentId);
-
-impl AssetId {
-    /// Creates an asset id of a given type.
-    pub fn new(kind: AssetType, id: u64) -> Self {
-        Self(ContentId::new(kind.into(), id))
-    }
-
-    /// Returns the type of the asset.
-    pub fn asset_type(&self) -> AssetType {
-        AssetType(self.0.kind())
-    }
-}
-
-impl fmt::LowerHex for AssetId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.0, f)
-    }
-}
-
-impl fmt::Display for AssetId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
-
-impl FromStr for AssetId {
-    type Err = std::num::ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        ContentId::from_str(s)?
-            .try_into()
-            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))
-    }
-}
-
-impl From<ContentId> for AssetId {
-    fn from(_value: ContentId) -> Self {
-        Self(_value)
-    }
-}
-
-/// Type id of a runtime asset.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
-pub struct AssetType(ContentType);
-
-impl AssetType {
-    /// Creates a new type id from a byte array.
-    ///
-    /// It is recommended to use this method to define a public constant
-    /// which can be used to identify an asset type.
-    pub const fn new(v: &[u8]) -> Self {
-        Self(ContentType::new(v))
-    }
-
-    /// Returns underlying id (at compile-time).
-    pub const fn content(&self) -> ContentType {
-        self.0
-    }
-}
-
-impl From<ContentType> for AssetType {
-    fn from(value: ContentType) -> Self {
-        Self(value)
-    }
-}
-
-impl fmt::Display for AssetType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl From<AssetType> for ContentType {
-    fn from(value: AssetType) -> Self {
-        value.0
-    }
-}
+pub type AssetId = ContentId;
 
 /// Checksum of a runtime asset.
 #[derive(Copy, Clone, Debug, Eq)]

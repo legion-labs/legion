@@ -20,8 +20,8 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        text_resource::TYPE_ID.content(),
-        integer_asset::IntegerAsset::TYPE.content(),
+        text_resource::TYPE_ID,
+        integer_asset::IntegerAsset::TYPE,
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
