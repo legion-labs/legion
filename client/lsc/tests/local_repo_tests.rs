@@ -21,21 +21,6 @@ fn append_text_to_file(p: &Path, contents: &str) {
     f.write_all(contents.as_bytes()).unwrap();
 }
 
-fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
-    print!("{} ", command);
-    for a in args {
-        print!("{} ", a);
-    }
-    println!();
-    let status = Command::new(command)
-        .current_dir(wd)
-        .args(args)
-        .status()
-        .expect("failed to execute command");
-
-    assert_eq!(status.success(), should_succeed);
-}
-
 static LSC_CLI_EXE_VAR: &str = env!("CARGO_BIN_EXE_lsc");
 fn lsc_cli_sys(wd: &Path, args: &[&str]) {
     syscall(LSC_CLI_EXE_VAR, wd, args, true);

@@ -1,4 +1,3 @@
-use analytics::*;
 use std::path::{Path, PathBuf};
 use test_utils::*;
 
@@ -12,17 +11,19 @@ fn test_dir(test_name: &str) -> PathBuf {
     create_test_dir(&parent, test_name)
 }
 
-#[tokio::main]
-#[test]
-async fn test_list_processes() {
+fn setup_data_dir(test_name: &str) -> PathBuf {
     let src_dir = std::env::current_dir().unwrap().join("tests/data");
-    let test_output = test_dir("list-processes");
+    let test_output = test_dir(test_name);
     fs_extra::dir::copy(&src_dir, &test_output, &fs_extra::dir::CopyOptions::new()).unwrap();
+    test_output.join("data")
+}
 
-    let data_path = test_output.join("data");
-    let pool = alloc_sql_pool(&data_path).await.unwrap();
-    let mut connection = pool.acquire().await.unwrap();
-    for p in fetch_recent_processes(&mut connection).await.unwrap() {
-        println!("{} {}", p.start_time, p.exe);
-    }
+fn dump_cli_sys(args: &[&str]) {
+    syscall(DUMP_EXE_VAR, Path::new("."), args, true);
+}
+
+#[test]
+fn test_list_processes() {
+    let data_path = setup_data_dir("list-processes");
+    dump_cli_sys(&["recent-processes", data_path.to_str().unwrap()])
 }
