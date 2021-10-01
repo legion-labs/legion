@@ -2,7 +2,7 @@
 //!
 //! It is used to test the data compilation process until we have a proper asset available.
 
-use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, AssetType};
+use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, ResourceType};
 
 /// Asset temporarily used for testing.
 ///
@@ -27,7 +27,7 @@ pub struct RefsAssetLoader {}
 impl AssetLoader for RefsAssetLoader {
     fn load(
         &mut self,
-        _kind: AssetType,
+        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
         let mut content = String::new();

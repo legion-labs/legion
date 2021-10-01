@@ -1,6 +1,6 @@
-use std::{fmt, hash::Hash, str::FromStr};
+use std::{fmt, hash::Hash};
 
-use legion_data_runtime::{ContentId, ContentType};
+use legion_data_runtime::{ResourceId, ResourceType};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -76,82 +76,8 @@ impl<T: AsRef<str>> From<&T> for ResourcePathName {
     }
 }
 
-/// A unique id of an offline resource.
-///
-/// This 64 bit id encodes the following information:
-/// - resource unique id - 32 bits
-/// - [`ResourceType`] - 32 bits
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Serialize, Deserialize, Hash)]
-pub struct ResourceId(ContentId);
-
-impl ResourceId {
-    /// Creates a new random id.
-    pub fn generate_new(kind: ResourceType) -> Self {
-        let rand_id: u64 = rand::thread_rng().gen();
-        Self(ContentId::new(kind.into(), rand_id))
-    }
-
-    /// Returns the type of the resource.
-    pub fn resource_type(&self) -> ResourceType {
-        ResourceType(self.0.kind())
-    }
-}
-
-impl fmt::LowerHex for ResourceId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.0, f)
-    }
-}
-
-impl fmt::Display for ResourceId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))
-    }
-}
-
-impl FromStr for ResourceId {
-    type Err = std::num::ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(ContentId::from_str(s)
-            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))?
-            .into())
-    }
-}
-
-impl From<ContentId> for ResourceId {
-    fn from(value: ContentId) -> Self {
-        Self(value)
-    }
-}
-
-/// Type identifier of an offline resource.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
-pub struct ResourceType(ContentType);
-
-impl ResourceType {
-    /// Creates a new type id from a byte array.
-    ///
-    /// It is recommended to use this method to define a public constant
-    /// which can be used to identify a resource type.
-    pub const fn new(v: &[u8]) -> Self {
-        Self(ContentType::new(v))
-    }
-
-    /// Returns underlying id (at compile time).
-    pub const fn content(&self) -> ContentType {
-        self.0
-    }
-}
-
-impl From<ContentType> for ResourceType {
-    fn from(value: ContentType) -> Self {
-        Self(value)
-    }
-}
-
-impl From<ResourceType> for ContentType {
-    fn from(value: ResourceType) -> Self {
-        value.0
-    }
+/// Creates a new random id.
+pub fn new_resource_id(kind: ResourceType) -> ResourceId {
+    let rand_id: u64 = rand::thread_rng().gen();
+    ResourceId::new(kind, rand_id)
 }

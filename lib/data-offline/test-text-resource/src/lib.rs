@@ -1,7 +1,8 @@
 use legion_data_offline::{
-    asset::AssetPathId,
-    resource::{Resource, ResourceProcessor, ResourceType},
+    resource::{Resource, ResourceProcessor},
+    ResourcePathId,
 };
+use legion_data_runtime::ResourceType;
 
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +22,7 @@ impl ResourceProcessor for TextResourceProc {
         })
     }
 
-    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
+    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
         vec![]
     }
 

@@ -6,7 +6,7 @@ This section provides information about data processing pipeline - everything fr
 
 #### DCC Tools Export
 
-We use Digital Content Creation tools such as Maya, Blender, Photoshop to edit assets like textures, animations, etc. Some other assets are edited in our proprietary tools, like scene or level description.
+We use Digital Content Creation tools such as Maya, Blender, Photoshop to edit resources like textures, animations, etc. Some other resources are edited in our proprietary tools, like scene or level description.
 
 #### Offline and Runtime Data Formats
 

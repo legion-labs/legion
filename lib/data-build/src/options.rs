@@ -23,7 +23,7 @@ use crate::{DataBuild, Error};
 #[derive(Clone, Debug)]
 pub struct DataBuildOptions {
     pub(crate) buildindex_path: PathBuf,
-    pub(crate) assetstore_path: ContentStoreAddr,
+    pub(crate) contentstore_path: ContentStoreAddr,
     pub(crate) compiler_search_paths: Vec<PathBuf>,
 }
 
@@ -32,14 +32,14 @@ impl DataBuildOptions {
     pub fn new(buildindex_path: impl AsRef<Path>) -> Self {
         Self {
             buildindex_path: buildindex_path.as_ref().to_owned(),
-            assetstore_path: ContentStoreAddr::from(buildindex_path.as_ref()),
+            contentstore_path: ContentStoreAddr::from(buildindex_path.as_ref()),
             compiler_search_paths: vec![],
         }
     }
 
-    /// Set content store location for compiled assets.
-    pub fn content_store(&mut self, assetstore_path: &ContentStoreAddr) -> &mut Self {
-        self.assetstore_path = assetstore_path.clone();
+    /// Set content store location for derived resources.
+    pub fn content_store(&mut self, contentstore_path: &ContentStoreAddr) -> &mut Self {
+        self.contentstore_path = contentstore_path.clone();
         self
     }
 

@@ -4,7 +4,7 @@ use clap::{AppSettings, Arg, SubCommand};
 use legion_content_store::ContentStoreAddr;
 use legion_data_build::DataBuildOptions;
 use legion_data_compiler::{Locale, Platform, Target};
-use legion_data_offline::asset::AssetPathId;
+use legion_data_offline::ResourcePathId;
 
 const ARG_NAME_RESOURCE_PATH: &str = "resource";
 const ARG_NAME_BUILDINDEX: &str = "buildindex";
@@ -79,16 +79,16 @@ fn main() -> Result<(), String> {
         let target = cmd_args.value_of(ARG_NAME_TARGET).unwrap();
         let platform = cmd_args.value_of(ARG_NAME_PLATFORM).unwrap();
         let locale = cmd_args.value_of(ARG_NAME_LOCALE).unwrap();
-        let derived = AssetPathId::from_str(derived).map_err(|_e| "Invalid AssetPathId")?;
+        let derived = ResourcePathId::from_str(derived).map_err(|_e| "Invalid ResourcePathId")?;
         let manifest_file = PathBuf::from_str(manifest).map_err(|_e| "Invalid Manifest name")?;
         let target = Target::from_str(target).map_err(|_e| "Invalid Target")?;
         let platform = Platform::from_str(platform).map_err(|_e| "Invalid Platform")?;
         let locale = Locale::new(locale);
-        let asset_store_path = ContentStoreAddr::from(cmd_args.value_of(ARG_NAME_CAS).unwrap());
+        let content_store_path = ContentStoreAddr::from(cmd_args.value_of(ARG_NAME_CAS).unwrap());
         let buildindex_path = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
 
         let mut config = DataBuildOptions::new(buildindex_path);
-        config.content_store(&asset_store_path);
+        config.content_store(&content_store_path);
         if let Ok(cwd) = std::env::current_dir() {
             config.compiler_dir(cwd);
         }

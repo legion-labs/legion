@@ -8,135 +8,50 @@ use std::{
     str::FromStr,
 };
 
-use crate::{ContentId, ContentType};
+use crate::ResourceType;
 
-/// A unique id of a runtime asset.
-///
-/// This 64 bit id encodes the following information:
-/// - asset unique id - 32 bits
-/// - [`AssetType`] - 32 bits
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash, Serialize, Deserialize)]
-pub struct AssetId(ContentId);
-
-impl AssetId {
-    /// Creates an asset id of a given type.
-    pub fn new(kind: AssetType, id: u64) -> Self {
-        Self(ContentId::new(kind.into(), id))
-    }
-
-    /// Returns the type of the asset.
-    pub fn asset_type(&self) -> AssetType {
-        AssetType(self.0.kind())
-    }
-}
-
-impl fmt::LowerHex for AssetId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.0, f)
-    }
-}
-
-impl fmt::Display for AssetId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
-
-impl FromStr for AssetId {
-    type Err = std::num::ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        ContentId::from_str(s)?
-            .try_into()
-            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))
-    }
-}
-
-impl From<ContentId> for AssetId {
-    fn from(_value: ContentId) -> Self {
-        Self(_value)
-    }
-}
-
-/// Type id of a runtime asset.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
-pub struct AssetType(ContentType);
-
-impl AssetType {
-    /// Creates a new type id from a byte array.
-    ///
-    /// It is recommended to use this method to define a public constant
-    /// which can be used to identify an asset type.
-    pub const fn new(v: &[u8]) -> Self {
-        Self(ContentType::new(v))
-    }
-
-    /// Returns underlying id (at compile-time).
-    pub const fn content(&self) -> ContentType {
-        self.0
-    }
-}
-
-impl From<ContentType> for AssetType {
-    fn from(value: ContentType) -> Self {
-        Self(value)
-    }
-}
-
-impl fmt::Display for AssetType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl From<AssetType> for ContentType {
-    fn from(value: AssetType) -> Self {
-        value.0
-    }
-}
-
-/// Checksum of a runtime asset.
+/// Checksum of a resource.
 #[derive(Copy, Clone, Debug, Eq)]
-pub struct AssetChecksum(i128);
+pub struct ResourceChecksum(i128);
 
-impl AssetChecksum {
+impl ResourceChecksum {
     /// Retrieve value of checksum as a signed 128 bit integer.
     pub fn get(&self) -> i128 {
         self.0
     }
 }
 
-impl PartialEq for AssetChecksum {
+impl PartialEq for ResourceChecksum {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
-impl Hash for AssetChecksum {
+impl Hash for ResourceChecksum {
     fn hash<H: Hasher>(&self, mut state: &mut H) {
         self.0.hash(&mut state);
     }
 }
 
-impl From<i128> for AssetChecksum {
+impl From<i128> for ResourceChecksum {
     fn from(value: i128) -> Self {
         Self(value)
     }
 }
 
-impl From<AssetChecksum> for i128 {
-    fn from(value: AssetChecksum) -> Self {
+impl From<ResourceChecksum> for i128 {
+    fn from(value: ResourceChecksum) -> Self {
         value.0
     }
 }
 
-impl fmt::Display for AssetChecksum {
+impl fmt::Display for ResourceChecksum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:032x}", self.0))
     }
 }
 
-impl FromStr for AssetChecksum {
+impl FromStr for ResourceChecksum {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -145,7 +60,7 @@ impl FromStr for AssetChecksum {
     }
 }
 
-impl Serialize for AssetChecksum {
+impl Serialize for ResourceChecksum {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -160,7 +75,7 @@ impl Serialize for AssetChecksum {
     }
 }
 
-impl<'de> Deserialize<'de> for AssetChecksum {
+impl<'de> Deserialize<'de> for ResourceChecksum {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -188,7 +103,7 @@ pub trait AssetDescriptor {
     /// Name of the asset type.
     const TYPENAME: &'static str;
     /// Type of the asset.
-    const TYPE: AssetType = AssetType::new(Self::TYPENAME.as_bytes());
+    const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
     /// Loader of the asset.
     type Loader: AssetLoader + Send + Default + 'static;
 }
@@ -232,7 +147,7 @@ pub trait AssetLoader {
     /// Asset loading interface.
     fn load(
         &mut self,
-        kind: AssetType,
+        kind: ResourceType,
         reader: &mut dyn io::Read,
     ) -> Result<Box<dyn Asset + Send + Sync>, io::Error>;
 

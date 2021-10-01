@@ -1,8 +1,9 @@
 use legion_data_offline::{
-    asset::AssetPathId,
-    resource::{Resource, ResourceProcessor, ResourceType},
+    resource::{Resource, ResourceProcessor},
+    ResourcePathId,
 };
 
+use legion_data_runtime::ResourceType;
 use serde::{Deserialize, Serialize};
 
 pub const TYPE_ID: ResourceType = ResourceType::new(b"binary_resource");
@@ -19,7 +20,7 @@ impl ResourceProcessor for BinaryResourceProc {
         Box::new(BinaryResource { content: vec![] })
     }
 
-    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
+    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
         vec![]
     }
 

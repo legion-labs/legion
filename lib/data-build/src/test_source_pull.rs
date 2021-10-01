@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use crate::DataBuildOptions;
 use legion_content_store::ContentStoreAddr;
 use legion_data_offline::{
-    asset::AssetPathId,
     resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
+    ResourcePathId,
 };
 use tempfile::TempDir;
 
@@ -42,7 +42,7 @@ fn no_dependencies() {
                 &mut resources,
             )
             .unwrap();
-        AssetPathId::from(id)
+        ResourcePathId::from(id)
     };
 
     let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
@@ -89,7 +89,7 @@ fn with_dependency() {
             res.get_mut::<refs_resource::TestResource>(&mut resources)
                 .unwrap()
                 .build_deps
-                .push(AssetPathId::from(child_id));
+                .push(ResourcePathId::from(child_id));
             res
         };
         let parent_id = project
@@ -100,7 +100,10 @@ fn with_dependency() {
                 &mut resources,
             )
             .unwrap();
-        (AssetPathId::from(child_id), AssetPathId::from(parent_id))
+        (
+            ResourcePathId::from(child_id),
+            ResourcePathId::from(parent_id),
+        )
     };
 
     let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
@@ -146,7 +149,7 @@ fn with_derived_dependency() {
             .unwrap();
 
         let parent_handle = {
-            let intermediate_id = AssetPathId::from(child_id).push(refs_resource::TYPE_ID);
+            let intermediate_id = ResourcePathId::from(child_id).push(refs_resource::TYPE_ID);
 
             let res = resources.new_resource(refs_resource::TYPE_ID).unwrap();
             res.get_mut::<refs_resource::TestResource>(&mut resources)

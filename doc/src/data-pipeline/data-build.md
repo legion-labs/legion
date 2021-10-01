@@ -2,9 +2,9 @@
 
 Data build's primary responsibility is to transform resources from their offline format into the runtime format. In order to maintain fast iteration time at all scales it is key to keep its processing time to minimum. It does it by implementing incremental building, efficient dependency tracking, data build output caching.
 
-The output of an asset build process is a `manifest file` containing the list of `compiled resources` tuples of *(GUID, size, checksum)*. The compiled resource can be either in a runtime format consumed by the engine, intermediate format that undergoes further processing or a format that is less runtime-optimized and is used by the editor. All compiled resources are stored in the `compiled content store` - a content-addressable data storage. 
+The output of a resource build process is a `manifest file` containing the list of `derived resources` tuples of *(GUID, size, checksum)*. The derived resource can be either in a runtime format consumed by the engine, intermediate format that undergoes further processing or a format that is less runtime-optimized and is used by the editor. All derived resources are stored in the `content store` - a content-addressable data storage. 
 
-Offline resources describe build dependencies in `.meta` files which are parsed by the asset build process in order to extract the dependency structure without loading the content of the offline resource itself.
+Offline resources describe build dependencies in `.meta` files which are parsed by the resource build process in order to extract the dependency structure without loading the content of the offline resource itself.
 
 ### DCC Exporters
 
@@ -12,15 +12,15 @@ DCC exporters are command-line tools that are used to extract offline resources 
 
 It is also possible to have DCC exporter run as part of the data build process. For this, a source DCC file must be versioned under **offline/** directory (in contrary to **source/** directory)
 
-## `AssetPathId` and Data Compilers
+## `ResourcePathId` and Data Compilers
 
-Data build defines a framework for data processing. It's main components are: **data compilers**, **content types** and **AssetPathId**.
+Data build defines a framework for data processing. It's main components are: **data compilers**, **content types** and **ResourcePathId**.
 
 At its core it operates on **source resources** - files that contain user-defined data. Each source resource has a **Content Type** assigned to it.
 
-A simple **AssetPathId** can define a transformation from a concrete **source resource** to a **derived resource**. This transformation is represented by a tuple (Content Type, Content Type) which is supported by a **Data Compiler**.
+A simple **ResourcePathId** can define a transformation from a concrete **source resource** to a **derived resource**. This transformation is represented by a tuple (Content Type, Content Type) which is supported by a **Data Compiler**.
 
-A more complex **AssetPathId** can represent a series of transformations, always starting from a **source resource**, that creates a series of **derived resource** - where next transformation's input is the previous transformation's output.
+A more complex **ResourcePathId** can represent a series of transformations, always starting from a **source resource**, that creates a series of **derived resource** - where next transformation's input is the previous transformation's output.
 
 **Data Compiler** can read the **input resource** (either **source resource** or a **derived resource**), it's depenencies and can output one or more new resources.
 
@@ -28,11 +28,11 @@ Each compilation unit has to have all its inputs declared ahead of time. The dat
 
 ## Compiler Code & Resource Format Versioning
 
-Data build process handles changes to compiler code and asset format changes by making sure relevant assets are recompiled.
+Data build process handles changes to compiler code and resource format changes by making sure relevant derived resources are recompiled.
 
 ## Dependency Processing
 
-Data build process reads asset dependencies from `.meta` files and those defined by the `AssetPathId` in order to determine the order in which the assets need to be processed and to determine if an asset needs to be rebuilt.
+Data build process reads resource dependencies from `.meta` files and those defined by the `ResourcePathId` in order to determine the order in which the source resources need to be processed and to determine if a derived resource needs to be rebuilt.
 
 A dependency filtering (by type) is required to be able to reduce the dependencies for various processes (i.e. include only the geometry in navmesh generation).
 

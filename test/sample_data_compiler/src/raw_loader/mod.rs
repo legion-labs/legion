@@ -3,10 +3,9 @@ mod raw_to_offline;
 
 use crate::offline_data::{self, CompilableResource};
 use legion_data_offline::resource::{
-    Project, Resource, ResourceId, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
-    ResourceType,
+    Project, Resource, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
-use legion_data_runtime::ContentId;
+use legion_data_runtime::{ResourceId, ResourceType};
 use legion_graphics_offline::psd::PsdFile;
 use serde::de::DeserializeOwned;
 use std::{
@@ -174,7 +173,7 @@ fn create_or_find_default(
                 let mut hasher = DefaultHasher::new();
                 name.hash(&mut hasher);
                 let resource_hash = hasher.finish();
-                let id = ResourceId::from(ContentId::new(kind.into(), resource_hash));
+                let id = ResourceId::new(kind, resource_hash);
                 project
                     .add_resource_with_id(
                         name.clone(),

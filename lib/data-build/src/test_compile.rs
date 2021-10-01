@@ -9,10 +9,10 @@ use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{Locale, Manifest, Platform, Target};
 use legion_data_offline::resource::ResourceRegistryOptions;
 use legion_data_offline::{
-    asset::AssetPathId,
-    resource::{Project, ResourceId, ResourcePathName, ResourceProcessor, ResourceRegistry},
+    resource::{Project, ResourcePathName, ResourceProcessor, ResourceRegistry},
+    ResourcePathId,
 };
-use legion_data_runtime::{AssetDescriptor, AssetLoader};
+use legion_data_runtime::{AssetDescriptor, AssetLoader, ResourceId};
 use multitext_resource::MultiTextResource;
 use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};
@@ -51,7 +51,7 @@ fn target_dir() -> PathBuf {
 
 fn create_resource(
     name: ResourcePathName,
-    deps: &[AssetPathId],
+    deps: &[ResourcePathId],
     project: &mut Project,
     resources: &mut ResourceRegistry,
 ) -> ResourceId {
@@ -123,7 +123,7 @@ fn compile_change_no_deps() {
         .content_store(&contentstore_path)
         .compiler_dir(target_dir());
 
-    let source = AssetPathId::from(resource_id);
+    let source = ResourcePathId::from(resource_id);
     let target = source.push(refs_asset::RefsAsset::TYPE);
 
     // compile the resource..
@@ -232,15 +232,15 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     );
     let res_d = create_resource(
         ResourcePathName::new("D"),
-        &[AssetPathId::from(res_e).push(refs_asset::RefsAsset::TYPE)],
+        &[ResourcePathId::from(res_e).push(refs_asset::RefsAsset::TYPE)],
         &mut project,
         &mut resources,
     );
     let res_b = create_resource(
         ResourcePathName::new("B"),
         &[
-            AssetPathId::from(res_c).push(refs_asset::RefsAsset::TYPE),
-            AssetPathId::from(res_e).push(refs_asset::RefsAsset::TYPE),
+            ResourcePathId::from(res_c).push(refs_asset::RefsAsset::TYPE),
+            ResourcePathId::from(res_e).push(refs_asset::RefsAsset::TYPE),
         ],
         &mut project,
         &mut resources,
@@ -248,8 +248,8 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     let res_a = create_resource(
         ResourcePathName::new("A"),
         &[
-            AssetPathId::from(res_b).push(refs_asset::RefsAsset::TYPE),
-            AssetPathId::from(res_d).push(refs_asset::RefsAsset::TYPE),
+            ResourcePathId::from(res_b).push(refs_asset::RefsAsset::TYPE),
+            ResourcePathId::from(res_d).push(refs_asset::RefsAsset::TYPE),
         ],
         &mut project,
         &mut resources,
@@ -294,7 +294,7 @@ fn intermediate_resource() {
     let pulled = build.source_pull().expect("successful pull");
     assert_eq!(pulled, 1);
 
-    let source_path = AssetPathId::from(source_id);
+    let source_path = ResourcePathId::from(source_id);
     let reversed_path = source_path.push(text_resource::TYPE_ID);
     let integer_path = reversed_path.push(integer_asset::IntegerAsset::TYPE);
 
@@ -321,12 +321,12 @@ fn intermediate_resource() {
     {
         let checksum = compile_output.resources[0].compiled_checksum.get();
         assert!(content_store.exists(checksum));
-        let resource_content = content_store.read(checksum).expect("asset content");
+        let resource_content = content_store.read(checksum).expect("resource content");
 
         let mut creator = TextResourceProc {};
         let resource = creator
             .read_resource(&mut &resource_content[..])
-            .expect("loaded assets");
+            .expect("loaded resource");
         let resource = resource.downcast_ref::<TextResource>().unwrap();
 
         assert_eq!(
@@ -347,7 +347,7 @@ fn intermediate_resource() {
                 integer_asset::IntegerAsset::TYPE,
                 &mut &resource_content[..],
             )
-            .expect("loaded assets");
+            .expect("loaded resource");
         let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 
         let stringified = resource.magic_value.to_string();
@@ -383,7 +383,7 @@ fn unnamed_cache_use() {
     //            D ---------> test(E) -> E
     //
     const NUM_OUTPUTS: usize = 5;
-    let target = AssetPathId::from(root_resource).push(refs_asset::RefsAsset::TYPE);
+    let target = ResourcePathId::from(root_resource).push(refs_asset::RefsAsset::TYPE);
 
     // first run - none of the resources from cache.
     {
@@ -505,7 +505,7 @@ fn named_path_cache_use() {
     let pulled = build.source_pull().expect("successful pull");
     assert_eq!(pulled, 1);
 
-    let source_path = AssetPathId::from(source_id);
+    let source_path = ResourcePathId::from(source_id);
     let split_text0_path = source_path.push_named(text_resource::TYPE_ID, "text_0");
     let split_text1_path = source_path.push_named(text_resource::TYPE_ID, "text_1");
     let integer_path_0 = split_text0_path.push(integer_asset::IntegerAsset::TYPE);
@@ -564,7 +564,7 @@ fn named_path_cache_use() {
                 integer_asset::IntegerAsset::TYPE,
                 &mut &resource_content[..],
             )
-            .expect("loaded assets");
+            .expect("loaded resource");
         let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 
         let stringified = resource.magic_value.to_string();
@@ -765,7 +765,7 @@ fn link() {
             .get_mut(&mut resources)
             .expect("existing resource");
         parent.content = String::from("test parent content");
-        parent.build_deps = vec![AssetPathId::from(child_id).push(refs_asset::RefsAsset::TYPE)];
+        parent.build_deps = vec![ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE)];
         project
             .add_resource(
                 ResourcePathName::new("parent"),
@@ -787,7 +787,7 @@ fn link() {
 
     // for now each resource is a separate file so we need to validate that the compile output and link output produce the same number of resources
 
-    let target = AssetPathId::from(parent_id).push(refs_asset::RefsAsset::TYPE);
+    let target = ResourcePathId::from(parent_id).push(refs_asset::RefsAsset::TYPE);
     let compile_output = build
         .compile_path(target, Target::Game, Platform::Windows, &Locale::new("en"))
         .expect("successful compilation");
@@ -847,7 +847,7 @@ fn verify_manifest() {
             .get_mut(&mut resources)
             .unwrap()
             .build_deps
-            .push(AssetPathId::from(child_id).push(refs_asset::RefsAsset::TYPE));
+            .push(ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE));
 
         project
             .add_resource(
@@ -870,7 +870,7 @@ fn verify_manifest() {
 
     let output_manifest_file = work_dir.path().join(&DataBuild::default_output_file());
 
-    let compile_path = AssetPathId::from(parent_resource).push(refs_asset::RefsAsset::TYPE);
+    let compile_path = ResourcePathId::from(parent_resource).push(refs_asset::RefsAsset::TYPE);
     let manifest = build
         .compile(
             compile_path,

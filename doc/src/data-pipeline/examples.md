@@ -24,7 +24,7 @@ Optimized for artist's workflow; focused around DCC tools.
 
 #### Offline Representation
 
-Optimized for tool editing (writing) & asset compilation; stripped from excess DCC format data.
+Optimized for tool editing (writing) & resource compilation; stripped from excess DCC format data.
 
 Filenames are in reality GUIDs (replaced below by names for simplicity). File names are stored in .meta for display.
 ```ignore
@@ -121,7 +121,7 @@ common.archive
 ```
 ## Data Model Example
 
-The big assets (like meshes, textures, animations, etc) will have their own data formats (across the whole pipeline) tailored to their use cases. The other - usually smaller assets - will benefit from using a default, go-to flexible data model. This model will allow to declare the data format (both offline and runtime) and allow to define data. 
+The big resources (like meshes, textures, animations, etc) will have their own data formats (across the whole pipeline) tailored to their use cases. The other - usually smaller resources - will benefit from using a default, go-to flexible data model. This model will allow to declare the data format (both offline and runtime) and allow to define data. 
 
 It will include features like:
 

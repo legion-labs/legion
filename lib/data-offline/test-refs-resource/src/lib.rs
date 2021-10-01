@@ -3,9 +3,10 @@
 //! It is used to test the data compilation process until we have a proper resource available.
 
 use legion_data_offline::{
-    asset::AssetPathId,
-    resource::{Resource, ResourceProcessor, ResourceType},
+    resource::{Resource, ResourceProcessor},
+    ResourcePathId,
 };
+use legion_data_runtime::ResourceType;
 
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +21,7 @@ pub struct TestResource {
     /// Resource's content.
     pub content: String,
     /// Resource's build dependencies.
-    pub build_deps: Vec<AssetPathId>,
+    pub build_deps: Vec<ResourcePathId>,
 }
 
 /// [`TestResource`]'s resource processor temporarily used for testings.
@@ -35,7 +36,7 @@ impl ResourceProcessor for TestResourceProc {
         })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
         resource
             .downcast_ref::<TestResource>()
             .unwrap()

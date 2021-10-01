@@ -16,8 +16,8 @@ use legion_data_compiler::compiler_cmd::{
 use legion_data_compiler::CompilerHash;
 use legion_data_compiler::{CompiledResource, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
-use legion_data_offline::{asset::AssetPathId, resource::Project};
-use legion_data_runtime::{AssetId, ContentType};
+use legion_data_offline::{resource::Project, ResourcePathId};
+use legion_data_runtime::ResourceType;
 use petgraph::algo;
 
 use crate::asset_file_writer::write_assetfile;
@@ -44,7 +44,7 @@ struct CompileOutput {
 /// yield the same compilation outcome.
 // todo(kstasik): `context_hash` should also include localization_id
 fn compute_context_hash(
-    transform: (ContentType, ContentType),
+    transform: (ResourceType, ResourceType),
     compiler_hash: CompilerHash,
     databuild_version: &'static str,
 ) -> u64 {
@@ -68,7 +68,8 @@ fn compute_context_hash(
 /// # use legion_data_build::{DataBuild, DataBuildOptions};
 /// # use legion_content_store::ContentStoreAddr;
 /// # use legion_data_compiler::{Locale, Platform, Target};
-/// # use legion_data_offline::{resource::{ResourceId, ResourceType}, asset::AssetPathId};
+/// # use legion_data_offline::ResourcePathId;
+/// # use legion_data_runtime::{ResourceId, ResourceType};
 /// # use std::str::FromStr;
 /// # let offline_anim = ResourceId::from_str("invalid").unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
@@ -79,7 +80,7 @@ fn compute_context_hash(
 ///
 /// build.source_pull().expect("successful source pull");
 /// let manifest_file = &DataBuild::default_output_file();
-/// let compile_path = AssetPathId::from(offline_anim).push(RUNTIME_ANIM);
+/// let compile_path = ResourcePathId::from(offline_anim).push(RUNTIME_ANIM);
 ///
 /// let manifest = build.compile(
 ///                         compile_path,
@@ -107,8 +108,8 @@ impl DataBuild {
         )
         .map_err(|_e| Error::IOError)?;
 
-        let content_store = HddContentStore::open(config.assetstore_path.clone())
-            .ok_or(Error::InvalidAssetStore)?;
+        let content_store = HddContentStore::open(config.contentstore_path.clone())
+            .ok_or(Error::InvalidContentStore)?;
 
         Ok(Self {
             build_index,
@@ -119,8 +120,8 @@ impl DataBuild {
     }
 
     pub(crate) fn open(config: &DataBuildOptions) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.assetstore_path.clone())
-            .ok_or(Error::InvalidAssetStore)?;
+        let content_store = HddContentStore::open(config.contentstore_path.clone())
+            .ok_or(Error::InvalidContentStore)?;
 
         let build_index = BuildIndex::open(&config.buildindex_path, Self::version())?;
         let project = build_index.open_project()?;
@@ -139,8 +140,8 @@ impl DataBuild {
         config: &DataBuildOptions,
         project_dir: &Path,
     ) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.assetstore_path.clone())
-            .ok_or(Error::InvalidAssetStore)?;
+        let content_store = HddContentStore::open(config.contentstore_path.clone())
+            .ok_or(Error::InvalidContentStore)?;
         match BuildIndex::open(&config.buildindex_path, Self::version()) {
             Ok(build_index) => {
                 let project = build_index.open_project()?;
@@ -180,7 +181,7 @@ impl DataBuild {
             let (resource_hash, resource_deps) = self.project.resource_info(*resource_id)?;
 
             if self.build_index.update_resource(
-                AssetPathId::from(*resource_id),
+                ResourcePathId::from(*resource_id),
                 Some(resource_hash),
                 resource_deps.clone(),
             ) {
@@ -205,7 +206,7 @@ impl DataBuild {
 
     /// Compile `compile_path` resource and all its dependencies in the build graph.
     ///
-    /// To compile a given `AssetPathId` it compiles all its dependent derived resources.
+    /// To compile a given `ResourcePathId` it compiles all its dependent derived resources.
     /// The specified `manifest_file` is updated with information about changed assets.
     ///
     /// Compilation results are stored in [`ContentStore`](`legion_content_store::ContentStore`)
@@ -214,7 +215,7 @@ impl DataBuild {
     /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
     pub fn compile(
         &mut self,
-        compile_path: AssetPathId,
+        compile_path: ResourcePathId,
         manifest_file: &Path,
         target: Target,
         platform: Platform,
@@ -284,10 +285,10 @@ impl DataBuild {
     #[allow(clippy::type_complexity)]
     fn compile_node(
         &mut self,
-        compile_node: &AssetPathId,
+        compile_node: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
-        dependencies: &[AssetPathId],
+        dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         target: Target,
         platform: Platform,
@@ -384,13 +385,13 @@ impl DataBuild {
         Ok((resource_infos, resource_references, stats))
     }
 
-    /// Compile a resource identified by [`AssetPathId`] and all its dependencies and update the *build index* with compilation results.
+    /// Compile a resource identified by [`ResourcePathId`] and all its dependencies and update the *build index* with compilation results.
     /// Returns a list of (id, checksum, size) of created resources and information about their dependencies.
     /// The returned results can be accessed by  [`legion_content_store::ContentStore`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
-    // TODO: The list might contain many versions of the same [`AssetId`] compiled for many contexts (platform, target, locale, etc).
+    // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many contexts (platform, target, locale, etc).
     fn compile_path(
         &mut self,
-        compile_path: AssetPathId,
+        compile_path: ResourcePathId,
         target: Target,
         platform: Platform,
         locale: &Locale,
@@ -599,7 +600,7 @@ impl DataBuild {
             //
             // for now, every derived resource gets an `assetfile` representation.
             //
-            let asset_id = AssetId::from(resource.compiled_path.content_id());
+            let asset_id = resource.compiled_path.content_id();
 
             let mut output: Vec<u8> = vec![];
             let resource_list = std::iter::once((asset_id, resource.compiled_checksum.get()));
@@ -608,10 +609,10 @@ impl DataBuild {
                 .filter(|r| r.is_reference_of(resource))
                 .map(|r| {
                     (
-                        AssetId::from(resource.compiled_path.content_id()),
+                        resource.compiled_path.content_id(),
                         (
-                            AssetId::from(r.compiled_reference.content_id()),
-                            AssetId::from(r.compiled_reference.content_id()),
+                            r.compiled_reference.content_id(),
+                            r.compiled_reference.content_id(),
                         ),
                     )
                 });
@@ -626,7 +627,7 @@ impl DataBuild {
             let checksum = self
                 .content_store
                 .store(&output)
-                .ok_or(Error::InvalidAssetStore)?;
+                .ok_or(Error::InvalidContentStore)?;
 
             let asset_file = CompiledResource {
                 path: resource.compiled_path.clone(),

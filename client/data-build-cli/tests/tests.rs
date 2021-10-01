@@ -3,8 +3,8 @@ use std::fs;
 use legion_content_store::ContentStoreAddr;
 use legion_data_build::DataBuildOptions;
 use legion_data_offline::{
-    asset::AssetPathId,
     resource::{Project, ResourcePathName, ResourceRegistryOptions},
+    ResourcePathId,
 };
 use legion_data_runtime::AssetDescriptor;
 
@@ -54,7 +54,7 @@ fn no_intermediate_resource() {
         resource_id
     };
 
-    let compile_path = AssetPathId::from(resource_id).push(refs_asset::RefsAsset::TYPE);
+    let compile_path = ResourcePathId::from(resource_id).push(refs_asset::RefsAsset::TYPE);
 
     let mut command = {
         let target = "game";
@@ -140,7 +140,7 @@ fn with_intermediate_resource() {
         resource_id
     };
 
-    let compile_path = AssetPathId::from(resource_id)
+    let compile_path = ResourcePathId::from(resource_id)
         .push(text_resource::TYPE_ID)
         .push(integer_asset::IntegerAsset::TYPE);
 

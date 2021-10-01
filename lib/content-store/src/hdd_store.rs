@@ -8,7 +8,7 @@ use crate::{ContentStore, ContentStoreAddr};
 
 /// Disk-based [`ContentStore`] implementation.
 ///
-/// All assets are assumed to be stored directly in a directory provided to [`HddContentStore::open`].
+/// All content is assumed to be stored directly in a directory provided to [`HddContentStore::open`].
 pub struct HddContentStore {
     address: ContentStoreAddr,
 }
@@ -22,7 +22,7 @@ impl HddContentStore {
         Some(Self { address: root_path })
     }
 
-    fn asset_path(&self, id: i128) -> PathBuf {
+    fn content_path(&self, id: i128) -> PathBuf {
         let bytes = id.to_be_bytes();
         let hex = hex::encode(bytes);
         self.address.0.clone().join(hex)
@@ -36,15 +36,15 @@ impl HddContentStore {
 
 impl ContentStore for HddContentStore {
     fn write(&mut self, id: i128, data: &[u8]) -> Option<()> {
-        let asset_path = self.asset_path(id);
+        let path = self.content_path(id);
 
-        if asset_path.exists() {
+        if path.exists() {
             Some(())
         } else {
             let mut file = OpenOptions::new()
                 .write(true)
                 .create_new(true)
-                .open(asset_path)
+                .open(path)
                 .ok()?;
 
             file.write_all(data).ok()
@@ -52,12 +52,12 @@ impl ContentStore for HddContentStore {
     }
 
     fn read(&self, id: i128) -> Option<Vec<u8>> {
-        let asset_path = self.asset_path(id);
-        fs::read(asset_path).ok()
+        let path = self.content_path(id);
+        fs::read(path).ok()
     }
 
     fn remove(&mut self, id: i128) {
-        let asset_path = self.asset_path(id);
-        let _res = fs::remove_file(asset_path);
+        let path = self.content_path(id);
+        let _res = fs::remove_file(path);
     }
 }

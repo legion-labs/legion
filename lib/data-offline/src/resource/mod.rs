@@ -49,7 +49,7 @@ pub trait ResourceProcessor {
     fn new_resource(&mut self) -> Box<dyn Resource>;
 
     /// Interface returning a list of resources that `resource` depends on for building.
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId>;
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId>;
 
     /// Interface defining serialization behavior of the resource.
     fn write_resource(
@@ -67,7 +67,7 @@ use std::any::Any;
 use std::any::TypeId;
 use std::io;
 
-use crate::asset::AssetPathId;
+use crate::ResourcePathId;
 
 pub use self::project::*;
 

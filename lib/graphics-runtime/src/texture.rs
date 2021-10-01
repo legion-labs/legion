@@ -1,6 +1,6 @@
 //! A module providing runtime texture related functionality.
 
-use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, AssetType};
+use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, ResourceType};
 
 /// Runtime texture.
 #[derive(Asset)]
@@ -21,7 +21,7 @@ pub struct TextureLoader {}
 impl AssetLoader for TextureLoader {
     fn load(
         &mut self,
-        _kind: AssetType,
+        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
         let mut rgba: Vec<u8> = vec![];

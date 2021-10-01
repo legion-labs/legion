@@ -1,8 +1,7 @@
-use crate::asset::AssetPathId;
+use crate::ResourcePathId;
 
 use crate::resource::{
     metadata::{Metadata, ResourceHash},
-    types::{ResourceId, ResourceType},
     ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
 };
 
@@ -17,7 +16,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use legion_data_runtime::{ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
+
+use super::new_resource_id;
 
 const METADATA_EXT: &str = "meta";
 
@@ -250,7 +252,7 @@ impl Project {
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceId, Error> {
-        let id = ResourceId::generate_new(kind);
+        let id = new_resource_id(kind);
         self.add_resource_with_id(name, kind, id, handle, registry)
     }
 
@@ -336,7 +338,7 @@ impl Project {
                 .map_err(Error::IOError)?;
 
             let (_written, build_deps) = resources
-                .serialize_resource(id.resource_type(), handle, &mut resource_file)
+                .serialize_resource(id.ty(), handle, &mut resource_file)
                 .map_err(Error::IOError)?;
             build_deps
         };
@@ -380,13 +382,16 @@ impl Project {
 
         let mut resource_file = File::open(resource_path).map_err(Error::IOError)?;
         let handle = resources
-            .deserialize_resource(id.resource_type(), &mut resource_file)
+            .deserialize_resource(id.ty(), &mut resource_file)
             .map_err(Error::IOError)?;
         Ok(handle)
     }
 
     /// Returns information about a given resource from its `.meta` file.
-    pub fn resource_info(&self, id: ResourceId) -> Result<(ResourceHash, Vec<AssetPathId>), Error> {
+    pub fn resource_info(
+        &self,
+        id: ResourceId,
+    ) -> Result<(ResourceHash, Vec<ResourcePathId>), Error> {
         let meta = self.read_meta(id)?;
         let resource_hash = meta.resource_hash();
         let dependencies = meta.dependencies;
@@ -518,15 +523,16 @@ impl fmt::Debug for Project {
 mod tests {
     use std::{fs::File, path::Path, str::FromStr};
 
+    use legion_data_runtime::ResourceType;
     use tempfile::TempDir;
 
     use crate::resource::project::Project;
     use crate::{
-        asset::AssetPathId,
         resource::{
             Resource, ResourcePathName, ResourceProcessor, ResourceRegistry,
-            ResourceRegistryOptions, ResourceType,
+            ResourceRegistryOptions,
         },
+        ResourcePathId,
     };
 
     use super::ResourceDb;
@@ -551,7 +557,7 @@ mod tests {
     #[derive(Resource)]
     struct NullResource {
         content: isize,
-        dependencies: Vec<AssetPathId>,
+        dependencies: Vec<ResourcePathId>,
     }
 
     struct NullResourceProc {}
@@ -563,7 +569,7 @@ mod tests {
             })
         }
 
-        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
             resource
                 .downcast_ref::<NullResource>()
                 .unwrap()
@@ -620,7 +626,7 @@ mod tests {
                 let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
                 reader.read_exact(&mut buf)?;
                 res.dependencies
-                    .push(AssetPathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
+                    .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
             }
 
             Ok(resource)
@@ -655,7 +661,7 @@ mod tests {
             .get_mut(&mut resources)
             .unwrap()
             .dependencies
-            .push(AssetPathId::from(texture));
+            .push(ResourcePathId::from(texture));
         let material = project
             .add_resource(
                 ResourcePathName::new("body.material"),
@@ -673,7 +679,7 @@ mod tests {
             .get_mut(&mut resources)
             .unwrap()
             .dependencies
-            .push(AssetPathId::from(material));
+            .push(ResourcePathId::from(material));
         let geometry = project
             .add_resource(
                 ResourcePathName::new("hero.geometry"),
@@ -696,8 +702,10 @@ mod tests {
             .new_resource(RESOURCE_ACTOR)
             .unwrap()
             .typed::<NullResource>();
-        actor.get_mut(&mut resources).unwrap().dependencies =
-            vec![AssetPathId::from(geometry), AssetPathId::from(skeleton)];
+        actor.get_mut(&mut resources).unwrap().dependencies = vec![
+            ResourcePathId::from(geometry),
+            ResourcePathId::from(skeleton),
+        ];
         let _actor = project
             .add_resource(
                 ResourcePathName::new("hero.actor"),
@@ -728,7 +736,7 @@ mod tests {
             .get_mut(resources)
             .unwrap()
             .dependencies
-            .push(AssetPathId::from(texture));
+            .push(ResourcePathId::from(texture));
 
         let _material = project
             .add_resource(

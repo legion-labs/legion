@@ -1,4 +1,3 @@
-use legion_data_runtime::AssetId;
 use sample_data_compiler::{
     offline_data,
     offline_to_runtime::{find_derived_path, find_derived_path_opt},
@@ -16,7 +15,7 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
         let children = offline
             .children
             .iter()
-            .map(|child_path| AssetId::from(find_derived_path(child_path).content_id()))
+            .map(|child_path| find_derived_path(child_path).content_id())
             .collect();
         let mut components: Vec<Box<dyn runtime_data::Component>> = Vec::new();
         for component in &offline.components {

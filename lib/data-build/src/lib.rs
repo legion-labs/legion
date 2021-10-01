@@ -22,14 +22,14 @@
 //! To support incremental building the data build is persisted in a file on disk. This file is called `build.index`.
 //! It contains:
 //! - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
-//! - Records of compiled assets that are stored in a [`ContentStore`](`legion_content_store::ContentStore`).
+//! - Records of derived resources that are stored in a [`ContentStore`](`legion_content_store::ContentStore`).
 //!
 //! For other parts of the data pipeline see [`legion_data_offline`], [`legion_data_runtime`] and [`legion_data_compiler`] modules.
 //!
 //! # Structure on disk
 //!
-//! An example of a [`project`] with 1 source file, 2 offline resources and 2 compiled assets on disk looks as follows.
-//! (where **temp/** is an build output directory acting as a *local compiled content store*)
+//! An example of a [`project`] with 1 source file, 2 offline resources and 2 derived resources on disk looks as follows.
+//! (where **temp/** is an build output directory acting as a *local content store*)
 //! ```markdown
 //!  ./
 //!  | + source/
@@ -82,7 +82,7 @@
 //!     * checksum of the resource's content (available in [`.meta`] file).
 //!     * checksum of content of each of the resource's dependencies (list of dependencies is in [`.meta`] file)
 //! * For **derived resource**:
-//!     * checksum of the output of the directly dependent data compilation (as described in the [`AssetPathId`](`legion_data_offline::asset::AssetPathId`))
+//!     * checksum of the output of the directly dependent data compilation (as described in the [`ResourcePathId`](`legion_data_offline::ResourcePathId`))
 //!
 //! #### `ContextHash` - the signature of the compilation context
 //!
@@ -176,8 +176,7 @@
 #![allow()]
 #![warn(missing_docs)]
 
-use legion_data_offline::asset::AssetPathId;
-use legion_data_runtime::AssetId;
+use legion_data_offline::ResourcePathId;
 use std::io;
 
 #[derive(Debug)]
@@ -197,8 +196,8 @@ pub enum Error {
     CircularDependency,
     /// Index version mismatch.
     VersionMismatch,
-    /// Compiled Asset Store invalid.
-    InvalidAssetStore,
+    /// Content Store invalid.
+    InvalidContentStore,
     /// Project invalid.
     InvalidProject,
     /// Manifest file error.
@@ -221,7 +220,7 @@ impl std::fmt::Display for Error {
             Error::IntegrityFailure => write!(f, "IntegrityFailure"),
             Error::CircularDependency => write!(f, "CircularDependency"),
             Error::VersionMismatch => write!(f, "VersionMismatch"),
-            Error::InvalidAssetStore => write!(f, "InvalidCompiledAssetStore"),
+            Error::InvalidContentStore => write!(f, "InvalidContentStore"),
             Error::InvalidProject => write!(f, "InvalidProject"),
             Error::InvalidManifest => write!(f, "InvalidManifest"),
             Error::LinkFailed => write!(f, "LinkFailed"),
@@ -247,10 +246,10 @@ impl From<legion_data_offline::resource::Error> for Error {
 ///
 /// This is a temporary solution that will be replaced by a **packaging** process.
 /// For now, we simply create a runtime manifest by filtering out non-asset resources
-/// and by identifying content by `AssetId` - which runtime operates on.
+/// and by identifying content by `ResourceId` - which runtime operates on.
 pub fn generate_rt_manifest(
     input: legion_data_compiler::Manifest,
-    filter: fn(&AssetPathId) -> bool,
+    filter: fn(&ResourcePathId) -> bool,
 ) -> legion_data_runtime::manifest::Manifest {
     let mut output = legion_data_runtime::manifest::Manifest::default();
 
@@ -261,11 +260,7 @@ pub fn generate_rt_manifest(
         .collect::<Vec<_>>();
 
     for resource in runtime_resources {
-        output.insert(
-            AssetId::from(resource.path.content_id()),
-            resource.checksum,
-            resource.size,
-        );
+        output.insert(resource.path.content_id(), resource.checksum, resource.size);
     }
     output
 }

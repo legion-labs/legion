@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
-use legion_data_offline::{
-    asset::AssetPathId,
-    resource::{ResourceId, ResourcePathName},
-};
-use legion_data_runtime::ContentType;
+use legion_data_offline::{resource::ResourcePathName, ResourcePathId};
+use legion_data_runtime::{ResourceId, ResourceType};
 
 use crate::offline_data;
 
@@ -33,7 +30,7 @@ fn source_resource(path: &str) -> &str {
     }
 }
 
-fn push_transforms(mut id: AssetPathId, path: &str) -> AssetPathId {
+fn push_transforms(mut id: ResourcePathId, path: &str) -> ResourcePathId {
     let mut l = path.rfind('(').unwrap_or(0);
     let r = l + {
         let path = &path[l..];
@@ -69,7 +66,7 @@ fn push_transforms(mut id: AssetPathId, path: &str) -> AssetPathId {
             }
         };
 
-        let kind = ContentType::new(asset_type.as_bytes());
+        let kind = ResourceType::new(asset_type.as_bytes());
         if let Some(name) = name {
             id = id.push_named(kind, name);
         } else {
@@ -83,13 +80,13 @@ fn push_transforms(mut id: AssetPathId, path: &str) -> AssetPathId {
 }
 
 // Resolved a raw representation of asset_path such as "runtime_texture(offline_texture(image/ground.psd, 'albedo'))"
-// into a offline AssetPathId such as "Some(0x13b5a84e000000007f8d831386fd3fef|1960578643_albedo)"
+// into a offline ResourcePathId such as "Some(0x13b5a84e000000007f8d831386fd3fef|1960578643_albedo)"
 fn lookup_asset_path(
     references: &HashMap<ResourcePathName, ResourceId>,
     path: &str,
-) -> Option<AssetPathId> {
+) -> Option<ResourcePathId> {
     let source = source_resource(path);
-    let output = lookup_reference(references, source).map(AssetPathId::from);
+    let output = lookup_reference(references, source).map(ResourcePathId::from);
     let output = if let Some(id) = output {
         Some(push_transforms(id, path))
     } else {
@@ -103,7 +100,7 @@ fn lookup_asset_path(
 
 impl FromRaw<raw_data::Entity> for offline_data::Entity {
     fn from_raw(raw: raw_data::Entity, references: &HashMap<ResourcePathName, ResourceId>) -> Self {
-        let children: Vec<AssetPathId> = raw
+        let children: Vec<ResourcePathId> = raw
             .children
             .iter()
             .flat_map(|path| lookup_asset_path(references, path))

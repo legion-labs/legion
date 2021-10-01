@@ -49,7 +49,7 @@ mod tests {
         let json_data = r#"
         {
             "_class" : "Entity",
-            "_base" : "AssetPathId",
+            "_base" : "ResourcePathId",
             "name": "EntityA",
             "test_bool" : true,
             "test_int" : 345345,

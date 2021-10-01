@@ -527,6 +527,7 @@ name = "binary-resource"
 version = "0.1.0"
 dependencies = [
  "legion-data-offline",
+ "legion-data-runtime",
  "serde",
 ]
 
@@ -3514,6 +3515,7 @@ name = "multitext-resource"
 version = "0.1.0"
 dependencies = [
  "legion-data-offline",
+ "legion-data-runtime",
  "serde",
  "serde_json",
 ]
@@ -4684,6 +4686,7 @@ name = "refs-resource"
 version = "0.1.0"
 dependencies = [
  "legion-data-offline",
+ "legion-data-runtime",
  "serde",
  "serde_json",
 ]
@@ -6073,6 +6076,7 @@ name = "text-resource"
 version = "0.1.0"
 dependencies = [
  "legion-data-offline",
+ "legion-data-runtime",
  "serde",
  "serde_json",
 ]

@@ -20,8 +20,8 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        legion_graphics_offline::texture::TYPE_ID.content(),
-        legion_graphics_runtime::Texture::TYPE.content(),
+        legion_graphics_offline::texture::TYPE_ID,
+        legion_graphics_runtime::Texture::TYPE,
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,

@@ -3,9 +3,10 @@
 use std::any::{Any, TypeId};
 
 use legion_data_offline::{
-    asset::AssetPathId,
-    resource::{Resource, ResourceProcessor, ResourceType},
+    resource::{Resource, ResourceProcessor},
+    ResourcePathId,
 };
+use legion_data_runtime::ResourceType;
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -19,8 +20,8 @@ pub trait CompilableResource {
 #[derive(Resource, Default, Serialize, Deserialize)]
 pub struct Entity {
     pub name: String,
-    pub children: Vec<AssetPathId>,
-    pub parent: Option<AssetPathId>,
+    pub children: Vec<ResourcePathId>,
+    pub parent: Option<ResourcePathId>,
     pub components: Vec<Box<dyn Component>>,
 }
 
@@ -37,7 +38,7 @@ impl ResourceProcessor for EntityProcessor {
         Box::new(Entity::default())
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
         let entity = resource.downcast_ref::<Entity>().unwrap();
         entity.parent.iter().cloned().collect()
     }
@@ -108,7 +109,7 @@ impl Component for Transform {}
 
 #[derive(Serialize, Deserialize)]
 pub struct Visual {
-    pub renderable_geometry: Option<AssetPathId>,
+    pub renderable_geometry: Option<ResourcePathId>,
     pub shadow_receiver: bool,
     pub shadow_caster_sun: bool,
     pub shadow_caster_local: bool,
@@ -172,7 +173,7 @@ impl Component for Light {}
 #[derive(Serialize, Deserialize)]
 pub struct Physics {
     pub dynamic: bool,
-    pub collision_geometry: Option<AssetPathId>,
+    pub collision_geometry: Option<ResourcePathId>,
 }
 
 #[typetag::serde]
@@ -182,7 +183,7 @@ impl Component for Physics {}
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct Instance {
-    pub original: Option<AssetPathId>,
+    pub original: Option<ResourcePathId>,
 }
 
 impl CompilableResource for Instance {
@@ -198,7 +199,7 @@ impl ResourceProcessor for InstanceProcessor {
         Box::new(Instance { original: None })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
         let instance = resource.downcast_ref::<Instance>().unwrap();
         instance.original.iter().cloned().collect()
     }
@@ -250,9 +251,9 @@ impl ResourceProcessor for MeshProcessor {
         })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
         let mesh = resource.downcast_ref::<Mesh>().unwrap();
-        let mut material_refs: Vec<AssetPathId> = mesh
+        let mut material_refs: Vec<ResourcePathId> = mesh
             .sub_meshes
             .iter()
             .filter_map(|sub_mesh| sub_mesh.material.as_ref())
@@ -294,5 +295,5 @@ pub struct SubMesh {
     pub normals: Vec<Vec3>,
     pub uvs: Vec<Vec2>,
     pub indices: Vec<u16>,
-    pub material: Option<AssetPathId>,
+    pub material: Option<ResourcePathId>,
 }

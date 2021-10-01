@@ -1,8 +1,8 @@
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
 use legion_data_runtime::{
-    manifest::Manifest, AssetDescriptor, AssetId, AssetRegistry, AssetRegistryOptions,
-    HandleUntyped,
+    manifest::Manifest, AssetDescriptor, AssetRegistry, AssetRegistryOptions, HandleUntyped,
+    ResourceId,
 };
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
@@ -35,7 +35,7 @@ impl AssetRegistrySettings {
 }
 
 #[derive(Default)]
-struct AssetLoadingStates(BTreeMap<AssetId, LoadingState>);
+struct AssetLoadingStates(BTreeMap<ResourceId, LoadingState>);
 
 enum LoadingState {
     Pending,
@@ -44,23 +44,23 @@ enum LoadingState {
 }
 
 #[derive(Default)]
-struct AssetHandles(BTreeMap<AssetId, HandleUntyped>);
+struct AssetHandles(BTreeMap<ResourceId, HandleUntyped>);
 
 impl AssetHandles {
-    fn get(&self, asset_id: AssetId) -> Option<&HandleUntyped> {
+    fn get(&self, asset_id: ResourceId) -> Option<&HandleUntyped> {
         self.0.get(&asset_id)
     }
 }
 
 #[derive(Default)]
-struct AssetToEntityMap(BTreeMap<AssetId, Entity>);
+struct AssetToEntityMap(BTreeMap<ResourceId, Entity>);
 
 impl AssetToEntityMap {
-    fn get(&self, asset_id: AssetId) -> Option<Entity> {
+    fn get(&self, asset_id: ResourceId) -> Option<Entity> {
         self.0.get(&asset_id).copied()
     }
 
-    fn insert(&mut self, asset_id: AssetId, entity: Entity) {
+    fn insert(&mut self, asset_id: ResourceId, entity: Entity) {
         self.0.insert(asset_id, entity);
     }
 }
@@ -106,7 +106,7 @@ impl AssetRegistryPlugin {
         mut asset_handles: ResMut<'_, AssetHandles>,
         settings: ResMut<'_, AssetRegistrySettings>,
     ) {
-        if let Ok(asset_id) = AssetId::from_str(&settings.root_asset) {
+        if let Ok(asset_id) = ResourceId::from_str(&settings.root_asset) {
             Self::load_asset(
                 &mut registry,
                 &mut asset_loading_states,
@@ -122,7 +122,7 @@ impl AssetRegistryPlugin {
         registry: &mut ResMut<'_, AssetRegistry>,
         asset_loading_states: &mut ResMut<'_, AssetLoadingStates>,
         asset_handles: &mut ResMut<'_, AssetHandles>,
-        asset_id: AssetId,
+        asset_id: ResourceId,
     ) {
         if let Some(_handle) = asset_handles.get(asset_id) {
             // already in asset list
@@ -156,7 +156,7 @@ impl AssetRegistryPlugin {
                 LoadingState::Pending => {
                     let handle = asset_handles.get(*asset_id).unwrap();
                     if handle.is_loaded(&registry) {
-                        match asset_id.asset_type() {
+                        match asset_id.ty() {
                             runtime_data::Entity::TYPE => {
                                 if let Some(runtime_entity) =
                                     handle.get::<runtime_data::Entity>(&registry)
@@ -221,11 +221,7 @@ impl AssetRegistryPlugin {
                                 }
                             }
                             _ => {
-                                eprintln!(
-                                    "Unhandled type: {}, asset: {}",
-                                    asset_id.asset_type(),
-                                    asset_id
-                                );
+                                eprintln!("Unhandled type: {}, asset: {}", asset_id.ty(), asset_id);
                             }
                         }
 
@@ -252,7 +248,7 @@ impl AssetRegistryPlugin {
         drop(registry);
     }
 
-    fn add_secondary_asset(secondary_assets: &mut Vec<AssetId>, asset_id: Option<AssetId>) {
+    fn add_secondary_asset(secondary_assets: &mut Vec<ResourceId>, asset_id: Option<ResourceId>) {
         if let Some(asset_id) = asset_id {
             secondary_assets.push(asset_id);
         }
@@ -261,7 +257,7 @@ impl AssetRegistryPlugin {
     fn create_entity(
         commands: &mut Commands<'_>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        secondary_assets: &mut Vec<AssetId>,
+        secondary_assets: &mut Vec<ResourceId>,
         runtime_entity: &runtime_data::Entity,
     ) -> Entity {
         let mut entity = commands.spawn();
@@ -315,7 +311,7 @@ impl AssetRegistryPlugin {
 
     fn create_instance(
         commands: &mut Commands<'_>,
-        secondary_assets: &mut Vec<AssetId>,
+        secondary_assets: &mut Vec<ResourceId>,
         instance: &runtime_data::Instance,
     ) -> Entity {
         let entity = commands.spawn();
@@ -327,7 +323,7 @@ impl AssetRegistryPlugin {
 
     fn create_material(
         _commands: &mut Commands<'_>,
-        secondary_assets: &mut Vec<AssetId>,
+        secondary_assets: &mut Vec<ResourceId>,
         material: &legion_graphics_runtime::Material,
     ) {
         Self::add_secondary_asset(secondary_assets, material.albedo);
@@ -338,7 +334,7 @@ impl AssetRegistryPlugin {
 
     fn create_mesh(
         _commands: &mut Commands<'_>,
-        secondary_assets: &mut Vec<AssetId>,
+        secondary_assets: &mut Vec<ResourceId>,
         mesh: &runtime_data::Mesh,
     ) {
         for sub_mesh in &mesh.sub_meshes {

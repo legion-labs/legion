@@ -1,30 +1,30 @@
-use legion_data_offline::{asset::AssetPathId, resource::ResourceType};
-use legion_data_runtime::{AssetDescriptor, AssetId};
+use legion_data_offline::ResourcePathId;
+use legion_data_runtime::{AssetDescriptor, ResourceId};
 
 use crate::{
     offline_data::{self, CompilableResource},
     runtime_data,
 };
 
-pub fn find_derived_path(path: &AssetPathId) -> AssetPathId {
-    let offline_type = ResourceType::from(path.content_type());
+pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
+    let offline_type = path.content_type();
     match offline_type {
-        offline_data::Entity::TYPE_ID => path.push(runtime_data::Entity::TYPE.content()),
-        offline_data::Instance::TYPE_ID => path.push(runtime_data::Instance::TYPE.content()),
-        offline_data::Mesh::TYPE_ID => path.push(runtime_data::Mesh::TYPE.content()),
+        offline_data::Entity::TYPE_ID => path.push(runtime_data::Entity::TYPE),
+        offline_data::Instance::TYPE_ID => path.push(runtime_data::Instance::TYPE),
+        offline_data::Mesh::TYPE_ID => path.push(runtime_data::Mesh::TYPE),
         legion_graphics_offline::psd::TYPE_ID => path
-            .push(legion_graphics_offline::texture::TYPE_ID.content())
-            .push(legion_graphics_runtime::Texture::TYPE.content()),
+            .push(legion_graphics_offline::texture::TYPE_ID)
+            .push(legion_graphics_runtime::Texture::TYPE),
         legion_graphics_offline::material::TYPE_ID => {
-            path.push(legion_graphics_runtime::Material::TYPE.content())
+            path.push(legion_graphics_runtime::Material::TYPE)
         }
         _ => {
-            panic!("unrecognized offline type {}", offline_type.content());
+            panic!("unrecognized offline type {}", offline_type);
         }
     }
 }
 
-pub fn find_derived_path_opt(path: &Option<AssetPathId>) -> Option<AssetId> {
+pub fn find_derived_path_opt(path: &Option<ResourcePathId>) -> Option<ResourceId> {
     path.as_ref()
-        .map(|path| AssetId::from(find_derived_path(path).content_id()))
+        .map(|path| find_derived_path(path).content_id())
 }

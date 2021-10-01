@@ -2,7 +2,7 @@
 
 use std::convert::TryFrom;
 
-use legion_data_runtime::{Asset, AssetDescriptor, AssetId, AssetLoader, AssetType, ContentId};
+use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, ResourceId, ResourceType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -10,13 +10,13 @@ use byteorder::{LittleEndian, ReadBytesExt};
 #[derive(Asset)]
 pub struct Material {
     /// Albedo texture reference.
-    pub albedo: Option<AssetId>,
+    pub albedo: Option<ResourceId>,
     /// Normal texture reference.
-    pub normal: Option<AssetId>,
+    pub normal: Option<ResourceId>,
     /// Roughness texture reference.
-    pub roughness: Option<AssetId>,
+    pub roughness: Option<ResourceId>,
     /// Metalness texture reference.
-    pub metalness: Option<AssetId>,
+    pub metalness: Option<ResourceId>,
 }
 
 impl AssetDescriptor for Material {
@@ -28,15 +28,15 @@ impl AssetDescriptor for Material {
 #[derive(Default)]
 pub struct MaterialLoader {}
 
-fn read_asset_id(reader: &mut dyn std::io::Read) -> Result<Option<AssetId>, std::io::Error> {
+fn read_asset_id(reader: &mut dyn std::io::Read) -> Result<Option<ResourceId>, std::io::Error> {
     let underlying = reader.read_u128::<LittleEndian>()?;
-    Ok(ContentId::try_from(underlying).ok().map(AssetId::from))
+    Ok(ResourceId::try_from(underlying).ok().map(ResourceId::from))
 }
 
 impl AssetLoader for MaterialLoader {
     fn load(
         &mut self,
-        _kind: AssetType,
+        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
         let albedo = read_asset_id(reader)?;
