@@ -10,48 +10,48 @@ use std::{
 
 use crate::ResourceType;
 
-/// Checksum of a runtime asset.
+/// Checksum of a resource.
 #[derive(Copy, Clone, Debug, Eq)]
-pub struct AssetChecksum(i128);
+pub struct ResourceChecksum(i128);
 
-impl AssetChecksum {
+impl ResourceChecksum {
     /// Retrieve value of checksum as a signed 128 bit integer.
     pub fn get(&self) -> i128 {
         self.0
     }
 }
 
-impl PartialEq for AssetChecksum {
+impl PartialEq for ResourceChecksum {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
 }
 
-impl Hash for AssetChecksum {
+impl Hash for ResourceChecksum {
     fn hash<H: Hasher>(&self, mut state: &mut H) {
         self.0.hash(&mut state);
     }
 }
 
-impl From<i128> for AssetChecksum {
+impl From<i128> for ResourceChecksum {
     fn from(value: i128) -> Self {
         Self(value)
     }
 }
 
-impl From<AssetChecksum> for i128 {
-    fn from(value: AssetChecksum) -> Self {
+impl From<ResourceChecksum> for i128 {
+    fn from(value: ResourceChecksum) -> Self {
         value.0
     }
 }
 
-impl fmt::Display for AssetChecksum {
+impl fmt::Display for ResourceChecksum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:032x}", self.0))
     }
 }
 
-impl FromStr for AssetChecksum {
+impl FromStr for ResourceChecksum {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -60,7 +60,7 @@ impl FromStr for AssetChecksum {
     }
 }
 
-impl Serialize for AssetChecksum {
+impl Serialize for ResourceChecksum {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -75,7 +75,7 @@ impl Serialize for AssetChecksum {
     }
 }
 
-impl<'de> Deserialize<'de> for AssetChecksum {
+impl<'de> Deserialize<'de> for ResourceChecksum {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
