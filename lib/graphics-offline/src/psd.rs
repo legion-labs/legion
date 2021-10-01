@@ -11,15 +11,15 @@ pub const TYPE_ID: ResourceType = ResourceType::new(b"psd");
 /// Photoshop Document file.
 #[derive(Resource)]
 pub struct PsdFile {
-    content: Option<Vec<u8>>,
+    content: Option<(psd::Psd, Vec<u8>)>,
 }
 
 impl PsdFile {
     /// Creates a Photoshop Document from byte array.
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         match psd::Psd::from_bytes(bytes) {
-            Ok(_) => Some(Self {
-                content: Some(bytes.to_vec()),
+            Ok(psd) => Some(Self {
+                content: Some((psd, bytes.to_vec())),
             }),
             Err(e) => {
                 eprintln!("{}", e);
@@ -28,10 +28,29 @@ impl PsdFile {
         }
     }
 
+    /// Returns a list of names of available layers.
+    pub fn layer_list(&self) -> Option<Vec<&str>> {
+        let (psd, _) = self.content.as_ref()?;
+        Some(psd.layers().iter().map(|l| l.name()).collect::<Vec<_>>())
+    }
+
+    /// Creates a texture from a specified layer name.
+    pub fn layer_texture(&self, name: &str) -> Option<Texture> {
+        let (psd, _) = self.content.as_ref()?;
+        let layer = psd.layer_by_name(name)?;
+
+        let texture = Texture {
+            kind: TextureType::_2D,
+            width: psd.width(),
+            height: psd.height(),
+            rgba: layer.rgba(),
+        };
+        Some(texture)
+    }
+
     /// Creates a texture by merging all the psd layers.
     pub fn final_texture(&self) -> Option<Texture> {
-        let content = self.content.as_ref()?;
-        let psd = psd::Psd::from_bytes(content).ok()?;
+        let (psd, _) = self.content.as_ref()?;
 
         let texture = Texture {
             kind: TextureType::_2D,
@@ -65,7 +84,7 @@ impl ResourceProcessor for PsdFileProcessor {
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let psd = resource.downcast_ref::<PsdFile>().unwrap();
-        if let Some(content) = &psd.content {
+        if let Some((_, content)) = &psd.content {
             writer.write_all(content).unwrap();
             Ok(content.len())
         } else {
@@ -80,10 +99,10 @@ impl ResourceProcessor for PsdFileProcessor {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes)?;
         let content = if !bytes.is_empty() {
-            let _psd = psd::Psd::from_bytes(&bytes).map_err(|_e| {
+            let psd = psd::Psd::from_bytes(&bytes).map_err(|_e| {
                 std::io::Error::new(std::io::ErrorKind::BrokenPipe, "failed to read .psd file")
             })?;
-            Some(bytes)
+            Some((psd, bytes))
         } else {
             None
         };

@@ -219,6 +219,24 @@ impl CompilerContext<'_> {
             Err(CompilerError::ResourceNotFound)
         }
     }
+
+    /// Stores `compiled_content` in the content store.
+    ///
+    /// Returned [`CompiledResource`] contains details about stored content.
+    pub fn store(
+        content_store: &mut dyn ContentStore,
+        compiled_content: &[u8],
+        path: ResourcePathId,
+    ) -> Result<CompiledResource, CompilerError> {
+        let checksum = content_store
+            .store(compiled_content)
+            .ok_or(CompilerError::AssetStoreError)?;
+        Ok(CompiledResource {
+            path,
+            checksum: checksum.into(),
+            size: compiled_content.len(),
+        })
+    }
 }
 
 /// Defines data compiler properties.

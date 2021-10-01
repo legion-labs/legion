@@ -483,6 +483,7 @@ impl DataBuild {
                 let transform = compile_node.last_transform().unwrap();
 
                 //  'name' is dropped as we always compile input as a whole.
+                let expected_name = compile_node.name();
                 let compile_node = compile_node.to_unnamed();
 
                 //
@@ -543,7 +544,9 @@ impl DataBuild {
                         let source = compiled
                             .iter()
                             .find(|&compiled| compiled.compiled_path == direct_dependency)
-                            .unwrap();
+                            .unwrap_or_else(|| {
+                                panic!("compilation output of: {}", direct_dependency)
+                            });
 
                         // this is how we truncate the 128 bit long checksum
                         // and convert it to a 64 bit source_hash.
@@ -566,6 +569,19 @@ impl DataBuild {
                     locale,
                     compiler_path,
                 )?;
+
+                // we check if the expected named output was produced.
+                if let Some(expected_name) = expected_name {
+                    if !resource_infos.iter().any(|info| {
+                        if let Some(name) = info.compiled_path.name() {
+                            name == expected_name
+                        } else {
+                            false
+                        }
+                    }) {
+                        return Err(Error::OutputNotPresent);
+                    }
+                }
 
                 accumulated_dependencies.extend(resource_infos.iter().map(|res| {
                     CompiledResource {

@@ -9,9 +9,10 @@ use legion_data_compiler::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
-    CompiledResource, CompilerHash, Locale, Platform, Target,
+    CompilerHash, Locale, Platform, Target,
 };
 use legion_data_offline::resource::ResourceRegistryOptions;
+use legion_graphics_offline::psd::PsdFile;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -55,28 +56,46 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         .get::<legion_graphics_offline::psd::PsdFile>(&resources)
         .unwrap();
 
-    let final_image = resource
-        .final_texture()
-        .ok_or(CompilerError::CompilationError(
-            "Failed to generate texture",
-        ))?;
+    let mut compiled_resources = vec![];
 
-    let compiled_asset = serde_json::to_vec(&final_image)
-        .map_err(|_e| CompilerError::CompilationError("Failed to serialize"))?;
-
-    let checksum = context
-        .content_store
-        .store(&compiled_asset)
-        .ok_or(CompilerError::AssetStoreError)?;
-
-    let asset = CompiledResource {
-        path: context.compile_path,
-        checksum: checksum.into(),
-        size: compiled_asset.len(),
+    let compiled_content = {
+        let final_image = resource
+            .final_texture()
+            .ok_or(CompilerError::CompilationError(
+                "Failed to generate texture",
+            ))?;
+        serde_json::to_vec(&final_image)
+            .map_err(|_e| CompilerError::CompilationError("Failed to serialize"))?
     };
 
+    compiled_resources.push(CompilerContext::store(
+        context.content_store,
+        &compiled_content,
+        context.compile_path.clone(),
+    )?);
+
+    let compile_layer = |psd: &PsdFile, layer_name| -> Result<Vec<u8>, CompilerError> {
+        let image = psd.layer_texture(layer_name).unwrap();
+        serde_json::to_vec(&image)
+            .map_err(|_e| CompilerError::CompilationError("Failed to serialize"))
+    };
+
+    for layer_name in resource
+        .layer_list()
+        .ok_or(CompilerError::CompilationError(
+            "Failed to extract layer names",
+        ))?
+    {
+        let pixels = compile_layer(resource, layer_name)?;
+        compiled_resources.push(CompilerContext::store(
+            context.content_store,
+            &pixels,
+            context.compile_path.new_named(layer_name),
+        )?);
+    }
+
     Ok(CompilationOutput {
-        compiled_resources: vec![asset],
+        compiled_resources,
         resource_references: vec![],
     })
 }

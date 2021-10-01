@@ -179,12 +179,21 @@ impl ResourcePathId {
         cloned
     }
 
-    /// Returns true if there is 'name' part in the path, false otherwise.
+    /// Returns true if last transformation contains `name` part, false otherwise.
     pub fn is_named(&self) -> bool {
         if let Some((_, name)) = self.transforms.last() {
             !name.is_none()
         } else {
             false
+        }
+    }
+
+    /// Returns `name` part of the id.
+    pub fn name(&self) -> Option<&str> {
+        if let Some((_, Some(name))) = self.transforms.last() {
+            Some(name)
+        } else {
+            None
         }
     }
 

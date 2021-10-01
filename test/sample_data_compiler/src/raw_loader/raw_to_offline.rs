@@ -48,7 +48,7 @@ fn push_transforms(mut id: ResourcePathId, path: &str) -> ResourcePathId {
         }
 
         l = left.rfind('(').unwrap_or(0);
-        let asset_type = &left[l..];
+        let asset_type = left[l..].trim_start_matches('(');
 
         let name = {
             let r = right.find(')').unwrap_or(right.len() - 1);

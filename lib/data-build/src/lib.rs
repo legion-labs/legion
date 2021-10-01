@@ -204,6 +204,8 @@ pub enum Error {
     InvalidManifest,
     /// Asset linking failed.
     LinkFailed,
+    /// Compilation did not produce expected output.
+    OutputNotPresent,
     /// Compiler returned an error.
     CompilerError(io::Error),
 }
@@ -213,7 +215,7 @@ impl std::error::Error for Error {}
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            Error::ProjectError => write!(f, "ResourceMgmntError"),
+            Error::ProjectError => write!(f, "ProjectError"),
             Error::NotFound => write!(f, "NotFound"),
             Error::CompilerNotFound => write!(f, "CompilerNotFound"),
             Error::IOError => write!(f, "IOError"),
@@ -224,6 +226,7 @@ impl std::fmt::Display for Error {
             Error::InvalidProject => write!(f, "InvalidProject"),
             Error::InvalidManifest => write!(f, "InvalidManifest"),
             Error::LinkFailed => write!(f, "LinkFailed"),
+            Error::OutputNotPresent => write!(f, "OutputNotPresent"),
             Error::CompilerError(_) => write!(f, "CompilerError"),
         }
     }

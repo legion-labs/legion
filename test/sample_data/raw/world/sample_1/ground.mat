@@ -1,6 +1,6 @@
 (
-    albedo: "offline_texture(image/ground.psd, 'albedo')",
-    normal: "offline_texture(image/ground.psd, 'normal')",
-    roughness: "offline_texture(image/ground.psd, 'roughness')",
-    metalness: "offline_texture(image/ground.psd, 'metalness')",
+    albedo: "runtime_texture(offline_texture(image/ground.psd, 'albedo'))",
+    normal: "runtime_texture(offline_texture(image/ground.psd, 'normal'))",
+    roughness: "runtime_texture(offline_texture(image/ground.psd, 'roughness'))",
+    metalness: "runtime_texture(offline_texture(image/ground.psd, 'metalness'))",
 )
