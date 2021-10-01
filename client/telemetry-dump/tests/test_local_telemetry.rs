@@ -46,7 +46,9 @@ fn test_list_processes() {
 
 async fn print_process_log(connection: &mut sqlx::AnyConnection, process_id: &str) -> Result<()> {
     for stream in find_process_log_streams(connection, process_id).await? {
-        dbg!(stream);
+        for b in find_stream_blocks(connection, &stream.stream_id).await? {
+            dbg!(b);
+        }
     }
     Ok(())
 }

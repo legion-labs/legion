@@ -158,3 +158,34 @@ pub async fn find_process_log_streams(
     }
     Ok(res)
 }
+
+pub async fn find_stream_blocks(
+    connection: &mut sqlx::AnyConnection,
+    stream_id: &str,
+) -> Result<Vec<telemetry::EncodedBlock>> {
+    let blocks = sqlx::query(
+        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
+         FROM blocks
+         WHERE stream_id = ?;",
+    )
+    .bind(stream_id)
+    .fetch_all(connection)
+    .await
+    .with_context(|| "find_stream_blocks")?
+    .iter()
+    .map(|r| {
+        let begin_ticks: i64 = r.get("begin_ticks");
+        let end_ticks: i64 = r.get("end_ticks");
+        telemetry::EncodedBlock {
+            block_id: r.get("block_id"),
+            stream_id: String::from(stream_id),
+            begin_time: r.get("begin_time"),
+            begin_ticks: begin_ticks as u64,
+            end_time: r.get("end_time"),
+            end_ticks: end_ticks as u64,
+            payload: None,
+        }
+    })
+    .collect();
+    Ok(blocks)
+}
