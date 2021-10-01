@@ -1,5 +1,5 @@
 <template>
-  <div class="video-content">
+  <div class="video-content d-flex">
     <video id="video"></video>
   </div>
 </template>
@@ -7,17 +7,33 @@
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .video-content {
-  height: 100vh;
-}
-
-video {
   cursor: pointer;
+  position: relative;
+  height: 100%;
   background: url("~assets/images/disconnected.png") center center no-repeat;
   background-color: black;
   background-size: 20%;
-  max-height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(48, 48, 48, 1) 0%,
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+video {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
   height: auto;
-  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: scale-down;
 }
 </style>
 
@@ -127,6 +143,22 @@ class VideoPlayer {
   }
 }
 
+function debounce(func, wait, immediate) {
+  var timeout;
+  return function () {
+    var context = this,
+      args = arguments;
+    var later = function () {
+      timeout = null;
+      if (!immediate) func.apply(context, args);
+    };
+    var callNow = immediate && !timeout;
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+    if (callNow) func.apply(context, args);
+  };
+}
+
 export default {
   name: "Video",
   props: {
@@ -136,7 +168,7 @@ export default {
     const videoElement = document.getElementById("video");
     const videoPlayer = new VideoPlayer(videoElement, () => {});
 
-    videoElement.onclick = function () {
+    videoElement.parentElement.onclick = function () {
       console.log("Initializing WebRTC...");
 
       const pc = new RTCPeerConnection({
@@ -167,14 +199,32 @@ export default {
 
       const video_channel = pc.createDataChannel("video");
 
-      video_channel.onopen = async () => {};
+      const observer = new ResizeObserver(
+        debounce(async () => {
+          console.log("Sending resize event.");
 
-      video_channel.onclose = async () => {};
+          // Uncommenting this breaks the stream most of the time... not sure why.
+          //video_channel.send(
+          //  JSON.stringify({
+          //    event: "resize",
+          //    width: videoElement.offsetWidth,
+          //    height: videoElement.offsetHeight,
+          //  })
+          //);
+        }, 250)
+      );
 
-      video_channel.onmessage = async (msg) => {
-        videoPlayer.push(msg.data);
+      video_channel.onerror = async (error) => {
+        console.log(error.error);
       };
-
+      video_channel.onopen = function () {
+        console.log("Video channel is now open.");
+        observer.observe(videoElement);
+      };
+      video_channel.onclose = function () {
+        console.log("Video channel is now closed.");
+        observer.disconnect();
+      };
       video_channel.onmessage = async (msg) => {
         videoPlayer.push(msg.data);
       };

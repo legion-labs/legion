@@ -39,11 +39,6 @@
         <Nuxt />
       </v-container>
     </v-main>
-    <v-footer app>
-      <v-spacer></v-spacer>
-      <span>&copy; {{ new Date().getFullYear() }} - Legion Labs</span>
-      <v-spacer></v-spacer>
-    </v-footer>
   </v-app>
 </template>
 
