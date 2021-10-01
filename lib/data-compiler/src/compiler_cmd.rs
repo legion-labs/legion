@@ -34,9 +34,9 @@
 //! # use legion_data_compiler::compiler_cmd::CompilerCompileCmd;
 //! # use legion_content_store::ContentStoreAddr;
 //! # use legion_data_compiler::{Locale, Platform, Target};
-//! # use legion_data_offline::asset::AssetPathId;
+//! # use legion_data_offline::ResourcePathId;
 //! # use std::path::PathBuf;
-//! fn compile_resource(compile_path: AssetPathId, dependencies: &[AssetPathId]) {
+//! fn compile_resource(compile_path: ResourcePathId, dependencies: &[ResourcePathId]) {
 //!     let content_store = ContentStoreAddr::from("./content_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
 //!     let mut command = CompilerCompileCmd::new(&compile_path, dependencies, &[], &content_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
@@ -61,7 +61,7 @@ use crate::{
 };
 
 use legion_content_store::ContentStoreAddr;
-use legion_data_offline::asset::AssetPathId;
+use legion_data_offline::ResourcePathId;
 
 use legion_data_runtime::ResourceType;
 use serde::{Deserialize, Serialize};
@@ -286,7 +286,7 @@ pub struct CompilerCompileCmdOutput {
     /// Generated resources.
     pub compiled_resources: Vec<CompiledResource>,
     /// References between generated resources.
-    pub resource_references: Vec<(AssetPathId, AssetPathId)>,
+    pub resource_references: Vec<(ResourcePathId, ResourcePathId)>,
 }
 
 impl CompilerCompileCmdOutput {
@@ -302,8 +302,8 @@ impl CompilerCompileCmd {
     /// Creates a new command.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        compile_path: &AssetPathId,
-        source_deps: &[AssetPathId],
+        compile_path: &ResourcePathId,
+        source_deps: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         cas_addr: &ContentStoreAddr,
         resource_dir: &Path,

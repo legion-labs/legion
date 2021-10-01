@@ -14,14 +14,14 @@ use std::{
 
 use crate::Error;
 use legion_data_offline::{
-    asset::AssetPathId,
     resource::{Project, ResourceHash},
+    ResourcePathId,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ResourceInfo {
-    id: AssetPathId,
-    dependencies: Vec<AssetPathId>,
+    id: ResourcePathId,
+    dependencies: Vec<ResourcePathId>,
     // hash of the content of this resource, None for derived resources.
     resource_hash: Option<ResourceHash>,
 }
@@ -35,23 +35,23 @@ impl ResourceInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledResourceInfo {
-    /// The path the resource was compiled from, i.e.: "AssetPathId("anim.fbx").push("anim.offline")
-    pub(crate) compile_path: AssetPathId,
+    /// The path the resource was compiled from, i.e.: "ResourcePathId("anim.fbx").push("anim.offline")
+    pub(crate) compile_path: ResourcePathId,
     pub(crate) context_hash: AssetHash,
     pub(crate) source_hash: AssetHash,
-    /// The path the resource was compiled into, i.e.: "AssetPathId("anim.fbx").push("anim.offline")["idle"]
-    pub(crate) compiled_path: AssetPathId,
+    /// The path the resource was compiled into, i.e.: "ResourcePathId("anim.fbx").push("anim.offline")["idle"]
+    pub(crate) compiled_path: ResourcePathId,
     pub(crate) compiled_checksum: ResourceChecksum,
     pub(crate) compiled_size: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct CompiledResourceReference {
-    pub(crate) compile_path: AssetPathId,
+    pub(crate) compile_path: ResourcePathId,
     pub(crate) context_hash: AssetHash,
     pub(crate) source_hash: AssetHash,
-    pub(crate) compiled_path: AssetPathId,
-    pub(crate) compiled_reference: AssetPathId,
+    pub(crate) compiled_path: ResourcePathId,
+    pub(crate) compiled_reference: ResourcePathId,
 }
 
 impl CompiledResourceReference {
@@ -174,11 +174,14 @@ impl BuildIndex {
     }
 
     /// Create an ordered build graph with edges directed towards `compile_path`.
-    pub(crate) fn generate_build_graph(&self, compile_path: AssetPathId) -> Graph<AssetPathId, ()> {
-        let mut dep_graph = Graph::<AssetPathId, (), Directed>::new();
-        let mut indices = HashMap::<AssetPathId, petgraph::prelude::NodeIndex>::new();
+    pub(crate) fn generate_build_graph(
+        &self,
+        compile_path: ResourcePathId,
+    ) -> Graph<ResourcePathId, ()> {
+        let mut dep_graph = Graph::<ResourcePathId, (), Directed>::new();
+        let mut indices = HashMap::<ResourcePathId, petgraph::prelude::NodeIndex>::new();
         let mut processed = vec![];
-        let mut queue = VecDeque::<AssetPathId>::new();
+        let mut queue = VecDeque::<ResourcePathId>::new();
 
         // we process the whole path as derived resources might not exist in
         // the build index as those are never refered to as dependencies.
@@ -219,7 +222,7 @@ impl BuildIndex {
                     dep_graph.update_edge(other_index, own_index, ());
                 }
 
-                let unprocessed: VecDeque<AssetPathId> = deps
+                let unprocessed: VecDeque<ResourcePathId> = deps
                     .into_iter()
                     .filter(|r| !processed.contains(r))
                     .collect();
@@ -236,7 +239,7 @@ impl BuildIndex {
     /// * `id` resource's content.
     /// * content of all `id`'s dependencies.
     /// todo: at one point dependency filtering here will be useful.
-    pub(crate) fn compute_source_hash(&self, id: AssetPathId) -> Result<ResourceHash, Error> {
+    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> Result<ResourceHash, Error> {
         let sorted_unique_resource_hashes: Vec<ResourceHash> = {
             let mut unique_resources = HashMap::new();
             let mut queue: VecDeque<_> = VecDeque::new();
@@ -282,9 +285,9 @@ impl BuildIndex {
 
     pub(crate) fn update_resource(
         &mut self,
-        id: AssetPathId,
+        id: ResourcePathId,
         resource_hash: Option<ResourceHash>,
-        mut deps: Vec<AssetPathId>,
+        mut deps: Vec<ResourcePathId>,
     ) -> bool {
         if let Some(existing_res) = self.content.resources.iter_mut().find(|r| r.id == id) {
             deps.sort();
@@ -313,7 +316,7 @@ impl BuildIndex {
         }
     }
 
-    pub(crate) fn find_dependencies(&self, id: &AssetPathId) -> Option<Vec<AssetPathId>> {
+    pub(crate) fn find_dependencies(&self, id: &ResourcePathId) -> Option<Vec<ResourcePathId>> {
         self.content
             .resources
             .iter()
@@ -323,11 +326,11 @@ impl BuildIndex {
 
     pub(crate) fn insert_compiled(
         &mut self,
-        compile_path: &AssetPathId,
+        compile_path: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
         compiled_resources: &[CompiledResource],
-        compiled_references: &[(AssetPathId, AssetPathId)],
+        compiled_references: &[(ResourcePathId, ResourcePathId)],
     ) {
         // For now we assume there is not concurrent compilation
         // so there is no way to compile the same resources twice.
@@ -373,7 +376,7 @@ impl BuildIndex {
 
     pub(crate) fn find_compiled(
         &self,
-        compile_path: &AssetPathId,
+        compile_path: &ResourcePathId,
         context_hash: u64,
         source_hash: u64,
     ) -> Option<(Vec<CompiledResourceInfo>, Vec<CompiledResourceReference>)> {
@@ -425,8 +428,8 @@ mod tests {
 
     use super::BuildIndex;
     use legion_data_offline::{
-        asset::AssetPathId,
         resource::{new_resource_id, Project},
+        ResourcePathId,
     };
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
@@ -454,7 +457,7 @@ mod tests {
 
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = new_resource_id(refs_resource::TYPE_ID);
-        let source_resource = AssetPathId::from(source_id);
+        let source_resource = ResourcePathId::from(source_id);
         let intermediate_resource = source_resource.push(refs_resource::TYPE_ID);
         let output_resources = intermediate_resource.push(refs_resource::TYPE_ID);
 

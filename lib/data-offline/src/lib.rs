@@ -89,6 +89,8 @@
 #![allow()]
 #![warn(missing_docs)]
 
-pub mod asset;
 pub mod data_container;
 pub mod resource;
+
+mod resourcepathid;
+pub use resourcepathid::*;

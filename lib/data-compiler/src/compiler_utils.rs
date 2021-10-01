@@ -1,11 +1,11 @@
 //! Compiler utilities - transformations helpful when compiling data.
 
-use legion_data_offline::asset::AssetPathId;
+use legion_data_offline::ResourcePathId;
 use legion_data_runtime::{ResourceId, ResourceType};
 
-/// Converts `AssetPathId` to `ResourceId`.
+/// Converts `ResourcePathId` to `ResourceId`.
 pub fn path_id_to_asset_id(
-    path: &Option<AssetPathId>,
+    path: &Option<ResourcePathId>,
     asset_type: ResourceType,
 ) -> Option<ResourceId> {
     path.as_ref().map(|p| p.push(asset_type).content_id())
@@ -16,8 +16,8 @@ pub fn asset_id_to_bin(id: Option<ResourceId>) -> u128 {
     unsafe { std::mem::transmute::<Option<ResourceId>, u128>(id) }
 }
 
-/// Converts `AssetPathId` through `ResourceId` to binary representation.
-pub fn path_id_to_binary(path: &Option<AssetPathId>, asset_type: ResourceType) -> u128 {
+/// Converts `ResourcePathId` through `ResourceId` to binary representation.
+pub fn path_id_to_binary(path: &Option<ResourcePathId>, asset_type: ResourceType) -> u128 {
     let id = path_id_to_asset_id(path, asset_type);
     asset_id_to_bin(id)
 }

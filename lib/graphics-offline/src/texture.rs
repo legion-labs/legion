@@ -43,7 +43,7 @@ impl ResourceProcessor for TextureProcessor {
     fn extract_build_dependencies(
         &mut self,
         _resource: &dyn Resource,
-    ) -> Vec<legion_data_offline::asset::AssetPathId> {
+    ) -> Vec<legion_data_offline::ResourcePathId> {
         vec![]
     }
 

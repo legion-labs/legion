@@ -1,6 +1,6 @@
 use legion_data_offline::{
-    asset::AssetPathId,
     resource::{Resource, ResourceProcessor},
+    ResourcePathId,
 };
 
 use legion_data_runtime::ResourceType;
@@ -20,7 +20,7 @@ impl ResourceProcessor for MultiTextResourceProc {
         Box::new(MultiTextResource { text_list: vec![] })
     }
 
-    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
+    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
         vec![]
     }
 

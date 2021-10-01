@@ -1,4 +1,4 @@
-use crate::{asset::AssetPathId, resource::ResourcePathName};
+use crate::{resource::ResourcePathName, ResourcePathId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::hash_map::DefaultHasher,
@@ -76,7 +76,7 @@ impl fmt::Display for ResourceHash {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Metadata {
     pub(crate) name: ResourcePathName,
-    pub(crate) dependencies: Vec<AssetPathId>,
+    pub(crate) dependencies: Vec<ResourcePathId>,
     pub(crate) content_checksum: ResourceChecksum, // this needs to be updated on every asset change.
 }
 
@@ -88,7 +88,7 @@ impl Metadata {
     pub(crate) fn new_with_dependencies(
         name: ResourcePathName,
         content_checksum: i128,
-        deps: &[AssetPathId],
+        deps: &[ResourcePathId],
     ) -> Self {
         Self {
             name,

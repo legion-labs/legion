@@ -82,7 +82,7 @@
 //!     * checksum of the resource's content (available in [`.meta`] file).
 //!     * checksum of content of each of the resource's dependencies (list of dependencies is in [`.meta`] file)
 //! * For **derived resource**:
-//!     * checksum of the output of the directly dependent data compilation (as described in the [`AssetPathId`](`legion_data_offline::asset::AssetPathId`))
+//!     * checksum of the output of the directly dependent data compilation (as described in the [`ResourcePathId`](`legion_data_offline::ResourcePathId`))
 //!
 //! #### `ContextHash` - the signature of the compilation context
 //!
@@ -176,7 +176,7 @@
 #![allow()]
 #![warn(missing_docs)]
 
-use legion_data_offline::asset::AssetPathId;
+use legion_data_offline::ResourcePathId;
 use std::io;
 
 #[derive(Debug)]
@@ -249,7 +249,7 @@ impl From<legion_data_offline::resource::Error> for Error {
 /// and by identifying content by `ResourceId` - which runtime operates on.
 pub fn generate_rt_manifest(
     input: legion_data_compiler::Manifest,
-    filter: fn(&AssetPathId) -> bool,
+    filter: fn(&ResourcePathId) -> bool,
 ) -> legion_data_runtime::manifest::Manifest {
     let mut output = legion_data_runtime::manifest::Manifest::default();
 

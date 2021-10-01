@@ -7,8 +7,8 @@ use std::str::FromStr;
 use legion_data_runtime::ResourceType;
 
 use crate::{
-    asset::AssetPathId,
     resource::{Resource, ResourceProcessor},
+    ResourcePathId,
 };
 
 /// Type id of test resource. Used until we have proper resource types.
@@ -22,7 +22,7 @@ pub struct TestResource {
     /// Resource's content.
     pub content: String,
     /// Resource's build dependencies.
-    pub build_deps: Vec<AssetPathId>,
+    pub build_deps: Vec<ResourcePathId>,
 }
 
 /// [`TestResource`]'s resource processor temporarily used for testings.
@@ -37,7 +37,7 @@ impl ResourceProcessor for TestResourceProc {
         })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
         resource
             .downcast_ref::<TestResource>()
             .unwrap()
@@ -103,7 +103,7 @@ impl ResourceProcessor for TestResourceProc {
             let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
             reader.read_exact(&mut buf)?;
             res.build_deps
-                .push(AssetPathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
+                .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
         }
 
         Ok(resource)

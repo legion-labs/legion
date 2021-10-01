@@ -9,8 +9,8 @@ use legion_data_compiler::{
     Locale, Platform, Target,
 };
 use legion_data_offline::{
-    asset::AssetPathId,
     resource::{new_resource_id, ResourceProcessor},
+    ResourcePathId,
 };
 use legion_data_runtime::{AssetDescriptor, AssetLoader};
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
@@ -59,7 +59,7 @@ fn compile_atoi() {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
 
-        let compile_path = AssetPathId::from(source).push(integer_asset::IntegerAsset::TYPE);
+        let compile_path = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
             &[],
@@ -127,7 +127,7 @@ fn compile_intermediate() {
     let intermediate_info = {
         let exe_path = common::compiler_exe("test-reverse");
         assert!(exe_path.exists());
-        let compile_path = AssetPathId::from(source).push(text_resource::TYPE_ID);
+        let compile_path = ResourcePathId::from(source).push(text_resource::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
             &[],
@@ -148,7 +148,7 @@ fn compile_intermediate() {
     let derived_info = {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
-        let compile_path = AssetPathId::from(source)
+        let compile_path = ResourcePathId::from(source)
             .push(text_resource::TYPE_ID)
             .push(integer_asset::IntegerAsset::TYPE);
         let mut command = CompilerCompileCmd::new(
@@ -216,12 +216,12 @@ fn compile_multi_resource() {
     };
 
     let cas_addr = ContentStoreAddr::from(output_dir);
-    let compile_path = AssetPathId::from(source).push(text_resource::TYPE_ID);
+    let compile_path = ResourcePathId::from(source).push(text_resource::TYPE_ID);
 
     let compiled_resources = {
         let exe_path = common::compiler_exe("test-split");
         assert!(exe_path.exists());
-        let compile_path = AssetPathId::from(source).push(text_resource::TYPE_ID);
+        let compile_path = ResourcePathId::from(source).push(text_resource::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
             &[],
@@ -302,7 +302,7 @@ fn compile_base64() {
         let exe_path = common::compiler_exe("test-base64");
         assert!(exe_path.exists());
 
-        let compile_path = AssetPathId::from(source).push(text_resource::TYPE_ID);
+        let compile_path = ResourcePathId::from(source).push(text_resource::TYPE_ID);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
             &[],

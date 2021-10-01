@@ -2,7 +2,7 @@ use std::{collections::HashMap, io, sync::mpsc};
 
 use legion_data_runtime::ResourceType;
 
-use crate::asset::AssetPathId;
+use crate::ResourcePathId;
 
 use super::{RefOp, Resource, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
 
@@ -105,7 +105,7 @@ impl ResourceRegistry {
         kind: ResourceType,
         handle: impl AsRef<ResourceHandleUntyped>,
         writer: &mut dyn io::Write,
-    ) -> io::Result<(usize, Vec<AssetPathId>)> {
+    ) -> io::Result<(usize, Vec<ResourcePathId>)> {
         if let Some(processor) = self.processors.get_mut(&kind) {
             let resource = self
                 .resources
@@ -198,8 +198,8 @@ mod tests {
     use legion_data_runtime::ResourceType;
 
     use crate::{
-        asset::AssetPathId,
         resource::{registry::ResourceRegistryOptions, ResourceProcessor},
+        ResourcePathId,
     };
 
     use super::Resource;
@@ -251,7 +251,7 @@ mod tests {
             Ok(resource)
         }
 
-        fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<AssetPathId> {
+        fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
             vec![]
         }
     }

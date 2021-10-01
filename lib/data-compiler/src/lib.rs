@@ -81,7 +81,7 @@
 use core::fmt;
 use std::{num::ParseIntError, str::FromStr};
 
-use legion_data_offline::asset::AssetPathId;
+use legion_data_offline::ResourcePathId;
 use legion_data_runtime::ResourceChecksum;
 use serde::{Deserialize, Serialize};
 
@@ -93,7 +93,7 @@ pub struct CompilerHash(pub u64);
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct CompiledResource {
     /// The path of derived resource.
-    pub path: AssetPathId,
+    pub path: ResourcePathId,
     /// The checksum of the resource.
     pub checksum: ResourceChecksum,
     /// The size of the resource.
@@ -118,7 +118,7 @@ impl FromStr for CompiledResource {
 
         let checksum = ResourceChecksum::from_str(iter.next().ok_or_else(|| err.clone())?)?;
         let size = usize::from_str(iter.next().ok_or_else(|| err.clone())?)?;
-        let path = AssetPathId::from_str(iter.next().ok_or(err)?)?;
+        let path = ResourcePathId::from_str(iter.next().ok_or(err)?)?;
         Ok(Self {
             path,
             checksum,

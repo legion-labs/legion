@@ -1,8 +1,8 @@
 //! A module providing offline material related functionality.
 
 use legion_data_offline::{
-    asset::AssetPathId,
     resource::{Resource, ResourceProcessor},
+    ResourcePathId,
 };
 
 use legion_data_runtime::ResourceType;
@@ -15,13 +15,13 @@ pub const TYPE_ID: ResourceType = ResourceType::new(b"offline_material");
 #[derive(Resource, Default, Serialize, Deserialize)]
 pub struct Material {
     /// Albedo texture reference.
-    pub albedo: Option<AssetPathId>,
+    pub albedo: Option<ResourcePathId>,
     /// Normal texture reference.
-    pub normal: Option<AssetPathId>,
+    pub normal: Option<ResourcePathId>,
     /// Roughness texture reference.
-    pub roughness: Option<AssetPathId>,
+    pub roughness: Option<ResourcePathId>,
     /// Metalness texture reference.
-    pub metalness: Option<AssetPathId>,
+    pub metalness: Option<ResourcePathId>,
 }
 
 /// Processor of [`Material`]
@@ -33,7 +33,7 @@ impl ResourceProcessor for MaterialProcessor {
         Box::new(Material::default())
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<AssetPathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
         let material = resource.downcast_ref::<Material>().unwrap();
         let mut deps = vec![];
         if let Some(path) = &material.albedo {
