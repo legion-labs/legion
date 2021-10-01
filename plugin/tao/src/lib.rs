@@ -28,19 +28,19 @@ use tao::{
 use tao::dpi::LogicalSize;
 
 #[derive(Default)]
-pub struct WinitPlugin;
+pub struct TaoPlugin;
 
-impl Plugin for WinitPlugin {
+impl Plugin for TaoPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<WinitWindows>()
-            .set_runner(winit_runner)
+        app.init_resource::<TaoWindows>()
+            .set_runner(tao_runner)
             .add_system_to_stage(CoreStage::PostUpdate, change_window.exclusive_system());
     }
 }
 
 fn change_window(world: &mut World) {
     let world = world.cell();
-    let winit_windows = world.get_resource::<WinitWindows>().unwrap();
+    let tao_windows = world.get_resource::<TaoWindows>().unwrap();
     let mut windows = world.get_resource_mut::<Windows>().unwrap();
 
     for legion_window in windows.iter_mut() {
@@ -51,7 +51,7 @@ fn change_window(world: &mut World) {
                     mode,
                     resolution: (width, height),
                 } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     match mode {
                         legion_window::WindowMode::BorderlessFullscreen => {
                             window.set_fullscreen(Some(tao::window::Fullscreen::Borderless(None)))
@@ -71,7 +71,7 @@ fn change_window(world: &mut World) {
                     }
                 }
                 legion_window::WindowCommand::SetTitle { title } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     window.set_title(&title);
                 }
                 legion_window::WindowCommand::SetScaleFactor { scale_factor } => {
@@ -84,32 +84,32 @@ fn change_window(world: &mut World) {
                     logical_resolution: (width, height),
                     scale_factor,
                 } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     window.set_inner_size(
                         tao::dpi::LogicalSize::new(width, height).to_physical::<f64>(scale_factor),
                     );
                 }
                 legion_window::WindowCommand::SetVsync { .. } => (),
                 legion_window::WindowCommand::SetResizable { resizable } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     window.set_resizable(resizable);
                 }
                 legion_window::WindowCommand::SetDecorations { decorations } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     window.set_decorations(decorations);
                 }
                 legion_window::WindowCommand::SetCursorLockMode { locked } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     window
                         .set_cursor_grab(locked)
                         .unwrap_or_else(|e| error!("Unable to un/grab cursor: {}", e));
                 }
                 legion_window::WindowCommand::SetCursorVisibility { visible } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     window.set_cursor_visible(visible);
                 }
                 legion_window::WindowCommand::SetCursorPosition { position } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     let inner_size = window.inner_size().to_logical::<f32>(window.scale_factor());
                     window
                         .set_cursor_position(tao::dpi::LogicalPosition::new(
@@ -119,22 +119,22 @@ fn change_window(world: &mut World) {
                         .unwrap_or_else(|e| error!("Unable to set cursor position: {}", e));
                 }
                 legion_window::WindowCommand::SetMaximized { maximized } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     window.set_maximized(maximized)
                 }
                 legion_window::WindowCommand::SetMinimized { minimized } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     window.set_minimized(minimized)
                 }
                 legion_window::WindowCommand::SetPosition { position } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     window.set_outer_position(PhysicalPosition {
                         x: position[0],
                         y: position[1],
                     });
                 }
                 legion_window::WindowCommand::SetResizeConstraints { resize_constraints } => {
-                    let window = winit_windows.get_window(id).unwrap();
+                    let window = tao_windows.get_window(id).unwrap();
                     let constraints = resize_constraints.check_constraints();
                     let min_inner_size = LogicalSize {
                         width: constraints.min_width,
@@ -182,11 +182,11 @@ where
     panic!("Run return is not supported on this platform!")
 }
 
-pub fn winit_runner(app: App) {
-    winit_runner_with(app, EventLoop::new());
+pub fn tao_runner(app: App) {
+    tao_runner_with(app, EventLoop::new());
 }
 
-pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
+pub fn tao_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
     let mut create_window_event_reader = ManualEventReader::<CreateWindow>::default();
     let mut app_exit_event_reader = ManualEventReader::<AppExit>::default();
     app.world.insert_non_send(event_loop.create_proxy());
@@ -195,7 +195,7 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
 
     let should_return_from_run = app
         .world
-        .get_resource::<WinitConfig>()
+        .get_resource::<TaoConfig>()
         .map_or(false, |config| config.return_from_run);
 
     let mut active = true;
@@ -218,27 +218,26 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
         match event {
             event::Event::WindowEvent {
                 event,
-                window_id: winit_window_id,
+                window_id: tao_window_id,
                 ..
             } => {
                 let world = app.world.cell();
-                let winit_windows = world.get_resource_mut::<WinitWindows>().unwrap();
+                let tao_windows = world.get_resource_mut::<TaoWindows>().unwrap();
                 let mut windows = world.get_resource_mut::<Windows>().unwrap();
-                let window_id =
-                    if let Some(window_id) = winit_windows.get_window_id(winit_window_id) {
-                        window_id
-                    } else {
-                        warn!(
-                            "Skipped event for unknown tao Window Id {:?}",
-                            winit_window_id
-                        );
-                        return;
-                    };
+                let window_id = if let Some(window_id) = tao_windows.get_window_id(tao_window_id) {
+                    window_id
+                } else {
+                    warn!(
+                        "Skipped event for unknown tao Window Id {:?}",
+                        tao_window_id
+                    );
+                    return;
+                };
 
                 let window = if let Some(window) = windows.get_mut(window_id) {
                     window
                 } else {
-                    warn!("Skipped event for unknown Window Id {:?}", winit_window_id);
+                    warn!("Skipped event for unknown Window Id {:?}", tao_window_id);
                     return;
                 };
 
@@ -276,11 +275,11 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
                     WindowEvent::CursorMoved { position, .. } => {
                         let mut cursor_moved_events =
                             world.get_resource_mut::<Events<CursorMoved>>().unwrap();
-                        let winit_window = winit_windows.get_window(window_id).unwrap();
-                        let position = position.to_logical(winit_window.scale_factor());
-                        let inner_size = winit_window
+                        let tao_window = tao_windows.get_window(window_id).unwrap();
+                        let position = position.to_logical(tao_window.scale_factor());
+                        let inner_size = tao_window
                             .inner_size()
-                            .to_logical::<f32>(winit_window.scale_factor());
+                            .to_logical::<f32>(tao_window.scale_factor());
 
                         // move origin to bottom left
                         let y_position = inner_size.height - position.y;
@@ -338,8 +337,8 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
                         let mut touch_input_events =
                             world.get_resource_mut::<Events<TouchInput>>().unwrap();
 
-                        let winit_window = winit_windows.get_window(window_id).unwrap();
-                        let mut location = touch.location.to_logical(winit_window.scale_factor());
+                        let tao_window = tao_windows.get_window(window_id).unwrap();
+                        let mut location = touch.location.to_logical(tao_window.scale_factor());
 
                         // On a mobile window, the start is from the top while on PC/Linux/OSX from
                         // bottom
@@ -474,12 +473,12 @@ fn handle_create_window_events(
     create_window_event_reader: &mut ManualEventReader<CreateWindow>,
 ) {
     let world = world.cell();
-    let mut winit_windows = world.get_resource_mut::<WinitWindows>().unwrap();
+    let mut tao_windows = world.get_resource_mut::<TaoWindows>().unwrap();
     let mut windows = world.get_resource_mut::<Windows>().unwrap();
     let create_window_events = world.get_resource::<Events<CreateWindow>>().unwrap();
     let mut window_created_events = world.get_resource_mut::<Events<WindowCreated>>().unwrap();
     for create_window_event in create_window_event_reader.iter(&create_window_events) {
-        let window = winit_windows.create_window(
+        let window = tao_windows.create_window(
             event_loop,
             create_window_event.id,
             &create_window_event.descriptor,

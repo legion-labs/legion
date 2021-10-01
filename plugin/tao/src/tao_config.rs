@@ -1,8 +1,8 @@
-/// A resource for configuring usage of the `rust_winit` library.
+/// A resource for configuring usage of the `rust_tao` library.
 #[derive(Debug, Default)]
-pub struct WinitConfig {
+pub struct TaoConfig {
     /// Configures the tao library to return control to the main thread after
-    /// the [run](legion_app::App::run) loop is exited. Winit strongly recommends
+    /// the [run](legion_app::App::run) loop is exited. Tao strongly recommends
     /// avoiding this when possible. Before using this please read and understand
     /// the following:
     ///
