@@ -1,0 +1,23 @@
+[package]
+name = "legion-tao"
+version = "0.1.0"
+edition = "2018"
+description = "Provides hierarchy and transform functionality for Legion Engine"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
+license = "MIT OR Apache-2.0"
+keywords = ["legion"]
+
+[dependencies]
+# legion libs
+legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+legion-math = { path = "../../lib/math", version = "0.1.0" }
+legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+
+# legion plugins
+legion-input = { path = "../input", version = "0.1.0" }
+legion-window = { path = "../window", version = "0.1.0" }
+
+# other
+tao = { version = "0.5.2" }
