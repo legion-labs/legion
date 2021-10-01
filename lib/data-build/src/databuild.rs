@@ -108,8 +108,8 @@ impl DataBuild {
         )
         .map_err(|_e| Error::IOError)?;
 
-        let content_store = HddContentStore::open(config.assetstore_path.clone())
-            .ok_or(Error::InvalidAssetStore)?;
+        let content_store = HddContentStore::open(config.contentstore_path.clone())
+            .ok_or(Error::InvalidContentStore)?;
 
         Ok(Self {
             build_index,
@@ -120,8 +120,8 @@ impl DataBuild {
     }
 
     pub(crate) fn open(config: &DataBuildOptions) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.assetstore_path.clone())
-            .ok_or(Error::InvalidAssetStore)?;
+        let content_store = HddContentStore::open(config.contentstore_path.clone())
+            .ok_or(Error::InvalidContentStore)?;
 
         let build_index = BuildIndex::open(&config.buildindex_path, Self::version())?;
         let project = build_index.open_project()?;
@@ -140,8 +140,8 @@ impl DataBuild {
         config: &DataBuildOptions,
         project_dir: &Path,
     ) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.assetstore_path.clone())
-            .ok_or(Error::InvalidAssetStore)?;
+        let content_store = HddContentStore::open(config.contentstore_path.clone())
+            .ok_or(Error::InvalidContentStore)?;
         match BuildIndex::open(&config.buildindex_path, Self::version()) {
             Ok(build_index) => {
                 let project = build_index.open_project()?;
@@ -627,7 +627,7 @@ impl DataBuild {
             let checksum = self
                 .content_store
                 .store(&output)
-                .ok_or(Error::InvalidAssetStore)?;
+                .ok_or(Error::InvalidContentStore)?;
 
             let asset_file = CompiledResource {
                 path: resource.compiled_path.clone(),

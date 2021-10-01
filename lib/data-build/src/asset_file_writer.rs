@@ -58,7 +58,7 @@ where
     for asset in asset_list {
         let source_data = content_store
             .read(asset.1)
-            .ok_or(Error::InvalidAssetStore)?;
+            .ok_or(Error::InvalidContentStore)?;
 
         writer
             .write_u64::<LittleEndian>(source_data.len() as u64)

@@ -20,7 +20,7 @@ Reflection is used for offline serialization
 * Should support Simple Enum
 * Complex type (Color, Vec2, Vec3, Transform, Curve, other DataContainer)
 * Array Types
-* Reference to assets in content store (i128 asset Id)
+* Reference to resources in content store (i128 resource Id)
  
 
 ## Editor Attributes

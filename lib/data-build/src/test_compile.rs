@@ -321,12 +321,12 @@ fn intermediate_resource() {
     {
         let checksum = compile_output.resources[0].compiled_checksum.get();
         assert!(content_store.exists(checksum));
-        let resource_content = content_store.read(checksum).expect("asset content");
+        let resource_content = content_store.read(checksum).expect("resource content");
 
         let mut creator = TextResourceProc {};
         let resource = creator
             .read_resource(&mut &resource_content[..])
-            .expect("loaded assets");
+            .expect("loaded resource");
         let resource = resource.downcast_ref::<TextResource>().unwrap();
 
         assert_eq!(
@@ -347,7 +347,7 @@ fn intermediate_resource() {
                 integer_asset::IntegerAsset::TYPE,
                 &mut &resource_content[..],
             )
-            .expect("loaded assets");
+            .expect("loaded resource");
         let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 
         let stringified = resource.magic_value.to_string();
@@ -564,7 +564,7 @@ fn named_path_cache_use() {
                 integer_asset::IntegerAsset::TYPE,
                 &mut &resource_content[..],
             )
-            .expect("loaded assets");
+            .expect("loaded resource");
         let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 
         let stringified = resource.magic_value.to_string();

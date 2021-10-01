@@ -84,11 +84,11 @@ fn main() -> Result<(), String> {
         let target = Target::from_str(target).map_err(|_e| "Invalid Target")?;
         let platform = Platform::from_str(platform).map_err(|_e| "Invalid Platform")?;
         let locale = Locale::new(locale);
-        let asset_store_path = ContentStoreAddr::from(cmd_args.value_of(ARG_NAME_CAS).unwrap());
+        let content_store_path = ContentStoreAddr::from(cmd_args.value_of(ARG_NAME_CAS).unwrap());
         let buildindex_path = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
 
         let mut config = DataBuildOptions::new(buildindex_path);
-        config.content_store(&asset_store_path);
+        config.content_store(&content_store_path);
         if let Ok(cwd) = std::env::current_dir() {
             config.compiler_dir(cwd);
         }

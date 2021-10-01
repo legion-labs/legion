@@ -2,7 +2,7 @@
 //!
 //! Data compiler is a binary that takes as input a [`legion_data_offline::resource::Resource`] and Resources it depends on and produces
 //! one or more [`legion_data_runtime::Asset`]s that are stored in a [`ContentStore`]. As a results it creates new
-//! or updates existing [`Manifest`] file containing metadata about the compiled Assets.
+//! or updates existing [`Manifest`] file containing metadata about the derived resources.
 //!
 //! [`compiler_api`] allows to structure *data compiler* in a specific way.
 //!

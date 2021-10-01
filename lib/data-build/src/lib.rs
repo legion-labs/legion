@@ -22,14 +22,14 @@
 //! To support incremental building the data build is persisted in a file on disk. This file is called `build.index`.
 //! It contains:
 //! - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
-//! - Records of compiled assets that are stored in a [`ContentStore`](`legion_content_store::ContentStore`).
+//! - Records of derived resources that are stored in a [`ContentStore`](`legion_content_store::ContentStore`).
 //!
 //! For other parts of the data pipeline see [`legion_data_offline`], [`legion_data_runtime`] and [`legion_data_compiler`] modules.
 //!
 //! # Structure on disk
 //!
-//! An example of a [`project`] with 1 source file, 2 offline resources and 2 compiled assets on disk looks as follows.
-//! (where **temp/** is an build output directory acting as a *local compiled content store*)
+//! An example of a [`project`] with 1 source file, 2 offline resources and 2 derived resources on disk looks as follows.
+//! (where **temp/** is an build output directory acting as a *local content store*)
 //! ```markdown
 //!  ./
 //!  | + source/
@@ -196,8 +196,8 @@ pub enum Error {
     CircularDependency,
     /// Index version mismatch.
     VersionMismatch,
-    /// Compiled Asset Store invalid.
-    InvalidAssetStore,
+    /// Content Store invalid.
+    InvalidContentStore,
     /// Project invalid.
     InvalidProject,
     /// Manifest file error.
@@ -220,7 +220,7 @@ impl std::fmt::Display for Error {
             Error::IntegrityFailure => write!(f, "IntegrityFailure"),
             Error::CircularDependency => write!(f, "CircularDependency"),
             Error::VersionMismatch => write!(f, "VersionMismatch"),
-            Error::InvalidAssetStore => write!(f, "InvalidCompiledAssetStore"),
+            Error::InvalidContentStore => write!(f, "InvalidContentStore"),
             Error::InvalidProject => write!(f, "InvalidProject"),
             Error::InvalidManifest => write!(f, "InvalidManifest"),
             Error::LinkFailed => write!(f, "LinkFailed"),

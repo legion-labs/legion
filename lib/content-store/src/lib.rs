@@ -127,26 +127,26 @@ impl fmt::Display for ContentStoreAddr {
 /// function to calculate the checksum of stored content.
 // todo: change Option to Error
 pub trait ContentStore: Send {
-    /// Write asset to the backing storage.
+    /// Write content to the backing storage.
     fn write(&mut self, id: i128, data: &[u8]) -> Option<()>;
 
-    /// Read asset from the backing storage.
+    /// Read content from the backing storage.
     fn read(&self, id: i128) -> Option<Vec<u8>>;
 
-    /// Remove asset from the backing storage.
+    /// Remove content from the backing storage.
     fn remove(&mut self, id: i128);
 
-    /// Returns the description of the asset if it exists.
+    /// Returns the description of the content if it exists.
     ///
-    /// This default implementation is quite inefficient as it involves reading the asset's
+    /// This default implementation is quite inefficient as it involves reading the content's
     /// content to calculate its checksum.
     fn exists(&self, id: i128) -> bool {
         self.read(id).is_some()
     }
 
-    /// Stores the asset and validates its validity afterwards.
+    /// Stores the content and validates its validity afterwards.
     ///
-    /// This method calls [`write`](#method.write) to store the asset and [`read`](#method.read) afterwards
+    /// This method calls [`write`](#method.write) to store the content and [`read`](#method.read) afterwards
     /// to perform the validation.
     fn store(&mut self, data: &[u8]) -> Option<i128> {
         let id = content_checksum(data);

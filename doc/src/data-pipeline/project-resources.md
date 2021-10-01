@@ -11,11 +11,11 @@ Example below illustrates file structure related to **source** and **offline** r
 ```ignore
 + project/
 | + source/
-| | - textures.psd        // source asset
+| | - textures.psd        // source resource
 | | - textures.export     // parameters of .psd export process
 | + offline/
 | | - albedo.texture      // output of the export process
-| | - albedo.texture.meta // meta information of the output asset (name, dependencies, checksum)
+| | - albedo.texture.meta // meta information of the derived resource (name, dependencies, checksum)
 | | - normal.texture
 | | - normal.texture.meta 
 | - project.index         // index of .meta & .export files
@@ -36,4 +36,4 @@ It provides an index of *offline resources* that can be inspected in the tool's 
 
 ##### Build Dependency Tracking
 
-Project resource management tracks build dependencies and stores them in a `.meta` file for each resource. This way the asset build system does not need to open the content of the asset to extract dependencies.
+Project resource management tracks build dependencies and stores them in a `.meta` file for each resource. This way the build system does not need to open the content of the source resource to extract dependencies.
