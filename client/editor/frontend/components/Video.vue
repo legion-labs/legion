@@ -145,6 +145,7 @@ class VideoPlayer {
 
 function debounce(func, wait, immediate) {
   var timeout;
+
   return function () {
     var context = this,
       args = arguments;
@@ -167,11 +168,23 @@ export default {
   mounted() {
     const videoElement = document.getElementById("video");
     const videoPlayer = new VideoPlayer(videoElement, () => {});
+    var pc = null;
+    var video_channel = null;
 
     videoElement.parentElement.onclick = function () {
       console.log("Initializing WebRTC...");
 
-      const pc = new RTCPeerConnection({
+      if (video_channel != null) {
+        video_channel.close();
+        video_channel = null;
+      }
+
+      if (pc !== null) {
+        pc.close();
+        pc = null;
+      }
+
+      pc = new RTCPeerConnection({
         urls: [{ url: "stun:stun.l.google.com:19302" }],
       });
 
@@ -197,7 +210,7 @@ export default {
         }
       };
 
-      const video_channel = pc.createDataChannel("video");
+      video_channel = pc.createDataChannel("video");
 
       const observer = new ResizeObserver(
         debounce(async () => {
@@ -227,6 +240,9 @@ export default {
       };
       video_channel.onmessage = async (msg) => {
         videoPlayer.push(msg.data);
+      };
+      video_channel.ondatachannel = async (evt) => {
+        console.log("data channel: ", evt);
       };
     };
   },
