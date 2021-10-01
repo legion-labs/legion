@@ -14,7 +14,7 @@ pub fn find_derived_path(path: &AssetPathId) -> AssetPathId {
         offline_data::Mesh::TYPE_ID => path.push(runtime_data::Mesh::TYPE.content()),
         legion_graphics_offline::psd::TYPE_ID => path
             .push(legion_graphics_offline::texture::TYPE_ID.content())
-            .push(legion_graphics_runtime::Texture::TYPE),
+            .push(legion_graphics_runtime::Texture::TYPE.content()),
         legion_graphics_offline::material::TYPE_ID => {
             path.push(legion_graphics_runtime::Material::TYPE.content())
         }
