@@ -13,3 +13,4 @@ sqlx = { version = "0.5", features = [
     "runtime-tokio-native-tls",
 ] }
 anyhow = "1.0"
+prost = "0.8"

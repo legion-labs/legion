@@ -75,6 +75,7 @@
 #![allow()]
 
 use anyhow::{Context, Result};
+use prost::Message;
 use sqlx::Row;
 use std::path::Path;
 
@@ -115,4 +116,45 @@ pub async fn fetch_recent_processes(
         processes.push(p);
     }
     Ok(processes)
+}
+
+pub async fn find_process_log_streams(
+    connection: &mut sqlx::AnyConnection,
+    process_id: &str,
+) -> Result<Vec<telemetry::StreamInfo>> {
+    let rows = sqlx::query(
+        "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags
+         FROM streams
+         WHERE tags LIKE '%log%'
+         AND process_id = ?
+         ;",
+    )
+    .bind(process_id)
+    .fetch_all(connection)
+    .await
+    .with_context(|| "find_process_log_streams")?;
+    let mut res = Vec::new();
+    for r in rows {
+        let stream_id: String = r.get("stream_id");
+        let dependencies_metadata_buffer: Vec<u8> = r.get("dependencies_metadata");
+        let dependencies_metadata =
+            telemetry::telemetry_ingestion_proto::ContainerMetadata::decode(
+                &*dependencies_metadata_buffer,
+            )
+            .with_context(|| "decoding dependencies metadata")?;
+        let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
+        let objects_metadata = telemetry::telemetry_ingestion_proto::ContainerMetadata::decode(
+            &*objects_metadata_buffer,
+        )
+        .with_context(|| "decoding objects metadata")?;
+        let tags_str: String = r.get("tags");
+        res.push(telemetry::StreamInfo {
+            stream_id,
+            process_id: r.get("process_id"),
+            dependencies_metadata: Some(dependencies_metadata),
+            objects_metadata: Some(objects_metadata),
+            tags: tags_str.split(' ').map(|s| s.to_owned()).collect(),
+        });
+    }
+    Ok(res)
 }
