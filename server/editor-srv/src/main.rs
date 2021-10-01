@@ -8,9 +8,16 @@ use legion_ecs::prelude::*;
 mod server;
 mod webrtc;
 
+use log::LevelFilter;
 use server::Server;
+use simple_logger::SimpleLogger;
 
 fn main() {
+    SimpleLogger::new()
+        .with_level(LevelFilter::Warn)
+        .init()
+        .unwrap();
+
     let args = clap::App::new("Legion Labs editor server")
         .author(clap::crate_authors!())
         .version(clap::crate_version!())
