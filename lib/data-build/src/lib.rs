@@ -177,7 +177,6 @@
 #![warn(missing_docs)]
 
 use legion_data_offline::asset::AssetPathId;
-use legion_data_runtime::AssetId;
 use std::io;
 
 #[derive(Debug)]
@@ -261,11 +260,7 @@ pub fn generate_rt_manifest(
         .collect::<Vec<_>>();
 
     for resource in runtime_resources {
-        output.insert(
-            AssetId::from(resource.path.content_id()),
-            resource.checksum,
-            resource.size,
-        );
+        output.insert(resource.path.content_id(), resource.checksum, resource.size);
     }
     output
 }

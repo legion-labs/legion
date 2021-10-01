@@ -17,7 +17,7 @@ use legion_data_compiler::CompilerHash;
 use legion_data_compiler::{CompiledResource, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{asset::AssetPathId, resource::Project};
-use legion_data_runtime::{AssetId, ContentType};
+use legion_data_runtime::ContentType;
 use petgraph::algo;
 
 use crate::asset_file_writer::write_assetfile;
@@ -599,7 +599,7 @@ impl DataBuild {
             //
             // for now, every derived resource gets an `assetfile` representation.
             //
-            let asset_id = AssetId::from(resource.compiled_path.content_id());
+            let asset_id = resource.compiled_path.content_id();
 
             let mut output: Vec<u8> = vec![];
             let resource_list = std::iter::once((asset_id, resource.compiled_checksum.get()));
@@ -608,10 +608,10 @@ impl DataBuild {
                 .filter(|r| r.is_reference_of(resource))
                 .map(|r| {
                     (
-                        AssetId::from(resource.compiled_path.content_id()),
+                        resource.compiled_path.content_id(),
                         (
-                            AssetId::from(r.compiled_reference.content_id()),
-                            AssetId::from(r.compiled_reference.content_id()),
+                            r.compiled_reference.content_id(),
+                            r.compiled_reference.content_id(),
                         ),
                     )
                 });

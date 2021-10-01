@@ -192,7 +192,7 @@ impl AssetPathId {
     /// Returns `ResourceType` of the resource identified by this path.
     pub fn content_type(&self) -> ContentType {
         if self.transforms.is_empty() {
-            self.source.resource_type().into()
+            self.source.resource_type()
         } else {
             self.transforms[self.transforms.len() - 1].0
         }
@@ -221,7 +221,7 @@ impl AssetPathId {
     pub fn last_transform(&self) -> Option<(ContentType, ContentType)> {
         match self.transforms.len() {
             0 => None,
-            1 => Some((self.source.resource_type().into(), self.transforms[0].0)),
+            1 => Some((self.source.resource_type(), self.transforms[0].0)),
             _ => {
                 let len = self.transforms.len();
                 Some((self.transforms[len - 2].0, self.transforms[len - 1].0))
