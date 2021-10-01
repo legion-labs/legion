@@ -246,7 +246,7 @@ impl From<legion_data_offline::resource::Error> for Error {
 ///
 /// This is a temporary solution that will be replaced by a **packaging** process.
 /// For now, we simply create a runtime manifest by filtering out non-asset resources
-/// and by identifying content by `AssetId` - which runtime operates on.
+/// and by identifying content by `ResourceId` - which runtime operates on.
 pub fn generate_rt_manifest(
     input: legion_data_compiler::Manifest,
     filter: fn(&AssetPathId) -> bool,

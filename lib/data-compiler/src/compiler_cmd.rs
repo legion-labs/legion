@@ -63,7 +63,7 @@ use crate::{
 use legion_content_store::ContentStoreAddr;
 use legion_data_offline::asset::AssetPathId;
 
-use legion_data_runtime::ContentType;
+use legion_data_runtime::ResourceType;
 use serde::{Deserialize, Serialize};
 
 /// Description of a compiler.
@@ -181,7 +181,7 @@ pub struct CompilerInfoCmdOutput {
     /// Resource and Asset data version.
     pub data_version: String,
     /// Transformation supported by data compiler.
-    pub transform: (ContentType, ContentType),
+    pub transform: (ResourceType, ResourceType),
 }
 
 impl CompilerInfoCmdOutput {

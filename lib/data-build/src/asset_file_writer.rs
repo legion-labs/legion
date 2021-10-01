@@ -1,7 +1,7 @@
 use crate::Error;
 use byteorder::{LittleEndian, WriteBytesExt};
 use legion_content_store::ContentStore;
-use legion_data_runtime::{AssetId, AssetType};
+use legion_data_runtime::{ResourceId, ResourceType};
 
 const ASSET_FILE_VERSION: u16 = 1;
 
@@ -13,8 +13,8 @@ pub fn write_assetfile<A, R>(
     mut writer: impl std::io::Write,
 ) -> Result<usize, Error>
 where
-    A: Iterator<Item = (AssetId, i128)>,
-    R: Iterator<Item = (AssetId, (AssetId, AssetId))>,
+    A: Iterator<Item = (ResourceId, i128)>,
+    R: Iterator<Item = (ResourceId, (ResourceId, ResourceId))>,
     A: Clone,
     R: Clone,
 {
@@ -26,7 +26,7 @@ where
         .map_err(|_e| Error::LinkFailed)?;
     written += std::mem::size_of::<u16>();
 
-    let mut primary_dependencies: Vec<AssetId> =
+    let mut primary_dependencies: Vec<ResourceId> =
         reference_list.into_iter().map(|r| r.1 .0).collect();
     primary_dependencies.dedup();
 
@@ -37,17 +37,17 @@ where
 
     for dep in primary_dependencies {
         writer
-            .write_u128::<LittleEndian>(unsafe { std::mem::transmute::<AssetId, u128>(dep) })
+            .write_u128::<LittleEndian>(unsafe { std::mem::transmute::<ResourceId, u128>(dep) })
             .map_err(|_e| Error::LinkFailed)?;
         written += std::mem::size_of::<u128>();
     }
 
     // secion header
-    let kind = asset_list.clone().next().unwrap().0.kind();
+    let kind = asset_list.clone().next().unwrap().0.ty();
     writer
-        .write_u32::<LittleEndian>(unsafe { std::mem::transmute::<AssetType, u32>(kind) })
+        .write_u32::<LittleEndian>(unsafe { std::mem::transmute::<ResourceType, u32>(kind) })
         .map_err(|_e| Error::LinkFailed)?;
-    written += std::mem::size_of::<AssetType>();
+    written += std::mem::size_of::<ResourceType>();
 
     writer
         .write_u64::<LittleEndian>(asset_list.clone().into_iter().count() as u64)
@@ -76,7 +76,7 @@ mod tests {
 
     use byteorder::{LittleEndian, ReadBytesExt};
     use legion_content_store::{ContentStore, RamContentStore};
-    use legion_data_runtime::{AssetDescriptor, AssetId, AssetType};
+    use legion_data_runtime::{AssetDescriptor, ResourceId, ResourceType};
 
     use crate::asset_file_writer::{write_assetfile, ASSET_FILE_VERSION};
 
@@ -84,8 +84,8 @@ mod tests {
     fn one_asset_no_references() {
         let mut content_store = RamContentStore::default();
 
-        let asset_id = AssetId::new(refs_asset::RefsAsset::TYPE, 1);
-        let reference_list: Vec<(AssetId, (AssetId, AssetId))> = Vec::new();
+        let asset_id = ResourceId::new(refs_asset::RefsAsset::TYPE, 1);
+        let reference_list: Vec<(ResourceId, (ResourceId, ResourceId))> = Vec::new();
         let asset_content = b"test_content".to_vec();
         let asset_checksum = content_store.store(&asset_content).expect("to store asset");
         assert_eq!(content_store.read(asset_checksum).unwrap(), asset_content);
@@ -118,7 +118,7 @@ mod tests {
             assert_eq!(primary_reference_count, 0);
 
             let asset_type = unsafe {
-                std::mem::transmute::<u32, AssetType>(
+                std::mem::transmute::<u32, ResourceType>(
                     assetfile_reader
                         .read_u32::<LittleEndian>()
                         .expect("valid data"),
@@ -148,12 +148,12 @@ mod tests {
     fn two_dependent_assets() {
         let mut content_store = RamContentStore::default();
 
-        let child_id = AssetId::new(refs_asset::RefsAsset::TYPE, 1);
+        let child_id = ResourceId::new(refs_asset::RefsAsset::TYPE, 1);
         let child_content = b"child".to_vec();
         let child_checksum = content_store.store(&child_content).expect("to store asset");
         assert_eq!(content_store.read(child_checksum).unwrap(), child_content);
 
-        let parent_id = AssetId::new(refs_asset::RefsAsset::TYPE, 2);
+        let parent_id = ResourceId::new(refs_asset::RefsAsset::TYPE, 2);
         let parent_content = b"parent".to_vec();
         let parent_checksum = content_store
             .store(&parent_content)
@@ -208,7 +208,7 @@ mod tests {
 
             for (_, (primary_ref, secondary_ref)) in &reference_list {
                 let asset_id = unsafe {
-                    std::mem::transmute::<u128, AssetId>(
+                    std::mem::transmute::<u128, ResourceId>(
                         assetfile_reader
                             .read_u128::<LittleEndian>()
                             .expect("read asset id"),
@@ -220,7 +220,7 @@ mod tests {
             }
 
             let asset_type = unsafe {
-                std::mem::transmute::<u32, AssetType>(
+                std::mem::transmute::<u32, ResourceType>(
                     assetfile_reader
                         .read_u32::<LittleEndian>()
                         .expect("valid data"),

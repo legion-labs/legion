@@ -10,9 +10,9 @@ use legion_data_compiler::{Locale, Manifest, Platform, Target};
 use legion_data_offline::resource::ResourceRegistryOptions;
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Project, ResourceId, ResourcePathName, ResourceProcessor, ResourceRegistry},
+    resource::{Project, ResourcePathName, ResourceProcessor, ResourceRegistry},
 };
-use legion_data_runtime::{AssetDescriptor, AssetLoader};
+use legion_data_runtime::{AssetDescriptor, AssetLoader, ResourceId};
 use multitext_resource::MultiTextResource;
 use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};

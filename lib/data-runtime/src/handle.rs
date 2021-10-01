@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{Asset, AssetId, AssetRegistry};
+use crate::{Asset, AssetRegistry, ResourceId};
 
 pub(crate) type HandleId = u32;
 
@@ -49,7 +49,7 @@ impl HandleUntyped {
     }
 
     /// Retrieves the asset id associated with this handle within the [`AssetRegistry`].
-    pub fn get_asset_id(&self, registry: &AssetRegistry) -> Option<AssetId> {
+    pub fn get_asset_id(&self, registry: &AssetRegistry) -> Option<ResourceId> {
         registry.get_asset_id(self.id)
     }
 
@@ -119,7 +119,7 @@ impl<T: Asset> Handle<T> {
     }
 
     /// Retrieves the asset id associated with this handle within the [`AssetRegistry`].
-    pub fn get_asset_id(&self, registry: &AssetRegistry) -> Option<AssetId> {
+    pub fn get_asset_id(&self, registry: &AssetRegistry) -> Option<ResourceId> {
         registry.get_asset_id(self.id)
     }
 

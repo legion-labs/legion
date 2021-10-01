@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
-use legion_data_offline::{
-    asset::AssetPathId,
-    resource::{ResourceId, ResourcePathName},
-};
-use legion_data_runtime::ContentType;
+use legion_data_offline::{asset::AssetPathId, resource::ResourcePathName};
+use legion_data_runtime::{ResourceId, ResourceType};
 
 use crate::offline_data;
 
@@ -69,7 +66,7 @@ fn push_transforms(mut id: AssetPathId, path: &str) -> AssetPathId {
             }
         };
 
-        let kind = ContentType::new(asset_type.as_bytes());
+        let kind = ResourceType::new(asset_type.as_bytes());
         if let Some(name) = name {
             id = id.push_named(kind, name);
         } else {

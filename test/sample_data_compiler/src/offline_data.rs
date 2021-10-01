@@ -4,8 +4,9 @@ use std::any::{Any, TypeId};
 
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Resource, ResourceProcessor, ResourceType},
+    resource::{Resource, ResourceProcessor},
 };
+use legion_data_runtime::ResourceType;
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 

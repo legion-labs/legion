@@ -1,6 +1,6 @@
 use std::{fmt, hash::Hash};
 
-use legion_data_runtime::{ContentId, ContentType};
+use legion_data_runtime::{ResourceId, ResourceType};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -75,16 +75,6 @@ impl<T: AsRef<str>> From<&T> for ResourcePathName {
         Self::from(s.as_ref().to_owned())
     }
 }
-
-/// Type identifier of an offline resource.
-pub type ResourceType = ContentType;
-
-/// A unique id of an offline resource.
-///
-/// This 64 bit id encodes the following information:
-/// - resource unique id - 32 bits
-/// - [`ResourceType`] - 32 bits
-pub type ResourceId = ContentId;
 
 /// Creates a new random id.
 pub fn new_resource_id(kind: ResourceType) -> ResourceId {

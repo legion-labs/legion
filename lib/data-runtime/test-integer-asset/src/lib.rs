@@ -1,4 +1,4 @@
-use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, AssetType};
+use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, ResourceType};
 
 #[derive(Asset)]
 pub struct IntegerAsset {
@@ -16,7 +16,7 @@ pub struct IntegerAssetLoader {}
 impl AssetLoader for IntegerAssetLoader {
     fn load(
         &mut self,
-        _kind: AssetType,
+        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Asset + Sync + Send>, std::io::Error> {
         let mut buf = 0i32.to_ne_bytes();

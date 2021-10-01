@@ -2,7 +2,6 @@ use crate::asset::AssetPathId;
 
 use crate::resource::{
     metadata::{Metadata, ResourceHash},
-    types::{ResourceId, ResourceType},
     ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
 };
 
@@ -17,6 +16,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use legion_data_runtime::{ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
 use super::new_resource_id;
@@ -338,7 +338,7 @@ impl Project {
                 .map_err(Error::IOError)?;
 
             let (_written, build_deps) = resources
-                .serialize_resource(id.kind(), handle, &mut resource_file)
+                .serialize_resource(id.ty(), handle, &mut resource_file)
                 .map_err(Error::IOError)?;
             build_deps
         };
@@ -382,7 +382,7 @@ impl Project {
 
         let mut resource_file = File::open(resource_path).map_err(Error::IOError)?;
         let handle = resources
-            .deserialize_resource(id.kind(), &mut resource_file)
+            .deserialize_resource(id.ty(), &mut resource_file)
             .map_err(Error::IOError)?;
         Ok(handle)
     }
@@ -520,6 +520,7 @@ impl fmt::Debug for Project {
 mod tests {
     use std::{fs::File, path::Path, str::FromStr};
 
+    use legion_data_runtime::ResourceType;
     use tempfile::TempDir;
 
     use crate::resource::project::Project;
@@ -527,7 +528,7 @@ mod tests {
         asset::AssetPathId,
         resource::{
             Resource, ResourcePathName, ResourceProcessor, ResourceRegistry,
-            ResourceRegistryOptions, ResourceType,
+            ResourceRegistryOptions,
         },
     };
 

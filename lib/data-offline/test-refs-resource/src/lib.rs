@@ -4,8 +4,9 @@
 
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Resource, ResourceProcessor, ResourceType},
+    resource::{Resource, ResourceProcessor},
 };
+use legion_data_runtime::ResourceType;
 
 use serde::{Deserialize, Serialize};
 

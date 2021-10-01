@@ -8,17 +8,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::{ContentId, ContentType};
-
-/// Type id of a runtime asset.
-pub type AssetType = ContentType;
-
-/// A unique id of a runtime asset.
-///
-/// This 64 bit id encodes the following information:
-/// - asset unique id - 32 bits
-/// - [`AssetType`] - 32 bits
-pub type AssetId = ContentId;
+use crate::ResourceType;
 
 /// Checksum of a runtime asset.
 #[derive(Copy, Clone, Debug, Eq)]
@@ -113,7 +103,7 @@ pub trait AssetDescriptor {
     /// Name of the asset type.
     const TYPENAME: &'static str;
     /// Type of the asset.
-    const TYPE: AssetType = AssetType::new(Self::TYPENAME.as_bytes());
+    const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
     /// Loader of the asset.
     type Loader: AssetLoader + Send + Default + 'static;
 }
@@ -157,7 +147,7 @@ pub trait AssetLoader {
     /// Asset loading interface.
     fn load(
         &mut self,
-        kind: AssetType,
+        kind: ResourceType,
         reader: &mut dyn io::Read,
     ) -> Result<Box<dyn Asset + Send + Sync>, io::Error>;
 

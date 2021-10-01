@@ -1,6 +1,7 @@
 //! Module providing Photoshop Document related functionality.
 
-use legion_data_offline::resource::{Resource, ResourceProcessor, ResourceType};
+use legion_data_offline::resource::{Resource, ResourceProcessor};
+use legion_data_runtime::ResourceType;
 
 use crate::texture::{Texture, TextureType};
 

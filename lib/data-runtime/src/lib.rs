@@ -48,7 +48,7 @@
 //!
 //! ## Adding New Asset Type
 //!
-//! > **TODO**: Describe what steps need to be taken in order to add a new `AssetType`.
+//! > **TODO**: Describe what steps need to be taken in order to add a new `ResourceType`.
 
 // BEGIN - Legion Labs lints v0.3
 // do not change or add/remove here, but one can add exceptions after this section
@@ -133,8 +133,8 @@ pub use asset_registry::*;
 mod handle;
 pub use handle::*;
 
-mod content;
-pub use content::*;
+mod resource;
+pub use resource::*;
 
 mod types;
 pub use types::*;

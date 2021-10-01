@@ -11,15 +11,15 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// It is currently generated randomly by hashing a byte array. It uses [`Self::num_bits`] number of bits.
 /// In the future, it can be optimized to use less bits to leave more bits for the asset/resource identifier.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
-pub struct ContentType(u32);
+pub struct ResourceType(u32);
 
-impl fmt::Display for ContentType {
+impl fmt::Display for ResourceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:08x}", self.0))
     }
 }
 
-impl ContentType {
+impl ResourceType {
     const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
     const fn crc32(v: &[u8]) -> u32 {
@@ -58,35 +58,35 @@ impl ContentType {
 
 /// Id of a runtime asset or source or derived resource.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash)]
-pub struct ContentId(std::num::NonZeroU128);
+pub struct ResourceId(std::num::NonZeroU128);
 
-impl ContentId {
+impl ResourceId {
     /// Creates a new id of a given type.
-    pub fn new(kind: ContentType, id: u64) -> Self {
+    pub fn new(kind: ResourceType, id: u64) -> Self {
         let internal = kind.stamp(id as u128);
         Self(std::num::NonZeroU128::new(internal).unwrap())
     }
 
     /// Returns the type of `ContentId`.
-    pub fn kind(&self) -> ContentType {
-        let type_id = (u128::from(self.0) >> (u128::BITS - ContentType::num_bits())) as u32;
-        ContentType::from_raw(type_id)
+    pub fn ty(&self) -> ResourceType {
+        let type_id = (u128::from(self.0) >> (u128::BITS - ResourceType::num_bits())) as u32;
+        ResourceType::from_raw(type_id)
     }
 }
 
-impl fmt::LowerHex for ContentId {
+impl fmt::LowerHex for ResourceId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)
     }
 }
 
-impl fmt::Display for ContentId {
+impl fmt::Display for ResourceId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:032x}", self.0))
     }
 }
 
-impl FromStr for ContentId {
+impl FromStr for ResourceId {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -101,7 +101,7 @@ impl FromStr for ContentId {
     }
 }
 
-impl TryFrom<u128> for ContentId {
+impl TryFrom<u128> for ResourceId {
     type Error = ();
 
     fn try_from(value: u128) -> Result<Self, Self::Error> {
@@ -110,7 +110,7 @@ impl TryFrom<u128> for ContentId {
     }
 }
 
-impl Serialize for ContentId {
+impl Serialize for ResourceId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -125,7 +125,7 @@ impl Serialize for ContentId {
     }
 }
 
-impl<'de> Deserialize<'de> for ContentId {
+impl<'de> Deserialize<'de> for ResourceId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,

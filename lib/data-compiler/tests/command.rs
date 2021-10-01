@@ -7,9 +7,9 @@ use legion_data_compiler::{
 };
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{new_resource_id, ResourceId, ResourceProcessor},
+    resource::{new_resource_id, ResourceProcessor},
 };
-use legion_data_runtime::AssetDescriptor;
+use legion_data_runtime::{AssetDescriptor, ResourceId};
 
 mod common;
 

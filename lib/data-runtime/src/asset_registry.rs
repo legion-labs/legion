@@ -11,13 +11,13 @@ use legion_content_store::ContentStore;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    Asset, AssetDescriptor, AssetId, AssetLoader, AssetType, Handle, HandleId, HandleUntyped,
-    RefOp,
+    Asset, AssetDescriptor, AssetLoader, Handle, HandleId, HandleUntyped, RefOp, ResourceId,
+    ResourceType,
 };
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
-    loaders: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
+    loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
 }
 
 impl AssetRegistryOptions {
@@ -62,7 +62,7 @@ impl AssetRegistryOptions {
 
 /// Registry of all loaded [`Asset`]s.
 ///
-/// Provides an API to load assets by their [`AssetId`]. The lifetime of an [`Asset`] is determined
+/// Provides an API to load assets by their [`ResourceId`]. The lifetime of an [`Asset`] is determined
 /// by the reference counted [`HandleUntyped`] and [`Handle`].
 ///
 /// [`Handle`]: [`crate::Handle`]
@@ -72,9 +72,9 @@ pub struct AssetRegistry {
         crossbeam_channel::Sender<RefOp>,
         crossbeam_channel::Receiver<RefOp>,
     ),
-    ref_counts: HashMap<HandleId, (AssetId, isize)>,
-    assets: HashMap<AssetId, Arc<dyn Asset + Send + Sync>>,
-    load_errors: HashMap<AssetId, io::ErrorKind>,
+    ref_counts: HashMap<HandleId, (ResourceId, isize)>,
+    assets: HashMap<ResourceId, Arc<dyn Asset + Send + Sync>>,
+    load_errors: HashMap<ResourceId, io::ErrorKind>,
     load_thread: Option<JoinHandle<()>>,
     loader: AssetLoaderStub,
 }
@@ -91,20 +91,20 @@ impl AssetRegistry {
     ///
     /// The asset will be unloaded after all instances of [`HandleUntyped`] and
     /// [`Handle`] that refer to that asset go out of scope.
-    pub fn load_untyped(&mut self, id: AssetId) -> HandleUntyped {
+    pub fn load_untyped(&mut self, id: ResourceId) -> HandleUntyped {
         let handle = self.create_handle(id);
         self.loader.load(id, handle.id);
         handle
     }
 
     /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T` for convenience.
-    pub fn load<T: Asset>(&mut self, id: AssetId) -> Handle<T> {
+    pub fn load<T: Asset>(&mut self, id: ResourceId) -> Handle<T> {
         let handle = self.load_untyped(id);
         Handle::<T>::from(handle)
     }
 
     /// Retrieves the asset id associated with a handle.
-    pub(crate) fn get_asset_id(&self, handle_id: HandleId) -> Option<AssetId> {
+    pub(crate) fn get_asset_id(&self, handle_id: HandleId) -> Option<ResourceId> {
         self.ref_counts
             .get(&handle_id)
             .map(|(asset_id, _)| *asset_id)
@@ -166,7 +166,7 @@ impl AssetRegistry {
         }
     }
 
-    fn create_handle(&mut self, id: AssetId) -> HandleUntyped {
+    fn create_handle(&mut self, id: ResourceId) -> HandleUntyped {
         self.id_generator += 1;
         let new_id = self.id_generator;
         // insert data
@@ -200,11 +200,11 @@ mod tests {
     use legion_content_store::{ContentStore, RamContentStore};
 
     use crate::{
-        manifest::Manifest, test_asset, AssetDescriptor, AssetId, AssetRegistry,
-        AssetRegistryOptions, Handle,
+        manifest::Manifest, test_asset, AssetDescriptor, AssetRegistry, AssetRegistryOptions,
+        Handle, ResourceId,
     };
 
-    fn setup_test() -> (AssetId, AssetRegistry) {
+    fn setup_test() -> (ResourceId, AssetRegistry) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
@@ -214,7 +214,7 @@ mod tests {
         ];
 
         let asset_id = {
-            let id = AssetId::new(test_asset::TestAsset::TYPE, 1);
+            let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
             let checksum = content_store.store(&binary_assetfile).unwrap();
             manifest.insert(id, checksum.into(), binary_assetfile.len());
             id

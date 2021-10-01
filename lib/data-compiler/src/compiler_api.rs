@@ -17,12 +17,12 @@
 //! ```no_run
 //! # use legion_data_compiler::{CompilerHash, Locale, Platform, Target};
 //! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
-//! # use legion_data_offline::{asset::AssetPathId, resource::ResourceType};
-//! # use legion_data_runtime::AssetType;
+//! # use legion_data_offline::asset::AssetPathId;
+//! # use legion_data_runtime::ResourceType;
 //! # use legion_content_store::ContentStoreAddr;
 //! # use std::path::Path;
 //! # const INPUT_TYPE: ResourceType = ResourceType::new(b"src");
-//! # const OUTPUT_TYPE: AssetType = AssetType::new(b"dst");
+//! # const OUTPUT_TYPE: ResourceType = ResourceType::new(b"dst");
 //! static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 //!    name: env!("CARGO_CRATE_NAME"),
 //!    build_version: DATA_BUILD_VERSION,
@@ -68,7 +68,8 @@
 //! Reading source `Resources` is done with [`CompilerContext::load_resource`] function:
 //!
 //! ```no_run
-//! # use legion_data_offline::{resource::{ResourceId, ResourceType, Resource, ResourceRegistryOptions, ResourceProcessor}, asset::AssetPathId};
+//! # use legion_data_offline::{resource::{Resource, ResourceRegistryOptions, ResourceProcessor}, asset::AssetPathId};
+//! # use legion_data_runtime::{ResourceId, ResourceType};
 //! # use legion_data_compiler::compiler_api::{CompilerContext, CompilationOutput, CompilerError};
 //! # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
 //! # pub struct SourceGeomProc {}
@@ -114,9 +115,9 @@ use clap::{AppSettings, Arg, ArgMatches, SubCommand};
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{ResourceHandleUntyped, ResourceId, ResourceRegistry},
+    resource::{ResourceHandleUntyped, ResourceRegistry},
 };
-use legion_data_runtime::ContentType;
+use legion_data_runtime::{ResourceId, ResourceType};
 use std::{
     env,
     fs::File,
@@ -231,7 +232,7 @@ pub struct CompilerDescriptor {
     /// Version of resource data formats.
     pub data_version: &'static str,
     /// Compiler supported resource transformation `f(.0)->.1`.
-    pub transform: &'static (ContentType, ContentType),
+    pub transform: &'static (ResourceType, ResourceType),
     /// Function returning a list of `CompilerHash` for a given context.
     pub compiler_hash_func: fn(
         code: &'static str,

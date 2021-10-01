@@ -1,6 +1,8 @@
 use std::{collections::HashMap, io, sync::mpsc};
 
-use crate::{asset::AssetPathId, resource::ResourceType};
+use legion_data_runtime::ResourceType;
+
+use crate::asset::AssetPathId;
 
 use super::{RefOp, Resource, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
 
@@ -193,9 +195,11 @@ impl ResourceRegistry {
 mod tests {
     use std::io;
 
+    use legion_data_runtime::ResourceType;
+
     use crate::{
         asset::AssetPathId,
-        resource::{registry::ResourceRegistryOptions, ResourceProcessor, ResourceType},
+        resource::{registry::ResourceRegistryOptions, ResourceProcessor},
     };
 
     use super::Resource;

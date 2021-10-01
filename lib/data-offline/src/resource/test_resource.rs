@@ -4,9 +4,11 @@
 
 use std::str::FromStr;
 
+use legion_data_runtime::ResourceType;
+
 use crate::{
     asset::AssetPathId,
-    resource::{Resource, ResourceProcessor, ResourceType},
+    resource::{Resource, ResourceProcessor},
 };
 
 /// Type id of test resource. Used until we have proper resource types.

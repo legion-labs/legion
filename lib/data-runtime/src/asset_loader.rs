@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io, sync::Arc, time::Duration};
 
-use crate::{manifest::Manifest, Asset, AssetId, AssetLoader, AssetType};
+use crate::{manifest::Manifest, Asset, AssetLoader, ResourceId, ResourceType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use legion_content_store::ContentStore;
@@ -8,34 +8,34 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AssetReference {
-    primary: AssetId,
-    secondary: AssetId,
+    primary: ResourceId,
+    secondary: ResourceId,
 }
 
 /// The intermediate output of asset loading process.
 ///
 /// Contains the result of loading a single file.
 struct LoadOutput {
-    assets: Vec<(AssetId, Option<Arc<dyn Asset + Send + Sync>>)>,
+    assets: Vec<(ResourceId, Option<Arc<dyn Asset + Send + Sync>>)>,
     load_dependencies: Vec<AssetReference>,
 }
 
 pub(crate) enum LoaderResult {
-    Loaded(AssetId, Arc<dyn Asset + Send + Sync>, Option<LoadId>),
-    Unloaded(AssetId),
-    LoadError(AssetId, Option<LoadId>, io::ErrorKind),
+    Loaded(ResourceId, Arc<dyn Asset + Send + Sync>, Option<LoadId>),
+    Unloaded(ResourceId),
+    LoadError(ResourceId, Option<LoadId>, io::ErrorKind),
 }
 
 pub(crate) enum LoaderRequest {
-    Load(AssetId, Option<LoadId>),
-    Unload(AssetId, bool, Option<io::ErrorKind>),
+    Load(ResourceId, Option<LoadId>),
+    Unload(ResourceId, bool, Option<io::ErrorKind>),
     Terminate,
 }
 
 struct LoaderPending {
-    primary_id: AssetId,
+    primary_id: ResourceId,
     load_id: Option<LoadId>,
-    assets: Vec<(AssetId, Option<Arc<dyn Asset + Send + Sync>>)>,
+    assets: Vec<(ResourceId, Option<Arc<dyn Asset + Send + Sync>>)>,
     references: Vec<AssetReference>,
 }
 
@@ -79,7 +79,7 @@ impl AssetLoaderStub {
         self.request_tx.send(LoaderRequest::Terminate).unwrap();
     }
 
-    pub(crate) fn load(&self, asset_id: AssetId, load_id: LoadId) {
+    pub(crate) fn load(&self, asset_id: ResourceId, load_id: LoadId) {
         // todo: pass HandleId
         self.request_tx
             .send(LoaderRequest::Load(asset_id, Some(load_id)))
@@ -89,7 +89,7 @@ impl AssetLoaderStub {
     pub(crate) fn try_result(&mut self) -> Option<LoaderResult> {
         self.result_rx.try_recv().ok()
     }
-    pub(crate) fn unload(&mut self, id: AssetId) {
+    pub(crate) fn unload(&mut self, id: ResourceId) {
         self.request_tx
             .send(LoaderRequest::Unload(id, true, None))
             .unwrap();
@@ -97,21 +97,21 @@ impl AssetLoaderStub {
 }
 
 pub(crate) struct AssetLoaderIO {
-    loaders: HashMap<AssetType, Box<dyn AssetLoader + Send>>,
+    loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
 
     request_await: Vec<LoaderPending>,
 
     /// Reference counts of primary and secondary assets.
-    asset_refcounts: HashMap<AssetId, isize>,
+    asset_refcounts: HashMap<ResourceId, isize>,
 
     // this should be sent back to the game thread.
-    asset_storage: HashMap<AssetId, Arc<dyn Asset + Send + Sync>>,
+    asset_storage: HashMap<ResourceId, Arc<dyn Asset + Send + Sync>>,
 
     /// List of secondary assets of a primary asset.
-    secondary_assets: HashMap<AssetId, Vec<AssetId>>,
+    secondary_assets: HashMap<ResourceId, Vec<ResourceId>>,
 
     /// List of primary asset's references to other primary assets .
-    primary_asset_references: HashMap<AssetId, Vec<AssetId>>,
+    primary_asset_references: HashMap<ResourceId, Vec<ResourceId>>,
 
     /// Where assets are stored.
     content_store: Box<dyn ContentStore>,
@@ -156,12 +156,19 @@ impl AssetLoaderIO {
             result_tx,
         }
     }
-    pub(crate) fn register_loader(&mut self, kind: AssetType, loader: Box<dyn AssetLoader + Send>) {
+    pub(crate) fn register_loader(
+        &mut self,
+        kind: ResourceType,
+        loader: Box<dyn AssetLoader + Send>,
+    ) {
         self.loaders.insert(kind, loader);
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    fn process(&mut self, request: LoaderRequest) -> Option<(AssetId, Option<LoadId>, io::Error)> {
+    fn process(
+        &mut self,
+        request: LoaderRequest,
+    ) -> Option<(ResourceId, Option<LoadId>, io::Error)> {
         match request {
             LoaderRequest::Load(primary_id, load_id) => {
                 if let Some((checksum, size)) = self.manifest.find(primary_id) {
@@ -321,7 +328,7 @@ impl AssetLoaderIO {
 
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
-                        let loader = self.loaders.get_mut(&asset_id.kind()).unwrap();
+                        let loader = self.loaders.get_mut(&asset_id.ty()).unwrap();
 
                         // SAFETY: this is safe because loaded asset is only referenced by the loader.
                         // it hasn't been made available to other systems yet.
@@ -370,10 +377,10 @@ impl AssetLoaderIO {
     }
 
     fn load_internal(
-        primary_id: AssetId,
+        primary_id: ResourceId,
         reader: &mut dyn io::Read,
-        asset_refcounts: &HashMap<AssetId, isize>,
-        loaders: &mut HashMap<AssetType, Box<dyn AssetLoader + Send>>,
+        asset_refcounts: &HashMap<ResourceId, isize>,
+        loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
         const ASSET_FILE_VERSION: u16 = 1;
 
@@ -390,7 +397,7 @@ impl AssetLoaderIO {
         let mut reference_list = Vec::with_capacity(reference_count as usize);
         for _ in 0..reference_count {
             let asset_ref = unsafe {
-                std::mem::transmute::<u128, AssetId>(reader.read_u128::<LittleEndian>()?)
+                std::mem::transmute::<u128, ResourceId>(reader.read_u128::<LittleEndian>()?)
             };
             reference_list.push(AssetReference {
                 primary: asset_ref,
@@ -403,7 +410,7 @@ impl AssetLoaderIO {
 
         // section header
         let asset_type = unsafe {
-            std::mem::transmute::<u32, AssetType>(
+            std::mem::transmute::<u32, ResourceType>(
                 reader.read_u32::<LittleEndian>().expect("valid data"),
             )
         };
@@ -435,7 +442,7 @@ mod tests {
     use crate::{
         asset_loader::{LoaderRequest, LoaderResult},
         manifest::Manifest,
-        test_asset, AssetDescriptor, AssetId,
+        test_asset, AssetDescriptor, ResourceId,
     };
 
     use super::AssetLoaderIO;
@@ -451,7 +458,7 @@ mod tests {
         ];
 
         let asset_id = {
-            let id = AssetId::new(test_asset::TestAsset::TYPE, 1);
+            let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
             let checksum = content_store.store(&binary_assetfile).unwrap();
             manifest.insert(id, checksum.into(), binary_assetfile.len());
             id
@@ -525,7 +532,7 @@ mod tests {
             116,
         ];
 
-        let parent_id = AssetId::new(test_asset::TestAsset::TYPE, 2);
+        let parent_id = ResourceId::new(test_asset::TestAsset::TYPE, 2);
 
         let asset_id = {
             let checksum = content_store.store(&binary_parent_assetfile).unwrap();
@@ -584,8 +591,8 @@ mod tests {
         ];
         let parent_content = "parent";
 
-        let parent_id = AssetId::new(test_asset::TestAsset::TYPE, 2);
-        let child_id = AssetId::new(test_asset::TestAsset::TYPE, 1);
+        let parent_id = ResourceId::new(test_asset::TestAsset::TYPE, 2);
+        let child_id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
 
         let asset_id = {
             manifest.insert(

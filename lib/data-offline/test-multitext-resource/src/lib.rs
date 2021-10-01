@@ -1,8 +1,9 @@
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{Resource, ResourceProcessor, ResourceType},
+    resource::{Resource, ResourceProcessor},
 };
 
+use legion_data_runtime::ResourceType;
 use serde::{Deserialize, Serialize};
 
 pub const TYPE_ID: ResourceType = ResourceType::new(b"multitext_resource");

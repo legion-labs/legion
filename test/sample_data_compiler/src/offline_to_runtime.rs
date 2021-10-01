@@ -1,5 +1,5 @@
 use legion_data_offline::asset::AssetPathId;
-use legion_data_runtime::{AssetDescriptor, AssetId};
+use legion_data_runtime::{AssetDescriptor, ResourceId};
 
 use crate::{
     offline_data::{self, CompilableResource},
@@ -24,7 +24,7 @@ pub fn find_derived_path(path: &AssetPathId) -> AssetPathId {
     }
 }
 
-pub fn find_derived_path_opt(path: &Option<AssetPathId>) -> Option<AssetId> {
+pub fn find_derived_path_opt(path: &Option<AssetPathId>) -> Option<ResourceId> {
     path.as_ref()
         .map(|path| find_derived_path(path).content_id())
 }

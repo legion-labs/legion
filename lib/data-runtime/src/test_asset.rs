@@ -2,7 +2,7 @@
 //!
 //! It is used to test the data compilation process until we have a proper asset available.
 
-use crate::{Asset, AssetDescriptor, AssetLoader, AssetType};
+use crate::{Asset, AssetDescriptor, AssetLoader, ResourceType};
 
 /// Asset temporarily used for testing.
 ///
@@ -27,7 +27,7 @@ pub struct TestAssetLoader {}
 impl AssetLoader for TestAssetLoader {
     fn load(
         &mut self,
-        _kind: AssetType,
+        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
         let mut content = String::new();

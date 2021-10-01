@@ -17,7 +17,7 @@ use legion_data_compiler::CompilerHash;
 use legion_data_compiler::{CompiledResource, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{asset::AssetPathId, resource::Project};
-use legion_data_runtime::ContentType;
+use legion_data_runtime::ResourceType;
 use petgraph::algo;
 
 use crate::asset_file_writer::write_assetfile;
@@ -44,7 +44,7 @@ struct CompileOutput {
 /// yield the same compilation outcome.
 // todo(kstasik): `context_hash` should also include localization_id
 fn compute_context_hash(
-    transform: (ContentType, ContentType),
+    transform: (ResourceType, ResourceType),
     compiler_hash: CompilerHash,
     databuild_version: &'static str,
 ) -> u64 {
@@ -68,7 +68,8 @@ fn compute_context_hash(
 /// # use legion_data_build::{DataBuild, DataBuildOptions};
 /// # use legion_content_store::ContentStoreAddr;
 /// # use legion_data_compiler::{Locale, Platform, Target};
-/// # use legion_data_offline::{resource::{ResourceId, ResourceType}, asset::AssetPathId};
+/// # use legion_data_offline::asset::AssetPathId;
+/// # use legion_data_runtime::{ResourceId, ResourceType};
 /// # use std::str::FromStr;
 /// # let offline_anim = ResourceId::from_str("invalid").unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
@@ -387,7 +388,7 @@ impl DataBuild {
     /// Compile a resource identified by [`AssetPathId`] and all its dependencies and update the *build index* with compilation results.
     /// Returns a list of (id, checksum, size) of created resources and information about their dependencies.
     /// The returned results can be accessed by  [`legion_content_store::ContentStore`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
-    // TODO: The list might contain many versions of the same [`AssetId`] compiled for many contexts (platform, target, locale, etc).
+    // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many contexts (platform, target, locale, etc).
     fn compile_path(
         &mut self,
         compile_path: AssetPathId,

@@ -6,9 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::resource::ResourceId;
-
-use legion_data_runtime::{ContentId, ContentType};
+use legion_data_runtime::{ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
 /// Identifier of a path in a build graph.
@@ -30,7 +28,8 @@ use serde::{Deserialize, Serialize};
 /// definition of a path representing a *derived resource* of a runtime geometry data after LOD-generation process.
 ///
 /// ```no_run
-/// # use legion_data_offline::{resource::{Project, ResourcePathName, ResourceRegistryOptions, ResourceType}, asset::AssetPathId};
+/// # use legion_data_offline::{resource::{Project, ResourcePathName, ResourceRegistryOptions}, asset::AssetPathId};
+/// # use legion_data_runtime::ResourceType;
 /// # use std::path::PathBuf;
 /// # let mut resources = ResourceRegistryOptions::new().create_registry();
 /// # let mut project = Project::create_new(&PathBuf::new()).unwrap();
@@ -49,7 +48,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Hash, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct AssetPathId {
     source: ResourceId,
-    transforms: Vec<(ContentType, Option<String>)>,
+    transforms: Vec<(ResourceType, Option<String>)>,
 }
 
 impl From<ResourceId> for AssetPathId {
@@ -107,10 +106,10 @@ impl FromStr for AssetPathId {
                 let err = "Z".parse::<i32>().expect_err("ParseIntError");
                 let t = u32::from_str_radix(&s[0..name], 16)?;
                 let p = String::from_str(&s[name + 1..end]).map_err(|_e| err)?;
-                (ContentType::from_raw(t), Some(p))
+                (ResourceType::from_raw(t), Some(p))
             } else {
                 let t = u32::from_str_radix(&s[0..end], 16)?;
-                (ContentType::from_raw(t), None)
+                (ResourceType::from_raw(t), None)
             };
             transforms.push(transform);
             s = &s[end..];
@@ -144,7 +143,7 @@ impl AssetPathId {
     ///
     /// The node is identified by the appended `kind`.
     /// The `AssetPathId`'s compilation output type changes to `kind`.
-    pub fn push(&self, kind: impl Into<ContentType>) -> Self {
+    pub fn push(&self, kind: impl Into<ResourceType>) -> Self {
         let mut cloned = self.clone();
         cloned.transforms.push((kind.into(), None));
         cloned
@@ -154,7 +153,7 @@ impl AssetPathId {
     ///
     /// The node is identified by the appended tuple of (`kind`, `name`).
     /// The `AssetPathId`'s compilation output type changes to `kind`.
-    pub fn push_named(&self, kind: impl Into<ContentType>, name: &str) -> Self {
+    pub fn push_named(&self, kind: impl Into<ResourceType>, name: &str) -> Self {
         let mut cloned = self.clone();
         cloned
             .transforms
@@ -190,9 +189,9 @@ impl AssetPathId {
     }
 
     /// Returns `ResourceType` of the resource identified by this path.
-    pub fn content_type(&self) -> ContentType {
+    pub fn content_type(&self) -> ResourceType {
         if self.transforms.is_empty() {
-            self.source.kind()
+            self.source.ty()
         } else {
             self.transforms[self.transforms.len() - 1].0
         }
@@ -218,10 +217,10 @@ impl AssetPathId {
     /// Returns the last transformation that must be applied to produce the resource.
     ///
     /// Returns None if self is a `source resource`.
-    pub fn last_transform(&self) -> Option<(ContentType, ContentType)> {
+    pub fn last_transform(&self) -> Option<(ResourceType, ResourceType)> {
         match self.transforms.len() {
             0 => None,
-            1 => Some((self.source.kind(), self.transforms[0].0)),
+            1 => Some((self.source.ty(), self.transforms[0].0)),
             _ => {
                 let len = self.transforms.len();
                 Some((self.transforms[len - 2].0, self.transforms[len - 1].0))
@@ -242,13 +241,13 @@ impl AssetPathId {
     }
 
     /// Returns `ContentId` representing the path.
-    pub fn content_id(&self) -> ContentId {
+    pub fn content_id(&self) -> ResourceId {
         let id = {
             let mut hasher = DefaultHasher::new();
             self.hash(&mut hasher);
             hasher.finish()
         };
-        ContentId::new(self.content_type(), id)
+        ResourceId::new(self.content_type(), id)
     }
 }
 
