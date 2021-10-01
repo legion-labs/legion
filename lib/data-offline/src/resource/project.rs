@@ -19,6 +19,8 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+use super::new_resource_id;
+
 const METADATA_EXT: &str = "meta";
 
 /// A project exists always within a given directory and this file
@@ -250,7 +252,7 @@ impl Project {
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceId, Error> {
-        let id = ResourceId::generate_new(kind);
+        let id = new_resource_id(kind);
         self.add_resource_with_id(name, kind, id, handle, registry)
     }
 
@@ -336,7 +338,7 @@ impl Project {
                 .map_err(Error::IOError)?;
 
             let (_written, build_deps) = resources
-                .serialize_resource(id.resource_type(), handle, &mut resource_file)
+                .serialize_resource(id.kind(), handle, &mut resource_file)
                 .map_err(Error::IOError)?;
             build_deps
         };
@@ -380,7 +382,7 @@ impl Project {
 
         let mut resource_file = File::open(resource_path).map_err(Error::IOError)?;
         let handle = resources
-            .deserialize_resource(id.resource_type(), &mut resource_file)
+            .deserialize_resource(id.kind(), &mut resource_file)
             .map_err(Error::IOError)?;
         Ok(handle)
     }

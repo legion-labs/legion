@@ -426,7 +426,7 @@ mod tests {
     use super::BuildIndex;
     use legion_data_offline::{
         asset::AssetPathId,
-        resource::{Project, ResourceId},
+        resource::{new_resource_id, Project},
     };
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
@@ -453,7 +453,7 @@ mod tests {
         let project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
-        let source_id = ResourceId::generate_new(refs_resource::TYPE_ID);
+        let source_id = new_resource_id(refs_resource::TYPE_ID);
         let source_resource = AssetPathId::from(source_id);
         let intermediate_resource = source_resource.push(refs_resource::TYPE_ID);
         let output_resources = intermediate_resource.push(refs_resource::TYPE_ID);

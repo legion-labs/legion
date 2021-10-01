@@ -192,7 +192,7 @@ impl AssetPathId {
     /// Returns `ResourceType` of the resource identified by this path.
     pub fn content_type(&self) -> ContentType {
         if self.transforms.is_empty() {
-            self.source.resource_type()
+            self.source.kind()
         } else {
             self.transforms[self.transforms.len() - 1].0
         }
@@ -221,7 +221,7 @@ impl AssetPathId {
     pub fn last_transform(&self) -> Option<(ContentType, ContentType)> {
         match self.transforms.len() {
             0 => None,
-            1 => Some((self.source.resource_type(), self.transforms[0].0)),
+            1 => Some((self.source.kind(), self.transforms[0].0)),
             _ => {
                 let len = self.transforms.len();
                 Some((self.transforms[len - 2].0, self.transforms[len - 1].0))
@@ -259,12 +259,12 @@ mod tests {
 
     use crate::{
         asset::AssetPathId,
-        resource::{test_resource, ResourceId},
+        resource::{new_resource_id, test_resource},
     };
 
     #[test]
     fn simple_path() {
-        let source = ResourceId::generate_new(test_resource::TYPE_ID);
+        let source = new_resource_id(test_resource::TYPE_ID);
 
         let path_a = AssetPathId::from(source);
         let path_b = path_a.push(test_resource::TYPE_ID);
@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn named_path() {
-        let source = ResourceId::generate_new(test_resource::TYPE_ID);
+        let source = new_resource_id(test_resource::TYPE_ID);
 
         let source = AssetPathId::from(source);
         let source_hello = source.push_named(test_resource::TYPE_ID, "hello");

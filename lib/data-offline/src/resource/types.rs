@@ -1,4 +1,4 @@
-use std::{fmt, hash::Hash, str::FromStr};
+use std::{fmt, hash::Hash};
 
 use legion_data_runtime::{ContentId, ContentType};
 use rand::Rng;
@@ -84,46 +84,10 @@ pub type ResourceType = ContentType;
 /// This 64 bit id encodes the following information:
 /// - resource unique id - 32 bits
 /// - [`ResourceType`] - 32 bits
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Serialize, Deserialize, Hash)]
-pub struct ResourceId(ContentId);
+pub type ResourceId = ContentId;
 
-impl ResourceId {
-    /// Creates a new random id.
-    pub fn generate_new(kind: ResourceType) -> Self {
-        let rand_id: u64 = rand::thread_rng().gen();
-        Self(ContentId::new(kind, rand_id))
-    }
-
-    /// Returns the type of the resource.
-    pub fn resource_type(&self) -> ResourceType {
-        self.0.kind()
-    }
-}
-
-impl fmt::LowerHex for ResourceId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.0, f)
-    }
-}
-
-impl fmt::Display for ResourceId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))
-    }
-}
-
-impl FromStr for ResourceId {
-    type Err = std::num::ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(ContentId::from_str(s)
-            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))?
-            .into())
-    }
-}
-
-impl From<ContentId> for ResourceId {
-    fn from(value: ContentId) -> Self {
-        Self(value)
-    }
+/// Creates a new random id.
+pub fn new_resource_id(kind: ResourceType) -> ResourceId {
+    let rand_id: u64 = rand::thread_rng().gen();
+    ResourceId::new(kind, rand_id)
 }

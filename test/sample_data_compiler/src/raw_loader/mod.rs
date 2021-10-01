@@ -174,7 +174,7 @@ fn create_or_find_default(
                 let mut hasher = DefaultHasher::new();
                 name.hash(&mut hasher);
                 let resource_hash = hasher.finish();
-                let id = ResourceId::from(ContentId::new(kind, resource_hash));
+                let id = ContentId::new(kind, resource_hash);
                 project
                     .add_resource_with_id(
                         name.clone(),

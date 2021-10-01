@@ -10,7 +10,7 @@ use legion_data_compiler::{
 };
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{ResourceId, ResourceProcessor},
+    resource::{new_resource_id, ResourceProcessor},
 };
 use legion_data_runtime::{AssetDescriptor, AssetLoader};
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
@@ -35,7 +35,7 @@ fn compile_atoi() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::generate_new(text_resource::TYPE_ID);
+        let source = new_resource_id(text_resource::TYPE_ID);
 
         let mut proc = text_resource::TextResourceProc {};
 
@@ -106,7 +106,7 @@ fn compile_intermediate() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::generate_new(text_resource::TYPE_ID);
+        let source = new_resource_id(text_resource::TYPE_ID);
         let mut proc = text_resource::TextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -199,7 +199,7 @@ fn compile_multi_resource() {
     let source_text_list = vec![String::from("hello"), String::from("world")];
 
     let source = {
-        let source = ResourceId::generate_new(multitext_resource::TYPE_ID);
+        let source = new_resource_id(multitext_resource::TYPE_ID);
         let mut proc = MultiTextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -278,7 +278,7 @@ fn compile_base64() {
     let expected_base64_value = String::from("AQIDBAUGBwgJ");
 
     let source = {
-        let source = ResourceId::generate_new(binary_resource::TYPE_ID);
+        let source = new_resource_id(binary_resource::TYPE_ID);
 
         let mut proc = binary_resource::BinaryResourceProc {};
 

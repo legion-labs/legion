@@ -7,7 +7,7 @@ use legion_data_compiler::{
 };
 use legion_data_offline::{
     asset::AssetPathId,
-    resource::{ResourceId, ResourceProcessor},
+    resource::{new_resource_id, ResourceId, ResourceProcessor},
 };
 use legion_data_runtime::AssetDescriptor;
 
@@ -53,7 +53,7 @@ fn command_compile() {
 
     let content = "test content";
 
-    let source = ResourceId::generate_new(refs_resource::TYPE_ID);
+    let source = new_resource_id(refs_resource::TYPE_ID);
     create_test_resource(source, &resource_dir, content);
 
     let exe_path = common::compiler_exe("test-refs");
