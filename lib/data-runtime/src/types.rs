@@ -1,7 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     any::{Any, TypeId},
-    convert::{TryFrom, TryInto},
+    convert::TryInto,
     fmt,
     hash::{Hash, Hasher},
     io,
@@ -52,14 +52,9 @@ impl FromStr for AssetId {
     }
 }
 
-impl TryFrom<ContentId> for AssetId {
-    type Error = ();
-
-    fn try_from(value: ContentId) -> Result<Self, Self::Error> {
-        if !value.kind().is_rt() {
-            return Err(());
-        }
-        Ok(Self(value))
+impl From<ContentId> for AssetId {
+    fn from(_value: ContentId) -> Self {
+        Self(_value)
     }
 }
 
@@ -73,7 +68,7 @@ impl AssetType {
     /// It is recommended to use this method to define a public constant
     /// which can be used to identify an asset type.
     pub const fn new(v: &[u8]) -> Self {
-        Self(ContentType::new(v, true))
+        Self(ContentType::new(v))
     }
 
     /// Returns underlying id (at compile-time).
@@ -82,14 +77,9 @@ impl AssetType {
     }
 }
 
-impl TryFrom<ContentType> for AssetType {
-    type Error = ();
-
-    fn try_from(value: ContentType) -> Result<Self, Self::Error> {
-        match value.is_rt() {
-            true => Ok(Self(value)),
-            false => Err(()),
-        }
+impl From<ContentType> for AssetType {
+    fn from(value: ContentType) -> Self {
+        Self(value)
     }
 }
 

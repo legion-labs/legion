@@ -1,9 +1,4 @@
-use std::{
-    convert::{TryFrom, TryInto},
-    fmt,
-    hash::Hash,
-    str::FromStr,
-};
+use std::{fmt, hash::Hash, str::FromStr};
 
 use legion_data_runtime::{ContentId, ContentType};
 use rand::Rng;
@@ -118,20 +113,15 @@ impl FromStr for ResourceId {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        ContentId::from_str(s)?
-            .try_into()
-            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))
+        Ok(ContentId::from_str(s)
+            .map_err(|_e| "Z".parse::<i32>().expect_err("ParseIntError"))?
+            .into())
     }
 }
 
-impl TryFrom<ContentId> for ResourceId {
-    type Error = ();
-
-    fn try_from(value: ContentId) -> Result<Self, Self::Error> {
-        if value.kind().is_rt() {
-            return Err(());
-        }
-        Ok(Self(value))
+impl From<ContentId> for ResourceId {
+    fn from(value: ContentId) -> Self {
+        Self(value)
     }
 }
 
@@ -145,7 +135,7 @@ impl ResourceType {
     /// It is recommended to use this method to define a public constant
     /// which can be used to identify a resource type.
     pub const fn new(v: &[u8]) -> Self {
-        Self(ContentType::new(v, false))
+        Self(ContentType::new(v))
     }
 
     /// Returns underlying id (at compile time).
@@ -154,14 +144,9 @@ impl ResourceType {
     }
 }
 
-impl TryFrom<ContentType> for ResourceType {
-    type Error = ();
-
-    fn try_from(value: ContentType) -> Result<Self, Self::Error> {
-        match value.is_rt() {
-            true => Err(()),
-            false => Ok(Self(value)),
-        }
+impl From<ContentType> for ResourceType {
+    fn from(value: ContentType) -> Self {
+        Self(value)
     }
 }
 

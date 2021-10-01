@@ -118,7 +118,6 @@ use legion_data_offline::{
 };
 use legion_data_runtime::ContentType;
 use std::{
-    convert::TryFrom,
     env,
     fs::File,
     io::{self, stdout},
@@ -184,7 +183,7 @@ impl CompilerContext<'_> {
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandleUntyped, CompilerError> {
         if id.is_source() {
-            let kind = ResourceType::try_from(id.content_type()).unwrap();
+            let kind = ResourceType::from(id.content_type());
             //
             // for now, we only allow to load the `derived` resource's source.
             //
@@ -208,7 +207,7 @@ impl CompilerContext<'_> {
                 // this should be extended to Assets but would require
                 // a change in this fn's signature
                 //
-                let kind = ResourceType::try_from(id.content_type()).unwrap();
+                let kind = ResourceType::from(id.content_type());
                 Ok(resources
                     .deserialize_resource(kind, &mut &content[..])
                     .map_err(CompilerError::ResourceReadFailed)?)

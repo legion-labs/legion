@@ -1,6 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::io::Seek;
@@ -598,44 +597,43 @@ impl DataBuild {
         let mut resource_files = Vec::with_capacity(resources.len());
         for resource in resources {
             //
-            // for now, non-asset resources are passed for linking
-            // this should be revisited.
+            // for now, every derived resource gets an `assetfile` representation.
             //
-            if let Ok(asset_id) = AssetId::try_from(resource.compiled_path.content_id()) {
-                let mut output: Vec<u8> = vec![];
-                let resource_list = std::iter::once((asset_id, resource.compiled_checksum.get()));
-                let reference_list = references
-                    .iter()
-                    .filter(|r| r.is_reference_of(resource))
-                    .map(|r| {
+            let asset_id = AssetId::from(resource.compiled_path.content_id());
+
+            let mut output: Vec<u8> = vec![];
+            let resource_list = std::iter::once((asset_id, resource.compiled_checksum.get()));
+            let reference_list = references
+                .iter()
+                .filter(|r| r.is_reference_of(resource))
+                .map(|r| {
+                    (
+                        AssetId::from(resource.compiled_path.content_id()),
                         (
-                            AssetId::try_from(resource.compiled_path.content_id()).unwrap(),
-                            (
-                                AssetId::try_from(r.compiled_reference.content_id()).unwrap(),
-                                AssetId::try_from(r.compiled_reference.content_id()).unwrap(),
-                            ),
-                        )
-                    });
+                            AssetId::from(r.compiled_reference.content_id()),
+                            AssetId::from(r.compiled_reference.content_id()),
+                        ),
+                    )
+                });
 
-                let bytes_written = write_assetfile(
-                    resource_list,
-                    reference_list,
-                    &self.content_store,
-                    &mut output,
-                )?;
+            let bytes_written = write_assetfile(
+                resource_list,
+                reference_list,
+                &self.content_store,
+                &mut output,
+            )?;
 
-                let checksum = self
-                    .content_store
-                    .store(&output)
-                    .ok_or(Error::InvalidAssetStore)?;
+            let checksum = self
+                .content_store
+                .store(&output)
+                .ok_or(Error::InvalidAssetStore)?;
 
-                let asset_file = CompiledResource {
-                    path: resource.compiled_path.clone(),
-                    checksum: checksum.into(),
-                    size: bytes_written,
-                };
-                resource_files.push(asset_file);
-            }
+            let asset_file = CompiledResource {
+                path: resource.compiled_path.clone(),
+                checksum: checksum.into(),
+                size: bytes_written,
+            };
+            resource_files.push(asset_file);
         }
 
         Ok(resource_files)
