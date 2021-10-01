@@ -81,6 +81,12 @@ use clap::{App, AppSettings, Arg, SubCommand};
 use std::path::Path;
 use telemetry::*;
 
+async fn print_recent_processes(connection: &mut sqlx::AnyConnection) {
+    for p in fetch_recent_processes(connection).await.unwrap() {
+        println!("{} {}", p.start_time, p.exe);
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let _telemetry_guard = TelemetrySystemGuard::new();
@@ -89,24 +95,22 @@ async fn main() -> Result<()> {
         .setting(AppSettings::ArgRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))
         .about("CLI to query a local telemetry data lake")
+        .arg(
+            Arg::with_name("db")
+                .required(true)
+                .help("local path to folder containing telemetry.db3"),
+        )
         .subcommand(
-            SubCommand::with_name("recent-processes")
-                .about("prints a list of recent processes")
-                .arg(
-                    Arg::with_name("db")
-                        .required(true)
-                        .help("local path to folder containing telemetry.db3"),
-                ),
+            SubCommand::with_name("recent-processes").about("prints a list of recent processes"),
         )
         .get_matches();
+
+    let data_path = Path::new(matches.value_of("db").unwrap());
+    let pool = alloc_sql_pool(data_path).await.unwrap();
+    let mut connection = pool.acquire().await.unwrap();
     match matches.subcommand() {
-        ("recent-processes", Some(command_match)) => {
-            let data_path = Path::new(command_match.value_of("db").unwrap());
-            let pool = alloc_sql_pool(data_path).await.unwrap();
-            let mut connection = pool.acquire().await.unwrap();
-            for p in fetch_recent_processes(&mut connection).await.unwrap() {
-                println!("{} {}", p.start_time, p.exe);
-            }
+        ("recent-processes", Some(_command_match)) => {
+            print_recent_processes(&mut connection).await;
         }
         (command_name, _args) => {
             log_str(LogLevel::Info, "unknown subcommand match");

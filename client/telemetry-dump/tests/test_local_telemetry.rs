@@ -1,3 +1,6 @@
+use analytics::*;
+use anyhow::Result;
+use sqlx::Row;
 use std::path::{Path, PathBuf};
 use test_utils::*;
 
@@ -22,8 +25,29 @@ fn dump_cli_sys(args: &[&str]) {
     syscall(DUMP_EXE_VAR, Path::new("."), args, true);
 }
 
+async fn find_process_with_log_data(connection: &mut sqlx::AnyConnection) -> Result<String> {
+    let row = sqlx::query(
+        "SELECT streams.process_id as process_id
+         FROM streams, blocks
+         WHERE streams.stream_id = blocks.stream_id
+         AND tags LIKE '%log%';",
+    )
+    .fetch_one(connection)
+    .await?;
+    Ok(row.get("process_id"))
+}
+
 #[test]
 fn test_list_processes() {
     let data_path = setup_data_dir("list-processes");
-    dump_cli_sys(&["recent-processes", data_path.to_str().unwrap()])
+    dump_cli_sys(&[data_path.to_str().unwrap(), "recent-processes"])
+}
+
+#[tokio::main]
+#[test]
+async fn test_print_log() {
+    let data_path = setup_data_dir("print-log");
+    let pool = alloc_sql_pool(&data_path).await.unwrap();
+    let mut connection = pool.acquire().await.unwrap();
+    dbg!(find_process_with_log_data(&mut connection).await.unwrap());
 }
