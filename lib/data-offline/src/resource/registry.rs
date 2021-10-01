@@ -84,7 +84,7 @@ impl ResourceRegistry {
         } else {
             Err(io::Error::new(
                 io::ErrorKind::NotFound,
-                "Processor not found.",
+                format!("Processor not found for '{:?}'.", kind),
             ))
         }
     }
@@ -119,7 +119,7 @@ impl ResourceRegistry {
         } else {
             Err(io::Error::new(
                 io::ErrorKind::NotFound,
-                "Processor not found.",
+                format!("Processor not found for '{:?}'.", kind),
             ))
         }
     }

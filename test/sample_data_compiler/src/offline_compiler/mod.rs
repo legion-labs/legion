@@ -8,8 +8,9 @@ use legion_content_store::ContentStoreAddr;
 use legion_data_build::{generate_rt_manifest, DataBuildOptions};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::asset::AssetPathId;
+use legion_data_runtime::{AssetDescriptor, AssetType};
 
-use crate::offline_to_runtime::convert_offline_to_content_path;
+use crate::{offline_to_runtime::find_derived_path, runtime_data};
 
 pub fn build(root_folder: impl AsRef<Path>) {
     let root_folder = root_folder.as_ref();
@@ -45,7 +46,7 @@ pub fn build(root_folder: impl AsRef<Path>) {
 
     let resource_list = build.project().resource_list();
     for resource_id in resource_list {
-        let asset_path = convert_offline_to_content_path(&AssetPathId::from(resource_id));
+        let asset_path = find_derived_path(&AssetPathId::from(resource_id));
         let source_name = build
             .project()
             .resource_name(asset_path.source_resource())
@@ -71,10 +72,22 @@ pub fn build(root_folder: impl AsRef<Path>) {
         let file = OpenOptions::new()
             .write(true)
             .create(true)
+            .truncate(true)
             .open(runtime_manifest_path)
             .expect("open file");
 
-        let rt_manifest = generate_rt_manifest(manifest);
+        let filter = |p: &AssetPathId| {
+            matches!(
+                AssetType::from(p.content_type()),
+                runtime_data::Entity::TYPE
+                    | runtime_data::Instance::TYPE
+                    | runtime_data::Mesh::TYPE
+                    | legion_graphics_runtime::texture::Texture::TYPE
+                    | legion_graphics_runtime::Material::TYPE
+            )
+        };
+
+        let rt_manifest = generate_rt_manifest(manifest, filter);
         serde_json::to_writer_pretty(file, &rt_manifest).expect("to write manifest");
     }
 }

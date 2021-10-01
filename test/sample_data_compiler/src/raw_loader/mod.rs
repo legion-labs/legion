@@ -11,7 +11,6 @@ use legion_graphics_offline::psd::PsdFile;
 use serde::de::DeserializeOwned;
 use std::{
     collections::{hash_map::DefaultHasher, HashMap},
-    convert::TryFrom,
     ffi::OsStr,
     fs::{self, File},
     hash::{Hash, Hasher},
@@ -175,8 +174,7 @@ fn create_or_find_default(
                 let mut hasher = DefaultHasher::new();
                 name.hash(&mut hasher);
                 let resource_hash = hasher.finish();
-                let id = ContentId::new(kind.into(), resource_hash);
-                let id = ResourceId::try_from(id).unwrap();
+                let id = ResourceId::from(ContentId::new(kind.into(), resource_hash));
                 project
                     .add_resource_with_id(
                         name.clone(),

@@ -1,8 +1,7 @@
+use legion_data_runtime::AssetId;
 use sample_data_compiler::{
     offline_data,
-    offline_to_runtime::{
-        convert_offline_path_to_runtime_id, convert_optional_offline_path_to_runtime_id,
-    },
+    offline_to_runtime::{find_derived_path, find_derived_path_opt},
     runtime_data,
 };
 
@@ -17,7 +16,7 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
         let children = offline
             .children
             .iter()
-            .filter_map(|child_path| convert_offline_path_to_runtime_id(child_path))
+            .map(|child_path| AssetId::from(find_derived_path(child_path).content_id()))
             .collect();
         let mut components: Vec<Box<dyn runtime_data::Component>> = Vec::new();
         for component in &offline.components {
@@ -40,7 +39,7 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
         Self {
             name: offline.name.clone(),
             children,
-            parent: convert_optional_offline_path_to_runtime_id(&offline.parent),
+            parent: find_derived_path_opt(&offline.parent),
             components,
         }
     }
@@ -60,9 +59,7 @@ impl FromOffline<offline_data::Transform> for runtime_data::Transform {
 impl FromOffline<offline_data::Visual> for runtime_data::Visual {
     fn from_offline(offline: &offline_data::Visual) -> Self {
         Self {
-            renderable_geometry: convert_optional_offline_path_to_runtime_id(
-                &offline.renderable_geometry,
-            ),
+            renderable_geometry: find_derived_path_opt(&offline.renderable_geometry),
             shadow_receiver: offline.shadow_receiver,
             shadow_caster_sun: offline.shadow_caster_sun,
             shadow_caster_local: offline.shadow_caster_local,
@@ -144,9 +141,7 @@ impl FromOffline<offline_data::Physics> for runtime_data::Physics {
     fn from_offline(offline: &offline_data::Physics) -> Self {
         Self {
             dynamic: offline.dynamic,
-            collision_geometry: convert_optional_offline_path_to_runtime_id(
-                &offline.collision_geometry,
-            ),
+            collision_geometry: find_derived_path_opt(&offline.collision_geometry),
         }
     }
 }
@@ -156,7 +151,7 @@ impl FromOffline<offline_data::Physics> for runtime_data::Physics {
 impl FromOffline<offline_data::Instance> for runtime_data::Instance {
     fn from_offline(offline: &offline_data::Instance) -> Self {
         Self {
-            original: convert_optional_offline_path_to_runtime_id(&offline.original),
+            original: find_derived_path_opt(&offline.original),
         }
     }
 }
@@ -182,7 +177,7 @@ impl FromOffline<offline_data::SubMesh> for runtime_data::SubMesh {
             normals: offline.normals.clone(),
             uvs: offline.uvs.clone(),
             indices: offline.indices.clone(),
-            material: convert_optional_offline_path_to_runtime_id(&offline.material),
+            material: find_derived_path_opt(&offline.material),
         }
     }
 }

@@ -30,10 +30,7 @@ pub struct MaterialLoader {}
 
 fn read_asset_id(reader: &mut dyn std::io::Read) -> Result<Option<AssetId>, std::io::Error> {
     let underlying = reader.read_u128::<LittleEndian>()?;
-    let id = ContentId::try_from(underlying)
-        .map_err(|_e| std::io::Error::new(std::io::ErrorKind::InvalidData, ""))?;
-    let id = AssetId::try_from(id).ok();
-    Ok(id)
+    Ok(ContentId::try_from(underlying).ok().map(AssetId::from))
 }
 
 impl AssetLoader for MaterialLoader {

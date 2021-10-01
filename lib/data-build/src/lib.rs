@@ -176,8 +176,9 @@
 #![allow()]
 #![warn(missing_docs)]
 
+use legion_data_offline::asset::AssetPathId;
 use legion_data_runtime::AssetId;
-use std::{convert::TryFrom, io};
+use std::io;
 
 #[derive(Debug)]
 /// Data build error. todo(kstasik): revisit how errors are handled/propagated
@@ -242,17 +243,29 @@ impl From<legion_data_offline::resource::Error> for Error {
 
 /// Creates a runtime [`legion_data_runtime::manifest::Manifest`] from an offline [`legion_data_compiler::Manifest`].
 ///
+/// Provided filter functor will be used to determine if a given asset should be included in the manifest.
+///
 /// This is a temporary solution that will be replaced by a **packaging** process.
 /// For now, we simply create a runtime manifest by filtering out non-asset resources
 /// and by identifying content by `AssetId` - which runtime operates on.
 pub fn generate_rt_manifest(
     input: legion_data_compiler::Manifest,
+    filter: fn(&AssetPathId) -> bool,
 ) -> legion_data_runtime::manifest::Manifest {
     let mut output = legion_data_runtime::manifest::Manifest::default();
-    for resource in input.compiled_resources {
-        if let Ok(asset_id) = AssetId::try_from(resource.path.content_id()) {
-            output.insert(asset_id, resource.checksum, resource.size);
-        }
+
+    let runtime_resources = input
+        .compiled_resources
+        .into_iter()
+        .filter(|resource| filter(&resource.path))
+        .collect::<Vec<_>>();
+
+    for resource in runtime_resources {
+        output.insert(
+            AssetId::from(resource.path.content_id()),
+            resource.checksum,
+            resource.size,
+        );
     }
     output
 }

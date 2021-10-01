@@ -33,29 +33,15 @@ impl ContentType {
 
     /// Creates a new [`Self::num_bits`]-bit type id from series of bytes.
     ///
-    /// Rt flag is used to distinguish between runtime and offline content.
-    ///
     /// It is recommended to use this method to define a public constant
     /// which can be used to identify a resource or asset.
-    pub const fn new(v: &[u8], rt: bool) -> Self {
+    pub const fn new(v: &[u8]) -> Self {
         // TODO: A std::num::NonZeroU32 would be more suitable as an internal representation
         // however a value of 0 is as likely as any other value returned by `crc32`
         // and const-fn-friendly panic is not available yet.
         // See https://github.com/rust-lang/rfcs/pull/2345.
-        let mut v = Self::crc32(v);
-        if rt {
-            v |= 1 << (u32::BITS - 1);
-        } else {
-            v &= (1 << (u32::BITS - 1)) - 1;
-        }
+        let v = Self::crc32(v);
         Self(v)
-    }
-
-    /// Returns true if content represents a runtime asset.
-    ///
-    /// False if content represents a source or derived resource.
-    pub fn is_rt(&self) -> bool {
-        self.0 & (1 << (u32::BITS - 1)) != 0
     }
 
     /// Creates a [`Self::num_bits`]-bit type id from a non-zero integer.

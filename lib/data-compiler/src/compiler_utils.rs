@@ -1,18 +1,12 @@
 //! Compiler utilities - transformations helpful when compiling data.
 
-use std::convert::TryFrom;
-
 use legion_data_offline::asset::AssetPathId;
 use legion_data_runtime::{AssetId, AssetType};
 
 /// Converts `AssetPathId` to `AssetId`.
 pub fn path_id_to_asset_id(path: &Option<AssetPathId>, asset_type: AssetType) -> Option<AssetId> {
-    if let Some(asset_path) = path {
-        let asset_path = asset_path.push(asset_type);
-        AssetId::try_from(asset_path.content_id()).ok()
-    } else {
-        None
-    }
+    path.as_ref()
+        .map(|p| AssetId::from(p.push(asset_type).content_id()))
 }
 
 /// Converts `AssetId` to underlying binary representation.
