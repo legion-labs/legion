@@ -26,14 +26,6 @@ use tao::{
 };
 
 use tao::dpi::LogicalSize;
-#[cfg(any(
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd"
-))]
-use tao::platform::unix::EventLoopExtUnix;
 
 #[derive(Default)]
 pub struct WinitPlugin;
@@ -173,15 +165,7 @@ where
 // TODO: It may be worth moving this cfg into a procedural macro so that it can be referenced by
 // a single name instead of being copied around.
 // https://gist.github.com/jakerr/231dee4a138f7a5f25148ea8f39b382e seems to work.
-#[cfg(any(
-    target_os = "windows",
-    target_os = "macos",
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd"
-))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "android"))]
 fn run_return<F>(event_loop: &mut EventLoop<()>, event_handler: F)
 where
     F: FnMut(Event<'_, ()>, &EventLoopWindowTarget<()>, &mut ControlFlow),
@@ -190,15 +174,7 @@ where
     event_loop.run_return(event_handler)
 }
 
-#[cfg(not(any(
-    target_os = "windows",
-    target_os = "macos",
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd"
-)))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "android")))]
 fn run_return<F>(_event_loop: &mut EventLoop<()>, _event_handler: F)
 where
     F: FnMut(Event<'_, ()>, &EventLoopWindowTarget<()>, &mut ControlFlow),
@@ -208,17 +184,6 @@ where
 
 pub fn winit_runner(app: App) {
     winit_runner_with(app, EventLoop::new());
-}
-
-#[cfg(any(
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd"
-))]
-pub fn winit_runner_any_thread(app: App) {
-    winit_runner_with(app, EventLoop::new_any_thread());
 }
 
 pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
