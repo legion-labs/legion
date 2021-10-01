@@ -90,6 +90,7 @@
 #![allow()]
 
 use clap::{App, Arg};
+use legion_data_offline::resource::ResourcePathName;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
 fn main() {
@@ -110,5 +111,5 @@ fn main() {
     raw_loader::build_offline(root_folder);
 
     // compile offline resources to runtime assets
-    offline_compiler::build(root_folder);
+    offline_compiler::build(root_folder, &ResourcePathName::from("/world/sample_1.ent"));
 }

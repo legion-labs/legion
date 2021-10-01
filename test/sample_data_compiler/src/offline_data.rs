@@ -35,7 +35,11 @@ impl ResourceProcessor for EntityProcessor {
 
     fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
         let entity = resource.downcast_ref::<Entity>().unwrap();
-        entity.parent.iter().cloned().collect()
+        let mut deps = entity.children.clone();
+        for comp in &entity.components {
+            deps.extend(comp.extract_build_deps());
+        }
+        deps
     }
 
     fn write_resource(
@@ -61,7 +65,9 @@ impl ResourceProcessor for EntityProcessor {
 }
 
 #[typetag::serde]
-pub trait Component: Any + Sync + Send {}
+pub trait Component: Any + Sync + Send {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId>;
+}
 
 /// Note: Based on impl of dyn Any
 impl dyn Component {
@@ -97,7 +103,11 @@ pub struct Transform {
 }
 
 #[typetag::serde]
-impl Component for Transform {}
+impl Component for Transform {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId> {
+        vec![]
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Visual {
@@ -109,7 +119,15 @@ pub struct Visual {
 }
 
 #[typetag::serde]
-impl Component for Visual {}
+impl Component for Visual {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId> {
+        if let Some(rg) = &self.renderable_geometry {
+            vec![rg.clone()]
+        } else {
+            vec![]
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub enum GIContribution {
@@ -122,7 +140,11 @@ pub enum GIContribution {
 pub struct GlobalIllumination {}
 
 #[typetag::serde]
-impl Component for GlobalIllumination {}
+impl Component for GlobalIllumination {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId> {
+        vec![]
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct NavMesh {
@@ -131,7 +153,11 @@ pub struct NavMesh {
 }
 
 #[typetag::serde]
-impl Component for NavMesh {}
+impl Component for NavMesh {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId> {
+        vec![]
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct VoxelisationConfig {}
@@ -148,7 +174,11 @@ pub struct View {
 }
 
 #[typetag::serde]
-impl Component for View {}
+impl Component for View {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId> {
+        vec![]
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub enum ProjectionType {
@@ -160,7 +190,11 @@ pub enum ProjectionType {
 pub struct Light {}
 
 #[typetag::serde]
-impl Component for Light {}
+impl Component for Light {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId> {
+        vec![]
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Physics {
@@ -169,7 +203,15 @@ pub struct Physics {
 }
 
 #[typetag::serde]
-impl Component for Physics {}
+impl Component for Physics {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId> {
+        if let Some(cg) = &self.collision_geometry {
+            vec![cg.clone()]
+        } else {
+            vec![]
+        }
+    }
+}
 
 // ------------------ Instance  -----------------------------------
 

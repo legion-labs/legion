@@ -1,13 +1,11 @@
 (
     name: "Sample 1",
     children: [
-        "world/sample_1/ground.ent",
-        "world/sample_1/camera.ent",
-        "world/sample_1/light.ent",
-        "world/sample_1/cube_1.ent.ins",
-        "world/sample_1/cube_2.ent.ins",
-        "world/sample_1/cube_3.ent.ins",
-        "world/sample_1/cube_group_1.ent.ins",
+        "runtime_entity(world/sample_1/ground.ent)",
+        "runtime_instance(world/sample_1/cube_1.ent.ins)",
+        "runtime_instance(world/sample_1/cube_2.ent.ins)",
+        "runtime_instance(world/sample_1/cube_3.ent.ins)",
+        "runtime_instance(world/sample_1/cube_group_1.ent.ins)",
     ],
     parent: None,
     components: [

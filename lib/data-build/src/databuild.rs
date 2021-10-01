@@ -398,8 +398,10 @@ impl DataBuild {
     ) -> Result<CompileOutput, Error> {
         let build_graph = self.build_index.generate_build_graph(compile_path);
 
-        let topological_order: Vec<_> =
-            algo::toposort(&build_graph, None).map_err(|_e| Error::CircularDependency)?;
+        let topological_order: Vec<_> = algo::toposort(&build_graph, None).map_err(|_e| {
+            eprintln!("{:?}", build_graph);
+            Error::CircularDependency
+        })?;
 
         let compiler_details = {
             let compilers = list_compilers(&self.config.compiler_search_paths);
