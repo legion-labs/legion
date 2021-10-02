@@ -8,5 +8,5 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hassle-rs = "0.5"
+hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", branch = "com_to_tinycom" }
 rspirv-reflect = "0.5"
