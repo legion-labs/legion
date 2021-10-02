@@ -1,0 +1,41 @@
+name: Test Coverage
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 */12 * * *"
+
+jobs:
+  coverage:
+    name: Running code coverage analysis
+    runs-on: [self-hosted, ubuntu]
+    container:
+      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install grcov
+        run: cargo install grcov
+
+      - name: Add LLVM Tools
+        run: rustup component add llvm-tools-preview --toolchain '1.55.0'
+
+      - name: Build and run tests
+        run: make test
+        env:
+          RUSTC_BOOTSTRAP: "1"
+          RUSTFLAGS: "-Zinstrument-coverage"
+          LLVM_PROFILE_FILE: "legion-%p-%m.profraw"
+
+      - name: Run clippy checks
+        run: grcov . --binary-path ./target/debug/ -s . -t html --branch --ignore-not-existing -o ./target/debug/coverage/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: ./target/debug/coverage
