@@ -41,13 +41,14 @@ impl S3BlobStorage {
             .key(key);
         match req_acl.send().await {
             Ok(_acl) => Ok(true),
-            Err(s3::SdkError::ServiceError { err, raw }) => match err.kind {
-                s3::error::GetObjectAclErrorKind::NoSuchKey(_) => Ok(false),
-                _ => {
+            Err(s3::SdkError::ServiceError { err, raw }) => {
+                if let s3::error::GetObjectAclErrorKind::NoSuchKey(_) = err.kind {
+                    Ok(false)
+                } else {
                     let _dummy = raw;
                     Err(format!("error fetching acl for {:?}: {}", key, err))
                 }
-            },
+            }
             Err(e) => Err(format!("error fetching acl for {:?}: {:?}", key, e)),
         }
     }

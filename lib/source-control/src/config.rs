@@ -45,14 +45,11 @@ impl Config {
                 Ok(pattern) => {
                     if pattern.matches(path_str) {
                         let command_name = &command_spec[1];
-                        match self.commands.get(command_name) {
-                            Some(command) => {
-                                return Some(command.clone());
-                            }
-                            None => {
-                                println!("unknown command named {}", command_name);
-                                return None;
-                            }
+                        if let Some(command) = self.commands.get(command_name) {
+                            return Some(command.clone());
+                        } else {
+                            println!("unknown command named {}", command_name);
+                            return None;
                         }
                     }
                 }

@@ -39,40 +39,38 @@ where
     for (index, node) in nodes.iter().enumerate() {
         let dependencies = graph.entry(index).or_insert_with(HashMap::default);
         for label in node.after() {
-            match labels.get(label) {
-                Some(new_dependencies) => {
-                    for dependency in new_dependencies.ones() {
-                        dependencies
-                            .entry(dependency)
-                            .or_insert_with(HashSet::default)
-                            .insert(label.clone());
-                    }
+            if let Some(new_dependencies) = labels.get(label) {
+                for dependency in new_dependencies.ones() {
+                    dependencies
+                        .entry(dependency)
+                        .or_insert_with(HashSet::default)
+                        .insert(label.clone());
                 }
-                None => warn!(
+            } else {
+                warn!(
                     // TODO: plumb this as proper output?
                     "{} wants to be after unknown label: {:?}",
                     nodes[index].name(),
                     label
-                ),
+                );
             }
         }
         for label in node.before() {
-            match labels.get(label) {
-                Some(dependants) => {
-                    for dependant in dependants.ones() {
-                        graph
-                            .entry(dependant)
-                            .or_insert_with(HashMap::default)
-                            .entry(index)
-                            .or_insert_with(HashSet::default)
-                            .insert(label.clone());
-                    }
+            if let Some(dependants) = labels.get(label) {
+                for dependant in dependants.ones() {
+                    graph
+                        .entry(dependant)
+                        .or_insert_with(HashMap::default)
+                        .entry(index)
+                        .or_insert_with(HashSet::default)
+                        .insert(label.clone());
                 }
-                None => warn!(
+            } else {
+                warn!(
                     "{} wants to be before unknown label: {:?}",
                     nodes[index].name(),
                     label
-                ),
+                );
             }
         }
     }

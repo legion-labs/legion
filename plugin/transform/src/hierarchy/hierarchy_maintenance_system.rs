@@ -68,9 +68,9 @@ pub fn parent_update_system(
     // Flush the `children_additions` to the command buffer. It is stored separate to
     // collect multiple new children that point to the same parent into the same
     // SmallVec, and to prevent redundant add+remove operations.
-    children_additions.iter().for_each(|(e, v)| {
+    for (e, v) in children_additions.iter() {
         commands.entity(*e).insert(Children::with(v));
-    });
+    }
 }
 #[cfg(test)]
 mod test {

@@ -2,7 +2,7 @@
 //!
 //! Provides Tauri integration into Legion's ECS.
 //!
-// BEGIN - Legion Labs lints v0.3
+// BEGIN - Legion Labs lints v0.4
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
 #![warn(
@@ -12,6 +12,8 @@
     clippy::checked_conversions,
     clippy::dbg_macro,
     clippy::debug_assert_with_mut_call,
+    clippy::disallowed_method,
+    clippy::disallowed_type,
     clippy::doc_markdown,
     clippy::empty_enum,
     clippy::enum_glob_use,
@@ -21,13 +23,17 @@
     clippy::explicit_into_iter_loop,
     clippy::fallible_impl_from,
     clippy::filter_map_next,
+    clippy::flat_map_option,
     clippy::float_cmp_const,
     clippy::fn_params_excessive_bools,
+    clippy::from_iter_instead_of_collect,
     clippy::if_let_mutex,
     clippy::implicit_clone,
     clippy::imprecise_flops,
     clippy::inefficient_to_string,
     clippy::invalid_upcast_comparisons,
+    clippy::large_digit_groups,
+    clippy::large_stack_arrays,
     clippy::large_types_passed_by_value,
     clippy::let_unit_value,
     clippy::linkedlist,
@@ -42,10 +48,12 @@
     clippy::match_wildcard_for_single_variants,
     clippy::mem_forget,
     clippy::mismatched_target_os,
+    clippy::missing_enforced_import_renames,
     clippy::mut_mut,
     clippy::mutex_integer,
     clippy::needless_borrow,
     clippy::needless_continue,
+    clippy::needless_for_each,
     clippy::needless_pass_by_value,
     clippy::option_option,
     clippy::path_buf_push_overwrite,
@@ -54,6 +62,7 @@
     clippy::rest_pat_in_fully_bound_structs,
     clippy::same_functions_in_if_condition,
     clippy::semicolon_if_nothing_returned,
+    clippy::single_match_else,
     clippy::string_add_assign,
     clippy::string_lit_as_bytes,
     clippy::string_to_string,
@@ -69,11 +78,11 @@
     future_incompatible,
     nonstandard_style,
     rust_2018_idioms,
-    rustdoc::private_intra_doc_links,
+    rustdoc::broken_intra_doc_links,
     rustdoc::missing_crate_level_docs,
-    rustdoc::broken_intra_doc_links
+    rustdoc::private_intra_doc_links
 )]
-// END - Legion Labs standard lints v0.3
+// END - Legion Labs standard lints v0.4
 // crate-specific exceptions:
 #![allow()]
 
@@ -95,52 +104,51 @@ pub fn legion_tauri_command(
 }
 
 fn legion_tauri_command_impl(mut function: syn::ItemFn) -> TokenStream {
-    match extract_result_return_type(&function) {
-        Some(raw_return_type) => {
-            // Let's create an exposed function that grabs the original name and calls
-            // the original function.
-            let name = format!("__{}_impl", function.sig.ident);
-            let name = Ident::new(&name, Span::call_site());
+    if let Some(raw_return_type) = extract_result_return_type(&function) {
+        // Let's create an exposed function that grabs the original name and calls
+        // the original function.
+        let name = format!("__{}_impl", function.sig.ident);
+        let name = Ident::new(&name, Span::call_site());
 
-            let args = get_arguments(&function);
-            let mut exposed_function = function.clone();
-            exposed_function.vis = syn::Visibility::Inherited;
-            exposed_function.sig.output = syn::ReturnType::Type(
-                syn::token::RArrow::default(),
-                Box::new(to_tauri_result_type(&raw_return_type)),
-            );
+        let args = get_arguments(&function);
+        let mut exposed_function = function.clone();
+        exposed_function.vis = syn::Visibility::Inherited;
+        exposed_function.sig.output = syn::ReturnType::Type(
+            syn::token::RArrow::default(),
+            Box::new(to_tauri_result_type(&raw_return_type)),
+        );
 
-            if function.sig.asyncness.is_none() {
-                exposed_function.block.stmts = vec![parse_quote! {
-                    return match #name(#(#args),*) {
-                        Ok(v) => Ok(v),
-                        Err(e) => Err(format!("{}", e)),
-                    };
-                }];
-            } else {
-                exposed_function.block.stmts = vec![parse_quote! {
-                    return match #name(#(#args),*).await {
-                        Ok(v) => Ok(v),
-                        Err(e) => Err(format!("{}", e)),
-                    };
-                }];
-            }
-
-            function.sig.ident = name;
-
-            let result = quote! {
-                #function
-
-                #[tauri::command]
-                #exposed_function
-            };
-
-            result
+        if function.sig.asyncness.is_none() {
+            exposed_function.block.stmts = vec![parse_quote! {
+                return match #name(#(#args),*) {
+                    Ok(v) => Ok(v),
+                    Err(e) => Err(format!("{}", e)),
+                };
+            }];
+        } else {
+            exposed_function.block.stmts = vec![parse_quote! {
+                return match #name(#(#args),*).await {
+                    Ok(v) => Ok(v),
+                    Err(e) => Err(format!("{}", e)),
+                };
+            }];
         }
-        None => quote! {
+
+        function.sig.ident = name;
+
+        let result = quote! {
+            #function
+
+            #[tauri::command]
+            #exposed_function
+        };
+
+        result
+    } else {
+        quote! {
             #[tauri::command]
             #function
-        },
+        }
     }
 }
 

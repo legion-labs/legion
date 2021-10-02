@@ -103,7 +103,7 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
         let children: Vec<ResourcePathId> = raw
             .children
             .iter()
-            .flat_map(|path| lookup_asset_path(references, path))
+            .filter_map(|path| lookup_asset_path(references, path))
             .collect();
         let parent = match raw.parent {
             Some(parent) => lookup_asset_path(references, &parent),

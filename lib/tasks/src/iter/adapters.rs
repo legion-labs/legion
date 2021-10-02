@@ -142,15 +142,15 @@ where
     type Item = P::Item;
 
     fn next_batch(&mut self) -> Option<B> {
-        match &mut self.iter {
-            Some(iter) => match iter.next_batch() {
-                b @ Some(_) => b,
-                None => {
-                    self.iter = None;
-                    None
-                }
-            },
-            None => None,
+        if let Some(iter) = &mut self.iter {
+            if let b @ Some(_) = iter.next_batch() {
+                b
+            } else {
+                self.iter = None;
+                None
+            }
+        } else {
+            None
         }
     }
 }
@@ -224,12 +224,11 @@ where
     type Item = P::Item;
 
     fn next_batch(&mut self) -> Option<B> {
-        match self.curr.as_mut().and_then(|c| c.next_batch()) {
-            batch @ Some(_) => batch,
-            None => {
-                self.curr = Some(self.iter.clone());
-                self.next_batch()
-            }
+        if let batch @ Some(_) = self.curr.as_mut().and_then(|c| c.next_batch()) {
+            batch
+        } else {
+            self.curr = Some(self.iter.clone());
+            self.next_batch()
         }
     }
 }

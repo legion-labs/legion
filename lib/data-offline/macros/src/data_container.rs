@@ -236,11 +236,12 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
         let member_ident = format_ident!("{}", &m.name);
         if let Some(default_value) = &m.default_literal {
             // If the default is a string literal, add "into()" to convert to String
-            match syn::parse::<syn::Lit>(default_value.clone().into()) {
-                Ok(syn::Lit::Str(_) | syn::Lit::ByteStr(_)) => {
-                    quote! { #member_ident : #default_value.into(),}
-                }
-                _ => quote! { #member_ident : #default_value, },
+            if let Ok(syn::Lit::Str(_) | syn::Lit::ByteStr(_)) =
+                syn::parse::<syn::Lit>(default_value.clone().into())
+            {
+                quote! { #member_ident : #default_value.into(),}
+            } else {
+                quote! { #member_ident : #default_value, }
             }
         } else {
             quote! { #member_ident : Default::default(), }

@@ -237,24 +237,21 @@ impl Swapchain<VulkanApi> for VulkanSwapchain {
             )
         };
 
-        match result {
-            Ok((present_index, is_suboptimal)) => {
-                self.last_image_suboptimal = is_suboptimal;
-                fence.set_submitted(true);
-                Ok(self.swapchain_images[present_index as usize].clone())
+        if let Ok((present_index, is_suboptimal)) = result {
+            self.last_image_suboptimal = is_suboptimal;
+            fence.set_submitted(true);
+            Ok(self.swapchain_images[present_index as usize].clone())
+        } else {
+            self.last_image_suboptimal = false;
+            unsafe {
+                self.swapchain
+                    .device_context
+                    .device()
+                    .reset_fences(&[fence.vk_fence()])?;
             }
-            Err(_) => {
-                self.last_image_suboptimal = false;
-                unsafe {
-                    self.swapchain
-                        .device_context
-                        .device()
-                        .reset_fences(&[fence.vk_fence()])?;
-                }
-                fence.set_submitted(false);
-                // todo(jal)
-                Err(GfxError::StringError("GfxError::VkError(e)".to_string()))
-            }
+            fence.set_submitted(false);
+            // todo(jal)
+            Err(GfxError::StringError("GfxError::VkError(e)".to_string()))
         }
     }
 
@@ -272,18 +269,15 @@ impl Swapchain<VulkanApi> for VulkanSwapchain {
             )
         };
 
-        match result {
-            Ok((present_index, is_suboptimal)) => {
-                self.last_image_suboptimal = is_suboptimal;
-                semaphore.set_signal_available(true);
-                Ok(self.swapchain_images[present_index as usize].clone())
-            }
-            Err(_) => {
-                self.last_image_suboptimal = false;
-                semaphore.set_signal_available(false);
-                // todo(jal)
-                Err(GfxError::StringError("GfxError::VkError(e)".to_string()))
-            }
+        if let Ok((present_index, is_suboptimal)) = result {
+            self.last_image_suboptimal = is_suboptimal;
+            semaphore.set_signal_available(true);
+            Ok(self.swapchain_images[present_index as usize].clone())
+        } else {
+            self.last_image_suboptimal = false;
+            semaphore.set_signal_available(false);
+            // todo(jal)
+            Err(GfxError::StringError("GfxError::VkError(e)".to_string()))
         }
     }
 

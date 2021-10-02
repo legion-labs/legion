@@ -62,80 +62,77 @@ pub async fn sync_file(
     if local_hash == hash_to_sync {
         return Ok(format!("Verified {}", local_path.display()));
     }
-    match fs::metadata(&local_path) {
-        Ok(meta) => {
-            let mut permissions = meta.permissions();
-            if !permissions.readonly() {
-                return Err(format!(
-                    "Error: local file {} is writable. Skipping sync for this file.",
-                    local_path.display()
-                ));
-            }
-
-            permissions.set_readonly(false);
-            if let Err(e) = fs::set_permissions(&local_path, permissions) {
-                return Err(format!(
-                    "Error making file {} writable: {}",
-                    local_path.display(),
-                    e
-                ));
-            }
-
-            if hash_to_sync.is_empty() {
-                if let Err(e) = fs::remove_file(&local_path) {
-                    return Err(format!("Error deleting {}: {}", local_path.display(), e));
-                } else {
-                    return Ok(format!("Deleted {}", local_path.display()));
-                }
-            }
-            if let Err(e) = connection
-                .blob_storage()
-                .await?
-                .download_blob(local_path, hash_to_sync)
-                .await
-            {
-                return Err(format!(
-                    "Error downloading {} {}: {}",
-                    local_path.display(),
-                    &hash_to_sync,
-                    e
-                ));
-            }
-            if let Err(e) = make_file_read_only(local_path, true) {
-                return Err(e);
-            }
-            return Ok(format!("Updated {}", local_path.display()));
+    if let Ok(meta) = fs::metadata(&local_path) {
+        let mut permissions = meta.permissions();
+        if !permissions.readonly() {
+            return Err(format!(
+                "Error: local file {} is writable. Skipping sync for this file.",
+                local_path.display()
+            ));
         }
-        Err(_) => {
-            //there is no local file, downloading a fresh copy
-            let parent_dir = local_path.parent().unwrap();
-            if !parent_dir.exists() {
-                if let Err(e) = std::fs::create_dir_all(parent_dir) {
-                    return Err(format!(
-                        "Error creating directory path {}: {}",
-                        parent_dir.display(),
-                        e
-                    ));
-                }
+
+        permissions.set_readonly(false);
+        if let Err(e) = fs::set_permissions(&local_path, permissions) {
+            return Err(format!(
+                "Error making file {} writable: {}",
+                local_path.display(),
+                e
+            ));
+        }
+
+        if hash_to_sync.is_empty() {
+            if let Err(e) = fs::remove_file(&local_path) {
+                return Err(format!("Error deleting {}: {}", local_path.display(), e));
+            } else {
+                return Ok(format!("Deleted {}", local_path.display()));
             }
-            if let Err(e) = connection
-                .blob_storage()
-                .await?
-                .download_blob(local_path, hash_to_sync)
-                .await
-            {
+        }
+        if let Err(e) = connection
+            .blob_storage()
+            .await?
+            .download_blob(local_path, hash_to_sync)
+            .await
+        {
+            return Err(format!(
+                "Error downloading {} {}: {}",
+                local_path.display(),
+                &hash_to_sync,
+                e
+            ));
+        }
+        if let Err(e) = make_file_read_only(local_path, true) {
+            return Err(e);
+        }
+        return Ok(format!("Updated {}", local_path.display()));
+    } else {
+        //there is no local file, downloading a fresh copy
+        let parent_dir = local_path.parent().unwrap();
+        if !parent_dir.exists() {
+            if let Err(e) = std::fs::create_dir_all(parent_dir) {
                 return Err(format!(
-                    "Error downloading {} {}: {}",
-                    local_path.display(),
-                    &hash_to_sync,
+                    "Error creating directory path {}: {}",
+                    parent_dir.display(),
                     e
                 ));
             }
-            if let Err(e) = make_file_read_only(local_path, true) {
-                return Err(e);
-            }
-            return Ok(format!("Added {}", local_path.display()));
         }
+        if let Err(e) = connection
+            .blob_storage()
+            .await?
+            .download_blob(local_path, hash_to_sync)
+            .await
+        {
+            return Err(format!(
+                "Error downloading {} {}: {}",
+                local_path.display(),
+                &hash_to_sync,
+                e
+            ));
+        }
+        if let Err(e) = make_file_read_only(local_path, true) {
+            return Err(e);
+        }
+        return Ok(format!("Added {}", local_path.display()));
     }
 }
 
@@ -201,33 +198,33 @@ pub async fn sync_workspace(
 
     let mut errors: Vec<String> = Vec::new();
     for (relative_path, latest_hash) in to_download {
-        match local_changes_map.get(&relative_path) {
-            Some(_change) => {
-                println!("{} changed locally, recording pending merge and leaving the local file untouched", relative_path);
-                //todo: handle case where merge pending already exists
-                //todo: validate how we want to deal with merge pending with syncing backwards
-                let merge_pending = ResolvePending::new(
-                    relative_path.clone(),
-                    String::from(current_commit),
-                    String::from(destination_commit),
-                );
-                if let Err(e) = save_resolve_pending(workspace_transaction, &merge_pending).await {
-                    errors.push(format!(
-                        "Error saving pending merge {}: {}",
-                        relative_path, e
-                    ));
-                }
+        if let Some(_change) = local_changes_map.get(&relative_path) {
+            println!(
+                "{} changed locally, recording pending merge and leaving the local file untouched",
+                relative_path
+            );
+            //todo: handle case where merge pending already exists
+            //todo: validate how we want to deal with merge pending with syncing backwards
+            let merge_pending = ResolvePending::new(
+                relative_path.clone(),
+                String::from(current_commit),
+                String::from(destination_commit),
+            );
+            if let Err(e) = save_resolve_pending(workspace_transaction, &merge_pending).await {
+                errors.push(format!(
+                    "Error saving pending merge {}: {}",
+                    relative_path, e
+                ));
             }
-            None => {
-                //no local change, ok to sync
-                let local_path = workspace_root.join(relative_path);
-                match sync_file(connection, &local_path, &latest_hash).await {
-                    Ok(message) => {
-                        println!("{}", message);
-                    }
-                    Err(e) => {
-                        errors.push(e);
-                    }
+        } else {
+            //no local change, ok to sync
+            let local_path = workspace_root.join(relative_path);
+            match sync_file(connection, &local_path, &latest_hash).await {
+                Ok(message) => {
+                    println!("{}", message);
+                }
+                Err(e) => {
+                    errors.push(e);
                 }
             }
         }
