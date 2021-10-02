@@ -124,11 +124,40 @@ license-files = [
 ]
 
 [[licenses.clarify]]
-name = "smithy-xml"
+name = "aws-config"
 version = "*"
 expression = "Apache-2.0"
 license-files = []
 
+[[licenses.clarify]]
+name = "smithy-async"
+version = "*"
+expression = "Apache-2.0"
+license-files = []
+
+[[licenses.clarify]]
+name = "smithy-query"
+version = "*"
+expression = "Apache-2.0"
+license-files = []
+
+[[licenses.clarify]]
+name = "smithy-eventstream"
+version = "*"
+expression = "Apache-2.0"
+license-files = []
+
+[[licenses.clarify]]
+name = "smithy-json"
+version = "*"
+expression = "Apache-2.0"
+license-files = []
+
+[[licenses.clarify]]
+name = "smithy-xml"
+version = "*"
+expression = "Apache-2.0"
+license-files = []
 
 [licenses.private]
 # If true, ignores workspace crates that aren't published, or are only
@@ -166,9 +195,8 @@ skip = [
 # dependencies starting at the specified crate, up to a certain depth, which is
 # by default infinite
 skip-tree = [
-  { name = "sqlx", version = "=0.5.7", depth = 5 },
   { name = "tauri", version = "1.0.0-beta.8" },
-  { name = "webrtc", version = "0.1.0" },
+  { name = "webrtc", version = "0.1.1" },
 ]
 
 # This section is considered when running `cargo deny check sources`.
@@ -185,10 +213,7 @@ unknown-git = "warn"
 # if not specified. If it is specified but empty, no registries are allowed.
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 # List of URLs for allowed Git repositories
-allow-git = [
-  "https://github.com/awslabs/aws-sdk-rust",
-  "https://github.com/rcoh/sigv4",
-]
+allow-git = ["https://github.com/awslabs/aws-sdk-rust"]
 
 [sources.allow-org]
 # 1 or more github.com organizations to allow git sources for

@@ -28,7 +28,8 @@ sqlx = { version = "0.5", features = [
 ] }
 http = { version = "0.2.4" }
 tokio = { version = "1", features = ["full"] }
-s3 = { git = "https://github.com/awslabs/aws-sdk-rust", tag = "v0.0.11-alpha", package = "aws-sdk-s3" }
+s3 = { git = "https://github.com/awslabs/aws-sdk-rust", tag = "v0.0.19-alpha", package = "aws-sdk-s3" }
+aws-config = { git = "https://github.com/awslabs/aws-sdk-rust", tag = "v0.0.19-alpha", package = "aws-config" }
 reqwest = { version = "0.11", features = ["blocking"] }
 async-trait = "0.1.50"
 url = "2.2"

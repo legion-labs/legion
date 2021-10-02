@@ -17,7 +17,9 @@ impl S3BlobStorage {
         let uri = s3uri.parse::<Uri>().unwrap();
         let bucket_name = String::from(uri.host().unwrap());
         let root = PathBuf::from(uri.path().strip_prefix('/').unwrap());
-        let client = s3::Client::from_env();
+        let config = aws_config::load_from_env().await;
+        let client = s3::Client::new(&config);
+
         let req = client.get_bucket_location().bucket(&bucket_name);
         if let Err(e) = req.send().await {
             return Err(format!("Error connecting to bucket {}: {}", s3uri, e));
