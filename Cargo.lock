@@ -6658,7 +6658,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vk-mem"
 version = "0.2.3"
-source = "git+https://github.com/legion-labs/vk-mem-rs?branch=ash-fixes#530fb91f97593a5fcd30ba67441c98a9d48ddf3b"
+source = "git+https://github.com/legion-labs/vk-mem-rs?branch=ash-fixes#6e747a5bbce3d10ea8553190a23d3f4d8edd81f8"
 dependencies = [
  "ash",
  "bitflags 1.3.2",
