@@ -2,11 +2,8 @@
 //!
 //! It is used to test the data compilation process until we have a proper resource available.
 
-use legion_data_offline::{
-    resource::{Resource, ResourceProcessor},
-    ResourcePathId,
-};
-use legion_data_runtime::ResourceType;
+use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
+use legion_data_runtime::{Resource, ResourceType};
 
 use serde::{Deserialize, Serialize};
 

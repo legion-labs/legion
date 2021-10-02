@@ -1,7 +1,5 @@
 use std::{fmt, hash::Hash};
 
-use legion_data_runtime::{ResourceId, ResourceType};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 /// Identifier of a resource.
@@ -74,10 +72,4 @@ impl<T: AsRef<str>> From<&T> for ResourcePathName {
     fn from(s: &T) -> Self {
         Self::from(s.as_ref().to_owned())
     }
-}
-
-/// Creates a new random id.
-pub fn new_resource_id(kind: ResourceType) -> ResourceId {
-    let rand_id: u64 = rand::thread_rng().gen();
-    ResourceId::new(kind, rand_id)
 }

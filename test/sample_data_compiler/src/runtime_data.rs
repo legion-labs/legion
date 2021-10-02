@@ -1,7 +1,7 @@
 use std::any::{Any, TypeId};
 
 use legion_data_runtime::{
-    Asset, AssetDescriptor, AssetLoader, AssetRegistryOptions, ResourceId, ResourceType,
+    AssetDescriptor, AssetLoader, AssetRegistryOptions, Resource, ResourceId, ResourceType,
 };
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
 
 // ------------------ Entity -----------------------------------
 
-#[derive(Asset, Serialize, Deserialize)]
+#[derive(Resource, Serialize, Deserialize)]
 pub struct Entity {
     pub name: String,
     pub children: Vec<ResourceId>,
@@ -36,7 +36,7 @@ impl AssetLoader for EntityLoader {
         &mut self,
         _kind: ResourceType,
         reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
+    ) -> Result<Box<dyn Resource + Send + Sync>, std::io::Error> {
         let deserialize: Result<Entity, Box<bincode::ErrorKind>> =
             bincode::deserialize_from(reader);
         match deserialize {
@@ -48,7 +48,7 @@ impl AssetLoader for EntityLoader {
         }
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Asset + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Resource + Send + Sync)) {}
 }
 
 #[typetag::serde]
@@ -164,7 +164,7 @@ impl Component for Physics {}
 
 // ------------------ Instance  -----------------------------------
 
-#[derive(Asset, Serialize, Deserialize)]
+#[derive(Resource, Serialize, Deserialize)]
 pub struct Instance {
     pub original: Option<ResourceId>,
 }
@@ -182,7 +182,7 @@ impl AssetLoader for InstanceLoader {
         &mut self,
         _kind: ResourceType,
         reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
+    ) -> Result<Box<dyn Resource + Send + Sync>, std::io::Error> {
         let deserialize: Result<Instance, Box<bincode::ErrorKind>> =
             bincode::deserialize_from(reader);
         match deserialize {
@@ -194,12 +194,12 @@ impl AssetLoader for InstanceLoader {
         }
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Asset + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Resource + Send + Sync)) {}
 }
 
 // ------------------ Mesh -----------------------------------
 
-#[derive(Asset, Serialize, Deserialize)]
+#[derive(Resource, Serialize, Deserialize)]
 pub struct Mesh {
     pub sub_meshes: Vec<SubMesh>,
 }
@@ -217,7 +217,7 @@ impl AssetLoader for MeshLoader {
         &mut self,
         _kind: ResourceType,
         reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
+    ) -> Result<Box<dyn Resource + Send + Sync>, std::io::Error> {
         let deserialize: Result<Mesh, Box<bincode::ErrorKind>> = bincode::deserialize_from(reader);
         match deserialize {
             Ok(asset) => Ok(Box::new(asset)),
@@ -228,7 +228,7 @@ impl AssetLoader for MeshLoader {
         }
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Asset + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Resource + Send + Sync)) {}
 }
 
 #[derive(Serialize, Deserialize)]

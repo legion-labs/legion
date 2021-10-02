@@ -5,10 +5,7 @@ use legion_data_compiler::{
     compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
     Locale, Platform, Target,
 };
-use legion_data_offline::{
-    resource::{new_resource_id, ResourceProcessor},
-    ResourcePathId,
-};
+use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use legion_data_runtime::{AssetDescriptor, ResourceId};
 
 mod common;
@@ -53,7 +50,7 @@ fn command_compile() {
 
     let content = "test content";
 
-    let source = new_resource_id(refs_resource::TYPE_ID);
+    let source = ResourceId::new_random_id(refs_resource::TYPE_ID);
     create_test_resource(source, &resource_dir, content);
 
     let exe_path = common::compiler_exe("test-refs");

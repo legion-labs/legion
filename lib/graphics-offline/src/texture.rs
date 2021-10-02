@@ -1,7 +1,7 @@
 //! A module providing offline texture related functionality.
 
-use legion_data_offline::resource::{Resource, ResourceProcessor};
-use legion_data_runtime::ResourceType;
+use legion_data_offline::resource::ResourceProcessor;
+use legion_data_runtime::{Resource, ResourceType};
 use serde::{Deserialize, Serialize};
 
 /// `Texture` type id.

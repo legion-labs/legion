@@ -1,6 +1,8 @@
 use std::{marker::PhantomData, sync::mpsc};
 
-use super::{Resource, ResourceRegistry};
+use legion_data_runtime::Resource;
+
+use super::ResourceRegistry;
 
 pub(crate) type ResourceHandleId = u32;
 

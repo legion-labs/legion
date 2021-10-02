@@ -11,7 +11,7 @@ use legion_content_store::ContentStore;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    Asset, AssetDescriptor, AssetLoader, Handle, HandleId, HandleUntyped, RefOp, ResourceId,
+    AssetDescriptor, AssetLoader, Handle, HandleId, HandleUntyped, RefOp, Resource, ResourceId,
     ResourceType,
 };
 
@@ -73,7 +73,7 @@ pub struct AssetRegistry {
         crossbeam_channel::Receiver<RefOp>,
     ),
     ref_counts: HashMap<HandleId, (ResourceId, isize)>,
-    assets: HashMap<ResourceId, Arc<dyn Asset + Send + Sync>>,
+    assets: HashMap<ResourceId, Arc<dyn Resource + Send + Sync>>,
     load_errors: HashMap<ResourceId, io::ErrorKind>,
     load_thread: Option<JoinHandle<()>>,
     loader: AssetLoaderStub,
@@ -98,7 +98,7 @@ impl AssetRegistry {
     }
 
     /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T` for convenience.
-    pub fn load<T: Asset>(&mut self, id: ResourceId) -> Handle<T> {
+    pub fn load<T: Resource>(&mut self, id: ResourceId) -> Handle<T> {
         let handle = self.load_untyped(id);
         Handle::<T>::from(handle)
     }
@@ -111,7 +111,7 @@ impl AssetRegistry {
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Asset>(&self, handle_id: HandleId) -> Option<&T> {
+    pub(crate) fn get<T: Resource>(&self, handle_id: HandleId) -> Option<&T> {
         if let Some(asset_id) = self.get_asset_id(handle_id) {
             if let Some(asset) = self.assets.get(&asset_id) {
                 return asset.downcast_ref::<T>();

@@ -265,14 +265,13 @@ mod tests {
 
     use std::str::FromStr;
 
-    use crate::{
-        resource::{new_resource_id, test_resource},
-        ResourcePathId,
-    };
+    use legion_data_runtime::ResourceId;
+
+    use crate::{resource::test_resource, ResourcePathId};
 
     #[test]
     fn simple_path() {
-        let source = new_resource_id(test_resource::TYPE_ID);
+        let source = ResourceId::new_random_id(test_resource::TYPE_ID);
 
         let path_a = ResourcePathId::from(source);
         let path_b = path_a.push(test_resource::TYPE_ID);
@@ -286,7 +285,7 @@ mod tests {
 
     #[test]
     fn named_path() {
-        let source = new_resource_id(test_resource::TYPE_ID);
+        let source = ResourceId::new_random_id(test_resource::TYPE_ID);
 
         let source = ResourcePathId::from(source);
         let source_hello = source.push_named(test_resource::TYPE_ID, "hello");

@@ -4,12 +4,9 @@
 
 use std::str::FromStr;
 
-use legion_data_runtime::ResourceType;
+use legion_data_runtime::{Resource, ResourceType};
 
-use crate::{
-    resource::{Resource, ResourceProcessor},
-    ResourcePathId,
-};
+use crate::{resource::ResourceProcessor, ResourcePathId};
 
 /// Type id of test resource. Used until we have proper resource types.
 pub const TYPE_ID: ResourceType = ResourceType::new(b"test_resource");

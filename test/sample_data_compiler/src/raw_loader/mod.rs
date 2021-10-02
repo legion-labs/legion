@@ -3,9 +3,9 @@ mod raw_to_offline;
 
 use crate::offline_data::{self, CompilableResource};
 use legion_data_offline::resource::{
-    Project, Resource, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
+    Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
-use legion_data_runtime::{ResourceId, ResourceType};
+use legion_data_runtime::{Resource, ResourceId, ResourceType};
 use legion_graphics_offline::psd::PsdFile;
 use serde::de::DeserializeOwned;
 use std::{

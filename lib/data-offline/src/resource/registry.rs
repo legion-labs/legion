@@ -1,10 +1,10 @@
 use std::{collections::HashMap, io, sync::mpsc};
 
-use legion_data_runtime::ResourceType;
+use legion_data_runtime::{Resource, ResourceType};
 
 use crate::ResourcePathId;
 
-use super::{RefOp, Resource, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
+use super::{RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
 
 /// Options which can be used to configure [`ResourceRegistry`] creation.
 pub struct ResourceRegistryOptions {
@@ -195,14 +195,12 @@ impl ResourceRegistry {
 mod tests {
     use std::io;
 
-    use legion_data_runtime::ResourceType;
+    use legion_data_runtime::{Resource, ResourceType};
 
     use crate::{
         resource::{registry::ResourceRegistryOptions, ResourceProcessor},
         ResourcePathId,
     };
-
-    use super::Resource;
 
     #[derive(Resource)]
     struct SampleResource {

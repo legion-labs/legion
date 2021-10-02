@@ -2,12 +2,12 @@
 
 use std::convert::TryFrom;
 
-use legion_data_runtime::{Asset, AssetDescriptor, AssetLoader, ResourceId, ResourceType};
+use legion_data_runtime::{AssetDescriptor, AssetLoader, Resource, ResourceId, ResourceType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
 /// Runtime material.
-#[derive(Asset)]
+#[derive(Resource)]
 pub struct Material {
     /// Albedo texture reference.
     pub albedo: Option<ResourceId>,
@@ -38,7 +38,7 @@ impl AssetLoader for MaterialLoader {
         &mut self,
         _kind: ResourceType,
         reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Asset + Send + Sync>, std::io::Error> {
+    ) -> Result<Box<dyn Resource + Send + Sync>, std::io::Error> {
         let albedo = read_asset_id(reader)?;
         let normal = read_asset_id(reader)?;
         let roughness = read_asset_id(reader)?;
@@ -54,5 +54,5 @@ impl AssetLoader for MaterialLoader {
         Ok(Box::new(output))
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Asset + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Resource + Send + Sync)) {}
 }

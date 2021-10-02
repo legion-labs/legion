@@ -86,20 +86,8 @@
 #![warn(missing_docs)]
 
 mod data_container;
-mod resource;
 
 use proc_macro::TokenStream;
-
-/// Derives a default implementation of the Asset trait for a type.
-#[proc_macro_derive(Resource)]
-pub fn derive_resource(input: TokenStream) -> TokenStream {
-    // Construct a representation of Rust code as a syntax tree
-    // that we can manipulate
-    let ast = syn::parse(input).unwrap();
-
-    // Build the trait implementation
-    resource::derive_resource(&ast)
-}
 
 /// Derives a default implementation of the Asset trait for a type.
 #[proc_macro_derive(DataContainer, attributes(legion))]

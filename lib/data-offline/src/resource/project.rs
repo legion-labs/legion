@@ -19,8 +19,6 @@ use std::{
 use legion_data_runtime::{ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
-use super::new_resource_id;
-
 const METADATA_EXT: &str = "meta";
 
 /// A project exists always within a given directory and this file
@@ -252,7 +250,7 @@ impl Project {
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceId, Error> {
-        let id = new_resource_id(kind);
+        let id = ResourceId::new_random_id(kind);
         self.add_resource_with_id(name, kind, id, handle, registry)
     }
 
@@ -523,14 +521,13 @@ impl fmt::Debug for Project {
 mod tests {
     use std::{fs::File, path::Path, str::FromStr};
 
-    use legion_data_runtime::ResourceType;
+    use legion_data_runtime::{Resource, ResourceType};
     use tempfile::TempDir;
 
     use crate::resource::project::Project;
     use crate::{
         resource::{
-            Resource, ResourcePathName, ResourceProcessor, ResourceRegistry,
-            ResourceRegistryOptions,
+            ResourcePathName, ResourceProcessor, ResourceRegistry, ResourceRegistryOptions,
         },
         ResourcePathId,
     };

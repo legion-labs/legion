@@ -68,8 +68,8 @@
 //! Reading source `Resources` is done with [`CompilerContext::load_resource`] function:
 //!
 //! ```no_run
-//! # use legion_data_offline::{resource::{Resource, ResourceRegistryOptions, ResourceProcessor}, ResourcePathId};
-//! # use legion_data_runtime::{ResourceId, ResourceType};
+//! # use legion_data_offline::{resource::{ResourceRegistryOptions, ResourceProcessor}, ResourcePathId};
+//! # use legion_data_runtime::{Resource, ResourceId, ResourceType};
 //! # use legion_data_compiler::compiler_api::{CompilerContext, CompilationOutput, CompilerError};
 //! # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
 //! # pub struct SourceGeomProc {}

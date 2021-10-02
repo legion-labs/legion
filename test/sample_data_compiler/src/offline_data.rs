@@ -2,11 +2,8 @@
 
 use std::any::{Any, TypeId};
 
-use legion_data_offline::{
-    resource::{Resource, ResourceProcessor},
-    ResourcePathId,
-};
-use legion_data_runtime::ResourceType;
+use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
+use legion_data_runtime::{Resource, ResourceType};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -69,7 +66,7 @@ impl ResourceProcessor for EntityProcessor {
 }
 
 #[typetag::serde]
-pub trait Component: Any {}
+pub trait Component: Any + Sync + Send {}
 
 /// Note: Based on impl of dyn Any
 impl dyn Component {

@@ -7,8 +7,8 @@ use legion_data_compiler::{
     compiler_api::{CompilationOutput, CompilerContext, CompilerError},
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::{Resource, ResourceRegistryOptions};
-use legion_data_runtime::AssetDescriptor;
+use legion_data_offline::resource::ResourceRegistryOptions;
+use legion_data_runtime::{AssetDescriptor, Resource};
 use sample_data_compiler::offline_data::CompilableResource;
 use serde::Serialize;
 

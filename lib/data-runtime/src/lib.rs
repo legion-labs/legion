@@ -150,7 +150,7 @@ mod types;
 pub use types::*;
 pub mod manifest;
 
-pub use legion_data_runtime_macros::Asset;
+pub use legion_data_runtime_macros::Resource;
 
 #[cfg(test)]
 mod test_asset;

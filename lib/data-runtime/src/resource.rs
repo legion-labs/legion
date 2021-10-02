@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
 };
 
+use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Type identifier of resource or asset.
@@ -65,6 +66,12 @@ impl ResourceId {
     pub fn new(kind: ResourceType, id: u64) -> Self {
         let internal = kind.stamp(id as u128);
         Self(std::num::NonZeroU128::new(internal).unwrap())
+    }
+
+    /// Creates a new random id.
+    pub fn new_random_id(kind: ResourceType) -> Self {
+        let rand_id: u64 = rand::thread_rng().gen();
+        Self::new(kind, rand_id)
     }
 
     /// Returns the type of `ContentId`.

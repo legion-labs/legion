@@ -89,13 +89,13 @@ mod asset;
 
 use proc_macro::TokenStream;
 
-/// Derives a default implementation of the Asset trait for a type.
-#[proc_macro_derive(Asset)]
-pub fn derive_asset(input: TokenStream) -> TokenStream {
+/// Derives a default implementation of the Resource trait for a type.
+#[proc_macro_derive(Resource)]
+pub fn derive_resource(input: TokenStream) -> TokenStream {
     // Construct a representation of Rust code as a syntax tree
     // that we can manipulate
     let ast = syn::parse(input).unwrap();
 
     // Build the trait implementation
-    asset::derive_asset(&ast)
+    asset::derive_resource(&ast)
 }
