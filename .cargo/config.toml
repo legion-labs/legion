@@ -7,3 +7,6 @@ vcs = "none"
 # 
 # make rustdoc treat warnings as errors.
 rustdocflags = ["-Dwarnings"]
+
+[target.x86_64-pc-windows-msvc]
+linker = "lld-link.exe"
