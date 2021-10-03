@@ -4,7 +4,7 @@ use legion_data_runtime::ResourceType;
 
 use crate::ResourcePathId;
 
-use super::{RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
+use super::{OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
 
 /// Options which can be used to configure [`ResourceRegistry`] creation.
 pub struct ResourceRegistryOptions {
@@ -25,10 +25,23 @@ impl ResourceRegistryOptions {
     /// # Panics
     ///
     /// Panics if a processor for a resource of type `kind` is already registered.
-    pub fn add_type(mut self, kind: ResourceType, proc: Box<dyn ResourceProcessor>) -> Self {
-        let v = self.processors.insert(kind, proc).is_none();
+    pub fn add_type_processor(
+        mut self,
+        ty: ResourceType,
+        proc: Box<dyn ResourceProcessor>,
+    ) -> Self {
+        let v = self.processors.insert(ty, proc).is_none();
         assert!(v);
         self
+    }
+
+    /// Same as `add_type_processor` but adds a default processor of OfflineResource.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a processor for a resource of type `kind` is already registered.
+    pub fn add_type<T: OfflineResource>(self) -> Self {
+        self.add_type_processor(T::TYPE, Box::new(T::Processor::default()))
     }
 
     /// Creates a new registry with the options specified by `self`.
@@ -195,7 +208,7 @@ mod tests {
     use legion_data_runtime::{Resource, ResourceType};
 
     use crate::{
-        resource::{registry::ResourceRegistryOptions, ResourceProcessor},
+        resource::{registry::ResourceRegistryOptions, OfflineResource, ResourceProcessor},
         ResourcePathId,
     };
 
@@ -208,6 +221,11 @@ mod tests {
         const TYPENAME: &'static str = "sample";
     }
 
+    impl OfflineResource for SampleResource {
+        type Processor = SampleProcessor;
+    }
+
+    #[derive(Default)]
     struct SampleProcessor {
         default_content: String,
     }
@@ -336,7 +354,7 @@ mod tests {
         let default_content = "default content";
 
         let mut resources = ResourceRegistryOptions::new()
-            .add_type(
+            .add_type_processor(
                 RESOURCE_SAMPLE,
                 Box::new(SampleProcessor {
                     default_content: String::from(default_content),

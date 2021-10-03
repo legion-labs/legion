@@ -4,13 +4,13 @@
 
 use std::any::Any;
 
-use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_offline::{
+    resource::{OfflineResource, ResourceProcessor},
+    ResourcePathId,
+};
+use legion_data_runtime::Resource;
 
 use serde::{Deserialize, Serialize};
-
-/// Type id of test resource. Used until we have proper resource types.
-pub const TYPE_ID: ResourceType = ResourceType::new(b"test_resource");
 
 /// Resource temporarily used for testing.
 ///
@@ -27,9 +27,14 @@ impl Resource for TestResource {
     const TYPENAME: &'static str = "test_resource";
 }
 
+impl OfflineResource for TestResource {
+    type Processor = TestResourceProc;
+}
+
 /// [`TestResource`]'s resource processor temporarily used for testings.
 ///
 /// To be removed once real resource types exists.
+#[derive(Default)]
 pub struct TestResourceProc {}
 impl ResourceProcessor for TestResourceProc {
     fn new_resource(&mut self) -> Box<dyn Any> {

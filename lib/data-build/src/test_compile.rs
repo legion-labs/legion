@@ -21,18 +21,9 @@ pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
 fn setup_registry() -> ResourceRegistry {
     ResourceRegistryOptions::new()
-        .add_type(
-            refs_resource::TYPE_ID,
-            Box::new(refs_resource::TestResourceProc {}),
-        )
-        .add_type(
-            text_resource::TYPE_ID,
-            Box::new(text_resource::TextResourceProc {}),
-        )
-        .add_type(
-            multitext_resource::TYPE_ID,
-            Box::new(multitext_resource::MultiTextResourceProc {}),
-        )
+        .add_type::<refs_resource::TestResource>()
+        .add_type::<text_resource::TextResource>()
+        .add_type::<multitext_resource::MultiTextResource>()
         .create_registry()
 }
 
@@ -57,7 +48,7 @@ fn create_resource(
 ) -> ResourceId {
     let resource_b = {
         let res = resources
-            .new_resource(refs_resource::TYPE_ID)
+            .new_resource(refs_resource::TestResource::TYPE)
             .unwrap()
             .typed::<refs_resource::TestResource>();
         let resource = res.get_mut(resources).unwrap();
@@ -66,7 +57,12 @@ fn create_resource(
         res
     };
     project
-        .add_resource(name, refs_resource::TYPE_ID, &resource_b, resources)
+        .add_resource(
+            name,
+            refs_resource::TestResource::TYPE,
+            &resource_b,
+            resources,
+        )
         .unwrap()
 }
 
@@ -103,13 +99,13 @@ fn compile_change_no_deps() {
         let mut project = Project::create_new(&project_dir).expect("failed to create a project");
 
         let resource_handle = resources
-            .new_resource(refs_resource::TYPE_ID)
+            .new_resource(refs_resource::TestResource::TYPE)
             .unwrap()
             .typed::<refs_resource::TestResource>();
         let resource_id = project
             .add_resource(
                 ResourcePathName::new("resource"),
-                refs_resource::TYPE_ID,
+                refs_resource::TestResource::TYPE,
                 &resource_handle,
                 &mut resources,
             )
@@ -269,14 +265,14 @@ fn intermediate_resource() {
         let mut project = Project::create_new(&project_dir).expect("failed to create a project");
 
         let resource_handle = resources
-            .new_resource(text_resource::TYPE_ID)
+            .new_resource(text_resource::TextResource::TYPE)
             .unwrap()
             .typed::<TextResource>();
         resource_handle.get_mut(&mut resources).unwrap().content = source_magic_value.clone();
         project
             .add_resource(
                 ResourcePathName::new("resource"),
-                text_resource::TYPE_ID,
+                text_resource::TextResource::TYPE,
                 &resource_handle,
                 &mut resources,
             )
@@ -295,7 +291,7 @@ fn intermediate_resource() {
     assert_eq!(pulled, 1);
 
     let source_path = ResourcePathId::from(source_id);
-    let reversed_path = source_path.push(text_resource::TYPE_ID);
+    let reversed_path = source_path.push(text_resource::TextResource::TYPE);
     let integer_path = reversed_path.push(integer_asset::IntegerAsset::TYPE);
 
     let compile_output = build
@@ -480,14 +476,14 @@ fn named_path_cache_use() {
         let mut project = Project::create_new(&project_dir).expect("failed to create a project");
 
         let resource_handle = resources
-            .new_resource(multitext_resource::TYPE_ID)
+            .new_resource(multitext_resource::MultiTextResource::TYPE)
             .unwrap()
             .typed::<MultiTextResource>();
         resource_handle.get_mut(&mut resources).unwrap().text_list = magic_list.clone();
         project
             .add_resource(
                 ResourcePathName::new("resource"),
-                multitext_resource::TYPE_ID,
+                multitext_resource::MultiTextResource::TYPE,
                 &resource_handle,
                 &mut resources,
             )
@@ -506,8 +502,8 @@ fn named_path_cache_use() {
     assert_eq!(pulled, 1);
 
     let source_path = ResourcePathId::from(source_id);
-    let split_text0_path = source_path.push_named(text_resource::TYPE_ID, "text_0");
-    let split_text1_path = source_path.push_named(text_resource::TYPE_ID, "text_1");
+    let split_text0_path = source_path.push_named(text_resource::TextResource::TYPE, "text_0");
+    let split_text1_path = source_path.push_named(text_resource::TextResource::TYPE, "text_1");
     let integer_path_0 = split_text0_path.push(integer_asset::IntegerAsset::TYPE);
     let integer_path_1 = split_text1_path.push(integer_asset::IntegerAsset::TYPE);
 
@@ -741,7 +737,7 @@ fn link() {
         let mut project = Project::create_new(&project_dir).expect("new project");
 
         let child_handle = resources
-            .new_resource(refs_resource::TYPE_ID)
+            .new_resource(refs_resource::TestResource::TYPE)
             .expect("valid resource")
             .typed::<refs_resource::TestResource>();
         let child = child_handle
@@ -751,14 +747,14 @@ fn link() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
-                refs_resource::TYPE_ID,
+                refs_resource::TestResource::TYPE,
                 &child_handle,
                 &mut resources,
             )
             .unwrap();
 
         let parent_handle = resources
-            .new_resource(refs_resource::TYPE_ID)
+            .new_resource(refs_resource::TestResource::TYPE)
             .expect("valid resource")
             .typed::<refs_resource::TestResource>();
         let parent = parent_handle
@@ -769,7 +765,7 @@ fn link() {
         project
             .add_resource(
                 ResourcePathName::new("parent"),
-                refs_resource::TYPE_ID,
+                refs_resource::TestResource::TYPE,
                 &parent_handle,
                 &mut resources,
             )
@@ -833,14 +829,16 @@ fn verify_manifest() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
-                refs_resource::TYPE_ID,
-                &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
+                refs_resource::TestResource::TYPE,
+                &resources
+                    .new_resource(refs_resource::TestResource::TYPE)
+                    .unwrap(),
                 &mut resources,
             )
             .unwrap();
 
         let child_handle = resources
-            .new_resource(refs_resource::TYPE_ID)
+            .new_resource(refs_resource::TestResource::TYPE)
             .unwrap()
             .typed::<refs_resource::TestResource>();
         child_handle
@@ -852,7 +850,7 @@ fn verify_manifest() {
         project
             .add_resource(
                 ResourcePathName::new("parent"),
-                refs_resource::TYPE_ID,
+                refs_resource::TestResource::TYPE,
                 &child_handle,
                 &mut resources,
             )

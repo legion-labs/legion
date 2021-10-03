@@ -2,13 +2,10 @@
 
 use std::any::Any;
 
-use legion_data_offline::resource::ResourceProcessor;
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_offline::resource::{OfflineResource, ResourceProcessor};
+use legion_data_runtime::Resource;
 
 use crate::texture::{Texture, TextureType};
-
-/// `PsdFile` type id.
-pub const TYPE_ID: ResourceType = ResourceType::new(b"psd");
 
 /// Photoshop Document file.
 #[derive(Resource)]
@@ -18,6 +15,10 @@ pub struct PsdFile {
 
 impl Resource for PsdFile {
     const TYPENAME: &'static str = "psd";
+}
+
+impl OfflineResource for PsdFile {
+    type Processor = PsdFileProcessor;
 }
 
 impl PsdFile {
@@ -70,6 +71,7 @@ impl PsdFile {
 }
 
 /// A processor of Photoshop Document files.
+#[derive(Default)]
 pub struct PsdFileProcessor {}
 
 impl ResourceProcessor for PsdFileProcessor {

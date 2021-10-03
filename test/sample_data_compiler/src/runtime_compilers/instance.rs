@@ -91,7 +91,7 @@ use legion_data_compiler::compiler_api::{
 };
 use legion_data_runtime::Resource;
 use sample_data_compiler::{
-    offline_data::{self, CompilableResource},
+    offline_data::{self},
     runtime_data,
 };
 use std::env;
@@ -101,10 +101,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(
-        offline_data::Instance::TYPE_ID,
-        runtime_data::Instance::TYPE,
-    ),
+    transform: &(offline_data::Instance::TYPE, runtime_data::Instance::TYPE),
     compiler_hash_func: compiler_hash,
     compile_func: compile::<offline_data::Instance, runtime_data::Instance>,
 };

@@ -12,13 +12,17 @@ use legion_data_compiler::{
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use legion_data_offline::resource::ResourceRegistryOptions;
+use legion_data_runtime::Resource;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(text_resource::TYPE_ID, text_resource::TYPE_ID),
+    transform: &(
+        text_resource::TextResource::TYPE,
+        text_resource::TextResource::TYPE,
+    ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -38,10 +42,7 @@ fn compiler_hash(
 
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistryOptions::new()
-        .add_type(
-            text_resource::TYPE_ID,
-            Box::new(text_resource::TextResourceProc {}),
-        )
+        .add_type::<text_resource::TextResource>()
         .create_registry();
 
     let handle = context.load_resource(
@@ -57,7 +58,7 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
     let mut bytes = vec![];
 
     let (nbytes, _) = resources
-        .serialize_resource(text_resource::TYPE_ID, &handle, &mut bytes)
+        .serialize_resource(text_resource::TextResource::TYPE, &handle, &mut bytes)
         .map_err(CompilerError::ResourceWriteFailed)?;
 
     let checksum = context

@@ -2,13 +2,12 @@
 
 use std::any::Any;
 
-use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_offline::{
+    resource::{OfflineResource, ResourceProcessor},
+    ResourcePathId,
+};
+use legion_data_runtime::Resource;
 use serde::{Deserialize, Serialize};
-
-/// Type id.
-pub const TYPE_ID: ResourceType = ResourceType::new(b"offline_material");
 
 /// Offline material resource.
 #[derive(Resource, Default, Serialize, Deserialize)]
@@ -25,8 +24,10 @@ pub struct Material {
 
 impl Resource for Material {
     const TYPENAME: &'static str = "offline_material";
+}
 
-    const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
+impl OfflineResource for Material {
+    type Processor = MaterialProcessor;
 }
 
 /// Processor of [`Material`]

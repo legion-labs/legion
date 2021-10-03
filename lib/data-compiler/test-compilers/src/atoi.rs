@@ -19,7 +19,10 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(text_resource::TYPE_ID, integer_asset::IntegerAsset::TYPE),
+    transform: &(
+        text_resource::TextResource::TYPE,
+        integer_asset::IntegerAsset::TYPE,
+    ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
 };
@@ -39,10 +42,7 @@ fn compiler_hash(
 
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistryOptions::new()
-        .add_type(
-            text_resource::TYPE_ID,
-            Box::new(text_resource::TextResourceProc {}),
-        )
+        .add_type::<text_resource::TextResource>()
         .create_registry();
 
     // todo: source_resource is wrong

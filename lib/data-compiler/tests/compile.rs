@@ -32,7 +32,7 @@ fn compile_atoi() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::new_random_id(text_resource::TYPE_ID);
+        let source = ResourceId::new_random_id(text_resource::TextResource::TYPE);
 
         let mut proc = text_resource::TextResourceProc {};
 
@@ -103,7 +103,7 @@ fn compile_intermediate() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::new_random_id(text_resource::TYPE_ID);
+        let source = ResourceId::new_random_id(text_resource::TextResource::TYPE);
         let mut proc = text_resource::TextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -124,7 +124,7 @@ fn compile_intermediate() {
     let intermediate_info = {
         let exe_path = common::compiler_exe("test-reverse");
         assert!(exe_path.exists());
-        let compile_path = ResourcePathId::from(source).push(text_resource::TYPE_ID);
+        let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
             &[],
@@ -146,7 +146,7 @@ fn compile_intermediate() {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
         let compile_path = ResourcePathId::from(source)
-            .push(text_resource::TYPE_ID)
+            .push(text_resource::TextResource::TYPE)
             .push(integer_asset::IntegerAsset::TYPE);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
@@ -196,7 +196,7 @@ fn compile_multi_resource() {
     let source_text_list = vec![String::from("hello"), String::from("world")];
 
     let source = {
-        let source = ResourceId::new_random_id(multitext_resource::TYPE_ID);
+        let source = ResourceId::new_random_id(multitext_resource::MultiTextResource::TYPE);
         let mut proc = MultiTextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -213,12 +213,12 @@ fn compile_multi_resource() {
     };
 
     let cas_addr = ContentStoreAddr::from(output_dir);
-    let compile_path = ResourcePathId::from(source).push(text_resource::TYPE_ID);
+    let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
 
     let compiled_resources = {
         let exe_path = common::compiler_exe("test-split");
         assert!(exe_path.exists());
-        let compile_path = ResourcePathId::from(source).push(text_resource::TYPE_ID);
+        let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
             &[],
@@ -275,7 +275,7 @@ fn compile_base64() {
     let expected_base64_value = String::from("AQIDBAUGBwgJ");
 
     let source = {
-        let source = ResourceId::new_random_id(binary_resource::TYPE_ID);
+        let source = ResourceId::new_random_id(binary_resource::BinaryResource::TYPE);
 
         let mut proc = binary_resource::BinaryResourceProc {};
 
@@ -299,7 +299,7 @@ fn compile_base64() {
         let exe_path = common::compiler_exe("test-base64");
         assert!(exe_path.exists());
 
-        let compile_path = ResourcePathId::from(source).push(text_resource::TYPE_ID);
+        let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
         let mut command = CompilerCompileCmd::new(
             &compile_path,
             &[],

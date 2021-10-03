@@ -7,9 +7,8 @@ use legion_data_compiler::{
     compiler_api::{CompilationOutput, CompilerContext, CompilerError},
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::ResourceRegistryOptions;
+use legion_data_offline::resource::{OfflineResource, ResourceRegistryOptions};
 use legion_data_runtime::Resource;
-use sample_data_compiler::offline_data::CompilableResource;
 use serde::Serialize;
 
 use crate::offline_to_runtime::FromOffline;
@@ -31,14 +30,11 @@ pub fn compile<OfflineType, RuntimeType>(
     context: CompilerContext<'_>,
 ) -> Result<CompilationOutput, CompilerError>
 where
-    OfflineType: Resource + CompilableResource + 'static,
+    OfflineType: OfflineResource + 'static,
     RuntimeType: Resource + FromOffline<OfflineType> + Serialize,
 {
     let mut resources = ResourceRegistryOptions::new()
-        .add_type(
-            OfflineType::TYPE_ID,
-            Box::new(OfflineType::Processor::default()),
-        )
+        .add_type::<OfflineType>()
         .create_registry();
 
     let resource = context.load_resource(

@@ -20,7 +20,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        legion_graphics_offline::texture::TYPE_ID,
+        legion_graphics_offline::texture::Texture::TYPE,
         legion_graphics_runtime::Texture::TYPE,
     ),
     compiler_hash_func: compiler_hash,
@@ -42,10 +42,7 @@ fn compiler_hash(
 
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistryOptions::new()
-        .add_type(
-            legion_graphics_offline::texture::TYPE_ID,
-            Box::new(legion_graphics_offline::texture::TextureProcessor {}),
-        )
+        .add_type::<legion_graphics_offline::texture::Texture>()
         .create_registry();
 
     let resource = context.load_resource(

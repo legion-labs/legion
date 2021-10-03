@@ -12,6 +12,7 @@ use legion_data_compiler::{
     CompilerHash, Locale, Platform, Target,
 };
 use legion_data_offline::resource::ResourceRegistryOptions;
+use legion_data_runtime::Resource;
 use legion_graphics_offline::psd::PsdFile;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -20,8 +21,8 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        legion_graphics_offline::psd::TYPE_ID,
-        legion_graphics_offline::texture::TYPE_ID,
+        legion_graphics_offline::psd::PsdFile::TYPE,
+        legion_graphics_offline::texture::Texture::TYPE,
     ),
     compiler_hash_func: compiler_hash,
     compile_func: compile,
@@ -42,10 +43,7 @@ fn compiler_hash(
 
 fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = ResourceRegistryOptions::new()
-        .add_type(
-            legion_graphics_offline::psd::TYPE_ID,
-            Box::new(legion_graphics_offline::psd::PsdFileProcessor {}),
-        )
+        .add_type::<legion_graphics_offline::psd::PsdFile>()
         .create_registry();
 
     let resource = context.load_resource(

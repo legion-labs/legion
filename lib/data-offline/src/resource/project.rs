@@ -639,11 +639,11 @@ mod tests {
         let index_path = Project::root_to_index_path(project_dir);
         let mut project = Project::open(&index_path).unwrap();
         let mut resources = ResourceRegistryOptions::new()
-            .add_type(RESOURCE_TEXTURE, Box::new(NullResourceProc {}))
-            .add_type(RESOURCE_MATERIAL, Box::new(NullResourceProc {}))
-            .add_type(RESOURCE_GEOMETRY, Box::new(NullResourceProc {}))
-            .add_type(RESOURCE_SKELETON, Box::new(NullResourceProc {}))
-            .add_type(RESOURCE_ACTOR, Box::new(NullResourceProc {}))
+            .add_type_processor(RESOURCE_TEXTURE, Box::new(NullResourceProc {}))
+            .add_type_processor(RESOURCE_MATERIAL, Box::new(NullResourceProc {}))
+            .add_type_processor(RESOURCE_GEOMETRY, Box::new(NullResourceProc {}))
+            .add_type_processor(RESOURCE_SKELETON, Box::new(NullResourceProc {}))
+            .add_type_processor(RESOURCE_ACTOR, Box::new(NullResourceProc {}))
             .create_registry();
 
         let texture = project

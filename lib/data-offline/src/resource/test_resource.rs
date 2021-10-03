@@ -4,12 +4,11 @@
 
 use std::{any::Any, str::FromStr};
 
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_runtime::Resource;
 
 use crate::{resource::ResourceProcessor, ResourcePathId};
 
-/// Type id of test resource. Used until we have proper resource types.
-pub const TYPE_ID: ResourceType = ResourceType::new(b"test_resource");
+use super::OfflineResource;
 
 /// Resource temporarily used for testing.
 ///
@@ -22,9 +21,18 @@ pub struct TestResource {
     pub build_deps: Vec<ResourcePathId>,
 }
 
+impl Resource for TestResource {
+    const TYPENAME: &'static str = "test_resource";
+}
+
+impl OfflineResource for TestResource {
+    type Processor = TestResourceProc;
+}
+
 /// [`TestResource`]'s resource processor temporarily used for testings.
 ///
 /// To be removed once real resource types exists.
+#[derive(Default)]
 pub struct TestResourceProc {}
 impl ResourceProcessor for TestResourceProc {
     fn new_resource(&mut self) -> Box<dyn Any> {

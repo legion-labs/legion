@@ -2,12 +2,9 @@
 
 use std::any::Any;
 
-use legion_data_offline::resource::ResourceProcessor;
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_offline::resource::{OfflineResource, ResourceProcessor};
+use legion_data_runtime::Resource;
 use serde::{Deserialize, Serialize};
-
-/// `Texture` type id.
-pub const TYPE_ID: ResourceType = ResourceType::new(b"offline_texture");
 
 /// Texture type enumeration.
 #[derive(Serialize, Deserialize)]
@@ -33,7 +30,12 @@ impl Resource for Texture {
     const TYPENAME: &'static str = "offline_texture";
 }
 
+impl OfflineResource for Texture {
+    type Processor = TextureProcessor;
+}
+
 /// Processor of [`Texture`]
+#[derive(Default)]
 pub struct TextureProcessor {}
 
 impl ResourceProcessor for TextureProcessor {

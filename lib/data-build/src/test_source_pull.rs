@@ -6,16 +6,14 @@ use legion_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
     ResourcePathId,
 };
+use legion_data_runtime::Resource;
 use tempfile::TempDir;
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
 fn setup_registry() -> ResourceRegistry {
     ResourceRegistryOptions::new()
-        .add_type(
-            refs_resource::TYPE_ID,
-            Box::new(refs_resource::TestResourceProc {}),
-        )
+        .add_type::<refs_resource::TestResource>()
         .create_registry()
 }
 
@@ -37,8 +35,10 @@ fn no_dependencies() {
         let id = project
             .add_resource(
                 ResourcePathName::new("resource"),
-                refs_resource::TYPE_ID,
-                &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
+                refs_resource::TestResource::TYPE,
+                &resources
+                    .new_resource(refs_resource::TestResource::TYPE)
+                    .unwrap(),
                 &mut resources,
             )
             .unwrap();
@@ -78,14 +78,18 @@ fn with_dependency() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
-                refs_resource::TYPE_ID,
-                &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
+                refs_resource::TestResource::TYPE,
+                &resources
+                    .new_resource(refs_resource::TestResource::TYPE)
+                    .unwrap(),
                 &mut resources,
             )
             .unwrap();
 
         let parent_handle = {
-            let res = resources.new_resource(refs_resource::TYPE_ID).unwrap();
+            let res = resources
+                .new_resource(refs_resource::TestResource::TYPE)
+                .unwrap();
             res.get_mut::<refs_resource::TestResource>(&mut resources)
                 .unwrap()
                 .build_deps
@@ -95,7 +99,7 @@ fn with_dependency() {
         let parent_id = project
             .add_resource(
                 ResourcePathName::new("parent"),
-                refs_resource::TYPE_ID,
+                refs_resource::TestResource::TYPE,
                 &parent_handle,
                 &mut resources,
             )
@@ -142,16 +146,21 @@ fn with_derived_dependency() {
         let child_id = project
             .add_resource(
                 ResourcePathName::new("intermediate_child"),
-                refs_resource::TYPE_ID,
-                &resources.new_resource(refs_resource::TYPE_ID).unwrap(),
+                refs_resource::TestResource::TYPE,
+                &resources
+                    .new_resource(refs_resource::TestResource::TYPE)
+                    .unwrap(),
                 &mut resources,
             )
             .unwrap();
 
         let parent_handle = {
-            let intermediate_id = ResourcePathId::from(child_id).push(refs_resource::TYPE_ID);
+            let intermediate_id =
+                ResourcePathId::from(child_id).push(refs_resource::TestResource::TYPE);
 
-            let res = resources.new_resource(refs_resource::TYPE_ID).unwrap();
+            let res = resources
+                .new_resource(refs_resource::TestResource::TYPE)
+                .unwrap();
             res.get_mut::<refs_resource::TestResource>(&mut resources)
                 .unwrap()
                 .build_deps
@@ -161,7 +170,7 @@ fn with_derived_dependency() {
         let _parent_id = project
             .add_resource(
                 ResourcePathName::new("intermetidate_parent"),
-                refs_resource::TYPE_ID,
+                refs_resource::TestResource::TYPE,
                 &parent_handle,
                 &mut resources,
             )

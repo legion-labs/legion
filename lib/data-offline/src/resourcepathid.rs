@@ -265,16 +265,16 @@ mod tests {
 
     use std::str::FromStr;
 
-    use legion_data_runtime::ResourceId;
+    use legion_data_runtime::{Resource, ResourceId};
 
     use crate::{resource::test_resource, ResourcePathId};
 
     #[test]
     fn simple_path() {
-        let source = ResourceId::new_random_id(test_resource::TYPE_ID);
+        let source = ResourceId::new_random_id(test_resource::TestResource::TYPE);
 
         let path_a = ResourcePathId::from(source);
-        let path_b = path_a.push(test_resource::TYPE_ID);
+        let path_b = path_a.push(test_resource::TestResource::TYPE);
 
         let name_a = format!("{}", path_a);
         assert_eq!(path_a, ResourcePathId::from_str(&name_a).unwrap());
@@ -285,10 +285,10 @@ mod tests {
 
     #[test]
     fn named_path() {
-        let source = ResourceId::new_random_id(test_resource::TYPE_ID);
+        let source = ResourceId::new_random_id(test_resource::TestResource::TYPE);
 
         let source = ResourcePathId::from(source);
-        let source_hello = source.push_named(test_resource::TYPE_ID, "hello");
+        let source_hello = source.push_named(test_resource::TestResource::TYPE, "hello");
 
         let hello_text = format!("{}", source_hello);
         assert_eq!(source_hello, ResourcePathId::from_str(&hello_text).unwrap());

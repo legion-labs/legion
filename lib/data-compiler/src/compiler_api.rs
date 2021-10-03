@@ -82,7 +82,7 @@
 //! # }
 //! fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
 //!   let mut registry = ResourceRegistryOptions::new()
-//!     .add_type(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}))
+//!     .add_type_processor(SOURCE_GEOMETRY, Box::new(SourceGeomProc {}))
 //!     .create_registry();
 //!
 //!   let resource = context.load_resource(&context.compile_path.source_resource_path(), &mut registry).expect("loaded resource");

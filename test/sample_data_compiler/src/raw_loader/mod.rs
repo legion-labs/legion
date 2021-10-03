@@ -1,7 +1,7 @@
 mod raw_data;
 mod raw_to_offline;
 
-use crate::offline_data::{self, CompilableResource};
+use crate::offline_data::{self};
 use legion_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
@@ -111,39 +111,24 @@ fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
     }
     .unwrap();
 
-    fn add_resource<T>(resources: ResourceRegistryOptions) -> ResourceRegistryOptions
-    where
-        T: CompilableResource,
-    {
-        resources.add_type(T::TYPE_ID, Box::new(T::Processor::default()))
-    }
-
-    let mut resources = ResourceRegistryOptions::new();
-    resources = add_resource::<offline_data::Entity>(resources);
-    resources = add_resource::<offline_data::Instance>(resources);
-    resources = add_resource::<offline_data::Mesh>(resources);
-
-    let resources = resources
-        .add_type(
-            legion_graphics_offline::material::TYPE_ID,
-            Box::new(legion_graphics_offline::material::MaterialProcessor {}),
-        )
-        .add_type(
-            legion_graphics_offline::psd::TYPE_ID,
-            Box::new(legion_graphics_offline::psd::PsdFileProcessor {}),
-        )
+    let registry = ResourceRegistryOptions::new()
+        .add_type::<offline_data::Entity>()
+        .add_type::<offline_data::Instance>()
+        .add_type::<offline_data::Mesh>()
+        .add_type::<legion_graphics_offline::material::Material>()
+        .add_type::<legion_graphics_offline::psd::PsdFile>()
         .create_registry();
 
-    (project, resources)
+    (project, registry)
 }
 
 fn ext_to_resource_kind(ext: &str) -> ResourceType {
     match ext {
-        "ent" => offline_data::Entity::TYPE_ID,
-        "ins" => offline_data::Instance::TYPE_ID,
-        "mat" => legion_graphics_offline::material::TYPE_ID,
-        "mesh" => offline_data::Mesh::TYPE_ID,
-        "psd" => legion_graphics_offline::psd::TYPE_ID,
+        "ent" => offline_data::Entity::TYPE,
+        "ins" => offline_data::Instance::TYPE,
+        "mat" => legion_graphics_offline::material::Material::TYPE,
+        "mesh" => offline_data::Mesh::TYPE,
+        "psd" => legion_graphics_offline::psd::PsdFile::TYPE,
         _ => panic!(),
     }
 }

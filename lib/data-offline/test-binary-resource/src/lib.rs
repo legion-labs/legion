@@ -1,11 +1,12 @@
 use std::any::Any;
 
-use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
+use legion_data_offline::{
+    resource::{OfflineResource, ResourceProcessor},
+    ResourcePathId,
+};
 
 use legion_data_runtime::{Resource, ResourceType};
 use serde::{Deserialize, Serialize};
-
-pub const TYPE_ID: ResourceType = ResourceType::new(b"binary_resource");
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct BinaryResource {
@@ -17,6 +18,11 @@ impl Resource for BinaryResource {
     const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
 }
 
+impl OfflineResource for BinaryResource {
+    type Processor = BinaryResourceProc;
+}
+
+#[derive(Default)]
 pub struct BinaryResourceProc {}
 
 impl ResourceProcessor for BinaryResourceProc {

@@ -1,11 +1,12 @@
 use std::any::Any;
 
-use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_offline::{
+    resource::{OfflineResource, ResourceProcessor},
+    ResourcePathId,
+};
+use legion_data_runtime::Resource;
 
 use serde::{Deserialize, Serialize};
-
-pub const TYPE_ID: ResourceType = ResourceType::new(b"text_resource");
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct TextResource {
@@ -16,6 +17,11 @@ impl Resource for TextResource {
     const TYPENAME: &'static str = "text";
 }
 
+impl OfflineResource for TextResource {
+    type Processor = TextResourceProc;
+}
+
+#[derive(Default)]
 pub struct TextResourceProc {}
 
 impl ResourceProcessor for TextResourceProc {

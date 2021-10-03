@@ -27,19 +27,16 @@ fn no_intermediate_resource() {
         let resource_id = {
             let mut project = Project::create_new(project_dir).expect("new project");
             let mut resources = ResourceRegistryOptions::new()
-                .add_type(
-                    refs_resource::TYPE_ID,
-                    Box::new(refs_resource::TestResourceProc {}),
-                )
+                .add_type::<refs_resource::TestResource>()
                 .create_registry();
             let resource = resources
-                .new_resource(refs_resource::TYPE_ID)
+                .new_resource(refs_resource::TestResource::TYPE)
                 .expect("new resource");
 
             project
                 .add_resource(
                     ResourcePathName::new("test_source"),
-                    refs_resource::TYPE_ID,
+                    refs_resource::TestResource::TYPE,
                     &resource,
                     &mut resources,
                 )
@@ -113,19 +110,16 @@ fn with_intermediate_resource() {
         let resource_id = {
             let mut project = Project::create_new(project_dir).expect("new project");
             let mut resources = ResourceRegistryOptions::new()
-                .add_type(
-                    text_resource::TYPE_ID,
-                    Box::new(text_resource::TextResourceProc {}),
-                )
+                .add_type::<text_resource::TextResource>()
                 .create_registry();
             let resource = resources
-                .new_resource(text_resource::TYPE_ID)
+                .new_resource(text_resource::TextResource::TYPE)
                 .expect("new resource");
 
             project
                 .add_resource(
                     ResourcePathName::new("test_source"),
-                    text_resource::TYPE_ID,
+                    text_resource::TextResource::TYPE,
                     &resource,
                     &mut resources,
                 )
@@ -141,7 +135,7 @@ fn with_intermediate_resource() {
     };
 
     let compile_path = ResourcePathId::from(resource_id)
-        .push(text_resource::TYPE_ID)
+        .push(text_resource::TextResource::TYPE)
         .push(integer_asset::IntegerAsset::TYPE);
 
     let mut command = {

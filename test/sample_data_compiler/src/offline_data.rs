@@ -2,15 +2,13 @@
 
 use std::any::{Any, TypeId};
 
-use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_offline::{
+    resource::{OfflineResource, ResourceProcessor},
+    ResourcePathId,
+};
+use legion_data_runtime::Resource;
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
-
-pub trait CompilableResource {
-    const TYPE_ID: ResourceType;
-    type Processor: ResourceProcessor + Default + 'static;
-}
 
 // ------------------ Entity -----------------------------------
 
@@ -26,8 +24,7 @@ impl Resource for Entity {
     const TYPENAME: &'static str = "offline_entity";
 }
 
-impl CompilableResource for Entity {
-    const TYPE_ID: ResourceType = ResourceType::new(b"offline_entity");
+impl OfflineResource for Entity {
     type Processor = EntityProcessor;
 }
 
@@ -188,8 +185,7 @@ impl Resource for Instance {
     const TYPENAME: &'static str = "offline_instance";
 }
 
-impl CompilableResource for Instance {
-    const TYPE_ID: ResourceType = ResourceType::new(b"offline_instance");
+impl OfflineResource for Instance {
     type Processor = InstanceProcessor;
 }
 
@@ -239,8 +235,7 @@ impl Resource for Mesh {
     const TYPENAME: &'static str = "offline_mesh";
 }
 
-impl CompilableResource for Mesh {
-    const TYPE_ID: ResourceType = ResourceType::new(b"offline_mesh");
+impl OfflineResource for Mesh {
     type Processor = MeshProcessor;
 }
 

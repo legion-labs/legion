@@ -1,11 +1,12 @@
 use std::any::Any;
 
-use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
+use legion_data_offline::{
+    resource::{OfflineResource, ResourceProcessor},
+    ResourcePathId,
+};
 
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_runtime::Resource;
 use serde::{Deserialize, Serialize};
-
-pub const TYPE_ID: ResourceType = ResourceType::new(b"multitext_resource");
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MultiTextResource {
@@ -16,6 +17,11 @@ impl Resource for MultiTextResource {
     const TYPENAME: &'static str = "multitext_resource";
 }
 
+impl OfflineResource for MultiTextResource {
+    type Processor = MultiTextResourceProc;
+}
+
+#[derive(Default)]
 pub struct MultiTextResourceProc {}
 
 impl ResourceProcessor for MultiTextResourceProc {
