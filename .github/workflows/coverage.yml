@@ -19,36 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install grcov
-        run: cargo install grcov
-
-      - name: Add LLVM Tools
-        run: rustup component add llvm-tools-preview --toolchain '1.55.0'
-
       - name: Build and run tests
-        run: |
-          make build && \
-          make test
-        env:
-          RUSTC_BOOTSTRAP: "1"
-          RUSTFLAGS: "-Zinstrument-coverage"
-          RUSTDOCFLAGS: "-Zinstrument-coverage -Zunstable-options --persist-doctests target/debug/doc_bins"
-          LLVM_PROFILE_FILE: "legion-%p-%m.profraw"
+        run: make cov
 
       - name: Build coverage report
-        run: |
-          grcov . \
-            --binary-path ./target/debug/ \
-            --source-dir . \
-            --output-type html \
-            --branch \
-            --ignore ./target/debug/build/* \
-            --ignore-not-existing \
-            --output-path ./target/debug/coverage/ \
-            --commit-sha ${{ github.sha }} \
-            --service-job-id ${{ github.job }} \
-            --service-name "GitHub Actions" \
-            --service-number ${{ github.run_id }}
+        run: make grcov
 
       - name: Upload report
         uses: actions/upload-artifact@v2
