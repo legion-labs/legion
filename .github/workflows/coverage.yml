@@ -42,6 +42,7 @@ jobs:
             --source-dir . \
             --output-type html \
             --branch \
+            --ignore target/debug/build/**
             --ignore-not-existing \
             --output-path ./target/debug/coverage/ \
             --commit-sha ${{ github.sha }} \
