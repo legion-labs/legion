@@ -143,6 +143,7 @@ jobs:
         with:
           name: coverage
           path: ./target/debug/coverage
+        retention-days: 60
 
   build_docs:
     name: Building docs
@@ -163,6 +164,7 @@ jobs:
         with:
           name: docs
           path: ./target/doc
+          retention-days: 60
 
   deploy_docs:
     name: Deploying docs
@@ -211,6 +213,7 @@ jobs:
             !./target/release/build
             !./target/release/deps
             !./target/release/incremental
+          retention-days: 5
 
   dockerize:
     name: Building docker images and deploying them
