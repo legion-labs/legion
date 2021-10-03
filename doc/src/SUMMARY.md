@@ -41,3 +41,5 @@
 - [High level flows](./high-level-flows/README.md)
 
 - [API Reference](reference.md)
+
+- [Coverage](coverage.md)

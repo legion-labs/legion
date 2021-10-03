@@ -120,6 +120,30 @@ jobs:
           ${{ matrix.container }}
           make bench-run
 
+  coverage:
+    name: Running code coverage analysis
+    needs: lint
+    runs-on: [self-hosted, ubuntu]
+    container:
+      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build and run tests
+        run: make cov
+
+      - name: Build coverage report
+        run: make grcov
+
+      - name: Upload report
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: ./target/debug/coverage
+
   build_docs:
     name: Building docs
     needs: lint
@@ -142,7 +166,7 @@ jobs:
 
   deploy_docs:
     name: Deploying docs
-    needs: [test, build_docs]
+    needs: [test, build_docs, coverage]
     runs-on: [self-hosted, ubuntu]
     if: github.ref == 'refs/heads/main'
     steps:
@@ -150,6 +174,11 @@ jobs:
         with:
           name: docs
           path: ./target/doc
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: coverage
+          path: ./target/doc/coverage
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
