@@ -6,7 +6,7 @@ use legion_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistryOptions},
     ResourcePathId,
 };
-use legion_data_runtime::AssetDescriptor;
+use legion_data_runtime::Resource;
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
 

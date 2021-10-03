@@ -6,7 +6,7 @@ use legion_data_compiler::{
     Locale, Platform, Target,
 };
 use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{AssetDescriptor, ResourceId};
+use legion_data_runtime::{Resource, ResourceId};
 
 mod common;
 

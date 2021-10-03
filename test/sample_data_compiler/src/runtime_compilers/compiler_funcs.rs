@@ -8,7 +8,7 @@ use legion_data_compiler::{
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use legion_data_offline::resource::ResourceRegistryOptions;
-use legion_data_runtime::{AssetDescriptor, Resource};
+use legion_data_runtime::Resource;
 use sample_data_compiler::offline_data::CompilableResource;
 use serde::Serialize;
 
@@ -31,8 +31,8 @@ pub fn compile<OfflineType, RuntimeType>(
     context: CompilerContext<'_>,
 ) -> Result<CompilationOutput, CompilerError>
 where
-    OfflineType: Resource + CompilableResource,
-    RuntimeType: AssetDescriptor + FromOffline<OfflineType> + Serialize,
+    OfflineType: Resource + CompilableResource + 'static,
+    RuntimeType: Resource + FromOffline<OfflineType> + Serialize,
 {
     let mut resources = ResourceRegistryOptions::new()
         .add_type(

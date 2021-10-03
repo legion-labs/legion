@@ -2,6 +2,8 @@
 //!
 //! It is used to test the data compilation process until we have a proper resource available.
 
+use std::any::Any;
+
 use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use legion_data_runtime::{Resource, ResourceType};
 
@@ -21,19 +23,23 @@ pub struct TestResource {
     pub build_deps: Vec<ResourcePathId>,
 }
 
+impl Resource for TestResource {
+    const TYPENAME: &'static str = "test_resource";
+}
+
 /// [`TestResource`]'s resource processor temporarily used for testings.
 ///
 /// To be removed once real resource types exists.
 pub struct TestResourceProc {}
 impl ResourceProcessor for TestResourceProc {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&mut self) -> Box<dyn Any> {
         Box::new(TestResource {
             content: String::from("default content"),
             build_deps: vec![],
         })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
         resource
             .downcast_ref::<TestResource>()
             .unwrap()
@@ -43,7 +49,7 @@ impl ResourceProcessor for TestResourceProc {
 
     fn write_resource(
         &mut self,
-        resource: &dyn Resource,
+        resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let resource = resource.downcast_ref::<TestResource>().unwrap();
@@ -51,10 +57,7 @@ impl ResourceProcessor for TestResourceProc {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Resource>> {
+    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
         let resource: TestResource = serde_json::from_reader(reader).unwrap();
         let boxed = Box::new(resource);
         Ok(boxed)

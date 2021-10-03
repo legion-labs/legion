@@ -12,7 +12,7 @@ use legion_data_offline::{
     resource::{Project, ResourcePathName, ResourceProcessor, ResourceRegistry},
     ResourcePathId,
 };
-use legion_data_runtime::{AssetDescriptor, AssetLoader, ResourceId};
+use legion_data_runtime::{AssetLoader, Resource, ResourceId};
 use multitext_resource::MultiTextResource;
 use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};

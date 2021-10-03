@@ -1,6 +1,6 @@
-use std::{collections::HashMap, io, sync::mpsc};
+use std::{any::Any, collections::HashMap, io, sync::mpsc};
 
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_runtime::ResourceType;
 
 use crate::ResourcePathId;
 
@@ -47,7 +47,7 @@ pub struct ResourceRegistry {
     id_generator: ResourceHandleId,
     refcount_channel: (mpsc::Sender<RefOp>, mpsc::Receiver<RefOp>),
     ref_counts: HashMap<ResourceHandleId, isize>,
-    resources: HashMap<ResourceHandleId, Option<Box<dyn Resource>>>,
+    resources: HashMap<ResourceHandleId, Option<Box<dyn Any>>>,
     processors: HashMap<ResourceType, Box<dyn ResourceProcessor>>,
 }
 
@@ -128,7 +128,7 @@ impl ResourceRegistry {
 
     /// Inserts a resource into the registry and returns a handle
     /// that identifies that resource.
-    fn insert(&mut self, resource: Box<dyn Resource>) -> ResourceHandleUntyped {
+    fn insert(&mut self, resource: Box<dyn Any>) -> ResourceHandleUntyped {
         let handle = self.create_handle();
         self.resources.insert(handle.id, Some(resource));
         handle
@@ -162,7 +162,7 @@ impl ResourceRegistry {
     }
 
     /// Returns a reference to a resource behind the handle, None if the resource does not exist.
-    pub fn get<'a>(&'a self, handle: &ResourceHandleUntyped) -> Option<&'a dyn Resource> {
+    pub fn get<'a>(&'a self, handle: &ResourceHandleUntyped) -> Option<&'a dyn Any> {
         if let Some(Some(resource)) = self.resources.get(&handle.id) {
             return Some(resource.as_ref());
         }
@@ -170,10 +170,7 @@ impl ResourceRegistry {
     }
 
     /// Returns a mutable reference to a resource behind the handle, None if the resource does not exist.
-    pub fn get_mut<'a>(
-        &'a mut self,
-        handle: &ResourceHandleUntyped,
-    ) -> Option<&'a mut dyn Resource> {
+    pub fn get_mut<'a>(&'a mut self, handle: &ResourceHandleUntyped) -> Option<&'a mut dyn Any> {
         if let Some(Some(resource)) = self.resources.get_mut(&handle.id) {
             return Some(resource.as_mut());
         }
@@ -193,7 +190,7 @@ impl ResourceRegistry {
 
 #[cfg(test)]
 mod tests {
-    use std::io;
+    use std::{any::Any, io};
 
     use legion_data_runtime::{Resource, ResourceType};
 
@@ -207,12 +204,16 @@ mod tests {
         content: String,
     }
 
+    impl Resource for SampleResource {
+        const TYPENAME: &'static str = "sample";
+    }
+
     struct SampleProcessor {
         default_content: String,
     }
 
     impl ResourceProcessor for SampleProcessor {
-        fn new_resource(&mut self) -> Box<dyn Resource> {
+        fn new_resource(&mut self) -> Box<dyn Any> {
             Box::new(SampleResource {
                 content: self.default_content.clone(),
             })
@@ -220,7 +221,7 @@ mod tests {
 
         fn write_resource(
             &mut self,
-            resource: &dyn Resource,
+            resource: &dyn Any,
             writer: &mut dyn std::io::Write,
         ) -> std::io::Result<usize> {
             let resource = resource.downcast_ref::<SampleResource>().unwrap();
@@ -234,7 +235,7 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> std::io::Result<Box<dyn Resource>> {
+        ) -> std::io::Result<Box<dyn Any>> {
             let mut resource = self.new_resource();
             let sample_resource = resource.downcast_mut::<SampleResource>().unwrap();
 
@@ -249,7 +250,7 @@ mod tests {
             Ok(resource)
         }
 
-        fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
+        fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<ResourcePathId> {
             vec![]
         }
     }

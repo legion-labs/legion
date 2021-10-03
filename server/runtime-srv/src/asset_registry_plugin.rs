@@ -1,8 +1,7 @@
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
 use legion_data_runtime::{
-    manifest::Manifest, AssetDescriptor, AssetRegistry, AssetRegistryOptions, HandleUntyped,
-    ResourceId,
+    manifest::Manifest, AssetRegistry, AssetRegistryOptions, HandleUntyped, Resource, ResourceId,
 };
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;

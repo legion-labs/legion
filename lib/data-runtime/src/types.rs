@@ -1,6 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    any::{Any, TypeId},
+    any::Any,
     convert::TryInto,
     fmt,
     hash::{Hash, Hasher},
@@ -95,85 +95,18 @@ impl<'de> Deserialize<'de> for ResourceChecksum {
     }
 }
 
-/// Types implementing `Asset` represent non-mutable runtime data.
-pub trait Resource: Any + Send + Sync {}
-
-/// Trait describing assets type and its loader
-pub trait AssetDescriptor {
+/// Trait describing resource type name.
+pub trait Resource {
     /// Name of the asset type.
     const TYPENAME: &'static str;
     /// Type of the asset.
     const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
+}
+
+/// Trait describing the resource loadable at runtime.
+pub trait Asset: Resource {
     /// Loader of the asset.
     type Loader: AssetLoader + Send + Default + 'static;
-}
-
-/// Note: Based on impl of dyn Any
-impl dyn Resource {
-    /// Returns `true` if the boxed type is the same as `T`.
-    /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
-    #[inline]
-    pub fn is<T: Resource>(&self) -> bool {
-        TypeId::of::<T>() == self.type_id()
-    }
-
-    /// Returns some reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    /// (See [`std::any::Any::downcast_ref`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref))
-    #[inline]
-    pub fn downcast_ref<T: Resource>(&self) -> Option<&T> {
-        if self.is::<T>() {
-            unsafe { Some(&*((self as *const dyn Resource).cast::<T>())) }
-        } else {
-            None
-        }
-    }
-
-    /// Returns some mutable reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    /// (See [`std::any::Any::downcast_mut`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut))
-    #[inline]
-    pub fn downcast_mut<T: Resource>(&mut self) -> Option<&mut T> {
-        if self.is::<T>() {
-            unsafe { Some(&mut *((self as *mut dyn Resource).cast::<T>())) }
-        } else {
-            None
-        }
-    }
-}
-
-/// Note: Based on impl of dyn Any
-impl dyn Resource + Send + Sync {
-    /// Returns `true` if the boxed type is the same as `T`.
-    /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
-    #[inline]
-    pub fn is<T: Resource>(&self) -> bool {
-        TypeId::of::<T>() == self.type_id()
-    }
-
-    /// Returns some reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    /// (See [`std::any::Any::downcast_ref`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref))
-    #[inline]
-    pub fn downcast_ref<T: Resource>(&self) -> Option<&T> {
-        if self.is::<T>() {
-            unsafe { Some(&*((self as *const dyn Resource).cast::<T>())) }
-        } else {
-            None
-        }
-    }
-
-    /// Returns some mutable reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    /// (See [`std::any::Any::downcast_mut`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut))
-    #[inline]
-    pub fn downcast_mut<T: Resource>(&mut self) -> Option<&mut T> {
-        if self.is::<T>() {
-            unsafe { Some(&mut *((self as *mut dyn Resource).cast::<T>())) }
-        } else {
-            None
-        }
-    }
 }
 
 /// An interface allowing to create and initialize assets.
@@ -183,9 +116,9 @@ pub trait AssetLoader {
         &mut self,
         kind: ResourceType,
         reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Resource + Send + Sync>, io::Error>;
+    ) -> Result<Box<dyn Any + Send + Sync>, io::Error>;
 
     /// Asset initialization executed after the asset and all its dependencies
     /// have been loaded.
-    fn load_init(&mut self, asset: &mut (dyn Resource + Send + Sync));
+    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync));
 }

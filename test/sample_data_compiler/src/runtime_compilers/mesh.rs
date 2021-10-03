@@ -89,7 +89,7 @@ use compiler_funcs::{compile, compiler_hash};
 use legion_data_compiler::compiler_api::{
     compiler_main, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
 };
-use legion_data_runtime::AssetDescriptor;
+use legion_data_runtime::Resource;
 use sample_data_compiler::{
     offline_data::{self, CompilableResource},
     runtime_data,

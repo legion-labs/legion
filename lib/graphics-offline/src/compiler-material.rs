@@ -7,7 +7,7 @@ use legion_data_compiler::{
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use legion_data_offline::resource::ResourceRegistryOptions;
-use legion_data_runtime::AssetDescriptor;
+use legion_data_runtime::Resource;
 use std::{
     collections::hash_map::DefaultHasher,
     env,

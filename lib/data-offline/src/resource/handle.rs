@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, sync::mpsc};
+use std::{any::Any, marker::PhantomData, sync::mpsc};
 
 use legion_data_runtime::Resource;
 
@@ -52,13 +52,13 @@ impl ResourceHandleUntyped {
     }
 
     /// Retrieve a reference to resource of type `T` from [`ResourceRegistry`].
-    pub fn get<'a, T: Resource>(&'_ self, registry: &'a ResourceRegistry) -> Option<&'a T> {
+    pub fn get<'a, T: Any + Resource>(&'_ self, registry: &'a ResourceRegistry) -> Option<&'a T> {
         let resource = registry.get(self)?;
         resource.downcast_ref::<T>()
     }
 
     /// Retrieve a mutable reference to resource of type `T` from [`ResourceRegistry`].
-    pub fn get_mut<'a, T: Resource>(
+    pub fn get_mut<'a, T: Any + Resource>(
         &'_ self,
         registry: &'a mut ResourceRegistry,
     ) -> Option<&'a mut T> {
@@ -67,7 +67,7 @@ impl ResourceHandleUntyped {
     }
 
     /// Converts the untyped handle into a typed handle.
-    pub fn typed<T: Resource>(self) -> ResourceHandle<T> {
+    pub fn typed<T: Any + Resource>(self) -> ResourceHandle<T> {
         let v = ResourceHandle::<T>::create(self.id, self.refcount_tx.clone());
         // the intent here is to not decrement the refcount as the newly returned `v` will take care of it
         // when it goes out of scope. mem::forget stops the destructor of self from running.
@@ -78,18 +78,18 @@ impl ResourceHandleUntyped {
 }
 
 /// Typed handle to [`Resource`] of type `T`.
-pub struct ResourceHandle<T: Resource> {
+pub struct ResourceHandle<T: Any + Resource> {
     internal: ResourceHandleUntyped,
     _pd: PhantomData<fn() -> T>,
 }
 
-impl<T: Resource> AsRef<ResourceHandleUntyped> for ResourceHandle<T> {
+impl<T: Any + Resource> AsRef<ResourceHandleUntyped> for ResourceHandle<T> {
     fn as_ref(&self) -> &ResourceHandleUntyped {
         &self.internal
     }
 }
 
-impl<T: Resource> Clone for ResourceHandle<T> {
+impl<T: Any + Resource> Clone for ResourceHandle<T> {
     fn clone(&self) -> Self {
         let cloned = self.internal.clone();
         Self {
@@ -99,13 +99,13 @@ impl<T: Resource> Clone for ResourceHandle<T> {
     }
 }
 
-impl<T: Resource> PartialEq for ResourceHandle<T> {
+impl<T: Any + Resource> PartialEq for ResourceHandle<T> {
     fn eq(&self, other: &Self) -> bool {
         self.internal.id == other.internal.id
     }
 }
 
-impl<T: Resource> ResourceHandle<T> {
+impl<T: Any + Resource> ResourceHandle<T> {
     pub(crate) fn create(id: ResourceHandleId, refcount_tx: mpsc::Sender<RefOp>) -> Self {
         Self {
             internal: ResourceHandleUntyped::create(id, refcount_tx),

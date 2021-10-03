@@ -1,5 +1,7 @@
 //! A module providing offline material related functionality.
 
+use std::any::Any;
+
 use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
 
 use legion_data_runtime::{Resource, ResourceType};
@@ -21,16 +23,22 @@ pub struct Material {
     pub metalness: Option<ResourcePathId>,
 }
 
+impl Resource for Material {
+    const TYPENAME: &'static str = "offline_material";
+
+    const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
+}
+
 /// Processor of [`Material`]
 #[derive(Default)]
 pub struct MaterialProcessor {}
 
 impl ResourceProcessor for MaterialProcessor {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&mut self) -> Box<dyn Any> {
         Box::new(Material::default())
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
         let material = resource.downcast_ref::<Material>().unwrap();
         let mut deps = vec![];
         if let Some(path) = &material.albedo {
@@ -50,7 +58,7 @@ impl ResourceProcessor for MaterialProcessor {
 
     fn write_resource(
         &mut self,
-        resource: &dyn Resource,
+        resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let resource = resource.downcast_ref::<Material>().unwrap();
@@ -58,10 +66,7 @@ impl ResourceProcessor for MaterialProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Resource>> {
+    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
         let result: Result<Material, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),

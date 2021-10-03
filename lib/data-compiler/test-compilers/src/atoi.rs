@@ -12,7 +12,7 @@ use legion_data_compiler::{
     CompiledResource, CompilerHash, Locale, Platform, Target,
 };
 use legion_data_offline::resource::ResourceRegistryOptions;
-use legion_data_runtime::AssetDescriptor;
+use legion_data_runtime::Resource;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),

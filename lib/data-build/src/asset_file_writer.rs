@@ -76,7 +76,7 @@ mod tests {
 
     use byteorder::{LittleEndian, ReadBytesExt};
     use legion_content_store::{ContentStore, RamContentStore};
-    use legion_data_runtime::{AssetDescriptor, ResourceId, ResourceType};
+    use legion_data_runtime::{Resource, ResourceId, ResourceType};
 
     use crate::asset_file_writer::{write_assetfile, ASSET_FILE_VERSION};
 

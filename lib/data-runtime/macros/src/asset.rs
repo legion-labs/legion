@@ -3,8 +3,9 @@ use quote::quote;
 
 pub fn derive_resource(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
-    let gen = quote! {
+    let _gen = quote! {
         impl Resource for #name {}
     };
-    gen.into()
+    //gen.into()
+    TokenStream::new()
 }

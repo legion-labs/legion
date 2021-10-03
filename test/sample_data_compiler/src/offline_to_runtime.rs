@@ -1,5 +1,5 @@
 use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{AssetDescriptor, ResourceId};
+use legion_data_runtime::{Resource, ResourceId};
 
 use crate::{
     offline_data::{self, CompilableResource},

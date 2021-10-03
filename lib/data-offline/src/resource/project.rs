@@ -519,6 +519,7 @@ impl fmt::Debug for Project {
 
 #[cfg(test)]
 mod tests {
+    use std::any::Any;
     use std::{fs::File, path::Path, str::FromStr};
 
     use legion_data_runtime::{Resource, ResourceType};
@@ -557,16 +558,20 @@ mod tests {
         dependencies: Vec<ResourcePathId>,
     }
 
+    impl Resource for NullResource {
+        const TYPENAME: &'static str = "null";
+    }
+
     struct NullResourceProc {}
     impl ResourceProcessor for NullResourceProc {
-        fn new_resource(&mut self) -> Box<dyn Resource> {
+        fn new_resource(&mut self) -> Box<dyn Any> {
             Box::new(NullResource {
                 content: 0,
                 dependencies: vec![],
             })
         }
 
-        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+        fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
             resource
                 .downcast_ref::<NullResource>()
                 .unwrap()
@@ -576,7 +581,7 @@ mod tests {
 
         fn write_resource(
             &mut self,
-            resource: &dyn Resource,
+            resource: &dyn Any,
             writer: &mut dyn std::io::Write,
         ) -> std::io::Result<usize> {
             let resource = resource.downcast_ref::<NullResource>().unwrap();
@@ -606,7 +611,7 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> std::io::Result<Box<dyn Resource>> {
+        ) -> std::io::Result<Box<dyn Any>> {
             let mut resource = self.new_resource();
             let mut res = resource.downcast_mut::<NullResource>().unwrap();
 

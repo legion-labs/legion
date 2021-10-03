@@ -9,7 +9,7 @@ use legion_data_compiler::{
     Locale, Platform, Target,
 };
 use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{AssetDescriptor, AssetLoader, ResourceId};
+use legion_data_runtime::{AssetLoader, Resource, ResourceId};
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
 use text_resource::TextResource;
 

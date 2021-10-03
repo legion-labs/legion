@@ -22,6 +22,10 @@ pub struct Entity {
     pub components: Vec<Box<dyn Component>>,
 }
 
+impl Resource for Entity {
+    const TYPENAME: &'static str = "offline_entity";
+}
+
 impl CompilableResource for Entity {
     const TYPE_ID: ResourceType = ResourceType::new(b"offline_entity");
     type Processor = EntityProcessor;
@@ -31,18 +35,18 @@ impl CompilableResource for Entity {
 pub struct EntityProcessor {}
 
 impl ResourceProcessor for EntityProcessor {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&mut self) -> Box<dyn Any> {
         Box::new(Entity::default())
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
         let entity = resource.downcast_ref::<Entity>().unwrap();
         entity.parent.iter().cloned().collect()
     }
 
     fn write_resource(
         &mut self,
-        resource: &dyn Resource,
+        resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let resource = resource.downcast_ref::<Entity>().unwrap();
@@ -50,10 +54,7 @@ impl ResourceProcessor for EntityProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Resource>> {
+    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
         let result: Result<Entity, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),
@@ -183,6 +184,10 @@ pub struct Instance {
     pub original: Option<ResourcePathId>,
 }
 
+impl Resource for Instance {
+    const TYPENAME: &'static str = "offline_instance";
+}
+
 impl CompilableResource for Instance {
     const TYPE_ID: ResourceType = ResourceType::new(b"offline_instance");
     type Processor = InstanceProcessor;
@@ -192,18 +197,18 @@ impl CompilableResource for Instance {
 pub struct InstanceProcessor {}
 
 impl ResourceProcessor for InstanceProcessor {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&mut self) -> Box<dyn Any> {
         Box::new(Instance { original: None })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
         let instance = resource.downcast_ref::<Instance>().unwrap();
         instance.original.iter().cloned().collect()
     }
 
     fn write_resource(
         &mut self,
-        resource: &dyn Resource,
+        resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let resource = resource.downcast_ref::<Instance>().unwrap();
@@ -211,10 +216,7 @@ impl ResourceProcessor for InstanceProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Resource>> {
+    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
         let result: Result<Instance, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),
@@ -233,6 +235,10 @@ pub struct Mesh {
     pub sub_meshes: Vec<SubMesh>,
 }
 
+impl Resource for Mesh {
+    const TYPENAME: &'static str = "offline_mesh";
+}
+
 impl CompilableResource for Mesh {
     const TYPE_ID: ResourceType = ResourceType::new(b"offline_mesh");
     type Processor = MeshProcessor;
@@ -242,13 +248,13 @@ impl CompilableResource for Mesh {
 pub struct MeshProcessor {}
 
 impl ResourceProcessor for MeshProcessor {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&mut self) -> Box<dyn Any> {
         Box::new(Mesh {
             sub_meshes: Vec::default(),
         })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
         let mesh = resource.downcast_ref::<Mesh>().unwrap();
         let mut material_refs: Vec<ResourcePathId> = mesh
             .sub_meshes
@@ -263,7 +269,7 @@ impl ResourceProcessor for MeshProcessor {
 
     fn write_resource(
         &mut self,
-        resource: &dyn Resource,
+        resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let resource = resource.downcast_ref::<Mesh>().unwrap();
@@ -271,10 +277,7 @@ impl ResourceProcessor for MeshProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Resource>> {
+    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
         let result: Result<Mesh, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),

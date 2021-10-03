@@ -8,7 +8,7 @@ use legion_content_store::ContentStoreAddr;
 use legion_data_build::{generate_rt_manifest, DataBuildOptions};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::ResourcePathId;
-use legion_data_runtime::AssetDescriptor;
+use legion_data_runtime::Resource;
 
 use crate::{offline_to_runtime::find_derived_path, runtime_data};
 

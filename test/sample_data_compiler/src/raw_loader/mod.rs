@@ -243,7 +243,7 @@ fn load_ron_resource<RawType, OfflineType>(
 ) -> Option<ResourceId>
 where
     RawType: DeserializeOwned,
-    OfflineType: Resource + FromRaw<RawType>,
+    OfflineType: Resource + FromRaw<RawType> + 'static,
 {
     if let Ok(f) = File::open(file) {
         let reader = BufReader::new(f);

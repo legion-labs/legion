@@ -1,8 +1,8 @@
 //! A module providing runtime material related functionality.
 
-use std::convert::TryFrom;
+use std::{any::Any, convert::TryFrom};
 
-use legion_data_runtime::{AssetDescriptor, AssetLoader, Resource, ResourceId, ResourceType};
+use legion_data_runtime::{AssetLoader, Asset, Resource, ResourceId, ResourceType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -19,8 +19,10 @@ pub struct Material {
     pub metalness: Option<ResourceId>,
 }
 
-impl AssetDescriptor for Material {
+impl Resource for Material {
     const TYPENAME: &'static str = "runtime_material";
+}
+impl Asset for Material {
     type Loader = MaterialLoader;
 }
 
@@ -38,7 +40,7 @@ impl AssetLoader for MaterialLoader {
         &mut self,
         _kind: ResourceType,
         reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Resource + Send + Sync>, std::io::Error> {
+    ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
         let albedo = read_asset_id(reader)?;
         let normal = read_asset_id(reader)?;
         let roughness = read_asset_id(reader)?;
@@ -54,5 +56,5 @@ impl AssetLoader for MaterialLoader {
         Ok(Box::new(output))
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Resource + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
 }

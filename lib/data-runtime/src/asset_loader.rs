@@ -1,6 +1,6 @@
-use std::{collections::HashMap, io, sync::Arc, time::Duration};
+use std::{any::Any, collections::HashMap, io, sync::Arc, time::Duration};
 
-use crate::{manifest::Manifest, AssetLoader, Resource, ResourceId, ResourceType};
+use crate::{manifest::Manifest, AssetLoader, ResourceId, ResourceType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use legion_content_store::ContentStore;
@@ -16,12 +16,12 @@ struct AssetReference {
 ///
 /// Contains the result of loading a single file.
 struct LoadOutput {
-    assets: Vec<(ResourceId, Option<Arc<dyn Resource + Send + Sync>>)>,
+    assets: Vec<(ResourceId, Option<Arc<dyn Any + Send + Sync>>)>,
     load_dependencies: Vec<AssetReference>,
 }
 
 pub(crate) enum LoaderResult {
-    Loaded(ResourceId, Arc<dyn Resource + Send + Sync>, Option<LoadId>),
+    Loaded(ResourceId, Arc<dyn Any + Send + Sync>, Option<LoadId>),
     Unloaded(ResourceId),
     LoadError(ResourceId, Option<LoadId>, io::ErrorKind),
 }
@@ -35,7 +35,7 @@ pub(crate) enum LoaderRequest {
 struct LoaderPending {
     primary_id: ResourceId,
     load_id: Option<LoadId>,
-    assets: Vec<(ResourceId, Option<Arc<dyn Resource + Send + Sync>>)>,
+    assets: Vec<(ResourceId, Option<Arc<dyn Any + Send + Sync>>)>,
     references: Vec<AssetReference>,
 }
 
@@ -105,7 +105,7 @@ pub(crate) struct AssetLoaderIO {
     asset_refcounts: HashMap<ResourceId, isize>,
 
     // this should be sent back to the game thread.
-    asset_storage: HashMap<ResourceId, Arc<dyn Resource + Send + Sync>>,
+    asset_storage: HashMap<ResourceId, Arc<dyn Any + Send + Sync>>,
 
     /// List of secondary assets of a primary asset.
     secondary_assets: HashMap<ResourceId, Vec<ResourceId>>,
@@ -442,7 +442,7 @@ mod tests {
     use crate::{
         asset_loader::{LoaderRequest, LoaderResult},
         manifest::Manifest,
-        test_asset, AssetDescriptor, ResourceId,
+        test_asset, Resource, ResourceId,
     };
 
     use super::AssetLoaderIO;

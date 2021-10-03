@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{any::Any, marker::PhantomData};
 
 use crate::{AssetRegistry, Resource, ResourceId};
 
@@ -44,7 +44,7 @@ impl HandleUntyped {
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a, T: Resource>(&'_ self, registry: &'a AssetRegistry) -> Option<&'a T> {
+    pub fn get<'a, T: Any + Resource>(&'_ self, registry: &'a AssetRegistry) -> Option<&'a T> {
         registry.get::<T>(self.id)
     }
 
@@ -65,19 +65,19 @@ impl HandleUntyped {
 }
 
 /// Typed handle to [`Resource`] of type `T`.
-pub struct Handle<T: Resource> {
+pub struct Handle<T: Any + Resource> {
     pub(crate) id: HandleId,
     refcount_tx: crossbeam_channel::Sender<RefOp>,
     _pd: PhantomData<fn() -> T>,
 }
 
-impl<T: Resource> Drop for Handle<T> {
+impl<T: Any + Resource> Drop for Handle<T> {
     fn drop(&mut self) {
         self.refcount_tx.send(RefOp::RemoveRef(self.id)).unwrap();
     }
 }
 
-impl<T: Resource> Clone for Handle<T> {
+impl<T: Any + Resource> Clone for Handle<T> {
     fn clone(&self) -> Self {
         self.refcount_tx.send(RefOp::AddRef(self.id)).unwrap();
         Self {
@@ -88,13 +88,13 @@ impl<T: Resource> Clone for Handle<T> {
     }
 }
 
-impl<T: Resource> PartialEq for Handle<T> {
+impl<T: Any + Resource> PartialEq for Handle<T> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl<T: Resource> From<HandleUntyped> for Handle<T> {
+impl<T: Any + Resource> From<HandleUntyped> for Handle<T> {
     fn from(handle: HandleUntyped) -> Self {
         handle
             .refcount_tx
@@ -104,7 +104,7 @@ impl<T: Resource> From<HandleUntyped> for Handle<T> {
     }
 }
 
-impl<T: Resource> Handle<T> {
+impl<T: Any + Resource> Handle<T> {
     pub(crate) fn create(id: HandleId, refcount_tx: crossbeam_channel::Sender<RefOp>) -> Self {
         Self {
             id,

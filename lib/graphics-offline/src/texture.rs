@@ -1,5 +1,7 @@
 //! A module providing offline texture related functionality.
 
+use std::any::Any;
+
 use legion_data_offline::resource::ResourceProcessor;
 use legion_data_runtime::{Resource, ResourceType};
 use serde::{Deserialize, Serialize};
@@ -27,11 +29,15 @@ pub struct Texture {
     pub rgba: Vec<u8>,
 }
 
+impl Resource for Texture {
+    const TYPENAME: &'static str = "offline_texture";
+}
+
 /// Processor of [`Texture`]
 pub struct TextureProcessor {}
 
 impl ResourceProcessor for TextureProcessor {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&mut self) -> Box<dyn Any> {
         Box::new(Texture {
             kind: TextureType::_2D,
             width: 0,
@@ -42,14 +48,14 @@ impl ResourceProcessor for TextureProcessor {
 
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn Resource,
+        _resource: &dyn Any,
     ) -> Vec<legion_data_offline::ResourcePathId> {
         vec![]
     }
 
     fn write_resource(
         &mut self,
-        resource: &dyn Resource,
+        resource: &dyn Any,
         writer: &mut dyn std::io::Write,
     ) -> std::io::Result<usize> {
         let texture = resource.downcast_ref::<Texture>().unwrap();
@@ -57,10 +63,7 @@ impl ResourceProcessor for TextureProcessor {
         Ok(1)
     }
 
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> std::io::Result<Box<dyn Resource>> {
+    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
         let texture: Texture = serde_json::from_reader(reader)?;
         Ok(Box::new(texture))
     }
