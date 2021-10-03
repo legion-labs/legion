@@ -1,6 +1,6 @@
 //! Interface to interact with data compilers.
 //!
-//! Data compiler is a binary that takes as input [`legion_data_offline::resource::Resource`] and produces [`legion_data_runtime::Asset`]s.
+//! Data compiler is a binary that takes as input [`legion_data_runtime::Resource`]s.
 //! Because each *data compiler* is an external binary interacting with them can be challenging.
 //!
 //! [`compiler_cmd`] provides utilities that simplify interactions with data compilers.

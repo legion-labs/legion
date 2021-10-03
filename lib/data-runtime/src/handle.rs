@@ -53,18 +53,18 @@ impl HandleUntyped {
         registry.get_asset_id(self.id)
     }
 
-    /// Returns true if [`Asset`] load is finished and has succeeded.
+    /// Returns true if [`Resource`] load is finished and has succeeded.
     pub fn is_loaded(&self, registry: &AssetRegistry) -> bool {
         registry.is_loaded(self.id)
     }
 
-    /// Returns true if [`Asset`] load failed.
+    /// Returns true if [`Resource`] load failed.
     pub fn is_err(&self, registry: &AssetRegistry) -> bool {
         registry.is_err(self.id)
     }
 }
 
-/// Typed handle to [`Asset`] of type `T`.
+/// Typed handle to [`Resource`] of type `T`.
 pub struct Handle<T: Resource> {
     pub(crate) id: HandleId,
     refcount_tx: crossbeam_channel::Sender<RefOp>,
@@ -123,12 +123,12 @@ impl<T: Resource> Handle<T> {
         registry.get_asset_id(self.id)
     }
 
-    /// Returns true if [`Asset`] load is finished and has succeeded.
+    /// Returns true if [`Resource`] load is finished and has succeeded.
     pub fn is_loaded(&self, registry: &AssetRegistry) -> bool {
         registry.is_loaded(self.id)
     }
 
-    /// Returns true if [`Asset`] load failed.
+    /// Returns true if [`Resource`] load failed.
     pub fn is_err(&self, registry: &AssetRegistry) -> bool {
         registry.is_err(self.id)
     }

@@ -29,7 +29,7 @@ impl AssetRegistryOptions {
         }
     }
 
-    /// Enables support of a given [`Asset`] by adding corresponding [`AssetLoader`].
+    /// Enables support of a given [`Resource`] by adding corresponding [`AssetLoader`].
     pub fn add_loader<A: AssetDescriptor>(mut self) -> Self {
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
         self
@@ -60,9 +60,9 @@ impl AssetRegistryOptions {
     }
 }
 
-/// Registry of all loaded [`Asset`]s.
+/// Registry of all loaded [`Resource`]s.
 ///
-/// Provides an API to load assets by their [`ResourceId`]. The lifetime of an [`Asset`] is determined
+/// Provides an API to load assets by their [`ResourceId`]. The lifetime of an [`Resource`] is determined
 /// by the reference counted [`HandleUntyped`] and [`Handle`].
 ///
 /// [`Handle`]: [`crate::Handle`]

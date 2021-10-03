@@ -1,7 +1,7 @@
 //! Data compiler interface.
 //!
-//! Data compiler is a binary that takes as input a [`legion_data_offline::resource::Resource`] and Resources it depends on and produces
-//! one or more [`legion_data_runtime::Asset`]s that are stored in a [`ContentStore`]. As a results it creates new
+//! Data compiler is a binary that takes as input a [`legion_data_runtime::Resource`] and Resources it depends on and produces
+//! one or more [`legion_data_runtime::Resource`]s that are stored in a [`ContentStore`]. As a results it creates new
 //! or updates existing [`Manifest`] file containing metadata about the derived resources.
 //!
 //! [`compiler_api`] allows to structure *data compiler* in a specific way.
@@ -138,7 +138,7 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// *Data Compiler's* output.
 ///
-/// Includes data which allows to load and validate [`legion_data_runtime::Asset`]s stored in [`ContentStore`].
+/// Includes data which allows to load and validate [`legion_data_runtime::Resource`]s stored in [`ContentStore`].
 /// As well as references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../content_store/index.html
