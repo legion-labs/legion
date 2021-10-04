@@ -85,17 +85,16 @@
 // crate-specific exceptions:
 #![allow()]
 
+mod process_log;
+mod recent_processes;
+
 use analytics::*;
 use anyhow::*;
 use clap::{App, AppSettings, Arg, SubCommand};
+use process_log::*;
+use recent_processes::*;
 use std::path::Path;
 use telemetry::*;
-
-async fn print_recent_processes(connection: &mut sqlx::AnyConnection) {
-    for p in fetch_recent_processes(connection).await.unwrap() {
-        println!("{} {}", p.start_time, p.exe);
-    }
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -113,6 +112,15 @@ async fn main() -> Result<()> {
         .subcommand(
             SubCommand::with_name("recent-processes").about("prints a list of recent processes"),
         )
+        .subcommand(
+            SubCommand::with_name("process-log")
+                .about("prints the log streams of the process")
+                .arg(
+                    Arg::with_name("process-id")
+                        .required(true)
+                        .help("process guid"),
+                ),
+        )
         .get_matches();
 
     let data_path = Path::new(matches.value_of("db").unwrap());
@@ -121,6 +129,10 @@ async fn main() -> Result<()> {
     match matches.subcommand() {
         ("recent-processes", Some(_command_match)) => {
             print_recent_processes(&mut connection).await;
+        }
+        ("process-log", Some(command_match)) => {
+            let process_id = command_match.value_of("process-id").unwrap();
+            print_process_log(&mut connection, data_path, process_id).await?;
         }
         (command_name, _args) => {
             log_str(LogLevel::Info, "unknown subcommand match");

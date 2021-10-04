@@ -9,6 +9,46 @@ pub struct Object {
     pub members: Vec<(String, Value)>,
 }
 
+impl Object {
+    pub fn get<T>(&self, member_name: &str) -> Result<T>
+    where
+        T: TansitValue,
+    {
+        for m in &self.members {
+            if m.0 == member_name {
+                return T::get(&m.1);
+            }
+        }
+        bail!("member {} not found", member_name);
+    }
+}
+
+pub trait TansitValue {
+    fn get(value: &Value) -> Result<Self>
+    where
+        Self: Sized;
+}
+
+impl TansitValue for u8 {
+    fn get(value: &Value) -> Result<Self> {
+        if let Value::U8(val) = value {
+            Ok(*val)
+        } else {
+            bail!("bad type cast u8 for value {:?}", value);
+        }
+    }
+}
+
+impl TansitValue for String {
+    fn get(value: &Value) -> Result<Self> {
+        if let Value::String(val) = value {
+            Ok(val.clone())
+        } else {
+            bail!("bad type cast String for value {:?}", value);
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Value {
     String(String),
@@ -70,4 +110,86 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
         hash.insert(id, value);
     })?;
     Ok(hash)
+}
+
+pub fn parse_objects<F>(
+    dependencies: &HashMap<usize, Value>,
+    udts: &[UserDefinedType],
+    buffer: &[u8],
+    mut fun: F,
+) -> Result<()>
+where
+    F: FnMut(Value),
+{
+    let mut offset = 0;
+    while offset < buffer.len() {
+        let type_index = buffer[offset] as usize;
+        if type_index >= udts.len() {
+            bail!(
+                "Invalid type index parsing transit dependencies: {}",
+                type_index
+            );
+        }
+        offset += 1;
+        let udt = &udts[type_index];
+        let (object_size, _is_size_dynamic) = match udt.size {
+            0 => {
+                //dynamic size
+                unsafe {
+                    let size_ptr = buffer.as_ptr().add(offset);
+                    let obj_size = read_pod::<u32>(size_ptr);
+                    offset += std::mem::size_of::<u32>();
+                    (obj_size as usize, true)
+                }
+            }
+            static_size => (static_size, false),
+        };
+        let instance_members: Vec<_> = udt
+            .members
+            .iter()
+            .map(|member_meta| {
+                let name = member_meta.name.clone();
+                let type_name = member_meta.type_name.clone();
+                let value = if member_meta.is_reference {
+                    assert_eq!(std::mem::size_of::<usize>(), member_meta.size);
+                    let key = read_pod::<usize>(unsafe {
+                        buffer.as_ptr().add(offset + member_meta.offset)
+                    });
+                    if let Some(v) = dependencies.get(&key) {
+                        v.clone()
+                    } else {
+                        println!("dependency not found: {}", key);
+                        Value::None
+                    }
+                } else {
+                    match type_name.as_str() {
+                        "u8" => {
+                            assert_eq!(std::mem::size_of::<u8>(), member_meta.size);
+                            Value::U8(read_pod::<u8>(unsafe {
+                                buffer.as_ptr().add(offset + member_meta.offset)
+                            }))
+                        }
+                        "u32" => {
+                            assert_eq!(std::mem::size_of::<u32>(), member_meta.size);
+                            Value::U32(read_pod::<u32>(unsafe {
+                                buffer.as_ptr().add(offset + member_meta.offset)
+                            }))
+                        }
+                        unknown_member_type => {
+                            println!("unknown member type {}", unknown_member_type);
+                            Value::None
+                        }
+                    }
+                };
+                (name, value)
+            })
+            .collect();
+        let instance = Object {
+            type_name: udt.name.clone(),
+            members: instance_members,
+        };
+        fun(Value::Object(instance));
+        offset += object_size;
+    }
+    Ok(())
 }
