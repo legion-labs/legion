@@ -1,5 +1,5 @@
 use crate::schedule::{
-        AmbiguitySetLabel, BoxedAmbiguitySetLabel, BoxedSystemLabel, IntoRunCriteria,
+    AmbiguitySetLabel, BoxedAmbiguitySetLabel, BoxedSystemLabel, IntoRunCriteria,
     RunCriteriaDescriptorOrLabel, State, StateData, SystemDescriptor, SystemLabel,
 };
 

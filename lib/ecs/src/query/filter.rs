@@ -138,7 +138,7 @@ impl<'w, 's, T: Component> Fetch<'w, 's> for WithFetch<T> {
         match T::Storage::STORAGE_TYPE {
             StorageType::Table => true,
             StorageType::SparseSet => false,
-    }
+        }
     };
 
     #[inline]
@@ -257,7 +257,7 @@ impl<'w, 's, T: Component> Fetch<'w, 's> for WithoutFetch<T> {
         match T::Storage::STORAGE_TYPE {
             StorageType::Table => true,
             StorageType::SparseSet => false,
-    }
+        }
     };
 
     #[inline]
