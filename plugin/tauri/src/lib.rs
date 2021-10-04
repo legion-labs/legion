@@ -86,59 +86,47 @@
 // crate-specific exceptions:
 #![allow()]
 
-use std::marker::PhantomData;
+use std::sync::Mutex;
 
 use legion_app::prelude::*;
 
 pub use legion_tauri_macros::*;
 
-pub struct TauriPluginSettings<R: tauri::Runtime, A: tauri::Assets> {
+pub struct TauriPluginSettings<R: tauri::Runtime> {
     builder: tauri::Builder<R>,
-    context: tauri::Context<A>,
 }
 
-impl<R: tauri::Runtime, A: tauri::Assets> TauriPluginSettings<R, A> {
-    pub fn new(builder: tauri::Builder<R>, context: tauri::Context<A>) -> Self {
-        Self { builder, context }
-    }
-
-    pub fn new_with_plugin(
-        builder: tauri::Builder<R>,
-        context: tauri::Context<A>,
-    ) -> (Self, TauriPlugin<R, A>) {
-        (Self { builder, context }, Self::plugin())
-    }
-
-    fn plugin() -> TauriPlugin<R, A> {
-        TauriPlugin::default()
+impl<R: tauri::Runtime> TauriPluginSettings<R> {
+    pub fn new(builder: tauri::Builder<R>) -> Self {
+        Self { builder }
     }
 }
 
 /// Provides game-engine integration into Tauri's event loop.
-pub struct TauriPlugin<R: tauri::Runtime, A: tauri::Assets> {
-    phantom: PhantomData<fn() -> (R, A)>,
+pub struct TauriPlugin<A: tauri::Assets> {
+    context: Mutex<Option<tauri::Context<A>>>,
 }
 
-impl<R: tauri::Runtime, A: tauri::Assets> Default for TauriPlugin<R, A> {
-    fn default() -> Self {
+impl<A: tauri::Assets> TauriPlugin<A> {
+    pub fn new(context: tauri::Context<A>) -> Self {
         Self {
-            phantom: PhantomData::default(),
+            context: Mutex::new(Some(context)),
         }
     }
-}
 
-impl<R: tauri::Runtime, A: tauri::Assets> TauriPlugin<R, A> {
     fn runner(app: App) {
         let mut app = app;
 
         let settings = app
             .world
-            .remove_non_send::<TauriPluginSettings<R, A>>()
+            .remove_non_send::<TauriPluginSettings<tauri::Wry>>()
             .expect("the Tauri plugin was not configured");
+
+        let context = app.world.remove_non_send::<tauri::Context<A>>().unwrap();
 
         let tauri_app = settings
             .builder
-            .build(settings.context)
+            .build(context)
             .expect("failed to build Tauri application");
 
         // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
@@ -153,8 +141,11 @@ impl<R: tauri::Runtime, A: tauri::Assets> TauriPlugin<R, A> {
     }
 }
 
-impl<R: tauri::Runtime, A: tauri::Assets> Plugin for TauriPlugin<R, A> {
+impl<A: tauri::Assets> Plugin for TauriPlugin<A> {
     fn build(&self, app: &mut App) {
-        app.set_runner(Self::runner);
+        let context = std::mem::replace(&mut *self.context.lock().unwrap(), None);
+
+        app.insert_non_send_resource(context)
+            .set_runner(Self::runner);
     }
 }
