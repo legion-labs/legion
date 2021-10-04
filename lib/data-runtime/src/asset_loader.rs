@@ -431,6 +431,16 @@ impl AssetLoaderIO {
         loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
         const ASSET_FILE_VERSION: u16 = 1;
+        const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
+
+        let mut typename: [u8; 4] = [0; 4];
+        reader.read_exact(&mut typename)?;
+        if &typename != ASSET_FILE_TYPENAME {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "Filetype Mismatch",
+            ));
+        }
 
         // asset file header
         let version = reader.read_u16::<LittleEndian>()?;
@@ -500,8 +510,8 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let binary_assetfile = [
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,
-            0, 0, 0, 99, 104, 105, 108, 100,
+            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
+            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
         ];
 
         let asset_id = {
@@ -592,8 +602,8 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let binary_assetfile = [
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,
-            0, 0, 0, 99, 104, 105, 108, 100,
+            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
+            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
         ];
 
         let asset_id = {
@@ -666,9 +676,9 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [
-            1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 86,
-            63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110,
-            116,
+            97, 115, 102, 116, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112,
+            97, 114, 101, 110, 116,
         ];
 
         let parent_id = ResourceId::new(test_asset::TestAsset::TYPE, 2);
@@ -720,13 +730,13 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let binary_parent_assetfile = [
-            1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 86,
-            63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110,
-            116,
+            97, 115, 102, 116, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112,
+            97, 114, 101, 110, 116,
         ];
         let binary_child_assetfile = [
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,
-            0, 0, 0, 99, 104, 105, 108, 100,
+            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
+            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
         ];
         let parent_content = "parent";
 

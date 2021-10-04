@@ -4,6 +4,7 @@ use legion_content_store::ContentStore;
 use legion_data_runtime::{ResourceId, ResourceType};
 
 const ASSET_FILE_VERSION: u16 = 1;
+const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 
 // todo: no asset ids are written because we assume 1 asset in asset_file now.
 pub fn write_assetfile<A, R>(
@@ -18,9 +19,14 @@ where
     A: Clone,
     R: Clone,
 {
-    // asset file header
-
     let mut written = 0;
+
+    // asset file header
+    writer
+        .write(ASSET_FILE_TYPENAME)
+        .map_err(|_e| Error::LinkFailed)?;
+    written += ASSET_FILE_TYPENAME.len();
+
     writer
         .write_u16::<LittleEndian>(ASSET_FILE_VERSION)
         .map_err(|_e| Error::LinkFailed)?;
@@ -78,7 +84,7 @@ mod tests {
     use legion_content_store::{ContentStore, RamContentStore};
     use legion_data_runtime::{Resource, ResourceId, ResourceType};
 
-    use crate::asset_file_writer::{write_assetfile, ASSET_FILE_VERSION};
+    use crate::asset_file_writer::{write_assetfile, ASSET_FILE_TYPENAME, ASSET_FILE_VERSION};
 
     #[test]
     fn one_asset_no_references() {
@@ -106,6 +112,12 @@ mod tests {
 
         {
             let mut assetfile_reader = &binary_assetfile[..];
+
+            let mut typename: [u8; 4] = [0; 4];
+            assetfile_reader
+                .read_exact(&mut typename)
+                .expect("valid data");
+            assert_eq!(&typename, ASSET_FILE_TYPENAME);
 
             let version = assetfile_reader
                 .read_u16::<LittleEndian>()
@@ -195,6 +207,12 @@ mod tests {
 
         {
             let mut assetfile_reader = &parent_assetfile[..];
+
+            let mut typename: [u8; 4] = [0; 4];
+            assetfile_reader
+                .read_exact(&mut typename)
+                .expect("valid data");
+            assert_eq!(&typename, ASSET_FILE_TYPENAME);
 
             let version = assetfile_reader
                 .read_u16::<LittleEndian>()
