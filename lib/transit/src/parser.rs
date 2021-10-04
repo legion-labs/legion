@@ -3,17 +3,18 @@ use std::collections::HashMap;
 use crate::*;
 use anyhow::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Object {
     pub type_name: String,
     pub members: Vec<(String, Value)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value {
     String(String),
     Object(Object),
     U8(u8),
+    U32(u32),
     None,
 }
 

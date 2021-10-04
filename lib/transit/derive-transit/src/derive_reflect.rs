@@ -14,7 +14,7 @@ fn metadata_from_type(t: &syn::Type) -> (QuoteRes, bool) {
         syn::Type::Never(_) => panic!("Never field type not supported"),
         syn::Type::Paren(_) => panic!("Paren field type not supported"),
         syn::Type::Path(type_path) => (quote! {#type_path}, false),
-        syn::Type::Ptr(_) => panic!("Ptr field type not supported"),
+        syn::Type::Ptr(pointer_type) => (quote! {#pointer_type}, true),
         syn::Type::Reference(reference) => (quote! {#reference}, true),
         syn::Type::Slice(_) => panic!("Slice field type not supported"),
         syn::Type::TraitObject(_) => panic!("TraitObject field type not supported"),

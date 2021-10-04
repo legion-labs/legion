@@ -11,7 +11,8 @@ pub enum LogLevel {
 #[derive(Debug, TransitReflect)]
 pub struct LogMsgEvent {
     pub level: u8,
-    pub msg: &'static str,
+    pub msg_len: u32,
+    pub msg: *const u8,
 }
 
 impl Serialize for LogMsgEvent {}
@@ -57,7 +58,10 @@ impl StreamBlock for LogBlock {
         for x in self.events.iter() {
             match x {
                 LogMsgQueueAny::LogMsgEvent(evt) => {
-                    deps.push(StaticString(evt.msg));
+                    deps.push(StaticString {
+                        len: evt.msg_len,
+                        ptr: evt.msg,
+                    });
                 }
             }
         }

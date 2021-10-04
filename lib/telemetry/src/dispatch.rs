@@ -84,7 +84,8 @@ impl Dispatch {
         let mut log_stream = self.log_stream.lock().unwrap();
         log_stream.push(LogMsgEvent {
             level: level as u8,
-            msg,
+            msg_len: msg.len() as u32,
+            msg: msg.as_ptr(),
         });
         if log_stream.is_full() {
             drop(log_stream);

@@ -2,7 +2,10 @@ use analytics::*;
 use anyhow::*;
 use prost::Message;
 use sqlx::Row;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 use test_utils::*;
 use transit::*;
 
@@ -40,7 +43,12 @@ async fn find_process_with_log_data(connection: &mut sqlx::AnyConnection) -> Res
     Ok(row.get("process_id"))
 }
 
-pub fn parse_objects<F>(udts: &[UserDefinedType], buffer: &[u8], mut fun: F) -> Result<()>
+pub fn parse_objects<F>(
+    dependencies: &HashMap<usize, Value>,
+    udts: &[UserDefinedType],
+    buffer: &[u8],
+    mut fun: F,
+) -> Result<()>
 where
     F: FnMut(Value),
 {
@@ -73,16 +81,35 @@ where
             .map(|member_meta| {
                 let name = member_meta.name.clone();
                 let type_name = member_meta.type_name.clone();
-                let value = match type_name.as_str() {
-                    "u8" => {
-                        assert_eq!(1, member_meta.size);
-                        Value::U8(read_pod::<u8>(unsafe {
-                            buffer.as_ptr().add(offset + member_meta.offset)
-                        }))
-                    }
-                    unknown_member_type => {
-                        println!("unknown member type {}", unknown_member_type);
+                let value = if member_meta.is_reference {
+                    assert_eq!(std::mem::size_of::<usize>(), member_meta.size);
+                    let key = read_pod::<usize>(unsafe {
+                        buffer.as_ptr().add(offset + member_meta.offset)
+                    });
+                    if let Some(v) = dependencies.get(&key) {
+                        v.clone()
+                    } else {
+                        println!("dependency not found: {}", key);
                         Value::None
+                    }
+                } else {
+                    match type_name.as_str() {
+                        "u8" => {
+                            assert_eq!(std::mem::size_of::<u8>(), member_meta.size);
+                            Value::U8(read_pod::<u8>(unsafe {
+                                buffer.as_ptr().add(offset + member_meta.offset)
+                            }))
+                        }
+                        "u32" => {
+                            assert_eq!(std::mem::size_of::<u32>(), member_meta.size);
+                            Value::U32(read_pod::<u32>(unsafe {
+                                buffer.as_ptr().add(offset + member_meta.offset)
+                            }))
+                        }
+                        unknown_member_type => {
+                            println!("unknown member type {}", unknown_member_type);
+                            Value::None
+                        }
                     }
                 };
                 (name, value)
@@ -127,15 +154,14 @@ async fn print_process_log(
                 .as_transit_udt_vec();
 
             let dependencies = read_dependencies(&dep_udts, &payload.dependencies)?;
-            dbg!(dependencies);
-
             let obj_udts = stream
                 .objects_metadata
                 .as_ref()
                 .unwrap()
                 .as_transit_udt_vec();
+            dbg!(&obj_udts);
 
-            parse_objects(&obj_udts, &payload.objects, |val| {
+            parse_objects(&dependencies, &obj_udts, &payload.objects, |val| {
                 dbg!(val);
             })?;
         }

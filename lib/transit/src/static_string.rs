@@ -2,7 +2,10 @@ use crate::*;
 
 // StaticString serializes the value of the pointer and the contents of the string
 #[derive(Debug)]
-pub struct StaticString(pub &'static str);
+pub struct StaticString {
+    pub len: u32,
+    pub ptr: *const u8,
+}
 
 // dummy impl for Reflect
 impl Reflect for StaticString {
@@ -22,22 +25,27 @@ impl Serialize for StaticString {
 
     fn get_value_size(&self) -> Option<u32> {
         let id_size = std::mem::size_of::<usize>() as u32;
-        Some(self.0.len() as u32 + id_size)
-    }
-
-    fn write_value(&self, buffer: &mut Vec<u8>) {
-        write_pod(buffer, &self.0.as_ptr());
-        buffer.extend_from_slice(self.0.as_bytes());
+        Some(self.len + id_size)
     }
 
     #[allow(unsafe_code)]
+    fn write_value(&self, buffer: &mut Vec<u8>) {
+        write_pod(buffer, &self.ptr);
+        unsafe {
+            let slice = std::slice::from_raw_parts(self.ptr, self.len as usize);
+            buffer.extend_from_slice(slice);
+        }
+    }
+
     fn read_value(ptr: *const u8, value_size_opt: Option<u32>) -> Self {
         let id_size = std::mem::size_of::<usize>() as u32;
         let value_size = value_size_opt.unwrap();
         assert!(id_size <= value_size);
         let buffer_size = value_size - id_size;
         let static_buffer_ptr = read_pod::<*const u8>(ptr);
-        let slice = std::ptr::slice_from_raw_parts(static_buffer_ptr, buffer_size as usize);
-        unsafe { Self(std::str::from_utf8(&*slice).unwrap()) }
+        Self {
+            len: buffer_size,
+            ptr: static_buffer_ptr,
+        }
     }
 }

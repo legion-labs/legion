@@ -42,7 +42,10 @@ fn test_deps() {
     for x in q.iter() {
         match x {
             LogMsgQueueAny::LogMsgEvent(evt) => {
-                deps.push(StaticString(evt.msg));
+                deps.push(StaticString {
+                    len: evt.msg.len() as u32,
+                    ptr: evt.msg.as_ptr(),
+                });
             }
             LogMsgQueueAny::NullEvent(_evt) => {}
         }
