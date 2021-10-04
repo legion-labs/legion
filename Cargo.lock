@@ -6440,6 +6440,7 @@ dependencies = [
 name = "transit"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "derive-transit",
  "memoffset",
  "serde",

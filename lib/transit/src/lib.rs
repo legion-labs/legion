@@ -84,10 +84,11 @@
 )]
 // END - Legion Labs standard lints v0.4
 // crate-specific exceptions:
-#![allow()]
+#![allow(unsafe_code)]
 
 pub mod dyn_string;
 pub mod iter;
+pub mod parser;
 pub mod reflect;
 pub mod reflective_queue;
 pub mod serialize;
@@ -95,6 +96,7 @@ pub mod static_string;
 
 pub use dyn_string::*;
 pub use iter::*;
+pub use parser::*;
 pub use reflect::*;
 pub use reflective_queue::*;
 pub use serialize::*;
