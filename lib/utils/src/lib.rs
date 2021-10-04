@@ -86,6 +86,8 @@
 // crate-specific exceptions:
 #![allow()]
 
+use std::{future::Future, pin::Pin};
+
 pub mod decimal;
 pub mod memory;
 pub mod trust_cell;
@@ -97,6 +99,12 @@ mod hash;
 pub use hash::*;
 
 pub use tracing;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+#[cfg(target_arch = "wasm32")]
+pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 #[cfg(test)]
 mod tests {

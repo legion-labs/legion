@@ -146,7 +146,7 @@ impl AssetRegistryPlugin {
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
-        mut commands: Commands<'_>,
+        mut commands: Commands<'_, '_>,
     ) {
         let mut secondary_assets = Vec::new();
 
@@ -254,7 +254,7 @@ impl AssetRegistryPlugin {
     }
 
     fn create_entity(
-        commands: &mut Commands<'_>,
+        commands: &mut Commands<'_, '_>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         secondary_assets: &mut Vec<ResourceId>,
         runtime_entity: &runtime_data::Entity,
@@ -309,7 +309,7 @@ impl AssetRegistryPlugin {
     }
 
     fn create_instance(
-        commands: &mut Commands<'_>,
+        commands: &mut Commands<'_, '_>,
         secondary_assets: &mut Vec<ResourceId>,
         instance: &runtime_data::Instance,
     ) -> Entity {
@@ -321,7 +321,7 @@ impl AssetRegistryPlugin {
     }
 
     fn create_material(
-        _commands: &mut Commands<'_>,
+        _commands: &mut Commands<'_, '_>,
         secondary_assets: &mut Vec<ResourceId>,
         material: &legion_graphics_runtime::Material,
     ) {
@@ -332,7 +332,7 @@ impl AssetRegistryPlugin {
     }
 
     fn create_mesh(
-        _commands: &mut Commands<'_>,
+        _commands: &mut Commands<'_, '_>,
         secondary_assets: &mut Vec<ResourceId>,
         mesh: &runtime_data::Mesh,
     ) {

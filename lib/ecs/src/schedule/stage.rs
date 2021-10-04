@@ -18,6 +18,7 @@ use std::fmt::Debug;
 
 use super::IntoSystemDescriptor;
 
+/// A type that can run as a step of a [`Schedule`](super::Schedule).
 pub trait Stage: Downcast + Send + Sync {
     /// Runs the stage; this happens once per update.
     /// Implementors must initialize all of their state and systems before running the first time.
@@ -902,6 +903,11 @@ mod tests {
         world::World,
     };
 
+    use crate as legion_ecs;
+    use crate::component::Component;
+    #[derive(Component)]
+    struct W<T>(T);
+
     fn make_exclusive(tag: usize) -> impl FnMut(&mut World) {
         move |world| world.get_resource_mut::<Vec<usize>>().unwrap().push(tag)
     }
@@ -1443,9 +1449,7 @@ mod tests {
         // Piping criteria.
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
         fn eot_piped(input: In<ShouldRun>, has_ran: Local<'_, bool>) -> ShouldRun {
-            let should_run = input.0;
-            drop(input);
-            if let ShouldRun::Yes | ShouldRun::YesAndCheckAgain = should_run {
+            if let ShouldRun::Yes | ShouldRun::YesAndCheckAgain = input.0 {
                 every_other_time(has_ran)
             } else {
                 ShouldRun::No
@@ -1572,7 +1576,7 @@ mod tests {
 
         fn empty() {}
         fn resource(_: ResMut<'_, usize>) {}
-        fn component(_: Query<'_, &mut f32>) {}
+        fn component(_: Query<'_, '_, &mut W<f32>>) {}
 
         let mut world = World::new();
 
@@ -1943,10 +1947,9 @@ mod tests {
     fn archetype_update_single_executor() {
         fn query_count_system(
             mut entity_count: ResMut<'_, usize>,
-            query: Query<'_, crate::entity::Entity>,
+            query: Query<'_, '_, crate::entity::Entity>,
         ) {
             *entity_count = query.iter().count();
-            drop(query);
         }
 
         let mut world = World::new();
@@ -1957,7 +1960,7 @@ mod tests {
         stage.run(&mut world);
         assert_eq!(*world.get_resource::<usize>().unwrap(), 1);
 
-        world.get_entity_mut(entity).unwrap().insert(1);
+        world.get_entity_mut(entity).unwrap().insert(W(1));
         stage.run(&mut world);
         assert_eq!(*world.get_resource::<usize>().unwrap(), 1);
     }
@@ -1966,10 +1969,9 @@ mod tests {
     fn archetype_update_parallel_executor() {
         fn query_count_system(
             mut entity_count: ResMut<'_, usize>,
-            query: Query<'_, crate::entity::Entity>,
+            query: Query<'_, '_, crate::entity::Entity>,
         ) {
             *entity_count = query.iter().count();
-            drop(query);
         }
 
         let mut world = World::new();
@@ -1981,7 +1983,7 @@ mod tests {
         stage.run(&mut world);
         assert_eq!(*world.get_resource::<usize>().unwrap(), 1);
 
-        world.get_entity_mut(entity).unwrap().insert(1);
+        world.get_entity_mut(entity).unwrap().insert(W(1));
         stage.run(&mut world);
         assert_eq!(*world.get_resource::<usize>().unwrap(), 1);
     }
@@ -1992,7 +1994,7 @@ mod tests {
         const MAX_DELTA: u32 = (u32::MAX / 4) * 3;
 
         let mut world = World::new();
-        world.spawn().insert(0usize);
+        world.spawn().insert(W(0usize));
         *world.change_tick.get_mut() += MAX_DELTA + 1;
 
         let mut stage = SystemStage::parallel();
@@ -2002,7 +2004,7 @@ mod tests {
         // Overflow twice
         for _ in 0..10 {
             stage.run(&mut world);
-            for tracker in world.query::<ChangeTrackers<usize>>().iter(&world) {
+            for tracker in world.query::<ChangeTrackers<W<usize>>>().iter(&world) {
                 let time_since_last_check = tracker
                     .change_tick
                     .wrapping_sub(tracker.component_ticks.added);
@@ -2019,6 +2021,9 @@ mod tests {
 
     #[test]
     fn change_query_wrapover() {
+        use crate::{self as legion_ecs, component::Component};
+
+        #[derive(Component)]
         struct C;
         let mut world = World::new();
 
@@ -2054,26 +2059,25 @@ mod tests {
 
     #[test]
     fn run_criteria_with_query() {
+        use crate::{self as legion_ecs, component::Component};
+
+        #[derive(Component)]
         struct Foo;
 
-        fn even_number_of_entities_critiera(query: Query<'_, &Foo>) -> ShouldRun {
-            let count = query.iter().len();
-            drop(query);
-            if count % 2 == 0 {
+        fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
+            if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
                 ShouldRun::No
             }
         }
 
-        fn spawn_entity(mut commands: crate::prelude::Commands<'_>) {
+        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo);
         }
 
-        fn count_entities(query: Query<'_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
-            let count = query.iter().len();
-            drop(query);
-            res.push(count);
+        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+            res.push(query.iter().len());
         }
 
         let mut world = World::new();
@@ -2094,26 +2098,25 @@ mod tests {
 
     #[test]
     fn stage_run_criteria_with_query() {
+        use crate::{self as legion_ecs, component::Component};
+
+        #[derive(Component)]
         struct Foo;
 
-        fn even_number_of_entities_critiera(query: Query<'_, &Foo>) -> ShouldRun {
-            let count = query.iter().len();
-            drop(query);
-            if count % 2 == 0 {
+        fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
+            if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
                 ShouldRun::No
             }
         }
 
-        fn spawn_entity(mut commands: crate::prelude::Commands<'_>) {
+        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo);
         }
 
-        fn count_entities(query: Query<'_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
-            let count = query.iter().len();
-            drop(query);
-            res.push(count);
+        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+            res.push(query.iter().len());
         }
 
         let mut world = World::new();

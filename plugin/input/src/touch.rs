@@ -223,7 +223,7 @@ impl Touches {
 /// Updates the Touches resource with the latest `TouchInput` events
 pub fn touch_screen_input_system(
     mut touch_state: ResMut<'_, Touches>,
-    mut touch_input_events: EventReader<'_, TouchInput>,
+    mut touch_input_events: EventReader<'_, '_, TouchInput>,
 ) {
     touch_state.update();
 

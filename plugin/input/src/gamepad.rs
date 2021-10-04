@@ -206,8 +206,8 @@ pub fn gamepad_event_system(
     mut button_input: ResMut<'_, Input<GamepadButton>>,
     mut axis: ResMut<'_, Axis<GamepadAxis>>,
     mut button_axis: ResMut<'_, Axis<GamepadButton>>,
-    mut raw_events: EventReader<'_, GamepadEventRaw>,
-    mut events: EventWriter<'_, GamepadEvent>,
+    mut raw_events: EventReader<'_, '_, GamepadEventRaw>,
+    mut events: EventWriter<'_, '_, GamepadEvent>,
     settings: Res<'_, GamepadSettings>,
 ) {
     button_input.clear();

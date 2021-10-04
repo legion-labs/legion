@@ -1,5 +1,5 @@
+use legion_ecs::component::Component;
 use legion_utils::Duration;
-
 /// A Stopwatch is a struct that track elapsed time when started.
 ///
 /// # Examples
@@ -21,7 +21,7 @@ use legion_utils::Duration;
 /// assert!(stopwatch.paused());
 /// assert_eq!(stopwatch.elapsed_secs(), 0.0);
 /// ```
-#[derive(Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct Stopwatch {
     elapsed: Duration,
     paused: bool,

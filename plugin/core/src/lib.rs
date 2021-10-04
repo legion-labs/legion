@@ -107,9 +107,12 @@ pub mod prelude {
 
 use legion_app::prelude::*;
 use legion_ecs::{
+    entity::Entity,
     schedule::{ExclusiveSystemDescriptorCoercion, SystemLabel},
     system::IntoExclusiveSystem,
 };
+use legion_utils::HashSet;
+use std::ops::Range;
 
 /// Adds core functionality to Apps.
 #[derive(Default)]
@@ -128,7 +131,7 @@ impl Plugin for CorePlugin {
         app.world
             .get_resource::<DefaultTaskPoolOptions>()
             .cloned()
-            .unwrap_or_else(DefaultTaskPoolOptions::default)
+            .unwrap_or_default()
             .create_default_pools(&mut app.world);
 
         app.init_resource::<Time>()

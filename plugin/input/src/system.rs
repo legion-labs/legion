@@ -7,8 +7,8 @@ use legion_ecs::prelude::{EventReader, EventWriter};
 
 /// Sends the `AppExit` event whenever the "esc" key is pressed.
 pub fn exit_on_esc_system(
-    mut keyboard_input_events: EventReader<'_, KeyboardInput>,
-    mut app_exit_events: EventWriter<'_, AppExit>,
+    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
+    mut app_exit_events: EventWriter<'_, '_, AppExit>,
 ) {
     for event in keyboard_input_events.iter() {
         if let Some(key_code) = event.key_code {

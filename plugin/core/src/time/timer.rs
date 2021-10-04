@@ -1,4 +1,5 @@
 use crate::Stopwatch;
+use legion_ecs::component::Component;
 use legion_utils::Duration;
 
 /// Tracks elapsed time. Enters the finished state once `duration` is reached.
@@ -8,7 +9,7 @@ use legion_utils::Duration;
 /// exceeded, and can still be reset at any given point.
 ///
 /// Paused timers will not have elapsed time increased.
-#[derive(Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct Timer {
     stopwatch: Stopwatch,
     duration: Duration,
@@ -104,6 +105,8 @@ impl Timer {
     }
 
     /// Sets the elapsed time of the timer without any other considerations.
+    ///
+    /// See also [`Stopwatch::set`](Stopwatch::set).
     ///
     /// #
     /// ```

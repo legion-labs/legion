@@ -33,18 +33,16 @@ impl<T: SparseSetIndex> Access<T> {
 
     /// Adds a read access for the given index.
     pub fn add_read(&mut self, index: T) {
-        let index = index.convert_sparse_set_index();
-        self.reads_and_writes.grow(index + 1);
-        self.reads_and_writes.insert(index);
+        self.reads_and_writes.grow(index.sparse_set_index() + 1);
+        self.reads_and_writes.insert(index.sparse_set_index());
     }
 
     /// Adds a write access for the given index.
     pub fn add_write(&mut self, index: T) {
-        let index = index.convert_sparse_set_index();
-        self.reads_and_writes.grow(index + 1);
-        self.writes.grow(index + 1);
-        self.reads_and_writes.insert(index);
-        self.writes.insert(index);
+        self.reads_and_writes.grow(index.sparse_set_index() + 1);
+        self.writes.grow(index.sparse_set_index() + 1);
+        self.reads_and_writes.insert(index.sparse_set_index());
+        self.writes.insert(index.sparse_set_index());
     }
 
     /// Returns true if this `Access` contains a read access for the given index.
@@ -52,14 +50,13 @@ impl<T: SparseSetIndex> Access<T> {
         if self.reads_all {
             true
         } else {
-            self.reads_and_writes
-                .contains(index.convert_sparse_set_index())
+            self.reads_and_writes.contains(index.sparse_set_index())
         }
     }
 
     /// Returns true if this `Access` contains a write access for the given index.
     pub fn has_write(&self, index: T) -> bool {
-        self.writes.contains(index.convert_sparse_set_index())
+        self.writes.contains(index.sparse_set_index())
     }
 
     /// Sets this `Access` to having read access for all indices.
@@ -154,15 +151,13 @@ impl<T: SparseSetIndex> FilteredAccess<T> {
     }
 
     pub fn add_with(&mut self, index: T) {
-        let index = index.convert_sparse_set_index();
-        self.with.grow(index + 1);
-        self.with.insert(index);
+        self.with.grow(index.sparse_set_index() + 1);
+        self.with.insert(index.sparse_set_index());
     }
 
     pub fn add_without(&mut self, index: T) {
-        let index = index.convert_sparse_set_index();
-        self.without.grow(index + 1);
-        self.without.insert(index);
+        self.without.grow(index.sparse_set_index() + 1);
+        self.without.insert(index.sparse_set_index());
     }
 
     pub fn is_compatible(&self, other: &Self) -> bool {

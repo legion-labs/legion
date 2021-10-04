@@ -93,7 +93,7 @@ pub use legion_tauri_macros::*;
 // Provides game-engine integration into Tauri's event loop.
 pub fn build_tauri_runner<R: tauri::Runtime>(
     tauri_app: tauri::App<R>,
-) -> Box<dyn FnOnce(App) + 'static> {
+) -> Box<dyn Fn(App) + 'static> {
     Box::new(move |app: App| {
         // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
         // get rid of this and move the value directly instead.

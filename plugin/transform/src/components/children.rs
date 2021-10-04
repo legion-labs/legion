@@ -1,8 +1,11 @@
-use legion_ecs::entity::{Entity, EntityMap, MapEntities, MapEntitiesError};
+use legion_ecs::{
+    component::Component,
+    entity::{Entity, EntityMap, MapEntities, MapEntitiesError},
+};
 use smallvec::SmallVec;
 use std::ops::Deref;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Component, Default, Clone, Debug)]
 pub struct Children(pub(crate) SmallVec<[Entity; 8]>);
 
 impl MapEntities for Children {

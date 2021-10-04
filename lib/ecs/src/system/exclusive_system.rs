@@ -1,14 +1,12 @@
 use crate::{
     archetype::ArchetypeGeneration,
-    system::{check_system_change_tick, BoxedSystem, IntoSystem, SystemId},
+    system::{check_system_change_tick, BoxedSystem, IntoSystem},
     world::World,
 };
 use std::borrow::Cow;
 
 pub trait ExclusiveSystem: Send + Sync + 'static {
     fn name(&self) -> Cow<'static, str>;
-
-    fn id(&self) -> SystemId;
 
     fn run(&mut self, world: &mut World);
 
@@ -20,17 +18,12 @@ pub trait ExclusiveSystem: Send + Sync + 'static {
 pub struct ExclusiveSystemFn {
     func: Box<dyn FnMut(&mut World) + Send + Sync + 'static>,
     name: Cow<'static, str>,
-    id: SystemId,
     last_change_tick: u32,
 }
 
 impl ExclusiveSystem for ExclusiveSystemFn {
     fn name(&self) -> Cow<'static, str> {
         self.name.clone()
-    }
-
-    fn id(&self) -> SystemId {
-        self.id
     }
 
     fn run(&mut self, world: &mut World) {
@@ -66,8 +59,7 @@ where
     fn exclusive_system(self) -> ExclusiveSystemFn {
         ExclusiveSystemFn {
             func: Box::new(self),
-            name: core::any::type_name::<Self>().into(),
-            id: SystemId::new(),
+            name: core::any::type_name::<F>().into(),
             last_change_tick: 0,
         }
     }
@@ -81,10 +73,6 @@ pub struct ExclusiveSystemCoerced {
 impl ExclusiveSystem for ExclusiveSystemCoerced {
     fn name(&self) -> Cow<'static, str> {
         self.system.name()
-    }
-
-    fn id(&self) -> SystemId {
-        self.system.id()
     }
 
     fn run(&mut self, world: &mut World) {
@@ -125,37 +113,42 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
+        self as legion_ecs,
+        component::Component,
         entity::Entity,
         query::With,
         schedule::{Stage, SystemStage},
         system::{Commands, IntoExclusiveSystem, Query, ResMut},
         world::World,
     };
+
+    #[derive(Component)]
+    struct Foo(f32);
+
     #[test]
     fn parallel_with_commands_as_exclusive() {
         let mut world = World::new();
 
         fn removal(
-            mut commands: Commands<'_>,
-            query: Query<'_, Entity, With<f32>>,
+            mut commands: Commands<'_, '_>,
+            query: Query<'_, '_, Entity, With<Foo>>,
             mut counter: ResMut<'_, usize>,
         ) {
             for entity in query.iter() {
                 *counter += 1;
-                commands.entity(entity).remove::<f32>();
+                commands.entity(entity).remove::<Foo>();
             }
-            drop(query);
         }
 
         let mut stage = SystemStage::parallel().with_system(removal);
-        world.spawn().insert(0.0f32);
+        world.spawn().insert(Foo(0.0f32));
         world.insert_resource(0usize);
         stage.run(&mut world);
         stage.run(&mut world);
         assert_eq!(*world.get_resource::<usize>().unwrap(), 1);
 
         let mut stage = SystemStage::parallel().with_system(removal.exclusive_system());
-        world.spawn().insert(0.0f32);
+        world.spawn().insert(Foo(0.0f32));
         world.insert_resource(0usize);
         stage.run(&mut world);
         stage.run(&mut world);
@@ -164,15 +157,12 @@ mod tests {
 
     #[test]
     fn update_archetype_for_exclusive_system_coerced() {
-        struct Foo;
-
-        fn spawn_entity(mut commands: crate::prelude::Commands<'_>) {
-            commands.spawn().insert(Foo);
+        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
+            commands.spawn().insert(Foo(0.0));
         }
 
-        fn count_entities(query: Query<'_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
-            drop(query);
         }
 
         let mut world = World::new();

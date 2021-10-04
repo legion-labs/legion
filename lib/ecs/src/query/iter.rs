@@ -26,7 +26,6 @@ where
     filter: F::Fetch,
     current_len: usize,
     current_index: usize,
-    is_dense: bool,
 }
 
 impl<'w, 's, Q: WorldQuery, F: WorldQuery> QueryIter<'w, 's, Q, F>
@@ -62,7 +61,6 @@ where
             query_state,
             tables: &world.storages().tables,
             archetypes: &world.archetypes,
-            is_dense: fetch.is_dense() && filter.is_dense(),
             fetch,
             filter,
             table_id_iter: query_state.matched_table_ids.iter(),
@@ -78,7 +76,7 @@ where
         // NOTE: this mimics the behavior of `QueryIter::next()`, except that it
         // never gets a `Self::Item`.
         unsafe {
-            if self.is_dense {
+            if Q::Fetch::IS_DENSE && F::Fetch::IS_DENSE {
                 loop {
                     if self.current_index == self.current_len {
                         let table_id = match self.table_id_iter.next() {
@@ -141,7 +139,7 @@ where
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
-            if self.is_dense {
+            if Q::Fetch::IS_DENSE && F::Fetch::IS_DENSE {
                 loop {
                     if self.current_index == self.current_len {
                         let table_id = self.table_id_iter.next()?;
@@ -230,7 +228,7 @@ where
     /// This does not check for mutable query correctness. To be safe, make sure mutable queries
     /// have unique access to the components they query.
     /// This does not validate that `world.id()` matches `query_state.world_id`. Calling this on a `world`
-    /// with a mismatched `WorldId` is unsound.
+    /// with a mismatched WorldId is unsound.
     pub(crate) unsafe fn new(
         world: &'w World,
         query_state: &'s QueryState<Q, F>,
@@ -261,7 +259,6 @@ where
         }
 
         // TODO: use MaybeUninit::array_assume_init if it stabilizes
-        #[allow(clippy::ptr_as_ptr)]
         let cursors: [QueryIterationCursor<'s, Q, F>; K] =
             (&cursors as *const _ as *const [QueryIterationCursor<'s, Q, F>; K]).read();
 
@@ -320,7 +317,6 @@ where
         }
 
         // TODO: use MaybeUninit::array_assume_init if it stabilizes
-        #[allow(clippy::ptr_as_ptr)]
         let values: [<Q::Fetch as Fetch<'a, 's>>::Item; K] =
             (&values as *const _ as *const [<Q::Fetch as Fetch<'a, 's>>::Item; K]).read();
 
@@ -411,7 +407,6 @@ struct QueryIterationCursor<'s, Q: WorldQuery, F: WorldQuery> {
     filter: F::Fetch,
     current_len: usize,
     current_index: usize,
-    is_dense: bool,
 }
 
 impl<'s, Q: WorldQuery, F: WorldQuery> Clone for QueryIterationCursor<'s, Q, F>
@@ -427,7 +422,6 @@ where
             filter: self.filter.clone(),
             current_len: self.current_len,
             current_index: self.current_index,
-            is_dense: self.is_dense,
         }
     }
 }
@@ -468,7 +462,6 @@ where
             change_tick,
         );
         QueryIterationCursor {
-            is_dense: fetch.is_dense() && filter.is_dense(),
             fetch,
             filter,
             table_id_iter: query_state.matched_table_ids.iter(),
@@ -482,7 +475,7 @@ where
     #[inline]
     unsafe fn peek_last<'w>(&mut self) -> Option<<Q::Fetch as Fetch<'w, 's>>::Item> {
         if self.current_index > 0 {
-            if self.is_dense {
+            if Q::Fetch::IS_DENSE && F::Fetch::IS_DENSE {
                 Some(self.fetch.table_fetch(self.current_index - 1))
             } else {
                 Some(self.fetch.archetype_fetch(self.current_index - 1))
@@ -502,7 +495,7 @@ where
         archetypes: &'w Archetypes,
         query_state: &'s QueryState<Q, F>,
     ) -> Option<<Q::Fetch as Fetch<'w, 's>>::Item> {
-        if self.is_dense {
+        if Q::Fetch::IS_DENSE && F::Fetch::IS_DENSE {
             loop {
                 if self.current_index == self.current_len {
                     let table_id = self.table_id_iter.next()?;

@@ -65,7 +65,6 @@ mod tests {
         value.write_bytes(&mut bytes);
         let result = T::from_bytes(&bytes);
         assert_eq!(value, result);
-        drop(value);
     }
 
     #[test]
