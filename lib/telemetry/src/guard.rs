@@ -10,6 +10,7 @@ impl TelemetrySystemGuard {
     }
 }
 
+//not used at the time of writing, but clippy wants it
 impl Default for TelemetrySystemGuard {
     fn default() -> Self {
         Self::new()
