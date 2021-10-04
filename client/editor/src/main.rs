@@ -93,7 +93,7 @@ use clap::Arg;
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
 use legion_editor_proto::{editor_client::*, InitializeStreamRequest};
-use legion_tauri::{legion_tauri_command, TauriPlugin};
+use legion_tauri::{legion_tauri_command, TauriPluginSettings};
 use std::{error::Error, time::Duration};
 
 struct Config {
@@ -133,11 +133,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         .manage(config)
         .invoke_handler(tauri::generate_handler![initialize_stream]);
 
+    let (tauri_settings, tauri_plugin) =
+        TauriPluginSettings::new_with_plugin(builder, tauri::generate_context!());
+
     App::new()
-        .add_plugin(TauriPlugin::new_from_builder(
-            builder,
-            tauri::generate_context!(),
-        ))
+        .insert_non_send_resource(tauri_settings)
+        .add_plugin(tauri_plugin)
         .add_plugin(AsyncPlugin {})
         .run();
 

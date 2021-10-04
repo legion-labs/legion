@@ -86,45 +86,61 @@
 // crate-specific exceptions:
 #![allow()]
 
-use legion_app::prelude::*;
+use std::marker::PhantomData;
 
-use std::sync::{Arc, Mutex};
+use legion_app::prelude::*;
 
 pub use legion_tauri_macros::*;
 
-pub type TauriPluginAppBuilderFn<R> = Box<dyn FnOnce() -> tauri::App<R> + Send + 'static>;
-
-/// Provides game-engine integration into Tauri's event loop.
-pub struct TauriPlugin<R: tauri::Runtime> {
-    builder_fn: Arc<Mutex<Option<TauriPluginAppBuilderFn<R>>>>,
+pub struct TauriPluginSettings<R: tauri::Runtime, A: tauri::Assets> {
+    builder: tauri::Builder<R>,
+    context: tauri::Context<A>,
 }
 
-impl<R: tauri::Runtime> TauriPlugin<R> {
-    /// Create a new Tauri Plugin instance from an existing `tauri::Builder<R>`.
-    pub fn new_from_builder<A: tauri::Assets>(
+impl<R: tauri::Runtime, A: tauri::Assets> TauriPluginSettings<R, A> {
+    pub fn new(builder: tauri::Builder<R>, context: tauri::Context<A>) -> Self {
+        Self { builder, context }
+    }
+
+    pub fn new_with_plugin(
         builder: tauri::Builder<R>,
         context: tauri::Context<A>,
-    ) -> Self
-    where
-        tauri::Builder<R>: Send,
-    {
-        Self::new_from_builder_fn(move || {
-            builder
-                .build(context)
-                .expect("failed to build Tauri application")
-        })
+    ) -> (Self, TauriPlugin<R, A>) {
+        (Self { builder, context }, Self::plugin())
     }
 
-    /// Create a new Tauri Plugin instance from a builder function.
-    pub fn new_from_builder_fn(
-        builder_fn: impl FnOnce() -> tauri::App<R> + Send + 'static,
-    ) -> Self {
+    fn plugin() -> TauriPlugin<R, A> {
+        TauriPlugin::default()
+    }
+}
+
+/// Provides game-engine integration into Tauri's event loop.
+pub struct TauriPlugin<R: tauri::Runtime, A: tauri::Assets> {
+    phantom: PhantomData<fn() -> (R, A)>,
+}
+
+impl<R: tauri::Runtime, A: tauri::Assets> Default for TauriPlugin<R, A> {
+    fn default() -> Self {
         Self {
-            builder_fn: Arc::new(Mutex::new(Some(Box::new(builder_fn)))),
+            phantom: PhantomData::default(),
         }
     }
+}
 
-    fn runner_with(tauri_app: tauri::App<R>, app: App) {
+impl<R: tauri::Runtime, A: tauri::Assets> TauriPlugin<R, A> {
+    fn runner(app: App) {
+        let mut app = app;
+
+        let settings = app
+            .world
+            .remove_non_send::<TauriPluginSettings<R, A>>()
+            .expect("the Tauri plugin was not configured");
+
+        let tauri_app = settings
+            .builder
+            .build(settings.context)
+            .expect("failed to build Tauri application");
+
         // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
         // get rid of this and move the value directly instead.
         let app = std::rc::Rc::new(std::cell::RefCell::new(app));
@@ -137,17 +153,8 @@ impl<R: tauri::Runtime> TauriPlugin<R> {
     }
 }
 
-impl<R: tauri::Runtime> Plugin for TauriPlugin<R> {
+impl<R: tauri::Runtime, A: tauri::Assets> Plugin for TauriPlugin<R, A> {
     fn build(&self, app: &mut App) {
-        let mut builder_fn = self
-            .builder_fn
-            .lock()
-            .expect("failed to lock the builder function when building the Tauri plugin");
-
-        let builder_fn = std::mem::replace(&mut *builder_fn, None)
-            .expect("the builder function was called more than once");
-
-        let tauri_app = builder_fn();
-        app.set_runner(move |app| Self::runner_with(tauri_app, app));
+        app.set_runner(Self::runner);
     }
 }
