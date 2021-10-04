@@ -146,8 +146,8 @@ pub use handle::*;
 mod resource;
 pub use resource::*;
 
-mod types;
-pub use types::*;
+mod asset;
+pub use asset::*;
 pub mod manifest;
 
 pub use legion_data_runtime_macros::resource;
