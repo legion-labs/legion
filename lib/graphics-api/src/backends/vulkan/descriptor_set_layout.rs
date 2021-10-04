@@ -10,7 +10,7 @@ use super::{VulkanApi, VulkanDeviceContext};
 pub struct VulkanDescriptor {
     pub(crate) name: String,
     pub(crate) binding: u32,
-    pub(crate) resource_type: ResourceType,
+    pub(crate) shader_resource_type: ResourceType,
     pub(crate) vk_type: vk::DescriptorType,
     pub(crate) element_count: u32,
     pub(crate) update_data_offset_in_set: u32,
@@ -95,7 +95,7 @@ impl VulkanDescriptorSetLayout {
             let descriptor = VulkanDescriptor {
                 name: descriptor_def.name.clone(),
                 binding: descriptor_def.binding,
-                resource_type: descriptor_def.resource_type,
+                shader_resource_type: descriptor_def.resource_type,
                 vk_type: vk_descriptor_type,
                 element_count: descriptor_def.array_size,
                 update_data_offset_in_set: update_data_count_per_set,

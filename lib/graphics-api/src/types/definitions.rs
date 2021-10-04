@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::{GfxApi, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::{GfxApi, MAX_DESCRIPTOR_SET_LAYOUTS, ResourceType};
 use legion_utils::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 

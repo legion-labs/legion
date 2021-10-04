@@ -4,6 +4,14 @@ use fnv::FnvHashMap;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
+// #[derive(Debug, PartialEq)]
+// pub enum ShaderResourceType {
+//     Sampler,
+//     ConstBuffer,
+//     StructuredBuffer,
+//     RawByteBuffer
+// }
+
 /// Indicates where a resource is bound
 #[derive(PartialEq, Eq, Hash, Default)]
 pub struct ShaderResourceBindingKey {
@@ -140,9 +148,6 @@ pub struct ShaderStageReflection {
     pub resources: Vec<ShaderResource>,
     pub compute_threads_per_group: Option<[u32; 3]>,
     pub entry_point_name: String,
-    // Right now we will infer mappings based on spirv_cross default behavior, but likely will want
-    // to allow providing them explicitly. This isn't implemented yet
-    //pub binding_arg_buffer_mappings: FnvHashMap<(u32, u32), u32>
 }
 
 /// Reflection data for a pipeline, created by merging shader stage reflection data

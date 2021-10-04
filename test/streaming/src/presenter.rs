@@ -19,6 +19,7 @@ fn run() -> GfxResult<()> {
 #[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
     use presenter::window::*;
+    use pso_compiler::{CompileParams, HLSLCompiler};
     const WINDOW_WIDTH: u32 = 900;
     const WINDOW_HEIGHT: u32 = 600;
 
@@ -156,6 +157,46 @@ fn run() -> GfxResult<()> {
         // The resulting shader modules represent a loaded shader GPU object that is used to create
         // shaders. Shader modules can be discarded once the graphics pipeline is built.
         //
+        /*
+        let compiler = HLSLCompiler::new().map_err(|e| e.to_string())?;
+
+        let legion_folder = std::env::current_dir()?;
+        let test_data_folder = legion_folder.join("test/test_data/shaders/");
+        let test_hlsl_file = test_data_folder.join("test.hlsl");
+
+        let compile_params = CompileParams{
+            path: &test_hlsl_file,
+            entry_point: "main_cs",
+            target_profile: "cs_6_1",
+            defines: Vec::new()
+        };
+
+        let cs_out = compiler.compile(&compile_params).map_err(|e| e.to_string())?;
+
+        let compile_params = CompileParams{
+            path: &test_hlsl_file,
+            entry_point: "main_vs",
+            target_profile: "vs_6_1",
+            defines: Vec::new()
+        };
+
+        let vs_out = compiler.compile(&compile_params).map_err(|e| e.to_string())?;
+
+        let compile_params = CompileParams{
+            path: &test_hlsl_file,
+            entry_point: "main_ps",
+            target_profile: "ps_6_1",
+            defines: Vec::new()
+        };
+
+        let ps_out = compiler.compile(&compile_params).map_err(|e| e.to_string())?;
+
+        let vert_shader_package =
+            ShaderPackage::SpirV(vs_out.bytecode);
+
+        let frag_shader_package =
+            ShaderPackage::SpirV(ps_out.bytecode);
+            */
 
         let vert_shader_package =
             ShaderPackage::SpirV(include_bytes!("shaders/shader.vert.spv").to_vec());
@@ -165,6 +206,7 @@ fn run() -> GfxResult<()> {
 
         let vert_shader_module =
             device_context.create_shader_module(vert_shader_package.module_def())?;
+
         let frag_shader_module =
             device_context.create_shader_module(frag_shader_package.module_def())?;
 

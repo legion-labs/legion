@@ -25,6 +25,7 @@ doc = false
 graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
 codec-api = { path = "../../lib/codec-api", package = "legion-codec-api" }
 mp4 = { path = "../../lib/mp4", package = "legion-mp4" }
+pso-compiler = { path = "../../lib/pso-compiler", package = "legion-pso-compiler" }
 log = "0.4"
 simple_logger = "1.13"
 

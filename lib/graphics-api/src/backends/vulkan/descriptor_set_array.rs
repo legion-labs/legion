@@ -1,8 +1,5 @@
 use super::{VulkanApi, VulkanDescriptorHeap, VulkanDescriptorSetLayout, VulkanDeviceContext};
-use crate::{
-    DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle,
-    DescriptorUpdate, GfxResult, ResourceType, TextureBindType,
-};
+use crate::{DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle, DescriptorUpdate, GfxResult, ResourceType, TextureBindType};
 use ash::vk;
 
 struct DescriptorUpdateData {
@@ -147,13 +144,13 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
             set_index,
             descriptor.binding,
             descriptor.name,
-            descriptor.resource_type,
+            descriptor.shader_resource_type,
             update.array_index,
             descriptor_first_update_data,
             vk_set
         );
 
-        match descriptor.resource_type {
+        match descriptor.shader_resource_type {
             ResourceType::SAMPLER => {
                 let samplers = update.elements.samplers.ok_or_else(||
                     format!(
@@ -162,7 +159,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         set_index,
                         descriptor.binding,
                         descriptor.name,
-                        descriptor.resource_type,
+                        descriptor.shader_resource_type,
                     )
                 )?;
                 let begin_index =
@@ -193,7 +190,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         set_index,
                         descriptor.binding,
                         descriptor.name,
-                        descriptor.resource_type,
+                        descriptor.shader_resource_type,
                     )
                 )?;
                 let begin_index =
@@ -216,7 +213,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                                 set_index,
                                 descriptor.binding,
                                 descriptor.name,
-                                descriptor.resource_type,
+                                descriptor.shader_resource_type,
                             )
                         })?;
                     } else if texture_bind_type == TextureBindType::Srv {
@@ -227,7 +224,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                                 set_index,
                                 descriptor.binding,
                                 descriptor.name,
-                                descriptor.resource_type,
+                                descriptor.shader_resource_type,
                             )
                         })?;
                     } else {
@@ -237,7 +234,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                             set_index,
                             descriptor.binding,
                             descriptor.name,
-                            descriptor.resource_type,
+                            descriptor.shader_resource_type,
                             update.texture_bind_type
                         ).into());
                     }
@@ -260,7 +257,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         set_index,
                         descriptor.binding,
                         descriptor.name,
-                        descriptor.resource_type,
+                        descriptor.shader_resource_type,
                     )
                 )?;
                 let begin_index =
@@ -286,7 +283,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                             set_index,
                             descriptor.binding,
                             descriptor.name,
-                            descriptor.resource_type,
+                            descriptor.shader_resource_type,
                             slice,
                             image_views.len()
                         ))?;
@@ -305,7 +302,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                             set_index,
                             descriptor.binding,
                             descriptor.name,
-                            descriptor.resource_type,
+                            descriptor.shader_resource_type,
                             image_views.len(),
                             descriptor.element_count
                         ).into());
@@ -325,7 +322,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         set_index,
                         descriptor.binding,
                         descriptor.name,
-                        descriptor.resource_type,
+                        descriptor.shader_resource_type,
                         update.texture_bind_type
                     ).into());
                 }
@@ -352,7 +349,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         set_index,
                         descriptor.binding,
                         descriptor.name,
-                        descriptor.resource_type,
+                        descriptor.shader_resource_type,
                     )
                 )?;
                 let begin_index =
@@ -395,7 +392,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         set_index,
                         descriptor.binding,
                         descriptor.name,
-                        descriptor.resource_type,
+                        descriptor.shader_resource_type,
                     )
                 )?;
                 let begin_index =
@@ -408,7 +405,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                     let buffer_view = &mut self.update_data.buffer_views[next_index];
                     next_index += 1;
 
-                    if descriptor.resource_type == ResourceType::TEXEL_BUFFER {
+                    if descriptor.shader_resource_type == ResourceType::TEXEL_BUFFER {
                         *buffer_view = buffer.vk_uniform_texel_view().ok_or_else(|| {
                             format!(
                                 "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but there was no uniform texel view",
@@ -416,7 +413,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                                 set_index,
                                 descriptor.binding,
                                 descriptor.name,
-                                descriptor.resource_type,
+                                descriptor.shader_resource_type,
                             )
                         })?;
                     } else {
@@ -427,7 +424,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                                 set_index,
                                 descriptor.binding,
                                 descriptor.name,
-                                descriptor.resource_type,
+                                descriptor.shader_resource_type,
                             )
                         })?;
                     };

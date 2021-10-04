@@ -3203,8 +3203,11 @@ dependencies = [
 name = "legion-pso-compiler"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "hassle-rs",
- "rspirv-reflect",
+ "legion-graphics-api",
+ "spirv-reflect",
+ "spirv-tools",
 ]
 
 [[package]]
@@ -5057,28 +5060,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rspirv"
-version = "0.10.0+1.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce0e0a01cf9883c6f2846168515b5be6c4995bb90d4eeb7595bb0088a1001759"
-dependencies = [
- "derive_more",
- "fxhash",
- "num-traits",
- "spirv",
-]
-
-[[package]]
-name = "rspirv-reflect"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8c009d56c79348f5143ed254b598c6b65c536f56e871dd8cf4fc19a53e8233c"
-dependencies = [
- "rspirv",
- "thiserror",
-]
-
-[[package]]
 name = "rtcp"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5681,10 +5662,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
-name = "spirv"
-version = "0.2.0+1.5.4"
+name = "spirv-reflect"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "246bfa38fe3db3f1dfc8ca5a2cdeb7348c78be2112740cc0ec8ef18b6d94f830"
+checksum = "cecc7af6a7d3ca6d15f4d6b5077df89c77ad1f4b314d0cabee221656d041dad7"
+dependencies = [
+ "bitflags 1.3.2",
+ "cc",
+ "num-traits",
+ "serde",
+ "serde_derive",
+ "spirv_headers",
+]
+
+[[package]]
+name = "spirv-tools"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47ffcd721c949125c13b1213a292477a2d82621512b094564bd918c3a1c7f7ff"
+dependencies = [
+ "spirv-tools-sys",
+]
+
+[[package]]
+name = "spirv-tools-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b967db819666ccf7a0373876321bfe852922edcc7f3e30e3a7668b02e1961119"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "spirv_headers"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f5b132530b1ac069df335577e3581765995cba5a13995cdbbdbc8fb057c532c"
 dependencies = [
  "bitflags",
  "num-traits",
@@ -5820,6 +5833,7 @@ dependencies = [
  "legion-graphics-api",
  "legion-mp4",
  "legion-presenter",
+ "legion-pso-compiler",
  "log",
  "simple_logger",
 ]
