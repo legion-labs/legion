@@ -1,6 +1,8 @@
 use std::{any::Any, collections::HashMap, io, sync::Arc, time::Duration};
 
-use crate::{manifest::Manifest, AssetLoader, ResourceId, ResourceType};
+use crate::{
+    manifest::Manifest, AssetLoader, HandleId, HandleUntyped, RefOp, ResourceId, ResourceType,
+};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use legion_content_store::ContentStore;
@@ -58,6 +60,12 @@ pub(crate) fn create_loader(
 }
 
 pub(crate) struct AssetLoaderStub {
+    id_generator: HandleId,
+    refcount_channel: (
+        crossbeam_channel::Sender<RefOp>,
+        crossbeam_channel::Receiver<RefOp>,
+    ),
+    ref_counts: HashMap<HandleId, (ResourceId, isize)>,
     request_tx: crossbeam_channel::Sender<LoaderRequest>,
     result_rx: crossbeam_channel::Receiver<LoaderResult>,
 }
@@ -70,20 +78,60 @@ impl AssetLoaderStub {
         result_rx: crossbeam_channel::Receiver<LoaderResult>,
     ) -> Self {
         Self {
+            id_generator: 0,
+            refcount_channel: crossbeam_channel::unbounded(),
+            ref_counts: HashMap::new(),
             request_tx,
             result_rx,
         }
+    }
+
+    fn create_handle(&mut self, id: ResourceId) -> HandleUntyped {
+        self.id_generator += 1;
+        let new_id = self.id_generator;
+        // insert data
+        self.ref_counts.insert(new_id, (id, 1));
+        HandleUntyped::create(new_id, self.refcount_channel.0.clone())
+    }
+
+    pub(crate) fn process_refcount_ops(&mut self) -> Option<ResourceId> {
+        while let Ok(op) = self.refcount_channel.1.try_recv() {
+            match op {
+                RefOp::AddRef(id) => {
+                    let (_, count) = self.ref_counts.get_mut(&id).unwrap();
+                    *count += 1;
+                }
+                RefOp::RemoveRef(id) => {
+                    let (resource_id, count) = self.ref_counts.get_mut(&id).unwrap();
+                    *count -= 1;
+                    let resource_id = *resource_id;
+                    if *count == 0 {
+                        self.ref_counts.remove(&id);
+                        return Some(resource_id);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Retrieves the asset id associated with a handle.
+    pub(crate) fn get_asset_id(&self, handle_id: HandleId) -> Option<ResourceId> {
+        self.ref_counts
+            .get(&handle_id)
+            .map(|(asset_id, _)| *asset_id)
     }
 
     pub(crate) fn terminate(&self) {
         self.request_tx.send(LoaderRequest::Terminate).unwrap();
     }
 
-    pub(crate) fn load(&self, asset_id: ResourceId, load_id: LoadId) {
-        // todo: pass HandleId
+    pub(crate) fn load(&mut self, asset_id: ResourceId) -> HandleUntyped {
+        let handle = self.create_handle(asset_id);
         self.request_tx
-            .send(LoaderRequest::Load(asset_id, Some(load_id)))
+            .send(LoaderRequest::Load(asset_id, Some(handle.id)))
             .unwrap();
+        handle
     }
 
     pub(crate) fn try_result(&mut self) -> Option<LoaderResult> {
@@ -435,17 +483,108 @@ impl AssetLoaderIO {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{thread, time::Duration};
 
     use legion_content_store::{ContentStore, RamContentStore};
 
     use crate::{
         asset_loader::{LoaderRequest, LoaderResult},
         manifest::Manifest,
-        test_asset, Resource, ResourceId,
+        test_asset, Handle, Resource, ResourceId,
     };
 
-    use super::AssetLoaderIO;
+    use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
+
+    fn setup_test() -> (ResourceId, AssetLoaderStub, AssetLoaderIO) {
+        let mut content_store = Box::new(RamContentStore::default());
+        let mut manifest = Manifest::default();
+
+        let binary_assetfile = [
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,
+            0, 0, 0, 99, 104, 105, 108, 100,
+        ];
+
+        let asset_id = {
+            let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
+            let checksum = content_store.store(&binary_assetfile).unwrap();
+            manifest.insert(id, checksum.into(), binary_assetfile.len());
+            id
+        };
+
+        let (loader, mut io) = create_loader(content_store, manifest);
+        io.register_loader(
+            test_asset::TestAsset::TYPE,
+            Box::new(test_asset::TestAssetLoader {}),
+        );
+
+        (asset_id, loader, io)
+    }
+
+    #[test]
+    fn ref_count() {
+        let (asset_id, mut loader, _io) = setup_test();
+
+        let internal_id;
+        {
+            let a = loader.load(asset_id);
+            internal_id = a.id;
+            assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 1);
+
+            {
+                let b = a.clone();
+                while loader.process_refcount_ops().is_some() {}
+
+                assert_eq!(loader.ref_counts.get(&b.id).unwrap().1, 2);
+                assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 2);
+                assert_eq!(a, b);
+            }
+            while loader.process_refcount_ops().is_some() {}
+            assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 1);
+        }
+        while loader.process_refcount_ops().is_some() {}
+        assert!(!loader.ref_counts.contains_key(&internal_id));
+    }
+
+    #[test]
+    fn typed_ref() {
+        let (asset_id, mut loader, _io) = setup_test();
+
+        let internal_id;
+        {
+            let untyped = loader.load(asset_id);
+            assert_eq!(loader.ref_counts.get(&untyped.id).unwrap().1, 1);
+
+            internal_id = untyped.id;
+
+            let typed: Handle<test_asset::TestAsset> = untyped.into();
+            while loader.process_refcount_ops().is_some() {}
+            assert_eq!(loader.ref_counts.get(&typed.id).unwrap().1, 1);
+
+            let mut test_timeout = Duration::from_millis(500);
+            while test_timeout > Duration::ZERO && loader.ref_counts.get(&typed.id).is_none() {
+                let sleep_time = Duration::from_millis(10);
+                thread::sleep(sleep_time);
+                test_timeout -= sleep_time;
+                while loader.process_refcount_ops().is_some() {}
+            }
+            assert!(loader.ref_counts.get(&typed.id).is_some());
+        }
+
+        while loader.process_refcount_ops().is_some() {} // to drop the refcount to zero.
+
+        assert!(!loader.ref_counts.contains_key(&internal_id));
+
+        let typed: Handle<test_asset::TestAsset> = loader.load(asset_id).into();
+
+        let mut test_timeout = Duration::from_millis(500);
+        while test_timeout > Duration::ZERO && loader.ref_counts.get(&typed.id).is_none() {
+            let sleep_time = Duration::from_millis(10);
+            thread::sleep(sleep_time);
+            test_timeout -= sleep_time;
+            while loader.process_refcount_ops().is_some() {}
+        }
+        assert!(loader.ref_counts.get(&typed.id).is_some());
+    }
 
     #[test]
     fn load_no_dependencies() {

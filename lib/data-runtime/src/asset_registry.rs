@@ -12,7 +12,7 @@ use legion_content_store::ContentStore;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    Asset, AssetLoader, Handle, HandleId, HandleUntyped, RefOp, Resource, ResourceId, ResourceType,
+    Asset, AssetLoader, Handle, HandleId, HandleUntyped, Resource, ResourceId, ResourceType,
 };
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
@@ -49,9 +49,6 @@ impl AssetRegistryOptions {
         });
 
         AssetRegistry {
-            id_generator: 0,
-            refcount_channel: crossbeam_channel::unbounded(),
-            ref_counts: HashMap::new(),
             assets: HashMap::new(),
             load_errors: HashMap::new(),
             load_thread: Some(load_thread),
@@ -67,12 +64,6 @@ impl AssetRegistryOptions {
 ///
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
-    id_generator: HandleId,
-    refcount_channel: (
-        crossbeam_channel::Sender<RefOp>,
-        crossbeam_channel::Receiver<RefOp>,
-    ),
-    ref_counts: HashMap<HandleId, (ResourceId, isize)>,
     assets: HashMap<ResourceId, Arc<dyn Any + Send + Sync>>,
     load_errors: HashMap<ResourceId, io::ErrorKind>,
     load_thread: Option<JoinHandle<()>>,
@@ -92,9 +83,7 @@ impl AssetRegistry {
     /// The asset will be unloaded after all instances of [`HandleUntyped`] and
     /// [`Handle`] that refer to that asset go out of scope.
     pub fn load_untyped(&mut self, id: ResourceId) -> HandleUntyped {
-        let handle = self.create_handle(id);
-        self.loader.load(id, handle.id);
-        handle
+        self.loader.load(id)
     }
 
     /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T` for convenience.
@@ -105,9 +94,7 @@ impl AssetRegistry {
 
     /// Retrieves the asset id associated with a handle.
     pub(crate) fn get_asset_id(&self, handle_id: HandleId) -> Option<ResourceId> {
-        self.ref_counts
-            .get(&handle_id)
-            .map(|(asset_id, _)| *asset_id)
+        self.loader.get_asset_id(handle_id)
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
@@ -130,7 +117,11 @@ impl AssetRegistry {
 
     /// Unloads assets based on their reference counts.
     pub fn update(&mut self) {
-        self.process_refcount_ops();
+        while let Some(removed_id) = self.loader.process_refcount_ops() {
+            self.load_errors.remove(&removed_id);
+            self.assets.remove(&removed_id);
+            self.loader.unload(removed_id);
+        }
 
         while let Some(result) = self.loader.try_result() {
             // todo: add success/failure callbacks using the provided LoadId.
@@ -145,42 +136,6 @@ impl AssetRegistry {
                     self.load_errors.insert(asset_id, error_kind);
                 }
             }
-        }
-    }
-
-    fn process_refcount_ops(&mut self) {
-        while let Ok(op) = self.refcount_channel.1.try_recv() {
-            match op {
-                RefOp::AddRef(id) => {
-                    let (_, count) = self.ref_counts.get_mut(&id).unwrap();
-                    *count += 1;
-                }
-                RefOp::RemoveRef(id) => {
-                    let (_, count) = self.ref_counts.get_mut(&id).unwrap();
-                    *count -= 1;
-                    if *count == 0 {
-                        self.remove_handle(id);
-                    }
-                }
-            }
-        }
-    }
-
-    fn create_handle(&mut self, id: ResourceId) -> HandleUntyped {
-        self.id_generator += 1;
-        let new_id = self.id_generator;
-        // insert data
-        self.ref_counts.insert(new_id, (id, 1));
-        HandleUntyped::create(new_id, self.refcount_channel.0.clone())
-    }
-
-    fn remove_handle(&mut self, handle_id: HandleId) {
-        // remove data
-        if let Some((removed_id, rc)) = self.ref_counts.remove(&handle_id) {
-            self.load_errors.remove(&removed_id);
-            self.assets.remove(&removed_id);
-            self.loader.unload(removed_id);
-            assert_eq!(rc, 0);
         }
     }
 
@@ -200,8 +155,7 @@ mod tests {
     use legion_content_store::{ContentStore, RamContentStore};
 
     use crate::{
-        manifest::Manifest, test_asset, AssetRegistry, AssetRegistryOptions, Handle, Resource,
-        ResourceId,
+        manifest::Manifest, test_asset, AssetRegistry, AssetRegistryOptions, Resource, ResourceId,
     };
 
     fn setup_test() -> (ResourceId, AssetRegistry) {
@@ -228,68 +182,61 @@ mod tests {
     }
 
     #[test]
-    fn ref_count() {
+    fn load_asset() {
         let (asset_id, mut reg) = setup_test();
 
         let internal_id;
         {
             let a = reg.load_untyped(asset_id);
             internal_id = a.id;
-            assert_eq!(reg.ref_counts.get(&a.id).unwrap().1, 1);
-
-            {
-                let b = a.clone();
-                reg.process_refcount_ops();
-
-                assert_eq!(reg.ref_counts.get(&b.id).unwrap().1, 2);
-                assert_eq!(reg.ref_counts.get(&a.id).unwrap().1, 2);
-                assert_eq!(a, b);
-            }
-            reg.process_refcount_ops();
-            assert_eq!(reg.ref_counts.get(&a.id).unwrap().1, 1);
-        }
-        reg.process_refcount_ops();
-        assert!(!reg.ref_counts.contains_key(&internal_id));
-    }
-
-    #[test]
-    fn typed_ref() {
-        let (asset_id, mut reg) = setup_test();
-
-        let internal_id;
-        {
-            let untyped = reg.load_untyped(asset_id);
-            assert_eq!(reg.ref_counts.get(&untyped.id).unwrap().1, 1);
-
-            internal_id = untyped.id;
-
-            let typed: Handle<test_asset::TestAsset> = untyped.into();
-            reg.update();
-            assert_eq!(reg.ref_counts.get(&typed.id).unwrap().1, 1);
 
             let mut test_timeout = Duration::from_millis(500);
-            while test_timeout > Duration::ZERO && typed.get(&reg).is_none() {
+            while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
                 let sleep_time = Duration::from_millis(10);
                 thread::sleep(sleep_time);
                 test_timeout -= sleep_time;
                 reg.update();
             }
-            assert!(typed.get(&reg).is_some());
+
+            assert!(a.is_loaded(&reg));
+            assert!(!a.is_err(&reg));
+            assert!(reg.is_loaded(internal_id));
+            {
+                let b = a.clone();
+                reg.update();
+                assert_eq!(a, b);
+
+                assert!(b.is_loaded(&reg));
+                assert!(!b.is_err(&reg));
+                assert!(reg.is_loaded(internal_id));
+            }
         }
+        reg.update();
+        assert!(!reg.is_loaded(internal_id));
+    }
 
-        reg.update(); // to drop the refcount to zero.
+    #[test]
+    fn load_error() {
+        let (_, mut reg) = setup_test();
 
-        assert!(!reg.ref_counts.contains_key(&internal_id));
+        let internal_id;
+        {
+            let a = reg.load_untyped(ResourceId::new(test_asset::TestAsset::TYPE, 7));
+            internal_id = a.id;
 
-        let typed = reg.load::<test_asset::TestAsset>(asset_id);
+            let mut test_timeout = Duration::from_millis(500);
+            while test_timeout > Duration::ZERO && !a.is_err(&reg) {
+                let sleep_time = Duration::from_millis(10);
+                thread::sleep(sleep_time);
+                test_timeout -= sleep_time;
+                reg.update();
+            }
 
-        let mut test_timeout = Duration::from_millis(500);
-        while test_timeout > Duration::ZERO && typed.get(&reg).is_none() {
-            let sleep_time = Duration::from_millis(10);
-            thread::sleep(sleep_time);
-            test_timeout -= sleep_time;
-            reg.update();
+            assert!(!a.is_loaded(&reg));
+            assert!(a.is_err(&reg));
+            assert!(!reg.is_loaded(internal_id));
         }
-        assert!(typed.get(&reg).is_some());
+        reg.update();
+        assert!(!reg.is_loaded(internal_id));
     }
 }
