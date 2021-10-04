@@ -91,4 +91,4 @@ dockerize-push:
 clean:
 	cargo clean
 
-.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release doc dockerize dockerize-deploy clean
+.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release cov grcov doc dockerize dockerize-deploy clean
