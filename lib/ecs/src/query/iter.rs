@@ -228,7 +228,7 @@ where
     /// This does not check for mutable query correctness. To be safe, make sure mutable queries
     /// have unique access to the components they query.
     /// This does not validate that `world.id()` matches `query_state.world_id`. Calling this on a `world`
-    /// with a mismatched WorldId is unsound.
+    /// with a mismatched `WorldId` is unsound.
     pub(crate) unsafe fn new(
         world: &'w World,
         query_state: &'s QueryState<Q, F>,
@@ -259,6 +259,7 @@ where
         }
 
         // TODO: use MaybeUninit::array_assume_init if it stabilizes
+        #[allow(clippy::ptr_as_ptr)]
         let cursors: [QueryIterationCursor<'s, Q, F>; K] =
             (&cursors as *const _ as *const [QueryIterationCursor<'s, Q, F>; K]).read();
 
@@ -317,6 +318,7 @@ where
         }
 
         // TODO: use MaybeUninit::array_assume_init if it stabilizes
+        #[allow(clippy::ptr_as_ptr)]
         let values: [<Q::Fetch as Fetch<'a, 's>>::Item; K] =
             (&values as *const _ as *const [<Q::Fetch as Fetch<'a, 's>>::Item; K]).read();
 

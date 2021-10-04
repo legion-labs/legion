@@ -36,13 +36,15 @@ impl PluginGroupBuilder {
             .iter()
             .enumerate()
             .find(|(_i, ty)| **ty == TypeId::of::<Target>())
-            .map(|(i, _)| i)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Plugin does not exist: {}.",
-                    std::any::type_name::<Target>()
-                )
-            });
+            .map_or_else(
+                || {
+                    panic!(
+                        "Plugin does not exist: {}.",
+                        std::any::type_name::<Target>()
+                    )
+                },
+                |(i, _)| i,
+            );
         self.order.insert(target_index, TypeId::of::<T>());
         self.plugins.insert(
             TypeId::of::<T>(),
@@ -60,13 +62,15 @@ impl PluginGroupBuilder {
             .iter()
             .enumerate()
             .find(|(_i, ty)| **ty == TypeId::of::<Target>())
-            .map(|(i, _)| i)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Plugin does not exist: {}.",
-                    std::any::type_name::<Target>()
-                )
-            });
+            .map_or_else(
+                || {
+                    panic!(
+                        "Plugin does not exist: {}.",
+                        std::any::type_name::<Target>()
+                    )
+                },
+                |(i, _)| i,
+            );
         self.order.insert(target_index + 1, TypeId::of::<T>());
         self.plugins.insert(
             TypeId::of::<T>(),

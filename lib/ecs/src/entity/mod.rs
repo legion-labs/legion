@@ -250,6 +250,7 @@ impl Entities {
     }
 
     /// Check that we do not have pending work requiring `flush()` to be called.
+    #[allow(clippy::debug_assert_with_mut_call)]
     fn verify_flushed(&mut self) {
         debug_assert!(
             !self.needs_flush(),
@@ -432,8 +433,8 @@ impl Entities {
     /// `reserve_entities`, then initializes each one using the supplied function.
     ///
     /// # Safety
-    /// Flush _must_ set the entity location to the correct ArchetypeId for the given Entity
-    /// each time init is called. This _can_ be ArchetypeId::INVALID, provided the Entity has
+    /// Flush _must_ set the entity location to the correct `ArchetypeId` for the given Entity
+    /// each time init is called. This _can_ be `ArchetypeId::INVALID`, provided the Entity has
     /// not been assigned to an Archetype.
     pub unsafe fn flush(&mut self, mut init: impl FnMut(Entity, &mut EntityLocation)) {
         let free_cursor = self.free_cursor.get_mut();
@@ -479,7 +480,7 @@ impl Entities {
         unsafe {
             self.flush(|_entity, location| {
                 location.archetype_id = ArchetypeId::INVALID;
-            })
+            });
         }
     }
 
@@ -551,7 +552,7 @@ mod tests {
         unsafe {
             entities.flush(|_entity, _location| {
                 // do nothing ... leaving entity location invalid
-            })
+            });
         };
 
         assert!(entities.contains(e));

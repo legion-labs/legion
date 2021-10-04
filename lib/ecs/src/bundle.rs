@@ -71,10 +71,10 @@ use std::{any::TypeId, collections::HashMap};
 ///
 /// # Safety
 ///
-/// - [Bundle::component_ids] must return the ComponentId for each component type in the bundle, in the
-///   _exact_ order that [Bundle::get_components] is called.
-/// - [Bundle::from_components] must call `func` exactly once for each [ComponentId] returned by
-///   [Bundle::component_ids].
+/// - [`Bundle::component_ids`] must return the `ComponentId` for each component type in the bundle, in the
+///   _exact_ order that [`Bundle::get_components`] is called.
+/// - [`Bundle::from_components`] must call `func` exactly once for each [`ComponentId`] returned by
+///   [`Bundle::component_ids`].
 pub unsafe trait Bundle: Send + Sync + 'static {
     /// Gets this [Bundle]'s component ids, in the order of this bundle's Components
     fn component_ids(components: &mut Components, storages: &mut Storages) -> Vec<ComponentId>;
@@ -90,14 +90,14 @@ pub unsafe trait Bundle: Send + Sync + 'static {
         Self: Sized;
 
     /// Calls `func` on each value, in the order of this bundle's Components. This will
-    /// "mem::forget" the bundle fields, so callers are responsible for dropping the fields if
+    /// "`mem::forget`" the bundle fields, so callers are responsible for dropping the fields if
     /// that is desirable.
     fn get_components(self, func: impl FnMut(*mut u8));
 }
 
 macro_rules! tuple_impl {
     ($($name: ident),*) => {
-        /// SAFE: Component is returned in tuple-order. [Bundle::from_components] and [Bundle::get_components] use tuple-order
+        /// SAFE: Component is returned in tuple-order. [`Bundle::from_components`] and [`Bundle::get_components`] use tuple-order
         unsafe impl<$($name: Component),*> Bundle for ($($name,)*) {
             #[allow(unused_variables)]
             fn component_ids(components: &mut Components, storages: &mut Storages) -> Vec<ComponentId> {
@@ -258,7 +258,7 @@ impl BundleInfo {
     }
 
     /// # Safety
-    /// `table` must be the "new" table for `entity`. `table_row` must have space allocated for the `entity`, `bundle` must match this BundleInfo's type
+    /// `table` must be the "new" table for `entity`. `table_row` must have space allocated for the `entity`, `bundle` must match this `BundleInfo`'s type
     #[inline]
     #[allow(clippy::too_many_arguments)]
     unsafe fn write_components<T: Bundle>(
@@ -276,8 +276,8 @@ impl BundleInfo {
         let mut bundle_component = 0;
         bundle.get_components(|component_ptr| {
             let component_id = *self.component_ids.get_unchecked(bundle_component);
-            match self.storage_types[bundle_component] {
-                StorageType::Table => {
+            match self.storage_types.get(bundle_component) {
+                Some(StorageType::Table) => {
                     let column = table.get_column_mut(component_id).unwrap();
                     match add_bundle.bundle_status.get_unchecked(bundle_component) {
                         ComponentStatus::Added => {
@@ -292,17 +292,18 @@ impl BundleInfo {
                         }
                     }
                 }
-                StorageType::SparseSet => {
+                Some(StorageType::SparseSet) => {
                     let sparse_set = sparse_sets.get_mut(component_id).unwrap();
                     sparse_set.insert(entity, component_ptr, change_tick);
                 }
+                None => {}
             }
             bundle_component += 1;
         });
     }
 
     /// Adds a bundle to the given archetype and returns the resulting archetype. This could be the same
-    /// [ArchetypeId], in the event that adding the given bundle does not result in an Archetype change.
+    /// [`ArchetypeId`], in the event that adding the given bundle does not result in an Archetype change.
     /// Results are cached in the Archetype Graph to avoid redundant work.
     pub(crate) fn add_bundle_to_archetype(
         &self,
@@ -410,7 +411,7 @@ pub(crate) enum InsertBundleResult<'a> {
 impl<'a, 'b> BundleInserter<'a, 'b> {
     /// # Safety
     /// `entity` must currently exist in the source archetype for this inserter. `archetype_index` must be `entity`'s location in the archetype.
-    /// `T` must match this BundleInfo's type
+    /// `T` must match this `BundleInfo`'s type
     #[inline]
     pub unsafe fn insert<T: Bundle>(
         &mut self,
