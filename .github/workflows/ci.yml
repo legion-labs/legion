@@ -39,7 +39,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: windows-2019
+          - os: [self-hosted, winrust]
             container: ghcr.io/legion-labs/build-env-win-rust:0.1.0
             workdir: C:\github\workspace
           - os: [self-hosted, ubuntu]
@@ -79,11 +79,10 @@ jobs:
   bench:
     name: Running benchmarks
     needs: lint
-    if: ${{ false }} # Disable benchmarks for now
     strategy:
       matrix:
         include:
-          - os: windows-2019
+          - os: [self-hosted, winrust]
             container: ghcr.io/legion-labs/build-env-win-rust:0.1.0
             workdir: C:\github\workspace
           - os: [self-hosted, ubuntu]
@@ -236,27 +235,3 @@ jobs:
 
       - name: Docker push
         run: make dockerize-push
-
-  bench_test:
-    name: Running benchmarks
-    runs-on: [winrust, self-hosted]
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build benchmarks
-        run: >-
-          docker run
-          --name cargo_build
-          --rm
-          --workdir C:\github\workspace
-          -v ${{ github.workspace }}:C:\github\workspace
-          ghcr.io/legion-labs/build-env-win-rust:0.1.0
-          make bench-build
