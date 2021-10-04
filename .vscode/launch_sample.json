@@ -1,0 +1,47 @@
+{
+    "version": "0.2.0",
+    "compounds": [
+        {
+            "name": "Editor",
+            "configurations": [
+                "Editor server launch",
+                "Editor client launch"
+            ],
+            "stopAll": true
+        }
+    ],
+    "configurations": [
+        {
+            "name": "Editor server launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/editor-srv.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "sourceFileMap": {
+                "/rustc/c8dfcfe046a7680554bf4eb612bad840e7631c4b": "/Scoop/user/persist/rustup-msvc/.rustup/toolchains/1.55.0-x86_64-pc-windows-msvc/lib/rustlib/src/rust"
+            },
+            "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
+            "preLaunchTask": "${defaultBuildTask}"
+        },
+        {
+            "name": "Editor client launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/editor-client.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "sourceFileMap": {
+                "/rustc/c8dfcfe046a7680554bf4eb612bad840e7631c4b": "/Scoop/user/persist/rustup-msvc/.rustup/toolchains/1.55.0-x86_64-pc-windows-msvc/lib/rustlib/src/rust"
+            },
+            "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
+            "preLaunchTask": "${defaultBuildTask}"
+        }
+    ]
+}
