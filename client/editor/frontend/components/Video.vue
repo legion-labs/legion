@@ -217,13 +217,13 @@ export default {
           console.log("Sending resize event.");
 
           // Uncommenting this breaks the stream most of the time... not sure why.
-          //video_channel.send(
-          //  JSON.stringify({
-          //    event: "resize",
-          //    width: videoElement.offsetWidth,
-          //    height: videoElement.offsetHeight,
-          //  })
-          //);
+          video_channel.send(
+            JSON.stringify({
+              event: "resize",
+              width: videoElement.offsetWidth,
+              height: videoElement.offsetHeight,
+            })
+          );
         }, 250)
       );
 

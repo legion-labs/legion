@@ -93,7 +93,7 @@ use clap::Arg;
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
 use legion_editor_proto::{editor_client::*, InitializeStreamRequest};
-use legion_tauri::{build_tauri_runner, legion_tauri_command};
+use legion_tauri::{legion_tauri_command, TauriPlugin};
 use std::{error::Error, time::Duration};
 
 struct Config {
@@ -129,15 +129,15 @@ impl Config {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::new_from_environment()?;
-
-    let tauri_app = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .manage(config)
-        .invoke_handler(tauri::generate_handler![initialize_stream])
-        .build(tauri::generate_context!())
-        .expect("failed to instanciate a Tauri App");
+        .invoke_handler(tauri::generate_handler![initialize_stream]);
 
     App::new()
-        .set_runner(build_tauri_runner(tauri_app))
+        .add_plugin(TauriPlugin::new_from_builder(
+            builder,
+            tauri::generate_context!(),
+        ))
         .add_plugin(AsyncPlugin {})
         .run();
 
