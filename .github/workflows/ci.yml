@@ -236,7 +236,30 @@ jobs:
       - name: Docker push
         run: make dockerize-push
 
-  bench_test:
+  bench_test_t3_2xlarge:
+    name: Running benchmarks
+    runs-on: [winrust, self-hosted]
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build benchmarks
+        run: >-
+          docker run
+          --name cargo_build
+          --rm
+          --workdir C:\github\workspace
+          -v ${{ github.workspace }}:C:\github\workspace
+          ghcr.io/legion-labs/build-env-win-rust:0.1.0
+          make bench-build
+  bench_test_c5_4xlarge:
     name: Running benchmarks
     runs-on: [windows, c5.4xlarge, self-hosted]
     continue-on-error: true
