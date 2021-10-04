@@ -1,4 +1,5 @@
 [![CI](https://github.com/legion-labs/legion/actions/workflows/ci.yml/badge.svg)](https://github.com/legion-labs/legion/actions/workflows/ci.yml)
+[![Coverage](https://legion-labs.github.io/legion/coverage/badges/flat.svg)](https://legion-labs.github.io/legion/coverage/index.html)
 
 # Legion Monorepo
 
