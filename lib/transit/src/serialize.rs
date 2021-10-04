@@ -33,6 +33,8 @@ pub trait Serialize {
         write_pod::<Self>(buffer, &self);
     }
 
+    // read_value allows to read objects from the same process they were stored in
+    // i.e. iterating in the heterogenous queue
     fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self
     where
         Self: Sized,

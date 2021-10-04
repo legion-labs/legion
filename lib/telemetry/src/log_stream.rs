@@ -11,26 +11,8 @@ pub struct LogStream {
 
 fn make_queue_metedata<Queue: transit::ReflectiveQueue>(
 ) -> telemetry_ingestion_proto::ContainerMetadata {
-    telemetry_ingestion_proto::ContainerMetadata {
-        types: Queue::reflect_contained()
-            .iter()
-            .map(|udt| telemetry_ingestion_proto::UserDefinedType {
-                name: udt.name.to_owned(),
-                size: udt.size as u32,
-                members: udt
-                    .members
-                    .iter()
-                    .map(|member| telemetry_ingestion_proto::UdtMember {
-                        name: member.name.to_owned(),
-                        type_name: member.type_name.to_owned(),
-                        offset: member.offset as u32,
-                        size: member.size as u32,
-                        is_reference: member.is_reference,
-                    })
-                    .collect(),
-            })
-            .collect(),
-    }
+    let udts = Queue::reflect_contained();
+    ContainerMetadata::from(&*udts)
 }
 
 impl Stream for LogStream {

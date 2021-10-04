@@ -8,7 +8,7 @@ pub struct StaticString(pub &'static str);
 impl Reflect for StaticString {
     fn reflect() -> UserDefinedType {
         UserDefinedType {
-            name: "StaticString",
+            name: String::from("StaticString"),
             size: 0,
             members: vec![],
         }

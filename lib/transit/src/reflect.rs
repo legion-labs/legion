@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Member {
-    pub name: &'static str,
-    pub type_name: &'static str,
+    pub name: String,
+    pub type_name: String,
     pub offset: usize,
     pub size: usize,
     pub is_reference: bool,
@@ -11,7 +11,7 @@ pub struct Member {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserDefinedType {
-    pub name: &'static str,
+    pub name: String,
     pub size: usize,
     pub members: Vec<Member>,
 }

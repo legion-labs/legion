@@ -2,8 +2,12 @@ use analytics::*;
 use anyhow::*;
 use prost::Message;
 use sqlx::Row;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 use test_utils::*;
+use transit::UserDefinedType;
 
 static DUMP_EXE_VAR: &str = env!("CARGO_BIN_EXE_telemetry-dump");
 
@@ -40,22 +44,25 @@ async fn find_process_with_log_data(connection: &mut sqlx::AnyConnection) -> Res
 }
 
 #[derive(Debug)]
-enum Value {
+pub enum Value {
     String(String),
 }
 
-fn parse_dependencies<F>(
-    udts: &telemetry::telemetry_ingestion_proto::ContainerMetadata,
-    buffer: &[u8],
-    fun: F,
-) where
-    F: Fn(usize, Value),
+pub fn parse_dependencies<F>(udts: &[UserDefinedType], buffer: &[u8], mut fun: F) -> Result<()>
+where
+    F: FnMut(usize, Value),
 {
     let mut offset = 0;
     while offset < buffer.len() {
         let type_index = buffer[offset] as usize;
+        if type_index >= udts.len() {
+            bail!(
+                "Invalid type index parsing transit dependencies: {}",
+                type_index
+            );
+        }
         offset += 1;
-        let udt = &udts.types[type_index];
+        let udt = &udts[type_index];
         let object_size = match udt.size {
             0 => {
                 //dynamic size
@@ -63,12 +70,11 @@ fn parse_dependencies<F>(
                     let size_ptr = buffer.as_ptr().add(offset);
                     let obj_size = transit::read_pod::<u32>(size_ptr);
                     offset += std::mem::size_of::<u32>();
-                    obj_size
+                    obj_size as usize
                 }
             }
             static_size => static_size,
-        } as usize;
-        dbg!(&object_size);
+        };
         match udt.name.as_str() {
             "StaticString" => unsafe {
                 let id_ptr = buffer.as_ptr().add(offset);
@@ -85,6 +91,15 @@ fn parse_dependencies<F>(
         }
         offset += object_size;
     }
+    Ok(())
+}
+
+pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<HashMap<usize, Value>> {
+    let mut hash = HashMap::new();
+    parse_dependencies(udts, buffer, |id, value| {
+        hash.insert(id, value);
+    })?;
+    Ok(hash)
 }
 
 #[test]
@@ -106,17 +121,17 @@ async fn print_process_log(
             }
             let buffer = std::fs::read(&payload_path)
                 .with_context(|| format!("reading payload file {}", payload_path.display()))?;
-            // dbg!(b);
             let payload = telemetry::telemetry_ingestion_proto::BlockPayload::decode(&*buffer)
                 .with_context(|| format!("reading payload file {}", payload_path.display()))?;
-            parse_dependencies(
-                stream.dependencies_metadata.as_ref().unwrap(),
-                &payload.dependencies,
-                |id, value| {
-                    dbg!(id);
-                    dbg!(value);
-                },
-            );
+
+            let dep_udts = stream
+                .dependencies_metadata
+                .as_ref()
+                .unwrap()
+                .as_transit_udt_vec();
+
+            let dependencies = read_dependencies(&dep_udts, &payload.dependencies)?;
+            dbg!(dependencies);
         }
     }
     Ok(())

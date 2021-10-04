@@ -27,7 +27,7 @@ impl Serialize for DynString {
 impl Reflect for DynString {
     fn reflect() -> UserDefinedType {
         UserDefinedType {
-            name: "String",
+            name: String::from("String"),
             size: 0,
             members: vec![],
         }
