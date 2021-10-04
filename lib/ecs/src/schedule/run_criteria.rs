@@ -419,7 +419,7 @@ impl System for RunOnce {
     type Out = ShouldRun;
 
     fn name(&self) -> Cow<'static, str> {
-        Cow::Borrowed(std::any::type_name::<RunOnce>())
+        Cow::Borrowed(std::any::type_name::<Self>())
     }
 
     fn new_archetype(&mut self, _archetype: &Archetype) {}

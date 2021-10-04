@@ -84,7 +84,7 @@
 )]
 // END - Legion Labs standard lints v0.4
 // crate-specific exceptions:
-#![allow(unsafe_code)]
+#![allow(unsafe_code, clippy::option_option, clippy::needless_pass_by_value)]
 
 pub mod archetype;
 pub mod bundle;
@@ -156,7 +156,7 @@ mod tests {
     impl DropCk {
         fn new_pair() -> (Self, Arc<AtomicUsize>) {
             let atomic = Arc::new(AtomicUsize::new(0));
-            (DropCk(atomic.clone()), atomic)
+            (Self(atomic.clone()), atomic)
         }
     }
 
@@ -462,7 +462,7 @@ mod tests {
         world
             .query::<(Entity, &A)>()
             .par_for_each(&world, &task_pool, 2, |(e, &A(i))| {
-                results.lock().push((e, i))
+                results.lock().push((e, i));
             });
         results.lock().sort();
         assert_eq!(

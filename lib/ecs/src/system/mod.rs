@@ -205,6 +205,7 @@ mod tests {
     #[test]
     fn or_query_set_system() {
         // Regression test for issue #762
+        #[allow(clippy::type_complexity)]
         fn query_system(
             mut ran: ResMut<'_, bool>,
             mut set: QuerySet<
@@ -364,21 +365,21 @@ mod tests {
     #[should_panic]
     fn conflicting_system_resources() {
         fn sys(_: ResMut<'_, BufferRes>, _: Res<'_, BufferRes>) {}
-        test_for_conflicting_resources(sys)
+        test_for_conflicting_resources(sys);
     }
 
     #[test]
     #[should_panic]
     fn conflicting_system_resources_reverse_order() {
         fn sys(_: Res<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
-        test_for_conflicting_resources(sys)
+        test_for_conflicting_resources(sys);
     }
 
     #[test]
     #[should_panic]
     fn conflicting_system_resources_multiple_mutable() {
         fn sys(_: ResMut<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
-        test_for_conflicting_resources(sys)
+        test_for_conflicting_resources(sys);
     }
 
     #[test]
@@ -390,7 +391,7 @@ mod tests {
             _: ResMut<'_, A>,
         ) {
         }
-        test_for_conflicting_resources(sys)
+        test_for_conflicting_resources(sys);
     }
 
     #[test]
@@ -404,7 +405,7 @@ mod tests {
 
         impl FromWorld for Foo {
             fn from_world(world: &mut World) -> Self {
-                Foo {
+                Self {
                     value: *world.get_resource::<u32>().unwrap() + 1,
                 }
             }
@@ -602,6 +603,7 @@ mod tests {
 
     #[test]
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
     fn can_have_16_parameters() {
         fn sys_x(
             _: Res<'_, A>,
@@ -649,6 +651,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::type_complexity)]
     fn read_system_state() {
         #[derive(Eq, PartialEq, Debug)]
         struct A(usize);

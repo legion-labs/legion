@@ -366,7 +366,7 @@ where
     }
 
     /// Runs `func` on each query result for the given [`World`]. This is faster than the equivalent
-    /// iter_mut() method, but cannot be chained like a normal [`Iterator`].
+    /// `iter_mut()` method, but cannot be chained like a normal [`Iterator`].
     #[inline]
     pub fn for_each_mut<'w, 's>(
         &'s mut self,

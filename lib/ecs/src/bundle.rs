@@ -490,7 +490,7 @@ impl<'a, 'b> BundleInserter<'a, 'b> {
                     {
                         &mut *self.archetype
                     } else if new_archetype.id() == swapped_location.archetype_id {
-                        &mut *new_archetype
+                        new_archetype
                     } else {
                         // SAFE: the only two borrowed archetypes are above and we just did collision checks
                         &mut *self
@@ -539,7 +539,7 @@ impl<'a, 'b> BundleSpawner<'a, 'b> {
         self.table.reserve(additional);
     }
     /// # Safety
-    /// `entity` must be allocated (but non existent), `T` must match this BundleInfo's type
+    /// `entity` must be allocated (but non existent), `T` must match this `BundleInfo`'s type
     #[inline]
     pub unsafe fn spawn_non_existent<T: Bundle>(
         &mut self,
@@ -563,7 +563,7 @@ impl<'a, 'b> BundleSpawner<'a, 'b> {
     }
 
     /// # Safety
-    /// `T` must match this BundleInfo's type
+    /// `T` must match this `BundleInfo`'s type
     #[inline]
     pub unsafe fn spawn<T: Bundle>(&mut self, bundle: T) -> Entity {
         let entity = self.entities.alloc();
@@ -613,7 +613,7 @@ impl Bundles {
 
 /// # Safety
 ///
-/// `component_id` must be valid [ComponentId]'s
+/// `component_id` must be valid [`ComponentId`]'s
 unsafe fn initialize_bundle(
     bundle_type_name: &'static str,
     component_ids: Vec<ComponentId>,

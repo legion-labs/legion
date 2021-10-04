@@ -9,7 +9,7 @@ use fixedbitset::FixedBitSet;
 use legion_tasks::{ComputeTaskPool, Scope, TaskPool};
 
 #[cfg(test)]
-use SchedulingEvent::*;
+use SchedulingEvent::StartedSystems;
 
 struct SystemSchedulingMetadata {
     /// Used to signal the system's task to start the system.
@@ -315,7 +315,7 @@ enum SchedulingEvent {
 
 #[cfg(test)]
 mod tests {
-    use super::SchedulingEvent::{self, *};
+    use super::SchedulingEvent::{self, StartedSystems};
     use crate::{
         schedule::{SingleThreadedExecutor, Stage, SystemStage},
         system::{NonSend, Query, Res, ResMut},
@@ -353,7 +353,7 @@ mod tests {
         assert_eq!(
             receive_events(&world),
             vec![StartedSystems(3), StartedSystems(3),]
-        )
+        );
     }
 
     #[test]

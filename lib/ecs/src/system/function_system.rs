@@ -278,7 +278,7 @@ pub trait ConfigurableSystem<In, Out, Param: SystemParam, Marker>:
     ) -> Self::System;
 }
 
-impl<In, Out, Param: SystemParam, Marker, F> ConfigurableSystem<In, Out, Param, Marker> for F
+impl<In, Out, Param, Marker, F> ConfigurableSystem<In, Out, Param, Marker> for F
 where
     In: 'static,
     Out: 'static,

@@ -731,6 +731,7 @@ impl App {
     /// #
     /// App::new().add_plugin(legion_log::LogPlugin::default());
     /// ```
+    #[allow(clippy::needless_pass_by_value)]
     pub fn add_plugin<T>(&mut self, plugin: T) -> &mut Self
     where
         T: Plugin,

@@ -9,10 +9,15 @@ use legion_utils::HashMap;
 use smallvec::SmallVec;
 
 pub fn parent_update_system(
-    mut commands: Commands,
-    removed_parent_query: Query<(Entity, &PreviousParent), Without<Parent>>,
-    mut parent_query: Query<(Entity, &Parent, Option<&mut PreviousParent>), Changed<Parent>>,
-    mut children_query: Query<&mut Children>,
+    mut commands: Commands<'_, '_>,
+    removed_parent_query: Query<'_, '_, (Entity, &PreviousParent), Without<Parent>>,
+    mut parent_query: Query<
+        '_,
+        '_,
+        (Entity, &Parent, Option<&mut PreviousParent>),
+        Changed<Parent>,
+    >,
+    mut children_query: Query<'_, '_, &mut Children>,
 ) {
     // Entities with a missing `Parent` (ie. ones that have a `PreviousParent`), remove
     // them from the `Children` of the `PreviousParent`.
@@ -66,9 +71,9 @@ pub fn parent_update_system(
     // Flush the `children_additions` to the command buffer. It is stored separate to
     // collect multiple new children that point to the same parent into the same
     // SmallVec, and to prevent redundant add+remove operations.
-    children_additions.iter().for_each(|(e, v)| {
+    for (e, v) in children_additions.iter() {
         commands.entity(*e).insert(Children::with(v));
-    });
+    }
 }
 #[cfg(test)]
 mod test {

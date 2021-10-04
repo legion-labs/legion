@@ -320,7 +320,7 @@ pub struct ArchetypeGeneration(usize);
 impl ArchetypeGeneration {
     #[inline]
     pub const fn initial() -> Self {
-        ArchetypeGeneration(0)
+        Self(0)
     }
 
     #[inline]
@@ -369,7 +369,7 @@ pub struct Archetypes {
 
 impl Default for Archetypes {
     fn default() -> Self {
-        let mut archetypes = Archetypes {
+        let mut archetypes = Self {
             archetypes: Vec::new(),
             archetype_ids: Default::default(),
             archetype_component_count: 0,
@@ -470,7 +470,7 @@ impl Archetypes {
     /// `table_components` and `sparse_set_components` must be sorted
     ///
     /// # Safety
-    /// TableId must exist in tables
+    /// `TableId` must exist in tables
     pub(crate) fn get_id_or_insert(
         &mut self,
         table_id: TableId,

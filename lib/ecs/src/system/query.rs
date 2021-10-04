@@ -470,7 +470,7 @@ where
                 f,
                 self.last_change_tick,
                 self.change_tick,
-            )
+            );
         };
     }
 
@@ -505,7 +505,7 @@ where
                 f,
                 self.last_change_tick,
                 self.change_tick,
-            )
+            );
         };
     }
 
@@ -532,7 +532,7 @@ where
                 f,
                 self.last_change_tick,
                 self.change_tick,
-            )
+            );
         };
     }
 
@@ -554,7 +554,7 @@ where
                 f,
                 self.last_change_tick,
                 self.change_tick,
-            )
+            );
         };
     }
 

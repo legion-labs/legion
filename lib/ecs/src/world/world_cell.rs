@@ -151,7 +151,7 @@ impl<'w, T> Deref for WorldBorrowMut<'w, T> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.value.deref()
+        &*self.value
     }
 }
 

@@ -5,7 +5,7 @@ use legion_ecs::{
     system::{Query, RemovedComponents, ResMut},
 };
 use legion_utils::{HashMap, HashSet};
-use std::{borrow::Cow, fmt::Debug, ops::Deref};
+use std::{borrow::Cow, fmt::Debug};
 
 /// A collection of labels
 #[derive(Component, Default)]
@@ -51,7 +51,7 @@ impl Labels {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &str> {
-        self.labels.iter().map(|label| label.deref())
+        self.labels.iter().map(|label| &**label)
     }
 }
 

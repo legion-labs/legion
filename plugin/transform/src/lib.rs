@@ -84,7 +84,7 @@
 )]
 // END - Legion Labs standard lints v0.4
 // crate-specific exceptions:
-#![allow()]
+#![allow(clippy::needless_pass_by_value)]
 
 pub mod components;
 pub mod hierarchy;

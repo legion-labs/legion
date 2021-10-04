@@ -391,7 +391,7 @@ impl<'w> EntityMut<'w> {
                 archetypes,
                 storages,
                 new_archetype_id,
-            )
+            );
         }
     }
 
@@ -450,15 +450,15 @@ impl<'w> EntityMut<'w> {
 
     /// # Safety
     /// Caller must not modify the world in a way that changes the current entity's location
-    /// If the caller _does_ do something that could change the location, self.update_location()
-    /// must be called before using any other methods in EntityMut
+    /// If the caller _does_ do something that could change the location, `self.update_location()`
+    /// must be called before using any other methods in `EntityMut`
     #[inline]
     pub unsafe fn world_mut(&mut self) -> &mut World {
         self.world
     }
 
     /// Updates the internal entity location to match the current location in the internal [World].
-    /// This is only needed if the user called [EntityMut::world], which enables the location to
+    /// This is only needed if the user called [`EntityMut::world`], which enables the location to
     /// change.
     pub fn update_location(&mut self) {
         self.location = self.world.entities().get(self.entity).unwrap();
@@ -722,7 +722,7 @@ fn sorted_remove<T: Eq + Ord + Copy>(source: &mut Vec<T>, remove: &[T]) {
         } else {
             true
         }
-    })
+    });
 }
 
 #[cfg(test)]

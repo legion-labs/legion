@@ -3,9 +3,6 @@ pub use instant::{Duration, Instant};
 pub use uuid::Uuid;
 
 use ahash::RandomState;
-use std::{future::Future, pin::Pin};
-
-pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// A hasher builder that will create a fixed hasher.
 #[derive(Default)]

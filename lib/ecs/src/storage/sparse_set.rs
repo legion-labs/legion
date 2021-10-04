@@ -49,22 +49,19 @@ impl<I: SparseSetIndex, V> SparseArray<I, V> {
     #[inline]
     pub fn contains(&self, index: I) -> bool {
         let index = index.sparse_set_index();
-        self.values.get(index).map(|v| v.is_some()).unwrap_or(false)
+        self.values.get(index).map_or(false, |v| v.is_some())
     }
 
     #[inline]
     pub fn get(&self, index: I) -> Option<&V> {
         let index = index.sparse_set_index();
-        self.values.get(index).map(|v| v.as_ref()).unwrap_or(None)
+        self.values.get(index).and_then(|v| v.as_ref())
     }
 
     #[inline]
     pub fn get_mut(&mut self, index: I) -> Option<&mut V> {
         let index = index.sparse_set_index();
-        self.values
-            .get_mut(index)
-            .map(|v| v.as_mut())
-            .unwrap_or(None)
+        self.values.get_mut(index).and_then(|v| v.as_mut())
     }
 
     #[inline]

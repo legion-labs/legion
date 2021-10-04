@@ -84,7 +84,7 @@
 )]
 // END - Legion Labs standard lints v0.4
 // crate-specific exceptions:
-#![allow()]
+#![allow(clippy::needless_pass_by_value)]
 
 mod bytes;
 mod float_ord;
@@ -107,12 +107,9 @@ pub mod prelude {
 
 use legion_app::prelude::*;
 use legion_ecs::{
-    entity::Entity,
     schedule::{ExclusiveSystemDescriptorCoercion, SystemLabel},
     system::IntoExclusiveSystem,
 };
-use legion_utils::HashSet;
-use std::ops::Range;
 
 /// Adds core functionality to Apps.
 #[derive(Default)]
