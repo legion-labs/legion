@@ -1,7 +1,0 @@
-.git
-target/*/build
-target/*/deps
-target/*/examples
-target/*/incremental
-target/*/*.rlib
-target/*/*.d
