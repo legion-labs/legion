@@ -1,10 +1,13 @@
-use crate as legion_ecs;
-use crate::{
-    component::Component,
-    system::{Local, Res, ResMut, SystemParam},
-};
+//! Event handling types.
+
+use crate::system::{Local, Res, ResMut, SystemParam};
+use crate::{self as legion_ecs, system::Resource};
 use legion_utils::tracing::trace;
-use std::{fmt, hash::Hash, marker::PhantomData};
+use std::{
+    fmt::{self},
+    hash::Hash,
+    marker::PhantomData,
+};
 
 /// An `EventId` uniquely identifies an event.
 ///
@@ -147,18 +150,20 @@ fn map_instance_event<T>(event_instance: &EventInstance<T>) -> &T {
 
 /// Reads events of type `T` in order and tracks which events have already been read.
 #[derive(SystemParam)]
-pub struct EventReader<'a, T: Component> {
-    last_event_count: Local<'a, (usize, PhantomData<T>)>,
-    events: Res<'a, Events<T>>,
+pub struct EventReader<'w, 's, T: Resource> {
+    last_event_count: Local<'s, (usize, PhantomData<T>)>,
+    events: Res<'w, Events<T>>,
 }
 
 /// Sends events of type `T`.
 #[derive(SystemParam)]
-pub struct EventWriter<'a, T: Component> {
-    events: ResMut<'a, Events<T>>,
+pub struct EventWriter<'w, 's, T: Resource> {
+    events: ResMut<'w, Events<T>>,
+    #[system_param(ignore)]
+    marker: PhantomData<&'s usize>,
 }
 
-impl<'a, T: Component> EventWriter<'a, T> {
+impl<'w, 's, T: Resource> EventWriter<'w, 's, T> {
     pub fn send(&mut self, event: T) {
         self.events.send(event);
     }
@@ -248,7 +253,7 @@ fn internal_event_reader<'a, T>(
     }
 }
 
-impl<'a, T: Component> EventReader<'a, T> {
+impl<'w, 's, T: Resource> EventReader<'w, 's, T> {
     /// Iterates over the events this `EventReader` has not seen yet. This updates the `EventReader`'s
     /// event counter, which means subsequent event reads will not include events that happened
     /// before now.
@@ -265,7 +270,7 @@ impl<'a, T: Component> EventReader<'a, T> {
     }
 }
 
-impl<T: Component> Events<T> {
+impl<T: Resource> Events<T> {
     /// "Sends" an `event` by writing it to the current event buffer. [EventReader]s can then read
     /// the event.
     pub fn send(&mut self, event: T) {
@@ -308,12 +313,12 @@ impl<T: Component> Events<T> {
     pub fn update(&mut self) {
         match self.state {
             State::A => {
-                self.events_b = Vec::new();
+                self.events_b.clear();
                 self.state = State::B;
                 self.b_start_event_count = self.event_count;
             }
             State::B => {
-                self.events_a = Vec::new();
+                self.events_a.clear();
                 self.state = State::A;
                 self.a_start_event_count = self.event_count;
             }
@@ -503,7 +508,7 @@ mod tests {
         assert_eq!(
             get_events(&events, &mut reader_missed),
             vec![event_2],
-            "reader_missed missed events unread after to update() calls"
+            "reader_missed missed events unread after two update() calls"
         );
     }
 

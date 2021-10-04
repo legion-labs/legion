@@ -42,8 +42,8 @@ pub struct PushChildren {
     children: SmallVec<[Entity; 8]>,
 }
 
-pub struct ChildBuilder<'a, 'b> {
-    commands: &'b mut Commands<'a>,
+pub struct ChildBuilder<'w, 's, 'a> {
+    commands: &'a mut Commands<'w, 's>,
     push_children: PushChildren,
 }
 
@@ -73,14 +73,14 @@ impl Command for PushChildren {
     }
 }
 
-impl<'a, 'b> ChildBuilder<'a, 'b> {
-    pub fn spawn_bundle(&mut self, bundle: impl Bundle) -> EntityCommands<'a, '_> {
+impl<'w, 's, 'a> ChildBuilder<'w, 's, 'a> {
+    pub fn spawn_bundle(&mut self, bundle: impl Bundle) -> EntityCommands<'w, 's, '_> {
         let e = self.commands.spawn_bundle(bundle);
         self.push_children.children.push(e.id());
         e
     }
 
-    pub fn spawn(&mut self) -> EntityCommands<'a, '_> {
+    pub fn spawn(&mut self) -> EntityCommands<'w, 's, '_> {
         let e = self.commands.spawn();
         self.push_children.children.push(e.id());
         e
@@ -97,15 +97,15 @@ impl<'a, 'b> ChildBuilder<'a, 'b> {
 }
 
 pub trait BuildChildren {
-    fn with_children(&mut self, f: impl FnOnce(&mut ChildBuilder<'_, '_>)) -> &mut Self;
+    fn with_children(&mut self, f: impl FnOnce(&mut ChildBuilder<'_, '_, '_>)) -> &mut Self;
     fn push_children(&mut self, children: &[Entity]) -> &mut Self;
     fn insert_children(&mut self, index: usize, children: &[Entity]) -> &mut Self;
 }
 
-impl<'a, 'b> BuildChildren for EntityCommands<'a, 'b> {
+impl<'w, 's, 'a> BuildChildren for EntityCommands<'w, 's, 'a> {
     fn with_children(
         &mut self,
-        spawn_children: impl FnOnce(&mut ChildBuilder<'_, '_>),
+        spawn_children: impl FnOnce(&mut ChildBuilder<'_, '_, '_>),
     ) -> &mut Self {
         let parent = self.id();
         let push_children = {
@@ -337,11 +337,15 @@ mod tests {
     use super::{BuildChildren, BuildWorldChildren};
     use crate::prelude::{Children, Parent, PreviousParent};
     use legion_ecs::{
+        component::Component,
         entity::Entity,
         system::{CommandQueue, Commands},
         world::World,
     };
     use smallvec::{smallvec, SmallVec};
+
+    #[derive(Component)]
+    struct C(u32);
 
     #[test]
     fn build_children() {
@@ -350,11 +354,11 @@ mod tests {
         let mut commands = Commands::new(&mut queue, &world);
 
         let mut children = Vec::new();
-        let parent = commands.spawn().insert(1).id();
+        let parent = commands.spawn().insert(C(1)).id();
         commands.entity(parent).with_children(|parent| {
-            children.push(parent.spawn().insert(2).id());
-            children.push(parent.spawn().insert(3).id());
-            children.push(parent.spawn().insert(4).id());
+            children.push(parent.spawn().insert(C(2)).id());
+            children.push(parent.spawn().insert(C(3)).id());
+            children.push(parent.spawn().insert(C(4)).id());
         });
 
         queue.apply(&mut world);
@@ -380,7 +384,7 @@ mod tests {
         let mut world = World::default();
 
         let entities = world
-            .spawn_batch(vec![(1,), (2,), (3,), (4,), (5,)])
+            .spawn_batch(vec![(C(1),), (C(2),), (C(3),), (C(4),), (C(5),)])
             .collect::<Vec<Entity>>();
 
         let mut queue = CommandQueue::default();
@@ -441,7 +445,7 @@ mod tests {
         let mut world = World::default();
 
         let entities = world
-            .spawn_batch(vec![(1,), (2,), (3,), (4,), (5,)])
+            .spawn_batch(vec![(C(1),), (C(2),), (C(3),), (C(4),), (C(5),)])
             .collect::<Vec<Entity>>();
 
         world.entity_mut(entities[0]).push_children(&entities[1..3]);

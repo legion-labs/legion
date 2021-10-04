@@ -13,7 +13,7 @@ pub struct KeyboardInput {
 /// Updates the Input<KeyCode> resource with the latest `KeyboardInput` events
 pub fn keyboard_input_system(
     mut keyboard_input: ResMut<'_, Input<KeyCode>>,
-    mut keyboard_input_events: EventReader<'_, KeyboardInput>,
+    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
 ) {
     keyboard_input.clear();
     for event in keyboard_input_events.iter() {

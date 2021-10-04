@@ -39,7 +39,7 @@ impl<I: SparseSetIndex, V> SparseArray<I, V> {
 
     #[inline]
     pub fn insert(&mut self, index: I, value: V) {
-        let index = index.convert_sparse_set_index();
+        let index = index.sparse_set_index();
         if index >= self.values.len() {
             self.values.resize_with(index + 1, || None);
         }
@@ -48,31 +48,31 @@ impl<I: SparseSetIndex, V> SparseArray<I, V> {
 
     #[inline]
     pub fn contains(&self, index: I) -> bool {
-        let index = index.convert_sparse_set_index();
+        let index = index.sparse_set_index();
         self.values.get(index).map_or(false, |v| v.is_some())
     }
 
     #[inline]
     pub fn get(&self, index: I) -> Option<&V> {
-        let index = index.convert_sparse_set_index();
+        let index = index.sparse_set_index();
         self.values.get(index).and_then(|v| v.as_ref())
     }
 
     #[inline]
     pub fn get_mut(&mut self, index: I) -> Option<&mut V> {
-        let index = index.convert_sparse_set_index();
+        let index = index.sparse_set_index();
         self.values.get_mut(index).and_then(|v| v.as_mut())
     }
 
     #[inline]
     pub fn remove(&mut self, index: I) -> Option<V> {
-        let index = index.convert_sparse_set_index();
+        let index = index.sparse_set_index();
         self.values.get_mut(index).and_then(|value| value.take())
     }
 
     #[inline]
     pub fn get_or_insert_with(&mut self, index: I, func: impl FnOnce() -> V) -> &mut V {
-        let index = index.convert_sparse_set_index();
+        let index = index.sparse_set_index();
         if index < self.values.len() {
             return self.values[index].get_or_insert_with(func);
         }
@@ -80,6 +80,10 @@ impl<I: SparseSetIndex, V> SparseArray<I, V> {
         let value = &mut self.values[index];
         *value = Some(func());
         value.as_mut().unwrap()
+    }
+
+    pub fn clear(&mut self) {
+        self.values.clear();
     }
 }
 
@@ -99,6 +103,13 @@ impl ComponentSparseSet {
             entities: Vec::with_capacity(capacity),
             sparse: Default::default(),
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.dense.clear();
+        self.ticks.clear();
+        self.entities.clear();
+        self.sparse.clear();
     }
 
     #[inline]
@@ -358,9 +369,6 @@ impl<I: SparseSetIndex, V> SparseSet<I, V> {
 pub trait SparseSetIndex: Clone {
     fn sparse_set_index(&self) -> usize;
     fn get_sparse_set_index(value: usize) -> Self;
-    fn convert_sparse_set_index(self) -> usize {
-        self.sparse_set_index()
-    }
 }
 
 macro_rules! impl_sparse_set_index {
@@ -402,6 +410,12 @@ impl SparseSets {
 
     pub fn get_mut(&mut self, component_id: ComponentId) -> Option<&mut ComponentSparseSet> {
         self.sets.get_mut(component_id)
+    }
+
+    pub fn clear(&mut self) {
+        for set in self.sets.values_mut() {
+            set.clear();
+        }
     }
 
     pub(crate) fn check_change_ticks(&mut self, change_tick: u32) {

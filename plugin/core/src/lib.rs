@@ -84,7 +84,7 @@
 )]
 // END - Legion Labs standard lints v0.4
 // crate-specific exceptions:
-#![allow()]
+#![allow(clippy::needless_pass_by_value)]
 
 mod bytes;
 mod float_ord;
@@ -128,7 +128,7 @@ impl Plugin for CorePlugin {
         app.world
             .get_resource::<DefaultTaskPoolOptions>()
             .cloned()
-            .unwrap_or_else(DefaultTaskPoolOptions::default)
+            .unwrap_or_default()
             .create_default_pools(&mut app.world);
 
         app.init_resource::<Time>()

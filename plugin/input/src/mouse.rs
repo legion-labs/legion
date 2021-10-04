@@ -44,7 +44,7 @@ pub struct MouseWheel {
 /// Updates the Input<MouseButton> resource with the latest `MouseButtonInput` events
 pub fn mouse_button_input_system(
     mut mouse_button_input: ResMut<'_, Input<MouseButton>>,
-    mut mouse_button_input_events: EventReader<'_, MouseButtonInput>,
+    mut mouse_button_input_events: EventReader<'_, '_, MouseButtonInput>,
 ) {
     mouse_button_input.clear();
     for event in mouse_button_input_events.iter() {

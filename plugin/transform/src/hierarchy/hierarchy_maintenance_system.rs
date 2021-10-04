@@ -1,6 +1,7 @@
 use crate::components::*;
 use legion_ecs::{
     entity::Entity,
+    prelude::Changed,
     query::Without,
     system::{Commands, Query},
 };
@@ -8,12 +9,15 @@ use legion_utils::HashMap;
 use smallvec::SmallVec;
 
 pub fn parent_update_system(
-    mut commands: Commands<'_>,
-    removed_parent_query: Query<'_, (Entity, &PreviousParent), Without<Parent>>,
-    // The next query could be run with a Changed<Parent> filter. However, this would mean that
-    // modifications later in the frame are lost. See issue 891: https://github.com/bevyengine/bevy/issues/891
-    mut parent_query: Query<'_, (Entity, &Parent, Option<&mut PreviousParent>)>,
-    mut children_query: Query<'_, &mut Children>,
+    mut commands: Commands<'_, '_>,
+    removed_parent_query: Query<'_, '_, (Entity, &PreviousParent), Without<Parent>>,
+    mut parent_query: Query<
+        '_,
+        '_,
+        (Entity, &Parent, Option<&mut PreviousParent>),
+        Changed<Parent>,
+    >,
+    mut children_query: Query<'_, '_, &mut Children>,
 ) {
     // Entities with a missing `Parent` (ie. ones that have a `PreviousParent`), remove
     // them from the `Children` of the `PreviousParent`.
@@ -23,7 +27,6 @@ pub fn parent_update_system(
             commands.entity(entity).remove::<PreviousParent>();
         }
     }
-    drop(removed_parent_query);
 
     // Tracks all newly created `Children` Components this frame.
     let mut children_additions = HashMap::<Entity, SmallVec<[Entity; 8]>>::default();

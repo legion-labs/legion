@@ -1,3 +1,4 @@
+use legion_ecs::component::Component;
 use legion_utils::AHasher;
 use std::{
     borrow::Cow,
@@ -6,7 +7,7 @@ use std::{
 };
 
 /// Component used to identify an entity. Stores a hash for faster comparisons
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct Name {
     hash: u64, // TODO: Shouldn't be serialized
     name: Cow<'static, str>,

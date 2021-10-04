@@ -25,6 +25,12 @@ use std::fmt::Debug;
 use crate::{system::System, world::World};
 use legion_utils::HashMap;
 
+/// A container of [`Stage`]s set to be run in a linear order.
+///
+/// Since `Schedule` implements the [`Stage`] trait, it can be inserted into another schedule.
+/// In this way, the properties of the child schedule can be set differently from the parent.
+/// For example, it can be set to run only once during app execution, while the parent schedule
+/// runs indefinitely.
 #[derive(Default)]
 pub struct Schedule {
     stages: HashMap<BoxedStageLabel, Box<dyn Stage>>,
@@ -33,11 +39,13 @@ pub struct Schedule {
 }
 
 impl Schedule {
+    /// Similar to [`add_stage`](Self::add_stage), but it also returns itself.
     pub fn with_stage<S: Stage>(mut self, label: impl StageLabel, stage: S) -> Self {
         self.add_stage(label, stage);
         self
     }
 
+    /// Similar to [`add_stage_after`](Self::add_stage_after), but it also returns itself.
     pub fn with_stage_after<S: Stage>(
         mut self,
         target: impl StageLabel,
@@ -48,6 +56,7 @@ impl Schedule {
         self
     }
 
+    /// Similar to [`add_stage_before`](Self::add_stage_before), but it also returns itself.
     pub fn with_stage_before<S: Stage>(
         mut self,
         target: impl StageLabel,
@@ -63,6 +72,7 @@ impl Schedule {
         self
     }
 
+    /// Similar to [`add_system_to_stage`](Self::add_system_to_stage), but it also returns itself.
     pub fn with_system_in_stage<Params>(
         mut self,
         stage_label: impl StageLabel,
@@ -80,6 +90,16 @@ impl Schedule {
         self
     }
 
+    /// Adds the given `stage` at the last position of the schedule.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use legion_ecs::prelude::*;
+    /// #
+    /// # let mut schedule = Schedule::default();
+    /// schedule.add_stage("my_stage", SystemStage::parallel());
+    /// ```
     pub fn add_stage<S: Stage>(&mut self, label: impl StageLabel, stage: S) -> &mut Self {
         let label: Box<dyn StageLabel> = Box::new(label);
         self.stage_order.push(label.clone());
@@ -90,6 +110,17 @@ impl Schedule {
         self
     }
 
+    /// Adds the given `stage` immediately after the `target` stage.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use legion_ecs::prelude::*;
+    /// #
+    /// # let mut schedule = Schedule::default();
+    /// # schedule.add_stage("target_stage", SystemStage::parallel());
+    /// schedule.add_stage_after("target_stage", "my_stage", SystemStage::parallel());
+    /// ```
     pub fn add_stage_after<S: Stage>(
         &mut self,
         target: impl StageLabel,
@@ -97,17 +128,16 @@ impl Schedule {
         stage: S,
     ) -> &mut Self {
         let label: Box<dyn StageLabel> = Box::new(label);
-        let target_ref = &target as &dyn StageLabel;
+        let target = &target as &dyn StageLabel;
         let target_index = self
             .stage_order
             .iter()
             .enumerate()
-            .find(|(_i, stage_label)| &***stage_label == target_ref)
+            .find(|(_i, stage_label)| &***stage_label == target)
             .map_or_else(
-                || panic!("Target stage does not exist: {:?}.", target_ref),
+                || panic!("Target stage does not exist: {:?}.", target),
                 |(i, _)| i,
             );
-        drop(target);
 
         self.stage_order.insert(target_index + 1, label.clone());
         let prev = self.stages.insert(label.clone(), Box::new(stage));
@@ -117,6 +147,17 @@ impl Schedule {
         self
     }
 
+    /// Adds the given `stage` immediately before the `target` stage.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use legion_ecs::prelude::*;
+    /// #
+    /// # let mut schedule = Schedule::default();
+    /// # schedule.add_stage("target_stage", SystemStage::parallel());
+    /// #
+    /// schedule.add_stage_before("target_stage", "my_stage", SystemStage::parallel());
     pub fn add_stage_before<S: Stage>(
         &mut self,
         target: impl StageLabel,
@@ -124,17 +165,16 @@ impl Schedule {
         stage: S,
     ) -> &mut Self {
         let label: Box<dyn StageLabel> = Box::new(label);
-        let target_ref = &target as &dyn StageLabel;
+        let target = &target as &dyn StageLabel;
         let target_index = self
             .stage_order
             .iter()
             .enumerate()
-            .find(|(_i, stage_label)| &***stage_label == target_ref)
+            .find(|(_i, stage_label)| &***stage_label == target)
             .map_or_else(
-                || panic!("Target stage does not exist: {:?}.", target_ref),
+                || panic!("Target stage does not exist: {:?}.", target),
                 |(i, _)| i,
             );
-        drop(target);
 
         self.stage_order.insert(target_index, label.clone());
         let prev = self.stages.insert(label.clone(), Box::new(stage));
@@ -144,6 +184,18 @@ impl Schedule {
         self
     }
 
+    /// Adds the given `system` to the stage identified by `stage_label`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use legion_ecs::prelude::*;
+    /// #
+    /// # fn my_system() {}
+    /// # let mut schedule = Schedule::default();
+    /// # schedule.add_stage("my_stage", SystemStage::parallel());
+    /// #
+    /// schedule.add_system_to_stage("my_stage", my_system);
     pub fn add_system_to_stage<Params>(
         &mut self,
         stage_label: impl StageLabel,
@@ -166,6 +218,29 @@ impl Schedule {
         self
     }
 
+    /// Adds the given `system_set` to the stage identified by `stage_label`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use legion_ecs::prelude::*;
+    /// #
+    /// # fn my_system() {}
+    /// # let mut schedule = Schedule::default();
+    /// # schedule.add_stage("my_stage", SystemStage::parallel());
+    /// #
+    /// schedule.add_system_set_to_stage(
+    ///     "my_stage",
+    ///     SystemSet::new()
+    ///         .with_system(system_a)
+    ///         .with_system(system_b)
+    ///         .with_system(system_c)
+    /// );
+    /// #
+    /// # fn system_a() {}
+    /// # fn system_b() {}
+    /// # fn system_c() {}
+    /// ```
     pub fn add_system_set_to_stage(
         &mut self,
         stage_label: impl StageLabel,
@@ -176,6 +251,31 @@ impl Schedule {
         })
     }
 
+    /// Fetches the [`Stage`] of type `T` marked with `label`, then executes the provided
+    /// `func` passing the fetched stage to it as an argument.
+    ///
+    /// The `func` argument should be a function or a closure that accepts a mutable reference
+    /// to a struct implementing `Stage` and returns the same type. That means that it should
+    /// also assume that the stage has already been fetched successfully.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use legion_ecs::prelude::*;
+    /// #
+    /// # let mut schedule = Schedule::default();
+    /// # schedule.add_stage("my_stage", SystemStage::parallel());
+    /// #
+    /// schedule.stage("my_stage", |stage: &mut SystemStage| {
+    ///     stage.add_system(my_system)
+    /// });
+    /// #
+    /// # fn my_system() {}
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if `label` refers to a non-existing stage, or if it's not of type `T`.
     pub fn stage<T: Stage, F: FnOnce(&mut T) -> &mut T>(
         &mut self,
         label: impl StageLabel,
@@ -188,18 +288,48 @@ impl Schedule {
         self
     }
 
+    /// Returns a shared reference to the stage identified by `label`, if it exists.
+    ///
+    /// If the requested stage does not exist, `None` is returned instead.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use legion_ecs::prelude::*;
+    /// #
+    /// # fn my_system() {}
+    /// # let mut schedule = Schedule::default();
+    /// # schedule.add_stage("my_stage", SystemStage::parallel());
+    /// #
+    /// let stage = schedule.get_stage::<SystemStage>(&"my_stage").unwrap();
+    /// ```
     pub fn get_stage<T: Stage>(&self, label: &dyn StageLabel) -> Option<&T> {
         self.stages
             .get(label)
             .and_then(|stage| stage.downcast_ref::<T>())
     }
 
+    /// Returns a unique, mutable reference to the stage identified by `label`, if it exists.
+    ///
+    /// If the requested stage does not exist, `None` is returned instead.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use legion_ecs::prelude::*;
+    /// #
+    /// # fn my_system() {}
+    /// # let mut schedule = Schedule::default();
+    /// # schedule.add_stage("my_stage", SystemStage::parallel());
+    /// #
+    /// let stage = schedule.get_stage_mut::<SystemStage>(&"my_stage").unwrap();
     pub fn get_stage_mut<T: Stage>(&mut self, label: &dyn StageLabel) -> Option<&mut T> {
         self.stages
             .get_mut(label)
             .and_then(|stage| stage.downcast_mut::<T>())
     }
 
+    /// Executes each [`Stage`] contained in the schedule, one at a time.
     pub fn run_once(&mut self, world: &mut World) {
         for label in self.stage_order.iter() {
             #[cfg(feature = "trace")]

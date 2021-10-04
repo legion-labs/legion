@@ -6,7 +6,7 @@ use legion_ecs::{
     component::ComponentId,
     query::Access,
     schedule::ShouldRun,
-    system::{ConfigurableSystem, IntoSystem, Local, Res, ResMut, System, SystemId},
+    system::{ConfigurableSystem, IntoSystem, Local, Res, ResMut, System},
     world::World,
 };
 use legion_utils::HashMap;
@@ -96,7 +96,6 @@ impl FixedTimestep {
         mut fixed_timesteps: ResMut<'_, FixedTimesteps>,
     ) -> ShouldRun {
         let should_run = state.update(&time);
-        drop(time);
         if let Some(ref label) = state.label {
             let res_state = fixed_timesteps.fixed_timesteps.get_mut(label).unwrap();
             res_state.step = state.step;
@@ -149,10 +148,6 @@ impl System for FixedTimestep {
 
     fn name(&self) -> Cow<'static, str> {
         Cow::Borrowed(std::any::type_name::<Self>())
-    }
-
-    fn id(&self) -> SystemId {
-        self.internal_system.id()
     }
 
     fn new_archetype(&mut self, archetype: &Archetype) {

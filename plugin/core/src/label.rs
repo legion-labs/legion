@@ -1,4 +1,5 @@
 use legion_ecs::{
+    component::Component,
     entity::Entity,
     query::Changed,
     system::{Query, RemovedComponents, ResMut},
@@ -7,7 +8,7 @@ use legion_utils::{HashMap, HashSet};
 use std::{borrow::Cow, fmt::Debug};
 
 /// A collection of labels
-#[derive(Default)]
+#[derive(Component, Default)]
 pub struct Labels {
     labels: HashSet<Cow<'static, str>>,
 }
@@ -73,7 +74,7 @@ impl EntityLabels {
 pub(crate) fn entity_labels_system(
     mut entity_labels: ResMut<'_, EntityLabels>,
     removed_labels: RemovedComponents<'_, Labels>,
-    query: Query<'_, (Entity, &Labels), Changed<Labels>>,
+    query: Query<'_, '_, (Entity, &Labels), Changed<Labels>>,
 ) {
     let entity_labels = &mut *entity_labels;
 
@@ -86,7 +87,6 @@ pub(crate) fn entity_labels_system(
             }
         }
     }
-    drop(removed_labels);
 
     for (entity, labels) in query.iter() {
         let current_labels = entity_labels
@@ -110,7 +110,6 @@ pub(crate) fn entity_labels_system(
 
         *current_labels = labels.labels.clone();
     }
-    drop(query);
 }
 
 #[cfg(test)]

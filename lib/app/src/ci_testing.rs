@@ -13,7 +13,7 @@ pub struct CiTestingConfig {
 fn ci_testing_exit_after(
     mut current_frame: legion_ecs::prelude::Local<'_, u32>,
     ci_testing_config: legion_ecs::prelude::Res<'_, CiTestingConfig>,
-    mut app_exit_events: crate::EventWriter<'_, AppExit>,
+    mut app_exit_events: crate::EventWriter<'_, '_, AppExit>,
 ) {
     if let Some(exit_after) = ci_testing_config.exit_after {
         if *current_frame > exit_after {

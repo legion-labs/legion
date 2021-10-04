@@ -1,5 +1,3 @@
-#![allow(unsafe_code)]
-
 use crate::{
     archetype::{ArchetypeComponentId, ArchetypeGeneration},
     query::Access,
@@ -12,6 +10,7 @@ use legion_tasks::{ComputeTaskPool, Scope, TaskPool};
 
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
+
 struct SystemSchedulingMetadata {
     /// Used to signal the system's task to start the system.
     start_sender: Sender<()>,
@@ -264,18 +263,7 @@ impl ParallelExecutor {
             self.emit_event(StartedSystems(started_systems));
         }
         // Remove now running systems from the queue.
-        // Revert the loop below to the following code once we can bump up
-        // petgraph's version again:
-        //self.queued.difference_with(&self.running);
-        for (x, y) in self
-            .queued
-            .as_mut_slice()
-            .iter_mut()
-            .zip(self.running.as_mut_slice().iter())
-        {
-            *x &= !*y;
-        }
-
+        self.queued.difference_with(&self.running);
         // Remove immediately processed systems from the queue.
         self.queued.intersect_with(&self.should_run);
     }
@@ -334,6 +322,11 @@ mod tests {
         world::World,
     };
     use async_channel::Receiver;
+
+    use crate as legion_ecs;
+    use crate::component::Component;
+    #[derive(Component)]
+    struct W<T>(T);
 
     fn receive_events(world: &World) -> Vec<SchedulingEvent> {
         let mut events = Vec::new();
@@ -395,9 +388,9 @@ mod tests {
     #[test]
     fn queries() {
         let mut world = World::new();
-        world.spawn().insert(0usize);
-        fn wants_mut(_: Query<'_, &mut usize>) {}
-        fn wants_ref(_: Query<'_, &usize>) {}
+        world.spawn().insert(W(0usize));
+        fn wants_mut(_: Query<'_, '_, &mut W<usize>>) {}
+        fn wants_ref(_: Query<'_, '_, &W<usize>>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut)
             .with_system(wants_mut);
@@ -420,9 +413,9 @@ mod tests {
         stage.run(&mut world);
         assert_eq!(receive_events(&world), vec![StartedSystems(2),]);
         let mut world = World::new();
-        world.spawn().insert_bundle((0usize, 0u32, 0f32));
-        fn wants_mut_usize(_: Query<'_, (&mut usize, &f32)>) {}
-        fn wants_mut_u32(_: Query<'_, (&mut u32, &f32)>) {}
+        world.spawn().insert_bundle((W(0usize), W(0u32), W(0f32)));
+        fn wants_mut_usize(_: Query<'_, '_, (&mut W<usize>, &W<f32>)>) {}
+        fn wants_mut_u32(_: Query<'_, '_, (&mut W<u32>, &W<f32>)>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut_usize)
             .with_system(wants_mut_u32);
@@ -437,7 +430,6 @@ mod tests {
         world.insert_non_send(thread::current().id());
         fn non_send(thread_id: NonSend<'_, thread::ThreadId>) {
             assert_eq!(thread::current().id(), *thread_id);
-            drop(thread_id);
         }
         fn empty() {}
         let mut stage = SystemStage::parallel()
