@@ -1,16 +1,16 @@
 use crate::*;
 use transit::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum LogLevel {
-    Info,
-    Warning,
-    Error,
+    Info = 1,
+    Warning = 2,
+    Error = 3,
 }
 
 #[derive(Debug, TransitReflect)]
 pub struct LogMsgEvent {
-    pub level: LogLevel,
+    pub level: u8,
     pub msg: &'static str,
 }
 

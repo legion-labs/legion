@@ -4,8 +4,17 @@ use crate::*;
 use anyhow::*;
 
 #[derive(Debug)]
+pub struct Object {
+    pub type_name: String,
+    pub members: Vec<(String, Value)>,
+}
+
+#[derive(Debug)]
 pub enum Value {
     String(String),
+    Object(Object),
+    U8(u8),
+    None,
 }
 
 pub fn parse_dependencies<F>(udts: &[UserDefinedType], buffer: &[u8], mut fun: F) -> Result<()>

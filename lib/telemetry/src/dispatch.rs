@@ -82,7 +82,10 @@ impl Dispatch {
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
         let mut log_stream = self.log_stream.lock().unwrap();
-        log_stream.push(LogMsgEvent { level, msg });
+        log_stream.push(LogMsgEvent {
+            level: level as u8,
+            msg,
+        });
         if log_stream.is_full() {
             drop(log_stream);
             self.on_log_buffer_full();

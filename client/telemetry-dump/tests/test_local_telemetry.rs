@@ -40,6 +40,64 @@ async fn find_process_with_log_data(connection: &mut sqlx::AnyConnection) -> Res
     Ok(row.get("process_id"))
 }
 
+pub fn parse_objects<F>(udts: &[UserDefinedType], buffer: &[u8], mut fun: F) -> Result<()>
+where
+    F: FnMut(Value),
+{
+    let mut offset = 0;
+    while offset < buffer.len() {
+        let type_index = buffer[offset] as usize;
+        if type_index >= udts.len() {
+            bail!(
+                "Invalid type index parsing transit dependencies: {}",
+                type_index
+            );
+        }
+        offset += 1;
+        let udt = &udts[type_index];
+        let (object_size, _is_size_dynamic) = match udt.size {
+            0 => {
+                //dynamic size
+                unsafe {
+                    let size_ptr = buffer.as_ptr().add(offset);
+                    let obj_size = read_pod::<u32>(size_ptr);
+                    offset += std::mem::size_of::<u32>();
+                    (obj_size as usize, true)
+                }
+            }
+            static_size => (static_size, false),
+        };
+        let instance_members: Vec<_> = udt
+            .members
+            .iter()
+            .map(|member_meta| {
+                let name = member_meta.name.clone();
+                let type_name = member_meta.type_name.clone();
+                let value = match type_name.as_str() {
+                    "u8" => {
+                        assert_eq!(1, member_meta.size);
+                        Value::U8(read_pod::<u8>(unsafe {
+                            buffer.as_ptr().add(offset + member_meta.offset)
+                        }))
+                    }
+                    unknown_member_type => {
+                        println!("unknown member type {}", unknown_member_type);
+                        Value::None
+                    }
+                };
+                (name, value)
+            })
+            .collect();
+        let instance = Object {
+            type_name: udt.name.clone(),
+            members: instance_members,
+        };
+        fun(Value::Object(instance));
+        offset += object_size;
+    }
+    Ok(())
+}
+
 #[test]
 fn test_list_processes() {
     let data_path = setup_data_dir("list-processes");
@@ -70,6 +128,16 @@ async fn print_process_log(
 
             let dependencies = read_dependencies(&dep_udts, &payload.dependencies)?;
             dbg!(dependencies);
+
+            let obj_udts = stream
+                .objects_metadata
+                .as_ref()
+                .unwrap()
+                .as_transit_udt_vec();
+
+            parse_objects(&obj_udts, &payload.objects, |val| {
+                dbg!(val);
+            })?;
         }
     }
     Ok(())
