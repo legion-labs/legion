@@ -3,7 +3,7 @@
 use std::any::Any;
 
 use legion_data_offline::resource::{OfflineResource, ResourceProcessor};
-use legion_data_runtime::Resource;
+use legion_data_runtime::{resource, Resource};
 use serde::{Deserialize, Serialize};
 
 /// Texture type enumeration.
@@ -14,7 +14,8 @@ pub enum TextureType {
 }
 
 /// Offline texture resource.
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("offline_texture")]
+#[derive(Serialize, Deserialize)]
 pub struct Texture {
     /// Texture type.
     pub kind: TextureType,
@@ -24,10 +25,6 @@ pub struct Texture {
     pub height: u32,
     /// Texture pixel data.
     pub rgba: Vec<u8>,
-}
-
-impl Resource for Texture {
-    const TYPENAME: &'static str = "offline_texture";
 }
 
 impl OfflineResource for Texture {

@@ -1,7 +1,7 @@
 use std::any::{Any, TypeId};
 
 use legion_data_runtime::{
-    AssetLoader, AssetRegistryOptions, Asset, Resource, ResourceId, ResourceType,
+    resource, Asset, AssetLoader, AssetRegistryOptions, Resource, ResourceId, ResourceType,
 };
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -15,16 +15,13 @@ pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
 
 // ------------------ Entity -----------------------------------
 
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("runtime_entity")]
+#[derive(Serialize, Deserialize)]
 pub struct Entity {
     pub name: String,
     pub children: Vec<ResourceId>,
     pub parent: Option<ResourceId>,
     pub components: Vec<Box<dyn Component>>,
-}
-
-impl Resource for Entity {
-    const TYPENAME: &'static str = "runtime_entity";
 }
 
 impl Asset for Entity {
@@ -167,13 +164,10 @@ impl Component for Physics {}
 
 // ------------------ Instance  -----------------------------------
 
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("runtime_instance")]
+#[derive(Serialize, Deserialize)]
 pub struct Instance {
     pub original: Option<ResourceId>,
-}
-
-impl Resource for Instance {
-    const TYPENAME: &'static str = "runtime_instance";
 }
 
 impl Asset for Instance {
@@ -205,13 +199,10 @@ impl AssetLoader for InstanceLoader {
 
 // ------------------ Mesh -----------------------------------
 
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("runtime_mesh")]
+#[derive(Serialize, Deserialize)]
 pub struct Mesh {
     pub sub_meshes: Vec<SubMesh>,
-}
-
-impl Resource for Mesh {
-    const TYPENAME: &'static str = "runtime_mesh";
 }
 
 impl Asset for Mesh {

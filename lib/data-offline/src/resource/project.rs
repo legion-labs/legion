@@ -522,7 +522,7 @@ mod tests {
     use std::any::Any;
     use std::{fs::File, path::Path, str::FromStr};
 
-    use legion_data_runtime::{Resource, ResourceType};
+    use legion_data_runtime::{resource, Resource, ResourceType};
     use tempfile::TempDir;
 
     use crate::resource::project::Project;
@@ -552,14 +552,10 @@ mod tests {
     const RESOURCE_SKELETON: ResourceType = ResourceType::new(b"skeleton");
     const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
 
-    #[derive(Resource)]
+    #[resource("null")]
     struct NullResource {
         content: isize,
         dependencies: Vec<ResourcePathId>,
-    }
-
-    impl Resource for NullResource {
-        const TYPENAME: &'static str = "null";
     }
 
     struct NullResourceProc {}

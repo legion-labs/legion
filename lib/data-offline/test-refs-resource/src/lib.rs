@@ -8,23 +8,20 @@ use legion_data_offline::{
     resource::{OfflineResource, ResourceProcessor},
     ResourcePathId,
 };
-use legion_data_runtime::Resource;
+use legion_data_runtime::{resource, Resource};
 
 use serde::{Deserialize, Serialize};
 
 /// Resource temporarily used for testing.
 ///
 /// To be removed once real resource types exist.
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("test_resource")]
+#[derive(Serialize, Deserialize)]
 pub struct TestResource {
     /// Resource's content.
     pub content: String,
     /// Resource's build dependencies.
     pub build_deps: Vec<ResourcePathId>,
-}
-
-impl Resource for TestResource {
-    const TYPENAME: &'static str = "test_resource";
 }
 
 impl OfflineResource for TestResource {

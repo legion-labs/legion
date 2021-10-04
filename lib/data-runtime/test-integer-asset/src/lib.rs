@@ -1,14 +1,10 @@
 use std::any::Any;
 
-use legion_data_runtime::{AssetLoader, Asset, Resource, ResourceType};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceType};
 
-#[derive(Resource)]
+#[resource("integer_asset")]
 pub struct IntegerAsset {
     pub magic_value: i32,
-}
-
-impl Resource for IntegerAsset {
-    const TYPENAME: &'static str = "integer_asset";
 }
 
 impl Asset for IntegerAsset {

@@ -4,17 +4,14 @@ use legion_data_offline::{
     resource::{OfflineResource, ResourceProcessor},
     ResourcePathId,
 };
-use legion_data_runtime::Resource;
+use legion_data_runtime::{resource, Resource};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("text")]
+#[derive(Serialize, Deserialize)]
 pub struct TextResource {
     pub content: String,
-}
-
-impl Resource for TextResource {
-    const TYPENAME: &'static str = "text";
 }
 
 impl OfflineResource for TextResource {

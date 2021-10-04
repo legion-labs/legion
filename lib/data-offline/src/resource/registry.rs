@@ -35,7 +35,7 @@ impl ResourceRegistryOptions {
         self
     }
 
-    /// Same as `add_type_processor` but adds a default processor of OfflineResource.
+    /// Same as `add_type_processor` but adds a default processor of `OfflineResource`.
     ///
     /// # Panics
     ///
@@ -205,20 +205,16 @@ impl ResourceRegistry {
 mod tests {
     use std::{any::Any, io};
 
-    use legion_data_runtime::{Resource, ResourceType};
+    use legion_data_runtime::{resource, Resource, ResourceType};
 
     use crate::{
         resource::{registry::ResourceRegistryOptions, OfflineResource, ResourceProcessor},
         ResourcePathId,
     };
 
-    #[derive(Resource)]
+    #[resource("sample")]
     struct SampleResource {
         content: String,
-    }
-
-    impl Resource for SampleResource {
-        const TYPENAME: &'static str = "sample";
     }
 
     impl OfflineResource for SampleResource {

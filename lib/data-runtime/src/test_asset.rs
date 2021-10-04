@@ -4,19 +4,15 @@
 
 use std::any::Any;
 
-use crate::{AssetLoader, Asset, Resource, ResourceType};
+use crate::{resource, Asset, AssetLoader, Resource, ResourceType};
 
 /// Asset temporarily used for testing.
 ///
 /// To be removed once real asset types exist.
-#[derive(Resource)]
+#[resource("test_asset")]
 pub struct TestAsset {
     /// Test content.
     pub content: String,
-}
-
-impl Resource for TestAsset {
-    const TYPENAME: &'static str = "test_asset";
 }
 
 impl Asset for TestAsset {

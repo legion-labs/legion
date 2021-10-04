@@ -4,18 +4,14 @@
 
 use std::any::Any;
 
-use legion_data_runtime::{AssetLoader, Asset, Resource, ResourceType};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceType};
 /// Asset temporarily used for testing.
 ///
 /// To be removed once real asset types exist.
-#[derive(Resource)]
+#[resource("refs_asset")]
 pub struct RefsAsset {
     /// Test content.
     pub content: String,
-}
-
-impl Resource for RefsAsset {
-    const TYPENAME: &'static str = "refs_asset";
 }
 
 impl Asset for RefsAsset {

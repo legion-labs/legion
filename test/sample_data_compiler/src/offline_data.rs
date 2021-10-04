@@ -6,22 +6,19 @@ use legion_data_offline::{
     resource::{OfflineResource, ResourceProcessor},
     ResourcePathId,
 };
-use legion_data_runtime::Resource;
+use legion_data_runtime::{resource, Resource};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
 // ------------------ Entity -----------------------------------
 
-#[derive(Resource, Default, Serialize, Deserialize)]
+#[resource("offline_entity")]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Entity {
     pub name: String,
     pub children: Vec<ResourcePathId>,
     pub parent: Option<ResourcePathId>,
     pub components: Vec<Box<dyn Component>>,
-}
-
-impl Resource for Entity {
-    const TYPENAME: &'static str = "offline_entity";
 }
 
 impl OfflineResource for Entity {
@@ -176,13 +173,10 @@ impl Component for Physics {}
 
 // ------------------ Instance  -----------------------------------
 
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("offline_instance")]
+#[derive(Serialize, Deserialize)]
 pub struct Instance {
     pub original: Option<ResourcePathId>,
-}
-
-impl Resource for Instance {
-    const TYPENAME: &'static str = "offline_instance";
 }
 
 impl OfflineResource for Instance {
@@ -226,13 +220,10 @@ impl ResourceProcessor for InstanceProcessor {
 
 // ------------------ Mesh -----------------------------------
 
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("offline_mesh")]
+#[derive(Serialize, Deserialize)]
 pub struct Mesh {
     pub sub_meshes: Vec<SubMesh>,
-}
-
-impl Resource for Mesh {
-    const TYPENAME: &'static str = "offline_mesh";
 }
 
 impl OfflineResource for Mesh {

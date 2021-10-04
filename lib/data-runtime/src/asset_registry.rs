@@ -12,8 +12,7 @@ use legion_content_store::ContentStore;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    AssetLoader, Asset, Handle, HandleId, HandleUntyped, RefOp, Resource, ResourceId,
-    ResourceType,
+    Asset, AssetLoader, Handle, HandleId, HandleUntyped, RefOp, Resource, ResourceId, ResourceType,
 };
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].

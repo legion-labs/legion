@@ -85,17 +85,25 @@
 #![allow()]
 #![warn(missing_docs)]
 
-mod asset;
-
 use proc_macro::TokenStream;
+use quote::quote;
+use std::stringify;
+use syn::{parse_macro_input, ItemStruct, LitStr};
 
 /// Derives a default implementation of the Resource trait for a type.
-#[proc_macro_derive(Resource)]
-pub fn derive_resource(input: TokenStream) -> TokenStream {
-    // Construct a representation of Rust code as a syntax tree
-    // that we can manipulate
-    let ast = syn::parse(input).unwrap();
+#[proc_macro_attribute]
+pub fn resource(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut resource = item.clone();
+    let item = parse_macro_input!(item as ItemStruct);
 
-    // Build the trait implementation
-    asset::derive_resource(&ast)
+    let str_value = parse_macro_input!(attr as LitStr);
+    let name = item.ident;
+    let resource_impl = quote! {
+        impl Resource for #name {
+            const TYPENAME: &'static str = #str_value;
+        }
+    };
+
+    resource.extend(proc_macro::TokenStream::from(resource_impl));
+    resource
 }

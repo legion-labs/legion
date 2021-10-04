@@ -2,16 +2,13 @@
 
 use std::any::Any;
 
-use legion_data_runtime::{AssetLoader, Asset, Resource, ResourceType};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceType};
+
 /// Runtime texture.
-#[derive(Resource)]
+#[resource("runtime_texture")]
 pub struct Texture {
     /// Pixel data of the image
     pub rgba: Vec<u8>,
-}
-
-impl Resource for Texture {
-    const TYPENAME: &'static str = "runtime_texture";
 }
 
 impl Asset for Texture {

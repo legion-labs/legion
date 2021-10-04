@@ -5,17 +5,13 @@ use legion_data_offline::{
     ResourcePathId,
 };
 
-use legion_data_runtime::{Resource, ResourceType};
+use legion_data_runtime::{resource, Resource};
 use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("bin")]
+#[derive(Serialize, Deserialize)]
 pub struct BinaryResource {
     pub content: Vec<u8>,
-}
-
-impl Resource for BinaryResource {
-    const TYPENAME: &'static str = "bin";
-    const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
 }
 
 impl OfflineResource for BinaryResource {

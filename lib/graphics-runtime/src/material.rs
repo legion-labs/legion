@@ -2,12 +2,12 @@
 
 use std::{any::Any, convert::TryFrom};
 
-use legion_data_runtime::{AssetLoader, Asset, Resource, ResourceId, ResourceType};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceId, ResourceType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
 /// Runtime material.
-#[derive(Resource)]
+#[resource("runtime_material")]
 pub struct Material {
     /// Albedo texture reference.
     pub albedo: Option<ResourceId>,
@@ -19,9 +19,6 @@ pub struct Material {
     pub metalness: Option<ResourceId>,
 }
 
-impl Resource for Material {
-    const TYPENAME: &'static str = "runtime_material";
-}
 impl Asset for Material {
     type Loader = MaterialLoader;
 }

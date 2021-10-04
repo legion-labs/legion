@@ -5,16 +5,13 @@ use legion_data_offline::{
     ResourcePathId,
 };
 
-use legion_data_runtime::Resource;
+use legion_data_runtime::{resource, Resource};
 use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Serialize, Deserialize)]
+#[resource("multitext_resource")]
+#[derive(Serialize, Deserialize)]
 pub struct MultiTextResource {
     pub text_list: Vec<String>,
-}
-
-impl Resource for MultiTextResource {
-    const TYPENAME: &'static str = "multitext_resource";
 }
 
 impl OfflineResource for MultiTextResource {

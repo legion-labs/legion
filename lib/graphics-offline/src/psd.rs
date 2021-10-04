@@ -3,18 +3,14 @@
 use std::any::Any;
 
 use legion_data_offline::resource::{OfflineResource, ResourceProcessor};
-use legion_data_runtime::Resource;
+use legion_data_runtime::{resource, Resource};
 
 use crate::texture::{Texture, TextureType};
 
 /// Photoshop Document file.
-#[derive(Resource)]
+#[resource("psd")]
 pub struct PsdFile {
     content: Option<(psd::Psd, Vec<u8>)>,
-}
-
-impl Resource for PsdFile {
-    const TYPENAME: &'static str = "psd";
 }
 
 impl OfflineResource for PsdFile {

@@ -6,11 +6,12 @@ use legion_data_offline::{
     resource::{OfflineResource, ResourceProcessor},
     ResourcePathId,
 };
-use legion_data_runtime::Resource;
+use legion_data_runtime::{resource, Resource};
 use serde::{Deserialize, Serialize};
 
 /// Offline material resource.
-#[derive(Resource, Default, Serialize, Deserialize)]
+#[resource("offline_material")]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Material {
     /// Albedo texture reference.
     pub albedo: Option<ResourcePathId>,
@@ -20,10 +21,6 @@ pub struct Material {
     pub roughness: Option<ResourcePathId>,
     /// Metalness texture reference.
     pub metalness: Option<ResourcePathId>,
-}
-
-impl Resource for Material {
-    const TYPENAME: &'static str = "offline_material";
 }
 
 impl OfflineResource for Material {
