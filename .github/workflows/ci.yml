@@ -165,7 +165,7 @@ jobs:
         with:
           name: docs
           path: ./target/doc
-          retention-days: 60
+          retention-days: 5
 
   deploy_docs:
     name: Deploying docs
