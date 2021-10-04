@@ -189,6 +189,9 @@ deny = [] #{ name = "ansi_term", version = "=0.11.0", wrappers = [] },
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
   { name = "ansi_term", version = "=0.11.0" },
+  # PR merged just waiting on a new release of tonic
+  { name = "fixedbitset", version = "=0.2.0" },
+  { name = "petgraph", version = "=0.5.1" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 
