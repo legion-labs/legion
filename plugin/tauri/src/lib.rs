@@ -99,10 +99,10 @@ pub fn build_tauri_runner<R: tauri::Runtime>(
         // get rid of this and move the value directly instead.
         let app = std::rc::Rc::new(std::cell::RefCell::new(app));
 
-        //tauri_app.run(move |_, event| {
-        //    if let tauri::Event::MainEventsCleared = event {
-        //        app.borrow_mut().update();
-        //    }
-        //});
+        tauri_app.run(move |_, event| {
+            if let tauri::Event::MainEventsCleared = event {
+                app.borrow_mut().update();
+            }
+        });
     })
 }
