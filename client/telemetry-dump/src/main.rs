@@ -113,6 +113,9 @@ async fn main() -> Result<()> {
             SubCommand::with_name("recent-processes").about("prints a list of recent processes"),
         )
         .subcommand(
+            SubCommand::with_name("logs-by-process").about("prints the logs of recent processes"),
+        )
+        .subcommand(
             SubCommand::with_name("process-log")
                 .about("prints the log streams of the process")
                 .arg(
@@ -129,6 +132,9 @@ async fn main() -> Result<()> {
     match matches.subcommand() {
         ("recent-processes", Some(_command_match)) => {
             print_recent_processes(&mut connection).await;
+        }
+        ("logs-by-process", Some(_command_match)) => {
+            print_logs_by_process(&mut connection, data_path).await?;
         }
         ("process-log", Some(command_match)) => {
             let process_id = command_match.value_of("process-id").unwrap();

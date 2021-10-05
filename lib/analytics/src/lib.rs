@@ -104,7 +104,7 @@ pub async fn fetch_recent_processes(
     let rows = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time
          FROM processes
-         ORDER BY start_time
+         ORDER BY start_time DESC
          LIMIT 100;",
     )
     .fetch_all(connection)

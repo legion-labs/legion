@@ -509,8 +509,9 @@ fn main_impl() -> Result<(), String> {
         }
         ("import-git-branch", Some(command_match)) => {
             log_str(LogLevel::Info, "import-git-branch");
+            let path_arg = command_match.value_of("path").unwrap();
             import_git_branch_command(
-                Path::new(command_match.value_of("path").unwrap()),
+                Path::new(path_arg),
                 command_match.value_of("branch").unwrap(),
             )
         }
