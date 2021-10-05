@@ -433,17 +433,20 @@ fn main_impl() -> Result<(), String> {
             tokio_runtime.block_on(detach_branch_command())
         }
         ("attach-branch", Some(command_match)) => {
-            log_str(LogLevel::Info, "attach-branch");
-            let name = command_match.value_of("parent-branch-name").unwrap();
-            tokio_runtime.block_on(attach_branch_command(name))
+            let parent_branch_name = command_match.value_of("parent-branch-name").unwrap();
+            log_string(
+                LogLevel::Info,
+                format!("attach-branch {}", parent_branch_name),
+            );
+            tokio_runtime.block_on(attach_branch_command(parent_branch_name))
         }
         ("list-branches", Some(_command_match)) => {
             log_str(LogLevel::Info, "list-branches");
             tokio_runtime.block_on(list_branches_command())
         }
         ("revert", Some(command_match)) => {
-            log_str(LogLevel::Info, "revert");
             let path = command_match.value_of("path").unwrap();
+            log_string(LogLevel::Info, format!("revert {}", path));
             if command_match.is_present("glob") {
                 tokio_runtime.block_on(revert_glob_command(path))
             } else {
@@ -451,11 +454,11 @@ fn main_impl() -> Result<(), String> {
             }
         }
         ("commit", Some(command_match)) => {
-            log_str(LogLevel::Info, "commit");
             let mut message = String::from("");
             for item in command_match.values_of("message").unwrap() {
                 message += item;
             }
+            log_string(LogLevel::Info, format!("commit {:?}", message));
             tokio_runtime.block_on(commit_command(&message))
         }
         ("local-changes", Some(_command_match)) => {
