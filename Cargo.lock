@@ -1113,6 +1113,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ae5588f6b3c3cb05239e90bd110f257254aecd01e4635400391aeae07497845"
+dependencies = [
+ "cfg-if 1.0.0",
+ "crossbeam-channel",
+ "crossbeam-deque",
+ "crossbeam-epoch",
+ "crossbeam-queue",
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1594,26 +1608,18 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64",
- "bytes",
  "clap",
- "interceptor",
  "legion-app",
  "legion-asset-registry",
  "legion-async",
  "legion-codec-api",
- "legion-ecs",
- "legion-editor-proto",
  "legion-mp4",
  "legion-resource-registry",
+ "legion-streamer",
  "legion-transform",
  "log",
- "serde",
- "serde_json",
  "simple_logger",
  "tokio",
- "tonic",
- "webrtc",
 ]
 
 [[package]]
@@ -3135,6 +3141,26 @@ dependencies = [
 [[package]]
 name = "legion-streamer"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64",
+ "bytes",
+ "crossbeam",
+ "futures-lite",
+ "interceptor",
+ "legion-app",
+ "legion-async",
+ "legion-codec-api",
+ "legion-ecs",
+ "legion-editor-proto",
+ "legion-mp4",
+ "log",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tonic",
+ "webrtc",
+]
 
 [[package]]
 name = "legion-tao"

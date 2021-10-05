@@ -3,21 +3,17 @@ use std::time::Duration;
 use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use legion_async::{AsyncPlugin, TokioAsyncRuntime};
-use legion_ecs::prelude::*;
 use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
+use legion_async::AsyncPlugin;
+use legion_streamer::{StreamerPlugin, StreamerPluginSettings};
 use legion_transform::TransformPlugin;
 
-mod server;
-mod webrtc;
-
 use log::LevelFilter;
-use server::Server;
 use simple_logger::SimpleLogger;
 
 fn main() {
     SimpleLogger::new()
-        .with_level(LevelFilter::Warn)
+        .with_level(LevelFilter::Info)
         .init()
         .unwrap();
 
@@ -80,14 +76,15 @@ fn main() {
         )))
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(AsyncPlugin {})
-        .add_startup_system(move |rt: Res<TokioAsyncRuntime>| {
-            let editor_server = Server::new().unwrap();
-            println!("Starting editor server on: {}...", addr);
-
-            rt.start_detached(Server::listen_and_serve(addr, editor_server));
+        .insert_resource(StreamerPluginSettings {
+            grpc_server_addr: addr,
         })
+<<<<<<< HEAD
         .insert_resource(ResourceRegistrySettings::new(project_folder))
         .add_plugin(ResourceRegistryPlugin::default())
+=======
+        .add_plugin(StreamerPlugin {})
+>>>>>>> 71be79d3 (Tenative streamer plugin)
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,

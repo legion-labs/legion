@@ -82,14 +82,65 @@
 )]
 // END - Legion Labs standard lints v0.4
 // crate-specific exceptions:
-#![allow()]
+#![allow(clippy::needless_pass_by_value)]
 #![warn(missing_docs)]
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let four = 2 + 2;
-        assert_eq!(four, 4);
+use std::net::SocketAddr;
+
+use legion_app::prelude::*;
+
+mod grpc;
+mod streamer;
+mod webrtc;
+
+/// Configuration for the `StreamerPlugin`.
+pub struct StreamerPluginSettings {
+    /// The listening address of the `gRPC` server.
+    pub grpc_server_addr: SocketAddr,
+}
+
+impl Default for StreamerPluginSettings {
+    fn default() -> Self {
+        Self {
+            grpc_server_addr: "[::1]:50051".parse().unwrap(),
+        }
+    }
+}
+
+/// Provides streaming capabilities to the engine.
+pub struct StreamerPlugin {}
+
+impl Plugin for StreamerPlugin {
+    fn build(&self, app: &mut App) {
+        let settings = app
+            .world
+            .remove_resource::<StreamerPluginSettings>()
+            .map_or_else(StreamerPluginSettings::default, |x| x);
+
+        // This channel is used a communication mechanism between the async server threads and the game-loop.
+        let (stream_events_sender, stream_events_receiver) = crossbeam::channel::unbounded();
+
+        // The streamer is the game-loop representative of the whole streaming system.
+        let streamer = streamer::Streamer::new(stream_events_receiver);
+
+        app.insert_resource(streamer)
+            .add_system(streamer::Streamer::handle_stream_events)
+            .add_system(streamer::Streamer::handle_video_streams);
+
+        let webrtc_server =
+            webrtc::WebRTCServer::new().expect("failed to instanciate a WebRTC server");
+        let grpc_server = grpc::GRPCServer::new(webrtc_server, stream_events_sender);
+
+        // Let's limit our usage of the Async runtime, as this keeps a mutable
+        // reference on the world.
+        {
+            let async_rt = app
+                .world
+                .get_resource_mut::<legion_async::TokioAsyncRuntime>()
+                .expect("the streamer plugin requires the async plugin")
+                .into_inner();
+
+            async_rt.start_detached(grpc_server.listen_and_serve(settings.grpc_server_addr));
+        }
     }
 }
