@@ -1,7 +1,8 @@
 {
   "name": "/world/sample_1/ground.ent",
   "dependencies": [
-    "d004cd1c00000000445b0fc7dae84c6e"
+    "4e1dd44100000000583a3513e7187e7c|ea2510e8",
+    "4e1dd44100000000583a3513e7187e7c|ea2510e8"
   ],
-  "content_checksum": "00000000000000007aa7a186c502a380"
+  "content_checksum": "0000000000000000525ce84f7e9623c5"
 }

@@ -24,7 +24,6 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
     }
 }
 
-pub fn find_derived_path_opt(path: &Option<ResourcePathId>) -> Option<ResourceId> {
-    path.as_ref()
-        .map(|path| find_derived_path(path).content_id())
+pub fn to_resourceid_opt(path: &Option<ResourcePathId>) -> Option<ResourceId> {
+    path.as_ref().map(|path| path.content_id())
 }

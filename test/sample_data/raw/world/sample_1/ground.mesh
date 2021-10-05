@@ -117,7 +117,7 @@
                 15,
                 17,
             ],
-            material: "world/sample_1/ground.mat",
+            material: "runtime_material(world/sample_1/ground.mat)",
         ),
     ],
 )

@@ -1,7 +1,7 @@
 {
   "name": "/world/sample_1/cube_group_1.ent.ins",
   "dependencies": [
-    "d004cd1c000000000bb9d43d0d846181"
+    "d004cd1c000000000bb9d43d0d846181|019c8223"
   ],
-  "content_checksum": "0000000000000000761b2b719e2c0b31"
+  "content_checksum": "0000000000000000544335c6d6cbc52c"
 }

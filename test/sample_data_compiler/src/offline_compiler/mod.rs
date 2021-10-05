@@ -7,12 +7,12 @@ use std::{
 use legion_content_store::ContentStoreAddr;
 use legion_data_build::{generate_rt_manifest, DataBuildOptions};
 use legion_data_compiler::{Locale, Platform, Target};
-use legion_data_offline::ResourcePathId;
+use legion_data_offline::{resource::ResourcePathName, ResourcePathId};
 use legion_data_runtime::Resource;
 
 use crate::{offline_to_runtime::find_derived_path, runtime_data};
 
-pub fn build(root_folder: impl AsRef<Path>) {
+pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
     let root_folder = root_folder.as_ref();
 
     let temp_dir = root_folder.join("temp");
@@ -44,8 +44,7 @@ pub fn build(root_folder: impl AsRef<Path>) {
     let platform = Platform::Windows;
     let locale = Locale::new("en");
 
-    let resource_list = build.project().resource_list();
-    for resource_id in resource_list {
+    if let Ok(resource_id) = build.project().find_resource(resource_name) {
         let asset_path = find_derived_path(&ResourcePathId::from(resource_id));
         let source_name = build
             .project()
