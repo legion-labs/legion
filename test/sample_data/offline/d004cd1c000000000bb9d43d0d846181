@@ -1,1 +1,1 @@
-{"name":"Cube Group","children":["417862e500000000e321168f3653db42","417862e500000000ae5fd743f081bd05"],"parent":null,"components":[{"Transform":{"position":[0.0,0.0,0.0],"rotation":[0.0,0.0,0.0,1.0],"scale":[1.0,1.0,1.0],"apply_to_children":true}}]}
+{"name":"Cube Group","children":["417862e500000000e321168f3653db42|0cd05ad8","417862e500000000ae5fd743f081bd05|0cd05ad8"],"parent":null,"components":[{"Transform":{"position":[0.0,0.0,0.0],"rotation":[0.0,0.0,0.0,1.0],"scale":[1.0,1.0,1.0],"apply_to_children":true}}]}

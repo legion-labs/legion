@@ -94,22 +94,30 @@ use legion_data_offline::resource::ResourcePathName;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
 fn main() {
-    const ARG_NAME_ROOT: &str = "root";
+    const ARG_PROJECT_DIR: &str = "root";
+    const ARG_RESOURCE_NAME: &str = "resource";
 
     let args = App::new("Sample data compiler")
         .version(clap::crate_version!())
         .about("Will load RON files containing sample data, and generate offline resources and runtime assets, along with manifests.")
-        .arg(Arg::with_name(ARG_NAME_ROOT)
-            .long(ARG_NAME_ROOT)
+        .arg(Arg::with_name(ARG_PROJECT_DIR)
+            .long(ARG_PROJECT_DIR)
             .takes_value(true)
-            .help("Root folder containing sample data"))
+            .help("Folder containing raw/ directory"))
+        .arg(Arg::with_name(ARG_RESOURCE_NAME)
+                .long(ARG_RESOURCE_NAME)
+                .takes_value(true)
+                .help("Path name of the resource to compile"))
         .get_matches();
 
-    let root_folder = args.value_of(ARG_NAME_ROOT).unwrap_or("test/sample_data");
+    let project_dir = args.value_of(ARG_PROJECT_DIR).unwrap_or("test/sample_data");
+    let root_resource = args
+        .value_of(ARG_RESOURCE_NAME)
+        .unwrap_or("/world/sample_1.ent");
 
     // generate contents of offline folder, from raw RON content
-    raw_loader::build_offline(root_folder);
+    raw_loader::build_offline(project_dir);
 
     // compile offline resources to runtime assets
-    offline_compiler::build(root_folder, &ResourcePathName::from("/world/sample_1.ent"));
+    offline_compiler::build(project_dir, &ResourcePathName::from(root_resource));
 }
