@@ -96,6 +96,7 @@ pub async fn find_local_change(
 pub async fn read_local_changes(
     transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
 ) -> Result<Vec<LocalChange>, String> {
+    trace_scope!();
     match sqlx::query(
         "SELECT relative_path, change_type
              FROM changes",

@@ -95,6 +95,7 @@ pub async fn assert_not_locked(
     transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
     path_specified: &Path,
 ) -> Result<(), String> {
+    trace_scope!();
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let (current_branch_name, _current_commit) = read_current_branch(transaction).await?;
     let repo_branch = query.read_branch(&current_branch_name).await?;

@@ -186,7 +186,7 @@ pub fn flush_log_buffer() {
     }
 }
 
-//todo: should be implicit by default but limit the maximum number of threads
+//todo: should be implicit by default but limit the maximum number of tracked threads
 pub fn init_thread_stream() {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {
         if let Some(d) = &mut G_DISPATCH {
@@ -197,24 +197,21 @@ pub fn init_thread_stream() {
     });
 }
 
-pub fn on_begin_scope(scope: GetScopeDesc) {
-    LOCAL_THREAD_STREAM.with(|cell| {
-        unsafe {
-            let opt_stream = &mut *cell.as_ptr();
-            if let Some(stream) = opt_stream {
-                stream.push_event(BeginScopeEvent {
-                    time: now(),
-                    get_scope_desc: scope,
-                });
-                //todo: refac
-                if stream.is_full() {
-                    match &mut G_DISPATCH {
-                        Some(d) => {
-                            d.on_thread_buffer_full(stream);
-                        }
-                        None => {
-                            panic!("threads are recording but there is no event dispatch");
-                        }
+fn on_thread_event<T>(event: T)
+where
+    T: transit::Serialize + ThreadEventQueueTypeIndex,
+{
+    LOCAL_THREAD_STREAM.with(|cell| unsafe {
+        let opt_stream = &mut *cell.as_ptr();
+        if let Some(stream) = opt_stream {
+            stream.push_event(event);
+            if stream.is_full() {
+                match &mut G_DISPATCH {
+                    Some(d) => {
+                        d.on_thread_buffer_full(stream);
+                    }
+                    None => {
+                        panic!("threads are recording but there is no event dispatch");
                     }
                 }
             }
@@ -222,27 +219,16 @@ pub fn on_begin_scope(scope: GetScopeDesc) {
     });
 }
 
+pub fn on_begin_scope(scope: GetScopeDesc) {
+    on_thread_event(BeginScopeEvent {
+        time: now(),
+        get_scope_desc: scope,
+    });
+}
+
 pub fn on_end_scope(scope: GetScopeDesc) {
-    LOCAL_THREAD_STREAM.with(|cell| {
-        unsafe {
-            let opt_stream = &mut *cell.as_ptr();
-            if let Some(stream) = opt_stream {
-                stream.push_event(EndScopeEvent {
-                    time: now(),
-                    get_scope_desc: scope,
-                });
-                //todo: refac
-                if stream.is_full() {
-                    match &mut G_DISPATCH {
-                        Some(d) => {
-                            d.on_thread_buffer_full(stream);
-                        }
-                        None => {
-                            panic!("threads are recording but there is no event dispatch");
-                        }
-                    }
-                }
-            }
-        }
+    on_thread_event(EndScopeEvent {
+        time: now(),
+        get_scope_desc: scope,
     });
 }

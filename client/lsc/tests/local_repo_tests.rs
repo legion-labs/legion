@@ -2,6 +2,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use telemetry::*;
 use test_utils::*;
 
 fn write_lorem_ipsum(p: &Path) {
@@ -13,6 +14,7 @@ Nulla eu scelerisque odio. Suspendisse ultrices convallis hendrerit. Duis lacini
 }
 
 fn append_text_to_file(p: &Path, contents: &str) {
+    trace_scope!();
     let mut f = fs::OpenOptions::new()
         .write(true)
         .append(true)
@@ -23,14 +25,17 @@ fn append_text_to_file(p: &Path, contents: &str) {
 
 static LSC_CLI_EXE_VAR: &str = env!("CARGO_BIN_EXE_lsc");
 fn lsc_cli_sys(wd: &Path, args: &[&str]) {
+    trace_scope!();
     syscall(LSC_CLI_EXE_VAR, wd, args, true);
 }
 
 fn lsc_cli_sys_fail(wd: &Path, args: &[&str]) {
+    trace_scope!();
     syscall(LSC_CLI_EXE_VAR, wd, args, false);
 }
 
 async fn init_test_repo(test_dir: &Path, name: &str) -> String {
+    trace_scope!();
     match std::env::var("legion_source_control_TEST_HOST") {
         Ok(test_host_uri) => {
             let repo_uri = format!("{}/{}", test_host_uri, name);
@@ -61,7 +66,8 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
     }
 }
 
-fn test_dir(test_name: &str) -> PathBuf {
+fn init_test_dir(test_name: &str) -> PathBuf {
+    trace_scope!();
     let parent = Path::new(LSC_CLI_EXE_VAR)
         .parent()
         .unwrap()
@@ -71,7 +77,8 @@ fn test_dir(test_name: &str) -> PathBuf {
 
 #[test]
 fn local_repo_suite() {
-    let test_dir = test_dir("local_repo_suite");
+    trace_scope!();
+    let test_dir = init_test_dir("local_repo_suite");
     let work1 = test_dir.join("work");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "local_repo_suite"));
@@ -176,7 +183,8 @@ fn local_repo_suite() {
 
 #[test]
 fn local_single_branch_merge_flow() {
-    let test_dir = test_dir("local_single_branch_merge_flow");
+    trace_scope!();
+    let test_dir = init_test_dir("local_single_branch_merge_flow");
     let work1 = test_dir.join("work1");
     let work2 = test_dir.join("work2");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
@@ -224,6 +232,7 @@ fn local_single_branch_merge_flow() {
 
 #[test]
 fn test_print_config() {
+    trace_scope!();
     let config_file_path = legion_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
         lsc_cli_sys(std::env::current_dir().unwrap().as_path(), &["config"]);
@@ -234,7 +243,8 @@ fn test_print_config() {
 
 #[test]
 fn test_branch() {
-    let test_dir = test_dir("test_branch");
+    trace_scope!();
+    let test_dir = init_test_dir("test_branch");
     let config_file_path = legion_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
         lsc_cli_sys(&test_dir, &["config"]);
@@ -329,7 +339,8 @@ fn test_branch() {
 
 #[test]
 fn test_locks() {
-    let test_dir = test_dir("test_locks");
+    trace_scope!();
+    let test_dir = init_test_dir("test_locks");
     let config_file_path = legion_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
         lsc_cli_sys(&test_dir, &["config"]);
@@ -439,6 +450,7 @@ fn test_locks() {
 }
 
 fn get_root_git_directory() -> PathBuf {
+    trace_scope!();
     let output = Command::new("git")
         .args(&["rev-parse", "--show-toplevel"])
         .output()
@@ -449,7 +461,8 @@ fn get_root_git_directory() -> PathBuf {
 #[test]
 #[ignore] //fails in the build actions because tests don't run under a full git clone, see https://github.com/legion-labs/legion/issues/4
 fn test_import_git() {
-    let test_dir = test_dir("test_import_git");
+    trace_scope!();
+    let test_dir = init_test_dir("test_import_git");
     let work1 = test_dir.join("work1");
     let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
     let repo_uri = tokio_runtime.block_on(init_test_repo(&test_dir, "test_import_git"));

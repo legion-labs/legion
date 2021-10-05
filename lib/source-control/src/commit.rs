@@ -31,6 +31,7 @@ impl Commit {
         root_hash: String,
         parents: Vec<String>,
     ) -> Self {
+        trace_scope!();
         let date_time_utc = Utc::now().to_rfc3339();
         assert!(!parents.contains(&id));
         Self {
@@ -45,6 +46,7 @@ impl Commit {
     }
 
     pub fn from_json(contents: &str) -> Result<Self, String> {
+        trace_scope!();
         let parsed: serde_json::Result<Self> = serde_json::from_str(contents);
         match parsed {
             Ok(obj) => Ok(obj),
@@ -53,6 +55,7 @@ impl Commit {
     }
 
     pub fn to_json(&self) -> Result<String, String> {
+        trace_scope!();
         match serde_json::to_string(&self) {
             Ok(json) => Ok(json),
             Err(e) => Err(format!("Error formatting commit {:?}: {}", self.id, e)),
@@ -61,6 +64,7 @@ impl Commit {
 }
 
 pub async fn init_commit_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {
+    trace_scope!();
     let sql = "CREATE TABLE commits(id VARCHAR(255), owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
          CREATE UNIQUE INDEX commit_id on commits(id);
          CREATE TABLE commit_parents(id VARCHAR(255), parent_id TEXT);
@@ -79,6 +83,7 @@ async fn upload_localy_edited_blobs(
     repo_connection: &RepositoryConnection,
     local_changes: &[LocalChange],
 ) -> Result<Vec<HashedChange>, String> {
+    trace_scope!();
     let mut res = Vec::<HashedChange>::new();
     for local_change in local_changes {
         if local_change.change_type == ChangeType::Delete {
@@ -110,6 +115,7 @@ fn make_local_files_read_only(
     workspace_root: &Path,
     changes: &[HashedChange],
 ) -> Result<(), String> {
+    trace_scope!();
     for change in changes {
         if change.change_type != ChangeType::Delete {
             let full_path = workspace_root.join(&change.relative_path);
@@ -125,6 +131,7 @@ pub async fn commit_local_changes(
     commit_id: &str,
     message: &str,
 ) -> Result<(), String> {
+    trace_scope!();
     let workspace_spec = read_workspace_spec(workspace_root)?;
     let (current_branch_name, current_workspace_commit) =
         read_current_branch(workspace_transaction).await?;
@@ -201,6 +208,7 @@ pub async fn find_branch_commits(
     connection: &RepositoryConnection,
     branch: &Branch,
 ) -> Result<Vec<Commit>, String> {
+    trace_scope!();
     let mut commits = Vec::new();
     let query = connection.query();
     let mut c = query.read_commit(&branch.head).await?;

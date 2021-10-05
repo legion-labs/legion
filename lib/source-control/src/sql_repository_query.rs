@@ -26,6 +26,7 @@ impl SqlRepositoryQuery {
 #[async_trait]
 impl RepositoryQuery for SqlRepositoryQuery {
     async fn insert_workspace(&self, workspace: &Workspace) -> Result<(), String> {
+        trace_scope!();
         match self.pool.acquire().await {
             Ok(mut connection) => {
                 if let Err(e) = sqlx::query("INSERT INTO workspaces VALUES(?, ?, ?);")
@@ -45,6 +46,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn insert_branch(&self, branch: &Branch) -> Result<(), String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         if let Err(e) = sqlx::query("INSERT INTO branches VALUES(?, ?, ?, ?);")
             .bind(branch.name.clone())
@@ -60,6 +62,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn update_branch(&self, branch: &Branch) -> Result<(), String> {
+        trace_scope!();
         let mut transaction = self.pool.begin().await?;
         update_branch_tr(&mut transaction, branch).await?;
         if let Err(e) = transaction.commit().await {
@@ -72,6 +75,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn read_branch(&self, name: &str) -> Result<Branch, String> {
+        trace_scope!();
         match self.find_branch(name).await {
             Ok(Some(branch)) => Ok(branch),
             Ok(None) => Err(format!("branch not found {}", name)),
@@ -80,6 +84,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn find_branch(&self, name: &str) -> Result<Option<Branch>, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT head, parent, lock_domain_id 
@@ -108,6 +113,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         &self,
         lock_domain_id: &str,
     ) -> Result<Vec<Branch>, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         let mut res = Vec::new();
         match sqlx::query(
@@ -136,6 +142,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn read_branches(&self) -> Result<Vec<Branch>, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         let mut res = Vec::new();
         match sqlx::query(
@@ -162,6 +169,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn read_commit(&self, id: &str) -> Result<Commit, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         let mut changes: Vec<HashedChange> = Vec::new();
 
@@ -234,6 +242,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn insert_commit(&self, commit: &Commit) -> Result<(), String> {
+        trace_scope!();
         let mut transaction = self.pool.begin().await?;
         insert_commit_tr(&mut transaction, commit).await?;
         if let Err(e) = transaction.commit().await {
@@ -246,6 +255,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<(), String> {
+        trace_scope!();
         let mut transaction = self.pool.begin().await?;
         let stored_branch = match self.database_kind {
             Databases::Sqlite => sqlite_read_branch_tr(&mut transaction, &branch.name).await?,
@@ -275,6 +285,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn commit_exists(&self, id: &str) -> Result<bool, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         let res = sqlx::query(
             "SELECT count(*) as count
@@ -290,6 +301,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn read_tree(&self, hash: &str) -> Result<Tree, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         let mut directory_nodes: Vec<TreeNode> = Vec::new();
         let mut file_nodes: Vec<TreeNode> = Vec::new();
@@ -329,6 +341,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn save_tree(&self, tree: &Tree, hash: &str) -> Result<(), String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         let tree_in_db = self.read_tree(hash).await?;
         if !tree.is_empty() && !tree_in_db.is_empty() {
@@ -362,6 +375,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn insert_lock(&self, lock: &Lock) -> Result<(), String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT count(*) as count
@@ -405,6 +419,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         lock_domain_id: &str,
         canonical_relative_path: &str,
     ) -> Result<Option<Lock>, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT workspace_id, branch_name
@@ -429,6 +444,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn find_locks_in_domain(&self, lock_domain_id: &str) -> Result<Vec<Lock>, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT relative_path, workspace_id, branch_name
@@ -460,6 +476,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
         lock_domain_id: &str,
         canonical_relative_path: &str,
     ) -> Result<(), String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         if let Err(e) = sqlx::query("DELETE from locks WHERE relative_path=? AND lock_domain_id=?;")
             .bind(canonical_relative_path)
@@ -473,6 +490,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn count_locks_in_domain(&self, lock_domain_id: &str) -> Result<i32, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT count(*) as count
@@ -492,6 +510,7 @@ impl RepositoryQuery for SqlRepositoryQuery {
     }
 
     async fn read_blob_storage_spec(&self) -> Result<BlobStorageSpec, String> {
+        trace_scope!();
         let mut sql_connection = self.pool.acquire().await?;
         match sqlx::query(
             "SELECT blob_storage_spec 
@@ -510,6 +529,7 @@ async fn insert_commit_tr(
     tr: &mut sqlx::Transaction<'_, sqlx::Any>,
     commit: &Commit,
 ) -> Result<(), String> {
+    trace_scope!();
     if let Err(e) = sqlx::query("INSERT INTO commits VALUES(?, ?, ?, ?, ?);")
         .bind(commit.id.clone())
         .bind(commit.owner.clone())
@@ -550,6 +570,7 @@ async fn update_branch_tr(
     tr: &mut sqlx::Transaction<'_, sqlx::Any>,
     branch: &Branch,
 ) -> Result<(), String> {
+    trace_scope!();
     if let Err(e) = sqlx::query(
         "UPDATE branches SET head=?, parent=?, lock_domain_id=?
              WHERE name=?;",
@@ -570,6 +591,7 @@ async fn sqlite_read_branch_tr(
     tr: &mut sqlx::Transaction<'_, sqlx::Any>,
     name: &str,
 ) -> Result<Branch, String> {
+    trace_scope!();
     match sqlx::query(
         "SELECT head, parent, lock_domain_id 
              FROM branches
@@ -596,6 +618,7 @@ async fn mysql_read_branch_tr(
     tr: &mut sqlx::Transaction<'_, sqlx::Any>,
     name: &str,
 ) -> Result<Branch, String> {
+    trace_scope!();
     match sqlx::query(
         "SELECT head, parent, lock_domain_id
              FROM branches
