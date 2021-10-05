@@ -3,6 +3,7 @@ use core::arch::x86_64::_rdtsc;
 use std::sync::Arc;
 use transit::*;
 
+#[derive(Debug, TransitReflect)]
 pub struct ScopeDesc {
     pub name: &'static str,
     pub filename: &'static str,
@@ -10,6 +11,14 @@ pub struct ScopeDesc {
 }
 
 pub type GetScopeDesc = fn() -> ScopeDesc;
+
+#[derive(Debug, TransitReflect)]
+pub struct ReferencedScope {
+    pub id: usize,
+    pub desc: ScopeDesc,
+}
+
+impl Serialize for ReferencedScope {}
 
 pub struct ScopeGuard {
     // the value of the function pointer will identity the scope uniquely within that process instance
@@ -25,14 +34,6 @@ pub fn now() -> u64 {
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
         on_end_scope(self.get_scope_desc);
-        // let scope_desc = (self.get_scope_desc)();
-        // println!(
-        //     "done {} in {} at line {} at time {}",
-        //     scope_desc.name,
-        //     scope_desc.filename,
-        //     scope_desc.line,
-        //     now()
-        // );
     }
 }
 
@@ -85,15 +86,77 @@ declare_queue_struct!(
     struct ThreadEventQueue<BeginScopeEvent, EndScopeEvent> {}
 );
 
+declare_queue_struct!(
+    struct ThreadDepsQueue<ReferencedScope, StaticString> {}
+);
+
 #[derive(Debug)]
 pub struct ThreadEventBlock {
+    pub stream_id: String,
+    pub begin: DualTime,
     pub events: ThreadEventQueue,
+    pub end: Option<DualTime>,
 }
 
 impl ThreadEventBlock {
-    pub fn new(buffer_size: usize) -> Self {
+    pub fn new(buffer_size: usize, stream_id: String) -> Self {
         let events = ThreadEventQueue::new(buffer_size);
-        Self { events }
+        Self {
+            stream_id,
+            begin: DualTime::now(),
+            events,
+            end: None,
+        }
+    }
+    pub fn close(&mut self) {
+        self.end = Some(DualTime::now());
+    }
+}
+
+impl StreamBlock for ThreadEventBlock {
+    fn encode(&self) -> EncodedBlock {
+        let block_id = uuid::Uuid::new_v4().to_string();
+        let end = self.end.as_ref().unwrap();
+
+        let mut deps = ThreadDepsQueue::new(1024 * 1024);
+        for x in self.events.iter() {
+            match x {
+                ThreadEventQueueAny::BeginScopeEvent(evt) => {
+                    let ptr = evt.get_scope_desc as usize;
+                    deps.push(ReferencedScope {
+                        id: ptr,
+                        desc: (evt.get_scope_desc)(),
+                    });
+                }
+                ThreadEventQueueAny::EndScopeEvent(evt) => {
+                    let ptr = evt.get_scope_desc as usize;
+                    deps.push(ReferencedScope {
+                        id: ptr,
+                        desc: (evt.get_scope_desc)(),
+                    });
+                }
+            }
+        }
+
+        let payload = telemetry_ingestion_proto::BlockPayload {
+            dependencies: deps.into_bytes(),
+            objects: self.events.as_bytes().to_vec(),
+        };
+
+        EncodedBlock {
+            stream_id: self.stream_id.clone(),
+            block_id,
+            begin_time: self
+                .begin
+                .time
+                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
+            begin_ticks: self.begin.ticks,
+            end_time: end
+                .time
+                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
+            end_ticks: end.ticks,
+            payload: Some(payload),
+        }
     }
 }
 
@@ -108,7 +171,7 @@ impl ThreadStream {
     pub fn new(buffer_size: usize, process_id: String) -> Self {
         let stream_id = uuid::Uuid::new_v4().to_string();
         Self {
-            current_block: Arc::new(ThreadEventBlock::new(buffer_size)),
+            current_block: Arc::new(ThreadEventBlock::new(buffer_size, stream_id.clone())),
             initial_size: buffer_size,
             stream_id,
             process_id,
@@ -141,13 +204,13 @@ impl ThreadStream {
 
 impl Stream for ThreadStream {
     fn get_stream_info(&self) -> StreamInfo {
+        let dependencies_meta = make_queue_metedata::<ThreadDepsQueue>();
+        let obj_meta = make_queue_metedata::<ThreadEventQueue>();
         StreamInfo {
             process_id: self.process_id.clone(),
             stream_id: self.stream_id.clone(),
-            dependencies_metadata: Some(telemetry_ingestion_proto::ContainerMetadata {
-                types: vec![],
-            }),
-            objects_metadata: Some(telemetry_ingestion_proto::ContainerMetadata { types: vec![] }),
+            dependencies_metadata: Some(dependencies_meta),
+            objects_metadata: Some(obj_meta),
             tags: vec![String::from("cpu")],
         }
     }

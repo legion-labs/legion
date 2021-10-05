@@ -95,6 +95,7 @@ pub mod guard;
 pub mod log_block;
 pub mod log_events;
 pub mod log_stream;
+mod queue_metadata;
 pub mod stream;
 pub mod thread_stream;
 
@@ -106,6 +107,7 @@ pub use guard::*;
 pub use log_block::*;
 pub use log_events::*;
 pub use log_stream::*;
+use queue_metadata::*;
 pub use stream::*;
 pub use thread_stream::*;
 

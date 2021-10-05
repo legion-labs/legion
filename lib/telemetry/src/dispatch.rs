@@ -117,9 +117,12 @@ impl Dispatch {
     }
 
     fn on_thread_buffer_full(&mut self, stream: &mut ThreadStream) {
-        let old_block =
-            stream.replace_block(Arc::new(ThreadEventBlock::new(self.thread_buffer_size)));
+        let mut old_block = stream.replace_block(Arc::new(ThreadEventBlock::new(
+            self.thread_buffer_size,
+            stream.get_stream_id(),
+        )));
         assert!(!stream.is_full());
+        Arc::get_mut(&mut old_block).unwrap().close();
         self.sink
             .on_sink_event(TelemetrySinkEvent::OnThreadBufferFull(old_block));
     }

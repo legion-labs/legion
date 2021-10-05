@@ -67,7 +67,13 @@ impl GRPCEventSink {
                         }
                     }
                     TelemetrySinkEvent::OnThreadBufferFull(thread_buffer) => {
-                        dbg!(thread_buffer);
+                        let encoded_block = thread_buffer.encode();
+                        match client.insert_block(encoded_block).await {
+                            Ok(_response) => {}
+                            Err(e) => {
+                                println!("insert_block failed: {}", e);
+                            }
+                        }
                     }
                     TelemetrySinkEvent::OnShutdown => {
                         return;

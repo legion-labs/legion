@@ -168,6 +168,39 @@ pub async fn find_process_log_streams(
     Ok(res)
 }
 
+pub async fn find_stream(
+    connection: &mut sqlx::AnyConnection,
+    stream_id: &str,
+) -> Result<telemetry::StreamInfo> {
+    let row = sqlx::query(
+        "SELECT process_id, dependencies_metadata, objects_metadata, tags
+         FROM streams
+         WHERE stream_id = ?
+         ;",
+    )
+    .bind(stream_id)
+    .fetch_one(connection)
+    .await
+    .with_context(|| "find_stream")?;
+    let dependencies_metadata_buffer: Vec<u8> = row.get("dependencies_metadata");
+    let dependencies_metadata = telemetry::telemetry_ingestion_proto::ContainerMetadata::decode(
+        &*dependencies_metadata_buffer,
+    )
+    .with_context(|| "decoding dependencies metadata")?;
+    let objects_metadata_buffer: Vec<u8> = row.get("objects_metadata");
+    let objects_metadata =
+        telemetry::telemetry_ingestion_proto::ContainerMetadata::decode(&*objects_metadata_buffer)
+            .with_context(|| "decoding objects metadata")?;
+    let tags_str: String = row.get("tags");
+    Ok(telemetry::StreamInfo {
+        stream_id: String::from(stream_id),
+        process_id: row.get("process_id"),
+        dependencies_metadata: Some(dependencies_metadata),
+        objects_metadata: Some(objects_metadata),
+        tags: tags_str.split(' ').map(|s| s.to_owned()).collect(),
+    })
+}
+
 pub async fn find_stream_blocks(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,

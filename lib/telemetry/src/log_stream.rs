@@ -9,12 +9,6 @@ pub struct LogStream {
     process_id: String,
 }
 
-fn make_queue_metedata<Queue: transit::ReflectiveQueue>(
-) -> telemetry_ingestion_proto::ContainerMetadata {
-    let udts = Queue::reflect_contained();
-    ContainerMetadata::from(&*udts)
-}
-
 impl Stream for LogStream {
     fn get_stream_info(&self) -> StreamInfo {
         let dependencies_meta = make_queue_metedata::<LogDepsQueue>();
