@@ -1,5 +1,5 @@
 use std::{path::Path};
-use graphics_api::{ShaderResource, ShaderResourceType, ShaderStageFlags, ShaderStageReflection};
+use graphics_api::{ShaderResource, ShaderResourceType, ConstantBufferInfo, ShaderResourceViewInfo, ShaderStageFlags, ShaderStageReflection};
 use hassle_rs::{Dxc, compile_hlsl};
 use anyhow::{Result, anyhow };
 use spirv_reflect::types::{ReflectDescriptorBinding, ReflectShaderStageFlags};
@@ -192,5 +192,36 @@ fn to_shader_resource_type(descriptor_binding : &ReflectDescriptorBinding ) -> S
     //     spirv_reflect::types::ReflectResourceType::Undefined |
     //     spirv_reflect::types::ReflectResourceType::CombinedImageSampler => panic!()
     // }    
-    ShaderResourceType::Undefined
+    match descriptor_binding.resource_type {
+        spirv_reflect::types::ReflectResourceType::Sampler => { 
+            ShaderResourceType::Sampler
+        },
+        spirv_reflect::types::ReflectResourceType::ConstantBufferView => {
+            ShaderResourceType::ConstantBuffer(ConstantBufferInfo{ size : 0 })
+        },
+        spirv_reflect::types::ReflectResourceType::ShaderResourceView => {            
+            match descriptor_binding.descriptor_type {                 
+                spirv_reflect::types::ReflectDescriptorType::SampledImage |
+                spirv_reflect::types::ReflectDescriptorType::StorageImage |
+                spirv_reflect::types::ReflectDescriptorType::UniformBuffer |
+                spirv_reflect::types::ReflectDescriptorType::StorageBuffer => { ShaderResourceType::ShaderResourceView(ShaderResourceViewInfo{}) },
+                
+                spirv_reflect::types::ReflectDescriptorType::UniformBufferDynamic | 
+                spirv_reflect::types::ReflectDescriptorType::StorageBufferDynamic | 
+                spirv_reflect::types::ReflectDescriptorType::AccelerationStructureNV => { unimplemented!() },
+                
+                spirv_reflect::types::ReflectDescriptorType::UniformTexelBuffer |
+                spirv_reflect::types::ReflectDescriptorType::StorageTexelBuffer |
+                spirv_reflect::types::ReflectDescriptorType::InputAttachment |
+                spirv_reflect::types::ReflectDescriptorType::CombinedImageSampler |
+                spirv_reflect::types::ReflectDescriptorType::Sampler |
+                spirv_reflect::types::ReflectDescriptorType::Undefined => { panic!() },
+            }            
+        },
+        spirv_reflect::types::ReflectResourceType::UnorderedAccessView => {                        
+            unimplemented!();            
+        },        
+        spirv_reflect::types::ReflectResourceType::Undefined |
+        spirv_reflect::types::ReflectResourceType::CombinedImageSampler => { panic!() },
+    }
 }

@@ -320,12 +320,23 @@ impl<A: GfxApi> ShaderStageDef<A> {
 }
 
 #[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
+pub struct ConstantBufferInfo {
+    pub size : u64
+}
+
+#[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
+pub struct ShaderResourceViewInfo;
+
+#[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
+pub struct UnorderedAccessViewInfo;
+
+#[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
 pub enum ShaderResourceType {
     Undefined,
-    Sampler,
-    ConstantBufferView,
-    ShaderResourceView,
-    UnorderedAccessView
+    Sampler,    
+    ConstantBuffer(ConstantBufferInfo),
+    ShaderResourceView(ShaderResourceViewInfo),
+    UnorderedAccessView(UnorderedAccessViewInfo),
 }
 
 impl Default for ShaderResourceType {

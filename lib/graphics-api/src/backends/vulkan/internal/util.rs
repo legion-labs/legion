@@ -91,9 +91,9 @@ pub(crate) fn image_format_to_aspect_mask(
 pub fn shader_resource_type_to_descriptor_type(shader_resource_type: ShaderResourceType) -> Option<vk::DescriptorType> {
     match shader_resource_type {
         ShaderResourceType::Sampler => Some(vk::DescriptorType::SAMPLER),
-        ShaderResourceType::ConstantBufferView => Some(vk::DescriptorType::UNIFORM_BUFFER),
-        ShaderResourceType::ShaderResourceView => todo!(),
-        ShaderResourceType::UnorderedAccessView => todo!(),
+        ShaderResourceType::ConstantBuffer(_e) => Some(vk::DescriptorType::UNIFORM_BUFFER),
+        ShaderResourceType::ShaderResourceView(_e) => todo!(),
+        ShaderResourceType::UnorderedAccessView(_e) => todo!(),
         ShaderResourceType::Undefined => todo!(),
         
     

@@ -18,7 +18,8 @@ fn run() -> GfxResult<()> {
 
 #[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
-    use presenter::window::*;    
+    use presenter::window::*;
+    use pso_compiler::{CompileParams, HLSLCompiler};    
     const WINDOW_WIDTH: u32 = 900;
     const WINDOW_HEIGHT: u32 = 600;
 
@@ -161,22 +162,12 @@ fn run() -> GfxResult<()> {
         //
         // The resulting shader modules represent a loaded shader GPU object that is used to create
         // shaders. Shader modules can be discarded once the graphics pipeline is built.
-        //
-        /*
+        //        
         let compiler = HLSLCompiler::new().map_err(|e| e.to_string())?;
 
         let legion_folder = std::env::current_dir()?;
         let test_data_folder = legion_folder.join("test/test_data/shaders/");
         let test_hlsl_file = test_data_folder.join("test.hlsl");
-
-        let compile_params = CompileParams{
-            path: &test_hlsl_file,
-            entry_point: "main_cs",
-            target_profile: "cs_6_1",
-            defines: Vec::new()
-        };
-
-        let cs_out = compiler.compile(&compile_params).map_err(|e| e.to_string())?;
 
         let compile_params = CompileParams{
             path: &test_hlsl_file,
@@ -201,14 +192,14 @@ fn run() -> GfxResult<()> {
 
         let frag_shader_package =
             ShaderPackage::SpirV(ps_out.bytecode);
-            */
-
+            
+        /*
         let vert_shader_package =
             ShaderPackage::SpirV(include_bytes!("shaders/shader.vert.spv").to_vec());
 
         let frag_shader_package =
             ShaderPackage::SpirV(include_bytes!("shaders/shader.frag.spv").to_vec());
-
+    */
         let vert_shader_module =
             device_context.create_shader_module(vert_shader_package.module_def())?;
 
@@ -223,32 +214,34 @@ fn run() -> GfxResult<()> {
         // (But see the shader pipeline in higher-level rafx crates for example usage, generated
         // from spirv_cross)
         //
-        let color_shader_resource = ShaderResource {
-            name: Some("color".to_string()),
-            set_index: 0,
-            binding: 0,
-            shader_resource_type: ShaderResourceType::ConstantBufferView,
-            ..Default::default()
-        };
-
+        // let color_shader_resource = ShaderResource {
+        //     name: Some("color".to_string()),
+        //     set_index: 0,
+        //     binding: 0,
+        //     shader_resource_type: ShaderResourceType::ConstantBuffer( ConstantBufferInfo{ size : 0}  ),
+        //     ..Default::default()
+        // };
+        
         let vert_shader_stage_def = ShaderStageDef {
             shader_module: vert_shader_module,
-            reflection: ShaderStageReflection {
-                entry_point_name: "main".to_string(),
-                shader_stage: ShaderStageFlags::VERTEX,
-                compute_threads_per_group: None,
-                resources: vec![color_shader_resource.clone()],
-            },
+            // reflection: ShaderStageReflection {
+            //     entry_point_name: "main".to_string(),
+            //     shader_stage: ShaderStageFlags::VERTEX,
+            //     compute_threads_per_group: None,
+            //     resources: vec![color_shader_resource.clone()],
+            // },
+            reflection: vs_out.refl_info.unwrap().clone()
         };
 
         let frag_shader_stage_def = ShaderStageDef {
             shader_module: frag_shader_module,
-            reflection: ShaderStageReflection {
-                entry_point_name: "main".to_string(),
-                shader_stage: ShaderStageFlags::FRAGMENT,
-                compute_threads_per_group: None,
-                resources: vec![color_shader_resource],
-            },
+            // reflection: ShaderStageReflection {
+            //     entry_point_name: "main".to_string(),
+            //     shader_stage: ShaderStageFlags::FRAGMENT,
+            //     compute_threads_per_group: None,
+            //     resources: vec![color_shader_resource],
+            // },
+            reflection: ps_out.refl_info.unwrap().clone()
         };
 
         //
@@ -295,7 +288,7 @@ fn run() -> GfxResult<()> {
         for i in 0..swapchain_helper.image_count() {
             descriptor_set_array.update_descriptor_set(&[DescriptorUpdate {
                 array_index: i as u32,
-                descriptor_key: DescriptorKey::Name("color"),
+                descriptor_key: DescriptorKey::Name("cb_vertex_color"),
                 elements: DescriptorElements {
                     cbvs: Some(&[&uniform_buffer_cbvs[i]]),                    
                     ..Default::default()

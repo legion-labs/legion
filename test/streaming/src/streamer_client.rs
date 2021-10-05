@@ -214,7 +214,7 @@ fn run() -> GfxResult<()> {
             name: Some("color".to_string()),
             set_index: 0,
             binding: 0,
-            shader_resource_type:  ShaderResourceType::ConstantBufferView,
+            shader_resource_type:  ShaderResourceType::ConstantBuffer( ConstantBufferInfo { size : 0 }),
             ..Default::default()
         };
 

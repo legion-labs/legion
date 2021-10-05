@@ -182,7 +182,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                 );
             }
             ShaderResourceType::Undefined => todo!(),
-            ShaderResourceType::ConstantBufferView => {
+            ShaderResourceType::ConstantBuffer(_e) => {
                 let cbvs = update.elements.cbvs.ok_or_else(||
                     format!(
                         "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
@@ -225,8 +225,8 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         .build(),
                 );
             }
-            ShaderResourceType::ShaderResourceView => todo!(),
-            ShaderResourceType::UnorderedAccessView => todo!(),
+            ShaderResourceType::ShaderResourceView(_e) => todo!(),
+            ShaderResourceType::UnorderedAccessView(_e) => todo!(),
             /* <<<<<<<<<<<<<<<<<<<<<<<<<<
             ShaderResourceType::TEXTURE => {
                 
