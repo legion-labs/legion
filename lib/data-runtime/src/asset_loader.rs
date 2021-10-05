@@ -144,6 +144,8 @@ impl AssetLoaderStub {
     }
 }
 
+const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
+
 pub(crate) struct AssetLoaderIO {
     loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
 
@@ -212,67 +214,78 @@ impl AssetLoaderIO {
         self.loaders.insert(kind, loader);
     }
 
+    fn read_resource(&self, id: ResourceId) -> io::Result<Vec<u8>> {
+        if let Some((checksum, size)) = self.manifest.find(id) {
+            if let Some(content) = self.content_store.read(checksum.get()) {
+                assert_eq!(content.len(), size);
+                Ok(content)
+            } else {
+                Err(io::Error::new(io::ErrorKind::NotFound, "ContentStore Miss"))
+            }
+        } else {
+            Err(io::Error::new(io::ErrorKind::NotFound, "Manifest Miss"))
+        }
+    }
+
+    fn process_load(
+        &mut self,
+        primary_id: ResourceId,
+        load_id: Option<u32>,
+    ) -> Option<(ResourceId, Option<LoadId>, io::Error)> {
+        match self.read_resource(primary_id) {
+            Ok(asset_data) => {
+                let load_func = {
+                    if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
+                        Self::load_raw
+                    } else {
+                        Self::load_asset_file
+                    }
+                };
+                match load_func(
+                    primary_id,
+                    &mut &asset_data[..],
+                    &self.asset_refcounts,
+                    &mut self.loaders,
+                ) {
+                    Ok(output) => {
+                        for (asset_id, asset) in &output.assets {
+                            match asset {
+                                Some(_) => {
+                                    let res = self.asset_refcounts.insert(*asset_id, 1);
+                                    assert!(res.is_none());
+                                }
+                                None => {
+                                    *self.asset_refcounts.get_mut(asset_id).unwrap() += 1;
+                                }
+                            }
+                        }
+                        for reference in &output.load_dependencies {
+                            self.request_tx
+                                .send(LoaderRequest::Load(reference.primary, None))
+                                .unwrap();
+                        }
+                        self.request_await.push(LoaderPending {
+                            primary_id,
+                            load_id,
+                            assets: output.assets,
+                            references: output.load_dependencies,
+                        });
+                        None
+                    }
+                    Err(e) => Some((primary_id, load_id, e)),
+                }
+            }
+            Err(e) => Some((primary_id, load_id, e)),
+        }
+    }
+
     #[allow(clippy::needless_pass_by_value)]
     fn process(
         &mut self,
         request: LoaderRequest,
     ) -> Option<(ResourceId, Option<LoadId>, io::Error)> {
         match request {
-            LoaderRequest::Load(primary_id, load_id) => {
-                if let Some((checksum, size)) = self.manifest.find(primary_id) {
-                    match self.content_store.read(checksum.get()) {
-                        Some(asset_data) => {
-                            assert_eq!(asset_data.len(), size);
-
-                            match Self::load_internal(
-                                primary_id,
-                                &mut &asset_data[..],
-                                &self.asset_refcounts,
-                                &mut self.loaders,
-                            ) {
-                                Ok(output) => {
-                                    for (asset_id, asset) in &output.assets {
-                                        match asset {
-                                            Some(_) => {
-                                                let res = self.asset_refcounts.insert(*asset_id, 1);
-                                                assert!(res.is_none());
-                                            }
-                                            None => {
-                                                *self.asset_refcounts.get_mut(asset_id).unwrap() +=
-                                                    1;
-                                            }
-                                        }
-                                    }
-                                    for reference in &output.load_dependencies {
-                                        self.request_tx
-                                            .send(LoaderRequest::Load(reference.primary, None))
-                                            .unwrap();
-                                    }
-                                    self.request_await.push(LoaderPending {
-                                        primary_id,
-                                        load_id,
-                                        assets: output.assets,
-                                        references: output.load_dependencies,
-                                    });
-                                    None
-                                }
-                                Err(e) => Some((primary_id, load_id, e)),
-                            }
-                        }
-                        None => Some((
-                            primary_id,
-                            load_id,
-                            io::Error::new(io::ErrorKind::NotFound, "ContentStore Miss"),
-                        )),
-                    }
-                } else {
-                    Some((
-                        primary_id,
-                        load_id,
-                        io::Error::new(io::ErrorKind::NotFound, "Manifest Miss"),
-                    ))
-                }
-            }
+            LoaderRequest::Load(primary_id, load_id) => self.process_load(primary_id, load_id),
             LoaderRequest::Unload(primary_id, user_requested, err) => {
                 if let Some(r) = self.asset_refcounts.remove(&primary_id) {
                     assert!(r <= 1);
@@ -424,14 +437,34 @@ impl AssetLoaderIO {
         Some(self.request_await.len())
     }
 
-    fn load_internal(
+    fn load_raw(
+        id: ResourceId,
+        reader: &mut dyn io::Read,
+        asset_refcounts: &HashMap<ResourceId, isize>,
+        loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
+    ) -> Result<LoadOutput, io::Error> {
+        assert!(!asset_refcounts.contains_key(&id));
+
+        let mut content = Vec::new();
+        reader.read_to_end(&mut content)?;
+
+        let asset_type = id.ty();
+        let loader = loaders.get_mut(&asset_type).unwrap();
+        let boxed_asset = loader.load(asset_type, &mut &content[..])?;
+
+        Ok(LoadOutput {
+            assets: vec![(id, Some(Arc::from(boxed_asset)))],
+            load_dependencies: vec![],
+        })
+    }
+
+    fn load_asset_file(
         primary_id: ResourceId,
         reader: &mut dyn io::Read,
         asset_refcounts: &HashMap<ResourceId, isize>,
         loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
         const ASSET_FILE_VERSION: u16 = 1;
-        const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 
         let mut typename: [u8; 4] = [0; 4];
         reader.read_exact(&mut typename)?;
