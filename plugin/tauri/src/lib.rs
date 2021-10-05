@@ -143,7 +143,7 @@ impl<A: tauri::Assets> TauriPlugin<A> {
 
 impl<A: tauri::Assets> Plugin for TauriPlugin<A> {
     fn build(&self, app: &mut App) {
-        let context = std::mem::replace(&mut *self.context.lock().unwrap(), None);
+        let context = std::mem::replace(&mut *self.context.lock().unwrap(), None).unwrap();
 
         app.insert_non_send_resource(context)
             .set_runner(Self::runner);
