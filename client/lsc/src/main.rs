@@ -92,7 +92,7 @@ use telemetry::*;
 
 fn main() {
     let _telemetry_guard = TelemetrySystemGuard::new();
-    init_thread_stream();
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     if let Err(e) = main_impl() {
         println!("{}", e);
         std::process::exit(1);

@@ -197,6 +197,22 @@ pub fn init_thread_stream() {
     });
 }
 
+pub fn flush_thread_buffer() {
+    LOCAL_THREAD_STREAM.with(|cell| unsafe {
+        let opt_stream = &mut *cell.as_ptr();
+        if let Some(stream) = opt_stream {
+            match &mut G_DISPATCH {
+                Some(d) => {
+                    d.on_thread_buffer_full(stream);
+                }
+                None => {
+                    panic!("threads are recording but there is no event dispatch");
+                }
+            }
+        }
+    });
+}
+
 fn on_thread_event<T>(event: T)
 where
     T: transit::Serialize + ThreadEventQueueTypeIndex,
@@ -206,14 +222,7 @@ where
         if let Some(stream) = opt_stream {
             stream.push_event(event);
             if stream.is_full() {
-                match &mut G_DISPATCH {
-                    Some(d) => {
-                        d.on_thread_buffer_full(stream);
-                    }
-                    None => {
-                        panic!("threads are recording but there is no event dispatch");
-                    }
-                }
+                flush_thread_buffer();
             }
         }
     });

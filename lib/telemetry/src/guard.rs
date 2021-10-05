@@ -35,3 +35,25 @@ pub fn shutdown_telemetry() {
     flush_log_buffer();
     shutdown_event_dispatch();
 }
+
+pub struct TelemetryThreadGuard {}
+
+impl TelemetryThreadGuard {
+    pub fn new() -> Self {
+        init_thread_stream();
+        Self {}
+    }
+}
+
+impl std::ops::Drop for TelemetryThreadGuard {
+    fn drop(&mut self) {
+        flush_thread_buffer();
+    }
+}
+
+//not used at the time of writing, but clippy wants it
+impl Default for TelemetryThreadGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
