@@ -365,10 +365,9 @@ fn main_impl() -> Result<(), String> {
             ))
         }
         ("add", Some(command_match)) => {
-            log_str(LogLevel::Info, "add");
-            tokio_runtime.block_on(track_new_file_command(Path::new(
-                command_match.value_of("path").unwrap(),
-            )))
+            let path_arg = command_match.value_of("path").unwrap();
+            log_string(LogLevel::Info, format!("add {}", path_arg));
+            tokio_runtime.block_on(track_new_file_command(Path::new(path_arg)))
         }
         ("edit", Some(command_match)) => {
             log_str(LogLevel::Info, "edit");
@@ -508,18 +507,18 @@ fn main_impl() -> Result<(), String> {
             print_config_command()
         }
         ("import-git-branch", Some(command_match)) => {
-            log_str(LogLevel::Info, "import-git-branch");
             let path_arg = command_match.value_of("path").unwrap();
-            import_git_branch_command(
-                Path::new(path_arg),
-                command_match.value_of("branch").unwrap(),
-            )
+            let branch_name = command_match.value_of("branch").unwrap();
+            log_string(
+                LogLevel::Info,
+                format!("import-git-branch {} {} ", path_arg, branch_name),
+            );
+            import_git_branch_command(Path::new(path_arg), branch_name)
         }
         ("ping", Some(command_match)) => {
-            log_str(LogLevel::Info, "ping");
-            tokio_runtime.block_on(ping_console_command(
-                command_match.value_of("server_uri").unwrap(),
-            ))
+            let server_uri = command_match.value_of("server_uri").unwrap();
+            log_string(LogLevel::Info, format!("ping {}", server_uri));
+            tokio_runtime.block_on(ping_console_command(server_uri))
         }
         other_match => {
             log_str(LogLevel::Info, "unknown subcommand match");

@@ -93,6 +93,18 @@ impl Dispatch {
         }
     }
 
+    fn on_log_string(&mut self, level: LogLevel, msg: String) {
+        let mut log_stream = self.log_stream.lock().unwrap();
+        log_stream.push(LogDynMsgEvent {
+            level: level as u8,
+            msg: transit::DynString(msg),
+        });
+        if log_stream.is_full() {
+            drop(log_stream);
+            self.on_log_buffer_full();
+        }
+    }
+
     fn on_log_buffer_full(&mut self) {
         let mut log_stream = self.log_stream.lock().unwrap();
         let stream_id = log_stream.get_stream_id();
@@ -154,6 +166,14 @@ pub fn log_str(level: LogLevel, msg: &'static str) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.on_log_str(level, msg);
+        }
+    }
+}
+
+pub fn log_string(level: LogLevel, msg: String) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.on_log_string(level, msg);
         }
     }
 }

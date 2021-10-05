@@ -34,12 +34,15 @@ pub async fn print_process_log(
                 .as_transit_udt_vec();
             parse_objects(&dependencies, &obj_udts, &payload.objects, |val| {
                 if let Value::Object(obj) = val {
-                    if obj.type_name == "LogMsgEvent" {
-                        println!(
-                            "[{}] {}",
-                            obj.get::<u8>("level").unwrap(),
-                            obj.get::<String>("msg").unwrap()
-                        );
+                    match obj.type_name.as_str() {
+                        "LogMsgEvent" | "LogDynMsgEvent" => {
+                            println!(
+                                "[{}] {}",
+                                obj.get::<u8>("level").unwrap(),
+                                obj.get::<String>("msg").unwrap()
+                            );
+                        }
+                        _ => {}
                     }
                 }
             })?;

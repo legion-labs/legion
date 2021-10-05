@@ -50,7 +50,10 @@ impl LogStream {
         old_block
     }
 
-    pub fn push(&mut self, event: LogMsgEvent) {
+    pub fn push<T>(&mut self, event: T)
+    where
+        T: Serialize + LogMsgQueueTypeIndex,
+    {
         self.get_events_mut().push(event);
     }
 

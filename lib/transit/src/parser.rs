@@ -112,6 +112,79 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
     Ok(hash)
 }
 
+fn parse_custom_instance(
+    udt: &UserDefinedType,
+    _dependencies: &HashMap<usize, Value>,
+    offset: usize,
+    object_size: usize,
+    buffer: &[u8],
+) -> Vec<(String, Value)> {
+    match udt.name.as_str() {
+        "LogDynMsgEvent" => unsafe {
+            let level_ptr = buffer.as_ptr().add(offset);
+            let level = read_pod::<u8>(level_ptr);
+            let msg = <DynString as Serialize>::read_value(
+                buffer.as_ptr().add(offset + 1),
+                Some((object_size - 1) as u32),
+            );
+            vec![
+                (String::from("level"), Value::U8(level)),
+                (String::from("msg"), Value::String(msg.0)),
+            ]
+        },
+        other => {
+            println!("unknown custom object {}", other);
+            Vec::new()
+        }
+    }
+}
+
+fn parse_pod_instance(
+    udt: &UserDefinedType,
+    dependencies: &HashMap<usize, Value>,
+    offset: usize,
+    buffer: &[u8],
+) -> Vec<(String, Value)> {
+    udt.members
+        .iter()
+        .map(|member_meta| {
+            let name = member_meta.name.clone();
+            let type_name = member_meta.type_name.clone();
+            let value = if member_meta.is_reference {
+                assert_eq!(std::mem::size_of::<usize>(), member_meta.size);
+                let key =
+                    read_pod::<usize>(unsafe { buffer.as_ptr().add(offset + member_meta.offset) });
+                if let Some(v) = dependencies.get(&key) {
+                    v.clone()
+                } else {
+                    println!("dependency not found: {}", key);
+                    Value::None
+                }
+            } else {
+                match type_name.as_str() {
+                    "u8" => {
+                        assert_eq!(std::mem::size_of::<u8>(), member_meta.size);
+                        Value::U8(read_pod::<u8>(unsafe {
+                            buffer.as_ptr().add(offset + member_meta.offset)
+                        }))
+                    }
+                    "u32" => {
+                        assert_eq!(std::mem::size_of::<u32>(), member_meta.size);
+                        Value::U32(read_pod::<u32>(unsafe {
+                            buffer.as_ptr().add(offset + member_meta.offset)
+                        }))
+                    }
+                    unknown_member_type => {
+                        println!("unknown member type {}", unknown_member_type);
+                        Value::None
+                    }
+                }
+            };
+            (name, value)
+        })
+        .collect()
+}
+
 pub fn parse_objects<F>(
     dependencies: &HashMap<usize, Value>,
     udts: &[UserDefinedType],
@@ -132,7 +205,7 @@ where
         }
         offset += 1;
         let udt = &udts[type_index];
-        let (object_size, _is_size_dynamic) = match udt.size {
+        let (object_size, is_size_dynamic) = match udt.size {
             0 => {
                 //dynamic size
                 unsafe {
@@ -144,46 +217,11 @@ where
             }
             static_size => (static_size, false),
         };
-        let instance_members: Vec<_> = udt
-            .members
-            .iter()
-            .map(|member_meta| {
-                let name = member_meta.name.clone();
-                let type_name = member_meta.type_name.clone();
-                let value = if member_meta.is_reference {
-                    assert_eq!(std::mem::size_of::<usize>(), member_meta.size);
-                    let key = read_pod::<usize>(unsafe {
-                        buffer.as_ptr().add(offset + member_meta.offset)
-                    });
-                    if let Some(v) = dependencies.get(&key) {
-                        v.clone()
-                    } else {
-                        println!("dependency not found: {}", key);
-                        Value::None
-                    }
-                } else {
-                    match type_name.as_str() {
-                        "u8" => {
-                            assert_eq!(std::mem::size_of::<u8>(), member_meta.size);
-                            Value::U8(read_pod::<u8>(unsafe {
-                                buffer.as_ptr().add(offset + member_meta.offset)
-                            }))
-                        }
-                        "u32" => {
-                            assert_eq!(std::mem::size_of::<u32>(), member_meta.size);
-                            Value::U32(read_pod::<u32>(unsafe {
-                                buffer.as_ptr().add(offset + member_meta.offset)
-                            }))
-                        }
-                        unknown_member_type => {
-                            println!("unknown member type {}", unknown_member_type);
-                            Value::None
-                        }
-                    }
-                };
-                (name, value)
-            })
-            .collect();
+        let instance_members = if is_size_dynamic {
+            parse_custom_instance(udt, dependencies, offset, object_size, buffer)
+        } else {
+            parse_pod_instance(udt, dependencies, offset, buffer)
+        };
         let instance = Object {
             type_name: udt.name.clone(),
             members: instance_members,

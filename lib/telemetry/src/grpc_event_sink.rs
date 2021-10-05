@@ -43,9 +43,7 @@ impl GRPCEventSink {
                 Ok(message) => match message {
                     TelemetrySinkEvent::OnInitProcess(process_info) => {
                         match client.insert_process(process_info).await {
-                            Ok(response) => {
-                                dbg!(response);
-                            }
+                            Ok(_response) => {}
                             Err(e) => {
                                 println!("insert_process failed: {}", e);
                             }
@@ -53,9 +51,7 @@ impl GRPCEventSink {
                     }
                     TelemetrySinkEvent::OnInitStream(stream_info) => {
                         match client.insert_stream(stream_info).await {
-                            Ok(response) => {
-                                dbg!(response);
-                            }
+                            Ok(_response) => {}
                             Err(e) => {
                                 println!("insert_process failed: {}", e);
                             }
@@ -64,9 +60,7 @@ impl GRPCEventSink {
                     TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
                         let encoded_block = log_buffer.encode();
                         match client.insert_block(encoded_block).await {
-                            Ok(response) => {
-                                dbg!(response);
-                            }
+                            Ok(_response) => {}
                             Err(e) => {
                                 println!("insert_block failed: {}", e);
                             }

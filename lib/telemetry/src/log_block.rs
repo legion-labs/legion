@@ -1,24 +1,8 @@
 use crate::*;
 use transit::*;
 
-#[derive(Debug, Clone, Copy)]
-pub enum LogLevel {
-    Info = 1,
-    Warning = 2,
-    Error = 3,
-}
-
-#[derive(Debug, TransitReflect)]
-pub struct LogMsgEvent {
-    pub level: u8,
-    pub msg_len: u32,
-    pub msg: *const u8,
-}
-
-impl Serialize for LogMsgEvent {}
-
 declare_queue_struct!(
-    struct LogMsgQueue<LogMsgEvent> {}
+    struct LogMsgQueue<LogMsgEvent, LogDynMsgEvent> {}
 );
 
 declare_queue_struct!(
@@ -63,6 +47,7 @@ impl StreamBlock for LogBlock {
                         ptr: evt.msg,
                     });
                 }
+                LogMsgQueueAny::LogDynMsgEvent(_evt) => {}
             }
         }
 
