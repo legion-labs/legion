@@ -24,6 +24,9 @@ impl GfxApi for NullApi {
     type Buffer = NullBuffer;
     type Texture = NullTexture;
     type Sampler = NullSampler;
+    type ConstantBufferView = NullConstantBufferView;
+    type ShaderResourceView = NullShaderResourceView;
+    type UnorderedAccessView = NullUnorderedAccessView;
     type ShaderModule = NullShaderModule;
     type Shader = NullShader;
     type DescriptorSetLayout = NullDescriptorSetLayout;
@@ -70,7 +73,7 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     }
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<NullBuffer> {
         unimplemented!();
-    }
+    }    
     fn create_shader(&self, stages: Vec<ShaderStageDef<NullApi>>) -> GfxResult<NullShader> {
         unimplemented!();
     }
@@ -122,6 +125,8 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount> {
         unimplemented!();
     }
+
+   
 }
 
 //
@@ -152,6 +157,15 @@ impl Buffer<NullApi> for NullBuffer {
     ) -> GfxResult<()> {
         unimplemented!()
     }
+    fn create_constant_buffer_view(&self, cbv_def: &ConstantBufferViewDef) -> GfxResult<NullConstantBufferView> {
+        unimplemented!()
+    }
+    fn create_shader_resource_view(&self, srv_def: &ShaderResourceViewDef) -> GfxResult<NullShaderResourceView> {
+        unimplemented!()
+    }
+    fn create_unordered_acces_view(&self, uav_def: &UnorderedAccessViewDef) -> GfxResult<NullUnorderedAccessView> {
+        unimplemented!()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -171,6 +185,33 @@ impl Texture<NullApi> for NullTexture {
 #[derive(Clone, Debug)]
 pub struct NullSampler;
 impl Sampler<NullApi> for NullSampler {}
+
+//
+// Views (ConstantBufferView, ShaderResourceView, UnorderedAccessView)
+//
+#[derive(Clone, Debug)]
+pub struct NullConstantBufferView;
+impl ConstantBufferView<NullApi> for NullConstantBufferView {
+    fn buffer(&self) -> &NullBuffer {
+        unimplemented!();
+    }
+
+    fn offset(&self) -> u64 {
+        unimplemented!();
+    }
+
+    fn size(&self) -> u64 {
+        unimplemented!();
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct NullShaderResourceView;
+impl ShaderResourceView<NullApi> for NullShaderResourceView {}
+
+#[derive(Clone, Debug)]
+pub struct NullUnorderedAccessView;
+impl UnorderedAccessView<NullApi> for NullUnorderedAccessView{}
 
 //
 // Shaders/Pipelines

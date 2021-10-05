@@ -36,14 +36,23 @@ pub use texture::*;
 mod buffer;
 pub use buffer::*;
 
+mod sampler;
+pub use sampler::*;
+
+mod const_buffer_view;
+pub use const_buffer_view::*;
+
+mod shader_resource_view;
+pub use shader_resource_view::*;
+
+mod unordered_access_view;
+pub use unordered_access_view::*;
+
 mod root_signature;
 pub use root_signature::*;
 
 mod pipeline;
 pub use pipeline::*;
-
-mod sampler;
-pub use sampler::*;
 
 mod descriptor_set_array;
 pub use descriptor_set_array::*;

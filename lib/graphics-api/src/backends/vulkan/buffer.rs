@@ -1,5 +1,7 @@
-use super::{VulkanApi, VulkanDeviceContext};
-use crate::{Buffer, BufferDef, Format, GfxResult, MemoryUsage, ResourceType};
+use std::sync::Arc;
+
+use super::{VulkanApi, VulkanConstantBufferView, VulkanDeviceContext, VulkanShaderResourceView, VulkanUnorderedAccessView};
+use crate::{Buffer, BufferDef, GfxResult, MemoryUsage, ResourceUsage};
 use ash::vk;
 use legion_utils::trust_cell::TrustCell;
 
@@ -10,51 +12,67 @@ pub struct BufferRaw {
 }
 
 #[derive(Debug)]
-pub struct VulkanBuffer {
+struct VulkanBufferInner {
+    buffer_def: BufferDef,
     device_context: VulkanDeviceContext,
     allocation_info: TrustCell<vk_mem::AllocationInfo>,
     buffer_raw: Option<BufferRaw>,
+}
 
-    buffer_def: BufferDef,
-    uniform_texel_view: Option<vk::BufferView>,
-    storage_texel_view: Option<vk::BufferView>,
+#[derive(Clone,Debug)]
+pub struct VulkanBuffer {
+    inner: Arc<VulkanBufferInner>,    
 }
 
 impl VulkanBuffer {
+    pub fn device_context(&self) -> &VulkanDeviceContext {
+        &self.inner.device_context
+    }    
+
     pub fn vk_buffer(&self) -> vk::Buffer {
-        self.buffer_raw.unwrap().buffer
+        self.inner.buffer_raw.unwrap().buffer
     }
 
     pub fn vk_uniform_texel_view(&self) -> Option<vk::BufferView> {
-        self.uniform_texel_view
+        // self.uniform_texel_view
+        panic!()
     }
 
     pub fn vk_storage_texel_view(&self) -> Option<vk::BufferView> {
-        self.storage_texel_view
+        // self.storage_texel_view
+        panic!()
     }
 
-    pub fn take_raw(mut self) -> Option<BufferRaw> {
-        let mut raw = None;
-        std::mem::swap(&mut raw, &mut self.buffer_raw);
-        raw
-    }
+    // pub fn take_raw(mut self) -> Option<BufferRaw> {
+    //     let mut raw = None;
+    //     std::mem::swap(&mut raw, &mut self.inner.buffer_raw);
+    //     raw
+    // }
 
     pub fn new(device_context: &VulkanDeviceContext, buffer_def: &BufferDef) -> GfxResult<Self> {
         buffer_def.verify();
         let mut allocation_size = buffer_def.size;
-        if buffer_def
-            .resource_type
-            .intersects(ResourceType::UNIFORM_BUFFER)
-        {
+
+        if buffer_def.usage.intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW) {
             allocation_size = legion_utils::memory::round_size_up_to_alignment_u64(
                 buffer_def.size,
                 device_context.limits().min_uniform_buffer_offset_alignment,
             );
         }
 
+        // if buffer_def
+        //     .resource_type
+        //     .intersects(ResourceType::UNIFORM_BUFFER_)
+        // {
+        //     allocation_size = legion_utils::memory::round_size_up_to_alignment_u64(
+        //         buffer_def.size,
+        //         device_context.limits().min_uniform_buffer_offset_alignment,
+        //     );
+        // }
+
         let mut usage_flags = super::util::resource_type_buffer_usage_flags(
-            buffer_def.resource_type,
-            buffer_def.format != Format::UNDEFINED,
+            buffer_def.usage,
+            // buffer_def.format != Format::UNDEFINED,
         );
 
         if buffer_def.memory_usage == MemoryUsage::GpuOnly
@@ -108,81 +126,83 @@ impl VulkanBuffer {
         //     buffer_offset = buffer_def.struct_stride * buffer_def.first_element;
         // }
 
-        let uniform_texel_view = if usage_flags
-            .intersects(vk::BufferUsageFlags::UNIFORM_TEXEL_BUFFER)
-        {
-            let create_info = vk::BufferViewCreateInfo::builder()
-                .buffer(buffer_raw.buffer)
-                .format(buffer_def.format.into())
-                .offset(
-                    buffer_def.elements.element_stride * buffer_def.elements.element_begin_index,
-                )
-                .range(
-                    buffer_def.elements.element_stride * buffer_def.elements.element_begin_index,
-                );
+        // let _uniform_texel_view = if usage_flags
+        //     .intersects(vk::BufferUsageFlags::UNIFORM_TEXEL_BUFFER)
+        // {
+        //     let create_info = vk::BufferViewCreateInfo::builder()
+        //         .buffer(buffer_raw.buffer)
+        //         .format(buffer_def.format.into())
+        //         .offset(
+        //             buffer_def.elements.element_stride * buffer_def.elements.element_begin_index,
+        //         )
+        //         .range(
+        //             buffer_def.elements.element_stride * buffer_def.elements.element_begin_index,
+        //         );
 
-            //TODO: Verify we support the format
-            unsafe {
-                Some(
-                    device_context
-                        .device()
-                        .create_buffer_view(&*create_info, None)?,
-                )
-            }
-        } else {
-            None
-        };
+        //     //TODO: Verify we support the format
+        //     unsafe {
+        //         Some(
+        //             device_context
+        //                 .device()
+        //                 .create_buffer_view(&*create_info, None)?,
+        //         )
+        //     }
+        // } else {
+        //     None
+        // };
 
-        let storage_texel_view = if usage_flags
-            .intersects(vk::BufferUsageFlags::STORAGE_TEXEL_BUFFER)
-        {
-            let create_info = vk::BufferViewCreateInfo::builder()
-                .buffer(buffer_raw.buffer)
-                .format(buffer_def.format.into())
-                .offset(
-                    buffer_def.elements.element_stride * buffer_def.elements.element_begin_index,
-                )
-                .range(
-                    buffer_def.elements.element_stride * buffer_def.elements.element_begin_index,
-                );
+        // let storage_texel_view = if usage_flags
+        //     .intersects(vk::BufferUsageFlags::STORAGE_TEXEL_BUFFER)
+        // {
+        //     let create_info = vk::BufferViewCreateInfo::builder()
+        //         .buffer(buffer_raw.buffer)
+        //         .format(buffer_def.format.into())
+        //         .offset(
+        //             buffer_def.elements.element_stride * buffer_def.elements.element_begin_index,
+        //         )
+        //         .range(
+        //             buffer_def.elements.element_stride * buffer_def.elements.element_begin_index,
+        //         );
 
-            //TODO: Verify we support the format
-            unsafe {
-                Some(
-                    device_context
-                        .device()
-                        .create_buffer_view(&*create_info, None)?,
-                )
-            }
-        } else {
-            None
-        };
+        //     //TODO: Verify we support the format
+        //     unsafe {
+        //         Some(
+        //             device_context
+        //                 .device()
+        //                 .create_buffer_view(&*create_info, None)?,
+        //         )
+        //     }
+        // } else {
+        //     None
+        // };
 
         Ok(Self {
-            device_context: device_context.clone(),
-            allocation_info: TrustCell::new(allocation_info),
-            buffer_raw: Some(buffer_raw),
-            buffer_def: buffer_def.clone(),
-            uniform_texel_view,
-            storage_texel_view,
+            inner : Arc::new( VulkanBufferInner{
+                device_context: device_context.clone(),
+                allocation_info: TrustCell::new(allocation_info),
+                buffer_raw: Some(buffer_raw),
+                buffer_def: buffer_def.clone(),
+                // uniform_texel_view,
+                // storage_texel_view,
+            })
         })
     }
 }
 
-impl Drop for VulkanBuffer {
+impl Drop for VulkanBufferInner {
     fn drop(&mut self) {
         log::trace!("destroying BufferVulkanInner");
-        let device = self.device_context.device();
-        if let Some(uniform_texel_view) = self.uniform_texel_view {
-            unsafe {
-                device.destroy_buffer_view(uniform_texel_view, None);
-            }
-        }
-        if let Some(storage_texel_view) = self.storage_texel_view {
-            unsafe {
-                device.destroy_buffer_view(storage_texel_view, None);
-            }
-        }
+        let _device = self.device_context.device();
+        // if let Some(uniform_texel_view) = self.uniform_texel_view {
+        //     unsafe {
+        //         device.destroy_buffer_view(uniform_texel_view, None);
+        //     }
+        // }
+        // if let Some(storage_texel_view) = self.storage_texel_view {
+        //     unsafe {
+        //         device.destroy_buffer_view(storage_texel_view, None);
+        //     }
+        // }
 
         if let Some(buffer_raw) = &self.buffer_raw {
             log::trace!(
@@ -203,34 +223,37 @@ impl Drop for VulkanBuffer {
 
 impl Buffer<VulkanApi> for VulkanBuffer {
     fn buffer_def(&self) -> &BufferDef {
-        &self.buffer_def
+        &self.inner.buffer_def
     }
 
     fn map_buffer(&self) -> GfxResult<*mut u8> {
         let ptr = self
+            .inner
             .device_context
             .allocator()
-            .map_memory(&self.buffer_raw.unwrap().allocation)?;
-        *self.allocation_info.borrow_mut() = self
+            .map_memory(&self.inner.buffer_raw.unwrap().allocation)?;
+        *self.inner.allocation_info.borrow_mut() = self
+            .inner
             .device_context
             .allocator()
-            .get_allocation_info(&self.buffer_raw.unwrap().allocation)?;
+            .get_allocation_info(&self.inner.buffer_raw.unwrap().allocation)?;
         Ok(ptr)
     }
 
     fn unmap_buffer(&self) -> GfxResult<()> {
-        self.device_context
+        self.inner.device_context
             .allocator()
-            .unmap_memory(&self.buffer_raw.unwrap().allocation);
-        *self.allocation_info.borrow_mut() = self
+            .unmap_memory(&self.inner.buffer_raw.unwrap().allocation);
+        *self.inner.allocation_info.borrow_mut() = self
+            .inner
             .device_context
             .allocator()
-            .get_allocation_info(&self.buffer_raw.unwrap().allocation)?;
+            .get_allocation_info(&self.inner.buffer_raw.unwrap().allocation)?;
         Ok(())
     }
 
     fn mapped_memory(&self) -> Option<*mut u8> {
-        let ptr = self.allocation_info.borrow().get_mapped_data();
+        let ptr = self.inner.allocation_info.borrow().get_mapped_data();
         if ptr.is_null() {
             None
         } else {
@@ -249,7 +272,7 @@ impl Buffer<VulkanApi> for VulkanBuffer {
         buffer_byte_offset: u64,
     ) -> GfxResult<()> {
         let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
-        assert!(buffer_byte_offset + data_size_in_bytes <= self.buffer_def.size);
+        assert!(buffer_byte_offset + data_size_in_bytes <= self.inner.buffer_def.size);
 
         let src = data.as_ptr().cast::<u8>();
 
@@ -264,5 +287,17 @@ impl Buffer<VulkanApi> for VulkanBuffer {
         self.unmap_buffer()?;
 
         Ok(())
+    }
+
+    fn create_constant_buffer_view(&self, cbv_def: &crate::ConstantBufferViewDef) -> GfxResult<VulkanConstantBufferView> {
+        VulkanConstantBufferView::from_buffer( &self, cbv_def)
+    }
+
+    fn create_shader_resource_view(&self, srv_def: &crate::ShaderResourceViewDef) -> GfxResult<VulkanShaderResourceView> {
+        VulkanShaderResourceView::from_buffer(&self, srv_def)
+    }
+
+    fn create_unordered_acces_view(&self, uav_def: &crate::UnorderedAccessViewDef) -> GfxResult<VulkanUnorderedAccessView> {
+        VulkanUnorderedAccessView::from_buffer(&self, uav_def)
     }
 }

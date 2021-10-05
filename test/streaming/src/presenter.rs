@@ -18,8 +18,7 @@ fn run() -> GfxResult<()> {
 
 #[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
-    use presenter::window::*;
-    use pso_compiler::{CompileParams, HLSLCompiler};
+    use presenter::window::*;    
     const WINDOW_WIDTH: u32 = 900;
     const WINDOW_HEIGHT: u32 = 600;
 
@@ -112,8 +111,9 @@ fn run() -> GfxResult<()> {
         //
         let mut command_pools = Vec::with_capacity(swapchain_helper.image_count());
         let mut command_buffers = Vec::with_capacity(swapchain_helper.image_count());
-        let mut vertex_buffers = Vec::with_capacity(swapchain_helper.image_count());
+        let mut vertex_buffers = Vec::with_capacity(swapchain_helper.image_count());        
         let mut uniform_buffers = Vec::with_capacity(swapchain_helper.image_count());
+        let mut uniform_buffer_cbvs = Vec::with_capacity(swapchain_helper.image_count());
 
         for _ in 0..swapchain_helper.image_count() {
             let command_pool =
@@ -131,10 +131,15 @@ fn run() -> GfxResult<()> {
                 .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
+            let cbv_def = ConstantBufferViewDef::default();
+            let uniform_buffer_cbv = uniform_buffer.create_constant_buffer_view(&cbv_def)?;
+
+
             command_pools.push(command_pool);
             command_buffers.push(command_buffer);
-            vertex_buffers.push(vertex_buffer);
+            vertex_buffers.push(vertex_buffer);            
             uniform_buffers.push(uniform_buffer);
+            uniform_buffer_cbvs.push(uniform_buffer_cbv);
         }
 
         //
@@ -192,7 +197,7 @@ fn run() -> GfxResult<()> {
         let ps_out = compiler.compile(&compile_params).map_err(|e| e.to_string())?;
 
         let vert_shader_package =
-            ShaderPackage::SpirV(vs_out.bytecode);
+            ShaderPackage::SpirV(vs_out.bytecode);            
 
         let frag_shader_package =
             ShaderPackage::SpirV(ps_out.bytecode);
@@ -222,7 +227,7 @@ fn run() -> GfxResult<()> {
             name: Some("color".to_string()),
             set_index: 0,
             binding: 0,
-            resource_type: ResourceType::UNIFORM_BUFFER,
+            shader_resource_type: ShaderResourceType::ConstantBufferView,
             ..Default::default()
         };
 
@@ -292,7 +297,7 @@ fn run() -> GfxResult<()> {
                 array_index: i as u32,
                 descriptor_key: DescriptorKey::Name("color"),
                 elements: DescriptorElements {
-                    buffers: Some(&[&uniform_buffers[i]]),
+                    cbvs: Some(&[&uniform_buffer_cbvs[i]]),                    
                     ..Default::default()
                 },
                 ..Default::default()

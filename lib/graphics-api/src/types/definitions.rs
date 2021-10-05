@@ -2,7 +2,7 @@ use super::*;
 
 use crate::{GfxApi, MAX_DESCRIPTOR_SET_LAYOUTS, ResourceType};
 use legion_utils::decimal::DecimalF32;
-use std::hash::{Hash, Hasher};
+use std::{hash::{Hash, Hasher}, num::NonZeroU64};
 
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,20 @@ use serde::{Deserialize, Serialize};
 pub struct ApiDef {
     // Don't have anything that's universal across APIs to add here yet
 }
+
+bitflags::bitflags! {
+    pub struct ResourceUsage: u16 {
+        const NONE = 0x0000;    
+        const HAS_CONST_BUFFER_VIEW = 0x0001;    
+        const HAS_SHADER_RESOURCE_VIEW = 0x0002;    
+        const HAS_UNORDERED_ACCESS_VIEW = 0x0004;    
+        const HAS_VERTEX_BUFFER = 0x0010;
+        const HAS_INDEX_BUFFER = 0x0020;
+        const HAS_INDIRECT_BUFFER  = 0x0040;
+    }
+}
+
+
 
 #[derive(Clone, Debug, Default)]
 pub struct BufferElementData {
@@ -28,14 +42,16 @@ pub struct BufferDef {
     pub alignment: u32, // May be 0
     pub memory_usage: MemoryUsage,
     pub queue_type: QueueType,
-    pub resource_type: ResourceType,
+    // pub resource_type: ResourceType,
     pub always_mapped: bool,
 
     // Set to undefined unless texture/typed buffer
-    pub format: Format,
+    // pub format: Format,
 
     // For storage buffers
-    pub elements: BufferElementData,
+    // pub elements: BufferElementData,
+
+    pub usage : ResourceUsage
 }
 
 impl Default for BufferDef {
@@ -45,10 +61,11 @@ impl Default for BufferDef {
             alignment: 0,
             memory_usage: MemoryUsage::Unknown,
             queue_type: QueueType::Graphics,
-            resource_type: ResourceType::UNDEFINED,
-            elements: Default::default(),
-            format: Format::UNDEFINED,
+            // resource_type: ResourceType::UNDEFINED,
+            // elements: Default::default(),
+            // format: Format::UNDEFINED,
             always_mapped: false,
+            usage: ResourceUsage::NONE
         }
     }
 }
@@ -58,48 +75,49 @@ impl BufferDef {
         assert_ne!(self.size, 0);
     }
 
-    pub fn for_staging_buffer(size: usize, resource_type: ResourceType) -> Self {
+    pub fn for_staging_buffer(size: usize, usage_flags: ResourceUsage) -> Self {
         Self {
             size: size as u64,
             alignment: 0,
             memory_usage: MemoryUsage::CpuToGpu,
             queue_type: QueueType::Graphics,
-            resource_type,
-            elements: Default::default(),
-            format: Format::UNDEFINED,
+            // resource_type,
+            // elements: Default::default(),
+            // format: Format::UNDEFINED,
             always_mapped: false,
+            usage : usage_flags
         }
     }
 
-    pub fn for_staging_buffer_data<T: Copy>(data: &[T], resource_type: ResourceType) -> Self {
+    pub fn for_staging_buffer_data<T: Copy>(data: &[T], usage_flags: ResourceUsage) -> Self {
         Self::for_staging_buffer(
-            legion_utils::memory::slice_size_in_bytes(data),
-            resource_type,
+            legion_utils::memory::slice_size_in_bytes(data),            
+            usage_flags
         )
     }
 
     pub fn for_staging_vertex_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size, ResourceType::VERTEX_BUFFER)
+        Self::for_staging_buffer(size, ResourceUsage::HAS_VERTEX_BUFFER)
     }
 
     pub fn for_staging_vertex_buffer_data<T: Copy>(data: &[T]) -> Self {
-        Self::for_staging_buffer_data(data, ResourceType::VERTEX_BUFFER)
+        Self::for_staging_buffer_data(data, ResourceUsage::HAS_VERTEX_BUFFER)
     }
 
     pub fn for_staging_index_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size, ResourceType::INDEX_BUFFER)
+        Self::for_staging_buffer(size,  ResourceUsage::HAS_INDEX_BUFFER)
     }
 
     pub fn for_staging_index_buffer_data<T: Copy>(data: &[T]) -> Self {
-        Self::for_staging_buffer_data(data, ResourceType::INDEX_BUFFER)
+        Self::for_staging_buffer_data(data, ResourceUsage::HAS_INDEX_BUFFER)
     }
 
     pub fn for_staging_uniform_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size, ResourceType::UNIFORM_BUFFER)
+        Self::for_staging_buffer(size, ResourceUsage::HAS_CONST_BUFFER_VIEW)
     }
 
     pub fn for_staging_uniform_buffer_data<T: Copy>(data: &[T]) -> Self {
-        Self::for_staging_buffer_data(data, ResourceType::UNIFORM_BUFFER)
+        Self::for_staging_buffer_data(data, ResourceUsage::HAS_CONST_BUFFER_VIEW)
     }
 }
 
@@ -211,6 +229,33 @@ impl TextureDef {
     }
 }
 
+pub enum BufferSize {
+    InBytes(NonZeroU64),
+    WholeSize
+}
+
+pub struct ConstantBufferViewDef {    
+    pub offset : u64,
+    pub size : BufferSize,
+}
+
+impl Default for ConstantBufferViewDef {
+    fn default() -> Self {
+        Self {
+            offset : 0,
+            size : BufferSize::WholeSize
+        }
+    }
+}
+
+pub struct ShaderResourceViewDef {
+    
+}
+
+pub struct UnorderedAccessViewDef {
+
+}
+
 /// Used to create a `CommandPool`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandPoolDef {
@@ -274,10 +319,25 @@ impl<A: GfxApi> ShaderStageDef<A> {
     }
 }
 
+#[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
+pub enum ShaderResourceType {
+    Undefined,
+    Sampler,
+    ConstantBufferView,
+    ShaderResourceView,
+    UnorderedAccessView
+}
+
+impl Default for ShaderResourceType {
+    fn default() -> Self {
+        ShaderResourceType::Undefined
+    }
+}
+
 pub struct DescriptorDef {
     pub name: String,
     pub binding: u32,
-    pub resource_type: ResourceType,
+    pub shader_resource_type: ShaderResourceType,
     pub array_size: u32,
 }
 

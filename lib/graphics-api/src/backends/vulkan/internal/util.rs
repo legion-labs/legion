@@ -1,8 +1,5 @@
 use crate::backends::vulkan::VulkanDeviceContext;
-use crate::{
-    BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format,
-    PipelineType, QueueType, RasterizerState, ResourceState, ResourceType,
-};
+use crate::{BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format, PipelineType, QueueType, RasterizerState, ResourceState, ResourceType, ShaderResourceType, ResourceUsage};
 use ash::vk;
 
 pub(crate) fn pipeline_type_pipeline_bind_point(
@@ -15,38 +12,39 @@ pub(crate) fn pipeline_type_pipeline_bind_point(
 }
 
 pub(crate) fn resource_type_buffer_usage_flags(
-    resource_type: ResourceType,
-    has_format: bool,
+    resource_usage : ResourceUsage,
+    // resource_type: ResourceType,
+    // has_format: bool,
 ) -> vk::BufferUsageFlags {
     let mut usage_flags = vk::BufferUsageFlags::TRANSFER_SRC;
 
-    if resource_type.intersects(ResourceType::UNIFORM_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW) {
         usage_flags |= vk::BufferUsageFlags::UNIFORM_BUFFER;
     }
 
-    if resource_type.intersects(ResourceType::BUFFER_READ_WRITE) {
+    if resource_usage.intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW|ResourceUsage::HAS_SHADER_RESOURCE_VIEW ) {
         usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
-        if has_format {
-            usage_flags |= vk::BufferUsageFlags::STORAGE_TEXEL_BUFFER;
-        }
+        // if has_format {
+        //     usage_flags |= vk::BufferUsageFlags::STORAGE_TEXEL_BUFFER;
+        // }
     }
 
-    if resource_type.intersects(ResourceType::BUFFER) {
-        usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
-        if has_format {
-            usage_flags |= vk::BufferUsageFlags::UNIFORM_TEXEL_BUFFER;
-        }
-    }
+    // if resource_type.intersects(ResourceUsage::BUFFER) {
+    //     usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
+    //     // if has_format {
+    //     //     usage_flags |= vk::BufferUsageFlags::UNIFORM_TEXEL_BUFFER;
+    //     // }
+    // }
 
-    if resource_type.intersects(ResourceType::INDEX_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::HAS_INDEX_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::INDEX_BUFFER;
     }
 
-    if resource_type.intersects(ResourceType::VERTEX_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::HAS_VERTEX_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::VERTEX_BUFFER;
     }
 
-    if resource_type.intersects(ResourceType::INDIRECT_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::HAS_INDIRECT_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::INDIRECT_BUFFER;
     }
 
@@ -90,20 +88,19 @@ pub(crate) fn image_format_to_aspect_mask(
     }
 }
 
-pub fn resource_type_to_descriptor_type(resource_type: ResourceType) -> Option<vk::DescriptorType> {
-    match resource_type {
-        ResourceType::SAMPLER => Some(vk::DescriptorType::SAMPLER),
-        ResourceType::TEXTURE => Some(vk::DescriptorType::SAMPLED_IMAGE),
-        ResourceType::UNIFORM_BUFFER => Some(vk::DescriptorType::UNIFORM_BUFFER),
-        ResourceType::TEXTURE_READ_WRITE => Some(vk::DescriptorType::STORAGE_IMAGE),
-        ResourceType::BUFFER | ResourceType::BUFFER_READ_WRITE => {
-            Some(vk::DescriptorType::STORAGE_BUFFER)
-        }
-        ResourceType::INPUT_ATTACHMENT => Some(vk::DescriptorType::INPUT_ATTACHMENT),
-        ResourceType::TEXEL_BUFFER => Some(vk::DescriptorType::UNIFORM_TEXEL_BUFFER),
-        ResourceType::TEXEL_BUFFER_READ_WRITE => Some(vk::DescriptorType::STORAGE_TEXEL_BUFFER),
-        _ => None,
-    }
+pub fn shader_resource_type_to_descriptor_type(shader_resource_type: ShaderResourceType) -> Option<vk::DescriptorType> {
+    match shader_resource_type {
+        ShaderResourceType::Sampler => Some(vk::DescriptorType::SAMPLER),
+        ShaderResourceType::ConstantBufferView => Some(vk::DescriptorType::UNIFORM_BUFFER),
+        ShaderResourceType::ShaderResourceView => todo!(),
+        ShaderResourceType::UnorderedAccessView => todo!(),
+        ShaderResourceType::Undefined => todo!(),
+        
+    
+    // pub const SAMPLED_IMAGE: Self = Self(2);
+    // pub const STORAGE_IMAGE: Self = Self(3);        
+    // pub const STORAGE_BUFFER: Self = Self(7);    
+    }    
 }
 
 pub(crate) fn resource_state_to_access_flags(state: ResourceState) -> vk::AccessFlags {

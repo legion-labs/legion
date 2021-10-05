@@ -309,6 +309,7 @@ pub mod prelude {
         Buffer, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray, DescriptorSetHandle,
         DescriptorSetLayout, DeviceContext, Fence, GfxApi, GfxResult, Pipeline, Queue,
         RootSignature, Sampler, Semaphore, Shader, ShaderModule, Swapchain, Texture,
+        ConstantBufferView, ShaderResourceView, UnorderedAccessView
     };
 }
 
@@ -348,9 +349,12 @@ pub trait GfxApi: Sized {
     fn destroy(&mut self) -> GfxResult<()>;
 
     type DeviceContext: DeviceContext<Self>;
-    type Buffer: Buffer<Self>;
+    type Buffer: Buffer<Self>;    
     type Texture: Texture<Self>;
     type Sampler: Sampler<Self>;
+    type ConstantBufferView : ConstantBufferView<Self>;
+    type ShaderResourceView : ShaderResourceView<Self>;
+    type UnorderedAccessView : UnorderedAccessView<Self>;
     type ShaderModule: ShaderModule<Self>;
     type Shader: Shader<Self>;
     type DescriptorSetLayout: DescriptorSetLayout<Self>;
@@ -378,7 +382,7 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     ) -> GfxResult<A::Swapchain>;
     fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<A::Sampler>;
     fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<A::Texture>;
-    fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<A::Buffer>;
+    fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<A::Buffer>;        
     fn create_shader(&self, stages: Vec<ShaderStageDef<A>>) -> GfxResult<A::Shader>;
     fn create_descriptorset_layout(
         &self,
@@ -416,7 +420,7 @@ pub trait DeviceContext<A: GfxApi>: Clone {
 // Resources (Buffers, Textures, Samplers)
 //
 pub trait Buffer<A: GfxApi>: std::fmt::Debug {
-    fn buffer_def(&self) -> &BufferDef;
+    fn buffer_def(&self) -> &BufferDef;    
     fn map_buffer(&self) -> GfxResult<*mut u8>;
     fn unmap_buffer(&self) -> GfxResult<()>;
     fn mapped_memory(&self) -> Option<*mut u8>;
@@ -426,6 +430,9 @@ pub trait Buffer<A: GfxApi>: std::fmt::Debug {
         data: &[T],
         buffer_byte_offset: u64,
     ) -> GfxResult<()>;
+    fn create_constant_buffer_view(&self, cbv_def: &ConstantBufferViewDef) -> GfxResult<A::ConstantBufferView>;
+    fn create_shader_resource_view(&self, srv_def: &ShaderResourceViewDef) -> GfxResult<A::ShaderResourceView>;
+    fn create_unordered_acces_view(&self, uav_def: &UnorderedAccessViewDef) -> GfxResult<A::UnorderedAccessView>;
 }
 
 pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
@@ -435,6 +442,24 @@ pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
 }
 
 pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
+
+//
+// Views (ConstantBufferView, ShaderResourceView, UnorderedAccessView)
+//
+pub trait ConstantBufferView<A: GfxApi>: Clone + std::fmt::Debug {
+    fn buffer(&self) -> &A::Buffer;
+    fn offset(&self) -> u64;
+    fn size(&self) -> u64;
+}
+
+pub trait ShaderResourceView<A: GfxApi>: Clone + std::fmt::Debug {
+    
+}
+
+pub trait UnorderedAccessView<A: GfxApi>: Clone + std::fmt::Debug {
+    
+}
+
 
 //
 // Shaders/Pipelines

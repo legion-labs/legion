@@ -103,10 +103,11 @@ fn run() -> GfxResult<()> {
         //
         let mut command_pools = Vec::with_capacity(parallel_render_count);
         let mut command_buffers = Vec::with_capacity(parallel_render_count);
-        let mut vertex_buffers = Vec::with_capacity(parallel_render_count);
+        let mut vertex_buffers = Vec::with_capacity(parallel_render_count);        
         let mut uniform_buffers = Vec::with_capacity(parallel_render_count);
+        let mut uniform_buffer_cbvs = Vec::with_capacity(parallel_render_count);
         let mut render_images = Vec::with_capacity(parallel_render_count);
-        let mut copy_images = Vec::with_capacity(parallel_render_count);
+        let mut copy_images = Vec::with_capacity(parallel_render_count);        
 
         let mut file_h264 = std::fs::File::create("D:/test.h264").unwrap();
         for _ in 0..parallel_render_count {
@@ -120,10 +121,13 @@ fn run() -> GfxResult<()> {
             let vertex_buffer = device_context
                 .create_buffer(&BufferDef::for_staging_vertex_buffer_data(&vertex_data))?;
             vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
-
+            
             let uniform_buffer = device_context
                 .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
+
+            let cbv_def = ConstantBufferViewDef::default();
+            let uniform_buffer_cbv = uniform_buffer.create_constant_buffer_view(&cbv_def)?;
 
             let render_image = device_context.create_texture(&TextureDef {
                 extents: Extents3D {
@@ -161,6 +165,7 @@ fn run() -> GfxResult<()> {
             command_buffers.push(command_buffer);
             vertex_buffers.push(vertex_buffer);
             uniform_buffers.push(uniform_buffer);
+            uniform_buffer_cbvs.push(uniform_buffer_cbv);
             render_images.push(render_image);
             copy_images.push(copy_image);
         }
@@ -209,7 +214,7 @@ fn run() -> GfxResult<()> {
             name: Some("color".to_string()),
             set_index: 0,
             binding: 0,
-            resource_type: ResourceType::UNIFORM_BUFFER,
+            shader_resource_type:  ShaderResourceType::ConstantBufferView,
             ..Default::default()
         };
 
@@ -270,7 +275,7 @@ fn run() -> GfxResult<()> {
                 array_index: i as u32,
                 descriptor_key: DescriptorKey::Name("color"),
                 elements: DescriptorElements {
-                    buffers: Some(&[&uniform_buffers[i]]),
+                    cbvs: Some(&[&uniform_buffer_cbvs[i]]),
                     ..Default::default()
                 },
                 ..Default::default()

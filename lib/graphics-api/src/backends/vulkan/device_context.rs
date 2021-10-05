@@ -1,15 +1,15 @@
-use super::{internal::*, VulkanApi};
-use crate::{
-    BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext,
-    DeviceInfo, Fence, Format, GfxResult, GraphicsPipelineDef, QueueType, ResourceType,
-    RootSignatureDef, SampleCount, SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef,
-    TextureDef,
+use crate::{BufferDef, ComputePipelineDef,     
+    DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext, DeviceInfo, Fence, Format, 
+    GfxResult, GraphicsPipelineDef, QueueType, ResourceType, RootSignatureDef, SampleCount, 
+    SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef, 
+    
 };
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::{Arc, Mutex};
 
 use super::{
+    VulkanApi, internal::*,
     VulkanBuffer, VulkanDescriptorSetArray, VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline,
     VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
     VulkanShaderModule, VulkanSwapchain, VulkanTexture,
@@ -213,10 +213,10 @@ impl VulkanDeviceContextInner {
 }
 
 pub struct VulkanDeviceContext {
-    pub(crate) inner: Arc<VulkanDeviceContextInner>,
+    pub(super) inner: Arc<VulkanDeviceContextInner>,
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
-    pub(crate) create_index: u64,
+    pub(super) create_index: u64,
 }
 
 impl std::fmt::Debug for VulkanDeviceContext {
@@ -382,7 +382,7 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
 
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<VulkanBuffer> {
         VulkanBuffer::new(self, buffer_def)
-    }
+    }    
 
     fn create_shader(&self, stages: Vec<ShaderStageDef<VulkanApi>>) -> GfxResult<VulkanShader> {
         VulkanShader::new(self, stages)
@@ -426,22 +426,6 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
     fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<VulkanShaderModule> {
         VulkanShaderModule::new(self, data)
     }
-
-    // // Just expects bytes with no particular alignment requirements, suitable for reading from a file
-    // pub fn create_shader_module_from_bytes(
-    //     &self,
-    //     data: &[u8],
-    // ) -> GfxResult<VulkanShaderModule> {
-    //     VulkanShaderModule::new_from_bytes(self, data)
-    // }
-    //
-    // // Expects properly aligned, correct endianness, valid SPV
-    // pub fn create_shader_module_from_spv(
-    //     &self,
-    //     spv: &[u32],
-    // ) -> GfxResult<VulkanShaderModule> {
-    //     VulkanShaderModule::new_from_spv(self, spv)
-    // }
 
     fn find_supported_format(
         &self,

@@ -2,7 +2,7 @@ use fnv::FnvHashMap;
 
 use crate::{
     DescriptorDef, DescriptorSetLayoutDef, DeviceContext, GfxApi, GfxResult, PipelineType,
-    ResourceType, RootSignatureDef, Shader, ShaderResource, ShaderStageFlags,
+    RootSignatureDef, Shader, ShaderResource, ShaderStageFlags,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
@@ -181,14 +181,14 @@ fn verify_resources_can_overlap(
         return Err(message.into());
     }
 
-    if previous_resource.resource_type != resource.resource_type {
+    if previous_resource.shader_resource_type != resource.shader_resource_type {
         let message = format!(
             "Shader resource (set={:?} binding={:?} name={:?}) has mismatching resource_type {:?} and {:?} across shaders in same root signature",
             resource.set_index,
             resource.binding,
             resource.name,
-            resource.resource_type,
-            previous_resource.resource_type
+            resource.shader_resource_type,
+            previous_resource.shader_resource_type
         );
         log::error!("{}", message);
         return Err(message.into());
@@ -214,8 +214,7 @@ pub fn tmp_extract_root_signature_def<A: GfxApi>(
         let mut set_resources = shader_resources
             .iter()
             .filter(|sr| {
-                sr.set_index as usize == set_index
-                    && sr.resource_type != ResourceType::ROOT_CONSTANT
+                sr.set_index as usize == set_index                    
             })
             .collect::<Vec<_>>();
 
@@ -228,7 +227,7 @@ pub fn tmp_extract_root_signature_def<A: GfxApi>(
                 let descriptor_def = DescriptorDef {
                     name: d.name.as_ref().unwrap().clone(),
                     binding: d.binding,
-                    resource_type: d.resource_type,
+                    shader_resource_type: d.shader_resource_type.clone(),
                     array_size: d.element_count,
                 };
                 layout_def.descriptor_defs.push(descriptor_def);

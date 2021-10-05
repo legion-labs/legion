@@ -1,5 +1,5 @@
-use crate::types::{ResourceType, ShaderStageFlags};
-use crate::{GfxApi, GfxResult, ShaderStageDef, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::types::{ShaderStageFlags};
+use crate::{GfxApi, GfxResult, MAX_DESCRIPTOR_SET_LAYOUTS, ShaderResourceType, ShaderStageDef};
 use fnv::FnvHashMap;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,7 @@ pub struct ShaderResourceBindingKey {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct ShaderResource {
-    pub resource_type: ResourceType,
+    pub shader_resource_type: ShaderResourceType,
     pub set_index: u32,
     pub binding: u32,
     // Valid only for descriptors (resource_type != ROOT_CONSTANT)
@@ -49,45 +49,46 @@ impl ShaderResource {
     }
 
     pub fn validate(&self) -> GfxResult<()> {
-        if self.resource_type == ResourceType::ROOT_CONSTANT {
-            if self.element_count != 0 {
-                return Err(format!(
-                        "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero element_count",
-                        self.set_index,
-                        self.binding,
-                        self.name,
-                        self.resource_type
-                    ).into());
-            }
-            if self.size_in_bytes == 0 {
-                return Err(format!(
-                    "binding (set={:?} binding={:?} name={:?} type={:?}) has zero size_in_bytes",
-                    self.set_index, self.binding, self.name, self.resource_type
-                )
-                .into());
-            }
-            if self.set_index != 0 {
-                return Err(format!(
-                    "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero set_index",
-                    self.set_index, self.binding, self.name, self.resource_type
-                )
-                .into());
-            }
-            if self.binding != 0 {
-                return Err(format!(
-                    "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero binding",
-                    self.set_index, self.binding, self.name, self.resource_type
-                )
-                .into());
-            }
-        } else {
+        // if self.resource_type == ResourceType::ROOT_CONSTANT {
+        //     if self.element_count != 0 {
+        //         return Err(format!(
+        //                 "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero element_count",
+        //                 self.set_index,
+        //                 self.binding,
+        //                 self.name,
+        //                 self.resource_type
+        //             ).into());
+        //     }
+        //     if self.size_in_bytes == 0 {
+        //         return Err(format!(
+        //             "binding (set={:?} binding={:?} name={:?} type={:?}) has zero size_in_bytes",
+        //             self.set_index, self.binding, self.name, self.resource_type
+        //         )
+        //         .into());
+        //     }
+        //     if self.set_index != 0 {
+        //         return Err(format!(
+        //             "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero set_index",
+        //             self.set_index, self.binding, self.name, self.resource_type
+        //         )
+        //         .into());
+        //     }
+        //     if self.binding != 0 {
+        //         return Err(format!(
+        //             "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero binding",
+        //             self.set_index, self.binding, self.name, self.resource_type
+        //         )
+        //         .into());
+        //     }
+        // } else 
+        {
             if self.size_in_bytes != 0 {
                 return Err(format!(
                         "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero size_in_bytes",
                         self.set_index,
                         self.binding,
                         self.name,
-                        self.resource_type
+                        self.shader_resource_type
                     ).into());
             }
 
@@ -110,10 +111,10 @@ impl ShaderResource {
     }
 
     fn verify_compatible_across_stages(&self, other: &Self) -> GfxResult<()> {
-        if self.resource_type != other.resource_type {
+        if self.shader_resource_type != other.shader_resource_type {
             return Err(format!(
                 "Pass is using shaders in different stages with different resource_type {:?} and {:?} (set={} binding={})",
-                self.resource_type, other.resource_type,
+                self.shader_resource_type, other.shader_resource_type,
                 self.set_index,
                 self.binding
             ).into());

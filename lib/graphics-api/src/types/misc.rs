@@ -179,27 +179,27 @@ bitflags::bitflags! {
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct ResourceType: u32 {
         const UNDEFINED = 0;
-        const SAMPLER = 1<<0;
+        // const SAMPLER = 1<<0;
         /// Similar to DX12 SRV and vulkan SAMPLED image usage flag and SAMPLED_IMAGE descriptor type
         const TEXTURE = 1<<1;
         /// Similar to DX12 UAV and vulkan STORAGE image usage flag and STORAGE_IMAGE descriptor type
         const TEXTURE_READ_WRITE = 1<<2;
         /// Similar to DX12 SRV and vulkan STORAGE_BUFFER descriptor type
-        const BUFFER = 1<<3;
+        // const BUFFER = 1<<3;
         /// Similar to DX12 UAV and vulkan STORAGE_BUFFER descriptor type
-        const BUFFER_READ_WRITE = 1<<5;
+        // const BUFFER_READ_WRITE = 1<<5;
         /// Similar to vulkan UNIFORM_BUFFER descriptor type
-        const UNIFORM_BUFFER = 1<<7;
+        // const UNIFORM_BUFFER_ = 1<<7;
         // Push constant / Root constant
         /// Similar to DX12 root constants and vulkan push constants
-        const ROOT_CONSTANT = 1<<8;
+        // const ROOT_CONSTANT = 1<<8;
         // Input assembler
         /// Similar to vulkan VERTEX_BUFFER buffer usage flag
-        const VERTEX_BUFFER = 1<<9;
+        // const VERTEX_BUFFER = 1<<9;
         /// Similar to vulkan INDEX_BUFFER buffer usage flag
-        const INDEX_BUFFER = 1<<10;
+        // const INDEX_BUFFER = 1<<10;
         /// Similar to vulkan INDIRECT_BUFFER buffer usage flag
-        const INDIRECT_BUFFER = 1<<11;
+        // const INDIRECT_BUFFER = 1<<11;
         // Cubemap SRV
         /// Similar to vulkan's CUBE_COMPATIBLE image create flag and metal's Cube texture type
         const TEXTURE_CUBE = 1<<12 | Self::TEXTURE.bits();
@@ -209,8 +209,8 @@ bitflags::bitflags! {
         const RENDER_TARGET_DEPTH_SLICES = 1<<15;
         // Vulkan-only stuff
         const INPUT_ATTACHMENT = 1<<16;
-        const TEXEL_BUFFER = 1<<17;
-        const TEXEL_BUFFER_READ_WRITE = 1<<18;
+        // const TEXEL_BUFFER = 1<<17;
+        // const TEXEL_BUFFER_READ_WRITE = 1<<18;
         // Render target types
         /// A color attachment in a renderpass
         const RENDER_TARGET_COLOR = 1<<19;
@@ -219,23 +219,23 @@ bitflags::bitflags! {
     }
 }
 
-impl ResourceType {
-    pub fn is_uniform_buffer(self) -> bool {
-        self.intersects(Self::UNIFORM_BUFFER)
-    }
+    impl ResourceType {
+//     pub fn is_uniform_buffer(self) -> bool {
+//         self.intersects(Self::UNIFORM_BUFFER_)
+//     }
 
-    pub fn is_storage_buffer(self) -> bool {
-        self.intersects(Self::BUFFER | Self::BUFFER_READ_WRITE)
-    }
+//     pub fn is_storage_buffer(self) -> bool {
+//         self.intersects(Self::BUFFER | Self::BUFFER_READ_WRITE)
+//     }
 
-    pub fn is_render_target(self) -> bool {
-        self.intersects(Self::RENDER_TARGET_COLOR | Self::RENDER_TARGET_DEPTH_STENCIL)
-    }
+        pub fn is_render_target(self) -> bool {
+            self.intersects(Self::RENDER_TARGET_COLOR | Self::RENDER_TARGET_DEPTH_STENCIL)
+        }
 
-    pub fn is_texture(self) -> bool {
-        self.intersects(Self::TEXTURE | Self::TEXTURE_READ_WRITE)
+//     pub fn is_texture(self) -> bool {
+//         self.intersects(Self::TEXTURE | Self::TEXTURE_READ_WRITE)
+//     }
     }
-}
 
 bitflags::bitflags! {
     /// Flags for enabling/disabling color channels, used with `BlendState`
@@ -818,35 +818,40 @@ pub struct OffsetSize {
 /// Specifies what value to assign to a descriptor set
 #[derive(Debug)]
 pub struct DescriptorElements<'a, A: GfxApi> {
-    pub textures: Option<&'a [&'a A::Texture]>,
+    // pub textures: Option<&'a [&'a A::Texture]>,
     pub samplers: Option<&'a [&'a A::Sampler]>,
-    pub buffers: Option<&'a [&'a A::Buffer]>,
-    pub buffer_offset_sizes: Option<&'a [OffsetSize]>,
+    // pub buffers: Option<&'a [&'a A::Buffer]>,
+    // pub buffer_offset_sizes: Option<&'a [OffsetSize]>,
+    pub cbvs: Option<&'a [&'a A::ConstantBufferView]>,
+    pub srvs: Option<&'a [&'a A::ConstantBufferView]>,
 }
 
 impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
     fn default() -> Self {
         Self {
-            textures: None,
+            // textures: None,
             samplers: None,
-            buffers: None,
-            buffer_offset_sizes: None,
+            // buffers: None,
+            // buffer_offset_sizes: None,
+            cbvs : None,
+            srvs : None
+
         }
     }
 }
-
-/// Used when binding a texture to select between different ways to bind the texture
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum TextureBindType {
-    // Color or depth only
-    Srv,
-    // stencil?
-    SrvStencil,
-    // Bind all mip levels of the 0th provided texture
-    UavMipChain,
-    // Bind a particular mip slice of all provided textures
-    UavMipSlice(u32),
-}
+// 
+// /// Used when binding a texture to select between different ways to bind the texture
+// #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+// pub enum TextureBindType {
+//     // Color or depth only
+//     Srv,
+//     // stencil?
+//     SrvStencil,
+//     // Bind all mip levels of the 0th provided texture
+//     UavMipChain,
+//     // Bind a particular mip slice of all provided textures
+//     UavMipSlice(u32),
+// }
 
 /// Describes how to update a single descriptor
 #[derive(Debug)]
@@ -856,7 +861,7 @@ pub struct DescriptorUpdate<'a, A: GfxApi> {
     pub elements: DescriptorElements<'a, A>,
     pub dst_element_offset: u32,
     // Srv when read-only, UavMipSlice(0) when read-write
-    pub texture_bind_type: Option<TextureBindType>,
+    // pub texture_bind_type: Option<TextureBindType>,
 }
 
 impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {
@@ -865,8 +870,7 @@ impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {
             array_index: 0,
             descriptor_key: DescriptorKey::Undefined,
             elements: DescriptorElements::default(),
-            dst_element_offset: 0,
-            texture_bind_type: None,
+            dst_element_offset: 0,            
         }
     }
 }

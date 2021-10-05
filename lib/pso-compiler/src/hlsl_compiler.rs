@@ -1,5 +1,5 @@
 use std::{path::Path};
-use graphics_api::{ResourceType, ShaderResource, ShaderStageFlags, ShaderStageReflection};
+use graphics_api::{ShaderResource, ShaderResourceType, ShaderStageFlags, ShaderStageReflection};
 use hassle_rs::{Dxc, compile_hlsl};
 use anyhow::{Result, anyhow };
 use spirv_reflect::types::{ReflectDescriptorBinding, ReflectShaderStageFlags};
@@ -76,7 +76,7 @@ impl HLSLCompiler {
             let shader_mod = spirv_reflect::create_shader_module(&bytecode).unwrap();            
 
             let mut shader_resources = Vec::new();
-            let shader_stage = ToShaderStageFlags(shader_mod.get_shader_stage());
+            let shader_stage = to_shader_stage_flags(shader_mod.get_shader_stage());
             
             let ivs = shader_mod.enumerate_input_variables(Some(params.entry_point)).unwrap();
             for iv in ivs {
@@ -91,15 +91,13 @@ impl HLSLCompiler {
             }
 
             for descriptor in &shader_mod.enumerate_descriptor_bindings(None).unwrap() {
-                shader_resources.push( ToShaderResource(shader_stage, descriptor) );
+                shader_resources.push( to_shader_resource(shader_stage, descriptor) );
             }
-
-
 
             ShaderStageReflection{
                 shader_stage: shader_stage,
                 resources: shader_resources,
-                compute_threads_per_group: todo!(),
+                compute_threads_per_group: None,
                 entry_point_name: params.entry_point.to_owned()
             }
         };
@@ -129,7 +127,7 @@ impl spirv_tools::error::MessageCallback for OptimizerCallback{
     }
 }
 
-fn ToShaderStageFlags(flags : ReflectShaderStageFlags) -> ShaderStageFlags {    
+fn to_shader_stage_flags(flags : ReflectShaderStageFlags) -> ShaderStageFlags {    
     match flags {
         ReflectShaderStageFlags::VERTEX => ShaderStageFlags::VERTEX,
         ReflectShaderStageFlags::FRAGMENT => ShaderStageFlags::FRAGMENT,
@@ -138,9 +136,9 @@ fn ToShaderStageFlags(flags : ReflectShaderStageFlags) -> ShaderStageFlags {
     }
 }
 
-fn ToShaderResource(shader_stage_flags: ShaderStageFlags, descriptor_binding : &ReflectDescriptorBinding ) -> ShaderResource {
+fn to_shader_resource(shader_stage_flags: ShaderStageFlags, descriptor_binding : &ReflectDescriptorBinding ) -> ShaderResource {
     ShaderResource{    
-        resource_type: ToResourceType(descriptor_binding),
+        shader_resource_type: to_shader_resource_type(descriptor_binding),
         set_index: descriptor_binding.set,
         binding: descriptor_binding.binding,   
         element_count: descriptor_binding.count,       
@@ -150,7 +148,7 @@ fn ToShaderResource(shader_stage_flags: ShaderStageFlags, descriptor_binding : &
     }
 }
 
-fn ToResourceType(descriptor_binding : &ReflectDescriptorBinding ) -> ResourceType {
+fn to_shader_resource_type(descriptor_binding : &ReflectDescriptorBinding ) -> ShaderResourceType {
 
     println!( "Descriptor binding name {}-{} : {}", descriptor_binding.binding, descriptor_binding.set, descriptor_binding.name );
 
@@ -194,5 +192,5 @@ fn ToResourceType(descriptor_binding : &ReflectDescriptorBinding ) -> ResourceTy
     //     spirv_reflect::types::ReflectResourceType::Undefined |
     //     spirv_reflect::types::ReflectResourceType::CombinedImageSampler => panic!()
     // }    
-    ResourceType::SAMPLER
+    ShaderResourceType::Undefined
 }

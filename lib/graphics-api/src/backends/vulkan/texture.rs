@@ -96,7 +96,7 @@ impl Drop for TextureVulkanInner {
 /// provided `ResourceType` in the `texture_def`.
 #[derive(Clone, Debug)]
 pub struct VulkanTexture {
-    inner: Arc<TextureVulkanInner>,
+    pub(super) inner: Arc<TextureVulkanInner>,
 }
 
 impl PartialEq for VulkanTexture {
