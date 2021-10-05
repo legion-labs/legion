@@ -189,6 +189,7 @@ jobs:
           publish_branch: gh-pages
           publish_dir: ./target/doc
           force_orphan: true
+          cname: docs.legionengine.com
 
   build_release:
     name: Building release binaries
