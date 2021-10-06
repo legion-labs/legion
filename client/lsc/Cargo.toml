@@ -10,6 +10,8 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 clap = "2.33"
 legion-source-control = { path = "../../lib/source-control" }
-test-utils = { path = "../../lib/test-utils" }
 telemetry = { path = "../../lib/telemetry" }
 tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+test-utils = { path = "../../lib/test-utils" }

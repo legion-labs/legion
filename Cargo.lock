@@ -3,12 +3,6 @@
 version = 3
 
 [[package]]
-name = "Inflector"
-version = "0.11.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
-
-[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1118,20 +1112,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crossbeam"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ae5588f6b3c3cb05239e90bd110f257254aecd01e4635400391aeae07497845"
-dependencies = [
- "cfg-if 1.0.0",
- "crossbeam-channel",
- "crossbeam-deque",
- "crossbeam-epoch",
- "crossbeam-queue",
- "crossbeam-utils",
-]
-
-[[package]]
 name = "crossbeam-channel"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1412,7 +1392,6 @@ dependencies = [
 name = "derive-transit"
 version = "0.1.0"
 dependencies = [
- "memoffset",
  "quote 1.0.9",
  "syn 1.0.78",
 ]
@@ -1602,7 +1581,6 @@ dependencies = [
  "prost",
  "serde",
  "serde_json",
- "simple-error",
  "tauri",
  "tauri-build",
  "tokio",
@@ -2824,7 +2802,6 @@ dependencies = [
 name = "legion-async"
 version = "0.1.0"
 dependencies = [
- "crossbeam",
  "futures-lite",
  "legion-app",
  "legion-ecs",
@@ -2925,7 +2902,6 @@ dependencies = [
 name = "legion-data-offline"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "hex",
  "legion-content-store",
  "legion-data-offline-macros",
@@ -2934,7 +2910,6 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde_json",
- "slotmap",
  "tempfile",
 ]
 
@@ -2958,7 +2933,6 @@ dependencies = [
  "legion-data-runtime-macros",
  "rand 0.8.4",
  "serde",
- "serde_json",
  "tempfile",
 ]
 
@@ -2974,7 +2948,6 @@ dependencies = [
 name = "legion-derive"
 version = "0.1.0"
 dependencies = [
- "Inflector",
  "legion-macro-utils",
  "quote 1.0.9",
  "syn 1.0.78",
@@ -3185,7 +3158,6 @@ dependencies = [
 name = "legion-tauri"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "legion-app",
  "legion-ecs",
  "legion-tauri-macros",
@@ -3198,12 +3170,9 @@ dependencies = [
 name = "legion-tauri-macros"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "proc-macro2",
  "quote 1.0.9",
  "syn 1.0.78",
- "tauri",
- "tokio",
 ]
 
 [[package]]
@@ -5265,12 +5234,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "simple-error"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc47a29ce97772ca5c927f75bac34866b16d64e07f330c3248e2d7226623901b"
-
-[[package]]
 name = "simple_asn1"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5306,15 +5269,6 @@ name = "slab"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
-
-[[package]]
-name = "slotmap"
-version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1e08e261d0e8f5c43123b7adf3e4ca1690d655377ac93a03b2c9d3e98de1342"
-dependencies = [
- "version_check",
-]
 
 [[package]]
 name = "smallvec"
@@ -6450,7 +6404,6 @@ dependencies = [
  "derive-transit",
  "memoffset",
  "serde",
- "serde_json",
 ]
 
 [[package]]

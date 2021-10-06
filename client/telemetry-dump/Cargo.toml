@@ -9,9 +9,7 @@ clap = "2.33"
 telemetry = { path = "../../lib/telemetry" }
 analytics = { path = "../../lib/analytics" }
 transit = { path = "../../lib/transit" }
-test-utils = { path = "../../lib/test-utils" }
 tokio = { version = "1", features = ["full"] }
-fs_extra = "1.2"
 sqlx = { version = "0.5", features = [
     "sqlite",
     "any",
@@ -20,3 +18,7 @@ sqlx = { version = "0.5", features = [
 ] }
 anyhow = "1.0"
 prost = "0.8"
+
+[dev-dependencies]
+test-utils = { path = "../../lib/test-utils" }
+fs_extra = "1.2"

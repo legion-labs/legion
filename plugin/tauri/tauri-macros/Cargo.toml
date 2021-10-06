@@ -8,12 +8,7 @@ repository = "https://github.com/legion-labs/legion"
 license = "MIT OR Apache-2.0"
 keywords = ["ecs", "game", "legion", "tauri"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-anyhow = "1.0.44"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
-tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
 proc-macro2 = "1.0"
 syn = { version = "1.0.56", features = ["full"] }
 quote = "1.0"
