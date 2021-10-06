@@ -8,7 +8,7 @@ use tonic::{Request, Response, Status};
 use legion_editor_proto::{editor_server::*, InitializeStreamRequest, InitializeStreamResponse};
 
 /// The `gRPC` server implementation for the streaming server.
-pub struct GRPCServer {
+pub(crate) struct GRPCServer {
     webrtc_server: WebRTCServer,
     stream_events_sender: Arc<crossbeam::channel::Sender<StreamEvent>>,
 }
@@ -16,7 +16,7 @@ pub struct GRPCServer {
 /// Stream represents an established stream.
 impl GRPCServer {
     /// Instanciate a new `GRPCServer` using the specified `webrtc::WebRTCServer`.
-    pub fn new(
+    pub(crate) fn new(
         webrtc_server: WebRTCServer,
         stream_events_sender: crossbeam::channel::Sender<StreamEvent>,
     ) -> Self {

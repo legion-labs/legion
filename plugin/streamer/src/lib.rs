@@ -124,8 +124,9 @@ impl Plugin for StreamerPlugin {
         let streamer = streamer::Streamer::new(stream_events_receiver);
 
         app.insert_resource(streamer)
+            .add_event::<streamer::VideoStreamEvent>()
             .add_system(streamer::Streamer::handle_stream_events)
-            .add_system(streamer::Streamer::handle_video_streams);
+            .add_system(streamer::Streamer::update_streams);
 
         let webrtc_server =
             webrtc::WebRTCServer::new().expect("failed to instanciate a WebRTC server");

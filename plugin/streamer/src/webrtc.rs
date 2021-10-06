@@ -21,7 +21,7 @@ use super::streamer::{StreamEvent, StreamID};
 /// `WebRTCServer` implements a fully-compliant `WebRTC` server that can
 /// establish peer-to-peer connections with several hosts for streaming
 /// purposes.
-pub struct WebRTCServer {
+pub(crate) struct WebRTCServer {
     api: API,
 }
 
@@ -30,7 +30,7 @@ impl WebRTCServer {
     /// interceptors registry.
     ///
     /// Typically, a single `WebRTCServer` is enough for any given application.
-    pub fn new() -> Result<Self, anyhow::Error> {
+    pub(crate) fn new() -> Result<Self, anyhow::Error> {
         // Create a MediaEngine object to configure the supported codec
         let mut media_engine = MediaEngine::default();
 
@@ -55,7 +55,7 @@ impl WebRTCServer {
         Ok(Self { api })
     }
 
-    pub async fn initialize_stream_connection(
+    pub(crate) async fn initialize_stream_connection(
         &self,
         remote_rtc_session_description: Vec<u8>,
         stream_events_sender: Arc<crossbeam::channel::Sender<StreamEvent>>,
