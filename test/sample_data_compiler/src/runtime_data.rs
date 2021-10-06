@@ -1,4 +1,7 @@
-use std::any::{Any, TypeId};
+use std::{
+    any::{Any, TypeId},
+    io,
+};
 
 use legion_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistryOptions, Reference, Resource, ResourceId,
@@ -33,10 +36,7 @@ impl Asset for Entity {
 pub struct EntityLoader {}
 
 impl AssetLoader for EntityLoader {
-    fn load(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
+    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let deserialize: Result<Entity, Box<bincode::ErrorKind>> =
             bincode::deserialize_from(reader);
         match deserialize {
@@ -178,10 +178,7 @@ impl Asset for Instance {
 pub struct InstanceLoader {}
 
 impl AssetLoader for InstanceLoader {
-    fn load(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
+    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let deserialize: Result<Instance, Box<bincode::ErrorKind>> =
             bincode::deserialize_from(reader);
         match deserialize {
@@ -212,10 +209,7 @@ impl Asset for Mesh {
 pub struct MeshLoader {}
 
 impl AssetLoader for MeshLoader {
-    fn load(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
+    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let deserialize: Result<Mesh, Box<bincode::ErrorKind>> = bincode::deserialize_from(reader);
         match deserialize {
             Ok(asset) => Ok(Box::new(asset)),

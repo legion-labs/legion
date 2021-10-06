@@ -31,7 +31,7 @@ impl OfflineResource for TestResource {
 #[derive(Default)]
 pub struct TestResourceProc {}
 impl ResourceProcessor for TestResourceProc {
-    fn new_resource(&mut self) -> Box<dyn Any> {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(TestResource {
             content: String::from("default content"),
             build_deps: vec![],
@@ -79,7 +79,10 @@ impl ResourceProcessor for TestResourceProc {
         Ok(nbytes)
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let mut resource = self.new_resource();
         let mut res = resource.downcast_mut::<TestResource>().unwrap();
 

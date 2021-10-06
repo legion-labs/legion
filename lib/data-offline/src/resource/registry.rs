@@ -227,7 +227,7 @@ mod tests {
     }
 
     impl ResourceProcessor for SampleProcessor {
-        fn new_resource(&mut self) -> Box<dyn Any> {
+        fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
             Box::new(SampleResource {
                 content: self.default_content.clone(),
             })
@@ -249,7 +249,7 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> std::io::Result<Box<dyn Any>> {
+        ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
             let mut resource = self.new_resource();
             let sample_resource = resource.downcast_mut::<SampleResource>().unwrap();
 
