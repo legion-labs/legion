@@ -6,13 +6,9 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 build = "build.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# [dependencies]
+# graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
 
-[dependencies]
-graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
-log = "0.4"
-
-
-[features]
-default = []
-vulkan = ["graphics-api/vulkan"]
+# [features]
+# default = []
+# vulkan = ["graphics-api/vulkan"]

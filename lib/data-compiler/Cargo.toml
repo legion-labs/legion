@@ -5,8 +5,6 @@ authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 legion-data-offline = { path = "../data-offline" }
 legion-content-store = { path = "../content-store" }
@@ -22,5 +20,4 @@ multitext-resource = { path = "../data-offline/test-multitext-resource" }
 text-resource = { path = "../data-offline/test-text-resource" }
 integer-asset = { path = "../data-runtime/test-integer-asset" }
 refs-asset = { path = "../data-runtime/test-refs-asset" }
-test-compilers = { path = "../data-compiler/test-compilers" }
 binary-resource = { path = "../data-offline/test-binary-resource" }

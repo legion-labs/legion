@@ -2859,7 +2859,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "test-compilers",
  "text-resource",
 ]
 
@@ -2896,7 +2895,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "test-compilers",
  "text-resource",
 ]
 
@@ -2935,7 +2933,6 @@ dependencies = [
  "legion-data-runtime-macros",
  "rand 0.8.4",
  "serde",
- "tempfile",
 ]
 
 [[package]]
@@ -3089,10 +3086,6 @@ dependencies = [
 [[package]]
 name = "legion-renderer"
 version = "0.1.0"
-dependencies = [
- "legion-graphics-api",
- "log",
-]
 
 [[package]]
 name = "legion-source-control"
@@ -3126,9 +3119,6 @@ dependencies = [
 [[package]]
 name = "legion-streamer"
 version = "0.1.0"
-dependencies = [
- "legion-codec-api",
-]
 
 [[package]]
 name = "legion-tao"
@@ -3163,7 +3153,6 @@ dependencies = [
  "legion-app",
  "legion-ecs",
  "legion-tauri-macros",
- "ntest",
  "tauri",
  "tokio",
 ]
@@ -6062,23 +6051,6 @@ dependencies = [
  "futf",
  "mac",
  "utf-8",
-]
-
-[[package]]
-name = "test-compilers"
-version = "0.1.0"
-dependencies = [
- "base64",
- "binary-resource",
- "integer-asset",
- "legion-content-store",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "multitext-resource",
- "refs-asset",
- "refs-resource",
- "text-resource",
 ]
 
 [[package]]
