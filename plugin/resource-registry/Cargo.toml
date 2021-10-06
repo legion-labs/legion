@@ -1,0 +1,13 @@
+[package]
+name = "legion-resource-registry"
+version = "0.1.0"
+edition = "2018"
+description = "Provides access to the runtime asset-registry for Legion Engine"
+homepage = "https://legionengine.com"
+repository = "https://github.com/legion-labs/legion"
+license = "MIT OR Apache-2.0"
+keywords = ["legion"]
+
+[dependencies]
+# Legion engine
+legion-app = { path = "../../lib/app", version = "0.1.0" }

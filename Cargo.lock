@@ -3088,6 +3088,13 @@ name = "legion-renderer"
 version = "0.1.0"
 
 [[package]]
+name = "legion-resource-registry"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+]
+
+[[package]]
 name = "legion-source-control"
 version = "0.1.0"
 dependencies = [
