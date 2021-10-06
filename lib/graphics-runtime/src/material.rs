@@ -2,9 +2,7 @@
 
 use std::{any::Any, convert::TryFrom};
 
-use legion_data_runtime::{
-    resource, Asset, AssetLoader, Reference, Resource, ResourceId, ResourceType,
-};
+use legion_data_runtime::{resource, Asset, AssetLoader, Reference, Resource, ResourceId};
 
 use crate::Texture;
 
@@ -48,7 +46,6 @@ where
 impl AssetLoader for MaterialLoader {
     fn load(
         &mut self,
-        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
         let albedo = read_asset_id(reader)?;

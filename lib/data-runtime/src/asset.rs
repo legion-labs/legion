@@ -1,6 +1,6 @@
 use std::{any::Any, io};
 
-use crate::{Resource, ResourceType};
+use crate::Resource;
 
 /// Trait describing the resource loadable at runtime.
 pub trait Asset: Resource {
@@ -11,11 +11,7 @@ pub trait Asset: Resource {
 /// An interface allowing to create and initialize assets.
 pub trait AssetLoader {
     /// Asset loading interface.
-    fn load(
-        &mut self,
-        kind: ResourceType,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, io::Error>;
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Any + Send + Sync>, io::Error>;
 
     /// Asset initialization executed after the asset and all its dependencies
     /// have been loaded.

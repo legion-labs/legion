@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceType};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 
 #[resource("integer_asset")]
 pub struct IntegerAsset {
@@ -17,7 +17,6 @@ pub struct IntegerAssetLoader {}
 impl AssetLoader for IntegerAssetLoader {
     fn load(
         &mut self,
-        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Any + Sync + Send>, std::io::Error> {
         let mut buf = 0i32.to_ne_bytes();

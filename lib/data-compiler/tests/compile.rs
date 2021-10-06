@@ -84,10 +84,7 @@ fn compile_atoi() {
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
-        .load(
-            integer_asset::IntegerAsset::TYPE,
-            &mut &resource_content[..],
-        )
+        .load(&mut &resource_content[..])
         .expect("loaded assets");
     let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 
@@ -174,10 +171,7 @@ fn compile_intermediate() {
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
-        .load(
-            integer_asset::IntegerAsset::TYPE,
-            &mut &resource_content[..],
-        )
+        .load(&mut &resource_content[..])
         .expect("loaded assets");
     let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 

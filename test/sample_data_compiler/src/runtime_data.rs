@@ -2,7 +2,6 @@ use std::any::{Any, TypeId};
 
 use legion_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistryOptions, Reference, Resource, ResourceId,
-    ResourceType,
 };
 use legion_graphics_runtime::Material;
 use legion_math::prelude::*;
@@ -36,7 +35,6 @@ pub struct EntityLoader {}
 impl AssetLoader for EntityLoader {
     fn load(
         &mut self,
-        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
         let deserialize: Result<Entity, Box<bincode::ErrorKind>> =
@@ -182,7 +180,6 @@ pub struct InstanceLoader {}
 impl AssetLoader for InstanceLoader {
     fn load(
         &mut self,
-        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
         let deserialize: Result<Instance, Box<bincode::ErrorKind>> =
@@ -217,7 +214,6 @@ pub struct MeshLoader {}
 impl AssetLoader for MeshLoader {
     fn load(
         &mut self,
-        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
         let deserialize: Result<Mesh, Box<bincode::ErrorKind>> = bincode::deserialize_from(reader);

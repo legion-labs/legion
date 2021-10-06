@@ -434,7 +434,7 @@ impl AssetLoaderIO {
 
         let asset_type = id.ty();
         let loader = loaders.get_mut(&asset_type).unwrap();
-        let boxed_asset = loader.load(asset_type, &mut &content[..])?;
+        let boxed_asset = loader.load(&mut &content[..])?;
 
         Ok(LoadOutput {
             assets: vec![(id, Some(Arc::from(boxed_asset)))],
@@ -499,7 +499,7 @@ impl AssetLoaderIO {
         reader.read_exact(&mut content).expect("valid data");
 
         let loader = loaders.get_mut(&asset_type).unwrap();
-        let boxed_asset = loader.load(asset_type, &mut &content[..])?;
+        let boxed_asset = loader.load(&mut &content[..])?;
 
         Ok(LoadOutput {
             assets: vec![(primary_id, Some(Arc::from(boxed_asset)))],

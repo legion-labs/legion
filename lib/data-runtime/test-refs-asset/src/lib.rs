@@ -4,7 +4,7 @@
 
 use std::any::Any;
 
-use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceType};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 /// Asset temporarily used for testing.
 ///
 /// To be removed once real asset types exist.
@@ -27,7 +27,6 @@ pub struct RefsAssetLoader {}
 impl AssetLoader for RefsAssetLoader {
     fn load(
         &mut self,
-        _kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
         let mut content = String::new();
