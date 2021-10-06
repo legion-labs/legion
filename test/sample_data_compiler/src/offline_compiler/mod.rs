@@ -49,9 +49,10 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
         let source_name = build
             .project()
             .resource_name(asset_path.source_resource())
-            .ok();
+            .ok()
+            .unwrap();
 
-        println!("Compiling: {} from {:?}..", asset_path, source_name);
+        println!("Compiling: {} from {}...", asset_path, source_name);
 
         let manifest = build
             .compile(

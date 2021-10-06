@@ -92,7 +92,14 @@ fn lookup_asset_path(
     } else {
         output
     };
-    println!("Path Resolved: {} -> {:?}", path, output);
+    match &output {
+        Some(resolved_path) => {
+            println!("Path Resolved: {} -> {:?}", path, resolved_path);
+        }
+        None => {
+            eprintln!("Failed to resolve path: {}", path);
+        }
+    }
     output
 }
 

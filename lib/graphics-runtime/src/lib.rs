@@ -95,5 +95,5 @@ use legion_data_runtime::AssetRegistryOptions;
 
 /// Register crate's asset types to asset registry
 pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    registry.add_loader::<Material>()
+    registry.add_loader::<Material>().add_loader::<Texture>()
 }

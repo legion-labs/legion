@@ -221,6 +221,19 @@ impl AssetRegistryPlugin {
                                     println!("Loaded mesh, asset: {}", asset_id);
                                 }
                             }
+                            legion_graphics_runtime::Texture::TYPE => {
+                                if let Some(runtime_texture) =
+                                    handle.get::<legion_graphics_runtime::Texture>(&registry)
+                                {
+                                    Self::create_texture(
+                                        &mut commands,
+                                        &mut secondary_assets,
+                                        runtime_texture,
+                                    );
+
+                                    println!("Loaded texture, asset: {}", asset_id);
+                                }
+                            }
                             _ => {
                                 eprintln!("Unhandled type: {}, asset: {}", asset_id.ty(), asset_id);
                             }
@@ -344,6 +357,13 @@ impl AssetRegistryPlugin {
         for sub_mesh in &mesh.sub_meshes {
             Self::add_secondary_asset(secondary_assets, &sub_mesh.material);
         }
+    }
+
+    fn create_texture(
+        _commands: &mut Commands<'_, '_>,
+        _secondary_assets: &mut Vec<ResourceId>,
+        _texture: &legion_graphics_runtime::Texture,
+    ) {
     }
 }
 
