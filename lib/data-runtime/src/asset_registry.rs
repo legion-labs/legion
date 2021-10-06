@@ -158,19 +158,14 @@ mod tests {
         manifest::Manifest, test_asset, AssetRegistry, AssetRegistryOptions, Resource, ResourceId,
     };
 
-    fn setup_test() -> (ResourceId, AssetRegistry) {
+    fn setup_test(content: &[u8]) -> (ResourceId, AssetRegistry) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        let binary_assetfile = [
-            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
-            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
-        ];
-
         let asset_id = {
             let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
-            let checksum = content_store.store(&binary_assetfile).unwrap();
-            manifest.insert(id, checksum.into(), binary_assetfile.len());
+            let checksum = content_store.store(content).unwrap();
+            manifest.insert(id, checksum.into(), content.len());
             id
         };
 
@@ -181,9 +176,50 @@ mod tests {
         (asset_id, reg)
     }
 
+    const BINARY_ASSETFILE: [u8; 39] = [
+        97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0,
+        5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
+    ];
+
+    const BINARY_RAWFILE: [u8; 5] = [99, 104, 105, 108, 100];
+
     #[test]
-    fn load_asset() {
-        let (asset_id, mut reg) = setup_test();
+    fn load_assetfile() {
+        let (asset_id, mut reg) = setup_test(&BINARY_ASSETFILE);
+
+        let internal_id;
+        {
+            let a = reg.load_untyped(asset_id);
+            internal_id = a.id;
+
+            let mut test_timeout = Duration::from_millis(500);
+            while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
+                let sleep_time = Duration::from_millis(10);
+                thread::sleep(sleep_time);
+                test_timeout -= sleep_time;
+                reg.update();
+            }
+
+            assert!(a.is_loaded(&reg));
+            assert!(!a.is_err(&reg));
+            assert!(reg.is_loaded(internal_id));
+            {
+                let b = a.clone();
+                reg.update();
+                assert_eq!(a, b);
+
+                assert!(b.is_loaded(&reg));
+                assert!(!b.is_err(&reg));
+                assert!(reg.is_loaded(internal_id));
+            }
+        }
+        reg.update();
+        assert!(!reg.is_loaded(internal_id));
+    }
+
+    #[test]
+    fn load_rawfile() {
+        let (asset_id, mut reg) = setup_test(&BINARY_RAWFILE);
 
         let internal_id;
         {
@@ -217,7 +253,7 @@ mod tests {
 
     #[test]
     fn load_error() {
-        let (_, mut reg) = setup_test();
+        let (_, mut reg) = setup_test(&BINARY_ASSETFILE);
 
         let internal_id;
         {
