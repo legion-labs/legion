@@ -1,4 +1,4 @@
-use sample_data_compiler::{offline_data, offline_to_runtime::to_resourceid_opt, runtime_data};
+use sample_data_compiler::{offline_data, offline_to_runtime::to_reference, runtime_data};
 
 pub trait FromOffline<T> {
     fn from_offline(offline: &T) -> Self;
@@ -34,7 +34,7 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
         Self {
             name: offline.name.clone(),
             children,
-            parent: to_resourceid_opt(&offline.parent),
+            parent: to_reference(&offline.parent),
             components,
         }
     }
@@ -54,7 +54,7 @@ impl FromOffline<offline_data::Transform> for runtime_data::Transform {
 impl FromOffline<offline_data::Visual> for runtime_data::Visual {
     fn from_offline(offline: &offline_data::Visual) -> Self {
         Self {
-            renderable_geometry: to_resourceid_opt(&offline.renderable_geometry),
+            renderable_geometry: to_reference(&offline.renderable_geometry),
             shadow_receiver: offline.shadow_receiver,
             shadow_caster_sun: offline.shadow_caster_sun,
             shadow_caster_local: offline.shadow_caster_local,
@@ -136,7 +136,7 @@ impl FromOffline<offline_data::Physics> for runtime_data::Physics {
     fn from_offline(offline: &offline_data::Physics) -> Self {
         Self {
             dynamic: offline.dynamic,
-            collision_geometry: to_resourceid_opt(&offline.collision_geometry),
+            collision_geometry: to_reference(&offline.collision_geometry),
         }
     }
 }
@@ -146,7 +146,7 @@ impl FromOffline<offline_data::Physics> for runtime_data::Physics {
 impl FromOffline<offline_data::Instance> for runtime_data::Instance {
     fn from_offline(offline: &offline_data::Instance) -> Self {
         Self {
-            original: to_resourceid_opt(&offline.original),
+            original: to_reference(&offline.original),
         }
     }
 }
@@ -172,7 +172,7 @@ impl FromOffline<offline_data::SubMesh> for runtime_data::SubMesh {
             normals: offline.normals.clone(),
             uvs: offline.uvs.clone(),
             indices: offline.indices.clone(),
-            material: to_resourceid_opt(&offline.material),
+            material: to_reference(&offline.material),
         }
     }
 }

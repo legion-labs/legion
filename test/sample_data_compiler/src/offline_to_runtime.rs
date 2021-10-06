@@ -1,10 +1,9 @@
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{Resource, ResourceId};
+use std::any::Any;
 
-use crate::{
-    offline_data::{self},
-    runtime_data,
-};
+use legion_data_offline::ResourcePathId;
+use legion_data_runtime::{Reference, Resource};
+
+use crate::{offline_data, runtime_data};
 
 pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
     let offline_type = path.content_type();
@@ -24,6 +23,12 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
     }
 }
 
-pub fn to_resourceid_opt(path: &Option<ResourcePathId>) -> Option<ResourceId> {
-    path.as_ref().map(|path| path.content_id())
+pub fn to_reference<T>(path: &Option<ResourcePathId>) -> Reference<T>
+where
+    T: Any + Resource,
+{
+    match path {
+        Some(path) => Reference::Passive(path.content_id()),
+        None => Reference::None,
+    }
 }

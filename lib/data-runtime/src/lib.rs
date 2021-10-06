@@ -146,6 +146,9 @@ pub use handle::*;
 mod resource;
 pub use resource::*;
 
+mod reference;
+pub use reference::Reference;
+
 mod asset;
 pub use asset::*;
 pub mod manifest;

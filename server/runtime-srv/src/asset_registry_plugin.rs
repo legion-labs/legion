@@ -1,12 +1,14 @@
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
 use legion_data_runtime::{
-    manifest::Manifest, AssetRegistry, AssetRegistryOptions, HandleUntyped, Resource, ResourceId,
+    manifest::Manifest, AssetRegistry, AssetRegistryOptions, HandleUntyped, Reference, Resource,
+    ResourceId,
 };
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
 use sample_data_compiler::runtime_data;
 use std::{
+    any::Any,
     collections::BTreeMap,
     fs::File,
     path::{Path, PathBuf},
@@ -247,9 +249,12 @@ impl AssetRegistryPlugin {
         drop(registry);
     }
 
-    fn add_secondary_asset(secondary_assets: &mut Vec<ResourceId>, asset_id: Option<ResourceId>) {
-        if let Some(asset_id) = asset_id {
-            secondary_assets.push(asset_id);
+    fn add_secondary_asset<T>(secondary_assets: &mut Vec<ResourceId>, asset_id: &Reference<T>)
+    where
+        T: Any + Resource,
+    {
+        if let Reference::Passive(asset_id) = asset_id {
+            secondary_assets.push(*asset_id);
         }
     }
 
@@ -271,7 +276,7 @@ impl AssetRegistryPlugin {
                 });
                 transform_inserted = true;
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
-                Self::add_secondary_asset(secondary_assets, visual.renderable_geometry);
+                Self::add_secondary_asset(secondary_assets, &visual.renderable_geometry);
             }
             // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
             // } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
@@ -289,7 +294,7 @@ impl AssetRegistryPlugin {
         secondary_assets.extend(runtime_entity.children.iter());
 
         // parent, if it exists, must already be loaded since parents load their children
-        let parent = if let Some(parent) = runtime_entity.parent {
+        let parent = if let Reference::Passive(parent) = runtime_entity.parent {
             asset_to_entity_map.get(parent)
         } else {
             None
@@ -315,7 +320,7 @@ impl AssetRegistryPlugin {
     ) -> Entity {
         let entity = commands.spawn();
 
-        Self::add_secondary_asset(secondary_assets, instance.original);
+        Self::add_secondary_asset(secondary_assets, &instance.original);
 
         entity.id()
     }
@@ -325,10 +330,10 @@ impl AssetRegistryPlugin {
         secondary_assets: &mut Vec<ResourceId>,
         material: &legion_graphics_runtime::Material,
     ) {
-        Self::add_secondary_asset(secondary_assets, material.albedo);
-        Self::add_secondary_asset(secondary_assets, material.normal);
-        Self::add_secondary_asset(secondary_assets, material.roughness);
-        Self::add_secondary_asset(secondary_assets, material.metalness);
+        Self::add_secondary_asset(secondary_assets, &material.albedo);
+        Self::add_secondary_asset(secondary_assets, &material.normal);
+        Self::add_secondary_asset(secondary_assets, &material.roughness);
+        Self::add_secondary_asset(secondary_assets, &material.metalness);
     }
 
     fn create_mesh(
@@ -337,7 +342,7 @@ impl AssetRegistryPlugin {
         mesh: &runtime_data::Mesh,
     ) {
         for sub_mesh in &mesh.sub_meshes {
-            Self::add_secondary_asset(secondary_assets, sub_mesh.material);
+            Self::add_secondary_asset(secondary_assets, &sub_mesh.material);
         }
     }
 }

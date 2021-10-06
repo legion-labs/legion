@@ -1,8 +1,10 @@
 use std::any::{Any, TypeId};
 
 use legion_data_runtime::{
-    resource, Asset, AssetLoader, AssetRegistryOptions, Resource, ResourceId, ResourceType,
+    resource, Asset, AssetLoader, AssetRegistryOptions, Reference, Resource, ResourceId,
+    ResourceType,
 };
+use legion_graphics_runtime::Material;
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +22,7 @@ pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
 pub struct Entity {
     pub name: String,
     pub children: Vec<ResourceId>,
-    pub parent: Option<ResourceId>,
+    pub parent: Reference<Entity>,
     pub components: Vec<Box<dyn Component>>,
 }
 
@@ -92,7 +94,7 @@ impl Component for Transform {}
 
 #[derive(Serialize, Deserialize)]
 pub struct Visual {
-    pub renderable_geometry: Option<ResourceId>,
+    pub renderable_geometry: Reference<Mesh>,
     pub shadow_receiver: bool,
     pub shadow_caster_sun: bool,
     pub shadow_caster_local: bool,
@@ -156,7 +158,7 @@ impl Component for Light {}
 #[derive(Serialize, Deserialize)]
 pub struct Physics {
     pub dynamic: bool,
-    pub collision_geometry: Option<ResourceId>,
+    pub collision_geometry: Reference<Mesh>,
 }
 
 #[typetag::serde]
@@ -167,7 +169,7 @@ impl Component for Physics {}
 #[resource("runtime_instance")]
 #[derive(Serialize, Deserialize)]
 pub struct Instance {
-    pub original: Option<ResourceId>,
+    pub original: Reference<Entity>,
 }
 
 impl Asset for Instance {
@@ -237,5 +239,5 @@ pub struct SubMesh {
     pub normals: Vec<Vec3>,
     pub uvs: Vec<Vec2>,
     pub indices: Vec<u16>,
-    pub material: Option<ResourceId>,
+    pub material: Reference<Material>,
 }
