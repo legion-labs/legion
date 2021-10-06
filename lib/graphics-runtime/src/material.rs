@@ -2,7 +2,11 @@
 
 use std::{any::Any, convert::TryFrom};
 
-use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceId, ResourceType};
+use legion_data_runtime::{
+    resource, Asset, AssetLoader, Reference, Resource, ResourceId, ResourceType,
+};
+
+use crate::Texture;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -10,13 +14,13 @@ use byteorder::{LittleEndian, ReadBytesExt};
 #[resource("runtime_material")]
 pub struct Material {
     /// Albedo texture reference.
-    pub albedo: Option<ResourceId>,
+    pub albedo: Reference<Texture>,
     /// Normal texture reference.
-    pub normal: Option<ResourceId>,
+    pub normal: Reference<Texture>,
     /// Roughness texture reference.
-    pub roughness: Option<ResourceId>,
+    pub roughness: Reference<Texture>,
     /// Metalness texture reference.
-    pub metalness: Option<ResourceId>,
+    pub metalness: Reference<Texture>,
 }
 
 impl Asset for Material {
@@ -27,9 +31,18 @@ impl Asset for Material {
 #[derive(Default)]
 pub struct MaterialLoader {}
 
-fn read_asset_id(reader: &mut dyn std::io::Read) -> Result<Option<ResourceId>, std::io::Error> {
+fn read_asset_id<T>(reader: &mut dyn std::io::Read) -> Result<Reference<T>, std::io::Error>
+where
+    T: Any + Resource,
+{
     let underlying = reader.read_u128::<LittleEndian>()?;
-    Ok(ResourceId::try_from(underlying).ok().map(ResourceId::from))
+    match ResourceId::try_from(underlying) {
+        Ok(resource_id) => Ok(Reference::Passive(resource_id)),
+        Err(_err) => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "failed to read asset id",
+        )),
+    }
 }
 
 impl AssetLoader for MaterialLoader {
