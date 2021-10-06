@@ -139,17 +139,17 @@ fn main() {
 
     // Start app with 60 fps
     App::new()
-        .insert_resource(AssetRegistrySettings::new(
-            content_store_addr,
-            game_manifest,
-            root_asset,
-        ))
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
         )))
         .add_plugin(CorePlugin::default())
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(TransformPlugin::default())
+        .insert_resource(AssetRegistrySettings::new(
+            content_store_addr,
+            game_manifest,
+            Some(root_asset),
+        ))
         .add_plugin(AssetRegistryPlugin::default())
         .run();
 }

@@ -146,13 +146,18 @@ impl AssetRegistryPlugin {
         mut asset_handles: ResMut<'_, AssetHandles>,
         settings: ResMut<'_, AssetRegistrySettings>,
     ) {
-        if let Ok(asset_id) = ResourceId::from_str(&settings.root_asset) {
-            Self::load_asset(
-                &mut registry,
-                &mut asset_loading_states,
-                &mut asset_handles,
-                asset_id,
-            );
+        // check if root asset specified
+        if let Some(root_asset) = &settings.root_asset {
+            if let Ok(asset_id) = ResourceId::from_str(root_asset) {
+                Self::load_asset(
+                    &mut registry,
+                    &mut asset_loading_states,
+                    &mut asset_handles,
+                    asset_id,
+                );
+            } else {
+                eprintln!("Unable to parse root asset: {}", root_asset);
+            }
         }
 
         drop(settings);
