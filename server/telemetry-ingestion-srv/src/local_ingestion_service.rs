@@ -109,52 +109,73 @@ impl TelemetryIngestion for LocalIngestionService {
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
         let block = request.into_inner();
-        if block.payload.is_none() {
-            return Err(Status::internal(String::from("Payload not found in block")));
-        }
-        let block_path = self.blocks_dir.join(&block.block_id);
-        //todo: use async-aware file I/O
-        match OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&block_path)
-        {
-            Ok(mut file) => {
-                if let Err(e) = file.write_all(&block.payload.unwrap().encode_to_vec()) {
-                    return Err(Status::internal(format!("Error writing block file: {}", e)));
-                }
+        let payload = match block.payload {
+            Some(p) => p,
+            None => {
+                return Err(Status::internal(String::from("Payload not found in block")));
             }
+        };
+
+        let mut connection = match self.db_pool.acquire().await {
+            Ok(c) => c,
             Err(e) => {
-                return Err(Status::internal(format!(
-                    "Error creating block file: {}",
-                    e
-                )));
+                return Err(Status::internal(format!("Error connecting to db: {}", e)));
             }
-        }
-        match self.db_pool.acquire().await {
-            Ok(mut connection) => {
-                if let Err(e) = sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?);")
-                    .bind(block.block_id.clone())
-                    .bind(block.stream_id)
-                    .bind(block.begin_time)
-                    .bind(block.begin_ticks as i64)
-                    .bind(block.end_time)
-                    .bind(block.end_ticks as i64)
-                    .execute(&mut connection)
-                    .await
-                {
-                    dbg!(&e);
+        };
+
+        let encoded_payload = payload.encode_to_vec();
+        if encoded_payload.len() >= 128 * 1024 {
+            let block_path = self.blocks_dir.join(&block.block_id);
+            //todo: use async-aware file I/O
+            match OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&block_path)
+            {
+                Ok(mut file) => {
+                    if let Err(e) = file.write_all(&encoded_payload) {
+                        return Err(Status::internal(format!("Error writing block file: {}", e)));
+                    }
+                }
+                Err(e) => {
                     return Err(Status::internal(format!(
-                        "Error inserting into blocks: {}",
+                        "Error creating block file: {}",
                         e
                     )));
                 }
-                let reply = InsertReply {
-                    msg: format!("OK {}", block.block_id),
-                };
-                Ok(Response::new(reply))
             }
-            Err(e) => Err(Status::internal(format!("Error connecting to db: {}", e))),
+        } else if let Err(e) = sqlx::query("INSERT INTO payloads values(?,?);")
+            .bind(block.block_id.clone())
+            .bind(encoded_payload)
+            .execute(&mut connection)
+            .await
+        {
+            dbg!(&e);
+            return Err(Status::internal(format!(
+                "Error inserting into payloads: {}",
+                e
+            )));
         }
+
+        if let Err(e) = sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?);")
+            .bind(block.block_id.clone())
+            .bind(block.stream_id)
+            .bind(block.begin_time)
+            .bind(block.begin_ticks as i64)
+            .bind(block.end_time)
+            .bind(block.end_ticks as i64)
+            .execute(&mut connection)
+            .await
+        {
+            dbg!(&e);
+            return Err(Status::internal(format!(
+                "Error inserting into blocks: {}",
+                e
+            )));
+        }
+        let reply = InsertReply {
+            msg: format!("OK {}", block.block_id),
+        };
+        Ok(Response::new(reply))
     }
 }

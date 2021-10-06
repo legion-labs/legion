@@ -83,7 +83,7 @@
 // crate-specific exceptions:
 #![allow()]
 
-use anyhow::{Context, Result};
+use anyhow::*;
 use prost::Message;
 use sqlx::Row;
 use std::path::Path;
@@ -230,4 +230,31 @@ pub async fn find_stream_blocks(
     })
     .collect();
     Ok(blocks)
+}
+
+pub async fn fetch_block_payload(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    block_id: &str,
+) -> Result<telemetry::telemetry_ingestion_proto::BlockPayload> {
+    let opt_row = sqlx::query("SELECT payload FROM payloads where block_id = ?;")
+        .bind(block_id)
+        .fetch_optional(connection)
+        .await
+        .with_context(|| format!("Fetching payload of block {}", block_id))?;
+
+    let buffer = if let Some(row) = opt_row {
+        row.get("payload")
+    } else {
+        let payload_path = data_path.join("blobs").join(block_id);
+        if !payload_path.exists() {
+            bail!("payload binary file not found: {}", payload_path.display());
+        }
+        std::fs::read(&payload_path)
+            .with_context(|| format!("reading payload file {}", payload_path.display()))?
+    };
+
+    let payload = telemetry::telemetry_ingestion_proto::BlockPayload::decode(&*buffer)
+        .with_context(|| format!("reading payload {}", block_id))?;
+    Ok(payload)
 }

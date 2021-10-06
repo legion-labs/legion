@@ -74,10 +74,25 @@ async fn create_blocks_table(connection: &mut sqlx::AnyConnection) -> Result<()>
     Ok(())
 }
 
+async fn create_payloads_table(connection: &mut sqlx::AnyConnection) -> Result<()> {
+    let sql = "
+         CREATE TABLE payloads(
+                  block_id VARCHAR(36), 
+                  payload LONGBLOB
+                  );
+         CREATE UNIQUE INDEX payload_block_id on payloads(block_id);";
+    sqlx::query(sql)
+        .execute(connection)
+        .await
+        .with_context(|| "Creating table payloads and its index")?;
+    Ok(())
+}
+
 async fn create_tables(connection: &mut sqlx::AnyConnection) -> Result<()> {
     create_processes_table(connection).await?;
     create_streams_table(connection).await?;
     create_blocks_table(connection).await?;
+    create_payloads_table(connection).await?;
     Ok(())
 }
 
