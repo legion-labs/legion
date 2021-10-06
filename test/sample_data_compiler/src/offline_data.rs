@@ -52,7 +52,10 @@ impl ResourceProcessor for EntityProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let result: Result<Entity, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),
@@ -248,7 +251,10 @@ impl ResourceProcessor for InstanceProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let result: Result<Instance, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),
@@ -305,7 +311,10 @@ impl ResourceProcessor for MeshProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let result: Result<Mesh, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),

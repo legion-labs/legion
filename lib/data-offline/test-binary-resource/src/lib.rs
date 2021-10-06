@@ -40,7 +40,10 @@ impl ResourceProcessor for BinaryResourceProc {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let mut resource = BinaryResource { content: vec![] };
         reader.read_to_end(&mut resource.content)?;
         let boxed = Box::new(resource);

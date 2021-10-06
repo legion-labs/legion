@@ -62,7 +62,10 @@ impl ResourceProcessor for TextureProcessor {
         Ok(1)
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let texture: Texture = serde_json::from_reader(reader)?;
         Ok(Box::new(texture))
     }

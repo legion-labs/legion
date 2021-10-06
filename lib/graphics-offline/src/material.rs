@@ -64,7 +64,10 @@ impl ResourceProcessor for MaterialProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let result: Result<Material, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),

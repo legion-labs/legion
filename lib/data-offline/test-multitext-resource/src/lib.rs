@@ -40,7 +40,10 @@ impl ResourceProcessor for MultiTextResourceProc {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any + Send + Sync>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let resource: MultiTextResource = serde_json::from_reader(reader).unwrap();
         let boxed = Box::new(resource);
         Ok(boxed)
