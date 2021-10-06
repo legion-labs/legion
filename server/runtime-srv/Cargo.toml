@@ -11,20 +11,10 @@ license = "MIT OR Apache-2.0"
 
 # Legion engine
 legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-content-store = { path = "../../lib/content-store" }
+legion-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
 legion-core = { path = "../../plugin/core", version = "0.1.0" }
-legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
-legion-graphics-runtime = { path = "../../lib/graphics-runtime", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
-# temp dependency on sample-data, until runtime data moved to plugins
-sample-data-compiler = { path = "../../test/sample_data_compiler", version = "0.1.0" }
-
 # other
 clap = "2.33"
-ron = "0.6.5"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"

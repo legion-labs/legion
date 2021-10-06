@@ -89,16 +89,12 @@
 // crate-specific exceptions:
 #![allow()]
 
-mod asset_registry_plugin;
-
 use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_core::CorePlugin;
-use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
 use legion_utils::Duration;
-
-use crate::asset_registry_plugin::{AssetRegistryPlugin, AssetRegistrySettings};
 
 fn main() {
     const ARG_NAME_CAS: &str = "cas";
@@ -155,18 +151,5 @@ fn main() {
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(AssetRegistryPlugin::default())
-        .add_system(frame_counter)
         .run();
-}
-
-fn frame_counter(mut state: Local<'_, CounterState>) {
-    if state.count % 60 == 0 {
-        println!("{}", state.count / 60);
-    }
-    state.count += 1;
-}
-
-#[derive(Default)]
-struct CounterState {
-    count: u32,
 }

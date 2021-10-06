@@ -2807,6 +2807,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-asset-registry"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+ "legion-content-store",
+ "legion-data-runtime",
+ "legion-ecs",
+ "legion-graphics-runtime",
+ "legion-transform",
+ "sample-data-compiler",
+ "serde_json",
+]
+
+[[package]]
 name = "legion-async"
 version = "0.1.0"
 dependencies = [
@@ -4890,18 +4904,10 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "legion-app",
- "legion-content-store",
+ "legion-asset-registry",
  "legion-core",
- "legion-data-runtime",
- "legion-ecs",
- "legion-graphics-runtime",
- "legion-math",
  "legion-transform",
  "legion-utils",
- "ron",
- "sample-data-compiler",
- "serde",
- "serde_json",
 ]
 
 [[package]]
