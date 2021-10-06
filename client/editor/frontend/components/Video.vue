@@ -262,7 +262,7 @@ export default {
         this.video_channel.send(
           JSON.stringify({
             event: "hue",
-            hue: hue,
+            hue: hue / 360,
           })
         );
       }
