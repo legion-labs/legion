@@ -85,73 +85,25 @@
 // crate-specific exceptions:
 #![allow()]
 
+mod asset_entities;
+mod asset_handles;
+mod loading_states;
+mod settings;
+
+use asset_entities::AssetToEntityMap;
+use asset_handles::AssetHandles;
+use loading_states::{AssetLoadingStates, LoadingState};
+pub use settings::AssetRegistrySettings;
+
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
 use legion_data_runtime::{
-    manifest::Manifest, AssetRegistry, AssetRegistryOptions, HandleUntyped, Reference, Resource,
-    ResourceId,
+    manifest::Manifest, AssetRegistry, AssetRegistryOptions, Reference, Resource, ResourceId,
 };
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
 use sample_data_compiler::runtime_data;
-use std::{
-    any::Any,
-    collections::BTreeMap,
-    fs::File,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
-
-pub struct AssetRegistrySettings {
-    content_store_addr: PathBuf,
-    game_manifest: PathBuf,
-    root_asset: String,
-}
-
-impl AssetRegistrySettings {
-    pub fn new(
-        content_store_addr: impl AsRef<Path>,
-        game_manifest: impl AsRef<Path>,
-        root_asset: &str,
-    ) -> Self {
-        Self {
-            content_store_addr: content_store_addr.as_ref().to_owned(),
-            game_manifest: game_manifest.as_ref().to_owned(),
-            root_asset: root_asset.to_string(),
-        }
-    }
-}
-
-#[derive(Default)]
-struct AssetLoadingStates(BTreeMap<ResourceId, LoadingState>);
-
-enum LoadingState {
-    Pending,
-    Loaded,
-    Failed,
-}
-
-#[derive(Default)]
-struct AssetHandles(BTreeMap<ResourceId, HandleUntyped>);
-
-impl AssetHandles {
-    fn get(&self, asset_id: ResourceId) -> Option<&HandleUntyped> {
-        self.0.get(&asset_id)
-    }
-}
-
-#[derive(Default)]
-struct AssetToEntityMap(BTreeMap<ResourceId, Entity>);
-
-impl AssetToEntityMap {
-    fn get(&self, asset_id: ResourceId) -> Option<Entity> {
-        self.0.get(&asset_id).copied()
-    }
-
-    fn insert(&mut self, asset_id: ResourceId, entity: Entity) {
-        self.0.insert(asset_id, entity);
-    }
-}
+use std::{any::Any, fs::File, path::Path, str::FromStr};
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
@@ -217,12 +169,8 @@ impl AssetRegistryPlugin {
             println!("New reference to loaded asset: {}", asset_id);
         } else {
             println!("Request load of asset: {}", asset_id);
-            asset_loading_states
-                .0
-                .insert(asset_id, LoadingState::Pending);
-            asset_handles
-                .0
-                .insert(asset_id, registry.load_untyped(asset_id));
+            asset_loading_states.insert(asset_id, LoadingState::Pending);
+            asset_handles.insert(asset_id, registry.load_untyped(asset_id));
         }
     }
 
@@ -239,7 +187,7 @@ impl AssetRegistryPlugin {
     ) {
         let mut secondary_assets = Vec::new();
 
-        for (asset_id, loading_state) in &mut asset_loading_states.0 {
+        for (asset_id, loading_state) in asset_loading_states.iter_mut() {
             match loading_state {
                 LoadingState::Pending => {
                     let handle = asset_handles.get(*asset_id).unwrap();
