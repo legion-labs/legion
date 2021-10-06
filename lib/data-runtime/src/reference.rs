@@ -1,4 +1,4 @@
-use crate::{Handle, Resource, ResourceId};
+use crate::{AssetRegistry, Handle, Resource, ResourceId};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 
@@ -17,4 +17,16 @@ where
     /// Reference is active, and be accessed through a typed handle
     #[serde(skip)]
     Active(Handle<T>),
+}
+
+impl<T> Reference<T>
+where
+    T: Any + Resource,
+{
+    /// Promote a reference to an active handle
+    pub fn activate(&mut self, registry: &mut AssetRegistry) {
+        if let Self::Passive(resource_id) = self {
+            *self = Self::Active(registry.load(*resource_id));
+        }
+    }
 }
