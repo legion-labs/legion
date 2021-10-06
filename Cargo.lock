@@ -5985,7 +5985,9 @@ dependencies = [
 name = "telemetry"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
+ "lz4",
  "memoffset",
  "prost",
  "raw-cpuid",
@@ -6005,6 +6007,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fs_extra",
+ "lz4",
  "prost",
  "sqlx",
  "telemetry",

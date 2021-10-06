@@ -1,8 +1,20 @@
 use analytics::*;
 use anyhow::*;
 use prost::Message;
+use std::io::Read;
 use std::path::Path;
 use transit::*;
+
+pub fn lz4_decompress(compressed: &[u8]) -> Result<Vec<u8>> {
+    let mut decompressed = Vec::new();
+    let mut decoder = lz4::Decoder::new(compressed).with_context(|| "allocating lz4 decoder")?;
+    let _size = decoder
+        .read_to_end(&mut decompressed)
+        .with_context(|| "reading lz4-compressed buffer")?;
+    let (_reader, res) = decoder.finish();
+    res?;
+    Ok(decompressed)
+}
 
 pub async fn print_process_log(
     connection: &mut sqlx::AnyConnection,
@@ -26,26 +38,36 @@ pub async fn print_process_log(
                 .unwrap()
                 .as_transit_udt_vec();
 
-            let dependencies = read_dependencies(&dep_udts, &payload.dependencies)?;
+            let dependencies = read_dependencies(
+                &dep_udts,
+                &lz4_decompress(&payload.dependencies)
+                    .with_context(|| "decompressing dependencies payload")?,
+            )?;
             let obj_udts = stream
                 .objects_metadata
                 .as_ref()
                 .unwrap()
                 .as_transit_udt_vec();
-            parse_objects(&dependencies, &obj_udts, &payload.objects, |val| {
-                if let Value::Object(obj) = val {
-                    match obj.type_name.as_str() {
-                        "LogMsgEvent" | "LogDynMsgEvent" => {
-                            println!(
-                                "[{}] {}",
-                                obj.get::<u8>("level").unwrap(),
-                                obj.get::<String>("msg").unwrap()
-                            );
+            parse_objects(
+                &dependencies,
+                &obj_udts,
+                &lz4_decompress(&payload.objects)
+                    .with_context(|| "decompressing objects payload")?,
+                |val| {
+                    if let Value::Object(obj) = val {
+                        match obj.type_name.as_str() {
+                            "LogMsgEvent" | "LogDynMsgEvent" => {
+                                println!(
+                                    "[{}] {}",
+                                    obj.get::<u8>("level").unwrap(),
+                                    obj.get::<String>("msg").unwrap()
+                                );
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
-                }
-            })?;
+                },
+            )?;
         }
     }
     Ok(())

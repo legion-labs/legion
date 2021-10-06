@@ -1,4 +1,5 @@
 use crate::*;
+use anyhow::*;
 use transit::*;
 
 declare_queue_struct!(
@@ -34,7 +35,7 @@ impl LogBlock {
 }
 
 impl StreamBlock for LogBlock {
-    fn encode(&self) -> EncodedBlock {
+    fn encode(&self) -> Result<EncodedBlock> {
         let block_id = uuid::Uuid::new_v4().to_string();
         let end = self.end.as_ref().unwrap();
 
@@ -52,11 +53,11 @@ impl StreamBlock for LogBlock {
         }
 
         let payload = telemetry_ingestion_proto::BlockPayload {
-            dependencies: deps.into_bytes(),
-            objects: self.events.as_bytes().to_vec(),
+            dependencies: compress(deps.as_bytes())?,
+            objects: compress(self.events.as_bytes())?,
         };
 
-        EncodedBlock {
+        Ok(EncodedBlock {
             stream_id: self.stream_id.clone(),
             block_id,
             begin_time: self
@@ -69,6 +70,6 @@ impl StreamBlock for LogBlock {
                 .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
             end_ticks: end.ticks,
             payload: Some(payload),
-        }
+        })
     }
 }

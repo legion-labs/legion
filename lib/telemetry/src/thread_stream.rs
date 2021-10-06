@@ -1,4 +1,5 @@
 use crate::*;
+use anyhow::*;
 use core::arch::x86_64::_rdtsc;
 use std::sync::Arc;
 use transit::*;
@@ -114,7 +115,7 @@ impl ThreadEventBlock {
 }
 
 impl StreamBlock for ThreadEventBlock {
-    fn encode(&self) -> EncodedBlock {
+    fn encode(&self) -> Result<EncodedBlock> {
         let block_id = uuid::Uuid::new_v4().to_string();
         let end = self.end.as_ref().unwrap();
 
@@ -139,11 +140,11 @@ impl StreamBlock for ThreadEventBlock {
         }
 
         let payload = telemetry_ingestion_proto::BlockPayload {
-            dependencies: deps.into_bytes(),
-            objects: self.events.as_bytes().to_vec(),
+            dependencies: compress(deps.as_bytes())?,
+            objects: compress(self.events.as_bytes())?,
         };
 
-        EncodedBlock {
+        Ok(EncodedBlock {
             stream_id: self.stream_id.clone(),
             block_id,
             begin_time: self
@@ -156,7 +157,7 @@ impl StreamBlock for ThreadEventBlock {
                 .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
             end_ticks: end.ticks,
             payload: Some(payload),
-        }
+        })
     }
 }
 

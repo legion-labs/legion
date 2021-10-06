@@ -57,24 +57,28 @@ impl GRPCEventSink {
                             }
                         }
                     }
-                    TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
-                        let encoded_block = log_buffer.encode();
-                        match client.insert_block(encoded_block).await {
+                    TelemetrySinkEvent::OnLogBufferFull(buffer) => match buffer.encode() {
+                        Ok(encoded_block) => match client.insert_block(encoded_block).await {
                             Ok(_response) => {}
                             Err(e) => {
                                 println!("insert_block failed: {}", e);
                             }
+                        },
+                        Err(e) => {
+                            println!("block encoding failed: {}", e);
                         }
-                    }
-                    TelemetrySinkEvent::OnThreadBufferFull(thread_buffer) => {
-                        let encoded_block = thread_buffer.encode();
-                        match client.insert_block(encoded_block).await {
+                    },
+                    TelemetrySinkEvent::OnThreadBufferFull(buffer) => match buffer.encode() {
+                        Ok(encoded_block) => match client.insert_block(encoded_block).await {
                             Ok(_response) => {}
                             Err(e) => {
                                 println!("insert_block failed: {}", e);
                             }
+                        },
+                        Err(e) => {
+                            println!("block encoding failed: {}", e);
                         }
-                    }
+                    },
                     TelemetrySinkEvent::OnShutdown => {
                         return;
                     }

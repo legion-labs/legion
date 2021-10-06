@@ -18,6 +18,7 @@ sqlx = { version = "0.5", features = [
 ] }
 anyhow = "1.0"
 prost = "0.8"
+lz4 = "1.23"
 
 [dev-dependencies]
 test-utils = { path = "../../lib/test-utils" }

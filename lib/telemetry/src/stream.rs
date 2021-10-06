@@ -1,4 +1,5 @@
 use crate::{EncodedBlock, StreamInfo};
+use anyhow::Result;
 
 pub trait Stream {
     fn get_stream_info(&self) -> StreamInfo;
@@ -6,5 +7,5 @@ pub trait Stream {
 }
 
 pub trait StreamBlock {
-    fn encode(&self) -> EncodedBlock;
+    fn encode(&self) -> Result<EncodedBlock>;
 }
