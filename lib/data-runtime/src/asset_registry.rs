@@ -2,6 +2,7 @@ use std::{
     any::Any,
     collections::HashMap,
     io,
+    path::Path,
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
@@ -12,12 +13,13 @@ use legion_content_store::ContentStore;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    Asset, AssetLoader, Handle, HandleId, HandleUntyped, Resource, ResourceId, ResourceType,
+    vfs, Asset, AssetLoader, Handle, HandleId, HandleUntyped, Resource, ResourceId, ResourceType,
 };
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
     loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
+    devices: Vec<Box<dyn vfs::Device>>,
 }
 
 impl AssetRegistryOptions {
@@ -26,7 +28,27 @@ impl AssetRegistryOptions {
     pub fn new() -> Self {
         Self {
             loaders: HashMap::new(),
+            devices: vec![],
         }
+    }
+
+    /// Specifying `directory device` will mount a device that allows to read resources
+    /// from a specified directory.
+    pub fn add_device_dir(mut self, path: impl AsRef<Path>) -> Self {
+        self.devices.push(Box::new(vfs::DirDevice::new(path)));
+        self
+    }
+
+    /// Specifying `content-addressable storage device` will mount a device that allows
+    /// to read resources from a specified content store through provided manifest.
+    pub fn add_device_cas(
+        mut self,
+        content_store: Box<dyn ContentStore>,
+        manifest: Manifest,
+    ) -> Self {
+        self.devices
+            .push(Box::new(vfs::CasDevice::new(manifest, content_store)));
+        self
     }
 
     /// Enables support of a given [`Resource`] by adding corresponding [`AssetLoader`].
@@ -36,8 +58,8 @@ impl AssetRegistryOptions {
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
-    pub fn create(self, content_store: Box<dyn ContentStore>, manifest: Manifest) -> AssetRegistry {
-        let (loader, mut io) = create_loader(content_store, manifest);
+    pub fn create(self) -> AssetRegistry {
+        let (loader, mut io) = create_loader(self.devices);
 
         for (kind, loader) in self.loaders {
             io.register_loader(kind, loader);
@@ -170,8 +192,9 @@ mod tests {
         };
 
         let reg = AssetRegistryOptions::new()
+            .add_device_cas(content_store, manifest)
             .add_loader::<test_asset::TestAsset>()
-            .create(content_store, manifest);
+            .create();
 
         (asset_id, reg)
     }
