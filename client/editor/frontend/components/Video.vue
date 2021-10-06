@@ -163,20 +163,26 @@ function debounce(func, wait, immediate) {
 export default {
   name: "Video",
   props: {
-    msg: String,
+    hue: Number,
   },
   mounted() {
     const videoElement = document.getElementById("video");
     const videoPlayer = new VideoPlayer(videoElement, () => {});
     var pc = null;
-    var video_channel = null;
+    this.video_channel = null;
+    this.control_channel = null;
 
-    videoElement.parentElement.onclick = function () {
+    videoElement.parentElement.onclick = () => {
       console.log("Initializing WebRTC...");
 
-      if (video_channel != null) {
-        video_channel.close();
-        video_channel = null;
+      if (this.video_channel != null) {
+        this.video_channel.close();
+        this.video_channel = null;
+      }
+
+      if (this.control_channel != null) {
+        this.control_channel.close();
+        this.control_channel = null;
       }
 
       if (pc !== null) {
@@ -210,14 +216,15 @@ export default {
         }
       };
 
-      video_channel = pc.createDataChannel("video");
+      this.video_channel = pc.createDataChannel("video");
+      this.control_channel = pc.createDataChannel("control");
 
       const observer = new ResizeObserver(
         debounce(async () => {
           console.log("Sending resize event.");
 
           // Uncommenting this breaks the stream most of the time... not sure why.
-          video_channel.send(
+          this.video_channel.send(
             JSON.stringify({
               event: "resize",
               width: videoElement.offsetWidth,
@@ -227,24 +234,39 @@ export default {
         }, 250)
       );
 
-      video_channel.onerror = async (error) => {
+      this.video_channel.onerror = async (error) => {
         console.log(error.error);
       };
-      video_channel.onopen = function () {
+      this.video_channel.onopen = async () => {
         console.log("Video channel is now open.");
         observer.observe(videoElement);
       };
-      video_channel.onclose = function () {
+      this.video_channel.onclose = async () => {
         console.log("Video channel is now closed.");
         observer.disconnect();
       };
-      video_channel.onmessage = async (msg) => {
+      this.video_channel.onmessage = async (msg) => {
         videoPlayer.push(msg.data);
       };
-      video_channel.ondatachannel = async (evt) => {
-        console.log("data channel: ", evt);
+      this.video_channel.ondatachannel = async (evt) => {
+        console.log("video data channel: ", evt);
+      };
+      this.control_channel.ondatachannel = async (evt) => {
+        console.log("control data channel: ", evt);
       };
     };
+  },
+  watch: {
+    hue(hue) {
+      if (this.video_channel != null) {
+        this.video_channel.send(
+          JSON.stringify({
+            event: "hue",
+            hue: hue,
+          })
+        );
+      }
+    },
   },
 };
 </script>
