@@ -1,9 +1,9 @@
 //! A module providing offline texture related functionality.
 
-use std::any::Any;
+use std::{any::Any, io};
 
 use legion_data_offline::resource::{OfflineResource, ResourceProcessor};
-use legion_data_runtime::{resource, Resource};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 use serde::{Deserialize, Serialize};
 
 /// Texture type enumeration.
@@ -27,6 +27,10 @@ pub struct Texture {
     pub rgba: Vec<u8>,
 }
 
+impl Asset for Texture {
+    type Loader = TextureProcessor;
+}
+
 impl OfflineResource for Texture {
     type Processor = TextureProcessor;
 }
@@ -34,6 +38,15 @@ impl OfflineResource for Texture {
 /// Processor of [`Texture`]
 #[derive(Default)]
 pub struct TextureProcessor {}
+
+impl AssetLoader for TextureProcessor {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let texture: Texture = serde_json::from_reader(reader)?;
+        Ok(Box::new(texture))
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
 
 impl ResourceProcessor for TextureProcessor {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
@@ -66,7 +79,6 @@ impl ResourceProcessor for TextureProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let texture: Texture = serde_json::from_reader(reader)?;
-        Ok(Box::new(texture))
+        self.load(reader)
     }
 }

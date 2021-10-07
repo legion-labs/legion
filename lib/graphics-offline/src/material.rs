@@ -1,12 +1,12 @@
 //! A module providing offline material related functionality.
 
-use std::any::Any;
+use std::{any::Any, io};
 
 use legion_data_offline::{
     resource::{OfflineResource, ResourceProcessor},
     ResourcePathId,
 };
-use legion_data_runtime::{resource, Resource};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 use serde::{Deserialize, Serialize};
 
 /// Offline material resource.
@@ -23,6 +23,10 @@ pub struct Material {
     pub metalness: Option<ResourcePathId>,
 }
 
+impl Asset for Material {
+    type Loader = MaterialProcessor;
+}
+
 impl OfflineResource for Material {
     type Processor = MaterialProcessor;
 }
@@ -30,6 +34,15 @@ impl OfflineResource for Material {
 /// Processor of [`Material`]
 #[derive(Default)]
 pub struct MaterialProcessor {}
+
+impl AssetLoader for MaterialProcessor {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let result: Material = serde_json::from_reader(reader)?;
+        Ok(Box::new(result))
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
 
 impl ResourceProcessor for MaterialProcessor {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
@@ -68,13 +81,6 @@ impl ResourceProcessor for MaterialProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let result: Result<Material, serde_json::Error> = serde_json::from_reader(reader);
-        match result {
-            Ok(resource) => Ok(Box::new(resource)),
-            Err(json_err) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                json_err.to_string(),
-            )),
-        }
+        self.load(reader)
     }
 }

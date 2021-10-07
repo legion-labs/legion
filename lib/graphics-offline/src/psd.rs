@@ -1,9 +1,9 @@
 //! Module providing Photoshop Document related functionality.
 
-use std::any::Any;
+use std::{any::Any, io};
 
 use legion_data_offline::resource::{OfflineResource, ResourceProcessor};
-use legion_data_runtime::{resource, Resource};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 
 use crate::texture::{Texture, TextureType};
 
@@ -11,6 +11,10 @@ use crate::texture::{Texture, TextureType};
 #[resource("psd")]
 pub struct PsdFile {
     content: Option<(psd::Psd, Vec<u8>)>,
+}
+
+impl Asset for PsdFile {
+    type Loader = PsdFileProcessor;
 }
 
 impl OfflineResource for PsdFile {
@@ -70,6 +74,24 @@ impl PsdFile {
 #[derive(Default)]
 pub struct PsdFileProcessor {}
 
+impl AssetLoader for PsdFileProcessor {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let mut bytes = vec![];
+        reader.read_to_end(&mut bytes)?;
+        let content = if !bytes.is_empty() {
+            let psd = psd::Psd::from_bytes(&bytes).map_err(|_e| {
+                std::io::Error::new(std::io::ErrorKind::BrokenPipe, "failed to read .psd file")
+            })?;
+            Some((psd, bytes))
+        } else {
+            None
+        };
+        Ok(Box::new(PsdFile { content }))
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
+
 impl ResourceProcessor for PsdFileProcessor {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(PsdFile { content: None })
@@ -100,16 +122,6 @@ impl ResourceProcessor for PsdFileProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let mut bytes = vec![];
-        reader.read_to_end(&mut bytes)?;
-        let content = if !bytes.is_empty() {
-            let psd = psd::Psd::from_bytes(&bytes).map_err(|_e| {
-                std::io::Error::new(std::io::ErrorKind::BrokenPipe, "failed to read .psd file")
-            })?;
-            Some((psd, bytes))
-        } else {
-            None
-        };
-        Ok(Box::new(PsdFile { content }))
+        self.load(reader)
     }
 }

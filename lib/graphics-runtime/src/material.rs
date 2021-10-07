@@ -44,7 +44,7 @@ where
 }
 
 impl AssetLoader for MaterialLoader {
-    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let albedo = read_asset_id(reader)?;
         let normal = read_asset_id(reader)?;
         let roughness = read_asset_id(reader)?;

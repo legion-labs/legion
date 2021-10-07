@@ -7,12 +7,12 @@
 use std::any::Any;
 use std::io;
 
-use legion_data_runtime::Resource;
+use legion_data_runtime::Asset;
 
 use crate::ResourcePathId;
 
 /// The trait defines a resource that can be stored in a [`Project`].
-pub trait OfflineResource: Resource {
+pub trait OfflineResource: Asset {
     /// Offline resource processor bound to the resource.
     type Processor: ResourceProcessor + Send + Sync + Default + 'static;
 }

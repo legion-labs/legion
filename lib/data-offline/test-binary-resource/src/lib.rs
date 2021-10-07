@@ -1,11 +1,11 @@
-use std::any::Any;
+use std::{any::Any, io};
 
 use legion_data_offline::{
     resource::{OfflineResource, ResourceProcessor},
     ResourcePathId,
 };
 
-use legion_data_runtime::{resource, Resource};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 use serde::{Deserialize, Serialize};
 
 #[resource("bin")]
@@ -14,12 +14,27 @@ pub struct BinaryResource {
     pub content: Vec<u8>,
 }
 
+impl Asset for BinaryResource {
+    type Loader = BinaryResourceProc;
+}
+
 impl OfflineResource for BinaryResource {
     type Processor = BinaryResourceProc;
 }
 
 #[derive(Default)]
 pub struct BinaryResourceProc {}
+
+impl AssetLoader for BinaryResourceProc {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let mut resource = BinaryResource { content: vec![] };
+        reader.read_to_end(&mut resource.content)?;
+        let boxed = Box::new(resource);
+        Ok(boxed)
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
 
 impl ResourceProcessor for BinaryResourceProc {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
@@ -44,9 +59,6 @@ impl ResourceProcessor for BinaryResourceProc {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let mut resource = BinaryResource { content: vec![] };
-        reader.read_to_end(&mut resource.content)?;
-        let boxed = Box::new(resource);
-        Ok(boxed)
+        self.load(reader)
     }
 }

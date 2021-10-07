@@ -2,9 +2,9 @@
 //!
 //! It is used to test the data compilation process until we have a proper resource available.
 
-use std::{any::Any, str::FromStr};
+use std::{any::Any, io, str::FromStr};
 
-use legion_data_runtime::{resource, Resource};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 
 use crate::{resource::ResourceProcessor, ResourcePathId};
 
@@ -21,6 +21,10 @@ pub struct TestResource {
     pub build_deps: Vec<ResourcePathId>,
 }
 
+impl Asset for TestResource {
+    type Loader = TestResourceProc;
+}
+
 impl OfflineResource for TestResource {
     type Processor = TestResourceProc;
 }
@@ -30,6 +34,41 @@ impl OfflineResource for TestResource {
 /// To be removed once real resource types exists.
 #[derive(Default)]
 pub struct TestResourceProc {}
+
+impl AssetLoader for TestResourceProc {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let mut resource = Box::new(TestResource {
+            content: String::from(""),
+            build_deps: vec![],
+        });
+        let mut buf = 0usize.to_ne_bytes();
+        reader.read_exact(&mut buf[..])?;
+        let length = usize::from_ne_bytes(buf);
+
+        let mut buf = vec![0u8; length];
+        reader.read_exact(&mut buf[..])?;
+        resource.content = String::from_utf8(buf).unwrap();
+
+        let mut buf = resource.build_deps.len().to_ne_bytes();
+        reader.read_exact(&mut buf[..])?;
+        let dep_count = usize::from_ne_bytes(buf);
+
+        for _ in 0..dep_count {
+            let mut nbytes = 0u64.to_ne_bytes();
+            reader.read_exact(&mut nbytes[..])?;
+            let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
+            reader.read_exact(&mut buf)?;
+            resource
+                .build_deps
+                .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
+        }
+
+        Ok(resource)
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
+
 impl ResourceProcessor for TestResourceProc {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(TestResource {
@@ -83,30 +122,6 @@ impl ResourceProcessor for TestResourceProc {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let mut resource = self.new_resource();
-        let mut res = resource.downcast_mut::<TestResource>().unwrap();
-
-        let mut buf = 0usize.to_ne_bytes();
-        reader.read_exact(&mut buf[..])?;
-        let length = usize::from_ne_bytes(buf);
-
-        let mut buf = vec![0u8; length];
-        reader.read_exact(&mut buf[..])?;
-        res.content = String::from_utf8(buf).unwrap();
-
-        let mut buf = res.build_deps.len().to_ne_bytes();
-        reader.read_exact(&mut buf[..])?;
-        let dep_count = usize::from_ne_bytes(buf);
-
-        for _ in 0..dep_count {
-            let mut nbytes = 0u64.to_ne_bytes();
-            reader.read_exact(&mut nbytes[..])?;
-            let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
-            reader.read_exact(&mut buf)?;
-            res.build_deps
-                .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
-        }
-
-        Ok(resource)
+        self.load(reader)
     }
 }

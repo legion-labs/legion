@@ -1,11 +1,11 @@
-use std::any::Any;
+use std::{any::Any, io};
 
 use legion_data_offline::{
     resource::{OfflineResource, ResourceProcessor},
     ResourcePathId,
 };
 
-use legion_data_runtime::{resource, Resource};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 use serde::{Deserialize, Serialize};
 
 #[resource("multitext_resource")]
@@ -14,12 +14,26 @@ pub struct MultiTextResource {
     pub text_list: Vec<String>,
 }
 
+impl Asset for MultiTextResource {
+    type Loader = MultiTextResourceProc;
+}
+
 impl OfflineResource for MultiTextResource {
     type Processor = MultiTextResourceProc;
 }
 
 #[derive(Default)]
 pub struct MultiTextResourceProc {}
+
+impl AssetLoader for MultiTextResourceProc {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let resource: MultiTextResource = serde_json::from_reader(reader).unwrap();
+        let boxed = Box::new(resource);
+        Ok(boxed)
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
 
 impl ResourceProcessor for MultiTextResourceProc {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
@@ -44,8 +58,6 @@ impl ResourceProcessor for MultiTextResourceProc {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let resource: MultiTextResource = serde_json::from_reader(reader).unwrap();
-        let boxed = Box::new(resource);
-        Ok(boxed)
+        self.load(reader)
     }
 }

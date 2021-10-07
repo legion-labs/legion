@@ -20,7 +20,7 @@ impl Asset for Texture {
 pub struct TextureLoader {}
 
 impl AssetLoader for TextureLoader {
-    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let mut rgba: Vec<u8> = vec![];
         reader.read_to_end(&mut rgba)?;
         let texture = Texture { rgba };

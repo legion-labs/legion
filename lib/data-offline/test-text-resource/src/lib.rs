@@ -1,10 +1,10 @@
-use std::any::Any;
+use std::{any::Any, io};
 
 use legion_data_offline::{
     resource::{OfflineResource, ResourceProcessor},
     ResourcePathId,
 };
-use legion_data_runtime::{resource, Resource};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 
 use serde::{Deserialize, Serialize};
 
@@ -14,12 +14,26 @@ pub struct TextResource {
     pub content: String,
 }
 
+impl Asset for TextResource {
+    type Loader = TextResourceProc;
+}
+
 impl OfflineResource for TextResource {
     type Processor = TextResourceProc;
 }
 
 #[derive(Default)]
 pub struct TextResourceProc {}
+
+impl AssetLoader for TextResourceProc {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let resource: TextResource = serde_json::from_reader(reader).unwrap();
+        let boxed = Box::new(resource);
+        Ok(boxed)
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
 
 impl ResourceProcessor for TextResourceProc {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
@@ -46,8 +60,6 @@ impl ResourceProcessor for TextResourceProc {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let resource: TextResource = serde_json::from_reader(reader).unwrap();
-        let boxed = Box::new(resource);
-        Ok(boxed)
+        self.load(reader)
     }
 }

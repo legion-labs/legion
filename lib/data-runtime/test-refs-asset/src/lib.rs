@@ -25,7 +25,7 @@ impl Asset for RefsAsset {
 pub struct RefsAssetLoader {}
 
 impl AssetLoader for RefsAssetLoader {
-    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let mut content = String::new();
         reader.read_to_string(&mut content)?;
         let asset = Box::new(RefsAsset { content });

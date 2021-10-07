@@ -15,7 +15,7 @@ impl Asset for IntegerAsset {
 pub struct IntegerAssetLoader {}
 
 impl AssetLoader for IntegerAssetLoader {
-    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Sync + Send>> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Sync + Send>> {
         let mut buf = 0i32.to_ne_bytes();
         reader.read_exact(&mut buf)?;
         let magic_value = i32::from_ne_bytes(buf);

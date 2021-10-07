@@ -208,7 +208,7 @@ impl ResourceRegistry {
 mod tests {
     use std::{any::Any, io};
 
-    use legion_data_runtime::{resource, Resource, ResourceType};
+    use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceType};
 
     use crate::{
         resource::{registry::ResourceRegistryOptions, OfflineResource, ResourceProcessor},
@@ -220,6 +220,10 @@ mod tests {
         content: String,
     }
 
+    impl Asset for SampleResource {
+        type Loader = SampleProcessor;
+    }
+
     impl OfflineResource for SampleResource {
         type Processor = SampleProcessor;
     }
@@ -227,6 +231,26 @@ mod tests {
     #[derive(Default)]
     struct SampleProcessor {
         default_content: String,
+    }
+
+    impl AssetLoader for SampleProcessor {
+        fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+            let mut resource = Box::new(SampleResource {
+                content: String::from(""),
+            });
+
+            let mut bytes = 0usize.to_ne_bytes();
+            reader.read_exact(&mut bytes)?;
+            let length = usize::from_ne_bytes(bytes);
+
+            let mut buffer = vec![0; length];
+            reader.read_exact(&mut buffer)?;
+            resource.content = String::from_utf8(buffer)
+                .map_err(|_e| io::Error::new(io::ErrorKind::InvalidData, "Parsing error"))?;
+            Ok(resource)
+        }
+
+        fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
     }
 
     impl ResourceProcessor for SampleProcessor {
@@ -253,18 +277,7 @@ mod tests {
             &mut self,
             reader: &mut dyn std::io::Read,
         ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-            let mut resource = self.new_resource();
-            let sample_resource = resource.downcast_mut::<SampleResource>().unwrap();
-
-            let mut bytes = 0usize.to_ne_bytes();
-            reader.read_exact(&mut bytes)?;
-            let length = usize::from_ne_bytes(bytes);
-
-            let mut buffer = vec![0; length];
-            reader.read_exact(&mut buffer)?;
-            sample_resource.content = String::from_utf8(buffer)
-                .map_err(|_e| io::Error::new(io::ErrorKind::InvalidData, "Parsing error"))?;
-            Ok(resource)
+            self.load(reader)
         }
 
         fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<ResourcePathId> {

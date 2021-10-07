@@ -1,12 +1,15 @@
 // Types that will eventually moved to library crates
 
-use std::any::{Any, TypeId};
+use std::{
+    any::{Any, TypeId},
+    io,
+};
 
 use legion_data_offline::{
     resource::{OfflineResource, ResourceProcessor, ResourceRegistryOptions},
     ResourcePathId,
 };
-use legion_data_runtime::{resource, Resource};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -28,12 +31,25 @@ pub struct Entity {
     pub components: Vec<Box<dyn Component>>,
 }
 
+impl Asset for Entity {
+    type Loader = EntityProcessor;
+}
+
 impl OfflineResource for Entity {
     type Processor = EntityProcessor;
 }
 
 #[derive(Default)]
 pub struct EntityProcessor {}
+
+impl AssetLoader for EntityProcessor {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let result: Entity = serde_json::from_reader(reader)?;
+        Ok(Box::new(result))
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
 
 impl ResourceProcessor for EntityProcessor {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
@@ -63,14 +79,7 @@ impl ResourceProcessor for EntityProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let result: Result<Entity, serde_json::Error> = serde_json::from_reader(reader);
-        match result {
-            Ok(resource) => Ok(Box::new(resource)),
-            Err(json_err) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                json_err.to_string(),
-            )),
-        }
+        self.load(reader)
     }
 }
 
@@ -231,12 +240,25 @@ pub struct Instance {
     pub original: Option<ResourcePathId>,
 }
 
+impl Asset for Instance {
+    type Loader = InstanceProcessor;
+}
+
 impl OfflineResource for Instance {
     type Processor = InstanceProcessor;
 }
 
 #[derive(Default)]
 pub struct InstanceProcessor {}
+
+impl AssetLoader for InstanceProcessor {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let result: Instance = serde_json::from_reader(reader)?;
+        Ok(Box::new(result))
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
 
 impl ResourceProcessor for InstanceProcessor {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
@@ -262,14 +284,7 @@ impl ResourceProcessor for InstanceProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let result: Result<Instance, serde_json::Error> = serde_json::from_reader(reader);
-        match result {
-            Ok(resource) => Ok(Box::new(resource)),
-            Err(json_err) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                json_err.to_string(),
-            )),
-        }
+        self.load(reader)
     }
 }
 
@@ -281,12 +296,25 @@ pub struct Mesh {
     pub sub_meshes: Vec<SubMesh>,
 }
 
+impl Asset for Mesh {
+    type Loader = MeshProcessor;
+}
+
 impl OfflineResource for Mesh {
     type Processor = MeshProcessor;
 }
 
 #[derive(Default)]
 pub struct MeshProcessor {}
+
+impl AssetLoader for MeshProcessor {
+    fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
+        let result: Mesh = serde_json::from_reader(reader)?;
+        Ok(Box::new(result))
+    }
+
+    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+}
 
 impl ResourceProcessor for MeshProcessor {
     fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
@@ -322,14 +350,7 @@ impl ResourceProcessor for MeshProcessor {
         &mut self,
         reader: &mut dyn std::io::Read,
     ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
-        let result: Result<Mesh, serde_json::Error> = serde_json::from_reader(reader);
-        match result {
-            Ok(resource) => Ok(Box::new(resource)),
-            Err(json_err) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                json_err.to_string(),
-            )),
-        }
+        self.load(reader)
     }
 }
 
