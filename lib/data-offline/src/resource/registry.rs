@@ -1,4 +1,4 @@
-use std::{any::Any, collections::HashMap, io, sync::mpsc};
+use std::{any::Any, collections::HashMap, io};
 
 use legion_data_runtime::ResourceType;
 
@@ -8,7 +8,7 @@ use super::{OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, Res
 
 /// Options which can be used to configure [`ResourceRegistry`] creation.
 pub struct ResourceRegistryOptions {
-    processors: HashMap<ResourceType, Box<dyn ResourceProcessor>>,
+    processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
 }
 
 impl ResourceRegistryOptions {
@@ -28,7 +28,7 @@ impl ResourceRegistryOptions {
     pub fn add_type_processor(
         mut self,
         ty: ResourceType,
-        proc: Box<dyn ResourceProcessor>,
+        proc: Box<dyn ResourceProcessor + Send + Sync>,
     ) -> Self {
         let v = self.processors.insert(ty, proc).is_none();
         assert!(v);
@@ -58,17 +58,20 @@ impl ResourceRegistryOptions {
 /// but are not currently loaded to memory.
 pub struct ResourceRegistry {
     id_generator: ResourceHandleId,
-    refcount_channel: (mpsc::Sender<RefOp>, mpsc::Receiver<RefOp>),
+    refcount_channel: (
+        crossbeam_channel::Sender<RefOp>,
+        crossbeam_channel::Receiver<RefOp>,
+    ),
     ref_counts: HashMap<ResourceHandleId, isize>,
-    resources: HashMap<ResourceHandleId, Option<Box<dyn Any>>>,
-    processors: HashMap<ResourceType, Box<dyn ResourceProcessor>>,
+    resources: HashMap<ResourceHandleId, Option<Box<dyn Any + Send + Sync>>>,
+    processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
 }
 
 impl ResourceRegistry {
-    fn create(processors: HashMap<ResourceType, Box<dyn ResourceProcessor>>) -> Self {
+    fn create(processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>) -> Self {
         Self {
             id_generator: 0,
-            refcount_channel: mpsc::channel(),
+            refcount_channel: crossbeam_channel::unbounded(),
             ref_counts: HashMap::new(),
             resources: HashMap::new(),
             processors,
@@ -141,7 +144,7 @@ impl ResourceRegistry {
 
     /// Inserts a resource into the registry and returns a handle
     /// that identifies that resource.
-    fn insert(&mut self, resource: Box<dyn Any>) -> ResourceHandleUntyped {
+    fn insert(&mut self, resource: Box<dyn Any + Send + Sync>) -> ResourceHandleUntyped {
         let handle = self.create_handle();
         self.resources.insert(handle.id, Some(resource));
         handle
@@ -227,7 +230,7 @@ mod tests {
     }
 
     impl ResourceProcessor for SampleProcessor {
-        fn new_resource(&mut self) -> Box<dyn Any> {
+        fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
             Box::new(SampleResource {
                 content: self.default_content.clone(),
             })
@@ -249,7 +252,7 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> std::io::Result<Box<dyn Any>> {
+        ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
             let mut resource = self.new_resource();
             let sample_resource = resource.downcast_mut::<SampleResource>().unwrap();
 

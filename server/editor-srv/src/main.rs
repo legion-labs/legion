@@ -5,6 +5,7 @@ use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_async::{AsyncPlugin, TokioAsyncRuntime};
 use legion_ecs::prelude::*;
+use legion_resource_registry::ResourceRegistryPlugin;
 use legion_transform::TransformPlugin;
 
 mod server;
@@ -74,6 +75,7 @@ fn main() {
 
             rt.start_detached(Server::listen_and_serve(addr, editor_server));
         })
+        .add_plugin(ResourceRegistryPlugin::default())
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,

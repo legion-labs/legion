@@ -14,13 +14,13 @@ use crate::ResourcePathId;
 /// The trait defines a resource that can be stored in a [`Project`].
 pub trait OfflineResource: Resource {
     /// Offline resource processor bound to the resource.
-    type Processor: ResourceProcessor + Default + 'static;
+    type Processor: ResourceProcessor + Send + Sync + Default + 'static;
 }
 
 /// The `ResourceProcessor` trait allows to process an offline resource.
 pub trait ResourceProcessor {
     /// Interface returning a resource in a default state. Useful when creating a new resource.
-    fn new_resource(&mut self) -> Box<dyn Any>;
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync>;
 
     /// Interface returning a list of resources that `resource` depends on for building.
     fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId>;
@@ -33,7 +33,10 @@ pub trait ResourceProcessor {
     ) -> io::Result<usize>;
 
     /// Interface defining deserialization behavior of the resource.
-    fn read_resource(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any>>;
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> io::Result<Box<dyn Any + Send + Sync>>;
 }
 
 mod project;

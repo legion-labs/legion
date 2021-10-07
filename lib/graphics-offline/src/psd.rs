@@ -71,7 +71,7 @@ impl PsdFile {
 pub struct PsdFileProcessor {}
 
 impl ResourceProcessor for PsdFileProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any> {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(PsdFile { content: None })
     }
 
@@ -96,7 +96,10 @@ impl ResourceProcessor for PsdFileProcessor {
         }
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes)?;
         let content = if !bytes.is_empty() {

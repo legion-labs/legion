@@ -34,7 +34,7 @@ impl OfflineResource for TestResource {
 #[derive(Default)]
 pub struct TestResourceProc {}
 impl ResourceProcessor for TestResourceProc {
-    fn new_resource(&mut self) -> Box<dyn Any> {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(TestResource {
             content: String::from("default content"),
             build_deps: vec![],
@@ -59,7 +59,10 @@ impl ResourceProcessor for TestResourceProc {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let resource: TestResource = serde_json::from_reader(reader).unwrap();
         let boxed = Box::new(resource);
         Ok(boxed)

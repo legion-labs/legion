@@ -22,7 +22,7 @@ impl OfflineResource for TextResource {
 pub struct TextResourceProc {}
 
 impl ResourceProcessor for TextResourceProc {
-    fn new_resource(&mut self) -> Box<dyn Any> {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(TextResource {
             content: String::from("7"),
         })
@@ -42,7 +42,10 @@ impl ResourceProcessor for TextResourceProc {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let resource: TextResource = serde_json::from_reader(reader).unwrap();
         let boxed = Box::new(resource);
         Ok(boxed)

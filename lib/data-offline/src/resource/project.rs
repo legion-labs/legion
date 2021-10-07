@@ -560,7 +560,7 @@ mod tests {
 
     struct NullResourceProc {}
     impl ResourceProcessor for NullResourceProc {
-        fn new_resource(&mut self) -> Box<dyn Any> {
+        fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
             Box::new(NullResource {
                 content: 0,
                 dependencies: vec![],
@@ -607,7 +607,7 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> std::io::Result<Box<dyn Any>> {
+        ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
             let mut resource = self.new_resource();
             let mut res = resource.downcast_mut::<NullResource>().unwrap();
 

@@ -36,7 +36,7 @@ impl OfflineResource for Texture {
 pub struct TextureProcessor {}
 
 impl ResourceProcessor for TextureProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any> {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(Texture {
             kind: TextureType::_2D,
             width: 0,
@@ -62,7 +62,10 @@ impl ResourceProcessor for TextureProcessor {
         Ok(1)
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let texture: Texture = serde_json::from_reader(reader)?;
         Ok(Box::new(texture))
     }

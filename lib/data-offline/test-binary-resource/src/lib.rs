@@ -22,7 +22,7 @@ impl OfflineResource for BinaryResource {
 pub struct BinaryResourceProc {}
 
 impl ResourceProcessor for BinaryResourceProc {
-    fn new_resource(&mut self) -> Box<dyn Any> {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(BinaryResource { content: vec![] })
     }
 
@@ -40,7 +40,10 @@ impl ResourceProcessor for BinaryResourceProc {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let mut resource = BinaryResource { content: vec![] };
         reader.read_to_end(&mut resource.content)?;
         let boxed = Box::new(resource);

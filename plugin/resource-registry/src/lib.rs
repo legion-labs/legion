@@ -86,10 +86,19 @@
 #![allow()]
 
 use legion_app::Plugin;
+use legion_data_offline::resource::ResourceRegistryOptions;
+use sample_data_compiler::offline_data;
 
 #[derive(Default)]
 pub struct ResourceRegistryPlugin {}
 
 impl Plugin for ResourceRegistryPlugin {
-    fn build(&self, _app: &mut legion_app::App) {}
+    fn build(&self, app: &mut legion_app::App) {
+        let mut registry = ResourceRegistryOptions::new();
+        registry = offline_data::register_resource_types(registry);
+        registry = legion_graphics_offline::register_resource_types(registry);
+        let registry = registry.create_registry();
+
+        app.insert_resource(registry);
+    }
 }

@@ -3,12 +3,19 @@
 use std::any::{Any, TypeId};
 
 use legion_data_offline::{
-    resource::{OfflineResource, ResourceProcessor},
+    resource::{OfflineResource, ResourceProcessor, ResourceRegistryOptions},
     ResourcePathId,
 };
 use legion_data_runtime::{resource, Resource};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
+
+pub fn register_resource_types(registry: ResourceRegistryOptions) -> ResourceRegistryOptions {
+    registry
+        .add_type::<Entity>()
+        .add_type::<Instance>()
+        .add_type::<Mesh>()
+}
 
 // ------------------ Entity -----------------------------------
 
@@ -29,7 +36,7 @@ impl OfflineResource for Entity {
 pub struct EntityProcessor {}
 
 impl ResourceProcessor for EntityProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any> {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(Entity::default())
     }
 
@@ -52,7 +59,10 @@ impl ResourceProcessor for EntityProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let result: Result<Entity, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),
@@ -229,7 +239,7 @@ impl OfflineResource for Instance {
 pub struct InstanceProcessor {}
 
 impl ResourceProcessor for InstanceProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any> {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(Instance { original: None })
     }
 
@@ -248,7 +258,10 @@ impl ResourceProcessor for InstanceProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let result: Result<Instance, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),
@@ -276,7 +289,7 @@ impl OfflineResource for Mesh {
 pub struct MeshProcessor {}
 
 impl ResourceProcessor for MeshProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any> {
+    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
         Box::new(Mesh {
             sub_meshes: Vec::default(),
         })
@@ -305,7 +318,10 @@ impl ResourceProcessor for MeshProcessor {
         Ok(1) // no bytes written exposed by serde.
     }
 
-    fn read_resource(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<Box<dyn Any>> {
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn std::io::Read,
+    ) -> std::io::Result<Box<dyn Any + Send + Sync>> {
         let result: Result<Mesh, serde_json::Error> = serde_json::from_reader(reader);
         match result {
             Ok(resource) => Ok(Box::new(resource)),

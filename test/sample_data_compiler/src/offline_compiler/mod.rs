@@ -82,7 +82,7 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
                 runtime_data::Entity::TYPE
                     | runtime_data::Instance::TYPE
                     | runtime_data::Mesh::TYPE
-                    | legion_graphics_runtime::texture::Texture::TYPE
+                    | legion_graphics_runtime::Texture::TYPE
                     | legion_graphics_runtime::Material::TYPE
             )
         };
