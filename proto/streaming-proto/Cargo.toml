@@ -1,5 +1,5 @@
 [package]
-name = "legion-editor-proto"
+name = "legion-streaming-proto"
 version = "0.1.0"
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -14,7 +14,3 @@ base64 = "0.13.0"
 
 [build-dependencies]
 tonic-build = "0.5.2"
-
-[[bin]]
-name = "editor-proto-cli"
-path = "src/cli.rs"

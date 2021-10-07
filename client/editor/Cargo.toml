@@ -18,7 +18,7 @@ legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-async = { path = "../../plugin/async", version = "0.1.0" }
 legion-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
-legion-editor-proto = { path = "../../proto/editor-proto", version = "0.1.0" }
+legion-streaming-proto = { path = "../../proto/streaming-proto", version = "0.1.0" }
 async-std = "1.10"
 anyhow = "1.0.44"
 clap = "2"

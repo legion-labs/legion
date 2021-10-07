@@ -92,7 +92,7 @@ use async_std::future::timeout;
 use clap::Arg;
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
-use legion_editor_proto::{editor_client::*, InitializeStreamRequest};
+use legion_streaming_proto::{streamer_client::*, InitializeStreamRequest};
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
 use std::{error::Error, time::Duration};
 
@@ -149,7 +149,7 @@ async fn initialize_stream(
 ) -> anyhow::Result<String> {
     let mut client = timeout(
         Duration::from_secs(3),
-        EditorClient::connect(config.server_addr.clone()),
+        StreamerClient::connect(config.server_addr.clone()),
     )
     .await??;
 

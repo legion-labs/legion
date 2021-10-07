@@ -5,7 +5,9 @@ use std::{net::SocketAddr, sync::Arc};
 
 use tonic::{Request, Response, Status};
 
-use legion_editor_proto::{editor_server::*, InitializeStreamRequest, InitializeStreamResponse};
+use legion_streaming_proto::{
+    streamer_server::*, InitializeStreamRequest, InitializeStreamResponse,
+};
 
 /// The `gRPC` server implementation for the streaming server.
 pub(crate) struct GRPCServer {
@@ -31,7 +33,7 @@ impl GRPCServer {
         info!("gRPC server started and listening on {}.", addr);
 
         match tonic::transport::Server::builder()
-            .add_service(EditorServer::new(self))
+            .add_service(StreamerServer::new(self))
             .serve(addr)
             .await
         {
@@ -46,7 +48,7 @@ impl GRPCServer {
 }
 
 #[tonic::async_trait]
-impl Editor for GRPCServer {
+impl Streamer for GRPCServer {
     async fn initialize_stream(
         &self,
         request: Request<InitializeStreamRequest>,

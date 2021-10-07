@@ -1591,7 +1591,7 @@ dependencies = [
  "legion-app",
  "legion-async",
  "legion-ecs",
- "legion-editor-proto",
+ "legion-streaming-proto",
  "legion-tauri",
  "prost",
  "serde",
@@ -2996,17 +2996,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-editor-proto"
-version = "0.1.0"
-dependencies = [
- "base64",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
 name = "legion-graphics-api"
 version = "0.1.0"
 dependencies = [
@@ -3165,15 +3154,26 @@ dependencies = [
  "legion-codec-api",
  "legion-core",
  "legion-ecs",
- "legion-editor-proto",
  "legion-mp4",
  "legion-renderer",
+ "legion-streaming-proto",
  "log",
  "serde",
  "serde_json",
  "tokio",
  "tonic",
  "webrtc",
+]
+
+[[package]]
+name = "legion-streaming-proto"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "prost",
+ "tokio",
+ "tonic",
+ "tonic-build",
 ]
 
 [[package]]
