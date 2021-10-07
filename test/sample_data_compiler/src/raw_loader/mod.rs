@@ -200,7 +200,7 @@ fn find_files(raw_dir: impl AsRef<Path>, extensions: &[&str]) -> Vec<PathBuf> {
         let path = entry.path();
         if path.is_dir() {
             files.append(&mut find_files(&path, extensions));
-        } else if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        } else if let Some(ext) = path.extension().and_then(OsStr::to_str) {
             //
             // include only supported extensions
             //

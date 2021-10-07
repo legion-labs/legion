@@ -23,11 +23,7 @@ fn source_resource(path: &str) -> &str {
     if let (Some(l), Some(r)) = { (path.find('('), path.rfind(')')) } {
         return source_resource(&path[(l + 1)..r]);
     }
-    if let Some(sep) = path.find(',') {
-        &path[..sep]
-    } else {
-        path
-    }
+    path.find(',').map_or(path, |sep| &path[..sep])
 }
 
 fn push_transforms(mut id: ResourcePathId, path: &str) -> ResourcePathId {
@@ -56,10 +52,10 @@ fn push_transforms(mut id: ResourcePathId, path: &str) -> ResourcePathId {
             right = &right[r + 1..];
 
             if let (Some(l), Some(r)) = (name.find('\''), name.rfind('\'')) {
-                if l != r {
-                    Some(&name[l + 1..r])
-                } else {
+                if l == r {
                     None
+                } else {
+                    Some(&name[l + 1..r])
                 }
             } else {
                 None
@@ -87,14 +83,10 @@ fn lookup_asset_path(
 ) -> Option<ResourcePathId> {
     let source = source_resource(path);
     let output = lookup_reference(references, source).map(ResourcePathId::from);
-    let output = if let Some(id) = output {
-        Some(push_transforms(id, path))
-    } else {
-        output
-    };
+    let output = output.map(|id| push_transforms(id, path));
     match &output {
         Some(resolved_path) => {
-            println!("Path Resolved: {} -> {:?}", path, resolved_path);
+            println!("Path Resolved: {} -> {}", path, resolved_path);
         }
         None => {
             eprintln!("Failed to resolve path: {}", path);
