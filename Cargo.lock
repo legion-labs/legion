@@ -3102,6 +3102,11 @@ dependencies = [
 [[package]]
 name = "legion-renderer"
 version = "0.1.0"
+dependencies = [
+ "legion-codec-api",
+ "legion-graphics-api",
+ "log",
+]
 
 [[package]]
 name = "legion-resource-registry"
@@ -3161,6 +3166,7 @@ dependencies = [
  "legion-ecs",
  "legion-editor-proto",
  "legion-mp4",
+ "legion-renderer",
  "log",
  "serde",
  "serde_json",

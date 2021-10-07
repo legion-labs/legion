@@ -113,39 +113,34 @@ impl<A: tauri::Assets> TauriPlugin<A> {
             context: Mutex::new(Some(context)),
         }
     }
-
-    fn runner(app: App) {
-        let mut app = app;
-
-        let settings = app
-            .world
-            .remove_non_send::<TauriPluginSettings<tauri::Wry>>()
-            .expect("the Tauri plugin was not configured");
-
-        let context = app.world.remove_non_send::<tauri::Context<A>>().unwrap();
-
-        let tauri_app = settings
-            .builder
-            .build(context)
-            .expect("failed to build Tauri application");
-
-        // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
-        // get rid of this and move the value directly instead.
-        let app = std::rc::Rc::new(std::cell::RefCell::new(app));
-
-        tauri_app.run(move |_, event| {
-            if let tauri::Event::MainEventsCleared = event {
-                app.borrow_mut().update();
-            }
-        });
-    }
 }
 
 impl<A: tauri::Assets> Plugin for TauriPlugin<A> {
     fn build(&self, app: &mut App) {
         let context = std::mem::replace(&mut *self.context.lock().unwrap(), None).unwrap();
 
-        app.insert_non_send_resource(context)
-            .set_runner(Self::runner);
+        app.set_runner(move |app| {
+            let mut app = app;
+
+            let settings = app
+                .world
+                .remove_non_send::<TauriPluginSettings<tauri::Wry>>()
+                .expect("the Tauri plugin was not configured");
+
+            let tauri_app = settings
+                .builder
+                .build(context)
+                .expect("failed to build Tauri application");
+
+            // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
+            // get rid of this and move the value directly instead.
+            let app = std::rc::Rc::new(std::cell::RefCell::new(app));
+
+            tauri_app.run(move |_, event| {
+                if let tauri::Event::MainEventsCleared = event {
+                    app.borrow_mut().update();
+                }
+            });
+        });
     }
 }

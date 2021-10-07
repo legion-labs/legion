@@ -12,6 +12,7 @@ legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-editor-proto = { path = "../../proto/editor-proto", version = "0.1.0" }
 legion-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
 legion-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
+legion-renderer = { path = "../renderer", version = "0.1.0" }
 legion-async = { path = "../async", version = "0.1.0" }
 tokio = { version = "1", features = ["full"] }
 tonic = "0.5.2"
@@ -25,3 +26,7 @@ anyhow = "1.0.44"
 bytes = "1"
 log = "0.4"
 hsl = "0.1"
+
+[features]
+default = []
+vulkan = ["legion-renderer/vulkan"]

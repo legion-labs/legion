@@ -19,3 +19,6 @@ clap = "2"
 simple_logger = "1"
 log = "0.4"
 anyhow = "1.0.44"
+
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+legion-streamer = { path = "../../plugin/streamer", features = ["vulkan"] }

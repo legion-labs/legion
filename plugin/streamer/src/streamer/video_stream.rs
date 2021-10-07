@@ -10,34 +10,34 @@ use legion_codec_api::{
     formats::{self, RBGYUVConverter},
 };
 use legion_mp4::Mp4Stream;
+use legion_renderer::Renderer;
 
 #[derive(Component)]
 #[component(storage = "Table")]
 pub struct VideoStream {
     video_data_channel: Arc<RTCDataChannel>,
-    src: &'static [u8],
     encoder: Encoder,
     converter: RBGYUVConverter,
     mp4: Mp4Stream,
     track_id: i32,
     frame_id: i32,
     hue: f32,
+    renderer: Renderer,
 }
 
 impl VideoStream {
     pub fn new(video_data_channel: Arc<RTCDataChannel>) -> anyhow::Result<Self> {
-        // Sample code to stream a video.
-        //let src = &include_bytes!("../../../server/editor-srv/assets/lenna_512x512.rgb")[..];
-        let src = &include_bytes!("../../../../server/editor-srv/assets/pencils_1024x768.rgb")[..];
-
+        const TARGET_WIDTH: u32 = 1024;
+        const TARGET_HEIGHT: u32 = 768;
+    
         struct Resolution {
             width: u32,
             height: u32,
         }
 
         let resolution = Resolution {
-            width: 1024,
-            height: 768,
+            width: TARGET_WIDTH,
+            height: TARGET_HEIGHT,
         };
 
         let config = encoder::EncoderConfig::new(resolution.width, resolution.height)
@@ -57,13 +57,13 @@ impl VideoStream {
 
         Ok(Self {
             video_data_channel,
-            src,
             encoder,
             converter,
             mp4,
             track_id,
             frame_id: 0,
             hue: 1.0,
+            renderer: Renderer::new(TARGET_WIDTH, TARGET_HEIGHT),
         })
     }
 
@@ -77,10 +77,8 @@ impl VideoStream {
 
     pub(crate) fn render(&mut self) -> impl std::future::Future<Output = ()> + 'static {
         let now = tokio::time::Instant::now();
-
-        let rgb_modulation = hue2rgb_modulation(self.hue);
-
-        self.converter.convert_rgb(self.src, rgb_modulation);
+        
+        self.renderer.render(self.frame_id as usize, 0.0, &mut self.converter);
         let stream = self.encoder.encode(&self.converter).unwrap();
 
         for layer in &stream.layers {
