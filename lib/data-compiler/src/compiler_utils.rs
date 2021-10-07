@@ -5,7 +5,7 @@ use legion_data_runtime::ResourceId;
 
 /// Converts `ResourcePathId` to `ResourceId`.
 pub fn path_id_to_asset_id(path: &Option<ResourcePathId>) -> Option<ResourceId> {
-    path.as_ref().map(|p| p.content_id())
+    path.as_ref().map(ResourcePathId::content_id)
 }
 
 /// Converts `ResourceId` to underlying binary representation.

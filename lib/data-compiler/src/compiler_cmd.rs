@@ -84,7 +84,7 @@ pub fn list_compilers(paths: &[PathBuf]) -> Vec<CompilerInfo> {
         if let Ok(entries) = fs::read_dir(&dir) {
             for entry in entries.filter_map(|e| e.ok()) {
                 let path = entry.path();
-                let filename = match path.file_name().and_then(|s| s.to_str()) {
+                let filename = match path.file_name().and_then(OsStr::to_str) {
                     Some(filename) => filename,
                     _ => continue,
                 };

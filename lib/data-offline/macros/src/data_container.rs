@@ -1,7 +1,12 @@
 // ['DataContainer'] serialization
 
+<<<<<<< HEAD
 use proc_macro::{TokenStream, TokenTree};
 use quote::*;
+=======
+use proc_macro::TokenStream;
+use quote::{format_ident, quote, ToTokens};
+>>>>>>> f7209cc0 (new lints in data-offline, data-compiler)
 use syn::{parse_macro_input, DeriveInput};
 type QuoteRes = quote::__private::TokenStream;
 
@@ -26,6 +31,27 @@ fn metadata_from_type(t: &syn::Type) -> Option<QuoteRes> {
     }
 }
 
+<<<<<<< HEAD
+=======
+// Extract all `#[legion(...)]` attributes
+fn get_legion_meta_items(attr: &syn::Attribute) -> Vec<syn::NestedMeta> {
+    if attr.path != LEGION_TAG {
+        return Vec::new();
+    }
+
+    match attr.parse_meta() {
+        Ok(List(meta)) => meta.nested.into_iter().collect(),
+        Ok(_other) => {
+            panic!("Legion proc-macro: expected attributes syntax #[legion(...)");
+        }
+        Err(err) => {
+            panic!("Legion proc-macro: Error parsing attributes, {}", err);
+        }
+    }
+}
+
+#[derive(Default)]
+>>>>>>> f7209cc0 (new lints in data-offline, data-compiler)
 struct MemberMetaInfo {
     name: String,
     type_id: syn::Type,
@@ -160,6 +186,7 @@ fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
     field
         .attrs
         .iter()
+<<<<<<< HEAD
         .filter(|attr| attr.path.is_ident(LEGION_TAG))
         .for_each(|attr| {
             let token_stream = TokenStream::from(attr.tokens.clone());
@@ -185,6 +212,15 @@ fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
                         }
                         _ => {}
                     }
+=======
+        .flat_map(|attr| get_legion_meta_items(attr))
+    {
+        match &meta_item {
+            // Parse `#[legion(offline)]`
+            Meta(Path(word)) if word == OFFLINE_ATTR => {
+                member_info.offline = true;
+            }
+>>>>>>> f7209cc0 (new lints in data-offline, data-compiler)
 
                     if let Some(TokenTree::Punct(punct)) = group_iter.next() {
                         if punct.as_char() != ',' {
@@ -314,6 +350,7 @@ fn generate_offline_json_writes(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
         .collect()
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn derive_data_container(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let offline_identifier = ast.ident.clone();
@@ -353,9 +390,10 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
     }
 
     // Optional lifetime parameters
-    let life_time = match need_life_time {
-        true => quote! {<'r>},
-        _ => quote! {},
+    let life_time = if need_life_time {
+        quote! {<'r>}
+    } else {
+        quote! {}
     };
 
     let offline_fields_defaults = generate_offline_defaults(&members);
