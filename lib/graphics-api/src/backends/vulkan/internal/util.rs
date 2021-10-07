@@ -16,6 +16,7 @@ pub(crate) fn resource_type_buffer_usage_flags(
     // resource_type: ResourceType,
     // has_format: bool,
 ) -> vk::BufferUsageFlags {
+    
     let mut usage_flags = vk::BufferUsageFlags::TRANSFER_SRC;
 
     if resource_usage.intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW) {
@@ -24,17 +25,7 @@ pub(crate) fn resource_type_buffer_usage_flags(
 
     if resource_usage.intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW|ResourceUsage::HAS_SHADER_RESOURCE_VIEW ) {
         usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
-        // if has_format {
-        //     usage_flags |= vk::BufferUsageFlags::STORAGE_TEXEL_BUFFER;
-        // }
     }
-
-    // if resource_type.intersects(ResourceUsage::BUFFER) {
-    //     usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
-    //     // if has_format {
-    //     //     usage_flags |= vk::BufferUsageFlags::UNIFORM_TEXEL_BUFFER;
-    //     // }
-    // }
 
     if resource_usage.intersects(ResourceUsage::HAS_INDEX_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::INDEX_BUFFER;
@@ -91,15 +82,20 @@ pub(crate) fn image_format_to_aspect_mask(
 pub fn shader_resource_type_to_descriptor_type(shader_resource_type: ShaderResourceType) -> Option<vk::DescriptorType> {
     match shader_resource_type {
         ShaderResourceType::Sampler => Some(vk::DescriptorType::SAMPLER),
-        ShaderResourceType::ConstantBuffer(_e) => Some(vk::DescriptorType::UNIFORM_BUFFER),
-        ShaderResourceType::ShaderResourceView(_e) => todo!(),
-        ShaderResourceType::UnorderedAccessView(_e) => todo!(),
+        ShaderResourceType::ConstantBuffer => Some(vk::DescriptorType::UNIFORM_BUFFER),
+        ShaderResourceType::StructuredBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
+        ShaderResourceType::RWStructuredBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
+        ShaderResourceType::ByteAdressBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
+        ShaderResourceType::RWByteAdressBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
+        ShaderResourceType::Texture2D => Some(vk::DescriptorType::SAMPLED_IMAGE),
+        ShaderResourceType::RWTexture2D => Some(vk::DescriptorType::STORAGE_IMAGE),
+        ShaderResourceType::Texture2DArray => Some(vk::DescriptorType::SAMPLED_IMAGE),
+        ShaderResourceType::RWTexture2DArray => Some(vk::DescriptorType::STORAGE_IMAGE),
+        ShaderResourceType::Texture3D => Some(vk::DescriptorType::SAMPLED_IMAGE),
+        ShaderResourceType::RWTexture3D => Some(vk::DescriptorType::STORAGE_IMAGE),
+        ShaderResourceType::TextureCube => Some(vk::DescriptorType::SAMPLED_IMAGE),
+        ShaderResourceType::TextureCubeArray => Some(vk::DescriptorType::SAMPLED_IMAGE),
         ShaderResourceType::Undefined => todo!(),
-        
-    
-    // pub const SAMPLED_IMAGE: Self = Self(2);
-    // pub const STORAGE_IMAGE: Self = Self(3);        
-    // pub const STORAGE_BUFFER: Self = Self(7);    
     }    
 }
 

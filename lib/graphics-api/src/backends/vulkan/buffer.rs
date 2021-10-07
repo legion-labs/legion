@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::{VulkanApi, VulkanConstantBufferView, VulkanDeviceContext, VulkanShaderResourceView, VulkanUnorderedAccessView};
+use super::{VulkanApi, VulkanBufferView, VulkanDeviceContext};
 use crate::{Buffer, BufferDef, GfxResult, MemoryUsage, ResourceUsage};
 use ash::vk;
 use legion_utils::trust_cell::TrustCell;
@@ -70,7 +70,7 @@ impl VulkanBuffer {
         //     );
         // }
 
-        let mut usage_flags = super::util::resource_type_buffer_usage_flags(
+        let mut usage_flags = super::internal::resource_type_buffer_usage_flags(
             buffer_def.usage,
             // buffer_def.format != Format::UNDEFINED,
         );
@@ -289,15 +289,7 @@ impl Buffer<VulkanApi> for VulkanBuffer {
         Ok(())
     }
 
-    fn create_constant_buffer_view(&self, cbv_def: &crate::ConstantBufferViewDef) -> GfxResult<VulkanConstantBufferView> {
-        VulkanConstantBufferView::from_buffer( &self, cbv_def)
-    }
-
-    fn create_shader_resource_view(&self, srv_def: &crate::ShaderResourceViewDef) -> GfxResult<VulkanShaderResourceView> {
-        VulkanShaderResourceView::from_buffer(&self, srv_def)
-    }
-
-    fn create_unordered_acces_view(&self, uav_def: &crate::UnorderedAccessViewDef) -> GfxResult<VulkanUnorderedAccessView> {
-        VulkanUnorderedAccessView::from_buffer(&self, uav_def)
+    fn create_constant_buffer_view(&self, cbv_def: &crate::BufferViewDef) -> GfxResult<VulkanBufferView> {
+        VulkanBufferView::from_buffer( &self, cbv_def)
     }
 }

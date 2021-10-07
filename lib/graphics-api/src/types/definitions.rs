@@ -2,7 +2,7 @@ use super::*;
 
 use crate::{GfxApi, MAX_DESCRIPTOR_SET_LAYOUTS, ResourceType};
 use legion_utils::decimal::DecimalF32;
-use std::{hash::{Hash, Hasher}, num::NonZeroU64};
+use std::{hash::{Hash, Hasher}, num::{NonZeroU32, NonZeroU64}};
 
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
@@ -24,8 +24,6 @@ bitflags::bitflags! {
         const HAS_INDIRECT_BUFFER  = 0x0040;
     }
 }
-
-
 
 #[derive(Clone, Debug, Default)]
 pub struct BufferElementData {
@@ -234,12 +232,12 @@ pub enum BufferSize {
     WholeSize
 }
 
-pub struct ConstantBufferViewDef {    
+pub struct BufferViewDef {    
     pub offset : u64,
     pub size : BufferSize,
 }
 
-impl Default for ConstantBufferViewDef {
+impl Default for BufferViewDef {
     fn default() -> Self {
         Self {
             offset : 0,
@@ -305,7 +303,7 @@ impl<A: GfxApi> ShaderStageDef<A> {
                 if reflection.shader_stage.intersects(stage_flag) {
                     reflection.shader_stage.hash(hasher);
                     reflection.entry_point_name.hash(hasher);
-                    reflection.resources.hash(hasher);
+                    reflection.shader_resources.hash(hasher);
                     shader_module_hash.hash(hasher);
                     break;
                 }
@@ -320,23 +318,22 @@ impl<A: GfxApi> ShaderStageDef<A> {
 }
 
 #[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
-pub struct ConstantBufferInfo {
-    pub size : u64
-}
-
-#[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
-pub struct ShaderResourceViewInfo;
-
-#[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
-pub struct UnorderedAccessViewInfo;
-
-#[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
 pub enum ShaderResourceType {
     Undefined,
     Sampler,    
-    ConstantBuffer(ConstantBufferInfo),
-    ShaderResourceView(ShaderResourceViewInfo),
-    UnorderedAccessView(UnorderedAccessViewInfo),
+    ConstantBuffer,
+    StructuredBuffer,
+    RWStructuredBuffer,
+    ByteAdressBuffer,
+    RWByteAdressBuffer,
+    Texture2D,    
+    RWTexture2D,    
+    Texture2DArray,      
+    RWTexture2DArray,      
+    Texture3D,    
+    RWTexture3D,    
+    TextureCube,      
+    TextureCubeArray,  
 }
 
 impl Default for ShaderResourceType {
@@ -378,12 +375,15 @@ impl Default for DescriptorSetLayoutDef {
     }
 }
 
-pub struct PushConstantDef {}
+pub struct PushConstantDef {
+    pub used_in_shader_stages: ShaderStageFlags,
+    pub size: NonZeroU32
+}
 
 pub struct RootSignatureDef<A: GfxApi> {
     pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: [Option<A::DescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
-    pub push_constant_defs: Vec<PushConstantDef>,
+    pub push_constant_def: Option<PushConstantDef>,
 }
 
 /// Used to create a `Sampler`

@@ -239,7 +239,7 @@ impl VulkanTexture {
             // Determine image usage flags
             //
             let mut usage_flags =
-                super::util::resource_type_image_usage_flags(texture_def.resource_type);
+                super::internal::resource_type_image_usage_flags(texture_def.resource_type);
             if texture_def
                 .resource_type
                 .intersects(ResourceType::RENDER_TARGET_COLOR)
@@ -345,7 +345,7 @@ impl VulkanTexture {
         };
 
         //SRV
-        let aspect_mask = super::util::image_format_to_aspect_mask(texture_def.format);
+        let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(aspect_mask)
             .base_array_layer(0)
@@ -442,7 +442,7 @@ impl VulkanTexture {
             };
 
             //SRV
-            let aspect_mask = super::util::image_format_to_aspect_mask(texture_def.format);
+            let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);
             let format_vk = texture_def.format.into();
             let subresource_range = vk::ImageSubresourceRange::builder()
                 .aspect_mask(aspect_mask)

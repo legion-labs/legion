@@ -1,20 +1,19 @@
+use std::num::NonZeroU32;
+
 use fnv::FnvHashMap;
 
-use crate::{
-    DescriptorDef, DescriptorSetLayoutDef, DeviceContext, GfxApi, GfxResult, PipelineType,
-    RootSignatureDef, Shader, ShaderResource, ShaderStageFlags,
-    MAX_DESCRIPTOR_SET_LAYOUTS,
-};
+use crate::{DescriptorDef, DescriptorSetLayoutDef, DeviceContext, GfxApi, GfxResult, MAX_DESCRIPTOR_SET_LAYOUTS, PipelineType, PushConstant, PushConstantDef, RootSignatureDef, Shader, ShaderResource, ShaderStageFlags};
 
 pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
 
 pub(crate) fn extract_resources<A: GfxApi>(
     shaders: &[A::Shader],
-) -> GfxResult<(PipelineType, Vec<ShaderResource>)> {
+) -> GfxResult<(PipelineType, Vec<ShaderResource>, Option<PushConstant>)> {
     let mut merged_resources: Vec<ShaderResource> = vec![];
     let mut merged_resources_name_index_map = FnvHashMap::default();
     let mut pipeline_type = None;
+    let mut push_constant = None;
 
     // Make sure all shaders are compatible/build lookup of shared data from them
     for shader in shaders {
@@ -42,7 +41,7 @@ pub(crate) fn extract_resources<A: GfxApi>(
             );
         }
 
-        for resource in &pipeline_reflection.resources {
+        for resource in &pipeline_reflection.shader_resources {
             log::trace!(
                 "  Merge resource (set={:?} binding={:?} name={:?})",
                 resource.set_index,
@@ -50,10 +49,7 @@ pub(crate) fn extract_resources<A: GfxApi>(
                 resource.name
             );
 
-            let existing_resource_index = resource
-                .name
-                .as_ref()
-                .and_then(|x| merged_resources_name_index_map.get(x));
+            let existing_resource_index = merged_resources_name_index_map.get(&resource.name);
 
             if let Some(&existing_resource_index) = existing_resource_index {
                 log::trace!("    Resource with this name already exists");
@@ -124,11 +120,9 @@ pub(crate) fn extract_resources<A: GfxApi>(
                     let existing_resource = &mut merged_resources[existing_index];
                     verify_resources_can_overlap(resource, existing_resource)?;
 
-                    if let Some(name) = &resource.name {
-                        let old = merged_resources_name_index_map.insert(name, existing_index);
-                        assert!(old.is_none());
-                    }
-
+                    let old = merged_resources_name_index_map.insert(&resource.name, existing_index);
+                    assert!(old.is_none());
+                    
                     log::trace!(
                         "Adding shader flags {:?} the existing resource",
                         resource.used_in_shader_stages
@@ -139,16 +133,26 @@ pub(crate) fn extract_resources<A: GfxApi>(
                     // It's a new binding name and doesn't overlap with existing bindings
                     //
                     log::trace!("    Does not collide with existing bindings");
-                    if let Some(name) = &resource.name {
-                        merged_resources_name_index_map.insert(name, merged_resources.len());
-                    }
+                    merged_resources_name_index_map.insert(&resource.name, merged_resources.len());
                     merged_resources.push(resource.clone());
                 }
             }
         }
+
+        match &mut push_constant {
+            None => {
+                push_constant = pipeline_reflection.push_constant;
+            }
+            Some(pc) => {
+                if let Some(pipeline_push_constant) =  &pipeline_reflection.push_constant {
+                    pc.verify_compatible_across_stages(pipeline_push_constant)?;
+                    pc.used_in_shader_stages |= pipeline_push_constant.used_in_shader_stages;
+                }
+            }            
+        }
     }
 
-    Ok((pipeline_type.unwrap(), merged_resources))
+    Ok((pipeline_type.unwrap(), merged_resources, push_constant))
 }
 
 fn verify_resources_can_overlap(
@@ -168,18 +172,18 @@ fn verify_resources_can_overlap(
         return Err(message.into());
     }
 
-    if previous_resource.size_in_bytes != resource.size_in_bytes {
-        let message = format!(
-            "Shader resource (set={:?} binding={:?} name={:?}) has mismatching size_in_bytes {:?} and {:?} across shaders in same root signature",
-            resource.set_index,
-            resource.binding,
-            resource.name,
-            resource.size_in_bytes,
-            previous_resource.size_in_bytes
-        );
-        log::error!("{}", message);
-        return Err(message.into());
-    }
+    // if previous_resource.size_in_bytes != resource.size_in_bytes {
+    //     let message = format!(
+    //         "Shader resource (set={:?} binding={:?} name={:?}) has mismatching size_in_bytes {:?} and {:?} across shaders in same root signature",
+    //         resource.set_index,
+    //         resource.binding,
+    //         resource.name,
+    //         resource.size_in_bytes,
+    //         previous_resource.size_in_bytes
+    //     );
+    //     log::error!("{}", message);
+    //     return Err(message.into());
+    // }
 
     if previous_resource.shader_resource_type != resource.shader_resource_type {
         let message = format!(
@@ -201,7 +205,7 @@ pub fn tmp_extract_root_signature_def<A: GfxApi>(
     device_context: &A::DeviceContext,
     shaders: &[A::Shader],
 ) -> GfxResult<RootSignatureDef<A>> {
-    let (pipeline_type, shader_resources) = extract_resources::<A>(shaders)?;
+    let (pipeline_type, shader_resources, push_constant) = extract_resources::<A>(shaders)?;
 
     for shader_resource in &shader_resources {
         shader_resource.validate()?;
@@ -225,7 +229,7 @@ pub fn tmp_extract_root_signature_def<A: GfxApi>(
 
             let mut add_descriptor = |d: &ShaderResource| {
                 let descriptor_def = DescriptorDef {
-                    name: d.name.as_ref().unwrap().clone(),
+                    name: d.name.clone(),
                     binding: d.binding,
                     shader_resource_type: d.shader_resource_type.clone(),
                     array_size: d.element_count,
@@ -240,9 +244,14 @@ pub fn tmp_extract_root_signature_def<A: GfxApi>(
         }
     }
 
+    let push_constant_def = push_constant.map(|e| PushConstantDef {
+        used_in_shader_stages: e.used_in_shader_stages,
+        size: NonZeroU32::new(e.size).unwrap()
+    } );
+
     Ok(RootSignatureDef {
         pipeline_type,
         descriptor_set_layouts: layouts,
-        push_constant_defs: Vec::new(),
+        push_constant_def,
     })
 }

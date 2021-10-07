@@ -24,9 +24,8 @@ impl GfxApi for NullApi {
     type Buffer = NullBuffer;
     type Texture = NullTexture;
     type Sampler = NullSampler;
-    type ConstantBufferView = NullConstantBufferView;
-    type ShaderResourceView = NullShaderResourceView;
-    type UnorderedAccessView = NullUnorderedAccessView;
+    type BufferView = NullBufferView;
+    type TextureView = NullTextureView;
     type ShaderModule = NullShaderModule;
     type Shader = NullShader;
     type DescriptorSetLayout = NullDescriptorSetLayout;
@@ -157,15 +156,15 @@ impl Buffer<NullApi> for NullBuffer {
     ) -> GfxResult<()> {
         unimplemented!()
     }
-    fn create_constant_buffer_view(&self, cbv_def: &ConstantBufferViewDef) -> GfxResult<NullConstantBufferView> {
+    fn create_constant_buffer_view(&self, cbv_def: &BufferViewDef) -> GfxResult<NullBufferView> {
         unimplemented!()
     }
-    fn create_shader_resource_view(&self, srv_def: &ShaderResourceViewDef) -> GfxResult<NullShaderResourceView> {
-        unimplemented!()
-    }
-    fn create_unordered_acces_view(&self, uav_def: &UnorderedAccessViewDef) -> GfxResult<NullUnorderedAccessView> {
-        unimplemented!()
-    }
+    // fn create_shader_resource_view(&self, srv_def: &ShaderResourceViewDef) -> GfxResult<NullShaderResourceView> {
+    //     unimplemented!()
+    // }
+    // fn create_unordered_acces_view(&self, uav_def: &UnorderedAccessViewDef) -> GfxResult<NullUnorderedAccessView> {
+    //     unimplemented!()
+    // }
 }
 
 #[derive(Clone, Debug)]
@@ -187,11 +186,11 @@ pub struct NullSampler;
 impl Sampler<NullApi> for NullSampler {}
 
 //
-// Views (ConstantBufferView, ShaderResourceView, UnorderedAccessView)
+// Views
 //
 #[derive(Clone, Debug)]
-pub struct NullConstantBufferView;
-impl ConstantBufferView<NullApi> for NullConstantBufferView {
+pub struct NullBufferView;
+impl BufferView<NullApi> for NullBufferView {
     fn buffer(&self) -> &NullBuffer {
         unimplemented!();
     }
@@ -206,12 +205,12 @@ impl ConstantBufferView<NullApi> for NullConstantBufferView {
 }
 
 #[derive(Clone, Debug)]
-pub struct NullShaderResourceView;
-impl ShaderResourceView<NullApi> for NullShaderResourceView {}
-
-#[derive(Clone, Debug)]
-pub struct NullUnorderedAccessView;
-impl UnorderedAccessView<NullApi> for NullUnorderedAccessView{}
+pub struct NullTextureView;
+impl TextureView<NullApi> for NullTextureView {
+    fn texture(&self) -> &NullTexture {
+        unimplemented!();
+    }
+}
 
 //
 // Shaders/Pipelines
@@ -405,7 +404,13 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     ) -> GfxResult<()> {
         unimplemented!()
     }
-
+    fn cmd_push_constants<T : Sized>(
+        &self,
+        root_signature: &NullRootSignature,     
+        constants: &T,     
+    ) -> GfxResult<()> {
+        unimplemented!()
+    }
     fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) -> GfxResult<()> {
         unimplemented!()
     }
@@ -489,6 +494,8 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     ) -> GfxResult<()> {
         unimplemented!()
     }
+
+    
 }
 
 //

@@ -76,14 +76,16 @@ impl VulkanDescriptorSetLayout {
         device_context: &VulkanDeviceContext,
         descriptor_set_layout_def: &DescriptorSetLayoutDef,
     ) -> GfxResult<Self> {
+        
         let mut descriptors = Vec::new();
         let mut vk_bindings = Vec::<vk::DescriptorSetLayoutBinding>::new();
         let mut update_data_count_per_set = 0;
 
         for descriptor_def in &descriptor_set_layout_def.descriptor_defs {
-            let vk_descriptor_type =
-                super::util::shader_resource_type_to_descriptor_type(descriptor_def.shader_resource_type.clone())
-                    .unwrap();
+            let vk_descriptor_type = super::internal::shader_resource_type_to_descriptor_type(
+                descriptor_def.shader_resource_type.clone(),
+            )
+            .unwrap();
 
             let vk_binding = vk::DescriptorSetLayoutBinding::builder()
                 .binding(descriptor_def.binding)

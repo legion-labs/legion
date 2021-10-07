@@ -1,5 +1,5 @@
 use super::{VulkanApi, VulkanDescriptorHeap, VulkanDescriptorSetLayout, VulkanDeviceContext};
-use crate::{ConstantBufferView, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle, DescriptorUpdate, GfxResult, ShaderResourceType};
+use crate::{BufferView, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle, DescriptorUpdate, GfxResult, ShaderResourceType};
 use ash::vk;
 
 struct DescriptorUpdateData {
@@ -181,9 +181,13 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         .build(),
                 );
             }
-            ShaderResourceType::Undefined => todo!(),
-            ShaderResourceType::ConstantBuffer(_e) => {
-                let cbvs = update.elements.cbvs.ok_or_else(||
+            
+            ShaderResourceType::ConstantBuffer | 
+            ShaderResourceType::StructuredBuffer | 
+            ShaderResourceType::RWStructuredBuffer |
+            ShaderResourceType::ByteAdressBuffer | 
+            ShaderResourceType::RWByteAdressBuffer => {
+                let cbvs = update.elements.buffer_views.ok_or_else(||
                     format!(
                         "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
                         update.descriptor_key,
@@ -206,16 +210,6 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                     buffer_info.buffer = cbv.buffer().vk_buffer();
                     buffer_info.offset = cbv.offset();
                     buffer_info.range = cbv.size();
-
-                    // if let Some(offset_size) = update.elements.buffer_offset_sizes {
-                    //     if offset_size[buffer_index].byte_offset != 0 {
-                    //         buffer_info.offset = offset_size[buffer_index].byte_offset;
-                    //     }
-
-                    //     if offset_size[buffer_index].size != 0 {
-                    //         buffer_info.range = offset_size[buffer_index].size;
-                    //     }
-                    // }
                 }
 
                 // Queue a descriptor write
@@ -224,9 +218,19 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         .buffer_info(&self.update_data.buffer_infos[begin_index..next_index])
                         .build(),
                 );
-            }
-            ShaderResourceType::ShaderResourceView(_e) => todo!(),
-            ShaderResourceType::UnorderedAccessView(_e) => todo!(),
+            }   
+            ShaderResourceType::Texture2D => {
+                unimplemented!();                
+            },
+            ShaderResourceType::RWTexture2D => todo!(),
+            ShaderResourceType::Texture2DArray => todo!(),
+            ShaderResourceType::RWTexture2DArray => todo!(),
+            ShaderResourceType::Texture3D => todo!(),
+            ShaderResourceType::RWTexture3D => todo!(),
+            ShaderResourceType::TextureCube => todo!(),
+            ShaderResourceType::TextureCubeArray => todo!(),                     
+            ShaderResourceType::Undefined => todo!(),
+            // ShaderResourceType::UnorderedAccessView => todo!(),
             /* <<<<<<<<<<<<<<<<<<<<<<<<<<
             ShaderResourceType::TEXTURE => {
                 

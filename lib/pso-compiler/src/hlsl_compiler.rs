@@ -1,23 +1,35 @@
-use std::{path::Path};
-use graphics_api::{ShaderResource, ShaderResourceType, ConstantBufferInfo, ShaderResourceViewInfo, ShaderStageFlags, ShaderStageReflection};
+use std::{io::Read, path::Path};
+use graphics_api::{PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags, ShaderStageReflection};
 use hassle_rs::{Dxc, compile_hlsl};
-use anyhow::{Result, anyhow };
-use spirv_reflect::types::{ReflectDescriptorBinding, ReflectShaderStageFlags};
+use anyhow::{Result, anyhow};
+use spirv_reflect::types::{ReflectBlockVariable, ReflectDecorationFlags, ReflectDescriptorBinding, ReflectShaderStageFlags};
 use spirv_tools::{TargetEnv, opt::Optimizer};
-
-
 
 pub struct CompileDefine {
     name: String,
     value: Option<String>
 }
 
+pub enum ShaderSource<'a> {
+    Code(String),
+    Path(&'a Path)
+}
+
 pub struct CompileParams<'a> {
-    pub path : &'a Path,
+    pub shader_source : ShaderSource<'a>,
     pub entry_point : &'a str,
     pub target_profile: &'a str,
     pub defines: Vec<CompileDefine>
 }
+
+impl<'a> CompileParams<'a> {
+    fn path_as_string(&self) -> &str {
+        match self.shader_source {
+            ShaderSource::Code(_) => "_code.hlsl",
+            ShaderSource::Path(path) =>  path.to_str().unwrap()
+        }
+    }
+} 
 
 pub struct CompileResult {
     pub bytecode : Vec<u8>,
@@ -40,84 +52,98 @@ impl HLSLCompiler {
 
     pub fn compile(&self, params: &CompileParams) -> Result<CompileResult> {
 
-        use std::io::Read;
+        // Shader source
+        let shader_code = get_shader_source(params)?;
 
-        // Read file
-        let code = {
-            let code = {
-                match std::fs::File::open(params.path) {
-                    Ok(mut f) => {
-                        let mut content = String::new();
-                        f.read_to_string(&mut content).unwrap();
-                        Some(content)
-                    }
-                    Err(_) => None,
-                }
-            };
-            code.ok_or( anyhow!("Cannot read source path") )?
-        };
         // Compilation
-        let bytecode = {
-            let defines = 
-                params.defines.iter().
-                map( |x| (x.name.as_str(), x.value.as_ref().map(|y| y.as_str() ))  ).collect::<Vec<_>>();        
-    
-            compile_hlsl(
-                params.path.to_str().unwrap(),
-                &code,
-                params.entry_point,
-                params.target_profile.as_ref(),
-                &["-Od", "-spirv"],
-                &defines
-            )?
-        };
+        let unopt_bytecode = compile_to_unoptimized_spirv(params, &shader_code)?;
+        
         // Reflection
-        let refl_info = {       
-            let shader_mod = spirv_reflect::create_shader_module(&bytecode).unwrap();            
+        let reflection_info = extract_reflection_info(&unopt_bytecode, params);
 
-            let mut shader_resources = Vec::new();
-            let shader_stage = to_shader_stage_flags(shader_mod.get_shader_stage());
-            
-            let ivs = shader_mod.enumerate_input_variables(Some(params.entry_point)).unwrap();
-            for iv in ivs {
-                dbg!( &iv );
-            }
-
-
-            let em = shader_mod.get_spirv_execution_model();            
-            let rc = em.required_capabilities();
-            for c in rc {
-                dbg!( &c );
-            }
-
-            for descriptor in &shader_mod.enumerate_descriptor_bindings(None).unwrap() {
-                shader_resources.push( to_shader_resource(shader_stage, descriptor) );
-            }
-
-            ShaderStageReflection{
-                shader_stage: shader_stage,
-                resources: shader_resources,
-                compute_threads_per_group: None,
-                entry_point_name: params.entry_point.to_owned()
-            }
-        };
         // Optimize
-        let bytecode = {
-            let u32spirv = spirv_tools::binary::to_binary(&bytecode)?;
-    
-            let mut optimizer = spirv_tools::opt::create(Some(TargetEnv::Vulkan_1_2));        
-            optimizer.register_performance_passes();
+        let opt_bytecode = optimize_spirv(&unopt_bytecode)?;
 
-            let opt_binary = optimizer.optimize(u32spirv, &mut OptimizerCallback{}, None)?;
-    
-            opt_binary.as_bytes().to_vec()
-        };
         // Finalize
         Ok(CompileResult{
-            bytecode,
-            refl_info : Some(refl_info)
+            bytecode: opt_bytecode,
+            refl_info : Some(reflection_info)
         })
     }    
+}
+
+fn optimize_spirv(bytecode: &[u8]) -> Result<Vec<u8>> {
+
+    let u32spirv = spirv_tools::binary::to_binary(&bytecode)?;
+    let mut optimizer = spirv_tools::opt::create(Some(TargetEnv::Vulkan_1_2));
+    optimizer.register_performance_passes();
+    let opt_binary = optimizer.optimize(u32spirv, &mut OptimizerCallback{}, None)?;
+    Ok(opt_binary.as_bytes().to_vec())
+}
+
+fn compile_to_unoptimized_spirv(params: &CompileParams, shader_code: &str) -> Result<Vec<u8>> {
+    
+    let defines = 
+        params.defines.iter().
+        map( |x| (x.name.as_str(), x.value.as_ref().map(|y| y.as_str() ))  ).collect::<Vec<_>>();
+
+    compile_hlsl(
+        params.path_as_string(),
+        &shader_code,
+        params.entry_point,
+        params.target_profile.as_ref(),
+        &[
+            "-Od", 
+            "-spirv", 
+            "-fspv-target-env=vulkan1.1", 
+            // "-fspv-reflect", 
+            // "-fspv-extension=SPV_GOOGLE_hlsl_functionality1"
+        ],
+        &defines
+    ).map_err( |err| anyhow!(err) )
+}
+
+fn get_shader_source(params: &CompileParams) -> Result<String, anyhow::Error> {
+    
+    let mut shader_code = String::new();
+
+    match &params.shader_source{
+        ShaderSource::Code(code) => { 
+            shader_code = code.clone();
+        }
+        ShaderSource::Path(path) => {
+            let mut f = std::fs::File::open(path).unwrap();                                
+            f.read_to_string(&mut shader_code)?;
+        }            
+    };
+
+    Ok(shader_code)
+}
+
+fn extract_reflection_info(bytecode: &Vec<u8>, params: &CompileParams) -> ShaderStageReflection {
+
+    let shader_mod = spirv_reflect::create_shader_module(bytecode).unwrap();
+    let shader_stage = to_shader_stage_flags(shader_mod.get_shader_stage());
+    let mut shader_resources = Vec::new();
+
+    for descriptor in &shader_mod.enumerate_descriptor_bindings(Some(params.entry_point) ).unwrap() {
+        shader_resources.push(to_shader_resource(shader_stage, descriptor) );
+    }    
+    dbg!(&shader_resources);
+
+    let mut push_constants = Vec::new();
+    for push_constant in &shader_mod.enumerate_push_constant_blocks(Some(params.entry_point)).unwrap() {
+        push_constants.push(to_push_constant(shader_stage, push_constant));
+    }
+    dbg!(&push_constants);
+
+    ShaderStageReflection{
+        shader_stage,
+        shader_resources,
+        push_constants,
+        compute_threads_per_group: None,
+        entry_point_name: params.entry_point.to_owned()
+    }
 }
 
 struct OptimizerCallback;
@@ -132,7 +158,7 @@ fn to_shader_stage_flags(flags : ReflectShaderStageFlags) -> ShaderStageFlags {
         ReflectShaderStageFlags::VERTEX => ShaderStageFlags::VERTEX,
         ReflectShaderStageFlags::FRAGMENT => ShaderStageFlags::FRAGMENT,
         ReflectShaderStageFlags::COMPUTE => ShaderStageFlags::COMPUTE,
-        _ => panic!()
+        _ => unimplemented!()
     }
 }
 
@@ -141,87 +167,76 @@ fn to_shader_resource(shader_stage_flags: ShaderStageFlags, descriptor_binding :
         shader_resource_type: to_shader_resource_type(descriptor_binding),
         set_index: descriptor_binding.set,
         binding: descriptor_binding.binding,   
-        element_count: descriptor_binding.count,       
-        size_in_bytes: 0,        
+        element_count: descriptor_binding.count,               
         used_in_shader_stages: shader_stage_flags,
-        name: Some(descriptor_binding.name.clone()),
+        name: descriptor_binding.name.clone(),
     }
 }
 
-fn to_shader_resource_type(descriptor_binding : &ReflectDescriptorBinding ) -> ShaderResourceType {
-
-    println!( "Descriptor binding name {}-{} : {}", descriptor_binding.binding, descriptor_binding.set, descriptor_binding.name );
-
-    println!( "Resource Type" );
-    match descriptor_binding.resource_type {
-        spirv_reflect::types::ReflectResourceType::Undefined => { println!( "Undefined" );},
-        spirv_reflect::types::ReflectResourceType::Sampler => { println!( "Sampler" );},
-
-        spirv_reflect::types::ReflectResourceType::ConstantBufferView => { println!( "ConstantBufferView" );},
-        spirv_reflect::types::ReflectResourceType::ShaderResourceView => { println!( "ShaderResourceView" );},
-        spirv_reflect::types::ReflectResourceType::UnorderedAccessView => { println!( "UnorderedAccessView" );},
-
-        spirv_reflect::types::ReflectResourceType::CombinedImageSampler => { println!( "CombinedImageSampler" );},
-    }
-
-    println!( "Descriptor Type" );
+/// Reference: https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst
+fn to_shader_resource_type(descriptor_binding : &ReflectDescriptorBinding ) -> ShaderResourceType {    
+    
     match descriptor_binding.descriptor_type {
-        spirv_reflect::types::ReflectDescriptorType::Undefined => { println!( "Undefined" );},
-        spirv_reflect::types::ReflectDescriptorType::Sampler => { println!( "Sampler" );},
-
-        spirv_reflect::types::ReflectDescriptorType::SampledImage => { println!( "SampledImage" );},
-        spirv_reflect::types::ReflectDescriptorType::StorageImage => { println!( "StorageImage" );},
-        spirv_reflect::types::ReflectDescriptorType::UniformTexelBuffer => { println!( "UniformTexelBuffer" );},
-        spirv_reflect::types::ReflectDescriptorType::StorageTexelBuffer => { println!( "StorageTexelBuffer" );},
-        spirv_reflect::types::ReflectDescriptorType::UniformBuffer => { println!( "UniformBuffer" );},
-        spirv_reflect::types::ReflectDescriptorType::StorageBuffer => { println!( "StorageBuffer" );},
-        spirv_reflect::types::ReflectDescriptorType::UniformBufferDynamic => { println!( "UniformBufferDynamic" );},
-        spirv_reflect::types::ReflectDescriptorType::StorageBufferDynamic => { println!( "StorageBufferDynamic" );},
-        spirv_reflect::types::ReflectDescriptorType::InputAttachment => { println!( "InputAttachment" );},
-        spirv_reflect::types::ReflectDescriptorType::AccelerationStructureNV => { println!( "AccelerationStructureNV" );},
-
-        spirv_reflect::types::ReflectDescriptorType::CombinedImageSampler => { println!( "CombinedImageSampler" );},
-    }
-
-
-    // match descriptor_binding.resource_type {
-    //     spirv_reflect::types::ReflectResourceType::Sampler => ResourceType::SAMPLER,
-    //     spirv_reflect::types::ReflectResourceType::ConstantBufferView => ResourceType::UNIFORM_BUFFER,
-    //     spirv_reflect::types::ReflectResourceType::ShaderResourceView => ResourceType::
-    //     spirv_reflect::types::ReflectResourceType::UnorderedAccessView => todo!(),
-    //     spirv_reflect::types::ReflectResourceType::Undefined |
-    //     spirv_reflect::types::ReflectResourceType::CombinedImageSampler => panic!()
-    // }    
-    match descriptor_binding.resource_type {
-        spirv_reflect::types::ReflectResourceType::Sampler => { 
+        
+        spirv_reflect::types::ReflectDescriptorType::Sampler => {              
             ShaderResourceType::Sampler
+        },                
+        
+        spirv_reflect::types::ReflectDescriptorType::UniformBuffer => {       
+            ShaderResourceType::ConstantBuffer
         },
-        spirv_reflect::types::ReflectResourceType::ConstantBufferView => {
-            ShaderResourceType::ConstantBuffer(ConstantBufferInfo{ size : 0 })
+        
+        spirv_reflect::types::ReflectDescriptorType::StorageBuffer => {             
+            let readonly = is_descriptor_readonly(descriptor_binding);
+            if descriptor_binding.block.members[0].padded_size == 0 {
+                if readonly {
+                    ShaderResourceType::ByteAdressBuffer
+                } else {
+                    ShaderResourceType::RWByteAdressBuffer
+                }
+            } else {        
+                if readonly {
+                    ShaderResourceType::StructuredBuffer
+                } else {
+                    ShaderResourceType::RWStructuredBuffer
+                }
+            }
         },
-        spirv_reflect::types::ReflectResourceType::ShaderResourceView => {            
-            match descriptor_binding.descriptor_type {                 
-                spirv_reflect::types::ReflectDescriptorType::SampledImage |
-                spirv_reflect::types::ReflectDescriptorType::StorageImage |
-                spirv_reflect::types::ReflectDescriptorType::UniformBuffer |
-                spirv_reflect::types::ReflectDescriptorType::StorageBuffer => { ShaderResourceType::ShaderResourceView(ShaderResourceViewInfo{}) },
+        spirv_reflect::types::ReflectDescriptorType::SampledImage => {
+            match (descriptor_binding.image.dim, descriptor_binding.image.depth, descriptor_binding.image.arrayed, descriptor_binding.image.sampled) {
+                (spirv_reflect::types::ReflectDimension::Type2d, 2, 0, 1) => ShaderResourceType::Texture2D,
+                (spirv_reflect::types::ReflectDimension::Type2d, 2, 1, 1) => ShaderResourceType::Texture2DArray,
+                (spirv_reflect::types::ReflectDimension::Type3d, 2, 0, 1) => ShaderResourceType::Texture3D,
+                (spirv_reflect::types::ReflectDimension::Cube, 2, 0, 1) => ShaderResourceType::TextureCube,
+                (spirv_reflect::types::ReflectDimension::Cube, 2, 1, 1) => ShaderResourceType::TextureCubeArray,
                 
-                spirv_reflect::types::ReflectDescriptorType::UniformBufferDynamic | 
-                spirv_reflect::types::ReflectDescriptorType::StorageBufferDynamic | 
-                spirv_reflect::types::ReflectDescriptorType::AccelerationStructureNV => { unimplemented!() },
                 
-                spirv_reflect::types::ReflectDescriptorType::UniformTexelBuffer |
-                spirv_reflect::types::ReflectDescriptorType::StorageTexelBuffer |
-                spirv_reflect::types::ReflectDescriptorType::InputAttachment |
-                spirv_reflect::types::ReflectDescriptorType::CombinedImageSampler |
-                spirv_reflect::types::ReflectDescriptorType::Sampler |
-                spirv_reflect::types::ReflectDescriptorType::Undefined => { panic!() },
-            }            
-        },
-        spirv_reflect::types::ReflectResourceType::UnorderedAccessView => {                        
-            unimplemented!();            
-        },        
-        spirv_reflect::types::ReflectResourceType::Undefined |
-        spirv_reflect::types::ReflectResourceType::CombinedImageSampler => { panic!() },
+                _ => unimplemented!()
+            }
+            
+        }
+
+        spirv_reflect::types::ReflectDescriptorType::StorageImage => { 
+            match (descriptor_binding.image.dim, descriptor_binding.image.depth, descriptor_binding.image.arrayed, descriptor_binding.image.sampled) {
+                (spirv_reflect::types::ReflectDimension::Type2d, 2, 0, 2) => ShaderResourceType::RWTexture2D,   
+                (spirv_reflect::types::ReflectDimension::Type2d, 2, 1, 2) => ShaderResourceType::RWTexture2DArray,                             
+                (spirv_reflect::types::ReflectDimension::Type3d, 2, 0, 2) => ShaderResourceType::RWTexture3D,
+                
+                _ => unimplemented!()
+            }
+        },                
+        // 
+        _ => panic!() 
+    }
+}
+
+fn is_descriptor_readonly(descriptor_binding : &ReflectDescriptorBinding ) -> bool {
+    ReflectDecorationFlags::NON_WRITABLE == (descriptor_binding.block.decoration_flags & ReflectDecorationFlags::NON_WRITABLE)
+}
+
+fn to_push_constant(shader_stage_flags: ShaderStageFlags, push_constant : &ReflectBlockVariable ) -> PushConstant {
+    PushConstant {
+        used_in_shader_stages: shader_stage_flags,
+        size: push_constant.size
     }
 }

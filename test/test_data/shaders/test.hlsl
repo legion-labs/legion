@@ -8,37 +8,62 @@ struct VertexOut {
 };
 
 struct VertexColor {
+    float3 foo;    
     float4 color;
+    float bar;
 };
 
-// [[vk::binding(0, 0)]]
-// StructuredBuffer<VertexColor> sb_vertex_color;
-
-// [[vk::binding(2, 0)]]
-// RWStructuredBuffer<VertexColor> rw_vertex_color_fake;
+[[vk::binding(0, 0)]]
+RWByteAddressBuffer rw_test_byteaddressbuffer[1];
 
 [[vk::binding(1, 0)]]
-ConstantBuffer<VertexColor> cb_vertex_color;
+ByteAddressBuffer test_byteaddressbuffer[2];
 
-// [[vk::binding(0, 1)]]
-// ByteAddressBuffer test_byteaddressbuffer;
+[[vk::binding(2, 0)]]
+StructuredBuffer<VertexColor> vertex_color;
 
-// [[vk::binding(1, 1)]]
-// RWByteAddressBuffer rw_test_byteaddressbuffer;
+[[vk::binding(3, 0)]]
+ConstantBuffer<VertexColor> cb_vertex_color[6];
 
-// [[vk::binding(0, 2)]]
-// RWTexture3D<float4> rw_tex3d;
+[[vk::binding(4, 0)]]
+SamplerState sampl[12];
 
-// [numthreads(8,8,8)]
-// void main_cs(uint3 gid: SV_DispatchThreadID) {
-//     rw_tex3d[gid] = (float4)0.25;
-// }
+[[vk::binding(5, 0)]]
+Texture2D<float3> tex2d[2];
+
+[[vk::binding(6, 0)]]
+RWTexture2D<float3> rw_tex2d[2];
+
+[[vk::binding(7, 0)]]
+Texture2DArray<float3> tex2darray[2];
+
+[[vk::binding(8, 0)]]
+RWTexture2DArray<float3> rw_tex2darray[2];
+
+[[vk::binding(9, 0)]]
+Texture3D<float2> tex3d[2];
+
+[[vk::binding(10, 0)]]
+RWTexture3D<float2> rw_tex3d[2];
+
+[[vk::binding(11, 0)]]
+TextureCube<float> texcube[2];
+
+[[vk::binding(12, 0)]]
+TextureCubeArray<float> rw_texcube[2];
+
+[[vk::binding(13, 0)]]
+RWStructuredBuffer<VertexColor> rw_vertex_color;
+
+[[vk::push_constant]]
+ConstantBuffer<VertexColor> push_cst;
 
 VertexOut main_vs(in VertexIn vIn) {
 
     VertexOut vOut;
     vOut.hpos = float4(vIn.pos, 1.f);
-    vOut.color = cb_vertex_color.color;    
+    vOut.color = vertex_color[0].color;   
+    vOut.color = push_cst.color;
     return vOut;
 }
 

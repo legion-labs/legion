@@ -818,12 +818,8 @@ pub struct OffsetSize {
 /// Specifies what value to assign to a descriptor set
 #[derive(Debug)]
 pub struct DescriptorElements<'a, A: GfxApi> {
-    // pub textures: Option<&'a [&'a A::Texture]>,
     pub samplers: Option<&'a [&'a A::Sampler]>,
-    // pub buffers: Option<&'a [&'a A::Buffer]>,
-    // pub buffer_offset_sizes: Option<&'a [OffsetSize]>,
-    pub cbvs: Option<&'a [&'a A::ConstantBufferView]>,
-    pub srvs: Option<&'a [&'a A::ConstantBufferView]>,
+    pub buffer_views: Option<&'a [&'a A::BufferView]>,
 }
 
 impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
@@ -833,9 +829,8 @@ impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
             samplers: None,
             // buffers: None,
             // buffer_offset_sizes: None,
-            cbvs : None,
-            srvs : None
-
+            buffer_views : None,
+            // srvs : None
         }
     }
 }

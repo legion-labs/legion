@@ -126,7 +126,7 @@ fn run() -> GfxResult<()> {
                 .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
-            let cbv_def = ConstantBufferViewDef::default();
+            let cbv_def = BufferViewDef::default();
             let uniform_buffer_cbv = uniform_buffer.create_constant_buffer_view(&cbv_def)?;
 
             let render_image = device_context.create_texture(&TextureDef {
@@ -209,12 +209,13 @@ fn run() -> GfxResult<()> {
         // offline and loaded with the shader but this is not currently provided in rafx-api itself.
         // (But see the shader pipeline in higher-level rafx crates for example usage, generated
         // from spirv_cross)
-        //
+        //       
+
         let color_shader_resource = ShaderResource {
-            name: Some("color".to_string()),
+            name: "color".to_owned(),
             set_index: 0,
             binding: 0,
-            shader_resource_type:  ShaderResourceType::ConstantBuffer( ConstantBufferInfo { size : 0 }),
+            shader_resource_type:  ShaderResourceType::ConstantBuffer,
             ..Default::default()
         };
 
@@ -224,7 +225,8 @@ fn run() -> GfxResult<()> {
                 entry_point_name: "main".to_string(),
                 shader_stage: ShaderStageFlags::VERTEX,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource.clone()],
+                shader_resources: vec![color_shader_resource.clone()],
+                push_constants: Vec::new()
             },
         };
 
@@ -234,7 +236,8 @@ fn run() -> GfxResult<()> {
                 entry_point_name: "main".to_string(),
                 shader_stage: ShaderStageFlags::FRAGMENT,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource],
+                shader_resources: vec![color_shader_resource],
+                push_constants: Vec::new()
             },
         };
 
@@ -248,6 +251,7 @@ fn run() -> GfxResult<()> {
             device_context,
             &[shader.clone()],
         )?;
+        
         //
         // Create the root signature object - it represents the pipeline layout and can be shared among
         // shaders. But one per shader is fine.
@@ -275,7 +279,7 @@ fn run() -> GfxResult<()> {
                 array_index: i as u32,
                 descriptor_key: DescriptorKey::Name("color"),
                 elements: DescriptorElements {
-                    cbvs: Some(&[&uniform_buffer_cbvs[i]]),
+                    buffer_views: Some(&[&uniform_buffer_cbvs[i]]),
                     ..Default::default()
                 },
                 ..Default::default()

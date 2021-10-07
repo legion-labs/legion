@@ -1,5 +1,5 @@
 use super::{
-    VulkanApi, VulkanBuffer, VulkanCommandPool, VulkanDescriptorSetArray,
+    internal, VulkanApi, VulkanBuffer, VulkanCommandPool, VulkanDescriptorSetArray,
     VulkanDescriptorSetHandle, VulkanDeviceContext, VulkanPipeline, VulkanRootSignature,
     VulkanTexture,
 };
@@ -10,7 +10,10 @@ use crate::{
     QueueType, ResourceState, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
 };
 use ash::vk;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{    
+    mem, ptr,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 #[derive(Debug)]
 pub struct VulkanCommandBuffer {
@@ -314,7 +317,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
     fn cmd_bind_pipeline(&self, pipeline: &VulkanPipeline) -> GfxResult<()> {
         //TODO: Add verification that the pipeline is compatible with the renderpass created by the targets
         let pipeline_bind_point =
-            super::util::pipeline_type_pipeline_bind_point(pipeline.pipeline_type());
+            super::internal::pipeline_type_pipeline_bind_point(pipeline.pipeline_type());
 
         unsafe {
             self.device_context.device().cmd_bind_pipeline(
@@ -387,7 +390,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         unsafe {
             self.device_context.device().cmd_bind_descriptor_sets(
                 self.vk_command_buffer,
-                super::util::pipeline_type_pipeline_bind_point(bind_point),
+                super::internal::pipeline_type_pipeline_bind_point(bind_point),
                 root_signature.vk_pipeline_layout(),
                 set_index,
                 &[descriptor_set_handle.0],
@@ -395,6 +398,26 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             );
         }
 
+        Ok(())
+    }
+
+    fn cmd_push_constants<T : Sized>(
+        &self,
+        root_signature: &VulkanRootSignature,
+        constants: &T,
+    ) -> GfxResult<()> {
+        let constants_size = mem::size_of::<T>();
+        let constants_ptr = constants as *const T as *const u8;
+        unsafe {
+            let data_slice = &*ptr::slice_from_raw_parts(constants_ptr, constants_size);
+            self.device_context.device().cmd_push_constants(
+                self.vk_command_buffer,
+                root_signature.vk_pipeline_layout(),
+                vk::ShaderStageFlags::ALL,
+                0,
+                data_slice,
+            );
+        }
         Ok(())
     }
 
@@ -510,10 +533,10 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
 
         for barrier in buffer_barriers {
             let mut vk_buffer_barrier = vk::BufferMemoryBarrier::builder()
-                .src_access_mask(super::util::resource_state_to_access_flags(
+                .src_access_mask(super::internal::resource_state_to_access_flags(
                     barrier.src_state,
                 ))
-                .dst_access_mask(super::util::resource_state_to_access_flags(
+                .dst_access_mask(super::internal::resource_state_to_access_flags(
                     barrier.dst_state,
                 ))
                 .buffer(barrier.buffer.vk_buffer())
@@ -525,14 +548,14 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 BarrierQueueTransition::ReleaseTo(dst_queue_type) => {
                     vk_buffer_barrier.src_queue_family_index = self.queue_family_index;
                     vk_buffer_barrier.dst_queue_family_index =
-                        super::util::queue_type_to_family_index(
+                        super::internal::queue_type_to_family_index(
                             &self.device_context,
                             *dst_queue_type,
                         );
                 }
                 BarrierQueueTransition::AcquireFrom(src_queue_type) => {
                     vk_buffer_barrier.src_queue_family_index =
-                        super::util::queue_type_to_family_index(
+                        super::internal::queue_type_to_family_index(
                             &self.device_context,
                             *src_queue_type,
                         );
@@ -590,11 +613,17 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 BarrierQueueTransition::ReleaseTo(dst_queue_type) => {
                     vk_image_barrier.src_queue_family_index = self_queue_family_index;
                     vk_image_barrier.dst_queue_family_index =
-                        super::util::queue_type_to_family_index(device_context, *dst_queue_type);
+                        super::internal::queue_type_to_family_index(
+                            device_context,
+                            *dst_queue_type,
+                        );
                 }
                 BarrierQueueTransition::AcquireFrom(src_queue_type) => {
                     vk_image_barrier.src_queue_family_index =
-                        super::util::queue_type_to_family_index(device_context, *src_queue_type);
+                        super::internal::queue_type_to_family_index(
+                            device_context,
+                            *src_queue_type,
+                        );
                     vk_image_barrier.dst_queue_family_index = self_queue_family_index;
                 }
                 BarrierQueueTransition::None => {
@@ -613,13 +642,12 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             let old_layout = if barrier.texture.take_is_undefined_layout() {
                 vk::ImageLayout::UNDEFINED
             } else {
-                super::util::resource_state_to_image_layout(barrier.src_state).unwrap()
+                internal::resource_state_to_image_layout(barrier.src_state).unwrap()
             };
 
             // let old_layout =
             //     super::util::resource_state_to_image_layout(barrier.src_state).unwrap();
-            let new_layout =
-                super::util::resource_state_to_image_layout(barrier.dst_state).unwrap();
+            let new_layout = internal::resource_state_to_image_layout(barrier.dst_state).unwrap();
             log::trace!(
                 "Transition texture {:?} from {:?} to {:?}",
                 barrier.texture,
@@ -628,10 +656,10 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             );
 
             let mut vk_image_barrier = vk::ImageMemoryBarrier::builder()
-                .src_access_mask(super::util::resource_state_to_access_flags(
+                .src_access_mask(super::internal::resource_state_to_access_flags(
                     barrier.src_state,
                 ))
-                .dst_access_mask(super::util::resource_state_to_access_flags(
+                .dst_access_mask(super::internal::resource_state_to_access_flags(
                     barrier.dst_state,
                 ))
                 .old_layout(old_layout)
@@ -654,9 +682,9 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         }
 
         let src_stage_mask =
-            super::util::determine_pipeline_stage_flags(self.queue_type, src_access_flags);
+            super::internal::determine_pipeline_stage_flags(self.queue_type, src_access_flags);
         let dst_stage_mask =
-            super::util::determine_pipeline_stage_flags(self.queue_type, dst_access_flags);
+            super::internal::determine_pipeline_stage_flags(self.queue_type, dst_access_flags);
 
         if !vk_buffer_barriers.is_empty() || !vk_image_barriers.is_empty() {
             unsafe {
@@ -747,9 +775,9 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         params: &CmdBlitParams,
     ) -> GfxResult<()> {
         let src_aspect_mask =
-            super::util::image_format_to_aspect_mask(src_texture.texture_def().format);
+            super::internal::image_format_to_aspect_mask(src_texture.texture_def().format);
         let dst_aspect_mask =
-            super::util::image_format_to_aspect_mask(dst_texture.texture_def().format);
+            super::internal::image_format_to_aspect_mask(dst_texture.texture_def().format);
 
         let mut src_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)
@@ -808,9 +836,9 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             self.device_context.device().cmd_blit_image(
                 self.vk_command_buffer,
                 src_texture.vk_image(),
-                super::util::resource_state_to_image_layout(params.src_state).unwrap(),
+                super::internal::resource_state_to_image_layout(params.src_state).unwrap(),
                 dst_texture.vk_image(),
-                super::util::resource_state_to_image_layout(params.dst_state).unwrap(),
+                super::internal::resource_state_to_image_layout(params.dst_state).unwrap(),
                 &[*image_blit],
                 params.filtering.into(),
             );
@@ -826,9 +854,9 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         params: &CmdCopyTextureParams,
     ) -> GfxResult<()> {
         let src_aspect_mask =
-            super::util::image_format_to_aspect_mask(src_texture.texture_def().format);
+            super::internal::image_format_to_aspect_mask(src_texture.texture_def().format);
         let dst_aspect_mask =
-            super::util::image_format_to_aspect_mask(dst_texture.texture_def().format);
+            super::internal::image_format_to_aspect_mask(dst_texture.texture_def().format);
 
         let mut src_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)
@@ -871,9 +899,9 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             self.device_context.device().cmd_copy_image(
                 self.vk_command_buffer,
                 src_texture.vk_image(),
-                super::util::resource_state_to_image_layout(params.src_state).unwrap(),
+                super::internal::resource_state_to_image_layout(params.src_state).unwrap(),
                 dst_texture.vk_image(),
-                super::util::resource_state_to_image_layout(params.dst_state).unwrap(),
+                super::internal::resource_state_to_image_layout(params.dst_state).unwrap(),
                 &[*image_copy],
             );
         }

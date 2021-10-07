@@ -309,7 +309,7 @@ pub mod prelude {
         Buffer, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray, DescriptorSetHandle,
         DescriptorSetLayout, DeviceContext, Fence, GfxApi, GfxResult, Pipeline, Queue,
         RootSignature, Sampler, Semaphore, Shader, ShaderModule, Swapchain, Texture,
-        ConstantBufferView, ShaderResourceView, UnorderedAccessView
+        BufferView, TextureView
     };
 }
 
@@ -352,9 +352,8 @@ pub trait GfxApi: Sized {
     type Buffer: Buffer<Self>;    
     type Texture: Texture<Self>;
     type Sampler: Sampler<Self>;
-    type ConstantBufferView : ConstantBufferView<Self>;
-    type ShaderResourceView : ShaderResourceView<Self>;
-    type UnorderedAccessView : UnorderedAccessView<Self>;
+    type BufferView : BufferView<Self>;
+    type TextureView : TextureView<Self>;
     type ShaderModule: ShaderModule<Self>;
     type Shader: Shader<Self>;
     type DescriptorSetLayout: DescriptorSetLayout<Self>;
@@ -430,9 +429,7 @@ pub trait Buffer<A: GfxApi>: std::fmt::Debug {
         data: &[T],
         buffer_byte_offset: u64,
     ) -> GfxResult<()>;
-    fn create_constant_buffer_view(&self, cbv_def: &ConstantBufferViewDef) -> GfxResult<A::ConstantBufferView>;
-    fn create_shader_resource_view(&self, srv_def: &ShaderResourceViewDef) -> GfxResult<A::ShaderResourceView>;
-    fn create_unordered_acces_view(&self, uav_def: &UnorderedAccessViewDef) -> GfxResult<A::UnorderedAccessView>;
+    fn create_constant_buffer_view(&self, cbv_def: &BufferViewDef) -> GfxResult<A::BufferView>;
 }
 
 pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
@@ -444,22 +441,17 @@ pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
 pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
 
 //
-// Views (ConstantBufferView, ShaderResourceView, UnorderedAccessView)
+// Views (BufferView, TextureView)
 //
-pub trait ConstantBufferView<A: GfxApi>: Clone + std::fmt::Debug {
+pub trait BufferView<A: GfxApi>: Clone + std::fmt::Debug {
     fn buffer(&self) -> &A::Buffer;
     fn offset(&self) -> u64;
     fn size(&self) -> u64;
 }
 
-pub trait ShaderResourceView<A: GfxApi>: Clone + std::fmt::Debug {
-    
+pub trait TextureView<A: GfxApi>: Clone + std::fmt::Debug {
+    fn texture(&self) -> &A::Texture;
 }
-
-pub trait UnorderedAccessView<A: GfxApi>: Clone + std::fmt::Debug {
-    
-}
-
 
 //
 // Shaders/Pipelines
@@ -568,7 +560,11 @@ pub trait CommandBuffer<A: GfxApi>: std::fmt::Debug {
         set_index: u32,
         descriptor_set_handle: &A::DescriptorSetHandle,
     ) -> GfxResult<()>;
-
+    fn cmd_push_constants<T : Sized>(
+        &self,
+        root_signature: &A::RootSignature,     
+        constants: &T,     
+    ) -> GfxResult<()>;
     fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) -> GfxResult<()>;
     fn cmd_draw_instanced(
         &self,

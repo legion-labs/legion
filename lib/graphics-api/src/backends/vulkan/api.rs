@@ -1,8 +1,8 @@
 use super::{
-    internal::*, VulkanBuffer, VulkanCommandBuffer, VulkanCommandPool, VulkanDescriptorSetArray,
-    VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline, VulkanQueue,
-    VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule,
-    VulkanSwapchain, VulkanTexture, VulkanConstantBufferView, VulkanShaderResourceView, VulkanUnorderedAccessView
+    internal::*, VulkanBuffer, VulkanBufferView, VulkanCommandBuffer, VulkanCommandPool,
+    VulkanDescriptorSetArray, VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanFence,
+    VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
+    VulkanShaderModule, VulkanSwapchain, VulkanTexture, VulkanTextureView,
 };
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
@@ -106,9 +106,8 @@ impl GfxApi for VulkanApi {
     type Buffer = VulkanBuffer;
     type Texture = VulkanTexture;
     type Sampler = VulkanSampler;
-    type ConstantBufferView = VulkanConstantBufferView;
-    type ShaderResourceView = VulkanShaderResourceView;
-    type UnorderedAccessView = VulkanUnorderedAccessView;
+    type BufferView = VulkanBufferView;
+    type TextureView = VulkanTextureView;
     type ShaderModule = VulkanShaderModule;
     type Shader = VulkanShader;
     type DescriptorSetLayout = VulkanDescriptorSetLayout;
@@ -121,7 +120,7 @@ impl GfxApi for VulkanApi {
     type CommandBuffer = VulkanCommandBuffer;
     type Fence = VulkanFence;
     type Semaphore = VulkanSemaphore;
-    type Swapchain = VulkanSwapchain;    
+    type Swapchain = VulkanSwapchain;
 }
 
 impl VulkanApi {

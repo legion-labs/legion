@@ -11,11 +11,11 @@ pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
 pub(crate) struct PushConstantIndex(pub(crate) u32);
 
 #[derive(Debug)]
-pub(crate) struct RootSignatureVulkanInner {
-    pub(crate) device_context: VulkanDeviceContext,
-    pub(crate) pipeline_type: PipelineType,
-    pub(crate) layouts: [Option<VulkanDescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
-    pub(crate) pipeline_layout: vk::PipelineLayout,
+struct RootSignatureVulkanInner {
+    device_context: VulkanDeviceContext,
+    pipeline_type: PipelineType,    
+    layouts: [Option<VulkanDescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],        
+    pipeline_layout: vk::PipelineLayout,
 }
 
 impl Drop for RootSignatureVulkanInner {
@@ -30,7 +30,7 @@ impl Drop for RootSignatureVulkanInner {
 
 #[derive(Clone, Debug)]
 pub struct VulkanRootSignature {
-    pub(crate) inner: Arc<RootSignatureVulkanInner>,
+    inner: Arc<RootSignatureVulkanInner>,
 }
 
 impl VulkanRootSignature {
@@ -64,8 +64,20 @@ impl VulkanRootSignature {
             descriptor_set_layout_count += 1;
         }
 
+        let mut push_constant_ranges = Vec::new();
+        if let Some(push_constant_def) = &root_signature_def.push_constant_def {
+            push_constant_ranges.push(
+                vk::PushConstantRange {
+                    stage_flags: vk::ShaderStageFlags::ALL,
+                    offset: 0,
+                    size: push_constant_def.size.get(),
+                }
+            );
+        }        
+
         let pipeline_layout_create_info = vk::PipelineLayoutCreateInfo::builder()
-            .set_layouts(&vk_descriptor_set_layouts[0..descriptor_set_layout_count]);
+            .set_layouts(&vk_descriptor_set_layouts[0..descriptor_set_layout_count])
+            .push_constant_ranges(&push_constant_ranges).build();
 
         let pipeline_layout = unsafe {
             device_context
@@ -75,8 +87,8 @@ impl VulkanRootSignature {
 
         let inner = RootSignatureVulkanInner {
             device_context: device_context.clone(),
-            pipeline_type: root_signature_def.pipeline_type,
-            layouts: root_signature_def.descriptor_set_layouts.clone(),
+            pipeline_type: root_signature_def.pipeline_type,            
+            layouts: root_signature_def.descriptor_set_layouts.clone(),            
             pipeline_layout,
         };
 
