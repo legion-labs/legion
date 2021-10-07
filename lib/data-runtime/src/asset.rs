@@ -11,6 +11,10 @@ pub trait Asset: Resource {
 /// An interface allowing to create and initialize assets.
 pub trait AssetLoader {
     /// Asset loading interface.
+    ///
+    /// # Errors
+    ///
+    /// Will return 'Err' if unable to deserialize asset
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>>;
 
     /// Asset initialization executed after the asset and all its dependencies
