@@ -17,6 +17,7 @@ impl RBGYUVConverter {
         }
     }
 
+    #[allow(clippy::cast_precision_loss)]
     fn convert_internal<PixR: Fn(usize, usize) -> (f32, f32, f32)>(&mut self, pixel_reader: PixR) {
         let width = self.width;
         let height = self.height;
@@ -78,9 +79,9 @@ impl RBGYUVConverter {
             // two dim to single dim
             let base_pos = (x + y * width) * 3;
             (
-                rgb[base_pos] as f32 * rgb_modilation.0,
-                rgb[base_pos + 1] as f32 * rgb_modilation.1,
-                rgb[base_pos + 2] as f32 * rgb_modilation.2,
+                f32::from(rgb[base_pos]) * rgb_modilation.0,
+                f32::from(rgb[base_pos + 1]) * rgb_modilation.1,
+                f32::from(rgb[base_pos + 2]) * rgb_modilation.2,
             )
         };
         self.convert_internal(pixel_reader);
@@ -93,15 +94,16 @@ impl RBGYUVConverter {
             // two dim to single dim
             let base_pos = x * 4 + y * row_pitch;
             (
-                rgba[base_pos] as f32,
-                rgba[base_pos + 1] as f32,
-                rgba[base_pos + 2] as f32,
+                f32::from(rgba[base_pos]),
+                f32::from(rgba[base_pos + 1]),
+                f32::from(rgba[base_pos + 2]),
             )
         };
         self.convert_internal(pixel_reader);
     }
 }
 
+#[allow(clippy::cast_possible_wrap)]
 impl YUVSource for RBGYUVConverter {
     fn width(&self) -> i32 {
         self.width as i32

@@ -71,7 +71,8 @@
     clippy::must_use_candidate,
     clippy::similar_names,
     clippy::shadow_unrelated,
-    clippy::unreadable_literal
+    clippy::unreadable_literal,
+    clippy::unseparated_literal_suffix
 )]
 // Clippy nursery lints, still under development
 #![warn(
