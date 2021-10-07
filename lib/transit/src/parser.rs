@@ -55,6 +55,7 @@ pub enum Value {
     Object(Object),
     U8(u8),
     U32(u32),
+    U64(u64),
     None,
 }
 
@@ -97,6 +98,7 @@ where
             },
             unknown_type => {
                 println!("unknown type {}", unknown_type);
+                dbg!(udt);
             }
         }
         offset += object_size;
@@ -171,6 +173,12 @@ fn parse_pod_instance(
                     "u32" => {
                         assert_eq!(std::mem::size_of::<u32>(), member_meta.size);
                         Value::U32(read_pod::<u32>(unsafe {
+                            buffer.as_ptr().add(offset + member_meta.offset)
+                        }))
+                    }
+                    "u64" => {
+                        assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
+                        Value::U64(read_pod::<u64>(unsafe {
                             buffer.as_ptr().add(offset + member_meta.offset)
                         }))
                     }

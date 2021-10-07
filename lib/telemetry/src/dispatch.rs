@@ -232,15 +232,9 @@ where
 }
 
 pub fn on_begin_scope(scope: GetScopeDesc) {
-    on_thread_event(BeginScopeEvent {
-        time: now(),
-        get_scope_desc: scope,
-    });
+    on_thread_event(BeginScopeEvent { time: now(), scope });
 }
 
 pub fn on_end_scope(scope: GetScopeDesc) {
-    on_thread_event(EndScopeEvent {
-        time: now(),
-        get_scope_desc: scope,
-    });
+    on_thread_event(EndScopeEvent { time: now(), scope });
 }

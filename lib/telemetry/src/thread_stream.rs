@@ -72,7 +72,7 @@ macro_rules! trace_scope {
 #[derive(Debug, TransitReflect)]
 pub struct BeginScopeEvent {
     pub time: u64,
-    pub get_scope_desc: fn() -> ScopeDesc,
+    pub scope: fn() -> ScopeDesc,
 }
 
 impl Serialize for BeginScopeEvent {}
@@ -80,7 +80,7 @@ impl Serialize for BeginScopeEvent {}
 #[derive(Debug, TransitReflect)]
 pub struct EndScopeEvent {
     pub time: u64,
-    pub get_scope_desc: fn() -> ScopeDesc,
+    pub scope: fn() -> ScopeDesc,
 }
 
 impl Serialize for EndScopeEvent {}
@@ -125,8 +125,8 @@ impl StreamBlock for ThreadEventBlock {
         for x in self.events.iter() {
             match x {
                 ThreadEventQueueAny::BeginScopeEvent(evt) => {
-                    let ptr = evt.get_scope_desc as usize;
-                    let desc = (evt.get_scope_desc)();
+                    let ptr = evt.scope as usize;
+                    let desc = (evt.scope)();
                     deps.push(ReferencedScope {
                         id: ptr,
                         name: desc.name,
@@ -135,8 +135,8 @@ impl StreamBlock for ThreadEventBlock {
                     });
                 }
                 ThreadEventQueueAny::EndScopeEvent(evt) => {
-                    let ptr = evt.get_scope_desc as usize;
-                    let desc = (evt.get_scope_desc)();
+                    let ptr = evt.scope as usize;
+                    let desc = (evt.scope)();
                     deps.push(ReferencedScope {
                         id: ptr,
                         name: desc.name,

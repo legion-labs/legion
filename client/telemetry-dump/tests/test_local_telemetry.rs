@@ -87,8 +87,11 @@ async fn test_thread_events() -> Result<()> {
     let data_path = setup_data_dir("thread-events");
     let pool = alloc_sql_pool(&data_path).await.unwrap();
     let mut connection = pool.acquire().await.unwrap();
-    let block_id = find_block_with_thread_data(&mut connection).await?;
-    let stream_info = find_stream(&mut connection, &block_id.stream_id).await?;
-    dbg!(stream_info);
+    let block = find_block_with_thread_data(&mut connection).await?;
+    let stream = find_stream(&mut connection, &block.stream_id).await?;
+    let payload = fetch_block_payload(&mut connection, &data_path, &block.block_id).await?;
+    parse_block(&stream, &payload, |val| {
+        dbg!(val);
+    })?;
     Ok(())
 }
