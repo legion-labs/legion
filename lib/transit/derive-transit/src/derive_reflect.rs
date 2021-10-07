@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::*;
+use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 type QuoteRes = quote::__private::TokenStream;
 

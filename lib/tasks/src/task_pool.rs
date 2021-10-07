@@ -294,11 +294,11 @@ mod tests {
             for _ in 0..100 {
                 let count_clone = count.clone();
                 scope.spawn(async move {
-                    if *foo != 42 {
-                        panic!("not 42!?!?")
-                    } else {
+                    if *foo == 42 {
                         count_clone.fetch_add(1, Ordering::Relaxed);
                         *foo
+                    } else {
+                        panic!("not 42!?!?")
                     }
                 });
             }
@@ -327,21 +327,21 @@ mod tests {
                 if i % 2 == 0 {
                     let count_clone = non_local_count.clone();
                     scope.spawn(async move {
-                        if *foo != 42 {
-                            panic!("not 42!?!?")
-                        } else {
+                        if *foo == 42 {
                             count_clone.fetch_add(1, Ordering::Relaxed);
                             *foo
+                        } else {
+                            panic!("not 42!?!?")
                         }
                     });
                 } else {
                     let count_clone = local_count.clone();
                     scope.spawn_local(async move {
-                        if *foo != 42 {
-                            panic!("not 42!?!?")
-                        } else {
+                        if *foo == 42 {
                             count_clone.fetch_add(1, Ordering::Relaxed);
                             *foo
+                        } else {
+                            panic!("not 42!?!?")
                         }
                     });
                 }
