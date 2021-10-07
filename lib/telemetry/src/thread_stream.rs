@@ -15,9 +15,9 @@ pub type GetScopeDesc = fn() -> ScopeDesc;
 
 #[derive(Debug, TransitReflect)]
 pub struct ReferencedScope {
-    pub id: usize,
-    pub name: &'static str,
-    pub filename: &'static str,
+    pub id: u64,
+    pub name: *const u8,
+    pub filename: *const u8,
     pub line: u32,
 }
 
@@ -122,25 +122,30 @@ impl StreamBlock for ThreadEventBlock {
         let end = self.end.as_ref().unwrap();
 
         let mut deps = ThreadDepsQueue::new(1024 * 1024);
+        //todo: do not repeat dependencies
         for x in self.events.iter() {
             match x {
                 ThreadEventQueueAny::BeginScopeEvent(evt) => {
-                    let ptr = evt.scope as usize;
+                    let ptr = evt.scope as u64;
                     let desc = (evt.scope)();
+                    deps.push(StaticString::from(desc.name));
+                    deps.push(StaticString::from(desc.filename));
                     deps.push(ReferencedScope {
                         id: ptr,
-                        name: desc.name,
-                        filename: desc.filename,
+                        name: desc.name.as_ptr(),
+                        filename: desc.filename.as_ptr(),
                         line: desc.line,
                     });
                 }
                 ThreadEventQueueAny::EndScopeEvent(evt) => {
-                    let ptr = evt.scope as usize;
+                    let ptr = evt.scope as u64;
                     let desc = (evt.scope)();
+                    deps.push(StaticString::from(desc.name));
+                    deps.push(StaticString::from(desc.filename));
                     deps.push(ReferencedScope {
                         id: ptr,
-                        name: desc.name,
-                        filename: desc.filename,
+                        name: desc.name.as_ptr(),
+                        filename: desc.filename.as_ptr(),
                         line: desc.line,
                     });
                 }

@@ -40,6 +40,7 @@ impl StreamBlock for LogBlock {
         let end = self.end.as_ref().unwrap();
 
         let mut deps = LogDepsQueue::new(1024 * 1024);
+        //todo: do not repeat dependencies
         for x in self.events.iter() {
             match x {
                 LogMsgQueueAny::LogMsgEvent(evt) => {

@@ -7,6 +7,15 @@ pub struct StaticString {
     pub ptr: *const u8,
 }
 
+impl std::convert::From<&str> for StaticString {
+    fn from(src: &str) -> Self {
+        Self {
+            len: src.len() as u32,
+            ptr: src.as_ptr(),
+        }
+    }
+}
+
 // dummy impl for Reflect
 impl Reflect for StaticString {
     fn reflect() -> UserDefinedType {

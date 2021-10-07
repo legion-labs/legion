@@ -39,6 +39,26 @@ impl TansitValue for u8 {
     }
 }
 
+impl TansitValue for u32 {
+    fn get(value: &Value) -> Result<Self> {
+        if let Value::U32(val) = value {
+            Ok(*val)
+        } else {
+            bail!("bad type cast u32 for value {:?}", value);
+        }
+    }
+}
+
+impl TansitValue for u64 {
+    fn get(value: &Value) -> Result<Self> {
+        if let Value::U64(val) = value {
+            Ok(*val)
+        } else {
+            bail!("bad type cast u64 for value {:?}", value);
+        }
+    }
+}
+
 impl TansitValue for String {
     fn get(value: &Value) -> Result<Self> {
         if let Value::String(val) = value {
@@ -59,10 +79,8 @@ pub enum Value {
     None,
 }
 
-pub fn parse_dependencies<F>(udts: &[UserDefinedType], buffer: &[u8], mut fun: F) -> Result<()>
-where
-    F: FnMut(usize, Value),
-{
+pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<HashMap<u64, Value>> {
+    let mut hash = HashMap::new();
     let mut offset = 0;
     while offset < buffer.len() {
         let type_index = buffer[offset] as usize;
@@ -89,39 +107,33 @@ where
         match udt.name.as_str() {
             "StaticString" => unsafe {
                 let id_ptr = buffer.as_ptr().add(offset);
-                let string_id = read_pod::<usize>(id_ptr);
+                let string_id = read_pod::<u64>(id_ptr);
                 let nb_utf8_bytes = object_size - std::mem::size_of::<usize>();
                 let utf8_ptr = buffer.as_ptr().add(offset + std::mem::size_of::<usize>());
                 let slice = std::ptr::slice_from_raw_parts(utf8_ptr, nb_utf8_bytes);
                 let string = String::from(std::str::from_utf8(&*slice).unwrap());
-                fun(string_id, Value::String(string));
+                hash.insert(string_id, Value::String(string));
             },
-            unknown_type => {
-                println!("unknown type {}", unknown_type);
-                dbg!(udt);
+            _ => {
+                assert!(udt.size > 0);
+                let instance = parse_pod_instance(&udt, &hash, offset, buffer);
+                hash.insert(instance.get::<u64>("id")?, Value::Object(instance));
             }
         }
         offset += object_size;
     }
-    Ok(())
-}
 
-pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<HashMap<usize, Value>> {
-    let mut hash = HashMap::new();
-    parse_dependencies(udts, buffer, |id, value| {
-        hash.insert(id, value);
-    })?;
     Ok(hash)
 }
 
 fn parse_custom_instance(
     udt: &UserDefinedType,
-    _dependencies: &HashMap<usize, Value>,
+    _dependencies: &HashMap<u64, Value>,
     offset: usize,
     object_size: usize,
     buffer: &[u8],
-) -> Vec<(String, Value)> {
-    match udt.name.as_str() {
+) -> Object {
+    let members = match udt.name.as_str() {
         "LogDynMsgEvent" => unsafe {
             let level_ptr = buffer.as_ptr().add(offset);
             let level = read_pod::<u8>(level_ptr);
@@ -138,24 +150,30 @@ fn parse_custom_instance(
             println!("unknown custom object {}", other);
             Vec::new()
         }
-    }
+    };
+    let instance = Object {
+        type_name: udt.name.clone(),
+        members,
+    };
+    instance
 }
 
 fn parse_pod_instance(
     udt: &UserDefinedType,
-    dependencies: &HashMap<usize, Value>,
+    dependencies: &HashMap<u64, Value>,
     offset: usize,
     buffer: &[u8],
-) -> Vec<(String, Value)> {
-    udt.members
+) -> Object {
+    let members = udt
+        .members
         .iter()
         .map(|member_meta| {
             let name = member_meta.name.clone();
             let type_name = member_meta.type_name.clone();
             let value = if member_meta.is_reference {
-                assert_eq!(std::mem::size_of::<usize>(), member_meta.size);
+                assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
                 let key =
-                    read_pod::<usize>(unsafe { buffer.as_ptr().add(offset + member_meta.offset) });
+                    read_pod::<u64>(unsafe { buffer.as_ptr().add(offset + member_meta.offset) });
                 if let Some(v) = dependencies.get(&key) {
                     v.clone()
                 } else {
@@ -190,11 +208,16 @@ fn parse_pod_instance(
             };
             (name, value)
         })
-        .collect()
+        .collect();
+    let instance = Object {
+        type_name: udt.name.clone(),
+        members,
+    };
+    instance
 }
 
 pub fn parse_object_buffer<F>(
-    dependencies: &HashMap<usize, Value>,
+    dependencies: &HashMap<u64, Value>,
     udts: &[UserDefinedType],
     buffer: &[u8],
     mut fun: F,
@@ -222,14 +245,10 @@ where
             }
             static_size => (static_size, false),
         };
-        let instance_members = if is_size_dynamic {
+        let instance = if is_size_dynamic {
             parse_custom_instance(udt, dependencies, offset, object_size, buffer)
         } else {
             parse_pod_instance(udt, dependencies, offset, buffer)
-        };
-        let instance = Object {
-            type_name: udt.name.clone(),
-            members: instance_members,
         };
         fun(Value::Object(instance));
         offset += object_size;
