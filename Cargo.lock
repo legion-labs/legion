@@ -3096,6 +3096,8 @@ version = "0.1.0"
 dependencies = [
  "legion-app",
  "legion-data-offline",
+ "legion-data-runtime",
+ "legion-ecs",
  "legion-graphics-offline",
  "sample-data-compiler",
 ]

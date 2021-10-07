@@ -5,7 +5,7 @@ use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_async::{AsyncPlugin, TokioAsyncRuntime};
 use legion_ecs::prelude::*;
-use legion_resource_registry::ResourceRegistryPlugin;
+use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use legion_transform::TransformPlugin;
 
 mod server;
@@ -22,6 +22,7 @@ fn main() {
         .unwrap();
 
     const ARG_NAME_ADDR: &str = "addr";
+    const ARG_NAME_PROJECT: &str = "project";
     const ARG_NAME_CAS: &str = "cas";
     const ARG_NAME_MANIFEST: &str = "manifest";
 
@@ -34,6 +35,12 @@ fn main() {
                 .long(ARG_NAME_ADDR)
                 .takes_value(true)
                 .help("The address to listen on"),
+        )
+        .arg(
+            Arg::with_name(ARG_NAME_PROJECT)
+                .long(ARG_NAME_PROJECT)
+                .takes_value(true)
+                .help("Path to folder containing the project index"),
         )
         .arg(
             Arg::with_name(ARG_NAME_CAS)
@@ -55,6 +62,10 @@ fn main() {
         .parse()
         .unwrap();
 
+    let project_folder = args
+        .value_of(ARG_NAME_PROJECT)
+        .unwrap_or("test/sample_data");
+
     let content_store_addr = args
         .value_of(ARG_NAME_CAS)
         .unwrap_or("test/sample_data/temp");
@@ -75,6 +86,7 @@ fn main() {
 
             rt.start_detached(Server::listen_and_serve(addr, editor_server));
         })
+        .insert_resource(ResourceRegistrySettings::new(project_folder))
         .add_plugin(ResourceRegistryPlugin::default())
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(

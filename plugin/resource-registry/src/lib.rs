@@ -85,8 +85,16 @@
 // crate-specific exceptions:
 #![allow()]
 
+mod resource_handles;
+mod settings;
+
+use legion_data_runtime::ResourceId;
+use resource_handles::ResourceHandles;
+pub use settings::ResourceRegistrySettings;
+
 use legion_app::Plugin;
-use legion_data_offline::resource::ResourceRegistryOptions;
+use legion_data_offline::resource::{Project, ResourceRegistry, ResourceRegistryOptions};
+use legion_ecs::prelude::*;
 use sample_data_compiler::offline_data;
 
 #[derive(Default)]
@@ -94,11 +102,53 @@ pub struct ResourceRegistryPlugin {}
 
 impl Plugin for ResourceRegistryPlugin {
     fn build(&self, app: &mut legion_app::App) {
-        let mut registry = ResourceRegistryOptions::new();
-        registry = offline_data::register_resource_types(registry);
-        registry = legion_graphics_offline::register_resource_types(registry);
-        let registry = registry.create_registry();
+        if let Some(settings) = app.world.get_resource::<ResourceRegistrySettings>() {
+            if let Ok(project) = Project::open(&settings.root_folder) {
+                // register resource types
+                let mut registry = ResourceRegistryOptions::new();
+                registry = offline_data::register_resource_types(registry);
+                registry = legion_graphics_offline::register_resource_types(registry);
+                let registry = registry.create_registry();
 
-        app.insert_resource(registry);
+                app.insert_resource(project)
+                    .insert_resource(registry)
+                    .insert_resource(ResourceHandles::default())
+                    .add_startup_system(Self::setup);
+            }
+        }
+    }
+}
+
+impl ResourceRegistryPlugin {
+    fn setup(
+        project: ResMut<'_, Project>,
+        mut registry: ResMut<'_, ResourceRegistry>,
+        mut resource_handles: ResMut<'_, ResourceHandles>,
+    ) {
+        for resource_id in project.resource_list() {
+            Self::load_resource(&project, &mut registry, &mut resource_handles, resource_id);
+        }
+
+        drop(project);
+    }
+
+    fn load_resource(
+        project: &ResMut<'_, Project>,
+        registry: &mut ResMut<'_, ResourceRegistry>,
+        resource_handles: &mut ResMut<'_, ResourceHandles>,
+        resource_id: ResourceId,
+    ) {
+        if let Some(_handle) = resource_handles.get(resource_id) {
+            // already in resource list
+            println!("New reference to loaded resource: {}", resource_id);
+        } else {
+            match project.load_resource(resource_id, registry) {
+                Ok(handle) => {
+                    println!("Loaded resource: {}", resource_id);
+                    resource_handles.insert(resource_id, handle);
+                }
+                Err(err) => eprintln!("Failed to load resource {}: {}", resource_id, err),
+            }
+        }
     }
 }
