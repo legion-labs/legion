@@ -87,6 +87,8 @@ use anyhow::*;
 use prost::Message;
 use sqlx::Row;
 use std::path::Path;
+use telemetry::*;
+use transit::*;
 
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
     let db_uri = format!("sqlite://{}/telemetry.db3", data_folder.display());
@@ -257,4 +259,36 @@ pub async fn fetch_block_payload(
     let payload = telemetry::telemetry_ingestion_proto::BlockPayload::decode(&*buffer)
         .with_context(|| format!("reading payload {}", block_id))?;
     Ok(payload)
+}
+
+pub fn parse_block<F>(
+    stream: &telemetry::StreamInfo,
+    payload: &telemetry::telemetry_ingestion_proto::BlockPayload,
+    fun: F,
+) -> Result<()>
+where
+    F: FnMut(Value),
+{
+    let dep_udts = stream
+        .dependencies_metadata
+        .as_ref()
+        .unwrap()
+        .as_transit_udt_vec();
+
+    let dependencies = read_dependencies(
+        &dep_udts,
+        &decompress(&payload.dependencies).with_context(|| "decompressing dependencies payload")?,
+    )?;
+    let obj_udts = stream
+        .objects_metadata
+        .as_ref()
+        .unwrap()
+        .as_transit_udt_vec();
+    parse_object_buffer(
+        &dependencies,
+        &obj_udts,
+        &decompress(&payload.objects).with_context(|| "decompressing objects payload")?,
+        fun,
+    )?;
+    Ok(())
 }

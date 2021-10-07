@@ -185,7 +185,7 @@ fn parse_pod_instance(
         .collect()
 }
 
-pub fn parse_objects<F>(
+pub fn parse_object_buffer<F>(
     dependencies: &HashMap<usize, Value>,
     udts: &[UserDefinedType],
     buffer: &[u8],

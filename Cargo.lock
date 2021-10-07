@@ -96,6 +96,7 @@ dependencies = [
  "prost",
  "sqlx",
  "telemetry",
+ "transit",
 ]
 
 [[package]]

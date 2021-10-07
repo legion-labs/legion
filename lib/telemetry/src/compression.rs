@@ -1,5 +1,5 @@
 use anyhow::*;
-use std::io::Write;
+use std::io::{Read, Write};
 
 pub fn compress(src: &[u8]) -> Result<Vec<u8>> {
     let mut compressed = Vec::new();
@@ -13,4 +13,15 @@ pub fn compress(src: &[u8]) -> Result<Vec<u8>> {
     let (_writer, _res) = encoder.finish();
     _res.with_context(|| "closing lz4 encoder")?;
     Ok(compressed)
+}
+
+pub fn decompress(compressed: &[u8]) -> Result<Vec<u8>> {
+    let mut decompressed = Vec::new();
+    let mut decoder = lz4::Decoder::new(compressed).with_context(|| "allocating lz4 decoder")?;
+    let _size = decoder
+        .read_to_end(&mut decompressed)
+        .with_context(|| "reading lz4-compressed buffer")?;
+    let (_reader, res) = decoder.finish();
+    res?;
+    Ok(decompressed)
 }

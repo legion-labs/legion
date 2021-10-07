@@ -16,7 +16,9 @@ pub type GetScopeDesc = fn() -> ScopeDesc;
 #[derive(Debug, TransitReflect)]
 pub struct ReferencedScope {
     pub id: usize,
-    pub desc: ScopeDesc,
+    pub name: &'static str,
+    pub filename: &'static str,
+    pub line: u32,
 }
 
 impl Serialize for ReferencedScope {}
@@ -70,7 +72,7 @@ macro_rules! trace_scope {
 #[derive(Debug, TransitReflect)]
 pub struct BeginScopeEvent {
     pub time: u64,
-    pub get_scope_desc: GetScopeDesc,
+    pub get_scope_desc: fn() -> ScopeDesc,
 }
 
 impl Serialize for BeginScopeEvent {}
@@ -78,7 +80,7 @@ impl Serialize for BeginScopeEvent {}
 #[derive(Debug, TransitReflect)]
 pub struct EndScopeEvent {
     pub time: u64,
-    pub get_scope_desc: GetScopeDesc,
+    pub get_scope_desc: fn() -> ScopeDesc,
 }
 
 impl Serialize for EndScopeEvent {}
@@ -124,16 +126,22 @@ impl StreamBlock for ThreadEventBlock {
             match x {
                 ThreadEventQueueAny::BeginScopeEvent(evt) => {
                     let ptr = evt.get_scope_desc as usize;
+                    let desc = (evt.get_scope_desc)();
                     deps.push(ReferencedScope {
                         id: ptr,
-                        desc: (evt.get_scope_desc)(),
+                        name: desc.name,
+                        filename: desc.filename,
+                        line: desc.line,
                     });
                 }
                 ThreadEventQueueAny::EndScopeEvent(evt) => {
                     let ptr = evt.get_scope_desc as usize;
+                    let desc = (evt.get_scope_desc)();
                     deps.push(ReferencedScope {
                         id: ptr,
-                        desc: (evt.get_scope_desc)(),
+                        name: desc.name,
+                        filename: desc.filename,
+                        line: desc.line,
                     });
                 }
             }

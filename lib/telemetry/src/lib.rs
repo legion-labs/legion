@@ -87,7 +87,7 @@
 // crate-specific exceptions:
 #![allow(unsafe_code)]
 
-mod compression;
+pub mod compression;
 pub mod dispatch;
 pub mod dual_time;
 pub mod event_block_sink;
@@ -100,7 +100,7 @@ mod queue_metadata;
 pub mod stream;
 pub mod thread_stream;
 
-use compression::*;
+pub use compression::*;
 pub use dispatch::*;
 pub use dual_time::*;
 pub use event_block_sink::*;
