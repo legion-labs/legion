@@ -117,7 +117,7 @@ impl Dispatch {
     }
 
     fn on_thread_buffer_full(&mut self, stream: &mut ThreadStream) {
-        let mut old_block = stream.replace_block(Arc::new(ThreadEventBlock::new(
+        let mut old_block = stream.replace_block(Arc::new(ThreadBlock::new(
             self.thread_buffer_size,
             stream.get_stream_id(),
         )));
@@ -218,7 +218,7 @@ pub fn flush_thread_buffer() {
 
 fn on_thread_event<T>(event: T)
 where
-    T: transit::Serialize + ThreadEventQueueTypeIndex,
+    T: transit::InProcSerialize + ThreadEventQueueTypeIndex,
 {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {
         let opt_stream = &mut *cell.as_ptr();

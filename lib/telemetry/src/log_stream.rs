@@ -46,7 +46,7 @@ impl LogStream {
 
     pub fn push<T>(&mut self, event: T)
     where
-        T: Serialize + LogMsgQueueTypeIndex,
+        T: InProcSerialize + LogMsgQueueTypeIndex,
     {
         self.get_events_mut().push(event);
     }

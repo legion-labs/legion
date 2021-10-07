@@ -15,7 +15,7 @@ fn gen_read_method(
                 unsafe{
                     let mut begin_obj = self.buffer.as_ptr().add( offset+1 );
                     let next_object_offset;
-                    let value_size = if <#value_type_id as transit::Serialize>::is_size_static(){
+                    let value_size = if <#value_type_id as transit::InProcSerialize>::is_size_static(){
                         next_object_offset = offset + 1 + std::mem::size_of::<#value_type_id>();
                         None
                     }else{
@@ -24,7 +24,7 @@ fn gen_read_method(
                         next_object_offset = offset + 1 + std::mem::size_of::<u32>() + size_instance as usize;
                         Some(size_instance)
                     };
-                    let obj = #any_ident::#value_type_id( <#value_type_id as transit::Serialize>::read_value(begin_obj, value_size) );
+                    let obj = #any_ident::#value_type_id( <#value_type_id as transit::InProcSerialize>::read_value(begin_obj, value_size) );
                     (obj,next_object_offset)
                 }
             },
@@ -134,7 +134,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
 
             pub fn push<T>(&mut self, value: T)
             where
-                T: transit::Serialize + #type_index_ident,
+                T: transit::InProcSerialize + #type_index_ident,
             {
                 // write type discriminant
                 self.buffer.push(<T as #type_index_ident>::TYPE_INDEX);

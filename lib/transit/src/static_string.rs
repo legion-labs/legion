@@ -27,7 +27,7 @@ impl Reflect for StaticString {
     }
 }
 
-impl Serialize for StaticString {
+impl InProcSerialize for StaticString {
     fn is_size_static() -> bool {
         false
     }

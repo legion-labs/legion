@@ -138,7 +138,7 @@ fn parse_custom_instance(
         "LogDynMsgEvent" => unsafe {
             let level_ptr = buffer.as_ptr().add(offset);
             let level = read_pod::<u8>(level_ptr);
-            let msg = <DynString as Serialize>::read_value(
+            let msg = <DynString as InProcSerialize>::read_value(
                 buffer.as_ptr().add(offset + 1),
                 Some((object_size - 1) as u32),
             );

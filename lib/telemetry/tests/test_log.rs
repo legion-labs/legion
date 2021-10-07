@@ -52,7 +52,7 @@ fn get_tsc_frequency() -> Result<u64, String> {
         .map(|b| b.as_str().to_owned())
         .unwrap_or_else(|| "unknown".to_owned());
 
-    dbg!(cpuid);
+    dbg!(&cpu_brand);
 
     match cpuid.get_tsc_info() {
         Some(tsc_info) => match tsc_info.tsc_frequency() {

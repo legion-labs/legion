@@ -12,7 +12,9 @@ pub fn read_pod<T>(ptr: *const u8) -> T {
     unsafe { std::ptr::read_unaligned(ptr.cast::<T>()) }
 }
 
-pub trait Serialize {
+// InProcSerialize is used by the heterogeneous queue to write objects in its buffer
+// serialized objects can have references with static lifetimes
+pub trait InProcSerialize {
     fn is_size_static() -> bool {
         true
     }

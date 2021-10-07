@@ -98,6 +98,7 @@ pub mod log_events;
 pub mod log_stream;
 mod queue_metadata;
 pub mod stream;
+pub mod thread_block;
 pub mod thread_stream;
 
 pub use compression::*;
@@ -111,6 +112,7 @@ pub use log_events::*;
 pub use log_stream::*;
 use queue_metadata::*;
 pub use stream::*;
+pub use thread_block::*;
 pub use thread_stream::*;
 
 pub use transit::IterableQueue;

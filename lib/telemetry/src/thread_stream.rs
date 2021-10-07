@@ -1,17 +1,14 @@
 use crate::*;
-use anyhow::*;
 use core::arch::x86_64::_rdtsc;
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 use transit::*;
 
-#[derive(Debug, TransitReflect)]
+#[derive(Debug)]
 pub struct ScopeDesc {
     pub name: &'static str,
     pub filename: &'static str,
     pub line: u32,
 }
-
-pub type GetScopeDesc = fn() -> ScopeDesc;
 
 #[derive(Debug, TransitReflect)]
 pub struct ReferencedScope {
@@ -21,7 +18,7 @@ pub struct ReferencedScope {
     pub line: u32,
 }
 
-impl Serialize for ReferencedScope {}
+impl InProcSerialize for ReferencedScope {}
 
 pub struct ScopeGuard {
     // the value of the function pointer will identity the scope uniquely within that process instance
@@ -69,130 +66,8 @@ macro_rules! trace_scope {
     };
 }
 
-#[derive(Debug, TransitReflect)]
-pub struct BeginScopeEvent {
-    pub time: u64,
-    pub scope: fn() -> ScopeDesc,
-}
-
-impl Serialize for BeginScopeEvent {}
-
-#[derive(Debug, TransitReflect)]
-pub struct EndScopeEvent {
-    pub time: u64,
-    pub scope: fn() -> ScopeDesc,
-}
-
-impl Serialize for EndScopeEvent {}
-
-declare_queue_struct!(
-    struct ThreadEventQueue<BeginScopeEvent, EndScopeEvent> {}
-);
-
-declare_queue_struct!(
-    struct ThreadDepsQueue<ReferencedScope, StaticString> {}
-);
-
-#[derive(Debug)]
-pub struct ThreadEventBlock {
-    pub stream_id: String,
-    pub begin: DualTime,
-    pub events: ThreadEventQueue,
-    pub end: Option<DualTime>,
-}
-
-impl ThreadEventBlock {
-    pub fn new(buffer_size: usize, stream_id: String) -> Self {
-        let events = ThreadEventQueue::new(buffer_size);
-        Self {
-            stream_id,
-            begin: DualTime::now(),
-            events,
-            end: None,
-        }
-    }
-    pub fn close(&mut self) {
-        self.end = Some(DualTime::now());
-    }
-}
-
-impl StreamBlock for ThreadEventBlock {
-    fn encode(&self) -> Result<EncodedBlock> {
-        let block_id = uuid::Uuid::new_v4().to_string();
-        let end = self.end.as_ref().unwrap();
-
-        let mut deps = ThreadDepsQueue::new(1024 * 1024);
-        let mut recorded_deps = HashSet::new();
-        //todo: do not repeat dependencies
-        for x in self.events.iter() {
-            match x {
-                ThreadEventQueueAny::BeginScopeEvent(evt) => {
-                    let ptr = evt.scope as usize as u64;
-                    if recorded_deps.insert(ptr) {
-                        let desc = (evt.scope)();
-                        let name = StaticString::from(desc.name);
-                        if recorded_deps.insert(name.ptr as u64) {
-                            deps.push(name);
-                        }
-                        let filename = StaticString::from(desc.filename);
-                        if recorded_deps.insert(filename.ptr as u64) {
-                            deps.push(filename);
-                        }
-                        deps.push(ReferencedScope {
-                            id: ptr,
-                            name: desc.name.as_ptr(),
-                            filename: desc.filename.as_ptr(),
-                            line: desc.line,
-                        });
-                    }
-                }
-                ThreadEventQueueAny::EndScopeEvent(evt) => {
-                    let ptr = evt.scope as usize as u64;
-                    if recorded_deps.insert(ptr) {
-                        let desc = (evt.scope)();
-                        let name = StaticString::from(desc.name);
-                        if recorded_deps.insert(name.ptr as u64) {
-                            deps.push(name);
-                        }
-                        let filename = StaticString::from(desc.filename);
-                        if recorded_deps.insert(filename.ptr as u64) {
-                            deps.push(filename);
-                        }
-                        deps.push(ReferencedScope {
-                            id: ptr,
-                            name: desc.name.as_ptr(),
-                            filename: desc.filename.as_ptr(),
-                            line: desc.line,
-                        });
-                    }
-                }
-            }
-        }
-
-        let payload = telemetry_ingestion_proto::BlockPayload {
-            dependencies: compress(deps.as_bytes())?,
-            objects: compress(self.events.as_bytes())?,
-        };
-
-        Ok(EncodedBlock {
-            stream_id: self.stream_id.clone(),
-            block_id,
-            begin_time: self
-                .begin
-                .time
-                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
-            begin_ticks: self.begin.ticks,
-            end_time: end
-                .time
-                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
-            end_ticks: end.ticks,
-            payload: Some(payload),
-        })
-    }
-}
-
 pub struct ThreadStream {
-    current_block: Arc<ThreadEventBlock>,
+    current_block: Arc<ThreadBlock>,
     initial_size: usize,
     stream_id: String,
     process_id: String,
@@ -202,14 +77,14 @@ impl ThreadStream {
     pub fn new(buffer_size: usize, process_id: String) -> Self {
         let stream_id = uuid::Uuid::new_v4().to_string();
         Self {
-            current_block: Arc::new(ThreadEventBlock::new(buffer_size, stream_id.clone())),
+            current_block: Arc::new(ThreadBlock::new(buffer_size, stream_id.clone())),
             initial_size: buffer_size,
             stream_id,
             process_id,
         }
     }
 
-    pub fn replace_block(&mut self, new_block: Arc<ThreadEventBlock>) -> Arc<ThreadEventBlock> {
+    pub fn replace_block(&mut self, new_block: Arc<ThreadBlock>) -> Arc<ThreadBlock> {
         let old_block = self.current_block.clone();
         self.current_block = new_block;
         old_block
@@ -217,7 +92,7 @@ impl ThreadStream {
 
     pub fn push_event<T>(&mut self, event: T)
     where
-        T: Serialize + ThreadEventQueueTypeIndex,
+        T: InProcSerialize + ThreadEventQueueTypeIndex,
     {
         self.get_events_mut().push(event);
     }

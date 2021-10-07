@@ -8,7 +8,7 @@ pub enum TelemetrySinkEvent {
     OnInitProcess(ProcessInfo),
     OnInitStream(StreamInfo),
     OnLogBufferFull(Arc<LogBlock>),
-    OnThreadBufferFull(Arc<ThreadEventBlock>),
+    OnThreadBufferFull(Arc<ThreadBlock>),
     OnShutdown,
 }
 

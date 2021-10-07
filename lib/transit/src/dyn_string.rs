@@ -3,7 +3,7 @@ use crate::*;
 #[derive(Debug)]
 pub struct DynString(pub String);
 
-impl Serialize for DynString {
+impl InProcSerialize for DynString {
     fn is_size_static() -> bool {
         false
     }

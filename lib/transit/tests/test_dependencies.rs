@@ -6,12 +6,12 @@ pub struct LogMsgEvent {
     pub msg: &'static str,
 }
 
-impl Serialize for LogMsgEvent {}
+impl InProcSerialize for LogMsgEvent {}
 
 #[derive(Debug, TransitReflect)]
 pub struct NullEvent {}
 
-impl Serialize for NullEvent {}
+impl InProcSerialize for NullEvent {}
 
 declare_queue_struct!(
     struct LogMsgQueue<LogMsgEvent, NullEvent> {}

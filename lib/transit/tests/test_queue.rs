@@ -6,14 +6,14 @@ pub struct MyTestEvent {
     some_32: u32,
 }
 
-impl Serialize for MyTestEvent {}
+impl InProcSerialize for MyTestEvent {}
 
 #[derive(Debug, TransitReflect)]
 pub struct OtherEvent {
     some_64: u64,
 }
 
-impl Serialize for OtherEvent {}
+impl InProcSerialize for OtherEvent {}
 
 declare_queue_struct!(
     struct MyQueue<MyTestEvent, OtherEvent, DynString> {}
@@ -21,9 +21,9 @@ declare_queue_struct!(
 
 #[test]
 fn test_queue() {
-    assert!(<MyTestEvent as Serialize>::is_size_static());
-    assert!(<OtherEvent as Serialize>::is_size_static());
-    assert!(!<DynString as Serialize>::is_size_static());
+    assert!(<MyTestEvent as InProcSerialize>::is_size_static());
+    assert!(<OtherEvent as InProcSerialize>::is_size_static());
+    assert!(!<DynString as InProcSerialize>::is_size_static());
 
     let mut q = MyQueue::new(1024);
     q.push(MyTestEvent {

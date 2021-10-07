@@ -14,7 +14,7 @@ pub struct LogMsgEvent {
     pub msg: *const u8,
 }
 
-impl Serialize for LogMsgEvent {}
+impl InProcSerialize for LogMsgEvent {}
 
 #[derive(Debug)]
 pub struct LogDynMsgEvent {
@@ -22,7 +22,7 @@ pub struct LogDynMsgEvent {
     pub msg: DynString,
 }
 
-impl Serialize for LogDynMsgEvent {
+impl InProcSerialize for LogDynMsgEvent {
     fn is_size_static() -> bool {
         false
     }
@@ -41,7 +41,7 @@ impl Serialize for LogDynMsgEvent {
         let level = read_pod::<u8>(ptr);
         let buffer_size = value_size.unwrap();
         let string_ptr = unsafe { ptr.add(1) };
-        let msg = <DynString as Serialize>::read_value(string_ptr, Some(buffer_size - 1));
+        let msg = <DynString as InProcSerialize>::read_value(string_ptr, Some(buffer_size - 1));
         Self { level, msg }
     }
 }
