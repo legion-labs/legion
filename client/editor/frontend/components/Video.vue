@@ -244,6 +244,7 @@ export default {
       this.video_channel.onclose = async () => {
         console.log("Video channel is now closed.");
         observer.disconnect();
+        this.video_channel = null;
       };
       this.video_channel.onmessage = async (msg) => {
         videoPlayer.push(msg.data);
@@ -251,9 +252,17 @@ export default {
       this.video_channel.ondatachannel = async (evt) => {
         console.log("video data channel: ", evt);
       };
+      this.control_channel.onopen = async (evt) => {
+        console.log("Control channel is now open: ", evt);
+      };
+      this.control_channel.onclose = async (evt) => {
+        console.log("Control channel is now closed: ", evt);
+        this.control_channel = null;
+      };
       this.control_channel.ondatachannel = async (evt) => {
         console.log("control data channel: ", evt);
       };
+      this.control_channel.onmessage = async (msg) => {};
     };
   },
   watch: {
