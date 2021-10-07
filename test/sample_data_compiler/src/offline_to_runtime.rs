@@ -11,10 +11,10 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
         offline_data::Entity::TYPE => path.push(runtime_data::Entity::TYPE),
         offline_data::Instance::TYPE => path.push(runtime_data::Instance::TYPE),
         offline_data::Mesh::TYPE => path.push(runtime_data::Mesh::TYPE),
-        legion_graphics_offline::psd::PsdFile::TYPE => path
-            .push(legion_graphics_offline::texture::Texture::TYPE)
+        legion_graphics_offline::PsdFile::TYPE => path
+            .push(legion_graphics_offline::Texture::TYPE)
             .push(legion_graphics_runtime::Texture::TYPE),
-        legion_graphics_offline::material::Material::TYPE => {
+        legion_graphics_offline::Material::TYPE => {
             path.push(legion_graphics_runtime::Material::TYPE)
         }
         _ => {

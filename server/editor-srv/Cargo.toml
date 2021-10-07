@@ -13,6 +13,7 @@ legion-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-editor-proto = { path = "../../proto/editor-proto", version = "0.1.0" }
 legion-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
+legion-resource-registry = { path = "../../plugin/resource-registry", version = "0.1.0" }
 legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
 
 # other

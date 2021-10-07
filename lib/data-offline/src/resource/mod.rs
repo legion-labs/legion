@@ -14,7 +14,7 @@ use crate::ResourcePathId;
 /// The trait defines a resource that can be stored in a [`Project`].
 pub trait OfflineResource: Resource {
     /// Offline resource processor bound to the resource.
-    type Processor: ResourceProcessor + Default + 'static;
+    type Processor: ResourceProcessor + Send + Sync + Default + 'static;
 }
 
 /// The `ResourceProcessor` trait allows to process an offline resource.

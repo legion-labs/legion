@@ -1,4 +1,4 @@
-use std::{any::Any, marker::PhantomData, sync::mpsc};
+use std::{any::Any, marker::PhantomData};
 
 use legion_data_runtime::Resource;
 
@@ -15,7 +15,7 @@ pub(crate) enum RefOp {
 #[derive(Debug)]
 pub struct ResourceHandleUntyped {
     pub(crate) id: ResourceHandleId,
-    refcount_tx: mpsc::Sender<RefOp>,
+    refcount_tx: crossbeam_channel::Sender<RefOp>,
 }
 
 impl AsRef<Self> for ResourceHandleUntyped {
@@ -47,7 +47,10 @@ impl PartialEq for ResourceHandleUntyped {
 }
 
 impl ResourceHandleUntyped {
-    pub(crate) fn create(id: ResourceHandleId, refcount_tx: mpsc::Sender<RefOp>) -> Self {
+    pub(crate) fn create(
+        id: ResourceHandleId,
+        refcount_tx: crossbeam_channel::Sender<RefOp>,
+    ) -> Self {
         Self { id, refcount_tx }
     }
 
@@ -106,7 +109,10 @@ impl<T: Any + Resource> PartialEq for ResourceHandle<T> {
 }
 
 impl<T: Any + Resource> ResourceHandle<T> {
-    pub(crate) fn create(id: ResourceHandleId, refcount_tx: mpsc::Sender<RefOp>) -> Self {
+    pub(crate) fn create(
+        id: ResourceHandleId,
+        refcount_tx: crossbeam_channel::Sender<RefOp>,
+    ) -> Self {
         Self {
             internal: ResourceHandleUntyped::create(id, refcount_tx),
             _pd: PhantomData {},

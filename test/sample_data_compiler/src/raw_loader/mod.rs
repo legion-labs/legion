@@ -6,7 +6,7 @@ use legion_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
 use legion_data_runtime::{Resource, ResourceId, ResourceType};
-use legion_graphics_offline::psd::PsdFile;
+use legion_graphics_offline::PsdFile;
 use serde::de::DeserializeOwned;
 use std::{
     collections::{hash_map::DefaultHasher, HashMap},
@@ -64,10 +64,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                         );
                     }
                     "mat" => {
-                        load_ron_resource::<
-                            raw_data::Material,
-                            legion_graphics_offline::material::Material,
-                        >(
+                        load_ron_resource::<raw_data::Material, legion_graphics_offline::Material>(
                             resource_id,
                             path,
                             &resource_ids,
@@ -111,13 +108,10 @@ fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
     }
     .unwrap();
 
-    let registry = ResourceRegistryOptions::new()
-        .add_type::<offline_data::Entity>()
-        .add_type::<offline_data::Instance>()
-        .add_type::<offline_data::Mesh>()
-        .add_type::<legion_graphics_offline::material::Material>()
-        .add_type::<legion_graphics_offline::psd::PsdFile>()
-        .create_registry();
+    let mut registry = ResourceRegistryOptions::new();
+    registry = offline_data::register_resource_types(registry);
+    registry = legion_graphics_offline::register_resource_types(registry);
+    let registry = registry.create_registry();
 
     (project, registry)
 }
@@ -126,9 +120,9 @@ fn ext_to_resource_kind(ext: &str) -> ResourceType {
     match ext {
         "ent" => offline_data::Entity::TYPE,
         "ins" => offline_data::Instance::TYPE,
-        "mat" => legion_graphics_offline::material::Material::TYPE,
+        "mat" => legion_graphics_offline::Material::TYPE,
         "mesh" => offline_data::Mesh::TYPE,
-        "psd" => legion_graphics_offline::psd::PsdFile::TYPE,
+        "psd" => legion_graphics_offline::PsdFile::TYPE,
         _ => panic!(),
     }
 }

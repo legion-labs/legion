@@ -270,7 +270,7 @@ impl FromRaw<raw_data::Instance> for offline_data::Instance {
 
 // ----- Material conversions -----
 
-impl FromRaw<raw_data::Material> for legion_graphics_offline::material::Material {
+impl FromRaw<raw_data::Material> for legion_graphics_offline::Material {
     fn from_raw(
         raw: raw_data::Material,
         references: &HashMap<ResourcePathName, ResourceId>,

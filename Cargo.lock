@@ -1604,6 +1604,7 @@ dependencies = [
  "legion-ecs",
  "legion-editor-proto",
  "legion-mp4",
+ "legion-resource-registry",
  "legion-transform",
  "log",
  "serde",
@@ -2903,6 +2904,7 @@ dependencies = [
 name = "legion-data-offline"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "hex",
  "legion-content-store",
  "legion-data-offline-macros",
@@ -3087,6 +3089,16 @@ dependencies = [
 [[package]]
 name = "legion-renderer"
 version = "0.1.0"
+
+[[package]]
+name = "legion-resource-registry"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+ "legion-data-offline",
+ "legion-graphics-offline",
+ "sample-data-compiler",
+]
 
 [[package]]
 name = "legion-source-control"

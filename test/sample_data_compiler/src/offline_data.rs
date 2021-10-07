@@ -3,12 +3,19 @@
 use std::any::{Any, TypeId};
 
 use legion_data_offline::{
-    resource::{OfflineResource, ResourceProcessor},
+    resource::{OfflineResource, ResourceProcessor, ResourceRegistryOptions},
     ResourcePathId,
 };
 use legion_data_runtime::{resource, Resource};
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
+
+pub fn register_resource_types(registry: ResourceRegistryOptions) -> ResourceRegistryOptions {
+    registry
+        .add_type::<Entity>()
+        .add_type::<Instance>()
+        .add_type::<Mesh>()
+}
 
 // ------------------ Entity -----------------------------------
 
