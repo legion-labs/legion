@@ -70,6 +70,12 @@ fn test_list_processes() {
     dump_cli_sys(&[data_path.to_str().unwrap(), "recent-processes"])
 }
 
+#[test]
+fn test_logs_by_process() {
+    let data_path = setup_data_dir("logs_by_process");
+    dump_cli_sys(&[data_path.to_str().unwrap(), "logs-by-process"])
+}
+
 #[tokio::main]
 #[test]
 async fn test_print_log() -> Result<()> {

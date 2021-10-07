@@ -2,23 +2,33 @@ use std::sync::Arc;
 use std::thread;
 
 use telemetry::*;
+use telemetry::ThreadEventQueueAny::*;
+use telemetry::LogMsgQueueAny::*;
 
 struct DebugEventSink {}
 
 impl EventBlockSink for DebugEventSink {
     fn on_sink_event(&self, event: TelemetrySinkEvent) {
         match event {
-            TelemetrySinkEvent::OnInitProcess(process_info) => {
-                dbg!(process_info);
+            TelemetrySinkEvent::OnInitProcess(_process_info) => {
             }
-            TelemetrySinkEvent::OnInitStream(stream_info) => {
-                dbg!(stream_info);
+            TelemetrySinkEvent::OnInitStream(_stream_info) => {
             }
             TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
-                let _encoded = log_buffer.encode();
+                for event in log_buffer.events.iter(){
+                    match event{
+                        LogMsgEvent(_evt) => {},
+                        LogDynMsgEvent(_evt) => {},
+                    }
+                }
             }
-            TelemetrySinkEvent::OnThreadBufferFull(_) => {
-                println!("thread buffer full");
+            TelemetrySinkEvent::OnThreadBufferFull(thread_buffer) => {
+                for event in thread_buffer.events.iter() {
+                    match event {
+                        BeginScopeEvent(_evt) => {}
+                        EndScopeEvent(_evt) => {}
+                    }
+                }
             }
             TelemetrySinkEvent::OnShutdown => todo!(),
         }
