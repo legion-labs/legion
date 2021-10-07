@@ -31,6 +31,7 @@ impl TelemetryIngestion for LocalIngestionService {
         match self.db_pool.acquire().await {
             Ok(mut connection) => {
                 let current_date: chrono::DateTime<chrono::Utc> = chrono::Utc::now();
+                #[allow(clippy::cast_possible_wrap)]
                 if let Err(e) = sqlx::query("INSERT INTO processes VALUES(?,?,?,?,?,?,?,?,?,?);")
                     .bind(process_info.process_id.clone())
                     .bind(process_info.exe)
@@ -157,6 +158,7 @@ impl TelemetryIngestion for LocalIngestionService {
             )));
         }
 
+        #[allow(clippy::cast_possible_wrap)]
         if let Err(e) = sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?);")
             .bind(block.block_id.clone())
             .bind(block.stream_id)

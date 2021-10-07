@@ -82,7 +82,7 @@ impl Transform {
     pub fn from_translation(translation: Vec3) -> Self {
         Self {
             translation,
-            ..Default::default()
+            ..Self::default()
         }
     }
 
@@ -92,7 +92,7 @@ impl Transform {
     pub fn from_rotation(rotation: Quat) -> Self {
         Self {
             rotation,
-            ..Default::default()
+            ..Self::default()
         }
     }
 
@@ -102,7 +102,7 @@ impl Transform {
     pub fn from_scale(scale: Vec3) -> Self {
         Self {
             scale,
-            ..Default::default()
+            ..Self::default()
         }
     }
 
