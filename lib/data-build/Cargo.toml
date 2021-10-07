@@ -17,6 +17,7 @@ byteorder = "1"
 hex = "0.4.3"
 
 [dev-dependencies]
+test-compilers = { path = "../data-compiler/test-compilers", package = "test-compilers" } # non-lib dependency; to make sure compilers that are used for tests are built.
 tempfile = "3.2.0"
 refs-asset = { path = "../data-runtime/test-refs-asset" }
 integer-asset = { path = "../data-runtime/test-integer-asset" }

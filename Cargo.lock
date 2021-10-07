@@ -2859,6 +2859,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "test-compilers",
  "text-resource",
 ]
 
@@ -6054,6 +6055,23 @@ dependencies = [
  "futf",
  "mac",
  "utf-8",
+]
+
+[[package]]
+name = "test-compilers"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "binary-resource",
+ "integer-asset",
+ "legion-content-store",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "multitext-resource",
+ "refs-asset",
+ "refs-resource",
+ "text-resource",
 ]
 
 [[package]]
