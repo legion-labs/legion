@@ -4,6 +4,7 @@
     ],
     "words": [
         "sciter",
-        "thiserror"
+        "thiserror",
+        "bincode"
     ]
 }

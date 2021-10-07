@@ -21,3 +21,9 @@ serde_json = "1.0"
 legion-data-offline-macros = { path = "macros" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
 tempfile = "3.2.0"
+bincode = "1.3.3"
+
+[features]
+default = ["offline_data", "runtime_data"]
+offline_data = []
+runtime_data = []

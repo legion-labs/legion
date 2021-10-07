@@ -2917,6 +2917,7 @@ dependencies = [
 name = "legion-data-offline"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "crossbeam-channel",
  "hex",
  "legion-content-store",
@@ -2933,6 +2934,7 @@ dependencies = [
 name = "legion-data-offline-macros"
 version = "0.1.0"
 dependencies = [
+ "proc-macro2",
  "quote 1.0.9",
  "syn 1.0.78",
 ]
