@@ -14,10 +14,8 @@ pub fn write_assetfile<A, R>(
     mut writer: impl std::io::Write,
 ) -> Result<usize, Error>
 where
-    A: Iterator<Item = (ResourceId, i128)>,
-    R: Iterator<Item = (ResourceId, (ResourceId, ResourceId))>,
-    A: Clone,
-    R: Clone,
+    A: Iterator<Item = (ResourceId, i128)> + Clone,
+    R: Iterator<Item = (ResourceId, (ResourceId, ResourceId))> + Clone,
 {
     let mut written = 0;
 
@@ -100,7 +98,7 @@ mod tests {
             let mut output = vec![];
             let nbytes = write_assetfile(
                 std::iter::once((asset_id, asset_checksum)),
-                reference_list.iter().cloned(),
+                reference_list.iter().copied(),
                 &content_store,
                 &mut output,
             )
@@ -178,7 +176,7 @@ mod tests {
             let mut output = vec![];
             let nbytes = write_assetfile(
                 std::iter::once((parent_id, parent_checksum)),
-                reference_list.iter().cloned(),
+                reference_list.iter().copied(),
                 &content_store,
                 &mut output,
             )
