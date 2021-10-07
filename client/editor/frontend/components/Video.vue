@@ -223,7 +223,6 @@ export default {
         debounce(async () => {
           console.log("Sending resize event.");
 
-          // Uncommenting this breaks the stream most of the time... not sure why.
           this.video_channel.send(
             JSON.stringify({
               event: "resize",
@@ -244,7 +243,6 @@ export default {
       this.video_channel.onclose = async () => {
         console.log("Video channel is now closed.");
         observer.disconnect();
-        this.video_channel = null;
       };
       this.video_channel.onmessage = async (msg) => {
         videoPlayer.push(msg.data);
@@ -257,7 +255,6 @@ export default {
       };
       this.control_channel.onclose = async (evt) => {
         console.log("Control channel is now closed: ", evt);
-        this.control_channel = null;
       };
       this.control_channel.ondatachannel = async (evt) => {
         console.log("control data channel: ", evt);
