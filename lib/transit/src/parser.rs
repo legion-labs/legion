@@ -112,12 +112,14 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
                 let utf8_ptr = buffer.as_ptr().add(offset + std::mem::size_of::<usize>());
                 let slice = std::ptr::slice_from_raw_parts(utf8_ptr, nb_utf8_bytes);
                 let string = String::from(std::str::from_utf8(&*slice).unwrap());
-                hash.insert(string_id, Value::String(string));
+                let insert_res = hash.insert(string_id, Value::String(string));
+                assert!( insert_res.is_none() );
             },
             _ => {
                 assert!(udt.size > 0);
                 let instance = parse_pod_instance(&udt, &hash, offset, buffer);
-                hash.insert(instance.get::<u64>("id")?, Value::Object(instance));
+                let insert_res = hash.insert(instance.get::<u64>("id")?, Value::Object(instance));
+                assert!( insert_res.is_none() );
             }
         }
         offset += object_size;

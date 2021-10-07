@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::*;
 use anyhow::*;
 use transit::*;
@@ -40,14 +42,16 @@ impl StreamBlock for LogBlock {
         let end = self.end.as_ref().unwrap();
 
         let mut deps = LogDepsQueue::new(1024 * 1024);
-        //todo: do not repeat dependencies
+        let mut recorded_deps = HashSet::new();
         for x in self.events.iter() {
             match x {
                 LogMsgQueueAny::LogMsgEvent(evt) => {
-                    deps.push(StaticString {
-                        len: evt.msg_len,
-                        ptr: evt.msg,
-                    });
+                    if recorded_deps.insert(evt.msg as u64) {
+                        deps.push(StaticString {
+                            len: evt.msg_len,
+                            ptr: evt.msg,
+                        });
+                    }
                 }
                 LogMsgQueueAny::LogDynMsgEvent(_evt) => {}
             }

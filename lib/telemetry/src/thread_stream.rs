@@ -1,7 +1,7 @@
 use crate::*;
 use anyhow::*;
 use core::arch::x86_64::_rdtsc;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 use transit::*;
 
 #[derive(Debug, TransitReflect)]
@@ -122,32 +122,49 @@ impl StreamBlock for ThreadEventBlock {
         let end = self.end.as_ref().unwrap();
 
         let mut deps = ThreadDepsQueue::new(1024 * 1024);
+        let mut recorded_deps = HashSet::new();
         //todo: do not repeat dependencies
         for x in self.events.iter() {
             match x {
                 ThreadEventQueueAny::BeginScopeEvent(evt) => {
                     let ptr = evt.scope as u64;
-                    let desc = (evt.scope)();
-                    deps.push(StaticString::from(desc.name));
-                    deps.push(StaticString::from(desc.filename));
-                    deps.push(ReferencedScope {
-                        id: ptr,
-                        name: desc.name.as_ptr(),
-                        filename: desc.filename.as_ptr(),
-                        line: desc.line,
-                    });
+                    if recorded_deps.insert(ptr){
+                        let desc = (evt.scope)();
+                        let name = StaticString::from(desc.name);
+                        if recorded_deps.insert( name.ptr as u64 ){
+                            deps.push(name);
+                        }
+                        let filename = StaticString::from(desc.filename);
+                        if recorded_deps.insert( filename.ptr as u64 ){
+                            deps.push(filename);
+                        }
+                        deps.push(ReferencedScope {
+                            id: ptr,
+                            name: desc.name.as_ptr(),
+                            filename: desc.filename.as_ptr(),
+                            line: desc.line,
+                        });
+                    }
                 }
                 ThreadEventQueueAny::EndScopeEvent(evt) => {
                     let ptr = evt.scope as u64;
-                    let desc = (evt.scope)();
-                    deps.push(StaticString::from(desc.name));
-                    deps.push(StaticString::from(desc.filename));
-                    deps.push(ReferencedScope {
-                        id: ptr,
-                        name: desc.name.as_ptr(),
-                        filename: desc.filename.as_ptr(),
-                        line: desc.line,
-                    });
+                    if recorded_deps.insert(ptr){
+                        let desc = (evt.scope)();
+                        let name = StaticString::from(desc.name);
+                        if recorded_deps.insert( name.ptr as u64 ){
+                            deps.push(name);
+                        }
+                        let filename = StaticString::from(desc.filename);
+                        if recorded_deps.insert( filename.ptr as u64 ){
+                            deps.push(filename);
+                        }
+                        deps.push(ReferencedScope {
+                            id: ptr,
+                            name: desc.name.as_ptr(),
+                            filename: desc.filename.as_ptr(),
+                            line: desc.line,
+                        });
+                    }
                 }
             }
         }
