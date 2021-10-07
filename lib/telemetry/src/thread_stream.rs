@@ -127,15 +127,15 @@ impl StreamBlock for ThreadEventBlock {
         for x in self.events.iter() {
             match x {
                 ThreadEventQueueAny::BeginScopeEvent(evt) => {
-                    let ptr = evt.scope as u64;
-                    if recorded_deps.insert(ptr){
+                    let ptr = evt.scope as usize as u64;
+                    if recorded_deps.insert(ptr) {
                         let desc = (evt.scope)();
                         let name = StaticString::from(desc.name);
-                        if recorded_deps.insert( name.ptr as u64 ){
+                        if recorded_deps.insert(name.ptr as u64) {
                             deps.push(name);
                         }
                         let filename = StaticString::from(desc.filename);
-                        if recorded_deps.insert( filename.ptr as u64 ){
+                        if recorded_deps.insert(filename.ptr as u64) {
                             deps.push(filename);
                         }
                         deps.push(ReferencedScope {
@@ -147,15 +147,15 @@ impl StreamBlock for ThreadEventBlock {
                     }
                 }
                 ThreadEventQueueAny::EndScopeEvent(evt) => {
-                    let ptr = evt.scope as u64;
-                    if recorded_deps.insert(ptr){
+                    let ptr = evt.scope as usize as u64;
+                    if recorded_deps.insert(ptr) {
                         let desc = (evt.scope)();
                         let name = StaticString::from(desc.name);
-                        if recorded_deps.insert( name.ptr as u64 ){
+                        if recorded_deps.insert(name.ptr as u64) {
                             deps.push(name);
                         }
                         let filename = StaticString::from(desc.filename);
-                        if recorded_deps.insert( filename.ptr as u64 ){
+                        if recorded_deps.insert(filename.ptr as u64) {
                             deps.push(filename);
                         }
                         deps.push(ReferencedScope {

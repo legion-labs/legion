@@ -104,8 +104,8 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
             }
             static_size => static_size,
         };
-        match udt.name.as_str() {
-            "StaticString" => unsafe {
+        if udt.name == "StaticString" {
+            unsafe {
                 let id_ptr = buffer.as_ptr().add(offset);
                 let string_id = read_pod::<u64>(id_ptr);
                 let nb_utf8_bytes = object_size - std::mem::size_of::<usize>();
@@ -113,14 +113,13 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
                 let slice = std::ptr::slice_from_raw_parts(utf8_ptr, nb_utf8_bytes);
                 let string = String::from(std::str::from_utf8(&*slice).unwrap());
                 let insert_res = hash.insert(string_id, Value::String(string));
-                assert!( insert_res.is_none() );
-            },
-            _ => {
-                assert!(udt.size > 0);
-                let instance = parse_pod_instance(&udt, &hash, offset, buffer);
-                let insert_res = hash.insert(instance.get::<u64>("id")?, Value::Object(instance));
-                assert!( insert_res.is_none() );
+                assert!(insert_res.is_none());
             }
+        } else {
+            assert!(udt.size > 0);
+            let instance = parse_pod_instance(udt, &hash, offset, buffer);
+            let insert_res = hash.insert(instance.get::<u64>("id")?, Value::Object(instance));
+            assert!(insert_res.is_none());
         }
         offset += object_size;
     }
@@ -153,11 +152,10 @@ fn parse_custom_instance(
             Vec::new()
         }
     };
-    let instance = Object {
+    Object {
         type_name: udt.name.clone(),
         members,
-    };
-    instance
+    }
 }
 
 fn parse_pod_instance(
@@ -211,11 +209,10 @@ fn parse_pod_instance(
             (name, value)
         })
         .collect();
-    let instance = Object {
+    Object {
         type_name: udt.name.clone(),
         members,
-    };
-    instance
+    }
 }
 
 pub fn parse_object_buffer<F>(
