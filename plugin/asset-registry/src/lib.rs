@@ -118,7 +118,9 @@ impl Plugin for AssetRegistryPlugin {
                 let mut registry = AssetRegistryOptions::new();
                 registry = runtime_data::add_loaders(registry);
                 registry = legion_graphics_runtime::add_loaders(registry);
-                let registry = registry.create(Box::new(content_store), manifest);
+                let registry = registry
+                    .add_device_cas(Box::new(content_store), manifest)
+                    .create();
 
                 app.insert_resource(registry)
                     .insert_resource(AssetLoadingStates::default())

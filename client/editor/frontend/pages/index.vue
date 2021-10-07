@@ -1,8 +1,18 @@
 <template>
   <div class="d-flex flex-column flex-grow-1">
     <div class="d-flex flex-row flex-grow-1">
-      <PropertyGrid class="flex-shrink-1" />
-      <Video class="flex-grow-1" />
+      <PropertyGrid v-model="hue" class="flex-shrink-1" />
+      <Video :hue="hue" class="flex-grow-1" />
     </div>
   </div>
 </template>
+
+<script>
+export default {
+  data() {
+    return {
+      hue: 0,
+    };
+  },
+};
+</script>

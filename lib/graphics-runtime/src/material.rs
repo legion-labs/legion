@@ -1,10 +1,8 @@
 //! A module providing runtime material related functionality.
 
-use std::{any::Any, convert::TryFrom};
+use std::{any::Any, convert::TryFrom, io};
 
-use legion_data_runtime::{
-    resource, Asset, AssetLoader, Reference, Resource, ResourceId, ResourceType,
-};
+use legion_data_runtime::{resource, Asset, AssetLoader, Reference, Resource, ResourceId};
 
 use crate::Texture;
 
@@ -46,11 +44,7 @@ where
 }
 
 impl AssetLoader for MaterialLoader {
-    fn load(
-        &mut self,
-        _kind: ResourceType,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
+    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let albedo = read_asset_id(reader)?;
         let normal = read_asset_id(reader)?;
         let roughness = read_asset_id(reader)?;

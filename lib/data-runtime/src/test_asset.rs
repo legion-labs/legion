@@ -2,9 +2,9 @@
 //!
 //! It is used to test the data compilation process until we have a proper asset available.
 
-use std::any::Any;
+use std::{any::Any, io};
 
-use crate::{resource, Asset, AssetLoader, Resource, ResourceType};
+use crate::{resource, Asset, AssetLoader, Resource};
 
 /// Asset temporarily used for testing.
 ///
@@ -26,11 +26,7 @@ impl Asset for TestAsset {
 pub struct TestAssetLoader {}
 
 impl AssetLoader for TestAssetLoader {
-    fn load(
-        &mut self,
-        _kind: ResourceType,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
+    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let mut content = String::new();
         reader.read_to_string(&mut content)?;
         let asset = Box::new(TestAsset { content });

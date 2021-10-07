@@ -339,10 +339,7 @@ fn intermediate_resource() {
 
         let mut loader = IntegerAssetLoader {};
         let resource = loader
-            .load(
-                integer_asset::IntegerAsset::TYPE,
-                &mut &resource_content[..],
-            )
+            .load(&mut &resource_content[..])
             .expect("loaded resource");
         let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 
@@ -556,10 +553,7 @@ fn named_path_cache_use() {
 
         let mut loader = IntegerAssetLoader {};
         let resource = loader
-            .load(
-                integer_asset::IntegerAsset::TYPE,
-                &mut &resource_content[..],
-            )
+            .load(&mut &resource_content[..])
             .expect("loaded resource");
         let resource = resource.downcast_ref::<IntegerAsset>().unwrap();
 

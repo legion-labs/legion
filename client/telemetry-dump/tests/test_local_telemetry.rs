@@ -83,7 +83,6 @@ async fn test_print_log() -> Result<()> {
 
 #[tokio::main]
 #[test]
-#[ignore] //needs updated data
 async fn test_thread_events() -> Result<()> {
     let data_path = setup_data_dir("thread-events");
     let pool = alloc_sql_pool(&data_path).await.unwrap();

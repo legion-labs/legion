@@ -136,6 +136,7 @@
 #![warn(missing_docs)]
 
 mod asset_loader;
+mod vfs;
 
 mod asset_registry;
 pub use asset_registry::*;

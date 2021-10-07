@@ -2,9 +2,9 @@
 //!
 //! It is used to test the data compilation process until we have a proper asset available.
 
-use std::any::Any;
+use std::{any::Any, io};
 
-use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceType};
+use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 /// Asset temporarily used for testing.
 ///
 /// To be removed once real asset types exist.
@@ -25,11 +25,7 @@ impl Asset for RefsAsset {
 pub struct RefsAssetLoader {}
 
 impl AssetLoader for RefsAssetLoader {
-    fn load(
-        &mut self,
-        _kind: ResourceType,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, std::io::Error> {
+    fn load(&mut self, reader: &mut dyn std::io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let mut content = String::new();
         reader.read_to_string(&mut content)?;
         let asset = Box::new(RefsAsset { content });

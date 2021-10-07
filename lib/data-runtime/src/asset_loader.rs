@@ -1,11 +1,8 @@
 use std::{any::Any, collections::HashMap, io, sync::Arc, time::Duration};
 
-use crate::{
-    manifest::Manifest, AssetLoader, HandleId, HandleUntyped, RefOp, ResourceId, ResourceType,
-};
+use crate::{vfs, AssetLoader, HandleId, HandleUntyped, RefOp, ResourceId, ResourceType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use legion_content_store::ContentStore;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,19 +39,12 @@ struct LoaderPending {
 }
 
 pub(crate) fn create_loader(
-    content_store: Box<dyn ContentStore>,
-    manifest: Manifest,
+    devices: Vec<Box<dyn vfs::Device>>,
 ) -> (AssetLoaderStub, AssetLoaderIO) {
     let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
     let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
 
-    let io = AssetLoaderIO::new(
-        content_store,
-        manifest,
-        request_tx.clone(),
-        request_rx,
-        result_tx,
-    );
+    let io = AssetLoaderIO::new(devices, request_tx.clone(), request_rx, result_tx);
     let loader = AssetLoaderStub::new(request_tx, result_rx);
     (loader, io)
 }
@@ -163,11 +153,7 @@ pub(crate) struct AssetLoaderIO {
     /// List of primary asset's references to other primary assets .
     primary_asset_references: HashMap<ResourceId, Vec<ResourceId>>,
 
-    /// Where assets are stored.
-    content_store: Box<dyn ContentStore>,
-
-    /// List of known assets.
-    manifest: Manifest,
+    devices: Vec<Box<dyn vfs::Device>>,
 
     /// Loopback for load requests.
     request_tx: crossbeam_channel::Sender<LoaderRequest>,
@@ -186,8 +172,7 @@ pub(crate) struct AssetLoaderIO {
 
 impl AssetLoaderIO {
     pub(crate) fn new(
-        content_store: Box<dyn ContentStore>,
-        manifest: Manifest,
+        devices: Vec<Box<dyn vfs::Device>>,
         request_tx: crossbeam_channel::Sender<LoaderRequest>,
         request_rx: crossbeam_channel::Receiver<LoaderRequest>,
         result_tx: crossbeam_channel::Sender<LoaderResult>,
@@ -197,10 +182,9 @@ impl AssetLoaderIO {
             request_await: Vec::new(),
             asset_refcounts: HashMap::new(),
             asset_storage: HashMap::new(),
-            manifest,
+            devices,
             secondary_assets: HashMap::new(),
             primary_asset_references: HashMap::new(),
-            content_store,
             request_tx,
             request_rx: Some(request_rx),
             result_tx,
@@ -215,16 +199,16 @@ impl AssetLoaderIO {
     }
 
     fn read_resource(&self, id: ResourceId) -> io::Result<Vec<u8>> {
-        if let Some((checksum, size)) = self.manifest.find(id) {
-            if let Some(content) = self.content_store.read(checksum.get()) {
-                assert_eq!(content.len(), size);
-                Ok(content)
-            } else {
-                Err(io::Error::new(io::ErrorKind::NotFound, "ContentStore Miss"))
+        for device in &self.devices {
+            if let Some(content) = device.lookup(id) {
+                return Ok(content);
             }
-        } else {
-            Err(io::Error::new(io::ErrorKind::NotFound, "Manifest Miss"))
         }
+
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "Resource Not Found",
+        ))
     }
 
     fn process_load(
@@ -450,7 +434,7 @@ impl AssetLoaderIO {
 
         let asset_type = id.ty();
         let loader = loaders.get_mut(&asset_type).unwrap();
-        let boxed_asset = loader.load(asset_type, &mut &content[..])?;
+        let boxed_asset = loader.load(&mut &content[..])?;
 
         Ok(LoadOutput {
             assets: vec![(id, Some(Arc::from(boxed_asset)))],
@@ -515,7 +499,7 @@ impl AssetLoaderIO {
         reader.read_exact(&mut content).expect("valid data");
 
         let loader = loaders.get_mut(&asset_type).unwrap();
-        let boxed_asset = loader.load(asset_type, &mut &content[..])?;
+        let boxed_asset = loader.load(&mut &content[..])?;
 
         Ok(LoadOutput {
             assets: vec![(primary_id, Some(Arc::from(boxed_asset)))],
@@ -533,7 +517,7 @@ mod tests {
     use crate::{
         asset_loader::{LoaderRequest, LoaderResult},
         manifest::Manifest,
-        test_asset, Handle, Resource, ResourceId,
+        test_asset, vfs, Handle, Resource, ResourceId,
     };
 
     use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
@@ -554,7 +538,8 @@ mod tests {
             id
         };
 
-        let (loader, mut io) = create_loader(content_store, manifest);
+        let (loader, mut io) =
+            create_loader(vec![Box::new(vfs::CasDevice::new(manifest, content_store))]);
         io.register_loader(
             test_asset::TestAsset::TYPE,
             Box::new(test_asset::TestAssetLoader {}),
@@ -649,8 +634,7 @@ mod tests {
         let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            content_store,
-            manifest,
+            vec![Box::new(vfs::CasDevice::new(manifest, content_store))],
             request_tx.clone(),
             request_rx,
             result_tx,
@@ -725,8 +709,7 @@ mod tests {
         let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            content_store,
-            manifest,
+            vec![Box::new(vfs::CasDevice::new(manifest, content_store))],
             request_tx.clone(),
             request_rx,
             result_tx,
@@ -791,8 +774,7 @@ mod tests {
         let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            content_store,
-            manifest,
+            vec![Box::new(vfs::CasDevice::new(manifest, content_store))],
             request_tx.clone(),
             request_rx,
             result_tx,

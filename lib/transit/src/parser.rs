@@ -198,10 +198,7 @@ where
     while offset < buffer.len() {
         let type_index = buffer[offset] as usize;
         if type_index >= udts.len() {
-            bail!(
-                "Invalid type index parsing transit dependencies: {}",
-                type_index
-            );
+            bail!("Invalid type index parsing transit objects: {}", type_index);
         }
         offset += 1;
         let udt = &udts[type_index];

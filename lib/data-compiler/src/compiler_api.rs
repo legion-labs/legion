@@ -75,10 +75,10 @@
 //! # pub const SOURCE_GEOMETRY: ResourceType = ResourceType::new(b"src_geom");
 //! # pub struct SourceGeomProc {}
 //! # impl ResourceProcessor for SourceGeomProc {
-//! # fn new_resource(&mut self) -> Box<(dyn Any + 'static)> { todo!() }
+//! # fn new_resource(&mut self) -> Box<(dyn Any + Send + Sync + 'static)> { todo!() }
 //! # fn extract_build_dependencies(&mut self, _: &(dyn Any + 'static)) -> Vec<ResourcePathId> { todo!() }
 //! # fn write_resource(&mut self, _: &(dyn Any + 'static), _: &mut dyn std::io::Write) -> Result<usize, std::io::Error> { todo!() }
-//! # fn read_resource(&mut self, _: &mut dyn std::io::Read) -> Result<Box<(dyn Any + 'static)>, std::io::Error> { todo!() }
+//! # fn read_resource(&mut self, _: &mut dyn std::io::Read) -> Result<Box<(dyn Any + Send + Sync + 'static)>, std::io::Error> { todo!() }
 //! # }
 //! fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
 //!   let mut registry = ResourceRegistryOptions::new()
