@@ -23,4 +23,6 @@ pub(crate) enum VideoStreamEventInfo {
     Resize { width: u32, height: u32 },
     #[serde(rename = "hue")]
     Hue { hue: f32 },
+    #[serde(rename = "speed")]
+    Speed { speed: f32 },
 }

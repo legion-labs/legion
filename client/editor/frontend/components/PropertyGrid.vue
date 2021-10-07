@@ -3,15 +3,28 @@
     <color-picker
       id="color-picker"
       variant="persistent"
-      :value="value"
+      :value="hue"
       @input="onColorChange"
     ></color-picker>
-    <v-data-table
-      :headers="headers"
-      :items="items"
-      :items-per-page="10"
-      class="elevation-1"
-    ></v-data-table>
+    <v-slider
+      class="speed-selector"
+      min="-10"
+      max="10"
+      :value="speed"
+      @input="onSpeedChange"
+    >
+      <template v-slot:append>
+        <v-text-field
+          :value="speed"
+          @input="onSpeedChange"
+          class="mt-0 pt-0"
+          hide-details
+          single-line
+          type="number"
+          style="width: 40px"
+        ></v-text-field>
+      </template>
+    </v-slider>
   </div>
 </template>
 
@@ -19,52 +32,25 @@
 #color-picker {
   margin: 1em 0;
 }
+
+.speed-selector {
+  width: 100%;
+}
 </style>
 
 <script>
 export default {
   methods: {
     onColorChange(hue) {
-      this.$emit("input", hue);
+      this.$emit("hue-change", hue);
+    },
+    onSpeedChange(speed) {
+      this.$emit("speed-change", speed);
     },
   },
-  props: ["value"],
+  props: ["hue", "speed"],
   data() {
-    console.log("hue", this.value);
-    return {
-      color: {
-        hue: this.value,
-        saturation: 100,
-        luminosity: 50,
-        alpha: 1,
-      },
-      headers: [
-        {
-          text: "Property",
-          align: "Start",
-          sortable: true,
-          value: "name",
-        },
-        {
-          text: "Value",
-          value: "value",
-        },
-      ],
-      items: [
-        {
-          name: "Color",
-          value: "red",
-        },
-        {
-          name: "Speed",
-          value: 12,
-        },
-        {
-          name: "Shape",
-          value: "triangle",
-        },
-      ],
-    };
+    return {};
   },
 };
 </script>

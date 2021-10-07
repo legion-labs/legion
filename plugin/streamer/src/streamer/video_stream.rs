@@ -1,6 +1,7 @@
+use bytes::Bytes;
 use legion_ecs::prelude::*;
 
-use log::{debug, info, warn};
+use log::{debug, warn};
 use std::sync::Arc;
 
 use webrtc::data::data_channel::RTCDataChannel;
@@ -12,34 +13,141 @@ use legion_codec_api::{
 use legion_mp4::Mp4Stream;
 use legion_renderer::Renderer;
 
+#[derive(PartialEq, Eq)]
+struct Resolution {
+    width: u32,
+    height: u32,
+}
+
+impl Resolution {
+    fn new(mut width: u32, mut height: u32) -> Self {
+        // Ensure a minimum size for the resolution.
+        if width < 16 {
+            width = 16;
+        }
+
+        if height < 16 {
+            height = 16;
+        }
+
+        Self {
+            // Make sure width & height always are multiple of 2.
+            width: width & !1,
+            height: height & !1,
+        }
+    }
+}
+
 #[derive(Component)]
 #[component(storage = "Table")]
 pub struct VideoStream {
     video_data_channel: Arc<RTCDataChannel>,
-    encoder: Encoder,
-    converter: RBGYUVConverter,
-    mp4: Mp4Stream,
-    track_id: i32,
     frame_id: i32,
-    hue: f32,
+    resolution: Resolution,
+    pub hue: f32,
+    pub speed: f32,
     renderer: Renderer,
+    encoder: VideoStreamEncoder,
+    elapsed_secs: f32,
 }
 
 impl VideoStream {
     pub fn new(video_data_channel: Arc<RTCDataChannel>) -> anyhow::Result<Self> {
-        const TARGET_WIDTH: u32 = 1024;
-        const TARGET_HEIGHT: u32 = 768;
-    
-        struct Resolution {
-            width: u32,
-            height: u32,
+        let resolution = Resolution::new(1024, 768);
+        let encoder = VideoStreamEncoder::new(&resolution)?;
+        let renderer = Renderer::new(resolution.width, resolution.height);
+
+        Ok(Self {
+            video_data_channel,
+            frame_id: 0,
+            resolution,
+            hue: 1.0,
+            speed: 1.0,
+            renderer,
+            encoder,
+            elapsed_secs: 0.0,
+        })
+    }
+
+    pub(crate) fn resize(&mut self, width: u32, mut height: u32) {
+        // Make sure height is a multiple of 2.
+        if height & 1 == 1 {
+            height += 1;
         }
 
-        let resolution = Resolution {
-            width: TARGET_WIDTH,
-            height: TARGET_HEIGHT,
-        };
+        let resolution = Resolution { width, height };
 
+        if resolution != self.resolution {
+            self.resolution = Resolution::new(width, height);
+
+            // TODO: Fix this: this is probably bad but I wrote that just to test it.
+            self.renderer = Renderer::new(self.resolution.width, self.resolution.height);
+            self.encoder = VideoStreamEncoder::new(&self.resolution).unwrap();
+        }
+    }
+
+    pub(crate) fn render(
+        &mut self,
+        delta_secs: f32,
+    ) -> impl std::future::Future<Output = ()> + 'static {
+        let now = tokio::time::Instant::now();
+
+        self.elapsed_secs += delta_secs * self.speed;
+
+        self.renderer.render(
+            self.frame_id as usize,
+            self.elapsed_secs,
+            hue2rgb_modulation(self.hue),
+            &mut self.encoder.converter,
+        );
+
+        let chunks = self.encoder.encode();
+
+        let elapsed = now.elapsed().as_micros() as u64;
+        let max_frame_time: u64 = 16_000;
+
+        if elapsed >= max_frame_time {
+            warn!(
+                "stream: frame {:?} took {}ms",
+                self.frame_id,
+                elapsed / 1000
+            );
+        }
+
+        let video_data_channel = Arc::clone(&self.video_data_channel);
+        let frame_id = self.frame_id;
+
+        self.frame_id += 1;
+
+        async move {
+            for (i, data) in chunks.iter().enumerate() {
+                if let Err(err) = video_data_channel.send(data).await {
+                    warn!(
+                        "Failed to send frame {}-{} ({} bytes): streaming will stop: {}",
+                        frame_id,
+                        i,
+                        data.len(),
+                        err.to_string(),
+                    );
+
+                    return;
+                } else {
+                    debug!("Sent frame {}-{} ({} bytes).", frame_id, i, data.len());
+                }
+            }
+        }
+    }
+}
+
+struct VideoStreamEncoder {
+    encoder: Encoder,
+    converter: RBGYUVConverter,
+    mp4: Mp4Stream,
+    track_id: i32,
+}
+
+impl VideoStreamEncoder {
+    fn new(resolution: &Resolution) -> anyhow::Result<Self> {
         let config = encoder::EncoderConfig::new(resolution.width, resolution.height)
             .constant_sps(true)
             .max_fps(60.0)
@@ -47,6 +155,7 @@ impl VideoStream {
             .bitrate_bps(8_000_000);
 
         let encoder = encoder::Encoder::with_config(config)?;
+
         let converter =
             formats::RBGYUVConverter::new(resolution.width as usize, resolution.height as usize);
 
@@ -56,29 +165,14 @@ impl VideoStream {
             .unwrap();
 
         Ok(Self {
-            video_data_channel,
             encoder,
             converter,
             mp4,
             track_id,
-            frame_id: 0,
-            hue: 1.0,
-            renderer: Renderer::new(TARGET_WIDTH, TARGET_HEIGHT),
         })
     }
 
-    pub(crate) fn set_hue(&mut self, hue: f32) {
-        self.hue = hue;
-    }
-
-    pub(crate) fn resize(&mut self, width: u32, height: u32) {
-        info!("Resizing stream to {}x{}", width, height);
-    }
-
-    pub(crate) fn render(&mut self) -> impl std::future::Future<Output = ()> + 'static {
-        let now = tokio::time::Instant::now();
-        
-        self.renderer.render(self.frame_id as usize, 0.0, &mut self.converter);
+    fn encode(&mut self) -> Vec<Bytes> {
         let stream = self.encoder.encode(&self.converter).unwrap();
 
         for layer in &stream.layers {
@@ -120,39 +214,7 @@ impl VideoStream {
 
         self.mp4.clean();
 
-        let elapsed = now.elapsed().as_micros() as u64;
-        let max_frame_time: u64 = 16_000;
-
-        if elapsed >= max_frame_time {
-            warn!(
-                "stream: frame {:?} took {}ms",
-                self.frame_id,
-                elapsed / 1000
-            );
-        }
-
-        let video_data_channel = Arc::clone(&self.video_data_channel);
-        let frame_id = self.frame_id;
-
-        self.frame_id += 1;
-
-        async move {
-            for (i, data) in chunks.iter().enumerate() {
-                if let Err(err) = video_data_channel.send(data).await {
-                    warn!(
-                        "Failed to send frame {}-{} ({} bytes): streaming will stop: {}",
-                        frame_id,
-                        i,
-                        data.len(),
-                        err.to_string(),
-                    );
-
-                    return;
-                } else {
-                    debug!("Sent frame {}-{} ({} bytes).", frame_id, i, data.len());
-                }
-            }
-        }
+        chunks
     }
 }
 

@@ -4,7 +4,6 @@ use legion_codec_api::formats::RBGYUVConverter;
 pub struct Renderer {
     width: u32,
     height: u32,
-    _api: DefaultApi,
     graphics_queue: <DefaultApi as GfxApi>::Queue,
     command_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
     command_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
@@ -15,6 +14,9 @@ pub struct Renderer {
     descriptor_set_array: <DefaultApi as GfxApi>::DescriptorSetArray,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
+
+    // This should be last, as it must be destroyed last.
+    _api: DefaultApi,
 }
 
 impl Renderer {
@@ -318,7 +320,13 @@ impl Renderer {
         }
     }
 
-    pub fn render(&self, frame_idx: usize, elapsed_secs: f32, converter: &mut RBGYUVConverter) {
+    pub fn render(
+        &self,
+        frame_idx: usize,
+        elapsed_secs: f32,
+        rgb: (f32, f32, f32),
+        converter: &mut RBGYUVConverter,
+    ) {
         let vertex_data = [
             0.0f32,
             0.5,
@@ -337,8 +345,7 @@ impl Renderer {
             1.0,
         ];
 
-        let color = (elapsed_secs.cos() + 1.0) / 2.0;
-        let uniform_data = [color, 0.0, 1.0 - color, 1.0];
+        let uniform_data = [rgb.0, rgb.1, rgb.2, 1.0];
 
         //
         // Acquire swapchain image

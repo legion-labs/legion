@@ -6,6 +6,7 @@ use webrtc::data::data_channel::RTCDataChannel;
 #[derive(Component)]
 #[component(storage = "Table")]
 pub(crate) struct ControlStream {
+    #[allow(dead_code)]
     control_data_channel: Arc<RTCDataChannel>,
 }
 

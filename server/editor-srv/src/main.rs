@@ -3,8 +3,8 @@ use std::time::Duration;
 use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use legion_async::AsyncPlugin;
+use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use legion_streamer::{StreamerPlugin, StreamerPluginSettings};
 use legion_transform::TransformPlugin;
 
@@ -79,12 +79,9 @@ fn main() {
         .insert_resource(StreamerPluginSettings {
             grpc_server_addr: addr,
         })
-<<<<<<< HEAD
         .insert_resource(ResourceRegistrySettings::new(project_folder))
         .add_plugin(ResourceRegistryPlugin::default())
-=======
         .add_plugin(StreamerPlugin {})
->>>>>>> 71be79d3 (Tenative streamer plugin)
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,

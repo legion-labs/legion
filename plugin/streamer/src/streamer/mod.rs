@@ -1,4 +1,5 @@
 use legion_async::TokioAsyncRuntime;
+use legion_core::Time;
 use legion_ecs::prelude::*;
 
 use std::{fmt::Display, sync::Arc};
@@ -152,17 +153,23 @@ impl Streamer {
         async_rt: ResMut<'_, TokioAsyncRuntime>,
         mut query: Query<'_, '_, (Option<&mut ControlStream>, Option<&mut VideoStream>)>,
         mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
+        mut time: ResMut<'_, Time>,
     ) {
+        time.update();
+
         for event in video_stream_events.iter() {
             if let Ok(mut video_stream) =
                 query.get_component_mut::<VideoStream>(event.stream_id.entity)
             {
                 match event.info {
                     VideoStreamEventInfo::Hue { hue } => {
-                        video_stream.set_hue(hue);
+                        video_stream.hue = hue;
                     }
                     VideoStreamEventInfo::Resize { width, height } => {
                         video_stream.resize(width, height);
+                    }
+                    VideoStreamEventInfo::Speed { speed } => {
+                        video_stream.speed = speed;
                     }
                 }
             }
@@ -170,7 +177,7 @@ impl Streamer {
 
         for (_, mut video_stream) in query.iter_mut() {
             if let Some(video_stream) = &mut video_stream {
-                async_rt.start_detached(video_stream.render());
+                async_rt.start_detached(video_stream.render(time.delta_seconds()));
             }
         }
     }

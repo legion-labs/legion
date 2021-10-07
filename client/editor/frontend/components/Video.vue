@@ -33,7 +33,7 @@ video {
   margin-right: auto;
   max-width: 100%;
   max-height: 100%;
-  object-fit: scale-down;
+  object-fit: fill;
 }
 </style>
 
@@ -164,6 +164,7 @@ export default {
   name: "Video",
   props: {
     hue: Number,
+    speed: Number,
   },
   mounted() {
     const videoElement = document.getElementById("video");
@@ -221,13 +222,18 @@ export default {
 
       const observer = new ResizeObserver(
         debounce(async () => {
-          console.log("Sending resize event.");
+          console.log(
+            "Sending resize event (",
+            videoElement.parentElement.offsetWidth,
+            videoElement.parentElement.offsetHeight,
+            ")."
+          );
 
           this.video_channel.send(
             JSON.stringify({
               event: "resize",
-              width: videoElement.offsetWidth,
-              height: videoElement.offsetHeight,
+              width: videoElement.parentElement.offsetWidth,
+              height: videoElement.parentElement.offsetHeight,
             })
           );
         }, 250)
@@ -238,7 +244,7 @@ export default {
       };
       this.video_channel.onopen = async () => {
         console.log("Video channel is now open.");
-        observer.observe(videoElement);
+        observer.observe(videoElement.parentElement);
       };
       this.video_channel.onclose = async () => {
         console.log("Video channel is now closed.");
@@ -269,6 +275,16 @@ export default {
           JSON.stringify({
             event: "hue",
             hue: hue / 360,
+          })
+        );
+      }
+    },
+    speed(speed) {
+      if (this.video_channel != null) {
+        this.video_channel.send(
+          JSON.stringify({
+            event: "speed",
+            speed: speed,
           })
         );
       }

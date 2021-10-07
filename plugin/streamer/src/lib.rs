@@ -88,6 +88,7 @@
 use std::net::SocketAddr;
 
 use legion_app::prelude::*;
+use legion_core::Time;
 
 mod grpc;
 mod streamer;
@@ -123,7 +124,10 @@ impl Plugin for StreamerPlugin {
         // The streamer is the game-loop representative of the whole streaming system.
         let streamer = streamer::Streamer::new(stream_events_receiver);
 
+        let time = Time::default();
+
         app.insert_resource(streamer)
+            .insert_resource(time)
             .add_event::<streamer::VideoStreamEvent>()
             .add_system(streamer::Streamer::handle_stream_events)
             .add_system(streamer::Streamer::update_streams);

@@ -3163,6 +3163,7 @@ dependencies = [
  "legion-app",
  "legion-async",
  "legion-codec-api",
+ "legion-core",
  "legion-ecs",
  "legion-editor-proto",
  "legion-mp4",
