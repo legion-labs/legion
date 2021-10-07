@@ -397,6 +397,7 @@ mod tests {
     fn blob_vec_drop_empty_capacity() {
         let item_layout = Layout::new::<Foo>();
         let drop = drop_ptr::<Foo>;
+        #[allow(clippy::let_underscore_drop)]
         let _ = BlobVec::new(item_layout, drop, 0);
     }
 }

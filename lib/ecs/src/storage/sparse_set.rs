@@ -49,25 +49,25 @@ impl<I: SparseSetIndex, V> SparseArray<I, V> {
     #[inline]
     pub fn contains(&self, index: I) -> bool {
         let index = index.sparse_set_index();
-        self.values.get(index).map_or(false, |v| v.is_some())
+        self.values.get(index).map_or(false, Option::is_some)
     }
 
     #[inline]
     pub fn get(&self, index: I) -> Option<&V> {
         let index = index.sparse_set_index();
-        self.values.get(index).and_then(|v| v.as_ref())
+        self.values.get(index).and_then(Option::as_ref)
     }
 
     #[inline]
     pub fn get_mut(&mut self, index: I) -> Option<&mut V> {
         let index = index.sparse_set_index();
-        self.values.get_mut(index).and_then(|v| v.as_mut())
+        self.values.get_mut(index).and_then(Option::as_mut)
     }
 
     #[inline]
     pub fn remove(&mut self, index: I) -> Option<V> {
         let index = index.sparse_set_index();
-        self.values.get_mut(index).and_then(|value| value.take())
+        self.values.get_mut(index).and_then(Option::take)
     }
 
     #[inline]
@@ -101,7 +101,7 @@ impl ComponentSparseSet {
             dense: BlobVec::new(component_info.layout(), component_info.drop(), capacity),
             ticks: Vec::with_capacity(capacity),
             entities: Vec::with_capacity(capacity),
-            sparse: Default::default(),
+            sparse: SparseArray::default(),
         }
     }
 
@@ -199,7 +199,7 @@ impl ComponentSparseSet {
     }
 
     pub fn remove(&mut self, entity: Entity) -> bool {
-        if let Some(dense_index) = self.sparse.remove(entity) {
+        self.sparse.remove(entity).map_or(false, |dense_index| {
             self.ticks.swap_remove(dense_index);
             self.entities.swap_remove(dense_index);
             let is_last = dense_index == self.dense.len() - 1;
@@ -212,9 +212,7 @@ impl ComponentSparseSet {
                 *self.sparse.get_mut(swapped_entity).unwrap() = dense_index;
             }
             true
-        } else {
-            false
-        }
+        })
     }
 
     pub(crate) fn check_change_ticks(&mut self, change_tick: u32) {
@@ -251,7 +249,7 @@ impl<I: SparseSetIndex, V> SparseSet<I, V> {
         Self {
             dense: Vec::with_capacity(capacity),
             indices: Vec::with_capacity(capacity),
-            sparse: Default::default(),
+            sparse: SparseArray::default(),
         }
     }
 
@@ -261,7 +259,7 @@ impl<I: SparseSetIndex, V> SparseSet<I, V> {
     }
 
     pub fn insert(&mut self, index: I, value: V) {
-        if let Some(dense_index) = self.sparse.get(index.clone()).cloned() {
+        if let Some(dense_index) = self.sparse.get(index.clone()).copied() {
             // SAFE: dense indices stored in self.sparse always exist
             unsafe {
                 *self.dense.get_unchecked_mut(dense_index) = value;
@@ -296,7 +294,8 @@ impl<I: SparseSetIndex, V> SparseSet<I, V> {
     }
 
     pub fn get_or_insert_with(&mut self, index: I, func: impl FnOnce() -> V) -> &mut V {
-        if let Some(dense_index) = self.sparse.get(index.clone()).cloned() {
+        #[allow(clippy::option_if_let_else)]
+        if let Some(dense_index) = self.sparse.get(index.clone()).copied() {
             // SAFE: dense indices stored in self.sparse always exist
             unsafe { self.dense.get_unchecked_mut(dense_index) }
         } else {

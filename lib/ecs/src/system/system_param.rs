@@ -106,6 +106,7 @@ where
 }
 
 // SAFE: QueryState is constrained to read-only fetches, so it only reads World.
+#[allow(clippy::type_repetition_in_bounds)]
 unsafe impl<Q: WorldQuery, F: WorldQuery> ReadOnlySystemParamFetch for QueryState<Q, F>
 where
     Q::Fetch: ReadOnlyFetch,
@@ -506,7 +507,7 @@ unsafe impl SystemParamState for CommandQueue {
     type Config = ();
 
     fn init(_world: &mut World, _system_meta: &mut SystemMeta, _config: Self::Config) -> Self {
-        Default::default()
+        Self::default()
     }
 
     fn apply(&mut self, world: &mut World) {
@@ -648,7 +649,7 @@ pub struct RemovedComponents<'a, T: Component> {
 
 impl<'a, T: Component> RemovedComponents<'a, T> {
     /// Returns an iterator over the entities that had their `T` [`Component`] removed.
-    pub fn iter(&self) -> std::iter::Cloned<std::slice::Iter<'_, Entity>> {
+    pub fn iter(&self) -> std::iter::Copied<std::slice::Iter<'_, Entity>> {
         self.world.removed_with_id(self.component_id)
     }
 }

@@ -64,9 +64,9 @@ where
             fetch_state,
             filter_state,
             component_access,
-            matched_tables: Default::default(),
-            matched_archetypes: Default::default(),
-            archetype_component_access: Default::default(),
+            matched_tables: FixedBitSet::default(),
+            matched_archetypes: FixedBitSet::default(),
+            archetype_component_access: Access::default(),
         };
         state.validate_world_and_update_archetypes(world);
         state
@@ -490,7 +490,7 @@ where
             <F::Fetch as Fetch>::init(world, &self.filter_state, last_change_tick, change_tick);
         if Q::Fetch::IS_DENSE && F::Fetch::IS_DENSE {
             let tables = &world.storages().tables;
-            for table_id in self.matched_table_ids.iter() {
+            for table_id in &self.matched_table_ids {
                 let table = &tables[*table_id];
                 fetch.set_table(&self.fetch_state, table);
                 filter.set_table(&self.filter_state, table);
@@ -506,7 +506,7 @@ where
         } else {
             let archetypes = &world.archetypes;
             let tables = &world.storages().tables;
-            for archetype_id in self.matched_archetype_ids.iter() {
+            for archetype_id in &self.matched_archetype_ids {
                 let archetype = &archetypes[*archetype_id];
                 fetch.set_archetype(&self.fetch_state, archetype, tables);
                 filter.set_archetype(&self.filter_state, archetype, tables);
@@ -545,7 +545,7 @@ where
         task_pool.scope(|scope| {
             if Q::Fetch::IS_DENSE && F::Fetch::IS_DENSE {
                 let tables = &world.storages().tables;
-                for table_id in self.matched_table_ids.iter() {
+                for table_id in &self.matched_table_ids {
                     let table = &tables[*table_id];
                     let mut offset = 0;
                     while offset < table.len() {
@@ -581,7 +581,7 @@ where
                 }
             } else {
                 let archetypes = &world.archetypes;
-                for archetype_id in self.matched_archetype_ids.iter() {
+                for archetype_id in &self.matched_archetype_ids {
                     let mut offset = 0;
                     let archetype = &archetypes[*archetype_id];
                     while offset < archetype.len() {

@@ -331,7 +331,7 @@ impl Schedule {
 
     /// Executes each [`Stage`] contained in the schedule, one at a time.
     pub fn run_once(&mut self, world: &mut World) {
-        for label in self.stage_order.iter() {
+        for label in &self.stage_order {
             #[cfg(feature = "trace")]
             let stage_span =
                 legion_utils::tracing::info_span!("stage", name = &format!("{:?}", label) as &str);

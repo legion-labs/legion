@@ -169,6 +169,7 @@ impl GraphNode for RunCriteriaContainer {
     }
 
     fn labels(&self) -> &[BoxedRunCriteriaLabel] {
+        #[allow(clippy::option_if_let_else)]
         if let Some(ref label) = self.label {
             std::slice::from_ref(label)
         } else {
@@ -408,8 +409,8 @@ impl Default for RunOnce {
     fn default() -> Self {
         Self {
             ran: false,
-            archetype_component_access: Default::default(),
-            component_access: Default::default(),
+            archetype_component_access: Access::default(),
+            component_access: Access::default(),
         }
     }
 }
