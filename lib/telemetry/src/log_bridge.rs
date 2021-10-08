@@ -26,6 +26,7 @@ impl log::Log for LogBridge {
 
 static LOGGER: LogBridge = LogBridge;
 
+// setup_log_bridge sets the log crate's logger and forwards all the records into telemetry
 pub fn setup_log_bridge() -> Result<(), SetLoggerError> {
     log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Trace))?;
     Ok(())
