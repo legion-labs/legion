@@ -88,6 +88,7 @@ pub use thread_stream::*;
 
 pub use transit::IterableQueue;
 
+#[allow(clippy::wildcard_imports)]
 pub mod telemetry_ingestion_proto {
     tonic::include_proto!("telemetry_ingestion_proto");
 }
