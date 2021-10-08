@@ -44,16 +44,13 @@ impl WindowApi for WindowsWindow {
         ) -> minwindef::BOOL {
             let monitors = data as *mut Vec<WindowsMonitor>;
 
+            #[allow(clippy::cast_precision_loss)]
             if let Some((width, height)) = monitor_info(hmonitor) {
                 (*monitors).push(WindowsMonitor {
                     _hmonitor: hmonitor,
                     width,
                     height,
-                    scale_factor: if let Some(dpi) = monitor_dpi(hmonitor) {
-                        dpi as f32 / BASE_DPI
-                    } else {
-                        1.0
-                    },
+                    scale_factor: monitor_dpi(hmonitor).map_or(1.0, |dpi| dpi as f32 / BASE_DPI),
                 });
             }
             minwindef::TRUE
@@ -237,13 +234,13 @@ fn monitor_info(hmonitor: windef::HMONITOR) -> Option<(u32, u32)> {
             (&mut monitor_info as *mut winuser::MONITORINFOEXW).cast(),
         )
     };
-    if status != 0 {
+    if status == 0 {
+        None
+    } else {
         Some((
             (monitor_info.rcMonitor.right - monitor_info.rcMonitor.left) as _,
             (monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top) as _,
         ))
-    } else {
-        None
     }
 }
 
