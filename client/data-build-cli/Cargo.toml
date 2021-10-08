@@ -12,8 +12,13 @@ name = "data-build"
 path = "src/main.rs"
 doc = false
 
+[[bin]]
+name = "data-scrape"
+path = "src/scrape.rs"
+
 [dependencies]
 clap = "2.33"
+syn = { version = "1.0", features = ["full"] }
 legion-data-build = { path = "../../lib/data-build" }
 legion-data-compiler = { path = "../../lib/data-compiler" }
 legion-content-store = { path = "../../lib/content-store" }
