@@ -2,7 +2,7 @@
 
 Allow serialization and editing of data structures for runtime and editor process.
 DataContainer are written as Rust struct, with custom attributes to extend functionnality.
-Reflection is used for offline serialization
+Reflection is used for offline serialization, data compiltation and editor operations.
 
 ## Features 
 
@@ -19,54 +19,81 @@ Reflection is used for offline serialization
 * Should support most primitives types (String, Int, Float, etc)
 * Should support Simple Enum
 * Complex type (Color, Vec2, Vec3, Transform, Curve, other DataContainer)
-* Array Types
+* Array types, Tuple types
 * Reference to resources in content store (i128 resource Id)
  
 
-## Editor Attributes
-
-Attributes are used to express editor and serialization functionnality.
-
-Example for potential attributes:
-```rust
-  #[readOnly(condition)]  // Property is readonly (with optional condition)
-  #[defaultValue(value) // Default value
-  #[hidden]               // Property is not visible in the Editor
-  #[displayName(name)]    // Override Name of Property in the Editor
-  #[tooltip(message)]  // Provide a toolTip 
-  #[help(URL)]  // Provide a description / Help Url
-  #[range(0,1)]   // Provide Editor validation for range limit
-  #[category(Name)]   // Allow to group different properties under a collapsable property
-  #[expandChildren]  // For array properties, auto expand children 
-  #[propertyEditor(EditorName)]  // Override Editor Default property Editor
-```
-
-## Example
-
-We need to explore what is doable in Rust, but here's a first draft of what a DataContainer code definition would look like:
+## DataContainer Example
 
 ```rust
 #[derive(DataContainer)]
-#[dataVersion(1)] // optional manual version
-struct ObjectDefinition {
+pub struct TestEntity {
+	// Default with string literal
+	#[legion(default = "string literal", readonly, category = "Name")]
+	test_string: String,
 
-	#[range(1,8192)]
-	#[defaultValue(256)]
-	width : u32,
+	// Default with Tuple()
+	#[legion(default=(0.0,0.0,0.0), hidden)]
+	pub test_position: Vec3,
 
-	#[defaultValue(Box)]
-	shape_type : ShapeType,
+	// Default with Constant value
+	#[legion(default= Quat::IDENTITY, tooltip = "Rotation Tooltip")]
+	pub test_rotation: Quat,
 
-	#[defaultValue("0x2b368fed00000000779bb4f05b3c9fc5213421341234")]
-	#[hidden]
-	resource_id : i128,
-	
-	#[readOnly(shape_type == Box)]
-	#[toolTip("This is a conditional read-only property")]
-	read_only_if_box : String,
+	// Default initialized from func call
+	#[legion(default = func_hash_test(0x1234,"test"), transient)]
+	pub test_transient: u64,
 
-	#[propertyEditor(ColorEditor)] 
-	color : Vec4
+	// Default with bool constant
+	#[legion(default = false)]
+	test_bool: bool,
+
+	// Default with Float constant
+	#[legion(default = 32.32f32)]
+	test_float32: f32,
+
+	#[legion(default = 64.64f64, offline)]
+	test_float64: f64,
+
+	// Default with Enum
+	#[legion(default = EnumTest::Value0, readonly)]
+	pub test_enum: EnumTest,
+
+	// Default with Integer constant
+	#[legion(default = 123)]
+	test_int: i32,
+
+	// Default with Array
+	#[legion(default=[0,1,2,3])]
+	test_blob: Vec<u8>,
 }
 ```
+
+## DataContainer Attributes
+
+DataContainer attributes can be used to change the code generation, the editor behavior and  serialization functionnality.
+
+* #[legion(default = DefaultValueExpr)] attribute can be used to specify the default value of a field. This will be used to automatically generate the Rust 'Default' impl and serialization code. Any field at default Value will be skipped during Offline JSON serialization to allow easy upgrade and deprecation. Example of DefaultValueExpr:
+	* "string literal" // String Literal
+	* (1,1,1) // Tuple
+	* [0,1,2,3] // Array
+	* false // Constant 
+	* 12.12f32 // Constant
+	* Quat::IDENTITY // Constant identifier
+	* Enum::Value  // Enum Value
+	* hash_test("test") // Function Call
+	
+
+* #[legion(readonly)] attribute specify that the Editor should not allow the edition of the field.
+
+* #[legion(hidden)] attribute specify that the field should be hidden in the Editor.
+
+* #[legion(offline)] attribute specify that the field shouldn't be in the Runtime representation.
+
+* #[legion(tooltip = "ToolTip message")] attribute specify the tool tip displayed when the user hover over the field name. 
+
+* #[legion(category = "Rendering")] attribute specify the category of the field. In the Editor property inspector, fields will be grouped by category. 
+
+* #[legion(transient)] attribute specify the field should not be serialize to the Offline Data. It is a field that's procedurally generated and shouldn't be save to disk.
+
 
