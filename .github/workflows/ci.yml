@@ -122,7 +122,7 @@ jobs:
   coverage:
     name: Running code coverage analysis
     needs: lint
-    runs-on: [self-hosted, ubuntu]
+    runs-on: ubuntu-20.04
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
       credentials:
