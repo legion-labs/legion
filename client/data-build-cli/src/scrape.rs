@@ -36,11 +36,62 @@
 //! runtime_texture = f9c9670d
 //! ```
 
-use std::{
-    fs::File,
-    io::Read,
-    path::{Path, PathBuf},
-};
+// BEGIN - Legion Labs lints v0.5
+// do not change or add/remove here, but one can add exceptions after this section
+#![deny(unsafe_code)]
+#![warn(future_incompatible, nonstandard_style, rust_2018_idioms)]
+// Rustdoc lints
+#![warn(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::private_intra_doc_links
+)]
+// Clippy pedantic lints, treat all as warnings by default, add exceptions in allow list
+#![warn(clippy::pedantic)]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::items_after_statements,
+    clippy::missing_panics_doc,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::similar_names,
+    clippy::shadow_unrelated,
+    clippy::unreadable_literal,
+    clippy::unseparated_literal_suffix
+)]
+// Clippy nursery lints, still under development
+#![warn(
+    clippy::debug_assert_with_mut_call,
+    clippy::disallowed_method,
+    clippy::disallowed_type,
+    clippy::fallible_impl_from,
+    clippy::imprecise_flops,
+    clippy::mutex_integer,
+    clippy::path_buf_push_overwrite,
+    clippy::string_lit_as_bytes,
+    clippy::use_self,
+    clippy::useless_transmute
+)]
+// Clippy restriction lints, usually not considered bad, but useful in specific cases
+#![warn(
+    clippy::dbg_macro,
+    clippy::exit,
+    clippy::float_cmp_const,
+    clippy::map_err_ignore,
+    clippy::mem_forget,
+    clippy::missing_enforced_import_renames,
+    clippy::rest_pat_in_fully_bound_structs,
+    clippy::string_to_string,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::verbose_file_reads
+)]
+// END - Legion Labs standard lints v0.5
+// crate-specific exceptions:
+#![allow()]
+
+use std::path::{Path, PathBuf};
 
 use clap::{AppSettings, Arg, SubCommand};
 use legion_data_runtime::ResourceType;
@@ -77,11 +128,9 @@ fn main() {
         .get_matches();
 
     if let ("rty", Some(cmd_args)) = matches.subcommand() {
-        let code_dir = if let Some(code_dir) = cmd_args.value_of("path") {
-            PathBuf::from(code_dir)
-        } else {
-            std::env::current_dir().unwrap()
-        };
+        let code_dir = cmd_args
+            .value_of("path")
+            .map_or_else(|| std::env::current_dir().unwrap(), PathBuf::from);
 
         match cmd_args.subcommand() {
             ("list", _) => {
@@ -158,7 +207,7 @@ fn find_files(dir: impl AsRef<Path>, extensions: &[&str]) -> Vec<PathBuf> {
         let path = entry.path();
         if path.is_dir() {
             files.append(&mut find_files(&path, extensions));
-        } else if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        } else if let Some(ext) = path.extension().and_then(std::ffi::OsStr::to_str) {
             if extensions.contains(&ext) {
                 files.push(path);
             }
@@ -203,12 +252,7 @@ fn find_resource_attribs(content: &[syn::Item]) -> Vec<(String, ResourceType)> {
 
 // Finds all #[resource="name"] attributes in a file and returns (name, hashed name) tuple.
 fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
-    let mut file = File::open(&source).expect("Unable to open file");
-
-    let mut src = String::new();
-    file.read_to_string(&mut src).expect("Unable to read file");
-
-    let syntax = syn::parse_file(&src).expect("Unable to parse file");
-
-    find_resource_attribs(&syntax.items)
+    let src = std::fs::read_to_string(&source).expect("Read file");
+    let ast = syn::parse_file(&src).expect("Unable to parse file");
+    find_resource_attribs(&ast.items)
 }
