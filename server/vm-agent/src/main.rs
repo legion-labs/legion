@@ -59,6 +59,39 @@
 // crate-specific exceptions:
 #![allow()]
 
-fn main() {
-    println!("Hello, world!");
+mod config;
+
+use std::process::Command;
+
+use config::{CommandConfig, Config};
+
+use log::{debug, info};
+use simple_logger::SimpleLogger;
+
+fn main() -> anyhow::Result<()> {
+    let config = Config::new()?;
+
+    SimpleLogger::new().with_level(config.log_level).init()?;
+
+    debug!("Setting log level to {}.", config.log_level);
+    info!("Root is set to: {}", config.root.to_string_lossy());
+
+    match config.command_config {
+        CommandConfig::Run => run(&config),
+    }
+}
+
+fn run(config: &Config) -> anyhow::Result<()> {
+    info!("Running VM-Agent...");
+
+    let editor_server_bin_path = config.editor_server_bin_path();
+
+    info!(
+        "Using editor server at: {}",
+        editor_server_bin_path.to_string_lossy(),
+    );
+
+    Command::new(editor_server_bin_path).output()?;
+
+    Ok(())
 }

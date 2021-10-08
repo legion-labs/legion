@@ -6719,6 +6719,12 @@ dependencies = [
 [[package]]
 name = "vm-agent"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "log",
+ "simple_logger",
+]
 
 [[package]]
 name = "void"
