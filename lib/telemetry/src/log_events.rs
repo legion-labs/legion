@@ -10,6 +10,16 @@ pub enum LogLevel {
     Error = 3,
 }
 
+impl std::convert::From<log::Level> for LogLevel {
+    fn from(src: log::Level) -> Self {
+        match src {
+            log::Level::Error => Self::Error,
+            log::Level::Warn => Self::Warning,
+            _ => Self::Info,
+        }
+    }
+}
+
 #[derive(Debug, TransitReflect)]
 pub struct LogMsgEvent {
     pub level: u8,

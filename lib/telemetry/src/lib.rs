@@ -65,6 +65,7 @@ pub mod event_block_sink;
 pub mod grpc_event_sink;
 pub mod guard;
 pub mod log_block;
+pub mod log_bridge;
 pub mod log_events;
 pub mod log_stream;
 mod queue_metadata;
@@ -78,6 +79,7 @@ pub use dual_time::*;
 pub use event_block_sink::*;
 pub use grpc_event_sink::*;
 pub use guard::*;
+pub use log_bridge::*;
 
 pub use log_block::*;
 pub use log_events::*;
