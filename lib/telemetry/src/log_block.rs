@@ -1,9 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{
-    compress, telemetry_ingestion_proto, DualTime, EncodedBlock, LogDynMsgEvent, LogMsgEvent,
-    StreamBlock,
-};
+use crate::{compress, DualTime, EncodedBlock, LogDynMsgEvent, LogMsgEvent, StreamBlock};
 use anyhow::Result;
 use transit::{
     declare_queue_struct, read_pod, IterableQueue, QueueIterator, Reflect, StaticString,
@@ -63,7 +60,7 @@ impl StreamBlock for LogBlock {
             }
         }
 
-        let payload = telemetry_ingestion_proto::BlockPayload {
+        let payload = legion_telemetry_proto::ingestion::BlockPayload {
             dependencies: compress(deps.as_bytes())?,
             objects: compress(self.events.as_bytes())?,
         };

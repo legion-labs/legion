@@ -78,6 +78,7 @@ pub use dual_time::*;
 pub use event_block_sink::*;
 pub use grpc_event_sink::*;
 pub use guard::*;
+
 pub use log_block::*;
 pub use log_events::*;
 pub use log_stream::*;
@@ -88,60 +89,7 @@ pub use thread_stream::*;
 
 pub use transit::IterableQueue;
 
-#[allow(clippy::wildcard_imports)]
-pub mod telemetry_ingestion_proto {
-    tonic::include_proto!("telemetry_ingestion_proto");
-}
-
-pub type ProcessInfo = telemetry_ingestion_proto::Process;
-pub type StreamInfo = telemetry_ingestion_proto::Stream;
-pub type EncodedBlock = telemetry_ingestion_proto::Block;
-pub use telemetry_ingestion_proto::ContainerMetadata;
-
-impl ContainerMetadata {
-    pub fn as_transit_udt_vec(&self) -> Vec<transit::UserDefinedType> {
-        self.types
-            .iter()
-            .map(|t| transit::UserDefinedType {
-                name: t.name.clone(),
-                size: t.size as usize,
-                members: t
-                    .members
-                    .iter()
-                    .map(|m| transit::Member {
-                        name: m.name.clone(),
-                        type_name: m.type_name.clone(),
-                        offset: m.offset as usize,
-                        size: m.size as usize,
-                        is_reference: m.is_reference,
-                    })
-                    .collect(),
-            })
-            .collect()
-    }
-}
-
-impl std::convert::From<&[transit::UserDefinedType]> for ContainerMetadata {
-    fn from(src: &[transit::UserDefinedType]) -> Self {
-        Self {
-            types: src
-                .iter()
-                .map(|udt| telemetry_ingestion_proto::UserDefinedType {
-                    name: udt.name.clone(),
-                    size: udt.size as u32,
-                    members: udt
-                        .members
-                        .iter()
-                        .map(|member| telemetry_ingestion_proto::UdtMember {
-                            name: member.name.clone(),
-                            type_name: member.type_name.clone(),
-                            offset: member.offset as u32,
-                            size: member.size as u32,
-                            is_reference: member.is_reference,
-                        })
-                        .collect(),
-                })
-                .collect(),
-        }
-    }
-}
+pub type ProcessInfo = legion_telemetry_proto::ingestion::Process;
+pub type StreamInfo = legion_telemetry_proto::ingestion::Stream;
+pub type EncodedBlock = legion_telemetry_proto::ingestion::Block;
+pub use legion_telemetry_proto::ingestion::ContainerMetadata;

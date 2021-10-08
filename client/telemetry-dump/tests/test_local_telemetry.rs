@@ -1,5 +1,5 @@
-use analytics::*;
 use anyhow::*;
+use legion_analytics::*;
 use sqlx::Row;
 use std::path::{Path, PathBuf};
 use test_utils::*;

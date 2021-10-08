@@ -58,8 +58,8 @@
 
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_source_control::*;
+use legion_telemetry::*;
 use std::path::Path;
-use telemetry::*;
 
 fn main() {
     let _telemetry_guard = TelemetrySystemGuard::new();

@@ -60,14 +60,15 @@ mod process_log;
 mod process_thread_events;
 mod recent_processes;
 
-use analytics::*;
-use anyhow::*;
+use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
-use process_log::*;
-use process_thread_events::*;
-use recent_processes::*;
+use legion_analytics::alloc_sql_pool;
+use legion_telemetry::{init_thread_stream, log_str, LogLevel, TelemetrySystemGuard};
+use process_log::{print_logs_by_process, print_process_log};
+use recent_processes::print_recent_processes;
 use std::path::Path;
-use telemetry::*;
+
+use crate::process_thread_events::print_process_thread_events;
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -65,9 +65,9 @@ mod local_ingestion_service;
 mod local_telemetry_db;
 
 use anyhow::{Context, Result};
+use legion_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
 use local_ingestion_service::LocalIngestionService;
 use local_telemetry_db::{alloc_sql_pool, get_blocks_directory, get_data_directory};
-use telemetry::telemetry_ingestion_proto::telemetry_ingestion_server::TelemetryIngestionServer;
 use tonic::transport::Server;
 
 #[tokio::main]

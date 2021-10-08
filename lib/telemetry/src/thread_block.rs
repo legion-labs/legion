@@ -1,7 +1,4 @@
-use crate::{
-    compress, telemetry_ingestion_proto, DualTime, EncodedBlock, ReferencedScope, ScopeDesc,
-    StreamBlock,
-};
+use crate::{compress, DualTime, EncodedBlock, ReferencedScope, ScopeDesc, StreamBlock};
 use anyhow::Result;
 use std::collections::HashSet;
 use transit::{
@@ -126,7 +123,7 @@ impl StreamBlock for ThreadBlock {
             }
         }
 
-        let payload = telemetry_ingestion_proto::BlockPayload {
+        let payload = legion_telemetry_proto::ingestion::BlockPayload {
             dependencies: compress(deps.as_bytes())?,
             objects: compress(self.events.as_bytes())?,
         };

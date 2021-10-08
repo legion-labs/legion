@@ -1,9 +1,9 @@
 use std::sync::Arc;
 use std::thread;
 
-use telemetry::LogMsgQueueAny::*;
-use telemetry::ThreadEventQueueAny::*;
-use telemetry::*;
+use legion_telemetry::LogMsgQueueAny::*;
+use legion_telemetry::ThreadEventQueueAny::*;
+use legion_telemetry::*;
 
 struct DebugEventSink {}
 

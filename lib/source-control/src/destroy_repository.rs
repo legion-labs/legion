@@ -3,7 +3,7 @@ use crate::sql;
 use url::Url;
 
 pub async fn destroy_repository_command(uri: &str) -> Result<(), String> {
-    telemetry::trace_scope!();
+    legion_telemetry::trace_scope!();
     let repo_uri = Url::parse(uri).unwrap();
     match repo_uri.scheme() {
         "file" => {

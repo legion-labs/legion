@@ -1,4 +1,4 @@
-use analytics::fetch_recent_processes;
+use legion_analytics::fetch_recent_processes;
 
 pub async fn print_recent_processes(connection: &mut sqlx::AnyConnection) {
     for p in fetch_recent_processes(connection).await.unwrap() {

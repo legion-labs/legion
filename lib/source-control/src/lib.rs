@@ -130,4 +130,4 @@ pub use tree::*;
 pub use utils::*;
 pub use workspace::*;
 
-pub(crate) use telemetry::trace_scope;
+pub(crate) use legion_telemetry::trace_scope;

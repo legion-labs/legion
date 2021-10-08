@@ -1,10 +1,10 @@
 use anyhow::Result;
+use legion_telemetry_proto::ingestion::{
+    telemetry_ingestion_server::TelemetryIngestion, Block, InsertReply, Process, Stream,
+};
 use prost::Message;
 use std::io::Write;
 use std::{fs::OpenOptions, path::PathBuf};
-use telemetry::telemetry_ingestion_proto::{
-    telemetry_ingestion_server::TelemetryIngestion, Block, InsertReply, Process, Stream,
-};
 use tonic::{Request, Response, Status};
 
 pub struct LocalIngestionService {

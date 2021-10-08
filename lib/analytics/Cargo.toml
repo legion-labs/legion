@@ -1,11 +1,11 @@
 [package]
-name = "analytics"
+name = "legion-analytics"
 version = "0.1.0"
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-telemetry = { path = "../../lib/telemetry" }
+legion-telemetry = { path = "../../lib/telemetry" }
 sqlx = { version = "0.5", features = [
     "sqlite",
     "any",
@@ -15,3 +15,4 @@ sqlx = { version = "0.5", features = [
 anyhow = "1.0"
 prost = "0.8"
 transit = { path = "../../lib/transit" }
+legion-telemetry-proto = { path = "../../proto/telemetry-proto", version = "0.1.0" }

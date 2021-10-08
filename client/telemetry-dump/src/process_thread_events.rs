@@ -1,5 +1,5 @@
-use analytics::*;
 use anyhow::*;
+use legion_analytics::*;
 use std::path::Path;
 use transit::*;
 

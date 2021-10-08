@@ -56,11 +56,11 @@
 #![allow(clippy::missing_errors_doc)]
 
 use anyhow::{bail, Context, Result};
+use legion_telemetry::{decompress, ContainerMetadata};
 use prost::Message;
 use sqlx::Row;
 use std::path::Path;
-use telemetry::decompress;
-use transit::{parse_object_buffer, read_dependencies, Value};
+use transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
     let db_uri = format!("sqlite://{}/telemetry.db3", data_folder.display());
@@ -73,7 +73,7 @@ pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
 
 pub async fn fetch_recent_processes(
     connection: &mut sqlx::AnyConnection,
-) -> Result<Vec<telemetry::ProcessInfo>> {
+) -> Result<Vec<legion_telemetry::ProcessInfo>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time
@@ -85,7 +85,7 @@ pub async fn fetch_recent_processes(
     .await?;
     for r in rows {
         let tsc_frequency: i64 = r.get("tsc_frequency");
-        let p = telemetry::ProcessInfo {
+        let p = legion_telemetry::ProcessInfo {
             process_id: r.get("process_id"),
             exe: r.get("exe"),
             username: r.get("username"),
@@ -105,7 +105,7 @@ pub async fn find_process_streams_tagged(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
     tag: &str,
-) -> Result<Vec<telemetry::StreamInfo>> {
+) -> Result<Vec<legion_telemetry::StreamInfo>> {
     let rows = sqlx::query(&format!(
         "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags
          FROM streams
@@ -122,18 +122,16 @@ pub async fn find_process_streams_tagged(
     for r in rows {
         let stream_id: String = r.get("stream_id");
         let dependencies_metadata_buffer: Vec<u8> = r.get("dependencies_metadata");
-        let dependencies_metadata =
-            telemetry::telemetry_ingestion_proto::ContainerMetadata::decode(
-                &*dependencies_metadata_buffer,
-            )
-            .with_context(|| "decoding dependencies metadata")?;
-        let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
-        let objects_metadata = telemetry::telemetry_ingestion_proto::ContainerMetadata::decode(
-            &*objects_metadata_buffer,
+        let dependencies_metadata = legion_telemetry_proto::ingestion::ContainerMetadata::decode(
+            &*dependencies_metadata_buffer,
         )
-        .with_context(|| "decoding objects metadata")?;
+        .with_context(|| "decoding dependencies metadata")?;
+        let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
+        let objects_metadata =
+            legion_telemetry_proto::ingestion::ContainerMetadata::decode(&*objects_metadata_buffer)
+                .with_context(|| "decoding objects metadata")?;
         let tags_str: String = r.get("tags");
-        res.push(telemetry::StreamInfo {
+        res.push(legion_telemetry::StreamInfo {
             stream_id,
             process_id: r.get("process_id"),
             dependencies_metadata: Some(dependencies_metadata),
@@ -147,21 +145,21 @@ pub async fn find_process_streams_tagged(
 pub async fn find_process_log_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<telemetry::StreamInfo>> {
+) -> Result<Vec<legion_telemetry::StreamInfo>> {
     find_process_streams_tagged(connection, process_id, "log").await
 }
 
 pub async fn find_process_thread_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<telemetry::StreamInfo>> {
+) -> Result<Vec<legion_telemetry::StreamInfo>> {
     find_process_streams_tagged(connection, process_id, "cpu").await
 }
 
 pub async fn find_stream(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
-) -> Result<telemetry::StreamInfo> {
+) -> Result<legion_telemetry::StreamInfo> {
     let row = sqlx::query(
         "SELECT process_id, dependencies_metadata, objects_metadata, tags
          FROM streams
@@ -173,16 +171,16 @@ pub async fn find_stream(
     .await
     .with_context(|| "find_stream")?;
     let dependencies_metadata_buffer: Vec<u8> = row.get("dependencies_metadata");
-    let dependencies_metadata = telemetry::telemetry_ingestion_proto::ContainerMetadata::decode(
+    let dependencies_metadata = legion_telemetry_proto::ingestion::ContainerMetadata::decode(
         &*dependencies_metadata_buffer,
     )
     .with_context(|| "decoding dependencies metadata")?;
     let objects_metadata_buffer: Vec<u8> = row.get("objects_metadata");
     let objects_metadata =
-        telemetry::telemetry_ingestion_proto::ContainerMetadata::decode(&*objects_metadata_buffer)
+        legion_telemetry_proto::ingestion::ContainerMetadata::decode(&*objects_metadata_buffer)
             .with_context(|| "decoding objects metadata")?;
     let tags_str: String = row.get("tags");
-    Ok(telemetry::StreamInfo {
+    Ok(legion_telemetry::StreamInfo {
         stream_id: String::from(stream_id),
         process_id: row.get("process_id"),
         dependencies_metadata: Some(dependencies_metadata),
@@ -194,7 +192,7 @@ pub async fn find_stream(
 pub async fn find_stream_blocks(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
-) -> Result<Vec<telemetry::EncodedBlock>> {
+) -> Result<Vec<legion_telemetry::EncodedBlock>> {
     let blocks = sqlx::query(
         "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
          FROM blocks
@@ -208,7 +206,7 @@ pub async fn find_stream_blocks(
     .map(|r| {
         let begin_ticks: i64 = r.get("begin_ticks");
         let end_ticks: i64 = r.get("end_ticks");
-        telemetry::EncodedBlock {
+        legion_telemetry::EncodedBlock {
             block_id: r.get("block_id"),
             stream_id: String::from(stream_id),
             begin_time: r.get("begin_time"),
@@ -226,7 +224,7 @@ pub async fn fetch_block_payload(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     block_id: &str,
-) -> Result<telemetry::telemetry_ingestion_proto::BlockPayload> {
+) -> Result<legion_telemetry_proto::ingestion::BlockPayload> {
     let opt_row = sqlx::query("SELECT payload FROM payloads where block_id = ?;")
         .bind(block_id)
         .fetch_optional(connection)
@@ -244,34 +242,51 @@ pub async fn fetch_block_payload(
             .with_context(|| format!("reading payload file {}", payload_path.display()))?
     };
 
-    let payload = telemetry::telemetry_ingestion_proto::BlockPayload::decode(&*buffer)
+    let payload = legion_telemetry_proto::ingestion::BlockPayload::decode(&*buffer)
         .with_context(|| format!("reading payload {}", block_id))?;
     Ok(payload)
 }
 
+fn container_metadata_as_transit_udt_vec(
+    value: &ContainerMetadata,
+) -> Vec<transit::UserDefinedType> {
+    value
+        .types
+        .iter()
+        .map(|t| UserDefinedType {
+            name: t.name.clone(),
+            size: t.size as usize,
+            members: t
+                .members
+                .iter()
+                .map(|m| Member {
+                    name: m.name.clone(),
+                    type_name: m.type_name.clone(),
+                    offset: m.offset as usize,
+                    size: m.size as usize,
+                    is_reference: m.is_reference,
+                })
+                .collect(),
+        })
+        .collect()
+}
+
 pub fn parse_block<F>(
-    stream: &telemetry::StreamInfo,
-    payload: &telemetry::telemetry_ingestion_proto::BlockPayload,
+    stream: &legion_telemetry::StreamInfo,
+    payload: &legion_telemetry_proto::ingestion::BlockPayload,
     fun: F,
 ) -> Result<()>
 where
     F: FnMut(Value),
 {
-    let dep_udts = stream
-        .dependencies_metadata
-        .as_ref()
-        .unwrap()
-        .as_transit_udt_vec();
+    let dep_udts =
+        container_metadata_as_transit_udt_vec(stream.dependencies_metadata.as_ref().unwrap());
 
     let dependencies = read_dependencies(
         &dep_udts,
         &decompress(&payload.dependencies).with_context(|| "decompressing dependencies payload")?,
     )?;
-    let obj_udts = stream
-        .objects_metadata
-        .as_ref()
-        .unwrap()
-        .as_transit_udt_vec();
+    let obj_udts = container_metadata_as_transit_udt_vec(stream.objects_metadata.as_ref().unwrap());
     parse_object_buffer(
         &dependencies,
         &obj_udts,

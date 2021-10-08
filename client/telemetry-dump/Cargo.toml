@@ -6,8 +6,8 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 clap = "2.33"
-telemetry = { path = "../../lib/telemetry" }
-analytics = { path = "../../lib/analytics" }
+legion-telemetry = { path = "../../lib/telemetry" }
+legion-analytics = { path = "../../lib/analytics" }
 transit = { path = "../../lib/transit" }
 tokio = { version = "1", features = ["full"] }
 sqlx = { version = "0.5", features = [
