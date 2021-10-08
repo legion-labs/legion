@@ -1,6 +1,6 @@
 use crate::{
     flush_log_buffer, flush_thread_buffer, init_event_dispatch, init_thread_stream,
-    shutdown_event_dispatch, EventBlockSink, GRPCEventSink, NullEventSink,
+    setup_log_bridge, shutdown_event_dispatch, EventBlockSink, GRPCEventSink, NullEventSink,
 };
 use std::sync::Arc;
 
@@ -32,6 +32,7 @@ pub fn init_telemetry() {
         Err(_no_url_in_env) => Arc::new(NullEventSink {}),
     };
     init_event_dispatch(1024, 1024 * 1024, sink).unwrap();
+    setup_log_bridge().unwrap();
 }
 
 pub fn shutdown_telemetry() {

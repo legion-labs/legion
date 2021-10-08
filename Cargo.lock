@@ -3233,6 +3233,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "legion-telemetry-proto",
+ "log",
  "lz4",
  "memoffset",
  "prost",
