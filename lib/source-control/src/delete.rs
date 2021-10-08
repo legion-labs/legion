@@ -1,4 +1,8 @@
-use crate::*;
+use crate::{
+    assert_not_locked, connect_to_server, find_local_change, find_workspace_root,
+    make_canonical_relative_path, make_file_read_only, make_path_absolute, read_workspace_spec,
+    save_local_change, trace_scope, ChangeType, LocalChange, LocalWorkspaceConnection,
+};
 use std::fs;
 use std::path::Path;
 

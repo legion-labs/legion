@@ -1,4 +1,7 @@
-use crate::*;
+use crate::{
+    connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec, trace_scope,
+    LocalWorkspaceConnection, RepositoryQuery,
+};
 use std::collections::BTreeSet;
 
 // find_branch_descendants includes the branch itself

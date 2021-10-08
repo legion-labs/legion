@@ -1,4 +1,4 @@
-use crate::server_request::*;
+use crate::server_request::{execute_request, DestroyRepositoryRequest, ServerRequest};
 use crate::sql;
 use url::Url;
 

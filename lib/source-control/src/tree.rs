@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{make_file_read_only, ChangeType, HashedChange, RepositoryConnection, RepositoryQuery};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::hash_map::HashMap;

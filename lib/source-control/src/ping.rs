@@ -1,4 +1,4 @@
-use crate::server_request::*;
+use crate::server_request::{execute_request, PingRequest, ServerRequest};
 
 pub async fn ping_console_command(server_uri: &str) -> Result<(), String> {
     telemetry::trace_scope!();

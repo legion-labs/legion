@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{read_text_file, trace_scope};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -47,10 +47,9 @@ impl Config {
                         let command_name = &command_spec[1];
                         if let Some(command) = self.commands.get(command_name) {
                             return Some(command.clone());
-                        } else {
-                            println!("unknown command named {}", command_name);
-                            return None;
                         }
+                        println!("unknown command named {}", command_name);
+                        return None;
                     }
                 }
                 Err(e) => {

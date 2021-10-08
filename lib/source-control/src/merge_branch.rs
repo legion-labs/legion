@@ -1,4 +1,10 @@
-use crate::{sql::*, *};
+use crate::{
+    compute_file_hash, connect_to_server, delete_local_file, edit_file, find_branch_commits,
+    find_workspace_root, make_file_read_only, read_current_branch, read_workspace_spec,
+    save_resolve_pending, sql::execute_sql, sync_tree_diff, trace_scope, track_new_file,
+    update_current_branch, Branch, Commit, LocalWorkspaceConnection, RepositoryConnection,
+    ResolvePending,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::collections::BTreeMap;
@@ -139,36 +145,35 @@ async fn change_file_to(
             return Err(e);
         }
         return Ok(format!("Updated {}", local_path.display()));
-    } else {
-        //no local file
-        if hash_to_sync.is_empty() {
-            return Ok(format!("Verified {}", local_path.display()));
-        }
-        if let Err(e) = repo_connection
-            .blob_storage()
-            .await?
-            .download_blob(&local_path, hash_to_sync)
-            .await
-        {
-            return Err(format!(
-                "Error downloading {} {}: {}",
-                local_path.display(),
-                &hash_to_sync,
-                e
-            ));
-        }
-        if let Err(e) = make_file_read_only(&local_path, true) {
-            return Err(e);
-        }
-        track_new_file(
-            workspace_root,
-            workspace_transaction,
-            repo_connection,
-            &local_path,
-        )
-        .await?;
-        return Ok(format!("Added {}", local_path.display()));
     }
+    //no local file
+    if hash_to_sync.is_empty() {
+        return Ok(format!("Verified {}", local_path.display()));
+    }
+    if let Err(e) = repo_connection
+        .blob_storage()
+        .await?
+        .download_blob(&local_path, hash_to_sync)
+        .await
+    {
+        return Err(format!(
+            "Error downloading {} {}: {}",
+            local_path.display(),
+            &hash_to_sync,
+            e
+        ));
+    }
+    if let Err(e) = make_file_read_only(&local_path, true) {
+        return Err(e);
+    }
+    track_new_file(
+        workspace_root,
+        workspace_transaction,
+        repo_connection,
+        &local_path,
+    )
+    .await?;
+    Ok(format!("Added {}", local_path.display()))
 }
 
 async fn find_commit_ancestors(
@@ -191,6 +196,7 @@ async fn find_commit_ancestors(
     Ok(ancestors)
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn merge_branch_command(runtime: &tokio::runtime::Runtime, name: &str) -> Result<(), String> {
     trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
@@ -276,7 +282,7 @@ pub fn merge_branch_command(runtime: &tokio::runtime::Runtime, name: &str) -> Re
             }
         }
 
-        for (path, hash) in to_update.iter() {
+        for (path, hash) in &to_update {
             if modified_in_current.contains_key(path) {
                 let resolve_pending = ResolvePending::new(
                     path.clone(),
