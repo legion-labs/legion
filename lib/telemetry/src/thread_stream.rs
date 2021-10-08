@@ -1,7 +1,21 @@
+<<<<<<< HEAD
 use crate::*;
 use core::arch::x86_64::_rdtsc;
 use std::sync::Arc;
 use transit::*;
+=======
+use crate::{
+    compress, make_queue_metedata, on_end_scope, telemetry_ingestion_proto, DualTime, EncodedBlock,
+    Stream, StreamBlock, StreamInfo,
+};
+use anyhow::Result;
+use core::arch::x86_64::_rdtsc;
+use std::{collections::HashSet, sync::Arc};
+use transit::{
+    declare_queue_struct, read_pod, IterableQueue, Member, QueueIterator, Reflect, Serialize,
+    StaticString, TransitReflect, UserDefinedType,
+};
+>>>>>>> 29da756f (add new lints to telemetry)
 
 #[derive(Debug)]
 pub struct ScopeDesc {

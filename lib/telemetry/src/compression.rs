@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::{Context, Result};
 use std::io::{Read, Write};
 
 pub fn compress(src: &[u8]) -> Result<Vec<u8>> {
@@ -10,8 +10,8 @@ pub fn compress(src: &[u8]) -> Result<Vec<u8>> {
     let _size = encoder
         .write(src)
         .with_context(|| "writing to lz4 encoder")?;
-    let (_writer, _res) = encoder.finish();
-    _res.with_context(|| "closing lz4 encoder")?;
+    let (_writer, res) = encoder.finish();
+    res.with_context(|| "closing lz4 encoder")?;
     Ok(compressed)
 }
 

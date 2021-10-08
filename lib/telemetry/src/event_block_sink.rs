@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{LogBlock, ProcessInfo, StreamInfo, ThreadEventBlock};
 use std::sync::Arc;
 
 // TelemetrySinkEvent are sent when something is worth 'writing home about'
