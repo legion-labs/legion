@@ -6,7 +6,8 @@ use std::{net::SocketAddr, sync::Arc};
 use tonic::{Request, Response, Status};
 
 use legion_streaming_proto::{
-    streamer_server::*, InitializeStreamRequest, InitializeStreamResponse,
+    streamer_server::{Streamer, StreamerServer},
+    InitializeStreamRequest, InitializeStreamResponse,
 };
 
 /// The `gRPC` server implementation for the streaming server.
