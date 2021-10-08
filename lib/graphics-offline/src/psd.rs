@@ -78,13 +78,13 @@ impl AssetLoader for PsdFileProcessor {
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes)?;
-        let content = if !bytes.is_empty() {
+        let content = if bytes.is_empty() {
+            None
+        } else {
             let psd = psd::Psd::from_bytes(&bytes).map_err(|_e| {
                 std::io::Error::new(std::io::ErrorKind::BrokenPipe, "failed to read .psd file")
             })?;
             Some((psd, bytes))
-        } else {
-            None
         };
         Ok(Box::new(PsdFile { content }))
     }
