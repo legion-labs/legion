@@ -1,4 +1,9 @@
-use crate::*;
+use crate::{
+    connect_to_server, find_file_hash_in_tree, find_workspace_root, make_file_read_only,
+    read_bin_file, read_current_branch, read_local_changes, read_workspace_spec,
+    save_resolve_pending, trace_scope, update_current_branch, Commit, LocalWorkspaceConnection,
+    RepositoryConnection, ResolvePending,
+};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
@@ -83,9 +88,8 @@ pub async fn sync_file(
         if hash_to_sync.is_empty() {
             if let Err(e) = fs::remove_file(&local_path) {
                 return Err(format!("Error deleting {}: {}", local_path.display(), e));
-            } else {
-                return Ok(format!("Deleted {}", local_path.display()));
             }
+            return Ok(format!("Deleted {}", local_path.display()));
         }
         if let Err(e) = connection
             .blob_storage()
@@ -104,36 +108,35 @@ pub async fn sync_file(
             return Err(e);
         }
         return Ok(format!("Updated {}", local_path.display()));
-    } else {
-        //there is no local file, downloading a fresh copy
-        let parent_dir = local_path.parent().unwrap();
-        if !parent_dir.exists() {
-            if let Err(e) = std::fs::create_dir_all(parent_dir) {
-                return Err(format!(
-                    "Error creating directory path {}: {}",
-                    parent_dir.display(),
-                    e
-                ));
-            }
-        }
-        if let Err(e) = connection
-            .blob_storage()
-            .await?
-            .download_blob(local_path, hash_to_sync)
-            .await
-        {
+    }
+    //there is no local file, downloading a fresh copy
+    let parent_dir = local_path.parent().unwrap();
+    if !parent_dir.exists() {
+        if let Err(e) = std::fs::create_dir_all(parent_dir) {
             return Err(format!(
-                "Error downloading {} {}: {}",
-                local_path.display(),
-                &hash_to_sync,
+                "Error creating directory path {}: {}",
+                parent_dir.display(),
                 e
             ));
         }
-        if let Err(e) = make_file_read_only(local_path, true) {
-            return Err(e);
-        }
-        return Ok(format!("Added {}", local_path.display()));
     }
+    if let Err(e) = connection
+        .blob_storage()
+        .await?
+        .download_blob(local_path, hash_to_sync)
+        .await
+    {
+        return Err(format!(
+            "Error downloading {} {}: {}",
+            local_path.display(),
+            &hash_to_sync,
+            e
+        ));
+    }
+    if let Err(e) = make_file_read_only(local_path, true) {
+        return Err(e);
+    }
+    return Ok(format!("Added {}", local_path.display()));
 }
 
 pub async fn sync_workspace(

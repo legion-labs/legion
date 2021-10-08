@@ -87,14 +87,14 @@ impl Default for World {
     fn default() -> Self {
         Self {
             id: WorldId::new().expect("More `legion` `World`s have been created than is supported"),
-            entities: Default::default(),
-            components: Default::default(),
-            archetypes: Default::default(),
-            storages: Default::default(),
-            bundles: Default::default(),
-            removed_components: Default::default(),
-            archetype_component_access: Default::default(),
-            main_thread_validator: Default::default(),
+            entities: Entities::default(),
+            components: Components::default(),
+            archetypes: Archetypes::default(),
+            storages: Storages::default(),
+            bundles: Bundles::default(),
+            removed_components: SparseSet::default(),
+            archetype_component_access: ArchetypeComponentAccess::default(),
+            main_thread_validator: MainThreadValidator::default(),
             // Default value is `1`, and `last_change_tick`s default to `0`, such that changes
             // are detected on first system runs and for direct world queries.
             change_tick: AtomicU32::new(1),
@@ -564,12 +564,11 @@ impl World {
 
     /// Returns an iterator of entities that had components of type `T` removed
     /// since the last call to [`World::clear_trackers`].
-    pub fn removed<T: Component>(&self) -> std::iter::Cloned<std::slice::Iter<'_, Entity>> {
-        if let Some(component_id) = self.components.get_id(TypeId::of::<T>()) {
-            self.removed_with_id(component_id)
-        } else {
-            [].iter().cloned()
-        }
+    pub fn removed<T: Component>(&self) -> std::iter::Copied<std::slice::Iter<'_, Entity>> {
+        self.components.get_id(TypeId::of::<T>()).map_or_else(
+            || [].iter().copied(),
+            |component_id| self.removed_with_id(component_id),
+        )
     }
 
     /// Returns an iterator of entities that had components with the given `component_id` removed
@@ -577,12 +576,10 @@ impl World {
     pub fn removed_with_id(
         &self,
         component_id: ComponentId,
-    ) -> std::iter::Cloned<std::slice::Iter<'_, Entity>> {
-        if let Some(removed) = self.removed_components.get(component_id) {
-            removed.iter().cloned()
-        } else {
-            [].iter().cloned()
-        }
+    ) -> std::iter::Copied<std::slice::Iter<'_, Entity>> {
+        self.removed_components
+            .get(component_id)
+            .map_or_else(|| [].iter().copied(), |removed| removed.iter().copied())
     }
 
     /// Inserts a new resource with the given `value`.

@@ -182,7 +182,7 @@ impl<T> Default for ManualEventReader<T> {
     fn default() -> Self {
         Self {
             last_event_count: 0,
-            _marker: Default::default(),
+            _marker: PhantomData::default(),
         }
     }
 }
@@ -516,7 +516,7 @@ mod tests {
         events: &Events<TestEvent>,
         reader: &mut ManualEventReader<TestEvent>,
     ) -> Vec<TestEvent> {
-        reader.iter(events).cloned().collect::<Vec<TestEvent>>()
+        reader.iter(events).copied().collect::<Vec<TestEvent>>()
     }
 
     #[derive(PartialEq, Eq, Debug)]
@@ -545,7 +545,7 @@ mod tests {
 
     #[test]
     fn test_events_clear_and_read() {
-        events_clear_and_read_impl(|events| events.clear());
+        events_clear_and_read_impl(Events::clear);
     }
 
     #[test]

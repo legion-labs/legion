@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::BuildHasher};
 
-use crate::*;
-use anyhow::*;
+use crate::{read_pod, DynString, InProcSerialize, UserDefinedType};
+use anyhow::{bail, Result};
 
 #[derive(Debug, Clone)]
 pub struct Object {
@@ -12,7 +12,7 @@ pub struct Object {
 impl Object {
     pub fn get<T>(&self, member_name: &str) -> Result<T>
     where
-        T: TansitValue,
+        T: TransitValue,
     {
         for m in &self.members {
             if m.0 == member_name {
@@ -23,13 +23,13 @@ impl Object {
     }
 }
 
-pub trait TansitValue {
+pub trait TransitValue {
     fn get(value: &Value) -> Result<Self>
     where
         Self: Sized;
 }
 
-impl TansitValue for u8 {
+impl TransitValue for u8 {
     fn get(value: &Value) -> Result<Self> {
         if let Value::U8(val) = value {
             Ok(*val)
@@ -39,7 +39,7 @@ impl TansitValue for u8 {
     }
 }
 
-impl TansitValue for u32 {
+impl TransitValue for u32 {
     fn get(value: &Value) -> Result<Self> {
         if let Value::U32(val) = value {
             Ok(*val)
@@ -49,7 +49,7 @@ impl TansitValue for u32 {
     }
 }
 
-impl TansitValue for u64 {
+impl TransitValue for u64 {
     fn get(value: &Value) -> Result<Self> {
         if let Value::U64(val) = value {
             Ok(*val)
@@ -59,7 +59,7 @@ impl TansitValue for u64 {
     }
 }
 
-impl TansitValue for String {
+impl TransitValue for String {
     fn get(value: &Value) -> Result<Self> {
         if let Value::String(val) = value {
             Ok(val.clone())
@@ -69,7 +69,7 @@ impl TansitValue for String {
     }
 }
 
-impl TansitValue for Object {
+impl TransitValue for Object {
     fn get(value: &Value) -> Result<Self> {
         if let Value::Object(val) = value {
             Ok(val.clone())
@@ -137,13 +137,16 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
     Ok(hash)
 }
 
-fn parse_custom_instance(
+fn parse_custom_instance<S>(
     udt: &UserDefinedType,
-    _dependencies: &HashMap<u64, Value>,
+    _dependencies: &HashMap<u64, Value, S>,
     offset: usize,
     object_size: usize,
     buffer: &[u8],
-) -> Object {
+) -> Object
+where
+    S: BuildHasher,
+{
     let members = match udt.name.as_str() {
         "LogDynMsgEvent" => unsafe {
             let level_ptr = buffer.as_ptr().add(offset);
@@ -168,12 +171,15 @@ fn parse_custom_instance(
     }
 }
 
-fn parse_pod_instance(
+fn parse_pod_instance<S>(
     udt: &UserDefinedType,
-    dependencies: &HashMap<u64, Value>,
+    dependencies: &HashMap<u64, Value, S>,
     offset: usize,
     buffer: &[u8],
-) -> Object {
+) -> Object
+where
+    S: BuildHasher,
+{
     let members = udt
         .members
         .iter()
@@ -225,14 +231,15 @@ fn parse_pod_instance(
     }
 }
 
-pub fn parse_object_buffer<F>(
-    dependencies: &HashMap<u64, Value>,
+pub fn parse_object_buffer<F, S>(
+    dependencies: &HashMap<u64, Value, S>,
     udts: &[UserDefinedType],
     buffer: &[u8],
     mut fun: F,
 ) -> Result<()>
 where
     F: FnMut(Value),
+    S: BuildHasher,
 {
     let mut offset = 0;
     while offset < buffer.len() {

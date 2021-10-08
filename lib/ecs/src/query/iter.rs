@@ -220,6 +220,7 @@ where
     cursors: [QueryIterationCursor<'s, Q, F>; K],
 }
 
+#[allow(clippy::type_repetition_in_bounds)]
 impl<'w, 's, Q: WorldQuery, F: WorldQuery, const K: usize> QueryCombinationIter<'w, 's, Q, F, K>
 where
     F::Fetch: FilterFetch,
@@ -342,6 +343,7 @@ where
 // Iterator type is intentionally implemented only for read-only access.
 // Doing so for mutable references would be unsound, because  calling `next`
 // multiple times would allow multiple owned references to the same data to exist.
+#[allow(clippy::type_repetition_in_bounds)]
 impl<'w, 's, Q: WorldQuery, F: WorldQuery, const K: usize> Iterator
     for QueryCombinationIter<'w, 's, Q, F, K>
 where
@@ -411,6 +413,7 @@ struct QueryIterationCursor<'s, Q: WorldQuery, F: WorldQuery> {
     current_index: usize,
 }
 
+#[allow(clippy::type_repetition_in_bounds)]
 impl<'s, Q: WorldQuery, F: WorldQuery> Clone for QueryIterationCursor<'s, Q, F>
 where
     Q::Fetch: Clone,

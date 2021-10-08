@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn test_default_implementation() {
         let entity = TestEntity {
-            ..Default::default()
+            ..TestEntity::default()
         };
 
         assert_eq!(entity.test_string.as_str(), "string literal");
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn test_json_serialization() {
         let mut entity = TestEntity {
-            ..Default::default()
+            ..TestEntity::default()
         };
 
         let json_data = r#"
@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn test_compile_data_container() {
         let entity = TestEntity {
-            ..Default::default()
+            ..TestEntity::default()
         };
         let compiled_asset = entity.compile_runtime().unwrap();
 

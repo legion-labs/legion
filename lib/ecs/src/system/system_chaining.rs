@@ -138,8 +138,8 @@ where
             name: Cow::Owned(format!("Chain({}, {})", system_a.name(), system_b.name())),
             system_a,
             system_b,
-            archetype_component_access: Default::default(),
-            component_access: Default::default(),
+            archetype_component_access: Access::default(),
+            component_access: Access::default(),
         }
     }
 }

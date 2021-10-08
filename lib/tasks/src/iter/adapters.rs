@@ -125,7 +125,7 @@ where
     // This extends each batch using the flatten. The other option is to
     // turn each IntoIter into its own batch.
     fn next_batch(&mut self) -> Option<std::iter::Flatten<B>> {
-        self.iter.next_batch().map(|b| b.flatten())
+        self.iter.next_batch().map(Iterator::flatten)
     }
 }
 
@@ -142,6 +142,7 @@ where
     type Item = P::Item;
 
     fn next_batch(&mut self) -> Option<B> {
+        #[allow(clippy::option_if_let_else)]
         if let Some(iter) = &mut self.iter {
             if let b @ Some(_) = iter.next_batch() {
                 b
@@ -188,7 +189,7 @@ where
     type Item = T;
 
     fn next_batch(&mut self) -> Option<std::iter::Copied<B>> {
-        self.iter.next_batch().map(|b| b.copied())
+        self.iter.next_batch().map(Iterator::copied)
     }
 }
 
@@ -206,7 +207,7 @@ where
     type Item = T;
 
     fn next_batch(&mut self) -> Option<std::iter::Cloned<B>> {
-        self.iter.next_batch().map(|b| b.cloned())
+        self.iter.next_batch().map(Iterator::cloned)
     }
 }
 

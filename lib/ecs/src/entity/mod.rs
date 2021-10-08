@@ -189,8 +189,10 @@ impl Entities {
         // Use one atomic subtract to grab a range of new IDs. The range might be
         // entirely nonnegative, meaning all IDs come from the freelist, or entirely
         // negative, meaning they are all new IDs to allocate, or a mix of both.
-        let range_end = self.free_cursor.fetch_sub(count as i64, Ordering::Relaxed);
-        let range_start = range_end - count as i64;
+        let range_end = self
+            .free_cursor
+            .fetch_sub(i64::from(count), Ordering::Relaxed);
+        let range_start = range_end - i64::from(count);
 
         let freelist_range = range_start.max(0) as usize..range_end.max(0) as usize;
 
@@ -262,6 +264,7 @@ impl Entities {
     pub fn alloc(&mut self) -> Entity {
         self.verify_flushed();
         self.len += 1;
+        #[allow(clippy::option_if_let_else)]
         if let Some(id) = self.pending.pop() {
             let new_free_cursor = self.pending.len() as i64;
             *self.free_cursor.get_mut() = new_free_cursor;
@@ -369,7 +372,7 @@ impl Entities {
         self.verify_flushed();
 
         let freelist_size = *self.free_cursor.get_mut();
-        let shortfall = additional as i64 - freelist_size;
+        let shortfall = i64::from(additional) - freelist_size;
         if shortfall > 0 {
             self.meta.reserve(shortfall as usize);
         }

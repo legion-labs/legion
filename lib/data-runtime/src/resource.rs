@@ -54,7 +54,7 @@ impl ResourceType {
     /// Replaces [`Self::num_bits`] most significant bits of id with the content type id.
     pub fn stamp(&self, id: u128) -> u128 {
         let value_bits = u128::BITS - Self::num_bits();
-        ((self.0 as u128) << value_bits) | (id & ((1 << value_bits) - 1))
+        (u128::from(self.0) << value_bits) | (id & ((1 << value_bits) - 1))
     }
 }
 
@@ -65,7 +65,7 @@ pub struct ResourceId(std::num::NonZeroU128);
 impl ResourceId {
     /// Creates a new id of a given type.
     pub fn new(kind: ResourceType, id: u64) -> Self {
-        let internal = kind.stamp(id as u128);
+        let internal = kind.stamp(u128::from(id));
         Self(std::num::NonZeroU128::new(internal).unwrap())
     }
 

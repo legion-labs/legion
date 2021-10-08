@@ -2,7 +2,7 @@ pub use ahash::AHasher;
 pub use instant::{Duration, Instant};
 pub use uuid::Uuid;
 
-use ahash::RandomState;
+pub use ahash::RandomState;
 
 /// A hasher builder that will create a fixed hasher.
 #[derive(Default)]

@@ -67,8 +67,8 @@ impl App {
 
     pub fn empty() -> Self {
         Self {
-            world: Default::default(),
-            schedule: Default::default(),
+            world: World::default(),
+            schedule: Schedule::default(),
             runner: Box::new(run_once),
         }
     }

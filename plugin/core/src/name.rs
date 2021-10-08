@@ -19,6 +19,7 @@ impl Default for Name {
     }
 }
 
+#[allow(clippy::inline_always)]
 impl Name {
     pub fn new(name: impl Into<Cow<'static, str>>) -> Self {
         let name = name.into();
@@ -52,6 +53,7 @@ impl Name {
 
 impl From<&str> for Name {
     #[inline(always)]
+    #[allow(clippy::inline_always)]
     fn from(name: &str) -> Self {
         Self::new(name.to_owned())
     }

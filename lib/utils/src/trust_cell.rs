@@ -642,6 +642,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "but it was already borrowed")]
+    #[allow(clippy::let_underscore_drop)]
     fn ref_mut_map_retains_mut_borrow() {
         let cell = TrustCell::new(Box::new(10));
 

@@ -74,7 +74,7 @@ impl Edges {
 
     #[inline]
     pub fn get_remove_bundle(&self, bundle_id: BundleId) -> Option<Option<ArchetypeId>> {
-        self.remove_bundle.get(bundle_id).cloned()
+        self.remove_bundle.get(bundle_id).copied()
     }
 
     #[inline]
@@ -87,7 +87,7 @@ impl Edges {
         &self,
         bundle_id: BundleId,
     ) -> Option<Option<ArchetypeId>> {
-        self.remove_bundle_intersection.get(bundle_id).cloned()
+        self.remove_bundle_intersection.get(bundle_id).copied()
     }
 
     #[inline]
@@ -166,14 +166,14 @@ impl Archetype {
             id,
             table_info: TableInfo {
                 id: table_id,
-                entity_rows: Default::default(),
+                entity_rows: Vec::default(),
             },
             components,
             table_components,
             sparse_set_components,
             unique_components: SparseSet::new(),
-            entities: Default::default(),
-            edges: Default::default(),
+            entities: Vec::default(),
+            edges: Edges::default(),
         }
     }
 
@@ -371,7 +371,7 @@ impl Default for Archetypes {
     fn default() -> Self {
         let mut archetypes = Self {
             archetypes: Vec::new(),
-            archetype_ids: Default::default(),
+            archetype_ids: HashMap::default(),
             archetype_component_count: 0,
         };
         archetypes.get_id_or_insert(TableId::empty(), Vec::new(), Vec::new());
@@ -520,7 +520,7 @@ impl Archetypes {
     }
 
     pub fn clear_entities(&mut self) {
-        for archetype in self.archetypes.iter_mut() {
+        for archetype in &mut self.archetypes {
             archetype.clear_entities();
         }
     }

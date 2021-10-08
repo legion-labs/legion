@@ -1,7 +1,7 @@
 // ['DataContainer'] serialization
 
 use proc_macro::{TokenStream, TokenTree};
-use quote::*;
+use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 type QuoteRes = quote::__private::TokenStream;
 
@@ -26,16 +26,17 @@ fn metadata_from_type(t: &syn::Type) -> Option<QuoteRes> {
     }
 }
 
+#[allow(clippy::struct_excessive_bools)]
 struct MemberMetaInfo {
     name: String,
     type_id: syn::Type,
     type_name: String,
     offline: bool,
-    category: Option<String>,
+    category: String,
     hidden: bool,
     readonly: bool,
     transient: bool,
-    tooltip: Option<String>,
+    tooltip: String,
     default_literal: Option<QuoteRes>,
 }
 
@@ -75,11 +76,11 @@ impl MemberMetaInfo {
 
 fn get_attribute_literal(
     group_iter: &mut std::iter::Peekable<proc_macro::token_stream::IntoIter>,
-) -> Option<String> {
+) -> String {
     if let Some(TokenTree::Punct(punct)) = group_iter.next() {
         if punct.as_char() == '=' {
             if let Some(TokenTree::Literal(lit)) = group_iter.next() {
-                return Some(lit.to_string());
+                return lit.to_string();
             }
         }
     }
@@ -148,12 +149,12 @@ fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
         name: field.ident.as_ref().unwrap().to_string(),
         type_id: field.ty.clone(),
         type_name: format!("{}", field_type),
-        category: None,
+        category: String::default(),
         offline: false,
         hidden: false,
         readonly: false,
         transient: false,
-        tooltip: None,
+        tooltip: String::default(),
         default_literal: None,
     };
 
@@ -314,6 +315,7 @@ fn generate_offline_json_writes(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
         .collect()
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn derive_data_container(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let offline_identifier = ast.ident.clone();
@@ -353,9 +355,10 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
     }
 
     // Optional lifetime parameters
-    let life_time = match need_life_time {
-        true => quote! {<'r>},
-        _ => quote! {},
+    let life_time = if need_life_time {
+        quote! {<'r>}
+    } else {
+        quote! {}
     };
 
     let offline_fields_defaults = generate_offline_defaults(&members);

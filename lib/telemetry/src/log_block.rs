@@ -1,8 +1,14 @@
 use std::collections::HashSet;
 
-use crate::*;
-use anyhow::*;
-use transit::*;
+use crate::{
+    compress, telemetry_ingestion_proto, DualTime, EncodedBlock, LogDynMsgEvent, LogMsgEvent,
+    StreamBlock,
+};
+use anyhow::Result;
+use transit::{
+    declare_queue_struct, read_pod, IterableQueue, QueueIterator, Reflect, StaticString,
+    UserDefinedType,
+};
 
 declare_queue_struct!(
     struct LogMsgQueue<LogMsgEvent, LogDynMsgEvent> {}

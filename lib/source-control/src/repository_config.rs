@@ -1,4 +1,4 @@
-use crate::{sql::*, *};
+use crate::{sql::execute_sql, BlobStorageSpec};
 use futures::executor::block_on;
 
 pub async fn init_config_database(sql_connection: &mut sqlx::AnyConnection) -> Result<(), String> {

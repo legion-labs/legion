@@ -395,7 +395,7 @@ impl AssetLoaderIO {
                         .iter()
                         .skip(1)
                         .map(|(id, _)| id)
-                        .cloned()
+                        .copied()
                         .collect(),
                 );
                 let primary_asset = loaded.assets[0].1.as_ref().unwrap().clone();

@@ -101,7 +101,7 @@ mod tests {
         // Create a `Time` for testing
         let mut time = Time {
             startup: start_instant,
-            ..Default::default()
+            ..Time::default()
         };
 
         // Ensure `time` was constructed correctly

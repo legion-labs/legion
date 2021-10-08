@@ -15,7 +15,7 @@ impl AssetRegistrySettings {
         Self {
             content_store_addr: content_store_addr.as_ref().to_owned(),
             game_manifest: game_manifest.as_ref().to_owned(),
-            root_asset: root_asset.map(|s| s.to_owned()),
+            root_asset: root_asset.map(ToOwned::to_owned),
         }
     }
 }

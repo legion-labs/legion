@@ -1,4 +1,7 @@
-use crate::*;
+use crate::{
+    connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec, trace_scope,
+    verify_empty_lock_domain, LocalWorkspaceConnection,
+};
 use std::collections::BTreeSet;
 
 pub async fn attach_branch_command(parent_branch_name: &str) -> Result<(), String> {

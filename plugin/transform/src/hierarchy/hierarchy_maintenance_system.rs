@@ -1,4 +1,4 @@
-use crate::components::*;
+use crate::components::{Children, Parent, PreviousParent};
 use legion_ecs::{
     entity::Entity,
     prelude::Changed,
@@ -71,7 +71,7 @@ pub fn parent_update_system(
     // Flush the `children_additions` to the command buffer. It is stored separate to
     // collect multiple new children that point to the same parent into the same
     // SmallVec, and to prevent redundant add+remove operations.
-    for (e, v) in children_additions.iter() {
+    for (e, v) in &children_additions {
         commands.entity(*e).insert(Children::with(v));
     }
 }
@@ -84,7 +84,10 @@ mod test {
     };
 
     use super::*;
-    use crate::{hierarchy::BuildChildren, transform_propagate_system::transform_propagate_system};
+    use crate::{
+        hierarchy::BuildChildren, prelude::Transform,
+        transform_propagate_system::transform_propagate_system,
+    };
 
     #[test]
     fn correct_children() {
@@ -128,7 +131,7 @@ mod test {
                 .unwrap()
                 .0
                 .iter()
-                .cloned()
+                .copied()
                 .collect::<Vec<_>>(),
             children,
         );
@@ -143,7 +146,7 @@ mod test {
                 .get::<Children>(parent)
                 .unwrap()
                 .iter()
-                .cloned()
+                .copied()
                 .collect::<Vec<_>>(),
             vec![children[1]]
         );
@@ -153,7 +156,7 @@ mod test {
                 .get::<Children>(children[1])
                 .unwrap()
                 .iter()
-                .cloned()
+                .copied()
                 .collect::<Vec<_>>(),
             vec![children[0]]
         );
@@ -167,7 +170,7 @@ mod test {
                 .get::<Children>(parent)
                 .unwrap()
                 .iter()
-                .cloned()
+                .copied()
                 .collect::<Vec<_>>(),
             vec![children[1]]
         );

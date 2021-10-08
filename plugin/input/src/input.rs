@@ -38,9 +38,9 @@ pub struct Input<T> {
 impl<T> Default for Input<T> {
     fn default() -> Self {
         Self {
-            pressed: Default::default(),
-            just_pressed: Default::default(),
-            just_released: Default::default(),
+            pressed: HashSet::default(),
+            just_pressed: HashSet::default(),
+            just_released: HashSet::default(),
         }
     }
 }

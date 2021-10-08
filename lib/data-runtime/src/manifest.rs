@@ -22,7 +22,7 @@ pub struct Manifest(HashMap<ResourceId, (ResourceChecksum, usize)>);
 impl Manifest {
     /// Retrieve information about `Asset` identified by a given [`ResourceId`], if available.
     pub fn find(&self, id: ResourceId) -> Option<(ResourceChecksum, usize)> {
-        self.0.get(&id).cloned()
+        self.0.get(&id).copied()
     }
 
     /// Add new information about an `Asset`.
@@ -37,7 +37,7 @@ impl Serialize for Manifest {
         S: serde::Serializer,
     {
         let mut entries: Vec<CompiledAsset> = Vec::new();
-        for (guid, (checksum, size)) in self.0.iter() {
+        for (guid, (checksum, size)) in &self.0 {
             entries.push(CompiledAsset {
                 guid: *guid,
                 checksum: *checksum,

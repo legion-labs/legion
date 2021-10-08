@@ -38,7 +38,7 @@ impl Stopwatch {
     /// assert_eq!(stopwatch.paused(), false);
     /// ```
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
     /// Returns the elapsed time since the last [`reset`](Stopwatch::reset)
@@ -163,6 +163,6 @@ impl Stopwatch {
     /// ```
     #[inline]
     pub fn reset(&mut self) {
-        self.elapsed = Default::default();
+        self.elapsed = Duration::default();
     }
 }

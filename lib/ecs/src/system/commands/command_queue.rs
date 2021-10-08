@@ -208,6 +208,7 @@ mod test {
 
         let mut world = World::new();
 
+        #[allow(clippy::let_underscore_drop)]
         let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
             queue.apply(&mut world);
         }));

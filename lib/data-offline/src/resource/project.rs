@@ -196,7 +196,7 @@ impl Project {
     pub fn resource_list(&self) -> Vec<ResourceId> {
         let all_resources = [&self.db.remote_resources, &self.db.local_resources];
         let references = all_resources.iter().flat_map(|v| v.iter());
-        references.cloned().collect()
+        references.copied().collect()
     }
 
     /// Finds resource by its name and returns its `ResourceId`.
@@ -295,7 +295,7 @@ impl Project {
                 hasher.write(&buffer[..count]);
             }
 
-            hasher.finish() as i128
+            i128::from(hasher.finish())
         };
 
         let meta_file = File::create(&meta_path).map_err(|e| {
@@ -355,7 +355,7 @@ impl Project {
                 hasher.write(&buffer[..count]);
             }
 
-            hasher.finish() as i128
+            i128::from(hasher.finish())
         };
 
         metadata.content_checksum = content_checksum.into();

@@ -131,6 +131,7 @@ impl<A: GfxApi> PresentableFrame<A> {
 
         //TODO: Might be able to do this without presenting by having command buffers that can be
         // submitted that trigger the semaphore.
+        #[allow(clippy::let_underscore_drop)]
         let _ = self.do_present(queue, &[]);
 
         // Let the shared state arc drop, this will unblock the next frame

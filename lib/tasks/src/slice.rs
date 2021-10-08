@@ -77,7 +77,7 @@ impl<S, T: Send> ParallelSliceMut<T> for S where S: AsMut<[T]> {}
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use crate::{ParallelSlice, ParallelSliceMut, TaskPool};
 
     #[test]
     fn test_par_chunks_map() {

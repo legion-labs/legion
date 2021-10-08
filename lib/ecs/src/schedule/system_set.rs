@@ -30,7 +30,7 @@ impl Default for SystemSet {
 
 impl SystemSet {
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
     pub fn on_update<T>(s: T) -> Self

@@ -18,8 +18,8 @@ impl<T: SparseSetIndex> Default for Access<T> {
     fn default() -> Self {
         Self {
             reads_all: false,
-            reads_and_writes: Default::default(),
-            writes: Default::default(),
+            reads_and_writes: FixedBitSet::default(),
+            writes: FixedBitSet::default(),
             marker: PhantomData,
         }
     }
@@ -128,8 +128,8 @@ impl<T: SparseSetIndex> Default for FilteredAccess<T> {
     fn default() -> Self {
         Self {
             access: Access::default(),
-            with: Default::default(),
-            without: Default::default(),
+            with: FixedBitSet::default(),
+            without: FixedBitSet::default(),
         }
     }
 }
@@ -196,7 +196,7 @@ impl<T: SparseSetIndex> FilteredAccessSet<T> {
         // if combined unfiltered access is incompatible, check each filtered access for
         // compatibility
         if !filtered_access.access.is_compatible(&self.combined_access) {
-            for current_filtered_access in self.filtered_accesses.iter() {
+            for current_filtered_access in &self.filtered_accesses {
                 if !current_filtered_access.is_compatible(filtered_access) {
                     return current_filtered_access
                         .access
@@ -216,7 +216,7 @@ impl<T: SparseSetIndex> FilteredAccessSet<T> {
 impl<T: SparseSetIndex> Default for FilteredAccessSet<T> {
     fn default() -> Self {
         Self {
-            combined_access: Default::default(),
+            combined_access: Access::default(),
             filtered_accesses: Vec::new(),
         }
     }

@@ -193,6 +193,7 @@ pub struct Encoder {
 
 impl Encoder {
     /// Create an encoder with the provided configuration.
+    #[allow(clippy::cast_possible_wrap)]
     pub fn with_config(mut config: EncoderConfig) -> Result<Self, Error> {
         let raw_api = EncoderRawAPI::new()?;
         let mut params = SEncParamExt::default();

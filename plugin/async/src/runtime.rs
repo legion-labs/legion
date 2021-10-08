@@ -141,6 +141,7 @@ impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
                 }
             };
 
+            #[allow(clippy::let_underscore_drop)]
             let _ = sender.send(fut.await);
         });
 

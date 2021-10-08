@@ -1,4 +1,7 @@
-use crate::*;
+use crate::{
+    flush_log_buffer, flush_thread_buffer, init_event_dispatch, init_thread_stream,
+    shutdown_event_dispatch, EventBlockSink, GRPCEventSink, NullEventSink,
+};
 use std::sync::Arc;
 
 pub struct TelemetrySystemGuard {}

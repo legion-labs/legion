@@ -58,7 +58,7 @@ impl Command for PushChildren {
         {
             let mut added = false;
             if let Some(mut children) = world.get_mut::<Children>(self.parent) {
-                children.0.extend(self.children.iter().cloned());
+                children.0.extend(self.children.iter().copied());
                 added = true;
             }
 
@@ -192,7 +192,7 @@ impl<'w> WorldChildBuilder<'w> {
     pub fn parent_entity(&self) -> Entity {
         self.parent_entities
             .last()
-            .cloned()
+            .copied()
             .expect("There should always be a parent at this point.")
     }
 }
@@ -242,7 +242,7 @@ impl<'w> BuildWorldChildren for EntityMut<'w> {
             self.update_location();
         }
         if let Some(mut children_component) = self.get_mut::<Children>() {
-            children_component.0.extend(children.iter().cloned());
+            children_component.0.extend(children.iter().copied());
         } else {
             self.insert(Children::with(children));
         }
@@ -301,7 +301,7 @@ impl<'w> BuildWorldChildren for WorldChildBuilder<'w> {
                 .insert_bundle((Parent(parent), PreviousParent(parent)));
         }
         if let Some(mut children_component) = self.world.get_mut::<Children>(parent) {
-            children_component.0.extend(children.iter().cloned());
+            children_component.0.extend(children.iter().copied());
         } else {
             self.world
                 .entity_mut(parent)

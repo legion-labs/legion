@@ -121,6 +121,7 @@ impl VideoStream {
 
         async move {
             for (i, data) in chunks.iter().enumerate() {
+                #[allow(clippy::redundant_else)]
                 if let Err(err) = video_data_channel.send(data).await {
                     warn!(
                         "Failed to send frame {}-{} ({} bytes): streaming will stop: {}",
@@ -160,6 +161,7 @@ impl VideoStreamEncoder {
             formats::RBGYUVConverter::new(resolution.width as usize, resolution.height as usize);
 
         let mut mp4 = Mp4Stream::new(60);
+        #[allow(clippy::cast_possible_wrap)]
         let track_id = mp4
             .add_track(resolution.width as i32, resolution.height as i32)
             .unwrap();
@@ -220,15 +222,15 @@ impl VideoStreamEncoder {
 
 fn hue2rgb_modulation(hue: f32) -> (f32, f32, f32) {
     let rgb = hsl::HSL {
-        h: (hue * 360.0) as f64,
+        h: f64::from(hue * 360.0),
         s: 1_f64,
         l: 0.5_f64,
     }
     .to_rgb();
 
     (
-        rgb.0 as f32 / 256.0,
-        rgb.1 as f32 / 256.0,
-        rgb.2 as f32 / 256.0,
+        f32::from(rgb.0) / 256.0,
+        f32::from(rgb.1) / 256.0,
+        f32::from(rgb.2) / 256.0,
     )
 }

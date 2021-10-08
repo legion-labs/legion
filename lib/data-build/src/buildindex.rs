@@ -193,6 +193,7 @@ impl BuildIndex {
         }
 
         let mut get_or_create_index = |res, dep_graph: &mut Graph<_, _>| {
+            #[allow(clippy::option_if_let_else)]
             if let Some(own_index) = indices.get(&res) {
                 *own_index
             } else {
@@ -239,7 +240,7 @@ impl BuildIndex {
     /// * `id` resource's content.
     /// * content of all `id`'s dependencies.
     /// todo: at one point dependency filtering here will be useful.
-    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> Result<ResourceHash, Error> {
+    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> ResourceHash {
         let sorted_unique_resource_hashes: Vec<ResourceHash> = {
             let mut unique_resources = HashMap::new();
             let mut queue: VecDeque<_> = VecDeque::new();
@@ -280,7 +281,7 @@ impl BuildIndex {
         for h in sorted_unique_resource_hashes {
             h.hash(&mut hasher);
         }
-        Ok(hasher.finish().into())
+        hasher.finish().into()
     }
 
     pub(crate) fn update_resource(
@@ -289,6 +290,7 @@ impl BuildIndex {
         resource_hash: Option<ResourceHash>,
         mut deps: Vec<ResourcePathId>,
     ) -> bool {
+        #[allow(clippy::option_if_let_else)]
         if let Some(existing_res) = self.content.resources.iter_mut().find(|r| r.id == id) {
             deps.sort();
 

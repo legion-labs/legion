@@ -1,5 +1,5 @@
 use fixedbitset::FixedBitSet;
-use legion_utils::{tracing::warn, HashMap, HashSet};
+use legion_utils::{tracing::warn, HashMap, HashSet, RandomState};
 use std::{borrow::Cow, fmt::Debug, hash::Hash};
 
 pub enum DependencyGraphError<Labels> {
@@ -35,7 +35,7 @@ where
             .or_insert_with(|| FixedBitSet::with_capacity(nodes.len()))
             .insert(index);
     }
-    let mut graph = HashMap::with_capacity_and_hasher(nodes.len(), Default::default());
+    let mut graph = HashMap::with_capacity_and_hasher(nodes.len(), RandomState::default());
     for (index, node) in nodes.iter().enumerate() {
         let dependencies = graph.entry(index).or_insert_with(HashMap::default);
         for label in node.after() {
@@ -78,37 +78,38 @@ where
 }
 
 /// Generates a topological order for the given graph.
+#[allow(clippy::implicit_hasher)]
 pub fn topological_order<Labels: Clone>(
     graph: &HashMap<usize, HashMap<usize, Labels>>,
 ) -> Result<Vec<usize>, DependencyGraphError<Labels>> {
     fn check_if_cycles_and_visit<L>(
-        node: &usize,
+        node: usize,
         graph: &HashMap<usize, HashMap<usize, L>>,
         sorted: &mut Vec<usize>,
         unvisited: &mut HashSet<usize>,
         current: &mut Vec<usize>,
     ) -> bool {
-        if current.contains(node) {
+        if current.contains(&node) {
             return true;
-        } else if !unvisited.remove(node) {
+        } else if !unvisited.remove(&node) {
             return false;
         }
-        current.push(*node);
-        for dependency in graph.get(node).unwrap().keys() {
-            if check_if_cycles_and_visit(dependency, graph, sorted, unvisited, current) {
+        current.push(node);
+        for dependency in graph.get(&node).unwrap().keys() {
+            if check_if_cycles_and_visit(*dependency, graph, sorted, unvisited, current) {
                 return true;
             }
         }
-        sorted.push(*node);
+        sorted.push(node);
         current.pop();
         false
     }
     let mut sorted = Vec::with_capacity(graph.len());
     let mut current = Vec::with_capacity(graph.len());
-    let mut unvisited = HashSet::with_capacity_and_hasher(graph.len(), Default::default());
-    unvisited.extend(graph.keys().cloned());
-    while let Some(node) = unvisited.iter().next().cloned() {
-        if check_if_cycles_and_visit(&node, graph, &mut sorted, &mut unvisited, &mut current) {
+    let mut unvisited = HashSet::with_capacity_and_hasher(graph.len(), RandomState::default());
+    unvisited.extend(graph.keys().copied());
+    while let Some(node) = unvisited.iter().next().copied() {
+        if check_if_cycles_and_visit(node, graph, &mut sorted, &mut unvisited, &mut current) {
             let mut cycle = Vec::new();
             let last_window = [*current.last().unwrap(), current[0]];
             let mut windows = current

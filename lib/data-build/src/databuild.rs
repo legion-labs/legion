@@ -233,12 +233,12 @@ impl DataBuild {
                 .append(false)
                 .open(manifest_file)
             {
-                if file.metadata().unwrap().len() != 0 {
+                if file.metadata().unwrap().len() == 0 {
+                    (Manifest::default(), file)
+                } else {
                     let manifest_content: Manifest =
                         serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
                     (manifest_content, file)
-                } else {
-                    (Manifest::default(), file)
                 }
             } else {
                 let file = OpenOptions::new()
@@ -389,6 +389,7 @@ impl DataBuild {
     /// Returns a list of (id, checksum, size) of created resources and information about their dependencies.
     /// The returned results can be accessed by  [`legion_content_store::ContentStore`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
     // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many contexts (platform, target, locale, etc).
+    #[allow(clippy::too_many_lines)]
     fn compile_path(
         &mut self,
         compile_path: ResourcePathId,
@@ -517,7 +518,7 @@ impl DataBuild {
                         // used as compilers can filter dependencies out.
                         //
                         self.build_index
-                            .compute_source_hash(compile_node.clone())?
+                            .compute_source_hash(compile_node.clone())
                             .get()
                     } else {
                         //
@@ -575,11 +576,9 @@ impl DataBuild {
                 // we check if the expected named output was produced.
                 if let Some(expected_name) = expected_name {
                     if !resource_infos.iter().any(|info| {
-                        if let Some(name) = info.compiled_path.name() {
-                            name == expected_name
-                        } else {
-                            false
-                        }
+                        info.compiled_path
+                            .name()
+                            .map_or(false, |name| name == expected_name)
                     }) {
                         return Err(Error::OutputNotPresent);
                     }

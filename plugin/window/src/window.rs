@@ -106,6 +106,7 @@ impl WindowResizeConstraints {
 /// quantization of the logical size when converting the physical size to the
 /// logical size through the scaling factor.
 #[derive(Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Window {
     id: WindowId,
     requested_width: f32,
@@ -232,13 +233,13 @@ impl Window {
     /// The current logical width of the window's client area.
     #[inline]
     pub fn width(&self) -> f32 {
-        (self.physical_width as f64 / self.scale_factor()) as f32
+        (f64::from(self.physical_width) / self.scale_factor()) as f32
     }
 
     /// The current logical height of the window's client area.
     #[inline]
     pub fn height(&self) -> f32 {
-        (self.physical_height as f64 / self.scale_factor()) as f32
+        (f64::from(self.physical_height) / self.scale_factor()) as f32
     }
 
     /// The requested window client area width in logical pixels from window
@@ -514,6 +515,7 @@ impl Window {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct WindowDescriptor {
     pub width: f32,
     pub height: f32,

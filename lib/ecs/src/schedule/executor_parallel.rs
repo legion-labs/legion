@@ -59,15 +59,15 @@ impl Default for ParallelExecutor {
         let (finish_sender, finish_receiver) = async_channel::unbounded();
         Self {
             archetype_generation: ArchetypeGeneration::initial(),
-            system_metadata: Default::default(),
+            system_metadata: Vec::default(),
             finish_sender,
             finish_receiver,
-            queued: Default::default(),
-            running: Default::default(),
+            queued: FixedBitSet::default(),
+            running: FixedBitSet::default(),
             non_send_running: false,
-            should_run: Default::default(),
-            active_archetype_component_access: Default::default(),
-            dependants_scratch: Default::default(),
+            should_run: FixedBitSet::default(),
+            active_archetype_component_access: Access::default(),
+            dependants_scratch: Vec::default(),
             #[cfg(test)]
             events_sender: None,
         }
@@ -93,7 +93,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
                 dependencies_total,
                 dependencies_now: 0,
                 is_send: system.is_send(),
-                archetype_component_access: Default::default(),
+                archetype_component_access: Access::default(),
             });
         }
         // Populate the dependants lists in the scheduling metadata.
