@@ -131,11 +131,11 @@ mod tests {
     }
 
     fn holy_cow() -> Labels {
-        Labels::from(["holy", "cow"].iter().cloned())
+        Labels::from(["holy", "cow"].iter().copied())
     }
 
     fn holy_shamoni() -> Labels {
-        Labels::from(["holy", "shamoni"].iter().cloned())
+        Labels::from(["holy", "shamoni"].iter().copied())
     }
 
     #[test]

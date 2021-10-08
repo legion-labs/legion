@@ -19,6 +19,7 @@ impl TaskPoolThreadAssignmentPolicy {
     /// Determine the number of threads to use for this task pool
     fn get_number_of_threads(&self, remaining_threads: usize, total_threads: usize) -> usize {
         assert!(self.percent >= 0.0);
+        #[allow(clippy::cast_precision_loss)]
         let mut desired = (total_threads as f32 * self.percent).round() as usize;
 
         // Limit ourselves to the number of cores available
@@ -88,7 +89,7 @@ impl DefaultTaskPoolOptions {
         Self {
             min_total_threads: thread_count,
             max_total_threads: thread_count,
-            ..Default::default()
+            ..Self::default()
         }
     }
 

@@ -26,7 +26,7 @@ impl Timer {
         Self {
             duration,
             repeating,
-            ..Default::default()
+            ..Self::default()
         }
     }
 
@@ -41,7 +41,7 @@ impl Timer {
         Self {
             duration: Duration::from_secs_f32(duration),
             repeating,
-            ..Default::default()
+            ..Self::default()
         }
     }
 

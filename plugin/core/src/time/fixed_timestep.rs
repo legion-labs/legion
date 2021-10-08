@@ -69,9 +69,9 @@ impl FixedTimestep {
         Self {
             state: State {
                 step,
-                ..Default::default()
+                ..State::default()
             },
-            ..Default::default()
+            ..Self::default()
         }
     }
 
@@ -79,9 +79,9 @@ impl FixedTimestep {
         Self {
             state: State {
                 step: 1.0 / rate,
-                ..Default::default()
+                ..State::default()
             },
-            ..Default::default()
+            ..Self::default()
         }
     }
 
