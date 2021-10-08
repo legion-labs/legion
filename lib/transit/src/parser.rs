@@ -69,6 +69,16 @@ impl TansitValue for String {
     }
 }
 
+impl TansitValue for Object {
+    fn get(value: &Value) -> Result<Self> {
+        if let Value::Object(val) = value {
+            Ok(val.clone())
+        } else {
+            bail!("bad type cast String for value {:?}", value);
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Value {
     String(String),

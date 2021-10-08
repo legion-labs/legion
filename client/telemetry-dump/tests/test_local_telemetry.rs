@@ -3,6 +3,7 @@ use anyhow::*;
 use sqlx::Row;
 use std::path::{Path, PathBuf};
 use test_utils::*;
+use transit::*;
 
 static DUMP_EXE_VAR: &str = env!("CARGO_BIN_EXE_telemetry-dump");
 
@@ -97,7 +98,14 @@ async fn test_thread_events() -> Result<()> {
     let stream = find_stream(&mut connection, &block.stream_id).await?;
     let payload = fetch_block_payload(&mut connection, &data_path, &block.block_id).await?;
     parse_block(&stream, &payload, |val| {
-        dbg!(val);
+        if let Value::Object(obj) = val {
+            let time = obj.get::<u64>("time").unwrap();
+            let scope = obj.get::<Object>("scope").unwrap();
+            let name = scope.get::<String>("name").unwrap();
+            let filename = scope.get::<String>("filename").unwrap();
+            let line = scope.get::<u32>("line").unwrap();
+            println!("{} {} {} {}:{}", time, obj.type_name, name, filename, line);
+        }
     })?;
     Ok(())
 }
