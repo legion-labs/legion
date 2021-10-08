@@ -1,7 +1,7 @@
 use crate::{
     now, BeginScopeEvent, EndScopeEvent, EventBlockSink, GetScopeDesc, LogBlock, LogDynMsgEvent,
     LogLevel, LogMsgEvent, LogStream, NullEventSink, ProcessInfo, Stream, TelemetrySinkEvent,
-    ThreadEventBlock, ThreadEventQueueTypeIndex, ThreadStream,
+    ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream,
 };
 use chrono::Utc;
 use std::{

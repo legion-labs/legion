@@ -1,4 +1,4 @@
-use crate::{Reflect, Serialize, UserDefinedType};
+use crate::{InProcSerialize, Reflect, UserDefinedType};
 
 #[derive(Debug)]
 pub struct DynString(pub String);

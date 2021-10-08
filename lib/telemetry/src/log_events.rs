@@ -1,5 +1,6 @@
 use transit::{
-    read_pod, write_pod, DynString, Member, Reflect, Serialize, TransitReflect, UserDefinedType,
+    read_pod, write_pod, DynString, InProcSerialize, Member, Reflect, TransitReflect,
+    UserDefinedType,
 };
 
 #[derive(Debug, Clone, Copy)]

@@ -1,7 +1,13 @@
-use crate::*;
-use anyhow::*;
+use crate::{
+    compress, telemetry_ingestion_proto, DualTime, EncodedBlock, ReferencedScope, ScopeDesc,
+    StreamBlock,
+};
+use anyhow::Result;
 use std::collections::HashSet;
-use transit::*;
+use transit::{
+    declare_queue_struct, read_pod, InProcSerialize, IterableQueue, Member, QueueIterator, Reflect,
+    StaticString, TransitReflect, UserDefinedType,
+};
 
 pub type GetScopeDesc = fn() -> ScopeDesc;
 

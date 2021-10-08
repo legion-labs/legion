@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::BuildHasher};
 
-use crate::{read_pod, DynString, Serialize, UserDefinedType};
+use crate::{read_pod, DynString, InProcSerialize, UserDefinedType};
 use anyhow::{bail, Result};
 
 #[derive(Debug, Clone)]
@@ -69,7 +69,7 @@ impl TransitValue for String {
     }
 }
 
-impl TansitValue for Object {
+impl TransitValue for Object {
     fn get(value: &Value) -> Result<Self> {
         if let Value::Object(val) = value {
             Ok(val.clone())

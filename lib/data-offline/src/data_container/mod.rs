@@ -84,10 +84,9 @@ mod tests {
     }
 
     #[test]
-<<<<<<< HEAD
     fn test_default_implementation() {
         let entity = TestEntity {
-            ..Default::default()
+            ..TestEntity::default()
         };
 
         assert_eq!(entity.test_string.as_str(), "string literal");
@@ -105,7 +104,7 @@ mod tests {
     #[test]
     fn test_json_serialization() {
         let mut entity = TestEntity {
-            ..Default::default()
+            ..TestEntity::default()
         };
 
         let json_data = r#"
@@ -135,27 +134,7 @@ mod tests {
     #[test]
     fn test_compile_data_container() {
         let entity = TestEntity {
-            ..Default::default()
-=======
-    fn test_entity_serialization() {
-        let json_data = r#"
-        {
-            "_class" : "Entity",
-            "_base" : "ResourcePathId",
-            "name": "EntityA",
-            "test_bool" : true,
-            "test_int" : 345345,
-            "test_float" : 345.678,
-            "test_vec3" : [2,2,2]
-        }"#;
-
-        let _default_instance = Entity {
-            ..Entity::default()
-        };
-
-        let _test = RuntimeEntity {
-            ..RuntimeEntity::default()
->>>>>>> f7209cc0 (new lints in data-offline, data-compiler)
+            ..TestEntity::default()
         };
         let compiled_asset = entity.compile_runtime().unwrap();
 

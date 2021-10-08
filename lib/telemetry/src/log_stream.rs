@@ -3,7 +3,7 @@ use crate::{
     StreamInfo,
 };
 use std::sync::Arc;
-use transit::{IterableQueue, Serialize};
+use transit::{InProcSerialize, IterableQueue};
 
 pub struct LogStream {
     current_block: Arc<LogBlock>,

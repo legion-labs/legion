@@ -1,12 +1,7 @@
 // ['DataContainer'] serialization
 
-<<<<<<< HEAD
 use proc_macro::{TokenStream, TokenTree};
-use quote::*;
-=======
-use proc_macro::TokenStream;
-use quote::{format_ident, quote, ToTokens};
->>>>>>> f7209cc0 (new lints in data-offline, data-compiler)
+use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 type QuoteRes = quote::__private::TokenStream;
 
@@ -31,37 +26,17 @@ fn metadata_from_type(t: &syn::Type) -> Option<QuoteRes> {
     }
 }
 
-<<<<<<< HEAD
-=======
-// Extract all `#[legion(...)]` attributes
-fn get_legion_meta_items(attr: &syn::Attribute) -> Vec<syn::NestedMeta> {
-    if attr.path != LEGION_TAG {
-        return Vec::new();
-    }
-
-    match attr.parse_meta() {
-        Ok(List(meta)) => meta.nested.into_iter().collect(),
-        Ok(_other) => {
-            panic!("Legion proc-macro: expected attributes syntax #[legion(...)");
-        }
-        Err(err) => {
-            panic!("Legion proc-macro: Error parsing attributes, {}", err);
-        }
-    }
-}
-
-#[derive(Default)]
->>>>>>> f7209cc0 (new lints in data-offline, data-compiler)
+#[allow(clippy::struct_excessive_bools)]
 struct MemberMetaInfo {
     name: String,
     type_id: syn::Type,
     type_name: String,
     offline: bool,
-    category: Option<String>,
+    category: String,
     hidden: bool,
     readonly: bool,
     transient: bool,
-    tooltip: Option<String>,
+    tooltip: String,
     default_literal: Option<QuoteRes>,
 }
 
@@ -101,11 +76,11 @@ impl MemberMetaInfo {
 
 fn get_attribute_literal(
     group_iter: &mut std::iter::Peekable<proc_macro::token_stream::IntoIter>,
-) -> Option<String> {
+) -> String {
     if let Some(TokenTree::Punct(punct)) = group_iter.next() {
         if punct.as_char() == '=' {
             if let Some(TokenTree::Literal(lit)) = group_iter.next() {
-                return Some(lit.to_string());
+                return lit.to_string();
             }
         }
     }
@@ -174,19 +149,18 @@ fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
         name: field.ident.as_ref().unwrap().to_string(),
         type_id: field.ty.clone(),
         type_name: format!("{}", field_type),
-        category: None,
+        category: String::default(),
         offline: false,
         hidden: false,
         readonly: false,
         transient: false,
-        tooltip: None,
+        tooltip: String::default(),
         default_literal: None,
     };
 
     field
         .attrs
         .iter()
-<<<<<<< HEAD
         .filter(|attr| attr.path.is_ident(LEGION_TAG))
         .for_each(|attr| {
             let token_stream = TokenStream::from(attr.tokens.clone());
@@ -212,15 +186,6 @@ fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
                         }
                         _ => {}
                     }
-=======
-        .flat_map(|attr| get_legion_meta_items(attr))
-    {
-        match &meta_item {
-            // Parse `#[legion(offline)]`
-            Meta(Path(word)) if word == OFFLINE_ATTR => {
-                member_info.offline = true;
-            }
->>>>>>> f7209cc0 (new lints in data-offline, data-compiler)
 
                     if let Some(TokenTree::Punct(punct)) = group_iter.next() {
                         if punct.as_char() != ',' {
