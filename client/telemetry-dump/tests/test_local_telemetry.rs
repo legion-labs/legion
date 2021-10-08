@@ -3,7 +3,6 @@ use anyhow::*;
 use sqlx::Row;
 use std::path::{Path, PathBuf};
 use test_utils::*;
-use transit::*;
 
 static DUMP_EXE_VAR: &str = env!("CARGO_BIN_EXE_telemetry-dump");
 
@@ -82,20 +81,10 @@ async fn test_thread_events() -> Result<()> {
     let pool = alloc_sql_pool(&data_path).await.unwrap();
     let mut connection = pool.acquire().await.unwrap();
     let process_id = find_process_with_thread_data(&mut connection).await?;
-    for stream in find_process_thread_streams(&mut connection, &process_id).await? {
-        for block in find_stream_blocks(&mut connection, &stream.stream_id).await? {
-            let payload = fetch_block_payload(&mut connection, &data_path, &block.block_id).await?;
-            parse_block(&stream, &payload, |val| {
-                if let Value::Object(obj) = val {
-                    let time = obj.get::<u64>("time").unwrap();
-                    let scope = obj.get::<Object>("scope").unwrap();
-                    let name = scope.get::<String>("name").unwrap();
-                    let filename = scope.get::<String>("filename").unwrap();
-                    let line = scope.get::<u32>("line").unwrap();
-                    println!("{} {} {} {}:{}", time, obj.type_name, name, filename, line);
-                }
-            })?;
-        }
-    }
+    dump_cli_sys(&[
+        data_path.to_str().unwrap(),
+        "process-thread-events",
+        &process_id,
+    ]);
     Ok(())
 }

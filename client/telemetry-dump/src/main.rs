@@ -54,18 +54,20 @@
 )]
 // END - Legion Labs standard lints v0.5
 // crate-specific exceptions:
-#![allow()]
+#![allow(clippy::wildcard_imports)]
 
 mod process_log;
+mod process_thread_events;
 mod recent_processes;
 
-use analytics::alloc_sql_pool;
-use anyhow::{bail, Result};
+use analytics::*;
+use anyhow::*;
 use clap::{App, AppSettings, Arg, SubCommand};
-use process_log::{print_logs_by_process, print_process_log};
-use recent_processes::print_recent_processes;
+use process_log::*;
+use process_thread_events::*;
+use recent_processes::*;
 use std::path::Path;
-use telemetry::{init_thread_stream, log_str, LogLevel, TelemetrySystemGuard};
+use telemetry::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -95,6 +97,15 @@ async fn main() -> Result<()> {
                         .help("process guid"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("process-thread-events")
+                .about("prints the thread streams of the process")
+                .arg(
+                    Arg::with_name("process-id")
+                        .required(true)
+                        .help("process guid"),
+                ),
+        )
         .get_matches();
 
     let data_path = Path::new(matches.value_of("db").unwrap());
@@ -110,6 +121,10 @@ async fn main() -> Result<()> {
         ("process-log", Some(command_match)) => {
             let process_id = command_match.value_of("process-id").unwrap();
             print_process_log(&mut connection, data_path, process_id).await?;
+        }
+        ("process-thread-events", Some(command_match)) => {
+            let process_id = command_match.value_of("process-id").unwrap();
+            print_process_thread_events(&mut connection, data_path, process_id).await?;
         }
         (command_name, _args) => {
             log_str(LogLevel::Info, "unknown subcommand match");
