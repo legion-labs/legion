@@ -83,6 +83,5 @@ fn to_executable_name(p: PathBuf) -> PathBuf {
 
 #[cfg(not(target_os = "windows"))]
 fn to_executable_name(p: PathBuf) -> PathBuf {
-    #[cfg(target_os = "windows")]
     p
 }
