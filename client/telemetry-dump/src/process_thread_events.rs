@@ -9,7 +9,9 @@ pub async fn print_process_thread_events(
     process_id: &str,
 ) -> Result<()> {
     for stream in find_process_thread_streams(connection, process_id).await? {
+        println!("stream {}", stream.stream_id);
         for block in find_stream_blocks(connection, &stream.stream_id).await? {
+            println!("block {}", block.block_id);
             let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
             parse_block(&stream, &payload, |val| {
                 if let Value::Object(obj) = val {
@@ -21,7 +23,9 @@ pub async fn print_process_thread_events(
                     println!("{} {} {} {}:{}", time, obj.type_name, name, filename, line);
                 }
             })?;
+            println!();
         }
+        println!();
     }
     Ok(())
 }
