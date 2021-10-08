@@ -9,9 +9,8 @@ use legion_data_compiler::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
-    CompiledResource, CompilerHash, Locale, Platform, Target,
+    CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::ResourceRegistryOptions;
 use legion_data_runtime::Resource;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -40,18 +39,16 @@ fn compiler_hash(
     CompilerHash(hasher.finish())
 }
 
-fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = ResourceRegistryOptions::new()
-        .add_type::<refs_resource::TestResource>()
-        .create_registry();
+fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
+    let mut resources = context
+        .take_registry()
+        .add_loader::<refs_resource::TestResource>()
+        .create();
 
-    let resource = context.load_resource(
-        &context.compile_path.direct_dependency().unwrap(),
-        &mut resources,
-    )?;
-    let resource = resource
-        .get::<refs_resource::TestResource>(&resources)
-        .unwrap();
+    let resource = resources.load_sync::<refs_resource::TestResource>(context.source.content_id());
+    assert!(!resource.is_err(&resources));
+    assert!(resource.is_loaded(&resources));
+    let resource = resource.get(&resources).unwrap();
 
     let compiled_asset = {
         let mut content = resource.content.as_bytes().to_owned();
@@ -59,19 +56,10 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         content
     };
 
-    let checksum = context
-        .content_store
-        .store(&compiled_asset)
-        .ok_or(CompilerError::AssetStoreError)?;
-
-    let asset = CompiledResource {
-        path: context.compile_path.clone(),
-        checksum: checksum.into(),
-        size: compiled_asset.len(),
-    };
+    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
     // in this test example every build dependency becomes a reference/load-time dependency.
-    let source = context.compile_path.clone();
+    let source = context.target_unnamed.clone();
     let references: Vec<_> = context
         .dependencies
         .iter()

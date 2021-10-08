@@ -9,9 +9,9 @@ use legion_data_compiler::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
-    CompiledResource, CompilerHash, Locale, Platform, Target,
+    CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::ResourceRegistryOptions;
+use legion_data_offline::resource::ResourceProcessor;
 use legion_data_runtime::Resource;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -40,37 +40,29 @@ fn compiler_hash(
     CompilerHash(hasher.finish())
 }
 
-fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = ResourceRegistryOptions::new()
-        .add_type::<text_resource::TextResource>()
-        .create_registry();
+fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
+    let mut resources = context
+        .take_registry()
+        .add_loader::<text_resource::TextResource>()
+        .create();
 
-    let handle = context.load_resource(
-        &context.compile_path.direct_dependency().unwrap(),
-        &mut resources,
-    )?;
-    let mut resource = handle
-        .get_mut::<text_resource::TextResource>(&mut resources)
-        .unwrap();
+    let resource = resources.load_sync::<text_resource::TextResource>(context.source.content_id());
+    let resource = resource.get(&resources).unwrap();
 
-    resource.content = resource.content.chars().rev().collect();
+    let bytes = {
+        let mut bytes = vec![];
+        let output = text_resource::TextResource {
+            content: resource.content.chars().rev().collect(),
+        };
 
-    let mut bytes = vec![];
-
-    let (nbytes, _) = resources
-        .serialize_resource(text_resource::TextResource::TYPE, &handle, &mut bytes)
-        .map_err(CompilerError::ResourceWriteFailed)?;
-
-    let checksum = context
-        .content_store
-        .store(&bytes)
-        .ok_or(CompilerError::AssetStoreError)?;
-
-    let asset = CompiledResource {
-        path: context.compile_path,
-        checksum: checksum.into(),
-        size: nbytes,
+        let mut processor = text_resource::TextResourceProc {};
+        let _nbytes = processor
+            .write_resource(&output, &mut bytes)
+            .map_err(CompilerError::ResourceWriteFailed)?;
+        bytes
     };
+
+    let asset = context.store(&bytes, context.target_unnamed.clone())?;
 
     // in this mock build dependency are _not_ runtime references.
     Ok(CompilationOutput {

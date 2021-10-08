@@ -251,12 +251,16 @@ impl ResourcePathId {
 
     /// Returns `ContentId` representing the path.
     pub fn content_id(&self) -> ResourceId {
-        let id = {
-            let mut hasher = DefaultHasher::new();
-            self.hash(&mut hasher);
-            hasher.finish()
-        };
-        ResourceId::new(self.content_type(), id)
+        if self.is_source() {
+            self.source
+        } else {
+            let id = {
+                let mut hasher = DefaultHasher::new();
+                self.hash(&mut hasher);
+                hasher.finish()
+            };
+            ResourceId::new(self.content_type(), id)
+        }
     }
 }
 

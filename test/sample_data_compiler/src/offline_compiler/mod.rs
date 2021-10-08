@@ -5,7 +5,7 @@ use std::{
 };
 
 use legion_content_store::ContentStoreAddr;
-use legion_data_build::{generate_rt_manifest, DataBuildOptions};
+use legion_data_build::DataBuildOptions;
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{resource::ResourcePathName, ResourcePathId};
 use legion_data_runtime::Resource;
@@ -87,7 +87,7 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
             )
         };
 
-        let rt_manifest = generate_rt_manifest(manifest, filter);
+        let rt_manifest = manifest.into_rt_manifest(filter);
         serde_json::to_writer_pretty(file, &rt_manifest).expect("to write manifest");
     }
 }

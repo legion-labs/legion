@@ -354,7 +354,10 @@ impl CompilerCompileCmd {
                     eprintln!("Cannot parse compiler output, args: {:?}", self.0.args);
                     io::Error::new(
                         io::ErrorKind::InvalidData,
-                        "Failed to parse CompilerCompileCmdOutput",
+                        format!(
+                            "Failed to parse CompilerCompileCmdOutput: `{}`",
+                            std::str::from_utf8(output.stdout.as_slice()).unwrap()
+                        ),
                     )
                 }),
             Err(e) => {

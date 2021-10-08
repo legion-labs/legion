@@ -9,9 +9,8 @@ use legion_data_compiler::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
-    CompiledResource, CompilerHash, Locale, Platform, Target,
+    CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::ResourceRegistryOptions;
 use legion_data_runtime::Resource;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -40,31 +39,19 @@ fn compiler_hash(
     CompilerHash(hasher.finish())
 }
 
-fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = ResourceRegistryOptions::new()
-        .add_type::<legion_graphics_offline::Texture>()
-        .create_registry();
+fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
+    let mut resources = context
+        .take_registry()
+        .add_loader::<legion_graphics_offline::Texture>()
+        .create();
 
-    let resource = context.load_resource(
-        &context.compile_path.direct_dependency().unwrap(),
-        &mut resources,
-    )?;
-    let resource = resource
-        .get::<legion_graphics_offline::Texture>(&resources)
-        .unwrap();
+    let resource =
+        resources.load_sync::<legion_graphics_offline::Texture>(context.source.content_id());
+    let resource = resource.get(&resources).unwrap();
 
     let compiled_asset = resource.rgba.clone();
 
-    let checksum = context
-        .content_store
-        .store(&compiled_asset)
-        .ok_or(CompilerError::AssetStoreError)?;
-
-    let asset = CompiledResource {
-        path: context.compile_path,
-        checksum: checksum.into(),
-        size: compiled_asset.len(),
-    };
+    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
     Ok(CompilationOutput {
         compiled_resources: vec![asset],

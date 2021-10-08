@@ -11,7 +11,6 @@ use legion_data_compiler::{
     },
     CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::ResourceRegistryOptions;
 use legion_data_runtime::Resource;
 use legion_graphics_offline::PsdFile;
 
@@ -41,18 +40,16 @@ fn compiler_hash(
     CompilerHash(hasher.finish())
 }
 
-fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = ResourceRegistryOptions::new()
-        .add_type::<legion_graphics_offline::PsdFile>()
-        .create_registry();
+fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
+    let mut resources = context
+        .take_registry()
+        .add_loader::<legion_graphics_offline::PsdFile>()
+        .create();
 
-    let resource = context.load_resource(
-        &context.compile_path.direct_dependency().unwrap(),
-        &mut resources,
-    )?;
-    let resource = resource
-        .get::<legion_graphics_offline::PsdFile>(&resources)
-        .unwrap();
+    let resource =
+        resources.load_sync::<legion_graphics_offline::PsdFile>(context.source.content_id());
+
+    let resource = resource.get(&resources).unwrap();
 
     let mut compiled_resources = vec![];
 
@@ -66,11 +63,8 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
             .map_err(|_e| CompilerError::CompilationError("Failed to serialize"))?
     };
 
-    compiled_resources.push(CompilerContext::store(
-        context.content_store,
-        &compiled_content,
-        context.compile_path.clone(),
-    )?);
+    let output = context.store(&compiled_content, context.target_unnamed.clone())?;
+    compiled_resources.push(output);
 
     let compile_layer = |psd: &PsdFile, layer_name| -> Result<Vec<u8>, CompilerError> {
         let image = psd.layer_texture(layer_name).unwrap();
@@ -85,11 +79,8 @@ fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError>
         ))?
     {
         let pixels = compile_layer(resource, layer_name)?;
-        compiled_resources.push(CompilerContext::store(
-            context.content_store,
-            &pixels,
-            context.compile_path.new_named(layer_name),
-        )?);
+        let output = context.store(&pixels, context.target_unnamed.new_named(layer_name))?;
+        compiled_resources.push(output);
     }
 
     Ok(CompilationOutput {

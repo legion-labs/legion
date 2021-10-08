@@ -5,9 +5,9 @@ use std::{
 
 use legion_data_compiler::{
     compiler_api::{CompilationOutput, CompilerContext, CompilerError},
-    CompiledResource, CompilerHash, Locale, Platform, Target,
+    CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::{OfflineResource, ResourceRegistryOptions};
+use legion_data_offline::resource::OfflineResource;
 use legion_data_runtime::Resource;
 use serde::Serialize;
 
@@ -27,35 +27,21 @@ pub fn compiler_hash(
 }
 
 pub fn compile<OfflineType, RuntimeType>(
-    context: CompilerContext<'_>,
+    mut context: CompilerContext<'_>,
 ) -> Result<CompilationOutput, CompilerError>
 where
     OfflineType: OfflineResource + 'static,
     RuntimeType: Resource + FromOffline<OfflineType> + Serialize,
 {
-    let mut resources = ResourceRegistryOptions::new()
-        .add_type::<OfflineType>()
-        .create_registry();
+    let mut resources = context.take_registry().add_loader::<OfflineType>().create();
 
-    let resource = context.load_resource(
-        &context.compile_path.direct_dependency().unwrap(),
-        &mut resources,
-    )?;
-    let resource = resource.get::<OfflineType>(&resources).unwrap();
+    let resource = resources.load_sync::<OfflineType>(context.source.content_id());
+    let resource = resource.get(&resources).unwrap();
 
     let asset = RuntimeType::from_offline(resource);
     let compiled_asset = bincode::serialize(&asset).unwrap();
 
-    let checksum = context
-        .content_store
-        .store(&compiled_asset)
-        .ok_or(CompilerError::AssetStoreError)?;
-
-    let asset = CompiledResource {
-        path: context.compile_path,
-        checksum: checksum.into(),
-        size: compiled_asset.len(),
-    };
+    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
     Ok(CompilationOutput {
         compiled_resources: vec![asset],

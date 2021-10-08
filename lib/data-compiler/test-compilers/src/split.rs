@@ -9,9 +9,9 @@ use legion_data_compiler::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
-    CompiledResource, CompilerHash, Locale, Platform, Target,
+    CompilerHash, Locale, Platform, Target,
 };
-use legion_data_offline::resource::ResourceRegistryOptions;
+use legion_data_offline::resource::ResourceProcessor;
 use legion_data_runtime::Resource;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -40,55 +40,42 @@ fn compiler_hash(
     CompilerHash(hasher.finish())
 }
 
-fn compile(context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = ResourceRegistryOptions::new()
-        .add_type::<multitext_resource::MultiTextResource>()
-        .add_type::<text_resource::TextResource>()
-        .create_registry();
+fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
+    let mut resources = context
+        .take_registry()
+        .add_loader::<multitext_resource::MultiTextResource>()
+        .add_loader::<text_resource::TextResource>()
+        .create();
+    let resource =
+        resources.load_sync::<multitext_resource::MultiTextResource>(context.source.content_id());
+    let resource = resource.get(&resources).unwrap();
 
-    let source_handle = context.load_resource(
-        &context.compile_path.direct_dependency().unwrap(),
-        &mut resources,
-    )?;
-    let source_resource = source_handle
-        .get::<multitext_resource::MultiTextResource>(&resources)
-        .unwrap();
-    let source_text_list = source_resource.text_list.clone();
-
-    let output_handle = resources
-        .new_resource(text_resource::TextResource::TYPE)
-        .unwrap();
+    let source_text_list = resource.text_list.clone();
 
     let mut output = CompilationOutput {
         compiled_resources: vec![],
         resource_references: vec![],
     };
 
+    let mut proc = text_resource::TextResourceProc {};
+
     for (index, content) in source_text_list.iter().enumerate() {
-        let output_resource = output_handle
-            .get_mut::<text_resource::TextResource>(&mut resources)
-            .unwrap();
-        output_resource.content = content.clone();
+        let output_resource = text_resource::TextResource {
+            content: content.clone(),
+        };
 
         let mut bytes = vec![];
-        let (nbytes, _) = resources
-            .serialize_resource(
-                text_resource::TextResource::TYPE,
-                &output_handle,
-                &mut bytes,
-            )
+
+        let _nbytes = proc
+            .write_resource(&output_resource, &mut bytes)
             .map_err(CompilerError::ResourceWriteFailed)?;
 
-        let checksum = context
-            .content_store
-            .store(&bytes)
-            .ok_or(CompilerError::AssetStoreError)?;
+        let asset = context.store(
+            &bytes,
+            context.target_unnamed.new_named(&format!("text_{}", index)),
+        )?;
 
-        output.compiled_resources.push(CompiledResource {
-            path: context.compile_path.new_named(&format!("text_{}", index)), // todo: add stuff here to have id uniqueness.
-            checksum: checksum.into(),
-            size: nbytes,
-        });
+        output.compiled_resources.push(asset);
     }
 
     Ok(output)

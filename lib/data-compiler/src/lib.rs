@@ -152,6 +152,31 @@ impl Manifest {
     pub fn pre_serialize(&mut self) {
         self.compiled_resources.sort_by(|a, b| a.path.cmp(&b.path));
     }
+
+    /// Creates a runtime [`legion_data_runtime::manifest::Manifest`] from an offline [`Manifest`].
+    ///
+    /// Provided filter functor will be used to determine if a given asset should be included in the manifest.
+    ///
+    /// This is a temporary solution that will be replaced by a **packaging** process.
+    /// For now, we simply create a runtime manifest by filtering out non-asset resources
+    /// and by identifying content by `ResourceId` - which runtime operates on.
+    pub fn into_rt_manifest(
+        self,
+        filter: fn(&ResourcePathId) -> bool,
+    ) -> legion_data_runtime::manifest::Manifest {
+        let mut output = legion_data_runtime::manifest::Manifest::default();
+
+        let runtime_resources = self
+            .compiled_resources
+            .into_iter()
+            .filter(|resource| filter(&resource.path))
+            .collect::<Vec<_>>();
+
+        for resource in runtime_resources {
+            output.insert(resource.path.content_id(), resource.checksum, resource.size);
+        }
+        output
+    }
 }
 
 /// Build target enumeration.

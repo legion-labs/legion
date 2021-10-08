@@ -108,9 +108,27 @@ impl AssetRegistry {
         self.loader.load(id)
     }
 
+    /// Same as [`Self::load_untyped`] but blocks until the resource load completes or returns an error.
+    pub fn load_untyped_sync(&mut self, id: ResourceId) -> HandleUntyped {
+        let handle = self.loader.load(id);
+        // todo: this will be improved with async/await
+        while !handle.is_loaded(self) && !handle.is_err(self) {
+            self.update();
+            std::thread::sleep(Duration::from_micros(100));
+        }
+
+        handle
+    }
+
     /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T` for convenience.
     pub fn load<T: Any + Resource>(&mut self, id: ResourceId) -> Handle<T> {
         let handle = self.load_untyped(id);
+        Handle::<T>::from(handle)
+    }
+
+    /// Same as [`Self::load`] but blocks until the resource load completes or returns an error.
+    pub fn load_sync<T: Any + Resource>(&mut self, id: ResourceId) -> Handle<T> {
+        let handle = self.load_untyped_sync(id);
         Handle::<T>::from(handle)
     }
 
@@ -290,6 +308,23 @@ mod tests {
                 test_timeout -= sleep_time;
                 reg.update();
             }
+
+            assert!(!a.is_loaded(&reg));
+            assert!(a.is_err(&reg));
+            assert!(!reg.is_loaded(internal_id));
+        }
+        reg.update();
+        assert!(!reg.is_loaded(internal_id));
+    }
+
+    #[test]
+    fn load_error_sync() {
+        let (_, mut reg) = setup_test(&BINARY_ASSETFILE);
+
+        let internal_id;
+        {
+            let a = reg.load_untyped_sync(ResourceId::new(test_asset::TestAsset::TYPE, 7));
+            internal_id = a.id;
 
             assert!(!a.is_loaded(&reg));
             assert!(a.is_err(&reg));
