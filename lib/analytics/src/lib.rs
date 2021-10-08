@@ -101,17 +101,19 @@ pub async fn fetch_recent_processes(
     Ok(processes)
 }
 
-pub async fn find_process_log_streams(
+pub async fn find_process_streams_tagged(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
+    tag: &str,
 ) -> Result<Vec<telemetry::StreamInfo>> {
-    let rows = sqlx::query(
+    let rows = sqlx::query(&format!(
         "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags
          FROM streams
-         WHERE tags LIKE '%log%'
+         WHERE tags LIKE '%{}%'
          AND process_id = ?
          ;",
-    )
+        tag
+    ))
     .bind(process_id)
     .fetch_all(connection)
     .await
@@ -140,6 +142,20 @@ pub async fn find_process_log_streams(
         });
     }
     Ok(res)
+}
+
+pub async fn find_process_log_streams(
+    connection: &mut sqlx::AnyConnection,
+    process_id: &str,
+) -> Result<Vec<telemetry::StreamInfo>> {
+    find_process_streams_tagged(connection, process_id, "log").await
+}
+
+pub async fn find_process_thread_streams(
+    connection: &mut sqlx::AnyConnection,
+    process_id: &str,
+) -> Result<Vec<telemetry::StreamInfo>> {
+    find_process_streams_tagged(connection, process_id, "cpu").await
 }
 
 pub async fn find_stream(
