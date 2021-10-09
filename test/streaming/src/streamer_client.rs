@@ -19,7 +19,7 @@ fn run() -> GfxResult<()> {
 #[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
     use codec_api::{backends::openh264::encoder, formats};
-    use mp4::Mp4Stream;
+    use mp4::old::Mp4Stream;
     use std::io::Write;
 
     const TARGET_WIDTH: u32 = 1920;

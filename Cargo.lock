@@ -3066,7 +3066,15 @@ dependencies = [
 name = "legion-mp4"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bitflags 1.3.2",
+ "byteorder",
+ "bytes",
  "cc",
+ "num-rational",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -3888,6 +3896,19 @@ dependencies = [
  "autocfg 1.0.1",
  "num-integer",
  "num-traits",
+]
+
+[[package]]
+name = "num-rational"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d41702bd167c2df5520b384281bc111a4b5efcf7fbc4c9c222c815b07e0a6a6a"
+dependencies = [
+ "autocfg 1.0.1",
+ "num-bigint 0.4.2",
+ "num-integer",
+ "num-traits",
+ "serde",
 ]
 
 [[package]]

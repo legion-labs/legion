@@ -10,7 +10,7 @@ use legion_codec_api::{
     backends::openh264::encoder::{self, Encoder, FrameType},
     formats::{self, RBGYUVConverter},
 };
-use legion_mp4::Mp4Stream;
+use legion_mp4::old::Mp4Stream;
 use legion_renderer::Renderer;
 
 #[derive(PartialEq, Eq)]
