@@ -10,6 +10,7 @@ jobs:
   lint:
     name: Running code checks
     runs-on: [self-hosted, ubuntu]
+    if: {{ false }}
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
       credentials:
@@ -180,7 +181,7 @@ jobs:
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.DOCS_DEPLOY_KEY }}
+          deploy_key: ${{ secrets.DOCS_DEPLOY_KEY }}
           external_repository: legion-labs/api.legionengine.com
           publish_branch: main
           publish_dir: ./target/doc
