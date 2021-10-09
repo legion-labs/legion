@@ -146,7 +146,7 @@ jobs:
 
   build_docs:
     name: Building docs
-    needs: lint
+    #needs: lint
     runs-on: [self-hosted, ubuntu]
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
@@ -157,39 +157,35 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Build docs
-        run: make doc
+        run: make api-doc
 
       - name: Upload docs
         uses: actions/upload-artifact@v2
         with:
-          name: docs
+          name: doc
           path: ./target/doc
           retention-days: 5
 
   deploy_docs:
     name: Deploying docs
-    needs: [test, build_docs, coverage]
+    needs: [build_docs]
     runs-on: [self-hosted, ubuntu]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/download-artifact@v2
         with:
-          name: docs
+          name: doc
           path: ./target/doc
-
-      - uses: actions/download-artifact@v2
-        with:
-          name: coverage
-          path: ./target/doc/coverage
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
+          github_token: ${{ secrets.DOCS_DEPLOY_KEY }}
+          external_repository: legion-labs/api.legionengine.com
+          publish_branch: main
           publish_dir: ./target/doc
           force_orphan: true
-          cname: docs.legionengine.com
+          cname: api.legionengine.com
 
   build_release:
     name: Building release binaries

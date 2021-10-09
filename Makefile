@@ -74,10 +74,12 @@ grcov:
 	--output-path ./target/debug/coverage/
 	find . -name "*.profraw" -type f -delete
 
-doc:
+api-doc:
 	cargo doc --workspace --no-deps --all-features
+	echo "<meta http-equiv=\"refresh\" content=\"0; URL=legion_app/index.html\"/>" > target/doc/index.html
+
+book:
 	mdbook build ./doc/
-	echo "<meta http-equiv=\"refresh\" content=\"0; URL=book/index.html\"/>" > target/doc/index.html
 
 dockerize:
 	echo "cargo dockerize build"
@@ -91,4 +93,4 @@ dockerize-push:
 clean:
 	cargo clean
 
-.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release cov grcov doc dockerize dockerize-deploy clean
+.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release cov grcov api book dockerize dockerize-deploy clean
