@@ -10,7 +10,7 @@ jobs:
   lint:
     name: Running code checks
     runs-on: [self-hosted, ubuntu]
-    if: {{ false }}
+    if: ${{ false }}
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
       credentials:
