@@ -1,0 +1,51 @@
+name: Coverage
+
+on:
+  schedule:
+    # Run the job 6am and 6pm
+    - cron:  '0 6,18 * * *'
+
+jobs:
+  coverage:
+    name: Running code coverage analysis
+    runs-on: [self-hosted, ubuntu]
+    container:
+      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build and run tests with coverage
+        run: make cov
+
+      - name: Build coverage report
+        run: make grcov
+
+      - name: Upload report
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: ./target/debug/coverage
+          retention-days: 60
+
+  deploy_coverage:
+    name: Deploying coverage report
+    needs: [coverage]
+    runs-on: [self-hosted, ubuntu]
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: coverage
+          path: ./coverage
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.COV_DEPLOY_KEY }}
+          external_repository: legion-labs/cov.legionengine.com
+          publish_branch: main
+          publish_dir: ./coverage
+          force_orphan: true
+          cname: cov.legionengine.com

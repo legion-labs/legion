@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    paths-ignore:
+      - "doc/**"
     branches:
       - main
   pull_request:
@@ -10,7 +12,6 @@ jobs:
   lint:
     name: Running code checks
     runs-on: [self-hosted, ubuntu]
-    if: ${{ false }}
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
       credentials:
@@ -77,77 +78,9 @@ jobs:
           ${{ matrix.container }}
           make test-run
 
-  bench:
-    name: Running benchmarks
-    needs: lint
-    strategy:
-      matrix:
-        include:
-          - os: [self-hosted, windows, c5.4xlarge]
-            container: ghcr.io/legion-labs/build-env-win-rust:0.1.0
-            workdir: C:\github\workspace
-          - os: [self-hosted, ubuntu]
-            container: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
-            workdir: /github/workspace
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build benchmarks
-        run: >-
-          docker run
-          --name cargo_build
-          --rm
-          --workdir ${{ matrix.workdir }}
-          -v ${{ github.workspace }}:${{ matrix.workdir }}
-          ${{ matrix.container }}
-          make bench-build
-
-      - name: Run benchmarks
-        run: >-
-          docker run
-          --name cargo_bench
-          --rm
-          --workdir ${{ matrix.workdir }}
-          -v ${{ github.workspace }}:${{ matrix.workdir }}
-          ${{ matrix.container }}
-          make bench-run
-
-  coverage:
-    name: Running code coverage analysis
-    needs: lint
-    runs-on: [self-hosted, ubuntu]
-    container:
-      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
-      credentials:
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Build and run tests
-        run: make cov
-
-      - name: Build coverage report
-        run: make grcov
-
-      - name: Upload report
-        uses: actions/upload-artifact@v2
-        with:
-          name: coverage
-          path: ./target/debug/coverage
-          retention-days: 60
-
   build_docs:
     name: Building docs
-    #needs: lint
+    needs: lint
     runs-on: [self-hosted, ubuntu]
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
@@ -176,7 +109,7 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: doc
-          path: ./target/doc
+          path: ./doc
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
@@ -184,7 +117,7 @@ jobs:
           deploy_key: ${{ secrets.DOCS_DEPLOY_KEY }}
           external_repository: legion-labs/api.legionengine.com
           publish_branch: main
-          publish_dir: ./target/doc
+          publish_dir: ./doc
           force_orphan: true
           cname: api.legionengine.com
 
