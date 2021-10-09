@@ -1,7 +1,0 @@
-{
-    "rust-analyzer.checkOnSave.command": "clippy",
-    "rust-analyzer.cargo.runBuildScripts": true,
-    "rust-analyzer.diagnostics.disabled": [
-        "unresolved-macro-call"
-    ]
-}

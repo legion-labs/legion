@@ -5,6 +5,9 @@
 # IntelliJ project files
 /.idea
 
+# Vim settings
+/.vim
+
 # VS Code files (except extensions)
 /.vscode/*
 !/.vscode/cspell.json
