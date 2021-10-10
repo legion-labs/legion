@@ -1,5 +1,6 @@
-[![CI](https://github.com/legion-labs/legion/actions/workflows/ci.yml/badge.svg)](https://github.com/legion-labs/legion/actions/workflows/ci.yml)
-[![Coverage](https://automatic-enigma-88dd86da.pages.github.io/coverage/badges/flat.svg)](https://legion-labs.github.io/legion/coverage/index.html)
+[![CI - Test](https://github.com/legion-labs/legion/actions/workflows/ci_test.yml/badge.svg)](https://github.com/legion-labs/legion/actions/workflows/ci_test.yml)
+[![CI - Release](https://github.com/legion-labs/legion/actions/workflows/ci_release.yml/badge.svg)](https://github.com/legion-labs/legion/actions/workflows/ci_release.yml)
+[![Coverage](https://cov.legionengine.com/badges/flat.svg)](https://cov.legionengine.com/index.html)
 
 # Legion Monorepo
 
