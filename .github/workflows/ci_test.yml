@@ -102,7 +102,7 @@ jobs:
 
   deploy_docs:
     name: Deploying docs
-    needs: [build_docs]
+    needs: [build_docs, test]
     runs-on: [self-hosted, ubuntu]
     if: github.ref == 'refs/heads/main'
     steps:
