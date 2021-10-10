@@ -6,8 +6,8 @@
 
 This is the  mono repository of legion, it contains all the application code of the engine itself, the tools and the pipeline.
 
-Visit https://book.legionengine.com for the legion engine book.
-Visit https://api.legionengine.com for the legion api reference book.
+* Visit https://book.legionengine.com for the legion engine book.
+* Visit https://api.legionengine.com for the legion api reference book.
 
 ## Setting up your environment:
 
