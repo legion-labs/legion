@@ -1,9 +1,12 @@
 name: Coverage
 
 on:
-  schedule:
-    # Run the job 6am and 6pm
-    - cron:  '0 6,18 * * *'
+  #schedule:
+  #  # Run the job 6am and 6pm
+  #  - cron:  '0 6,18 * * *'
+  push:
+    branches:
+      - main
 
 jobs:
   coverage:

@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - "doc/**"
-      - ".github/**"
+      - ".github\workflows\ci_book.yml"
     branches:
       - main
 
