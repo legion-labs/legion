@@ -103,7 +103,7 @@ jobs:
   deploy_docs:
     name: Deploying docs
     needs: [build_docs, test]
-    runs-on: [self-hosted, ubuntu]
+    runs-on: ubuntu-20.04
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/download-artifact@v2
@@ -116,7 +116,6 @@ jobs:
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         continue-on-error: true
-        id: "try1"
         with:
           deploy_key: ${{ secrets.DOCS_DEPLOY_KEY }}
           external_repository: legion-labs/api.legionengine.com
@@ -125,16 +124,3 @@ jobs:
           force_orphan: true
           cname: api.legionengine.com
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        if: steps.try1.outcome=='failure'
-        with:
-          deploy_key: ${{ secrets.DOCS_DEPLOY_KEY }}
-          external_repository: legion-labs/api.legionengine.com
-          publish_branch: main
-          publish_dir: ./doc
-          force_orphan: true
-          cname: api.legionengine.com
-
-      - name: Cleanup
-        run: ssh-agent -k

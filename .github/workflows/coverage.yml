@@ -33,7 +33,7 @@ jobs:
   deploy_coverage:
     name: Deploying coverage report
     needs: [coverage]
-    runs-on: [self-hosted, ubuntu]
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/download-artifact@v2
         with:
@@ -42,8 +42,6 @@ jobs:
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
-        continue-on-error: true
-        id: "try1"
         with:
           deploy_key: ${{ secrets.COV_DEPLOY_KEY }}
           external_repository: legion-labs/cov.legionengine.com
@@ -52,16 +50,3 @@ jobs:
           force_orphan: true
           cname: cov.legionengine.com
       
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        if: steps.try1.outcome=='failure'
-        with:
-          deploy_key: ${{ secrets.COV_DEPLOY_KEY }}
-          external_repository: legion-labs/cov.legionengine.com
-          publish_branch: main
-          publish_dir: ./coverage
-          force_orphan: true
-          cname: cov.legionengine.com
-
-      - name: Cleanup
-        run: ssh-agent -k

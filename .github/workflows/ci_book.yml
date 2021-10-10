@@ -33,7 +33,7 @@ jobs:
   deploy_book:
     name: Deploying book
     needs: [build_book]
-    runs-on: [self-hosted, ubuntu]
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/download-artifact@v2
         with:
@@ -42,8 +42,6 @@ jobs:
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
-        continue-on-error: true
-        id: "try1"
         with:
           deploy_key: ${{ secrets.BOOK_DEPLOY_KEY }}
           external_repository: legion-labs/book.legionengine.com
@@ -51,17 +49,3 @@ jobs:
           publish_dir: ./book
           force_orphan: true
           cname: book.legionengine.com
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        if: steps.try1.outcome=='failure'
-        with:
-          deploy_key: ${{ secrets.BOOK_DEPLOY_KEY }}
-          external_repository: legion-labs/book.legionengine.com
-          publish_branch: main
-          publish_dir: ./book
-          force_orphan: true
-          cname: book.legionengine.com
-
-      - name: Cleanup
-        run: ssh-agent -k
