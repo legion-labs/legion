@@ -15,4 +15,4 @@ sqlx = { version = "0.5", features = [
 anyhow = "1.0"
 prost = "0.8"
 transit = { path = "../../lib/transit" }
-legion-telemetry-proto = { path = "../../proto/telemetry-proto", version = "0.1.0" }
+legion-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
