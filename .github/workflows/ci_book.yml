@@ -1,4 +1,4 @@
-name: Book CI
+name: CI - Book
 
 on:
   push:

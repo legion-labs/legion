@@ -1,4 +1,4 @@
-name: CI
+name: CI - Test
 
 on:
   push:
@@ -120,49 +120,3 @@ jobs:
           publish_dir: ./doc
           force_orphan: true
           cname: api.legionengine.com
-
-  build_release:
-    name: Building release binaries
-    needs: lint
-    runs-on: [self-hosted, ubuntu]
-    container:
-      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
-      credentials:
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Build release
-        run: make build-release
-
-      - name: Upload release artifacts
-        if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v2
-        with:
-          name: release
-          path: |
-            ./target/release
-            !./target/release/build
-            !./target/release/deps
-            !./target/release/incremental
-          retention-days: 5
-
-  dockerize:
-    name: Building docker images and deploying them
-    needs: [test, build_docs, build_release]
-    runs-on: [self-hosted, ubuntu]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions/download-artifact@v2
-        with:
-          name: release
-          path: ./target
-
-      - name: Docker build
-        run: make dockerize-release
-
-      - name: Docker push
-        run: make dockerize-push
