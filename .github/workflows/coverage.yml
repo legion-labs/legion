@@ -62,3 +62,6 @@ jobs:
           publish_dir: ./coverage
           force_orphan: true
           cname: cov.legionengine.com
+
+      - name: Cleanup
+        run: ssh-agent -k

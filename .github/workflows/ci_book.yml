@@ -62,3 +62,6 @@ jobs:
           publish_dir: ./book
           force_orphan: true
           cname: book.legionengine.com
+
+      - name: Cleanup
+        run: ssh-agent -k

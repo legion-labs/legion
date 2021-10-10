@@ -135,3 +135,6 @@ jobs:
           publish_dir: ./doc
           force_orphan: true
           cname: api.legionengine.com
+
+      - name: Cleanup
+        run: ssh-agent -k
