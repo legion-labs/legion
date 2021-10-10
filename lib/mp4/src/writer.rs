@@ -143,6 +143,7 @@ impl<W> StreamWriter<W> {
 }
 
 impl<W: Write> StreamWriter<W> {
+    /// # Errors
     pub fn write_start(mut writer: W, mp4_config: &Mp4Config) -> Result<Self> {
         let ftyp = FtypAtom {
             major_brand: mp4_config.major_brand,
@@ -158,6 +159,7 @@ impl<W: Write> StreamWriter<W> {
         })
     }
 
+    /// # Errors
     pub fn write_index(&mut self, config: &TrackConfig) -> Result<()> {
         let mut trak = TrakAtom::default();
         trak.tkhd.track_id = 1;

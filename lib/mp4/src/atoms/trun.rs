@@ -48,16 +48,16 @@ impl Atom for TrunAtom {
             sum += 4;
         }
         if Self::FLAG_SAMPLE_DURATION & self.flags > 0 {
-            sum += 4 * self.sample_count as u64;
+            sum += 4 * u64::from(self.sample_count);
         }
         if Self::FLAG_SAMPLE_SIZE & self.flags > 0 {
-            sum += 4 * self.sample_count as u64;
+            sum += 4 * u64::from(self.sample_count);
         }
         if Self::FLAG_SAMPLE_FLAGS & self.flags > 0 {
-            sum += 4 * self.sample_count as u64;
+            sum += 4 * u64::from(self.sample_count);
         }
         if Self::FLAG_SAMPLE_CTS & self.flags > 0 {
-            sum += 4 * self.sample_count as u64;
+            sum += 4 * u64::from(self.sample_count);
         }
         sum
     }

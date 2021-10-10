@@ -77,10 +77,10 @@ impl<R: Read + Seek> ReadAtom<&mut R> for MdhdAtom {
             )
         } else if version == 0 {
             (
-                reader.read_u32::<BigEndian>()? as u64,
-                reader.read_u32::<BigEndian>()? as u64,
+                u64::from(reader.read_u32::<BigEndian>()?),
+                u64::from(reader.read_u32::<BigEndian>()?),
                 reader.read_u32::<BigEndian>()?,
-                reader.read_u32::<BigEndian>()? as u64,
+                u64::from(reader.read_u32::<BigEndian>()?),
             )
         } else {
             return Err(Error::InvalidData("version must be 0 or 1"));
@@ -138,7 +138,7 @@ fn language_string(language: u16) -> String {
     lang[2] = ((language) & 0x1F) + 0x60;
 
     // Decode utf-16 encoded bytes into a string.
-    decode_utf16(lang.iter().cloned())
+    decode_utf16(lang.iter().copied())
         .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
         .collect::<String>()
 }

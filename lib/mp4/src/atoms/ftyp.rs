@@ -26,7 +26,7 @@ impl Atom for FtypAtom {
 
     fn summary(&self) -> Result<String> {
         let mut compatible_brands = Vec::new();
-        for brand in self.compatible_brands.iter() {
+        for brand in &self.compatible_brands {
             compatible_brands.push(brand.to_string());
         }
         let s = format!(
@@ -72,7 +72,7 @@ impl<W: Write> WriteAtom<&mut W> for FtypAtom {
 
         writer.write_u32::<BigEndian>((&self.major_brand).into())?;
         writer.write_u32::<BigEndian>(self.minor_version)?;
-        for b in self.compatible_brands.iter() {
+        for b in &self.compatible_brands {
             writer.write_u32::<BigEndian>(b.into())?;
         }
         Ok(self.size())

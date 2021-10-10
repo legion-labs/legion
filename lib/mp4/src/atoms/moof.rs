@@ -22,7 +22,7 @@ impl Atom for MoofAtom {
 
     fn size(&self) -> u64 {
         let mut size = HEADER_SIZE + self.mfhd.size();
-        for traf in self.trafs.iter() {
+        for traf in &self.trafs {
             size += traf.size();
         }
         size
@@ -84,7 +84,7 @@ impl<W: Write> WriteAtom<&mut W> for MoofAtom {
         AtomHeader::new(self).write(writer)?;
 
         self.mfhd.write_atom(writer)?;
-        for traf in self.trafs.iter() {
+        for traf in &self.trafs {
             traf.write_atom(writer)?;
         }
         Ok(0)

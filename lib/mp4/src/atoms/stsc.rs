@@ -91,7 +91,7 @@ impl<W: Write> WriteAtom<&mut W> for StscAtom {
         write_atom_header_ext(writer, self.version, self.flags)?;
 
         writer.write_u32::<BigEndian>(self.entries.len() as u32)?;
-        for entry in self.entries.iter() {
+        for entry in &self.entries {
             writer.write_u32::<BigEndian>(entry.first_chunk)?;
             writer.write_u32::<BigEndian>(entry.samples_per_chunk)?;
             writer.write_u32::<BigEndian>(entry.sample_description_index)?;

@@ -82,7 +82,7 @@ impl<W: Write> WriteAtom<&mut W> for StszAtom {
             if self.sample_count != self.sample_sizes.len() as u32 {
                 return Err(Error::InvalidData("sample count out of sync"));
             }
-            for sample_number in self.sample_sizes.iter() {
+            for sample_number in &self.sample_sizes {
                 writer.write_u32::<BigEndian>(*sample_number)?;
             }
         }

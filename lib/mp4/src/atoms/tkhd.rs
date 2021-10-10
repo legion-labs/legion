@@ -133,11 +133,11 @@ impl<R: Read + Seek> ReadAtom<&mut R> for TkhdAtom {
             )
         } else if version == 0 {
             (
-                reader.read_u32::<BigEndian>()? as u64,
-                reader.read_u32::<BigEndian>()? as u64,
+                u64::from(reader.read_u32::<BigEndian>()?),
+                u64::from(reader.read_u32::<BigEndian>()?),
                 reader.read_u32::<BigEndian>()?,
                 reader.read_u32::<BigEndian>()?,
-                reader.read_u32::<BigEndian>()? as u64,
+                u64::from(reader.read_u32::<BigEndian>()?),
             )
         } else {
             return Err(Error::InvalidData("version must be 0 or 1"));

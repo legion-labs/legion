@@ -152,8 +152,8 @@ impl Atom for EsdsAtom {
         HEADER_SIZE
             + HEADER_EXT_SIZE
             + 1
-            + size_of_length(ESDescriptor::desc_size()) as u64
-            + ESDescriptor::desc_size() as u64
+            + u64::from(size_of_length(ESDescriptor::desc_size()))
+            + u64::from(ESDescriptor::desc_size())
     }
 
     fn to_json(&self) -> Result<String> {
@@ -232,7 +232,7 @@ fn read_desc<R: Read>(reader: &mut R) -> Result<(u8, u32)> {
     let mut size: u32 = 0;
     for _ in 0..4 {
         let b = reader.read_u8()?;
-        size = (size << 7) | (b & 0x7F) as u32;
+        size = (size << 7) | u32::from(b & 0x7F);
         if b & 0x80 == 0 {
             break;
         }
@@ -253,7 +253,7 @@ fn size_of_length(size: u32) -> u32 {
 fn write_desc<W: Write>(writer: &mut W, tag: u8, size: u32) -> Result<u64> {
     writer.write_u8(tag)?;
 
-    if size as u64 > std::u32::MAX as u64 {
+    if u64::from(size) > u64::from(std::u32::MAX) {
         return Err(Error::InvalidData("invalid descriptor length range"));
     }
 
@@ -267,7 +267,7 @@ fn write_desc<W: Write>(writer: &mut W, tag: u8, size: u32) -> Result<u64> {
         writer.write_u8(b)?;
     }
 
-    Ok(1 + nbytes as u64)
+    Ok(u64::from(nbytes) + 1)
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
@@ -314,7 +314,7 @@ impl<R: Read + Seek> ReadDesc<&mut R> for ESDescriptor {
         let mut sl_config = None;
 
         let mut current = reader.seek(SeekFrom::Current(0))?;
-        let end = start + size as u64;
+        let end = start + u64::from(size);
         while current < end {
             let (desc_tag, desc_size) = read_desc(reader)?;
             match desc_tag {
@@ -325,7 +325,7 @@ impl<R: Read + Seek> ReadDesc<&mut R> for ESDescriptor {
                     sl_config = Some(SLConfigDescriptor::read_desc(reader, desc_size)?);
                 }
                 _ => {
-                    skip_bytes(reader, desc_size as u64)?;
+                    skip_bytes(reader, u64::from(desc_size))?;
                 }
             }
             current = reader.seek(SeekFrom::Current(0))?;
@@ -407,7 +407,7 @@ impl<R: Read + Seek> ReadDesc<&mut R> for DecoderConfigDescriptor {
         let mut dec_specific = None;
 
         let mut current = reader.seek(SeekFrom::Current(0))?;
-        let end = start + size as u64;
+        let end = start + u64::from(size);
         while current < end {
             let (desc_tag, desc_size) = read_desc(reader)?;
             match desc_tag {
@@ -415,7 +415,7 @@ impl<R: Read + Seek> ReadDesc<&mut R> for DecoderConfigDescriptor {
                     dec_specific = Some(DecoderSpecificDescriptor::read_desc(reader, desc_size)?);
                 }
                 _ => {
-                    skip_bytes(reader, desc_size as u64)?;
+                    skip_bytes(reader, u64::from(desc_size))?;
                 }
             }
             current = reader.seek(SeekFrom::Current(0))?;

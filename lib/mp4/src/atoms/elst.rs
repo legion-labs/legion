@@ -65,8 +65,8 @@ impl<R: Read + Seek> ReadAtom<&mut R> for ElstAtom {
                 )
             } else {
                 (
-                    reader.read_u32::<BigEndian>()? as u64,
-                    reader.read_u32::<BigEndian>()? as u64,
+                    u64::from(reader.read_u32::<BigEndian>()?),
+                    u64::from(reader.read_u32::<BigEndian>()?),
                 )
             };
 
@@ -96,7 +96,7 @@ impl<W: Write> WriteAtom<&mut W> for ElstAtom {
         write_atom_header_ext(writer, self.version, self.flags)?;
 
         writer.write_u32::<BigEndian>(self.entries.len() as u32)?;
-        for entry in self.entries.iter() {
+        for entry in &self.entries {
             if self.version == 1 {
                 writer.write_u64::<BigEndian>(entry.segment_duration)?;
                 writer.write_u64::<BigEndian>(entry.media_time)?;

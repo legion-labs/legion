@@ -178,10 +178,10 @@ impl Atom for AvcCAtom {
 
     fn size(&self) -> u64 {
         let mut size = HEADER_SIZE + 7;
-        for sps in self.sequence_parameter_sets.iter() {
+        for sps in &self.sequence_parameter_sets {
             size += sps.size() as u64;
         }
-        for pps in self.picture_parameter_sets.iter() {
+        for pps in &self.picture_parameter_sets {
             size += pps.size() as u64;
         }
         size
@@ -244,11 +244,11 @@ impl<W: Write> WriteAtom<&mut W> for AvcCAtom {
         writer.write_u8(self.avc_level_indication)?;
         writer.write_u8(self.length_size_minus_one | 0xFC)?;
         writer.write_u8(self.sequence_parameter_sets.len() as u8 | 0xE0)?;
-        for sps in self.sequence_parameter_sets.iter() {
+        for sps in &self.sequence_parameter_sets {
             sps.write(writer)?;
         }
         writer.write_u8(self.picture_parameter_sets.len() as u8)?;
-        for pps in self.picture_parameter_sets.iter() {
+        for pps in &self.picture_parameter_sets {
             pps.write(writer)?;
         }
         Ok(size)

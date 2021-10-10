@@ -65,7 +65,7 @@ impl<W: Write> WriteAtom<&mut W> for Co64Atom {
         write_atom_header_ext(writer, self.version, self.flags)?;
 
         writer.write_u32::<BigEndian>(self.entries.len() as u32)?;
-        for chunk_offset in self.entries.iter() {
+        for chunk_offset in &self.entries {
             writer.write_u64::<BigEndian>(*chunk_offset)?;
         }
 

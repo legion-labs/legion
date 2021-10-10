@@ -26,7 +26,7 @@ impl Atom for MoovAtom {
 
     fn size(&self) -> u64 {
         let mut size = HEADER_SIZE + self.mvhd.size();
-        for trak in self.traks.iter() {
+        for trak in &self.traks {
             size += trak.size();
         }
         size
@@ -97,7 +97,7 @@ impl<W: Write> WriteAtom<&mut W> for MoovAtom {
         AtomHeader::new(self).write(writer)?;
 
         self.mvhd.write_atom(writer)?;
-        for trak in self.traks.iter() {
+        for trak in &self.traks {
             trak.write_atom(writer)?;
         }
         Ok(0)

@@ -158,13 +158,13 @@ impl AtomHeader {
         } else {
             Ok(Self {
                 name: typ,
-                size: size as u64,
+                size: u64::from(size),
             })
         }
     }
 
     pub fn write<W: Write>(&self, writer: &mut W) -> Result<u64> {
-        if self.size > u32::MAX as u64 {
+        if self.size > u64::from(u32::MAX) {
             writer.write_u32::<BigEndian>(1)?;
             writer.write_u32::<BigEndian>(self.name.into())?;
             writer.write_u64::<BigEndian>(self.size)?;
@@ -194,7 +194,10 @@ pub fn box_start<R: Seek>(seeker: &mut R) -> Result<u64> {
 }
 
 pub fn skip_bytes<S: Seek>(seeker: &mut S, size: u64) -> Result<()> {
-    seeker.seek(SeekFrom::Current(size as i64))?;
+    let size = size
+        .try_into()
+        .expect("skip size expected to be lower than i64::MAX");
+    seeker.seek(SeekFrom::Current(size))?;
     Ok(())
 }
 
@@ -221,18 +224,18 @@ pub struct FixedPointU8(Ratio<u16>);
 
 impl FixedPointU8 {
     pub fn new(val: u8) -> Self {
-        Self(Ratio::new_raw(val as u16 * 0x100, 0x100))
+        Self(Ratio::new_raw(u16::from(val) * 0x100, 0x100))
     }
 
     pub fn new_raw(val: u16) -> Self {
         Self(Ratio::new_raw(val, 0x100))
     }
 
-    pub fn value(&self) -> u8 {
+    pub fn value(self) -> u8 {
         self.0.to_integer() as u8
     }
 
-    pub fn raw_value(&self) -> u16 {
+    pub fn raw_value(self) -> u16 {
         *self.0.numer()
     }
 }
@@ -249,11 +252,11 @@ impl FixedPointI8 {
         Self(Ratio::new_raw(val, 0x100))
     }
 
-    pub fn value(&self) -> i8 {
+    pub fn value(self) -> i8 {
         self.0.to_integer() as i8
     }
 
-    pub fn raw_value(&self) -> i16 {
+    pub fn raw_value(self) -> i16 {
         *self.0.numer()
     }
 }
@@ -263,22 +266,23 @@ pub struct FixedPointU16(Ratio<u32>);
 
 impl FixedPointU16 {
     pub fn new(val: u16) -> Self {
-        Self(Ratio::new_raw(val as u32 * 0x10000, 0x10000))
+        Self(Ratio::new_raw(u32::from(val) * 0x10000, 0x10000))
     }
 
     pub fn new_raw(val: u32) -> Self {
         Self(Ratio::new_raw(val, 0x10000))
     }
 
-    pub fn value(&self) -> u16 {
+    pub fn value(self) -> u16 {
         self.0.to_integer() as u16
     }
 
-    pub fn raw_value(&self) -> u32 {
+    pub fn raw_value(self) -> u32 {
         *self.0.numer()
     }
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)] // we need to conform to the serializer interface
 mod value_u32 {
     use super::FixedPointU16;
     use serde::{self, Serializer};
@@ -291,6 +295,7 @@ mod value_u32 {
     }
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)] // we need to conform to the serializer interface
 mod value_i16 {
     use super::FixedPointI8;
     use serde::{self, Serializer};
@@ -303,6 +308,7 @@ mod value_i16 {
     }
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)] // we need to conform to the serializer interface
 mod value_u8 {
     use super::FixedPointU8;
     use serde::{self, Serializer};
