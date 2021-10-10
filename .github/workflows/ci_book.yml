@@ -40,10 +40,21 @@ jobs:
           name: book
           path: ./book
 
-      - run: sleep 5
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        continue-on-error: true
+        id: "try1"
+        with:
+          deploy_key: ${{ secrets.BOOK_DEPLOY_KEY }}
+          external_repository: legion-labs/book.legionengine.com
+          publish_branch: main
+          publish_dir: ./book
+          force_orphan: true
+          cname: book.legionengine.com
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
+        if: steps.try1.outcome=='failure'
         with:
           deploy_key: ${{ secrets.BOOK_DEPLOY_KEY }}
           external_repository: legion-labs/book.legionengine.com
