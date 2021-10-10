@@ -1,3 +1,3 @@
 # API Reference
 
-For the API reference see [the docs](../legion_utils/index.html).
+For the API reference see [the docs](https://api.legionengine.com).
