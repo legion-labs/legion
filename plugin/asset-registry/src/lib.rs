@@ -160,7 +160,7 @@ impl AssetRegistryPlugin {
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
         mut commands: Commands<'_, '_>,
     ) {
-        let mut secondary_assets = Vec::new();
+        let mut secondary_assets = SecondaryAssets::default();
 
         for (asset_id, loading_state) in asset_loading_states.iter_mut() {
             match loading_state {
@@ -172,47 +172,53 @@ impl AssetRegistryPlugin {
                                 if let Some(runtime_entity) =
                                     handle.get::<runtime_data::Entity>(&registry)
                                 {
-                                    let entity = Self::create_entity(
+                                    let entity = runtime_data::Entity::create_in_ecs(
                                         &mut commands,
-                                        &asset_to_entity_map,
                                         &mut secondary_assets,
                                         runtime_entity,
+                                        &asset_to_entity_map,
                                     );
 
-                                    asset_to_entity_map.insert(*asset_id, entity);
+                                    if let Some(entity_id) = entity {
+                                        asset_to_entity_map.insert(*asset_id, entity_id);
 
-                                    println!(
-                                        "Loaded runtime entity \"{}\", ECS id: {:?}, asset: {}",
-                                        runtime_entity.name, entity, asset_id
-                                    );
+                                        println!(
+                                            "Loaded runtime entity \"{}\", ECS id: {:?}, asset: {}",
+                                            runtime_entity.name, entity_id, asset_id
+                                        );
+                                    }
                                 }
                             }
                             runtime_data::Instance::TYPE => {
                                 if let Some(runtime_instance) =
                                     handle.get::<runtime_data::Instance>(&registry)
                                 {
-                                    let instance = Self::create_instance(
+                                    let instance = runtime_data::Instance::create_in_ecs(
                                         &mut commands,
                                         &mut secondary_assets,
                                         runtime_instance,
+                                        &asset_to_entity_map,
                                     );
 
-                                    asset_to_entity_map.insert(*asset_id, instance);
+                                    if let Some(entity_id) = instance {
+                                        asset_to_entity_map.insert(*asset_id, entity_id);
 
-                                    println!(
-                                        "Loaded runtime instance, ECS id: {:?}, asset: {}",
-                                        instance, asset_id
-                                    );
+                                        println!(
+                                            "Loaded runtime instance, ECS id: {:?}, asset: {}",
+                                            entity_id, asset_id
+                                        );
+                                    }
                                 }
                             }
                             legion_graphics_runtime::Material::TYPE => {
                                 if let Some(runtime_material) =
                                     handle.get::<legion_graphics_runtime::Material>(&registry)
                                 {
-                                    Self::create_material(
+                                    legion_graphics_runtime::Material::create_in_ecs(
                                         &mut commands,
                                         &mut secondary_assets,
                                         runtime_material,
+                                        &asset_to_entity_map,
                                     );
 
                                     println!("Loaded runtime material, asset: {}", asset_id);
@@ -222,10 +228,11 @@ impl AssetRegistryPlugin {
                                 if let Some(runtime_mesh) =
                                     handle.get::<runtime_data::Mesh>(&registry)
                                 {
-                                    Self::create_mesh(
+                                    runtime_data::Mesh::create_in_ecs(
                                         &mut commands,
                                         &mut secondary_assets,
                                         runtime_mesh,
+                                        &asset_to_entity_map,
                                     );
 
                                     println!("Loaded runtime mesh, asset: {}", asset_id);
@@ -235,10 +242,11 @@ impl AssetRegistryPlugin {
                                 if let Some(runtime_texture) =
                                     handle.get::<legion_graphics_runtime::Texture>(&registry)
                                 {
-                                    Self::create_texture(
+                                    legion_graphics_runtime::Texture::create_in_ecs(
                                         &mut commands,
                                         &mut secondary_assets,
                                         runtime_texture,
+                                        &asset_to_entity_map,
                                     );
 
                                     println!("Loaded runtime texture, asset: {}", asset_id);
@@ -275,22 +283,24 @@ impl AssetRegistryPlugin {
 
         drop(registry);
     }
+}
 
-    fn add_secondary_asset<T>(secondary_assets: &mut Vec<ResourceId>, asset_id: &Reference<T>)
-    where
-        T: Any + Resource,
-    {
-        if let Reference::Passive(asset_id) = asset_id {
-            secondary_assets.push(*asset_id);
-        }
-    }
-
-    fn create_entity(
+trait AssetToECS {
+    fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
+        secondary_assets: &mut SecondaryAssets,
+        asset: &Self,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        secondary_assets: &mut Vec<ResourceId>,
-        runtime_entity: &runtime_data::Entity,
-    ) -> Entity {
+    ) -> Option<Entity>;
+}
+
+impl AssetToECS for runtime_data::Entity {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        secondary_assets: &mut SecondaryAssets,
+        runtime_entity: &Self,
+        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+    ) -> Option<Entity> {
         let mut entity = commands.spawn();
 
         let mut transform_inserted = false;
@@ -303,7 +313,7 @@ impl AssetRegistryPlugin {
                 });
                 transform_inserted = true;
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
-                Self::add_secondary_asset(secondary_assets, &visual.renderable_geometry);
+                secondary_assets.push(&visual.renderable_geometry);
             }
             // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
             // } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
@@ -337,47 +347,93 @@ impl AssetRegistryPlugin {
             commands.entity(parent).push_children(&[entity_id]);
         }
 
-        entity_id
+        Some(entity_id)
     }
+}
 
-    fn create_instance(
+impl AssetToECS for runtime_data::Instance {
+    fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
-        secondary_assets: &mut Vec<ResourceId>,
-        instance: &runtime_data::Instance,
-    ) -> Entity {
+        secondary_assets: &mut SecondaryAssets,
+        instance: &Self,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+    ) -> Option<Entity> {
         let entity = commands.spawn();
 
-        Self::add_secondary_asset(secondary_assets, &instance.original);
+        secondary_assets.push(&instance.original);
 
-        entity.id()
+        Some(entity.id())
     }
+}
 
-    fn create_material(
+impl AssetToECS for legion_graphics_runtime::Material {
+    fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
-        secondary_assets: &mut Vec<ResourceId>,
-        material: &legion_graphics_runtime::Material,
-    ) {
-        Self::add_secondary_asset(secondary_assets, &material.albedo);
-        Self::add_secondary_asset(secondary_assets, &material.normal);
-        Self::add_secondary_asset(secondary_assets, &material.roughness);
-        Self::add_secondary_asset(secondary_assets, &material.metalness);
+        secondary_assets: &mut SecondaryAssets,
+        material: &Self,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+    ) -> Option<Entity> {
+        secondary_assets.push(&material.albedo);
+        secondary_assets.push(&material.normal);
+        secondary_assets.push(&material.roughness);
+        secondary_assets.push(&material.metalness);
+
+        None
     }
+}
 
-    fn create_mesh(
+impl AssetToECS for runtime_data::Mesh {
+    fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
-        secondary_assets: &mut Vec<ResourceId>,
-        mesh: &runtime_data::Mesh,
-    ) {
+        secondary_assets: &mut SecondaryAssets,
+        mesh: &Self,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+    ) -> Option<Entity> {
         for sub_mesh in &mesh.sub_meshes {
-            Self::add_secondary_asset(secondary_assets, &sub_mesh.material);
+            secondary_assets.push(&sub_mesh.material);
+        }
+
+        None
+    }
+}
+
+impl AssetToECS for legion_graphics_runtime::Texture {
+    fn create_in_ecs(
+        _commands: &mut Commands<'_, '_>,
+        _secondary_assets: &mut SecondaryAssets,
+        _texture: &Self,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+    ) -> Option<Entity> {
+        None
+    }
+}
+
+#[derive(Default)]
+struct SecondaryAssets(Vec<ResourceId>);
+
+impl SecondaryAssets {
+    fn push<T>(&mut self, asset_id: &Reference<T>)
+    where
+        T: Any + Resource,
+    {
+        if let Reference::Passive(asset_id) = asset_id {
+            self.0.push(*asset_id);
         }
     }
+}
 
-    fn create_texture(
-        _commands: &mut Commands<'_, '_>,
-        _secondary_assets: &mut Vec<ResourceId>,
-        _texture: &legion_graphics_runtime::Texture,
-    ) {
+impl<'a> Extend<&'a ResourceId> for SecondaryAssets {
+    fn extend<T: IntoIterator<Item = &'a ResourceId>>(&mut self, iter: T) {
+        self.0.extend(iter);
+    }
+}
+
+impl IntoIterator for SecondaryAssets {
+    type Item = ResourceId;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
