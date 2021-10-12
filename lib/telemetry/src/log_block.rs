@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use crate::{
-    compress, event_block::EventBlock, EncodedBlock, LogDynMsgEvent, LogMsgEvent, StreamBlock,
+    compress, event_block::EventBlock, EncodedBlock, EventStream, LogDynMsgEvent, LogMsgEvent,
+    StreamBlock,
 };
 use anyhow::Result;
 use transit::prelude::*;
@@ -58,3 +59,5 @@ impl StreamBlock for LogBlock {
         })
     }
 }
+
+pub type LogStream = EventStream<LogBlock, LogDepsQueue>;

@@ -29,7 +29,11 @@ impl Dispatch {
             process_id: process_id.clone(),
             log_buffer_size,
             thread_buffer_size,
-            log_stream: Mutex::new(LogStream::new(log_buffer_size, process_id)),
+            log_stream: Mutex::new(LogStream::new(
+                log_buffer_size,
+                process_id,
+                &[String::from("log")],
+            )),
             sink,
         };
         obj.on_init_process();
@@ -87,7 +91,7 @@ impl Dispatch {
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
         let mut log_stream = self.log_stream.lock().unwrap();
-        log_stream.push(LogMsgEvent {
+        log_stream.get_events_mut().push(LogMsgEvent {
             level: level as u8,
             msg_len: msg.len() as u32,
             msg: msg.as_ptr(),
@@ -100,7 +104,7 @@ impl Dispatch {
 
     fn on_log_string(&mut self, level: LogLevel, msg: String) {
         let mut log_stream = self.log_stream.lock().unwrap();
-        log_stream.push(LogDynMsgEvent {
+        log_stream.get_events_mut().push(LogDynMsgEvent {
             level: level as u8,
             msg: transit::DynString(msg),
         });

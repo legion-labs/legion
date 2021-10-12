@@ -1,51 +1,10 @@
 use crate::{
-    compress, event_block::EventBlock, EncodedBlock, ReferencedScope, ScopeDesc, StreamBlock,
+    compress, event_block::EventBlock, BeginScopeEvent, EncodedBlock, EndScopeEvent, EventStream,
+    ReferencedScope, ScopeEvent, StreamBlock,
 };
 use anyhow::Result;
 use std::collections::HashSet;
 use transit::prelude::*;
-
-pub type GetScopeDesc = fn() -> ScopeDesc;
-
-trait ScopeEvent {
-    fn get_time(&self) -> u64;
-    fn get_scope(&self) -> GetScopeDesc;
-}
-
-#[derive(Debug, TransitReflect)]
-pub struct BeginScopeEvent {
-    pub time: u64,
-    pub scope: fn() -> ScopeDesc,
-}
-
-impl InProcSerialize for BeginScopeEvent {}
-impl ScopeEvent for BeginScopeEvent {
-    fn get_time(&self) -> u64 {
-        self.time
-    }
-
-    fn get_scope(&self) -> GetScopeDesc {
-        self.scope
-    }
-}
-
-#[derive(Debug, TransitReflect)]
-pub struct EndScopeEvent {
-    pub time: u64,
-    pub scope: fn() -> ScopeDesc,
-}
-
-impl InProcSerialize for EndScopeEvent {}
-
-impl ScopeEvent for EndScopeEvent {
-    fn get_time(&self) -> u64 {
-        self.time
-    }
-
-    fn get_scope(&self) -> GetScopeDesc {
-        self.scope
-    }
-}
 
 declare_queue_struct!(
     struct ThreadEventQueue<BeginScopeEvent, EndScopeEvent> {}
@@ -122,3 +81,5 @@ impl StreamBlock for ThreadBlock {
         })
     }
 }
+
+pub type ThreadStream = EventStream<ThreadBlock, ThreadDepsQueue>;

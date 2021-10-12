@@ -1,5 +1,4 @@
-use crate::{on_end_scope, EventStream, GetScopeDesc, ThreadBlock, ThreadDepsQueue};
-use core::arch::x86_64::_rdtsc;
+use crate::{on_end_scope, GetScopeDesc};
 use transit::prelude::*;
 
 #[derive(Debug)]
@@ -22,12 +21,6 @@ impl InProcSerialize for ReferencedScope {}
 pub struct ScopeGuard {
     // the value of the function pointer will identity the scope uniquely within that process instance
     pub get_scope_desc: GetScopeDesc,
-}
-
-pub fn now() -> u64 {
-    //_rdtsc does not wait for previous instructions to be retired
-    // we could use __rdtscp if we needed more precision at the cost of slightly higher overhead
-    unsafe { _rdtsc() }
 }
 
 impl Drop for ScopeGuard {
@@ -64,5 +57,3 @@ macro_rules! trace_scope {
         $crate::on_begin_scope(_scope);
     };
 }
-
-pub type ThreadStream = EventStream<ThreadBlock, ThreadDepsQueue>;

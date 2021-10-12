@@ -1,9 +1,16 @@
 use chrono::{DateTime, Utc};
+use core::arch::x86_64::_rdtsc;
 
 #[derive(Debug)]
 pub struct DualTime {
     pub ticks: u64,
     pub time: DateTime<Utc>,
+}
+
+pub fn now() -> u64 {
+    //_rdtsc does not wait for previous instructions to be retired
+    // we could use __rdtscp if we needed more precision at the cost of slightly higher overhead
+    unsafe { _rdtsc() }
 }
 
 impl DualTime {

@@ -68,12 +68,12 @@ pub mod guard;
 pub mod log_block;
 pub mod log_bridge;
 pub mod log_events;
-pub mod log_stream;
 pub mod metrics_block;
 mod queue_metadata;
+pub mod scope;
 pub mod stream;
 pub mod thread_block;
-pub mod thread_stream;
+pub mod thread_events;
 
 pub use compression::*;
 pub use dispatch::*;
@@ -81,15 +81,13 @@ pub use dual_time::*;
 pub use event_block_sink::*;
 pub use grpc_event_sink::*;
 pub use guard::*;
-pub use log_bridge::*;
-
 pub use log_block::*;
+pub use log_bridge::*;
 pub use log_events::*;
-pub use log_stream::*;
-use queue_metadata::make_queue_metedata;
+pub use scope::*;
 pub use stream::*;
 pub use thread_block::*;
-pub use thread_stream::*;
+pub use thread_events::*;
 
 pub use transit::HeterogeneousQueue;
 
