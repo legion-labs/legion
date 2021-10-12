@@ -107,6 +107,7 @@ fn run() -> GfxResult<()> {
         let mut uniform_buffers = Vec::with_capacity(parallel_render_count);
         let mut uniform_buffer_cbvs = Vec::with_capacity(parallel_render_count);
         let mut render_images = Vec::with_capacity(parallel_render_count);
+        let mut render_views = Vec::with_capacity(parallel_render_count);
         let mut copy_images = Vec::with_capacity(parallel_render_count);        
 
         let mut file_h264 = std::fs::File::create("D:/test.h264").unwrap();
@@ -126,8 +127,12 @@ fn run() -> GfxResult<()> {
                 .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
-            let cbv_def = BufferViewDef::default();
-            let uniform_buffer_cbv = uniform_buffer.create_constant_buffer_view(&cbv_def)?;
+            let view_def = BufferViewDef {
+                buffer_view_type: BufferViewType::ShaderResourceView,
+                offset: 0,
+                size: uniform_buffer.buffer_def().size
+            };
+            let uniform_buffer_cbv = uniform_buffer.create_view(&view_def)?;
 
             let render_image = device_context.create_texture(&TextureDef {
                 extents: Extents3D {
@@ -137,13 +142,24 @@ fn run() -> GfxResult<()> {
                 },
                 array_length: 1,
                 mip_count: 1,
-                sample_count: SampleCount::SampleCount1,
+                // sample_count: SampleCount::SampleCount1,
                 format: Format::R8G8B8A8_UNORM,
-                resource_type: ResourceType::TEXTURE | ResourceType::RENDER_TARGET_COLOR,
+                usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW|ResourceUsage::HAS_RENDER_TARGET_VIEW,
+                resource_flags: ResourceFlags::empty(),
                 mem_usage: MemoryUsage::GpuOnly,
-                dimensions: TextureDimensions::Dim2D,
+                // dimensions: TextureDimensions::Dim2D,
                 tiling: TextureTiling::Optimal,
             })?;
+
+            let render_view = render_image.create_view(
+                &TextureViewDef {
+                    texture_view_type: TextureViewType::RenderTargetView,
+                    view_type: ViewType::ViewType2d,
+                    first_mip: 0,
+                    mip_count: 1,
+                    first_slice: 0,
+                    slice_count: 1,
+                })?;
 
             let copy_image = device_context.create_texture(&TextureDef {
                 extents: Extents3D {
@@ -153,11 +169,12 @@ fn run() -> GfxResult<()> {
                 },
                 array_length: 1,
                 mip_count: 1,
-                sample_count: SampleCount::SampleCount1,
+                // sample_count: SampleCount::SampleCount1,
                 format: Format::R8G8B8A8_UNORM,
                 mem_usage: MemoryUsage::GpuToCpu,
-                resource_type: ResourceType::TEXTURE,
-                dimensions: TextureDimensions::Dim2D,
+                usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+                resource_flags: ResourceFlags::empty(),
+                // dimensions: TextureDimensions::Dim2D,
                 tiling: TextureTiling::Linear,
             })?;
 
@@ -167,6 +184,7 @@ fn run() -> GfxResult<()> {
             uniform_buffers.push(uniform_buffer);
             uniform_buffer_cbvs.push(uniform_buffer_cbv);
             render_images.push(render_image);
+            render_views.push(render_view);
             copy_images.push(copy_image);
         }
 
@@ -347,6 +365,7 @@ fn run() -> GfxResult<()> {
             // Acquire swapchain image
             //
             let render_texture = &render_images[i % 2];
+            let render_view = &render_views[i % 2];
 
             //
             // Use the command pool/buffer assigned to this frame
@@ -387,16 +406,16 @@ fn run() -> GfxResult<()> {
             cmd_buffer
                 .cmd_begin_render_pass(
                     &[ColorRenderTargetBinding {
-                        texture: render_texture,
+                        texture_view: render_view,
                         load_op: LoadOp::Clear,
                         store_op: StoreOp::Store,
-                        array_slice: None,
-                        mip_slice: None,
+                        // array_slice: None,
+                        // mip_slice: None,
                         clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
-                        resolve_target: None,
-                        resolve_store_op: StoreOp::DontCare,
-                        resolve_mip_slice: None,
-                        resolve_array_slice: None,
+                        // resolve_target: None,
+                        // resolve_store_op: StoreOp::DontCare,
+                        // resolve_mip_slice: None,
+                        // resolve_array_slice: None,
                     }],
                     None,
                 )

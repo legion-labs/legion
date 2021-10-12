@@ -306,10 +306,10 @@ pub mod types;
 pub mod prelude {
     pub use crate::types::*;
     pub use crate::{
-        Buffer, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray, DescriptorSetHandle,
-        DescriptorSetLayout, DeviceContext, Fence, GfxApi, GfxResult, Pipeline, Queue,
-        RootSignature, Sampler, Semaphore, Shader, ShaderModule, Swapchain, Texture,
-        BufferView, TextureView
+        Buffer, BufferView, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray,
+        DescriptorSetHandle, DescriptorSetLayout, DeviceContext, Fence, GfxApi, GfxResult,
+        Pipeline, Queue, RootSignature, Sampler, Semaphore, Shader, ShaderModule, Swapchain,
+        Texture, TextureView,
     };
 }
 
@@ -349,11 +349,12 @@ pub trait GfxApi: Sized {
     fn destroy(&mut self) -> GfxResult<()>;
 
     type DeviceContext: DeviceContext<Self>;
-    type Buffer: Buffer<Self>;    
+    type Buffer: Buffer<Self>;
     type Texture: Texture<Self>;
     type Sampler: Sampler<Self>;
-    type BufferView : BufferView<Self>;
-    type TextureView : TextureView<Self>;
+    type BufferMappingInfo; //: BufferMappingInfo<Self>;
+    type BufferView: BufferView<Self>;
+    type TextureView: TextureView<Self>;
     type ShaderModule: ShaderModule<Self>;
     type Shader: Shader<Self>;
     type DescriptorSetLayout: DescriptorSetLayout<Self>;
@@ -381,7 +382,7 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     ) -> GfxResult<A::Swapchain>;
     fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<A::Sampler>;
     fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<A::Texture>;
-    fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<A::Buffer>;        
+    fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<A::Buffer>;
     fn create_shader(&self, stages: Vec<ShaderStageDef<A>>) -> GfxResult<A::Shader>;
     fn create_descriptorset_layout(
         &self,
@@ -407,35 +408,38 @@ pub trait DeviceContext<A: GfxApi>: Clone {
 
     fn wait_for_fences(&self, fences: &[&A::Fence]) -> GfxResult<()>;
 
-    fn find_supported_format(
-        &self,
-        candidates: &[Format],
-        resource_type: ResourceType,
-    ) -> Option<Format>;
-    fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount>;
+    // fn find_supported_format(
+    //     &self,
+    //     candidates: &[Format],
+    //     resource_type: ResourceType,
+    // ) -> Option<Format>;
+    // fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount>;
 }
 
 //
 // Resources (Buffers, Textures, Samplers)
 //
+pub trait BufferMappingInfo<A: GfxApi> {
+    fn data_ptr(&self) -> *mut u8;
+}
+
 pub trait Buffer<A: GfxApi>: std::fmt::Debug {
-    fn buffer_def(&self) -> &BufferDef;    
-    fn map_buffer(&self) -> GfxResult<*mut u8>;
-    fn unmap_buffer(&self) -> GfxResult<()>;
-    fn mapped_memory(&self) -> Option<*mut u8>;
+    fn buffer_def(&self) -> &BufferDef;
+    fn map_buffer(&self) -> GfxResult<A::BufferMappingInfo>;
     fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()>;
     fn copy_to_host_visible_buffer_with_offset<T: Copy>(
         &self,
         data: &[T],
         buffer_byte_offset: u64,
     ) -> GfxResult<()>;
-    fn create_constant_buffer_view(&self, cbv_def: &BufferViewDef) -> GfxResult<A::BufferView>;
+    fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<A::BufferView>;
 }
 
 pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
     fn texture_def(&self) -> &TextureDef;
     fn map_texture(&self) -> GfxResult<TextureSubResource<'_>>;
     fn unmap_texture(&self) -> GfxResult<()>;
+    fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<A::TextureView>;
 }
 
 pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
@@ -444,12 +448,12 @@ pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
 // Views (BufferView, TextureView)
 //
 pub trait BufferView<A: GfxApi>: Clone + std::fmt::Debug {
-    fn buffer(&self) -> &A::Buffer;
-    fn offset(&self) -> u64;
-    fn size(&self) -> u64;
+    fn view_def(&self) -> &BufferViewDef;
+    fn buffer(&self) -> &A::Buffer;    
 }
 
 pub trait TextureView<A: GfxApi>: Clone + std::fmt::Debug {
+    fn view_def(&self) -> &TextureViewDef; 
     fn texture(&self) -> &A::Texture;
 }
 
@@ -560,10 +564,10 @@ pub trait CommandBuffer<A: GfxApi>: std::fmt::Debug {
         set_index: u32,
         descriptor_set_handle: &A::DescriptorSetHandle,
     ) -> GfxResult<()>;
-    fn cmd_push_constants<T : Sized>(
+    fn cmd_push_constants<T: Sized>(
         &self,
-        root_signature: &A::RootSignature,     
-        constants: &T,     
+        root_signature: &A::RootSignature,
+        constants: &T,
     ) -> GfxResult<()>;
     fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) -> GfxResult<()>;
     fn cmd_draw_instanced(

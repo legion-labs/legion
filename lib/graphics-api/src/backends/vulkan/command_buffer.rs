@@ -3,12 +3,7 @@ use super::{
     VulkanDescriptorSetHandle, VulkanDeviceContext, VulkanPipeline, VulkanRootSignature,
     VulkanTexture,
 };
-use crate::{
-    BarrierQueueTransition, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
-    CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
-    DepthStencilRenderTargetBinding, DescriptorSetArray, GfxResult, IndexBufferBinding, Pipeline,
-    QueueType, ResourceState, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
-};
+use crate::{BarrierQueueTransition, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool, DepthStencilRenderTargetBinding, DescriptorSetArray, GfxResult, IndexBufferBinding, Pipeline, QueueType, ResourceState, RootSignature, Texture, TextureBarrier, TextureView, VertexBufferBinding};
 use ash::vk;
 use std::{    
     mem, ptr,
@@ -148,7 +143,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         let barriers = {
             let mut barriers = Vec::with_capacity(color_targets.len() + 1);
             for color_target in color_targets {
-                if color_target.texture.take_is_undefined_layout() {
+                if color_target.texture_view.texture().take_is_undefined_layout() {
                     log::trace!(
                         "Transition RT {:?} from {:?} to {:?}",
                         color_target,
@@ -156,7 +151,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                         ResourceState::RENDER_TARGET
                     );
                     barriers.push(TextureBarrier::state_transition(
-                        color_target.texture,
+                        color_target.texture_view.texture(),
                         ResourceState::UNDEFINED,
                         ResourceState::RENDER_TARGET,
                     ));
@@ -164,7 +159,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             }
 
             if let Some(depth_target) = &depth_target {
-                if depth_target.texture.take_is_undefined_layout() {
+                if depth_target.texture_view.texture().take_is_undefined_layout() {
                     log::trace!(
                         "Transition RT {:?} from {:?} to {:?}",
                         depth_target,
@@ -172,7 +167,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                         ResourceState::DEPTH_WRITE
                     );
                     barriers.push(TextureBarrier::state_transition(
-                        depth_target.texture,
+                        depth_target.texture_view.texture(),
                         ResourceState::UNDEFINED,
                         ResourceState::DEPTH_WRITE,
                     ));
@@ -191,22 +186,22 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         };
 
         let mut clear_values = Vec::with_capacity(color_targets.len() + 1);
-        let mut has_resolve_target = false;
+        // let mut has_resolve_target = false;
         for color_target in color_targets {
             clear_values.push(color_target.clear_value.into());
-            if color_target.resolve_target.is_some() {
-                has_resolve_target = true;
-            }
+            // if color_target.resolve_target.is_some() {
+            //     has_resolve_target = true;
+            // }
         }
 
         // If we resolve, then there will be images in the framebuffer. The clear color array must
         // be equal-sized to the framebuffer images array.
-        if has_resolve_target {
-            for _ in color_targets {
-                // Actual value doesn't matter, this is for a resolve target with DONT_CARE load op
-                clear_values.push(clear_values[0]);
-            }
-        }
+        // if has_resolve_target {
+        //     for _ in color_targets {
+        //         // Actual value doesn't matter, this is for a resolve target with DONT_CARE load op
+        //         clear_values.push(clear_values[0]);
+        //     }
+        // }
 
         if let Some(depth_target) = &depth_target {
             clear_values.push(depth_target.clear_value.into());

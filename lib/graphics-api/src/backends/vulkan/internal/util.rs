@@ -1,5 +1,5 @@
 use crate::backends::vulkan::VulkanDeviceContext;
-use crate::{BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format, PipelineType, QueueType, RasterizerState, ResourceState, ResourceType, ShaderResourceType, ResourceUsage};
+use crate::{BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format, PipelineType, QueueType, RasterizerState, ResourceState, ShaderResourceType, ResourceUsage};
 use ash::vk;
 
 pub(crate) fn pipeline_type_pipeline_bind_point(
@@ -42,19 +42,19 @@ pub(crate) fn resource_type_buffer_usage_flags(
     usage_flags
 }
 
-pub(crate) fn resource_type_image_usage_flags(resource_type: ResourceType) -> vk::ImageUsageFlags {
-    let mut usage_flags = vk::ImageUsageFlags::empty();
+// pub(crate) fn resource_type_image_usage_flags(resource_type: ResourceType) -> vk::ImageUsageFlags {
+//     let mut usage_flags = vk::ImageUsageFlags::empty();
 
-    if resource_type.intersects(ResourceType::TEXTURE) {
-        usage_flags |= vk::ImageUsageFlags::SAMPLED;
-    }
+//     if resource_type.intersects(ResourceType::TEXTURE) {
+//         usage_flags |= vk::ImageUsageFlags::SAMPLED;
+//     }
 
-    if resource_type.intersects(ResourceType::TEXTURE_READ_WRITE) {
-        usage_flags |= vk::ImageUsageFlags::STORAGE;
-    }
+//     if resource_type.intersects(ResourceType::TEXTURE_READ_WRITE) {
+//         usage_flags |= vk::ImageUsageFlags::STORAGE;
+//     }
 
-    usage_flags
-}
+//     usage_flags
+// }
 
 pub(crate) fn image_format_to_aspect_mask(
     format: Format, /*, include_stencil: bool*/

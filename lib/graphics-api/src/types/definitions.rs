@@ -1,8 +1,11 @@
 use super::*;
 
-use crate::{GfxApi, MAX_DESCRIPTOR_SET_LAYOUTS, ResourceType};
+use crate::{Buffer, GfxApi, MAX_DESCRIPTOR_SET_LAYOUTS, ResourceFlags, Texture};
 use legion_utils::decimal::DecimalF32;
-use std::{hash::{Hash, Hasher}, num::{NonZeroU32, NonZeroU64}};
+use std::{
+    hash::{Hash, Hasher},
+    num::{NonZeroU32},
+};
 
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
@@ -14,14 +17,31 @@ pub struct ApiDef {
 }
 
 bitflags::bitflags! {
-    pub struct ResourceUsage: u16 {
-        const NONE = 0x0000;    
-        const HAS_CONST_BUFFER_VIEW = 0x0001;    
-        const HAS_SHADER_RESOURCE_VIEW = 0x0002;    
-        const HAS_UNORDERED_ACCESS_VIEW = 0x0004;    
-        const HAS_VERTEX_BUFFER = 0x0010;
-        const HAS_INDEX_BUFFER = 0x0020;
-        const HAS_INDIRECT_BUFFER  = 0x0040;
+    pub struct ResourceUsage: u16 {        
+        // buffer
+        const HAS_CONST_BUFFER_VIEW = 0x0001;
+        // buffer/texture
+        const HAS_SHADER_RESOURCE_VIEW = 0x0002;
+        // buffer/texture
+        const HAS_UNORDERED_ACCESS_VIEW = 0x0004;
+        // buffer/texture
+        const HAS_RENDER_TARGET_VIEW = 0x0008;
+        // texture
+        const HAS_DEPTH_STENCIL_VIEW = 0x0010;        
+        // buffer
+        const HAS_VERTEX_BUFFER = 0x0020;
+        // buffer
+        const HAS_INDEX_BUFFER = 0x0040;
+        // buffer
+        const HAS_INDIRECT_BUFFER  = 0x0080;
+        // meta
+        const BUFFER_ONLY_USAGE_FLAGS = 
+            Self::HAS_CONST_BUFFER_VIEW.bits|
+            Self::HAS_VERTEX_BUFFER.bits|
+            Self::HAS_INDEX_BUFFER.bits|
+            Self::HAS_INDIRECT_BUFFER.bits;
+        const TEXTURE_ONLY_USAGE_FLAGS = 
+            Self::HAS_DEPTH_STENCIL_VIEW.bits;
     }
 }
 
@@ -37,33 +57,20 @@ pub struct BufferElementData {
 #[derive(Clone, Debug)]
 pub struct BufferDef {
     pub size: u64,
-    pub alignment: u32, // May be 0
     pub memory_usage: MemoryUsage,
     pub queue_type: QueueType,
-    // pub resource_type: ResourceType,
     pub always_mapped: bool,
-
-    // Set to undefined unless texture/typed buffer
-    // pub format: Format,
-
-    // For storage buffers
-    // pub elements: BufferElementData,
-
-    pub usage : ResourceUsage
+    pub usage_flags: ResourceUsage,
 }
 
 impl Default for BufferDef {
     fn default() -> Self {
         Self {
             size: 0,
-            alignment: 0,
             memory_usage: MemoryUsage::Unknown,
             queue_type: QueueType::Graphics,
-            // resource_type: ResourceType::UNDEFINED,
-            // elements: Default::default(),
-            // format: Format::UNDEFINED,
             always_mapped: false,
-            usage: ResourceUsage::NONE
+            usage_flags: ResourceUsage::empty(),
         }
     }
 }
@@ -71,27 +78,22 @@ impl Default for BufferDef {
 impl BufferDef {
     pub fn verify(&self) {
         assert_ne!(self.size, 0);
+        assert!(!self.usage_flags.intersects(ResourceUsage::TEXTURE_ONLY_USAGE_FLAGS));
+
     }
 
     pub fn for_staging_buffer(size: usize, usage_flags: ResourceUsage) -> Self {
         Self {
             size: size as u64,
-            alignment: 0,
             memory_usage: MemoryUsage::CpuToGpu,
             queue_type: QueueType::Graphics,
-            // resource_type,
-            // elements: Default::default(),
-            // format: Format::UNDEFINED,
             always_mapped: false,
-            usage : usage_flags
+            usage_flags,
         }
     }
 
     pub fn for_staging_buffer_data<T: Copy>(data: &[T], usage_flags: ResourceUsage) -> Self {
-        Self::for_staging_buffer(
-            legion_utils::memory::slice_size_in_bytes(data),            
-            usage_flags
-        )
+        Self::for_staging_buffer(legion_utils::memory::slice_size_in_bytes(data), usage_flags)
     }
 
     pub fn for_staging_vertex_buffer(size: usize) -> Self {
@@ -103,7 +105,7 @@ impl BufferDef {
     }
 
     pub fn for_staging_index_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size,  ResourceUsage::HAS_INDEX_BUFFER)
+        Self::for_staging_buffer(size, ResourceUsage::HAS_INDEX_BUFFER)
     }
 
     pub fn for_staging_index_buffer_data<T: Copy>(data: &[T]) -> Self {
@@ -119,61 +121,39 @@ impl BufferDef {
     }
 }
 
-/// Determines how many dimensions the texture will have.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum TextureDimensions {
-    /// Assume 2D if depth = 1, otherwise 3d
-    Auto,
-    Dim1D,
-    Dim2D,
-    Dim3D,
-}
+// /// Determines how many dimensions the texture will have.
+// #[derive(Copy, Clone, Debug, PartialEq)]
+// pub enum TextureDimensions {
+//     /// Assume 2D if depth = 1, otherwise 3d
+//     // Auto,
+//     // Dim1D,
+//     Dim2D,
+//     Dim3D,
+// }
 
-impl Default for TextureDimensions {
-    fn default() -> Self {
-        Self::Auto
-    }
-}
-
-impl TextureDimensions {
-    pub fn determine_dimensions(self, extents: Extents3D) -> Self {
-        match self {
-            Self::Auto => {
-                if extents.depth > 1 {
-                    Self::Dim3D
-                } else {
-                    Self::Dim2D
-                }
-            }
-            Self::Dim1D => {
-                assert_eq!(extents.height, 1);
-                assert_eq!(extents.depth, 1);
-                Self::Dim1D
-            }
-            Self::Dim2D => {
-                assert_eq!(extents.depth, 1);
-                Self::Dim2D
-            }
-            Self::Dim3D => Self::Dim3D,
-        }
-    }
-}
+// impl TextureDimensions {
+//     pub fn determine_dimensions(self, extents: Extents3D) -> Self {
+//         match self {
+//             Self::Dim2D => {
+//                 assert_eq!(extents.depth, 1);
+//                 Self::Dim2D
+//             }
+//             Self::Dim3D => Self::Dim3D,
+//         }
+//     }
+// }
 
 /// Used to create a `Texture`
 #[derive(Clone, Debug)]
 pub struct TextureDef {
     pub extents: Extents3D,
-    // Corresponds to number of vulkan layers, metal array length, and dx12 array size. Generally
-    // should be 1, except set to 6 for cubemaps
     pub array_length: u32,
-    pub mip_count: u32,
-    pub sample_count: SampleCount,
+    pub mip_count: u32,    
     pub format: Format,
-    pub resource_type: ResourceType,
+    pub usage_flags: ResourceUsage,
+    pub resource_flags: ResourceFlags,    
     pub mem_usage: MemoryUsage,
-    // descriptors?
-    // pointer to image?
-    pub dimensions: TextureDimensions,
+    // pub dimensions: TextureDimensions,
     pub tiling: TextureTiling,
 }
 
@@ -187,71 +167,176 @@ impl Default for TextureDef {
             },
             array_length: 1,
             mip_count: 1,
-            sample_count: SampleCount::SampleCount1,
+            // sample_count: SampleCount::SampleCount1,
             format: Format::UNDEFINED,
-            resource_type: ResourceType::TEXTURE,
+            usage_flags: ResourceUsage::empty(),
+            resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
-            dimensions: TextureDimensions::Auto,
+            // dimensions: TextureDimensions::Dim2D,
             tiling: TextureTiling::Optimal,
         }
     }
 }
 
 impl TextureDef {
+    pub fn is_2d(&self) -> bool {
+        self.extents.depth == 1
+    }
+
+    pub fn is_3d(&self) -> bool {
+        self.extents.depth > 1
+    }
+
+    pub fn is_cube(&self) -> bool {
+        self.resource_flags.contains(ResourceFlags::TEXTURE_CUBE)
+    }
+
     pub fn verify(&self) {
         assert!(self.extents.width > 0);
         assert!(self.extents.height > 0);
         assert!(self.extents.depth > 0);
         assert!(self.array_length > 0);
-        assert!(self.mip_count > 0);
-        assert!(self.mip_count < 2 || self.sample_count == SampleCount::SampleCount1);
+        assert!(self.mip_count > 0);        
 
-        if self.resource_type.contains(ResourceType::TEXTURE_CUBE) {
+        assert!(!self.usage_flags.intersects(ResourceUsage::BUFFER_ONLY_USAGE_FLAGS));
+
+        if self.resource_flags.contains(ResourceFlags::TEXTURE_CUBE) {
             assert_eq!(self.array_length % 6, 0);
         }
 
-        // we support only one or the other
-        assert!(
-            !(self.resource_type.contains(
-                ResourceType::RENDER_TARGET_ARRAY_SLICES | ResourceType::RENDER_TARGET_DEPTH_SLICES
-            ))
-        );
+        // // we support only one or the other
+        // assert!(
+        //     !(self.resource_type.contains(
+        //         ResourceType::RENDER_TARGET_ARRAY_SLICES | ResourceType::RENDER_TARGET_DEPTH_SLICES
+        //     ))
+        // );
 
+        // vdbdd: I think this validation is wrong
         assert!(
             !(self.format.has_depth()
-                && self
-                    .resource_type
-                    .intersects(ResourceType::TEXTURE_READ_WRITE)),
+                && self.usage_flags.intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW)),
             "Cannot use depth stencil as UAV"
         );
     }
 }
 
-pub enum BufferSize {
-    InBytes(NonZeroU64),
-    WholeSize
+#[derive(Clone, Copy, Debug)]
+pub enum BufferViewType {
+    ConstantBufferView,
+    ShaderResourceView,
+    UnorderedAccessView,
 }
 
-pub struct BufferViewDef {    
-    pub offset : u64,
-    pub size : BufferSize,
+#[derive(Clone, Copy, Debug)]
+pub struct BufferViewDef {
+    pub buffer_view_type: BufferViewType,
+    pub offset: u64,
+    pub size: u64,
 }
 
-impl Default for BufferViewDef {
-    fn default() -> Self {
-        Self {
-            offset : 0,
-            size : BufferSize::WholeSize
+impl BufferViewDef {
+    pub(crate) fn verify<A: GfxApi>(&self, buffer: &A::Buffer) {
+        
+        assert_ne!(self.size, 0);
+        
+        let buffer_def = buffer.buffer_def();
+        let upper_bound = self.offset + self.size;        
+        assert!(upper_bound <= buffer_def.size);
+
+        match self.buffer_view_type {
+            BufferViewType::ConstantBufferView => {
+                assert!( buffer_def.usage_flags.intersects( ResourceUsage::HAS_CONST_BUFFER_VIEW ));
+            }
+            BufferViewType::ShaderResourceView => {
+                assert!( buffer_def.usage_flags.intersects( ResourceUsage::HAS_SHADER_RESOURCE_VIEW ));
+            }
+            BufferViewType::UnorderedAccessView => {
+                assert!( buffer_def.usage_flags.intersects( ResourceUsage::HAS_UNORDERED_ACCESS_VIEW ));
+            }
         }
+
     }
 }
 
-pub struct ShaderResourceViewDef {
-    
+#[derive(Clone, Copy, Debug)]
+pub enum TextureViewType {
+    ShaderResourceView,
+    UnorderedAccessView,
+    RenderTargetView,
+    DepthStencilView
 }
 
-pub struct UnorderedAccessViewDef {
 
+#[derive(Clone, Copy, Debug)]
+pub enum ViewType {
+    ViewType2d,
+    ViewType2darray,
+    ViewTypeCube,
+    ViewTypeCubeArray,
+    ViewType3d,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct TextureViewDef {
+    pub texture_view_type: TextureViewType,    
+    pub view_type : ViewType,
+    pub first_mip : u32,
+    pub mip_count : u32,
+    pub first_slice : u32,    
+    pub slice_count : u32,    
+}
+
+impl TextureViewDef {
+    pub fn verify<A: GfxApi> (&self, texture: &A::Texture) {
+        
+        let texture_def = texture.texture_def();
+
+        let last_mip = self.first_mip + self.mip_count;
+        assert!( last_mip <= texture_def.mip_count );
+
+        let last_slice = self.first_slice + self.slice_count;
+        assert!( last_slice <= texture_def.array_length );
+
+        match self.texture_view_type {
+            TextureViewType::ShaderResourceView => {
+                assert!( texture_def.usage_flags.intersects(ResourceUsage::HAS_SHADER_RESOURCE_VIEW) );
+            }
+            TextureViewType::UnorderedAccessView => {
+                assert!( texture_def.usage_flags.intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW) );
+            }
+            TextureViewType::RenderTargetView => {
+                assert!( texture_def.usage_flags.intersects(ResourceUsage::HAS_RENDER_TARGET_VIEW) );
+                assert!( self.mip_count == 1 );
+                assert!( self.slice_count == 1 );
+            }
+            TextureViewType::DepthStencilView => {
+                assert!( texture_def.usage_flags.intersects(ResourceUsage::HAS_DEPTH_STENCIL_VIEW) );
+                assert!( self.mip_count == 1 );
+                assert!( self.slice_count == 1 );
+            }
+        }
+
+        match self.view_type {
+            ViewType::ViewType2d => {
+                assert!( texture_def.is_2d() || texture_def.is_3d() );
+            }
+            ViewType::ViewType2darray => {
+                assert!( texture_def.is_2d() || texture_def.is_3d() );
+            }
+            ViewType::ViewTypeCube => {
+                assert!( texture_def.is_cube() );
+            }
+            ViewType::ViewTypeCubeArray => {
+                assert!( texture_def.is_cube() );
+            }
+            ViewType::ViewType3d => {
+                assert!( texture_def.is_3d() );
+            }
+        }
+
+
+
+    }
 }
 
 /// Used to create a `CommandPool`
@@ -317,23 +402,23 @@ impl<A: GfxApi> ShaderStageDef<A> {
     }
 }
 
-#[derive(Copy,Clone,Debug,PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ShaderResourceType {
     Undefined,
-    Sampler,    
+    Sampler,
     ConstantBuffer,
     StructuredBuffer,
     RWStructuredBuffer,
     ByteAdressBuffer,
     RWByteAdressBuffer,
-    Texture2D,    
-    RWTexture2D,    
-    Texture2DArray,      
-    RWTexture2DArray,      
-    Texture3D,    
-    RWTexture3D,    
-    TextureCube,      
-    TextureCubeArray,  
+    Texture2D,
+    RWTexture2D,
+    Texture2DArray,
+    RWTexture2DArray,
+    Texture3D,
+    RWTexture3D,
+    TextureCube,
+    TextureCubeArray,
 }
 
 impl Default for ShaderResourceType {
@@ -377,7 +462,7 @@ impl Default for DescriptorSetLayoutDef {
 
 pub struct PushConstantDef {
     pub used_in_shader_stages: ShaderStageFlags,
-    pub size: NonZeroU32
+    pub size: NonZeroU32,
 }
 
 pub struct RootSignatureDef<A: GfxApi> {

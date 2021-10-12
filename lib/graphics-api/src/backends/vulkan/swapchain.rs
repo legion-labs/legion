@@ -1,12 +1,7 @@
 use super::{
     VulkanApi, VulkanDeviceContext, VulkanFence, VulkanRawImage, VulkanSemaphore, VulkanTexture,
 };
-use crate::{
-    CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DeviceContext, Extents3D, Format,
-    GfxError, GfxResult, MemoryUsage, Queue, QueueType, ResourceState, ResourceType, SampleCount,
-    Swapchain, SwapchainDef, SwapchainImage, TextureBarrier, TextureDef, TextureDimensions,
-    TextureTiling,
-};
+use crate::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DeviceContext, Extents3D, Format, GfxError, GfxResult, MemoryUsage, Queue, QueueType, ResourceState, ResourceFlags, ResourceUsage, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef, TextureViewType};
 
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
@@ -410,7 +405,7 @@ impl SwapchainVulkanInstance {
 
             let format: Format = self.swapchain_info.surface_format.format.into();
 
-            let resource_type = ResourceType::TEXTURE | ResourceType::RENDER_TARGET_COLOR;
+            // let resource_type = ResourceType::TEXTURE | ResourceType::RENDER_TARGET_COLOR;
 
             let texture = VulkanTexture::from_existing(
                 &self.device_context,
@@ -424,18 +419,30 @@ impl SwapchainVulkanInstance {
                     array_length: 1,
                     mip_count: 1,
                     format,
-                    resource_type,
+                    usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW|ResourceUsage::HAS_RENDER_TARGET_VIEW,
+                    resource_flags: ResourceFlags::empty(),
                     mem_usage: MemoryUsage::GpuOnly,
                     //clear_value,
-                    sample_count: SampleCount::SampleCount1,
+                    // sample_count: SampleCount::SampleCount1,
                     //sample_quality
-                    dimensions: TextureDimensions::Dim2D,
+                    // dimensions: TextureDimensions::Dim2D,
                     tiling: TextureTiling::Optimal,
                 },
             )?;
 
+            let render_target_view = texture.create_view(
+                &TextureViewDef {
+                    texture_view_type: TextureViewType::RenderTargetView,
+                    view_type: crate::ViewType::ViewType2d,
+                    first_mip: 0,
+                    mip_count: 1,
+                    first_slice: 0,
+                    slice_count: 1,
+                })?;
+
             swapchain_images.push(SwapchainImage {
                 texture,
+                render_target_view,
                 swapchain_image_index: image_index as u32,
             });
         }

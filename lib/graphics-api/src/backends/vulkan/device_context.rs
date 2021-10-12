@@ -1,6 +1,6 @@
 use crate::{BufferDef, ComputePipelineDef,     
-    DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext, DeviceInfo, Fence, Format, 
-    GfxResult, GraphicsPipelineDef, QueueType, ResourceType, RootSignatureDef, SampleCount, 
+    DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext, DeviceInfo, Fence, 
+    GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef, 
     SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef, 
     
 };
@@ -427,80 +427,80 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
         VulkanShaderModule::new(self, data)
     }
 
-    fn find_supported_format(
-        &self,
-        candidates: &[Format],
-        resource_type: ResourceType,
-    ) -> Option<Format> {
-        let mut features = vk::FormatFeatureFlags::empty();
-        if resource_type.intersects(ResourceType::RENDER_TARGET_COLOR) {
-            features |= vk::FormatFeatureFlags::COLOR_ATTACHMENT;
-        }
+    // fn find_supported_format(
+    //     &self,
+    //     candidates: &[Format],
+    //     resource_type: ResourceType,
+    // ) -> Option<Format> {
+    //     let mut features = vk::FormatFeatureFlags::empty();
+    //     if resource_type.intersects(ResourceType::RENDER_TARGET_COLOR) {
+    //         features |= vk::FormatFeatureFlags::COLOR_ATTACHMENT;
+    //     }
 
-        if resource_type.intersects(ResourceType::RENDER_TARGET_DEPTH_STENCIL) {
-            features |= vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT;
-        }
+    //     if resource_type.intersects(ResourceType::RENDER_TARGET_DEPTH_STENCIL) {
+    //         features |= vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT;
+    //     }
 
-        do_find_supported_format(
-            &self.inner.instance,
-            self.inner.physical_device,
-            candidates,
-            vk::ImageTiling::OPTIMAL,
-            features,
-        )
-    }
+    //     do_find_supported_format(
+    //         &self.inner.instance,
+    //         self.inner.physical_device,
+    //         candidates,
+    //         vk::ImageTiling::OPTIMAL,
+    //         features,
+    //     )
+    // }
 
-    fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount> {
-        do_find_supported_sample_count(self.limits(), candidates)
-    }
+    // fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount> {
+    //     do_find_supported_sample_count(self.limits(), candidates)
+    // }
 }
 
-pub fn do_find_supported_format(
-    instance: &ash::Instance,
-    physical_device: vk::PhysicalDevice,
-    candidates: &[Format],
-    image_tiling: vk::ImageTiling,
-    features: vk::FormatFeatureFlags,
-) -> Option<Format> {
-    for &candidate in candidates {
-        let props = unsafe {
-            instance.get_physical_device_format_properties(physical_device, candidate.into())
-        };
+// pub fn do_find_supported_format(
+//     instance: &ash::Instance,
+//     physical_device: vk::PhysicalDevice,
+//     candidates: &[Format],
+//     image_tiling: vk::ImageTiling,
+//     features: vk::FormatFeatureFlags,
+// ) -> Option<Format> {
+//     for &candidate in candidates {
+//         let props = unsafe {
+//             instance.get_physical_device_format_properties(physical_device, candidate.into())
+//         };
 
-        let is_supported = match image_tiling {
-            vk::ImageTiling::LINEAR => (props.linear_tiling_features & features) == features,
-            vk::ImageTiling::OPTIMAL => (props.optimal_tiling_features & features) == features,
-            _ => unreachable!(),
-        };
+//         let is_supported = match image_tiling {
+//             vk::ImageTiling::LINEAR => (props.linear_tiling_features & features) == features,
+//             vk::ImageTiling::OPTIMAL => (props.optimal_tiling_features & features) == features,
+//             _ => unreachable!(),
+//         };
 
-        if is_supported {
-            return Some(candidate);
-        }
-    }
+//         if is_supported {
+//             return Some(candidate);
+//         }
+//     }
 
-    None
-}
+//     None
+// }
 
-fn do_find_supported_sample_count(
-    limits: &vk::PhysicalDeviceLimits,
-    sample_count_priority: &[SampleCount],
-) -> Option<SampleCount> {
-    for &sample_count in sample_count_priority {
-        let vk_sample_count: vk::SampleCountFlags = sample_count.into();
-        if (vk_sample_count.as_raw()
-            & limits.framebuffer_depth_sample_counts.as_raw()
-            & limits.framebuffer_color_sample_counts.as_raw())
-            != 0
-        {
-            log::trace!("Sample count {:?} is supported", sample_count);
-            return Some(sample_count);
-        } else {
-            log::trace!("Sample count {:?} is unsupported", sample_count);
-        }
-    }
+// fn do_find_supported_sample_count(
+//     limits: &vk::PhysicalDeviceLimits,
+//     sample_count_priority: &[SampleCount],
+// ) -> Option<SampleCount> {
+//     for &sample_count in sample_count_priority {
+//         let vk_sample_count: vk::SampleCountFlags = sample_count.into();
+//         if (vk_sample_count.as_raw()
+//             & limits.framebuffer_depth_sample_counts.as_raw()
+//             & limits.framebuffer_color_sample_counts.as_raw())
+//             != 0
+//         {
+//             log::trace!("Sample count {:?} is supported", sample_count);
+//             return Some(sample_count);
+//         } else {
+//             log::trace!("Sample count {:?} is unsupported", sample_count);
+//         }
+//     }
 
-    None
-}
+//     None
+// }
 
 fn choose_physical_device(
     instance: &ash::Instance,

@@ -53,7 +53,7 @@ impl VulkanPipeline {
             .collect();
 
         // does not affect compatibility for single-pass renderpasses
-        let resolve_attachments = vec![];
+        // let resolve_attachments = vec![];
 
         let depth_attachment = if let Some(depth_format) = pipeline_def.depth_stencil_format {
             assert_ne!(depth_format, Format::UNDEFINED);
@@ -71,9 +71,9 @@ impl VulkanPipeline {
         // Temporary renderpass, required to create pipeline but don't need to keep it
         let renderpass = device_context.create_renderpass(&VulkanRenderpassDef {
             color_attachments,
-            resolve_attachments,
+            // resolve_attachments,
             depth_attachment,
-            sample_count: pipeline_def.sample_count,
+            // sample_count: pipeline_def.sample_count,
         })?;
 
         let mut entry_point_names = vec![];

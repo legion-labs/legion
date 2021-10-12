@@ -1,5 +1,5 @@
 use crate::backends::vulkan::VulkanDeviceContext;
-use crate::{Format, GfxResult, LoadOp, SampleCount, StoreOp};
+use crate::{Format, GfxResult, LoadOp, StoreOp};
 use ash::vk;
 use std::sync::Arc;
 
@@ -27,9 +27,9 @@ pub(crate) struct VulkanRenderpassDepthAttachment {
 #[derive(Clone, Debug)]
 pub(crate) struct VulkanRenderpassDef {
     pub(crate) color_attachments: Vec<VulkanRenderpassColorAttachment>,
-    pub(crate) resolve_attachments: Vec<Option<RenderpassVulkanResolveAttachment>>,
+    // pub(crate) resolve_attachments: Vec<Option<RenderpassVulkanResolveAttachment>>,
     pub(crate) depth_attachment: Option<VulkanRenderpassDepthAttachment>,
-    pub(crate) sample_count: SampleCount,
+    // pub(crate) sample_count: SampleCount,
 }
 
 pub(crate) struct RenderpassVulkanInner {
@@ -63,11 +63,11 @@ impl VulkanRenderpass {
     ) -> GfxResult<Self> {
         //println!("Create renderpass\n{:#?}", renderpass_def);
 
-        let samples = renderpass_def.sample_count.into();
-        let mut attachments = Vec::with_capacity(renderpass_def.color_attachments.len() * 2 + 1);
+        // let samples = renderpass_def.sample_count.into();
+        let mut attachments = Vec::with_capacity(renderpass_def.color_attachments.len() + 1);
         let mut color_attachment_refs = Vec::with_capacity(renderpass_def.color_attachments.len());
-        let mut resolve_attachment_refs =
-            Vec::with_capacity(renderpass_def.color_attachments.len());
+        // let mut resolve_attachment_refs =
+        //     Vec::with_capacity(renderpass_def.color_attachments.len());
 
         for (color_attachment_index, color_attachment) in
             renderpass_def.color_attachments.iter().enumerate()
@@ -75,7 +75,7 @@ impl VulkanRenderpass {
             attachments.push(
                 vk::AttachmentDescription::builder()
                     .format(color_attachment.format.into())
-                    .samples(samples)
+                    .samples(vk::SampleCountFlags::TYPE_1)
                     .load_op(color_attachment.load_op.into())
                     .store_op(color_attachment.store_op.into())
                     .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
@@ -93,54 +93,54 @@ impl VulkanRenderpass {
             );
         }
 
-        for (resolve_attachment_index, resolve_attachment) in
-            renderpass_def.resolve_attachments.iter().enumerate()
-        {
-            if let Some(resolve_attachment) = resolve_attachment {
-                let attachment_index = attachments.len() as u32;
+        // for (resolve_attachment_index, resolve_attachment) in
+        //     renderpass_def.resolve_attachments.iter().enumerate()
+        // {
+        //     if let Some(resolve_attachment) = resolve_attachment {
+        //         let attachment_index = attachments.len() as u32;
 
-                attachments.push(
-                    vk::AttachmentDescription::builder()
-                        .format(resolve_attachment.format.into())
-                        .samples(vk::SampleCountFlags::TYPE_1)
-                        .load_op(vk::AttachmentLoadOp::DONT_CARE)
-                        .store_op(vk::AttachmentStoreOp::STORE)
-                        .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-                        .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-                        .initial_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                        .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                        .build(),
-                );
+        //         attachments.push(
+        //             vk::AttachmentDescription::builder()
+        //                 .format(resolve_attachment.format.into())
+        //                 .samples(vk::SampleCountFlags::TYPE_1)
+        //                 .load_op(vk::AttachmentLoadOp::DONT_CARE)
+        //                 .store_op(vk::AttachmentStoreOp::STORE)
+        //                 .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        //                 .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        //                 .initial_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+        //                 .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+        //                 .build(),
+        //         );
 
-                while resolve_attachment_refs.len() < resolve_attachment_index {
-                    resolve_attachment_refs.push(
-                        vk::AttachmentReference::builder()
-                            .attachment(vk::ATTACHMENT_UNUSED)
-                            .layout(vk::ImageLayout::UNDEFINED)
-                            .build(),
-                    );
-                }
+        //         while resolve_attachment_refs.len() < resolve_attachment_index {
+        //             resolve_attachment_refs.push(
+        //                 vk::AttachmentReference::builder()
+        //                     .attachment(vk::ATTACHMENT_UNUSED)
+        //                     .layout(vk::ImageLayout::UNDEFINED)
+        //                     .build(),
+        //             );
+        //         }
 
-                resolve_attachment_refs.push(
-                    vk::AttachmentReference::builder()
-                        .attachment(attachment_index)
-                        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                        .build(),
-                );
-            }
-        }
+        //         resolve_attachment_refs.push(
+        //             vk::AttachmentReference::builder()
+        //                 .attachment(attachment_index)
+        //                 .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+        //                 .build(),
+        //         );
+        //     }
+        // }
 
         // The resolve attachment length must be empty or same length as color attachment refs
-        if !resolve_attachment_refs.is_empty() {
-            while resolve_attachment_refs.len() < color_attachment_refs.len() {
-                resolve_attachment_refs.push(
-                    vk::AttachmentReference::builder()
-                        .attachment(vk::ATTACHMENT_UNUSED)
-                        .layout(vk::ImageLayout::UNDEFINED)
-                        .build(),
-                );
-            }
-        }
+        // if !resolve_attachment_refs.is_empty() {
+        //     while resolve_attachment_refs.len() < color_attachment_refs.len() {
+        //         resolve_attachment_refs.push(
+        //             vk::AttachmentReference::builder()
+        //                 .attachment(vk::ATTACHMENT_UNUSED)
+        //                 .layout(vk::ImageLayout::UNDEFINED)
+        //                 .build(),
+        //         );
+        //     }
+        // }
 
         let mut depth_stencil_attachment_ref = None;
         if let Some(depth_attachment) = &renderpass_def.depth_attachment {
@@ -149,7 +149,7 @@ impl VulkanRenderpass {
             attachments.push(
                 vk::AttachmentDescription::builder()
                     .format(depth_attachment.format.into())
-                    .samples(samples)
+                    .samples(vk::SampleCountFlags::TYPE_1)
                     .load_op(depth_attachment.depth_load_op.into())
                     .store_op(depth_attachment.depth_store_op.into())
                     .stencil_load_op(depth_attachment.stencil_load_op.into())
@@ -171,9 +171,9 @@ impl VulkanRenderpass {
             .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
             .color_attachments(&color_attachment_refs);
 
-        if !resolve_attachment_refs.is_empty() {
-            subpass_description = subpass_description.resolve_attachments(&resolve_attachment_refs);
-        }
+        // if !resolve_attachment_refs.is_empty() {
+        //     subpass_description = subpass_description.resolve_attachments(&resolve_attachment_refs);
+        // }
 
         if let Some(depth_stencil_attachment_ref) = depth_stencil_attachment_ref.as_ref() {
             subpass_description =

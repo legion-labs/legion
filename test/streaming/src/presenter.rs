@@ -292,13 +292,25 @@ fn run() -> GfxResult<()> {
                 ))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
-            let cbv_def = BufferViewDef::default();
-            let uniform_buffer_cbv = uniform_buffer.create_constant_buffer_view(&cbv_def)?;
+            let view_def = BufferViewDef {
+                buffer_view_type: BufferViewType::ShaderResourceView,
+                offset: 0,
+                size: uniform_buffer.buffer_def().size
+            };
+            let uniform_buffer_cbv = uniform_buffer.create_view(&view_def)?;
 
             vertex_buffers.push(vertex_buffer);
             uniform_buffers.push(uniform_buffer);
             uniform_buffer_cbvs.push(uniform_buffer_cbv);
         }
+
+        // 
+        // Create texture
+        //
+
+        // let texture_def = TextureDef::default();
+        // let texture_2d = device_context.create_texture(&texture_def)?;
+        // drop(texture_2d);
 
         //
         // Descriptors are allocated in blocks and never freed. Normally you will want to build a
@@ -380,6 +392,8 @@ fn run() -> GfxResult<()> {
                 .unwrap();
             let swapchain_texture = presentable_frame.swapchain_texture();
 
+            let swapchain_rtv = presentable_frame.swapchain_rtv();
+
             //
             // Use the command pool/buffer assigned to this frame
             //
@@ -435,16 +449,16 @@ fn run() -> GfxResult<()> {
             cmd_buffer
                 .cmd_begin_render_pass(
                     &[ColorRenderTargetBinding {
-                        texture: swapchain_texture,
+                        texture_view: swapchain_rtv,
                         load_op: LoadOp::Clear,
                         store_op: StoreOp::Store,
-                        array_slice: None,
-                        mip_slice: None,
+                        // array_slice: None,
+                        // mip_slice: None,
                         clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
-                        resolve_target: None,
-                        resolve_store_op: StoreOp::DontCare,
-                        resolve_mip_slice: None,
-                        resolve_array_slice: None,
+                        // resolve_target: None,
+                        // resolve_store_op: StoreOp::DontCare,
+                        // resolve_mip_slice: None,
+                        // resolve_array_slice: None,
                     }],
                     None,
                 )

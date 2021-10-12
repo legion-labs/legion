@@ -1,9 +1,6 @@
-use super::{VulkanApi, VulkanDeviceContext};
-use crate::{
-    Extents3D, GfxResult, MemoryUsage, ResourceType, Texture, TextureDef, TextureDimensions,
-    TextureSubResource,
-};
-use ash::vk;
+use super::{VulkanApi, VulkanDeviceContext, VulkanTextureView};
+use crate::{Extents3D, GfxResult, MemoryUsage, ResourceUsage, ResourceFlags, Texture, TextureDef, TextureSubResource, TextureViewDef};
+use ash::vk::{self};
 use std::hash::{Hash, Hasher};
 use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -47,7 +44,9 @@ pub struct TextureVulkanInner {
     texture_def: TextureDef,
     image: VulkanRawImage,
     aspect_mask: vk::ImageAspectFlags,
-
+    is_undefined_layout: AtomicBool,
+    texture_id: u32,
+    /*
     // For reading
     srv_view: Option<vk::ImageView>,
     srv_view_stencil: Option<vk::ImageView>,
@@ -55,18 +54,19 @@ pub struct TextureVulkanInner {
     // For writing
     uav_views: Vec<vk::ImageView>,
 
-    // RT
-    is_undefined_layout: AtomicBool,
-    texture_id: u32,
+    // RT    
+    
     render_target_view: Option<vk::ImageView>,
     render_target_view_slices: Vec<vk::ImageView>,
+    */
 }
 
 impl Drop for TextureVulkanInner {
     fn drop(&mut self) {
-        let device = self.device_context.device();
+        let _device = self.device_context.device();
 
-        unsafe {
+        /*
+        unsafe {        
             if let Some(srv_view) = self.srv_view {
                 device.destroy_image_view(srv_view, None);
             }
@@ -87,6 +87,7 @@ impl Drop for TextureVulkanInner {
                 device.destroy_image_view(*view_slice, None);
             }
         }
+        */
 
         self.image.destroy_image(&self.device_context);
     }
@@ -96,7 +97,7 @@ impl Drop for TextureVulkanInner {
 /// provided `ResourceType` in the `texture_def`.
 #[derive(Clone, Debug)]
 pub struct VulkanTexture {
-    pub(super) inner: Arc<TextureVulkanInner>,
+    inner: Arc<TextureVulkanInner>,
 }
 
 impl PartialEq for VulkanTexture {
@@ -137,7 +138,7 @@ impl VulkanTexture {
     pub fn device_context(&self) -> &VulkanDeviceContext {
         &self.inner.device_context
     }
-
+/*
     // Color/Depth
     pub fn vk_srv_view(&self) -> Option<vk::ImageView> {
         self.inner.srv_view
@@ -186,7 +187,7 @@ impl VulkanTexture {
             + depth as usize;
         self.inner.render_target_view_slices[index]
     }
-
+*/
     // Used internally as part of the hash for creating/reusing framebuffers
     pub(crate) fn texture_id(&self) -> u32 {
         self.inner.texture_id
@@ -209,26 +210,20 @@ impl VulkanTexture {
         existing_image: Option<VulkanRawImage>,
         texture_def: &TextureDef,
     ) -> GfxResult<Self> {
+
         texture_def.verify();
-
-        // if RW texture, create image viewsper mip, otherwise none?
-
         //
         // Determine desired image type
-        //
-        let dimensions = texture_def
-            .dimensions
-            .determine_dimensions(texture_def.extents);
-        let image_type = match dimensions {
-            TextureDimensions::Dim1D => vk::ImageType::TYPE_1D,
-            TextureDimensions::Dim2D => vk::ImageType::TYPE_2D,
-            TextureDimensions::Dim3D => vk::ImageType::TYPE_3D,
-            TextureDimensions::Auto => panic!("dimensions() should not return auto"),
+        //        
+        let image_type = match texture_def.extents.depth {            
+            0 => panic!(),
+            1 => vk::ImageType::TYPE_2D,
+            2.. => vk::ImageType::TYPE_3D,
         };
 
         let is_cubemap = texture_def
-            .resource_type
-            .contains(ResourceType::TEXTURE_CUBE);
+            .resource_flags
+            .contains(ResourceFlags::TEXTURE_CUBE);
         let format_vk = texture_def.format.into();
 
         // create the image
@@ -238,25 +233,23 @@ impl VulkanTexture {
             //
             // Determine image usage flags
             //
-            let mut usage_flags =
-                super::internal::resource_type_image_usage_flags(texture_def.resource_type);
-            if texture_def
-                .resource_type
-                .intersects(ResourceType::RENDER_TARGET_COLOR)
-            {
+            let mut usage_flags = vk::ImageUsageFlags::empty();
+            if texture_def.usage_flags.intersects(ResourceUsage::HAS_SHADER_RESOURCE_VIEW) {                
+                usage_flags |= vk::ImageUsageFlags::SAMPLED;
+            }
+            if texture_def.usage_flags.intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW) {                
+                usage_flags |= vk::ImageUsageFlags::STORAGE;
+            }
+            if texture_def.usage_flags.intersects(ResourceUsage::HAS_RENDER_TARGET_VIEW) {                
                 usage_flags |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
-            } else if texture_def
-                .resource_type
-                .intersects(ResourceType::RENDER_TARGET_DEPTH_STENCIL)
-            {
+            }
+            if texture_def.usage_flags.intersects(ResourceUsage::HAS_DEPTH_STENCIL_VIEW) {                
                 usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
             }
-
             if usage_flags.intersects(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::STORAGE) {
                 usage_flags |=
                     vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST;
             }
-
             //
             // Determine image create flags
             //
@@ -302,7 +295,7 @@ impl VulkanTexture {
                 .initial_layout(vk::ImageLayout::UNDEFINED)
                 .usage(usage_flags)
                 .sharing_mode(vk::SharingMode::EXCLUSIVE)
-                .samples(texture_def.sample_count.into())
+                .samples(vk::SampleCountFlags::TYPE_1) // texture_def.sample_count.into())
                 .flags(create_flags);
 
             //let allocator = device.allocator().clone();
@@ -320,13 +313,11 @@ impl VulkanTexture {
             }
         };
 
-        let mut image_view_type = if image_type == vk::ImageType::TYPE_1D {
-            if texture_def.array_length > 1 {
-                vk::ImageViewType::TYPE_1D_ARRAY
-            } else {
-                vk::ImageViewType::TYPE_1D
-            }
-        } else if image_type == vk::ImageType::TYPE_2D {
+        let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);        
+
+        // VIEWS <<<<
+        /*
+        let mut image_view_type = if image_type == vk::ImageType::TYPE_2D {
             if is_cubemap {
                 if texture_def.array_length > 6 {
                     vk::ImageViewType::CUBE_ARRAY
@@ -344,8 +335,7 @@ impl VulkanTexture {
             vk::ImageViewType::TYPE_3D
         };
 
-        //SRV
-        let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);
+        //SRV        
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(aspect_mask)
             .base_array_layer(0)
@@ -429,16 +419,12 @@ impl VulkanTexture {
             // Render Target
             let depth_array_size_multiple = texture_def.extents.depth * texture_def.array_length;
 
-            let rt_image_view_type = if texture_def.dimensions != TextureDimensions::Dim1D {
+            let rt_image_view_type = {
                 if depth_array_size_multiple > 1 {
                     vk::ImageViewType::TYPE_2D_ARRAY
                 } else {
                     vk::ImageViewType::TYPE_2D
                 }
-            } else if depth_array_size_multiple > 1 {
-                vk::ImageViewType::TYPE_1D_ARRAY
-            } else {
-                vk::ImageViewType::TYPE_1D
             };
 
             //SRV
@@ -492,6 +478,8 @@ impl VulkanTexture {
                 }
             }
         }
+        */
+        // VIEWS >>>>>
 
         // Used for hashing framebuffers
         let texture_id = crate::backends::shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
@@ -501,12 +489,12 @@ impl VulkanTexture {
             device_context: device_context.clone(),
             image,
             aspect_mask,
-            srv_view,
-            srv_view_stencil,
-            uav_views,
+            // srv_view,
+            // srv_view_stencil,
+            // uav_views,
             texture_id,
-            render_target_view,
-            render_target_view_slices,
+            // render_target_view,
+            // render_target_view_slices,
             is_undefined_layout: AtomicBool::new(true),
         };
 
@@ -557,5 +545,9 @@ impl Texture<VulkanApi> for VulkanTexture {
             .unmap_memory(&self.vk_allocation().unwrap());
 
         Ok(())
+    }
+
+    fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<VulkanTextureView> {
+        VulkanTextureView::new(&self, view_def)
     }
 }

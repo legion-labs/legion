@@ -26,17 +26,17 @@ impl VulkanRenderpassCache {
     ) -> u64 {
         let mut hasher = FnvHasher::default();
         for color_target in color_targets {
-            let texture_def = color_target.texture.texture_def();
+            let texture_def = color_target.texture_view.texture().texture_def();
             texture_def.format.hash(&mut hasher);
-            texture_def.sample_count.hash(&mut hasher);
+            // texture_def.sample_count.hash(&mut hasher);
             color_target.clear_value.hash(&mut hasher);
             color_target.load_op.hash(&mut hasher);
         }
 
         if let Some(depth_target) = &depth_target {
-            let texture_def = depth_target.texture.texture_def();
+            let texture_def = depth_target.texture_view.texture().texture_def();
             texture_def.format.hash(&mut hasher);
-            texture_def.sample_count.hash(&mut hasher);
+            // texture_def.sample_count.hash(&mut hasher);
             depth_target.clear_value.hash(&mut hasher);
             depth_target.stencil_load_op.hash(&mut hasher);
             depth_target.depth_load_op.hash(&mut hasher);
@@ -49,53 +49,55 @@ impl VulkanRenderpassCache {
         color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
         depth_target: Option<&DepthStencilRenderTargetBinding<'_, VulkanApi>>,
     ) -> GfxResult<VulkanRenderpass> {
-        let sample_count = if let Some(depth_target) = &depth_target {
-            depth_target.texture.texture_def().sample_count
-        } else {
-            color_targets
-                .first()
-                .unwrap()
-                .texture
-                .texture_def()
-                .sample_count
-        };
+        
+        // let sample_count = if let Some(depth_target) = &depth_target {
+        //     depth_target.texture_view.texture().texture_def().sample_count
+        // } else {
+        //     color_targets
+        //         .first()
+        //         .unwrap()
+        //         .texture_view
+        //         .texture()
+        //         .texture_def()
+        //         .sample_count
+        // };
 
         let color_attachments: Vec<_> = color_targets
             .iter()
             .map(|x| VulkanRenderpassColorAttachment {
-                format: x.texture.texture_def().format,
+                format: x.texture_view.texture().texture_def().format,
                 load_op: x.load_op,
                 store_op: x.store_op,
             })
             .collect();
 
-        let resolve_attachments: Vec<_> = color_targets
-            .iter()
-            .map(|x| {
-                x.resolve_target.map(|x| RenderpassVulkanResolveAttachment {
-                    format: x.texture_def().format,
-                })
-            })
-            .collect();
+        // let resolve_attachments: Vec<_> = color_targets
+        //     .iter()
+        //     .map(|x| {
+        //         x.resolve_target.map(|x| RenderpassVulkanResolveAttachment {
+        //             format: x.texture().texture_def().format,
+        //         })
+        //     })
+        //     .collect();
 
         let depth_attachment = depth_target
             .as_ref()
             .map(|x| VulkanRenderpassDepthAttachment {
-                format: x.texture.texture_def().format,
+                format: x.texture_view.texture().texture_def().format,
                 depth_load_op: x.depth_load_op,
                 stencil_load_op: x.stencil_load_op,
                 depth_store_op: x.depth_store_op,
                 stencil_store_op: x.stencil_store_op,
             });
 
-        assert_eq!(color_attachments.len(), resolve_attachments.len());
+        // assert_eq!(color_attachments.len(), resolve_attachments.len());
         VulkanRenderpass::new(
             device_context,
             &VulkanRenderpassDef {
                 color_attachments,
-                resolve_attachments,
+                // resolve_attachments,
                 depth_attachment,
-                sample_count,
+                // sample_count,
             },
         )
     }

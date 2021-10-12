@@ -177,49 +177,12 @@ bitflags::bitflags! {
     /// Indicates how a resource will be used. In some cases, multiple flags are allowed.
     #[derive(Default)]
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-    pub struct ResourceType: u32 {
-        const UNDEFINED = 0;
-        // const SAMPLER = 1<<0;
-        /// Similar to DX12 SRV and vulkan SAMPLED image usage flag and SAMPLED_IMAGE descriptor type
-        const TEXTURE = 1<<1;
-        /// Similar to DX12 UAV and vulkan STORAGE image usage flag and STORAGE_IMAGE descriptor type
-        const TEXTURE_READ_WRITE = 1<<2;
-        /// Similar to DX12 SRV and vulkan STORAGE_BUFFER descriptor type
-        // const BUFFER = 1<<3;
-        /// Similar to DX12 UAV and vulkan STORAGE_BUFFER descriptor type
-        // const BUFFER_READ_WRITE = 1<<5;
-        /// Similar to vulkan UNIFORM_BUFFER descriptor type
-        // const UNIFORM_BUFFER_ = 1<<7;
-        // Push constant / Root constant
-        /// Similar to DX12 root constants and vulkan push constants
-        // const ROOT_CONSTANT = 1<<8;
-        // Input assembler
-        /// Similar to vulkan VERTEX_BUFFER buffer usage flag
-        // const VERTEX_BUFFER = 1<<9;
-        /// Similar to vulkan INDEX_BUFFER buffer usage flag
-        // const INDEX_BUFFER = 1<<10;
-        /// Similar to vulkan INDIRECT_BUFFER buffer usage flag
-        // const INDIRECT_BUFFER = 1<<11;
-        // Cubemap SRV
-        /// Similar to vulkan's CUBE_COMPATIBLE image create flag and metal's Cube texture type
-        const TEXTURE_CUBE = 1<<12 | Self::TEXTURE.bits();
-        // RTV
-        const RENDER_TARGET_MIP_SLICES = 1<<13;
-        const RENDER_TARGET_ARRAY_SLICES = 1<<14;
-        const RENDER_TARGET_DEPTH_SLICES = 1<<15;
-        // Vulkan-only stuff
-        const INPUT_ATTACHMENT = 1<<16;
-        // const TEXEL_BUFFER = 1<<17;
-        // const TEXEL_BUFFER_READ_WRITE = 1<<18;
-        // Render target types
-        /// A color attachment in a renderpass
-        const RENDER_TARGET_COLOR = 1<<19;
-        /// A depth/stencil attachment in a renderpass
-        const RENDER_TARGET_DEPTH_STENCIL = 1<<20;
-    }
+    pub struct ResourceFlags: u32 {        
+        const TEXTURE_CUBE = 1<<12;       
+    } 
 }
 
-    impl ResourceType {
+    impl ResourceFlags {
 //     pub fn is_uniform_buffer(self) -> bool {
 //         self.intersects(Self::UNIFORM_BUFFER_)
 //     }
@@ -228,9 +191,9 @@ bitflags::bitflags! {
 //         self.intersects(Self::BUFFER | Self::BUFFER_READ_WRITE)
 //     }
 
-        pub fn is_render_target(self) -> bool {
-            self.intersects(Self::RENDER_TARGET_COLOR | Self::RENDER_TARGET_DEPTH_STENCIL)
-        }
+        // pub fn is_render_target(self) -> bool {
+        //     self.intersects(Self::RENDER_TARGET_COLOR | Self::RENDER_TARGET_DEPTH_STENCIL)
+        // }
 
 //     pub fn is_texture(self) -> bool {
 //         self.intersects(Self::TEXTURE | Self::TEXTURE_READ_WRITE)
@@ -703,6 +666,7 @@ impl<'a, A: GfxApi> TextureBarrier<'a, A> {
 /// Represents an image owned by the swapchain
 pub struct SwapchainImage<A: GfxApi> {
     pub texture: A::Texture,
+    pub render_target_view: A::TextureView,
     pub swapchain_image_index: u32,
 }
 
@@ -710,6 +674,7 @@ impl<A: GfxApi> Clone for SwapchainImage<A> {
     fn clone(&self) -> Self {
         Self {
             texture: self.texture.clone(),
+            render_target_view: self.render_target_view.clone(),
             swapchain_image_index: self.swapchain_image_index,
         }
     }
@@ -718,28 +683,28 @@ impl<A: GfxApi> Clone for SwapchainImage<A> {
 /// A color render target bound during a renderpass
 #[derive(Debug)]
 pub struct ColorRenderTargetBinding<'a, A: GfxApi> {
-    pub texture: &'a A::Texture,
+    pub texture_view: &'a A::TextureView,
     pub load_op: LoadOp,
     pub store_op: StoreOp,
-    pub mip_slice: Option<u8>,
-    pub array_slice: Option<u16>,
+    // pub mip_slice: Option<u8>,
+    // pub array_slice: Option<u16>,
     pub clear_value: ColorClearValue,
-    pub resolve_target: Option<&'a A::Texture>,
-    pub resolve_store_op: StoreOp,
-    pub resolve_mip_slice: Option<u8>,
-    pub resolve_array_slice: Option<u16>,
+    // pub resolve_target: Option<&'a A::TextureView>,
+    // pub resolve_store_op: StoreOp,
+    // pub resolve_mip_slice: Option<u8>,
+    // pub resolve_array_slice: Option<u16>,
 }
 
 /// A depth/stencil render target to be bound during a renderpass
 #[derive(Debug)]
 pub struct DepthStencilRenderTargetBinding<'a, A: GfxApi> {
-    pub texture: &'a A::Texture,
+    pub texture_view: &'a A::TextureView,
     pub depth_load_op: LoadOp,
     pub stencil_load_op: LoadOp,
     pub depth_store_op: StoreOp,
     pub stencil_store_op: StoreOp,
-    pub mip_slice: Option<u8>,
-    pub array_slice: Option<u16>,
+    // pub mip_slice: Option<u8>,
+    // pub array_slice: Option<u16>,
     pub clear_value: DepthStencilClearValue,
 }
 

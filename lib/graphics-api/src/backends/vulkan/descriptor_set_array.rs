@@ -187,7 +187,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
             ShaderResourceType::RWStructuredBuffer |
             ShaderResourceType::ByteAdressBuffer | 
             ShaderResourceType::RWByteAdressBuffer => {
-                let cbvs = update.elements.buffer_views.ok_or_else(||
+                let buffer_views = update.elements.buffer_views.ok_or_else(||
                     format!(
                         "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
                         update.descriptor_key,
@@ -199,17 +199,17 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                 )?;
                 let begin_index =
                     (descriptor_first_update_data + update.dst_element_offset) as usize;
-                assert!(begin_index + cbvs.len() <= self.update_data.update_data_count);
+                assert!(begin_index + buffer_views.len() <= self.update_data.update_data_count);
 
                 // Modify the update data
                 let mut next_index = begin_index;
-                for cbv in cbvs.iter() {
+                for buffer_view in buffer_views.iter() {
                     let buffer_info = &mut self.update_data.buffer_infos[next_index];
                     next_index += 1;
 
-                    buffer_info.buffer = cbv.buffer().vk_buffer();
-                    buffer_info.offset = cbv.offset();
-                    buffer_info.range = cbv.size();
+                    buffer_info.buffer = buffer_view.buffer().vk_buffer();
+                    buffer_info.offset = buffer_view.view_def().offset;
+                    buffer_info.range = buffer_view.view_def().size;
                 }
 
                 // Queue a descriptor write

@@ -100,6 +100,11 @@ impl<A: GfxApi> PresentableFrame<A> {
         &self.swapchain_image.texture
     }
 
+    /// Returns the acquired swapchain image
+    pub fn swapchain_rtv(&self) -> &A::TextureView {
+        &self.swapchain_image.render_target_view
+    }
+
     /// Submits the given command buffers and schedules the swapchain image to be presented after
     /// their completion
     pub fn present(
