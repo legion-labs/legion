@@ -1,11 +1,10 @@
 use std::collections::HashSet;
 
-use crate::{compress, DualTime, EncodedBlock, LogDynMsgEvent, LogMsgEvent, StreamBlock};
-use anyhow::Result;
-use transit::{
-    declare_queue_struct, read_pod, IterableQueue, QueueIterator, Reflect, StaticString,
-    UserDefinedType,
+use crate::{
+    compress, event_block::EventBlock, EncodedBlock, LogDynMsgEvent, LogMsgEvent, StreamBlock,
 };
+use anyhow::Result;
+use transit::prelude::*;
 
 declare_queue_struct!(
     struct LogMsgQueue<LogMsgEvent, LogDynMsgEvent> {}
@@ -15,29 +14,7 @@ declare_queue_struct!(
     struct LogDepsQueue<StaticString> {}
 );
 
-#[derive(Debug)]
-pub struct LogBlock {
-    pub stream_id: String,
-    pub begin: DualTime,
-    pub events: LogMsgQueue,
-    pub end: Option<DualTime>,
-}
-
-impl LogBlock {
-    pub fn new(buffer_size: usize, stream_id: String) -> Self {
-        let events = LogMsgQueue::new(buffer_size);
-        Self {
-            stream_id,
-            begin: DualTime::now(),
-            events,
-            end: None,
-        }
-    }
-
-    pub fn close(&mut self) {
-        self.end = Some(DualTime::now());
-    }
-}
+pub type LogBlock = EventBlock<LogMsgQueue>;
 
 impl StreamBlock for LogBlock {
     fn encode(&self) -> Result<EncodedBlock> {

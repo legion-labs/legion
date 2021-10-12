@@ -1,7 +1,7 @@
 use crate::{
     now, BeginScopeEvent, EndScopeEvent, EventBlockSink, GetScopeDesc, LogBlock, LogDynMsgEvent,
-    LogLevel, LogMsgEvent, LogStream, NullEventSink, ProcessInfo, Stream, TelemetrySinkEvent,
-    ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream,
+    LogLevel, LogMsgEvent, LogMsgQueue, LogStream, NullEventSink, ProcessInfo, Stream,
+    TelemetrySinkEvent, ThreadBlock, ThreadEventQueue, ThreadEventQueueTypeIndex, ThreadStream,
 };
 use chrono::Utc;
 use std::{
@@ -112,8 +112,10 @@ impl Dispatch {
     fn on_log_buffer_full(&mut self) {
         let mut log_stream = self.log_stream.lock().unwrap();
         let stream_id = log_stream.get_stream_id();
-        let mut old_event_block =
-            log_stream.replace_block(Arc::new(LogBlock::new(self.log_buffer_size, stream_id)));
+        let mut old_event_block = log_stream.replace_block(Arc::new(LogBlock::new(
+            LogMsgQueue::new(self.log_buffer_size),
+            stream_id,
+        )));
         assert!(!log_stream.is_full());
         Arc::get_mut(&mut old_event_block).unwrap().close();
         self.sink
@@ -122,7 +124,7 @@ impl Dispatch {
 
     fn on_thread_buffer_full(&mut self, stream: &mut ThreadStream) {
         let mut old_block = stream.replace_block(Arc::new(ThreadBlock::new(
-            self.thread_buffer_size,
+            ThreadEventQueue::new(self.thread_buffer_size),
             stream.get_stream_id(),
         )));
         assert!(!stream.is_full());

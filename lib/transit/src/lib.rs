@@ -76,4 +76,11 @@ pub use static_string::*;
 #[allow(unused_imports)]
 #[macro_use]
 extern crate derive_transit;
-pub use derive_transit::*;
+
+pub mod prelude {
+    pub use crate::{
+        read_pod, write_pod, DynString, InProcSerialize, IterableQueue, Member, QueueIterator,
+        Reflect, StaticString, UserDefinedType,
+    };
+    pub use derive_transit::*;
+}

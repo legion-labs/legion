@@ -1,4 +1,5 @@
-use transit::*;
+use transit::prelude::*;
+use transit::ReflectiveQueue;
 
 #[derive(Debug, TransitReflect)]
 pub struct LogMsgEvent {

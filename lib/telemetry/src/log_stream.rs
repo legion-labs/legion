@@ -34,7 +34,10 @@ impl LogStream {
     pub fn new(buffer_size: usize, process_id: String) -> Self {
         let stream_id = uuid::Uuid::new_v4().to_string();
         Self {
-            current_block: Arc::new(LogBlock::new(buffer_size, stream_id.clone())),
+            current_block: Arc::new(LogBlock::new(
+                LogMsgQueue::new(buffer_size),
+                stream_id.clone(),
+            )),
             initial_size: buffer_size,
             stream_id,
             process_id,

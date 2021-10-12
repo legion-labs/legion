@@ -61,6 +61,7 @@
 pub mod compression;
 pub mod dispatch;
 pub mod dual_time;
+pub mod event_block;
 pub mod event_block_sink;
 pub mod grpc_event_sink;
 pub mod guard;
@@ -68,6 +69,7 @@ pub mod log_block;
 pub mod log_bridge;
 pub mod log_events;
 pub mod log_stream;
+pub mod metrics_block;
 mod queue_metadata;
 pub mod stream;
 pub mod thread_block;

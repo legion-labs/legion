@@ -1,10 +1,9 @@
-use crate::{compress, DualTime, EncodedBlock, ReferencedScope, ScopeDesc, StreamBlock};
+use crate::{
+    compress, event_block::EventBlock, EncodedBlock, ReferencedScope, ScopeDesc, StreamBlock,
+};
 use anyhow::Result;
 use std::collections::HashSet;
-use transit::{
-    declare_queue_struct, read_pod, InProcSerialize, IterableQueue, Member, QueueIterator, Reflect,
-    StaticString, TransitReflect, UserDefinedType,
-};
+use transit::prelude::*;
 
 pub type GetScopeDesc = fn() -> ScopeDesc;
 
@@ -56,28 +55,7 @@ declare_queue_struct!(
     struct ThreadDepsQueue<ReferencedScope, StaticString> {}
 );
 
-#[derive(Debug)]
-pub struct ThreadBlock {
-    pub stream_id: String,
-    pub begin: DualTime,
-    pub events: ThreadEventQueue,
-    pub end: Option<DualTime>,
-}
-
-impl ThreadBlock {
-    pub fn new(buffer_size: usize, stream_id: String) -> Self {
-        let events = ThreadEventQueue::new(buffer_size);
-        Self {
-            stream_id,
-            begin: DualTime::now(),
-            events,
-            end: None,
-        }
-    }
-    pub fn close(&mut self) {
-        self.end = Some(DualTime::now());
-    }
-}
+pub type ThreadBlock = EventBlock<ThreadEventQueue>;
 
 fn record_scope_event_dependencies<T: ScopeEvent>(
     evt: &T,

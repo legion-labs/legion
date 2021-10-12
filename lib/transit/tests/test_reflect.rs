@@ -1,4 +1,4 @@
-use transit::*;
+use transit::prelude::*;
 
 #[derive(TransitReflect)]
 #[allow(dead_code)]

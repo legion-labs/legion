@@ -1,4 +1,4 @@
-use transit::*;
+use transit::prelude::*;
 
 #[derive(Debug, TransitReflect)]
 pub struct MyTestEvent {
