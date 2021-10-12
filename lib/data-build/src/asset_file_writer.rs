@@ -14,7 +14,7 @@ pub fn write_assetfile<A, R>(
     mut writer: impl std::io::Write,
 ) -> Result<usize, Error>
 where
-    A: Iterator<Item = (ResourceId, i128)> + Clone,
+    A: Iterator<Item = (ResourceId, u128)> + Clone,
     R: Iterator<Item = (ResourceId, (ResourceId, ResourceId))> + Clone,
 {
     let mut written = 0;
@@ -46,7 +46,7 @@ where
         written += std::mem::size_of::<u128>();
     }
 
-    // secion header
+    // section header
     let kind = asset_list.clone().next().unwrap().0.ty();
     writer
         .write_u32::<LittleEndian>(unsafe { std::mem::transmute::<ResourceType, u32>(kind) })

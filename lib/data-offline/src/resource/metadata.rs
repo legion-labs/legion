@@ -88,7 +88,7 @@ impl Metadata {
 
     pub(crate) fn new_with_dependencies(
         name: ResourcePathName,
-        content_checksum: i128,
+        content_checksum: u128,
         deps: &[ResourcePathId],
     ) -> Self {
         Self {

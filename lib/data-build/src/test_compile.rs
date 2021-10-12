@@ -333,7 +333,7 @@ fn intermediate_resource() {
 
     // validate integer
     {
-        let checksum: i128 = compile_output.resources[1].compiled_checksum.get();
+        let checksum = compile_output.resources[1].compiled_checksum.get();
         assert!(content_store.exists(checksum));
         let resource_content = content_store.read(checksum).expect("asset content");
 

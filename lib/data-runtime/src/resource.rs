@@ -166,11 +166,11 @@ pub trait Resource {
 
 /// Checksum of a resource.
 #[derive(Copy, Clone, Debug, Eq)]
-pub struct ResourceChecksum(i128);
+pub struct ResourceChecksum(u128);
 
 impl ResourceChecksum {
     /// Retrieve value of checksum as a signed 128 bit integer.
-    pub fn get(&self) -> i128 {
+    pub fn get(&self) -> u128 {
         self.0
     }
 }
@@ -187,13 +187,13 @@ impl Hash for ResourceChecksum {
     }
 }
 
-impl From<i128> for ResourceChecksum {
-    fn from(value: i128) -> Self {
+impl From<u128> for ResourceChecksum {
+    fn from(value: u128) -> Self {
         Self(value)
     }
 }
 
-impl From<ResourceChecksum> for i128 {
+impl From<ResourceChecksum> for u128 {
     fn from(value: ResourceChecksum) -> Self {
         value.0
     }
@@ -209,7 +209,7 @@ impl FromStr for ResourceChecksum {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let value = i128::from_str_radix(s, 16)?;
+        let value = u128::from_str_radix(s, 16)?;
         Ok(Self(value))
     }
 }
@@ -224,7 +224,7 @@ impl Serialize for ResourceChecksum {
             let hex = hex::encode(bytes);
             serializer.serialize_str(&hex)
         } else {
-            serializer.serialize_i128(self.0)
+            serializer.serialize_u128(self.0)
         }
     }
 }
@@ -240,9 +240,9 @@ impl<'de> Deserialize<'de> for ResourceChecksum {
             if deserializer.is_human_readable() {
                 let hex = String::deserialize(deserializer)?;
                 let digits = hex::decode(hex).map_err(D::Error::custom)?;
-                i128::from_be_bytes(digits.try_into().unwrap())
+                u128::from_be_bytes(digits.try_into().unwrap())
             } else {
-                i128::deserialize(deserializer)?
+                u128::deserialize(deserializer)?
             }
         };
         Ok(value.into())
