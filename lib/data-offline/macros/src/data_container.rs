@@ -315,8 +315,30 @@ fn generate_offline_json_writes(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
         .collect()
 }
 
+/// Generate the JSON write serialization for members.
+/// Don't serialize members at default values
+/// Skip 'transient' value
+fn generate_offline_rpc_writes(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
+    members
+        .iter()
+        .filter(|m| !m.transient)
+        .map(|m| {
+            let mut hasher = DefaultHasher::new();
+            m.name.hash(&mut hasher);
+            let hash_value: u64 = hasher.finish();
+            let member_ident = format_ident!("{}", &m.name);
+            quote! {
+                #hash_value => self.#member_ident.parse_from_str(field_value)?,
+            }
+        })
+        .collect()
+}
+
 #[allow(clippy::too_many_lines)]
-pub fn derive_data_container(input: TokenStream) -> TokenStream {
+pub fn derive_data_container(
+    input: TokenStream,
+    _mapping_table: &[(&'static str, &'static str)],
+) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let offline_identifier = ast.ident.clone();
     let offline_name = format!("{}", ast.ident);
@@ -364,6 +386,8 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
     let offline_fields_defaults = generate_offline_defaults(&members);
     let offline_fields_json_reads = generate_offline_json_reads(&members);
     let offline_fields_json_writes = generate_offline_json_writes(&members);
+
+    let offline_fields_rpc_writes = generate_offline_rpc_writes(&members);
 
     let runtime_fields = generate_runtime_fields(&members);
     let runtime_fields_defaults = generate_runtime_defaults(&members);
@@ -435,6 +459,19 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
                 let compiled_asset = bincode::serialize(&runtime).map_err(|err| "invalid serialization")?;
                 Ok(compiled_asset)
             }
+
+            fn write_field_by_name(&mut self, field_name : &str, field_value : &str) -> Result<(), &'static str> {
+
+                let mut hasher = DefaultHasher::new();
+                field_name.hash(&mut hasher);
+                match hasher.finish() {
+                    #(#offline_fields_rpc_writes)*
+                    _ => return Err("invalid field"),
+                }
+                Ok(())
+            }
+
+
 
             const SIGNATURE_HASH : u64 = #signature_hash;
         }
