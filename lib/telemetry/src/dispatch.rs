@@ -1,8 +1,10 @@
 use crate::event_block::TelemetryBlock;
+use crate::metrics_block::MetricsStream;
 use crate::{
-    now, BeginScopeEvent, EndScopeEvent, EventBlockSink, GetScopeDesc, LogBlock, LogDynMsgEvent,
-    LogLevel, LogMsgEvent, LogStream, NullEventSink, ProcessInfo, Stream, TelemetrySinkEvent,
-    ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream,
+    now, BeginScopeEvent, EndScopeEvent, EventBlockSink, FloatMetricEvent, GetScopeDesc,
+    IntegerMetricEvent, LogBlock, LogDynMsgEvent, LogLevel, LogMsgEvent, LogStream, MetricDesc,
+    MetricsBlock, NullEventSink, ProcessInfo, Stream, TelemetrySinkEvent, ThreadBlock,
+    ThreadEventQueueTypeIndex, ThreadStream,
 };
 use chrono::Utc;
 use std::{
@@ -14,7 +16,9 @@ struct Dispatch {
     process_id: String,
     log_buffer_size: usize,
     thread_buffer_size: usize,
+    metrics_buffer_size: usize,
     log_stream: Mutex<LogStream>,
+    metrics_stream: Mutex<MetricsStream>,
     sink: Arc<dyn EventBlockSink>,
 }
 
@@ -22,6 +26,7 @@ impl Dispatch {
     pub fn new(
         log_buffer_size: usize,
         thread_buffer_size: usize,
+        metrics_buffer_size: usize,
         sink: Arc<dyn EventBlockSink>,
     ) -> Self {
         let process_id = uuid::Uuid::new_v4().to_string();
@@ -29,10 +34,16 @@ impl Dispatch {
             process_id: process_id.clone(),
             log_buffer_size,
             thread_buffer_size,
+            metrics_buffer_size,
             log_stream: Mutex::new(LogStream::new(
                 log_buffer_size,
-                process_id,
+                process_id.clone(),
                 &[String::from("log")],
+            )),
+            metrics_stream: Mutex::new(MetricsStream::new(
+                metrics_buffer_size,
+                process_id,
+                &[String::from("metrics")],
             )),
             sink,
         };
@@ -87,6 +98,41 @@ impl Dispatch {
     fn on_init_thread_stream(&mut self, stream: &ThreadStream) {
         self.sink
             .on_sink_event(TelemetrySinkEvent::OnInitStream(stream.get_stream_info()));
+    }
+
+    fn on_int_metric(&mut self, metric: &'static MetricDesc, value: u64) {
+        let mut metrics_stream = self.metrics_stream.lock().unwrap();
+        metrics_stream
+            .get_events_mut()
+            .push(IntegerMetricEvent { metric, value });
+        if metrics_stream.is_full() {
+            drop(metrics_stream);
+            self.on_metrics_buffer_full();
+        }
+    }
+
+    fn on_float_metric(&mut self, metric: &'static MetricDesc, value: f64) {
+        let mut metrics_stream = self.metrics_stream.lock().unwrap();
+        metrics_stream
+            .get_events_mut()
+            .push(FloatMetricEvent { metric, value });
+        if metrics_stream.is_full() {
+            drop(metrics_stream);
+            self.on_metrics_buffer_full();
+        }
+    }
+
+    fn on_metrics_buffer_full(&mut self) {
+        let mut metrics_stream = self.metrics_stream.lock().unwrap();
+        let stream_id = metrics_stream.get_stream_id();
+        let mut old_event_block = metrics_stream.replace_block(Arc::new(MetricsBlock::new(
+            self.metrics_buffer_size,
+            stream_id,
+        )));
+        assert!(!metrics_stream.is_full());
+        Arc::get_mut(&mut old_event_block).unwrap().close();
+        self.sink
+            .on_sink_event(TelemetrySinkEvent::OnMetricsBufferFull(old_event_block));
     }
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
@@ -159,13 +205,19 @@ thread_local! {
 pub fn init_event_dispatch(
     log_buffer_size: usize,
     thread_buffer_size: usize,
+    metrics_buffer_size: usize,
     sink: Arc<dyn EventBlockSink>,
 ) -> Result<(), String> {
     unsafe {
         if G_DISPATCH.is_some() {
             panic!("event dispatch already initialized");
         }
-        G_DISPATCH = Some(Dispatch::new(log_buffer_size, thread_buffer_size, sink));
+        G_DISPATCH = Some(Dispatch::new(
+            log_buffer_size,
+            thread_buffer_size,
+            metrics_buffer_size,
+            sink,
+        ));
     }
     Ok(())
 }
@@ -174,6 +226,22 @@ pub fn shutdown_event_dispatch() {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.on_shutdown();
+        }
+    }
+}
+
+pub fn record_int_metric(metric_desc: &'static MetricDesc, value: u64) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.on_int_metric(metric_desc, value);
+        }
+    }
+}
+
+pub fn record_float_metric(metric_desc: &'static MetricDesc, value: f64) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.on_float_metric(metric_desc, value);
         }
     }
 }
@@ -198,6 +266,14 @@ pub fn flush_log_buffer() {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
             d.on_log_buffer_full();
+        }
+    }
+}
+
+pub fn flush_metrics_buffer() {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.on_metrics_buffer_full();
         }
     }
 }

@@ -42,3 +42,13 @@ impl ScopeEvent for EndScopeEvent {
         self.scope
     }
 }
+
+#[derive(Debug, TransitReflect)]
+pub struct ReferencedScope {
+    pub id: u64,
+    pub name: *const u8,
+    pub filename: *const u8,
+    pub line: u32,
+}
+
+impl InProcSerialize for ReferencedScope {}

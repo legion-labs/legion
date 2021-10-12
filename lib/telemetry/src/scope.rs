@@ -1,5 +1,4 @@
 use crate::{on_end_scope, GetScopeDesc};
-use transit::prelude::*;
 
 #[derive(Debug)]
 pub struct ScopeDesc {
@@ -7,16 +6,6 @@ pub struct ScopeDesc {
     pub filename: &'static str,
     pub line: u32,
 }
-
-#[derive(Debug, TransitReflect)]
-pub struct ReferencedScope {
-    pub id: u64,
-    pub name: *const u8,
-    pub filename: *const u8,
-    pub line: u32,
-}
-
-impl InProcSerialize for ReferencedScope {}
 
 pub struct ScopeGuard {
     // the value of the function pointer will identity the scope uniquely within that process instance

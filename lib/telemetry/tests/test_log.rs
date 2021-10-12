@@ -54,10 +54,21 @@ fn test_log_thread() {
     }
 }
 
+fn test_metrics() {
+    static FRAME_TIME_METRIC: MetricDesc = MetricDesc {
+        name: "Frame Time",
+        unit: "ticks",
+    };
+    record_int_metric(&FRAME_TIME_METRIC, 1000);
+    record_float_metric(&FRAME_TIME_METRIC, 1.0);
+    flush_metrics_buffer();
+}
+
 #[test]
 fn test_log() {
     let sink: Arc<dyn EventBlockSink> = Arc::new(DebugEventSink {});
-    init_event_dispatch(1024 * 10, 1024 * 12, sink).unwrap();
+    init_event_dispatch(1024 * 10, 1024 * 12, 1024 * 12, sink).unwrap();
     test_log_str();
     test_log_thread();
+    test_metrics();
 }

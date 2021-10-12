@@ -1,4 +1,4 @@
-use crate::{LogBlock, ProcessInfo, StreamInfo, ThreadBlock};
+use crate::{LogBlock, MetricsBlock, ProcessInfo, StreamInfo, ThreadBlock};
 use std::sync::Arc;
 
 // TelemetrySinkEvent are sent when something is worth 'writing home about'
@@ -8,6 +8,7 @@ pub enum TelemetrySinkEvent {
     OnInitProcess(ProcessInfo),
     OnInitStream(StreamInfo),
     OnLogBufferFull(Arc<LogBlock>),
+    OnMetricsBufferFull(Arc<MetricsBlock>),
     OnThreadBufferFull(Arc<ThreadBlock>),
     OnShutdown,
 }

@@ -1,10 +1,9 @@
-use std::collections::HashSet;
-
 use crate::{
     compress, event_block::EventBlock, EncodedBlock, EventStream, LogDynMsgEvent, LogMsgEvent,
     StreamBlock,
 };
 use anyhow::Result;
+use std::collections::HashSet;
 use transit::prelude::*;
 
 declare_queue_struct!(

@@ -1,5 +1,6 @@
 use legion_telemetry::*;
 use LogMsgQueueAny::*;
+use MetricsMsgQueueAny::*;
 use ThreadEventQueueAny::*;
 
 pub struct DebugEventSink {}
@@ -28,6 +29,17 @@ impl EventBlockSink for DebugEventSink {
                     }
                 }
                 if let Err(e) = thread_buffer.encode() {
+                    dbg!(e);
+                }
+            }
+            TelemetrySinkEvent::OnMetricsBufferFull(buffer) => {
+                for event in buffer.events.iter() {
+                    match event {
+                        IntegerMetricEvent(_evt) => {}
+                        FloatMetricEvent(_evt) => {}
+                    }
+                }
+                if let Err(e) = buffer.encode() {
                     dbg!(e);
                 }
             }

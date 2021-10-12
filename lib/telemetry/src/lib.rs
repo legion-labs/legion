@@ -84,6 +84,7 @@ pub use guard::*;
 pub use log_block::*;
 pub use log_bridge::*;
 pub use log_events::*;
+pub use metrics_block::*;
 pub use scope::*;
 pub use stream::*;
 pub use thread_block::*;

@@ -31,7 +31,7 @@ pub fn init_telemetry() {
         Ok(url) => Arc::new(GRPCEventSink::new(&url)),
         Err(_no_url_in_env) => Arc::new(NullEventSink {}),
     };
-    init_event_dispatch(1024, 1024 * 1024, sink).unwrap();
+    init_event_dispatch(1024, 5 * 1024 * 1024, 1024 * 1024, sink).unwrap();
     setup_log_bridge().unwrap();
 }
 
