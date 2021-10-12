@@ -15,11 +15,13 @@ legion-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
 legion-resource-registry = { path = "../../plugin/resource-registry", version = "0.1.0" }
 legion-streamer = { path = "../../plugin/streamer", version = "0.1.0" }
 legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
+legion-editor-proto = { path = "../../proto/editor", version = "0.1.0" }
 tokio = { version = "1.12", features = ["full"] }
 clap = "2.33"
 simple_logger = "1.13"
 log = "0.4"
 anyhow = "1.0"
+tonic = "0.5"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 legion-streamer = { path = "../../plugin/streamer", features = ["vulkan"] }

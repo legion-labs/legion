@@ -1,8 +1,6 @@
 syntax = "proto3";
 package editor;
 
-import "google/protobuf/any.proto";
-
 service Editor {
   rpc SearchResources(SearchResourcesRequest) returns (SearchResourcesResponse);
 
@@ -36,9 +34,9 @@ message GetResourcePropertiesResponse {
 
 message ResourceProperty {
   string name = 1;
-  string type = 2;
-  google.protobuf.Any defaultValue = 3;
-  google.protobuf.Any value = 4;
+  string ptype = 2;
+  bytes defaultValue = 3;
+  bytes value = 4;
   string group = 5;
 }
 
@@ -51,5 +49,5 @@ message UpdateResourcePropertiesResponse {}
 
 message ResourcePropertyUpdate {
   string name = 1;
-  google.protobuf.Any value = 4;
+  bytes value = 4;
 }

@@ -12,6 +12,11 @@ use legion_transform::TransformPlugin;
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 
+mod grpc;
+mod plugin;
+
+use plugin::EditorPlugin;
+
 fn main() {
     SimpleLogger::new()
         .with_level(LevelFilter::Info)
@@ -85,6 +90,7 @@ fn main() {
         .insert_resource(ResourceRegistrySettings::new(project_folder))
         .add_plugin(ResourceRegistryPlugin::default())
         .add_plugin(StreamerPlugin {})
+        .add_plugin(EditorPlugin {})
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,
