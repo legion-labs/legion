@@ -123,7 +123,6 @@ impl FramebufferVulkan {
         };
 
         let framebuffer_create_info = vk::FramebufferCreateInfo::builder()
-            // .flags(vk::FramebufferCreateFlags::IMAGELESS)
             .render_pass(framebuffer_def.renderpass.vk_renderpass())
             .attachments(&image_views)
             .width(extents.width)

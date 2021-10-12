@@ -128,7 +128,7 @@ fn run() -> GfxResult<()> {
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
             let view_def = BufferViewDef {
-                buffer_view_type: BufferViewType::ShaderResourceView,
+                buffer_view_type: BufferViewType::ConstantBufferView,
                 offset: 0,
                 size: uniform_buffer.buffer_def().size
             };
