@@ -334,6 +334,29 @@ fn generate_offline_rpc_writes(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
         .collect()
 }
 
+/// Generate the Editor Property Descriptor info
+fn generate_offline_editor_descriptors(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
+    members
+        .iter()
+        .filter(|m| !m.transient)
+        .map(|m| {
+            let member_ident = format_ident!("{}", &m.name);
+            let prop_name = &m.name;
+            let group_name = &m.category;
+            let prop_type = &m.type_name;
+            quote! {
+                output.push(PropertyDescriptor {
+                    name : #prop_name,
+                    type_name : #prop_type,
+                    default_value : bincode::serialize(&default_obj.#member_ident).map_err(|_err| "bincode error")?,
+                    value : bincode::serialize(&self.#member_ident).map_err(|_err| "bincode error")?,
+                    group : #group_name.into(),
+                });
+            }
+        })
+        .collect()
+}
+
 #[allow(clippy::too_many_lines)]
 pub fn derive_data_container(
     input: TokenStream,
@@ -386,8 +409,8 @@ pub fn derive_data_container(
     let offline_fields_defaults = generate_offline_defaults(&members);
     let offline_fields_json_reads = generate_offline_json_reads(&members);
     let offline_fields_json_writes = generate_offline_json_writes(&members);
-
     let offline_fields_rpc_writes = generate_offline_rpc_writes(&members);
+    let offline_fields_editor_descriptors = generate_offline_editor_descriptors(&members);
 
     let runtime_fields = generate_runtime_fields(&members);
     let runtime_fields_defaults = generate_runtime_defaults(&members);
@@ -452,7 +475,7 @@ pub fn derive_data_container(
                 Ok(())
             }
 
-            fn compile_runtime(&self) -> Result<Vec<u8>, String> {
+            fn compile_runtime(&self) -> Result<Vec<u8>, &'static str> {
                 let runtime = #runtime_ident {
                     #(#runtime_fields_from_offline)*
                 };
@@ -471,6 +494,12 @@ pub fn derive_data_container(
                 Ok(())
             }
 
+            fn get_editor_properties(&self) -> Result<Vec<PropertyDescriptor>, &'static str> {
+                let default_obj = Self { ..Default::default() };
+                let mut output = Vec::<PropertyDescriptor>::new();
+                #(#offline_fields_editor_descriptors)*
+                Ok(output)
+            }
 
 
             const SIGNATURE_HASH : u64 = #signature_hash;

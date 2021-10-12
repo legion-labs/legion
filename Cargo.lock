@@ -3297,8 +3297,12 @@ dependencies = [
  "legion-data-offline",
  "legion-data-runtime",
  "legion-ecs",
+ "legion-editor-proto",
  "legion-graphics-offline",
+ "prost",
+ "prost-types",
  "sample-data-compiler",
+ "tonic",
 ]
 
 [[package]]

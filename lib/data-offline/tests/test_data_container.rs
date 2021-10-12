@@ -1,4 +1,4 @@
-use legion_data_offline::data_container::{OfflineDataContainer, ParseFromStr};
+use legion_data_offline::data_container::{OfflineDataContainer, ParseFromStr, PropertyDescriptor};
 pub use legion_data_offline_macros::DataContainer;
 use legion_math::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ pub enum EnumTest {
 
 impl ParseFromStr for EnumTest {
     fn parse_from_str(&mut self, field_value: &str) -> Result<(), &'static str> {
-        *self = match field_value {
+        *self = match field_value.trim() {
             "Value0" => EnumTest::Value0,
             "Value1" => EnumTest::Value1,
             "Value2" => EnumTest::Value2,
@@ -154,4 +154,59 @@ fn test_compile_data_container() {
             assert_eq!(runtime_asset.test_blob, vec![0, 1, 2, 3]);
         }
     }
+}
+
+#[test]
+fn test_write_field_by_name() {
+    let mut entity = TestEntity {
+        ..Default::default()
+    };
+
+    entity
+        .write_field_by_name("test_string", "New Value")
+        .unwrap();
+    assert_eq!(entity.test_string, "New Value");
+
+    entity
+        .write_field_by_name("test_position", "1.1, -2.2, 3.3")
+        .unwrap();
+    assert_eq!(entity.test_position, Vec3::new(1.1, -2.2, 3.3));
+
+    entity
+        .write_field_by_name("test_rotation", "0,1,0,0")
+        .unwrap();
+    assert_eq!(entity.test_rotation, Quat::from_xyzw(0.0, 1.0, 0.0, 0.0));
+
+    entity.write_field_by_name("test_bool", " true").unwrap();
+    assert!(entity.test_bool);
+
+    entity
+        .write_field_by_name("test_float32", " 1.23 ")
+        .unwrap();
+    assert!((entity.test_float32 - 1.23).abs() < f32::EPSILON);
+
+    entity
+        .write_field_by_name("test_float64", "  2.45 ")
+        .unwrap();
+    assert!((entity.test_float64 - 2.45).abs() < f64::EPSILON);
+
+    entity.write_field_by_name("test_enum", "Value1").unwrap();
+    assert_eq!(entity.test_enum, EnumTest::Value1);
+
+    entity.write_field_by_name("test_int", " -10").unwrap();
+    assert_eq!(entity.test_int, -10);
+
+    entity
+        .write_field_by_name("test_blob", "\x04\x05\x06\x07")
+        .unwrap();
+    assert_eq!(entity.test_blob, vec![4, 5, 6, 7]);
+}
+
+#[test]
+fn test_editor_descriptors() {
+    let entity = TestEntity {
+        ..Default::default()
+    };
+
+    let _descriptors = entity.get_editor_properties().unwrap();
 }
