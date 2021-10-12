@@ -13,7 +13,7 @@ legion-data-runtime = { path = "../data-runtime" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 petgraph = "0.6"
-byteorder = "1"
+byteorder = "1.4"
 hex = "0.4.3"
 
 [dev-dependencies]
@@ -26,4 +26,6 @@ text-resource = { path = "../data-offline/test-text-resource" }
 multitext-resource = { path = "../data-offline/test-multitext-resource" }
 
 [package.metadata.cargo-udeps.ignore]
-development = ["test-compilers"] # non-lib dependency; to make sure compilers that are used for tests are built.
+development = [
+    "test-compilers",
+] # non-lib dependency; to make sure compilers that are used for tests are built.

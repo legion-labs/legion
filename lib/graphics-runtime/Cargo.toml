@@ -9,4 +9,4 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 legion-data-runtime = { path = "../data-runtime" }
-byteorder = "1"
+byteorder = "1.4"
