@@ -2930,6 +2930,7 @@ name = "legion-content-store"
 version = "0.1.0"
 dependencies = [
  "hex",
+ "siphasher",
 ]
 
 [[package]]

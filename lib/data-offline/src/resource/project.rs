@@ -6,16 +6,13 @@ use crate::resource::{
 };
 
 use core::fmt;
-use std::collections::hash_map::DefaultHasher;
 use std::{
     fs::{self, File, OpenOptions},
-    hash::Hasher,
-};
-use std::{
-    io::{Read, Seek},
+    io::Seek,
     path::{Path, PathBuf},
 };
 
+use legion_content_store::content_checksum_from_read;
 use legion_data_runtime::{ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
@@ -283,19 +280,7 @@ impl Project {
 
         let content_checksum = {
             let mut resource_file = File::open(&resource_path).map_err(Error::IOError)?;
-
-            let mut hasher = DefaultHasher::new();
-            let mut buffer = [0; 1024];
-            loop {
-                let count = resource_file.read(&mut buffer).map_err(Error::IOError)?;
-                if count == 0 {
-                    break;
-                }
-
-                hasher.write(&buffer[..count]);
-            }
-
-            i128::from(hasher.finish())
+            content_checksum_from_read(&mut resource_file).map_err(Error::IOError)?
         };
 
         let meta_file = File::create(&meta_path).map_err(|e| {
@@ -343,19 +328,7 @@ impl Project {
 
         let content_checksum = {
             let mut resource_file = File::open(&resource_path).map_err(Error::IOError)?;
-
-            let mut hasher = DefaultHasher::new();
-            let mut buffer = [0; 1024];
-            loop {
-                let count = resource_file.read(&mut buffer).map_err(Error::IOError)?;
-                if count == 0 {
-                    break;
-                }
-
-                hasher.write(&buffer[..count]);
-            }
-
-            i128::from(hasher.finish())
+            content_checksum_from_read(&mut resource_file).map_err(Error::IOError)?
         };
 
         metadata.content_checksum = content_checksum.into();

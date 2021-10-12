@@ -56,18 +56,40 @@
 #![allow()]
 #![warn(missing_docs)]
 
+use siphasher::sip128::{self, Hasher128};
+use std::hash::Hasher;
 use std::{
-    collections::hash_map::DefaultHasher,
     fmt,
-    hash::{Hash, Hasher},
+    hash::Hash,
+    io,
     path::{Path, PathBuf},
 };
 
 /// Returns the hash of the provided data.
-pub fn content_checksum(data: &[u8]) -> i128 {
-    let mut hasher = DefaultHasher::new();
+pub fn content_checksum(data: &[u8]) -> u128 {
+    let mut hasher = sip128::SipHasher::new();
     data.hash(&mut hasher);
-    i128::from(hasher.finish())
+    hasher.finish128().into()
+}
+
+/// Returns the hash of the data provided through a Read trait.
+///
+/// # Errors
+///
+/// If an error is returned, the checksum is unavailable.
+pub fn content_checksum_from_read(data: &mut impl io::Read) -> io::Result<u128> {
+    let mut hasher = sip128::SipHasher::new();
+    let mut buffer = [0; 1024];
+    loop {
+        let count = data.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+
+        hasher.write(&buffer[..count]);
+    }
+
+    Ok(hasher.finish128().into())
 }
 
 /// The address of the [`ContentStore`].
@@ -108,19 +130,19 @@ impl fmt::Display for ContentStoreAddr {
 // todo: change Option to Error
 pub trait ContentStore: Send {
     /// Write content to the backing storage.
-    fn write(&mut self, id: i128, data: &[u8]) -> Option<()>;
+    fn write(&mut self, id: u128, data: &[u8]) -> Option<()>;
 
     /// Read content from the backing storage.
-    fn read(&self, id: i128) -> Option<Vec<u8>>;
+    fn read(&self, id: u128) -> Option<Vec<u8>>;
 
     /// Remove content from the backing storage.
-    fn remove(&mut self, id: i128);
+    fn remove(&mut self, id: u128);
 
     /// Returns the description of the content if it exists.
     ///
     /// This default implementation is quite inefficient as it involves reading the content's
     /// content to calculate its checksum.
-    fn exists(&self, id: i128) -> bool {
+    fn exists(&self, id: u128) -> bool {
         self.read(id).is_some()
     }
 
@@ -128,7 +150,7 @@ pub trait ContentStore: Send {
     ///
     /// This method calls [`write`](#method.write) to store the content and [`read`](#method.read) afterwards
     /// to perform the validation.
-    fn store(&mut self, data: &[u8]) -> Option<i128> {
+    fn store(&mut self, data: &[u8]) -> Option<u128> {
         let id = content_checksum(data);
         self.write(id, data)?;
 
