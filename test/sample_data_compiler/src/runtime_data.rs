@@ -4,7 +4,7 @@ use std::{
 };
 
 use legion_data_runtime::{
-    resource, Asset, AssetLoader, AssetRegistryOptions, Reference, Resource, ResourceId,
+    resource, Asset, AssetLoader, AssetRegistryOptions, Reference, Resource,
 };
 use legion_graphics_runtime::Material;
 use legion_math::prelude::*;
@@ -23,7 +23,7 @@ pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
 #[derive(Serialize, Deserialize)]
 pub struct Entity {
     pub name: String,
-    pub children: Vec<ResourceId>,
+    pub children: Vec<Reference<Entity>>,
     pub parent: Reference<Entity>,
     pub components: Vec<Box<dyn Component>>,
 }

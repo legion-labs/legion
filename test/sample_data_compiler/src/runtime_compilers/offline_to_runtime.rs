@@ -1,4 +1,4 @@
-use legion_data_offline::ResourcePathId;
+use legion_data_runtime::Reference;
 use sample_data_compiler::{offline_data, offline_to_runtime::to_reference, runtime_data};
 
 pub trait FromOffline<T> {
@@ -12,7 +12,7 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
         let children = offline
             .children
             .iter()
-            .map(ResourcePathId::content_id)
+            .map(|path| Reference::Passive(path.content_id()))
             .collect();
         let mut components: Vec<Box<dyn runtime_data::Component>> = Vec::new();
         for component in &offline.components {

@@ -16,9 +16,14 @@ impl SecondaryAssets {
     }
 }
 
-impl<'a> Extend<&'a ResourceId> for SecondaryAssets {
-    fn extend<T: IntoIterator<Item = &'a ResourceId>>(&mut self, iter: T) {
-        self.0.extend(iter);
+impl<'a, T> Extend<&'a Reference<T>> for SecondaryAssets
+where
+    T: Any + Resource,
+{
+    fn extend<I: IntoIterator<Item = &'a Reference<T>>>(&mut self, iter: I) {
+        for asset_id in iter {
+            self.push(asset_id);
+        }
     }
 }
 
