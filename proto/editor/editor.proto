@@ -1,0 +1,61 @@
+syntax = "proto3";
+package editor;
+
+import "google/protobuf/any.proto";
+
+service Editor {
+  rpc SearchResources(SearchResourcesRequest)
+      returns (SearchResourcesResponse);
+      
+      rpc GetResourceProperties(GetResourcePropertiesRequest)
+      returns (GetResourcePropertiesResponse);
+      
+      rpc UpdateResourceProperties(UpdateResourcePropertiesRequest)
+      returns (UpdateResourcePropertiesResponse);
+}
+
+message SearchResourcesRequest {
+  string searchToken = 1;
+}
+
+message SearchResourcesResponse {
+  string nextSearchToken = 1;
+  uint64 total = 2;
+  repeated ResourceDescription resourceDescriptions = 3;
+}
+
+message ResourceDescription {
+  string id = 1;
+  string path = 2;
+  uint32 version = 3;
+}
+
+message GetResourcePropertiesRequest {
+  string id = 1;
+}
+
+message GetResourcePropertiesResponse {
+  ResourceDescription description = 1;
+  repeated ResourceProperty properties = 2;
+}
+
+message ResourceProperty {
+  string name = 1;
+  string type = 2;
+  google.protobuf.Any defaultValue = 3;
+  google.protobuf.Any value = 4;
+  string group = 5;
+}
+
+message UpdateResourcePropertiesRequest {
+  string id = 1;
+  repeated ResourcePropertyUpdate propertyUpdates = 2;
+}
+
+message UpdateResourcePropertiesResponse {
+}
+
+message ResourcePropertyUpdate {
+  string name = 1;
+  google.protobuf.Any value = 4;
+}

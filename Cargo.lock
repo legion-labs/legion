@@ -3089,6 +3089,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-editor-proto"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "prost",
+ "prost-types",
+ "tokio",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "legion-graphics-api"
 version = "0.1.0"
 dependencies = [
