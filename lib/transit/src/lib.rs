@@ -58,18 +58,16 @@
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 
 pub mod dyn_string;
-pub mod iter;
+pub mod heterogeneous_queue;
 pub mod parser;
 pub mod reflect;
-pub mod reflective_queue;
 pub mod serialize;
 pub mod static_string;
 
 pub use dyn_string::*;
-pub use iter::*;
+pub use heterogeneous_queue::*;
 pub use parser::*;
 pub use reflect::*;
-pub use reflective_queue::*;
 pub use serialize::*;
 pub use static_string::*;
 
@@ -79,7 +77,7 @@ extern crate derive_transit;
 
 pub mod prelude {
     pub use crate::{
-        read_pod, write_pod, DynString, InProcSerialize, IterableQueue, Member, QueueIterator,
+        read_pod, write_pod, DynString, HeterogeneousQueue, InProcSerialize, Member, QueueIterator,
         Reflect, StaticString, UserDefinedType,
     };
     pub use derive_transit::*;

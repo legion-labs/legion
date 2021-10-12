@@ -1,6 +1,6 @@
 use crate::{
-    make_queue_metedata, on_end_scope, GetScopeDesc, Stream, StreamInfo, ThreadBlock,
-    ThreadDepsQueue, ThreadEventQueue, ThreadEventQueueTypeIndex,
+    event_block::TelemetryBlock, make_queue_metedata, on_end_scope, GetScopeDesc, Stream,
+    StreamInfo, ThreadBlock, ThreadDepsQueue, ThreadEventQueue,
 };
 use core::arch::x86_64::_rdtsc;
 use std::sync::Arc;
@@ -69,48 +69,43 @@ macro_rules! trace_scope {
     };
 }
 
-pub struct ThreadStream {
-    current_block: Arc<ThreadBlock>,
+pub struct EventStream<Block> {
+    current_block: Arc<Block>,
     initial_size: usize,
     stream_id: String,
     process_id: String,
 }
 
-impl ThreadStream {
+pub type ThreadStream = EventStream<ThreadBlock>;
+
+impl<Block> EventStream<Block>
+where
+    Block: TelemetryBlock,
+{
     pub fn new(buffer_size: usize, process_id: String) -> Self {
         let stream_id = uuid::Uuid::new_v4().to_string();
         Self {
-            current_block: Arc::new(ThreadBlock::new(
-                ThreadEventQueue::new(buffer_size),
-                stream_id.clone(),
-            )),
+            current_block: Arc::new(Block::new(buffer_size, stream_id.clone())),
             initial_size: buffer_size,
             stream_id,
             process_id,
         }
     }
 
-    pub fn replace_block(&mut self, new_block: Arc<ThreadBlock>) -> Arc<ThreadBlock> {
+    pub fn replace_block(&mut self, new_block: Arc<Block>) -> Arc<Block> {
         let old_block = self.current_block.clone();
         self.current_block = new_block;
         old_block
     }
 
-    pub fn push_event<T>(&mut self, event: T)
-    where
-        T: InProcSerialize + ThreadEventQueueTypeIndex,
-    {
-        self.get_events_mut().push(event);
-    }
-
     pub fn is_full(&self) -> bool {
         let max_object_size = 1;
-        self.current_block.events.len_bytes() + max_object_size > self.initial_size
+        self.current_block.len_bytes() + max_object_size > self.initial_size
     }
 
-    fn get_events_mut(&mut self) -> &mut ThreadEventQueue {
+    pub fn get_events_mut(&mut self) -> &mut Block::Queue {
         //get_mut_unchecked should be faster
-        &mut Arc::get_mut(&mut self.current_block).unwrap().events
+        Arc::get_mut(&mut self.current_block).unwrap().events_mut()
     }
 }
 

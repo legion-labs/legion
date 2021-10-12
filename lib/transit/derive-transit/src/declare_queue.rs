@@ -64,15 +64,35 @@ fn gen_type_index_impls(
     }
 }
 
-fn gen_reflective_queue_impl(
+fn gen_hetero_queue_impl(
     struct_identifier: &syn::Ident,
     type_args: &[syn::Ident],
+    any_ident: &syn::Ident,
 ) -> quote::__private::TokenStream {
+    let read_method = gen_read_method(type_args, any_ident);
     quote! {
-        impl transit::ReflectiveQueue for #struct_identifier {
+        impl transit::HeterogeneousQueue for #struct_identifier {
+            type Item = #any_ident;
+
+            fn new(buffer_size: usize) -> Self {
+                Self { buffer: Vec::with_capacity(buffer_size), }
+            }
+
             fn reflect_contained() -> Vec<UserDefinedType> {
                 vec![ #(#type_args::reflect(),)* ]
             }
+
+
+            fn len_bytes(&self) -> usize{
+                self.buffer.len()
+            }
+
+            fn iter(&self) -> QueueIterator<'_, Self, #any_ident> {
+                QueueIterator::begin(self)
+            }
+
+            #read_method
+
         }
     }
 }
@@ -96,8 +116,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
     let any_ident = format_ident!("{}Any", struct_identifier);
     let type_index_ident = format_ident!("{}TypeIndex", struct_identifier);
     let type_index_impls = gen_type_index_impls(&type_args, &type_index_ident);
-    let read_method = gen_read_method(&type_args, &any_ident);
-    let reflective_queue_impl = gen_reflective_queue_impl(&struct_identifier, &type_args);
+    let reflective_queue_impl = gen_hetero_queue_impl(&struct_identifier, &type_args, &any_ident);
 
     TokenStream::from(quote! {
 
@@ -120,10 +139,6 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
         }
 
         impl #struct_identifier {
-            pub fn new(buffer_size: usize) -> Self {
-                Self { buffer: Vec::with_capacity(buffer_size), }
-            }
-
             pub fn as_bytes(&self) -> &[u8]{
                 &self.buffer
             }
@@ -162,21 +177,6 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
         }
 
         #type_index_impls
-
-        impl transit::IterableQueue for #struct_identifier {
-            type Item = #any_ident;
-
-            fn len_bytes(&self) -> usize{
-                self.buffer.len()
-            }
-
-            fn iter(&self) -> QueueIterator<'_, Self, #any_ident> {
-                QueueIterator::begin(self)
-            }
-
-            #read_method
-
-        }
 
     })
 }

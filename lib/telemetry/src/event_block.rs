@@ -8,17 +8,41 @@ pub struct EventBlock<Q> {
     pub end: Option<DualTime>,
 }
 
-impl<Q> EventBlock<Q> {
-    pub fn new(event_queue: Q, stream_id: String) -> Self {
+impl<Q> EventBlock<Q>
+where
+    Q: transit::HeterogeneousQueue,
+{
+    pub fn close(&mut self) {
+        self.end = Some(DualTime::now());
+    }
+}
+
+pub trait TelemetryBlock {
+    type Queue;
+    fn new(buffer_size: usize, stream_id: String) -> Self;
+    fn len_bytes(&self) -> usize;
+    fn events_mut(&mut self) -> &mut Self::Queue;
+}
+
+impl<Q> TelemetryBlock for EventBlock<Q>
+where
+    Q: transit::HeterogeneousQueue,
+{
+    type Queue = Q;
+    fn new(buffer_size: usize, stream_id: String) -> Self {
         Self {
             stream_id,
             begin: DualTime::now(),
-            events: event_queue,
+            events: Q::new(buffer_size),
             end: None,
         }
     }
 
-    pub fn close(&mut self) {
-        self.end = Some(DualTime::now());
+    fn len_bytes(&self) -> usize {
+        self.events.len_bytes()
+    }
+
+    fn events_mut(&mut self) -> &mut Self::Queue {
+        &mut self.events
     }
 }

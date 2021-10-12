@@ -1,9 +1,10 @@
+use crate::event_block::TelemetryBlock;
 use crate::{
     make_queue_metedata, LogBlock, LogDepsQueue, LogMsgQueue, LogMsgQueueTypeIndex, Stream,
     StreamInfo,
 };
 use std::sync::Arc;
-use transit::{InProcSerialize, IterableQueue};
+use transit::{HeterogeneousQueue, InProcSerialize};
 
 pub struct LogStream {
     current_block: Arc<LogBlock>,
@@ -34,10 +35,7 @@ impl LogStream {
     pub fn new(buffer_size: usize, process_id: String) -> Self {
         let stream_id = uuid::Uuid::new_v4().to_string();
         Self {
-            current_block: Arc::new(LogBlock::new(
-                LogMsgQueue::new(buffer_size),
-                stream_id.clone(),
-            )),
+            current_block: Arc::new(LogBlock::new(buffer_size, stream_id.clone())),
             initial_size: buffer_size,
             stream_id,
             process_id,

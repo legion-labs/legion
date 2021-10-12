@@ -91,7 +91,7 @@ pub use stream::*;
 pub use thread_block::*;
 pub use thread_stream::*;
 
-pub use transit::IterableQueue;
+pub use transit::HeterogeneousQueue;
 
 pub type ProcessInfo = legion_telemetry_proto::ingestion::Process;
 pub type StreamInfo = legion_telemetry_proto::ingestion::Stream;
