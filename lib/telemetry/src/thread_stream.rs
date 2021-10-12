@@ -1,9 +1,5 @@
-use crate::{
-    event_block::TelemetryBlock, make_queue_metedata, on_end_scope, GetScopeDesc, Stream,
-    StreamInfo, ThreadBlock, ThreadDepsQueue, ThreadEventQueue,
-};
+use crate::{on_end_scope, EventStream, GetScopeDesc, ThreadBlock, ThreadDepsQueue};
 use core::arch::x86_64::_rdtsc;
-use std::sync::Arc;
 use transit::prelude::*;
 
 #[derive(Debug)]
@@ -69,60 +65,4 @@ macro_rules! trace_scope {
     };
 }
 
-pub struct EventStream<Block> {
-    current_block: Arc<Block>,
-    initial_size: usize,
-    stream_id: String,
-    process_id: String,
-}
-
-pub type ThreadStream = EventStream<ThreadBlock>;
-
-impl<Block> EventStream<Block>
-where
-    Block: TelemetryBlock,
-{
-    pub fn new(buffer_size: usize, process_id: String) -> Self {
-        let stream_id = uuid::Uuid::new_v4().to_string();
-        Self {
-            current_block: Arc::new(Block::new(buffer_size, stream_id.clone())),
-            initial_size: buffer_size,
-            stream_id,
-            process_id,
-        }
-    }
-
-    pub fn replace_block(&mut self, new_block: Arc<Block>) -> Arc<Block> {
-        let old_block = self.current_block.clone();
-        self.current_block = new_block;
-        old_block
-    }
-
-    pub fn is_full(&self) -> bool {
-        let max_object_size = 1;
-        self.current_block.len_bytes() + max_object_size > self.initial_size
-    }
-
-    pub fn get_events_mut(&mut self) -> &mut Block::Queue {
-        //get_mut_unchecked should be faster
-        Arc::get_mut(&mut self.current_block).unwrap().events_mut()
-    }
-}
-
-impl Stream for ThreadStream {
-    fn get_stream_info(&self) -> StreamInfo {
-        let dependencies_meta = make_queue_metedata::<ThreadDepsQueue>();
-        let obj_meta = make_queue_metedata::<ThreadEventQueue>();
-        StreamInfo {
-            process_id: self.process_id.clone(),
-            stream_id: self.stream_id.clone(),
-            dependencies_metadata: Some(dependencies_meta),
-            objects_metadata: Some(obj_meta),
-            tags: vec![String::from("cpu")],
-        }
-    }
-
-    fn get_stream_id(&self) -> String {
-        self.stream_id.clone()
-    }
-}
+pub type ThreadStream = EventStream<ThreadBlock, ThreadDepsQueue>;

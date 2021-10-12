@@ -133,7 +133,11 @@ impl Dispatch {
     }
 
     fn init_thread_stream(&mut self, cell: &Cell<Option<ThreadStream>>) {
-        let thread_stream = ThreadStream::new(self.thread_buffer_size, self.process_id.clone());
+        let thread_stream = ThreadStream::new(
+            self.thread_buffer_size,
+            self.process_id.clone(),
+            &[String::from("cpu")],
+        );
         unsafe {
             let opt_ref = &mut *cell.as_ptr();
             self.on_init_thread_stream(&thread_stream);
