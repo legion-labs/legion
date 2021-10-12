@@ -1,37 +1,8 @@
+use legion_telemetry::*;
 use std::sync::Arc;
 use std::thread;
-
-use legion_telemetry::LogMsgQueueAny::*;
-use legion_telemetry::ThreadEventQueueAny::*;
-use legion_telemetry::*;
-
-struct DebugEventSink {}
-
-impl EventBlockSink for DebugEventSink {
-    fn on_sink_event(&self, event: TelemetrySinkEvent) {
-        match event {
-            TelemetrySinkEvent::OnInitProcess(_process_info) => {}
-            TelemetrySinkEvent::OnInitStream(_stream_info) => {}
-            TelemetrySinkEvent::OnLogBufferFull(log_buffer) => {
-                for event in log_buffer.events.iter() {
-                    match event {
-                        LogMsgEvent(_evt) => {}
-                        LogDynMsgEvent(_evt) => {}
-                    }
-                }
-            }
-            TelemetrySinkEvent::OnThreadBufferFull(thread_buffer) => {
-                for event in thread_buffer.events.iter() {
-                    match event {
-                        BeginScopeEvent(_evt) => {}
-                        EndScopeEvent(_evt) => {}
-                    }
-                }
-            }
-            TelemetrySinkEvent::OnShutdown => todo!(),
-        }
-    }
-}
+mod debug_event_sink;
+use debug_event_sink::DebugEventSink;
 
 fn test_log_str() {
     for _ in 1..5 {
