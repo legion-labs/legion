@@ -4,6 +4,7 @@ use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_async::AsyncPlugin;
+use legion_data_runtime::ResourceId;
 use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use legion_streamer::{StreamerPlugin, StreamerPluginSettings};
 use legion_transform::TransformPlugin;
@@ -70,6 +71,8 @@ fn main() {
         .value_of(ARG_NAME_MANIFEST)
         .unwrap_or("test/sample_data/runtime/game.manifest");
 
+    let assets_to_load: Vec<ResourceId> = Vec::new();
+
     App::new()
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
@@ -86,7 +89,7 @@ fn main() {
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,
             game_manifest,
-            None,
+            assets_to_load,
         ))
         .add_plugin(AssetRegistryPlugin::default())
         .run();

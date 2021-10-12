@@ -9,10 +9,11 @@ license = "MIT OR Apache-2.0"
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
 legion-async = { path = "../../plugin/async", version = "0.1.0" }
-legion-streamer = { path = "../../plugin/streamer", version = "0.1.0" }
+legion-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
+legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 legion-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
 legion-resource-registry = { path = "../../plugin/resource-registry", version = "0.1.0" }
-legion-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
+legion-streamer = { path = "../../plugin/streamer", version = "0.1.0" }
 legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
 tokio = { version = "1.12", features = ["full"] }
 clap = "2.33"

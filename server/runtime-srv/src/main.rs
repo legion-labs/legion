@@ -64,8 +64,10 @@ use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_core::CorePlugin;
+use legion_data_runtime::ResourceId;
 use legion_transform::prelude::*;
 use legion_utils::Duration;
+use std::str::FromStr;
 
 fn main() {
     const ARG_NAME_CAS: &str = "cas";
@@ -98,6 +100,8 @@ fn main() {
         .value_of(ARG_NAME_MANIFEST)
         .unwrap_or("test/sample_data/runtime/game.manifest");
 
+    let mut assets_to_load: Vec<ResourceId> = Vec::new();
+
     // default root object is in sample data
     // /world/sample_1.ent
     // resource-id: d004cd1c00000000445b0fc7dae84c6e
@@ -107,6 +111,9 @@ fn main() {
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
         .unwrap_or("019c822300000000c340a8a5eba2f2bb");
+    if let Ok(asset_id) = ResourceId::from_str(root_asset) {
+        assets_to_load.push(asset_id);
+    }
 
     // Start app with 60 fps
     App::new()
@@ -119,7 +126,7 @@ fn main() {
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,
             game_manifest,
-            Some(root_asset),
+            assets_to_load,
         ))
         .add_plugin(AssetRegistryPlugin::default())
         .run();

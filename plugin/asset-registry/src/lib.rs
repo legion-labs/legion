@@ -74,17 +74,20 @@ use legion_data_runtime::{
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
 use sample_data_compiler::runtime_data;
-use std::{any::Any, fs::File, path::Path, str::FromStr};
+use std::{any::Any, fs::File, path::Path};
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
 
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut legion_app::App) {
-        if let Some(settings) = app.world.get_resource::<AssetRegistrySettings>() {
+        if let Some(mut settings) = app.world.get_resource_mut::<AssetRegistrySettings>() {
             let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.clone());
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
                 let manifest = read_manifest(&settings.game_manifest);
+                if settings.assets_to_load.is_empty() {
+                    settings.assets_to_load = manifest.resources().copied().collect();
+                }
 
                 let mut registry = AssetRegistryOptions::new();
                 registry = runtime_data::add_loaders(registry);
@@ -119,18 +122,13 @@ impl AssetRegistryPlugin {
         mut asset_handles: ResMut<'_, AssetHandles>,
         settings: ResMut<'_, AssetRegistrySettings>,
     ) {
-        // check if root asset specified
-        if let Some(root_asset) = &settings.root_asset {
-            if let Ok(asset_id) = ResourceId::from_str(root_asset) {
-                Self::load_asset(
-                    &mut registry,
-                    &mut asset_loading_states,
-                    &mut asset_handles,
-                    asset_id,
-                );
-            } else {
-                eprintln!("Unable to parse root asset: {}", root_asset);
-            }
+        for asset_id in &settings.assets_to_load {
+            Self::load_asset(
+                &mut registry,
+                &mut asset_loading_states,
+                &mut asset_handles,
+                *asset_id,
+            );
         }
 
         drop(settings);
@@ -144,9 +142,7 @@ impl AssetRegistryPlugin {
     ) {
         if let Some(_handle) = asset_handles.get(asset_id) {
             // already in asset list
-            println!("New reference to loaded asset: {}", asset_id);
         } else {
-            println!("Request load of asset: {}", asset_id);
             asset_loading_states.insert(asset_id, LoadingState::Pending);
             asset_handles.insert(asset_id, registry.load_untyped(asset_id));
         }
@@ -156,6 +152,7 @@ impl AssetRegistryPlugin {
         registry.update();
     }
 
+    #[allow(clippy::too_many_lines)]
     fn update_assets(
         mut registry: ResMut<'_, AssetRegistry>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
@@ -185,7 +182,7 @@ impl AssetRegistryPlugin {
                                     asset_to_entity_map.insert(*asset_id, entity);
 
                                     println!(
-                                        "Loaded entity \"{}\", ECS id: {:?}, asset: {}",
+                                        "Loaded runtime entity \"{}\", ECS id: {:?}, asset: {}",
                                         runtime_entity.name, entity, asset_id
                                     );
                                 }
@@ -203,7 +200,7 @@ impl AssetRegistryPlugin {
                                     asset_to_entity_map.insert(*asset_id, instance);
 
                                     println!(
-                                        "Loaded instance, ECS id: {:?}, asset: {}",
+                                        "Loaded runtime instance, ECS id: {:?}, asset: {}",
                                         instance, asset_id
                                     );
                                 }
@@ -218,7 +215,7 @@ impl AssetRegistryPlugin {
                                         runtime_material,
                                     );
 
-                                    println!("Loaded material, asset: {}", asset_id);
+                                    println!("Loaded runtime material, asset: {}", asset_id);
                                 }
                             }
                             runtime_data::Mesh::TYPE => {
@@ -231,7 +228,7 @@ impl AssetRegistryPlugin {
                                         runtime_mesh,
                                     );
 
-                                    println!("Loaded mesh, asset: {}", asset_id);
+                                    println!("Loaded runtime mesh, asset: {}", asset_id);
                                 }
                             }
                             legion_graphics_runtime::Texture::TYPE => {
@@ -244,17 +241,21 @@ impl AssetRegistryPlugin {
                                         runtime_texture,
                                     );
 
-                                    println!("Loaded texture, asset: {}", asset_id);
+                                    println!("Loaded runtime texture, asset: {}", asset_id);
                                 }
                             }
                             _ => {
-                                eprintln!("Unhandled type: {}, asset: {}", asset_id.ty(), asset_id);
+                                eprintln!(
+                                    "Unhandled runtime type: {}, asset: {}",
+                                    asset_id.ty(),
+                                    asset_id
+                                );
                             }
                         }
 
                         *loading_state = LoadingState::Loaded;
                     } else if handle.is_err(&registry) {
-                        eprintln!("Failed to load asset {}", asset_id);
+                        eprintln!("Failed to load runtime asset {}", asset_id);
                         *loading_state = LoadingState::Failed;
                     }
                 }

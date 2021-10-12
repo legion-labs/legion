@@ -29,6 +29,11 @@ impl Manifest {
     pub fn insert(&mut self, id: ResourceId, checksum: ResourceChecksum, size: usize) {
         self.0.insert(id, (checksum, size));
     }
+
+    /// An iterator visiting all assets in manifest, in an arbitrary order.
+    pub fn resources(&self) -> impl Iterator<Item = &ResourceId> {
+        self.0.keys()
+    }
 }
 
 impl Serialize for Manifest {

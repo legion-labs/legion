@@ -111,14 +111,13 @@ impl ResourceRegistryPlugin {
     ) {
         if let Some(_handle) = resource_handles.get(resource_id) {
             // already in resource list
-            println!("New reference to loaded resource: {}", resource_id);
         } else {
             match project.load_resource(resource_id, registry) {
                 Ok(handle) => {
-                    println!("Loaded resource: {}", resource_id);
+                    println!("Loaded offline resource: {}", resource_id);
                     resource_handles.insert(resource_id, handle);
                 }
-                Err(err) => eprintln!("Failed to load resource {}: {}", resource_id, err),
+                Err(err) => eprintln!("Failed to load offline resource {}: {}", resource_id, err),
             }
         }
     }

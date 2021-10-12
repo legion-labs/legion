@@ -209,7 +209,7 @@ impl ResourceRegistry {
 mod tests {
     use std::{any::Any, io};
 
-    use legion_data_runtime::{resource, Asset, AssetLoader, Resource, ResourceType};
+    use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 
     use crate::{
         resource::{registry::ResourceRegistryOptions, OfflineResource, ResourceProcessor},
@@ -285,8 +285,6 @@ mod tests {
             vec![]
         }
     }
-
-    const RESOURCE_SAMPLE: ResourceType = ResourceType::new(b"sample");
 
     #[test]
     fn reference_count_untyped() {
@@ -368,7 +366,7 @@ mod tests {
 
         let mut resources = ResourceRegistryOptions::new()
             .add_type_processor(
-                RESOURCE_SAMPLE,
+                SampleResource::TYPE,
                 Box::new(SampleProcessor {
                     default_content: String::from(default_content),
                 }),
@@ -376,7 +374,7 @@ mod tests {
             .create_registry();
 
         let created_handle = resources
-            .new_resource(RESOURCE_SAMPLE)
+            .new_resource(SampleResource::TYPE)
             .expect("failed to create a resource")
             .typed::<SampleResource>();
 
@@ -389,11 +387,11 @@ mod tests {
         let mut buffer = [0u8; 256];
 
         resources
-            .serialize_resource(RESOURCE_SAMPLE, &created_handle, &mut &mut buffer[..])
+            .serialize_resource(SampleResource::TYPE, &created_handle, &mut &mut buffer[..])
             .unwrap();
 
         let loaded_handle = resources
-            .deserialize_resource(RESOURCE_SAMPLE, &mut &buffer[..])
+            .deserialize_resource(SampleResource::TYPE, &mut &buffer[..])
             .expect("Resource load")
             .typed::<SampleResource>();
 

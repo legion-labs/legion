@@ -1666,6 +1666,7 @@ dependencies = [
  "legion-asset-registry",
  "legion-async",
  "legion-codec-api",
+ "legion-data-runtime",
  "legion-mp4",
  "legion-resource-registry",
  "legion-streamer",
@@ -5091,6 +5092,7 @@ dependencies = [
  "legion-app",
  "legion-asset-registry",
  "legion-core",
+ "legion-data-runtime",
  "legion-transform",
  "legion-utils",
 ]
