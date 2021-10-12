@@ -8,10 +8,10 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 legion-source-control = { path = "../../lib/source-control" }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.12", features = ["full"] }
 warp = "0.3"
-bytes = "1.0"
-http = { version = "0.2.4" }
+bytes = "1.1"
+http = "0.2"
 hyper = "0.14"
 futures = "0.3"
 lazy_static = "1.4"

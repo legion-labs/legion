@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 keywords = ["game", "legion"]
 
 [build-dependencies]
-tauri-build = { version = "1.0.0-beta.4" }
+tauri-build = "1.0.0-beta.4"
 which = "4.2.2"
 
 [dependencies]
@@ -21,11 +21,11 @@ legion-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
 legion-streaming-proto = { path = "../../proto/streaming", version = "0.1.0" }
 async-std = "1.10"
 anyhow = "1.0.44"
-clap = "2"
+clap = "2.33"
 tonic = "0.5.2"
 prost = "0.8"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
-base64 = "0.13.0"
+tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
+base64 = "0.13"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.0.0-beta.8", features = ["api-all"] }

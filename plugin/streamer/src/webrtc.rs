@@ -173,7 +173,7 @@ impl WebRTCServer {
         Ok(peer_connection)
     }
 
-    async fn ignore_data_channel(data_channel: Arc<RTCDataChannel>) -> anyhow::Result<()> {
+    async fn ignore_data_channel(data_channel: Arc<RTCDataChannel>) -> Result<(), webrtc::Error> {
         warn!(
             "Ignoring unknown data channel type `{}`.",
             data_channel.label()

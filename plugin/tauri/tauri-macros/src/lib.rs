@@ -150,8 +150,8 @@ fn get_arguments(function: &syn::ItemFn) -> Vec<TokenStream> {
         .map(|arg| match arg {
             FnArg::Typed(arg) => match arg.pat.as_ref() {
                 syn::Pat::Ident(arg) => quote! {#arg},
-                pat => {
-                    panic!("unsupported argument type: {:?}", pat);
+                _ => {
+                    panic!("unsupported argument type");
                 }
             },
             FnArg::Receiver(_) => {
@@ -221,7 +221,7 @@ mod tests {
             fn f() -> Result<u32, Box<dyn Error + 'static>> { Ok(42) }
         };
         let anyhow_result_return_value = parse_quote! {
-            fn f() -> anyhow::Result<&dyn TraitObject + 'static> { Ok(&TraitObject{}) }
+            fn f() -> anyhow::Result<&'static dyn TraitObject> { Ok(&TraitObject{}) }
         };
 
         assert!(
@@ -260,7 +260,7 @@ mod tests {
                 Some(return_type) => {
                     assert_eq!(
                         quote! { #return_type }.to_string(),
-                        "& dyn TraitObject + 'static",
+                        "& 'static dyn TraitObject",
                         "return type does not match",
                     );
                 }

@@ -17,7 +17,7 @@ legion-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
-bytemuck = "1.5"
+bytemuck = "1.7"
 
 [dev-dependencies]
 legion-math = { path = "../../lib/math", version = "0.1.0" }

@@ -20,4 +20,4 @@ legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
-serde = { version = "1", features = ["derive"], optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
