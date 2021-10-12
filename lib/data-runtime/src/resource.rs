@@ -77,7 +77,7 @@ impl ResourceId {
 
     /// Returns the type of `ContentId`.
     pub fn ty(&self) -> ResourceType {
-        let type_id = (u128::from(self.0) >> (u128::BITS - ResourceType::num_bits())) as u32;
+        let type_id = (self.0.get() >> (u128::BITS - ResourceType::num_bits())) as u32;
         ResourceType::from_raw(type_id)
     }
 }
