@@ -3,7 +3,6 @@
         "clippy::[a-z_]+"
     ],
     "words": [
-        "sciter",
         "thiserror",
         "bincode"
     ]

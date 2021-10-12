@@ -264,7 +264,7 @@ Could support the interface to get visibility into crates that are already instr
 - CLI analytics (csv output)
 
 ## Christmas
-- Analytics client using sciter
+- Analytics client using Tauri
 - Visualization of call tree timeline
 
 ---
