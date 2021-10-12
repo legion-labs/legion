@@ -77,11 +77,24 @@ impl AssetLoaderStub {
     }
 
     fn create_handle(&mut self, id: ResourceId) -> HandleUntyped {
-        self.id_generator += 1;
-        let new_id = self.id_generator;
-        // insert data
-        self.ref_counts.insert(new_id, (id, 1));
-        HandleUntyped::create(new_id, self.refcount_channel.0.clone())
+        let handle_id = self
+            .ref_counts
+            .iter_mut()
+            .find_map(|(handle_id, (referred_id, count))| {
+                if referred_id == &id {
+                    *count += 1;
+                    Some(*handle_id)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| {
+                self.id_generator += 1;
+                let new_id = self.id_generator;
+                self.ref_counts.insert(new_id, (id, 1));
+                new_id
+            });
+        HandleUntyped::create(handle_id, self.refcount_channel.0.clone())
     }
 
     pub(crate) fn process_refcount_ops(&mut self) -> Option<ResourceId> {
@@ -116,10 +129,10 @@ impl AssetLoaderStub {
         self.request_tx.send(LoaderRequest::Terminate).unwrap();
     }
 
-    pub(crate) fn load(&mut self, asset_id: ResourceId) -> HandleUntyped {
-        let handle = self.create_handle(asset_id);
+    pub(crate) fn load(&mut self, resource_id: ResourceId) -> HandleUntyped {
+        let handle = self.create_handle(resource_id);
         self.request_tx
-            .send(LoaderRequest::Load(asset_id, Some(handle.id)))
+            .send(LoaderRequest::Load(resource_id, Some(handle.id)))
             .unwrap();
         handle
     }
@@ -215,7 +228,7 @@ impl AssetLoaderIO {
         &mut self,
         primary_id: ResourceId,
         load_id: Option<u32>,
-    ) -> Option<(ResourceId, Option<LoadId>, io::Error)> {
+    ) -> Result<(), (ResourceId, Option<LoadId>, io::Error)> {
         match self.read_resource(primary_id) {
             Ok(asset_data) => {
                 let load_func = {
@@ -254,12 +267,12 @@ impl AssetLoaderIO {
                             assets: output.assets,
                             references: output.load_dependencies,
                         });
-                        None
+                        Ok(())
                     }
-                    Err(e) => Some((primary_id, load_id, e)),
+                    Err(e) => Err((primary_id, load_id, e)),
                 }
             }
-            Err(e) => Some((primary_id, load_id, e)),
+            Err(e) => Err((primary_id, load_id, e)),
         }
     }
 
@@ -267,7 +280,7 @@ impl AssetLoaderIO {
     fn process(
         &mut self,
         request: LoaderRequest,
-    ) -> Option<(ResourceId, Option<LoadId>, io::Error)> {
+    ) -> Result<(), (ResourceId, Option<LoadId>, io::Error)> {
         match request {
             LoaderRequest::Load(primary_id, load_id) => self.process_load(primary_id, load_id),
             LoaderRequest::Unload(primary_id, user_requested, err) => {
@@ -307,11 +320,11 @@ impl AssetLoaderIO {
                 } else {
                     // todo(kstatik): tell the user that the id is invalid
                 }
-                None
+                Ok(())
             }
             LoaderRequest::Terminate => {
                 self.request_rx = None;
-                None
+                Ok(())
             }
         }
     }
@@ -326,7 +339,7 @@ impl AssetLoaderIO {
                     Err(crossbeam_channel::RecvTimeoutError::Disconnected) => return None,
                     Err(crossbeam_channel::RecvTimeoutError::Timeout) => break,
                     Ok(request) => {
-                        if let Some(error) = self.process(request) {
+                        if let Err(error) = self.process(request) {
                             errors.push(error);
                         }
                     }
@@ -612,6 +625,29 @@ mod tests {
             while loader.process_refcount_ops().is_some() {}
         }
         assert!(loader.ref_counts.get(&typed.id).is_some());
+    }
+
+    #[test]
+    fn call_load_twice() {
+        let (asset_id, mut loader, _io) = setup_test();
+
+        let a = loader.load(asset_id);
+        assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 1);
+        {
+            let b = a.clone();
+            while loader.process_refcount_ops().is_some() {}
+            assert_eq!(a.id, b.id);
+            assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 2);
+            {
+                let c = loader.load(asset_id);
+                assert_eq!(a.id, c.id);
+                assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 3);
+            }
+            while loader.process_refcount_ops().is_some() {}
+            assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 2);
+        }
+        while loader.process_refcount_ops().is_some() {}
+        assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 1);
     }
 
     #[test]
