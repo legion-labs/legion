@@ -2,117 +2,117 @@
   "compiled_resources": [
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53",
-      "checksum": "000000000000000090826b29983a9b42",
+      "checksum": "fecb9ee0113ef7016116f0ce9f520779",
       "size": 2719557
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_Black Background",
-      "checksum": "0000000000000000d1f7ac8160004a03",
+      "checksum": "cb8b91003cf7027057f8627598d86016",
       "size": 2500082
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_Ferris",
-      "checksum": "0000000000000000848ab1dcc18adb35",
+      "checksum": "16c30cd5c1e637e4b93a6a726db93f86",
       "size": 2500668
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_albedo",
-      "checksum": "00000000000000001943857aed1833df",
+      "checksum": "12fb356494c92be198a504ba2e915978",
       "size": 2500668
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_albedo|f9c9670d",
-      "checksum": "0000000000000000f2845aa232c98bfc",
+      "checksum": "13955f2e5e320e0002d36bed544d34ee",
       "size": 1000034
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_metalness",
-      "checksum": "00000000000000001943857aed1833df",
+      "checksum": "12fb356494c92be198a504ba2e915978",
       "size": 2500668
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_metalness|f9c9670d",
-      "checksum": "0000000000000000f2845aa232c98bfc",
+      "checksum": "13955f2e5e320e0002d36bed544d34ee",
       "size": 1000034
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_normal",
-      "checksum": "00000000000000001943857aed1833df",
+      "checksum": "12fb356494c92be198a504ba2e915978",
       "size": 2500668
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_normal|f9c9670d",
-      "checksum": "0000000000000000f2845aa232c98bfc",
+      "checksum": "13955f2e5e320e0002d36bed544d34ee",
       "size": 1000034
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_roughness",
-      "checksum": "00000000000000001943857aed1833df",
+      "checksum": "12fb356494c92be198a504ba2e915978",
       "size": 2500668
     },
     {
       "path": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_roughness|f9c9670d",
-      "checksum": "0000000000000000f2845aa232c98bfc",
+      "checksum": "13955f2e5e320e0002d36bed544d34ee",
       "size": 1000034
     },
     {
       "path": "2b368fed000000004e9d6dcb039451e3|669eb7d0",
-      "checksum": "00000000000000005ad35b10b5d50c80",
+      "checksum": "d99de5a2ed80d592c5bd56a90ed166f4",
       "size": 98
     },
     {
       "path": "417862e50000000054537dedac8437c4|0cd05ad8",
-      "checksum": "00000000000000002f8772d60af5c278",
+      "checksum": "f7f9fd5241f9b5f4459d49c41f58d204",
       "size": 54
     },
     {
       "path": "417862e5000000005b7757341ff0d2eb|0cd05ad8",
-      "checksum": "00000000000000002f8772d60af5c278",
+      "checksum": "f7f9fd5241f9b5f4459d49c41f58d204",
       "size": 54
     },
     {
       "path": "417862e500000000ae5fd743f081bd05|0cd05ad8",
-      "checksum": "00000000000000002f8772d60af5c278",
+      "checksum": "f7f9fd5241f9b5f4459d49c41f58d204",
       "size": 54
     },
     {
       "path": "417862e500000000e321168f3653db42|0cd05ad8",
-      "checksum": "00000000000000002f8772d60af5c278",
+      "checksum": "f7f9fd5241f9b5f4459d49c41f58d204",
       "size": 54
     },
     {
       "path": "417862e500000000e9c81a578a265cda|0cd05ad8",
-      "checksum": "00000000000000002f8772d60af5c278",
+      "checksum": "f7f9fd5241f9b5f4459d49c41f58d204",
       "size": 54
     },
     {
       "path": "417862e500000000f8beede13e9ae090|0cd05ad8",
-      "checksum": "0000000000000000ce7b7a41fcbf59e3",
+      "checksum": "9c593fb1762d82a505d57c4f931480c6",
       "size": 54
     },
     {
       "path": "4e1dd44100000000583a3513e7187e7c|ea2510e8",
-      "checksum": "00000000000000006fec1d11555d2103",
+      "checksum": "cf01992f8141ad88f30c7c1b913eb100",
       "size": 934
     },
     {
       "path": "d004cd1c000000000bb9d43d0d846181|019c8223",
-      "checksum": "0000000000000000b010cf6f6f50e918",
+      "checksum": "ae2041c00dc6416f8a3759e03b80fdf8",
       "size": 178
     },
     {
       "path": "d004cd1c00000000367d256bcf5b64d5|019c8223",
-      "checksum": "00000000000000006f6e6d404de47c89",
+      "checksum": "faf87ab541104a4b7a604cecebfa2c35",
       "size": 193
     },
     {
       "path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
-      "checksum": "0000000000000000d625b04fd9bff58c",
+      "checksum": "4c316106831326ab98ae3b3b368ff8d8",
       "size": 301
     },
     {
       "path": "d004cd1c00000000d846a2a4e0ac948e|019c8223",
-      "checksum": "0000000000000000aa33f6858db20635",
+      "checksum": "a88c4baf56023f98e12508ae2c4488c9",
       "size": 243
     }
   ]
