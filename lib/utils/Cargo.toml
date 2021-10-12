@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 legion-derive = { path = "../derive", version = "0.1.0" }
-ahash = "0.7.0"
+ahash = "0.7.5"
 tracing = { version = "0.1", features = ["release_max_level_info"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 
