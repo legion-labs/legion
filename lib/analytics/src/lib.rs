@@ -156,6 +156,13 @@ pub async fn find_process_thread_streams(
     find_process_streams_tagged(connection, process_id, "cpu").await
 }
 
+pub async fn find_process_metrics_streams(
+    connection: &mut sqlx::AnyConnection,
+    process_id: &str,
+) -> Result<Vec<legion_telemetry::StreamInfo>> {
+    find_process_streams_tagged(connection, process_id, "metrics").await
+}
+
 pub async fn find_stream(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
@@ -281,7 +288,6 @@ where
 {
     let dep_udts =
         container_metadata_as_transit_udt_vec(stream.dependencies_metadata.as_ref().unwrap());
-
     let dependencies = read_dependencies(
         &dep_udts,
         &decompress(&payload.dependencies).with_context(|| "decompressing dependencies payload")?,

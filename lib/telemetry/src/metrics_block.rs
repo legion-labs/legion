@@ -65,7 +65,7 @@ fn record_metric_event_dependencies<T: MetricEvent>(
     deps: &mut MetricsDepsQueue,
 ) {
     let metric = evt.get_metric();
-    let metric_ptr = std::ptr::addr_of!(metric) as u64;
+    let metric_ptr = std::ptr::addr_of!(*metric) as u64;
     if recorded_deps.insert(metric_ptr) {
         let name = StaticString::from(metric.name);
         if recorded_deps.insert(name.ptr as u64) {

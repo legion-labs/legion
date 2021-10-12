@@ -49,6 +49,7 @@ impl Dispatch {
         };
         obj.on_init_process();
         obj.on_init_log_stream();
+        obj.on_init_metrics_stream();
         obj
     }
 
@@ -95,6 +96,13 @@ impl Dispatch {
         ));
     }
 
+    fn on_init_metrics_stream(&mut self) {
+        let metrics_stream = self.metrics_stream.lock().unwrap();
+        self.sink.on_sink_event(TelemetrySinkEvent::OnInitStream(
+            metrics_stream.get_stream_info(),
+        ));
+    }
+
     fn on_init_thread_stream(&mut self, stream: &ThreadStream) {
         self.sink
             .on_sink_event(TelemetrySinkEvent::OnInitStream(stream.get_stream_info()));
@@ -124,6 +132,9 @@ impl Dispatch {
 
     fn on_metrics_buffer_full(&mut self) {
         let mut metrics_stream = self.metrics_stream.lock().unwrap();
+        if metrics_stream.is_empty() {
+            return;
+        }
         let stream_id = metrics_stream.get_stream_id();
         let mut old_event_block = metrics_stream.replace_block(Arc::new(MetricsBlock::new(
             self.metrics_buffer_size,
@@ -137,6 +148,9 @@ impl Dispatch {
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
         let mut log_stream = self.log_stream.lock().unwrap();
+        if log_stream.is_empty() {
+            return;
+        }
         log_stream.get_events_mut().push(LogMsgEvent {
             level: level as u8,
             msg_len: msg.len() as u32,

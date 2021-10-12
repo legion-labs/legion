@@ -1,6 +1,7 @@
 use crate::{
-    flush_log_buffer, flush_thread_buffer, init_event_dispatch, init_thread_stream,
-    setup_log_bridge, shutdown_event_dispatch, EventBlockSink, GRPCEventSink, NullEventSink,
+    flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
+    init_thread_stream, setup_log_bridge, shutdown_event_dispatch, EventBlockSink, GRPCEventSink,
+    NullEventSink,
 };
 use std::sync::Arc;
 
@@ -37,6 +38,7 @@ pub fn init_telemetry() {
 
 pub fn shutdown_telemetry() {
     flush_log_buffer();
+    flush_metrics_buffer();
     shutdown_event_dispatch();
 }
 

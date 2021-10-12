@@ -57,9 +57,13 @@
 #![allow(clippy::wildcard_imports)]
 
 mod process_log;
+mod process_metrics;
 mod process_thread_events;
 mod recent_processes;
 
+use crate::{
+    process_metrics::print_process_metrics, process_thread_events::print_process_thread_events,
+};
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_analytics::alloc_sql_pool;
@@ -67,8 +71,6 @@ use legion_telemetry::{init_thread_stream, log_str, LogLevel, TelemetrySystemGua
 use process_log::{print_logs_by_process, print_process_log};
 use recent_processes::print_recent_processes;
 use std::path::Path;
-
-use crate::process_thread_events::print_process_thread_events;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -107,6 +109,15 @@ async fn main() -> Result<()> {
                         .help("process guid"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("process-metrics")
+                .about("prints the metrics streams of the process")
+                .arg(
+                    Arg::with_name("process-id")
+                        .required(true)
+                        .help("process guid"),
+                ),
+        )
         .get_matches();
 
     let data_path = Path::new(matches.value_of("db").unwrap());
@@ -126,6 +137,10 @@ async fn main() -> Result<()> {
         ("process-thread-events", Some(command_match)) => {
             let process_id = command_match.value_of("process-id").unwrap();
             print_process_thread_events(&mut connection, data_path, process_id).await?;
+        }
+        ("process-metrics", Some(command_match)) => {
+            let process_id = command_match.value_of("process-id").unwrap();
+            print_process_metrics(&mut connection, data_path, process_id).await?;
         }
         (command_name, _args) => {
             log_str(LogLevel::Info, "unknown subcommand match");

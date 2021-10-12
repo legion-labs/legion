@@ -47,7 +47,20 @@ async fn find_process_with_thread_data(connection: &mut sqlx::AnyConnection) -> 
     )
     .fetch_one(connection)
     .await
-    .with_context(|| "find_process_with_log_data")?;
+    .with_context(|| "find_process_with_thread_data")?;
+    Ok(row.get("process_id"))
+}
+
+async fn find_process_with_metrics_data(connection: &mut sqlx::AnyConnection) -> Result<String> {
+    let row = sqlx::query(
+        "SELECT streams.process_id as process_id
+         FROM streams, blocks
+         WHERE streams.stream_id = blocks.stream_id
+         AND tags LIKE '%metrics%';",
+    )
+    .fetch_one(connection)
+    .await
+    .with_context(|| "find_process_with_metrics_data")?;
     Ok(row.get("process_id"))
 }
 
@@ -86,5 +99,16 @@ async fn test_thread_events() -> Result<()> {
         "process-thread-events",
         &process_id,
     ]);
+    Ok(())
+}
+
+#[tokio::main]
+#[test]
+async fn test_metrics_events() -> Result<()> {
+    let data_path = setup_data_dir("metrics");
+    let pool = alloc_sql_pool(&data_path).await.unwrap();
+    let mut connection = pool.acquire().await.unwrap();
+    let process_id = find_process_with_metrics_data(&mut connection).await?;
+    dump_cli_sys(&[data_path.to_str().unwrap(), "process-metrics", &process_id]);
     Ok(())
 }

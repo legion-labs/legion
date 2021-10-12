@@ -50,6 +50,10 @@ where
         self.current_block.len_bytes() + max_object_size > self.initial_size
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.current_block.len_bytes() == 0
+    }
+
     pub fn get_events_mut(&mut self) -> &mut Block::Queue {
         //get_mut_unchecked should be faster
         Arc::get_mut(&mut self.current_block).unwrap().events_mut()

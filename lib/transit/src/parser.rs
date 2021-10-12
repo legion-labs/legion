@@ -59,6 +59,16 @@ impl TransitValue for u64 {
     }
 }
 
+impl TransitValue for f64 {
+    fn get(value: &Value) -> Result<Self> {
+        if let Value::F64(val) = value {
+            Ok(*val)
+        } else {
+            bail!("bad type cast f64 for value {:?}", value);
+        }
+    }
+}
+
 impl TransitValue for String {
     fn get(value: &Value) -> Result<Self> {
         if let Value::String(val) = value {
@@ -86,6 +96,7 @@ pub enum Value {
     U8(u8),
     U32(u32),
     U64(u64),
+    F64(f64),
     None,
 }
 
@@ -213,6 +224,12 @@ where
                     "u64" => {
                         assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
                         Value::U64(read_pod::<u64>(unsafe {
+                            buffer.as_ptr().add(offset + member_meta.offset)
+                        }))
+                    }
+                    "f64" => {
+                        assert_eq!(std::mem::size_of::<f64>(), member_meta.size);
+                        Value::F64(read_pod::<f64>(unsafe {
                             buffer.as_ptr().add(offset + member_meta.offset)
                         }))
                     }
