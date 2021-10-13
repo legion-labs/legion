@@ -84,22 +84,26 @@
 //!
 //! ```text
 //! $ data-scrape asset .\test\sample_data\temp\a88c4baf56023f98e12508ae2c4488c9
+//!
+//! asset a88c4baf56023f98e12508ae2c4488c9
 //!         file type: asft, version: 1
 //!         asset type: 019c8223
 //!         asset count: 1
 //!         asset size: 209
 //!
 //! $data-scrape asset .\test\sample_data\temp
-//! asset "108608222a9c9987a5589c2285b6115d"
-//!         (not a valid asset file)
 //!
-//! asset "12fb356494c92be198a504ba2e915978"
+//! asset 108608222a9c9987a5589c2285b6115d
+//!         raw asset file
+//!         asset content size: 159
+//!
+//! asset 12fb356494c92be198a504ba2e915978
 //!         file type: asft, version: 1
 //!         asset type: 74dc0e53
 //!         asset count: 1
 //!         asset content size: 2500634
 //!
-//! asset "13955f2e5e320e0002d36bed544d34ee"
+//! asset 13955f2e5e320e0002d36bed544d34ee
 //!         file type: asft, version: 1
 //! ...
 //! ```
@@ -313,7 +317,6 @@ fn main() -> Result<(), String> {
                 for entry in path.read_dir().unwrap().flatten() {
                     let path = entry.path();
                     if path.is_file() {
-                        println!("\nasset {:?}", entry.file_name());
                         parse_asset_file(path);
                     }
                 }
@@ -420,17 +423,26 @@ fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
 
 // Reads an asset file, and prints out its header information.
 #[allow(unsafe_code)]
-fn parse_asset_file(file_path: impl AsRef<Path>) {
-    let mut f = File::open(file_path).expect("unable to open asset file");
+fn parse_asset_file(path: impl AsRef<Path>) {
+    let path = path.as_ref();
+    let mut f = File::open(path).expect("unable to open asset file");
 
-    let mut typename: [u8; 4] = [0; 4];
-    if let Err(_e) = f.read_exact(&mut typename) {
-        println!("\t(not a valid asset file)");
+    let file_name = path.file_name().unwrap().to_string_lossy();
+    let file_guid = u128::from_str_radix(&file_name, 16);
+    if let Err(_e) = file_guid {
+        // not an asset file, just ignore it
         return;
     }
+    let file_guid = file_guid.unwrap();
+    println!("\nasset {:032x}", file_guid);
+
+    let mut typename: [u8; 4] = [0; 4];
+    let typename_result = f.read_exact(&mut typename);
     const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
-    if &typename != ASSET_FILE_TYPENAME {
-        println!("\t(not a valid asset file)");
+    if typename_result.is_err() || &typename != ASSET_FILE_TYPENAME {
+        println!("\traw asset file");
+        let metadata = std::fs::metadata(path).expect("failed to read metadata");
+        println!("\tasset content size: {}", metadata.len());
         return;
     }
 
