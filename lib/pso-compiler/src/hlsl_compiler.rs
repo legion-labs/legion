@@ -186,10 +186,10 @@ fn to_shader_resource_type(descriptor_binding: &ReflectDescriptorBinding) -> Sha
             let byteaddressbuffer = descriptor_binding.block.members[0].padded_size == 0;
             let readonly = is_descriptor_readonly(descriptor_binding);
             match (byteaddressbuffer, readonly) {
-                (true, false) => ShaderResourceType::ByteAdressBuffer,
-                (true, true) => ShaderResourceType::RWByteAdressBuffer,
-                (false, false) => ShaderResourceType::StructuredBuffer,
-                (false, true) => ShaderResourceType::RWStructuredBuffer,
+                (true, true) => ShaderResourceType::ByteAdressBuffer,
+                (true, false) => ShaderResourceType::RWByteAdressBuffer,
+                (false, true) => ShaderResourceType::StructuredBuffer,
+                (false, false) => ShaderResourceType::RWStructuredBuffer,
             }
         }
         spirv_reflect::types::ReflectDescriptorType::SampledImage => {
