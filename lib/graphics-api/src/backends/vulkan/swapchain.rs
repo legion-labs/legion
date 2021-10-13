@@ -1,7 +1,7 @@
 use super::{
     VulkanApi, VulkanDeviceContext, VulkanFence, VulkanRawImage, VulkanSemaphore, VulkanTexture,
 };
-use crate::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DeviceContext, Extents3D, Format, GfxError, GfxResult, MemoryUsage, Queue, QueueType, ResourceState, ResourceFlags, ResourceUsage, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef, TextureViewType};
+use crate::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DeviceContext, Extents3D, Format, GfxError, GfxResult, MemoryUsage, Queue, QueueType, ResourceState, ResourceFlags, ResourceUsage, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef};
 
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
@@ -431,14 +431,8 @@ impl SwapchainVulkanInstance {
             )?;
 
             let render_target_view = texture.create_view(
-                &TextureViewDef {
-                    texture_view_type: TextureViewType::RenderTargetView,
-                    view_type: crate::ViewType::ViewType2d,
-                    first_mip: 0,
-                    mip_count: 1,
-                    first_slice: 0,
-                    slice_count: 1,
-                })?;
+                &TextureViewDef::as_render_target_view(texture.texture_def())
+            )?;
 
             swapchain_images.push(SwapchainImage {
                 texture,

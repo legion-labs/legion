@@ -187,6 +187,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
             ShaderResourceType::RWStructuredBuffer |
             ShaderResourceType::ByteAdressBuffer | 
             ShaderResourceType::RWByteAdressBuffer => {
+
                 let buffer_views = update.elements.buffer_views.ok_or_else(||
                     format!(
                         "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
@@ -201,15 +202,20 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                     (descriptor_first_update_data + update.dst_element_offset) as usize;
                 assert!(begin_index + buffer_views.len() <= self.update_data.update_data_count);
 
+                // Validation 
+                for buffer_view in buffer_views.iter() {                    
+                    assert!( buffer_view.is_compatible_with_descriptor(descriptor) );
+                }
+
                 // Modify the update data
                 let mut next_index = begin_index;
-                for buffer_view in buffer_views.iter() {
+                for buffer_view in buffer_views.iter() {                    
                     let buffer_info = &mut self.update_data.buffer_infos[next_index];
                     next_index += 1;
 
                     buffer_info.buffer = buffer_view.buffer().vk_buffer();
-                    buffer_info.offset = buffer_view.view_def().offset;
-                    buffer_info.range = buffer_view.view_def().size;
+                    buffer_info.offset = buffer_view.vk_offset();
+                    buffer_info.range = buffer_view.vk_size();
                 }
 
                 // Queue a descriptor write
@@ -219,9 +225,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         .build(),
                 );
             }   
-            ShaderResourceType::Texture2D => {
-                unimplemented!();                
-            },
+            ShaderResourceType::Texture2D => todo!(),
             ShaderResourceType::RWTexture2D => todo!(),
             ShaderResourceType::Texture2DArray => todo!(),
             ShaderResourceType::RWTexture2DArray => todo!(),
@@ -229,8 +233,8 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
             ShaderResourceType::RWTexture3D => todo!(),
             ShaderResourceType::TextureCube => todo!(),
             ShaderResourceType::TextureCubeArray => todo!(),                     
-            ShaderResourceType::Undefined => todo!(),
-            // ShaderResourceType::UnorderedAccessView => todo!(),
+            // ShaderResourceType::Undefined => panic!(),
+            
             /* <<<<<<<<<<<<<<<<<<<<<<<<<<
             ShaderResourceType::TEXTURE => {
                 

@@ -1,4 +1,4 @@
-use crate::{AddressMode, BlendFactor, BlendOp, ColorClearValue, ColorFlags, CompareOp, CullMode, DepthStencilClearValue, FillMode, FilterType, FrontFace, IndexType, LoadOp, MemoryUsage, MipMapMode, PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, StoreOp, TextureTiling, VertexAttributeRate, ViewType};
+use crate::{AddressMode, BlendFactor, BlendOp, ColorClearValue, ColorFlags, CompareOp, CullMode, DepthStencilClearValue, FillMode, FilterType, FrontFace, IndexType, LoadOp, MemoryUsage, MipMapMode, PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, StoreOp, TextureTiling, VertexAttributeRate, ViewDimension};
 use ash::vk;
 
 impl From<SampleCount> for vk::SampleCountFlags {
@@ -277,14 +277,14 @@ impl From<DepthStencilClearValue> for vk::ClearValue {
     }
 }
 
-impl From<ViewType> for vk::ImageViewType {
-    fn from(val: ViewType) -> Self {
+impl From<ViewDimension> for vk::ImageViewType {
+    fn from(val: ViewDimension) -> Self {
         match val {
-            ViewType::ViewType2d => vk::ImageViewType::TYPE_2D,
-            ViewType::ViewType2darray => vk::ImageViewType::TYPE_2D_ARRAY,
-            ViewType::ViewTypeCube => vk::ImageViewType::CUBE,
-            ViewType::ViewTypeCubeArray => vk::ImageViewType::CUBE_ARRAY,
-            ViewType::ViewType3d => vk::ImageViewType::TYPE_3D,
+            ViewDimension::_2D => vk::ImageViewType::TYPE_2D,
+            ViewDimension::_2DArray => vk::ImageViewType::TYPE_2D_ARRAY,
+            ViewDimension::Cube => vk::ImageViewType::CUBE,
+            ViewDimension::CubeArray => vk::ImageViewType::CUBE_ARRAY,
+            ViewDimension::_3D => vk::ImageViewType::TYPE_3D,
         }
     }
 }

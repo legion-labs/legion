@@ -41,25 +41,24 @@ impl TextureView<VulkanApi> for VulkanTextureView {
 impl VulkanTextureView  {
 
     pub(super) fn new(texture: &VulkanTexture, view_def: &TextureViewDef) -> GfxResult<Self> {
+                
+        view_def.verify(texture.texture_def());
         
-        view_def.verify::<VulkanApi>(texture);
-
         let device = texture.device_context().device();
         let texture_def = texture.texture_def();
-
         let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);
 
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(aspect_mask)
             .base_mip_level(view_def.first_mip)
             .level_count(view_def.mip_count)
-            .base_array_layer(view_def.first_slice)
-            .layer_count(view_def.slice_count);
+            .base_array_layer(view_def.first_array_slice)
+            .layer_count(view_def.array_size);
 
         let builder = vk::ImageViewCreateInfo::builder()
             .image(texture.vk_image())
             .components(vk::ComponentMapping::default())
-            .view_type(view_def.view_type.into())
+            .view_type(view_def.view_dimension.into())
             .format(texture_def.format.into())        
             .subresource_range(subresource_range.build());
 

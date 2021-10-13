@@ -17,7 +17,8 @@ fn run() -> GfxResult<()> {
 }
 
 #[cfg(target_os = "windows")]
-fn run() -> GfxResult<()> {
+fn run() -> GfxResult<()> {    
+
     use presenter::window::*;
     use pso_compiler::{CompileParams, HLSLCompiler, ShaderSource};
     const WINDOW_WIDTH: u32 = 900;
@@ -292,11 +293,7 @@ fn run() -> GfxResult<()> {
                 ))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
-            let view_def = BufferViewDef {
-                buffer_view_type: BufferViewType::ShaderResourceView,
-                offset: 0,
-                size: uniform_buffer.buffer_def().size
-            };
+            let view_def = BufferViewDef::as_structured_buffer(uniform_buffer.buffer_def(), std::mem::size_of::<VertexColor_SB>() as u64, true );            
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def)?;
 
             vertex_buffers.push(vertex_buffer);

@@ -180,25 +180,7 @@ bitflags::bitflags! {
     pub struct ResourceFlags: u32 {        
         const TEXTURE_CUBE = 1<<12;       
     } 
-}
-
-    impl ResourceFlags {
-//     pub fn is_uniform_buffer(self) -> bool {
-//         self.intersects(Self::UNIFORM_BUFFER_)
-//     }
-
-//     pub fn is_storage_buffer(self) -> bool {
-//         self.intersects(Self::BUFFER | Self::BUFFER_READ_WRITE)
-//     }
-
-        // pub fn is_render_target(self) -> bool {
-        //     self.intersects(Self::RENDER_TARGET_COLOR | Self::RENDER_TARGET_DEPTH_STENCIL)
-        // }
-
-//     pub fn is_texture(self) -> bool {
-//         self.intersects(Self::TEXTURE | Self::TEXTURE_READ_WRITE)
-//     }
-    }
+}    
 
 bitflags::bitflags! {
     /// Flags for enabling/disabling color channels, used with `BlendState`
@@ -287,10 +269,9 @@ bitflags::bitflags! {
 bitflags::bitflags! {
     /// Indicates a particular stage of a shader, or set of stages in a shader. Similar to
     /// VkShaderStageFlagBits
-    #[derive(Default)]
+    // #[derive(Default)]
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-    pub struct ShaderStageFlags : u32 {
-        const NONE = 0;
+    pub struct ShaderStageFlags : u32 {        
         const VERTEX = 1;
         const TESSELLATION_CONTROL = 2;
         const TESSELLATION_EVALUATION = 4;

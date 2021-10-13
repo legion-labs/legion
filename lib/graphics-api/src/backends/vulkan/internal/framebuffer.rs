@@ -63,12 +63,12 @@ impl FramebufferVulkan {
                 let texture_def = first_color_rt.texture_view.vulkan_texture().texture_def();
                 let view_def = first_color_rt.texture_view.view_def();
                 let extents = texture_def.extents;
-                (extents, view_def.slice_count)
+                (extents, view_def.array_size)
             } else if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {
                 let texture_def = depth_rt.texture_view.vulkan_texture().texture_def();
                 let view_def = depth_rt.texture_view.view_def();
                 let extents = texture_def.extents;
-                (extents, view_def.slice_count)
+                (extents, view_def.array_size)
             } else {
                 return Err(GfxError::StringError(
                     "No render target in framebuffer def".to_string(),

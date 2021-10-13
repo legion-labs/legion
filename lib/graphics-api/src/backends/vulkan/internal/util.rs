@@ -95,7 +95,7 @@ pub fn shader_resource_type_to_descriptor_type(shader_resource_type: ShaderResou
         ShaderResourceType::RWTexture3D => Some(vk::DescriptorType::STORAGE_IMAGE),
         ShaderResourceType::TextureCube => Some(vk::DescriptorType::SAMPLED_IMAGE),
         ShaderResourceType::TextureCubeArray => Some(vk::DescriptorType::SAMPLED_IMAGE),
-        ShaderResourceType::Undefined => todo!(),
+        // ShaderResourceType::Undefined => todo!(),
     }    
 }
 

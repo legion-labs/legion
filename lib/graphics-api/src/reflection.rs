@@ -1,16 +1,8 @@
-use crate::types::{ShaderStageFlags};
-use crate::{GfxApi, GfxResult, MAX_DESCRIPTOR_SET_LAYOUTS, ShaderResourceType, ShaderStageDef};
+use crate::types::ShaderStageFlags;
+use crate::{GfxApi, GfxResult, ShaderResourceType, ShaderStageDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 use fnv::FnvHashMap;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
-
-// #[derive(Debug, PartialEq)]
-// pub enum ShaderResourceType {
-//     Sampler,
-//     ConstBuffer,
-//     StructuredBuffer,
-//     RawByteBuffer
-// }
 
 /// Indicates where a resource is bound
 #[derive(PartialEq, Eq, Hash, Default)]
@@ -23,30 +15,28 @@ pub struct ShaderResourceBindingKey {
 ///
 /// A `ShaderResource` may be specified by hand or generated using shader-compiler
 //TODO: Consider separate type for bindings vs. push constants
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct ShaderResource {
     pub name: String,
     pub shader_resource_type: ShaderResourceType,
-    pub binding: u32,    
+    pub binding: u32,
     pub set_index: u32,
-    pub element_count: u32,    
-    pub used_in_shader_stages: ShaderStageFlags,    
+    pub element_count: u32,
+    pub used_in_shader_stages: ShaderStageFlags,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PushConstant {
     pub used_in_shader_stages: ShaderStageFlags,
-    pub size: u32
+    pub size: u32,
 }
 
 impl PushConstant {
     pub(crate) fn verify_compatible_across_stages(&self, other: &Self) -> GfxResult<()> {
         if self.size != other.size {
-            return Err(format!(
-                "PushConstant has different size in different stages"                
-            ).into());
-        }       
+            return Err(format!("PushConstant has different size in different stages").into());
+        }
 
         Ok(())
     }
@@ -90,7 +80,7 @@ impl ShaderResource {
         //         )
         //         .into());
         //     }
-        // } else 
+        // } else
         {
             // if self.size_in_bytes != 0 {
             //     return Err(format!(
@@ -172,8 +162,7 @@ pub struct PipelineReflection {
 }
 
 impl PipelineReflection {
-    pub fn from_stages<A: GfxApi>(stages: &[ShaderStageDef<A>]) -> GfxResult<Self> {        
-        
+    pub fn from_stages<A: GfxApi>(stages: &[ShaderStageDef<A>]) -> GfxResult<Self> {
         let mut unmerged_resources = Vec::default();
         for stage in stages {
             assert!(!stage.reflection.shader_stage.is_empty());
@@ -202,7 +191,8 @@ impl PipelineReflection {
             for push_constant in &stage.reflection.push_constants {
                 // The provided resource MAY (but does not need to) have the shader stage flag set.
                 // (Leaving it default empty is fine). It will automatically be set here.
-                if !(push_constant.used_in_shader_stages - stage.reflection.shader_stage).is_empty() {
+                if !(push_constant.used_in_shader_stages - stage.reflection.shader_stage).is_empty()
+                {
                     let message = format!(
                         "A resource in shader stage {:?} has other stages {:?} set",
                         stage.reflection.shader_stage,
@@ -244,7 +234,7 @@ impl PipelineReflection {
         }
 
         let mut merged_resources =
-            FnvHashMap::<ShaderResourceBindingKey, ShaderResource>::default();               
+            FnvHashMap::<ShaderResourceBindingKey, ShaderResource>::default();
         for resource in &unmerged_resources {
             log::trace!(
                 "    Resource {:?} from stage {:?}",
@@ -274,12 +264,12 @@ impl PipelineReflection {
             }
         }
 
-        let mut merged_pushconstant : Option<PushConstant> = None;
-        for push_constant in unmerged_pushconstants {                        
+        let mut merged_pushconstant: Option<PushConstant> = None;
+        for push_constant in unmerged_pushconstants {
             log::trace!(
-                "    PushConstant from stage {:?}",                
+                "    PushConstant from stage {:?}",
                 push_constant.used_in_shader_stages
-            );            
+            );
             if let Some(existing_push_constant) = &mut merged_pushconstant {
                 // verify compatible
                 existing_push_constant.verify_compatible_across_stages(&push_constant)?;
@@ -297,7 +287,7 @@ impl PipelineReflection {
                     push_constant.used_in_shader_stages
                 );
                 assert!(!push_constant.used_in_shader_stages.is_empty());
-                merged_pushconstant = Some(push_constant);                
+                merged_pushconstant = Some(push_constant);
             }
         }
 
@@ -308,7 +298,7 @@ impl PipelineReflection {
             shader_stages: all_shader_stages,
             compute_threads_per_group,
             shader_resources,
-            push_constant
+            push_constant,
         })
     }
 }

@@ -127,11 +127,7 @@ fn run() -> GfxResult<()> {
                 .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
-            let view_def = BufferViewDef {
-                buffer_view_type: BufferViewType::ConstantBufferView,
-                offset: 0,
-                size: uniform_buffer.buffer_def().size
-            };
+            let view_def = BufferViewDef::as_const_buffer(uniform_buffer.buffer_def());                
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def)?;
 
             let render_image = device_context.create_texture(&TextureDef {
@@ -152,14 +148,8 @@ fn run() -> GfxResult<()> {
             })?;
 
             let render_view = render_image.create_view(
-                &TextureViewDef {
-                    texture_view_type: TextureViewType::RenderTargetView,
-                    view_type: ViewType::ViewType2d,
-                    first_mip: 0,
-                    mip_count: 1,
-                    first_slice: 0,
-                    slice_count: 1,
-                })?;
+                &TextureViewDef::as_render_target_view(render_image.texture_def()
+            ))?;
 
             let copy_image = device_context.create_texture(&TextureDef {
                 extents: Extents3D {
@@ -169,12 +159,10 @@ fn run() -> GfxResult<()> {
                 },
                 array_length: 1,
                 mip_count: 1,
-                // sample_count: SampleCount::SampleCount1,
                 format: Format::R8G8B8A8_UNORM,
                 mem_usage: MemoryUsage::GpuToCpu,
                 usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
                 resource_flags: ResourceFlags::empty(),
-                // dimensions: TextureDimensions::Dim2D,
                 tiling: TextureTiling::Linear,
             })?;
 
@@ -234,7 +222,8 @@ fn run() -> GfxResult<()> {
             set_index: 0,
             binding: 0,
             shader_resource_type:  ShaderResourceType::ConstantBuffer,
-            ..Default::default()
+            element_count: 0,
+            used_in_shader_stages: ShaderStageFlags::VERTEX,
         };
 
         let vert_shader_stage_def = ShaderStageDef {
@@ -408,14 +397,8 @@ fn run() -> GfxResult<()> {
                     &[ColorRenderTargetBinding {
                         texture_view: render_view,
                         load_op: LoadOp::Clear,
-                        store_op: StoreOp::Store,
-                        // array_slice: None,
-                        // mip_slice: None,
+                        store_op: StoreOp::Store,                        
                         clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
-                        // resolve_target: None,
-                        // resolve_store_op: StoreOp::DontCare,
-                        // resolve_mip_slice: None,
-                        // resolve_array_slice: None,
                     }],
                     None,
                 )

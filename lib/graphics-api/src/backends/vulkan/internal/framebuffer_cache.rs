@@ -27,7 +27,7 @@ impl VulkanFramebufferCache {
         for color_target in color_targets {
             color_target.texture_view.texture().texture_id().hash(&mut hasher);
             color_target.texture_view.view_def().first_mip.hash(&mut hasher);
-            color_target.texture_view.view_def().first_slice.hash(&mut hasher);
+            color_target.texture_view.view_def().first_array_slice.hash(&mut hasher);
 
             // if let Some(resolve_target) = color_target.resolve_target {
             //     resolve_target.texture().texture_id().hash(&mut hasher);
@@ -39,7 +39,7 @@ impl VulkanFramebufferCache {
         if let Some(depth_target) = &depth_target {
             depth_target.texture_view.texture().texture_id().hash(&mut hasher);
             depth_target.texture_view.view_def().first_mip.hash(&mut hasher);
-            depth_target.texture_view.view_def().first_slice.hash(&mut hasher);
+            depth_target.texture_view.view_def().first_array_slice.hash(&mut hasher);
         }
         hasher.finish()
     }
