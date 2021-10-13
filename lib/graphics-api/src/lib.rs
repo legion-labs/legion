@@ -449,11 +449,11 @@ pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
 //
 pub trait BufferView<A: GfxApi>: Clone + std::fmt::Debug {
     fn view_def(&self) -> &BufferViewDef;
-    fn buffer(&self) -> &A::Buffer;    
+    fn buffer(&self) -> &A::Buffer;
 }
 
 pub trait TextureView<A: GfxApi>: Clone + std::fmt::Debug {
-    fn view_def(&self) -> &TextureViewDef; 
+    fn view_def(&self) -> &TextureViewDef;
     fn texture(&self) -> &A::Texture;
 }
 

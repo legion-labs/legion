@@ -167,11 +167,11 @@ impl Default for TextureDef {
                 depth: 0,
             },
             array_length: 1,
-            mip_count: 1,            
+            mip_count: 1,
             format: Format::UNDEFINED,
             usage_flags: ResourceUsage::empty(),
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,            
+            mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         }
     }
@@ -220,7 +220,7 @@ impl TextureDef {
 pub enum GPUViewType {
     ConstantBufferView,
     ShaderResourceView,
-    UnorderedAccessView,        
+    UnorderedAccessView,
     RenderTargetView,
     DepthStencilView,
 }
@@ -233,82 +233,89 @@ bitflags::bitflags! {
 
 #[derive(Clone, Copy, Debug)]
 pub struct BufferViewDef {
-    pub gpu_view_type: GPUViewType,            
+    pub gpu_view_type: GPUViewType,
     pub byte_offset: u64,
     pub element_count: u64,
     pub element_size: u64,
-    pub buffer_view_flags: BufferViewFlags
+    pub buffer_view_flags: BufferViewFlags,
 }
 
 // const buffer : offset, size
-// structbuffer 
+// structbuffer
 
 impl BufferViewDef {
-
     pub fn as_const_buffer(buffer_def: &BufferDef) -> Self {
-        BufferViewDef {
+        Self {
             gpu_view_type: GPUViewType::ConstantBufferView,
             byte_offset: 0,
             element_count: 1,
             element_size: buffer_def.size,
-            buffer_view_flags: BufferViewFlags::empty()
+            buffer_view_flags: BufferViewFlags::empty(),
         }
     }
 
-    pub fn as_structured_buffer(buffer_def: &BufferDef, struct_size: u64, read_only: bool ) -> Self {        
-        assert!( buffer_def.size % struct_size == 0 );
-        BufferViewDef {
-            gpu_view_type: if read_only {GPUViewType::ShaderResourceView} else {GPUViewType::UnorderedAccessView},
+    pub fn as_structured_buffer(buffer_def: &BufferDef, struct_size: u64, read_only: bool) -> Self {
+        assert!(buffer_def.size % struct_size == 0);
+        Self {
+            gpu_view_type: if read_only {
+                GPUViewType::ShaderResourceView
+            } else {
+                GPUViewType::UnorderedAccessView
+            },
             byte_offset: 0,
             element_count: buffer_def.size / struct_size,
             element_size: struct_size,
-            buffer_view_flags: BufferViewFlags::empty()
+            buffer_view_flags: BufferViewFlags::empty(),
         }
     }
 
-    pub fn as_byte_address_buffer(buffer_def: &BufferDef, read_only: bool ) -> Self {        
-        assert!( buffer_def.size % 4 == 0 );
-        BufferViewDef {
-            gpu_view_type: if read_only {GPUViewType::ShaderResourceView} else {GPUViewType::UnorderedAccessView},
+    pub fn as_byte_address_buffer(buffer_def: &BufferDef, read_only: bool) -> Self {
+        assert!(buffer_def.size % 4 == 0);
+        Self {
+            gpu_view_type: if read_only {
+                GPUViewType::ShaderResourceView
+            } else {
+                GPUViewType::UnorderedAccessView
+            },
             byte_offset: 0,
             element_count: buffer_def.size / 4,
             element_size: 0,
-            buffer_view_flags: BufferViewFlags::RAW_BUFFER
+            buffer_view_flags: BufferViewFlags::RAW_BUFFER,
         }
     }
 
     pub fn verify(&self, buffer_def: &BufferDef) {
-        
         match self.gpu_view_type {
-            GPUViewType::ConstantBufferView => {                                                
+            GPUViewType::ConstantBufferView => {
                 assert!(buffer_def
                     .usage_flags
-                    .intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW));                
+                    .intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW));
                 assert!(self.element_size > 0);
                 assert!(self.byte_offset == 0);
-                assert!(self.element_count == 1);                
+                assert!(self.element_count == 1);
                 assert!(self.buffer_view_flags.is_empty());
             }
-            GPUViewType::ShaderResourceView | GPUViewType::UnorderedAccessView => {                
+            GPUViewType::ShaderResourceView | GPUViewType::UnorderedAccessView => {
                 assert!(buffer_def
                     .usage_flags
                     .intersects(ResourceUsage::HAS_SHADER_RESOURCE_VIEW));
-                if self.buffer_view_flags.intersects(BufferViewFlags::RAW_BUFFER) {
+                if self
+                    .buffer_view_flags
+                    .intersects(BufferViewFlags::RAW_BUFFER)
+                {
                     assert!(self.element_size == 4);
-                }
-                else {
+                } else {
                     assert!(self.element_size > 0);
                 };
                 assert!(self.byte_offset % self.element_size == 0);
-                assert!(self.element_count >= 1);                                
-            }            
-            GPUViewType::RenderTargetView |
-            GPUViewType::DepthStencilView => {
+                assert!(self.element_count >= 1);
+            }
+            GPUViewType::RenderTargetView | GPUViewType::DepthStencilView => {
                 panic!();
             }
         }
-        
-        let upper_bound = self.byte_offset + self.element_count * self.element_size;        
+
+        let upper_bound = self.byte_offset + self.element_count * self.element_size;
         assert!(upper_bound <= buffer_def.size);
     }
 }
@@ -326,7 +333,7 @@ pub enum ViewDimension {
 pub enum PlaneSlice {
     DefaultPlane,
     DepthPlane,
-    StencilPlane
+    StencilPlane,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -342,7 +349,7 @@ pub struct TextureViewDef {
 
 impl TextureViewDef {
     pub fn as_render_target_view(_texture: &TextureDef) -> Self {
-        TextureViewDef {
+        Self {
             gpu_view_type: GPUViewType::RenderTargetView,
             view_dimension: ViewDimension::_2D,
             first_mip: 0,
@@ -354,18 +361,11 @@ impl TextureViewDef {
     }
 
     pub fn verify(&self, texture_def: &TextureDef) {
-        
         match self.view_dimension {
-            ViewDimension::_2D => {
+            ViewDimension::_2D | ViewDimension::_2DArray => {
                 assert!(texture_def.is_2d() || texture_def.is_3d());
             }
-            ViewDimension::_2DArray => {
-                assert!(texture_def.is_2d() || texture_def.is_3d());
-            }
-            ViewDimension::Cube => {
-                assert!(texture_def.is_cube());
-            }
-            ViewDimension::CubeArray => {
+            ViewDimension::Cube | ViewDimension::CubeArray => {
                 assert!(texture_def.is_cube());
             }
             ViewDimension::_3D => {
@@ -381,23 +381,17 @@ impl TextureViewDef {
 
                 match self.view_dimension {
                     ViewDimension::_2D => {
-                        assert!(self.first_array_slice == 0 );
-                        assert!(self.array_size == 1 );
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
                     }
-                    ViewDimension::_2DArray => {                        
-                    }
-                    ViewDimension::_3D => {
-                        assert!(self.plane_slice == PlaneSlice::DefaultPlane );
-                        assert!(self.first_array_slice == 0 );
-                        assert!(self.array_size == 1 );
-                    }
-                    ViewDimension::Cube => {
-                        assert!(self.plane_slice == PlaneSlice::DefaultPlane );
-                        assert!(self.first_array_slice == 0 );
-                        assert!(self.array_size == 1 );
+                    ViewDimension::_2DArray => {}
+                    ViewDimension::_3D | ViewDimension::Cube => {
+                        assert!(self.plane_slice == PlaneSlice::DefaultPlane);
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
                     }
                     ViewDimension::CubeArray => {
-                        assert!(self.plane_slice == PlaneSlice::DefaultPlane );
+                        assert!(self.plane_slice == PlaneSlice::DefaultPlane);
                     }
                 }
             }
@@ -405,21 +399,19 @@ impl TextureViewDef {
                 assert!(texture_def
                     .usage_flags
                     .intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW));
-                
-                assert!(self.mip_count == 1 );
+
+                assert!(self.mip_count == 1);
 
                 match self.view_dimension {
-                    ViewDimension::_2D => {                        
-                        assert!(self.first_array_slice == 0 );
-                        assert!(self.array_size == 1 );
+                    ViewDimension::_2D => {
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
                     }
-                    ViewDimension::_2DArray => {                             
-                    }
+                    ViewDimension::_2DArray => {}
                     ViewDimension::_3D => {
-                        assert!(self.plane_slice == PlaneSlice::DefaultPlane );                        
+                        assert!(self.plane_slice == PlaneSlice::DefaultPlane);
                     }
-                    ViewDimension::Cube |
-                    ViewDimension::CubeArray => {
+                    ViewDimension::Cube | ViewDimension::CubeArray => {
                         panic!();
                     }
                 }
@@ -429,20 +421,18 @@ impl TextureViewDef {
                     .usage_flags
                     .intersects(ResourceUsage::HAS_RENDER_TARGET_VIEW));
 
-                assert!(self.mip_count == 1 );
+                assert!(self.mip_count == 1);
 
                 match self.view_dimension {
-                    ViewDimension::_2D => {                        
-                        assert!(self.first_array_slice == 0 );
-                        assert!(self.array_size == 1 );
+                    ViewDimension::_2D => {
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
                     }
-                    ViewDimension::_2DArray => {                             
-                    }
+                    ViewDimension::_2DArray => {}
                     ViewDimension::_3D => {
-                        assert!(self.plane_slice == PlaneSlice::DefaultPlane );                        
+                        assert!(self.plane_slice == PlaneSlice::DefaultPlane);
                     }
-                    ViewDimension::Cube |
-                    ViewDimension::CubeArray => {
+                    ViewDimension::Cube | ViewDimension::CubeArray => {
                         panic!();
                     }
                 }
@@ -451,19 +441,16 @@ impl TextureViewDef {
                 assert!(texture_def
                     .usage_flags
                     .intersects(ResourceUsage::HAS_DEPTH_STENCIL_VIEW));
-                
-                assert!(self.mip_count == 1 );
+
+                assert!(self.mip_count == 1);
 
                 match self.view_dimension {
-                    ViewDimension::_2D => {                        
-                        assert!(self.first_array_slice == 0 );
-                        assert!(self.array_size == 1 );
+                    ViewDimension::_2D => {
+                        assert!(self.first_array_slice == 0);
+                        assert!(self.array_size == 1);
                     }
-                    ViewDimension::_2DArray => {                             
-                    }
-                    ViewDimension::_3D |
-                    ViewDimension::Cube |
-                    ViewDimension::CubeArray => {
+                    ViewDimension::_2DArray => {}
+                    ViewDimension::_3D | ViewDimension::Cube | ViewDimension::CubeArray => {
                         panic!();
                     }
                 }
@@ -476,7 +463,7 @@ impl TextureViewDef {
         let last_mip = self.first_mip + self.mip_count;
         assert!(last_mip <= texture_def.mip_count);
 
-        let last_array_slice = self.first_array_slice + self.array_size;        
+        let last_array_slice = self.first_array_slice + self.array_size;
 
         let max_array_len = if texture_def.is_2d() {
             texture_def.array_length
@@ -552,20 +539,20 @@ impl<A: GfxApi> ShaderStageDef<A> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ShaderResourceType {
-    Sampler             = 0x00_01,
-    ConstantBuffer      = 0x00_02,
-    StructuredBuffer    = 0x00_04,
-    RWStructuredBuffer  = 0x00_08,
-    ByteAdressBuffer    = 0x00_10,
-    RWByteAdressBuffer  = 0x00_20,
-    Texture2D           = 0x00_40,
-    RWTexture2D         = 0x00_80,
-    Texture2DArray      = 0x01_00,
-    RWTexture2DArray    = 0x02_00,
-    Texture3D           = 0x04_00,
-    RWTexture3D         = 0x08_00,
-    TextureCube         = 0x10_00,
-    TextureCubeArray    = 0x20_00,
+    Sampler = 0x00_01,
+    ConstantBuffer = 0x00_02,
+    StructuredBuffer = 0x00_04,
+    RWStructuredBuffer = 0x00_08,
+    ByteAdressBuffer = 0x00_10,
+    RWByteAdressBuffer = 0x00_20,
+    Texture2D = 0x00_40,
+    RWTexture2D = 0x00_80,
+    Texture2DArray = 0x01_00,
+    RWTexture2DArray = 0x02_00,
+    Texture3D = 0x04_00,
+    RWTexture3D = 0x08_00,
+    TextureCube = 0x10_00,
+    TextureCubeArray = 0x20_00,
 }
 
 pub struct DescriptorDef {
@@ -913,7 +900,7 @@ pub struct GraphicsPipelineDef<'a, A: GfxApi> {
     pub primitive_topology: PrimitiveTopology,
     pub color_formats: &'a [Format],
     pub depth_stencil_format: Option<Format>,
-    pub sample_count: SampleCount,    
+    pub sample_count: SampleCount,
 }
 
 /// Used to create a `Pipeline` for compute operations

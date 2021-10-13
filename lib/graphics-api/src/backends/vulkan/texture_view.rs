@@ -6,12 +6,11 @@ use crate::{GfxResult, Texture, TextureView, TextureViewDef, VulkanApi};
 
 use super::VulkanTexture;
 
-
 #[derive(Clone, Debug)]
 struct VulkanTextureViewInner {
-    view_def : TextureViewDef,
-    texture : VulkanTexture,
-    vk_image_view : vk::ImageView
+    view_def: TextureViewDef,
+    texture: VulkanTexture,
+    vk_image_view: vk::ImageView,
 }
 
 impl Drop for VulkanTextureViewInner {
@@ -25,7 +24,7 @@ impl Drop for VulkanTextureViewInner {
 
 #[derive(Clone, Debug)]
 pub struct VulkanTextureView {
-    inner: Arc<VulkanTextureViewInner>    
+    inner: Arc<VulkanTextureViewInner>,
 }
 
 impl TextureView<VulkanApi> for VulkanTextureView {
@@ -38,12 +37,10 @@ impl TextureView<VulkanApi> for VulkanTextureView {
     }
 }
 
-impl VulkanTextureView  {
-
+impl VulkanTextureView {
     pub(super) fn new(texture: &VulkanTexture, view_def: &TextureViewDef) -> GfxResult<Self> {
-                
         view_def.verify(texture.texture_def());
-        
+
         let device = texture.device_context().device();
         let texture_def = texture.texture_def();
         let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);
@@ -59,26 +56,24 @@ impl VulkanTextureView  {
             .image(texture.vk_image())
             .components(vk::ComponentMapping::default())
             .view_type(view_def.view_dimension.into())
-            .format(texture_def.format.into())        
+            .format(texture_def.format.into())
             .subresource_range(subresource_range.build());
 
-        let vk_image_view = unsafe {
-            device.create_image_view(&builder.build(), None)?
-        };
+        let vk_image_view = unsafe { device.create_image_view(&builder.build(), None)? };
 
-        Ok( VulkanTextureView{
-            inner: Arc::new( VulkanTextureViewInner {
+        Ok(Self {
+            inner: Arc::new(VulkanTextureViewInner {
                 view_def: *view_def,
                 texture: texture.clone(),
-                vk_image_view
-            })
+                vk_image_view,
+            }),
         })
     }
 
     pub(super) fn vulkan_texture(&self) -> &VulkanTexture {
         &self.inner.texture
     }
-    
+
     pub(super) fn view_def(&self) -> &TextureViewDef {
         &self.inner.view_def
     }

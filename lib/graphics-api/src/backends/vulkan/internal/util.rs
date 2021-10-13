@@ -1,5 +1,8 @@
 use crate::backends::vulkan::VulkanDeviceContext;
-use crate::{BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format, PipelineType, QueueType, RasterizerState, ResourceState, ShaderResourceType, ResourceUsage};
+use crate::{
+    BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format,
+    PipelineType, QueueType, RasterizerState, ResourceState, ResourceUsage, ShaderResourceType,
+};
 use ash::vk;
 
 pub(crate) fn pipeline_type_pipeline_bind_point(
@@ -12,18 +15,19 @@ pub(crate) fn pipeline_type_pipeline_bind_point(
 }
 
 pub(crate) fn resource_type_buffer_usage_flags(
-    resource_usage : ResourceUsage,
+    resource_usage: ResourceUsage,
     // resource_type: ResourceType,
     // has_format: bool,
 ) -> vk::BufferUsageFlags {
-    
     let mut usage_flags = vk::BufferUsageFlags::TRANSFER_SRC;
 
     if resource_usage.intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW) {
         usage_flags |= vk::BufferUsageFlags::UNIFORM_BUFFER;
     }
 
-    if resource_usage.intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW|ResourceUsage::HAS_SHADER_RESOURCE_VIEW ) {
+    if resource_usage.intersects(
+        ResourceUsage::HAS_UNORDERED_ACCESS_VIEW | ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+    ) {
         usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
     }
 
@@ -41,20 +45,6 @@ pub(crate) fn resource_type_buffer_usage_flags(
 
     usage_flags
 }
-
-// pub(crate) fn resource_type_image_usage_flags(resource_type: ResourceType) -> vk::ImageUsageFlags {
-//     let mut usage_flags = vk::ImageUsageFlags::empty();
-
-//     if resource_type.intersects(ResourceType::TEXTURE) {
-//         usage_flags |= vk::ImageUsageFlags::SAMPLED;
-//     }
-
-//     if resource_type.intersects(ResourceType::TEXTURE_READ_WRITE) {
-//         usage_flags |= vk::ImageUsageFlags::STORAGE;
-//     }
-
-//     usage_flags
-// }
 
 pub(crate) fn image_format_to_aspect_mask(
     format: Format, /*, include_stencil: bool*/
@@ -79,24 +69,25 @@ pub(crate) fn image_format_to_aspect_mask(
     }
 }
 
-pub fn shader_resource_type_to_descriptor_type(shader_resource_type: ShaderResourceType) -> Option<vk::DescriptorType> {
+pub fn shader_resource_type_to_descriptor_type(
+    shader_resource_type: ShaderResourceType,
+) -> Option<vk::DescriptorType> {
     match shader_resource_type {
         ShaderResourceType::Sampler => Some(vk::DescriptorType::SAMPLER),
         ShaderResourceType::ConstantBuffer => Some(vk::DescriptorType::UNIFORM_BUFFER),
-        ShaderResourceType::StructuredBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
-        ShaderResourceType::RWStructuredBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
-        ShaderResourceType::ByteAdressBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
-        ShaderResourceType::RWByteAdressBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
-        ShaderResourceType::Texture2D => Some(vk::DescriptorType::SAMPLED_IMAGE),
-        ShaderResourceType::RWTexture2D => Some(vk::DescriptorType::STORAGE_IMAGE),
-        ShaderResourceType::Texture2DArray => Some(vk::DescriptorType::SAMPLED_IMAGE),
-        ShaderResourceType::RWTexture2DArray => Some(vk::DescriptorType::STORAGE_IMAGE),
-        ShaderResourceType::Texture3D => Some(vk::DescriptorType::SAMPLED_IMAGE),
-        ShaderResourceType::RWTexture3D => Some(vk::DescriptorType::STORAGE_IMAGE),
-        ShaderResourceType::TextureCube => Some(vk::DescriptorType::SAMPLED_IMAGE),
-        ShaderResourceType::TextureCubeArray => Some(vk::DescriptorType::SAMPLED_IMAGE),
-        // ShaderResourceType::Undefined => todo!(),
-    }    
+        ShaderResourceType::StructuredBuffer
+        | ShaderResourceType::RWStructuredBuffer
+        | ShaderResourceType::ByteAdressBuffer
+        | ShaderResourceType::RWByteAdressBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
+        ShaderResourceType::Texture2D
+        | ShaderResourceType::Texture2DArray
+        | ShaderResourceType::Texture3D
+        | ShaderResourceType::TextureCube
+        | ShaderResourceType::TextureCubeArray => Some(vk::DescriptorType::SAMPLED_IMAGE),
+        ShaderResourceType::RWTexture2D
+        | ShaderResourceType::RWTexture2DArray
+        | ShaderResourceType::RWTexture3D => Some(vk::DescriptorType::STORAGE_IMAGE),
+    }
 }
 
 pub(crate) fn resource_state_to_access_flags(state: ResourceState) -> vk::AccessFlags {

@@ -49,7 +49,6 @@ impl VulkanRenderpassCache {
         color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
         depth_target: Option<&DepthStencilRenderTargetBinding<'_, VulkanApi>>,
     ) -> GfxResult<VulkanRenderpass> {
-        
         // let sample_count = if let Some(depth_target) = &depth_target {
         //     depth_target.texture_view.texture().texture_def().sample_count
         // } else {

@@ -7,32 +7,31 @@ use super::{VulkanApi, VulkanBuffer, VulkanDescriptor};
 #[derive(Clone, Debug)]
 struct VulkanBufferViewInner {
     view_def: BufferViewDef,
-    buffer: VulkanBuffer,    
-    vk_offset: u64,    
-    vk_size: u64,    
+    buffer: VulkanBuffer,
+    vk_offset: u64,
+    vk_size: u64,
 }
 
 #[derive(Clone, Debug)]
 pub struct VulkanBufferView {
-    inner: Arc<VulkanBufferViewInner>    
+    inner: Arc<VulkanBufferViewInner>,
 }
 
 impl VulkanBufferView {
-    pub fn from_buffer(buffer: &VulkanBuffer, view_def: &BufferViewDef) -> GfxResult<Self> {        
-
+    pub fn from_buffer(buffer: &VulkanBuffer, view_def: &BufferViewDef) -> GfxResult<Self> {
         view_def.verify(buffer.buffer_def());
 
         let vk_offset = view_def.byte_offset;
         let vk_size = view_def.element_size * view_def.element_count;
 
-        Ok( VulkanBufferView {
-            inner: Arc::new( VulkanBufferViewInner{
-                view_def: view_def.clone(),                
-                buffer: buffer.clone(),     
+        Ok(Self {
+            inner: Arc::new(VulkanBufferViewInner {
+                view_def: *view_def,
+                buffer: buffer.clone(),
                 vk_offset,
                 vk_size,
-            })
-        })    
+            }),
+        })
     }
 
     pub(super) fn vk_offset(&self) -> u64 {
@@ -44,38 +43,31 @@ impl VulkanBufferView {
     }
 
     pub(super) fn is_compatible_with_descriptor(&self, descriptor: &VulkanDescriptor) -> bool {
-
         match descriptor.shader_resource_type {
             ShaderResourceType::ConstantBuffer => {
                 self.inner.view_def.gpu_view_type == GPUViewType::ConstantBufferView
             }
-            ShaderResourceType::StructuredBuffer |
-            ShaderResourceType::ByteAdressBuffer => {
+            ShaderResourceType::StructuredBuffer | ShaderResourceType::ByteAdressBuffer => {
                 self.inner.view_def.gpu_view_type == GPUViewType::ShaderResourceView
             }
-            ShaderResourceType::RWStructuredBuffer |
-            ShaderResourceType::RWByteAdressBuffer => {
+            ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAdressBuffer => {
                 self.inner.view_def.gpu_view_type == GPUViewType::UnorderedAccessView
             }
             // ShaderResourceType::Undefined |
-            ShaderResourceType::Sampler |
-            ShaderResourceType::Texture2D |
-            ShaderResourceType::RWTexture2D |
-            ShaderResourceType::Texture2DArray |
-            ShaderResourceType::RWTexture2DArray | 
-            ShaderResourceType::Texture3D | 
-            ShaderResourceType::RWTexture3D | 
-            ShaderResourceType::TextureCube | 
-            ShaderResourceType::TextureCubeArray => {
-                false
-            }
+            ShaderResourceType::Sampler
+            | ShaderResourceType::Texture2D
+            | ShaderResourceType::RWTexture2D
+            | ShaderResourceType::Texture2DArray
+            | ShaderResourceType::RWTexture2DArray
+            | ShaderResourceType::Texture3D
+            | ShaderResourceType::RWTexture3D
+            | ShaderResourceType::TextureCube
+            | ShaderResourceType::TextureCubeArray => false,
         }
-
     }
 }
 
 impl BufferView<VulkanApi> for VulkanBufferView {
-    
     fn view_def(&self) -> &BufferViewDef {
         &self.inner.view_def
     }

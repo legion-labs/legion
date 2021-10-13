@@ -2,7 +2,11 @@ use std::num::NonZeroU32;
 
 use fnv::FnvHashMap;
 
-use crate::{DescriptorDef, DescriptorSetLayoutDef, DeviceContext, GfxApi, GfxResult, MAX_DESCRIPTOR_SET_LAYOUTS, PipelineType, PushConstant, PushConstantDef, RootSignatureDef, Shader, ShaderResource, ShaderStageFlags};
+use crate::{
+    DescriptorDef, DescriptorSetLayoutDef, DeviceContext, GfxApi, GfxResult, PipelineType,
+    PushConstant, PushConstantDef, RootSignatureDef, Shader, ShaderResource, ShaderStageFlags,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 
 pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
@@ -120,9 +124,10 @@ pub(crate) fn extract_resources<A: GfxApi>(
                     let existing_resource = &mut merged_resources[existing_index];
                     verify_resources_can_overlap(resource, existing_resource)?;
 
-                    let old = merged_resources_name_index_map.insert(&resource.name, existing_index);
+                    let old =
+                        merged_resources_name_index_map.insert(&resource.name, existing_index);
                     assert!(old.is_none());
-                    
+
                     log::trace!(
                         "Adding shader flags {:?} the existing resource",
                         resource.used_in_shader_stages
@@ -144,11 +149,11 @@ pub(crate) fn extract_resources<A: GfxApi>(
                 push_constant = pipeline_reflection.push_constant;
             }
             Some(pc) => {
-                if let Some(pipeline_push_constant) =  &pipeline_reflection.push_constant {
+                if let Some(pipeline_push_constant) = &pipeline_reflection.push_constant {
                     pc.verify_compatible_across_stages(pipeline_push_constant)?;
                     pc.used_in_shader_stages |= pipeline_push_constant.used_in_shader_stages;
                 }
-            }            
+            }
         }
     }
 
@@ -217,9 +222,7 @@ pub fn tmp_extract_root_signature_def<A: GfxApi>(
     for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
         let mut set_resources = shader_resources
             .iter()
-            .filter(|sr| {
-                sr.set_index as usize == set_index                    
-            })
+            .filter(|sr| sr.set_index as usize == set_index)
             .collect::<Vec<_>>();
 
         if !set_resources.is_empty() {
@@ -231,7 +234,7 @@ pub fn tmp_extract_root_signature_def<A: GfxApi>(
                 let descriptor_def = DescriptorDef {
                     name: d.name.clone(),
                     binding: d.binding,
-                    shader_resource_type: d.shader_resource_type.clone(),
+                    shader_resource_type: d.shader_resource_type,
                     array_size: d.element_count,
                 };
                 layout_def.descriptor_defs.push(descriptor_def);
@@ -246,8 +249,8 @@ pub fn tmp_extract_root_signature_def<A: GfxApi>(
 
     let push_constant_def = push_constant.map(|e| PushConstantDef {
         used_in_shader_stages: e.used_in_shader_stages,
-        size: NonZeroU32::new(e.size).unwrap()
-    } );
+        size: NonZeroU32::new(e.size).unwrap(),
+    });
 
     Ok(RootSignatureDef {
         pipeline_type,

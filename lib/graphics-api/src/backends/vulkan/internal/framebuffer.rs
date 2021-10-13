@@ -8,7 +8,7 @@ pub(crate) struct FramebufferVulkanAttachment {
     // pub(crate) texture: VulkanTexture,
     // pub(crate) array_slice: Option<u16>,
     // pub(crate) mip_slice: Option<u8>,
-    pub(crate) texture_view : VulkanTextureView
+    pub(crate) texture_view: VulkanTextureView,
 }
 
 pub(crate) struct FramebufferVulkanDef {
@@ -57,7 +57,6 @@ impl FramebufferVulkan {
         device_context: &VulkanDeviceContext,
         framebuffer_def: &FramebufferVulkanDef,
     ) -> GfxResult<Self> {
-       
         let (extents, array_length) =
             if let Some(first_color_rt) = framebuffer_def.color_attachments.first() {
                 let texture_def = first_color_rt.texture_view.vulkan_texture().texture_def();
@@ -93,18 +92,18 @@ impl FramebufferVulkan {
         }
 
         // for resolve_rt in &framebuffer_def.resolve_attachments {
-            // let image_view = resolve_rt.texture_view.vk_image_view();
-            // todo(vdbdd)
-            // let image_view = if resolve_rt.array_slice.is_none() && resolve_rt.mip_slice.is_none() {
-            //     resolve_rt.texture.render_target_vk_view().unwrap()
-            // } else {
-            //     resolve_rt.texture.render_target_slice_vk_view(
-            //         0,
-            //         resolve_rt.array_slice.unwrap_or(0),
-            //         resolve_rt.mip_slice.unwrap_or(0),
-            //     )
-            // };
-            // image_views.push(image_view);
+        // let image_view = resolve_rt.texture_view.vk_image_view();
+        // todo(vdbdd)
+        // let image_view = if resolve_rt.array_slice.is_none() && resolve_rt.mip_slice.is_none() {
+        //     resolve_rt.texture.render_target_vk_view().unwrap()
+        // } else {
+        //     resolve_rt.texture.render_target_slice_vk_view(
+        //         0,
+        //         resolve_rt.array_slice.unwrap_or(0),
+        //         resolve_rt.mip_slice.unwrap_or(0),
+        //     )
+        // };
+        // image_views.push(image_view);
         // }
 
         if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {

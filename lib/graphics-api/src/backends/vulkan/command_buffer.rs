@@ -3,9 +3,15 @@ use super::{
     VulkanDescriptorSetHandle, VulkanDeviceContext, VulkanPipeline, VulkanRootSignature,
     VulkanTexture,
 };
-use crate::{BarrierQueueTransition, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool, DepthStencilRenderTargetBinding, DescriptorSetArray, GfxResult, IndexBufferBinding, Pipeline, QueueType, ResourceState, RootSignature, Texture, TextureBarrier, TextureView, VertexBufferBinding};
+use crate::{
+    BarrierQueueTransition, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
+    CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
+    DepthStencilRenderTargetBinding, DescriptorSetArray, GfxResult, IndexBufferBinding, Pipeline,
+    QueueType, ResourceState, RootSignature, Texture, TextureBarrier, TextureView,
+    VertexBufferBinding,
+};
 use ash::vk;
-use std::{    
+use std::{
     mem, ptr,
     sync::atomic::{AtomicBool, Ordering},
 };
@@ -143,7 +149,11 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         let barriers = {
             let mut barriers = Vec::with_capacity(color_targets.len() + 1);
             for color_target in color_targets {
-                if color_target.texture_view.texture().take_is_undefined_layout() {
+                if color_target
+                    .texture_view
+                    .texture()
+                    .take_is_undefined_layout()
+                {
                     log::trace!(
                         "Transition RT {:?} from {:?} to {:?}",
                         color_target,
@@ -159,7 +169,11 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             }
 
             if let Some(depth_target) = &depth_target {
-                if depth_target.texture_view.texture().take_is_undefined_layout() {
+                if depth_target
+                    .texture_view
+                    .texture()
+                    .take_is_undefined_layout()
+                {
                     log::trace!(
                         "Transition RT {:?} from {:?} to {:?}",
                         depth_target,
@@ -396,13 +410,13 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         Ok(())
     }
 
-    fn cmd_push_constants<T : Sized>(
+    fn cmd_push_constants<T: Sized>(
         &self,
         root_signature: &VulkanRootSignature,
         constants: &T,
     ) -> GfxResult<()> {
         let constants_size = mem::size_of::<T>();
-        let constants_ptr = constants as *const T as *const u8;
+        let constants_ptr = (constants as *const T).cast::<u8>();
         unsafe {
             let data_slice = &*ptr::slice_from_raw_parts(constants_ptr, constants_size);
             self.device_context.device().cmd_push_constants(

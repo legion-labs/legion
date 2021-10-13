@@ -1,18 +1,16 @@
-use crate::{BufferDef, ComputePipelineDef,     
-    DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext, DeviceInfo, Fence, 
-    GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef, 
-    SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef, 
-    
+use crate::{
+    BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext,
+    DeviceInfo, Fence, GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef, SamplerDef,
+    ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
 };
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::{Arc, Mutex};
 
 use super::{
-    VulkanApi, internal::*,
-    VulkanBuffer, VulkanDescriptorSetArray, VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline,
-    VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
-    VulkanShaderModule, VulkanSwapchain, VulkanTexture,
+    internal::*, VulkanApi, VulkanBuffer, VulkanDescriptorSetArray, VulkanDescriptorSetLayout,
+    VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore,
+    VulkanShader, VulkanShaderModule, VulkanSwapchain, VulkanTexture,
 };
 
 use ash::extensions::khr;
@@ -382,7 +380,7 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
 
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<VulkanBuffer> {
         VulkanBuffer::new(self, buffer_def)
-    }    
+    }
 
     fn create_shader(&self, stages: Vec<ShaderStageDef<VulkanApi>>) -> GfxResult<VulkanShader> {
         VulkanShader::new(self, stages)

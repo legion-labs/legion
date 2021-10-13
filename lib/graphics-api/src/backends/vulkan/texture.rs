@@ -1,5 +1,8 @@
 use super::{VulkanApi, VulkanDeviceContext, VulkanTextureView};
-use crate::{Extents3D, GfxResult, MemoryUsage, ResourceUsage, ResourceFlags, Texture, TextureDef, TextureSubResource, TextureViewDef};
+use crate::{
+    Extents3D, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,
+    TextureSubResource, TextureViewDef,
+};
 use ash::vk::{self};
 use std::hash::{Hash, Hasher};
 use std::ptr::slice_from_raw_parts;
@@ -54,8 +57,8 @@ pub struct TextureVulkanInner {
     // For writing
     uav_views: Vec<vk::ImageView>,
 
-    // RT    
-    
+    // RT
+
     render_target_view: Option<vk::ImageView>,
     render_target_view_slices: Vec<vk::ImageView>,
     */
@@ -66,7 +69,7 @@ impl Drop for TextureVulkanInner {
         let _device = self.device_context.device();
 
         /*
-        unsafe {        
+        unsafe {
             if let Some(srv_view) = self.srv_view {
                 device.destroy_image_view(srv_view, None);
             }
@@ -138,56 +141,56 @@ impl VulkanTexture {
     pub fn device_context(&self) -> &VulkanDeviceContext {
         &self.inner.device_context
     }
-/*
-    // Color/Depth
-    pub fn vk_srv_view(&self) -> Option<vk::ImageView> {
-        self.inner.srv_view
-    }
+    /*
+        // Color/Depth
+        pub fn vk_srv_view(&self) -> Option<vk::ImageView> {
+            self.inner.srv_view
+        }
 
-    // Stencil-only
-    pub fn vk_srv_view_stencil(&self) -> Option<vk::ImageView> {
-        self.inner.srv_view_stencil
-    }
+        // Stencil-only
+        pub fn vk_srv_view_stencil(&self) -> Option<vk::ImageView> {
+            self.inner.srv_view_stencil
+        }
 
-    // Mip chain
-    pub fn vk_uav_views(&self) -> &[vk::ImageView] {
-        &self.inner.uav_views
-    }
+        // Mip chain
+        pub fn vk_uav_views(&self) -> &[vk::ImageView] {
+            &self.inner.uav_views
+        }
 
-    pub fn render_target_vk_view(&self) -> Option<vk::ImageView> {
-        self.inner.render_target_view
-    }
+        pub fn render_target_vk_view(&self) -> Option<vk::ImageView> {
+            self.inner.render_target_view
+        }
 
-    pub fn render_target_slice_vk_view(
-        &self,
-        depth: u32,
-        array_index: u16,
-        mip_level: u8,
-    ) -> vk::ImageView {
-        assert!(
-            depth == 0
-                || self
-                    .inner
-                    .texture_def
-                    .resource_type
-                    .intersects(ResourceType::RENDER_TARGET_DEPTH_SLICES)
-        );
-        assert!(
-            array_index == 0
-                || self
-                    .inner
-                    .texture_def
-                    .resource_type
-                    .intersects(ResourceType::RENDER_TARGET_ARRAY_SLICES)
-        );
+        pub fn render_target_slice_vk_view(
+            &self,
+            depth: u32,
+            array_index: u16,
+            mip_level: u8,
+        ) -> vk::ImageView {
+            assert!(
+                depth == 0
+                    || self
+                        .inner
+                        .texture_def
+                        .resource_type
+                        .intersects(ResourceType::RENDER_TARGET_DEPTH_SLICES)
+            );
+            assert!(
+                array_index == 0
+                    || self
+                        .inner
+                        .texture_def
+                        .resource_type
+                        .intersects(ResourceType::RENDER_TARGET_ARRAY_SLICES)
+            );
 
-        let def = &self.inner.texture_def;
-        let index = (mip_level as usize * def.array_length as usize * def.extents.depth as usize)
-            + (array_index as usize * def.extents.depth as usize)
-            + depth as usize;
-        self.inner.render_target_view_slices[index]
-    }
-*/
+            let def = &self.inner.texture_def;
+            let index = (mip_level as usize * def.array_length as usize * def.extents.depth as usize)
+                + (array_index as usize * def.extents.depth as usize)
+                + depth as usize;
+            self.inner.render_target_view_slices[index]
+        }
+    */
     // Used internally as part of the hash for creating/reusing framebuffers
     pub(crate) fn texture_id(&self) -> u32 {
         self.inner.texture_id
@@ -210,12 +213,11 @@ impl VulkanTexture {
         existing_image: Option<VulkanRawImage>,
         texture_def: &TextureDef,
     ) -> GfxResult<Self> {
-
         texture_def.verify();
         //
         // Determine desired image type
-        //        
-        let image_type = match texture_def.extents.depth {            
+        //
+        let image_type = match texture_def.extents.depth {
             0 => panic!(),
             1 => vk::ImageType::TYPE_2D,
             2.. => vk::ImageType::TYPE_3D,
@@ -234,16 +236,28 @@ impl VulkanTexture {
             // Determine image usage flags
             //
             let mut usage_flags = vk::ImageUsageFlags::empty();
-            if texture_def.usage_flags.intersects(ResourceUsage::HAS_SHADER_RESOURCE_VIEW) {                
+            if texture_def
+                .usage_flags
+                .intersects(ResourceUsage::HAS_SHADER_RESOURCE_VIEW)
+            {
                 usage_flags |= vk::ImageUsageFlags::SAMPLED;
             }
-            if texture_def.usage_flags.intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW) {                
+            if texture_def
+                .usage_flags
+                .intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW)
+            {
                 usage_flags |= vk::ImageUsageFlags::STORAGE;
             }
-            if texture_def.usage_flags.intersects(ResourceUsage::HAS_RENDER_TARGET_VIEW) {                
+            if texture_def
+                .usage_flags
+                .intersects(ResourceUsage::HAS_RENDER_TARGET_VIEW)
+            {
                 usage_flags |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
             }
-            if texture_def.usage_flags.intersects(ResourceUsage::HAS_DEPTH_STENCIL_VIEW) {                
+            if texture_def
+                .usage_flags
+                .intersects(ResourceUsage::HAS_DEPTH_STENCIL_VIEW)
+            {
                 usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
             }
             if usage_flags.intersects(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::STORAGE) {
@@ -313,7 +327,7 @@ impl VulkanTexture {
             }
         };
 
-        let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);        
+        let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);
 
         // VIEWS <<<<
         /*
@@ -335,7 +349,7 @@ impl VulkanTexture {
             vk::ImageViewType::TYPE_3D
         };
 
-        //SRV        
+        //SRV
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(aspect_mask)
             .base_array_layer(0)
@@ -548,6 +562,6 @@ impl Texture<VulkanApi> for VulkanTexture {
     }
 
     fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<VulkanTextureView> {
-        VulkanTextureView::new(&self, view_def)
+        VulkanTextureView::new(self, view_def)
     }
 }

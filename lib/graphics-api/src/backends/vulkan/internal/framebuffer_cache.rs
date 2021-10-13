@@ -25,9 +25,21 @@ impl VulkanFramebufferCache {
     ) -> u64 {
         let mut hasher = FnvHasher::default();
         for color_target in color_targets {
-            color_target.texture_view.texture().texture_id().hash(&mut hasher);
-            color_target.texture_view.view_def().first_mip.hash(&mut hasher);
-            color_target.texture_view.view_def().first_array_slice.hash(&mut hasher);
+            color_target
+                .texture_view
+                .texture()
+                .texture_id()
+                .hash(&mut hasher);
+            color_target
+                .texture_view
+                .view_def()
+                .first_mip
+                .hash(&mut hasher);
+            color_target
+                .texture_view
+                .view_def()
+                .first_array_slice
+                .hash(&mut hasher);
 
             // if let Some(resolve_target) = color_target.resolve_target {
             //     resolve_target.texture().texture_id().hash(&mut hasher);
@@ -37,9 +49,21 @@ impl VulkanFramebufferCache {
         }
 
         if let Some(depth_target) = &depth_target {
-            depth_target.texture_view.texture().texture_id().hash(&mut hasher);
-            depth_target.texture_view.view_def().first_mip.hash(&mut hasher);
-            depth_target.texture_view.view_def().first_array_slice.hash(&mut hasher);
+            depth_target
+                .texture_view
+                .texture()
+                .texture_id()
+                .hash(&mut hasher);
+            depth_target
+                .texture_view
+                .view_def()
+                .first_mip
+                .hash(&mut hasher);
+            depth_target
+                .texture_view
+                .view_def()
+                .first_array_slice
+                .hash(&mut hasher);
         }
         hasher.finish()
     }
@@ -50,7 +74,6 @@ impl VulkanFramebufferCache {
         color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
         depth_target: Option<&DepthStencilRenderTargetBinding<'_, VulkanApi>>,
     ) -> GfxResult<FramebufferVulkan> {
-        
         let mut color_attachments = Vec::with_capacity(color_targets.len());
         // let mut resolve_attachments = Vec::with_capacity(color_targets.len());
 
@@ -62,11 +85,11 @@ impl VulkanFramebufferCache {
             });
 
             // if let Some(resolve_target) = color_target.resolve_target {
-                // resolve_attachments.push(FramebufferVulkanAttachment {
-                    // texture_view: resolve_target.clone(),
-                    // array_slice: color_target.resolve_array_slice,
-                    // mip_slice: color_target.resolve_mip_slice,
-                // });
+            // resolve_attachments.push(FramebufferVulkanAttachment {
+            // texture_view: resolve_target.clone(),
+            // array_slice: color_target.resolve_array_slice,
+            // mip_slice: color_target.resolve_mip_slice,
+            // });
             // }
         }
 

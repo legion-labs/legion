@@ -3,7 +3,7 @@
 #![allow(unused_variables)]
 #![allow(clippy::unimplemented)]
 
-use crate::{BufferMappingInfo, prelude::*};
+use crate::{prelude::*, BufferMappingInfo};
 use raw_window_handle::HasRawWindowHandle;
 
 //
@@ -73,7 +73,7 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     }
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<NullBuffer> {
         unimplemented!();
-    }    
+    }
     fn create_shader(&self, stages: Vec<ShaderStageDef<NullApi>>) -> GfxResult<NullShader> {
         unimplemented!();
     }
@@ -125,8 +125,6 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     // fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount> {
     //     unimplemented!();
     // }
-
-   
 }
 
 //
@@ -149,7 +147,7 @@ impl Buffer<NullApi> for NullBuffer {
     }
     fn map_buffer(&self) -> GfxResult<NullBufferMappingInfo> {
         unimplemented!()
-    }        
+    }
     fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()> {
         unimplemented!()
     }
@@ -203,7 +201,7 @@ impl BufferView<NullApi> for NullBufferView {
     }
 
     fn view_def(&self) -> &BufferViewDef {
-        unimplemented!();        
+        unimplemented!();
     }
 }
 
@@ -411,10 +409,10 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     ) -> GfxResult<()> {
         unimplemented!()
     }
-    fn cmd_push_constants<T : Sized>(
+    fn cmd_push_constants<T: Sized>(
         &self,
-        root_signature: &NullRootSignature,     
-        constants: &T,     
+        root_signature: &NullRootSignature,
+        constants: &T,
     ) -> GfxResult<()> {
         unimplemented!()
     }
@@ -501,8 +499,6 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     ) -> GfxResult<()> {
         unimplemented!()
     }
-
-    
 }
 
 //

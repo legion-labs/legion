@@ -1,5 +1,8 @@
 use super::{VulkanApi, VulkanDescriptorHeap, VulkanDescriptorSetLayout, VulkanDeviceContext};
-use crate::{BufferView, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle, DescriptorUpdate, GfxResult, ShaderResourceType};
+use crate::{
+    BufferView, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle,
+    DescriptorUpdate, GfxResult, ShaderResourceType,
+};
 use ash::vk;
 
 struct DescriptorUpdateData {
@@ -112,6 +115,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
         self.flush_descriptor_set_updates()
     }
 
+    #[allow(clippy::todo)]
     fn queue_descriptor_set_update(
         &mut self,
         update: &DescriptorUpdate<'_, VulkanApi>,
@@ -124,7 +128,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                 return Err("Passed DescriptorKey::Undefined to update_descriptor_set()".into())
             }
         };
-        
+
         let descriptor = layout.descriptor(descriptor_index).unwrap();
 
         let descriptor_first_update_data = descriptor.update_data_offset_in_set
@@ -181,13 +185,12 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         .build(),
                 );
             }
-            
-            ShaderResourceType::ConstantBuffer | 
-            ShaderResourceType::StructuredBuffer | 
-            ShaderResourceType::RWStructuredBuffer |
-            ShaderResourceType::ByteAdressBuffer | 
-            ShaderResourceType::RWByteAdressBuffer => {
 
+            ShaderResourceType::ConstantBuffer
+            | ShaderResourceType::StructuredBuffer
+            | ShaderResourceType::RWStructuredBuffer
+            | ShaderResourceType::ByteAdressBuffer
+            | ShaderResourceType::RWByteAdressBuffer => {
                 let buffer_views = update.elements.buffer_views.ok_or_else(||
                     format!(
                         "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
@@ -202,14 +205,14 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                     (descriptor_first_update_data + update.dst_element_offset) as usize;
                 assert!(begin_index + buffer_views.len() <= self.update_data.update_data_count);
 
-                // Validation 
-                for buffer_view in buffer_views.iter() {                    
-                    assert!( buffer_view.is_compatible_with_descriptor(descriptor) );
+                // Validation
+                for buffer_view in buffer_views.iter() {
+                    assert!(buffer_view.is_compatible_with_descriptor(descriptor));
                 }
 
                 // Modify the update data
                 let mut next_index = begin_index;
-                for buffer_view in buffer_views.iter() {                    
+                for buffer_view in buffer_views.iter() {
                     let buffer_info = &mut self.update_data.buffer_infos[next_index];
                     next_index += 1;
 
@@ -224,275 +227,274 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         .buffer_info(&self.update_data.buffer_infos[begin_index..next_index])
                         .build(),
                 );
-            }   
-            ShaderResourceType::Texture2D => todo!(),
-            ShaderResourceType::RWTexture2D => todo!(),
-            ShaderResourceType::Texture2DArray => todo!(),
-            ShaderResourceType::RWTexture2DArray => todo!(),
-            ShaderResourceType::Texture3D => todo!(),
-            ShaderResourceType::RWTexture3D => todo!(),
-            ShaderResourceType::TextureCube => todo!(),
-            ShaderResourceType::TextureCubeArray => todo!(),                     
-            // ShaderResourceType::Undefined => panic!(),
-            
-            /* <<<<<<<<<<<<<<<<<<<<<<<<<<
-            ShaderResourceType::TEXTURE => {
-                
-                let textures = update.elements.textures.ok_or_else(||
-                    format!(
-                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the texture element list was None",
-                        update.descriptor_key,
-                        set_index,
-                        descriptor.binding,
-                        descriptor.name,
-                        descriptor.shader_resource_type,
-                    )
-                )?;
-                let begin_index =
-                    (descriptor_first_update_data + update.dst_element_offset) as usize;
-                assert!(begin_index + textures.len() <= self.update_data.update_data_count);
-
-                let texture_bind_type = update.texture_bind_type.unwrap_or(TextureBindType::Srv);
-
-                // Modify the update data
-                let mut next_index = begin_index;
-                for texture in textures {
-                    let image_info = &mut self.update_data.image_infos[next_index];
-                    next_index += 1;
-
-                    if texture_bind_type == TextureBindType::SrvStencil {
-                        image_info.image_view = texture.vk_srv_view_stencil().ok_or_else(|| {
-                            format!(
-                                "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) as TextureBindType::SrvStencil but there is no srv_stencil view",
-                                update.descriptor_key,
-                                set_index,
-                                descriptor.binding,
-                                descriptor.name,
-                                descriptor.shader_resource_type,
-                            )
-                        })?;
-                    } else if texture_bind_type == TextureBindType::Srv {
-                        image_info.image_view = texture.vk_srv_view().ok_or_else(|| {
-                            format!(
-                                "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) as TextureBindType::Srv but there is no srv view",
-                                update.descriptor_key,
-                                set_index,
-                                descriptor.binding,
-                                descriptor.name,
-                                descriptor.shader_resource_type,
-                            )
-                        })?;
-                    } else {
-                        return Err(format!(
-                            "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but texture_bind_type {:?} was unexpected for this kind of resource",
-                            update.descriptor_key,
-                            set_index,
-                            descriptor.binding,
-                            descriptor.name,
-                            descriptor.shader_resource_type,
-                            update.texture_bind_type
-                        ).into());
-                    }
-
-                    image_info.image_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
-                }
-
-                // Queue a descriptor write
-                self.pending_writes.push(
-                    write_descriptor_builder
-                        .image_info(&self.update_data.image_infos[begin_index..next_index])
-                        .build(),
-                );                
             }
-            ResourceType::TEXTURE_READ_WRITE => {
-                let textures = update.elements.textures.ok_or_else(||
-                    format!(
-                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the texture element list was None",
-                        update.descriptor_key,
-                        set_index,
-                        descriptor.binding,
-                        descriptor.name,
-                        descriptor.shader_resource_type,
-                    )
-                )?;
-                let begin_index =
-                    (descriptor_first_update_data + update.dst_element_offset) as usize;
-                assert!(begin_index + textures.len() <= self.update_data.update_data_count);
+            ShaderResourceType::Texture2D
+            | ShaderResourceType::RWTexture2D
+            | ShaderResourceType::Texture2DArray
+            | ShaderResourceType::RWTexture2DArray
+            | ShaderResourceType::Texture3D
+            | ShaderResourceType::RWTexture3D
+            | ShaderResourceType::TextureCube
+            | ShaderResourceType::TextureCubeArray => {
+                todo!();
+            } /* <<<<<<<<<<<<<<<<<<<<<<<<<<
+              ShaderResourceType::TEXTURE => {
 
-                // Modify the update data
-                let mut next_index = begin_index;
+                  let textures = update.elements.textures.ok_or_else(||
+                      format!(
+                          "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the texture element list was None",
+                          update.descriptor_key,
+                          set_index,
+                          descriptor.binding,
+                          descriptor.name,
+                          descriptor.shader_resource_type,
+                      )
+                  )?;
+                  let begin_index =
+                      (descriptor_first_update_data + update.dst_element_offset) as usize;
+                  assert!(begin_index + textures.len() <= self.update_data.update_data_count);
 
-                let texture_bind_type = update
-                    .texture_bind_type
-                    .unwrap_or(TextureBindType::UavMipSlice(0));
+                  let texture_bind_type = update.texture_bind_type.unwrap_or(TextureBindType::Srv);
 
-                if let TextureBindType::UavMipSlice(slice) = texture_bind_type {
-                    for texture in textures {
-                        let image_info = &mut self.update_data.image_infos[next_index];
-                        next_index += 1;
+                  // Modify the update data
+                  let mut next_index = begin_index;
+                  for texture in textures {
+                      let image_info = &mut self.update_data.image_infos[next_index];
+                      next_index += 1;
 
-                        let image_views = texture.vk_uav_views();
-                        let image_view = *image_views.get(slice as usize).ok_or_else(|| format!(
-                            "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the chosen mip slice {} exceeds the mip count of {} in the image",
-                            update.descriptor_key,
-                            set_index,
-                            descriptor.binding,
-                            descriptor.name,
-                            descriptor.shader_resource_type,
-                            slice,
-                            image_views.len()
-                        ))?;
-                        image_info.image_view = image_view;
+                      if texture_bind_type == TextureBindType::SrvStencil {
+                          image_info.image_view = texture.vk_srv_view_stencil().ok_or_else(|| {
+                              format!(
+                                  "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) as TextureBindType::SrvStencil but there is no srv_stencil view",
+                                  update.descriptor_key,
+                                  set_index,
+                                  descriptor.binding,
+                                  descriptor.name,
+                                  descriptor.shader_resource_type,
+                              )
+                          })?;
+                      } else if texture_bind_type == TextureBindType::Srv {
+                          image_info.image_view = texture.vk_srv_view().ok_or_else(|| {
+                              format!(
+                                  "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) as TextureBindType::Srv but there is no srv view",
+                                  update.descriptor_key,
+                                  set_index,
+                                  descriptor.binding,
+                                  descriptor.name,
+                                  descriptor.shader_resource_type,
+                              )
+                          })?;
+                      } else {
+                          return Err(format!(
+                              "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but texture_bind_type {:?} was unexpected for this kind of resource",
+                              update.descriptor_key,
+                              set_index,
+                              descriptor.binding,
+                              descriptor.name,
+                              descriptor.shader_resource_type,
+                              update.texture_bind_type
+                          ).into());
+                      }
 
-                        image_info.image_layout = vk::ImageLayout::GENERAL;
-                    }
-                } else if texture_bind_type == TextureBindType::UavMipChain {
-                    let texture = textures.first().unwrap();
+                      image_info.image_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
+                  }
 
-                    let image_views = texture.vk_uav_views();
-                    if image_views.len() > descriptor.element_count as usize {
-                        return Err(format!(
-                            "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) using UavMipChain but the mip chain has {} images and the descriptor has {} elements",
-                            update.descriptor_key,
-                            set_index,
-                            descriptor.binding,
-                            descriptor.name,
-                            descriptor.shader_resource_type,
-                            image_views.len(),
-                            descriptor.element_count
-                        ).into());
-                    }
+                  // Queue a descriptor write
+                  self.pending_writes.push(
+                      write_descriptor_builder
+                          .image_info(&self.update_data.image_infos[begin_index..next_index])
+                          .build(),
+                  );
+              }
+              ResourceType::TEXTURE_READ_WRITE => {
+                  let textures = update.elements.textures.ok_or_else(||
+                      format!(
+                          "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the texture element list was None",
+                          update.descriptor_key,
+                          set_index,
+                          descriptor.binding,
+                          descriptor.name,
+                          descriptor.shader_resource_type,
+                      )
+                  )?;
+                  let begin_index =
+                      (descriptor_first_update_data + update.dst_element_offset) as usize;
+                  assert!(begin_index + textures.len() <= self.update_data.update_data_count);
 
-                    for image_view in image_views {
-                        let image_info = &mut self.update_data.image_infos[next_index];
-                        next_index += 1;
+                  // Modify the update data
+                  let mut next_index = begin_index;
 
-                        image_info.image_view = *image_view;
-                        image_info.image_layout = vk::ImageLayout::GENERAL;
-                    }
-                } else {
-                    return Err(format!(
-                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but texture_bind_type {:?} was unexpected for this kind of resource",
-                        update.descriptor_key,
-                        set_index,
-                        descriptor.binding,
-                        descriptor.name,
-                        descriptor.shader_resource_type,
-                        update.texture_bind_type
-                    ).into());
-                }
+                  let texture_bind_type = update
+                      .texture_bind_type
+                      .unwrap_or(TextureBindType::UavMipSlice(0));
 
-                // Queue a descriptor write
-                self.pending_writes.push(
-                    write_descriptor_builder
-                        .image_info(&self.update_data.image_infos[begin_index..next_index])
-                        .build(),
-                );                
-            }            
-            ResourceType::UNIFORM_BUFFER_
-            | ResourceType::BUFFER
-            | ResourceType::BUFFER_READ_WRITE => {
-                if descriptor.vk_type == vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC {
-                    //TODO: Add support for dynamic uniforms
-                    unreachable!();
-                }
+                  if let TextureBindType::UavMipSlice(slice) = texture_bind_type {
+                      for texture in textures {
+                          let image_info = &mut self.update_data.image_infos[next_index];
+                          next_index += 1;
 
-                let buffers = update.elements.buffers.ok_or_else(||
-                    format!(
-                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
-                        update.descriptor_key,
-                        set_index,
-                        descriptor.binding,
-                        descriptor.name,
-                        descriptor.shader_resource_type,
-                    )
-                )?;
-                let begin_index =
-                    (descriptor_first_update_data + update.dst_element_offset) as usize;
-                assert!(begin_index + buffers.len() <= self.update_data.update_data_count);
+                          let image_views = texture.vk_uav_views();
+                          let image_view = *image_views.get(slice as usize).ok_or_else(|| format!(
+                              "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the chosen mip slice {} exceeds the mip count of {} in the image",
+                              update.descriptor_key,
+                              set_index,
+                              descriptor.binding,
+                              descriptor.name,
+                              descriptor.shader_resource_type,
+                              slice,
+                              image_views.len()
+                          ))?;
+                          image_info.image_view = image_view;
 
-                // Modify the update data
-                let mut next_index = begin_index;
-                for (buffer_index, buffer) in buffers.iter().enumerate() {
-                    let buffer_info = &mut self.update_data.buffer_infos[next_index];
-                    next_index += 1;
+                          image_info.image_layout = vk::ImageLayout::GENERAL;
+                      }
+                  } else if texture_bind_type == TextureBindType::UavMipChain {
+                      let texture = textures.first().unwrap();
 
-                    buffer_info.buffer = buffer.vk_buffer();
-                    buffer_info.offset = 0;
-                    buffer_info.range = vk::WHOLE_SIZE;
+                      let image_views = texture.vk_uav_views();
+                      if image_views.len() > descriptor.element_count as usize {
+                          return Err(format!(
+                              "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) using UavMipChain but the mip chain has {} images and the descriptor has {} elements",
+                              update.descriptor_key,
+                              set_index,
+                              descriptor.binding,
+                              descriptor.name,
+                              descriptor.shader_resource_type,
+                              image_views.len(),
+                              descriptor.element_count
+                          ).into());
+                      }
 
-                    if let Some(offset_size) = update.elements.buffer_offset_sizes {
-                        if offset_size[buffer_index].byte_offset != 0 {
-                            buffer_info.offset = offset_size[buffer_index].byte_offset;
-                        }
+                      for image_view in image_views {
+                          let image_info = &mut self.update_data.image_infos[next_index];
+                          next_index += 1;
 
-                        if offset_size[buffer_index].size != 0 {
-                            buffer_info.range = offset_size[buffer_index].size;
-                        }
-                    }
-                }
+                          image_info.image_view = *image_view;
+                          image_info.image_layout = vk::ImageLayout::GENERAL;
+                      }
+                  } else {
+                      return Err(format!(
+                          "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but texture_bind_type {:?} was unexpected for this kind of resource",
+                          update.descriptor_key,
+                          set_index,
+                          descriptor.binding,
+                          descriptor.name,
+                          descriptor.shader_resource_type,
+                          update.texture_bind_type
+                      ).into());
+                  }
 
-                // Queue a descriptor write
-                self.pending_writes.push(
-                    write_descriptor_builder
-                        .buffer_info(&self.update_data.buffer_infos[begin_index..next_index])
-                        .build(),
-                );
-            }
-            ResourceType::TEXEL_BUFFER | ResourceType::TEXEL_BUFFER_READ_WRITE => {
-                let buffers = update.elements.buffers.ok_or_else(||
-                    format!(
-                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
-                        update.descriptor_key,
-                        set_index,
-                        descriptor.binding,
-                        descriptor.name,
-                        descriptor.shader_resource_type,
-                    )
-                )?;
-                let begin_index =
-                    (descriptor_first_update_data + update.dst_element_offset) as usize;
-                assert!(begin_index + buffers.len() <= self.update_data.update_data_count);
+                  // Queue a descriptor write
+                  self.pending_writes.push(
+                      write_descriptor_builder
+                          .image_info(&self.update_data.image_infos[begin_index..next_index])
+                          .build(),
+                  );
+              }
+              ResourceType::UNIFORM_BUFFER_
+              | ResourceType::BUFFER
+              | ResourceType::BUFFER_READ_WRITE => {
+                  if descriptor.vk_type == vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC {
+                      //TODO: Add support for dynamic uniforms
+                      unreachable!();
+                  }
 
-                // Modify the update data
-                let mut next_index = begin_index;
-                for buffer in buffers {
-                    let buffer_view = &mut self.update_data.buffer_views[next_index];
-                    next_index += 1;
+                  let buffers = update.elements.buffers.ok_or_else(||
+                      format!(
+                          "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
+                          update.descriptor_key,
+                          set_index,
+                          descriptor.binding,
+                          descriptor.name,
+                          descriptor.shader_resource_type,
+                      )
+                  )?;
+                  let begin_index =
+                      (descriptor_first_update_data + update.dst_element_offset) as usize;
+                  assert!(begin_index + buffers.len() <= self.update_data.update_data_count);
 
-                    if descriptor.shader_resource_type == ResourceType::TEXEL_BUFFER {
-                        *buffer_view = buffer.vk_uniform_texel_view().ok_or_else(|| {
-                            format!(
-                                "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but there was no uniform texel view",
-                                update.descriptor_key,
-                                set_index,
-                                descriptor.binding,
-                                descriptor.name,
-                                descriptor.shader_resource_type,
-                            )
-                        })?;
-                    } else {
-                        *buffer_view = buffer.vk_storage_texel_view().ok_or_else(|| {
-                            format!(
-                                "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but there was no storage texel view",
-                                update.descriptor_key,
-                                set_index,
-                                descriptor.binding,
-                                descriptor.name,
-                                descriptor.shader_resource_type,
-                            )
-                        })?;
-                    };
-                }
+                  // Modify the update data
+                  let mut next_index = begin_index;
+                  for (buffer_index, buffer) in buffers.iter().enumerate() {
+                      let buffer_info = &mut self.update_data.buffer_infos[next_index];
+                      next_index += 1;
 
-                // Queue a descriptor write
-                self.pending_writes.push(
-                    write_descriptor_builder
-                        .texel_buffer_view(&self.update_data.buffer_views[begin_index..next_index])
-                        .build(),
-                );
-            }          
-            >>>>>>>>>>>>>>>>>>>>>> */  
+                      buffer_info.buffer = buffer.vk_buffer();
+                      buffer_info.offset = 0;
+                      buffer_info.range = vk::WHOLE_SIZE;
+
+                      if let Some(offset_size) = update.elements.buffer_offset_sizes {
+                          if offset_size[buffer_index].byte_offset != 0 {
+                              buffer_info.offset = offset_size[buffer_index].byte_offset;
+                          }
+
+                          if offset_size[buffer_index].size != 0 {
+                              buffer_info.range = offset_size[buffer_index].size;
+                          }
+                      }
+                  }
+
+                  // Queue a descriptor write
+                  self.pending_writes.push(
+                      write_descriptor_builder
+                          .buffer_info(&self.update_data.buffer_infos[begin_index..next_index])
+                          .build(),
+                  );
+              }
+              ResourceType::TEXEL_BUFFER | ResourceType::TEXEL_BUFFER_READ_WRITE => {
+                  let buffers = update.elements.buffers.ok_or_else(||
+                      format!(
+                          "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the buffers element list was None",
+                          update.descriptor_key,
+                          set_index,
+                          descriptor.binding,
+                          descriptor.name,
+                          descriptor.shader_resource_type,
+                      )
+                  )?;
+                  let begin_index =
+                      (descriptor_first_update_data + update.dst_element_offset) as usize;
+                  assert!(begin_index + buffers.len() <= self.update_data.update_data_count);
+
+                  // Modify the update data
+                  let mut next_index = begin_index;
+                  for buffer in buffers {
+                      let buffer_view = &mut self.update_data.buffer_views[next_index];
+                      next_index += 1;
+
+                      if descriptor.shader_resource_type == ResourceType::TEXEL_BUFFER {
+                          *buffer_view = buffer.vk_uniform_texel_view().ok_or_else(|| {
+                              format!(
+                                  "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but there was no uniform texel view",
+                                  update.descriptor_key,
+                                  set_index,
+                                  descriptor.binding,
+                                  descriptor.name,
+                                  descriptor.shader_resource_type,
+                              )
+                          })?;
+                      } else {
+                          *buffer_view = buffer.vk_storage_texel_view().ok_or_else(|| {
+                              format!(
+                                  "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but there was no storage texel view",
+                                  update.descriptor_key,
+                                  set_index,
+                                  descriptor.binding,
+                                  descriptor.name,
+                                  descriptor.shader_resource_type,
+                              )
+                          })?;
+                      };
+                  }
+
+                  // Queue a descriptor write
+                  self.pending_writes.push(
+                      write_descriptor_builder
+                          .texel_buffer_view(&self.update_data.buffer_views[begin_index..next_index])
+                          .build(),
+                  );
+              }
+              >>>>>>>>>>>>>>>>>>>>>> */
         }
 
         Ok(())

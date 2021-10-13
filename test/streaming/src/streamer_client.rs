@@ -103,12 +103,12 @@ fn run() -> GfxResult<()> {
         //
         let mut command_pools = Vec::with_capacity(parallel_render_count);
         let mut command_buffers = Vec::with_capacity(parallel_render_count);
-        let mut vertex_buffers = Vec::with_capacity(parallel_render_count);        
+        let mut vertex_buffers = Vec::with_capacity(parallel_render_count);
         let mut uniform_buffers = Vec::with_capacity(parallel_render_count);
         let mut uniform_buffer_cbvs = Vec::with_capacity(parallel_render_count);
         let mut render_images = Vec::with_capacity(parallel_render_count);
         let mut render_views = Vec::with_capacity(parallel_render_count);
-        let mut copy_images = Vec::with_capacity(parallel_render_count);        
+        let mut copy_images = Vec::with_capacity(parallel_render_count);
 
         let mut file_h264 = std::fs::File::create("D:/test.h264").unwrap();
         for _ in 0..parallel_render_count {
@@ -122,12 +122,12 @@ fn run() -> GfxResult<()> {
             let vertex_buffer = device_context
                 .create_buffer(&BufferDef::for_staging_vertex_buffer_data(&vertex_data))?;
             vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
-            
+
             let uniform_buffer = device_context
                 .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
-            let view_def = BufferViewDef::as_const_buffer(uniform_buffer.buffer_def());                
+            let view_def = BufferViewDef::as_const_buffer(uniform_buffer.buffer_def());
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def)?;
 
             let render_image = device_context.create_texture(&TextureDef {
@@ -140,15 +140,16 @@ fn run() -> GfxResult<()> {
                 mip_count: 1,
                 // sample_count: SampleCount::SampleCount1,
                 format: Format::R8G8B8A8_UNORM,
-                usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW|ResourceUsage::HAS_RENDER_TARGET_VIEW,
+                usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW
+                    | ResourceUsage::HAS_RENDER_TARGET_VIEW,
                 resource_flags: ResourceFlags::empty(),
                 mem_usage: MemoryUsage::GpuOnly,
                 // dimensions: TextureDimensions::Dim2D,
                 tiling: TextureTiling::Optimal,
             })?;
 
-            let render_view = render_image.create_view(
-                &TextureViewDef::as_render_target_view(render_image.texture_def()
+            let render_view = render_image.create_view(&TextureViewDef::as_render_target_view(
+                render_image.texture_def(),
             ))?;
 
             let copy_image = device_context.create_texture(&TextureDef {
@@ -215,13 +216,13 @@ fn run() -> GfxResult<()> {
         // offline and loaded with the shader but this is not currently provided in rafx-api itself.
         // (But see the shader pipeline in higher-level rafx crates for example usage, generated
         // from spirv_cross)
-        //       
+        //
 
         let color_shader_resource = ShaderResource {
             name: "color".to_owned(),
             set_index: 0,
             binding: 0,
-            shader_resource_type:  ShaderResourceType::ConstantBuffer,
+            shader_resource_type: ShaderResourceType::ConstantBuffer,
             element_count: 0,
             used_in_shader_stages: ShaderStageFlags::VERTEX,
         };
@@ -232,8 +233,8 @@ fn run() -> GfxResult<()> {
                 entry_point_name: "main".to_string(),
                 shader_stage: ShaderStageFlags::VERTEX,
                 compute_threads_per_group: None,
-                shader_resources: vec![color_shader_resource.clone()],
-                push_constants: Vec::new()
+                shader_resources: vec![color_shader_resource],
+                push_constants: Vec::new(),
             },
         };
 
@@ -244,7 +245,7 @@ fn run() -> GfxResult<()> {
                 shader_stage: ShaderStageFlags::FRAGMENT,
                 compute_threads_per_group: None,
                 shader_resources: Vec::new(),
-                push_constants: Vec::new()
+                push_constants: Vec::new(),
             },
         };
 
@@ -258,7 +259,7 @@ fn run() -> GfxResult<()> {
             device_context,
             &[shader.clone()],
         )?;
-        
+
         //
         // Create the root signature object - it represents the pipeline layout and can be shared among
         // shaders. But one per shader is fine.
@@ -397,7 +398,7 @@ fn run() -> GfxResult<()> {
                     &[ColorRenderTargetBinding {
                         texture_view: render_view,
                         load_op: LoadOp::Clear,
-                        store_op: StoreOp::Store,                        
+                        store_op: StoreOp::Store,
                         clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
                     }],
                     None,

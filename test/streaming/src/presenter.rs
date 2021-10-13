@@ -17,8 +17,7 @@ fn run() -> GfxResult<()> {
 }
 
 #[cfg(target_os = "windows")]
-fn run() -> GfxResult<()> {    
-
+fn run() -> GfxResult<()> {
     use presenter::window::*;
     use pso_compiler::{CompileParams, HLSLCompiler, ShaderSource};
     const WINDOW_WIDTH: u32 = 900;
@@ -197,24 +196,12 @@ fn run() -> GfxResult<()> {
 
         let vert_shader_stage_def = ShaderStageDef {
             shader_module: vert_shader_module,
-            // reflection: ShaderStageReflection {
-            //     entry_point_name: "main".to_string(),
-            //     shader_stage: ShaderStageFlags::VERTEX,
-            //     compute_threads_per_group: None,
-            //     resources: vec![color_shader_resource.clone()],
-            // },
-            reflection: vs_out.refl_info.unwrap().clone(),
+            reflection: vs_out.refl_info.unwrap(),
         };
 
         let frag_shader_stage_def = ShaderStageDef {
             shader_module: frag_shader_module,
-            // reflection: ShaderStageReflection {
-            //     entry_point_name: "main".to_string(),
-            //     shader_stage: ShaderStageFlags::FRAGMENT,
-            //     compute_threads_per_group: None,
-            //     resources: vec![color_shader_resource],
-            // },
-            reflection: ps_out.refl_info.unwrap().clone(),
+            reflection: ps_out.refl_info.unwrap(),
         };
 
         //
@@ -293,7 +280,11 @@ fn run() -> GfxResult<()> {
                 ))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
-            let view_def = BufferViewDef::as_structured_buffer(uniform_buffer.buffer_def(), std::mem::size_of::<VertexColor_SB>() as u64, true );            
+            let view_def = BufferViewDef::as_structured_buffer(
+                uniform_buffer.buffer_def(),
+                std::mem::size_of::<VertexColor_SB>() as u64,
+                true,
+            );
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def)?;
 
             vertex_buffers.push(vertex_buffer);
@@ -301,7 +292,7 @@ fn run() -> GfxResult<()> {
             uniform_buffer_cbvs.push(uniform_buffer_cbv);
         }
 
-        // 
+        //
         // Create texture
         //
 
@@ -487,7 +478,7 @@ fn run() -> GfxResult<()> {
                     color: [color, 0.0, 1.0 - color, 1.0],
                     bar: 7f32,
                 }];
-                
+
                 cmd_buffer
                     .cmd_push_constants(&root_signature, &uniform_data)
                     .unwrap();

@@ -177,10 +177,10 @@ bitflags::bitflags! {
     /// Indicates how a resource will be used. In some cases, multiple flags are allowed.
     #[derive(Default)]
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-    pub struct ResourceFlags: u32 {        
-        const TEXTURE_CUBE = 1<<12;       
-    } 
-}    
+    pub struct ResourceFlags: u32 {
+        const TEXTURE_CUBE = 1<<12;
+    }
+}
 
 bitflags::bitflags! {
     /// Flags for enabling/disabling color channels, used with `BlendState`
@@ -271,7 +271,7 @@ bitflags::bitflags! {
     /// VkShaderStageFlagBits
     // #[derive(Default)]
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-    pub struct ShaderStageFlags : u32 {        
+    pub struct ShaderStageFlags : u32 {
         const VERTEX = 1;
         const TESSELLATION_CONTROL = 2;
         const TESSELLATION_EVALUATION = 4;
@@ -775,12 +775,12 @@ impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
             samplers: None,
             // buffers: None,
             // buffer_offset_sizes: None,
-            buffer_views : None,
+            buffer_views: None,
             // srvs : None
         }
     }
 }
-// 
+//
 // /// Used when binding a texture to select between different ways to bind the texture
 // #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 // pub enum TextureBindType {
@@ -811,7 +811,7 @@ impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {
             array_index: 0,
             descriptor_key: DescriptorKey::Undefined,
             elements: DescriptorElements::default(),
-            dst_element_offset: 0,            
+            dst_element_offset: 0,
         }
     }
 }

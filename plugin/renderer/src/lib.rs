@@ -110,15 +110,16 @@ impl Renderer {
                         depth: 1,
                     },
                     array_length: 1,
-                    mip_count: 1,                    
+                    mip_count: 1,
                     format: Format::R8G8B8A8_UNORM,
-                    usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW|ResourceUsage::HAS_RENDER_TARGET_VIEW,
+                    usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW
+                        | ResourceUsage::HAS_RENDER_TARGET_VIEW,
                     resource_flags: ResourceFlags::empty(),
-                    mem_usage: MemoryUsage::GpuOnly,                    
+                    mem_usage: MemoryUsage::GpuOnly,
                     tiling: TextureTiling::Optimal,
                 })
                 .unwrap();
-            
+
             let render_view_def = TextureViewDef::as_render_target_view(render_image.texture_def());
             let render_view = render_image.create_view(&render_view_def).unwrap();
 
@@ -130,11 +131,11 @@ impl Renderer {
                         depth: 1,
                     },
                     array_length: 1,
-                    mip_count: 1,                    
+                    mip_count: 1,
                     format: Format::R8G8B8A8_UNORM,
                     mem_usage: MemoryUsage::GpuToCpu,
                     usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
-                    resource_flags: ResourceFlags::empty(),                    
+                    resource_flags: ResourceFlags::empty(),
                     tiling: TextureTiling::Linear,
                 })
                 .unwrap();
@@ -198,7 +199,6 @@ impl Renderer {
             shader_resource_type: ShaderResourceType::ConstantBuffer,
             element_count: 0,
             used_in_shader_stages: ShaderStageFlags::VERTEX,
-            // ..Default::default()
         };
 
         let vert_shader_stage_def = ShaderStageDef {
@@ -207,8 +207,8 @@ impl Renderer {
                 entry_point_name: "main".to_string(),
                 shader_stage: ShaderStageFlags::VERTEX,
                 compute_threads_per_group: None,
-                shader_resources: vec![color_shader_resource.clone()],
-                push_constants: Vec::new()
+                shader_resources: vec![color_shader_resource],
+                push_constants: Vec::new(),
             },
         };
 
@@ -219,7 +219,7 @@ impl Renderer {
                 shader_stage: ShaderStageFlags::FRAGMENT,
                 compute_threads_per_group: None,
                 shader_resources: Vec::new(),
-                push_constants: Vec::new()
+                push_constants: Vec::new(),
             },
         };
 
@@ -408,8 +408,8 @@ impl Renderer {
                 &[ColorRenderTargetBinding {
                     texture_view: render_view,
                     load_op: LoadOp::Clear,
-                    store_op: StoreOp::Store,                    
-                    clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),                    
+                    store_op: StoreOp::Store,
+                    clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
                 }],
                 None,
             )

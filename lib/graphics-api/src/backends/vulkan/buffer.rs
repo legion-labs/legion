@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use super::{VulkanApi, VulkanBufferView, VulkanDeviceContext};
-use crate::{Buffer, BufferDef, BufferMappingInfo, BufferViewDef, GfxResult, MemoryUsage, ResourceUsage};
+use crate::{
+    Buffer, BufferDef, BufferMappingInfo, BufferViewDef, GfxResult, MemoryUsage, ResourceUsage,
+};
 use ash::vk;
 
 #[derive(Debug)]
@@ -43,7 +45,8 @@ impl VulkanBuffer {
         //     );
         // }
 
-        let mut usage_flags = super::internal::resource_type_buffer_usage_flags(buffer_def.usage_flags);
+        let mut usage_flags =
+            super::internal::resource_type_buffer_usage_flags(buffer_def.usage_flags);
 
         if buffer_def.memory_usage == MemoryUsage::GpuOnly
             || buffer_def.memory_usage == MemoryUsage::CpuToGpu
@@ -136,11 +139,10 @@ pub struct VulkanBufferMappingInfo {
 
 impl Drop for VulkanBufferMappingInfo {
     fn drop(&mut self) {
-        self.
-        buffer.
-        device_context().
-        allocator().
-        unmap_memory(&self.buffer.inner.allocation);    
+        self.buffer
+            .device_context()
+            .allocator()
+            .unmap_memory(&self.buffer.inner.allocation);
     }
 }
 
@@ -162,10 +164,10 @@ impl Buffer<VulkanApi> for VulkanBuffer {
             .allocator()
             .map_memory(&self.inner.allocation)?;
         Ok(VulkanBufferMappingInfo {
-            buffer: self.clone(), 
-            data_ptr: ptr 
+            buffer: self.clone(),
+            data_ptr: ptr,
         })
-    }    
+    }
 
     fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()> {
         // Cannot check size of data == buffer because buffer size might be rounded up
@@ -184,7 +186,7 @@ impl Buffer<VulkanApi> for VulkanBuffer {
 
         let required_alignment = std::mem::align_of::<T>();
 
-        let mapping_info = self.map_buffer()?;        
+        let mapping_info = self.map_buffer()?;
         unsafe {
             let dst = mapping_info.data_ptr().add(buffer_byte_offset as usize);
             assert_eq!(((dst as usize) % required_alignment), 0);
@@ -194,10 +196,7 @@ impl Buffer<VulkanApi> for VulkanBuffer {
         Ok(())
     }
 
-    fn create_view(
-        &self,
-        view_def: &BufferViewDef,
-    ) -> GfxResult<VulkanBufferView> {
-        VulkanBufferView::from_buffer(&self, view_def)
+    fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<VulkanBufferView> {
+        VulkanBufferView::from_buffer(self, view_def)
     }
 }

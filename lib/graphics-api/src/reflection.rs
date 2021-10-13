@@ -35,7 +35,7 @@ pub struct PushConstant {
 impl PushConstant {
     pub(crate) fn verify_compatible_across_stages(&self, other: &Self) -> GfxResult<()> {
         if self.size != other.size {
-            return Err(format!("PushConstant has different size in different stages").into());
+            return Err("PushConstant has different size in different stages".into());
         }
 
         Ok(())
@@ -202,7 +202,7 @@ impl PipelineReflection {
                     return Err(message.into());
                 }
 
-                let mut push_constant = push_constant.clone();
+                let mut push_constant = *push_constant;
                 push_constant.used_in_shader_stages |= stage.reflection.shader_stage;
                 unmerged_pushconstants.push(push_constant);
             }
