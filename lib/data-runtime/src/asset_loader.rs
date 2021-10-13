@@ -15,6 +15,8 @@ struct AssetReference {
 ///
 /// Contains the result of loading a single file.
 struct LoadOutput {
+    /// None here means the asset was already loaded before so it doesn't have to be
+    /// loaded again. It will still contribute to reference count though.
     assets: Vec<(ResourceId, Option<Arc<dyn Any + Send + Sync>>)>,
     load_dependencies: Vec<AssetReference>,
 }
@@ -27,14 +29,21 @@ pub(crate) enum LoaderResult {
 
 pub(crate) enum LoaderRequest {
     Load(ResourceId, Option<LoadId>),
+    Reload(ResourceId),
     Unload(ResourceId, bool, Option<io::ErrorKind>),
     Terminate,
 }
 
-struct LoaderPending {
+/// State of a load request in progress.
+struct LoadState {
     primary_id: ResourceId,
+    /// If load_id is available it means the load was triggered by the user.
+    /// Otherwise it is a load of a dependent Resource.
     load_id: Option<LoadId>,
+    /// List of Resources in asset file identified by `primary_id`.
+    /// None indicates a skipped secondary resource that was already loaded through another resource file.
     assets: Vec<(ResourceId, Option<Arc<dyn Any + Send + Sync>>)>,
+    /// The list of Resources that need to be loaded before the LoadState can be considered completed.
     references: Vec<AssetReference>,
 }
 
@@ -76,7 +85,21 @@ impl AssetLoaderStub {
         }
     }
 
-    fn create_handle(&mut self, id: ResourceId) -> HandleUntyped {
+    fn get_handle(&mut self, id: ResourceId) -> Option<HandleUntyped> {
+        self.ref_counts
+            .iter_mut()
+            .find_map(|(handle_id, (referred_id, count))| {
+                if referred_id == &id {
+                    *count += 1;
+                    Some(*handle_id)
+                } else {
+                    None
+                }
+            })
+            .map(|handle_id| HandleUntyped::create(handle_id, self.refcount_channel.0.clone()))
+    }
+
+    fn get_or_create_handle(&mut self, id: ResourceId) -> HandleUntyped {
         let handle_id = self
             .ref_counts
             .iter_mut()
@@ -130,11 +153,20 @@ impl AssetLoaderStub {
     }
 
     pub(crate) fn load(&mut self, resource_id: ResourceId) -> HandleUntyped {
-        let handle = self.create_handle(resource_id);
+        let handle = self.get_or_create_handle(resource_id);
         self.request_tx
             .send(LoaderRequest::Load(resource_id, Some(handle.id)))
             .unwrap();
         handle
+    }
+
+    pub(crate) fn reload(&mut self, resource_id: ResourceId) -> bool {
+        self.get_handle(resource_id).map_or(false, |_| {
+            self.request_tx
+                .send(LoaderRequest::Reload(resource_id))
+                .unwrap();
+            true
+        })
     }
 
     pub(crate) fn try_result(&mut self) -> Option<LoaderResult> {
@@ -152,7 +184,8 @@ const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 pub(crate) struct AssetLoaderIO {
     loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
 
-    request_await: Vec<LoaderPending>,
+    /// List of load requests waiting for all references to be loaded.
+    processing_list: Vec<LoadState>,
 
     /// Reference counts of primary and secondary assets.
     asset_refcounts: HashMap<ResourceId, isize>,
@@ -192,7 +225,7 @@ impl AssetLoaderIO {
     ) -> Self {
         Self {
             loaders: HashMap::new(),
-            request_await: Vec::new(),
+            processing_list: Vec::new(),
             asset_refcounts: HashMap::new(),
             asset_storage: HashMap::new(),
             devices,
@@ -224,102 +257,152 @@ impl AssetLoaderIO {
         ))
     }
 
+    fn process_reload(&mut self, primary_id: ResourceId) -> Result<(), io::Error> {
+        let asset_data = self.read_resource(primary_id)?;
+
+        // for now it should be empty. later - cause a reload of secondary assets?
+        //
+        let _secondary_assets = self.secondary_assets.get(&primary_id).unwrap();
+
+        // swap all reloaded assets. send update to main thread?
+        let _asset_storage = self.asset_storage.get(&primary_id).unwrap();
+
+        // compare against the header. decrease relevant refcount -> cause unload? cause a new load? ;/
+        let _primary_asset_references = self.primary_asset_references.get(&primary_id).unwrap();
+
+        // todo: call load_init after a reload.
+
+        let load_func = {
+            if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
+                Self::load_raw
+            } else {
+                Self::load_asset_file
+            }
+        };
+
+        let output = load_func(primary_id, &mut &asset_data[..], &mut self.loaders)?;
+
+        assert_eq!(
+            output.assets.len(),
+            1,
+            "Reload of secondary assets not supported"
+        );
+
+        for (asset_id, asset) in &output.assets {
+            match asset {
+                Some(_) => {
+                    let res = self.asset_refcounts.insert(*asset_id, 1);
+                    assert!(res.is_none(), "Asset was already loaded.");
+                }
+                None => {
+                    *self.asset_refcounts.get_mut(asset_id).unwrap() += 1;
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn process_load(
         &mut self,
         primary_id: ResourceId,
         load_id: Option<u32>,
     ) -> Result<(), (ResourceId, Option<LoadId>, io::Error)> {
-        match self.read_resource(primary_id) {
-            Ok(asset_data) => {
-                let load_func = {
-                    if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
-                        Self::load_raw
-                    } else {
-                        Self::load_asset_file
-                    }
-                };
-                match load_func(
-                    primary_id,
-                    &mut &asset_data[..],
-                    &self.asset_refcounts,
-                    &mut self.loaders,
-                ) {
-                    Ok(output) => {
-                        for (asset_id, asset) in &output.assets {
-                            match asset {
-                                Some(_) => {
-                                    let res = self.asset_refcounts.insert(*asset_id, 1);
-                                    assert!(res.is_none());
-                                }
-                                None => {
-                                    *self.asset_refcounts.get_mut(asset_id).unwrap() += 1;
-                                }
-                            }
-                        }
-                        for reference in &output.load_dependencies {
-                            self.request_tx
-                                .send(LoaderRequest::Load(reference.primary, None))
-                                .unwrap();
-                        }
-                        self.request_await.push(LoaderPending {
-                            primary_id,
-                            load_id,
-                            assets: output.assets,
-                            references: output.load_dependencies,
-                        });
-                        Ok(())
-                    }
-                    Err(e) => Err((primary_id, load_id, e)),
+        let asset_data = self
+            .read_resource(primary_id)
+            .map_err(|e| (primary_id, load_id, e))?;
+
+        assert!(!self.asset_refcounts.contains_key(&primary_id));
+
+        let load_func = {
+            if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
+                Self::load_raw
+            } else {
+                Self::load_asset_file
+            }
+        };
+
+        let output = load_func(primary_id, &mut &asset_data[..], &mut self.loaders)
+            .map_err(|e| (primary_id, load_id, e))?;
+
+        for (asset_id, asset) in &output.assets {
+            match asset {
+                Some(_) => {
+                    let res = self.asset_refcounts.insert(*asset_id, 1);
+                    assert!(res.is_none());
+                }
+                None => {
+                    *self.asset_refcounts.get_mut(asset_id).unwrap() += 1;
                 }
             }
-            Err(e) => Err((primary_id, load_id, e)),
+        }
+        for reference in &output.load_dependencies {
+            self.request_tx
+                .send(LoaderRequest::Load(reference.primary, None))
+                .unwrap();
+        }
+        self.processing_list.push(LoadState {
+            primary_id,
+            load_id,
+            assets: output.assets,
+            references: output.load_dependencies,
+        });
+        Ok(())
+    }
+
+    fn process_unload(
+        &mut self,
+        primary_id: ResourceId,
+        user_requested: bool,
+        err: Option<std::io::ErrorKind>,
+    ) {
+        if let Some(r) = self.asset_refcounts.remove(&primary_id) {
+            assert!(r <= 1);
+
+            if let Some(primary_references) = self.primary_asset_references.remove(&primary_id) {
+                if user_requested {
+                    self.result_tx
+                        .send(LoaderResult::Unloaded(primary_id))
+                        .unwrap();
+                }
+
+                for ref_id in primary_references {
+                    let r = self.asset_refcounts.get_mut(&ref_id).unwrap();
+                    *r -= 1;
+                    if *r == 0 {
+                        // trigger internal unload
+                        self.request_tx
+                            .send(LoaderRequest::Unload(ref_id, false, err))
+                            .unwrap();
+                    }
+                }
+            }
+            if let Some(secondary_assets) = self.secondary_assets.remove(&primary_id) {
+                for id in secondary_assets {
+                    let r = self.asset_refcounts.get_mut(&id).unwrap();
+                    *r -= 1;
+                    if *r == 0 {
+                        self.asset_refcounts.remove(&id);
+                        // todo: tell the user.
+                    }
+                }
+            }
+        } else {
+            // todo(kstatik): tell the user that the id is invalid
         }
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    fn process(
+    fn process_request(
         &mut self,
         request: LoaderRequest,
     ) -> Result<(), (ResourceId, Option<LoadId>, io::Error)> {
         match request {
             LoaderRequest::Load(primary_id, load_id) => self.process_load(primary_id, load_id),
+            LoaderRequest::Reload(primary_id) => self
+                .process_reload(primary_id)
+                .map_err(|e| (primary_id, None, e)),
             LoaderRequest::Unload(primary_id, user_requested, err) => {
-                if let Some(r) = self.asset_refcounts.remove(&primary_id) {
-                    assert!(r <= 1);
-
-                    if let Some(primary_references) =
-                        self.primary_asset_references.remove(&primary_id)
-                    {
-                        if user_requested {
-                            self.result_tx
-                                .send(LoaderResult::Unloaded(primary_id))
-                                .unwrap();
-                        }
-
-                        for ref_id in primary_references {
-                            let r = self.asset_refcounts.get_mut(&ref_id).unwrap();
-                            *r -= 1;
-                            if *r == 0 {
-                                // trigger internal unload
-                                self.request_tx
-                                    .send(LoaderRequest::Unload(ref_id, false, err))
-                                    .unwrap();
-                            }
-                        }
-                    }
-                    if let Some(secondary_assets) = self.secondary_assets.remove(&primary_id) {
-                        for id in secondary_assets {
-                            let r = self.asset_refcounts.get_mut(&id).unwrap();
-                            *r -= 1;
-                            if *r == 0 {
-                                self.asset_refcounts.remove(&id);
-                                // todo: tell the user.
-                            }
-                        }
-                    }
-                } else {
-                    // todo(kstatik): tell the user that the id is invalid
-                }
+                self.process_unload(primary_id, user_requested, err);
                 Ok(())
             }
             LoaderRequest::Terminate => {
@@ -339,7 +422,7 @@ impl AssetLoaderIO {
                     Err(crossbeam_channel::RecvTimeoutError::Disconnected) => return None,
                     Err(crossbeam_channel::RecvTimeoutError::Timeout) => break,
                     Ok(request) => {
-                        if let Err(error) = self.process(request) {
+                        if let Err(error) = self.process_request(request) {
                             errors.push(error);
                         }
                     }
@@ -349,7 +432,7 @@ impl AssetLoaderIO {
 
         // todo: propagate errors to dependent assets before sending results.
         for (failed_asset_id, _, err) in errors {
-            let (failed, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut self.request_await)
+            let (failed, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut self.processing_list)
                 .into_iter()
                 .partition(|pending| {
                     pending
@@ -371,18 +454,18 @@ impl AssetLoaderIO {
                 .send(LoaderResult::LoadError(failed_asset_id, None, err.kind()))
                 .unwrap();
 
-            self.request_await = pending;
+            self.processing_list = pending;
         }
 
         // check for completion.
-        for index in (0..self.request_await.len()).rev() {
-            let pending = &self.request_await[index];
+        for index in (0..self.processing_list.len()).rev() {
+            let pending = &self.processing_list[index];
             let finished = pending
                 .references
                 .iter()
                 .all(|reference| self.asset_storage.contains_key(&reference.primary));
             if finished {
-                let mut loaded = self.request_await.swap_remove(index);
+                let mut loaded = self.processing_list.swap_remove(index);
 
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
@@ -394,6 +477,7 @@ impl AssetLoaderIO {
                         let boxed = Arc::get_mut(boxed).unwrap();
                         loader.load_init(boxed);
                     }
+                    // if there is no boxed asset here, it means it was already loaded before.
                 }
 
                 self.primary_asset_references.insert(
@@ -431,17 +515,14 @@ impl AssetLoaderIO {
             }
         }
 
-        Some(self.request_await.len())
+        Some(self.processing_list.len())
     }
 
     fn load_raw(
         id: ResourceId,
         reader: &mut dyn io::Read,
-        asset_refcounts: &HashMap<ResourceId, isize>,
         loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
-        assert!(!asset_refcounts.contains_key(&id));
-
         let mut content = Vec::new();
         reader.read_to_end(&mut content)?;
 
@@ -458,7 +539,6 @@ impl AssetLoaderIO {
     fn load_asset_file(
         primary_id: ResourceId,
         reader: &mut dyn io::Read,
-        asset_refcounts: &HashMap<ResourceId, isize>,
         loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
         const ASSET_FILE_VERSION: u16 = 1;
@@ -493,17 +573,23 @@ impl AssetLoaderIO {
             });
         }
 
-        // todo: if asset is already loaded it should be skipped as pass as 'None'
-        assert!(!asset_refcounts.contains_key(&primary_id));
-
         // section header
         let asset_type = unsafe {
             std::mem::transmute::<u32, ResourceType>(
                 reader.read_u32::<LittleEndian>().expect("valid data"),
             )
         };
+        assert_eq!(
+            asset_type,
+            primary_id.ty(),
+            "The asset must be of primary id's type"
+        );
+
         let asset_count = reader.read_u64::<LittleEndian>().expect("valid data");
-        assert_eq!(asset_count, 1);
+        assert_eq!(
+            asset_count, 1,
+            "For now, only 1 asset - the primary asset - is expected"
+        );
 
         let nbytes = reader.read_u64::<LittleEndian>().expect("valid data");
 
@@ -513,6 +599,17 @@ impl AssetLoaderIO {
 
         let loader = loaders.get_mut(&asset_type).unwrap();
         let boxed_asset = loader.load(&mut &content[..])?;
+
+        // todo: Do not load what was loaded in another primary-asset.
+        //
+        // There are two cases to consider:
+        //
+        // Non-reload-case: for *secondary assets* make sure that we only load them if
+        // they are not already loaded.
+        //
+        // `let is_loaded = self.asset_refcounts.contains_key(&secondary_id));`
+        //
+        // Reload-case: all *secondary assets* should be loaded again.
 
         Ok(LoadOutput {
             assets: vec![(primary_id, Some(Arc::from(boxed_asset)))],
@@ -895,5 +992,85 @@ mod tests {
             assert_eq!(asset.content, expected_content);
             assert_eq!(asset_id, &id);
         */
+    }
+
+    //#[test]
+    #[allow(dead_code)]
+    fn reload_no_dependencies() {
+        let mut content_store = Box::new(RamContentStore::default());
+        let mut manifest = Manifest::default();
+
+        let binary_assetfile = [
+            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
+            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
+        ];
+
+        let asset_id = {
+            let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
+            let checksum = content_store.store(&binary_assetfile).unwrap();
+            manifest.insert(id, checksum, binary_assetfile.len());
+            id
+        };
+
+        let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
+        let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
+        let mut loader = AssetLoaderIO::new(
+            vec![Box::new(vfs::CasDevice::new(manifest, content_store))],
+            request_tx.clone(),
+            request_rx,
+            result_tx,
+        );
+        loader.register_loader(
+            test_asset::TestAsset::TYPE,
+            Box::new(test_asset::TestAssetLoader {}),
+        );
+
+        let load_id = Some(0);
+
+        request_tx
+            .send(LoaderRequest::Load(asset_id, load_id))
+            .expect("to send request");
+
+        assert!(!loader.asset_storage.contains_key(&asset_id));
+
+        assert!(loader.asset_refcounts.get(&asset_id).is_none());
+        assert!(loader.secondary_assets.get(&asset_id).is_none());
+        assert!(loader.primary_asset_references.get(&asset_id).is_none());
+
+        let mut result = None;
+        loader.wait(Duration::from_millis(1));
+        if let Ok(res) = result_rx.try_recv() {
+            result = Some(res);
+        }
+
+        assert!(result.is_some());
+        assert!(matches!(result.unwrap(), LoaderResult::Loaded(_, _, _)));
+        assert!(loader.asset_storage.contains_key(&asset_id));
+        assert_eq!(loader.asset_refcounts.get(&asset_id).unwrap(), &1);
+        assert_eq!(loader.secondary_assets.get(&asset_id).unwrap().len(), 0);
+        assert_eq!(
+            loader
+                .primary_asset_references
+                .get(&asset_id)
+                .unwrap()
+                .len(),
+            0
+        );
+
+        // reload
+        request_tx.send(LoaderRequest::Reload(asset_id)).unwrap();
+
+        loader.wait(Duration::from_millis(10));
+
+        // unload and validate references.
+        request_tx
+            .send(LoaderRequest::Unload(asset_id, true, None))
+            .expect("valid tx");
+
+        while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
+
+        assert!(loader.asset_refcounts.get(&asset_id).is_none());
+        assert!(loader.secondary_assets.get(&asset_id).is_none());
+        assert!(loader.primary_asset_references.get(&asset_id).is_none());
     }
 }

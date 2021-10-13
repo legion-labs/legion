@@ -108,6 +108,11 @@ impl AssetRegistry {
         self.loader.load(id)
     }
 
+    /// Trigger a reload of a given primary resource.
+    pub fn reload(&mut self, id: ResourceId) -> bool {
+        self.loader.reload(id)
+    }
+
     /// Same as [`Self::load_untyped`] but blocks until the resource load completes or returns an error.
     pub fn load_untyped_sync(&mut self, id: ResourceId) -> HandleUntyped {
         let handle = self.loader.load(id);
