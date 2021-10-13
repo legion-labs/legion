@@ -100,6 +100,7 @@ pub mod prelude {
     pub use crate::guard::*;
     pub use crate::log_events::*;
     pub use crate::metric_event::*;
+    pub use crate::trace_scope;
 }
 
 pub use prelude::*;

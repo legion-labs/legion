@@ -12,6 +12,16 @@ use legion_codec_api::{
 };
 use legion_mp4::old::Mp4Stream;
 use legion_renderer::Renderer;
+use legion_telemetry::prelude::*;
+
+fn record_frame_time_metric(microseconds: u64) {
+    trace_scope!();
+    static FRAME_TIME_METRIC: MetricDesc = MetricDesc {
+        name: "Encoder Frame Time",
+        unit: "us",
+    };
+    record_int_metric(&FRAME_TIME_METRIC, microseconds);
+}
 
 #[derive(PartialEq, Eq)]
 struct Resolution {
@@ -53,6 +63,7 @@ pub struct VideoStream {
 
 impl VideoStream {
     pub fn new(video_data_channel: Arc<RTCDataChannel>) -> anyhow::Result<Self> {
+        trace_scope!();
         let resolution = Resolution::new(1024, 768);
         let encoder = VideoStreamEncoder::new(&resolution)?;
         let renderer = Renderer::new(resolution.width, resolution.height);
@@ -70,6 +81,7 @@ impl VideoStream {
     }
 
     pub(crate) fn resize(&mut self, width: u32, mut height: u32) {
+        trace_scope!();
         // Make sure height is a multiple of 2.
         if height & 1 == 1 {
             height += 1;
@@ -90,6 +102,7 @@ impl VideoStream {
         &mut self,
         delta_secs: f32,
     ) -> impl std::future::Future<Output = ()> + 'static {
+        trace_scope!();
         let now = tokio::time::Instant::now();
 
         self.elapsed_secs += delta_secs * self.speed;
@@ -104,6 +117,7 @@ impl VideoStream {
         let chunks = self.encoder.encode();
 
         let elapsed = now.elapsed().as_micros() as u64;
+        record_frame_time_metric(elapsed);
         let max_frame_time: u64 = 16_000;
 
         if elapsed >= max_frame_time {
@@ -149,6 +163,7 @@ struct VideoStreamEncoder {
 
 impl VideoStreamEncoder {
     fn new(resolution: &Resolution) -> anyhow::Result<Self> {
+        trace_scope!();
         let config = encoder::EncoderConfig::new(resolution.width, resolution.height)
             .constant_sps(true)
             .max_fps(60.0)
@@ -175,6 +190,7 @@ impl VideoStreamEncoder {
     }
 
     fn encode(&mut self) -> Vec<Bytes> {
+        trace_scope!();
         let stream = self.encoder.encode(&self.converter).unwrap();
 
         for layer in &stream.layers {

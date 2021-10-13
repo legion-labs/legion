@@ -20,6 +20,8 @@ sqlx = { version = "0.5", features = [
 ] }
 chrono = "0.4"
 prost = "0.8"
+log = "0.4"
+simple_logger = "1.13"
 
 
 [[bin]]

@@ -2,6 +2,7 @@ use anyhow::Result;
 use legion_telemetry_proto::ingestion::{
     telemetry_ingestion_server::TelemetryIngestion, Block, InsertReply, Process, Stream,
 };
+use log::info;
 use prost::Message;
 use std::io::Write;
 use std::{fs::OpenOptions, path::PathBuf};
@@ -28,6 +29,10 @@ impl TelemetryIngestion for LocalIngestionService {
         request: Request<Process>,
     ) -> Result<Response<InsertReply>, Status> {
         let process_info = request.into_inner();
+        info!(
+            "new process [{}] {}",
+            process_info.exe, process_info.process_id
+        );
         match self.db_pool.acquire().await {
             Ok(mut connection) => {
                 let current_date: chrono::DateTime<chrono::Utc> = chrono::Utc::now();
@@ -81,6 +86,7 @@ impl TelemetryIngestion for LocalIngestionService {
                     None => Vec::new(),
                 };
                 let tags = stream_info.tags.join(" ");
+                info!("new stream [{}] {}", tags, stream_info.stream_id);
                 if let Err(e) = sqlx::query("INSERT INTO streams VALUES(?,?,?,?,?);")
                     .bind(stream_info.stream_id.clone())
                     .bind(stream_info.process_id)
@@ -110,6 +116,7 @@ impl TelemetryIngestion for LocalIngestionService {
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
         let block = request.into_inner();
+        info!("new block {}", block.block_id);
         let payload = match block.payload {
             Some(p) => p,
             None => {

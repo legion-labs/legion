@@ -25,7 +25,8 @@ pub fn init_telemetry(app_log: Option<Box<dyn log::Log>>) {
         Ok(url) => Arc::new(GRPCEventSink::new(&url)),
         Err(_no_url_in_env) => Arc::new(NullEventSink {}),
     };
-    init_event_dispatch(1024, 5 * 1024 * 1024, 1024 * 1024, sink).unwrap();
+    init_event_dispatch(10 * 1024 * 1024, 5 * 1024 * 1024, 1024 * 1024, sink).unwrap();
+    init_panic_hook();
     setup_log_bridge(app_log).unwrap();
 }
 

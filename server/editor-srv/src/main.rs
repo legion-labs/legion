@@ -23,6 +23,7 @@ fn main() {
         SimpleLogger::new().with_level(LevelFilter::Info),
     )));
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    trace_scope!();
 
     const ARG_NAME_ADDR: &str = "addr";
     const ARG_NAME_PROJECT: &str = "project";
