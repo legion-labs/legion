@@ -8,13 +8,27 @@ use legion_data_runtime::{
 };
 use legion_graphics_runtime::Material;
 use legion_math::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {
     registry
         .add_loader::<Entity>()
         .add_loader::<Instance>()
         .add_loader::<Mesh>()
+}
+
+fn deserialize_bincode_asset<T>(reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>>
+where
+    T: DeserializeOwned + Any + Send + Sync,
+{
+    let deserialize: Result<T, Box<bincode::ErrorKind>> = bincode::deserialize_from(reader);
+    match deserialize {
+        Ok(asset) => Ok(Box::new(asset)),
+        Err(err) => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            err.to_string(),
+        )),
+    }
 }
 
 // ------------------ Entity -----------------------------------
@@ -37,18 +51,13 @@ pub struct EntityLoader {}
 
 impl AssetLoader for EntityLoader {
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
-        let deserialize: Result<Entity, Box<bincode::ErrorKind>> =
-            bincode::deserialize_from(reader);
-        match deserialize {
-            Ok(asset) => Ok(Box::new(asset)),
-            Err(err) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                err.to_string(),
-            )),
-        }
+        deserialize_bincode_asset::<Entity>(reader)
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+        let entity = asset.downcast_mut::<Entity>().unwrap();
+        println!("runtime entity \"{}\" loaded", entity.name);
+    }
 }
 
 #[typetag::serde]
@@ -179,18 +188,13 @@ pub struct InstanceLoader {}
 
 impl AssetLoader for InstanceLoader {
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
-        let deserialize: Result<Instance, Box<bincode::ErrorKind>> =
-            bincode::deserialize_from(reader);
-        match deserialize {
-            Ok(asset) => Ok(Box::new(asset)),
-            Err(err) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                err.to_string(),
-            )),
-        }
+        deserialize_bincode_asset::<Instance>(reader)
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+        let _instance = asset.downcast_mut::<Instance>().unwrap();
+        println!("runtime instance loaded");
+    }
 }
 
 // ------------------ Mesh -----------------------------------
@@ -210,17 +214,13 @@ pub struct MeshLoader {}
 
 impl AssetLoader for MeshLoader {
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
-        let deserialize: Result<Mesh, Box<bincode::ErrorKind>> = bincode::deserialize_from(reader);
-        match deserialize {
-            Ok(asset) => Ok(Box::new(asset)),
-            Err(err) => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                err.to_string(),
-            )),
-        }
+        deserialize_bincode_asset::<Mesh>(reader)
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+        let _mesh = asset.downcast_mut::<Mesh>().unwrap();
+        println!("runtime mesh loaded");
+    }
 }
 
 #[derive(Serialize, Deserialize)]
