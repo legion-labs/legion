@@ -109,13 +109,11 @@ impl AssetToECS for runtime_data::Entity {
 impl AssetToECS for runtime_data::Instance {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
-        secondary_assets: &mut SecondaryAssets,
-        instance: &Self,
+        _secondary_assets: &mut SecondaryAssets,
+        _instance: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
     ) -> Option<Entity> {
         let entity = commands.spawn();
-
-        secondary_assets.push(&instance.original);
 
         Some(entity.id())
     }
@@ -140,14 +138,10 @@ impl AssetToECS for legion_graphics_runtime::Material {
 impl AssetToECS for runtime_data::Mesh {
     fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
-        secondary_assets: &mut SecondaryAssets,
-        mesh: &Self,
+        _secondary_assets: &mut SecondaryAssets,
+        _mesh: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
     ) -> Option<Entity> {
-        for sub_mesh in &mesh.sub_meshes {
-            secondary_assets.push(&sub_mesh.material);
-        }
-
         None
     }
 }

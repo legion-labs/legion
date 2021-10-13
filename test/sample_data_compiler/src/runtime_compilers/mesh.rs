@@ -53,19 +53,19 @@
 // crate-specific exceptions:
 #![allow()]
 
-mod compiler_funcs;
 mod offline_to_runtime;
 
-use compiler_funcs::compile;
 use legion_data_compiler::{
-    compiler_api::{compiler_main, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION},
+    compiler_api::{
+        compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
+        DATA_BUILD_VERSION,
+    },
     compiler_utils::hash_code_and_data,
 };
-use legion_data_runtime::Resource;
-use sample_data_compiler::{
-    offline_data::{self},
-    runtime_data,
-};
+use legion_data_offline::ResourcePathId;
+use legion_data_runtime::{Reference, Resource};
+use offline_to_runtime::FromOffline;
+use sample_data_compiler::{offline_data, runtime_data};
 use std::env;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -75,8 +75,35 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &(offline_data::Mesh::TYPE, runtime_data::Mesh::TYPE),
     compiler_hash_func: hash_code_and_data,
-    compile_func: compile::<offline_data::Mesh, runtime_data::Mesh>,
+    compile_func: compile_mesh,
 };
+
+fn compile_mesh(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
+    let mut resources = context
+        .take_registry()
+        .add_loader::<offline_data::Mesh>()
+        .create();
+
+    let mesh = resources.load_sync::<offline_data::Mesh>(context.source.content_id());
+    let mesh = mesh.get(&resources).unwrap();
+
+    let mesh = runtime_data::Mesh::from_offline(mesh);
+    let compiled_asset = bincode::serialize(&mesh).unwrap();
+
+    let mut resource_references: Vec<(ResourcePathId, ResourcePathId)> = Vec::new();
+    for sub_mesh in &mesh.sub_meshes {
+        if let Reference::Passive(material) = sub_mesh.material {
+            resource_references.push((context.target_unnamed.clone(), material.into()));
+        }
+    }
+
+    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
+
+    Ok(CompilationOutput {
+        compiled_resources: vec![asset],
+        resource_references,
+    })
+}
 
 fn main() -> Result<(), CompilerError> {
     compiler_main(env::args(), &COMPILER_INFO)

@@ -53,7 +53,6 @@
 // crate-specific exceptions:
 #![allow()]
 
-mod compiler_funcs;
 mod offline_to_runtime;
 
 use legion_data_compiler::{
