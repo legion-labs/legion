@@ -5,6 +5,7 @@
 //! The diagnostic tools in this binary include:
 //! * **rty** - `ResourceType` <-> String lookup utility.
 //! * **source** - `ResourceId` <-> `ResourcePathName` lookup utility.
+//! * **asset** - Asset file header output
 //!
 //! # `rty` - Resource Type Tool
 //!
@@ -75,6 +76,33 @@
 //! $ data-scrape source .\test\sample_data\ name 417862e500000000e321168f3653db42
 //! /prefab/props/cube_group_cube_1.ent.ins = 417862e500000000e321168f3653db42
 //! ```
+//!
+//! # `asset` - Asset file header display tool
+//!
+//! Display the header content information (resource type, content size, etc) from
+//! either a single asset file, or a directory of asset files.
+//!
+//! ```text
+//! $ data-scrape asset .\test\sample_data\temp\a88c4baf56023f98e12508ae2c4488c9
+//!         file type: asft, version: 1
+//!         asset type: 019c8223
+//!         asset count: 1
+//!         asset size: 209
+//!
+//! $data-scrape asset .\test\sample_data\temp
+//! asset "108608222a9c9987a5589c2285b6115d"
+//!         (not a valid asset file)
+//!
+//! asset "12fb356494c92be198a504ba2e915978"
+//!         file type: asft, version: 1
+//!         asset type: 74dc0e53
+//!         asset count: 1
+//!         asset content size: 2500634
+//!
+//! asset "13955f2e5e320e0002d36bed544d34ee"
+//!         file type: asft, version: 1
+//! ...
+//! ```
 
 // BEGIN - Legion Labs lints v0.5
 // do not change or add/remove here, but one can add exceptions after this section
@@ -132,10 +160,13 @@
 #![allow()]
 
 use std::{
+    fs::File,
+    io::Read,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
+use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{AppSettings, Arg, SubCommand};
 use legion_data_offline::resource::{Project, ResourcePathName};
 use legion_data_runtime::{ResourceId, ResourceType};
@@ -145,7 +176,7 @@ fn main() -> Result<(), String> {
     let matches = clap::App::new("Data Scraper")
         .setting(AppSettings::ArgRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))
-        .about("Data Build CLI")
+        .about("Data scraping utility")
         .subcommand(
             SubCommand::with_name("rty")
                 .about("Parse code for ResourceType information")
@@ -193,6 +224,13 @@ fn main() -> Result<(), String> {
                         )
                         .help("Find the id of a given ResourcePathName"),
                 ),
+        )
+        .subcommand(
+            SubCommand::with_name("asset")
+                .about("Parse asset file, or folder, to extract asset meta-data")
+                .arg(Arg::with_name("path").help(
+                    "Path to single asset file, or directory containing several asset files",
+                )),
         )
         .get_matches();
 
@@ -265,6 +303,23 @@ fn main() -> Result<(), String> {
             _ => {
                 println!("{}", cmd_args.usage());
             }
+        }
+    } else if let ("asset", Some(cmd_args)) = matches.subcommand() {
+        if let Some(path) = cmd_args.value_of("path") {
+            let path = Path::new(path);
+            if path.is_file() {
+                parse_asset_file(path);
+            } else if path.is_dir() {
+                for entry in path.read_dir().unwrap().flatten() {
+                    let path = entry.path();
+                    if path.is_file() {
+                        println!("\nasset {:?}", entry.file_name());
+                        parse_asset_file(path);
+                    }
+                }
+            }
+        } else {
+            println!("{}", cmd_args.usage());
         }
     }
     Ok(())
@@ -361,4 +416,54 @@ fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
     let src = std::fs::read_to_string(&source).expect("Read file");
     let ast = syn::parse_file(&src).expect("Unable to parse file");
     find_resource_attribs(&ast.items)
+}
+
+// Reads an asset file, and prints out its header information.
+#[allow(unsafe_code)]
+fn parse_asset_file(file_path: impl AsRef<Path>) {
+    let mut f = File::open(file_path).expect("unable to open asset file");
+
+    let mut typename: [u8; 4] = [0; 4];
+    if let Err(_e) = f.read_exact(&mut typename) {
+        println!("\t(not a valid asset file)");
+        return;
+    }
+    const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
+    if &typename != ASSET_FILE_TYPENAME {
+        println!("\t(not a valid asset file)");
+        return;
+    }
+
+    let version = f.read_u16::<LittleEndian>().expect("valid data");
+    if version != 1 {
+        println!("\tunsupported asset file version");
+        return;
+    }
+
+    let typename = std::str::from_utf8(&typename).unwrap();
+    println!("\tfile type: {}, version: {}", typename, version);
+
+    let reference_count = f.read_u64::<LittleEndian>().expect("valid data");
+    if reference_count != 0 {
+        println!("\treference count: {}", reference_count);
+        for _ in 0..reference_count {
+            let asset_ref = unsafe {
+                std::mem::transmute::<u128, ResourceId>(
+                    f.read_u128::<LittleEndian>().expect("valid data"),
+                )
+            };
+            println!("\t\treference: {}", asset_ref);
+        }
+    }
+
+    let asset_type = unsafe {
+        std::mem::transmute::<u32, ResourceType>(f.read_u32::<LittleEndian>().expect("valid data"))
+    };
+    println!("\tasset type: {}", asset_type);
+
+    let asset_count = f.read_u64::<LittleEndian>().expect("valid data");
+    println!("\tasset count: {}", asset_count);
+
+    let nbytes = f.read_u64::<LittleEndian>().expect("valid data");
+    println!("\tasset content size: {}", nbytes);
 }
