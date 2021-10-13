@@ -77,9 +77,9 @@ fn command_compile() {
     let checksum = result.compiled_resources[0].checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum.get()));
+    assert!(cas.exists(checksum));
 
-    let resource_content = cas.read(checksum.get()).expect("asset content");
+    let resource_content = cas.read(checksum).expect("asset content");
     let mut reversed = content.as_bytes().to_owned();
     reversed.reverse();
     assert_eq!(&resource_content[..], &reversed[..]);

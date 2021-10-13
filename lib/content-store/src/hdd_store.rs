@@ -4,7 +4,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{ContentStore, ContentStoreAddr};
+use crate::{Checksum, ContentStore, ContentStoreAddr};
 
 /// Disk-based [`ContentStore`] implementation.
 ///
@@ -22,7 +22,7 @@ impl HddContentStore {
         Some(Self { address: root_path })
     }
 
-    fn content_path(&self, id: u128) -> PathBuf {
+    fn content_path(&self, id: Checksum) -> PathBuf {
         let bytes = id.to_be_bytes();
         let hex = hex::encode(bytes);
         self.address.0.clone().join(hex)
@@ -35,7 +35,7 @@ impl HddContentStore {
 }
 
 impl ContentStore for HddContentStore {
-    fn write(&mut self, id: u128, data: &[u8]) -> Option<()> {
+    fn write(&mut self, id: Checksum, data: &[u8]) -> Option<()> {
         let path = self.content_path(id);
 
         if path.exists() {
@@ -51,12 +51,12 @@ impl ContentStore for HddContentStore {
         }
     }
 
-    fn read(&self, id: u128) -> Option<Vec<u8>> {
+    fn read(&self, id: Checksum) -> Option<Vec<u8>> {
         let path = self.content_path(id);
         fs::read(path).ok()
     }
 
-    fn remove(&mut self, id: u128) {
+    fn remove(&mut self, id: Checksum) {
         let path = self.content_path(id);
         let _res = fs::remove_file(path);
     }

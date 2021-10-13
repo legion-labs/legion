@@ -9,4 +9,5 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 hex = "0.4.3"
+serde = "1.0"
 siphasher = "0.3.7"

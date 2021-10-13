@@ -147,7 +147,7 @@ impl CompilerContext<'_> {
             .ok_or(CompilerError::AssetStoreError)?;
         Ok(CompiledResource {
             path,
-            checksum: checksum.into(),
+            checksum,
             size: compiled_content.len(),
         })
     }

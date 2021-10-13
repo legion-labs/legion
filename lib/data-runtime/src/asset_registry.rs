@@ -205,7 +205,7 @@ mod tests {
         let asset_id = {
             let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
             let checksum = content_store.store(content).unwrap();
-            manifest.insert(id, checksum.into(), content.len());
+            manifest.insert(id, checksum, content.len());
             id
         };
 
