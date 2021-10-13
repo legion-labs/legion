@@ -307,11 +307,13 @@ impl AssetLoaderIO {
         primary_id: ResourceId,
         load_id: Option<u32>,
     ) -> Result<(), (ResourceId, Option<LoadId>, io::Error)> {
+        if self.asset_refcounts.contains_key(&primary_id) {
+            return Ok(());
+        }
+
         let asset_data = self
             .read_resource(primary_id)
             .map_err(|e| (primary_id, load_id, e))?;
-
-        assert!(!self.asset_refcounts.contains_key(&primary_id));
 
         let load_func = {
             if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
