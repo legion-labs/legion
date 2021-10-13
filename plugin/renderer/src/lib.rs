@@ -218,7 +218,7 @@ impl Renderer {
                 entry_point_name: "main".to_string(),
                 shader_stage: ShaderStageFlags::FRAGMENT,
                 compute_threads_per_group: None,
-                shader_resources: vec![color_shader_resource],
+                shader_resources: Vec::new(),
                 push_constants: Vec::new()
             },
         };
