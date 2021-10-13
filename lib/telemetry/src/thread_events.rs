@@ -4,7 +4,6 @@ use transit::prelude::*;
 pub type GetScopeDesc = fn() -> ScopeDesc;
 
 pub trait ScopeEvent {
-    fn get_time(&self) -> u64;
     fn get_scope(&self) -> GetScopeDesc;
 }
 
@@ -16,10 +15,6 @@ pub struct BeginScopeEvent {
 
 impl InProcSerialize for BeginScopeEvent {}
 impl ScopeEvent for BeginScopeEvent {
-    fn get_time(&self) -> u64 {
-        self.time
-    }
-
     fn get_scope(&self) -> GetScopeDesc {
         self.scope
     }
@@ -34,10 +29,6 @@ pub struct EndScopeEvent {
 impl InProcSerialize for EndScopeEvent {}
 
 impl ScopeEvent for EndScopeEvent {
-    fn get_time(&self) -> u64 {
-        self.time
-    }
-
     fn get_scope(&self) -> GetScopeDesc {
         self.scope
     }
