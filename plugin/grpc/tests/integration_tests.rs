@@ -54,9 +54,10 @@ async fn test_http2_server() -> anyhow::Result<()> {
     //let server = legion_grpc::server::transport::http2::Server::default();
     let echo_service = EchoerServer::new(Service {});
     let sum_service = SummerServer::new(Service {});
-    let server = tonic::transport::Server::builder()
+    let service = legion_grpc::service::multiplexer::Multiplexer::new()
         .add_service(echo_service)
         .add_service(sum_service);
+    let server = tonic::transport::Server::builder().add_service(service);
 
     let addr = "[::]:50051".parse()?;
 

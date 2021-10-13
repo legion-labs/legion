@@ -16,6 +16,7 @@ legion-async = { path = "../async", version = "0.1.0" }
 tokio = { version = "1.12", features = ["full"] }
 tower = "0.4.8"
 tower-service = "0.3.1"
+tonic = "0.5"
 futures-util = "0.3.17"
 http = "0.2.5"
 http-body= "0.4.3"
@@ -23,12 +24,12 @@ hyper = "0.14.13"
 log = "0.4"
 anyhow = "1.0"
 bytes = "1.1"
+dyn-clone = "1"
 
 [build-dependencies]
 tonic-build = "0.5"
 
 [dev-dependencies]
-tonic = "0.5"
 ntest = "0.7"
 prost = "0.8"
 simple_logger = "1.13"

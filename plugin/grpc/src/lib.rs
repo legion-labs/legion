@@ -64,6 +64,7 @@ use legion_app::prelude::*;
 use log::warn;
 
 pub mod server;
+pub mod service;
 
 pub struct GRPCPluginSettings {
     grpc_server_addr: SocketAddr,
