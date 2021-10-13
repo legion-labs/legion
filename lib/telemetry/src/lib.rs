@@ -68,6 +68,7 @@ pub mod guard;
 pub mod log_block;
 pub mod log_bridge;
 pub mod log_events;
+pub mod metric_event;
 pub mod metrics_block;
 mod queue_metadata;
 pub mod scope;
@@ -76,14 +77,11 @@ pub mod thread_block;
 pub mod thread_events;
 
 pub use compression::*;
-pub use dispatch::*;
 pub use dual_time::*;
 pub use event_block_sink::*;
 pub use grpc_event_sink::*;
-pub use guard::*;
 pub use log_block::*;
 pub use log_bridge::*;
-pub use log_events::*;
 pub use metrics_block::*;
 pub use scope::*;
 pub use stream::*;
@@ -96,3 +94,12 @@ pub type ProcessInfo = legion_telemetry_proto::ingestion::Process;
 pub type StreamInfo = legion_telemetry_proto::ingestion::Stream;
 pub type EncodedBlock = legion_telemetry_proto::ingestion::Block;
 pub use legion_telemetry_proto::ingestion::ContainerMetadata;
+
+pub mod prelude {
+    pub use crate::dispatch::*;
+    pub use crate::guard::*;
+    pub use crate::log_events::*;
+    pub use crate::metric_event::*;
+}
+
+pub use prelude::*;

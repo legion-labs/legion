@@ -62,7 +62,7 @@ use legion_telemetry::*;
 use std::path::Path;
 
 fn main() {
-    let _telemetry_guard = TelemetrySystemGuard::new();
+    let _telemetry_guard = TelemetrySystemGuard::new(None);
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     if let Err(e) = main_impl() {
         println!("{}", e);

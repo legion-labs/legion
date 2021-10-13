@@ -2,7 +2,9 @@ use crate::{log_string, LogLevel};
 use anyhow::Result;
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 
-struct LogBridge;
+struct LogBridge {
+    pub opt_app_log: Option<Box<dyn log::Log>>,
+}
 
 impl log::Log for LogBridge {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
@@ -18,16 +20,18 @@ impl log::Log for LogBridge {
                 LogLevel::from(record.level()),
                 format!("target={} {}", metadata.target(), record.args()),
             );
+            if let Some(app_log) = &self.opt_app_log {
+                app_log.log(record);
+            }
         }
     }
 
     fn flush(&self) {}
 }
 
-static LOGGER: LogBridge = LogBridge;
-
 // setup_log_bridge sets the log crate's logger and forwards all the records into telemetry
-pub fn setup_log_bridge() -> Result<(), SetLoggerError> {
-    log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Trace))?;
+pub fn setup_log_bridge(opt_app_log: Option<Box<dyn log::Log>>) -> Result<(), SetLoggerError> {
+    log::set_boxed_logger(Box::new(LogBridge { opt_app_log }))
+        .map(|()| log::set_max_level(LevelFilter::Trace))?;
     Ok(())
 }

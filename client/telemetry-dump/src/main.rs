@@ -74,7 +74,7 @@ use std::path::Path;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _telemetry_guard = TelemetrySystemGuard::new();
+    let _telemetry_guard = TelemetrySystemGuard::new(None);
     init_thread_stream();
     let matches = App::new("Legion Telemetry Dump")
         .setting(AppSettings::ArgRequiredElseHelp)

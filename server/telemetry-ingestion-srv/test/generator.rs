@@ -1,8 +1,8 @@
-use legion_telemetry::*;
+use legion_telemetry::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    init_telemetry();
+    let _telemetry_guard = TelemetrySystemGuard::new(None);
     log_str(LogLevel::Info, "hello from generator");
     static FRAME_TIME_METRIC: MetricDesc = MetricDesc {
         name: "Frame Time",
@@ -10,6 +10,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     record_int_metric(&FRAME_TIME_METRIC, 1000);
     record_float_metric(&FRAME_TIME_METRIC, 1.0);
-    shutdown_telemetry();
     Ok(())
 }

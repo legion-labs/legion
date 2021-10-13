@@ -1671,6 +1671,7 @@ dependencies = [
  "legion-mp4",
  "legion-resource-registry",
  "legion-streamer",
+ "legion-telemetry",
  "legion-transform",
  "log",
  "simple_logger",

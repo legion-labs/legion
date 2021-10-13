@@ -7,6 +7,7 @@ use legion_async::AsyncPlugin;
 use legion_data_runtime::ResourceId;
 use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use legion_streamer::{StreamerPlugin, StreamerPluginSettings};
+use legion_telemetry::prelude::*;
 use legion_transform::TransformPlugin;
 
 use log::LevelFilter;
@@ -18,10 +19,10 @@ mod plugin;
 use plugin::EditorPlugin;
 
 fn main() {
-    SimpleLogger::new()
-        .with_level(LevelFilter::Info)
-        .init()
-        .unwrap();
+    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
+        SimpleLogger::new().with_level(LevelFilter::Info),
+    )));
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
 
     const ARG_NAME_ADDR: &str = "addr";
     const ARG_NAME_PROJECT: &str = "project";

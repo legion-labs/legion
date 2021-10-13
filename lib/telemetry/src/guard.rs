@@ -8,16 +8,9 @@ use std::sync::Arc;
 pub struct TelemetrySystemGuard {}
 
 impl TelemetrySystemGuard {
-    pub fn new() -> Self {
-        init_telemetry();
+    pub fn new(app_log: Option<Box<dyn log::Log>>) -> Self {
+        init_telemetry(app_log);
         Self {}
-    }
-}
-
-//not used at the time of writing, but clippy wants it
-impl Default for TelemetrySystemGuard {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -27,13 +20,13 @@ impl std::ops::Drop for TelemetrySystemGuard {
     }
 }
 
-pub fn init_telemetry() {
+pub fn init_telemetry(app_log: Option<Box<dyn log::Log>>) {
     let sink: Arc<dyn EventBlockSink> = match std::env::var("LEGION_TELEMETRY_URL") {
         Ok(url) => Arc::new(GRPCEventSink::new(&url)),
         Err(_no_url_in_env) => Arc::new(NullEventSink {}),
     };
     init_event_dispatch(1024, 5 * 1024 * 1024, 1024 * 1024, sink).unwrap();
-    setup_log_bridge().unwrap();
+    setup_log_bridge(app_log).unwrap();
 }
 
 pub fn shutdown_telemetry() {

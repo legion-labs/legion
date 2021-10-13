@@ -16,6 +16,7 @@ legion-resource-registry = { path = "../../plugin/resource-registry", version = 
 legion-streamer = { path = "../../plugin/streamer", version = "0.1.0" }
 legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
 legion-editor-proto = { path = "../../proto/editor", version = "0.1.0" }
+legion-telemetry = { path = "../../lib/telemetry" }
 tokio = { version = "1.12", features = ["full"] }
 clap = "2.33"
 simple_logger = "1.13"
