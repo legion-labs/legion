@@ -82,13 +82,13 @@ pub struct AssetRegistryPlugin {}
 
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut legion_app::App) {
-        if let Some(mut settings) = app.world.get_resource_mut::<AssetRegistrySettings>() {
+        if let Some(settings) = app.world.get_resource_mut::<AssetRegistrySettings>() {
             let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.clone());
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
                 let manifest = Self::read_manifest(&settings.game_manifest);
-                if settings.assets_to_load.is_empty() {
-                    settings.assets_to_load = manifest.resources().copied().collect();
-                }
+                // if settings.assets_to_load.is_empty() {
+                //     settings.assets_to_load = manifest.resources().copied().collect();
+                // }
 
                 let mut registry = AssetRegistryOptions::new();
                 registry = runtime_data::add_loaders(registry);
