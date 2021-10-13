@@ -56,9 +56,10 @@
 mod compiler_funcs;
 mod offline_to_runtime;
 
-use compiler_funcs::{compile, compiler_hash};
-use legion_data_compiler::compiler_api::{
-    compiler_main, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
+use compiler_funcs::compile;
+use legion_data_compiler::{
+    compiler_api::{compiler_main, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION},
+    compiler_utils::hash_code_and_data,
 };
 use legion_data_runtime::Resource;
 use sample_data_compiler::{
@@ -73,7 +74,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(offline_data::Mesh::TYPE, runtime_data::Mesh::TYPE),
-    compiler_hash_func: compiler_hash,
+    compiler_hash_func: hash_code_and_data,
     compile_func: compile::<offline_data::Mesh, runtime_data::Mesh>,
 };
 

@@ -3,15 +3,10 @@ use legion_data_compiler::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
-    compiler_utils::path_id_to_binary,
-    CompilerHash, Locale, Platform, Target,
+    compiler_utils::{hash_code_and_data, path_id_to_binary},
 };
 use legion_data_runtime::Resource;
-use std::{
-    collections::hash_map::DefaultHasher,
-    env,
-    hash::{Hash, Hasher},
-};
+use std::env;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -22,22 +17,9 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
         legion_graphics_offline::Material::TYPE,
         legion_graphics_runtime::Material::TYPE,
     ),
-    compiler_hash_func: compiler_hash,
+    compiler_hash_func: hash_code_and_data,
     compile_func: compile,
 };
-
-fn compiler_hash(
-    code: &'static str,
-    data: &'static str,
-    _target: Target,
-    _platform: Platform,
-    _locale: &Locale,
-) -> CompilerHash {
-    let mut hasher = DefaultHasher::new();
-    code.hash(&mut hasher);
-    data.hash(&mut hasher);
-    CompilerHash(hasher.finish())
-}
 
 fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = context

@@ -1,15 +1,11 @@
-use std::{
-    collections::hash_map::DefaultHasher,
-    env,
-    hash::{Hash, Hasher},
-};
+use std::env;
 
 use legion_data_compiler::{
     compiler_api::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
         DATA_BUILD_VERSION,
     },
-    CompilerHash, Locale, Platform, Target,
+    compiler_utils::hash_code_and_data,
 };
 use legion_data_runtime::Resource;
 
@@ -22,22 +18,9 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
         refs_resource::TestResource::TYPE,
         refs_asset::RefsAsset::TYPE,
     ),
-    compiler_hash_func: compiler_hash,
+    compiler_hash_func: hash_code_and_data,
     compile_func: compile,
 };
-
-fn compiler_hash(
-    code: &'static str,
-    data: &'static str,
-    _target: Target,
-    _platform: Platform,
-    _locale: &Locale,
-) -> CompilerHash {
-    let mut hasher = DefaultHasher::new();
-    code.hash(&mut hasher);
-    data.hash(&mut hasher);
-    CompilerHash(hasher.finish())
-}
 
 fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
     let mut resources = context

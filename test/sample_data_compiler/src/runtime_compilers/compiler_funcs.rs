@@ -1,31 +1,8 @@
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-};
-
-use legion_data_compiler::{
-    compiler_api::{CompilationOutput, CompilerContext, CompilerError},
-    CompilerHash, Locale, Platform, Target,
-};
+use crate::offline_to_runtime::FromOffline;
+use legion_data_compiler::compiler_api::{CompilationOutput, CompilerContext, CompilerError};
 use legion_data_offline::resource::OfflineResource;
 use legion_data_runtime::Resource;
 use serde::Serialize;
-
-use crate::offline_to_runtime::FromOffline;
-
-#[allow(dead_code)]
-pub fn compiler_hash(
-    code: &'static str,
-    data: &'static str,
-    _target: Target,
-    _platform: Platform,
-    _locale: &Locale,
-) -> CompilerHash {
-    let mut hasher = DefaultHasher::new();
-    code.hash(&mut hasher);
-    data.hash(&mut hasher);
-    CompilerHash(hasher.finish())
-}
 
 #[allow(dead_code)]
 pub fn compile<OfflineType, RuntimeType>(
