@@ -9,6 +9,7 @@ use super::{
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
+/// Sample Size Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct StszAtom {
     pub version: u8,

@@ -11,6 +11,7 @@ use super::{
     box_start, skip_atom, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE,
 };
 
+/// Media Information Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct MinfAtom {
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,9 +1,11 @@
 //! All ISO-MP4 boxes (atoms) and operations.
 //!
 //! * [ISO/IEC 14496-12](https://en.wikipedia.org/wiki/MPEG-4_Part_12) - ISO Base Media File Format (`QuickTime`, MPEG-4, etc)
+//! * [ISO/IEC 14496-12](https://mpeg.chiariglione.org/standards/mpeg-4/iso-base-media-file-format/text-isoiec-14496-12-5th-edition)
 //! * [ISO/IEC 14496-14](https://en.wikipedia.org/wiki/MPEG-4_Part_14) - MP4 file format
 //! * ISO/IEC 14496-17 - Streaming text format
 //! * [ISO 23009-1](https://www.iso.org/standard/79329.html) -Dynamic adaptive streaming over HTTP (DASH)
+//! * [Quicktime Documentation](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
 //!
 //! <http://mp4ra.org/#/atoms>
 //!
@@ -44,6 +46,7 @@
 //!     mfhd
 //!     traf
 //!         tfhd
+//!         tfdt
 //!         trun
 //! mdat
 //! free
@@ -63,6 +66,7 @@ pub(crate) mod avc1;
 pub(crate) mod co64;
 pub(crate) mod ctts;
 pub(crate) mod dinf;
+pub(crate) mod dref;
 pub(crate) mod edts;
 pub(crate) mod elst;
 pub(crate) mod emsg;
@@ -94,6 +98,7 @@ pub(crate) mod trak;
 pub(crate) mod trex;
 pub(crate) mod trun;
 pub(crate) mod tx3g;
+pub(crate) mod url;
 pub(crate) mod vmhd;
 pub(crate) mod vp09;
 pub(crate) mod vpcc;
@@ -219,6 +224,7 @@ pub fn write_zeros<W: Write>(writer: &mut W, size: u64) -> Result<()> {
     Ok(())
 }
 
+/// U8.U8 fixed point representation
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct FixedPointU8(Ratio<u16>);
 
@@ -240,6 +246,7 @@ impl FixedPointU8 {
     }
 }
 
+/// I8.U8 fixed point representation
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct FixedPointI8(Ratio<i16>);
 
@@ -261,6 +268,7 @@ impl FixedPointI8 {
     }
 }
 
+/// U16.U16 fixed point representation
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct FixedPointU16(Ratio<u32>);
 
@@ -279,6 +287,36 @@ impl FixedPointU16 {
 
     pub fn raw_value(self) -> u32 {
         *self.0.numer()
+    }
+}
+
+/// provides a transformation matrix for the video; (u,v,w) are restricted here to (0,0,1), hex values (0,0,0x40000000)
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Matrix {
+    pub a: i32,
+    pub b: i32,
+    pub u: i32,
+    pub c: i32,
+    pub d: i32,
+    pub v: i32,
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+}
+
+impl Default for Matrix {
+    fn default() -> Self {
+        Self {
+            a: 0x00010000,
+            b: 0,
+            u: 0,
+            c: 0,
+            d: 0x00010000,
+            v: 0,
+            x: 0,
+            y: 0,
+            w: 0x40000000,
+        }
     }
 }
 

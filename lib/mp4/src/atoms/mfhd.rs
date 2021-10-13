@@ -9,6 +9,7 @@ use super::{
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
+/// Movie Fragment Header Atom
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct MfhdAtom {
     pub version: u8,

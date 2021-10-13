@@ -9,6 +9,7 @@ use super::{
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
+/// Video Media Header Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct VmhdAtom {
     pub version: u8,

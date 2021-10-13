@@ -9,6 +9,7 @@ use super::{
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
+/// Track Extends Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct TrexAtom {
     pub version: u8,

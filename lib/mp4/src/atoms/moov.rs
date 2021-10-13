@@ -10,6 +10,7 @@ use super::{
     box_start, skip_atom, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE,
 };
 
+/// Movie Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct MoovAtom {
     pub mvhd: MvhdAtom,
@@ -28,6 +29,9 @@ impl Atom for MoovAtom {
         let mut size = HEADER_SIZE + self.mvhd.size();
         for trak in &self.traks {
             size += trak.size();
+        }
+        if let Some(mvex) = &self.mvex {
+            size += mvex.size();
         }
         size
     }
@@ -100,6 +104,77 @@ impl<W: Write> WriteAtom<&mut W> for MoovAtom {
         for trak in &self.traks {
             trak.write_atom(writer)?;
         }
+
+        if let Some(mvex) = &self.mvex {
+            mvex.write_atom(writer)?;
+        }
+
         Ok(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::atoms::avc1::Avc1Atom;
+    use crate::atoms::mehd::MehdAtom;
+    use crate::atoms::stco::StcoAtom;
+    use crate::atoms::trex::TrexAtom;
+    use crate::atoms::vmhd::VmhdAtom;
+    use crate::atoms::AtomHeader;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_moov() {
+        let mut trak = TrakAtom::default();
+        trak.tkhd.track_id = 1;
+        trak.mdia.mdhd.timescale = 1000;
+        trak.mdia.mdhd.language = "und".into();
+        trak.mdia.hdlr.handler_type = b"vide".into();
+        trak.mdia.hdlr.name = "VideoHandler".into();
+
+        trak.mdia.minf.stbl.stco = Some(StcoAtom::default());
+        trak.tkhd.set_width(0);
+        trak.tkhd.set_height(0);
+
+        let vmhd = VmhdAtom::default();
+        trak.mdia.minf.vmhd = Some(vmhd);
+
+        let avc1 = Avc1Atom::default();
+        trak.mdia.minf.stbl.stsd.avc1 = Some(avc1);
+
+        let mut src_box = MoovAtom::default();
+
+        src_box.traks.push(trak);
+
+        src_box.mvhd.timescale = 1000;
+        src_box.mvhd.duration = 0;
+        src_box.mvhd.next_track_id = 2;
+
+        // fragmentation enabled only
+        src_box.mvex = Some(MvexAtom {
+            mehd: Some(MehdAtom::default()),
+            trex: TrexAtom {
+                version: 0,
+                flags: 0,
+                track_id: 1,
+                default_sample_description_index: 1,
+                default_sample_duration: 0,
+                default_sample_size: 0,
+                default_sample_flags: 0,
+            },
+        });
+
+        let mut buf = Vec::new();
+        src_box.write_atom(&mut buf).unwrap();
+        assert_eq!(buf.len(), src_box.size() as usize);
+
+        let mut reader = Cursor::new(&buf);
+        let header = AtomHeader::read(&mut reader).unwrap();
+        assert_eq!(header.name, MoovAtom::FOUR_CC);
+        assert_eq!(src_box.size(), header.size);
+
+        let dst_box = MoovAtom::read_atom(&mut reader, header.size).unwrap();
+        assert_eq!(src_box, dst_box);
     }
 }

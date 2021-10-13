@@ -19,8 +19,11 @@ fn run() -> GfxResult<()> {
 #[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
     use codec_api::{backends::openh264::encoder, formats};
-    use mp4::old::Mp4Stream;
-    use std::io::Write;
+    use mp4::{old::Mp4Stream, AvcConfig, MediaConfig, Mp4Config};
+    use std::{
+        convert::TryInto,
+        io::{Cursor, Write},
+    };
 
     const TARGET_WIDTH: u32 = 1920;
     const TARGET_HEIGHT: u32 = 1080;
@@ -37,6 +40,23 @@ fn run() -> GfxResult<()> {
     let track_id = mp4
         .add_track(TARGET_WIDTH as _, TARGET_HEIGHT as _)
         .unwrap();
+
+    let data = Cursor::new(Vec::<u8>::new());
+    let mut mp4_stream = mp4::StreamWriter::write_start(
+        data,
+        &Mp4Config {
+            major_brand: b"isom".into(),
+            minor_version: 512,
+            compatible_brands: vec![
+                b"isom".into(),
+                b"iso2".into(),
+                b"avc1".into(),
+                b"mp41".into(),
+            ],
+            timescale: 1000,
+        },
+    )
+    .unwrap();
 
     // Create the api. GPU programming is fundamentally unsafe, so all rafx APIs should be
     // considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
@@ -304,7 +324,8 @@ fn run() -> GfxResult<()> {
         let start_time = std::time::Instant::now();
 
         log::info!("Starting window event loop");
-        for i in 0..600 {
+        let mut sps_pps_written = false;
+        for i in 0..10 {
             let elapsed_seconds = start_time.elapsed().as_secs_f32();
 
             #[rustfmt::skip]
@@ -459,18 +480,36 @@ fn run() -> GfxResult<()> {
             let sub_resource = dst_texture.map_texture()?;
             converter.convert_rgba(sub_resource.data, sub_resource.row_pitch as usize);
 
-            encoder.force_intra_frame(true);
+            //encoder.force_intra_frame(true);
             let stream = encoder.encode(&converter).unwrap();
 
             file_h264.write_all(&stream.write_vec()).unwrap();
             for layer in &stream.layers {
                 if !layer.is_video {
+                    let mut sps: &[u8] = &[];
+                    let mut pps: &[u8] = &[];
                     for nalu in &layer.nal_units {
                         if nalu[4] == 103 {
                             mp4.set_sps(track_id, &nalu[4..]).unwrap();
+                            sps = &nalu[4..];
                         } else if nalu[4] == 104 {
                             mp4.set_pps(track_id, &nalu[4..]).unwrap();
+                            pps = &nalu[4..];
                         }
+                    }
+                    if !sps_pps_written {
+                        mp4_stream
+                            .write_index(
+                                &MediaConfig::AvcConfig(AvcConfig {
+                                    width: TARGET_WIDTH.try_into().unwrap(),
+                                    height: TARGET_HEIGHT.try_into().unwrap(),
+                                    seq_param_set: sps.into(),
+                                    pic_param_set: pps.into(),
+                                })
+                                .into(),
+                            )
+                            .unwrap();
+                        sps_pps_written = true;
                     }
                     continue;
                 }
@@ -485,6 +524,10 @@ fn run() -> GfxResult<()> {
 
                     mp4.add_frame(track_id, stream.frame_type == encoder::FrameType::IDR, &vec)
                         .unwrap();
+
+                    mp4_stream
+                        .write_sample(stream.frame_type == encoder::FrameType::IDR, &vec)
+                        .unwrap();
                 }
             }
             dst_texture.unmap_texture()?;
@@ -493,7 +536,7 @@ fn run() -> GfxResult<()> {
         // Wait for all GPU work to complete before destroying resources it is using
         graphics_queue_cloned.wait_for_queue_idle()?;
     }
-
+    std::fs::write("D:/test2.mp4", mp4_stream.into_writer().into_inner()).unwrap();
     std::fs::write("D:/test.mp4", mp4.get_content()).unwrap();
 
     // Optional, but calling this verifies that all rafx objects/device contexts have been

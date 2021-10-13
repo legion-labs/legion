@@ -9,7 +9,7 @@ use super::{
     ReadAtom, WriteAtom, HEADER_SIZE,
 };
 
-///
+/// Visual Sample Atom
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Avc1Atom {
     pub data_reference_index: u16,
@@ -148,6 +148,7 @@ impl<W: Write> WriteAtom<&mut W> for Avc1Atom {
     }
 }
 
+/// AVC Decoder Configuration Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct AvcCAtom {
     pub configuration_version: u8,

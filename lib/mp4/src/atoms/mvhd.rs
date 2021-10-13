@@ -5,10 +5,12 @@ use std::io::{Read, Seek, Write};
 use crate::{Error, FourCC, Result};
 
 use super::{
-    box_start, read_atom_header_ext, skip_bytes_to, value_u32, write_atom_header_ext, write_zeros,
-    Atom, AtomHeader, FixedPointU16, ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
+    box_start, read_atom_header_ext, value_u32, write_atom_header_ext, Atom, AtomHeader,
+    FixedPointU16, FixedPointU8, Matrix, ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
+/// Movie Header Atom
+/// This box defines overall information which is media-independent, and relevant to the entire presentation considered as a whole
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct MvhdAtom {
     pub version: u8,
@@ -20,6 +22,10 @@ pub struct MvhdAtom {
 
     #[serde(with = "value_u32")]
     pub rate: FixedPointU16,
+
+    pub volume: FixedPointU8,
+    pub matrix: Matrix,
+    pub next_track_id: u32,
 }
 
 impl Default for MvhdAtom {
@@ -32,6 +38,9 @@ impl Default for MvhdAtom {
             timescale: 1000,
             duration: 0,
             rate: FixedPointU16::new(1),
+            volume: FixedPointU8::new(1),
+            matrix: Matrix::default(),
+            next_track_id: 0,
         }
     }
 }
@@ -67,8 +76,8 @@ impl Atom for MvhdAtom {
 }
 
 impl<R: Read + Seek> ReadAtom<&mut R> for MvhdAtom {
-    fn read_atom(reader: &mut R, size: u64) -> Result<Self> {
-        let start = box_start(reader)?;
+    fn read_atom(reader: &mut R, _size: u64) -> Result<Self> {
+        box_start(reader)?;
 
         let (version, flags) = read_atom_header_ext(reader)?;
 
@@ -90,8 +99,29 @@ impl<R: Read + Seek> ReadAtom<&mut R> for MvhdAtom {
             return Err(Error::InvalidData("version must be 0 or 1"));
         };
         let rate = FixedPointU16::new_raw(reader.read_u32::<BigEndian>()?);
+        let volume = FixedPointU8::new_raw(reader.read_u16::<BigEndian>()?);
 
-        skip_bytes_to(reader, start + size)?;
+        reader.read_u64::<BigEndian>()?; // reserved
+        reader.read_u16::<BigEndian>()?; // reserved
+
+        let matrix = Matrix {
+            a: reader.read_i32::<BigEndian>()?,
+            b: reader.read_i32::<BigEndian>()?,
+            u: reader.read_i32::<BigEndian>()?,
+            c: reader.read_i32::<BigEndian>()?,
+            d: reader.read_i32::<BigEndian>()?,
+            v: reader.read_i32::<BigEndian>()?,
+            x: reader.read_i32::<BigEndian>()?,
+            y: reader.read_i32::<BigEndian>()?,
+            w: reader.read_i32::<BigEndian>()?,
+        };
+
+        //  pre_defined
+        reader.read_u64::<BigEndian>()?;
+        reader.read_u64::<BigEndian>()?;
+        reader.read_u64::<BigEndian>()?;
+
+        let next_track_id = reader.read_u32::<BigEndian>()?;
 
         Ok(Self {
             version,
@@ -101,6 +131,9 @@ impl<R: Read + Seek> ReadAtom<&mut R> for MvhdAtom {
             timescale,
             duration,
             rate,
+            volume,
+            matrix,
+            next_track_id,
         })
     }
 }
@@ -126,8 +159,27 @@ impl<W: Write> WriteAtom<&mut W> for MvhdAtom {
         }
         writer.write_u32::<BigEndian>(self.rate.raw_value())?;
 
-        // XXX volume, ...
-        write_zeros(writer, 76)?;
+        writer.write_u16::<BigEndian>(self.volume.raw_value())?;
+
+        writer.write_u64::<BigEndian>(0)?; // reserved
+        writer.write_u16::<BigEndian>(0)?; // reserved
+
+        writer.write_i32::<BigEndian>(self.matrix.a)?;
+        writer.write_i32::<BigEndian>(self.matrix.b)?;
+        writer.write_i32::<BigEndian>(self.matrix.u)?;
+        writer.write_i32::<BigEndian>(self.matrix.c)?;
+        writer.write_i32::<BigEndian>(self.matrix.d)?;
+        writer.write_i32::<BigEndian>(self.matrix.v)?;
+        writer.write_i32::<BigEndian>(self.matrix.x)?;
+        writer.write_i32::<BigEndian>(self.matrix.y)?;
+        writer.write_i32::<BigEndian>(self.matrix.w)?;
+
+        //  pre_defined
+        writer.write_u64::<BigEndian>(0)?;
+        writer.write_u64::<BigEndian>(0)?;
+        writer.write_u64::<BigEndian>(0)?;
+
+        writer.write_u32::<BigEndian>(self.next_track_id)?;
 
         Ok(self.size())
     }
@@ -149,6 +201,9 @@ mod tests {
             timescale: 1000,
             duration: 634634,
             rate: FixedPointU16::new(1),
+            volume: FixedPointU8::new(1),
+            matrix: Matrix::default(),
+            next_track_id: 2,
         };
         let mut buf = Vec::new();
         src_box.write_atom(&mut buf).unwrap();
@@ -173,6 +228,9 @@ mod tests {
             timescale: 1000,
             duration: 634634,
             rate: FixedPointU16::new(1),
+            volume: FixedPointU8::new(1),
+            matrix: Matrix::default(),
+            next_track_id: 2,
         };
         let mut buf = Vec::new();
         src_box.write_atom(&mut buf).unwrap();

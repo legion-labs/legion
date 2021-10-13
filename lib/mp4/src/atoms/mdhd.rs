@@ -10,6 +10,7 @@ use super::{
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
+/// Media Header Atom
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct MdhdAtom {
     pub version: u8,

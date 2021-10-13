@@ -14,6 +14,7 @@ use super::{
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
+/// Sample Description Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct StsdAtom {
     pub version: u8,

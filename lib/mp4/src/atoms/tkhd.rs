@@ -7,7 +7,7 @@ use crate::{Error, FourCC, Result};
 
 use super::{
     box_start, read_atom_header_ext, skip_bytes_to, value_u32, value_u8, write_atom_header_ext,
-    Atom, AtomHeader, FixedPointU16, FixedPointU8, ReadAtom, WriteAtom, HEADER_EXT_SIZE,
+    Atom, AtomHeader, FixedPointU16, FixedPointU8, Matrix, ReadAtom, WriteAtom, HEADER_EXT_SIZE,
     HEADER_SIZE,
 };
 
@@ -20,6 +20,7 @@ bitflags! {
     }
 }
 
+/// Track Header Atom
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct TkhdAtom {
     pub version: u8,
@@ -59,19 +60,6 @@ impl Default for TkhdAtom {
             height: FixedPointU16::new(0),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Default, Serialize)]
-pub struct Matrix {
-    pub a: i32,
-    pub b: i32,
-    pub u: i32,
-    pub c: i32,
-    pub d: i32,
-    pub v: i32,
-    pub x: i32,
-    pub y: i32,
-    pub w: i32,
 }
 
 impl TkhdAtom {
@@ -149,7 +137,7 @@ impl<R: Read + Seek> ReadAtom<&mut R> for TkhdAtom {
 
         reader.read_u16::<BigEndian>()?; // reserved
         let matrix = Matrix {
-            a: reader.read_i32::<byteorder::LittleEndian>()?,
+            a: reader.read_i32::<BigEndian>()?,
             b: reader.read_i32::<BigEndian>()?,
             u: reader.read_i32::<BigEndian>()?,
             c: reader.read_i32::<BigEndian>()?,
@@ -211,7 +199,7 @@ impl<W: Write> WriteAtom<&mut W> for TkhdAtom {
 
         writer.write_u16::<BigEndian>(0)?; // reserved
 
-        writer.write_i32::<byteorder::LittleEndian>(self.matrix.a)?;
+        writer.write_i32::<BigEndian>(self.matrix.a)?;
         writer.write_i32::<BigEndian>(self.matrix.b)?;
         writer.write_i32::<BigEndian>(self.matrix.u)?;
         writer.write_i32::<BigEndian>(self.matrix.c)?;

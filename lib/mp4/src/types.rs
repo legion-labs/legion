@@ -151,6 +151,16 @@ impl From<TrackType> for FourCC {
     }
 }
 
+impl TrackType {
+    pub fn friendly_name(&self) -> &'static str {
+        match self {
+            TrackType::Video => "VideoHandler",
+            TrackType::Audio => "SoundHandler",
+            TrackType::Subtitle => "",
+        }
+    }
+}
+
 const MEDIA_TYPE_H264: &str = "h264";
 const MEDIA_TYPE_H265: &str = "h265";
 const MEDIA_TYPE_VP9: &str = "vp9";

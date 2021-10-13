@@ -9,6 +9,7 @@ use super::{
     box_start, skip_atom, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE,
 };
 
+/// Movie Extends Header Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct MvexAtom {
     pub mehd: Option<MehdAtom>,

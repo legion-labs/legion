@@ -3,12 +3,19 @@ use std::io::Write;
 use crate::atoms::avc1::Avc1Atom;
 use crate::atoms::ftyp::FtypAtom;
 use crate::atoms::hev1::Hev1Atom;
+use crate::atoms::mehd::MehdAtom;
+use crate::atoms::mfhd::MfhdAtom;
+use crate::atoms::moof::MoofAtom;
 use crate::atoms::moov::MoovAtom;
 use crate::atoms::mp4a::Mp4aAtom;
+use crate::atoms::mvex::MvexAtom;
 use crate::atoms::smhd::SmhdAtom;
 use crate::atoms::stco::StcoAtom;
-use crate::atoms::stss::StssAtom;
+use crate::atoms::tfhd::TfhdAtom;
+use crate::atoms::traf::TrafAtom;
 use crate::atoms::trak::TrakAtom;
+use crate::atoms::trex::TrexAtom;
+use crate::atoms::trun::TrunAtom;
 use crate::atoms::tx3g::Tx3gAtom;
 use crate::atoms::vmhd::VmhdAtom;
 use crate::atoms::vp09::Vp09Atom;
@@ -104,6 +111,7 @@ pub struct StreamWriter<W> {
     writer: W,
     cur_offset: u64,
     timescale: u32,
+    moof: MoofAtom,
 }
 
 impl<W> StreamWriter<W> {
@@ -151,11 +159,36 @@ impl<W: Write> StreamWriter<W> {
             compatible_brands: mp4_config.compatible_brands.clone(),
         };
         let cur_offset = ftyp.write_atom(&mut writer)?;
-
+        let moof = MoofAtom {
+            mfhd: MfhdAtom {
+                version: 0,
+                flags: 0,
+                sequence_number: 0,
+            },
+            trafs: vec![TrafAtom {
+                tfhd: TfhdAtom {
+                    track_id: 1,
+                    default_sample_flags: Some(0x1010000),
+                    default_base_is_moof: true,
+                    ..TfhdAtom::default()
+                },
+                trun: Some(TrunAtom {
+                    version: 0,
+                    sample_count: 1,
+                    data_offset: Some(0),
+                    first_sample_flags: Some(0x2000000),
+                    sample_durations: Some(vec![0]),
+                    sample_sizes: Some(vec![0]),
+                    sample_flags: None,
+                    sample_cts: None,
+                }),
+            }],
+        };
         Ok(Self {
             writer,
             cur_offset,
             timescale: mp4_config.timescale,
+            moof,
         })
     }
 
@@ -166,6 +199,8 @@ impl<W: Write> StreamWriter<W> {
         trak.mdia.mdhd.timescale = config.timescale;
         trak.mdia.mdhd.language = config.language.clone();
         trak.mdia.hdlr.handler_type = config.track_type.into();
+        trak.mdia.hdlr.name = config.track_type.friendly_name().into();
+
         // XXX largesize
         trak.mdia.minf.stbl.stco = Some(StcoAtom::default());
         match config.media_conf {
@@ -178,7 +213,6 @@ impl<W: Write> StreamWriter<W> {
 
                 let avc1 = Avc1Atom::new(avc_config);
                 trak.mdia.minf.stbl.stsd.avc1 = Some(avc1);
-                trak.mdia.minf.stbl.stss = Some(StssAtom::default());
             }
             MediaConfig::HevcConfig(ref hevc_config) => {
                 trak.tkhd.set_width(hevc_config.width);
@@ -214,11 +248,30 @@ impl<W: Write> StreamWriter<W> {
 
         moov.mvhd.timescale = self.timescale;
         moov.mvhd.duration = 0;
-        moov.write_atom(&mut self.writer)?;
+        moov.mvhd.next_track_id = 2;
+
+        // fragmentation enabled only
+        moov.mvex = Some(MvexAtom {
+            mehd: Some(MehdAtom::default()),
+            trex: TrexAtom {
+                version: 0,
+                flags: 0,
+                track_id: 1,
+                default_sample_description_index: 1,
+                default_sample_duration: 0,
+                default_sample_size: 0,
+                default_sample_flags: 0,
+            },
+        });
+
+        self.cur_offset += moov.write_atom(&mut self.writer)?;
         Ok(())
     }
 
-    //pub fn write_sample(&mut self, _key_frame: bool, _content: &[u8]) -> Result<()> {
-    //    Ok(())
-    //}
+    /// # Errors
+    pub fn write_sample(&mut self, _key_frame: bool, _content: &[u8]) -> Result<()> {
+        self.moof.mfhd.sequence_number += 1;
+        self.moof.write_atom(&mut self.writer)?;
+        Ok(())
+    }
 }

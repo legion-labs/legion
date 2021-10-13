@@ -18,6 +18,7 @@ pub struct SttsAtom {
     pub entries: Vec<SttsEntry>,
 }
 
+/// Decocing Time to Sample Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct SttsEntry {
     pub sample_count: u32,

@@ -17,6 +17,7 @@ pub struct HdlrAtom {
     pub name: String,
 }
 
+// Handler Reference Atom
 impl Atom for HdlrAtom {
     const FOUR_CC: FourCC = FourCC::new(b"hdlr");
 

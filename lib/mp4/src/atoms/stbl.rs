@@ -15,6 +15,7 @@ use super::{
     box_start, skip_atom, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE,
 };
 
+/// Sample Table Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct StblAtom {
     pub stsd: StsdAtom,
@@ -36,7 +37,7 @@ pub struct StblAtom {
 }
 
 impl Atom for StblAtom {
-    const FOUR_CC: FourCC = FourCC::new(b"sbtl");
+    const FOUR_CC: FourCC = FourCC::new(b"stbl");
 
     fn size(&self) -> u64 {
         let mut size = HEADER_SIZE;

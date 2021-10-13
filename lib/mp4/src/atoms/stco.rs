@@ -9,6 +9,7 @@ use super::{
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
+/// Sample Offset Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct StcoAtom {
     pub version: u8,

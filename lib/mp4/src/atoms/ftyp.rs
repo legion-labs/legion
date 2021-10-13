@@ -6,6 +6,7 @@ use crate::{Error, FourCC, Result};
 
 use super::{box_start, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE};
 
+/// File Type Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct FtypAtom {
     pub major_brand: FourCC,
