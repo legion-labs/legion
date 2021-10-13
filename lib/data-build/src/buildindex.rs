@@ -97,7 +97,7 @@ impl BuildIndexContent {
             if result == Ordering::Equal {
                 result = a.compiled_path.cmp(&b.compiled_path);
                 if result == Ordering::Equal {
-                    result = a.compiled_reference.cmp(&b.compiled_path);
+                    result = a.compiled_reference.cmp(&b.compiled_reference);
                 }
             }
             result

@@ -7,16 +7,12 @@ const ASSET_FILE_VERSION: u16 = 1;
 const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 
 // todo: no asset ids are written because we assume 1 asset in asset_file now.
-pub fn write_assetfile<A, R>(
-    asset_list: A,
-    reference_list: R,
+pub fn write_assetfile(
+    asset_list: impl Iterator<Item = (ResourceId, Checksum)> + Clone,
+    reference_list: impl Iterator<Item = (ResourceId, (ResourceId, ResourceId))> + Clone,
     content_store: &impl ContentStore,
     mut writer: impl std::io::Write,
-) -> Result<usize, Error>
-where
-    A: Iterator<Item = (ResourceId, Checksum)> + Clone,
-    R: Iterator<Item = (ResourceId, (ResourceId, ResourceId))> + Clone,
-{
+) -> Result<usize, Error> {
     let mut written = 0;
 
     // asset file header
@@ -90,7 +86,6 @@ mod tests {
         let mut content_store = RamContentStore::default();
 
         let asset_id = ResourceId::new(refs_asset::RefsAsset::TYPE, 1);
-        let reference_list: Vec<(ResourceId, (ResourceId, ResourceId))> = Vec::new();
         let asset_content = b"test_content".to_vec();
         let asset_checksum = content_store.store(&asset_content).expect("to store asset");
         assert_eq!(content_store.read(asset_checksum).unwrap(), asset_content);
@@ -99,7 +94,7 @@ mod tests {
             let mut output = vec![];
             let nbytes = write_assetfile(
                 std::iter::once((asset_id, asset_checksum)),
-                reference_list.iter().copied(),
+                std::iter::empty(),
                 &content_store,
                 &mut output,
             )

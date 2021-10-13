@@ -106,7 +106,7 @@ fn main() {
     // /world/sample_1.ent
     // resource-id: d004cd1c00000000445b0fc7dae84c6e
     // asset-id: 019c822300000000c340a8a5eba2f2bb
-    // checksum: 0000000000000000f836a7f2fd844acf
+    // checksum: 4c316106831326ab98ae3b3b368ff8d8
 
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
