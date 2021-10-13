@@ -78,9 +78,9 @@ fn compile_atoi() {
     let checksum = asset_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum.get()));
+    assert!(cas.exists(checksum));
 
-    let resource_content = cas.read(checksum.get()).expect("asset content");
+    let resource_content = cas.read(checksum).expect("asset content");
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
@@ -165,9 +165,9 @@ fn compile_intermediate() {
     let checksum = derived_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum.get()));
+    assert!(cas.exists(checksum));
 
-    let resource_content = cas.read(checksum.get()).expect("asset content");
+    let resource_content = cas.read(checksum).expect("asset content");
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
@@ -247,9 +247,9 @@ fn compile_multi_resource() {
     let content_store = HddContentStore::open(cas_addr).expect("valid cas");
 
     for (resource, source_text) in compiled_resources.iter().zip(source_text_list.iter()) {
-        assert!(content_store.exists(resource.checksum.get()));
+        assert!(content_store.exists(resource.checksum));
         let resource_content = content_store
-            .read(resource.checksum.get())
+            .read(resource.checksum)
             .expect("asset content");
         let mut proc = text_resource::TextResourceProc {};
         let resource = proc
@@ -315,9 +315,9 @@ fn compile_base64() {
     let checksum = asset_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum.get()));
+    assert!(cas.exists(checksum));
 
-    let resource_content = cas.read(checksum.get()).expect("asset content");
+    let resource_content = cas.read(checksum).expect("asset content");
 
     let base64str = String::from_utf8_lossy(&resource_content);
     assert_eq!(base64str, expected_base64_value);

@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
-use crate::ContentStore;
+use crate::{Checksum, ContentStore};
 
 /// In-memory [`ContentStore`] implementation.
 ///
 /// Handy for testing purposes.
 pub struct RamContentStore {
-    storage: HashMap<u128, Vec<u8>>,
+    storage: HashMap<Checksum, Vec<u8>>,
 }
 
 impl RamContentStore {
@@ -19,7 +19,7 @@ impl RamContentStore {
 }
 
 impl ContentStore for RamContentStore {
-    fn write(&mut self, id: u128, data: &[u8]) -> Option<()> {
+    fn write(&mut self, id: Checksum, data: &[u8]) -> Option<()> {
         if self.storage.contains_key(&id) {
             return None;
         }
@@ -28,11 +28,11 @@ impl ContentStore for RamContentStore {
         Some(())
     }
 
-    fn read(&self, id: u128) -> Option<Vec<u8>> {
+    fn read(&self, id: Checksum) -> Option<Vec<u8>> {
         self.storage.get(&id).cloned()
     }
 
-    fn remove(&mut self, id: u128) {
+    fn remove(&mut self, id: Checksum) {
         self.storage.remove(&id);
     }
 }

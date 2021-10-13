@@ -1,6 +1,7 @@
 //! Module containing information about compiled assets.
 
-use crate::{ResourceChecksum, ResourceId};
+use crate::ResourceId;
+use legion_content_store::Checksum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -10,23 +11,23 @@ pub struct CompiledAsset {
     /// The id of the asset.
     pub guid: ResourceId,
     /// The checksum of the asset.
-    pub checksum: ResourceChecksum,
+    pub checksum: Checksum,
     /// The size of the asset.
     pub size: usize,
 }
 
 /// `Manifest` contains storage information about assets - their checksums and sizes.
 #[derive(Debug, Default)]
-pub struct Manifest(HashMap<ResourceId, (ResourceChecksum, usize)>);
+pub struct Manifest(HashMap<ResourceId, (Checksum, usize)>);
 
 impl Manifest {
     /// Retrieve information about `Asset` identified by a given [`ResourceId`], if available.
-    pub fn find(&self, id: ResourceId) -> Option<(ResourceChecksum, usize)> {
+    pub fn find(&self, id: ResourceId) -> Option<(Checksum, usize)> {
         self.0.get(&id).copied()
     }
 
     /// Add new information about an `Asset`.
-    pub fn insert(&mut self, id: ResourceId, checksum: ResourceChecksum, size: usize) {
+    pub fn insert(&mut self, id: ResourceId, checksum: Checksum, size: usize) {
         self.0.insert(id, (checksum, size));
     }
 

@@ -620,7 +620,7 @@ impl DataBuild {
             let asset_id = resource.compiled_path.content_id();
 
             let mut output: Vec<u8> = vec![];
-            let resource_list = std::iter::once((asset_id, resource.compiled_checksum.get()));
+            let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
             let reference_list = references
                 .iter()
                 .filter(|r| r.is_reference_of(resource))
@@ -648,7 +648,7 @@ impl DataBuild {
 
             let asset_file = CompiledResource {
                 path: resource.compiled_path.clone(),
-                checksum: checksum.into(),
+                checksum,
                 size: bytes_written,
             };
             resource_files.push(asset_file);

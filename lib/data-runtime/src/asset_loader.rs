@@ -534,7 +534,7 @@ mod tests {
         let asset_id = {
             let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
             let checksum = content_store.store(&binary_assetfile).unwrap();
-            manifest.insert(id, checksum.into(), binary_assetfile.len());
+            manifest.insert(id, checksum, binary_assetfile.len());
             id
         };
 
@@ -627,7 +627,7 @@ mod tests {
         let asset_id = {
             let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
             let checksum = content_store.store(&binary_assetfile).unwrap();
-            manifest.insert(id, checksum.into(), binary_assetfile.len());
+            manifest.insert(id, checksum, binary_assetfile.len());
             id
         };
 
@@ -702,7 +702,7 @@ mod tests {
 
         let asset_id = {
             let checksum = content_store.store(&binary_parent_assetfile).unwrap();
-            manifest.insert(parent_id, checksum.into(), binary_parent_assetfile.len());
+            manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
             parent_id
         };
 
@@ -762,11 +762,11 @@ mod tests {
         let asset_id = {
             manifest.insert(
                 child_id,
-                content_store.store(&binary_child_assetfile).unwrap().into(),
+                content_store.store(&binary_child_assetfile).unwrap(),
                 binary_child_assetfile.len(),
             );
             let checksum = content_store.store(&binary_parent_assetfile).unwrap();
-            manifest.insert(parent_id, checksum.into(), binary_parent_assetfile.len());
+            manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
 
             parent_id
         };

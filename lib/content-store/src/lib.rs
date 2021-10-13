@@ -66,7 +66,7 @@ use std::{
 };
 
 /// Returns the hash of the provided data.
-pub fn content_checksum(data: &[u8]) -> u128 {
+pub fn content_checksum(data: &[u8]) -> Checksum {
     let mut hasher = sip128::SipHasher::new();
     data.hash(&mut hasher);
     hasher.finish128().into()
@@ -130,19 +130,19 @@ impl fmt::Display for ContentStoreAddr {
 // todo: change Option to Error
 pub trait ContentStore: Send {
     /// Write content to the backing storage.
-    fn write(&mut self, id: u128, data: &[u8]) -> Option<()>;
+    fn write(&mut self, id: Checksum, data: &[u8]) -> Option<()>;
 
     /// Read content from the backing storage.
-    fn read(&self, id: u128) -> Option<Vec<u8>>;
+    fn read(&self, id: Checksum) -> Option<Vec<u8>>;
 
     /// Remove content from the backing storage.
-    fn remove(&mut self, id: u128);
+    fn remove(&mut self, id: Checksum);
 
     /// Returns the description of the content if it exists.
     ///
     /// This default implementation is quite inefficient as it involves reading the content's
     /// content to calculate its checksum.
-    fn exists(&self, id: u128) -> bool {
+    fn exists(&self, id: Checksum) -> bool {
         self.read(id).is_some()
     }
 
@@ -150,7 +150,7 @@ pub trait ContentStore: Send {
     ///
     /// This method calls [`write`](#method.write) to store the content and [`read`](#method.read) afterwards
     /// to perform the validation.
-    fn store(&mut self, data: &[u8]) -> Option<u128> {
+    fn store(&mut self, data: &[u8]) -> Option<Checksum> {
         let id = content_checksum(data);
         self.write(id, data)?;
 
@@ -165,8 +165,10 @@ pub trait ContentStore: Send {
     }
 }
 
+mod checksum;
 mod hdd_store;
 mod ram_store;
 
+pub use checksum::Checksum;
 pub use hdd_store::*;
 pub use ram_store::*;

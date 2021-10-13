@@ -1,5 +1,5 @@
 use crate::{resource::ResourcePathName, ResourcePathId};
-use legion_data_runtime::ResourceChecksum;
+use legion_content_store::Checksum;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::hash_map::DefaultHasher,
@@ -78,7 +78,7 @@ impl fmt::Display for ResourceHash {
 pub(crate) struct Metadata {
     pub(crate) name: ResourcePathName,
     pub(crate) dependencies: Vec<ResourcePathId>,
-    pub(crate) content_checksum: ResourceChecksum, // this needs to be updated on every asset change.
+    pub(crate) content_checksum: Checksum, // this needs to be updated on every asset change.
 }
 
 impl Metadata {

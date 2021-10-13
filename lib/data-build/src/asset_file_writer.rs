@@ -1,6 +1,6 @@
 use crate::Error;
 use byteorder::{LittleEndian, WriteBytesExt};
-use legion_content_store::ContentStore;
+use legion_content_store::{Checksum, ContentStore};
 use legion_data_runtime::{ResourceId, ResourceType};
 
 const ASSET_FILE_VERSION: u16 = 1;
@@ -14,7 +14,7 @@ pub fn write_assetfile<A, R>(
     mut writer: impl std::io::Write,
 ) -> Result<usize, Error>
 where
-    A: Iterator<Item = (ResourceId, u128)> + Clone,
+    A: Iterator<Item = (ResourceId, Checksum)> + Clone,
     R: Iterator<Item = (ResourceId, (ResourceId, ResourceId))> + Clone,
 {
     let mut written = 0;

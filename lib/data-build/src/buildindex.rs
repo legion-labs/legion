@@ -1,5 +1,5 @@
+use legion_content_store::Checksum;
 use legion_data_compiler::CompiledResource;
-use legion_data_runtime::ResourceChecksum;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -41,7 +41,7 @@ pub(crate) struct CompiledResourceInfo {
     pub(crate) source_hash: AssetHash,
     /// The path the resource was compiled into, i.e.: "ResourcePathId("anim.fbx").push("anim.offline")["idle"]
     pub(crate) compiled_path: ResourcePathId,
-    pub(crate) compiled_checksum: ResourceChecksum,
+    pub(crate) compiled_checksum: Checksum,
     pub(crate) compiled_size: usize,
 }
 
