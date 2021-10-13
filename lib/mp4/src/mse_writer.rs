@@ -40,7 +40,7 @@ impl<W> MseStreamWriter<W> {
     /// Consume self, returning the inner writer.
     ///
     /// This can be useful to recover the inner writer after completion in case
-    /// it's owned by the [`StreamWriter`] instance.
+    /// it's owned by the [`MseStreamWriter`] instance.
     ///
     /// # Examples
     ///
