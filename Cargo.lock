@@ -3155,6 +3155,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-grpc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "futures-lite",
+ "futures-util",
+ "http",
+ "http-body",
+ "hyper",
+ "legion-app",
+ "legion-async",
+ "legion-ecs",
+ "log",
+ "ntest",
+ "prost",
+ "simple_logger",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tower",
+ "tower-service",
+]
+
+[[package]]
 name = "legion-input"
 version = "0.1.0"
 dependencies = [
