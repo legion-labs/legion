@@ -85,9 +85,6 @@ impl AssetToECS for runtime_data::Entity {
         }
         entity.insert(GlobalTransform::identity());
 
-        // load child entities
-        secondary_assets.extend(runtime_entity.children.iter());
-
         // parent, if it exists, must already be loaded since parents load their children
         let parent = if let Reference::Passive(parent) = runtime_entity.parent {
             asset_to_entity_map.get(parent)

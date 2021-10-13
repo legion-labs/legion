@@ -1,7 +1,14 @@
 //! Compiler utilities - transformations helpful when compiling data.
 
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
+
 use legion_data_offline::ResourcePathId;
 use legion_data_runtime::ResourceId;
+
+use crate::{CompilerHash, Locale, Platform, Target};
 
 /// Converts `ResourcePathId` to `ResourceId`.
 pub fn path_id_to_asset_id(path: &Option<ResourcePathId>) -> Option<ResourceId> {
@@ -17,4 +24,18 @@ pub fn asset_id_to_bin(id: Option<ResourceId>) -> u128 {
 pub fn path_id_to_binary(path: &Option<ResourcePathId>) -> u128 {
     let id = path_id_to_asset_id(path);
     asset_id_to_bin(id)
+}
+
+/// Compiler hasher function that hashes only code and data versions
+pub fn hash_code_and_data(
+    code: &'static str,
+    data: &'static str,
+    _target: Target,
+    _platform: Platform,
+    _locale: &Locale,
+) -> CompilerHash {
+    let mut hasher = DefaultHasher::new();
+    code.hash(&mut hasher);
+    data.hash(&mut hasher);
+    CompilerHash(hasher.finish())
 }

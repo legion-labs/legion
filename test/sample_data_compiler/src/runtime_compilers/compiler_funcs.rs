@@ -13,6 +13,7 @@ use serde::Serialize;
 
 use crate::offline_to_runtime::FromOffline;
 
+#[allow(dead_code)]
 pub fn compiler_hash(
     code: &'static str,
     data: &'static str,
@@ -26,6 +27,7 @@ pub fn compiler_hash(
     CompilerHash(hasher.finish())
 }
 
+#[allow(dead_code)]
 pub fn compile<OfflineType, RuntimeType>(
     mut context: CompilerContext<'_>,
 ) -> Result<CompilationOutput, CompilerError>

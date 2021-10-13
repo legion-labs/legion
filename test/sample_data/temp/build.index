@@ -390,5 +390,55 @@
       "compiled_size": 209
     }
   ],
-  "compiled_resource_references": []
+  "compiled_resource_references": [
+    {
+      "compile_path": "d004cd1c000000000bb9d43d0d846181|019c8223",
+      "context_hash": "b2db21f82d4f83b1",
+      "source_hash": "bd381c321645782d",
+      "compiled_path": "d004cd1c000000000bb9d43d0d846181|019c8223",
+      "compiled_reference": "0cd05ad800000000e2b3c533fa7bd0bf"
+    },
+    {
+      "compile_path": "d004cd1c000000000bb9d43d0d846181|019c8223",
+      "context_hash": "b2db21f82d4f83b1",
+      "source_hash": "bd381c321645782d",
+      "compiled_path": "d004cd1c000000000bb9d43d0d846181|019c8223",
+      "compiled_reference": "0cd05ad800000000e4a533908c981847"
+    },
+    {
+      "compile_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "context_hash": "b2db21f82d4f83b1",
+      "source_hash": "8831c8b3a97267f4",
+      "compiled_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "compiled_reference": "019c822300000000fc923dd0909a2a99"
+    },
+    {
+      "compile_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "context_hash": "b2db21f82d4f83b1",
+      "source_hash": "8831c8b3a97267f4",
+      "compiled_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "compiled_reference": "0cd05ad8000000004b3b8e52a57b02c2"
+    },
+    {
+      "compile_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "context_hash": "b2db21f82d4f83b1",
+      "source_hash": "8831c8b3a97267f4",
+      "compiled_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "compiled_reference": "0cd05ad8000000005826fca997564506"
+    },
+    {
+      "compile_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "context_hash": "b2db21f82d4f83b1",
+      "source_hash": "8831c8b3a97267f4",
+      "compiled_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "compiled_reference": "0cd05ad800000000674a48da6a039546"
+    },
+    {
+      "compile_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "context_hash": "b2db21f82d4f83b1",
+      "source_hash": "8831c8b3a97267f4",
+      "compiled_path": "d004cd1c00000000445b0fc7dae84c6e|019c8223",
+      "compiled_reference": "0cd05ad8000000007ceff68089647758"
+    }
+  ]
 }
