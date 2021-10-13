@@ -188,15 +188,20 @@ impl<W: Write> WriteAtom<&mut W> for TrunAtom {
         if let Some(v) = self.first_sample_flags {
             writer.write_u32::<BigEndian>(v)?;
         }
-        let sample_durations: &[u32] = self.sample_durations.as_ref().map_or(&[], |v| &v[..]);
-        let sample_sizes: &[u32] = self.sample_sizes.as_ref().map_or(&[], |v| &v[..]);
-        let sample_flags: &[u32] = self.sample_flags.as_ref().map_or(&[], |v| &v[..]);
-        let sample_cts: &[u32] = self.sample_cts.as_ref().map_or(&[], |v| &v[..]);
+
         for i in 0..self.sample_count as usize {
-            writer.write_u32::<BigEndian>(sample_durations[i])?;
-            writer.write_u32::<BigEndian>(sample_sizes[i])?;
-            writer.write_u32::<BigEndian>(sample_flags[i])?;
-            writer.write_u32::<BigEndian>(sample_cts[i])?;
+            if let Some(sample_durations) = &self.sample_durations {
+                writer.write_u32::<BigEndian>(sample_durations[i])?;
+            }
+            if let Some(sample_sizes) = &self.sample_sizes {
+                writer.write_u32::<BigEndian>(sample_sizes[i])?;
+            }
+            if let Some(sample_flags) = &self.sample_flags {
+                writer.write_u32::<BigEndian>(sample_flags[i])?;
+            }
+            if let Some(sample_cts) = &self.sample_cts {
+                writer.write_u32::<BigEndian>(sample_cts[i])?;
+            }
         }
 
         Ok(self.size())
@@ -212,6 +217,31 @@ mod tests {
     #[test]
     fn test_trun_same_size() {
         let src_box = TrunAtom::default();
+        let mut buf = Vec::new();
+        src_box.write_atom(&mut buf).unwrap();
+        assert_eq!(buf.len(), src_box.size() as usize);
+
+        let mut reader = Cursor::new(&buf);
+        let header = AtomHeader::read(&mut reader).unwrap();
+        assert_eq!(header.name, TrunAtom::FOUR_CC);
+        assert_eq!(src_box.size(), header.size);
+
+        let dst_box = TrunAtom::read_atom(&mut reader, header.size).unwrap();
+        assert_eq!(src_box, dst_box);
+    }
+
+    #[test]
+    fn test_trun_stream_sizes() {
+        let src_box = TrunAtom {
+            version: 0,
+            data_offset: Some(0x20),
+            first_sample_flags: Some(0x2000000),
+            sample_count: 9,
+            sample_sizes: Some(vec![1165, 11, 11, 8545, 10126, 10866, 9643, 9351, 7730]),
+            sample_flags: None,
+            sample_durations: Some(vec![1165, 11, 11, 8545, 10126, 10866, 9643, 9351, 7730]),
+            sample_cts: None,
+        };
         let mut buf = Vec::new();
         src_box.write_atom(&mut buf).unwrap();
         assert_eq!(buf.len(), src_box.size() as usize);

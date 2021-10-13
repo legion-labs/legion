@@ -3,6 +3,7 @@ use std::io::Write;
 use crate::atoms::avc1::Avc1Atom;
 use crate::atoms::ftyp::FtypAtom;
 use crate::atoms::hev1::Hev1Atom;
+use crate::atoms::mdat::MdatAtom;
 use crate::atoms::mehd::MehdAtom;
 use crate::atoms::mfhd::MfhdAtom;
 use crate::atoms::moof::MoofAtom;
@@ -11,6 +12,7 @@ use crate::atoms::mp4a::Mp4aAtom;
 use crate::atoms::mvex::MvexAtom;
 use crate::atoms::smhd::SmhdAtom;
 use crate::atoms::stco::StcoAtom;
+use crate::atoms::tfdt::TfdtAtom;
 use crate::atoms::tfhd::TfhdAtom;
 use crate::atoms::traf::TrafAtom;
 use crate::atoms::trak::TrakAtom;
@@ -19,102 +21,22 @@ use crate::atoms::trun::TrunAtom;
 use crate::atoms::tx3g::Tx3gAtom;
 use crate::atoms::vmhd::VmhdAtom;
 use crate::atoms::vp09::Vp09Atom;
-use crate::atoms::WriteAtom;
-use crate::{AacConfig, AvcConfig, HevcConfig, MediaConfig, TrackType, TtxtConfig, Vp9Config};
-use crate::{FourCC, Result};
+use crate::atoms::{Atom, WriteAtom};
+use crate::{MediaConfig, Mp4Config, Result, TrackConfig};
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Mp4Config {
-    pub major_brand: FourCC,
-    pub minor_version: u32,
-    pub compatible_brands: Vec<FourCC>,
-    pub timescale: u32,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct TrackConfig {
-    pub track_type: TrackType,
-    pub timescale: u32,
-    pub language: String,
-    pub media_conf: MediaConfig,
-}
-
-impl From<MediaConfig> for TrackConfig {
-    fn from(media_conf: MediaConfig) -> Self {
-        match media_conf {
-            MediaConfig::AvcConfig(avc_conf) => Self::from(avc_conf),
-            MediaConfig::HevcConfig(hevc_conf) => Self::from(hevc_conf),
-            MediaConfig::AacConfig(aac_conf) => Self::from(aac_conf),
-            MediaConfig::TtxtConfig(ttxt_conf) => Self::from(ttxt_conf),
-            MediaConfig::Vp9Config(vp9_config) => Self::from(vp9_config),
-        }
-    }
-}
-
-impl From<AvcConfig> for TrackConfig {
-    fn from(avc_conf: AvcConfig) -> Self {
-        Self {
-            track_type: TrackType::Video,
-            timescale: 90_000,             // XXX
-            language: String::from("und"), // XXX
-            media_conf: MediaConfig::AvcConfig(avc_conf),
-        }
-    }
-}
-
-impl From<HevcConfig> for TrackConfig {
-    fn from(hevc_conf: HevcConfig) -> Self {
-        Self {
-            track_type: TrackType::Video,
-            timescale: 90_000,             // XXX
-            language: String::from("und"), // XXX
-            media_conf: MediaConfig::HevcConfig(hevc_conf),
-        }
-    }
-}
-
-impl From<AacConfig> for TrackConfig {
-    fn from(aac_conf: AacConfig) -> Self {
-        Self {
-            track_type: TrackType::Audio,
-            timescale: 1000,               // XXX
-            language: String::from("und"), // XXX
-            media_conf: MediaConfig::AacConfig(aac_conf),
-        }
-    }
-}
-
-impl From<TtxtConfig> for TrackConfig {
-    fn from(txtt_conf: TtxtConfig) -> Self {
-        Self {
-            track_type: TrackType::Subtitle,
-            timescale: 1000,               // XXX
-            language: String::from("und"), // XXX
-            media_conf: MediaConfig::TtxtConfig(txtt_conf),
-        }
-    }
-}
-
-impl From<Vp9Config> for TrackConfig {
-    fn from(vp9_conf: Vp9Config) -> Self {
-        Self {
-            track_type: TrackType::Video,
-            timescale: 90_000,             // XXX
-            language: String::from("und"), // XXX
-            media_conf: MediaConfig::Vp9Config(vp9_conf),
-        }
-    }
-}
-
+/// This writer provides an MSE compatible Byte Stream as  described
+/// [here](https://w3c.github.io/mse-byte-stream-format-isobmff/)
+/// [MSE Extension](https://github.com/w3c/media-source)
 #[derive(Debug)]
-pub struct StreamWriter<W> {
+pub struct MseStreamWriter<W> {
     writer: W,
     cur_offset: u64,
     timescale: u32,
+    fps: u32,
     moof: MoofAtom,
 }
 
-impl<W> StreamWriter<W> {
+impl<W> MseStreamWriter<W> {
     /// Consume self, returning the inner writer.
     ///
     /// This can be useful to recover the inner writer after completion in case
@@ -123,7 +45,7 @@ impl<W> StreamWriter<W> {
     /// # Examples
     ///
     /// ```rust
-    /// use legion_mp4::{StreamWriter, Mp4Config};
+    /// use legion_mp4::{MseStreamWriter, Mp4Config};
     /// use std::io::Cursor;
     ///
     /// # fn main() -> legion_mp4::Result<()> {
@@ -140,7 +62,7 @@ impl<W> StreamWriter<W> {
     /// };
     ///
     /// let data = Cursor::new(Vec::<u8>::new());
-    /// let mut writer = StreamWriter::write_start(data, &config)?;
+    /// let mut writer = MseStreamWriter::write_start(data, &config, 30)?;
     ///
     /// let data: Vec<u8> = writer.into_writer().into_inner();
     /// # Ok(()) }
@@ -150,9 +72,9 @@ impl<W> StreamWriter<W> {
     }
 }
 
-impl<W: Write> StreamWriter<W> {
+impl<W: Write> MseStreamWriter<W> {
     /// # Errors
-    pub fn write_start(mut writer: W, mp4_config: &Mp4Config) -> Result<Self> {
+    pub fn write_start(mut writer: W, mp4_config: &Mp4Config, fps: u32) -> Result<Self> {
         let ftyp = FtypAtom {
             major_brand: mp4_config.major_brand,
             minor_version: mp4_config.minor_version,
@@ -182,12 +104,18 @@ impl<W: Write> StreamWriter<W> {
                     sample_flags: None,
                     sample_cts: None,
                 }),
+                tfdt: Some(TfdtAtom {
+                    version: 1,
+                    flags: 0,
+                    decode_time: 0,
+                }),
             }],
         };
         Ok(Self {
             writer,
             cur_offset,
             timescale: mp4_config.timescale,
+            fps,
             moof,
         })
     }
@@ -269,9 +197,36 @@ impl<W: Write> StreamWriter<W> {
     }
 
     /// # Errors
-    pub fn write_sample(&mut self, _key_frame: bool, _content: &[u8]) -> Result<()> {
+    pub fn write_sample(&mut self, key_frame: bool, content: &[u8]) -> Result<()> {
+        let duration = 90000 / self.fps;
+        let timestamp = self.moof.mfhd.sequence_number * duration;
         self.moof.mfhd.sequence_number += 1;
+        self.moof.trafs[0]
+            .trun
+            .as_mut()
+            .unwrap()
+            .sample_sizes
+            .as_mut()
+            .unwrap()[0] = content.len() as u32;
+        if key_frame {
+            self.moof.trafs[0].trun.as_mut().unwrap().first_sample_flags = Some(0x2000000);
+        } else {
+            self.moof.trafs[0].trun.as_mut().unwrap().first_sample_flags = None;
+        }
+        let size = self.moof.size() + 8;
+        self.moof.trafs[0].trun.as_mut().unwrap().data_offset = Some(size as i32);
+        self.moof.trafs[0]
+            .trun
+            .as_mut()
+            .unwrap()
+            .sample_durations
+            .as_mut()
+            .unwrap()[0] = duration;
+        self.moof.trafs[0].tfdt.as_mut().unwrap().decode_time = u64::from(timestamp);
+
         self.moof.write_atom(&mut self.writer)?;
+        let mdat = MdatAtom::Borrowed(content);
+        mdat.write_atom(&mut self.writer)?;
         Ok(())
     }
 }

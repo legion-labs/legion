@@ -3,6 +3,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 
 use crate::{Error, FourCC, Result};
 
+use super::tfdt::TfdtAtom;
 use super::tfhd::TfhdAtom;
 use super::trun::TrunAtom;
 use super::{
@@ -13,6 +14,7 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct TrafAtom {
     pub tfhd: TfhdAtom,
+    pub tfdt: Option<TfdtAtom>,
     pub trun: Option<TrunAtom>,
 }
 
@@ -22,6 +24,9 @@ impl Atom for TrafAtom {
     fn size(&self) -> u64 {
         let mut size = HEADER_SIZE;
         size += self.tfhd.size();
+        if let Some(ref tfdt) = self.tfdt {
+            size += tfdt.size();
+        }
         if let Some(ref trun) = self.trun {
             size += trun.size();
         }
@@ -43,6 +48,7 @@ impl<R: Read + Seek> ReadAtom<&mut R> for TrafAtom {
         let start = box_start(reader)?;
 
         let mut tfhd = None;
+        let mut tfdt = None;
         let mut trun = None;
 
         let mut current = reader.seek(SeekFrom::Current(0))?;
@@ -58,6 +64,9 @@ impl<R: Read + Seek> ReadAtom<&mut R> for TrafAtom {
                 }
                 TrunAtom::FOUR_CC => {
                     trun = Some(TrunAtom::read_atom(reader, s)?);
+                }
+                TfdtAtom::FOUR_CC => {
+                    tfdt = Some(TfdtAtom::read_atom(reader, s)?);
                 }
                 _ => {
                     // XXX warn!()
@@ -75,7 +84,7 @@ impl<R: Read + Seek> ReadAtom<&mut R> for TrafAtom {
 
         skip_bytes_to(reader, start + size)?;
 
-        Ok(Self { tfhd, trun })
+        Ok(Self { tfhd, tfdt, trun })
     }
 }
 
@@ -85,6 +94,93 @@ impl<W: Write> WriteAtom<&mut W> for TrafAtom {
 
         self.tfhd.write_atom(writer)?;
 
+        if let Some(tfdt) = &self.tfdt {
+            tfdt.write_atom(writer)?;
+        }
+
+        if let Some(trun) = &self.trun {
+            trun.write_atom(writer)?;
+        }
+
         Ok(self.size())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::atoms::AtomHeader;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_traf_same_size() {
+        let src_box = TrafAtom {
+            tfhd: TfhdAtom {
+                track_id: 1,
+                default_sample_flags: Some(0x1010000),
+                default_base_is_moof: true,
+                ..TfhdAtom::default()
+            },
+            trun: Some(TrunAtom {
+                version: 0,
+                sample_count: 1,
+                data_offset: Some(0),
+                first_sample_flags: Some(0x2000000),
+                sample_durations: Some(vec![0]),
+                sample_sizes: Some(vec![0]),
+                sample_flags: None,
+                sample_cts: None,
+            }),
+            tfdt: Some(TfdtAtom {
+                version: 1,
+                flags: 0,
+                decode_time: 0,
+            }),
+        };
+        let mut buf = Vec::new();
+        src_box.write_atom(&mut buf).unwrap();
+        assert_eq!(buf.len(), src_box.size() as usize);
+
+        let mut reader = Cursor::new(&buf);
+        let header = AtomHeader::read(&mut reader).unwrap();
+        assert_eq!(header.name, TrafAtom::FOUR_CC);
+        assert_eq!(src_box.size(), header.size);
+
+        let dst_box = TrafAtom::read_atom(&mut reader, header.size).unwrap();
+        assert_eq!(src_box, dst_box);
+    }
+
+    #[test]
+    fn test_traf_without_tfdt() {
+        let src_box = TrafAtom {
+            tfhd: TfhdAtom {
+                track_id: 1,
+                default_sample_flags: Some(0x1010000),
+                default_base_is_moof: true,
+                ..TfhdAtom::default()
+            },
+            trun: Some(TrunAtom {
+                version: 0,
+                sample_count: 1,
+                data_offset: Some(0),
+                first_sample_flags: Some(0x2000000),
+                sample_durations: Some(vec![0]),
+                sample_sizes: Some(vec![0]),
+                sample_flags: None,
+                sample_cts: None,
+            }),
+            tfdt: None,
+        };
+        let mut buf = Vec::new();
+        src_box.write_atom(&mut buf).unwrap();
+        assert_eq!(buf.len(), src_box.size() as usize);
+
+        let mut reader = Cursor::new(&buf);
+        let header = AtomHeader::read(&mut reader).unwrap();
+        assert_eq!(header.name, TrafAtom::FOUR_CC);
+        assert_eq!(src_box.size(), header.size);
+
+        let dst_box = TrafAtom::read_atom(&mut reader, header.size).unwrap();
+        assert_eq!(src_box, dst_box);
     }
 }

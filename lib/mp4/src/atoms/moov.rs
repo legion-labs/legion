@@ -101,6 +101,7 @@ impl<W: Write> WriteAtom<&mut W> for MoovAtom {
         AtomHeader::new(self).write(writer)?;
 
         self.mvhd.write_atom(writer)?;
+
         for trak in &self.traks {
             trak.write_atom(writer)?;
         }

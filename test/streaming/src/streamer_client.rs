@@ -42,19 +42,15 @@ fn run() -> GfxResult<()> {
         .unwrap();
 
     let data = Cursor::new(Vec::<u8>::new());
-    let mut mp4_stream = mp4::StreamWriter::write_start(
+    let mut mp4_stream = mp4::MseStreamWriter::write_start(
         data,
         &Mp4Config {
-            major_brand: b"isom".into(),
+            major_brand: b"mp42".into(),
             minor_version: 512,
-            compatible_brands: vec![
-                b"isom".into(),
-                b"iso2".into(),
-                b"avc1".into(),
-                b"mp41".into(),
-            ],
+            compatible_brands: vec![b"mp42".into(), b"isom".into()],
             timescale: 1000,
         },
+        60,
     )
     .unwrap();
 
@@ -480,7 +476,7 @@ fn run() -> GfxResult<()> {
             let sub_resource = dst_texture.map_texture()?;
             converter.convert_rgba(sub_resource.data, sub_resource.row_pitch as usize);
 
-            //encoder.force_intra_frame(true);
+            encoder.force_intra_frame(true);
             let stream = encoder.encode(&converter).unwrap();
 
             file_h264.write_all(&stream.write_vec()).unwrap();

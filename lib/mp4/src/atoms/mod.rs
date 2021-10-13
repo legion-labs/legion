@@ -1,57 +1,12 @@
-//! All ISO-MP4 boxes (atoms) and operations.
-//!
-//! * [ISO/IEC 14496-12](https://en.wikipedia.org/wiki/MPEG-4_Part_12) - ISO Base Media File Format (`QuickTime`, MPEG-4, etc)
-//! * [ISO/IEC 14496-12](https://mpeg.chiariglione.org/standards/mpeg-4/iso-base-media-file-format/text-isoiec-14496-12-5th-edition)
-//! * [ISO/IEC 14496-14](https://en.wikipedia.org/wiki/MPEG-4_Part_14) - MP4 file format
-//! * ISO/IEC 14496-17 - Streaming text format
-//! * [ISO 23009-1](https://www.iso.org/standard/79329.html) -Dynamic adaptive streaming over HTTP (DASH)
-//! * [Quicktime Documentation](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
-//!
-//! <http://mp4ra.org/#/atoms>
-//!
-//! Supported Atoms:
-//! ftyp
-//! moov
-//!     mvhd
-//!     trak
-//!         tkhd
-//!         mdia
-//!             mdhd
-//!             hdlr
-//!             minf
-//!                 stbl
-//!                     stsd
-//!                         avc1
-//!                         hev1
-//!                         mp4a
-//!                         tx3g
-//!                     stts
-//!                     stsc
-//!                     stsz
-//!                     stss
-//!                     stco
-//!                     co64
-//!                     ctts
-//!                 dinf
-//!                     dref
-//!                 smhd
-//!                 vmhd
-//!         edts
-//!             elst
-//!     mvex
-//!         mehd
-//!         trex
-//! emsg
-//! moof
-//!     mfhd
-//!     traf
-//!         tfhd
-//!         tfdt
-//!         trun
-//! mdat
-//! free
-//!
-
+/// All ISO-MP4 boxes (atoms) operations.
+///
+/// * [ISO/IEC 14496-12](https://en.wikipedia.org/wiki/MPEG-4_Part_12) - ISO Base Media File Format (`QuickTime`, MPEG-4, etc)
+/// * [ISO/IEC 14496-12](https://mpeg.chiariglione.org/standards/mpeg-4/iso-base-media-file-format/text-isoiec-14496-12-5th-edition)
+/// * [ISO/IEC 14496-14](https://en.wikipedia.org/wiki/MPEG-4_Part_14) - MP4 file format
+/// * ISO/IEC 14496-17 - Streaming text format
+/// * [ISO 23009-1](https://www.iso.org/standard/79329.html) -Dynamic adaptive streaming over HTTP (DASH)
+/// * [Quicktime Documentation](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
+///
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::Serialize;
 use std::convert::TryInto;
@@ -73,6 +28,7 @@ pub(crate) mod emsg;
 pub(crate) mod ftyp;
 pub(crate) mod hdlr;
 pub(crate) mod hev1;
+pub(crate) mod mdat;
 pub(crate) mod mdhd;
 pub(crate) mod mdia;
 pub(crate) mod mehd;
@@ -91,6 +47,7 @@ pub(crate) mod stsd;
 pub(crate) mod stss;
 pub(crate) mod stsz;
 pub(crate) mod stts;
+pub(crate) mod tfdt;
 pub(crate) mod tfhd;
 pub(crate) mod tkhd;
 pub(crate) mod traf;

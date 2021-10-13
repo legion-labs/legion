@@ -68,8 +68,19 @@ mod atoms;
 mod types;
 pub use types::*;
 
-mod writer;
-pub use writer::*;
+mod track;
+pub use track::*;
+
+mod mse_writer;
+pub use mse_writer::*;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Mp4Config {
+    pub major_brand: FourCC,
+    pub minor_version: u32,
+    pub compatible_brands: Vec<FourCC>,
+    pub timescale: u32,
+}
 
 mod bindings;
 pub mod old {
@@ -83,7 +94,7 @@ pub mod old {
     }
 
     pub struct Mp4Stream {
-        // created once per stream, boxed here for conveignence
+        // created once per stream, boxed here for convenience
         inner: Box<Mp4StreamInner>,
         fps: i32,
     }
@@ -225,14 +236,5 @@ pub mod old {
         let buffer = std::slice::from_raw_parts(buffer.cast::<u8>(), size);
         inner.buffer.extend_from_slice(buffer);
         0
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let four = 2 + 2;
-        assert_eq!(four, 4);
     }
 }
