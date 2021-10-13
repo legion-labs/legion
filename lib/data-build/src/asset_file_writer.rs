@@ -76,13 +76,14 @@ where
 
 #[cfg(test)]
 mod tests {
+
+    use super::*;
+
     use std::io::Read;
 
-    use byteorder::{LittleEndian, ReadBytesExt};
-    use legion_content_store::{ContentStore, RamContentStore};
-    use legion_data_runtime::{Resource, ResourceId, ResourceType};
-
-    use crate::asset_file_writer::{write_assetfile, ASSET_FILE_TYPENAME, ASSET_FILE_VERSION};
+    use byteorder::ReadBytesExt;
+    use legion_content_store::RamContentStore;
+    use legion_data_runtime::Resource;
 
     #[test]
     fn one_asset_no_references() {

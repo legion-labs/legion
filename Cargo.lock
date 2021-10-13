@@ -2974,6 +2974,7 @@ dependencies = [
 name = "legion-data-build-cli"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
  "clap",
  "integer-asset",
  "legion-content-store",
