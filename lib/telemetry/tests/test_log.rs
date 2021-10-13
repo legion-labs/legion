@@ -5,9 +5,11 @@ mod debug_event_sink;
 use debug_event_sink::DebugEventSink;
 
 fn test_log_str() {
-    for _ in 1..5 {
+    for x in 1..5 {
         log_str(LogLevel::Info, "test");
+        log_string(LogLevel::Info, format!("test {}", x));
     }
+    flush_log_buffer();
 }
 
 fn get_tsc_frequency() -> Result<u64, String> {
@@ -52,6 +54,7 @@ fn test_log_thread() {
     for t in threads {
         t.join().unwrap();
     }
+    flush_log_buffer();
 }
 
 fn test_metrics() {
