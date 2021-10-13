@@ -1,4 +1,4 @@
-use crate::{InProcSerialize, Reflect, UserDefinedType};
+use crate::InProcSerialize;
 
 #[derive(Debug)]
 pub struct DynString(pub String);
@@ -21,15 +21,5 @@ impl InProcSerialize for DynString {
         let buffer_size = value_size.unwrap();
         let slice = std::ptr::slice_from_raw_parts(ptr, buffer_size as usize);
         unsafe { Self(String::from_utf8((*slice).to_vec()).unwrap()) }
-    }
-}
-
-impl Reflect for DynString {
-    fn reflect() -> UserDefinedType {
-        UserDefinedType {
-            name: String::from("String"),
-            size: 0,
-            members: vec![],
-        }
     }
 }

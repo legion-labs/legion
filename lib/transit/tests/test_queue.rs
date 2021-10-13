@@ -16,14 +16,13 @@ pub struct OtherEvent {
 impl InProcSerialize for OtherEvent {}
 
 declare_queue_struct!(
-    struct MyQueue<MyTestEvent, OtherEvent, DynString> {}
+    struct MyQueue<MyTestEvent, OtherEvent> {}
 );
 
 #[test]
 fn test_queue() {
     assert!(<MyTestEvent as InProcSerialize>::is_size_static());
     assert!(<OtherEvent as InProcSerialize>::is_size_static());
-    assert!(!<DynString as InProcSerialize>::is_size_static());
 
     let mut q = MyQueue::new(1024);
     q.push(MyTestEvent {
@@ -34,9 +33,6 @@ fn test_queue() {
 
     q.push(OtherEvent { some_64: 3 });
     assert_eq!(26, q.len_bytes());
-
-    q.push(DynString(String::from("allo")));
-    assert_eq!(35, q.len_bytes());
 
     if let (MyQueueAny::MyTestEvent(e), next_obj_offset) = q.read_value_at_offset(0) {
         assert_eq!(e.some_64, 2);
@@ -49,13 +45,6 @@ fn test_queue() {
     if let (MyQueueAny::OtherEvent(e), next_obj_offset) = q.read_value_at_offset(17) {
         assert_eq!(e.some_64, 3);
         assert_eq!(next_obj_offset, 26);
-    } else {
-        panic!("wrong enum type");
-    }
-
-    if let (MyQueueAny::DynString(s), next_obj_offset) = q.read_value_at_offset(26) {
-        assert_eq!(s.0, "allo");
-        assert_eq!(next_obj_offset, 35);
     } else {
         panic!("wrong enum type");
     }
