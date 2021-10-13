@@ -2,8 +2,8 @@ name: Benchmarks
 
 on:
   schedule:
-    # Run the job 6am and 6pm
-    - cron:  '0 6,18 * * *'
+    # Run the job 6am and 6pm EDT
+    - cron:  '0 10,22 * * *'
 
 jobs:
   bench:
