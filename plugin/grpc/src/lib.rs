@@ -1,6 +1,6 @@
-//! gRPC plugin for Legion's ECS.
+//! `gRPC` plugin for Legion's ECS.
 //!
-//! Provides gRPC server support.
+//! Provides `gRPC` server support.
 
 // BEGIN - Legion Labs lints v0.5
 // do not change or add/remove here, but one can add exceptions after this section

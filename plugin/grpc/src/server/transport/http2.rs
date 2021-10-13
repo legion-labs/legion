@@ -18,7 +18,7 @@ use bytes::Bytes;
 use futures_util::future;
 use http::{Request, Response};
 use hyper::{server::conn::AddrStream, Body};
-use tonic::body::BoxBody;
+use log::debug;
 use tower::Service;
 
 /// An HTTP2 server transport for `gRPC` services.
@@ -27,7 +27,7 @@ use tower::Service;
 ///
 /// Routing can be done through the service name (compatible with Tonic's default behavior) or
 /// explicitely.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Server {
     concurrency_limit: Option<usize>,
     timeout: Option<Duration>,
@@ -41,7 +41,7 @@ pub struct Server {
     max_frame_size: Option<u32>,
     accept_http1: bool,
 
-    services: Services,
+    router: Router,
 }
 
 const DEFAULT_HTTP2_KEEPALIVE_TIMEOUT_SECS: u64 = 20;
@@ -83,35 +83,28 @@ impl Server {
 
         // Hyper HTTP2 server takes a "service" which receives a connection and returns a HTTP
         // service to serve requests on that connection.
-        let root_service = MakeSvc {
-            inner: self.services,
+        let service_maker = ServiceMaker {
+            inner: self.router,
             concurrency_limit,
             timeout,
         };
 
-        server.serve(root_service).await?;
+        server.serve(service_maker).await?;
 
         Ok(())
     }
 }
 
 type BoxHttpBody = http_body::combinators::BoxBody<Bytes, anyhow::Error>;
-type BoxService = tower::util::BoxService<Request<Body>, Response<BoxHttpBody>, anyhow::Error>;
+type BoxService = tower::util::BoxService<Request<Body>, Response<BoxHttpBody>, tower::BoxError>;
 
-struct MakeSvc<S> {
+struct ServiceMaker {
     concurrency_limit: Option<usize>,
     timeout: Option<Duration>,
-    inner: S,
+    inner: Router,
 }
 
-impl<S, ResBody> Service<&AddrStream> for MakeSvc<S>
-where
-    S: Service<Request<Body>, Response = Response<ResBody>> + Clone + Send + 'static,
-    S::Future: Send + 'static,
-    S::Error: Into<anyhow::Error> + Send,
-    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
-    ResBody::Error: Into<anyhow::Error>,
-{
+impl Service<&AddrStream> for ServiceMaker {
     type Response = BoxService;
     type Error = anyhow::Error;
     type Future = future::Ready<Result<Self::Response, Self::Error>>;
@@ -120,65 +113,61 @@ where
         Ok(()).into()
     }
 
-    fn call(&mut self, io: &AddrStream) -> Self::Future {
-        //let conn_info = io.connect_info();
+    fn call(&mut self, _conn: &AddrStream) -> Self::Future {
+        let concurrency_limit = self.concurrency_limit;
+        let timeout = self.timeout;
 
-        //let svc = self.inner.clone();
-        //let concurrency_limit = self.concurrency_limit;
-        //let timeout = self.timeout;
+        let svc = tower::ServiceBuilder::new()
+            .layer(BoxService::layer())
+            .option_layer(concurrency_limit.map(tower::limit::ConcurrencyLimitLayer::new))
+            .option_layer(timeout.map(tower::timeout::TimeoutLayer::new))
+            .service(self.inner.clone());
 
-        //let svc = ServiceBuilder::new()
-        //    .option_layer(concurrency_limit.map(ConcurrencyLimitLayer::new))
-        //    .layer_fn(|s| GrpcTimeout::new(s, timeout))
-        //    .service(svc);
-
-        //let svc = ServiceBuilder::new()
-        //    .layer(BoxService::layer())
-        //    .map_request(move |mut request: Request<Body>| {
-        //        match &conn_info {
-        //            tower::util::Either::A(inner) => {
-        //                request.extensions_mut().insert(inner.clone());
-        //            }
-        //            tower::util::Either::B(inner) => {
-        //                #[cfg(feature = "tls")]
-        //                {
-        //                    request.extensions_mut().insert(inner.clone());
-        //                    request.extensions_mut().insert(inner.get_ref().clone());
-        //                }
-
-        //                #[cfg(not(feature = "tls"))]
-        //                {
-        //                    // just a type check to make sure we didn't forget to
-        //                    // insert this into the extensions
-        //                    let _: &() = inner;
-        //                }
-        //            }
-        //        }
-
-        //        request
-        //    })
-        //    .service(Svc { inner: svc });
-
-        //future::ready(Ok(svc))
-        future::ready(Err(anyhow::format_err!("foo")))
+        future::ready(Ok(svc))
     }
 }
 
+////#[pin_project]
+//struct SvcFuture<F> {
+//    //#[pin]
+//    inner: F,
+//}
+//
+//impl<F, E, ResBody> Future for SvcFuture<F>
+//where
+//    F: Future<Output = Result<Response<ResBody>, E>>,
+//    E: Into<anyhow::Error>,
+//    ResBody: http_body::Body<Data = Bytes> + Send + Sync + 'static,
+//    ResBody::Error: Into<anyhow::Error>,
+//{
+//    type Output = Result<Response<BoxHttpBody>, anyhow::Error>;
+//
+//    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+//        let this = self.project();
+//
+//        let response: Response<ResBody> = ready!(this.inner.poll(cx)).map_err(Into::into)?;
+//        let response = response.map(|body| body.map_err(Into::into).boxed());
+//        Poll::Ready(Ok(response))
+//    }
+//}
+
 #[derive(Default, Clone)]
-pub struct Services {}
+pub struct Router {}
 
-impl Service<Request<Body>> for Services {
-    type Response = Response<BoxBody>;
-
+impl Service<Request<Body>> for Router {
+    type Response = Response<BoxHttpBody>;
     type Error = anyhow::Error;
-
     type Future = future::Ready<Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        todo!()
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
+        let path = req.uri().path();
+
+        debug!("received service request for: {}", path);
+
         todo!()
     }
 }

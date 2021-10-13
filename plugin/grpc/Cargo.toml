@@ -14,7 +14,6 @@ legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-async = { path = "../async", version = "0.1.0" }
 tokio = { version = "1.12", features = ["full"] }
-tonic = "0.5"
 tower = "0.4.8"
 tower-service = "0.3.1"
 futures-util = "0.3.17"
@@ -29,6 +28,7 @@ bytes = "1.1"
 tonic-build = "0.5"
 
 [dev-dependencies]
+tonic = "0.5"
 ntest = "0.7"
 prost = "0.8"
 simple_logger = "1.13"
