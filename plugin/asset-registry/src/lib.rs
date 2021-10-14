@@ -73,7 +73,11 @@ use legion_content_store::{ContentStoreAddr, HddContentStore};
 use legion_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryOptions};
 use legion_ecs::prelude::*;
 use sample_data_compiler::runtime_data;
-use std::{fs::File, path::Path, sync::Arc};
+use std::{
+    fs::File,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
@@ -116,29 +120,32 @@ impl Plugin for AssetRegistryPlugin {
 
 impl AssetRegistryPlugin {
     fn setup(
-        mut registry: ResMut<'_, Arc<AssetRegistry>>,
+        registry: ResMut<'_, Arc<Mutex<AssetRegistry>>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
         settings: ResMut<'_, AssetRegistrySettings>,
     ) {
         for asset_id in &settings.assets_to_load {
             asset_loading_states.insert(*asset_id, LoadingState::Pending);
-            if let Some(registry) = Arc::get_mut(&mut registry) {
+            if let Ok(mut registry) = registry.lock() {
                 asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
             }
         }
 
+        drop(registry);
         drop(settings);
     }
 
-    fn update_registry(mut registry: ResMut<'_, Arc<AssetRegistry>>) {
-        if let Some(registry) = Arc::get_mut(&mut registry) {
+    fn update_registry(registry: ResMut<'_, Arc<Mutex<AssetRegistry>>>) {
+        if let Ok(mut registry) = registry.lock() {
             registry.update();
         }
+
+        drop(registry);
     }
 
     fn update_assets(
-        registry: ResMut<'_, Arc<AssetRegistry>>,
+        registry: ResMut<'_, Arc<Mutex<AssetRegistry>>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
@@ -148,7 +155,14 @@ impl AssetRegistryPlugin {
             match loading_state {
                 LoadingState::Pending => {
                     let handle = asset_handles.get(*asset_id).unwrap();
-                    if handle.is_loaded(&registry) {
+                    let is_loaded = {
+                        if let Ok(registry) = registry.lock() {
+                            handle.is_loaded(&registry)
+                        } else {
+                            false
+                        }
+                    };
+                    if is_loaded {
                         if !load_ecs_asset::<runtime_data::Entity>(
                             asset_id,
                             handle,
@@ -188,9 +202,19 @@ impl AssetRegistryPlugin {
                         }
 
                         *loading_state = LoadingState::Loaded;
-                    } else if handle.is_err(&registry) {
-                        eprintln!("Failed to load runtime asset {}", asset_id);
-                        *loading_state = LoadingState::Failed;
+                    } else {
+                        let is_err = {
+                            if let Ok(registry) = registry.lock() {
+                                handle.is_err(&registry)
+                            } else {
+                                false
+                            }
+                        };
+
+                        if is_err {
+                            eprintln!("Failed to load runtime asset {}", asset_id);
+                            *loading_state = LoadingState::Failed;
+                        }
                     }
                 }
                 LoadingState::Loaded | LoadingState::Failed => {}
