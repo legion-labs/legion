@@ -66,7 +66,7 @@ use legion_data_offline::ResourcePathId;
 use legion_data_runtime::Resource;
 use offline_to_runtime::FromOffline;
 use sample_data_compiler::{offline_data, runtime_data};
-use std::{env, sync::Arc};
+use std::env;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -79,14 +79,14 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = context
+    let resources = context
         .take_registry()
         .add_loader::<offline_data::Instance>()
         .create();
-    let resources = Arc::get_mut(&mut resources).unwrap();
+    let mut resources = resources.lock().unwrap();
 
     let instance = resources.load_sync::<offline_data::Instance>(context.source.content_id());
-    let instance = instance.get(resources).unwrap();
+    let instance = instance.get(&resources).unwrap();
 
     let runtime_instance = runtime_data::Instance::from_offline(instance);
     let compiled_asset = bincode::serialize(&runtime_instance).unwrap();

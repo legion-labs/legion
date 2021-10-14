@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::env;
 
 use base64::encode;
 
@@ -25,15 +25,15 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = context
+    let resources = context
         .take_registry()
         .add_loader::<binary_resource::BinaryResource>()
         .create();
-    let resources = Arc::get_mut(&mut resources).unwrap();
+    let mut resources = resources.lock().unwrap();
 
     let resource =
         resources.load_sync::<binary_resource::BinaryResource>(context.source.content_id());
-    let resource = resource.get(resources).unwrap();
+    let resource = resource.get(&resources).unwrap();
 
     let base64string = encode(&resource.content);
     let compiled_asset = base64string.as_bytes();

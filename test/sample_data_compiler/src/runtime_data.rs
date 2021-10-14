@@ -1,7 +1,7 @@
 use std::{
     any::{Any, TypeId},
     io,
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 use legion_data_runtime::{
@@ -49,7 +49,7 @@ impl Asset for Entity {
 
 #[derive(Default)]
 pub struct EntityLoader {
-    registry: Option<Arc<AssetRegistry>>,
+    registry: Option<Arc<Mutex<AssetRegistry>>>,
 }
 
 impl AssetLoader for EntityLoader {
@@ -62,16 +62,16 @@ impl AssetLoader for EntityLoader {
         println!("runtime entity \"{}\" loaded", entity.name);
 
         // activate references
-        if let Some(registry) = &mut self.registry {
-            if let Some(registry) = Arc::get_mut(registry) {
-                for child in &mut entity.children {
-                    child.activate(registry).unwrap();
-                }
+        if let Some(registry) = &self.registry {
+            let mut registry = registry.lock().unwrap();
+
+            for child in &mut entity.children {
+                child.activate(&mut *registry).unwrap();
             }
         }
     }
 
-    fn register_registry(&mut self, registry: Arc<AssetRegistry>) {
+    fn register_registry(&mut self, registry: Arc<Mutex<AssetRegistry>>) {
         self.registry = Some(registry);
     }
 }

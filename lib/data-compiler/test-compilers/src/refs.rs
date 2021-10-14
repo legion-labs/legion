@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::env;
 
 use legion_data_compiler::{
     compiler_api::{
@@ -23,16 +23,16 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = context
+    let resources = context
         .take_registry()
         .add_loader::<refs_resource::TestResource>()
         .create();
-    let resources = Arc::get_mut(&mut resources).unwrap();
+    let mut resources = resources.lock().unwrap();
 
     let resource = resources.load_sync::<refs_resource::TestResource>(context.source.content_id());
-    assert!(!resource.is_err(resources));
-    assert!(resource.is_loaded(resources));
-    let resource = resource.get(resources).unwrap();
+    assert!(!resource.is_err(&resources));
+    assert!(resource.is_loaded(&resources));
+    let resource = resource.get(&resources).unwrap();
 
     let compiled_asset = {
         let mut content = resource.content.as_bytes().to_owned();

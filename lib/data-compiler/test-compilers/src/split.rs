@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::env;
 
 use legion_data_compiler::{
     compiler_api::{
@@ -24,16 +24,16 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = context
+    let resources = context
         .take_registry()
         .add_loader::<multitext_resource::MultiTextResource>()
         .add_loader::<text_resource::TextResource>()
         .create();
-    let resources = Arc::get_mut(&mut resources).unwrap();
+    let mut resources = resources.lock().unwrap();
 
     let resource =
         resources.load_sync::<multitext_resource::MultiTextResource>(context.source.content_id());
-    let resource = resource.get(resources).unwrap();
+    let resource = resource.get(&resources).unwrap();
 
     let source_text_list = resource.text_list.clone();
 
