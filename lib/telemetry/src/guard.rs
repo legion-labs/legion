@@ -1,7 +1,8 @@
 use crate::{
     flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
-    init_thread_stream, panic_hook::init_panic_hook, setup_log_bridge, shutdown_event_dispatch,
-    EventBlockSink, GRPCEventSink, NullEventSink,
+    init_thread_stream,
+    panic_hook::{init_ctrlc_hook, init_panic_hook},
+    setup_log_bridge, shutdown_event_dispatch, EventBlockSink, GRPCEventSink, NullEventSink,
 };
 use std::sync::Arc;
 
@@ -27,6 +28,7 @@ pub fn init_telemetry(app_log: Option<Box<dyn log::Log>>) {
     };
     init_event_dispatch(10 * 1024 * 1024, 5 * 1024 * 1024, 1024 * 1024, sink).unwrap();
     init_panic_hook();
+    init_ctrlc_hook();
     setup_log_bridge(app_log).unwrap();
 }
 
