@@ -1,7 +1,7 @@
 use crate::{
     flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
-    init_thread_stream, setup_log_bridge, shutdown_event_dispatch, EventBlockSink, GRPCEventSink,
-    NullEventSink,
+    init_thread_stream, panic_hook::init_panic_hook, setup_log_bridge, shutdown_event_dispatch,
+    EventBlockSink, GRPCEventSink, NullEventSink,
 };
 use std::sync::Arc;
 

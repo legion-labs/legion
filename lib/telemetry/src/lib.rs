@@ -70,6 +70,7 @@ pub mod log_bridge;
 pub mod log_events;
 pub mod metric_event;
 pub mod metrics_block;
+pub mod panic_hook;
 mod queue_metadata;
 pub mod scope;
 pub mod stream;

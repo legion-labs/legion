@@ -62,6 +62,7 @@ fn test_metrics() {
         name: "Frame Time",
         unit: "ticks",
     };
+    dbg!(&FRAME_TIME_METRIC);
     record_int_metric(&FRAME_TIME_METRIC, 1000);
     record_float_metric(&FRAME_TIME_METRIC, 1.0);
     flush_metrics_buffer();
