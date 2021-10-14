@@ -43,7 +43,6 @@ jobs:
     needs: [build_release]
     if: ${{ github.event.event_name == 'workflow_dispatch' }}
     runs-on: [self-hosted, ubuntu]
-    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
 
