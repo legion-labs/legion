@@ -1,10 +1,11 @@
 use std::{
     any::{Any, TypeId},
     io,
+    sync::{Arc, Mutex},
 };
 
 use legion_data_runtime::{
-    resource, Asset, AssetLoader, AssetRegistryOptions, Reference, Resource,
+    resource, Asset, AssetLoader, AssetRegistry, AssetRegistryOptions, Reference, Resource,
 };
 use legion_graphics_runtime::Material;
 use legion_math::prelude::*;
@@ -47,7 +48,9 @@ impl Asset for Entity {
 }
 
 #[derive(Default)]
-pub struct EntityLoader {}
+pub struct EntityLoader {
+    registry: Option<Arc<Mutex<AssetRegistry>>>,
+}
 
 impl AssetLoader for EntityLoader {
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
@@ -55,11 +58,26 @@ impl AssetLoader for EntityLoader {
     }
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
-        if let Some(entity) = asset.downcast_mut::<Entity>() {
-            println!("runtime entity \"{}\" loaded", entity.name);
-        } else {
-            println!("invalid runtime entity loaded");
+        let entity = asset.downcast_mut::<Entity>().unwrap();
+        println!("runtime entity \"{}\" loaded", entity.name);
+
+        // activate references
+        if let Some(registry) = &self.registry {
+            let mut registry = registry.lock().unwrap();
+
+            for child in &mut entity.children {
+                if let Reference::Passive(child_id) = child {
+                    println!("activating reference to child {}", child_id);
+                }
+                if let Err(e) = child.activate(&mut *registry) {
+                    eprintln!("failed to activate child reference: {}", e);
+                }
+            }
         }
+    }
+
+    fn register_registry(&mut self, registry: Arc<Mutex<AssetRegistry>>) {
+        self.registry = Some(registry);
     }
 }
 

@@ -1,6 +1,10 @@
-use std::{any::Any, io};
+use std::{
+    any::Any,
+    io,
+    sync::{Arc, Mutex},
+};
 
-use crate::Resource;
+use crate::{AssetRegistry, Resource};
 
 /// Trait describing the resource loadable at runtime.
 pub trait Asset: Resource {
@@ -20,4 +24,7 @@ pub trait AssetLoader {
     /// Asset initialization executed after the asset and all its dependencies
     /// have been loaded.
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync));
+
+    /// An asset loader can keep a reference to the asset registry, for use in asset initialization
+    fn register_registry(&mut self, _registry: Arc<Mutex<AssetRegistry>>) {}
 }

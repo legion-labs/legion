@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     io,
     path::Path,
+    sync::{Arc, Mutex},
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -57,10 +58,18 @@ impl AssetRegistryOptions {
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
-    pub fn create(self) -> AssetRegistry {
+    pub fn create(self) -> Arc<Mutex<AssetRegistry>> {
         let (loader, mut io) = create_loader(self.devices);
 
-        for (kind, loader) in self.loaders {
+        let registry = Arc::new(Mutex::new(AssetRegistry {
+            assets: HashMap::new(),
+            load_errors: HashMap::new(),
+            load_thread: None,
+            loader,
+        }));
+
+        for (kind, mut loader) in self.loaders {
+            loader.register_registry(Arc::clone(&registry));
             io.register_loader(kind, loader);
         }
 
@@ -69,12 +78,9 @@ impl AssetRegistryOptions {
             while loader.wait(Duration::from_millis(100)).is_some() {}
         });
 
-        AssetRegistry {
-            assets: HashMap::new(),
-            load_errors: HashMap::new(),
-            load_thread: Some(load_thread),
-            loader,
-        }
+        registry.lock().unwrap().load_thread = Some(load_thread);
+
+        registry
     }
 }
 
@@ -199,15 +205,13 @@ impl AssetRegistry {
 #[cfg(test)]
 mod tests {
 
-    use std::{thread, time::Duration};
+    use legion_content_store::RamContentStore;
 
-    use legion_content_store::{ContentStore, RamContentStore};
+    use crate::test_asset;
 
-    use crate::{
-        manifest::Manifest, test_asset, AssetRegistry, AssetRegistryOptions, Resource, ResourceId,
-    };
+    use super::*;
 
-    fn setup_singular_asset_test(content: &[u8]) -> (ResourceId, AssetRegistry) {
+    fn setup_singular_asset_test(content: &[u8]) -> (ResourceId, Arc<Mutex<AssetRegistry>>) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
@@ -226,7 +230,7 @@ mod tests {
         (asset_id, reg)
     }
 
-    fn setup_dependency_test() -> (ResourceId, ResourceId, AssetRegistry) {
+    fn setup_dependency_test() -> (ResourceId, ResourceId, Arc<Mutex<AssetRegistry>>) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
@@ -271,7 +275,8 @@ mod tests {
 
     #[test]
     fn load_assetfile() {
-        let (asset_id, mut reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let (asset_id, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let mut reg = reg.lock().unwrap();
 
         let internal_id;
         {
@@ -305,7 +310,8 @@ mod tests {
 
     #[test]
     fn load_rawfile() {
-        let (asset_id, mut reg) = setup_singular_asset_test(&BINARY_RAWFILE);
+        let (asset_id, reg) = setup_singular_asset_test(&BINARY_RAWFILE);
+        let mut reg = reg.lock().unwrap();
 
         let internal_id;
         {
@@ -339,7 +345,8 @@ mod tests {
 
     #[test]
     fn load_error() {
-        let (_, mut reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let (_, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let mut reg = reg.lock().unwrap();
 
         let internal_id;
         {
@@ -364,7 +371,8 @@ mod tests {
 
     #[test]
     fn load_error_sync() {
-        let (_, mut reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let (_, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let mut reg = reg.lock().unwrap();
 
         let internal_id;
         {
@@ -381,7 +389,8 @@ mod tests {
 
     #[test]
     fn load_dependency() {
-        let (parent_id, child_id, mut reg) = setup_dependency_test();
+        let (parent_id, child_id, reg) = setup_dependency_test();
+        let mut reg = reg.lock().unwrap();
 
         let parent = reg.load_untyped_sync(parent_id);
         assert!(parent.is_loaded(&reg));

@@ -79,10 +79,11 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = context
+    let resources = context
         .take_registry()
         .add_loader::<offline_data::Instance>()
         .create();
+    let mut resources = resources.lock().unwrap();
 
     let instance = resources.load_sync::<offline_data::Instance>(context.source.content_id());
     let instance = instance.get(&resources).unwrap();

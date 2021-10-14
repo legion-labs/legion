@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use legion_data_runtime::{AssetRegistry, HandleUntyped, Reference, Resource, ResourceId};
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
@@ -8,7 +10,7 @@ use crate::asset_entities::AssetToEntityMap;
 pub(crate) fn load_ecs_asset<T>(
     asset_id: &ResourceId,
     handle: &HandleUntyped,
-    registry: &ResMut<'_, AssetRegistry>,
+    registry: &ResMut<'_, Arc<Mutex<AssetRegistry>>>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
 ) -> bool
@@ -16,8 +18,8 @@ where
     T: AssetToECS + Resource + 'static,
 {
     if asset_id.ty() == T::TYPE {
-        if let Some(asset) = handle.get::<T>(registry) {
-            T::activate_references(asset, registry);
+        let registry = registry.lock().unwrap();
+        if let Some(asset) = handle.get::<T>(&registry) {
             let entity = T::create_in_ecs(commands, asset, asset_to_entity_map);
 
             if let Some(entity_id) = entity {
@@ -39,8 +41,6 @@ where
 }
 
 pub(crate) trait AssetToECS {
-    fn activate_references(_asset: &Self, _registry: &ResMut<'_, AssetRegistry>) {}
-
     fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
         _asset: &Self,

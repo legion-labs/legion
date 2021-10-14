@@ -172,6 +172,7 @@ impl AssetLoaderStub {
     pub(crate) fn try_result(&mut self) -> Option<LoaderResult> {
         self.result_rx.try_recv().ok()
     }
+
     pub(crate) fn unload(&mut self, id: ResourceId) {
         self.request_tx
             .send(LoaderRequest::Unload(id, true, None))
@@ -232,6 +233,7 @@ impl AssetLoaderIO {
             result_tx,
         }
     }
+
     pub(crate) fn register_loader(
         &mut self,
         kind: ResourceType,
