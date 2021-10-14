@@ -1,6 +1,6 @@
 use std::{any::Any, marker::PhantomData};
 
-use crate::{AssetRegistry, Resource, ResourceId};
+use crate::{AssetRef, AssetRefMut, AssetRegistry, RegisteredAsset, Resource, ResourceId};
 
 pub(crate) type HandleId = u32;
 
@@ -44,8 +44,19 @@ impl HandleUntyped {
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a, T: Any + Resource>(&'_ self, registry: &'a AssetRegistry) -> Option<&'a T> {
-        registry.get::<T>(self.id)
+    pub fn get<'a, T>(&'_ self, registry: &'a AssetRegistry) -> Option<AssetRef<'a, T>>
+    where
+        T: Any + Resource,
+    {
+        registry.get::<T>(self.id).map(RegisteredAsset::borrow)
+    }
+
+    /// Retrieve a reference asset `T` from [`AssetRegistry`].
+    pub fn get_mut<'a, T>(&'_ self, registry: &'a AssetRegistry) -> Option<AssetRefMut<'a, T>>
+    where
+        T: Any + Resource,
+    {
+        registry.get::<T>(self.id).map(RegisteredAsset::borrow_mut)
     }
 
     /// Retrieves the asset id associated with this handle within the [`AssetRegistry`].
@@ -114,8 +125,19 @@ impl<T: Any + Resource> Handle<T> {
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a>(&'_ self, registry: &'a AssetRegistry) -> Option<&'a T> {
-        registry.get::<T>(self.id)
+    pub fn get<'a>(&'_ self, registry: &'a AssetRegistry) -> Option<AssetRef<'a, T>>
+    where
+        T: Any + Resource,
+    {
+        registry.get::<T>(self.id).map(RegisteredAsset::borrow)
+    }
+
+    /// Retrieve a reference asset `T` from [`AssetRegistry`].
+    pub fn get_mut<'a>(&'_ self, registry: &'a AssetRegistry) -> Option<AssetRefMut<'a, T>>
+    where
+        T: Any + Resource,
+    {
+        registry.get::<T>(self.id).map(RegisteredAsset::borrow_mut)
     }
 
     /// Retrieves the asset id associated with this handle within the [`AssetRegistry`].

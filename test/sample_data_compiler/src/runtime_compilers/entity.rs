@@ -87,7 +87,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     let entity = resources.load_sync::<offline_data::Entity>(context.source.content_id());
     let entity = entity.get(&resources).unwrap();
 
-    let runtime_entity = runtime_data::Entity::from_offline(entity);
+    let runtime_entity = runtime_data::Entity::from_offline(&entity);
     let compiled_asset = bincode::serialize(&runtime_entity).unwrap();
 
     let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;

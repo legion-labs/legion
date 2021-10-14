@@ -12,7 +12,8 @@ use legion_content_store::ContentStore;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    vfs, Asset, AssetLoader, Handle, HandleId, HandleUntyped, Resource, ResourceId, ResourceType,
+    vfs, Asset, AssetLoader, Handle, HandleId, HandleUntyped, RegisteredAsset, Resource,
+    ResourceId, ResourceType,
 };
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
@@ -85,7 +86,7 @@ impl AssetRegistryOptions {
 ///
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
-    assets: HashMap<ResourceId, Box<dyn Any + Send + Sync>>,
+    assets: HashMap<ResourceId, RegisteredAsset>,
     load_errors: HashMap<ResourceId, io::ErrorKind>,
     load_thread: Option<JoinHandle<()>>,
     loader: AssetLoaderStub,
@@ -147,10 +148,15 @@ impl AssetRegistry {
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Any + Resource>(&self, handle_id: HandleId) -> Option<&T> {
+    pub(crate) fn get<T>(&self, handle_id: HandleId) -> Option<&RegisteredAsset>
+    where
+        T: Any + Resource,
+    {
         if let Some(asset_id) = self.get_asset_id(handle_id) {
             if let Some(asset) = self.assets.get(&asset_id) {
-                return asset.downcast_ref::<T>();
+                if asset.is::<T>() {
+                    return Some(asset);
+                }
             }
         }
         None
@@ -176,7 +182,7 @@ impl AssetRegistry {
             // todo: add success/failure callbacks using the provided LoadId.
             match result {
                 LoaderResult::Loaded(asset_id, asset, _load_id) => {
-                    self.assets.insert(asset_id, asset);
+                    self.assets.insert(asset_id, RegisteredAsset::new(asset));
                 }
                 LoaderResult::Unloaded(asset_id) => {
                     self.assets.remove(&asset_id);

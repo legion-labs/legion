@@ -123,6 +123,10 @@ pub use reference::Reference;
 
 mod asset;
 pub use asset::*;
+
+mod registered_asset;
+pub use registered_asset::{AssetRef, AssetRefMut, RegisteredAsset};
+
 pub mod manifest;
 
 pub use legion_data_runtime_macros::resource;

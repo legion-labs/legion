@@ -61,7 +61,7 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
             "Failed to extract layer names",
         ))?
     {
-        let pixels = compile_layer(resource, layer_name)?;
+        let pixels = compile_layer(&resource, layer_name)?;
         let output = context.store(&pixels, context.target_unnamed.new_named(layer_name))?;
         compiled_resources.push(output);
     }
