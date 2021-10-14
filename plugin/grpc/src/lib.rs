@@ -1,6 +1,6 @@
 //! `gRPC` plugin for Legion's ECS.
 //!
-//! Provides `gRPC` server support.
+//! Provides `gRPC` server support to the engine, compatible with the `tonic` crate.
 
 // BEGIN - Legion Labs lints v0.5
 // do not change or add/remove here, but one can add exceptions after this section
@@ -60,59 +60,77 @@
 use std::net::SocketAddr;
 
 use legion_app::prelude::*;
+use legion_ecs::prelude::*;
 
-use log::warn;
+use log::{info, warn};
+use service::multiplexer::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder};
+use tonic::transport::NamedService;
 
-pub mod server;
 pub mod service;
 
 pub struct GRPCPluginSettings {
-    grpc_server_addr: SocketAddr,
+    pub grpc_server_addr: SocketAddr,
+    multiplexer_service_builder: MultiplexerServiceBuilder,
+}
+
+impl GRPCPluginSettings {
+    pub fn new(grpc_server_addr: SocketAddr) -> Self {
+        Self {
+            grpc_server_addr,
+            multiplexer_service_builder: MultiplexerService::builder(),
+        }
+    }
+
+    pub fn register_service<S>(&mut self, s: S) -> &mut Self
+    where
+        S: MultiplexableService + NamedService + Send + Sync + 'static,
+    {
+        self.multiplexer_service_builder.add_service(s);
+
+        self
+    }
 }
 
 impl Default for GRPCPluginSettings {
     fn default() -> Self {
-        Self {
-            grpc_server_addr: "[::1]:50051".parse().unwrap(),
-        }
+        Self::new("[::1]:50051".parse().unwrap())
     }
 }
 
 // Provides gRPC server capabilities to the engine.
 pub struct GRPCPlugin {}
 
-//impl GRPCServerRegistry {
-//    async fn serve(self, addr: SocketAddr) -> Result<(), tonic::transport::Error> {
-//        match tonic::transport::Server::builder()
-//            .add_service(self.service)
-//            .serve(addr)
-//            .await
-//        {
-//            Ok(_) => Ok(()),
-//            Err(e) => {
-//                warn!("gRPC server stopped and no longer listening ({})", e);
-//
-//                Err(e)
-//            }
-//        }
-//    }
-//}
-
 impl Plugin for GRPCPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<GRPCPluginSettings>();
-
-        //app.init_resource::<GRPCServerRegistry>();
-        //app.add_startup_system(GRPCPlugin::start_grpc_server);
+        app.add_startup_system(Self::start_grpc_server);
     }
 }
 
-//impl GRPCPlugin {
-//    fn start_grpc_server(
-//        mut server: ResMut<'_, GRPCServerRegistry>,
-//        settings: Res<'_, GRPCPluginSettings>,
-//        rt: ResMut<'_, legion_async::TokioAsyncRuntime>,
-//    ) {
-//        rt.start_detached(server.serve(settings.grpc_server_addr));
-//    }
-//}
+impl GRPCPlugin {
+    #[allow(clippy::needless_pass_by_value)]
+    fn start_grpc_server(
+        settings: Res<'_, GRPCPluginSettings>,
+        rt: ResMut<'_, legion_async::TokioAsyncRuntime>,
+    ) {
+        if let Some(service) = settings.multiplexer_service_builder.build() {
+            let server = tonic::transport::Server::builder().add_service(service);
+            let addr = settings.grpc_server_addr;
+
+            rt.start_detached(async move {
+                info!("starting gRPC server on {}", addr);
+
+                match server.serve(addr).await {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        warn!("gRPC server stopped and no longer listening ({})", e);
+
+                        Err(e)
+                    }
+                }
+            });
+        } else {
+            warn!("not starting gRPC server as no service was registered");
+        }
+    }
+}

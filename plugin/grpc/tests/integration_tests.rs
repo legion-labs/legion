@@ -45,7 +45,7 @@ impl Summer for Service {
 }
 
 #[tokio::test]
-async fn test_http2_server() -> anyhow::Result<()> {
+async fn test_service_multiplexer() -> anyhow::Result<()> {
     SimpleLogger::new()
         .with_level(LevelFilter::Debug)
         .init()
@@ -54,10 +54,14 @@ async fn test_http2_server() -> anyhow::Result<()> {
     //let server = legion_grpc::server::transport::http2::Server::default();
     let echo_service = EchoerServer::new(Service {});
     let sum_service = SummerServer::new(Service {});
-    let service = legion_grpc::service::multiplexer::Multiplexer::new()
+    let service = legion_grpc::service::multiplexer::MultiplexerService::builder()
         .add_service(echo_service)
-        .add_service(sum_service);
-    let server = tonic::transport::Server::builder().add_service(service);
+        .add_service(sum_service)
+        .build();
+
+    assert!(service.is_some());
+
+    let server = tonic::transport::Server::builder().add_optional_service(service);
 
     let addr = "[::]:50051".parse()?;
 

@@ -56,8 +56,6 @@
 #![allow(clippy::let_underscore_drop, clippy::needless_pass_by_value)]
 #![warn(missing_docs)]
 
-use std::net::SocketAddr;
-
 use legion_app::prelude::*;
 use legion_core::Time;
 
@@ -65,30 +63,11 @@ mod grpc;
 mod streamer;
 mod webrtc;
 
-/// Configuration for the `StreamerPlugin`.
-pub struct StreamerPluginSettings {
-    /// The listening address of the `gRPC` server.
-    pub grpc_server_addr: SocketAddr,
-}
-
-impl Default for StreamerPluginSettings {
-    fn default() -> Self {
-        Self {
-            grpc_server_addr: "[::1]:50051".parse().unwrap(),
-        }
-    }
-}
-
 /// Provides streaming capabilities to the engine.
 pub struct StreamerPlugin {}
 
 impl Plugin for StreamerPlugin {
     fn build(&self, app: &mut App) {
-        let settings = app
-            .world
-            .remove_resource::<StreamerPluginSettings>()
-            .map_or_else(StreamerPluginSettings::default, |x| x);
-
         // This channel is used a communication mechanism between the async server threads and the game-loop.
         let (stream_events_sender, stream_events_receiver) = crossbeam::channel::unbounded();
 
@@ -107,16 +86,10 @@ impl Plugin for StreamerPlugin {
             webrtc::WebRTCServer::new().expect("failed to instanciate a WebRTC server");
         let grpc_server = grpc::GRPCServer::new(webrtc_server, stream_events_sender);
 
-        // Let's limit our usage of the Async runtime, as this keeps a mutable
-        // reference on the world.
-        {
-            let async_rt = app
-                .world
-                .get_resource_mut::<legion_async::TokioAsyncRuntime>()
-                .expect("the streamer plugin requires the async plugin")
-                .into_inner();
-
-            async_rt.start_detached(grpc_server.listen_and_serve(settings.grpc_server_addr));
-        }
+        app.world
+            .get_resource_mut::<legion_grpc::GRPCPluginSettings>()
+            .expect("the streamer plugin requires the gRPC plugin")
+            .into_inner()
+            .register_service(grpc_server.service());
     }
 }

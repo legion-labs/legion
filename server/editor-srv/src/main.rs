@@ -5,8 +5,9 @@ use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_async::AsyncPlugin;
 use legion_data_runtime::ResourceId;
+use legion_grpc::{GRPCPlugin, GRPCPluginSettings};
 use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
-use legion_streamer::{StreamerPlugin, StreamerPluginSettings};
+use legion_streamer::StreamerPlugin;
 use legion_telemetry::prelude::*;
 use legion_transform::TransformPlugin;
 
@@ -86,11 +87,10 @@ fn main() {
         )))
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(AsyncPlugin {})
-        .insert_resource(StreamerPluginSettings {
-            grpc_server_addr: addr,
-        })
         .insert_resource(ResourceRegistrySettings::new(project_folder))
         .add_plugin(ResourceRegistryPlugin::default())
+        .insert_resource(GRPCPluginSettings::new(addr))
+        .add_plugin(GRPCPlugin {})
         .add_plugin(StreamerPlugin {})
         .add_plugin(EditorPlugin {})
         .add_plugin(TransformPlugin::default())
