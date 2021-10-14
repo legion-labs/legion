@@ -1,14 +1,19 @@
-name: CI - Release
+name: Release
 
 on:
-  workflow_run:
-    workflows: ["CI - Test"]
-    types: [completed]
+  schedule:
+    # Run the job every 3 hours
+    - cron:  '0 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Release tag'
+        required: false
+        default: 'preflight'
 
 jobs:
   build_release:
     name: Building release binaries
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: [self-hosted, ubuntu]
     container:
       image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
@@ -36,6 +41,7 @@ jobs:
   dockerize:
     name: Building docker images and deploying them
     needs: [build_release]
+    if: ${{ github.event.event_name == 'workflow_dispatch' }}
     runs-on: [self-hosted, ubuntu]
     if: github.ref == 'refs/heads/main'
     steps:
