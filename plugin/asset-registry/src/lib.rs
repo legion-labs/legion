@@ -70,10 +70,10 @@ pub use settings::AssetRegistrySettings;
 
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
-use legion_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceId};
+use legion_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryOptions};
 use legion_ecs::prelude::*;
 use sample_data_compiler::runtime_data;
-use std::{fs::File, path::Path};
+use std::{fs::File, path::Path, sync::Arc};
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
@@ -116,43 +116,29 @@ impl Plugin for AssetRegistryPlugin {
 
 impl AssetRegistryPlugin {
     fn setup(
-        mut registry: ResMut<'_, AssetRegistry>,
+        mut registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
         settings: ResMut<'_, AssetRegistrySettings>,
     ) {
         for asset_id in &settings.assets_to_load {
-            Self::load_asset(
-                &mut registry,
-                &mut asset_loading_states,
-                &mut asset_handles,
-                *asset_id,
-            );
+            asset_loading_states.insert(*asset_id, LoadingState::Pending);
+            if let Some(registry) = Arc::get_mut(&mut registry) {
+                asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
+            }
         }
 
         drop(settings);
     }
 
-    fn load_asset(
-        registry: &mut ResMut<'_, AssetRegistry>,
-        asset_loading_states: &mut ResMut<'_, AssetLoadingStates>,
-        asset_handles: &mut ResMut<'_, AssetHandles>,
-        asset_id: ResourceId,
-    ) {
-        if let Some(_handle) = asset_handles.get(asset_id) {
-            // already in asset list
-        } else {
-            asset_loading_states.insert(asset_id, LoadingState::Pending);
-            asset_handles.insert(asset_id, registry.load_untyped(asset_id));
+    fn update_registry(mut registry: ResMut<'_, Arc<AssetRegistry>>) {
+        if let Some(registry) = Arc::get_mut(&mut registry) {
+            registry.update();
         }
     }
 
-    fn update_registry(mut registry: ResMut<'_, AssetRegistry>) {
-        registry.update();
-    }
-
     fn update_assets(
-        registry: ResMut<'_, AssetRegistry>,
+        registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
