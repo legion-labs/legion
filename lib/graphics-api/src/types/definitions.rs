@@ -131,8 +131,7 @@ pub struct TextureDef {
     pub format: Format,
     pub usage_flags: ResourceUsage,
     pub resource_flags: ResourceFlags,
-    pub mem_usage: MemoryUsage,
-    // pub dimensions: TextureDimensions,
+    pub mem_usage: MemoryUsage,    
     pub tiling: TextureTiling,
 }
 
