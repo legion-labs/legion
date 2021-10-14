@@ -63,11 +63,11 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
 
     let server = tonic::transport::Server::builder().add_optional_service(service);
 
-    let addr = "[::]:50051".parse()?;
+    let addr = "127.0.0.1:50051".parse()?;
 
     async fn f() -> anyhow::Result<()> {
         let client = hyper::Client::builder().http2_only(true).build_http();
-        let uri = hyper::Uri::from_static("http://[::1]:50051");
+        let uri = hyper::Uri::from_static("http://127.0.0.1:50051");
 
         let add_origin = tower::service_fn(|mut req: hyper::Request<tonic::body::BoxBody>| {
             let uri = hyper::Uri::builder()
