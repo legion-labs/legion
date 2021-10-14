@@ -3,14 +3,13 @@ use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
 use sample_data_compiler::runtime_data;
 
-use crate::{asset_entities::AssetToEntityMap, secondary_assets::SecondaryAssets};
+use crate::asset_entities::AssetToEntityMap;
 
 pub(crate) fn load_ecs_asset<T>(
     asset_id: &ResourceId,
     handle: &HandleUntyped,
     registry: &ResMut<'_, AssetRegistry>,
     commands: &mut Commands<'_, '_>,
-    secondary_assets: &mut SecondaryAssets,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
 ) -> bool
 where
@@ -18,12 +17,7 @@ where
 {
     if asset_id.ty() == T::TYPE {
         if let Some(runtime_entity) = handle.get::<T>(registry) {
-            let entity = T::create_in_ecs(
-                commands,
-                secondary_assets,
-                runtime_entity,
-                asset_to_entity_map,
-            );
+            let entity = T::create_in_ecs(commands, runtime_entity, asset_to_entity_map);
 
             if let Some(entity_id) = entity {
                 asset_to_entity_map.insert(*asset_id, entity_id);
@@ -46,7 +40,6 @@ where
 pub(crate) trait AssetToECS {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
-        secondary_assets: &mut SecondaryAssets,
         asset: &Self,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
     ) -> Option<Entity>;
@@ -55,7 +48,6 @@ pub(crate) trait AssetToECS {
 impl AssetToECS for runtime_data::Entity {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
-        secondary_assets: &mut SecondaryAssets,
         runtime_entity: &Self,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
     ) -> Option<Entity> {
@@ -70,9 +62,8 @@ impl AssetToECS for runtime_data::Entity {
                     scale: transform.scale,
                 });
                 transform_inserted = true;
-            } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
-                secondary_assets.push(&visual.renderable_geometry);
             }
+            //} else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
             // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
             // } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
             // } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
@@ -109,7 +100,6 @@ impl AssetToECS for runtime_data::Entity {
 impl AssetToECS for runtime_data::Instance {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
-        _secondary_assets: &mut SecondaryAssets,
         _instance: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
     ) -> Option<Entity> {
@@ -122,7 +112,6 @@ impl AssetToECS for runtime_data::Instance {
 impl AssetToECS for legion_graphics_runtime::Material {
     fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
-        _secondary_assets: &mut SecondaryAssets,
         _material: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
     ) -> Option<Entity> {
@@ -133,7 +122,6 @@ impl AssetToECS for legion_graphics_runtime::Material {
 impl AssetToECS for runtime_data::Mesh {
     fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
-        _secondary_assets: &mut SecondaryAssets,
         _mesh: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
     ) -> Option<Entity> {
@@ -144,7 +132,6 @@ impl AssetToECS for runtime_data::Mesh {
 impl AssetToECS for legion_graphics_runtime::Texture {
     fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
-        _secondary_assets: &mut SecondaryAssets,
         _texture: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
     ) -> Option<Entity> {

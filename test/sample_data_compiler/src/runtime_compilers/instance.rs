@@ -63,7 +63,7 @@ use legion_data_compiler::{
     compiler_utils::hash_code_and_data,
 };
 use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{Reference, Resource};
+use legion_data_runtime::Resource;
 use offline_to_runtime::FromOffline;
 use sample_data_compiler::{offline_data, runtime_data};
 use std::env;
@@ -75,10 +75,10 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &(offline_data::Instance::TYPE, runtime_data::Instance::TYPE),
     compiler_hash_func: hash_code_and_data,
-    compile_func: compile_instance,
+    compile_func: compile,
 };
 
-fn compile_instance(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
+fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let mut resources = context
         .take_registry()
         .add_loader::<offline_data::Instance>()
@@ -87,15 +87,15 @@ fn compile_instance(mut context: CompilerContext<'_>) -> Result<CompilationOutpu
     let instance = resources.load_sync::<offline_data::Instance>(context.source.content_id());
     let instance = instance.get(&resources).unwrap();
 
-    let instance = runtime_data::Instance::from_offline(instance);
-    let compiled_asset = bincode::serialize(&instance).unwrap();
-
-    let mut resource_references: Vec<(ResourcePathId, ResourcePathId)> = Vec::new();
-    if let Reference::Passive(original) = instance.original {
-        resource_references.push((context.target_unnamed.clone(), original.into()));
-    }
+    let runtime_instance = runtime_data::Instance::from_offline(instance);
+    let compiled_asset = bincode::serialize(&runtime_instance).unwrap();
 
     let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
+
+    let mut resource_references: Vec<(ResourcePathId, ResourcePathId)> = Vec::new();
+    if let Some(original) = &instance.original {
+        resource_references.push((context.target_unnamed.clone(), original.clone()));
+    }
 
     Ok(CompilationOutput {
         compiled_resources: vec![asset],

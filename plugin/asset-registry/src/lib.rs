@@ -60,14 +60,12 @@ mod asset_entities;
 mod asset_handles;
 mod asset_to_ecs;
 mod loading_states;
-mod secondary_assets;
 mod settings;
 
 use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
 use loading_states::{AssetLoadingStates, LoadingState};
-use secondary_assets::SecondaryAssets;
 pub use settings::AssetRegistrySettings;
 
 use legion_app::Plugin;
@@ -154,14 +152,12 @@ impl AssetRegistryPlugin {
     }
 
     fn update_assets(
-        mut registry: ResMut<'_, AssetRegistry>,
+        registry: ResMut<'_, AssetRegistry>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
-        mut asset_handles: ResMut<'_, AssetHandles>,
+        asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
         mut commands: Commands<'_, '_>,
     ) {
-        let mut secondary_assets = SecondaryAssets::default();
-
         for (asset_id, loading_state) in asset_loading_states.iter_mut() {
             match loading_state {
                 LoadingState::Pending => {
@@ -172,35 +168,30 @@ impl AssetRegistryPlugin {
                             handle,
                             &registry,
                             &mut commands,
-                            &mut secondary_assets,
                             &mut asset_to_entity_map,
                         ) && !load_ecs_asset::<runtime_data::Instance>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
-                            &mut secondary_assets,
                             &mut asset_to_entity_map,
                         ) && !load_ecs_asset::<legion_graphics_runtime::Material>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
-                            &mut secondary_assets,
                             &mut asset_to_entity_map,
                         ) && !load_ecs_asset::<runtime_data::Mesh>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
-                            &mut secondary_assets,
                             &mut asset_to_entity_map,
                         ) && !load_ecs_asset::<legion_graphics_runtime::Texture>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
-                            &mut secondary_assets,
                             &mut asset_to_entity_map,
                         ) {
                             eprintln!(
@@ -220,17 +211,8 @@ impl AssetRegistryPlugin {
             }
         }
 
-        // request load for assets referenced by
-        for asset_id in secondary_assets {
-            Self::load_asset(
-                &mut registry,
-                &mut asset_loading_states,
-                &mut asset_handles,
-                asset_id,
-            );
-        }
-
         drop(registry);
+        drop(asset_handles);
     }
 
     fn read_manifest(manifest_path: impl AsRef<Path>) -> Manifest {

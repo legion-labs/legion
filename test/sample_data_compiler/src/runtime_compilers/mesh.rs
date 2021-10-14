@@ -63,7 +63,7 @@ use legion_data_compiler::{
     compiler_utils::hash_code_and_data,
 };
 use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{Reference, Resource};
+use legion_data_runtime::Resource;
 use offline_to_runtime::FromOffline;
 use sample_data_compiler::{offline_data, runtime_data};
 use std::env;
@@ -75,10 +75,10 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &(offline_data::Mesh::TYPE, runtime_data::Mesh::TYPE),
     compiler_hash_func: hash_code_and_data,
-    compile_func: compile_mesh,
+    compile_func: compile,
 };
 
-fn compile_mesh(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
+fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let mut resources = context
         .take_registry()
         .add_loader::<offline_data::Mesh>()
@@ -87,17 +87,17 @@ fn compile_mesh(mut context: CompilerContext<'_>) -> Result<CompilationOutput, C
     let mesh = resources.load_sync::<offline_data::Mesh>(context.source.content_id());
     let mesh = mesh.get(&resources).unwrap();
 
-    let mesh = runtime_data::Mesh::from_offline(mesh);
-    let compiled_asset = bincode::serialize(&mesh).unwrap();
+    let runtime_mesh = runtime_data::Mesh::from_offline(mesh);
+    let compiled_asset = bincode::serialize(&runtime_mesh).unwrap();
+
+    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
     let mut resource_references: Vec<(ResourcePathId, ResourcePathId)> = Vec::new();
     for sub_mesh in &mesh.sub_meshes {
-        if let Reference::Passive(material) = sub_mesh.material {
-            resource_references.push((context.target_unnamed.clone(), material.into()));
+        if let Some(material) = &sub_mesh.material {
+            resource_references.push((context.target_unnamed.clone(), material.clone()));
         }
     }
-
-    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
     Ok(CompilationOutput {
         compiled_resources: vec![asset],

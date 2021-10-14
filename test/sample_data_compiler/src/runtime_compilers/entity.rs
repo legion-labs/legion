@@ -63,7 +63,7 @@ use legion_data_compiler::{
     compiler_utils::hash_code_and_data,
 };
 use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{Reference, Resource};
+use legion_data_runtime::Resource;
 use offline_to_runtime::FromOffline;
 use sample_data_compiler::{offline_data, runtime_data};
 use std::env;
@@ -75,10 +75,10 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &(offline_data::Entity::TYPE, runtime_data::Entity::TYPE),
     compiler_hash_func: hash_code_and_data,
-    compile_func: compile_entity,
+    compile_func: compile,
 };
 
-fn compile_entity(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
+fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let mut resources = context
         .take_registry()
         .add_loader::<offline_data::Entity>()
@@ -87,17 +87,26 @@ fn compile_entity(mut context: CompilerContext<'_>) -> Result<CompilationOutput,
     let entity = resources.load_sync::<offline_data::Entity>(context.source.content_id());
     let entity = entity.get(&resources).unwrap();
 
-    let entity = runtime_data::Entity::from_offline(entity);
-    let compiled_asset = bincode::serialize(&entity).unwrap();
+    let runtime_entity = runtime_data::Entity::from_offline(entity);
+    let compiled_asset = bincode::serialize(&runtime_entity).unwrap();
+
+    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
     let mut resource_references: Vec<(ResourcePathId, ResourcePathId)> = Vec::new();
     for child in &entity.children {
-        if let Reference::Passive(child) = child {
-            resource_references.push((context.target_unnamed.clone(), (*child).into()));
+        resource_references.push((context.target_unnamed.clone(), child.clone()));
+    }
+    for component in &entity.components {
+        if let Some(visual) = component.downcast_ref::<offline_data::Visual>() {
+            if let Some(mesh_ref) = &visual.renderable_geometry {
+                resource_references.push((context.target_unnamed.clone(), mesh_ref.clone()));
+            }
+        } else if let Some(physics) = component.downcast_ref::<offline_data::Physics>() {
+            if let Some(mesh_ref) = &physics.collision_geometry {
+                resource_references.push((context.target_unnamed.clone(), mesh_ref.clone()));
+            }
         }
     }
-
-    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
     Ok(CompilationOutput {
         compiled_resources: vec![asset],
