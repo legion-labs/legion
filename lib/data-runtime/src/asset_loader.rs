@@ -466,7 +466,7 @@ impl AssetLoaderIO {
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
                         let loader = self.loaders.get_mut(&asset_id.ty()).unwrap();
-                        loader.load_init(boxed);
+                        loader.load_init(boxed.as_mut());
                     }
                     // if there is no boxed asset here, it means it was already loaded before.
                 }

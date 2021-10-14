@@ -33,5 +33,7 @@ impl AssetLoader for TestAssetLoader {
         Ok(asset)
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+        assert!(asset.downcast_mut::<TestAsset>().is_some());
+    }
 }
