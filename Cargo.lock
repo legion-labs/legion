@@ -3050,6 +3050,7 @@ dependencies = [
 name = "legion-data-runtime"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "byteorder",
  "crc",
  "crossbeam-channel",

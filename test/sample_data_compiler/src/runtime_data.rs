@@ -55,8 +55,11 @@ impl AssetLoader for EntityLoader {
     }
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
-        let entity = asset.downcast_mut::<Entity>().unwrap();
-        println!("runtime entity \"{}\" loaded", entity.name);
+        if let Some(entity) = asset.downcast_mut::<Entity>() {
+            println!("runtime entity \"{}\" loaded", entity.name);
+        } else {
+            println!("invalid runtime entity loaded");
+        }
     }
 }
 
@@ -192,8 +195,11 @@ impl AssetLoader for InstanceLoader {
     }
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
-        let _instance = asset.downcast_mut::<Instance>().unwrap();
-        println!("runtime instance loaded");
+        if let Some(_instance) = asset.downcast_mut::<Instance>() {
+            println!("runtime instance loaded");
+        } else {
+            eprintln!("invalid runtime instance loaded");
+        }
     }
 }
 
@@ -218,8 +224,11 @@ impl AssetLoader for MeshLoader {
     }
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
-        let _mesh = asset.downcast_mut::<Mesh>().unwrap();
-        println!("runtime mesh loaded");
+        if let Some(_mesh) = asset.downcast_mut::<Mesh>() {
+            println!("runtime mesh loaded");
+        } else {
+            eprintln!("invalid runtime mesh loaded");
+        }
     }
 }
 
