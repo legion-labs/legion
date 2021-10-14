@@ -3,7 +3,6 @@ use std::{
     collections::HashMap,
     io,
     path::Path,
-    sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -86,7 +85,7 @@ impl AssetRegistryOptions {
 ///
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
-    assets: HashMap<ResourceId, Arc<dyn Any + Send + Sync>>,
+    assets: HashMap<ResourceId, Box<dyn Any + Send + Sync>>,
     load_errors: HashMap<ResourceId, io::ErrorKind>,
     load_thread: Option<JoinHandle<()>>,
     loader: AssetLoaderStub,
@@ -111,6 +110,11 @@ impl AssetRegistry {
     /// Trigger a reload of a given primary resource.
     pub fn reload(&mut self, id: ResourceId) -> bool {
         self.loader.reload(id)
+    }
+
+    /// Returns a handle to the resource if a handle to this resource already exists.
+    pub fn get_untyped(&mut self, id: ResourceId) -> Option<HandleUntyped> {
+        self.loader.get_handle(id)
     }
 
     /// Same as [`Self::load_untyped`] but blocks until the resource load completes or returns an error.
@@ -203,7 +207,7 @@ mod tests {
         manifest::Manifest, test_asset, AssetRegistry, AssetRegistryOptions, Resource, ResourceId,
     };
 
-    fn setup_test(content: &[u8]) -> (ResourceId, AssetRegistry) {
+    fn setup_singular_asset_test(content: &[u8]) -> (ResourceId, AssetRegistry) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
@@ -222,6 +226,42 @@ mod tests {
         (asset_id, reg)
     }
 
+    fn setup_dependency_test() -> (ResourceId, ResourceId, AssetRegistry) {
+        let mut content_store = Box::new(RamContentStore::default());
+        let mut manifest = Manifest::default();
+
+        let binary_parent_assetfile = [
+            97, 115, 102, 116, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112,
+            97, 114, 101, 110, 116,
+        ];
+        let binary_child_assetfile = [
+            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
+            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
+        ];
+
+        let child_id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
+
+        let parent_id = {
+            manifest.insert(
+                child_id,
+                content_store.store(&binary_child_assetfile).unwrap(),
+                binary_child_assetfile.len(),
+            );
+            let checksum = content_store.store(&binary_parent_assetfile).unwrap();
+            let id = ResourceId::new(test_asset::TestAsset::TYPE, 2);
+            manifest.insert(id, checksum, binary_parent_assetfile.len());
+            id
+        };
+
+        let reg = AssetRegistryOptions::new()
+            .add_device_cas(content_store, manifest)
+            .add_loader::<test_asset::TestAsset>()
+            .create();
+
+        (parent_id, child_id, reg)
+    }
+
     const BINARY_ASSETFILE: [u8; 39] = [
         97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0,
         5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
@@ -231,7 +271,7 @@ mod tests {
 
     #[test]
     fn load_assetfile() {
-        let (asset_id, mut reg) = setup_test(&BINARY_ASSETFILE);
+        let (asset_id, mut reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
 
         let internal_id;
         {
@@ -265,7 +305,7 @@ mod tests {
 
     #[test]
     fn load_rawfile() {
-        let (asset_id, mut reg) = setup_test(&BINARY_RAWFILE);
+        let (asset_id, mut reg) = setup_singular_asset_test(&BINARY_RAWFILE);
 
         let internal_id;
         {
@@ -299,7 +339,7 @@ mod tests {
 
     #[test]
     fn load_error() {
-        let (_, mut reg) = setup_test(&BINARY_ASSETFILE);
+        let (_, mut reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
 
         let internal_id;
         {
@@ -324,7 +364,7 @@ mod tests {
 
     #[test]
     fn load_error_sync() {
-        let (_, mut reg) = setup_test(&BINARY_ASSETFILE);
+        let (_, mut reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
 
         let internal_id;
         {
@@ -337,5 +377,33 @@ mod tests {
         }
         reg.update();
         assert!(!reg.is_loaded(internal_id));
+    }
+
+    #[test]
+    fn load_dependency() {
+        let (parent_id, child_id, mut reg) = setup_dependency_test();
+
+        let parent = reg.load_untyped_sync(parent_id);
+        assert!(parent.is_loaded(&reg));
+
+        let child = reg.load_untyped(child_id);
+        assert!(
+            child.is_loaded(&reg),
+            "The dependency should immediately be considered as loaded"
+        );
+
+        std::mem::drop(parent);
+        reg.update();
+
+        assert!(reg.get_untyped(parent_id).is_none());
+
+        assert!(
+            child.is_loaded(&reg),
+            "The dependency should be kept alive because of the handle"
+        );
+
+        std::mem::drop(child);
+        reg.update();
+        assert!(reg.get_untyped(child_id).is_none());
     }
 }

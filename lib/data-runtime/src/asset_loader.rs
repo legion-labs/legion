@@ -1,4 +1,4 @@
-use std::{any::Any, collections::HashMap, io, sync::Arc, time::Duration};
+use std::{any::Any, collections::HashMap, io, time::Duration};
 
 use crate::{vfs, AssetLoader, HandleId, HandleUntyped, RefOp, ResourceId, ResourceType};
 
@@ -17,12 +17,12 @@ struct AssetReference {
 struct LoadOutput {
     /// None here means the asset was already loaded before so it doesn't have to be
     /// loaded again. It will still contribute to reference count though.
-    assets: Vec<(ResourceId, Option<Arc<dyn Any + Send + Sync>>)>,
+    assets: Vec<(ResourceId, Option<Box<dyn Any + Send + Sync>>)>,
     load_dependencies: Vec<AssetReference>,
 }
 
 pub(crate) enum LoaderResult {
-    Loaded(ResourceId, Arc<dyn Any + Send + Sync>, Option<LoadId>),
+    Loaded(ResourceId, Box<dyn Any + Send + Sync>, Option<LoadId>),
     Unloaded(ResourceId),
     LoadError(ResourceId, Option<LoadId>, io::ErrorKind),
 }
@@ -42,7 +42,7 @@ struct LoadState {
     load_id: Option<LoadId>,
     /// List of Resources in asset file identified by `primary_id`.
     /// None indicates a skipped secondary resource that was already loaded through another resource file.
-    assets: Vec<(ResourceId, Option<Arc<dyn Any + Send + Sync>>)>,
+    assets: Vec<(ResourceId, Option<Box<dyn Any + Send + Sync>>)>,
     /// The list of Resources that need to be loaded before the LoadState can be considered completed.
     references: Vec<AssetReference>,
 }
@@ -85,7 +85,7 @@ impl AssetLoaderStub {
         }
     }
 
-    fn get_handle(&mut self, id: ResourceId) -> Option<HandleUntyped> {
+    pub(crate) fn get_handle(&mut self, id: ResourceId) -> Option<HandleUntyped> {
         self.ref_counts
             .iter_mut()
             .find_map(|(handle_id, (referred_id, count))| {
@@ -190,9 +190,6 @@ pub(crate) struct AssetLoaderIO {
     /// Reference counts of primary and secondary assets.
     asset_refcounts: HashMap<ResourceId, isize>,
 
-    // this should be sent back to the game thread.
-    asset_storage: HashMap<ResourceId, Arc<dyn Any + Send + Sync>>,
-
     /// List of secondary assets of a primary asset.
     secondary_assets: HashMap<ResourceId, Vec<ResourceId>>,
 
@@ -227,7 +224,6 @@ impl AssetLoaderIO {
             loaders: HashMap::new(),
             processing_list: Vec::new(),
             asset_refcounts: HashMap::new(),
-            asset_storage: HashMap::new(),
             devices,
             secondary_assets: HashMap::new(),
             primary_asset_references: HashMap::new(),
@@ -263,9 +259,6 @@ impl AssetLoaderIO {
         // for now it should be empty. later - cause a reload of secondary assets?
         //
         let _secondary_assets = self.secondary_assets.get(&primary_id).unwrap();
-
-        // swap all reloaded assets. send update to main thread?
-        let _asset_storage = self.asset_storage.get(&primary_id).unwrap();
 
         // compare against the header. decrease relevant refcount -> cause unload? cause a new load? ;/
         let _primary_asset_references = self.primary_asset_references.get(&primary_id).unwrap();
@@ -308,9 +301,10 @@ impl AssetLoaderIO {
         load_id: Option<u32>,
     ) -> Result<(), (ResourceId, Option<LoadId>, io::Error)> {
         if self.asset_refcounts.contains_key(&primary_id) {
+            // todo: we should create a LoadState based on existing load state?
+            // this way the load result will be notified when the resource is actually loaded.
             return Ok(());
         }
-
         let asset_data = self
             .read_resource(primary_id)
             .map_err(|e| (primary_id, load_id, e))?;
@@ -465,18 +459,13 @@ impl AssetLoaderIO {
             let finished = pending
                 .references
                 .iter()
-                .all(|reference| self.asset_storage.contains_key(&reference.primary));
+                .all(|reference| self.asset_refcounts.contains_key(&reference.primary));
             if finished {
                 let mut loaded = self.processing_list.swap_remove(index);
 
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
                         let loader = self.loaders.get_mut(&asset_id.ty()).unwrap();
-
-                        // SAFETY: this is safe because loaded asset is only referenced by the loader.
-                        // it hasn't been made available to other systems yet.
-                        //let boxed = unsafe { Arc::get_mut_unchecked(boxed) };
-                        let boxed = Arc::get_mut(boxed).unwrap();
                         loader.load_init(boxed);
                     }
                     // if there is no boxed asset here, it means it was already loaded before.
@@ -497,22 +486,23 @@ impl AssetLoaderIO {
                         .copied()
                         .collect(),
                 );
-                let primary_asset = loaded.assets[0].1.as_ref().unwrap().clone();
-                self.asset_storage
-                    .extend(loaded.assets.into_iter().filter_map(|(id, asset)| {
-                        if let Some(boxed) = asset {
-                            return Some((id, boxed));
-                        }
-                        None
-                    }));
-                if loaded.load_id.is_some() {
-                    self.result_tx
-                        .send(LoaderResult::Loaded(
-                            loaded.primary_id,
-                            primary_asset,
-                            loaded.load_id,
-                        ))
-                        .unwrap();
+                // send primary asset with load_id. all secondary assets without to not cause load notification.
+                let mut asset_iter = loaded.assets.into_iter();
+                let primary_asset = asset_iter.next().unwrap().1.unwrap();
+                self.result_tx
+                    .send(LoaderResult::Loaded(
+                        loaded.primary_id,
+                        primary_asset,
+                        loaded.load_id,
+                    ))
+                    .unwrap();
+
+                for (id, asset) in asset_iter {
+                    if let Some(asset) = asset {
+                        self.result_tx
+                            .send(LoaderResult::Loaded(id, asset, None))
+                            .unwrap();
+                    }
                 }
             }
         }
@@ -533,7 +523,7 @@ impl AssetLoaderIO {
         let boxed_asset = loader.load(&mut &content[..])?;
 
         Ok(LoadOutput {
-            assets: vec![(id, Some(Arc::from(boxed_asset)))],
+            assets: vec![(id, Some(boxed_asset))],
             load_dependencies: vec![],
         })
     }
@@ -614,7 +604,7 @@ impl AssetLoaderIO {
         // Reload-case: all *secondary assets* should be loaded again.
 
         Ok(LoadOutput {
-            assets: vec![(primary_id, Some(Arc::from(boxed_asset)))],
+            assets: vec![(primary_id, Some(boxed_asset))],
             load_dependencies: reference_list,
         })
     }
@@ -784,8 +774,6 @@ mod tests {
             .send(LoaderRequest::Load(asset_id, load_id))
             .expect("to send request");
 
-        assert!(!loader.asset_storage.contains_key(&asset_id));
-
         assert!(loader.asset_refcounts.get(&asset_id).is_none());
         assert!(loader.secondary_assets.get(&asset_id).is_none());
         assert!(loader.primary_asset_references.get(&asset_id).is_none());
@@ -798,7 +786,6 @@ mod tests {
 
         assert!(result.is_some());
         assert!(matches!(result.unwrap(), LoaderResult::Loaded(_, _, _)));
-        assert!(loader.asset_storage.contains_key(&asset_id));
         assert_eq!(loader.asset_refcounts.get(&asset_id).unwrap(), &1);
         assert_eq!(loader.secondary_assets.get(&asset_id).unwrap().len(), 0);
         assert_eq!(
@@ -858,8 +845,6 @@ mod tests {
         request_tx
             .send(LoaderRequest::Load(asset_id, load_id))
             .expect("valid tx");
-
-        assert!(!loader.asset_storage.contains_key(&asset_id));
 
         assert!(loader.asset_refcounts.get(&parent_id).is_none());
         assert!(loader.secondary_assets.get(&parent_id).is_none());
@@ -924,22 +909,27 @@ mod tests {
             .send(LoaderRequest::Load(asset_id, load_id))
             .expect("to send request");
 
-        assert!(!loader.asset_storage.contains_key(&asset_id));
-
         assert!(loader.asset_refcounts.get(&parent_id).is_none());
         assert!(loader.secondary_assets.get(&parent_id).is_none());
         assert!(loader.primary_asset_references.get(&parent_id).is_none());
 
         let mut result = None;
         while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
+
         if let Ok(res) = result_rx.try_recv() {
+            // child load result comes first with no load_id..
+            assert!(matches!(res, LoaderResult::Loaded(_, _, None)));
+        }
+
+        if let Ok(res) = result_rx.try_recv() {
+            // ..followed by parent load result with load_id
+            assert!(matches!(res, LoaderResult::Loaded(_, _, Some(_))));
             result = Some(res);
         }
 
         assert!(result.is_some());
         let result = result.unwrap();
         assert!(matches!(result, LoaderResult::Loaded(_, _, _)));
-        assert!(loader.asset_storage.contains_key(&asset_id));
         assert_eq!(loader.asset_refcounts.get(&parent_id).unwrap(), &1);
         assert_eq!(loader.asset_refcounts.get(&child_id).unwrap(), &1);
         assert_eq!(loader.secondary_assets.get(&parent_id).unwrap().len(), 0);
@@ -1033,8 +1023,6 @@ mod tests {
             .send(LoaderRequest::Load(asset_id, load_id))
             .expect("to send request");
 
-        assert!(!loader.asset_storage.contains_key(&asset_id));
-
         assert!(loader.asset_refcounts.get(&asset_id).is_none());
         assert!(loader.secondary_assets.get(&asset_id).is_none());
         assert!(loader.primary_asset_references.get(&asset_id).is_none());
@@ -1047,7 +1035,6 @@ mod tests {
 
         assert!(result.is_some());
         assert!(matches!(result.unwrap(), LoaderResult::Loaded(_, _, _)));
-        assert!(loader.asset_storage.contains_key(&asset_id));
         assert_eq!(loader.asset_refcounts.get(&asset_id).unwrap(), &1);
         assert_eq!(loader.secondary_assets.get(&asset_id).unwrap().len(), 0);
         assert_eq!(
