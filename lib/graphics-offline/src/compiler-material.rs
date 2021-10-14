@@ -5,6 +5,7 @@ use legion_data_compiler::{
     },
     compiler_utils::{hash_code_and_data, path_id_to_binary},
 };
+use legion_data_offline::ResourcePathId;
 use legion_data_runtime::Resource;
 use std::env;
 
@@ -51,9 +52,22 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
 
     let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
+    let mut resource_references: Vec<(ResourcePathId, ResourcePathId)> = Vec::new();
+
+    let mut add_reference = |reference: &Option<ResourcePathId>| {
+        if let Some(reference) = reference {
+            resource_references.push((context.target_unnamed.clone(), reference.clone()));
+        }
+    };
+
+    add_reference(&resource.albedo);
+    add_reference(&resource.normal);
+    add_reference(&resource.roughness);
+    add_reference(&resource.metalness);
+
     Ok(CompilationOutput {
         compiled_resources: vec![asset],
-        resource_references: vec![],
+        resource_references,
     })
 }
 

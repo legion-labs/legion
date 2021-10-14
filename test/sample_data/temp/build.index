@@ -392,6 +392,34 @@
   ],
   "compiled_resource_references": [
     {
+      "compile_path": "2b368fed000000004e9d6dcb039451e3|669eb7d0",
+      "context_hash": "a2d4c4fee40f370e",
+      "source_hash": "029ca03ba1780597",
+      "compiled_path": "2b368fed000000004e9d6dcb039451e3|669eb7d0",
+      "compiled_reference": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_albedo|f9c9670d"
+    },
+    {
+      "compile_path": "2b368fed000000004e9d6dcb039451e3|669eb7d0",
+      "context_hash": "a2d4c4fee40f370e",
+      "source_hash": "029ca03ba1780597",
+      "compiled_path": "2b368fed000000004e9d6dcb039451e3|669eb7d0",
+      "compiled_reference": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_metalness|f9c9670d"
+    },
+    {
+      "compile_path": "2b368fed000000004e9d6dcb039451e3|669eb7d0",
+      "context_hash": "a2d4c4fee40f370e",
+      "source_hash": "029ca03ba1780597",
+      "compiled_path": "2b368fed000000004e9d6dcb039451e3|669eb7d0",
+      "compiled_reference": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_normal|f9c9670d"
+    },
+    {
+      "compile_path": "2b368fed000000004e9d6dcb039451e3|669eb7d0",
+      "context_hash": "a2d4c4fee40f370e",
+      "source_hash": "029ca03ba1780597",
+      "compiled_path": "2b368fed000000004e9d6dcb039451e3|669eb7d0",
+      "compiled_reference": "13b5a84e00000000d9e5871a48bd55c5|74dc0e53_roughness|f9c9670d"
+    },
+    {
       "compile_path": "417862e50000000054537dedac8437c4|0cd05ad8",
       "context_hash": "e1a211d31ad1e774",
       "source_hash": "49b747e31016ea9e",

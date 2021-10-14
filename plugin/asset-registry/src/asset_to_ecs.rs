@@ -122,15 +122,10 @@ impl AssetToECS for runtime_data::Instance {
 impl AssetToECS for legion_graphics_runtime::Material {
     fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
-        secondary_assets: &mut SecondaryAssets,
-        material: &Self,
+        _secondary_assets: &mut SecondaryAssets,
+        _material: &Self,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
     ) -> Option<Entity> {
-        secondary_assets.push(&material.albedo);
-        secondary_assets.push(&material.normal);
-        secondary_assets.push(&material.roughness);
-        secondary_assets.push(&material.metalness);
-
         None
     }
 }
