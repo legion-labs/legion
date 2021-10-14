@@ -61,7 +61,15 @@ impl AssetRegistryOptions {
     pub fn create(self) -> Arc<AssetRegistry> {
         let (loader, mut io) = create_loader(self.devices);
 
-        for (kind, loader) in self.loaders {
+        let mut registry = Arc::new(AssetRegistry {
+            assets: HashMap::new(),
+            load_errors: HashMap::new(),
+            load_thread: None,
+            loader,
+        });
+
+        for (kind, mut loader) in self.loaders {
+            loader.register_registry(Arc::clone(&registry));
             io.register_loader(kind, loader);
         }
 
@@ -70,12 +78,9 @@ impl AssetRegistryOptions {
             while loader.wait(Duration::from_millis(100)).is_some() {}
         });
 
-        Arc::new(AssetRegistry {
-            assets: HashMap::new(),
-            load_errors: HashMap::new(),
-            load_thread: Some(load_thread),
-            loader,
-        })
+        Arc::get_mut(&mut registry).unwrap().load_thread = Some(load_thread);
+
+        registry
     }
 }
 
