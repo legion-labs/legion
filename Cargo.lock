@@ -2508,6 +2508,8 @@ dependencies = [
  "legion-app",
  "legion-asset-registry",
  "legion-async",
+ "legion-core",
+ "legion-data-runtime",
  "legion-renderer",
  "legion-resource-registry",
 ]

@@ -4,5 +4,7 @@ use legion_app::Plugin;
 pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
-    fn build(&self, _app: &mut legion_app::App) {}
+    fn build(&self, _app: &mut legion_app::App) {
+        
+    }
 }
