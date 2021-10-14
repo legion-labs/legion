@@ -165,13 +165,6 @@ fn run() -> GfxResult<()> {
 
         let frag_shader_package = ShaderPackage::SpirV(ps_out.bytecode);
 
-        /*
-            let vert_shader_package =
-                ShaderPackage::SpirV(include_bytes!("shaders/shader.vert.spv").to_vec());
-
-            let frag_shader_package =
-                ShaderPackage::SpirV(include_bytes!("shaders/shader.frag.spv").to_vec());
-        */
         let vert_shader_module =
             device_context.create_shader_module(vert_shader_package.module_def())?;
 
@@ -186,13 +179,6 @@ fn run() -> GfxResult<()> {
         // (But see the shader pipeline in higher-level rafx crates for example usage, generated
         // from spirv_cross)
         //
-        // let color_shader_resource = ShaderResource {
-        //     name: Some("color".to_string()),
-        //     set_index: 0,
-        //     binding: 0,
-        //     shader_resource_type: ShaderResourceType::ConstantBuffer( ConstantBufferInfo{ size : 0}  ),
-        //     ..Default::default()
-        // };
 
         let vert_shader_stage_def = ShaderStageDef {
             shader_module: vert_shader_module,
@@ -291,14 +277,6 @@ fn run() -> GfxResult<()> {
             uniform_buffers.push(uniform_buffer);
             uniform_buffer_cbvs.push(uniform_buffer_cbv);
         }
-
-        //
-        // Create texture
-        //
-
-        // let texture_def = TextureDef::default();
-        // let texture_2d = device_context.create_texture(&texture_def)?;
-        // drop(texture_2d);
 
         //
         // Descriptors are allocated in blocks and never freed. Normally you will want to build a
@@ -440,13 +418,7 @@ fn run() -> GfxResult<()> {
                         texture_view: swapchain_rtv,
                         load_op: LoadOp::Clear,
                         store_op: StoreOp::Store,
-                        // array_slice: None,
-                        // mip_slice: None,
                         clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
-                        // resolve_target: None,
-                        // resolve_store_op: StoreOp::DontCare,
-                        // resolve_mip_slice: None,
-                        // resolve_array_slice: None,
                     }],
                     None,
                 )

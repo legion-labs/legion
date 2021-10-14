@@ -114,17 +114,6 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     fn wait_for_fences(&self, fences: &[&NullFence]) -> GfxResult<()> {
         unimplemented!();
     }
-
-    // fn find_supported_format(
-    //     &self,
-    //     candidates: &[Format],
-    //     resource_type: ResourceType,
-    // ) -> Option<Format> {
-    //     unimplemented!();
-    // }
-    // fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount> {
-    //     unimplemented!();
-    // }
 }
 
 //
@@ -161,12 +150,6 @@ impl Buffer<NullApi> for NullBuffer {
     fn create_view(&self, cbv_def: &BufferViewDef) -> GfxResult<NullBufferView> {
         unimplemented!()
     }
-    // fn create_shader_resource_view(&self, srv_def: &ShaderResourceViewDef) -> GfxResult<NullShaderResourceView> {
-    //     unimplemented!()
-    // }
-    // fn create_unordered_acces_view(&self, uav_def: &UnorderedAccessViewDef) -> GfxResult<NullUnorderedAccessView> {
-    //     unimplemented!()
-    // }
 }
 
 #[derive(Clone, Debug)]

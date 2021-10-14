@@ -407,13 +407,6 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<A::ShaderModule>;
 
     fn wait_for_fences(&self, fences: &[&A::Fence]) -> GfxResult<()>;
-
-    // fn find_supported_format(
-    //     &self,
-    //     candidates: &[Format],
-    //     resource_type: ResourceType,
-    // ) -> Option<Format>;
-    // fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount>;
 }
 
 //

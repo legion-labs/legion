@@ -5,16 +5,12 @@ use ash::vk;
 use std::sync::Arc;
 
 pub(crate) struct FramebufferVulkanAttachment {
-    // pub(crate) texture: VulkanTexture,
-    // pub(crate) array_slice: Option<u16>,
-    // pub(crate) mip_slice: Option<u8>,
     pub(crate) texture_view: VulkanTextureView,
 }
 
 pub(crate) struct FramebufferVulkanDef {
     pub(crate) renderpass: VulkanRenderpass,
     pub(crate) color_attachments: Vec<FramebufferVulkanAttachment>,
-    // pub(crate) resolve_attachments: Vec<FramebufferVulkanAttachment>,
     pub(crate) depth_stencil_attachment: Option<FramebufferVulkanAttachment>,
 }
 
@@ -78,46 +74,11 @@ impl FramebufferVulkan {
 
         for color_rt in &framebuffer_def.color_attachments {
             let image_view = color_rt.texture_view.vk_image_view();
-            // todo(vdbdd)
-            // let image_view = if color_rt.array_slice.is_none() && color_rt.mip_slice.is_none() {
-            //     color_rt.texture.render_target_vk_view().unwrap()
-            // } else {
-            //     color_rt.texture.render_target_slice_vk_view(
-            //         0,
-            //         color_rt.array_slice.unwrap_or(0),
-            //         color_rt.mip_slice.unwrap_or(0),
-            //     )
-            // };
             image_views.push(image_view);
         }
 
-        // for resolve_rt in &framebuffer_def.resolve_attachments {
-        // let image_view = resolve_rt.texture_view.vk_image_view();
-        // todo(vdbdd)
-        // let image_view = if resolve_rt.array_slice.is_none() && resolve_rt.mip_slice.is_none() {
-        //     resolve_rt.texture.render_target_vk_view().unwrap()
-        // } else {
-        //     resolve_rt.texture.render_target_slice_vk_view(
-        //         0,
-        //         resolve_rt.array_slice.unwrap_or(0),
-        //         resolve_rt.mip_slice.unwrap_or(0),
-        //     )
-        // };
-        // image_views.push(image_view);
-        // }
-
         if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {
             let image_view = depth_rt.texture_view.vk_image_view();
-            // todo(vdbdd)
-            // let image_view = if depth_rt.mip_slice.is_none() && depth_rt.array_slice.is_none() {
-            //     depth_rt.texture.render_target_vk_view().unwrap()
-            // } else {
-            //     depth_rt.texture.render_target_slice_vk_view(
-            //         0,
-            //         depth_rt.array_slice.unwrap_or(0),
-            //         depth_rt.mip_slice.unwrap_or(0),
-            //     )
-            // };
             image_views.push(image_view);
         };
 

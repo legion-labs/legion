@@ -200,22 +200,9 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         };
 
         let mut clear_values = Vec::with_capacity(color_targets.len() + 1);
-        // let mut has_resolve_target = false;
         for color_target in color_targets {
             clear_values.push(color_target.clear_value.into());
-            // if color_target.resolve_target.is_some() {
-            //     has_resolve_target = true;
-            // }
         }
-
-        // If we resolve, then there will be images in the framebuffer. The clear color array must
-        // be equal-sized to the framebuffer images array.
-        // if has_resolve_target {
-        //     for _ in color_targets {
-        //         // Actual value doesn't matter, this is for a resolve target with DONT_CARE load op
-        //         clear_values.push(clear_values[0]);
-        //     }
-        // }
 
         if let Some(depth_target) = &depth_target {
             clear_values.push(depth_target.clear_value.into());
@@ -654,8 +641,6 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 internal::resource_state_to_image_layout(barrier.src_state).unwrap()
             };
 
-            // let old_layout =
-            //     super::util::resource_state_to_image_layout(barrier.src_state).unwrap();
             let new_layout = internal::resource_state_to_image_layout(barrier.dst_state).unwrap();
             log::trace!(
                 "Transition texture {:?} from {:?} to {:?}",

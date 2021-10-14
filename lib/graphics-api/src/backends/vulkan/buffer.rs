@@ -35,16 +35,6 @@ impl VulkanBuffer {
             );
         }
 
-        // if buffer_def
-        //     .resource_type
-        //     .intersects(ResourceType::UNIFORM_BUFFER_)
-        // {
-        //     allocation_size = legion_utils::memory::round_size_up_to_alignment_u64(
-        //         buffer_def.size,
-        //         device_context.limits().min_uniform_buffer_offset_alignment,
-        //     );
-        // }
-
         let mut usage_flags =
             super::internal::resource_type_buffer_usage_flags(buffer_def.usage_flags);
 

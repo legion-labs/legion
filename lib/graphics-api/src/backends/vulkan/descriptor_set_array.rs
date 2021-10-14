@@ -9,7 +9,6 @@ struct DescriptorUpdateData {
     // one per set * elements in each descriptor
     image_infos: Vec<vk::DescriptorImageInfo>,
     buffer_infos: Vec<vk::DescriptorBufferInfo>,
-    // buffer_views: Vec<vk::BufferView>,
     update_data_count: usize,
 }
 
@@ -18,7 +17,6 @@ impl DescriptorUpdateData {
         Self {
             image_infos: vec![vk::DescriptorImageInfo::default(); update_data_count],
             buffer_infos: vec![vk::DescriptorBufferInfo::default(); update_data_count],
-            // buffer_views: vec![vk::BufferView::default(); update_data_count],
             update_data_count,
         }
     }

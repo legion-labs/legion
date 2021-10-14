@@ -49,55 +49,11 @@ impl ShaderResource {
     }
 
     pub fn validate(&self) -> GfxResult<()> {
-        // if self.resource_type == ResourceType::ROOT_CONSTANT {
-        //     if self.element_count != 0 {
-        //         return Err(format!(
-        //                 "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero element_count",
-        //                 self.set_index,
-        //                 self.binding,
-        //                 self.name,
-        //                 self.resource_type
-        //             ).into());
-        //     }
-        //     if self.size_in_bytes == 0 {
-        //         return Err(format!(
-        //             "binding (set={:?} binding={:?} name={:?} type={:?}) has zero size_in_bytes",
-        //             self.set_index, self.binding, self.name, self.resource_type
-        //         )
-        //         .into());
-        //     }
-        //     if self.set_index != 0 {
-        //         return Err(format!(
-        //             "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero set_index",
-        //             self.set_index, self.binding, self.name, self.resource_type
-        //         )
-        //         .into());
-        //     }
-        //     if self.binding != 0 {
-        //         return Err(format!(
-        //             "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero binding",
-        //             self.set_index, self.binding, self.name, self.resource_type
-        //         )
-        //         .into());
-        //     }
-        // } else
-        {
-            // if self.size_in_bytes != 0 {
-            //     return Err(format!(
-            //             "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero size_in_bytes",
-            //             self.set_index,
-            //             self.binding,
-            //             self.name,
-            //             self.shader_resource_type
-            //         ).into());
-            // }
-
-            if self.set_index as usize >= MAX_DESCRIPTOR_SET_LAYOUTS {
-                return Err(format!(
-                    "Descriptor (set={:?} binding={:?}) named {:?} has a set index >= 4. This is not supported",
-                    self.set_index, self.binding, self.name,
-                ).into());
-            }
+        if self.set_index as usize >= MAX_DESCRIPTOR_SET_LAYOUTS {
+            return Err(format!(
+                "Descriptor (set={:?} binding={:?}) named {:?} has a set index >= 4. This is not supported",
+                self.set_index, self.binding, self.name,
+            ).into());
         }
 
         Ok(())
@@ -126,14 +82,6 @@ impl ShaderResource {
                 self.set_index, self.binding
             ).into());
         }
-
-        // if self.size_in_bytes != other.size_in_bytes {
-        //     return Err(format!(
-        //         "Pass is using shaders in different stages with different size_in_bytes {} and {} (set={} binding={})",
-        //         self.size_in_bytes, other.size_in_bytes,
-        //         self.set_index, self.binding
-        //     ).into());
-        // }
 
         Ok(())
     }

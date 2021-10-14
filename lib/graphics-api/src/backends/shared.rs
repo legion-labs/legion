@@ -177,19 +177,6 @@ fn verify_resources_can_overlap(
         return Err(message.into());
     }
 
-    // if previous_resource.size_in_bytes != resource.size_in_bytes {
-    //     let message = format!(
-    //         "Shader resource (set={:?} binding={:?} name={:?}) has mismatching size_in_bytes {:?} and {:?} across shaders in same root signature",
-    //         resource.set_index,
-    //         resource.binding,
-    //         resource.name,
-    //         resource.size_in_bytes,
-    //         previous_resource.size_in_bytes
-    //     );
-    //     log::error!("{}", message);
-    //     return Err(message.into());
-    // }
-
     if previous_resource.shader_resource_type != resource.shader_resource_type {
         let message = format!(
             "Shader resource (set={:?} binding={:?} name={:?}) has mismatching resource_type {:?} and {:?} across shaders in same root signature",

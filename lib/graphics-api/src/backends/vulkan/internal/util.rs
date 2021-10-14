@@ -16,8 +16,6 @@ pub(crate) fn pipeline_type_pipeline_bind_point(
 
 pub(crate) fn resource_type_buffer_usage_flags(
     resource_usage: ResourceUsage,
-    // resource_type: ResourceType,
-    // has_format: bool,
 ) -> vk::BufferUsageFlags {
     let mut usage_flags = vk::BufferUsageFlags::TRANSFER_SRC;
 

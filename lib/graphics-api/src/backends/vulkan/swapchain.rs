@@ -409,9 +409,6 @@ impl SwapchainVulkanInstance {
             };
 
             let format: Format = self.swapchain_info.surface_format.format.into();
-
-            // let resource_type = ResourceType::TEXTURE | ResourceType::RENDER_TARGET_COLOR;
-
             let texture = VulkanTexture::from_existing(
                 &self.device_context,
                 Some(raw_image),
@@ -428,10 +425,6 @@ impl SwapchainVulkanInstance {
                         | ResourceUsage::HAS_RENDER_TARGET_VIEW,
                     resource_flags: ResourceFlags::empty(),
                     mem_usage: MemoryUsage::GpuOnly,
-                    //clear_value,
-                    // sample_count: SampleCount::SampleCount1,
-                    //sample_quality
-                    // dimensions: TextureDimensions::Dim2D,
                     tiling: TextureTiling::Optimal,
                 },
             )?;

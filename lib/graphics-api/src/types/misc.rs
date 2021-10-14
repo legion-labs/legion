@@ -269,7 +269,6 @@ bitflags::bitflags! {
 bitflags::bitflags! {
     /// Indicates a particular stage of a shader, or set of stages in a shader. Similar to
     /// VkShaderStageFlagBits
-    // #[derive(Default)]
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct ShaderStageFlags : u32 {
         const VERTEX = 1;
@@ -667,13 +666,7 @@ pub struct ColorRenderTargetBinding<'a, A: GfxApi> {
     pub texture_view: &'a A::TextureView,
     pub load_op: LoadOp,
     pub store_op: StoreOp,
-    // pub mip_slice: Option<u8>,
-    // pub array_slice: Option<u16>,
     pub clear_value: ColorClearValue,
-    // pub resolve_target: Option<&'a A::TextureView>,
-    // pub resolve_store_op: StoreOp,
-    // pub resolve_mip_slice: Option<u8>,
-    // pub resolve_array_slice: Option<u16>,
 }
 
 /// A depth/stencil render target to be bound during a renderpass
@@ -684,8 +677,6 @@ pub struct DepthStencilRenderTargetBinding<'a, A: GfxApi> {
     pub stencil_load_op: LoadOp,
     pub depth_store_op: StoreOp,
     pub stencil_store_op: StoreOp,
-    // pub mip_slice: Option<u8>,
-    // pub array_slice: Option<u16>,
     pub clear_value: DepthStencilClearValue,
 }
 
@@ -771,28 +762,11 @@ pub struct DescriptorElements<'a, A: GfxApi> {
 impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
     fn default() -> Self {
         Self {
-            // textures: None,
             samplers: None,
-            // buffers: None,
-            // buffer_offset_sizes: None,
             buffer_views: None,
-            // srvs : None
         }
     }
 }
-//
-// /// Used when binding a texture to select between different ways to bind the texture
-// #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-// pub enum TextureBindType {
-//     // Color or depth only
-//     Srv,
-//     // stencil?
-//     SrvStencil,
-//     // Bind all mip levels of the 0th provided texture
-//     UavMipChain,
-//     // Bind a particular mip slice of all provided textures
-//     UavMipSlice(u32),
-// }
 
 /// Describes how to update a single descriptor
 #[derive(Debug)]
@@ -801,8 +775,6 @@ pub struct DescriptorUpdate<'a, A: GfxApi> {
     pub descriptor_key: DescriptorKey<'a>,
     pub elements: DescriptorElements<'a, A>,
     pub dst_element_offset: u32,
-    // Srv when read-only, UavMipSlice(0) when read-write
-    // pub texture_bind_type: Option<TextureBindType>,
 }
 
 impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {

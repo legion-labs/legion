@@ -1,6 +1,16 @@
 [workspace]
-members = ["client/*", "server/*", "lib/*", "plugin/*", "proto/*", "test/*"]
-exclude = ["test/test_data", "test/sample_data"]
+members = [
+    "client/*",
+    "server/*",
+    "lib/*",
+    "plugin/*",
+    "proto/*",
+    "test/*",
+]
+exclude = [
+	  "test/sample_data",
+	  "test/test_data"
+]
 
 [profile.release]
 opt-level = 3
@@ -11,5 +21,3 @@ debug-assertions = false
 opt-level = 3
 debug = true
 debug-assertions = false
-
-

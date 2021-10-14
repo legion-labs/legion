@@ -122,28 +122,6 @@ impl BufferDef {
     }
 }
 
-// /// Determines how many dimensions the texture will have.
-// #[derive(Copy, Clone, Debug, PartialEq)]
-// pub enum TextureDimensions {
-//     /// Assume 2D if depth = 1, otherwise 3d
-//     // Auto,
-//     // Dim1D,
-//     Dim2D,
-//     Dim3D,
-// }
-
-// impl TextureDimensions {
-//     pub fn determine_dimensions(self, extents: Extents3D) -> Self {
-//         match self {
-//             Self::Dim2D => {
-//                 assert_eq!(extents.depth, 1);
-//                 Self::Dim2D
-//             }
-//             Self::Dim3D => Self::Dim3D,
-//         }
-//     }
-// }
-
 /// Used to create a `Texture`
 #[derive(Clone, Debug)]
 pub struct TextureDef {

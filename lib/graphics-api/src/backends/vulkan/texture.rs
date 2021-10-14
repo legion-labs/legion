@@ -49,49 +49,11 @@ pub struct TextureVulkanInner {
     aspect_mask: vk::ImageAspectFlags,
     is_undefined_layout: AtomicBool,
     texture_id: u32,
-    /*
-    // For reading
-    srv_view: Option<vk::ImageView>,
-    srv_view_stencil: Option<vk::ImageView>,
-
-    // For writing
-    uav_views: Vec<vk::ImageView>,
-
-    // RT
-
-    render_target_view: Option<vk::ImageView>,
-    render_target_view_slices: Vec<vk::ImageView>,
-    */
 }
 
 impl Drop for TextureVulkanInner {
     fn drop(&mut self) {
         let _device = self.device_context.device();
-
-        /*
-        unsafe {
-            if let Some(srv_view) = self.srv_view {
-                device.destroy_image_view(srv_view, None);
-            }
-
-            if let Some(srv_view_stencil) = self.srv_view_stencil {
-                device.destroy_image_view(srv_view_stencil, None);
-            }
-
-            for uav_view in &self.uav_views {
-                device.destroy_image_view(*uav_view, None);
-            }
-
-            if let Some(render_target_view) = self.render_target_view {
-                device.destroy_image_view(render_target_view, None);
-            }
-
-            for view_slice in &self.render_target_view_slices {
-                device.destroy_image_view(*view_slice, None);
-            }
-        }
-        */
-
         self.image.destroy_image(&self.device_context);
     }
 }
@@ -141,56 +103,7 @@ impl VulkanTexture {
     pub fn device_context(&self) -> &VulkanDeviceContext {
         &self.inner.device_context
     }
-    /*
-        // Color/Depth
-        pub fn vk_srv_view(&self) -> Option<vk::ImageView> {
-            self.inner.srv_view
-        }
 
-        // Stencil-only
-        pub fn vk_srv_view_stencil(&self) -> Option<vk::ImageView> {
-            self.inner.srv_view_stencil
-        }
-
-        // Mip chain
-        pub fn vk_uav_views(&self) -> &[vk::ImageView] {
-            &self.inner.uav_views
-        }
-
-        pub fn render_target_vk_view(&self) -> Option<vk::ImageView> {
-            self.inner.render_target_view
-        }
-
-        pub fn render_target_slice_vk_view(
-            &self,
-            depth: u32,
-            array_index: u16,
-            mip_level: u8,
-        ) -> vk::ImageView {
-            assert!(
-                depth == 0
-                    || self
-                        .inner
-                        .texture_def
-                        .resource_type
-                        .intersects(ResourceType::RENDER_TARGET_DEPTH_SLICES)
-            );
-            assert!(
-                array_index == 0
-                    || self
-                        .inner
-                        .texture_def
-                        .resource_type
-                        .intersects(ResourceType::RENDER_TARGET_ARRAY_SLICES)
-            );
-
-            let def = &self.inner.texture_def;
-            let index = (mip_level as usize * def.array_length as usize * def.extents.depth as usize)
-                + (array_index as usize * def.extents.depth as usize)
-                + depth as usize;
-            self.inner.render_target_view_slices[index]
-        }
-    */
     // Used internally as part of the hash for creating/reusing framebuffers
     pub(crate) fn texture_id(&self) -> u32 {
         self.inner.texture_id
@@ -503,12 +416,7 @@ impl VulkanTexture {
             device_context: device_context.clone(),
             image,
             aspect_mask,
-            // srv_view,
-            // srv_view_stencil,
-            // uav_views,
             texture_id,
-            // render_target_view,
-            // render_target_view_slices,
             is_undefined_layout: AtomicBool::new(true),
         };
 
