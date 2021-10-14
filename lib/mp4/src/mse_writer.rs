@@ -21,7 +21,7 @@ use crate::atoms::trun::TrunAtom;
 use crate::atoms::tx3g::Tx3gAtom;
 use crate::atoms::vmhd::VmhdAtom;
 use crate::atoms::vp09::Vp09Atom;
-use crate::atoms::{Atom, WriteAtom};
+use crate::atoms::{Atom, SampleDependsOn, SampleFlags, WriteAtom};
 use crate::{MediaConfig, Mp4Config, Result, TrackConfig};
 
 /// This writer provides an MSE compatible Byte Stream as  described
@@ -83,26 +83,30 @@ impl<W: Write> MseStreamWriter<W> {
         let cur_offset = ftyp.write_atom(&mut writer)?;
         let moof = MoofAtom {
             mfhd: MfhdAtom {
-                version: 0,
-                flags: 0,
                 sequence_number: 0,
+                ..MfhdAtom::default()
             },
             trafs: vec![TrafAtom {
                 tfhd: TfhdAtom {
                     track_id: 1,
-                    default_sample_flags: Some(0x1010000),
+                    default_sample_flags: Some(SampleFlags {
+                        sample_is_non_sync_sample: true,
+                        sample_depends_on: SampleDependsOn::Others,
+                        ..SampleFlags::default()
+                    }),
                     default_base_is_moof: true,
                     ..TfhdAtom::default()
                 },
                 trun: Some(TrunAtom {
-                    version: 0,
                     sample_count: 1,
                     data_offset: Some(0),
-                    first_sample_flags: Some(0x2000000),
+                    first_sample_flags: Some(SampleFlags {
+                        sample_depends_on: SampleDependsOn::None,
+                        ..SampleFlags::default()
+                    }),
                     sample_durations: Some(vec![0]),
                     sample_sizes: Some(vec![0]),
-                    sample_flags: None,
-                    sample_cts: None,
+                    ..TrunAtom::default()
                 }),
                 tfdt: Some(TfdtAtom {
                     version: 1,
@@ -136,7 +140,9 @@ impl<W: Write> MseStreamWriter<W> {
                 trak.tkhd.set_width(avc_config.width);
                 trak.tkhd.set_height(avc_config.height);
 
-                let vmhd = VmhdAtom::default();
+                let vmhd = VmhdAtom {
+                    ..VmhdAtom::default()
+                };
                 trak.mdia.minf.vmhd = Some(vmhd);
 
                 let avc1 = Avc1Atom::new(avc_config);
@@ -188,7 +194,7 @@ impl<W: Write> MseStreamWriter<W> {
                 default_sample_description_index: 1,
                 default_sample_duration: 0,
                 default_sample_size: 0,
-                default_sample_flags: 0,
+                default_sample_flags: SampleFlags::default(),
             },
         });
 
@@ -209,7 +215,10 @@ impl<W: Write> MseStreamWriter<W> {
             .as_mut()
             .unwrap()[0] = content.len() as u32;
         if key_frame {
-            self.moof.trafs[0].trun.as_mut().unwrap().first_sample_flags = Some(0x2000000);
+            self.moof.trafs[0].trun.as_mut().unwrap().first_sample_flags = Some(SampleFlags {
+                sample_depends_on: SampleDependsOn::None,
+                ..SampleFlags::default()
+            });
         } else {
             self.moof.trafs[0].trun.as_mut().unwrap().first_sample_flags = None;
         }

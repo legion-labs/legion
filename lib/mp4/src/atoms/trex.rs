@@ -6,7 +6,7 @@ use crate::{FourCC, Result};
 
 use super::{
     box_start, read_atom_header_ext, skip_bytes_to, write_atom_header_ext, Atom, AtomHeader,
-    ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
+    ReadAtom, SampleFlags, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
 /// Track Extends Atom
@@ -18,7 +18,7 @@ pub struct TrexAtom {
     pub default_sample_description_index: u32,
     pub default_sample_duration: u32,
     pub default_sample_size: u32,
-    pub default_sample_flags: u32,
+    pub default_sample_flags: SampleFlags,
 }
 
 impl Atom for TrexAtom {
@@ -51,7 +51,7 @@ impl<R: Read + Seek> ReadAtom<&mut R> for TrexAtom {
         let default_sample_description_index = reader.read_u32::<BigEndian>()?;
         let default_sample_duration = reader.read_u32::<BigEndian>()?;
         let default_sample_size = reader.read_u32::<BigEndian>()?;
-        let default_sample_flags = reader.read_u32::<BigEndian>()?;
+        let default_sample_flags = reader.read_u32::<BigEndian>()?.into();
 
         skip_bytes_to(reader, start + size)?;
 
@@ -77,7 +77,7 @@ impl<W: Write> WriteAtom<&mut W> for TrexAtom {
         writer.write_u32::<BigEndian>(self.default_sample_description_index)?;
         writer.write_u32::<BigEndian>(self.default_sample_duration)?;
         writer.write_u32::<BigEndian>(self.default_sample_size)?;
-        writer.write_u32::<BigEndian>(self.default_sample_flags)?;
+        writer.write_u32::<BigEndian>(self.default_sample_flags.into())?;
 
         Ok(self.size())
     }
@@ -98,7 +98,7 @@ mod tests {
             default_sample_description_index: 1,
             default_sample_duration: 1000,
             default_sample_size: 0,
-            default_sample_flags: 65536,
+            default_sample_flags: 65536.into(),
         };
         let mut buf = Vec::new();
         src_box.write_atom(&mut buf).unwrap();

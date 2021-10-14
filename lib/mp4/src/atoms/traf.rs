@@ -117,7 +117,7 @@ mod tests {
         let src_box = TrafAtom {
             tfhd: TfhdAtom {
                 track_id: 1,
-                default_sample_flags: Some(0x1010000),
+                default_sample_flags: Some(0x1010000.into()),
                 default_base_is_moof: true,
                 ..TfhdAtom::default()
             },
@@ -125,7 +125,7 @@ mod tests {
                 version: 0,
                 sample_count: 1,
                 data_offset: Some(0),
-                first_sample_flags: Some(0x2000000),
+                first_sample_flags: Some(0x2000000.into()),
                 sample_durations: Some(vec![0]),
                 sample_sizes: Some(vec![0]),
                 sample_flags: None,
@@ -155,7 +155,7 @@ mod tests {
         let src_box = TrafAtom {
             tfhd: TfhdAtom {
                 track_id: 1,
-                default_sample_flags: Some(0x1010000),
+                default_sample_flags: Some(0x1010000.into()),
                 default_base_is_moof: true,
                 ..TfhdAtom::default()
             },
@@ -163,7 +163,7 @@ mod tests {
                 version: 0,
                 sample_count: 1,
                 data_offset: Some(0),
-                first_sample_flags: Some(0x2000000),
+                first_sample_flags: Some(0x2000000.into()),
                 sample_durations: Some(vec![0]),
                 sample_sizes: Some(vec![0]),
                 sample_flags: None,

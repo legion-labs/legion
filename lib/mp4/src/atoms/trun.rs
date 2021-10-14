@@ -7,7 +7,7 @@ use crate::{Error, FourCC, Result};
 
 use super::{
     box_start, read_atom_header_ext, skip_bytes_to, write_atom_header_ext, Atom, AtomHeader,
-    ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
+    ReadAtom, SampleFlags, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
 /// Track Fragment Run Atom
@@ -18,14 +18,14 @@ pub struct TrunAtom {
     pub version: u8,
     pub sample_count: u32,
     pub data_offset: Option<i32>,
-    pub first_sample_flags: Option<u32>,
+    pub first_sample_flags: Option<SampleFlags>,
 
     #[serde(skip_serializing)]
     pub sample_durations: Option<Vec<u32>>,
     #[serde(skip_serializing)]
     pub sample_sizes: Option<Vec<u32>>,
     #[serde(skip_serializing)]
-    pub sample_flags: Option<Vec<u32>>,
+    pub sample_flags: Option<Vec<SampleFlags>>,
     #[serde(skip_serializing)]
     pub sample_cts: Option<Vec<u32>>,
 }
@@ -110,7 +110,7 @@ impl<R: Read + Seek> ReadAtom<&mut R> for TrunAtom {
         };
 
         let first_sample_flags = if flags.contains(TrackRunlags::FIRST_SAMPLE_FLAGS_PRESENT) {
-            Some(reader.read_u32::<BigEndian>()?)
+            Some(reader.read_u32::<BigEndian>()?.into())
         } else {
             None
         };
@@ -131,7 +131,7 @@ impl<R: Read + Seek> ReadAtom<&mut R> for TrunAtom {
 
             if flags.contains(TrackRunlags::SAMPLE_FLAGS_PRESENT) {
                 let sample_flag = reader.read_u32::<BigEndian>()?;
-                sample_flags.push(sample_flag);
+                sample_flags.push(sample_flag.into());
             }
 
             if flags.contains(TrackRunlags::SAMPLE_COMPOSITION_TIME_OFFSETS_PRESENT) {
@@ -186,7 +186,7 @@ impl<W: Write> WriteAtom<&mut W> for TrunAtom {
             writer.write_i32::<BigEndian>(v)?;
         }
         if let Some(v) = self.first_sample_flags {
-            writer.write_u32::<BigEndian>(v)?;
+            writer.write_u32::<BigEndian>(v.into())?;
         }
 
         for i in 0..self.sample_count as usize {
@@ -197,7 +197,7 @@ impl<W: Write> WriteAtom<&mut W> for TrunAtom {
                 writer.write_u32::<BigEndian>(sample_sizes[i])?;
             }
             if let Some(sample_flags) = &self.sample_flags {
-                writer.write_u32::<BigEndian>(sample_flags[i])?;
+                writer.write_u32::<BigEndian>(sample_flags[i].into())?;
             }
             if let Some(sample_cts) = &self.sample_cts {
                 writer.write_u32::<BigEndian>(sample_cts[i])?;
@@ -235,7 +235,7 @@ mod tests {
         let src_box = TrunAtom {
             version: 0,
             data_offset: Some(0x20),
-            first_sample_flags: Some(0x2000000),
+            first_sample_flags: Some(0x2000000.into()),
             sample_count: 9,
             sample_sizes: Some(vec![1165, 11, 11, 8545, 10126, 10866, 9643, 9351, 7730]),
             sample_flags: None,
@@ -262,7 +262,17 @@ mod tests {
             data_offset: None,
             sample_count: 9,
             sample_sizes: Some(vec![1165, 11, 11, 8545, 10126, 10866, 9643, 9351, 7730]),
-            sample_flags: Some(vec![1165, 11, 11, 8545, 10126, 10866, 9643, 9351, 7730]),
+            sample_flags: Some(vec![
+                1165.into(),
+                11.into(),
+                11.into(),
+                8545.into(),
+                10126.into(),
+                10866.into(),
+                9643.into(),
+                9351.into(),
+                7730.into(),
+            ]),
             first_sample_flags: None,
             sample_durations: Some(vec![1165, 11, 11, 8545, 10126, 10866, 9643, 9351, 7730]),
             sample_cts: Some(vec![1165, 11, 11, 8545, 10126, 10866, 9643, 9351, 7730]),

@@ -277,6 +277,200 @@ impl Default for Matrix {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum SampleIsLeading {
+    /// the leading nature of this sample is unknown
+    Unknown,
+    /// this sample is a leading sample that has a dependency
+    /// before the referenced I-picture (and is therefore not decodable)
+    LeadingWithDep,
+    /// this sample is not a leading sample
+    NotLeading,
+    /// this sample is a leading sample that has no dependency
+    /// before the referenced I-picture (and is therefore decodable)
+    LeadingWithoutDep,
+}
+
+impl From<SampleIsLeading> for u32 {
+    fn from(value: SampleIsLeading) -> Self {
+        match value {
+            SampleIsLeading::Unknown => 0,
+            SampleIsLeading::LeadingWithDep => 1,
+            SampleIsLeading::NotLeading => 2,
+            SampleIsLeading::LeadingWithoutDep => 3,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum SampleDependsOn {
+    /// the dependency of this sample is unknown
+    Unknown,
+    /// this sample does depend on others (not an I picture)
+    Others,
+    /// this sample does not depend on others (I picture)
+    None,
+}
+
+impl From<SampleDependsOn> for u32 {
+    fn from(value: SampleDependsOn) -> Self {
+        match value {
+            SampleDependsOn::Unknown => 0,
+            SampleDependsOn::Others => 1,
+            SampleDependsOn::None => 2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum SampleIsDependedOn {
+    /// the dependency of other samples on this sample is unknown
+    Unknown,
+    /// other samples may depend on this one (not disposable)
+    Others,
+    /// no other sample depends on this one (disposable)
+    None,
+}
+
+impl From<SampleIsDependedOn> for u32 {
+    fn from(value: SampleIsDependedOn) -> Self {
+        match value {
+            SampleIsDependedOn::Unknown => 0,
+            SampleIsDependedOn::Others => 1,
+            SampleIsDependedOn::None => 2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum SampleHasRedundancy {
+    /// it is unknown whether there is redundant coding in this sample
+    Unknown,
+    /// there is redundant coding in this sample
+    Redundant,
+    /// there is no redundant coding in this sample
+    NotRedundant,
+}
+
+impl From<SampleHasRedundancy> for u32 {
+    fn from(value: SampleHasRedundancy) -> Self {
+        match value {
+            SampleHasRedundancy::Unknown => 0,
+            SampleHasRedundancy::Redundant => 1,
+            SampleHasRedundancy::NotRedundant => 2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct SampleFlags {
+    pub is_leading: SampleIsLeading,
+    pub sample_depends_on: SampleDependsOn,
+    pub sample_is_depdended_on: SampleIsDependedOn,
+    pub sample_has_redundancy: SampleHasRedundancy,
+    pub sample_padding_value: u8,
+    pub sample_is_non_sync_sample: bool,
+    pub sample_degradation_priority: u16,
+}
+
+impl Default for SampleFlags {
+    fn default() -> Self {
+        Self {
+            is_leading: SampleIsLeading::Unknown,
+            sample_depends_on: SampleDependsOn::Unknown,
+            sample_is_depdended_on: SampleIsDependedOn::Unknown,
+            sample_has_redundancy: SampleHasRedundancy::Unknown,
+            sample_padding_value: 0,
+            sample_is_non_sync_sample: false,
+            sample_degradation_priority: 0,
+        }
+    }
+}
+
+impl SampleFlags {
+    // 4 bits reserved
+    // 2 bits is_leading
+    const IS_LEADING_OFFSET: u32 = 26;
+    const IS_LEADING_MASK: u32 = 0x3;
+    // 2 bits sample_depends_on
+    const SAMPLE_DEPENDS_ON_OFFSET: u32 = 24;
+    const SAMPLE_DEPENDS_ON_MASK: u32 = 0x3;
+    // 2 bits sample_depends_on
+    const SAMPLE_IS_DEPENDED_ON_OFFSET: u32 = 22;
+    const SAMPLE_IS_DEPENDED_ON_MASK: u32 = 0x3;
+    // 2 bits sample_has_redundancy
+    const SAMPLE_HAS_REDUNDANCY_OFFSET: u32 = 20;
+    const SAMPLE_HAS_REDUNDANCY_MASK: u32 = 0x3;
+    // 3 bits sample_padding_value
+    const SAMPLE_PADDING_VALUE_OFFSET: u32 = 17;
+    const SAMPLE_PADDING_VALUE_MASK: u32 = 0x7;
+    // 1 bits sample_is_non_sync_sample
+    const SAMPLE_IS_NON_SYNC_SAMPLE_OFFSET: u32 = 16;
+    const SAMPLE_IS_NON_SYNC_SAMPLE_MASK: u32 = 0x1;
+    // 16 bits sample_degradation_priority
+    const SAMPLE_DEGRADATION_PRIORITY_MASK: u32 = 0xFF_FF;
+}
+
+impl From<SampleFlags> for u32 {
+    fn from(value: SampleFlags) -> Self {
+        // 4 bit reserved
+        (Self::from(value.is_leading) << SampleFlags::IS_LEADING_OFFSET) // 2bits
+            | (Self::from(value.sample_depends_on) << SampleFlags::SAMPLE_DEPENDS_ON_OFFSET) // 2bits
+            | (Self::from(value.sample_is_depdended_on) << SampleFlags::SAMPLE_IS_DEPENDED_ON_OFFSET) // 2bits
+            | (Self::from(value.sample_has_redundancy) << SampleFlags::SAMPLE_HAS_REDUNDANCY_OFFSET) // 2bits
+            | (Self::from(value.sample_padding_value) << SampleFlags::SAMPLE_PADDING_VALUE_OFFSET) // 3bits
+            | ((value.sample_is_non_sync_sample as Self) << SampleFlags::SAMPLE_IS_NON_SYNC_SAMPLE_OFFSET) // 1bits
+            | Self::from(value.sample_degradation_priority) // remaining 16 bits
+    }
+}
+
+impl From<u32> for SampleFlags {
+    fn from(value: u32) -> Self {
+        let is_leading = match (value >> Self::IS_LEADING_OFFSET) & Self::IS_LEADING_MASK {
+            1 => SampleIsLeading::LeadingWithDep,
+            2 => SampleIsLeading::NotLeading,
+            3 => SampleIsLeading::LeadingWithoutDep,
+            _ => SampleIsLeading::Unknown,
+        };
+
+        let sample_depends_on =
+            match (value >> Self::SAMPLE_DEPENDS_ON_OFFSET) & Self::SAMPLE_DEPENDS_ON_MASK {
+                1 => SampleDependsOn::Others,
+                2 => SampleDependsOn::None,
+                _ => SampleDependsOn::Unknown,
+            };
+
+        let sample_is_depdended_on = match (value >> Self::SAMPLE_IS_DEPENDED_ON_OFFSET)
+            & Self::SAMPLE_IS_DEPENDED_ON_MASK
+        {
+            1 => SampleIsDependedOn::Others,
+            2 => SampleIsDependedOn::None,
+            _ => SampleIsDependedOn::Unknown,
+        };
+
+        let sample_has_redundancy = match (value >> Self::SAMPLE_HAS_REDUNDANCY_OFFSET)
+            & Self::SAMPLE_HAS_REDUNDANCY_MASK
+        {
+            1 => SampleHasRedundancy::Redundant,
+            2 => SampleHasRedundancy::NotRedundant,
+            _ => SampleHasRedundancy::Unknown,
+        };
+
+        Self {
+            is_leading,
+            sample_depends_on,
+            sample_is_depdended_on,
+            sample_has_redundancy,
+            sample_padding_value: ((value >> Self::SAMPLE_PADDING_VALUE_OFFSET)
+                & Self::SAMPLE_PADDING_VALUE_MASK) as u8,
+            sample_is_non_sync_sample: ((value >> Self::SAMPLE_IS_NON_SYNC_SAMPLE_OFFSET)
+                & Self::SAMPLE_IS_NON_SYNC_SAMPLE_MASK)
+                != 0,
+            sample_degradation_priority: (value & Self::SAMPLE_DEGRADATION_PRIORITY_MASK) as u16,
+        }
+    }
+}
+
 #[allow(clippy::trivially_copy_pass_by_ref)] // we need to conform to the serializer interface
 mod value_u32 {
     use super::FixedPointU16;
@@ -313,5 +507,29 @@ mod value_u8 {
         S: Serializer,
     {
         serializer.serialize_u8(fixed.value())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::atoms::SampleDependsOn;
+
+    use super::SampleFlags;
+
+    #[test]
+    fn sample_flags() {
+        let src = SampleFlags {
+            sample_is_non_sync_sample: true,
+            sample_depends_on: SampleDependsOn::Others,
+            ..SampleFlags::default()
+        };
+        assert_eq!(u32::from(src), 0x1010000);
+        assert_eq!(SampleFlags::from(0x1010000), src);
+        let src = SampleFlags {
+            sample_depends_on: SampleDependsOn::None,
+            ..SampleFlags::default()
+        };
+        assert_eq!(u32::from(src), 0x2000000);
+        assert_eq!(SampleFlags::from(0x2000000), src);
     }
 }

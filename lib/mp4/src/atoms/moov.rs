@@ -122,7 +122,7 @@ mod tests {
     use crate::atoms::stco::StcoAtom;
     use crate::atoms::trex::TrexAtom;
     use crate::atoms::vmhd::VmhdAtom;
-    use crate::atoms::AtomHeader;
+    use crate::atoms::{AtomHeader, SampleFlags};
     use std::io::Cursor;
 
     #[test]
@@ -162,7 +162,7 @@ mod tests {
                 default_sample_description_index: 1,
                 default_sample_duration: 0,
                 default_sample_size: 0,
-                default_sample_flags: 0,
+                default_sample_flags: SampleFlags::default(),
             },
         });
 

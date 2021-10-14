@@ -10,12 +10,23 @@ use super::{
 };
 
 /// Video Media Header Atom
-#[derive(Debug, Clone, PartialEq, Default, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct VmhdAtom {
     pub version: u8,
     pub flags: u32,
     pub graphics_mode: u16,
     pub op_color: RgbColor,
+}
+
+impl Default for VmhdAtom {
+    fn default() -> Self {
+        Self {
+            version: 0,
+            flags: 1,
+            graphics_mode: 0,
+            op_color: RgbColor::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]

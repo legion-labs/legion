@@ -7,7 +7,7 @@ use crate::{Error, FourCC, Result};
 
 use super::{
     box_start, read_atom_header_ext, skip_bytes_to, write_atom_header_ext, Atom, AtomHeader,
-    ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
+    ReadAtom, SampleFlags, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
 
 bitflags! {
@@ -50,7 +50,7 @@ pub struct TfhdAtom {
     pub sample_description_index: Option<u32>,
     pub default_sample_duration: Option<u32>,
     pub default_sample_size: Option<u32>,
-    pub default_sample_flags: Option<u32>,
+    pub default_sample_flags: Option<SampleFlags>,
     pub duration_is_empty: bool,
     pub default_base_is_moof: bool,
 }
@@ -145,7 +145,7 @@ impl<R: Read + Seek> ReadAtom<&mut R> for TfhdAtom {
         };
         let default_sample_flags =
             if flags.contains(TrackFragmentFlags::DEFAULT_SAMPLE_FLAGS_PRESENT) {
-                Some(reader.read_u32::<BigEndian>()?)
+                Some(reader.read_u32::<BigEndian>()?.into())
             } else {
                 None
             };
@@ -186,7 +186,7 @@ impl<W: Write> WriteAtom<&mut W> for TfhdAtom {
             writer.write_u32::<BigEndian>(default_sample_size)?;
         }
         if let Some(default_sample_flags) = self.default_sample_flags {
-            writer.write_u32::<BigEndian>(default_sample_flags)?;
+            writer.write_u32::<BigEndian>(default_sample_flags.into())?;
         }
 
         Ok(self.size())
@@ -223,7 +223,7 @@ mod tests {
         let src_box = TfhdAtom {
             track_id: 1,
             default_base_is_moof: true,
-            default_sample_flags: Some(0x1010000),
+            default_sample_flags: Some(0x1010000.into()),
             ..TfhdAtom::default()
         };
         let mut buf = Vec::new();
