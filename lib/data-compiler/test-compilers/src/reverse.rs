@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, sync::Arc};
 
 use legion_data_compiler::{
     compiler_api::{
@@ -28,9 +28,10 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .take_registry()
         .add_loader::<text_resource::TextResource>()
         .create();
+    let resources = Arc::get_mut(&mut resources).unwrap();
 
     let resource = resources.load_sync::<text_resource::TextResource>(context.source.content_id());
-    let resource = resource.get(&resources).unwrap();
+    let resource = resource.get(resources).unwrap();
 
     let bytes = {
         let mut bytes = vec![];

@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     io,
     path::Path,
+    sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -57,7 +58,7 @@ impl AssetRegistryOptions {
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
-    pub fn create(self) -> AssetRegistry {
+    pub fn create(self) -> Arc<AssetRegistry> {
         let (loader, mut io) = create_loader(self.devices);
 
         for (kind, loader) in self.loaders {
@@ -69,12 +70,12 @@ impl AssetRegistryOptions {
             while loader.wait(Duration::from_millis(100)).is_some() {}
         });
 
-        AssetRegistry {
+        Arc::new(AssetRegistry {
             assets: HashMap::new(),
             load_errors: HashMap::new(),
             load_thread: Some(load_thread),
             loader,
-        }
+        })
     }
 }
 
@@ -199,15 +200,13 @@ impl AssetRegistry {
 #[cfg(test)]
 mod tests {
 
-    use std::{thread, time::Duration};
+    use legion_content_store::RamContentStore;
 
-    use legion_content_store::{ContentStore, RamContentStore};
+    use crate::test_asset;
 
-    use crate::{
-        manifest::Manifest, test_asset, AssetRegistry, AssetRegistryOptions, Resource, ResourceId,
-    };
+    use super::*;
 
-    fn setup_singular_asset_test(content: &[u8]) -> (ResourceId, AssetRegistry) {
+    fn setup_singular_asset_test(content: &[u8]) -> (ResourceId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
@@ -226,7 +225,7 @@ mod tests {
         (asset_id, reg)
     }
 
-    fn setup_dependency_test() -> (ResourceId, ResourceId, AssetRegistry) {
+    fn setup_dependency_test() -> (ResourceId, ResourceId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
@@ -272,6 +271,7 @@ mod tests {
     #[test]
     fn load_assetfile() {
         let (asset_id, mut reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let reg = Arc::get_mut(&mut reg).unwrap();
 
         let internal_id;
         {
@@ -279,23 +279,23 @@ mod tests {
             internal_id = a.id;
 
             let mut test_timeout = Duration::from_millis(500);
-            while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
+            while test_timeout > Duration::ZERO && !a.is_loaded(reg) {
                 let sleep_time = Duration::from_millis(10);
                 thread::sleep(sleep_time);
                 test_timeout -= sleep_time;
                 reg.update();
             }
 
-            assert!(a.is_loaded(&reg));
-            assert!(!a.is_err(&reg));
+            assert!(a.is_loaded(reg));
+            assert!(!a.is_err(reg));
             assert!(reg.is_loaded(internal_id));
             {
                 let b = a.clone();
                 reg.update();
                 assert_eq!(a, b);
 
-                assert!(b.is_loaded(&reg));
-                assert!(!b.is_err(&reg));
+                assert!(b.is_loaded(reg));
+                assert!(!b.is_err(reg));
                 assert!(reg.is_loaded(internal_id));
             }
         }
@@ -306,6 +306,7 @@ mod tests {
     #[test]
     fn load_rawfile() {
         let (asset_id, mut reg) = setup_singular_asset_test(&BINARY_RAWFILE);
+        let reg = Arc::get_mut(&mut reg).unwrap();
 
         let internal_id;
         {
@@ -313,23 +314,23 @@ mod tests {
             internal_id = a.id;
 
             let mut test_timeout = Duration::from_millis(500);
-            while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
+            while test_timeout > Duration::ZERO && !a.is_loaded(reg) {
                 let sleep_time = Duration::from_millis(10);
                 thread::sleep(sleep_time);
                 test_timeout -= sleep_time;
                 reg.update();
             }
 
-            assert!(a.is_loaded(&reg));
-            assert!(!a.is_err(&reg));
+            assert!(a.is_loaded(reg));
+            assert!(!a.is_err(reg));
             assert!(reg.is_loaded(internal_id));
             {
                 let b = a.clone();
                 reg.update();
                 assert_eq!(a, b);
 
-                assert!(b.is_loaded(&reg));
-                assert!(!b.is_err(&reg));
+                assert!(b.is_loaded(reg));
+                assert!(!b.is_err(reg));
                 assert!(reg.is_loaded(internal_id));
             }
         }
@@ -340,6 +341,7 @@ mod tests {
     #[test]
     fn load_error() {
         let (_, mut reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let reg = Arc::get_mut(&mut reg).unwrap();
 
         let internal_id;
         {
@@ -347,15 +349,15 @@ mod tests {
             internal_id = a.id;
 
             let mut test_timeout = Duration::from_millis(500);
-            while test_timeout > Duration::ZERO && !a.is_err(&reg) {
+            while test_timeout > Duration::ZERO && !a.is_err(reg) {
                 let sleep_time = Duration::from_millis(10);
                 thread::sleep(sleep_time);
                 test_timeout -= sleep_time;
                 reg.update();
             }
 
-            assert!(!a.is_loaded(&reg));
-            assert!(a.is_err(&reg));
+            assert!(!a.is_loaded(reg));
+            assert!(a.is_err(reg));
             assert!(!reg.is_loaded(internal_id));
         }
         reg.update();
@@ -365,14 +367,15 @@ mod tests {
     #[test]
     fn load_error_sync() {
         let (_, mut reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let reg = Arc::get_mut(&mut reg).unwrap();
 
         let internal_id;
         {
             let a = reg.load_untyped_sync(ResourceId::new(test_asset::TestAsset::TYPE, 7));
             internal_id = a.id;
 
-            assert!(!a.is_loaded(&reg));
-            assert!(a.is_err(&reg));
+            assert!(!a.is_loaded(reg));
+            assert!(a.is_err(reg));
             assert!(!reg.is_loaded(internal_id));
         }
         reg.update();
@@ -382,13 +385,14 @@ mod tests {
     #[test]
     fn load_dependency() {
         let (parent_id, child_id, mut reg) = setup_dependency_test();
+        let reg = Arc::get_mut(&mut reg).unwrap();
 
         let parent = reg.load_untyped_sync(parent_id);
-        assert!(parent.is_loaded(&reg));
+        assert!(parent.is_loaded(reg));
 
         let child = reg.load_untyped(child_id);
         assert!(
-            child.is_loaded(&reg),
+            child.is_loaded(reg),
             "The dependency should immediately be considered as loaded"
         );
 
@@ -398,7 +402,7 @@ mod tests {
         assert!(reg.get_untyped(parent_id).is_none());
 
         assert!(
-            child.is_loaded(&reg),
+            child.is_loaded(reg),
             "The dependency should be kept alive because of the handle"
         );
 

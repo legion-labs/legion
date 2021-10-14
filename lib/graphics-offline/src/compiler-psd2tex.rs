@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, sync::Arc};
 
 use legion_data_compiler::{
     compiler_api::{
@@ -28,11 +28,12 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .take_registry()
         .add_loader::<legion_graphics_offline::PsdFile>()
         .create();
+    let resources = Arc::get_mut(&mut resources).unwrap();
 
     let resource =
         resources.load_sync::<legion_graphics_offline::PsdFile>(context.source.content_id());
 
-    let resource = resource.get(&resources).unwrap();
+    let resource = resource.get(resources).unwrap();
 
     let mut compiled_resources = vec![];
 

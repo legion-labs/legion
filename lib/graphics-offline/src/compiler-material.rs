@@ -7,7 +7,7 @@ use legion_data_compiler::{
 };
 use legion_data_offline::ResourcePathId;
 use legion_data_runtime::Resource;
-use std::env;
+use std::{env, sync::Arc};
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -27,11 +27,12 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .take_registry()
         .add_loader::<legion_graphics_offline::Material>()
         .create();
+    let resources = Arc::get_mut(&mut resources).unwrap();
 
     let resource =
         resources.load_sync::<legion_graphics_offline::Material>(context.source.content_id());
 
-    let resource = resource.get(&resources).unwrap();
+    let resource = resource.get(resources).unwrap();
 
     let compiled_asset = {
         let mut c: Vec<u8> = vec![];
