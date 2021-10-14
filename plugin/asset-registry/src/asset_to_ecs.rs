@@ -8,7 +8,7 @@ use crate::asset_entities::AssetToEntityMap;
 pub(crate) fn load_ecs_asset<T>(
     asset_id: &ResourceId,
     handle: &HandleUntyped,
-    registry: &ResMut<'_, AssetRegistry>,
+    registry: &mut NonSendMut<'_, AssetRegistry>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
 ) -> bool
@@ -16,12 +16,12 @@ where
     T: AssetToECS + Resource + 'static,
 {
     if asset_id.ty() == T::TYPE {
-        // if let Some(asset) = handle.get_mut::<T>(registry) {
-        //     T::activate_references(asset, registry);
-        // }
+        if let Some(mut asset) = handle.get_mut::<T>(registry) {
+            T::activate_references(&mut asset, registry);
+        }
 
         if let Some(asset) = handle.get::<T>(registry) {
-            let entity = T::create_in_ecs(commands, asset, asset_to_entity_map);
+            let entity = T::create_in_ecs(commands, &asset, asset_to_entity_map);
 
             if let Some(entity_id) = entity {
                 asset_to_entity_map.insert(*asset_id, entity_id);
@@ -42,7 +42,7 @@ where
 }
 
 pub(crate) trait AssetToECS {
-    fn activate_references(_asset: &mut Self, _registry: &ResMut<'_, AssetRegistry>) {}
+    fn activate_references(_asset: &mut Self, _registry: &mut NonSendMut<'_, AssetRegistry>) {}
 
     fn create_in_ecs(
         _commands: &mut Commands<'_, '_>,
@@ -118,7 +118,7 @@ impl AssetToECS for runtime_data::Instance {
 }
 
 impl AssetToECS for legion_graphics_runtime::Material {
-    fn activate_references(material: &mut Self, registry: &ResMut<'_, AssetRegistry>) {
+    fn activate_references(material: &mut Self, registry: &mut NonSendMut<'_, AssetRegistry>) {
         material.albedo.activate(registry).unwrap();
         material.normal.activate(registry).unwrap();
         material.roughness.activate(registry).unwrap();

@@ -95,7 +95,7 @@ impl Plugin for AssetRegistryPlugin {
                     .add_device_cas(Box::new(content_store), manifest)
                     .create();
 
-                app.insert_resource(registry)
+                app.insert_non_send_resource(registry)
                     .insert_resource(AssetLoadingStates::default())
                     .insert_resource(AssetHandles::default())
                     .insert_resource(AssetToEntityMap::default())
@@ -116,7 +116,7 @@ impl Plugin for AssetRegistryPlugin {
 
 impl AssetRegistryPlugin {
     fn setup(
-        mut registry: ResMut<'_, AssetRegistry>,
+        mut registry: NonSendMut<'_, AssetRegistry>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
         settings: ResMut<'_, AssetRegistrySettings>,
@@ -134,7 +134,7 @@ impl AssetRegistryPlugin {
     }
 
     fn load_asset(
-        registry: &mut ResMut<'_, AssetRegistry>,
+        registry: &mut NonSendMut<'_, AssetRegistry>,
         asset_loading_states: &mut ResMut<'_, AssetLoadingStates>,
         asset_handles: &mut ResMut<'_, AssetHandles>,
         asset_id: ResourceId,
@@ -147,12 +147,12 @@ impl AssetRegistryPlugin {
         }
     }
 
-    fn update_registry(mut registry: ResMut<'_, AssetRegistry>) {
+    fn update_registry(mut registry: NonSendMut<'_, AssetRegistry>) {
         registry.update();
     }
 
     fn update_assets(
-        registry: ResMut<'_, AssetRegistry>,
+        mut registry: NonSendMut<'_, AssetRegistry>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
@@ -166,31 +166,31 @@ impl AssetRegistryPlugin {
                         if !load_ecs_asset::<runtime_data::Entity>(
                             asset_id,
                             handle,
-                            &registry,
+                            &mut registry,
                             &mut commands,
                             &mut asset_to_entity_map,
                         ) && !load_ecs_asset::<runtime_data::Instance>(
                             asset_id,
                             handle,
-                            &registry,
+                            &mut registry,
                             &mut commands,
                             &mut asset_to_entity_map,
                         ) && !load_ecs_asset::<legion_graphics_runtime::Material>(
                             asset_id,
                             handle,
-                            &registry,
+                            &mut registry,
                             &mut commands,
                             &mut asset_to_entity_map,
                         ) && !load_ecs_asset::<runtime_data::Mesh>(
                             asset_id,
                             handle,
-                            &registry,
+                            &mut registry,
                             &mut commands,
                             &mut asset_to_entity_map,
                         ) && !load_ecs_asset::<legion_graphics_runtime::Texture>(
                             asset_id,
                             handle,
-                            &registry,
+                            &mut registry,
                             &mut commands,
                             &mut asset_to_entity_map,
                         ) {
