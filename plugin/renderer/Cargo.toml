@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 # graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
 
 [dependencies]
+legion-app = { path = "../../lib/app", version = "0.1.0" }
 graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
 legion-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
 log = "0.4"

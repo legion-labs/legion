@@ -2502,6 +2502,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "graphics-sandbox"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+ "legion-asset-registry",
+ "legion-async",
+ "legion-renderer",
+ "legion-resource-registry",
+]
+
+[[package]]
 name = "group"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3452,6 +3463,7 @@ dependencies = [
 name = "legion-renderer"
 version = "0.1.0"
 dependencies = [
+ "legion-app",
  "legion-codec-api",
  "legion-graphics-api",
  "log",

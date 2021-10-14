@@ -1,0 +1,13 @@
+[package]
+name = "graphics-sandbox"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
+legion-async = { path = "../../plugin/async", version = "0.1.0" }
+legion-resource-registry = { path = "../../plugin/resource-registry", version = "0.1.0" }
+legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }

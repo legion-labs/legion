@@ -1,6 +1,9 @@
 use graphics_api::prelude::*;
 use legion_codec_api::formats::RBGYUVConverter;
 
+mod renderer_plugin;
+pub use renderer_plugin::RendererPlugin;
+
 pub struct Renderer {
     width: u32,
     height: u32,
