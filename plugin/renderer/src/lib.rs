@@ -10,6 +10,7 @@ pub struct Renderer {
     vertex_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
     uniform_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
     render_images: Vec<<DefaultApi as GfxApi>::Texture>,
+    render_views: Vec<<DefaultApi as GfxApi>::TextureView>,
     copy_images: Vec<<DefaultApi as GfxApi>::Texture>,
     descriptor_set_array: <DefaultApi as GfxApi>::DescriptorSetArray,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
@@ -68,7 +69,9 @@ impl Renderer {
         let mut command_buffers = Vec::with_capacity(parallel_render_count);
         let mut vertex_buffers = Vec::with_capacity(parallel_render_count);
         let mut uniform_buffers = Vec::with_capacity(parallel_render_count);
+        let mut uniform_buffer_cbvs = Vec::with_capacity(parallel_render_count);
         let mut render_images = Vec::with_capacity(parallel_render_count);
+        let mut render_views = Vec::with_capacity(parallel_render_count);
         let mut copy_images = Vec::with_capacity(parallel_render_count);
 
         for _ in 0..parallel_render_count {
@@ -96,6 +99,9 @@ impl Renderer {
                 .copy_to_host_visible_buffer(&uniform_data)
                 .unwrap();
 
+            let view_def = BufferViewDef::as_const_buffer(uniform_buffer.buffer_def());
+            let uniform_buffer_cbv = uniform_buffer.create_view(&view_def).unwrap();
+
             let render_image = device_context
                 .create_texture(&TextureDef {
                     extents: Extents3D {
@@ -105,14 +111,17 @@ impl Renderer {
                     },
                     array_length: 1,
                     mip_count: 1,
-                    sample_count: SampleCount::SampleCount1,
                     format: Format::R8G8B8A8_UNORM,
-                    resource_type: ResourceType::TEXTURE | ResourceType::RENDER_TARGET_COLOR,
+                    usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW
+                        | ResourceUsage::HAS_RENDER_TARGET_VIEW,
+                    resource_flags: ResourceFlags::empty(),
                     mem_usage: MemoryUsage::GpuOnly,
-                    dimensions: TextureDimensions::Dim2D,
                     tiling: TextureTiling::Optimal,
                 })
                 .unwrap();
+
+            let render_view_def = TextureViewDef::as_render_target_view(render_image.texture_def());
+            let render_view = render_image.create_view(&render_view_def).unwrap();
 
             let copy_image = device_context
                 .create_texture(&TextureDef {
@@ -123,11 +132,10 @@ impl Renderer {
                     },
                     array_length: 1,
                     mip_count: 1,
-                    sample_count: SampleCount::SampleCount1,
                     format: Format::R8G8B8A8_UNORM,
                     mem_usage: MemoryUsage::GpuToCpu,
-                    resource_type: ResourceType::TEXTURE,
-                    dimensions: TextureDimensions::Dim2D,
+                    usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+                    resource_flags: ResourceFlags::empty(),
                     tiling: TextureTiling::Linear,
                 })
                 .unwrap();
@@ -135,8 +143,10 @@ impl Renderer {
             command_pools.push(command_pool);
             command_buffers.push(command_buffer);
             vertex_buffers.push(vertex_buffer);
+            uniform_buffer_cbvs.push(uniform_buffer_cbv);
             uniform_buffers.push(uniform_buffer);
             render_images.push(render_image);
+            render_views.push(render_view);
             copy_images.push(copy_image);
         }
 
@@ -183,11 +193,12 @@ impl Renderer {
         // from spirv_cross)
         //
         let color_shader_resource = ShaderResource {
-            name: Some("color".to_string()),
+            name: "color".to_string(),
             set_index: 0,
             binding: 0,
-            resource_type: ResourceType::UNIFORM_BUFFER,
-            ..Default::default()
+            shader_resource_type: ShaderResourceType::ConstantBuffer,
+            element_count: 0,
+            used_in_shader_stages: ShaderStageFlags::VERTEX,
         };
 
         let vert_shader_stage_def = ShaderStageDef {
@@ -196,7 +207,8 @@ impl Renderer {
                 entry_point_name: "main".to_string(),
                 shader_stage: ShaderStageFlags::VERTEX,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource.clone()],
+                shader_resources: vec![color_shader_resource],
+                push_constants: Vec::new(),
             },
         };
 
@@ -206,7 +218,8 @@ impl Renderer {
                 entry_point_name: "main".to_string(),
                 shader_stage: ShaderStageFlags::FRAGMENT,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource],
+                shader_resources: Vec::new(),
+                push_constants: Vec::new(),
             },
         };
 
@@ -253,7 +266,7 @@ impl Renderer {
                     array_index: i as u32,
                     descriptor_key: DescriptorKey::Name("color"),
                     elements: DescriptorElements {
-                        buffers: Some(&[&uniform_buffers[i]]),
+                        buffer_views: Some(&[&uniform_buffer_cbvs[i]]),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -313,6 +326,7 @@ impl Renderer {
             vertex_buffers,
             uniform_buffers,
             render_images,
+            render_views,
             copy_images,
             descriptor_set_array,
             root_signature,
@@ -351,6 +365,7 @@ impl Renderer {
         // Acquire swapchain image
         //
         let render_texture = &self.render_images[frame_idx % 2];
+        let render_view = &self.render_views[frame_idx % 2];
 
         //
         // Use the command pool/buffer assigned to this frame
@@ -391,16 +406,10 @@ impl Renderer {
         cmd_buffer
             .cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
-                    texture: render_texture,
+                    texture_view: render_view,
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
-                    array_slice: None,
-                    mip_slice: None,
                     clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
-                    resolve_target: None,
-                    resolve_store_op: StoreOp::DontCare,
-                    resolve_mip_slice: None,
-                    resolve_array_slice: None,
                 }],
                 None,
             )

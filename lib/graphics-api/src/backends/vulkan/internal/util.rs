@@ -1,7 +1,7 @@
 use crate::backends::vulkan::VulkanDeviceContext;
 use crate::{
     BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format,
-    PipelineType, QueueType, RasterizerState, ResourceState, ResourceType,
+    PipelineType, QueueType, RasterizerState, ResourceState, ResourceUsage, ShaderResourceType,
 };
 use ash::vk;
 
@@ -15,53 +15,30 @@ pub(crate) fn pipeline_type_pipeline_bind_point(
 }
 
 pub(crate) fn resource_type_buffer_usage_flags(
-    resource_type: ResourceType,
-    has_format: bool,
+    resource_usage: ResourceUsage,
 ) -> vk::BufferUsageFlags {
     let mut usage_flags = vk::BufferUsageFlags::TRANSFER_SRC;
 
-    if resource_type.intersects(ResourceType::UNIFORM_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW) {
         usage_flags |= vk::BufferUsageFlags::UNIFORM_BUFFER;
     }
 
-    if resource_type.intersects(ResourceType::BUFFER_READ_WRITE) {
+    if resource_usage.intersects(
+        ResourceUsage::HAS_UNORDERED_ACCESS_VIEW | ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+    ) {
         usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
-        if has_format {
-            usage_flags |= vk::BufferUsageFlags::STORAGE_TEXEL_BUFFER;
-        }
     }
 
-    if resource_type.intersects(ResourceType::BUFFER) {
-        usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
-        if has_format {
-            usage_flags |= vk::BufferUsageFlags::UNIFORM_TEXEL_BUFFER;
-        }
-    }
-
-    if resource_type.intersects(ResourceType::INDEX_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::HAS_INDEX_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::INDEX_BUFFER;
     }
 
-    if resource_type.intersects(ResourceType::VERTEX_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::HAS_VERTEX_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::VERTEX_BUFFER;
     }
 
-    if resource_type.intersects(ResourceType::INDIRECT_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::HAS_INDIRECT_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::INDIRECT_BUFFER;
-    }
-
-    usage_flags
-}
-
-pub(crate) fn resource_type_image_usage_flags(resource_type: ResourceType) -> vk::ImageUsageFlags {
-    let mut usage_flags = vk::ImageUsageFlags::empty();
-
-    if resource_type.intersects(ResourceType::TEXTURE) {
-        usage_flags |= vk::ImageUsageFlags::SAMPLED;
-    }
-
-    if resource_type.intersects(ResourceType::TEXTURE_READ_WRITE) {
-        usage_flags |= vk::ImageUsageFlags::STORAGE;
     }
 
     usage_flags
@@ -90,19 +67,24 @@ pub(crate) fn image_format_to_aspect_mask(
     }
 }
 
-pub fn resource_type_to_descriptor_type(resource_type: ResourceType) -> Option<vk::DescriptorType> {
-    match resource_type {
-        ResourceType::SAMPLER => Some(vk::DescriptorType::SAMPLER),
-        ResourceType::TEXTURE => Some(vk::DescriptorType::SAMPLED_IMAGE),
-        ResourceType::UNIFORM_BUFFER => Some(vk::DescriptorType::UNIFORM_BUFFER),
-        ResourceType::TEXTURE_READ_WRITE => Some(vk::DescriptorType::STORAGE_IMAGE),
-        ResourceType::BUFFER | ResourceType::BUFFER_READ_WRITE => {
-            Some(vk::DescriptorType::STORAGE_BUFFER)
-        }
-        ResourceType::INPUT_ATTACHMENT => Some(vk::DescriptorType::INPUT_ATTACHMENT),
-        ResourceType::TEXEL_BUFFER => Some(vk::DescriptorType::UNIFORM_TEXEL_BUFFER),
-        ResourceType::TEXEL_BUFFER_READ_WRITE => Some(vk::DescriptorType::STORAGE_TEXEL_BUFFER),
-        _ => None,
+pub fn shader_resource_type_to_descriptor_type(
+    shader_resource_type: ShaderResourceType,
+) -> Option<vk::DescriptorType> {
+    match shader_resource_type {
+        ShaderResourceType::Sampler => Some(vk::DescriptorType::SAMPLER),
+        ShaderResourceType::ConstantBuffer => Some(vk::DescriptorType::UNIFORM_BUFFER),
+        ShaderResourceType::StructuredBuffer
+        | ShaderResourceType::RWStructuredBuffer
+        | ShaderResourceType::ByteAdressBuffer
+        | ShaderResourceType::RWByteAdressBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
+        ShaderResourceType::Texture2D
+        | ShaderResourceType::Texture2DArray
+        | ShaderResourceType::Texture3D
+        | ShaderResourceType::TextureCube
+        | ShaderResourceType::TextureCubeArray => Some(vk::DescriptorType::SAMPLED_IMAGE),
+        ShaderResourceType::RWTexture2D
+        | ShaderResourceType::RWTexture2DArray
+        | ShaderResourceType::RWTexture3D => Some(vk::DescriptorType::STORAGE_IMAGE),
     }
 }
 

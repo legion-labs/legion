@@ -177,63 +177,8 @@ bitflags::bitflags! {
     /// Indicates how a resource will be used. In some cases, multiple flags are allowed.
     #[derive(Default)]
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-    pub struct ResourceType: u32 {
-        const UNDEFINED = 0;
-        const SAMPLER = 1<<0;
-        /// Similar to DX12 SRV and vulkan SAMPLED image usage flag and SAMPLED_IMAGE descriptor type
-        const TEXTURE = 1<<1;
-        /// Similar to DX12 UAV and vulkan STORAGE image usage flag and STORAGE_IMAGE descriptor type
-        const TEXTURE_READ_WRITE = 1<<2;
-        /// Similar to DX12 SRV and vulkan STORAGE_BUFFER descriptor type
-        const BUFFER = 1<<3;
-        /// Similar to DX12 UAV and vulkan STORAGE_BUFFER descriptor type
-        const BUFFER_READ_WRITE = 1<<5;
-        /// Similar to vulkan UNIFORM_BUFFER descriptor type
-        const UNIFORM_BUFFER = 1<<7;
-        // Push constant / Root constant
-        /// Similar to DX12 root constants and vulkan push constants
-        const ROOT_CONSTANT = 1<<8;
-        // Input assembler
-        /// Similar to vulkan VERTEX_BUFFER buffer usage flag
-        const VERTEX_BUFFER = 1<<9;
-        /// Similar to vulkan INDEX_BUFFER buffer usage flag
-        const INDEX_BUFFER = 1<<10;
-        /// Similar to vulkan INDIRECT_BUFFER buffer usage flag
-        const INDIRECT_BUFFER = 1<<11;
-        // Cubemap SRV
-        /// Similar to vulkan's CUBE_COMPATIBLE image create flag and metal's Cube texture type
-        const TEXTURE_CUBE = 1<<12 | Self::TEXTURE.bits();
-        // RTV
-        const RENDER_TARGET_MIP_SLICES = 1<<13;
-        const RENDER_TARGET_ARRAY_SLICES = 1<<14;
-        const RENDER_TARGET_DEPTH_SLICES = 1<<15;
-        // Vulkan-only stuff
-        const INPUT_ATTACHMENT = 1<<16;
-        const TEXEL_BUFFER = 1<<17;
-        const TEXEL_BUFFER_READ_WRITE = 1<<18;
-        // Render target types
-        /// A color attachment in a renderpass
-        const RENDER_TARGET_COLOR = 1<<19;
-        /// A depth/stencil attachment in a renderpass
-        const RENDER_TARGET_DEPTH_STENCIL = 1<<20;
-    }
-}
-
-impl ResourceType {
-    pub fn is_uniform_buffer(self) -> bool {
-        self.intersects(Self::UNIFORM_BUFFER)
-    }
-
-    pub fn is_storage_buffer(self) -> bool {
-        self.intersects(Self::BUFFER | Self::BUFFER_READ_WRITE)
-    }
-
-    pub fn is_render_target(self) -> bool {
-        self.intersects(Self::RENDER_TARGET_COLOR | Self::RENDER_TARGET_DEPTH_STENCIL)
-    }
-
-    pub fn is_texture(self) -> bool {
-        self.intersects(Self::TEXTURE | Self::TEXTURE_READ_WRITE)
+    pub struct ResourceFlags: u32 {
+        const TEXTURE_CUBE = 1<<12;
     }
 }
 
@@ -324,10 +269,8 @@ bitflags::bitflags! {
 bitflags::bitflags! {
     /// Indicates a particular stage of a shader, or set of stages in a shader. Similar to
     /// VkShaderStageFlagBits
-    #[derive(Default)]
     #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
     pub struct ShaderStageFlags : u32 {
-        const NONE = 0;
         const VERTEX = 1;
         const TESSELLATION_CONTROL = 2;
         const TESSELLATION_EVALUATION = 4;
@@ -703,6 +646,7 @@ impl<'a, A: GfxApi> TextureBarrier<'a, A> {
 /// Represents an image owned by the swapchain
 pub struct SwapchainImage<A: GfxApi> {
     pub texture: A::Texture,
+    pub render_target_view: A::TextureView,
     pub swapchain_image_index: u32,
 }
 
@@ -710,6 +654,7 @@ impl<A: GfxApi> Clone for SwapchainImage<A> {
     fn clone(&self) -> Self {
         Self {
             texture: self.texture.clone(),
+            render_target_view: self.render_target_view.clone(),
             swapchain_image_index: self.swapchain_image_index,
         }
     }
@@ -718,28 +663,20 @@ impl<A: GfxApi> Clone for SwapchainImage<A> {
 /// A color render target bound during a renderpass
 #[derive(Debug)]
 pub struct ColorRenderTargetBinding<'a, A: GfxApi> {
-    pub texture: &'a A::Texture,
+    pub texture_view: &'a A::TextureView,
     pub load_op: LoadOp,
     pub store_op: StoreOp,
-    pub mip_slice: Option<u8>,
-    pub array_slice: Option<u16>,
     pub clear_value: ColorClearValue,
-    pub resolve_target: Option<&'a A::Texture>,
-    pub resolve_store_op: StoreOp,
-    pub resolve_mip_slice: Option<u8>,
-    pub resolve_array_slice: Option<u16>,
 }
 
 /// A depth/stencil render target to be bound during a renderpass
 #[derive(Debug)]
 pub struct DepthStencilRenderTargetBinding<'a, A: GfxApi> {
-    pub texture: &'a A::Texture,
+    pub texture_view: &'a A::TextureView,
     pub depth_load_op: LoadOp,
     pub stencil_load_op: LoadOp,
     pub depth_store_op: StoreOp,
     pub stencil_store_op: StoreOp,
-    pub mip_slice: Option<u8>,
-    pub array_slice: Option<u16>,
     pub clear_value: DepthStencilClearValue,
 }
 
@@ -818,34 +755,17 @@ pub struct OffsetSize {
 /// Specifies what value to assign to a descriptor set
 #[derive(Debug)]
 pub struct DescriptorElements<'a, A: GfxApi> {
-    pub textures: Option<&'a [&'a A::Texture]>,
     pub samplers: Option<&'a [&'a A::Sampler]>,
-    pub buffers: Option<&'a [&'a A::Buffer]>,
-    pub buffer_offset_sizes: Option<&'a [OffsetSize]>,
+    pub buffer_views: Option<&'a [&'a A::BufferView]>,
 }
 
 impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
     fn default() -> Self {
         Self {
-            textures: None,
             samplers: None,
-            buffers: None,
-            buffer_offset_sizes: None,
+            buffer_views: None,
         }
     }
-}
-
-/// Used when binding a texture to select between different ways to bind the texture
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum TextureBindType {
-    // Color or depth only
-    Srv,
-    // stencil?
-    SrvStencil,
-    // Bind all mip levels of the 0th provided texture
-    UavMipChain,
-    // Bind a particular mip slice of all provided textures
-    UavMipSlice(u32),
 }
 
 /// Describes how to update a single descriptor
@@ -855,8 +775,6 @@ pub struct DescriptorUpdate<'a, A: GfxApi> {
     pub descriptor_key: DescriptorKey<'a>,
     pub elements: DescriptorElements<'a, A>,
     pub dst_element_offset: u32,
-    // Srv when read-only, UavMipSlice(0) when read-write
-    pub texture_bind_type: Option<TextureBindType>,
 }
 
 impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {
@@ -866,7 +784,6 @@ impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {
             descriptor_key: DescriptorKey::Undefined,
             elements: DescriptorElements::default(),
             dst_element_offset: 0,
-            texture_bind_type: None,
         }
     }
 }

@@ -1,18 +1,16 @@
-use super::{internal::*, VulkanApi};
 use crate::{
     BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext,
-    DeviceInfo, Fence, Format, GfxResult, GraphicsPipelineDef, QueueType, ResourceType,
-    RootSignatureDef, SampleCount, SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef,
-    TextureDef,
+    DeviceInfo, Fence, GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef, SamplerDef,
+    ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
 };
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::{Arc, Mutex};
 
 use super::{
-    VulkanBuffer, VulkanDescriptorSetArray, VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline,
-    VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
-    VulkanShaderModule, VulkanSwapchain, VulkanTexture,
+    internal::*, VulkanApi, VulkanBuffer, VulkanDescriptorSetArray, VulkanDescriptorSetLayout,
+    VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore,
+    VulkanShader, VulkanShaderModule, VulkanSwapchain, VulkanTexture,
 };
 
 use ash::extensions::khr;
@@ -213,10 +211,10 @@ impl VulkanDeviceContextInner {
 }
 
 pub struct VulkanDeviceContext {
-    pub(crate) inner: Arc<VulkanDeviceContextInner>,
+    pub(super) inner: Arc<VulkanDeviceContextInner>,
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
-    pub(crate) create_index: u64,
+    pub(super) create_index: u64,
 }
 
 impl std::fmt::Debug for VulkanDeviceContext {
@@ -426,96 +424,6 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
     fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<VulkanShaderModule> {
         VulkanShaderModule::new(self, data)
     }
-
-    // // Just expects bytes with no particular alignment requirements, suitable for reading from a file
-    // pub fn create_shader_module_from_bytes(
-    //     &self,
-    //     data: &[u8],
-    // ) -> GfxResult<VulkanShaderModule> {
-    //     VulkanShaderModule::new_from_bytes(self, data)
-    // }
-    //
-    // // Expects properly aligned, correct endianness, valid SPV
-    // pub fn create_shader_module_from_spv(
-    //     &self,
-    //     spv: &[u32],
-    // ) -> GfxResult<VulkanShaderModule> {
-    //     VulkanShaderModule::new_from_spv(self, spv)
-    // }
-
-    fn find_supported_format(
-        &self,
-        candidates: &[Format],
-        resource_type: ResourceType,
-    ) -> Option<Format> {
-        let mut features = vk::FormatFeatureFlags::empty();
-        if resource_type.intersects(ResourceType::RENDER_TARGET_COLOR) {
-            features |= vk::FormatFeatureFlags::COLOR_ATTACHMENT;
-        }
-
-        if resource_type.intersects(ResourceType::RENDER_TARGET_DEPTH_STENCIL) {
-            features |= vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT;
-        }
-
-        do_find_supported_format(
-            &self.inner.instance,
-            self.inner.physical_device,
-            candidates,
-            vk::ImageTiling::OPTIMAL,
-            features,
-        )
-    }
-
-    fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount> {
-        do_find_supported_sample_count(self.limits(), candidates)
-    }
-}
-
-pub fn do_find_supported_format(
-    instance: &ash::Instance,
-    physical_device: vk::PhysicalDevice,
-    candidates: &[Format],
-    image_tiling: vk::ImageTiling,
-    features: vk::FormatFeatureFlags,
-) -> Option<Format> {
-    for &candidate in candidates {
-        let props = unsafe {
-            instance.get_physical_device_format_properties(physical_device, candidate.into())
-        };
-
-        let is_supported = match image_tiling {
-            vk::ImageTiling::LINEAR => (props.linear_tiling_features & features) == features,
-            vk::ImageTiling::OPTIMAL => (props.optimal_tiling_features & features) == features,
-            _ => unreachable!(),
-        };
-
-        if is_supported {
-            return Some(candidate);
-        }
-    }
-
-    None
-}
-
-fn do_find_supported_sample_count(
-    limits: &vk::PhysicalDeviceLimits,
-    sample_count_priority: &[SampleCount],
-) -> Option<SampleCount> {
-    for &sample_count in sample_count_priority {
-        let vk_sample_count: vk::SampleCountFlags = sample_count.into();
-        if (vk_sample_count.as_raw()
-            & limits.framebuffer_depth_sample_counts.as_raw()
-            & limits.framebuffer_color_sample_counts.as_raw())
-            != 0
-        {
-            log::trace!("Sample count {:?} is supported", sample_count);
-            return Some(sample_count);
-        } else {
-            log::trace!("Sample count {:?} is unsupported", sample_count);
-        }
-    }
-
-    None
 }
 
 fn choose_physical_device(

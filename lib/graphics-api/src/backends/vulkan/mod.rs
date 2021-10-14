@@ -36,14 +36,20 @@ pub use texture::*;
 mod buffer;
 pub use buffer::*;
 
+mod sampler;
+pub use sampler::*;
+
+mod buffer_view;
+pub use buffer_view::*;
+
+mod texture_view;
+pub use texture_view::*;
+
 mod root_signature;
 pub use root_signature::*;
 
 mod pipeline;
 pub use pipeline::*;
-
-mod sampler;
-pub use sampler::*;
 
 mod descriptor_set_array;
 pub use descriptor_set_array::*;

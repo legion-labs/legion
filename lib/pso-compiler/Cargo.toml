@@ -9,4 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", branch = "com_to_tinycom" }
-rspirv-reflect = "0.5"
+graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
+spirv-reflect = "0.2"
+spirv-tools = "0.7"
+anyhow = "1"

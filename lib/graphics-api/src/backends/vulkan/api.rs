@@ -1,8 +1,9 @@
 use super::{
-    internal::*, VulkanBuffer, VulkanCommandBuffer, VulkanCommandPool, VulkanDescriptorSetArray,
-    VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline, VulkanQueue,
-    VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule,
-    VulkanSwapchain, VulkanTexture,
+    internal::*, VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
+    VulkanCommandPool, VulkanDescriptorSetArray, VulkanDescriptorSetHandle,
+    VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature,
+    VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule, VulkanSwapchain,
+    VulkanTexture, VulkanTextureView,
 };
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
@@ -106,6 +107,9 @@ impl GfxApi for VulkanApi {
     type Buffer = VulkanBuffer;
     type Texture = VulkanTexture;
     type Sampler = VulkanSampler;
+    type BufferMappingInfo = VulkanBufferMappingInfo;
+    type BufferView = VulkanBufferView;
+    type TextureView = VulkanTextureView;
     type ShaderModule = VulkanShaderModule;
     type Shader = VulkanShader;
     type DescriptorSetLayout = VulkanDescriptorSetLayout;

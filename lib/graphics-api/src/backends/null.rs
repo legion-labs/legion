@@ -3,7 +3,7 @@
 #![allow(unused_variables)]
 #![allow(clippy::unimplemented)]
 
-use crate::prelude::*;
+use crate::{prelude::*, BufferMappingInfo};
 use raw_window_handle::HasRawWindowHandle;
 
 //
@@ -24,6 +24,9 @@ impl GfxApi for NullApi {
     type Buffer = NullBuffer;
     type Texture = NullTexture;
     type Sampler = NullSampler;
+    type BufferMappingInfo = NullBufferMappingInfo;
+    type BufferView = NullBufferView;
+    type TextureView = NullTextureView;
     type ShaderModule = NullShaderModule;
     type Shader = NullShader;
     type DescriptorSetLayout = NullDescriptorSetLayout;
@@ -111,35 +114,27 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     fn wait_for_fences(&self, fences: &[&NullFence]) -> GfxResult<()> {
         unimplemented!();
     }
-
-    fn find_supported_format(
-        &self,
-        candidates: &[Format],
-        resource_type: ResourceType,
-    ) -> Option<Format> {
-        unimplemented!();
-    }
-    fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount> {
-        unimplemented!();
-    }
 }
 
 //
 // Resources (Buffers, Textures, Samplers)
 //
+
+pub struct NullBufferMappingInfo;
+
+impl BufferMappingInfo<NullApi> for NullBufferMappingInfo {
+    fn data_ptr(&self) -> *mut u8 {
+        unimplemented!()
+    }
+}
+
 #[derive(Debug)]
 pub struct NullBuffer;
 impl Buffer<NullApi> for NullBuffer {
     fn buffer_def(&self) -> &BufferDef {
         unimplemented!()
     }
-    fn map_buffer(&self) -> GfxResult<*mut u8> {
-        unimplemented!()
-    }
-    fn unmap_buffer(&self) -> GfxResult<()> {
-        unimplemented!()
-    }
-    fn mapped_memory(&self) -> Option<*mut u8> {
+    fn map_buffer(&self) -> GfxResult<NullBufferMappingInfo> {
         unimplemented!()
     }
     fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()> {
@@ -150,6 +145,9 @@ impl Buffer<NullApi> for NullBuffer {
         data: &[T],
         buffer_byte_offset: u64,
     ) -> GfxResult<()> {
+        unimplemented!()
+    }
+    fn create_view(&self, cbv_def: &BufferViewDef) -> GfxResult<NullBufferView> {
         unimplemented!()
     }
 }
@@ -166,11 +164,41 @@ impl Texture<NullApi> for NullTexture {
     fn unmap_texture(&self) -> GfxResult<()> {
         unimplemented!()
     }
+    fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<NullTextureView> {
+        unimplemented!()
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct NullSampler;
 impl Sampler<NullApi> for NullSampler {}
+
+//
+// Views
+//
+#[derive(Clone, Debug)]
+pub struct NullBufferView;
+impl BufferView<NullApi> for NullBufferView {
+    fn buffer(&self) -> &NullBuffer {
+        unimplemented!();
+    }
+
+    fn view_def(&self) -> &BufferViewDef {
+        unimplemented!();
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct NullTextureView;
+impl TextureView<NullApi> for NullTextureView {
+    fn texture(&self) -> &NullTexture {
+        unimplemented!();
+    }
+
+    fn view_def(&self) -> &TextureViewDef {
+        unimplemented!();
+    }
+}
 
 //
 // Shaders/Pipelines
@@ -364,7 +392,13 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     ) -> GfxResult<()> {
         unimplemented!()
     }
-
+    fn cmd_push_constants<T: Sized>(
+        &self,
+        root_signature: &NullRootSignature,
+        constants: &T,
+    ) -> GfxResult<()> {
+        unimplemented!()
+    }
     fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) -> GfxResult<()> {
         unimplemented!()
     }

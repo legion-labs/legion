@@ -28,6 +28,7 @@ pub(crate) use renderpass_cache::*;
 mod resource_cache;
 pub(crate) use resource_cache::*;
 
-pub(crate) mod util;
+mod util;
+pub(crate) use util::*;
 
 pub mod conversions;

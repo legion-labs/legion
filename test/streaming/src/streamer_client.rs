@@ -105,7 +105,9 @@ fn run() -> GfxResult<()> {
         let mut command_buffers = Vec::with_capacity(parallel_render_count);
         let mut vertex_buffers = Vec::with_capacity(parallel_render_count);
         let mut uniform_buffers = Vec::with_capacity(parallel_render_count);
+        let mut uniform_buffer_cbvs = Vec::with_capacity(parallel_render_count);
         let mut render_images = Vec::with_capacity(parallel_render_count);
+        let mut render_views = Vec::with_capacity(parallel_render_count);
         let mut copy_images = Vec::with_capacity(parallel_render_count);
 
         let mut file_h264 = std::fs::File::create("D:/test.h264").unwrap();
@@ -125,6 +127,9 @@ fn run() -> GfxResult<()> {
                 .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
+            let view_def = BufferViewDef::as_const_buffer(uniform_buffer.buffer_def());
+            let uniform_buffer_cbv = uniform_buffer.create_view(&view_def)?;
+
             let render_image = device_context.create_texture(&TextureDef {
                 extents: Extents3D {
                     width: TARGET_WIDTH,
@@ -133,13 +138,19 @@ fn run() -> GfxResult<()> {
                 },
                 array_length: 1,
                 mip_count: 1,
-                sample_count: SampleCount::SampleCount1,
+                // sample_count: SampleCount::SampleCount1,
                 format: Format::R8G8B8A8_UNORM,
-                resource_type: ResourceType::TEXTURE | ResourceType::RENDER_TARGET_COLOR,
+                usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW
+                    | ResourceUsage::HAS_RENDER_TARGET_VIEW,
+                resource_flags: ResourceFlags::empty(),
                 mem_usage: MemoryUsage::GpuOnly,
-                dimensions: TextureDimensions::Dim2D,
+                // dimensions: TextureDimensions::Dim2D,
                 tiling: TextureTiling::Optimal,
             })?;
+
+            let render_view = render_image.create_view(&TextureViewDef::as_render_target_view(
+                render_image.texture_def(),
+            ))?;
 
             let copy_image = device_context.create_texture(&TextureDef {
                 extents: Extents3D {
@@ -149,11 +160,10 @@ fn run() -> GfxResult<()> {
                 },
                 array_length: 1,
                 mip_count: 1,
-                sample_count: SampleCount::SampleCount1,
                 format: Format::R8G8B8A8_UNORM,
                 mem_usage: MemoryUsage::GpuToCpu,
-                resource_type: ResourceType::TEXTURE,
-                dimensions: TextureDimensions::Dim2D,
+                usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+                resource_flags: ResourceFlags::empty(),
                 tiling: TextureTiling::Linear,
             })?;
 
@@ -161,7 +171,9 @@ fn run() -> GfxResult<()> {
             command_buffers.push(command_buffer);
             vertex_buffers.push(vertex_buffer);
             uniform_buffers.push(uniform_buffer);
+            uniform_buffer_cbvs.push(uniform_buffer_cbv);
             render_images.push(render_image);
+            render_views.push(render_view);
             copy_images.push(copy_image);
         }
 
@@ -205,12 +217,14 @@ fn run() -> GfxResult<()> {
         // (But see the shader pipeline in higher-level rafx crates for example usage, generated
         // from spirv_cross)
         //
+
         let color_shader_resource = ShaderResource {
-            name: Some("color".to_string()),
+            name: "color".to_owned(),
             set_index: 0,
             binding: 0,
-            resource_type: ResourceType::UNIFORM_BUFFER,
-            ..Default::default()
+            shader_resource_type: ShaderResourceType::ConstantBuffer,
+            element_count: 0,
+            used_in_shader_stages: ShaderStageFlags::VERTEX,
         };
 
         let vert_shader_stage_def = ShaderStageDef {
@@ -219,7 +233,8 @@ fn run() -> GfxResult<()> {
                 entry_point_name: "main".to_string(),
                 shader_stage: ShaderStageFlags::VERTEX,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource.clone()],
+                shader_resources: vec![color_shader_resource],
+                push_constants: Vec::new(),
             },
         };
 
@@ -229,7 +244,8 @@ fn run() -> GfxResult<()> {
                 entry_point_name: "main".to_string(),
                 shader_stage: ShaderStageFlags::FRAGMENT,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource],
+                shader_resources: Vec::new(),
+                push_constants: Vec::new(),
             },
         };
 
@@ -243,6 +259,7 @@ fn run() -> GfxResult<()> {
             device_context,
             &[shader.clone()],
         )?;
+
         //
         // Create the root signature object - it represents the pipeline layout and can be shared among
         // shaders. But one per shader is fine.
@@ -270,7 +287,7 @@ fn run() -> GfxResult<()> {
                 array_index: i as u32,
                 descriptor_key: DescriptorKey::Name("color"),
                 elements: DescriptorElements {
-                    buffers: Some(&[&uniform_buffers[i]]),
+                    buffer_views: Some(&[&uniform_buffer_cbvs[i]]),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -338,6 +355,7 @@ fn run() -> GfxResult<()> {
             // Acquire swapchain image
             //
             let render_texture = &render_images[i % 2];
+            let render_view = &render_views[i % 2];
 
             //
             // Use the command pool/buffer assigned to this frame
@@ -378,16 +396,10 @@ fn run() -> GfxResult<()> {
             cmd_buffer
                 .cmd_begin_render_pass(
                     &[ColorRenderTargetBinding {
-                        texture: render_texture,
+                        texture_view: render_view,
                         load_op: LoadOp::Clear,
                         store_op: StoreOp::Store,
-                        array_slice: None,
-                        mip_slice: None,
                         clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
-                        resolve_target: None,
-                        resolve_store_op: StoreOp::DontCare,
-                        resolve_mip_slice: None,
-                        resolve_array_slice: None,
                     }],
                     None,
                 )

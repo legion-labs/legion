@@ -19,6 +19,7 @@ fn run() -> GfxResult<()> {
 #[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
     use presenter::window::*;
+    use pso_compiler::{CompileParams, HLSLCompiler, ShaderSource};
     const WINDOW_WIDTH: u32 = 900;
     const WINDOW_HEIGHT: u32 = 600;
 
@@ -87,18 +88,6 @@ fn run() -> GfxResult<()> {
         let graphics_queue_cloned = graphics_queue.clone();
 
         //
-        // Some default data we can render
-        //
-        #[rustfmt::skip]
-        let vertex_data = [
-            0.0f32, 0.5, 1.0, 0.0, 0.0,
-            -0.5, -0.5, 0.0, 1.0, 0.0,
-            0.5, 0.5, 0.0, 0.0, 1.0,
-        ];
-
-        let uniform_data = [1.0f32, 0.0, 1.0, 1.0];
-
-        //
         // Create command pools/command buffers. The command pools need to be immutable while they are
         // being processed by a queue, so create one per swapchain image.
         //
@@ -111,8 +100,6 @@ fn run() -> GfxResult<()> {
         //
         let mut command_pools = Vec::with_capacity(swapchain_helper.image_count());
         let mut command_buffers = Vec::with_capacity(swapchain_helper.image_count());
-        let mut vertex_buffers = Vec::with_capacity(swapchain_helper.image_count());
-        let mut uniform_buffers = Vec::with_capacity(swapchain_helper.image_count());
 
         for _ in 0..swapchain_helper.image_count() {
             let command_pool =
@@ -122,18 +109,8 @@ fn run() -> GfxResult<()> {
                 is_secondary: false,
             })?;
 
-            let vertex_buffer = device_context
-                .create_buffer(&BufferDef::for_staging_vertex_buffer_data(&vertex_data))?;
-            vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
-
-            let uniform_buffer = device_context
-                .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))?;
-            uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
-
             command_pools.push(command_pool);
             command_buffers.push(command_buffer);
-            vertex_buffers.push(vertex_buffer);
-            uniform_buffers.push(uniform_buffer);
         }
 
         //
@@ -156,15 +133,41 @@ fn run() -> GfxResult<()> {
         // The resulting shader modules represent a loaded shader GPU object that is used to create
         // shaders. Shader modules can be discarded once the graphics pipeline is built.
         //
+        let compiler = HLSLCompiler::new().map_err(|e| e.to_string())?;
 
-        let vert_shader_package =
-            ShaderPackage::SpirV(include_bytes!("shaders/shader.vert.spv").to_vec());
+        let legion_folder = std::env::current_dir()?;
+        let test_data_folder = legion_folder.join("test/test_data/shaders/");
+        let test_hlsl_file = test_data_folder.join("test.hlsl");
 
-        let frag_shader_package =
-            ShaderPackage::SpirV(include_bytes!("shaders/shader.frag.spv").to_vec());
+        let compile_params = CompileParams {
+            shader_source: ShaderSource::Path(&test_hlsl_file),
+            entry_point: "main_vs",
+            target_profile: "vs_6_1",
+            defines: Vec::new(),
+        };
+
+        let vs_out = compiler
+            .compile(&compile_params)
+            .map_err(|e| e.to_string())?;
+
+        let compile_params = CompileParams {
+            shader_source: ShaderSource::Path(&test_hlsl_file),
+            entry_point: "main_ps",
+            target_profile: "ps_6_1",
+            defines: Vec::new(),
+        };
+
+        let ps_out = compiler
+            .compile(&compile_params)
+            .map_err(|e| e.to_string())?;
+
+        let vert_shader_package = ShaderPackage::SpirV(vs_out.bytecode);
+
+        let frag_shader_package = ShaderPackage::SpirV(ps_out.bytecode);
 
         let vert_shader_module =
             device_context.create_shader_module(vert_shader_package.module_def())?;
+
         let frag_shader_module =
             device_context.create_shader_module(frag_shader_package.module_def())?;
 
@@ -176,32 +179,15 @@ fn run() -> GfxResult<()> {
         // (But see the shader pipeline in higher-level rafx crates for example usage, generated
         // from spirv_cross)
         //
-        let color_shader_resource = ShaderResource {
-            name: Some("color".to_string()),
-            set_index: 0,
-            binding: 0,
-            resource_type: ResourceType::UNIFORM_BUFFER,
-            ..Default::default()
-        };
 
         let vert_shader_stage_def = ShaderStageDef {
             shader_module: vert_shader_module,
-            reflection: ShaderStageReflection {
-                entry_point_name: "main".to_string(),
-                shader_stage: ShaderStageFlags::VERTEX,
-                compute_threads_per_group: None,
-                resources: vec![color_shader_resource.clone()],
-            },
+            reflection: vs_out.refl_info.unwrap(),
         };
 
         let frag_shader_stage_def = ShaderStageDef {
             shader_module: frag_shader_module,
-            reflection: ShaderStageReflection {
-                entry_point_name: "main".to_string(),
-                shader_stage: ShaderStageFlags::FRAGMENT,
-                compute_threads_per_group: None,
-                resources: vec![color_shader_resource],
-            },
+            reflection: ps_out.refl_info.unwrap(),
         };
 
         //
@@ -233,6 +219,66 @@ fn run() -> GfxResult<()> {
         let root_signature = device_context.create_root_signature(&root_signature_def)?;
 
         //
+        // Create command pools/command buffers. The command pools need to be immutable while they are
+        // being processed by a queue, so create one per swapchain image.
+        //
+        // Create vertex buffers (with position/color information) and a uniform buffers that we
+        // can bind to pass additional info.
+        //
+        // In this demo, the color data in the shader is pulled from
+        // the uniform instead of the vertex buffer. Buffers also need to be immutable while
+        // processed, so we need one per swapchain image
+        //
+        let mut vertex_buffers = Vec::with_capacity(swapchain_helper.image_count());
+        let mut uniform_buffers = Vec::with_capacity(swapchain_helper.image_count());
+        let mut uniform_buffer_cbvs = Vec::with_capacity(swapchain_helper.image_count());
+
+        #[repr(C)]
+        #[derive(Clone, Copy)]
+        struct VertexColor_SB {
+            foo: [f32; 3],
+            color: [f32; 4],
+            bar: f32,
+        }
+
+        for _ in 0..swapchain_helper.image_count() {
+            #[rustfmt::skip]
+            let vertex_data = [
+                0.0f32, 0.5, 1.0, 0.0, 0.0,
+                -0.5, -0.5, 0.0, 1.0, 0.0,
+                0.5, 0.5, 0.0, 0.0, 1.0,
+            ];
+
+            let uniform_data = [VertexColor_SB {
+                foo: [0.0, 1.0, 2.0],
+                color: [1.0f32, 0.0, 1.0, 1.0],
+                bar: 7f32,
+            }];
+
+            let vertex_buffer = device_context
+                .create_buffer(&BufferDef::for_staging_vertex_buffer_data(&vertex_data))?;
+            vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
+
+            let uniform_buffer =
+                device_context.create_buffer(&BufferDef::for_staging_buffer_data(
+                    &uniform_data,
+                    ResourceUsage::HAS_CONST_BUFFER_VIEW | ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+                ))?;
+            uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
+
+            let view_def = BufferViewDef::as_structured_buffer(
+                uniform_buffer.buffer_def(),
+                std::mem::size_of::<VertexColor_SB>() as u64,
+                true,
+            );
+            let uniform_buffer_cbv = uniform_buffer.create_view(&view_def)?;
+
+            vertex_buffers.push(vertex_buffer);
+            uniform_buffers.push(uniform_buffer);
+            uniform_buffer_cbvs.push(uniform_buffer_cbv);
+        }
+
+        //
         // Descriptors are allocated in blocks and never freed. Normally you will want to build a
         // pooling system around this. (Higher-level rafx crates provide this.) But they're small
         // and cheap. We need one per swapchain image.
@@ -248,9 +294,9 @@ fn run() -> GfxResult<()> {
         for i in 0..swapchain_helper.image_count() {
             descriptor_set_array.update_descriptor_set(&[DescriptorUpdate {
                 array_index: i as u32,
-                descriptor_key: DescriptorKey::Name("color"),
+                descriptor_key: DescriptorKey::Name("vertex_color"),
                 elements: DescriptorElements {
-                    buffers: Some(&[&uniform_buffers[i]]),
+                    buffer_views: Some(&[&uniform_buffer_cbvs[i]]),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -303,16 +349,6 @@ fn run() -> GfxResult<()> {
         window.event_loop(move || {
             let elapsed_seconds = start_time.elapsed().as_secs_f32();
 
-            #[rustfmt::skip]
-            let vertex_data = [
-                0.0f32, 0.5, 1.0, 0.0, 0.0,
-                0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
-                -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
-            ];
-
-            let color = (elapsed_seconds.cos() + 1.0) / 2.0;
-            let uniform_data = [color, 0.0, 1.0 - color, 1.0];
-
             //
             // Acquire swapchain image
             //
@@ -321,6 +357,8 @@ fn run() -> GfxResult<()> {
                 .acquire_next_image(window_width, window_height, None)
                 .unwrap();
             let swapchain_texture = presentable_frame.swapchain_texture();
+
+            let swapchain_rtv = presentable_frame.swapchain_rtv();
 
             //
             // Use the command pool/buffer assigned to this frame
@@ -333,12 +371,28 @@ fn run() -> GfxResult<()> {
             //
             // Update the buffers
             //
-            vertex_buffer
-                .copy_to_host_visible_buffer(&vertex_data)
-                .unwrap();
-            uniform_buffer
-                .copy_to_host_visible_buffer(&uniform_data)
-                .unwrap();
+            {
+                #[rustfmt::skip]
+                let vertex_data = [
+                    0.0f32, 0.5, 1.0, 0.0, 0.0,
+                    0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
+                    -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
+                ];
+
+                let color = (elapsed_seconds.cos() + 1.0) / 2.0;
+                let uniform_data = [VertexColor_SB {
+                    foo: [0.0, 1.0, 2.0],
+                    color: [color, 0.0, 1.0 - color, 1.0],
+                    bar: 7f32,
+                }];
+
+                vertex_buffer
+                    .copy_to_host_visible_buffer(&vertex_data)
+                    .unwrap();
+                uniform_buffer
+                    .copy_to_host_visible_buffer(&uniform_data)
+                    .unwrap();
+            }
 
             //
             // Record the command buffer. For now just transition it between layouts
@@ -361,16 +415,10 @@ fn run() -> GfxResult<()> {
             cmd_buffer
                 .cmd_begin_render_pass(
                     &[ColorRenderTargetBinding {
-                        texture: swapchain_texture,
+                        texture_view: swapchain_rtv,
                         load_op: LoadOp::Clear,
                         store_op: StoreOp::Store,
-                        array_slice: None,
-                        mip_slice: None,
                         clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
-                        resolve_target: None,
-                        resolve_store_op: StoreOp::DontCare,
-                        resolve_mip_slice: None,
-                        resolve_array_slice: None,
                     }],
                     None,
                 )
@@ -394,6 +442,20 @@ fn run() -> GfxResult<()> {
                     presentable_frame.rotating_frame_index() as u32,
                 )
                 .unwrap();
+
+            {
+                let color = (elapsed_seconds.cos() + 1.0) / 2.0;
+                let uniform_data = [VertexColor_SB {
+                    foo: [0.0, 1.0, 2.0],
+                    color: [color, 0.0, 1.0 - color, 1.0],
+                    bar: 7f32,
+                }];
+
+                cmd_buffer
+                    .cmd_push_constants(&root_signature, &uniform_data)
+                    .unwrap();
+            }
+
             cmd_buffer.cmd_draw(3, 0).unwrap();
 
             // Put it into a layout where we can present it

@@ -20,7 +20,7 @@ impl Drop for VulkanSamplerInner {
 
 #[derive(Clone)]
 pub struct VulkanSampler {
-    inner: Arc<VulkanSamplerInner>,
+    pub(super) inner: Arc<VulkanSamplerInner>,
 }
 
 impl std::fmt::Debug for VulkanSampler {

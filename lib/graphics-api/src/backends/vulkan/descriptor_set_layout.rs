@@ -2,18 +2,18 @@ use std::sync::Arc;
 
 use ash::vk;
 
-use crate::{DescriptorSetLayout, DescriptorSetLayoutDef, GfxError, GfxResult, ResourceType};
+use crate::{DescriptorSetLayout, DescriptorSetLayoutDef, GfxError, GfxResult, ShaderResourceType};
 
 use super::{VulkanApi, VulkanDeviceContext};
 
 #[derive(Clone, Debug)]
-pub struct VulkanDescriptor {
-    pub(crate) name: String,
-    pub(crate) binding: u32,
-    pub(crate) resource_type: ResourceType,
-    pub(crate) vk_type: vk::DescriptorType,
-    pub(crate) element_count: u32,
-    pub(crate) update_data_offset_in_set: u32,
+pub(super) struct VulkanDescriptor {
+    pub(super) name: String,
+    pub(super) binding: u32,
+    pub(super) shader_resource_type: ShaderResourceType,
+    pub(super) vk_type: vk::DescriptorType,
+    pub(super) element_count: u32,
+    pub(super) update_data_offset_in_set: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -41,23 +41,23 @@ pub struct VulkanDescriptorSetLayout {
 }
 
 impl VulkanDescriptorSetLayout {
-    pub(crate) fn device_context(&self) -> &VulkanDeviceContext {
+    pub(super) fn device_context(&self) -> &VulkanDeviceContext {
         &self.inner.device_context
     }
 
-    pub(crate) fn set_index(&self) -> u32 {
+    pub(super) fn set_index(&self) -> u32 {
         self.inner.set_index
     }
 
-    pub(crate) fn update_data_count_per_set(&self) -> u32 {
+    pub(super) fn update_data_count_per_set(&self) -> u32 {
         self.inner.update_data_count_per_set
     }
 
-    pub(crate) fn vk_layout(&self) -> vk::DescriptorSetLayout {
+    pub(super) fn vk_layout(&self) -> vk::DescriptorSetLayout {
         self.inner.vk_layout
     }
 
-    pub(crate) fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
+    pub(super) fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
         self.inner
             .descriptors
             .iter()
@@ -65,14 +65,14 @@ impl VulkanDescriptorSetLayout {
             .map(|opt| opt as u32)
     }
 
-    pub(crate) fn descriptor(&self, index: u32) -> GfxResult<&VulkanDescriptor> {
+    pub(super) fn descriptor(&self, index: u32) -> GfxResult<&VulkanDescriptor> {
         self.inner
             .descriptors
             .get(index as usize)
             .ok_or_else(|| GfxError::from("Invalid descriptor index"))
     }
 
-    pub(crate) fn new(
+    pub(super) fn new(
         device_context: &VulkanDeviceContext,
         descriptor_set_layout_def: &DescriptorSetLayoutDef,
     ) -> GfxResult<Self> {
@@ -81,9 +81,10 @@ impl VulkanDescriptorSetLayout {
         let mut update_data_count_per_set = 0;
 
         for descriptor_def in &descriptor_set_layout_def.descriptor_defs {
-            let vk_descriptor_type =
-                super::util::resource_type_to_descriptor_type(descriptor_def.resource_type)
-                    .unwrap();
+            let vk_descriptor_type = super::internal::shader_resource_type_to_descriptor_type(
+                descriptor_def.shader_resource_type,
+            )
+            .unwrap();
 
             let vk_binding = vk::DescriptorSetLayoutBinding::builder()
                 .binding(descriptor_def.binding)
@@ -95,7 +96,7 @@ impl VulkanDescriptorSetLayout {
             let descriptor = VulkanDescriptor {
                 name: descriptor_def.name.clone(),
                 binding: descriptor_def.binding,
-                resource_type: descriptor_def.resource_type,
+                shader_resource_type: descriptor_def.shader_resource_type,
                 vk_type: vk_descriptor_type,
                 element_count: descriptor_def.array_size,
                 update_data_offset_in_set: update_data_count_per_set,

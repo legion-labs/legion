@@ -306,9 +306,10 @@ pub mod types;
 pub mod prelude {
     pub use crate::types::*;
     pub use crate::{
-        Buffer, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray, DescriptorSetHandle,
-        DescriptorSetLayout, DeviceContext, Fence, GfxApi, GfxResult, Pipeline, Queue,
-        RootSignature, Sampler, Semaphore, Shader, ShaderModule, Swapchain, Texture,
+        Buffer, BufferView, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray,
+        DescriptorSetHandle, DescriptorSetLayout, DeviceContext, Fence, GfxApi, GfxResult,
+        Pipeline, Queue, RootSignature, Sampler, Semaphore, Shader, ShaderModule, Swapchain,
+        Texture, TextureView,
     };
 }
 
@@ -351,6 +352,9 @@ pub trait GfxApi: Sized {
     type Buffer: Buffer<Self>;
     type Texture: Texture<Self>;
     type Sampler: Sampler<Self>;
+    type BufferMappingInfo; //: BufferMappingInfo<Self>;
+    type BufferView: BufferView<Self>;
+    type TextureView: TextureView<Self>;
     type ShaderModule: ShaderModule<Self>;
     type Shader: Shader<Self>;
     type DescriptorSetLayout: DescriptorSetLayout<Self>;
@@ -403,38 +407,48 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<A::ShaderModule>;
 
     fn wait_for_fences(&self, fences: &[&A::Fence]) -> GfxResult<()>;
-
-    fn find_supported_format(
-        &self,
-        candidates: &[Format],
-        resource_type: ResourceType,
-    ) -> Option<Format>;
-    fn find_supported_sample_count(&self, candidates: &[SampleCount]) -> Option<SampleCount>;
 }
 
 //
 // Resources (Buffers, Textures, Samplers)
 //
+pub trait BufferMappingInfo<A: GfxApi> {
+    fn data_ptr(&self) -> *mut u8;
+}
+
 pub trait Buffer<A: GfxApi>: std::fmt::Debug {
     fn buffer_def(&self) -> &BufferDef;
-    fn map_buffer(&self) -> GfxResult<*mut u8>;
-    fn unmap_buffer(&self) -> GfxResult<()>;
-    fn mapped_memory(&self) -> Option<*mut u8>;
+    fn map_buffer(&self) -> GfxResult<A::BufferMappingInfo>;
     fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()>;
     fn copy_to_host_visible_buffer_with_offset<T: Copy>(
         &self,
         data: &[T],
         buffer_byte_offset: u64,
     ) -> GfxResult<()>;
+    fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<A::BufferView>;
 }
 
 pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
     fn texture_def(&self) -> &TextureDef;
     fn map_texture(&self) -> GfxResult<TextureSubResource<'_>>;
     fn unmap_texture(&self) -> GfxResult<()>;
+    fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<A::TextureView>;
 }
 
 pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
+
+//
+// Views (BufferView, TextureView)
+//
+pub trait BufferView<A: GfxApi>: Clone + std::fmt::Debug {
+    fn view_def(&self) -> &BufferViewDef;
+    fn buffer(&self) -> &A::Buffer;
+}
+
+pub trait TextureView<A: GfxApi>: Clone + std::fmt::Debug {
+    fn view_def(&self) -> &TextureViewDef;
+    fn texture(&self) -> &A::Texture;
+}
 
 //
 // Shaders/Pipelines
@@ -543,7 +557,11 @@ pub trait CommandBuffer<A: GfxApi>: std::fmt::Debug {
         set_index: u32,
         descriptor_set_handle: &A::DescriptorSetHandle,
     ) -> GfxResult<()>;
-
+    fn cmd_push_constants<T: Sized>(
+        &self,
+        root_signature: &A::RootSignature,
+        constants: &T,
+    ) -> GfxResult<()>;
     fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) -> GfxResult<()>;
     fn cmd_draw_instanced(
         &self,

@@ -2,7 +2,7 @@ use crate::{
     AddressMode, BlendFactor, BlendOp, ColorClearValue, ColorFlags, CompareOp, CullMode,
     DepthStencilClearValue, FillMode, FilterType, FrontFace, IndexType, LoadOp, MemoryUsage,
     MipMapMode, PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, StoreOp,
-    TextureTiling, VertexAttributeRate,
+    TextureTiling, VertexAttributeRate, ViewDimension,
 };
 use ash::vk;
 
@@ -278,6 +278,18 @@ impl From<DepthStencilClearValue> for vk::ClearValue {
                 depth: val.depth,
                 stencil: val.stencil,
             },
+        }
+    }
+}
+
+impl From<ViewDimension> for vk::ImageViewType {
+    fn from(val: ViewDimension) -> Self {
+        match val {
+            ViewDimension::_2D => Self::TYPE_2D,
+            ViewDimension::_2DArray => Self::TYPE_2D_ARRAY,
+            ViewDimension::Cube => Self::CUBE,
+            ViewDimension::CubeArray => Self::CUBE_ARRAY,
+            ViewDimension::_3D => Self::TYPE_3D,
         }
     }
 }

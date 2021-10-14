@@ -7,7 +7,10 @@ members = [
     "proto/*",
     "test/*",
 ]
-exclude = ["test/sample_data"]
+exclude = [
+	  "test/sample_data",
+	  "test/test_data"
+]
 
 [profile.release]
 opt-level = 3

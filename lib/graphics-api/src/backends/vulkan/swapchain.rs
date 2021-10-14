@@ -3,9 +3,9 @@ use super::{
 };
 use crate::{
     CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DeviceContext, Extents3D, Format,
-    GfxError, GfxResult, MemoryUsage, Queue, QueueType, ResourceState, ResourceType, SampleCount,
-    Swapchain, SwapchainDef, SwapchainImage, TextureBarrier, TextureDef, TextureDimensions,
-    TextureTiling,
+    GfxError, GfxResult, MemoryUsage, Queue, QueueType, ResourceFlags, ResourceState,
+    ResourceUsage, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef,
+    TextureTiling, TextureViewDef,
 };
 
 use ash::vk;
@@ -409,9 +409,6 @@ impl SwapchainVulkanInstance {
             };
 
             let format: Format = self.swapchain_info.surface_format.format.into();
-
-            let resource_type = ResourceType::TEXTURE | ResourceType::RENDER_TARGET_COLOR;
-
             let texture = VulkanTexture::from_existing(
                 &self.device_context,
                 Some(raw_image),
@@ -424,18 +421,21 @@ impl SwapchainVulkanInstance {
                     array_length: 1,
                     mip_count: 1,
                     format,
-                    resource_type,
+                    usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW
+                        | ResourceUsage::HAS_RENDER_TARGET_VIEW,
+                    resource_flags: ResourceFlags::empty(),
                     mem_usage: MemoryUsage::GpuOnly,
-                    //clear_value,
-                    sample_count: SampleCount::SampleCount1,
-                    //sample_quality
-                    dimensions: TextureDimensions::Dim2D,
                     tiling: TextureTiling::Optimal,
                 },
             )?;
 
+            let render_target_view = texture.create_view(
+                &TextureViewDef::as_render_target_view(texture.texture_def()),
+            )?;
+
             swapchain_images.push(SwapchainImage {
                 texture,
+                render_target_view,
                 swapchain_image_index: image_index as u32,
             });
         }
