@@ -321,7 +321,7 @@ fn run() -> GfxResult<()> {
 
         log::info!("Starting window event loop");
         let mut sps_pps_written = false;
-        for i in 0..10 {
+        for i in 0..300 {
             let elapsed_seconds = start_time.elapsed().as_secs_f32();
 
             #[rustfmt::skip]
