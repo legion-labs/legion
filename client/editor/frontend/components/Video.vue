@@ -129,7 +129,11 @@ class VideoPlayer {
   }
 
   push(data) {
-    const frame = new Uint8Array(data);
+    const chunk = new Uint8Array(data);
+    const header_payload_len = chunk[1] * 256 + chunk[0];
+    const bin_header = chunk.slice(2,2+header_payload_len);
+    const header = new TextDecoder().decode(bin_header);
+    const frame = chunk.slice(2+header_payload_len);
 
     if (frame[4] === 0x66) {
       this._reinit();

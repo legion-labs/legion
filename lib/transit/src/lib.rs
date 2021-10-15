@@ -77,8 +77,8 @@ extern crate derive_transit;
 
 pub mod prelude {
     pub use crate::{
-        read_pod, write_pod, DynString, HeterogeneousQueue, InProcSerialize, Member, QueueIterator,
-        Reflect, StaticString, UserDefinedType,
+        DynString, HeterogeneousQueue, InProcSerialize, Member, QueueIterator, Reflect,
+        StaticString, UserDefinedType,
     };
     pub use derive_transit::*;
 }

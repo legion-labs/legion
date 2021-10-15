@@ -1656,6 +1656,7 @@ dependencies = [
  "legion-ecs",
  "legion-streaming-proto",
  "legion-tauri",
+ "legion-telemetry",
  "prost",
  "serde",
  "serde_json",
@@ -3290,6 +3291,7 @@ dependencies = [
  "legion-renderer",
  "legion-streaming-proto",
  "legion-telemetry",
+ "legion-utils",
  "log",
  "serde",
  "serde_json",
@@ -3363,6 +3365,7 @@ dependencies = [
  "chrono",
  "ctrlc",
  "legion-telemetry-proto",
+ "legion-utils",
  "log",
  "lz4",
  "memoffset",
@@ -6670,6 +6673,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "derive-transit",
+ "legion-utils",
  "memoffset",
  "serde",
 ]

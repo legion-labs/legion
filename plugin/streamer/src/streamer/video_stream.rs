@@ -2,7 +2,7 @@ use bytes::Bytes;
 use legion_ecs::prelude::*;
 
 use log::{debug, warn};
-use std::sync::Arc;
+use std::{cmp::min, sync::Arc};
 
 use webrtc::data::data_channel::RTCDataChannel;
 
@@ -13,6 +13,8 @@ use legion_codec_api::{
 use legion_mp4::old::Mp4Stream;
 use legion_renderer::Renderer;
 use legion_telemetry::prelude::*;
+use legion_utils::memory::write_any;
+use serde::Serialize;
 
 fn record_frame_time_metric(microseconds: u64) {
     trace_scope!();
@@ -221,19 +223,49 @@ impl VideoStreamEncoder {
         }
 
         let data = self.mp4.get_content();
-
-        let max_chunk_size = 65536;
-        let mut chunks = vec![];
-        chunks.reserve(((data.len() - 1) / max_chunk_size) + 1);
-
-        for data in data.chunks(max_chunk_size) {
-            chunks.push(bytes::Bytes::copy_from_slice(data));
-        }
-
+        let chunks = split_frame_in_chunks(data);
         self.mp4.clean();
-
         chunks
     }
+}
+
+#[derive(Serialize)]
+struct ChunkHeader {
+    pub chunk_index_in_frame: u8,
+}
+
+fn split_frame_in_chunks(data: &[u8]) -> Vec<Bytes> {
+    let max_chunk_size = 65536;
+    let mut chunks = vec![];
+    chunks.reserve((data.len() / max_chunk_size) + 2);
+
+    let mut current_chunk: Vec<u8> = vec![];
+    current_chunk.reserve(max_chunk_size);
+
+    let mut current_data_index = 0;
+    let mut chunk_index_in_frame: u8 = 0;
+    while current_data_index < data.len() {
+        current_chunk.clear();
+        let header = serde_json::to_string(&ChunkHeader {
+            chunk_index_in_frame,
+        })
+        .unwrap();
+        let header_payload_len: u16 = header.len() as u16;
+        let header_size = std::mem::size_of::<u16>() as u16 + header_payload_len;
+        write_any(&mut current_chunk, &header_payload_len);
+        current_chunk.extend_from_slice(header.as_bytes());
+        let end_chunk = min(
+            current_data_index + max_chunk_size - header_size as usize,
+            data.len(),
+        );
+        let chunk_data_slice = &data[current_data_index..end_chunk];
+        current_chunk.extend_from_slice(chunk_data_slice);
+        chunks.push(bytes::Bytes::copy_from_slice(&current_chunk));
+        current_data_index = end_chunk;
+        chunk_index_in_frame += 1;
+    }
+
+    chunks
 }
 
 fn hue2rgb_modulation(hue: f32) -> (f32, f32, f32) {
