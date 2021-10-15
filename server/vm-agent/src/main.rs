@@ -61,27 +61,39 @@
 
 mod config;
 
-use std::process::Command;
+use std::process::Stdio;
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+};
 
 use config::{CommandConfig, Config};
 
+use anyhow::Context;
+use legion_cli::termination_handler::AsyncTerminationHandler;
 use log::{debug, info};
 use simple_logger::SimpleLogger;
 
-fn main() -> anyhow::Result<()> {
-    let config = Config::new()?;
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let config = Config::new().context("failed to read configuration")?;
 
-    SimpleLogger::new().with_level(config.log_level).init()?;
+    SimpleLogger::new()
+        .with_level(config.log_level)
+        .init()
+        .context("failed to initialize the logging system")?;
 
     debug!("Setting log level to {}.", config.log_level);
     info!("Root is set to: {}", config.root.to_string_lossy());
 
+    let termination_handler = AsyncTerminationHandler::new()?;
+
     match config.command_config {
-        CommandConfig::Run => run(&config),
+        CommandConfig::Run => run(termination_handler, &config).await,
     }
 }
 
-fn run(config: &Config) -> anyhow::Result<()> {
+async fn run(termination_handler: AsyncTerminationHandler, config: &Config) -> anyhow::Result<()> {
     info!("Running VM-Agent...");
 
     let editor_server_bin_path = config.editor_server_bin_path();
@@ -91,7 +103,29 @@ fn run(config: &Config) -> anyhow::Result<()> {
         editor_server_bin_path.to_string_lossy(),
     );
 
-    Command::new(editor_server_bin_path).output()?;
+    let mut process = Command::new(editor_server_bin_path)
+        .stdout(Stdio::piped())
+        .spawn()?;
 
-    Ok(())
+    let stdout = process.stdout.take().unwrap();
+    let mut reader = BufReader::new(stdout).lines();
+
+    loop {
+        tokio::select! {
+            _ = termination_handler.wait() => {
+                info!("Ctrl+C signal caught: terminating.");
+                return Ok(())
+            }
+            res = process.wait() => {
+                res?;
+
+                //return Ok(())
+            },
+            line = reader.next_line() => {
+                if let Some(line) = line? {
+                    println!("editor-srv: {}", line);
+                }
+            },
+        }
+    }
 }

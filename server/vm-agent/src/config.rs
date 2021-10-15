@@ -27,7 +27,7 @@ impl Config {
             "The Virtual-Machine Agent.",
         )
         .long_about(
-            "The Virtual-Machine Agent (VM-Agent) that provisions and orchestrates the different component that compose a Legion Labs virtual-machine instance.",
+            "The Virtual-Machine Agent (VM-Agent) that provisions and orchestrates the different components that compose a Legion Labs virtual-machine instance.",
         )
         .setting(AppSettings::ArgRequiredElseHelp)
         .arg(
@@ -68,10 +68,7 @@ impl Config {
     }
 
     pub fn editor_server_bin_path(&self) -> PathBuf {
-        to_executable_name(
-            self.root
-                .join(["bin", "editor-srv"].iter().collect::<PathBuf>()),
-        )
+        to_executable_name(self.root.join("editor-srv"))
     }
 }
 

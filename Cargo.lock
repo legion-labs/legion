@@ -2938,6 +2938,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ctrlc",
+ "lazy_static",
+ "log",
+ "tokio",
+]
+
+[[package]]
 name = "legion-codec-api"
 version = "0.1.0"
 dependencies = [
@@ -6956,8 +6967,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "legion-cli",
  "log",
  "simple_logger",
+ "tokio",
 ]
 
 [[package]]
