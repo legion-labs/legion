@@ -41,9 +41,8 @@ fn run() -> GfxResult<()> {
         .add_track(TARGET_WIDTH as _, TARGET_HEIGHT as _)
         .unwrap();
 
-    let data = Cursor::new(Vec::<u8>::new());
-    let mut mp4_stream = mp4::MseStreamWriter::write_start(
-        data,
+    let mut data = Cursor::new(Vec::<u8>::new());
+    let mut mp4_stream = mp4::Mp4Stream::write_start(
         &Mp4Config {
             major_brand: b"mp42".into(),
             minor_version: 512,
@@ -51,6 +50,7 @@ fn run() -> GfxResult<()> {
             timescale: 1000,
         },
         60,
+        &mut data,
     )
     .unwrap();
 
@@ -515,6 +515,7 @@ fn run() -> GfxResult<()> {
                                     pic_param_set: pps.into(),
                                 })
                                 .into(),
+                                &mut data,
                             )
                             .unwrap();
                         sps_pps_written = true;
@@ -534,7 +535,11 @@ fn run() -> GfxResult<()> {
                         .unwrap();
 
                     mp4_stream
-                        .write_sample(stream.frame_type == encoder::FrameType::IDR, &vec)
+                        .write_sample(
+                            stream.frame_type == encoder::FrameType::IDR,
+                            &vec,
+                            &mut data,
+                        )
                         .unwrap();
                 }
             }
@@ -544,7 +549,7 @@ fn run() -> GfxResult<()> {
         // Wait for all GPU work to complete before destroying resources it is using
         graphics_queue_cloned.wait_for_queue_idle()?;
     }
-    std::fs::write("D:/test2.mp4", mp4_stream.into_writer().into_inner()).unwrap();
+    std::fs::write("D:/test2.mp4", data.into_inner()).unwrap();
     std::fs::write("D:/test.mp4", mp4.get_content()).unwrap();
 
     // Optional, but calling this verifies that all rafx objects/device contexts have been

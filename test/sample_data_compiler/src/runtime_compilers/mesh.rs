@@ -79,10 +79,11 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = context
+    let resources = context
         .take_registry()
         .add_loader::<offline_data::Mesh>()
         .create();
+    let mut resources = resources.lock().unwrap();
 
     let mesh = resources.load_sync::<offline_data::Mesh>(context.source.content_id());
     let mesh = mesh.get(&resources).unwrap();

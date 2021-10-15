@@ -1,4 +1,4 @@
-use legion_mp4::MseStreamWriter;
+use legion_mp4::Mp4Stream;
 
 #[test]
 fn test_add() {
@@ -29,9 +29,8 @@ fn test_add() {
     let h264 = &include_bytes!("data/mse.h264")[..];
     let mp4 = &include_bytes!("data/mse.mp4")[..];
 
-    let data = Cursor::new(Vec::<u8>::new());
-    let mut mp4_stream = MseStreamWriter::write_start(
-        data,
+    let mut data = Cursor::new(Vec::<u8>::new());
+    let mut mp4_stream = Mp4Stream::write_start(
         &Mp4Config {
             major_brand: b"mp42".into(),
             minor_version: 512,
@@ -39,6 +38,7 @@ fn test_add() {
             timescale: 1000,
         },
         60,
+        &mut data,
     )
     .unwrap();
     let (sps, h264) = find_nal(h264);
@@ -53,6 +53,7 @@ fn test_add() {
                 pic_param_set: pps.into(),
             })
             .into(),
+            &mut data,
         )
         .unwrap();
     let mut frame = vec![
@@ -62,7 +63,7 @@ fn test_add() {
         (idr.len() & 0xFF) as u8,
     ];
     frame.extend_from_slice(idr);
-    mp4_stream.write_sample(true, &frame).unwrap();
-    let data: Vec<u8> = mp4_stream.into_writer().into_inner();
+    mp4_stream.write_sample(true, &frame, &mut data).unwrap();
+    let data: Vec<u8> = data.into_inner();
     assert_eq!(data, mp4);
 }

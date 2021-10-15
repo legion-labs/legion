@@ -1,4 +1,5 @@
 use crate::{AssetRegistry, Handle, Resource, ResourceId};
+use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 
@@ -24,9 +25,21 @@ where
     T: Any + Resource,
 {
     /// Promote a reference to an active handle
-    pub fn activate(&mut self, registry: &mut AssetRegistry) {
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if attempting to activate a reference to a resource that
+    /// has not already been loaded.
+    pub fn activate(&mut self, registry: &mut AssetRegistry) -> Result<()> {
         if let Self::Passive(resource_id) = self {
-            *self = Self::Active(registry.load(*resource_id));
+            if let Some(handle) = registry.get_untyped(*resource_id) {
+                *self = Self::Active(handle.into());
+            } else {
+                return Err(Error::msg(
+                    "activating a reference to a resource that has not been loaded",
+                ));
+            }
         }
+        Ok(())
     }
 }

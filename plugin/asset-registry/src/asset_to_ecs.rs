@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use legion_data_runtime::{AssetRegistry, HandleUntyped, Reference, Resource, ResourceId};
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
@@ -8,7 +10,7 @@ use crate::asset_entities::AssetToEntityMap;
 pub(crate) fn load_ecs_asset<T>(
     asset_id: &ResourceId,
     handle: &HandleUntyped,
-    registry: &ResMut<'_, AssetRegistry>,
+    registry: &ResMut<'_, Arc<Mutex<AssetRegistry>>>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
 ) -> bool
@@ -16,8 +18,9 @@ where
     T: AssetToECS + Resource + 'static,
 {
     if asset_id.ty() == T::TYPE {
-        if let Some(runtime_entity) = handle.get::<T>(registry) {
-            let entity = T::create_in_ecs(commands, runtime_entity, asset_to_entity_map);
+        let registry = registry.lock().unwrap();
+        if let Some(asset) = handle.get::<T>(&registry) {
+            let entity = T::create_in_ecs(commands, asset, asset_to_entity_map);
 
             if let Some(entity_id) = entity {
                 asset_to_entity_map.insert(*asset_id, entity_id);
@@ -39,10 +42,12 @@ where
 
 pub(crate) trait AssetToECS {
     fn create_in_ecs(
-        commands: &mut Commands<'_, '_>,
-        asset: &Self,
-        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-    ) -> Option<Entity>;
+        _commands: &mut Commands<'_, '_>,
+        _asset: &Self,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+    ) -> Option<Entity> {
+        None
+    }
 }
 
 impl AssetToECS for runtime_data::Entity {
@@ -109,32 +114,8 @@ impl AssetToECS for runtime_data::Instance {
     }
 }
 
-impl AssetToECS for legion_graphics_runtime::Material {
-    fn create_in_ecs(
-        _commands: &mut Commands<'_, '_>,
-        _material: &Self,
-        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-    ) -> Option<Entity> {
-        None
-    }
-}
+impl AssetToECS for legion_graphics_runtime::Material {}
 
-impl AssetToECS for runtime_data::Mesh {
-    fn create_in_ecs(
-        _commands: &mut Commands<'_, '_>,
-        _mesh: &Self,
-        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-    ) -> Option<Entity> {
-        None
-    }
-}
+impl AssetToECS for runtime_data::Mesh {}
 
-impl AssetToECS for legion_graphics_runtime::Texture {
-    fn create_in_ecs(
-        _commands: &mut Commands<'_, '_>,
-        _texture: &Self,
-        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-    ) -> Option<Entity> {
-        None
-    }
-}
+impl AssetToECS for legion_graphics_runtime::Texture {}

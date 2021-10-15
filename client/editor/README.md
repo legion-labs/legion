@@ -10,6 +10,35 @@ The Editor client is a native web-app application based on
 Because of its hybrid nature, building the Editor client requires a bit more
 steps than running the usual `cargo build` command.
 
+Lauching the application
+------------------------
+
+To simply build & launch the editor client, you can just do:
+
+```
+cargo run
+```
+
+This will build the Vue.js frontend and embed it in the Rust binary before
+running it. Simple.
+
+To build & launch the editor client in development mode (useful when working on
+the application itself), things are a little bit more complex and you'll need
+to run two processes **at the same time**.
+
+First the native Rust binary:
+
+```
+cargo run --no-default-features
+```
+
+Then the frontend:
+
+```
+cd frontend
+yarn dev
+```
+
 Structure of the application
 ----------------------------
 

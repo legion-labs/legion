@@ -1,7 +1,7 @@
 use crate::{streamer::StreamEvent, webrtc::WebRTCServer};
 
 use log::{debug, info, warn};
-use std::{net::SocketAddr, sync::Arc};
+use std::sync::Arc;
 
 use tonic::{Request, Response, Status};
 
@@ -29,22 +29,8 @@ impl GRPCServer {
         }
     }
 
-    /// Start the `gRPC` server on the specified `addr`.
-    pub async fn listen_and_serve(self, addr: SocketAddr) -> Result<(), tonic::transport::Error> {
-        info!("gRPC server started and listening on {}.", addr);
-
-        match tonic::transport::Server::builder()
-            .add_service(StreamerServer::new(self))
-            .serve(addr)
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                warn!("gRPC server stopped and no longer listening ({})", e);
-
-                Err(e)
-            }
-        }
+    pub fn service(self) -> StreamerServer<Self> {
+        StreamerServer::new(self)
     }
 }
 

@@ -1633,6 +1633,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
+
+[[package]]
 name = "ecdsa"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1679,6 +1685,7 @@ dependencies = [
  "legion-codec-api",
  "legion-data-runtime",
  "legion-editor-proto",
+ "legion-grpc",
  "legion-mp4",
  "legion-resource-registry",
  "legion-streamer",
@@ -3051,6 +3058,7 @@ dependencies = [
 name = "legion-data-runtime"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "byteorder",
  "crc",
  "crossbeam-channel",
@@ -3152,6 +3160,32 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "legion-data-runtime",
+]
+
+[[package]]
+name = "legion-grpc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "dyn-clone",
+ "futures-lite",
+ "futures-util",
+ "http",
+ "http-body",
+ "hyper",
+ "legion-app",
+ "legion-async",
+ "legion-ecs",
+ "log",
+ "ntest",
+ "prost",
+ "simple_logger",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tower",
+ "tower-service",
 ]
 
 [[package]]
@@ -3287,6 +3321,7 @@ dependencies = [
  "legion-codec-api",
  "legion-core",
  "legion-ecs",
+ "legion-grpc",
  "legion-mp4",
  "legion-renderer",
  "legion-streaming-proto",

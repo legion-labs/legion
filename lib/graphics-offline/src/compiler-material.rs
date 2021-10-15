@@ -23,10 +23,11 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 };
 
 fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerError> {
-    let mut resources = context
+    let resources = context
         .take_registry()
         .add_loader::<legion_graphics_offline::Material>()
         .create();
+    let mut resources = resources.lock().unwrap();
 
     let resource =
         resources.load_sync::<legion_graphics_offline::Material>(context.source.content_id());

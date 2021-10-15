@@ -6,11 +6,13 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-rand = "0.8"
-serde = { version = "1.0", features = ["derive"] }
-crc = "2.0.0"
-crossbeam-channel = "0.5.1"
-byteorder = "1.4"
-hex = "0.4.3"
 legion-content-store = { path = "../content-store" }
 legion-data-runtime-macros = { path = "macros" }
+
+anyhow = "1.0"
+byteorder = "1.4"
+crc = "2.0.0"
+crossbeam-channel = "0.5.1"
+hex = "0.4.3"
+rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
