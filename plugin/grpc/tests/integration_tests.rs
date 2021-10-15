@@ -6,19 +6,23 @@ pub mod sum {
     tonic::include_proto!("sum");
 }
 
+use std::time::Duration;
+
+use backoff::ExponentialBackoff;
 use echo::{
     echoer_client::EchoerClient,
     echoer_server::{Echoer, EchoerServer},
     EchoRequest, EchoResponse,
 };
 
+use hyper::client::HttpConnector;
 use sum::{
     summer_client::SummerClient,
     summer_server::{Summer, SummerServer},
     SumRequest, SumResponse,
 };
 
-use log::LevelFilter;
+use log::{info, LevelFilter};
 use simple_logger::SimpleLogger;
 use tonic::{Request, Response, Status};
 
@@ -66,7 +70,9 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
     let addr = "127.0.0.1:50051".parse()?;
 
     async fn f() -> anyhow::Result<()> {
-        let client = hyper::Client::builder().http2_only(true).build_http();
+        let mut connector = HttpConnector::new();
+        connector.set_connect_timeout(Some(Duration::from_secs(5)));
+        let client = hyper::Client::builder().http2_only(true).build(connector);
         let uri = hyper::Uri::from_static("http://127.0.0.1:50051");
 
         let add_origin = tower::service_fn(|mut req: hyper::Request<tonic::body::BoxBody>| {
@@ -83,23 +89,30 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
         });
 
         {
-            let mut echo_client = EchoerClient::new(add_origin);
-
             let msg: String = "hello".into();
-            let resp = echo_client
-                .echo(Request::new(EchoRequest { msg: msg.clone() }))
-                .await?;
+
+            let resp = backoff::future::retry(ExponentialBackoff::default(), || async {
+                let mut echo_client = EchoerClient::new(add_origin);
+
+                Ok(echo_client
+                    .echo(Request::new(EchoRequest { msg: msg.clone() }))
+                    .await?)
+            })
+            .await?;
 
             assert_eq!(resp.into_inner().msg, msg);
         }
 
         {
-            let mut sum_client = SummerClient::new(add_origin);
-
             let a = 1;
             let b = 2;
             let result = 3;
-            let resp = sum_client.sum(Request::new(SumRequest { a, b })).await?;
+            let resp = backoff::future::retry(ExponentialBackoff::default(), || async {
+                let mut sum_client = SummerClient::new(add_origin);
+
+                Ok(sum_client.sum(Request::new(SumRequest { a, b })).await?)
+            })
+            .await?;
 
             assert_eq!(resp.into_inner().result, result);
         }
@@ -109,7 +122,11 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
 
     loop {
         tokio::select! {
-            res = server.serve(addr) => panic!("server is no longer bound: {}", res.unwrap_err()),
+            res = async {
+                info!("starting gRPC server...");
+
+                server.serve(addr).await
+            } => panic!("server is no longer bound: {}", res.unwrap_err()),
             res = f() => match res {
                 Ok(_) => break,
                 Err(err) => panic!("client execution failed: {}", err),

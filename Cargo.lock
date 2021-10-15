@@ -578,6 +578,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "backoff"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fe17f59a06fe8b87a6fc8bf53bb70b3aba76d7685f432487a68cd5552853625"
+dependencies = [
+ "futures-core",
+ "getrandom 0.2.3",
+ "instant",
+ "pin-project",
+ "rand 0.8.4",
+ "tokio",
+]
+
+[[package]]
 name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3178,6 +3192,7 @@ name = "legion-grpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "backoff",
  "bytes",
  "dyn-clone",
  "futures-lite",
