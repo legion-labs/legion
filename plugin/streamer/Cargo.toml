@@ -17,6 +17,7 @@ legion-core = { path = "../core", version = "0.1.0" }
 legion-async = { path = "../async", version = "0.1.0" }
 legion-grpc = { path = "../grpc", version = "0.1.0" }
 legion-telemetry = { path = "../../lib/telemetry" }
+legion-utils = { path = "../../lib/utils" }
 tokio = { version = "1.12", features = ["full"] }
 tonic = "0.5"
 crossbeam = "0.8"

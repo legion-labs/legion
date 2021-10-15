@@ -19,7 +19,7 @@ fn gen_read_method(
                         next_object_offset = offset + 1 + std::mem::size_of::<#value_type_id>();
                         None
                     }else{
-                        let size_instance = read_pod::<u32>(begin_obj);
+                        let size_instance = legion_utils::memory::read_any::<u32>(begin_obj);
                         begin_obj = begin_obj.add( std::mem::size_of::<u32>() );
                         next_object_offset = offset + 1 + std::mem::size_of::<u32>() + size_instance as usize;
                         Some(size_instance)
@@ -162,7 +162,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
                     // we force the dynamically sized object to first serialize their size as unsigned 32 bits
                     // this will allow unparsable objects to be skipped by the reader
                     let value_size = T::get_value_size(&value).unwrap();
-                    transit::write_pod(&mut self.buffer, &value_size);
+                    legion_utils::memory::write_any(&mut self.buffer, &value_size);
                     value.write_value(&mut self.buffer);
                     assert!(
                         self.buffer.len()

@@ -65,6 +65,7 @@ use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
 use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
+use legion_telemetry::prelude::*;
 use std::{error::Error, time::Duration};
 
 struct Config {
@@ -99,6 +100,8 @@ impl Config {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let _telemetry_guard = TelemetrySystemGuard::new(None);
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     let config = Config::new_from_environment()?;
     let builder = tauri::Builder::default()
         .manage(config)
@@ -109,7 +112,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         .add_plugin(TauriPlugin::new(tauri::generate_context!()))
         .add_plugin(AsyncPlugin {})
         .run();
-
     Ok(())
 }
 

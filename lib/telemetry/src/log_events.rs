@@ -1,3 +1,4 @@
+use legion_utils::memory::{read_any, write_any};
 use transit::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -42,13 +43,13 @@ impl InProcSerialize for LogDynMsgEvent {
     }
 
     fn write_value(&self, buffer: &mut Vec<u8>) {
-        write_pod::<u8>(buffer, &self.level);
+        write_any::<u8>(buffer, &self.level);
         self.msg.write_value(buffer);
     }
 
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
-        let level = read_pod::<u8>(ptr);
+        let level = read_any::<u8>(ptr);
         let buffer_size = value_size.unwrap();
         let string_ptr = unsafe { ptr.add(1) };
         let msg = <DynString as InProcSerialize>::read_value(string_ptr, Some(buffer_size - 1));

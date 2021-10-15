@@ -21,3 +21,4 @@ memoffset = "0.6"
 lz4 = "1.23"
 log = { version = "0.4", features = ["std"] }
 ctrlc = "3.2.0"
+legion-utils = { path = "../utils" }

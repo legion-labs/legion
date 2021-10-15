@@ -26,3 +26,16 @@ pub fn slice_size_in_bytes<T>(slice: &[T]) -> usize {
     let range = slice.as_ptr_range();
     (range.end.cast::<u8>() as usize) - (range.start.cast::<u8>() as usize)
 }
+
+#[allow(unsafe_code)]
+pub fn write_any<T>(buffer: &mut Vec<u8>, value: &T) {
+    let ptr = std::ptr::addr_of!(*value).cast::<u8>();
+    let slice = std::ptr::slice_from_raw_parts(ptr, std::mem::size_of::<T>());
+    unsafe {
+        buffer.extend_from_slice(&*slice);
+    }
+}
+#[allow(unsafe_code)]
+pub fn read_any<T>(ptr: *const u8) -> T {
+    unsafe { std::ptr::read_unaligned(ptr.cast::<T>()) }
+}

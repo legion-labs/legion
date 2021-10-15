@@ -1,4 +1,5 @@
-use crate::{read_pod, write_pod, InProcSerialize, Reflect, UserDefinedType};
+use crate::{InProcSerialize, Reflect, UserDefinedType};
+use legion_utils::memory::{read_any, write_any};
 
 // StaticString serializes the value of the pointer and the contents of the string
 #[derive(Debug)]
@@ -39,7 +40,7 @@ impl InProcSerialize for StaticString {
 
     #[allow(unsafe_code)]
     fn write_value(&self, buffer: &mut Vec<u8>) {
-        write_pod(buffer, &self.ptr);
+        write_any(buffer, &self.ptr);
         unsafe {
             let slice = std::slice::from_raw_parts(self.ptr, self.len as usize);
             buffer.extend_from_slice(slice);
@@ -51,7 +52,7 @@ impl InProcSerialize for StaticString {
         let value_size = value_size_opt.unwrap();
         assert!(id_size <= value_size);
         let buffer_size = value_size - id_size;
-        let static_buffer_ptr = read_pod::<*const u8>(ptr);
+        let static_buffer_ptr = read_any::<*const u8>(ptr);
         Self {
             len: buffer_size,
             ptr: static_buffer_ptr,

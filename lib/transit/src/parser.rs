@@ -1,7 +1,7 @@
-use std::{collections::HashMap, hash::BuildHasher};
-
-use crate::{read_pod, DynString, InProcSerialize, UserDefinedType};
+use crate::{DynString, InProcSerialize, UserDefinedType};
 use anyhow::{bail, Result};
+use legion_utils::memory::read_any;
+use std::{collections::HashMap, hash::BuildHasher};
 
 #[derive(Debug, Clone)]
 pub struct Object {
@@ -118,7 +118,7 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
                 //dynamic size
                 unsafe {
                     let size_ptr = buffer.as_ptr().add(offset);
-                    let obj_size = read_pod::<u32>(size_ptr);
+                    let obj_size = read_any::<u32>(size_ptr);
                     offset += std::mem::size_of::<u32>();
                     obj_size as usize
                 }
@@ -128,7 +128,7 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
         if udt.name == "StaticString" {
             unsafe {
                 let id_ptr = buffer.as_ptr().add(offset);
-                let string_id = read_pod::<u64>(id_ptr);
+                let string_id = read_any::<u64>(id_ptr);
                 let nb_utf8_bytes = object_size - std::mem::size_of::<usize>();
                 let utf8_ptr = buffer.as_ptr().add(offset + std::mem::size_of::<usize>());
                 let slice = std::ptr::slice_from_raw_parts(utf8_ptr, nb_utf8_bytes);
@@ -161,7 +161,7 @@ where
     let members = match udt.name.as_str() {
         "LogDynMsgEvent" => unsafe {
             let level_ptr = buffer.as_ptr().add(offset);
-            let level = read_pod::<u8>(level_ptr);
+            let level = read_any::<u8>(level_ptr);
             let msg = <DynString as InProcSerialize>::read_value(
                 buffer.as_ptr().add(offset + 1),
                 Some((object_size - 1) as u32),
@@ -200,7 +200,7 @@ where
             let value = if member_meta.is_reference {
                 assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
                 let key =
-                    read_pod::<u64>(unsafe { buffer.as_ptr().add(offset + member_meta.offset) });
+                    read_any::<u64>(unsafe { buffer.as_ptr().add(offset + member_meta.offset) });
                 if let Some(v) = dependencies.get(&key) {
                     v.clone()
                 } else {
@@ -211,25 +211,25 @@ where
                 match type_name.as_str() {
                     "u8" => {
                         assert_eq!(std::mem::size_of::<u8>(), member_meta.size);
-                        Value::U8(read_pod::<u8>(unsafe {
+                        Value::U8(read_any::<u8>(unsafe {
                             buffer.as_ptr().add(offset + member_meta.offset)
                         }))
                     }
                     "u32" => {
                         assert_eq!(std::mem::size_of::<u32>(), member_meta.size);
-                        Value::U32(read_pod::<u32>(unsafe {
+                        Value::U32(read_any::<u32>(unsafe {
                             buffer.as_ptr().add(offset + member_meta.offset)
                         }))
                     }
                     "u64" => {
                         assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
-                        Value::U64(read_pod::<u64>(unsafe {
+                        Value::U64(read_any::<u64>(unsafe {
                             buffer.as_ptr().add(offset + member_meta.offset)
                         }))
                     }
                     "f64" => {
                         assert_eq!(std::mem::size_of::<f64>(), member_meta.size);
-                        Value::F64(read_pod::<f64>(unsafe {
+                        Value::F64(read_any::<f64>(unsafe {
                             buffer.as_ptr().add(offset + member_meta.offset)
                         }))
                     }
@@ -271,7 +271,7 @@ where
                 //dynamic size
                 unsafe {
                     let size_ptr = buffer.as_ptr().add(offset);
-                    let obj_size = read_pod::<u32>(size_ptr);
+                    let obj_size = read_any::<u32>(size_ptr);
                     offset += std::mem::size_of::<u32>();
                     (obj_size as usize, true)
                 }

@@ -1,16 +1,4 @@
-#[allow(unsafe_code)]
-pub fn write_pod<T>(buffer: &mut Vec<u8>, value: &T) {
-    let ptr = std::ptr::addr_of!(*value).cast::<u8>();
-    let slice = std::ptr::slice_from_raw_parts(ptr, std::mem::size_of::<T>());
-    unsafe {
-        buffer.extend_from_slice(&*slice);
-    }
-}
-
-#[allow(unsafe_code)]
-pub fn read_pod<T>(ptr: *const u8) -> T {
-    unsafe { std::ptr::read_unaligned(ptr.cast::<T>()) }
-}
+use legion_utils::memory::{read_any, write_any};
 
 // InProcSerialize is used by the heterogeneous queue to write objects in its buffer
 // serialized objects can have references with static lifetimes
@@ -32,7 +20,7 @@ pub trait InProcSerialize {
         assert!(Self::is_size_static());
         #[allow(clippy::needless_borrow)]
         //clippy complains here but we don't want to move or copy the value
-        write_pod::<Self>(buffer, &self);
+        write_any::<Self>(buffer, &self);
     }
 
     // read_value allows to read objects from the same process they were stored in
@@ -41,6 +29,6 @@ pub trait InProcSerialize {
     where
         Self: Sized,
     {
-        read_pod::<Self>(ptr)
+        read_any::<Self>(ptr)
     }
 }
