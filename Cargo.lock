@@ -3248,7 +3248,6 @@ dependencies = [
  "bitflags",
  "byteorder",
  "bytes",
- "cc",
  "num-rational",
  "serde",
  "serde_json",

@@ -2,15 +2,15 @@ use bytes::Bytes;
 use legion_ecs::prelude::*;
 
 use log::{debug, warn};
-use std::{cmp::min, sync::Arc};
+use std::{cmp::min, convert::TryInto, io::Cursor, sync::Arc};
 
 use webrtc::data::data_channel::RTCDataChannel;
 
 use legion_codec_api::{
-    backends::openh264::encoder::{self, Encoder, FrameType},
+    backends::openh264::encoder::{self, Encoder},
     formats::{self, RBGYUVConverter},
 };
-use legion_mp4::old::Mp4Stream;
+use legion_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use legion_renderer::Renderer;
 use legion_telemetry::prelude::*;
 use legion_utils::memory::write_any;
@@ -25,7 +25,7 @@ fn record_frame_time_metric(microseconds: u64) {
     record_int_metric(&FRAME_TIME_METRIC, microseconds);
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 struct Resolution {
     width: u32,
     height: u32,
@@ -67,7 +67,7 @@ impl VideoStream {
     pub fn new(video_data_channel: Arc<RTCDataChannel>) -> anyhow::Result<Self> {
         trace_scope!();
         let resolution = Resolution::new(1024, 768);
-        let encoder = VideoStreamEncoder::new(&resolution)?;
+        let encoder = VideoStreamEncoder::new(resolution)?;
         let renderer = Renderer::new(resolution.width, resolution.height);
 
         Ok(Self {
@@ -96,7 +96,7 @@ impl VideoStream {
 
             // TODO: Fix this: this is probably bad but I wrote that just to test it.
             self.renderer = Renderer::new(self.resolution.width, self.resolution.height);
-            self.encoder = VideoStreamEncoder::new(&self.resolution).unwrap();
+            self.encoder = VideoStreamEncoder::new(self.resolution).unwrap();
         }
     }
 
@@ -159,12 +159,14 @@ impl VideoStream {
 struct VideoStreamEncoder {
     encoder: Encoder,
     converter: RBGYUVConverter,
+    resolution: Resolution,
     mp4: Mp4Stream,
-    track_id: i32,
+    writer: Cursor<Vec<u8>>,
+    write_index: bool,
 }
 
 impl VideoStreamEncoder {
-    fn new(resolution: &Resolution) -> anyhow::Result<Self> {
+    fn new(resolution: Resolution) -> anyhow::Result<Self> {
         trace_scope!();
         let config = encoder::EncoderConfig::new(resolution.width, resolution.height)
             .constant_sps(true)
@@ -177,32 +179,59 @@ impl VideoStreamEncoder {
         let converter =
             formats::RBGYUVConverter::new(resolution.width as usize, resolution.height as usize);
 
-        let mut mp4 = Mp4Stream::new(60);
-        #[allow(clippy::cast_possible_wrap)]
-        let track_id = mp4
-            .add_track(resolution.width as i32, resolution.height as i32)
-            .unwrap();
+        let mut writer = Cursor::new(Vec::<u8>::new());
+        let mp4 = Mp4Stream::write_start(
+            &Mp4Config {
+                major_brand: b"mp42".into(),
+                minor_version: 0,
+                compatible_brands: vec![b"mp42".into(), b"isom".into()],
+                timescale: 1000,
+            },
+            60,
+            &mut writer,
+        )
+        .unwrap();
 
         Ok(Self {
             encoder,
             converter,
+            resolution,
             mp4,
-            track_id,
+            writer,
+            write_index: true,
         })
     }
 
     fn encode(&mut self) -> Vec<Bytes> {
         trace_scope!();
+        self.encoder.force_intra_frame(true);
         let stream = self.encoder.encode(&self.converter).unwrap();
 
         for layer in &stream.layers {
             if !layer.is_video {
+                let mut sps: &[u8] = &[];
+                let mut pps: &[u8] = &[];
                 for nalu in &layer.nal_units {
                     if nalu[4] == 103 {
-                        self.mp4.set_sps(self.track_id, &nalu[4..]).unwrap();
+                        sps = &nalu[4..];
                     } else if nalu[4] == 104 {
-                        self.mp4.set_pps(self.track_id, &nalu[4..]).unwrap();
+                        pps = &nalu[4..];
                     }
+                }
+                if self.write_index {
+                    self.mp4
+                        .write_index(
+                            &MediaConfig::AvcConfig(AvcConfig {
+                                width: self.resolution.width.try_into().unwrap(),
+                                height: self.resolution.height.try_into().unwrap(),
+                                seq_param_set: sps.into(),
+                                pic_param_set: pps.into(),
+                            })
+                            .into(),
+                            &mut self.writer,
+                        )
+                        .unwrap();
+                    self.write_index = false;
                 }
                 continue;
             }
@@ -217,14 +246,18 @@ impl VideoStreamEncoder {
                 vec[3] = (size & 0xFF) as u8;
 
                 self.mp4
-                    .add_frame(self.track_id, stream.frame_type == FrameType::IDR, &vec)
+                    .write_sample(
+                        stream.frame_type == encoder::FrameType::IDR,
+                        &vec,
+                        &mut self.writer,
+                    )
                     .unwrap();
             }
         }
 
-        let data = self.mp4.get_content();
-        let chunks = split_frame_in_chunks(data);
-        self.mp4.clean();
+        let chunks = split_frame_in_chunks(self.writer.get_ref());
+        self.writer.get_mut().clear();
+        self.writer.set_position(0);
         chunks
     }
 }

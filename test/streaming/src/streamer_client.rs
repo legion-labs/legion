@@ -19,7 +19,7 @@ fn run() -> GfxResult<()> {
 #[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
     use codec_api::{backends::openh264::encoder, formats};
-    use mp4::{old::Mp4Stream, AvcConfig, MediaConfig, Mp4Config};
+    use mp4::{AvcConfig, MediaConfig, Mp4Config};
     use std::{
         convert::TryInto,
         io::{Cursor, Write},
@@ -36,10 +36,6 @@ fn run() -> GfxResult<()> {
 
     let mut encoder = encoder::Encoder::with_config(config).unwrap();
     let mut converter = formats::RBGYUVConverter::new(TARGET_WIDTH as _, TARGET_HEIGHT as _);
-    let mut mp4 = Mp4Stream::new(60);
-    let track_id = mp4
-        .add_track(TARGET_WIDTH as _, TARGET_HEIGHT as _)
-        .unwrap();
 
     let mut data = Cursor::new(Vec::<u8>::new());
     let mut mp4_stream = mp4::Mp4Stream::write_start(
@@ -498,10 +494,8 @@ fn run() -> GfxResult<()> {
                     let mut pps: &[u8] = &[];
                     for nalu in &layer.nal_units {
                         if nalu[4] == 103 {
-                            mp4.set_sps(track_id, &nalu[4..]).unwrap();
                             sps = &nalu[4..];
                         } else if nalu[4] == 104 {
-                            mp4.set_pps(track_id, &nalu[4..]).unwrap();
                             pps = &nalu[4..];
                         }
                     }
@@ -531,9 +525,6 @@ fn run() -> GfxResult<()> {
                     vec[2] = ((size >> 8) & 0xFF) as u8;
                     vec[3] = (size & 0xFF) as u8;
 
-                    mp4.add_frame(track_id, stream.frame_type == encoder::FrameType::IDR, &vec)
-                        .unwrap();
-
                     mp4_stream
                         .write_sample(
                             stream.frame_type == encoder::FrameType::IDR,
@@ -549,8 +540,7 @@ fn run() -> GfxResult<()> {
         // Wait for all GPU work to complete before destroying resources it is using
         graphics_queue_cloned.wait_for_queue_idle()?;
     }
-    std::fs::write("D:/test2.mp4", data.into_inner()).unwrap();
-    std::fs::write("D:/test.mp4", mp4.get_content()).unwrap();
+    std::fs::write("D:/test.mp4", data.into_inner()).unwrap();
 
     // Optional, but calling this verifies that all rafx objects/device contexts have been
     // destroyed and where they were created. Good for finding unintended leaks!
