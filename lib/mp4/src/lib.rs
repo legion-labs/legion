@@ -71,8 +71,8 @@ pub use types::*;
 mod track;
 pub use track::*;
 
-mod mse_writer;
-pub use mse_writer::*;
+mod stream;
+pub use stream::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mp4Config {
