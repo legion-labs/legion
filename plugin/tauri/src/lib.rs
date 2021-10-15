@@ -89,30 +89,33 @@ impl<A: tauri::Assets> TauriPlugin<A> {
 
 impl<A: tauri::Assets> Plugin for TauriPlugin<A> {
     fn build(&self, app: &mut App) {
-        let context = std::mem::replace(&mut *self.context.lock().unwrap(), None).unwrap();
 
-        app.set_runner(move |app| {
-            let mut app = app;
-
-            let settings = app
-                .world
-                .remove_non_send::<TauriPluginSettings<tauri::Wry>>()
-                .expect("the Tauri plugin was not configured");
-
-            let tauri_app = settings
-                .builder
-                .build(context)
-                .expect("failed to build Tauri application");
-
-            // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
-            // get rid of this and move the value directly instead.
-            let app = std::rc::Rc::new(std::cell::RefCell::new(app));
-
-            tauri_app.run(move |_, event| {
-                if let tauri::Event::MainEventsCleared = event {
-                    app.borrow_mut().update();
-                }
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
+        {
+            let context = std::mem::replace(&mut *self.context.lock().unwrap(), None).unwrap();
+    
+            app.set_runner(move |app| {
+                let mut app = app;
+    
+                let settings = app
+                    .world
+                    .remove_non_send::<TauriPluginSettings<tauri::Wry>>()
+                    .expect("the Tauri plugin was not configured");
+    
+                let mut tauri_app = settings
+                    .builder
+                    .build(context)
+                    .expect("failed to build Tauri application");
+                
+                loop {
+                    let run_iteration = tauri_app.run_iteration();
+                    app.update();
+    
+                    if run_iteration.window_count == 0 {
+                        break;
+                    }
+                }            
             });
-        });
+        }
     }
 }

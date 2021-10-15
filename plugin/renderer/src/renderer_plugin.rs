@@ -1,6 +1,6 @@
 use legion_app::Plugin;
 use legion_ecs::{schedule::ParallelSystemDescriptorCoercion, system::{IntoSystem}};
-use log::trace;
+use log::debug;
 
 #[derive(Default)]
 pub struct RendererPlugin;
@@ -12,5 +12,5 @@ impl Plugin for RendererPlugin {
 }
 
 fn do_something() {            
-    trace!( "do_something once per frame" );
+    debug!( "do_something once per frame" );
 }
