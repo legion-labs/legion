@@ -2510,8 +2510,14 @@ dependencies = [
  "legion-async",
  "legion-core",
  "legion-data-runtime",
+ "legion-input",
+ "legion-presenter-window",
  "legion-renderer",
  "legion-resource-registry",
+ "legion-tao",
+ "legion-window",
+ "log",
+ "simple_logger",
 ]
 
 [[package]]
@@ -3451,6 +3457,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-presenter-window"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+ "legion-ecs",
+ "legion-graphics-api",
+ "log",
+]
+
+[[package]]
 name = "legion-pso-compiler"
 version = "0.1.0"
 dependencies = [
@@ -3467,6 +3483,7 @@ version = "0.1.0"
 dependencies = [
  "legion-app",
  "legion-codec-api",
+ "legion-ecs",
  "legion-graphics-api",
  "log",
 ]
