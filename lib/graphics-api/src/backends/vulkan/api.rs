@@ -1,16 +1,17 @@
+use super::internal::VkInstance;
 use super::{
-    internal::*, VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
+    VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
     VulkanCommandPool, VulkanDescriptorSetArray, VulkanDescriptorSetHandle,
-    VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature,
-    VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule, VulkanSwapchain,
-    VulkanTexture, VulkanTextureView,
+    VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanDeviceContextInner, VulkanFence,
+    VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
+    VulkanShaderModule, VulkanSwapchain, VulkanTexture, VulkanTextureView,
 };
+use crate::{ApiDef, GfxApi, GfxResult, ValidationMode};
+
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::{fmt, sync::Arc};
 
-use super::{VulkanDeviceContext, VulkanDeviceContextInner};
-use crate::*;
 use std::ffi::CString;
 
 /// Vulkan-specific configuration
@@ -33,7 +34,7 @@ impl Default for ApiDefVulkan {
     fn default() -> Self {
         Self {
             app_name: CString::new(" Application").unwrap(),
-            validation_mode: Default::default(),
+            validation_mode: ValidationMode::default(),
         }
     }
 }
@@ -76,13 +77,13 @@ impl GfxApi for VulkanApi {
             // Thsi should be the final device context
             std::mem::drop(device_context);
 
-            let _strong_count = Arc::strong_count(&inner);
+            let strong_count = Arc::strong_count(&inner);
             match Arc::try_unwrap(inner) {
                 Ok(inner) => std::mem::drop(inner),
                 Err(_arc) => {
                     return Err(format!(
                         "Could not destroy device, {} references to it exist",
-                        _strong_count
+                        strong_count
                     )
                     .into());
 

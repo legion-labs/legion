@@ -121,6 +121,7 @@ impl VulkanTexture {
     }
 
     // This path is mostly so we can wrap a provided swapchain image
+    #[allow(clippy::too_many_lines)]
     pub fn from_existing(
         device_context: &VulkanDeviceContext,
         existing_image: Option<VulkanRawImage>,

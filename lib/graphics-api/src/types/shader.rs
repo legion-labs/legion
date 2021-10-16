@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use std::{hash::Hash, marker::PhantomData};
 
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ impl ShaderPackage {
     pub fn module_def(&self) -> ShaderModuleDef<'_> {
         match self {
             ShaderPackage::SpirV(bytes) => ShaderModuleDef::SpirVBytes(bytes),
-            ShaderPackage::Null => ShaderModuleDef::Null(Default::default()),
+            ShaderPackage::Null => ShaderModuleDef::Null(PhantomData::default()),
         }
     }
 }

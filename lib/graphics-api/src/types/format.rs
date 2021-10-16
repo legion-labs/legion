@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_lines)]
+
 #[cfg(feature = "vulkan")]
 use ash::vk;
 

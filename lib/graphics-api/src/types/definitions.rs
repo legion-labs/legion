@@ -1,4 +1,9 @@
-use super::*;
+use super::{
+    AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
+    Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PipelineType,
+    PrimitiveTopology, QueueType, SampleCount, ShaderStageFlags, ShaderStageReflection, StencilOp,
+    TextureTiling, VertexAttributeRate,
+};
 
 use crate::{GfxApi, ResourceFlags, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_utils::decimal::DecimalF32;
@@ -689,14 +694,14 @@ impl Default for DepthState {
             stencil_test_enable: false,
             stencil_read_mask: 0xFF,
             stencil_write_mask: 0xFF,
-            front_depth_fail_op: Default::default(),
+            front_depth_fail_op: StencilOp::default(),
             front_stencil_compare_op: CompareOp::Always,
-            front_stencil_fail_op: Default::default(),
-            front_stencil_pass_op: Default::default(),
-            back_depth_fail_op: Default::default(),
+            front_stencil_fail_op: StencilOp::default(),
+            front_stencil_pass_op: StencilOp::default(),
+            back_depth_fail_op: StencilOp::default(),
             back_stencil_compare_op: CompareOp::Always,
-            back_stencil_fail_op: Default::default(),
-            back_stencil_pass_op: Default::default(),
+            back_stencil_fail_op: StencilOp::default(),
+            back_stencil_pass_op: StencilOp::default(),
         }
     }
 }
@@ -708,7 +713,7 @@ pub struct RasterizerState {
     pub cull_mode: CullMode,
     pub front_face: FrontFace,
     pub fill_mode: FillMode,
-    pub depth_bias: i32,
+    pub depth_bias: f32,
     pub depth_bias_slope_scaled: f32,
     pub depth_clamp_enable: bool,
     pub multisample: bool,
@@ -723,7 +728,7 @@ impl PartialEq for RasterizerState {
         self.cull_mode == other.cull_mode
             && self.front_face == other.front_face
             && self.fill_mode == other.fill_mode
-            && self.depth_bias == other.depth_bias
+            && DecimalF32(self.depth_bias) == DecimalF32(other.depth_bias)
             && DecimalF32(self.depth_bias_slope_scaled) == DecimalF32(other.depth_bias_slope_scaled)
             && self.depth_clamp_enable == other.depth_clamp_enable
             && self.multisample == other.multisample
@@ -736,7 +741,7 @@ impl Hash for RasterizerState {
         self.cull_mode.hash(&mut state);
         self.front_face.hash(&mut state);
         self.fill_mode.hash(&mut state);
-        self.depth_bias.hash(&mut state);
+        DecimalF32(self.depth_bias).hash(&mut state);
         DecimalF32(self.depth_bias_slope_scaled).hash(&mut state);
         self.depth_clamp_enable.hash(&mut state);
         self.multisample.hash(&mut state);
@@ -748,9 +753,9 @@ impl Default for RasterizerState {
     fn default() -> Self {
         Self {
             cull_mode: CullMode::None,
-            front_face: Default::default(),
-            fill_mode: Default::default(),
-            depth_bias: 0,
+            front_face: FrontFace::default(),
+            fill_mode: FillMode::default(),
+            depth_bias: 0.0,
             depth_bias_slope_scaled: 0.0,
             depth_clamp_enable: false,
             multisample: false,
@@ -788,7 +793,7 @@ impl Default for BlendStateRenderTarget {
 
 impl BlendStateRenderTarget {
     pub fn default_alpha_disabled() -> Self {
-        Default::default()
+        Self::default()
     }
 
     pub fn default_alpha_enabled() -> Self {
@@ -857,10 +862,12 @@ impl Default for BlendState {
 
 impl BlendState {
     pub fn verify(&self, color_attachment_count: usize) {
-        if !self.independent_blend {
-            assert_eq!(self.render_target_blend_states.len(), 1, "If BlendState::independent_blend is false, BlendState::render_target_blend_states must be 1");
+        if self.independent_blend {
+            assert_eq!(self.render_target_blend_states.len(), color_attachment_count,
+                "If BlendState::independent_blend is true, BlendState::render_target_blend_states length must match color attachment count");
         } else {
-            assert_eq!(self.render_target_blend_states.len(), color_attachment_count, "If BlendState::independent_blend is true, BlendState::render_target_blend_states length must match color attachment count");
+            assert_eq!(self.render_target_blend_states.len(), 1,
+                "If BlendState::independent_blend is false, BlendState::render_target_blend_states must be 1");
         }
     }
 }

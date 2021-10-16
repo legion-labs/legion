@@ -69,22 +69,22 @@ pub(crate) fn image_format_to_aspect_mask(
 
 pub fn shader_resource_type_to_descriptor_type(
     shader_resource_type: ShaderResourceType,
-) -> Option<vk::DescriptorType> {
+) -> vk::DescriptorType {
     match shader_resource_type {
-        ShaderResourceType::Sampler => Some(vk::DescriptorType::SAMPLER),
-        ShaderResourceType::ConstantBuffer => Some(vk::DescriptorType::UNIFORM_BUFFER),
+        ShaderResourceType::Sampler => vk::DescriptorType::SAMPLER,
+        ShaderResourceType::ConstantBuffer => vk::DescriptorType::UNIFORM_BUFFER,
         ShaderResourceType::StructuredBuffer
         | ShaderResourceType::RWStructuredBuffer
         | ShaderResourceType::ByteAdressBuffer
-        | ShaderResourceType::RWByteAdressBuffer => Some(vk::DescriptorType::STORAGE_BUFFER),
+        | ShaderResourceType::RWByteAdressBuffer => vk::DescriptorType::STORAGE_BUFFER,
         ShaderResourceType::Texture2D
         | ShaderResourceType::Texture2DArray
         | ShaderResourceType::Texture3D
         | ShaderResourceType::TextureCube
-        | ShaderResourceType::TextureCubeArray => Some(vk::DescriptorType::SAMPLED_IMAGE),
+        | ShaderResourceType::TextureCubeArray => vk::DescriptorType::SAMPLED_IMAGE,
         ShaderResourceType::RWTexture2D
         | ShaderResourceType::RWTexture2DArray
-        | ShaderResourceType::RWTexture3D => Some(vk::DescriptorType::STORAGE_IMAGE),
+        | ShaderResourceType::RWTexture3D => vk::DescriptorType::STORAGE_IMAGE,
     }
 }
 
@@ -284,8 +284,8 @@ pub(crate) fn depth_state_to_create_info(
         .pass_op(depth_state.front_stencil_pass_op.into())
         .depth_fail_op(depth_state.front_depth_fail_op.into())
         .compare_op(depth_state.front_stencil_compare_op.into())
-        .compare_mask(depth_state.stencil_read_mask as u32)
-        .write_mask(depth_state.stencil_write_mask as u32)
+        .compare_mask(u32::from(depth_state.stencil_read_mask))
+        .write_mask(u32::from(depth_state.stencil_write_mask))
         .reference(0);
 
     let back = vk::StencilOpState::builder()
@@ -293,8 +293,8 @@ pub(crate) fn depth_state_to_create_info(
         .pass_op(depth_state.back_stencil_pass_op.into())
         .depth_fail_op(depth_state.back_depth_fail_op.into())
         .compare_op(depth_state.back_stencil_compare_op.into())
-        .compare_mask(depth_state.stencil_read_mask as u32)
-        .write_mask(depth_state.stencil_write_mask as u32)
+        .compare_mask(u32::from(depth_state.stencil_read_mask))
+        .write_mask(u32::from(depth_state.stencil_write_mask))
         .reference(0);
 
     vk::PipelineDepthStencilStateCreateInfo::builder()
@@ -319,8 +319,8 @@ pub(crate) fn rasterizer_state_to_create_info(
         .polygon_mode(rasterizer_state.fill_mode.into())
         .cull_mode(rasterizer_state.cull_mode.into())
         .front_face(rasterizer_state.front_face.into())
-        .depth_bias_enable(rasterizer_state.depth_bias != 0)
-        .depth_bias_constant_factor(rasterizer_state.depth_bias as f32)
+        .depth_bias_enable(rasterizer_state.depth_bias != 0.0)
+        .depth_bias_constant_factor(rasterizer_state.depth_bias)
         .depth_bias_clamp(0.0)
         .depth_bias_slope_factor(rasterizer_state.depth_bias_slope_scaled)
         .line_width(1.0)

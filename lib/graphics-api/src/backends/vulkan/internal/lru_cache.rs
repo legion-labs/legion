@@ -19,7 +19,7 @@ pub struct LruCache<T: Clone> {
 impl<T: Clone> LruCache<T> {
     pub fn new(max_count: usize) -> Self {
         Self {
-            entries: Default::default(),
+            entries: FnvHashMap::default(),
             next_usage_index: 0,
             max_count,
         }

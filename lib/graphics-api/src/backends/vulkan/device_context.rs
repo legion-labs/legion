@@ -5,12 +5,17 @@ use crate::{
 };
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
+use std::convert::TryInto;
 use std::sync::{Arc, Mutex};
 
+use super::internal::{
+    DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
+    VkQueueRequirements, VulkanDescriptorHeap, VulkanRenderpass, VulkanRenderpassDef,
+};
 use super::{
-    internal::*, VulkanApi, VulkanBuffer, VulkanDescriptorSetArray, VulkanDescriptorSetLayout,
-    VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore,
-    VulkanShader, VulkanShaderModule, VulkanSwapchain, VulkanTexture,
+    VulkanApi, VulkanBuffer, VulkanDescriptorSetArray, VulkanDescriptorSetLayout, VulkanFence,
+    VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
+    VulkanShaderModule, VulkanSwapchain, VulkanTexture,
 };
 
 use ash::extensions::khr;
@@ -155,7 +160,7 @@ impl VulkanDeviceContextInner {
             flags: vk_mem::AllocatorCreateFlags::default(),
             preferred_large_heap_block_size: Default::default(),
             frame_in_use_count: 0, // Not using CAN_BECOME_LOST, so this is not needed
-            heap_size_limits: Default::default(),
+            heap_size_limits: Option::default(),
         };
 
         let allocator = vk_mem::Allocator::new(&allocator_create_info)?;
@@ -504,8 +509,7 @@ fn query_physical_device_info(
     let all_queue_families: Vec<ash::vk::QueueFamilyProperties> =
         unsafe { instance.get_physical_device_queue_family_properties(device) };
 
-    let queue_family_indices = find_queue_families(&all_queue_families)?;
-    if let Some(queue_family_indices) = queue_family_indices {
+    if let Some(queue_family_indices) = find_queue_families(&all_queue_families) {
         // Determine the index of the device_type within physical_device_type_priority
         let index = physical_device_type_priority
             .iter()
@@ -513,13 +517,10 @@ fn query_physical_device_info(
             .position(|x| x == properties.device_type);
 
         // Convert it to a score
-        let rank = if let Some(index) = index {
-            // It's in the list, return a value between 1..n
-            physical_device_type_priority.len() - index
-        } else {
-            // Not in the list, return a zero
-            0
-        } as i32;
+        let rank: i32 = index
+            .map_or(0, |index| physical_device_type_priority.len() - index)
+            .try_into()
+            .unwrap();
 
         let mut score = 0;
         score += rank * 100;
@@ -558,7 +559,7 @@ fn query_physical_device_info(
 //TODO: Could improve this by looking at vendor/device ID, VRAM size, supported feature set, etc.
 fn find_queue_families(
     all_queue_families: &[ash::vk::QueueFamilyProperties],
-) -> GfxResult<Option<VkQueueFamilyIndices>> {
+) -> Option<VkQueueFamilyIndices> {
     let mut graphics_queue_family_index = None;
     let mut compute_queue_family_index = None;
     let mut transfer_queue_family_index = None;
@@ -666,13 +667,13 @@ fn find_queue_families(
         compute_queue_family_index,
         transfer_queue_family_index,
     ) {
-        Ok(Some(VkQueueFamilyIndices {
+        Some(VkQueueFamilyIndices {
             graphics_queue_family_index,
             compute_queue_family_index,
             transfer_queue_family_index,
-        }))
+        })
     } else {
-        Ok(None)
+        None
     }
 }
 

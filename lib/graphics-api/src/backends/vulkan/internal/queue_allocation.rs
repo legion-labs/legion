@@ -215,13 +215,12 @@ impl VkQueueRequirements {
                     queue_family_index: queue_family,
                     first_queue_index,
                 };
-            } else {
-                log::warn!(
-                    "Not enough available queues in queue family {} to create pool of size {}. Falling back to ShareFirstQueueInFamily behavior",
-                    queue_family,
-                    count
-                );
             }
+            log::warn!(
+                "Not enough available queues in queue family {} to create pool of size {}. Falling back to ShareFirstQueueInFamily behavior",
+                queue_family,
+                count
+            );
         }
 
         // Default safe behavior. Works as long as a queue exists.

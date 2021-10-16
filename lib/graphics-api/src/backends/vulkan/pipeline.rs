@@ -1,10 +1,11 @@
+#![allow(clippy::too_many_lines)]
 use super::{
     VulkanApi, VulkanDeviceContext, VulkanRenderpassColorAttachment, VulkanRenderpassDef,
     VulkanRenderpassDepthAttachment, VulkanRootSignature,
 };
 use crate::{
-    ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef, Pipeline, PipelineType,
-    ShaderStageFlags,
+    ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
+    ShaderStageFlags, StoreOp,
 };
 use ash::vk;
 use std::ffi::CString;
@@ -47,8 +48,8 @@ impl VulkanPipeline {
             .iter()
             .map(|&format| VulkanRenderpassColorAttachment {
                 format,
-                load_op: Default::default(),
-                store_op: Default::default(),
+                load_op: LoadOp::default(),
+                store_op: StoreOp::default(),
             })
             .collect();
 
@@ -56,10 +57,10 @@ impl VulkanPipeline {
             assert_ne!(depth_format, Format::UNDEFINED);
             Some(VulkanRenderpassDepthAttachment {
                 format: depth_format,
-                depth_load_op: Default::default(),
-                stencil_load_op: Default::default(),
-                depth_store_op: Default::default(),
-                stencil_store_op: Default::default(),
+                depth_load_op: LoadOp::default(),
+                stencil_load_op: LoadOp::default(),
+                depth_store_op: StoreOp::default(),
+                stencil_store_op: StoreOp::default(),
             })
         } else {
             None

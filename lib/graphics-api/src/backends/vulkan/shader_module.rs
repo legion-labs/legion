@@ -1,5 +1,5 @@
 use super::{VulkanApi, VulkanDeviceContext};
-use crate::*;
+use crate::{GfxResult, ShaderModule, ShaderModuleDef};
 use ash::vk;
 use std::sync::Arc;
 

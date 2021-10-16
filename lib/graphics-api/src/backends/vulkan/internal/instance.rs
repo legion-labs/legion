@@ -116,9 +116,8 @@ impl VkInstance {
                 if require_validation_layers_present {
                     log::error!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
                     return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
-                } else {
-                    log::warn!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
                 }
+                log::warn!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
             }
 
             let debug_extension = DebugUtils::name();
@@ -130,9 +129,8 @@ impl VkInstance {
                 if require_validation_layers_present {
                     log::error!("Could not find the debug extension. Check that the vulkan SDK has been installed or disable validation.");
                     return Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT.into());
-                } else {
-                    log::warn!("Could not find the debug extension. Check that the vulkan SDK has been installed or disable validation.");
                 }
+                log::warn!("Could not find the debug extension. Check that the vulkan SDK has been installed or disable validation.");
             }
 
             if let Some(best_validation_layer) = best_validation_layer {

@@ -83,8 +83,7 @@ impl VulkanDescriptorSetLayout {
         for descriptor_def in &descriptor_set_layout_def.descriptor_defs {
             let vk_descriptor_type = super::internal::shader_resource_type_to_descriptor_type(
                 descriptor_def.shader_resource_type,
-            )
-            .unwrap();
+            );
 
             let vk_binding = vk::DescriptorSetLayoutBinding::builder()
                 .binding(descriptor_def.binding)

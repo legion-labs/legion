@@ -1,7 +1,11 @@
 use super::LruCache;
-use super::*;
+use super::{
+    VulkanRenderpassColorAttachment, VulkanRenderpassDef, VulkanRenderpassDepthAttachment,
+};
 use crate::backends::vulkan::{VulkanApi, VulkanDeviceContext, VulkanRenderpass};
-use crate::*;
+use crate::{
+    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, GfxResult, Texture, TextureView,
+};
 use fnv::FnvHasher;
 use std::hash::{Hash, Hasher};
 

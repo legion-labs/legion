@@ -139,7 +139,7 @@ impl Queue<VulkanApi> for VulkanQueue {
             .signal_semaphores(&signal_semaphore_list)
             .command_buffers(&command_buffer_list);
 
-        let fence = signal_fence.map_or(vk::Fence::null(), |x| x.vk_fence());
+        let fence = signal_fence.map_or(vk::Fence::null(), VulkanFence::vk_fence);
         unsafe {
             let queue = self.queue.queue().lock().unwrap();
             log::trace!(

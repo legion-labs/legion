@@ -11,6 +11,7 @@ use crate::{
 pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
 
+#[allow(clippy::too_many_lines)]
 pub(crate) fn extract_resources<A: GfxApi>(
     shaders: &[A::Shader],
 ) -> GfxResult<(PipelineType, Vec<ShaderResource>, Option<PushConstant>)> {
@@ -149,7 +150,7 @@ pub(crate) fn extract_resources<A: GfxApi>(
                 push_constant = pipeline_reflection.push_constant;
             }
             Some(pc) => {
-                if let Some(pipeline_push_constant) = &pipeline_reflection.push_constant {
+                if let Some(pipeline_push_constant) = pipeline_reflection.push_constant {
                     pc.verify_compatible_across_stages(pipeline_push_constant)?;
                     pc.used_in_shader_stages |= pipeline_push_constant.used_in_shader_stages;
                 }

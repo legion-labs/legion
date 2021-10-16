@@ -33,7 +33,7 @@ pub struct PushConstant {
 }
 
 impl PushConstant {
-    pub(crate) fn verify_compatible_across_stages(&self, other: &Self) -> GfxResult<()> {
+    pub(crate) fn verify_compatible_across_stages(self, other: Self) -> GfxResult<()> {
         if self.size != other.size {
             return Err("PushConstant has different size in different stages".into());
         }
@@ -111,136 +111,10 @@ pub struct PipelineReflection {
 
 impl PipelineReflection {
     pub fn from_stages<A: GfxApi>(stages: &[ShaderStageDef<A>]) -> GfxResult<Self> {
-        let mut unmerged_resources = Vec::default();
-        for stage in stages {
-            assert!(!stage.reflection.shader_stage.is_empty());
-            for resource in &stage.reflection.shader_resources {
-                // The provided resource MAY (but does not need to) have the shader stage flag set.
-                // (Leaving it default empty is fine). It will automatically be set here.
-                if !(resource.used_in_shader_stages - stage.reflection.shader_stage).is_empty() {
-                    let message = format!(
-                        "A resource in shader stage {:?} has other stages {:?} set",
-                        stage.reflection.shader_stage,
-                        resource.used_in_shader_stages - stage.reflection.shader_stage
-                    );
-                    log::error!("{}", message);
-                    return Err(message.into());
-                }
-
-                let mut resource = resource.clone();
-                resource.used_in_shader_stages |= stage.reflection.shader_stage;
-                unmerged_resources.push(resource);
-            }
-        }
-
-        let mut unmerged_pushconstants = Vec::default();
-        for stage in stages {
-            assert!(!stage.reflection.shader_stage.is_empty());
-            for push_constant in &stage.reflection.push_constants {
-                // The provided resource MAY (but does not need to) have the shader stage flag set.
-                // (Leaving it default empty is fine). It will automatically be set here.
-                if !(push_constant.used_in_shader_stages - stage.reflection.shader_stage).is_empty()
-                {
-                    let message = format!(
-                        "A resource in shader stage {:?} has other stages {:?} set",
-                        stage.reflection.shader_stage,
-                        push_constant.used_in_shader_stages - stage.reflection.shader_stage
-                    );
-                    log::error!("{}", message);
-                    return Err(message.into());
-                }
-
-                let mut push_constant = *push_constant;
-                push_constant.used_in_shader_stages |= stage.reflection.shader_stage;
-                unmerged_pushconstants.push(push_constant);
-            }
-        }
-
-        let mut compute_threads_per_group = None;
-        for stage in stages {
-            if stage
-                .reflection
-                .shader_stage
-                .intersects(ShaderStageFlags::COMPUTE)
-            {
-                compute_threads_per_group = stage.reflection.compute_threads_per_group;
-            }
-        }
-
-        log::trace!("Create PipelineReflection from stages");
-        let mut all_shader_stages = ShaderStageFlags::empty();
-        for stage in stages {
-            if all_shader_stages.intersects(stage.reflection.shader_stage) {
-                return Err(format!(
-                    "Duplicate shader stage ({}) found when creating PipelineReflection",
-                    (all_shader_stages & stage.reflection.shader_stage).bits()
-                )
-                .into());
-            }
-
-            all_shader_stages |= stage.reflection.shader_stage;
-        }
-
-        let mut merged_resources =
-            FnvHashMap::<ShaderResourceBindingKey, ShaderResource>::default();
-        for resource in &unmerged_resources {
-            log::trace!(
-                "    Resource {:?} from stage {:?}",
-                resource.name,
-                resource.used_in_shader_stages
-            );
-            let key = resource.binding_key();
-            if let Some(existing_resource) = merged_resources.get_mut(&key) {
-                // verify compatible
-                existing_resource.verify_compatible_across_stages(resource)?;
-
-                log::trace!(
-                    "      Already used in stages {:?} and is compatible, adding stage {:?}",
-                    existing_resource.used_in_shader_stages,
-                    resource.used_in_shader_stages,
-                );
-                existing_resource.used_in_shader_stages |= resource.used_in_shader_stages;
-            } else {
-                // insert it
-                log::trace!(
-                    "      Resource not yet used, adding it for stage {:?}",
-                    resource.used_in_shader_stages
-                );
-                assert!(!resource.used_in_shader_stages.is_empty());
-                let old = merged_resources.insert(key, resource.clone());
-                assert!(old.is_none());
-            }
-        }
-
-        let mut merged_pushconstant: Option<PushConstant> = None;
-        for push_constant in unmerged_pushconstants {
-            log::trace!(
-                "    PushConstant from stage {:?}",
-                push_constant.used_in_shader_stages
-            );
-            if let Some(existing_push_constant) = &mut merged_pushconstant {
-                // verify compatible
-                existing_push_constant.verify_compatible_across_stages(&push_constant)?;
-
-                log::trace!(
-                    "      Already used in stages {:?} and is compatible, adding stage {:?}",
-                    existing_push_constant.used_in_shader_stages,
-                    push_constant.used_in_shader_stages,
-                );
-                existing_push_constant.used_in_shader_stages |= push_constant.used_in_shader_stages;
-            } else {
-                // insert it
-                log::trace!(
-                    "      Resource not yet used, adding it for stage {:?}",
-                    push_constant.used_in_shader_stages
-                );
-                assert!(!push_constant.used_in_shader_stages.is_empty());
-                merged_pushconstant = Some(push_constant);
-            }
-        }
-
-        let shader_resources = merged_resources.into_iter().map(|(_, v)| v).collect();
-        let push_constant = merged_pushconstant;
+        let compute_threads_per_group = compute_threads_per_group(stages);
+        let all_shader_stages = all_shader_stages(stages)?;
+        let shader_resources = merge_resources(stages)?;
+        let push_constant = merge_pushconstant(stages)?;
 
         Ok(Self {
             shader_stages: all_shader_stages,
@@ -249,4 +123,140 @@ impl PipelineReflection {
             push_constant,
         })
     }
+}
+
+fn merge_pushconstant<A: GfxApi>(stages: &[ShaderStageDef<A>]) -> GfxResult<Option<PushConstant>> {
+    let mut unmerged_pushconstants = Vec::default();
+    for stage in stages {
+        assert!(!stage.reflection.shader_stage.is_empty());
+        for push_constant in &stage.reflection.push_constants {
+            // The provided resource MAY (but does not need to) have the shader stage flag set.
+            // (Leaving it default empty is fine). It will automatically be set here.
+            if !(push_constant.used_in_shader_stages - stage.reflection.shader_stage).is_empty() {
+                let message = format!(
+                    "A resource in shader stage {:?} has other stages {:?} set",
+                    stage.reflection.shader_stage,
+                    push_constant.used_in_shader_stages - stage.reflection.shader_stage
+                );
+                log::error!("{}", message);
+                return Err(message.into());
+            }
+
+            let mut push_constant = *push_constant;
+            push_constant.used_in_shader_stages |= stage.reflection.shader_stage;
+            unmerged_pushconstants.push(push_constant);
+        }
+    }
+    let mut merged_pushconstant: Option<PushConstant> = None;
+    for push_constant in unmerged_pushconstants {
+        log::trace!(
+            "    PushConstant from stage {:?}",
+            push_constant.used_in_shader_stages
+        );
+        if let Some(existing_push_constant) = &mut merged_pushconstant {
+            // verify compatible
+            existing_push_constant.verify_compatible_across_stages(push_constant)?;
+
+            log::trace!(
+                "      Already used in stages {:?} and is compatible, adding stage {:?}",
+                existing_push_constant.used_in_shader_stages,
+                push_constant.used_in_shader_stages,
+            );
+            existing_push_constant.used_in_shader_stages |= push_constant.used_in_shader_stages;
+        } else {
+            // insert it
+            log::trace!(
+                "      Resource not yet used, adding it for stage {:?}",
+                push_constant.used_in_shader_stages
+            );
+            assert!(!push_constant.used_in_shader_stages.is_empty());
+            merged_pushconstant = Some(push_constant);
+        }
+    }
+    Ok(merged_pushconstant)
+}
+
+fn merge_resources<A: GfxApi>(stages: &[ShaderStageDef<A>]) -> GfxResult<Vec<ShaderResource>> {
+    let mut unmerged_resources = Vec::default();
+    for stage in stages {
+        assert!(!stage.reflection.shader_stage.is_empty());
+        for resource in &stage.reflection.shader_resources {
+            // The provided resource MAY (but does not need to) have the shader stage flag set.
+            // (Leaving it default empty is fine). It will automatically be set here.
+            if !(resource.used_in_shader_stages - stage.reflection.shader_stage).is_empty() {
+                let message = format!(
+                    "A resource in shader stage {:?} has other stages {:?} set",
+                    stage.reflection.shader_stage,
+                    resource.used_in_shader_stages - stage.reflection.shader_stage
+                );
+                log::error!("{}", message);
+                return Err(message.into());
+            }
+
+            let mut resource = resource.clone();
+            resource.used_in_shader_stages |= stage.reflection.shader_stage;
+            unmerged_resources.push(resource);
+        }
+    }
+    let mut merged_resources = FnvHashMap::<ShaderResourceBindingKey, ShaderResource>::default();
+    for resource in &unmerged_resources {
+        log::trace!(
+            "    Resource {:?} from stage {:?}",
+            resource.name,
+            resource.used_in_shader_stages
+        );
+        let key = resource.binding_key();
+        if let Some(existing_resource) = merged_resources.get_mut(&key) {
+            // verify compatible
+            existing_resource.verify_compatible_across_stages(resource)?;
+
+            log::trace!(
+                "      Already used in stages {:?} and is compatible, adding stage {:?}",
+                existing_resource.used_in_shader_stages,
+                resource.used_in_shader_stages,
+            );
+            existing_resource.used_in_shader_stages |= resource.used_in_shader_stages;
+        } else {
+            // insert it
+            log::trace!(
+                "      Resource not yet used, adding it for stage {:?}",
+                resource.used_in_shader_stages
+            );
+            assert!(!resource.used_in_shader_stages.is_empty());
+            let old = merged_resources.insert(key, resource.clone());
+            assert!(old.is_none());
+        }
+    }
+
+    Ok(merged_resources.into_iter().map(|(_, v)| v).collect())
+}
+
+fn all_shader_stages<A: GfxApi>(stages: &[ShaderStageDef<A>]) -> GfxResult<ShaderStageFlags> {
+    let mut all_shader_stages = ShaderStageFlags::empty();
+    for stage in stages {
+        if all_shader_stages.intersects(stage.reflection.shader_stage) {
+            return Err(format!(
+                "Duplicate shader stage ({}) found when creating PipelineReflection",
+                (all_shader_stages & stage.reflection.shader_stage).bits()
+            )
+            .into());
+        }
+
+        all_shader_stages |= stage.reflection.shader_stage;
+    }
+    Ok(all_shader_stages)
+}
+
+fn compute_threads_per_group<A: GfxApi>(stages: &[ShaderStageDef<A>]) -> Option<[u32; 3]> {
+    let mut compute_threads_per_group = None;
+    for stage in stages {
+        if stage
+            .reflection
+            .shader_stage
+            .intersects(ShaderStageFlags::COMPUTE)
+        {
+            compute_threads_per_group = stage.reflection.compute_threads_per_group;
+        }
+    }
+    compute_threads_per_group
 }

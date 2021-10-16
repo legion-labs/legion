@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_lines)]
 use super::{
     internal, VulkanApi, VulkanBuffer, VulkanCommandPool, VulkanDescriptorSetArray,
     VulkanDescriptorSetHandle, VulkanDeviceContext, VulkanPipeline, VulkanRootSignature,
@@ -12,6 +13,7 @@ use crate::{
 };
 use ash::vk;
 use std::{
+    convert::TryInto,
     mem, ptr,
     sync::atomic::{AtomicBool, Ordering},
 };
@@ -228,6 +230,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
 
         self.has_active_renderpass.store(true, Ordering::Relaxed);
 
+        #[allow(clippy::cast_precision_loss)]
         self.cmd_set_viewport(
             0.0,
             0.0,
@@ -289,8 +292,8 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 0,
                 &[vk::Rect2D {
                     offset: vk::Offset2D {
-                        x: x as i32,
-                        y: y as i32,
+                        x: x.try_into().unwrap(),
+                        y: y.try_into().unwrap(),
                     },
                     extent: vk::Extent2D { width, height },
                 }],
@@ -580,8 +583,8 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
 
             if let Some(array_slice) = array_slice {
                 subresource_range.layer_count = 1;
-                subresource_range.base_array_layer = array_slice as u32;
-                assert!((array_slice as u32) < texture.texture_def().array_length);
+                subresource_range.base_array_layer = u32::from(array_slice);
+                assert!(u32::from(array_slice) < texture.texture_def().array_length);
             } else {
                 subresource_range.layer_count = vk::REMAINING_ARRAY_LAYERS;
                 subresource_range.base_array_layer = 0;
@@ -589,8 +592,8 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
 
             if let Some(mip_slice) = mip_slice {
                 subresource_range.level_count = 1;
-                subresource_range.base_mip_level = mip_slice as u32;
-                assert!((mip_slice as u32) < texture.texture_def().mip_count);
+                subresource_range.base_mip_level = u32::from(mip_slice);
+                assert!(u32::from(mip_slice) < texture.texture_def().mip_count);
             } else {
                 subresource_range.level_count = vk::REMAINING_MIP_LEVELS;
                 subresource_range.base_mip_level = 0;
@@ -748,8 +751,8 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                     image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
                     image_subresource: vk::ImageSubresourceLayers {
                         aspect_mask: dst_texture.vk_aspect_mask(),
-                        mip_level: params.mip_level as u32,
-                        base_array_layer: params.array_layer as u32,
+                        mip_level: u32::from(params.mip_level),
+                        base_array_layer: u32::from(params.array_layer),
                         layer_count: 1,
                     },
                     buffer_offset: params.buffer_offset,
@@ -775,16 +778,16 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
 
         let mut src_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)
-            .mip_level(params.src_mip_level as u32)
+            .mip_level(u32::from(params.src_mip_level))
             .build();
         let mut dst_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(dst_aspect_mask)
-            .mip_level(params.dst_mip_level as u32)
+            .mip_level(u32::from(params.dst_mip_level))
             .build();
 
         if let Some(array_slices) = params.array_slices {
-            src_subresource.base_array_layer = array_slices[0] as u32;
-            dst_subresource.base_array_layer = array_slices[1] as u32;
+            src_subresource.base_array_layer = u32::from(array_slices[0]);
+            dst_subresource.base_array_layer = u32::from(array_slices[1]);
             src_subresource.layer_count = 1;
             dst_subresource.layer_count = 1;
         } else {
@@ -854,15 +857,15 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
 
         let mut src_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)
-            .mip_level(params.src_mip_level as u32)
+            .mip_level(u32::from(params.src_mip_level))
             .build();
         let mut dst_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(dst_aspect_mask)
-            .mip_level(params.dst_mip_level as u32)
+            .mip_level(u32::from(params.dst_mip_level))
             .build();
 
-        src_subresource.base_array_layer = params.src_array_slice as u32;
-        dst_subresource.base_array_layer = params.dst_array_slice as u32;
+        src_subresource.base_array_layer = u32::from(params.src_array_slice);
+        dst_subresource.base_array_layer = u32::from(params.dst_array_slice);
         src_subresource.layer_count = 1;
         dst_subresource.layer_count = 1;
 

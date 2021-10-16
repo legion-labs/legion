@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_lines)]
 use super::{VulkanApi, VulkanDescriptorHeap, VulkanDescriptorSetLayout, VulkanDeviceContext};
 use crate::{
     BufferView, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle,
