@@ -111,16 +111,16 @@ pub struct PipelineReflection {
 
 impl PipelineReflection {
     pub fn from_stages<A: GfxApi>(stages: &[ShaderStageDef<A>]) -> GfxResult<Self> {
-        let compute_threads_per_group = compute_threads_per_group(stages);
-        let all_shader_stages = all_shader_stages(stages)?;
+        let shader_stages = all_shader_stages(stages)?;
         let shader_resources = merge_resources(stages)?;
         let push_constant = merge_pushconstant(stages)?;
+        let compute_threads_per_group = compute_threads_per_group(stages);
 
         Ok(Self {
-            shader_stages: all_shader_stages,
-            compute_threads_per_group,
+            shader_stages,
             shader_resources,
             push_constant,
+            compute_threads_per_group,
         })
     }
 }
