@@ -178,7 +178,7 @@ function debounce(func, wait, immediate) {
 export default {
   name: "Video",
   props: {
-    hue: Number,
+    color: String,
     speed: Number,
   },
   mounted() {
@@ -276,12 +276,13 @@ export default {
     };
   },
   watch: {
-    hue(hue) {
+    color(color) {
       if (this.video_channel != null) {
+        console.log(color);
         this.video_channel.send(
           JSON.stringify({
-            event: "hue",
-            hue: hue / 360,
+            event: "color",
+            color: color,
           })
         );
       }

@@ -2595,12 +2595,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hsl"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "575fb7f1167f3b88ed825e90eb14918ac460461fdeaa3965c6a50951dee1c970"
-
-[[package]]
 name = "html5ever"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3416,13 +3410,14 @@ dependencies = [
  "bytes",
  "crossbeam",
  "futures-lite",
- "hsl",
+ "hex",
  "interceptor",
  "legion-app",
  "legion-async",
  "legion-codec-api",
  "legion-core",
  "legion-ecs",
+ "legion-graphics-api",
  "legion-grpc",
  "legion-mp4",
  "legion-renderer",

@@ -1,11 +1,12 @@
 <template>
-  <div class="d-flex flex-column align-center">
-    <color-picker
+  <div class="d-flex flex-column">
+    <ResourceSelector></ResourceSelector>
+    <v-color-picker
       id="color-picker"
-      variant="persistent"
-      :value="hue"
+      :value="color"
       @input="onColorChange"
-    ></color-picker>
+      mode="rgba"
+    ></v-color-picker>
     <v-slider
       class="speed-selector"
       min="-10"
@@ -41,14 +42,14 @@
 <script>
 export default {
   methods: {
-    onColorChange(hue) {
-      this.$emit("hue-change", hue);
+    onColorChange(color) {
+      this.$emit("color-change", color);
     },
     onSpeedChange(speed) {
       this.$emit("speed-change", speed);
     },
   },
-  props: ["hue", "speed"],
+  props: ["color", "speed"],
   data() {
     return {};
   },

@@ -16,6 +16,8 @@ use legion_telemetry::prelude::*;
 use legion_utils::memory::write_any;
 use serde::Serialize;
 
+use super::Color;
+
 fn record_frame_time_metric(microseconds: u64) {
     trace_scope!();
     static FRAME_TIME_METRIC: MetricDesc = MetricDesc {
@@ -56,7 +58,7 @@ pub struct VideoStream {
     video_data_channel: Arc<RTCDataChannel>,
     frame_id: i32,
     resolution: Resolution,
-    pub hue: f32,
+    pub color: Color,
     pub speed: f32,
     renderer: Renderer,
     encoder: VideoStreamEncoder,
@@ -74,7 +76,7 @@ impl VideoStream {
             video_data_channel,
             frame_id: 0,
             resolution,
-            hue: 1.0,
+            color: Color::default(),
             speed: 1.0,
             renderer,
             encoder,
@@ -112,7 +114,7 @@ impl VideoStream {
         self.renderer.render(
             self.frame_id as usize,
             self.elapsed_secs,
-            hue2rgb_modulation(self.hue),
+            self.color.0 .0,
             &mut self.encoder.converter,
         );
 
@@ -301,19 +303,4 @@ fn split_frame_in_chunks(data: &[u8], frame_id: i32) -> Vec<Bytes> {
     }
 
     chunks
-}
-
-fn hue2rgb_modulation(hue: f32) -> (f32, f32, f32) {
-    let rgb = hsl::HSL {
-        h: f64::from(hue * 360.0),
-        s: 1_f64,
-        l: 0.5_f64,
-    }
-    .to_rgb();
-
-    (
-        f32::from(rgb.0) / 256.0,
-        f32::from(rgb.1) / 256.0,
-        f32::from(rgb.2) / 256.0,
-    )
 }

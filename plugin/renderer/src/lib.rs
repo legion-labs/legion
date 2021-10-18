@@ -338,7 +338,7 @@ impl Renderer {
         &self,
         frame_idx: usize,
         elapsed_secs: f32,
-        rgb: (f32, f32, f32),
+        rgba: [f32; 4],
         converter: &mut RBGYUVConverter,
     ) {
         let vertex_data = [
@@ -359,7 +359,7 @@ impl Renderer {
             1.0,
         ];
 
-        let uniform_data = [rgb.0, rgb.1, rgb.2, 1.0];
+        let uniform_data = [rgba[0], rgba[1], rgba[2], rgba[3]];
 
         //
         // Acquire swapchain image

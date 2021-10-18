@@ -1292,24 +1292,6 @@
   resolved "https://registry.yarnpkg.com/@polka/url/-/url-1.0.0-next.20.tgz#111b5db0f501aa89b05076fa31f0ea0e0c292cd3"
   integrity sha512-88p7+M0QGxKpmnkfXjS4V26AnoC/eiqZutE8GLdaI5X12NY75bXSdTY9NkmYb2Xyk1O+MmkuO6Frmsj84V6I8Q==
 
-"@radial-color-picker/color-wheel@2.2.2":
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/@radial-color-picker/color-wheel/-/color-wheel-2.2.2.tgz#0c8b0b550d550e3c63ee35fdccb4f95fe8f53ad6"
-  integrity sha512-TCiOm77puc0fWG/syMOM0FuPwwtJ2Yc2dUf/BbMhQe6RanRUfS1tcJCef3eYTwidWggLOqswr71sS+9tdfZ+Sg==
-
-"@radial-color-picker/rotator@3.0.1":
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/@radial-color-picker/rotator/-/rotator-3.0.1.tgz#8def5b06677e0e7c8db6e73d957df8e66712d8f1"
-  integrity sha512-RKtlLzZKAvDpRNLZEP61OxtZerBOmHKkQ656MNRMKwnMdF/+hwiozRLOTHWyhMkK1xueIOuiP3U50qtjSM1vAw==
-
-"@radial-color-picker/vue-color-picker@^4.0.0":
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/@radial-color-picker/vue-color-picker/-/vue-color-picker-4.0.0.tgz#b8fa38c00f627364f2c21498bd87e7391887fd08"
-  integrity sha512-NsC+0nF0xIQl7vcirC77BAHtHFoJEF+KGmcDVNOLfgAcV5MMxsNbdgDPgOMa5Qeog0UvcAJlbJ7jLxqmo8IVQA==
-  dependencies:
-    "@radial-color-picker/color-wheel" "2.2.2"
-    "@radial-color-picker/rotator" "3.0.1"
-
 "@tauri-apps/api@^1.0.0-beta.8":
   version "1.0.0-beta.8"
   resolved "https://registry.yarnpkg.com/@tauri-apps/api/-/api-1.0.0-beta.8.tgz#a43dc4a4515148f29bfb616db85445b771e84f78"
