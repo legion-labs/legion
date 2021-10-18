@@ -1,8 +1,6 @@
 use graphics_api::prelude::*;
 
 pub struct Renderer {
-    // width: u32,
-    // height: u32,
     frame_idx: usize,
     render_frame_idx: usize,
     num_render_frames: usize,
@@ -14,7 +12,6 @@ pub struct Renderer {
     uniform_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
     render_images: Vec<<DefaultApi as GfxApi>::Texture>,
     render_views: Vec<<DefaultApi as GfxApi>::TextureView>,
-    // copy_images: Vec<<DefaultApi as GfxApi>::Texture>,
     descriptor_set_array: <DefaultApi as GfxApi>::DescriptorSetArray,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
@@ -125,24 +122,7 @@ impl Renderer {
                 .unwrap();
 
             let render_view_def = TextureViewDef::as_render_target_view(render_image.texture_def());
-            let render_view = render_image.create_view(&render_view_def).unwrap();
-
-            // let copy_image = device_context
-            //     .create_texture(&TextureDef {
-            //         extents: Extents3D {
-            //             width,
-            //             height,
-            //             depth: 1,
-            //         },
-            //         array_length: 1,
-            //         mip_count: 1,
-            //         format: Format::R8G8B8A8_UNORM,
-            //         mem_usage: MemoryUsage::GpuToCpu,
-            //         usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
-            //         resource_flags: ResourceFlags::empty(),
-            //         tiling: TextureTiling::Linear,
-            //     })
-            //     .unwrap();
+            let render_view = render_image.create_view(&render_view_def).unwrap();            
             let frame_fence = device_context.create_fence().unwrap();
 
             command_pools.push(command_pool);
@@ -152,8 +132,7 @@ impl Renderer {
             uniform_buffers.push(uniform_buffer);
             render_images.push(render_image);
             render_views.push(render_view);
-            frame_fences.push(frame_fence);
-            // copy_images.push(copy_image);
+            frame_fences.push(frame_fence);            
         }
 
         //
@@ -323,8 +302,6 @@ impl Renderer {
             .unwrap();
 
         Renderer {
-            // width,
-            // height,
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames: num_buffered_frames,
@@ -337,7 +314,6 @@ impl Renderer {
             uniform_buffers,
             render_images,
             render_views,
-            // copy_images,
             descriptor_set_array,
             root_signature,
             pipeline,
@@ -346,8 +322,6 @@ impl Renderer {
 
     pub fn render(
         &mut self,
-        // elapsed_secs: f32,
-        // rgb: (f32, f32, f32)
     ) {
         let render_frame_idx = self.render_frame_idx;
         let elapsed_secs = self.frame_idx as f32 / 60.0;
@@ -467,63 +441,11 @@ impl Renderer {
             )
             .unwrap();
 
-        // let dst_texture = &self.copy_images[render_frame_idx];
-        // cmd_buffer
-        //     .cmd_resource_barrier(
-        //         &[],
-        //         &[TextureBarrier::<DefaultApi>::state_transition(
-        //             dst_texture,
-        //             ResourceState::UNDEFINED,
-        //             ResourceState::COPY_DST,
-        //         )],
-        //     )
-        //     .unwrap();
-
-        // cmd_buffer
-        //     .cmd_copy_image(
-        //         render_texture,
-        //         dst_texture,
-        //         &CmdCopyTextureParams {
-        //             src_state: ResourceState::COPY_SRC,
-        //             dst_state: ResourceState::COPY_DST,
-        //             src_offset: Offset3D { x: 0, y: 0, z: 0 },
-        //             dst_offset: Offset3D { x: 0, y: 0, z: 0 },
-        //             src_mip_level: 0,
-        //             dst_mip_level: 0,
-        //             src_array_slice: 0,
-        //             dst_array_slice: 0,
-        //             extent: Extents3D {
-        //                 width: self.width,
-        //                 height: self.height,
-        //                 depth: 1,
-        //             },
-        //         },
-        //     )
-        //     .unwrap();
-        // cmd_buffer
-        //     .cmd_resource_barrier(
-        //         &[],
-        //         &[TextureBarrier::<DefaultApi>::state_transition(
-        //             dst_texture,
-        //             ResourceState::COPY_DST,
-        //             ResourceState::COMMON,
-        //         )],
-        //     )
-        //     .unwrap();
         cmd_buffer.end().unwrap();
-        // //
-        // // Present the image
-        // //
-
+        
         self.graphics_queue
             .submit(&[cmd_buffer], &[], &[], Some(signal_fence))
             .unwrap();
-
-        // self.graphics_queue.wait_for_queue_idle().unwrap();
-
-        // let sub_resource = dst_texture.map_texture().unwrap();
-        // converter.convert_rgba(sub_resource.data, sub_resource.row_pitch as usize);
-        // dst_texture.unmap_texture().unwrap();
 
         self.frame_idx = self.frame_idx + 1;
         self.render_frame_idx = self.frame_idx % self.num_render_frames;

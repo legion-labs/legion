@@ -2506,14 +2506,12 @@ name = "graphics-sandbox"
 version = "0.1.0"
 dependencies = [
  "legion-app",
- "legion-asset-registry",
  "legion-async",
  "legion-core",
  "legion-data-runtime",
  "legion-input",
  "legion-presenter-window",
  "legion-renderer",
- "legion-resource-registry",
  "legion-tao",
  "legion-window",
  "log",
