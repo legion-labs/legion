@@ -60,10 +60,12 @@ mod data_container;
 
 use proc_macro::TokenStream;
 
+const OFFLINE_RUNTIME_MAPPINGS: &[(&str, &str)] = &[("String", "'r &str")];
+
 /// Derives a default implementation of the Asset trait for a type.
 #[proc_macro_derive(DataContainer, attributes(legion))]
 pub fn derive_data_container(input: TokenStream) -> TokenStream {
     // Construct a representation of Rust code as a syntax tree
     // that we can manipulate
-    data_container::derive_data_container(input)
+    data_container::derive_data_container(input, OFFLINE_RUNTIME_MAPPINGS)
 }
