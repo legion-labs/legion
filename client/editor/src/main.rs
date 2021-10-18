@@ -63,11 +63,13 @@ mod config;
 mod interop;
 
 use config::Config;
-use interop::js::editor::{JSResourceDescription, JSSearchResourcesResponse};
+use interop::js::editor::{IntoVec, JSGetResourcePropertiesResponse, JSSearchResourcesResponse};
 
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
-use legion_editor_proto::{editor_client::EditorClient, SearchResourcesRequest};
+use legion_editor_proto::{
+    editor_client::EditorClient, GetResourcePropertiesRequest, SearchResourcesRequest,
+};
 use legion_grpc::client::Client as GRPCClient;
 use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
@@ -89,9 +91,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         .manage(editor_client)
         .invoke_handler(tauri::generate_handler![
             initialize_stream,
+            search_resources,
+            get_resource_properties,
             on_video_close,
             on_video_chunk_received,
-            search_resources
         ]);
 
     App::new()
@@ -185,16 +188,28 @@ async fn search_resources(
         let response = editor_client.search_resources(request).await?.into_inner();
 
         search_token = response.next_search_token;
-        result.resource_descriptions.extend(
-            response
-                .resource_descriptions
-                .into_iter()
-                .map(|x| x.into())
-                .collect::<Vec<JSResourceDescription>>(),
-        );
+        result
+            .resource_descriptions
+            .extend(response.resource_descriptions.into_vec());
 
         if search_token.is_empty() {
             return Ok(result);
         }
     }
+}
+
+#[legion_tauri_command]
+async fn get_resource_properties(
+    editor_client: tauri::State<'_, Mutex<EditorClient<GRPCClient>>>,
+    id: String,
+) -> anyhow::Result<JSGetResourcePropertiesResponse> {
+    let mut editor_client = editor_client.lock().await;
+
+    let request = tonic::Request::new(GetResourcePropertiesRequest { id });
+
+    Ok(editor_client
+        .get_resource_properties(request)
+        .await?
+        .into_inner()
+        .into())
 }

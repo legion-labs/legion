@@ -20,11 +20,39 @@
 
 use serde::{Deserialize, Serialize};
 
-use legion_editor_proto::ResourceDescription;
+use legion_editor_proto::{GetResourcePropertiesResponse, ResourceDescription, ResourceProperty};
+
+pub trait IntoVec<T> {
+    fn into_vec(self) -> Vec<T>;
+}
+
+impl<F, T> IntoVec<T> for Vec<F>
+where
+    F: Into<T>,
+{
+    fn into_vec(self) -> Vec<T> {
+        self.into_iter().map(Into::into).collect()
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct JSSearchResourcesResponse {
     pub resource_descriptions: Vec<JSResourceDescription>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JSGetResourcePropertiesResponse {
+    pub description: JSResourceDescription,
+    pub properties: Vec<JSResourceProperty>,
+}
+
+impl From<GetResourcePropertiesResponse> for JSGetResourcePropertiesResponse {
+    fn from(v: GetResourcePropertiesResponse) -> Self {
+        Self {
+            description: v.description.unwrap_or_default().into(),
+            properties: v.properties.into_vec(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -40,6 +68,27 @@ impl From<ResourceDescription> for JSResourceDescription {
             id: v.id,
             path: v.path,
             version: v.version,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JSResourceProperty {
+    pub name: String,
+    pub ptype: String,
+    pub default_value: Vec<u8>,
+    pub value: Vec<u8>,
+    pub group: String,
+}
+
+impl From<ResourceProperty> for JSResourceProperty {
+    fn from(v: ResourceProperty) -> Self {
+        Self {
+            name: v.name,
+            ptype: v.ptype,
+            default_value: v.default_value,
+            value: v.value,
+            group: v.group,
         }
     }
 }

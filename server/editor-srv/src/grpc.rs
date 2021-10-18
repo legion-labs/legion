@@ -29,11 +29,18 @@ impl Editor for GRPCServer {
         Ok(Response::new(SearchResourcesResponse {
             next_search_token: "".to_string(),
             total: 1,
-            resource_descriptions: vec![ResourceDescription {
-                id: "myresource".to_string(),
-                path: "/path/to/my/resource".to_string(),
-                version: 1,
-            }],
+            resource_descriptions: vec![
+                ResourceDescription {
+                    id: "myresource".to_string(),
+                    path: "/path/to/my/resource".to_string(),
+                    version: 1,
+                },
+                ResourceDescription {
+                    id: "myotherresource".to_string(),
+                    path: "/path/to/my/other/resource".to_string(),
+                    version: 2,
+                },
+            ],
         }))
     }
 

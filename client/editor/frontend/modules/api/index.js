@@ -1,12 +1,6 @@
 import { invoke } from "@tauri-apps/api/tauri";
 
-function bytes_out(x) {
-    return Buffer(JSON.stringify(x)).toString('base64');
-}
-
-function bytes_in(x) {
-    return JSON.parse(Buffer.from(x, 'base64'));
-}
+import { bytes_in, bytes_out } from "./conversion";
 
 export async function initialize_stream(localSessionDescription) {
     const result = await invoke("initialize_stream", {
@@ -20,4 +14,7 @@ export async function search_resources() {
     return await invoke("search_resources");
 };
 
+export async function get_resource_properties(id) {
+    return await invoke("get_resource_properties", { id: id });
+};
 export default function () { };

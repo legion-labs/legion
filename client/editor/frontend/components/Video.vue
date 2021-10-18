@@ -39,7 +39,11 @@ video {
 
 <script scoped>
 import { invoke } from "@tauri-apps/api/tauri";
-import { initialize_stream, search_resources } from "~/modules/api";
+import {
+  initialize_stream,
+  search_resources,
+  get_resource_properties,
+} from "~/modules/api";
 
 function addListener(obj, name, func, ctx) {
   const newFunc = ctx ? func.bind(ctx) : func;
@@ -175,6 +179,7 @@ export default {
   },
   mounted() {
     search_resources().then(console.log);
+    get_resource_properties("1").then(console.log);
     const videoElement = document.getElementById("video");
     const videoPlayer = new VideoPlayer(videoElement, () => {});
     var pc = null;
