@@ -3,6 +3,7 @@ name = "telemetry-ingestion-srv"
 version = "0.1.0"
 edition = "2018"
 license = "MIT OR Apache-2.0"
+default-run = "telemetry-ingestion-srv"
 
 [dependencies]
 tonic = "0.5.2"
