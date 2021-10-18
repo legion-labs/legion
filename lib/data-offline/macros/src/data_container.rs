@@ -16,6 +16,7 @@ const TOOLTIP_ATTR: &str = "tooltip";
 const READONLY_ATTR: &str = "readonly";
 const CATEGORY_ATTR: &str = "category";
 const TRANSIENT_ATTR: &str = "transient";
+const RESOURCE_TYPE_ATTR: &str = "resource_type";
 
 fn metadata_from_type(t: &syn::Type) -> Option<QuoteRes> {
     match t {
@@ -31,6 +32,7 @@ struct MemberMetaInfo {
     name: String,
     type_id: syn::Type,
     type_name: String,
+    resource_type: Option<String>,
     offline: bool,
     category: String,
     hidden: bool,
@@ -58,10 +60,17 @@ impl MemberMetaInfo {
 
     fn get_runtime_type(&self) -> QuoteRes {
         let member_type = &self.type_id;
-        if self.type_name.as_str() == "String" {
-            quote! {&'r str }
-        } else {
-            quote! { #member_type }
+        match self.type_name.as_str() {
+            "String" => quote! {&'r str },
+            "Option < ResourcePathId >" => {
+                if let Some(resource_type) = &self.resource_type {
+                    let ident = format_ident!("{}", resource_type);
+                    quote! { Reference<#ident> }
+                } else {
+                    quote! { Reference<Resource> }
+                }
+            }
+            _ => quote! { #member_type },
         }
     }
 
@@ -80,7 +89,11 @@ fn get_attribute_literal(
     if let Some(TokenTree::Punct(punct)) = group_iter.next() {
         if punct.as_char() == '=' {
             if let Some(TokenTree::Literal(lit)) = group_iter.next() {
-                return lit.to_string();
+                return lit
+                    .to_string()
+                    .trim_start_matches('"')
+                    .trim_end_matches('"')
+                    .to_string();
             }
         }
     }
@@ -149,6 +162,7 @@ fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
         name: field.ident.as_ref().unwrap().to_string(),
         type_id: field.ty.clone(),
         type_name: format!("{}", field_type),
+        resource_type: None,
         category: String::default(),
         offline: false,
         hidden: false,
@@ -178,6 +192,10 @@ fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
                         HIDDEN_ATTR => member_info.hidden = true,
                         OFFLINE_ATTR => member_info.offline = true,
                         TRANSIENT_ATTR => member_info.transient = true,
+                        RESOURCE_TYPE_ATTR => {
+                            member_info.resource_type =
+                                Some(get_attribute_literal(&mut group_iter));
+                        }
                         TOOLTIP_ATTR => {
                             member_info.tooltip = get_attribute_literal(&mut group_iter);
                         }
@@ -327,9 +345,7 @@ fn generate_offline_rpc_writes(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
             m.name.hash(&mut hasher);
             let hash_value: u64 = hasher.finish();
             let member_ident = format_ident!("{}", &m.name);
-            quote! {
-                #hash_value => self.#member_ident.parse_from_str(field_value)?,
-            }
+            quote! { #hash_value => self.#member_ident.parse_from_str(field_value)?, }
         })
         .collect()
 }
@@ -368,6 +384,9 @@ pub fn derive_data_container(
     let runtime_ident = format_ident!("Runtime{}", offline_identifier);
     let mut need_life_time = false;
     let mut members = Vec::new();
+
+    let offline_type_name = format!("offline_{}", ast.ident);
+    //let runtime_type_name = format!("runtime_{}", ast.ident);
 
     // Hasher for the class signature
     // Class Name, Member Name, Member Type, Default Value Attribute
@@ -445,6 +464,10 @@ pub fn derive_data_container(
                     #(#offline_fields_defaults)*
                 }
             }
+        }
+
+        impl Resource for #offline_identifier {
+            const TYPENAME: &'static str = #offline_type_name;
         }
 
         // Offline Json serialization

@@ -24,3 +24,4 @@ prost-types = "0.8"
 
 # temp dependency on sample-data, until runtime data moved to plugins
 sample-data-compiler = { path = "../../test/sample_data_compiler", version = "0.1.0" }
+generic_data_offline = { path = "../../test/generic_data_offline", version = "0.1.0" }

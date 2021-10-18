@@ -1,4 +1,5 @@
 //! `DataContainer`
+use crate::ResourcePathId;
 use legion_math::prelude::*;
 
 /// Property Descriptor
@@ -123,6 +124,20 @@ impl ParseFromStr for Quat {
 impl ParseFromStr for Vec<u8> {
     fn parse_from_str(&mut self, field_value: &str) -> Result<(), &'static str> {
         *self = field_value.as_bytes().to_vec();
+        Ok(())
+    }
+}
+
+impl ParseFromStr for Option<ResourcePathId> {
+    fn parse_from_str(&mut self, field_value: &str) -> Result<(), &'static str> {
+        if field_value.is_empty() {
+            *self = None;
+        } else {
+            let res_id: ResourcePathId = field_value
+                .parse()
+                .map_err(|_err| "invalid resourcePathId")?;
+            *self = Some(res_id);
+        }
         Ok(())
     }
 }

@@ -2120,6 +2120,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "generic_data_offline"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lazy_static",
+ "legion-data-codegen",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-math",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "generic_data_runtime"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lazy_static",
+ "legion-data-codegen",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-math",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3035,6 +3063,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-data-codegen"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "legion-data-compiler"
 version = "0.1.0"
 dependencies = [
@@ -3293,6 +3330,7 @@ dependencies = [
 name = "legion-resource-registry"
 version = "0.1.0"
 dependencies = [
+ "generic_data_offline",
  "legion-app",
  "legion-data-offline",
  "legion-data-runtime",
