@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use tonic::codegen::BoxFuture;
+use tonic::{body::BoxBody, codegen::BoxFuture};
 
 fn prepare_grpc_request<T>(mut req: hyper::Request<T>, uri: &hyper::Uri) -> hyper::Request<T> {
     let uri = hyper::Uri::builder()
@@ -77,11 +77,7 @@ where
     }
 }
 
-impl<ReqBody> Client<hyper::client::HttpConnector, ReqBody>
-where
-    ReqBody: tonic::codegen::Body + Send,
-    <ReqBody as tonic::codegen::Body>::Data: Send,
-{
+impl Client<hyper::client::HttpConnector, BoxBody> {
     pub fn new<U: Into<hyper::Uri>>(uri: U) -> Self {
         let mut connector = hyper::client::HttpConnector::new();
         connector.set_connect_timeout(Some(Duration::from_secs(5)));
