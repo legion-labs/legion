@@ -1674,6 +1674,8 @@ dependencies = [
  "legion-app",
  "legion-async",
  "legion-ecs",
+ "legion-editor-proto",
+ "legion-grpc",
  "legion-streaming-proto",
  "legion-tauri",
  "legion-telemetry",
