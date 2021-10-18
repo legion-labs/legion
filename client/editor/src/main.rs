@@ -89,6 +89,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         .manage(editor_client)
         .invoke_handler(tauri::generate_handler![
             initialize_stream,
+            on_video_close,
+            on_video_chunk_received,
             search_resources
         ]);
 
@@ -98,6 +100,49 @@ fn main() -> Result<(), Box<dyn Error>> {
         .add_plugin(AsyncPlugin {})
         .run();
     Ok(())
+}
+
+#[tauri::command]
+fn on_video_close() {
+    flush_log_buffer();
+    flush_metrics_buffer();
+}
+
+fn record_json_metric(desc: &'static MetricDesc, value: &json::JsonValue) {
+    match value.as_i64() {
+        Some(int_value) => {
+            record_int_metric(desc, int_value as u64);
+        }
+        None => {
+            log::error!("Error converting {} to i64", value);
+        }
+    }
+}
+
+#[tauri::command]
+fn on_video_chunk_received(chunk_header: &str) {
+    static CHUNK_INDEX_IN_FRAME_METRIC: MetricDesc = MetricDesc {
+        name: "Chunk Index in Frame",
+        unit: "",
+    };
+
+    static FRAME_ID_OF_CHUNK_RECEIVED: MetricDesc = MetricDesc {
+        name: "Frame ID of chunk received",
+        unit: "",
+    };
+
+    match json::parse(chunk_header) {
+        Ok(header) => {
+            record_json_metric(
+                &CHUNK_INDEX_IN_FRAME_METRIC,
+                &header["chunk_index_in_frame"],
+            );
+            record_json_metric(&FRAME_ID_OF_CHUNK_RECEIVED, &header["frame_id"]);
+        }
+        Err(e) => {
+            log::error!("Error parsing chunk header: {}", e);
+        }
+    }
 }
 
 #[legion_tauri_command]

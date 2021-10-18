@@ -116,7 +116,7 @@ impl VideoStream {
             &mut self.encoder.converter,
         );
 
-        let chunks = self.encoder.encode();
+        let chunks = self.encoder.encode(self.frame_id);
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
@@ -202,7 +202,7 @@ impl VideoStreamEncoder {
         })
     }
 
-    fn encode(&mut self) -> Vec<Bytes> {
+    fn encode(&mut self, frame_id: i32) -> Vec<Bytes> {
         trace_scope!();
         self.encoder.force_intra_frame(true);
         let stream = self.encoder.encode(&self.converter).unwrap();
@@ -255,7 +255,7 @@ impl VideoStreamEncoder {
             }
         }
 
-        let chunks = split_frame_in_chunks(self.writer.get_ref());
+        let chunks = split_frame_in_chunks(self.writer.get_ref(), frame_id);
         self.writer.get_mut().clear();
         self.writer.set_position(0);
         chunks
@@ -265,9 +265,10 @@ impl VideoStreamEncoder {
 #[derive(Serialize)]
 struct ChunkHeader {
     pub chunk_index_in_frame: u8,
+    pub frame_id: i32,
 }
 
-fn split_frame_in_chunks(data: &[u8]) -> Vec<Bytes> {
+fn split_frame_in_chunks(data: &[u8], frame_id: i32) -> Vec<Bytes> {
     let max_chunk_size = 65536;
     let mut chunks = vec![];
     chunks.reserve((data.len() / max_chunk_size) + 2);
@@ -281,6 +282,7 @@ fn split_frame_in_chunks(data: &[u8]) -> Vec<Bytes> {
         current_chunk.clear();
         let header = serde_json::to_string(&ChunkHeader {
             chunk_index_in_frame,
+            frame_id,
         })
         .unwrap();
         let header_payload_len: u16 = header.len() as u16;
