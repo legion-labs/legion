@@ -278,22 +278,22 @@ export default {
   watch: {
     hue(hue) {
       if (this.video_channel != null) {
-        this.video_channel.send(
-          JSON.stringify({
-            event: "hue",
-            hue: hue / 360,
-          })
-        );
+        const edition_event = JSON.stringify({
+          event: "hue",
+          hue: hue / 360,
+          id: crypto.randomUUID(),
+        });
+        this.video_channel.send(edition_event);
       }
     },
     speed(speed) {
       if (this.video_channel != null) {
-        this.video_channel.send(
-          JSON.stringify({
-            event: "speed",
-            speed: speed,
-          })
-        );
+        const edition_event = JSON.stringify({
+          event: "speed",
+          speed: speed,
+          id: crypto.randomUUID(),
+        });
+        this.video_channel.send(edition_event);
       }
     },
   },

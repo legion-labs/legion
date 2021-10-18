@@ -161,15 +161,17 @@ impl Streamer {
             if let Ok(mut video_stream) =
                 query.get_component_mut::<VideoStream>(event.stream_id.entity)
             {
-                match event.info {
-                    VideoStreamEventInfo::Hue { hue } => {
-                        video_stream.hue = hue;
+                match &event.info {
+                    VideoStreamEventInfo::Hue { id, hue } => {
+                        log::info!("received hue command id={}", id);
+                        video_stream.hue = *hue;
                     }
                     VideoStreamEventInfo::Resize { width, height } => {
-                        video_stream.resize(width, height);
+                        video_stream.resize(*width, *height);
                     }
-                    VideoStreamEventInfo::Speed { speed } => {
-                        video_stream.speed = speed;
+                    VideoStreamEventInfo::Speed { id, speed } => {
+                        log::info!("received speed command id={}", id);
+                        video_stream.speed = *speed;
                     }
                 }
             }
