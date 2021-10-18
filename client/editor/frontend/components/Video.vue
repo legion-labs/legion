@@ -39,6 +39,7 @@ video {
 
 <script scoped>
 import { invoke } from "@tauri-apps/api/tauri";
+import { initialize_stream, search_resources } from "~/modules/api";
 
 function addListener(obj, name, func, ctx) {
   const newFunc = ctx ? func.bind(ctx) : func;
@@ -132,10 +133,10 @@ class VideoPlayer {
   push(data) {
     const chunk = new Uint8Array(data);
     const header_payload_len = chunk[1] * 256 + chunk[0];
-    const bin_header = chunk.slice(2,2+header_payload_len);
+    const bin_header = chunk.slice(2, 2 + header_payload_len);
     const header = new TextDecoder().decode(bin_header);
     invoke( 'on_video_chunk_received', { 'chunkHeader' : header } );
-    const frame = chunk.slice(2+header_payload_len);
+    const frame = chunk.slice(2 + header_payload_len);
 
     if (frame[4] === 0x66) {
       this._reinit();
@@ -173,6 +174,7 @@ export default {
     speed: Number,
   },
   mounted() {
+    search_resources().then(console.log);
     const videoElement = document.getElementById("video");
     const videoPlayer = new VideoPlayer(videoElement, () => {});
     var pc = null;
@@ -209,17 +211,7 @@ export default {
         console.log(iceEvent);
 
         if (iceEvent.candidate === null) {
-          console.log(JSON.stringify(pc.localDescription.toJSON()));
-
-          const rtcSessionDescription = await invoke("initialize_stream", {
-            rtcSessionDescription: btoa(
-              JSON.stringify(pc.localDescription.toJSON())
-            ),
-          });
-
-          pc.setRemoteDescription(
-            new RTCSessionDescription(JSON.parse(atob(rtcSessionDescription)))
-          );
+          pc.setRemoteDescription(await initialize_stream(pc.localDescription));
         }
       };
 

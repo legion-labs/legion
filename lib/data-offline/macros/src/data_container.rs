@@ -16,6 +16,7 @@ const TOOLTIP_ATTR: &str = "tooltip";
 const READONLY_ATTR: &str = "readonly";
 const CATEGORY_ATTR: &str = "category";
 const TRANSIENT_ATTR: &str = "transient";
+const RESOURCE_TYPE_ATTR: &str = "resource_type";
 
 fn metadata_from_type(t: &syn::Type) -> Option<QuoteRes> {
     match t {
@@ -31,6 +32,7 @@ struct MemberMetaInfo {
     name: String,
     type_id: syn::Type,
     type_name: String,
+    resource_type: Option<String>,
     offline: bool,
     category: String,
     hidden: bool,
@@ -58,10 +60,17 @@ impl MemberMetaInfo {
 
     fn get_runtime_type(&self) -> QuoteRes {
         let member_type = &self.type_id;
-        if self.type_name.as_str() == "String" {
-            quote! {&'r str }
-        } else {
-            quote! { #member_type }
+        match self.type_name.as_str() {
+            "String" => quote! {&'r str },
+            "Option < ResourcePathId >" => {
+                if let Some(resource_type) = &self.resource_type {
+                    let ident = format_ident!("{}", resource_type);
+                    quote! { Reference<#ident> }
+                } else {
+                    quote! { Reference<Resource> }
+                }
+            }
+            _ => quote! { #member_type },
         }
     }
 
@@ -80,7 +89,11 @@ fn get_attribute_literal(
     if let Some(TokenTree::Punct(punct)) = group_iter.next() {
         if punct.as_char() == '=' {
             if let Some(TokenTree::Literal(lit)) = group_iter.next() {
-                return lit.to_string();
+                return lit
+                    .to_string()
+                    .trim_start_matches('"')
+                    .trim_end_matches('"')
+                    .to_string();
             }
         }
     }
@@ -149,6 +162,7 @@ fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
         name: field.ident.as_ref().unwrap().to_string(),
         type_id: field.ty.clone(),
         type_name: format!("{}", field_type),
+        resource_type: None,
         category: String::default(),
         offline: false,
         hidden: false,
@@ -178,6 +192,10 @@ fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
                         HIDDEN_ATTR => member_info.hidden = true,
                         OFFLINE_ATTR => member_info.offline = true,
                         TRANSIENT_ATTR => member_info.transient = true,
+                        RESOURCE_TYPE_ATTR => {
+                            member_info.resource_type =
+                                Some(get_attribute_literal(&mut group_iter));
+                        }
                         TOOLTIP_ATTR => {
                             member_info.tooltip = get_attribute_literal(&mut group_iter);
                         }
@@ -315,14 +333,60 @@ fn generate_offline_json_writes(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
         .collect()
 }
 
+/// Generate the JSON write serialization for members.
+/// Don't serialize members at default values
+/// Skip 'transient' value
+fn generate_offline_rpc_writes(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
+    members
+        .iter()
+        .filter(|m| !m.transient)
+        .map(|m| {
+            let mut hasher = DefaultHasher::new();
+            m.name.hash(&mut hasher);
+            let hash_value: u64 = hasher.finish();
+            let member_ident = format_ident!("{}", &m.name);
+            quote! { #hash_value => self.#member_ident.parse_from_str(field_value)?, }
+        })
+        .collect()
+}
+
+/// Generate the Editor Property Descriptor info
+fn generate_offline_editor_descriptors(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
+    members
+        .iter()
+        .filter(|m| !m.transient)
+        .map(|m| {
+            let member_ident = format_ident!("{}", &m.name);
+            let prop_name = &m.name;
+            let group_name = &m.category;
+            let prop_type = &m.type_name;
+            quote! {
+                output.push(PropertyDescriptor {
+                    name : #prop_name,
+                    type_name : #prop_type,
+                    default_value : bincode::serialize(&default_obj.#member_ident).map_err(|_err| "bincode error")?,
+                    value : bincode::serialize(&self.#member_ident).map_err(|_err| "bincode error")?,
+                    group : #group_name.into(),
+                });
+            }
+        })
+        .collect()
+}
+
 #[allow(clippy::too_many_lines)]
-pub fn derive_data_container(input: TokenStream) -> TokenStream {
+pub fn derive_data_container(
+    input: TokenStream,
+    _mapping_table: &[(&'static str, &'static str)],
+) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let offline_identifier = ast.ident.clone();
     let offline_name = format!("{}", ast.ident);
     let runtime_ident = format_ident!("Runtime{}", offline_identifier);
     let mut need_life_time = false;
     let mut members = Vec::new();
+
+    let offline_type_name = format!("offline_{}", ast.ident);
+    //let runtime_type_name = format!("runtime_{}", ast.ident);
 
     // Hasher for the class signature
     // Class Name, Member Name, Member Type, Default Value Attribute
@@ -364,6 +428,8 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
     let offline_fields_defaults = generate_offline_defaults(&members);
     let offline_fields_json_reads = generate_offline_json_reads(&members);
     let offline_fields_json_writes = generate_offline_json_writes(&members);
+    let offline_fields_rpc_writes = generate_offline_rpc_writes(&members);
+    let offline_fields_editor_descriptors = generate_offline_editor_descriptors(&members);
 
     let runtime_fields = generate_runtime_fields(&members);
     let runtime_fields_defaults = generate_runtime_defaults(&members);
@@ -400,6 +466,10 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
             }
         }
 
+        impl Resource for #offline_identifier {
+            const TYPENAME: &'static str = #offline_type_name;
+        }
+
         // Offline Json serialization
         #[cfg(feature = "offline_data")]
         impl OfflineDataContainer for #offline_identifier {
@@ -428,13 +498,32 @@ pub fn derive_data_container(input: TokenStream) -> TokenStream {
                 Ok(())
             }
 
-            fn compile_runtime(&self) -> Result<Vec<u8>, String> {
+            fn compile_runtime(&self) -> Result<Vec<u8>, &'static str> {
                 let runtime = #runtime_ident {
                     #(#runtime_fields_from_offline)*
                 };
                 let compiled_asset = bincode::serialize(&runtime).map_err(|err| "invalid serialization")?;
                 Ok(compiled_asset)
             }
+
+            fn write_field_by_name(&mut self, field_name : &str, field_value : &str) -> Result<(), &'static str> {
+
+                let mut hasher = DefaultHasher::new();
+                field_name.hash(&mut hasher);
+                match hasher.finish() {
+                    #(#offline_fields_rpc_writes)*
+                    _ => return Err("invalid field"),
+                }
+                Ok(())
+            }
+
+            fn get_editor_properties(&self) -> Result<Vec<PropertyDescriptor>, &'static str> {
+                let default_obj = Self { ..Default::default() };
+                let mut output = Vec::<PropertyDescriptor>::new();
+                #(#offline_fields_editor_descriptors)*
+                Ok(output)
+            }
+
 
             const SIGNATURE_HASH : u64 = #signature_hash;
         }

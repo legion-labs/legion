@@ -1708,6 +1708,7 @@ dependencies = [
  "prost",
  "serde",
  "serde_json",
+ "simple_logger",
  "tauri",
  "tauri-build",
  "tokio",
@@ -2145,6 +2146,34 @@ checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
 dependencies = [
  "typenum",
  "version_check",
+]
+
+[[package]]
+name = "generic_data_offline"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lazy_static",
+ "legion-data-codegen",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-math",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "generic_data_runtime"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lazy_static",
+ "legion-data-codegen",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-math",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3069,6 +3098,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-data-codegen"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "legion-data-compiler"
 version = "0.1.0"
 dependencies = [
@@ -3327,12 +3365,17 @@ dependencies = [
 name = "legion-resource-registry"
 version = "0.1.0"
 dependencies = [
+ "generic_data_offline",
  "legion-app",
  "legion-data-offline",
  "legion-data-runtime",
  "legion-ecs",
+ "legion-editor-proto",
  "legion-graphics-offline",
+ "prost",
+ "prost-types",
  "sample-data-compiler",
+ "tonic",
 ]
 
 [[package]]
