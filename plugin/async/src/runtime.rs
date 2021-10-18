@@ -3,9 +3,7 @@ use std::{
     sync::{Arc, Mutex, Weak},
 };
 
-use super::operation::{
-    AsyncOperation, AsyncOperationCanceller, AsyncOperationError, AsyncOperationResult,
-};
+use super::operation::{AsyncOperation, AsyncOperationError, AsyncOperationResult};
 
 use retain_mut::RetainMut;
 use tokio::runtime::{Builder, Runtime};
@@ -14,7 +12,7 @@ use tokio::runtime::{Builder, Runtime};
 // system.
 pub struct TokioAsyncRuntime {
     tokio_runtime: Runtime,
-    wrappers: Vec<Box<dyn TokioFutureWrapperAsyncResult>>,
+    result_handlers: Vec<Box<dyn TokioFutureWrapperAsyncResult>>,
 }
 
 impl Default for TokioAsyncRuntime {
@@ -23,7 +21,7 @@ impl Default for TokioAsyncRuntime {
 
         Self {
             tokio_runtime: rt,
-            wrappers: vec![],
+            result_handlers: vec![],
         }
     }
 }
@@ -42,7 +40,7 @@ impl TokioAsyncRuntime {
     // Start a future on the tokio thread-pool that is associated to the
     // returned AsyncOperation.
     //
-    // If the AsyncOperation is cancelled or dropped the future is implicitely
+    // If the AsyncOperation is cancelled or dropped the future is implicitly
     // cancelled.
     pub fn start<F>(&mut self, future: F) -> AsyncOperation<F::Output>
     where
@@ -51,72 +49,12 @@ impl TokioAsyncRuntime {
     {
         let result = Arc::new(Mutex::new(None));
 
-        let (canceller, cancelled) = tokio::sync::mpsc::unbounded_channel();
-        let canceller = TokioFutureCanceller::new(canceller);
-        let wrapper = Box::new(TokioFutureWrapper::new(
-            self,
-            future,
-            Arc::downgrade(&result),
-            cancelled,
-        ));
+        let (cancel_tx, mut cancel_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (result_tx, result_rx) = tokio::sync::oneshot::channel();
 
-        self.wrappers.push(wrapper);
+        let result_handler = Box::new(TokioFutureWrapper::new(result_rx, Arc::downgrade(&result)));
 
-        AsyncOperation::new(result, Box::new(canceller))
-    }
-
-    // Polls the runtime for potential completed futures, returning the number
-    // of completed futures during the last call.
-    pub fn poll(&mut self) -> u32 {
-        let mut count = 0;
-
-        self.wrappers.retain_mut(|wrapper| {
-            let is_polling = wrapper.poll().is_polling();
-
-            if !is_polling {
-                count += 1;
-            }
-
-            is_polling
-        });
-
-        count
-    }
-}
-pub enum TokioFutureWrapperPoll {
-    Polling,
-    Ready,
-}
-
-impl TokioFutureWrapperPoll {
-    fn is_polling(&self) -> bool {
-        matches!(self, &Self::Polling)
-    }
-}
-
-trait TokioFutureWrapperAsyncResult: Send + Sync {
-    fn poll(&mut self) -> TokioFutureWrapperPoll;
-}
-
-struct TokioFutureWrapper<T> {
-    receiver: tokio::sync::oneshot::Receiver<Result<T, AsyncOperationError>>,
-    result: Weak<Mutex<AsyncOperationResult<T>>>,
-}
-
-impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
-    fn new<F>(
-        rt: &TokioAsyncRuntime,
-        future: F,
-        result: Weak<Mutex<AsyncOperationResult<T>>>,
-        mut cancelled: tokio::sync::mpsc::UnboundedReceiver<AsyncOperationError>,
-    ) -> Self
-    where
-        F: Future<Output = T> + Send + 'static,
-    {
-        let (sender, receiver) = tokio::sync::oneshot::channel();
-        let wrapper = Self { receiver, result };
-
-        rt.start_detached(async move {
+        self.start_detached(async move {
             let fut = async move {
                 tokio::select! {
                     // `biased` below ensures that the order of polling is deterministic
@@ -130,8 +68,8 @@ impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
                     // time from the actual future.
                     biased;
 
-                    err = cancelled.recv() => {
-                        cancelled.close();
+                    err = cancel_rx.recv() => {
+                        cancel_rx.close();
 
                         Err(err.unwrap_or(AsyncOperationError::Dropped))
                     }
@@ -142,43 +80,62 @@ impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
             };
 
             #[allow(clippy::let_underscore_drop)]
-            let _ = sender.send(fut.await);
+            let _ = result_tx.send(fut.await);
         });
 
-        wrapper
+        self.result_handlers.push(result_handler);
+
+        AsyncOperation::new(result, cancel_tx)
+    }
+
+    // Polls the runtime for potential completed futures, returning the number
+    // of completed futures during the last call.
+    pub fn poll(&mut self) -> u32 {
+        let mut num_completed = 0;
+
+        self.result_handlers.retain_mut(|handler| {
+            let is_complete = handler.try_complete();
+
+            if is_complete {
+                num_completed += 1;
+            }
+
+            !is_complete
+        });
+
+        num_completed
+    }
+}
+
+trait TokioFutureWrapperAsyncResult: Send + Sync {
+    /// Returns true if the future completed.
+    fn try_complete(&mut self) -> bool;
+}
+
+struct TokioFutureWrapper<T> {
+    result_rx: tokio::sync::oneshot::Receiver<Result<T, AsyncOperationError>>,
+    result: Weak<Mutex<AsyncOperationResult<T>>>,
+}
+
+impl<T: Send + Sync + 'static> TokioFutureWrapper<T> {
+    fn new(
+        result_rx: tokio::sync::oneshot::Receiver<Result<T, AsyncOperationError>>,
+        result: Weak<Mutex<AsyncOperationResult<T>>>,
+    ) -> Self {
+        Self { result_rx, result }
     }
 }
 
 impl<T: Send + Sync + 'static> TokioFutureWrapperAsyncResult for TokioFutureWrapper<T> {
-    fn poll(&mut self) -> TokioFutureWrapperPoll {
-        if let Ok(v) = self.receiver.try_recv() {
+    fn try_complete(&mut self) -> bool {
+        if let Ok(v) = self.result_rx.try_recv() {
             if let Some(result) = self.result.upgrade() {
                 let mut result = result.lock().unwrap();
                 *result = Some(v);
             }
-
-            // It doesn't matter that we could actually set the value in the
-            // related AsyncOperation or not: we will only get that value once
-            // and should never be polled again.
-            return TokioFutureWrapperPoll::Ready;
+            return true;
         }
 
-        TokioFutureWrapperPoll::Polling
-    }
-}
-
-struct TokioFutureCanceller {
-    canceller: tokio::sync::mpsc::UnboundedSender<AsyncOperationError>,
-}
-
-impl TokioFutureCanceller {
-    fn new(canceller: tokio::sync::mpsc::UnboundedSender<AsyncOperationError>) -> Self {
-        Self { canceller }
-    }
-}
-
-impl AsyncOperationCanceller for TokioFutureCanceller {
-    fn cancel(&self) {
-        let _ = self.canceller.send(AsyncOperationError::Cancelled);
+        false
     }
 }
