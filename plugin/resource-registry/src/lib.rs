@@ -56,7 +56,6 @@
 // crate-specific exceptions:
 #![allow()]
 
-mod grpc;
 mod resource_handles;
 mod settings;
 
