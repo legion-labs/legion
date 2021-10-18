@@ -17,4 +17,13 @@ export async function search_resources() {
 export async function get_resource_properties(id) {
     return await invoke("get_resource_properties", { id: id });
 };
+
+export function on_video_close() {
+    return invoke("on_video_close");
+}
+
+export function on_video_chunk_received(chunkHeader) {
+    return invoke("on_video_chunk_received", { chunkHeader: chunkHeader });
+}
+
 export default function () { };

@@ -38,11 +38,12 @@ video {
 </style>
 
 <script scoped>
-import { invoke } from "@tauri-apps/api/tauri";
 import {
   initialize_stream,
   search_resources,
   get_resource_properties,
+  on_video_close,
+  on_video_chunk_received,
 } from "~/modules/api";
 
 function addListener(obj, name, func, ctx) {
@@ -115,7 +116,8 @@ class VideoPlayer {
   }
 
   destroy() {
-    invoke( 'on_video_close' );
+    on_video_close();
+
     this.waitingForKeyFrame = true;
     this.element.pause();
 
@@ -138,8 +140,10 @@ class VideoPlayer {
     const chunk = new Uint8Array(data);
     const header_payload_len = chunk[1] * 256 + chunk[0];
     const bin_header = chunk.slice(2, 2 + header_payload_len);
-    const header = new TextDecoder().decode(bin_header);
-    invoke( 'on_video_chunk_received', { 'chunkHeader' : header } );
+
+    const chunkHeader = new TextDecoder().decode(bin_header);
+    on_video_chunk_received(chunkHeader);
+
     const frame = chunk.slice(2 + header_payload_len);
 
     if (frame[4] === 0x66) {
