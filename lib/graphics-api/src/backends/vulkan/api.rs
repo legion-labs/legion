@@ -160,11 +160,11 @@ impl VulkanApi {
         )?;
 
         let inner = Arc::new(VulkanDeviceContextInner::new(&instance)?);
-        let device_context = VulkanDeviceContext::new(inner)?;
+        let device_context = Some(VulkanDeviceContext::new(inner)?);
 
         Ok(Self {
             instance,
-            device_context: Some(device_context),
+            device_context,
         })
     }
 }
