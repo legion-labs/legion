@@ -103,9 +103,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let _telemetry_guard = TelemetrySystemGuard::new(None);
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     let config = Config::new_from_environment()?;
-    let builder = tauri::Builder::default()
-        .manage(config)
-        .invoke_handler(tauri::generate_handler![initialize_stream]);
+    let builder =
+        tauri::Builder::default()
+            .manage(config)
+            .invoke_handler(tauri::generate_handler![
+                initialize_stream,
+                on_video_close,
+                on_video_chunk_received
+            ]);
 
     App::new()
         .insert_non_send_resource(TauriPluginSettings::new(builder))
@@ -113,6 +118,34 @@ fn main() -> Result<(), Box<dyn Error>> {
         .add_plugin(AsyncPlugin {})
         .run();
     Ok(())
+}
+
+#[tauri::command]
+fn on_video_close() {
+    flush_log_buffer();
+    flush_metrics_buffer();
+}
+
+#[tauri::command]
+fn on_video_chunk_received(chunk_header: &str) {
+    static CHUNK_INDEX_IN_FRAME_METRIC: MetricDesc = MetricDesc {
+        name: "Chunk Index in Frame",
+        unit: "",
+    };
+
+    match json::parse(chunk_header) {
+        Ok(header) => match header["chunk_index_in_frame"].as_i64() {
+            Some(chunk_index) => {
+                record_int_metric(&CHUNK_INDEX_IN_FRAME_METRIC, chunk_index as u64);
+            }
+            None => {
+                log::error!("chunk_index_in_frame not found in chunk header");
+            }
+        },
+        Err(e) => {
+            log::error!("Error parsing chunk header: {}", e);
+        }
+    }
 }
 
 #[legion_tauri_command]

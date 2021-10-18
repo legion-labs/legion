@@ -110,6 +110,7 @@ class VideoPlayer {
   }
 
   destroy() {
+    invoke( 'on_video_close' );
     this.waitingForKeyFrame = true;
     this.element.pause();
 
@@ -133,6 +134,7 @@ class VideoPlayer {
     const header_payload_len = chunk[1] * 256 + chunk[0];
     const bin_header = chunk.slice(2,2+header_payload_len);
     const header = new TextDecoder().decode(bin_header);
+    invoke( 'on_video_chunk_received', { 'chunkHeader' : header } );
     const frame = chunk.slice(2+header_payload_len);
 
     if (frame[4] === 0x66) {
