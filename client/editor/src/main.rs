@@ -60,12 +60,14 @@
 )]
 
 mod config;
+mod interop;
 
 use config::Config;
+use interop::js::editor::{JSResourceDescription, JSSearchResourcesResponse};
 
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
-use legion_editor_proto::editor_client::EditorClient;
+use legion_editor_proto::{editor_client::EditorClient, SearchResourcesRequest};
 use legion_grpc::client::Client as GRPCClient;
 use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
@@ -85,7 +87,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         .manage(config)
         .manage(streamer_client)
         .manage(editor_client)
-        .invoke_handler(tauri::generate_handler![initialize_stream]);
+        .invoke_handler(tauri::generate_handler![
+            initialize_stream,
+            search_resources
+        ]);
 
     App::new()
         .insert_non_send_resource(TauriPluginSettings::new(builder))
@@ -116,5 +121,35 @@ async fn initialize_stream(
         Ok(base64::encode(response.rtc_session_description))
     } else {
         Err(anyhow::format_err!("{}", response.error))
+    }
+}
+
+#[legion_tauri_command]
+async fn search_resources(
+    editor_client: tauri::State<'_, Mutex<EditorClient<GRPCClient>>>,
+) -> anyhow::Result<JSSearchResourcesResponse> {
+    let mut editor_client = editor_client.lock().await;
+
+    let mut result = JSSearchResourcesResponse::default();
+
+    let mut search_token = String::new();
+
+    loop {
+        let request = tonic::Request::new(SearchResourcesRequest { search_token });
+
+        let response = editor_client.search_resources(request).await?.into_inner();
+
+        search_token = response.next_search_token;
+        result.resource_descriptions.extend(
+            response
+                .resource_descriptions
+                .into_iter()
+                .map(|x| x.into())
+                .collect::<Vec<JSResourceDescription>>(),
+        );
+
+        if search_token.is_empty() {
+            return Ok(result);
+        }
     }
 }
