@@ -93,6 +93,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             initialize_stream,
             search_resources,
             get_resource_properties,
+            on_send_edition_command,
             on_video_close,
             on_video_chunk_received,
         ]);
@@ -103,6 +104,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         .add_plugin(AsyncPlugin {})
         .run();
     Ok(())
+}
+
+#[tauri::command]
+fn on_send_edition_command(json_command: &str) {
+    log::info!("sending edition_command={}", json_command);
 }
 
 #[tauri::command]

@@ -42,6 +42,7 @@ import {
   initialize_stream,
   search_resources,
   get_resource_properties,
+  on_send_edition_command,
   on_video_close,
   on_video_chunk_received,
 } from "~/modules/api";
@@ -283,6 +284,7 @@ export default {
           hue: hue / 360,
           id: crypto.randomUUID(),
         });
+        on_send_edition_command(edition_event);
         this.video_channel.send(edition_event);
       }
     },
@@ -293,6 +295,7 @@ export default {
           speed: speed,
           id: crypto.randomUUID(),
         });
+        on_send_edition_command(edition_event);
         this.video_channel.send(edition_event);
       }
     },
