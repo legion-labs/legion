@@ -17,7 +17,7 @@ use legion_window::WindowPlugin;
 
 fn main() {
     let logger  = Box::new(
-        SimpleLogger::new().with_level(LevelFilter::Debug)
+        SimpleLogger::new().with_level(LevelFilter::Trace)
     );
     logger.init().unwrap();    
 
@@ -27,20 +27,20 @@ fn main() {
     let assets_to_load: Vec<ResourceId> = Vec::new();
 
     App::new()
-        // .add_plugin(CorePlugin::default())
-        // .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
-        //     1.0 / 60.0,
-        // )))
-        // .add_plugin(ScheduleRunnerPlugin::default())
-        // .add_plugin(AsyncPlugin {})
-        // .insert_resource(ResourceRegistrySettings::new(project_folder))
-        // .add_plugin(ResourceRegistryPlugin::default())
-        // .insert_resource(AssetRegistrySettings::new(
-        //     content_store_addr,
-        //     game_manifest,
-        //     assets_to_load,
-        // ))
-        // .add_plugin(AssetRegistryPlugin::default())
+        .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
+            1.0 / 60.0,
+        )))
+        .add_plugin(CorePlugin::default())
+        .add_plugin(ScheduleRunnerPlugin::default())
+        .add_plugin(AsyncPlugin {})
+        .insert_resource(ResourceRegistrySettings::new(project_folder))
+        .add_plugin(ResourceRegistryPlugin::default())
+        .insert_resource(AssetRegistrySettings::new(
+            content_store_addr,
+            game_manifest,
+            assets_to_load,
+        ))
+        .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(WindowPlugin::default())
         .add_plugin(InputPlugin::default())
         .add_plugin(TaoPlugin::default())

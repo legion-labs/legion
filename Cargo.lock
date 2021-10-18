@@ -3368,6 +3368,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-graphics-renderer"
+version = "0.1.0"
+
+[[package]]
 name = "legion-graphics-runtime"
 version = "0.1.0"
 dependencies = [
@@ -3463,7 +3467,7 @@ dependencies = [
  "legion-app",
  "legion-ecs",
  "legion-graphics-api",
- "legion-window",
+ "legion-renderer",
  "log",
 ]
 
@@ -3486,6 +3490,7 @@ dependencies = [
  "legion-codec-api",
  "legion-ecs",
  "legion-graphics-api",
+ "legion-graphics-renderer",
  "log",
 ]
 

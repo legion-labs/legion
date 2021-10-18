@@ -1,6 +1,9 @@
 use graphics_api::prelude::*;
 use legion_codec_api::formats::RBGYUVConverter;
 
+mod labels;
+pub use labels::RendererSystemLabel;
+
 mod renderer_plugin;
 pub use renderer_plugin::RendererPlugin;
 
