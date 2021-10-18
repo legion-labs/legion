@@ -13,7 +13,7 @@ use legion_content_store::ContentStore;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    vfs, Asset, AssetLoader, Handle, HandleId, HandleUntyped, Resource, ResourceId, ResourceType,
+    vfs, Asset, AssetLoader, Handle, HandleUntyped, Resource, ResourceId, ResourceType,
 };
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
@@ -138,12 +138,6 @@ impl AssetRegistry {
         self.loader.get_handle(id)
     }
 
-    /// Returns a handle to the resource.
-    /// If a handle to this resource does not already exist, a new one will be created.
-    pub fn get_or_create_untyped(&mut self, id: ResourceId) -> HandleUntyped {
-        self.loader.get_or_create_handle(id)
-    }
-
     /// Same as [`Self::load_untyped`] but blocks until the resource load completes or returns an error.
     pub fn load_untyped_sync(&mut self, id: ResourceId) -> HandleUntyped {
         let handle = self.loader.load(id);
@@ -168,32 +162,22 @@ impl AssetRegistry {
         Handle::<T>::from(handle)
     }
 
-    /// Retrieves the asset id associated with a handle.
-    pub(crate) fn get_asset_id(&self, handle_id: HandleId) -> Option<ResourceId> {
-        self.loader.get_asset_id(handle_id)
-    }
-
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Any + Resource>(&self, handle_id: HandleId) -> Option<&T> {
-        if let Some(asset_id) = self.get_asset_id(handle_id) {
-            if let Some(asset) = self.assets.get(&asset_id) {
-                return asset.downcast_ref::<T>();
-            }
+    pub(crate) fn get<T: Any + Resource>(&self, id: ResourceId) -> Option<&T> {
+        if let Some(asset) = self.assets.get(&id) {
+            return asset.downcast_ref::<T>();
         }
         None
     }
 
     /// Tests if an asset is loaded.
-    pub(crate) fn is_loaded(&self, handle_id: HandleId) -> bool {
-        if let Some(asset_id) = self.get_asset_id(handle_id) {
-            return self.assets.get(&asset_id).is_some();
-        }
-        false
+    pub(crate) fn is_loaded(&self, id: ResourceId) -> bool {
+        self.assets.get(&id).is_some()
     }
 
     /// Unloads assets based on their reference counts.
     pub fn update(&mut self) {
-        while let Some(removed_id) = self.loader.process_refcount_ops() {
+        for removed_id in self.loader.collect_dropped_handle() {
             self.load_errors.remove(&removed_id);
             self.assets.remove(&removed_id);
             self.loader.unload(removed_id);
@@ -227,11 +211,8 @@ impl AssetRegistry {
         }
     }
 
-    pub(crate) fn is_err(&self, handle_id: HandleId) -> bool {
-        if let Some(asset_id) = self.get_asset_id(handle_id) {
-            return self.load_errors.contains_key(&asset_id);
-        }
-        false
+    pub(crate) fn is_err(&self, id: ResourceId) -> bool {
+        self.load_errors.contains_key(&id)
     }
 
     /// Subscribe to load events, to know when resources are loaded and unloaded.
@@ -320,7 +301,7 @@ mod tests {
         let internal_id;
         {
             let a = reg.load_untyped(asset_id);
-            internal_id = a.id;
+            internal_id = a.id();
 
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
@@ -355,7 +336,7 @@ mod tests {
         let internal_id;
         {
             let a = reg.load_untyped(asset_id);
-            internal_id = a.id;
+            internal_id = a.id();
 
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
@@ -390,7 +371,7 @@ mod tests {
         let internal_id;
         {
             let a = reg.load_untyped(ResourceId::new(test_asset::TestAsset::TYPE, 7));
-            internal_id = a.id;
+            internal_id = a.id();
 
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_err(&reg) {
@@ -416,7 +397,7 @@ mod tests {
         let internal_id;
         {
             let a = reg.load_untyped_sync(ResourceId::new(test_asset::TestAsset::TYPE, 7));
-            internal_id = a.id;
+            internal_id = a.id();
 
             assert!(!a.is_loaded(&reg));
             assert!(a.is_err(&reg));

@@ -247,8 +247,12 @@ impl AssetRegistryPlugin {
                         // Most likely, this load has occurred because of loading of dependant resources.
                         asset_loading_states.insert(asset_id, LoadingState::Pending);
                         if let Ok(mut registry) = registry.lock() {
-                            asset_handles
-                                .insert(asset_id, registry.get_or_create_untyped(asset_id));
+                            asset_handles.insert(
+                                asset_id,
+                                registry
+                                    .get_untyped(asset_id)
+                                    .expect("handle to exist on ResourceLoadEvent"),
+                            );
                         }
                     }
                 }
