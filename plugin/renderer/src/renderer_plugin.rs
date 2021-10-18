@@ -1,18 +1,19 @@
-use legion_app::Plugin;
-use legion_ecs::{schedule::ParallelSystemDescriptorCoercion, system::IntoSystem};
-use log::trace;
 use super::labels::*;
+use graphics_renderer::Renderer;
+use legion_app::Plugin;
+use legion_ecs::{prelude::*, schedule::ParallelSystemDescriptorCoercion, system::IntoSystem};
 
 #[derive(Default)]
 pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut legion_app::App) {
-        
-        app.add_system(do_something.system().label(RendererSystemLabel::Main));
+        let renderer = Renderer::new(1024, 1024);
+        app.insert_resource(renderer);
+        app.add_system(render.system().label(RendererSystemLabel::Main));
     }
 }
 
-fn do_something() {            
-    trace!( "do_something once per frame" );
+fn render(mut renderer: ResMut<Renderer>) {
+    renderer.render();
 }

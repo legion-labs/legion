@@ -1,6 +1,6 @@
-use std::time::Duration;
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
+use std::time::Duration;
 
 use legion_app::{App, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
@@ -14,12 +14,9 @@ use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings}
 use legion_tao::TaoPlugin;
 use legion_window::WindowPlugin;
 
-
 fn main() {
-    let logger  = Box::new(
-        SimpleLogger::new().with_level(LevelFilter::Trace)
-    );
-    logger.init().unwrap();    
+    let logger = Box::new(SimpleLogger::new().with_level(LevelFilter::Debug));
+    logger.init().unwrap();
 
     let project_folder = "test/sample_data";
     let content_store_addr = "test/sample_data/temp";

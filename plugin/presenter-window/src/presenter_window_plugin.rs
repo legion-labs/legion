@@ -1,5 +1,5 @@
 use legion_app::Plugin;
-use legion_ecs::{schedule::ParallelSystemDescriptorCoercion, system::{IntoSystem}};
+use legion_ecs::{schedule::ParallelSystemDescriptorCoercion, system::IntoSystem};
 use legion_renderer::RendererSystemLabel;
 use log::trace;
 
@@ -13,5 +13,5 @@ impl Plugin for PresenterWindowPlugin {
 }
 
 fn consume_something() {
-    trace!( "consume_something once per frame" );
+    trace!("consume_something once per frame");
 }
