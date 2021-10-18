@@ -85,7 +85,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         .manage(config)
         .manage(streamer_client)
         .manage(editor_client)
-        .invoke_handler(tauri::generate_handler![initialize_stream, on_video_close, on_video_chunk_received]);
+        .invoke_handler(tauri::generate_handler![
+            initialize_stream,
+            on_video_close,
+            on_video_chunk_received
+        ]);
 
     App::new()
         .insert_non_send_resource(TauriPluginSettings::new(builder))
