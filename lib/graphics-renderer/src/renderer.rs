@@ -4,6 +4,9 @@ pub struct Renderer {
     // width: u32,
     // height: u32,
     frame_idx: usize,
+    render_frame_idx: usize,
+    num_render_frames: usize,
+    frame_fences: Vec<<DefaultApi as GfxApi>::Fence>,
     graphics_queue: <DefaultApi as GfxApi>::Queue,
     command_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
     command_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
@@ -32,7 +35,7 @@ impl Renderer {
         // A cloneable device handle, these are lightweight and can be passed across threads
         let device_context = api.device_context();
 
-        let parallel_render_count = 2;
+        let num_buffered_frames = 2;
 
         //
         // Allocate a graphics queue. By default, there is just one graphics queue and it is shared.
@@ -65,16 +68,17 @@ impl Renderer {
         // the uniform instead of the vertex buffer. Buffers also need to be immutable while
         // processed, so we need one per swapchain image
         //
-        let mut command_pools = Vec::with_capacity(parallel_render_count);
-        let mut command_buffers = Vec::with_capacity(parallel_render_count);
-        let mut vertex_buffers = Vec::with_capacity(parallel_render_count);
-        let mut uniform_buffers = Vec::with_capacity(parallel_render_count);
-        let mut uniform_buffer_cbvs = Vec::with_capacity(parallel_render_count);
-        let mut render_images = Vec::with_capacity(parallel_render_count);
-        let mut render_views = Vec::with_capacity(parallel_render_count);
+        let mut command_pools = Vec::with_capacity(num_buffered_frames);
+        let mut command_buffers = Vec::with_capacity(num_buffered_frames);
+        let mut vertex_buffers = Vec::with_capacity(num_buffered_frames);
+        let mut uniform_buffers = Vec::with_capacity(num_buffered_frames);
+        let mut uniform_buffer_cbvs = Vec::with_capacity(num_buffered_frames);
+        let mut render_images = Vec::with_capacity(num_buffered_frames);
+        let mut render_views = Vec::with_capacity(num_buffered_frames);
+        let mut frame_fences = Vec::with_capacity(num_buffered_frames);
         // let mut copy_images = Vec::with_capacity(parallel_render_count);
 
-        for _ in 0..parallel_render_count {
+        for _ in 0..num_buffered_frames {
             let command_pool = graphics_queue
                 .create_command_pool(&CommandPoolDef { transient: true })
                 .unwrap();
@@ -139,6 +143,7 @@ impl Renderer {
             //         tiling: TextureTiling::Linear,
             //     })
             //     .unwrap();
+            let frame_fence = device_context.create_fence().unwrap();
 
             command_pools.push(command_pool);
             command_buffers.push(command_buffer);
@@ -147,6 +152,7 @@ impl Renderer {
             uniform_buffers.push(uniform_buffer);
             render_images.push(render_image);
             render_views.push(render_view);
+            frame_fences.push(frame_fence);
             // copy_images.push(copy_image);
         }
 
@@ -260,7 +266,7 @@ impl Renderer {
 
         // Initialize them all at once here.. this can be done per-frame as well.
         #[allow(clippy::needless_range_loop)]
-        for i in 0..parallel_render_count {
+        for i in 0..num_buffered_frames {
             descriptor_set_array
                 .update_descriptor_set(&[DescriptorUpdate {
                     array_index: i as u32,
@@ -320,6 +326,9 @@ impl Renderer {
             // width,
             // height,
             frame_idx: 0,
+            render_frame_idx: 0,
+            num_render_frames: num_buffered_frames,
+            frame_fences,
             _api: api,
             graphics_queue,
             command_pools,
@@ -340,8 +349,14 @@ impl Renderer {
         // elapsed_secs: f32,
         // rgb: (f32, f32, f32)
     ) {
-        let frame_idx = self.frame_idx;
-        let elapsed_secs = frame_idx as f32 / 60.0;
+        let render_frame_idx = self.render_frame_idx;
+        let elapsed_secs = self.frame_idx as f32 / 60.0;
+
+        let signal_fence = &self.frame_fences[render_frame_idx];
+
+        if signal_fence.get_fence_status().unwrap() == FenceStatus::Incomplete {
+            signal_fence.wait().unwrap();
+        }
 
         let vertex_data = [
             0.0f32,
@@ -366,16 +381,16 @@ impl Renderer {
         //
         // Acquire swapchain image
         //
-        let render_texture = &self.render_images[frame_idx % 2];
-        let render_view = &self.render_views[frame_idx % 2];
+        let render_texture = &self.render_images[render_frame_idx];
+        let render_view = &self.render_views[render_frame_idx];
 
         //
         // Use the command pool/buffer assigned to this frame
         //
-        let cmd_pool = &self.command_pools[frame_idx % 2];
-        let cmd_buffer = &self.command_buffers[frame_idx % 2];
-        let vertex_buffer = &self.vertex_buffers[frame_idx % 2];
-        let uniform_buffer = &self.uniform_buffers[frame_idx % 2];
+        let cmd_pool = &self.command_pools[render_frame_idx];
+        let cmd_buffer = &self.command_buffers[render_frame_idx];
+        let vertex_buffer = &self.vertex_buffers[render_frame_idx];
+        let uniform_buffer = &self.uniform_buffers[render_frame_idx];
 
         //
         // Update the buffers
@@ -432,7 +447,7 @@ impl Renderer {
             .cmd_bind_descriptor_set(
                 &self.root_signature,
                 &self.descriptor_set_array,
-                (frame_idx % 2) as _,
+                (render_frame_idx) as _,
             )
             .unwrap();
         cmd_buffer.cmd_draw(3, 0).unwrap();
@@ -452,7 +467,7 @@ impl Renderer {
             )
             .unwrap();
 
-        // let dst_texture = &self.copy_images[frame_idx % 2];
+        // let dst_texture = &self.copy_images[render_frame_idx];
         // cmd_buffer
         //     .cmd_resource_barrier(
         //         &[],
@@ -501,14 +516,22 @@ impl Renderer {
         // //
 
         self.graphics_queue
-            .submit(&[cmd_buffer], &[], &[], None)
+            .submit(&[cmd_buffer], &[], &[], Some(signal_fence))
             .unwrap();
-        self.graphics_queue.wait_for_queue_idle().unwrap();
+
+        // self.graphics_queue.wait_for_queue_idle().unwrap();
 
         // let sub_resource = dst_texture.map_texture().unwrap();
         // converter.convert_rgba(sub_resource.data, sub_resource.row_pitch as usize);
         // dst_texture.unmap_texture().unwrap();
 
-        self.frame_idx += 1;
+        self.frame_idx = self.frame_idx + 1;
+        self.render_frame_idx = self.frame_idx % self.num_render_frames;
+    }
+}
+
+impl Drop for Renderer {
+    fn drop(&mut self) {
+        self.graphics_queue.wait_for_queue_idle().unwrap();
     }
 }
