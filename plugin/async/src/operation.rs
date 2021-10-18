@@ -27,23 +27,19 @@ impl fmt::Display for AsyncOperationError {
 
 impl Error for AsyncOperationError {}
 
-pub(crate) trait AsyncOperationCanceller: Send + Sync {
-    fn cancel(&self);
-}
-
 // Represents an async operation running in a separate thread pool, that can be
 // polled for completion.
 pub struct AsyncOperation<T> {
     result: Arc<Mutex<AsyncOperationResult<T>>>,
-    canceller: Box<dyn AsyncOperationCanceller>,
+    cancel_tx: tokio::sync::mpsc::UnboundedSender<AsyncOperationError>,
 }
 
 impl<T> AsyncOperation<T> {
     pub(crate) fn new(
         result: Arc<Mutex<AsyncOperationResult<T>>>,
-        canceller: Box<dyn AsyncOperationCanceller>,
+        cancel_tx: tokio::sync::mpsc::UnboundedSender<AsyncOperationError>,
     ) -> Self {
-        Self { result, canceller }
+        Self { result, cancel_tx }
     }
 }
 
@@ -53,6 +49,6 @@ impl<T: Send + 'static> AsyncOperation<T> {
     }
 
     pub fn cancel(&self) {
-        self.canceller.cancel();
+        let _ = self.cancel_tx.send(AsyncOperationError::Cancelled);
     }
 }
