@@ -66,6 +66,7 @@ use log::{info, warn};
 use service::multiplexer::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder};
 use tonic::transport::NamedService;
 
+pub mod client;
 pub mod service;
 
 pub struct GRPCPluginSettings {

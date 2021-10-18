@@ -6,8 +6,6 @@ pub mod sum {
     tonic::include_proto!("sum");
 }
 
-use std::time::Duration;
-
 use backoff::ExponentialBackoff;
 use echo::{
     echoer_client::EchoerClient,
@@ -15,7 +13,6 @@ use echo::{
     EchoRequest, EchoResponse,
 };
 
-use hyper::client::HttpConnector;
 use sum::{
     summer_client::SummerClient,
     summer_server::{Summer, SummerServer},
@@ -70,29 +67,14 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
     let addr = "127.0.0.1:50051".parse()?;
 
     async fn f() -> anyhow::Result<()> {
-        let mut connector = HttpConnector::new();
-        connector.set_connect_timeout(Some(Duration::from_secs(5)));
-        let client = hyper::Client::builder().http2_only(true).build(connector);
-        let uri = hyper::Uri::from_static("http://127.0.0.1:50051");
-
-        let add_origin = tower::service_fn(|mut req: hyper::Request<tonic::body::BoxBody>| {
-            let uri = hyper::Uri::builder()
-                .scheme(uri.scheme().unwrap().clone())
-                .authority(uri.authority().unwrap().clone())
-                .path_and_query(req.uri().path_and_query().unwrap().clone())
-                .build()
-                .unwrap();
-
-            *req.uri_mut() = uri;
-
-            client.request(req)
-        });
+        let client =
+            legion_grpc::client::Client::new(hyper::Uri::from_static("http://127.0.0.1:50051"));
 
         {
             let msg: String = "hello".into();
 
             let resp = backoff::future::retry(ExponentialBackoff::default(), || async {
-                let mut echo_client = EchoerClient::new(add_origin);
+                let mut echo_client = EchoerClient::new(client.clone());
 
                 Ok(echo_client
                     .echo(Request::new(EchoRequest { msg: msg.clone() }))
@@ -108,7 +90,7 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
             let b = 2;
             let result = 3;
             let resp = backoff::future::retry(ExponentialBackoff::default(), || async {
-                let mut sum_client = SummerClient::new(add_origin);
+                let mut sum_client = SummerClient::new(client.clone());
 
                 Ok(sum_client.sum(Request::new(SumRequest { a, b })).await?)
             })
