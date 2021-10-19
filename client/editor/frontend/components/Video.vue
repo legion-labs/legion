@@ -313,7 +313,7 @@ export default {
 
         if (edition_event) {
           on_send_edition_command(edition_event);
-          this.video_channel.send(JSON.stringify(edition_event));
+          this.video_channel.send(edition_event);
         }
       }
     },
