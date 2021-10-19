@@ -1,23 +1,28 @@
 <template>
-  <v-edit-dialog :return-value.sync="value" v-if="ptype == 'color'">
-    <v-chip>{{ value }}</v-chip>
-    <template #input>
-      <v-text-field
-        v-model="localValue"
-        label="Edit"
-        single-line
-      ></v-text-field>
-    </template>
-  </v-edit-dialog>
-  <v-edit-dialog :return-value.sync="value" v-else>
-    <vue-json-pretty :data="value"></vue-json-pretty>
-  </v-edit-dialog>
+  <ColorWidget
+    v-if="ptype == 'color'"
+    v-model="localValue"
+    :readonly="readonly"
+  ></ColorWidget>
+  <SpeedWidget
+    v-else-if="ptype == 'speed'"
+    v-model="localValue"
+    :readonly="readonly"
+  ></SpeedWidget>
+  <JSONWidget v-else v-model="localValue" :readonly="readonly"></JSONWidget>
 </template>
 
 <script>
 export default {
   name: "ResourcePropertyEditor",
-  props: ["value", "ptype"],
+  props: {
+    value: {},
+    readonly: {
+      type: Boolean,
+      default: false,
+    },
+    ptype: String,
+  },
   computed: {
     localValue: {
       get() {

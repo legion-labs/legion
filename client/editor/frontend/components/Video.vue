@@ -178,17 +178,28 @@ function debounce(func, wait, immediate) {
 export default {
   name: "Video",
   props: {
-    color: String,
-    speed: Number,
+    resource: null,
+  },
+  data() {
+    return {
+      pc: null,
+      video_channel: null,
+      control_channel: null,
+    };
   },
   mounted() {
     const videoElement = document.getElementById("video");
-    const videoPlayer = new VideoPlayer(videoElement, () => {});
-    var pc = null;
-    this.video_channel = null;
-    this.control_channel = null;
 
     videoElement.parentElement.onclick = () => {
+      this.initialize(videoElement);
+    };
+
+    this.initialize(videoElement);
+  },
+  methods: {
+    initialize(videoElement) {
+      const videoPlayer = new VideoPlayer(videoElement, () => {});
+
       console.log("Initializing WebRTC...");
 
       if (this.video_channel != null) {
@@ -201,29 +212,31 @@ export default {
         this.control_channel = null;
       }
 
-      if (pc !== null) {
-        pc.close();
-        pc = null;
+      if (this.pc !== null) {
+        this.pc.close();
+        this.pc = null;
       }
 
-      pc = new RTCPeerConnection({
+      this.pc = new RTCPeerConnection({
         urls: [{ url: "stun:stun.l.google.com:19302" }],
       });
 
-      pc.onnegotiationneeded = async () => {
-        pc.setLocalDescription(await pc.createOffer());
+      this.pc.onnegotiationneeded = async () => {
+        this.pc.setLocalDescription(await this.pc.createOffer());
       };
 
-      pc.onicecandidate = async (iceEvent) => {
+      this.pc.onicecandidate = async (iceEvent) => {
         console.log(iceEvent);
 
         if (iceEvent.candidate === null) {
-          pc.setRemoteDescription(await initialize_stream(pc.localDescription));
+          this.pc.setRemoteDescription(
+            await initialize_stream(this.pc.localDescription)
+          );
         }
       };
 
-      this.video_channel = pc.createDataChannel("video");
-      this.control_channel = pc.createDataChannel("control");
+      this.video_channel = this.pc.createDataChannel("video");
+      this.control_channel = this.pc.createDataChannel("control");
 
       const observer = new ResizeObserver(
         debounce(async () => {
@@ -274,29 +287,34 @@ export default {
         const json_msg = new TextDecoder().decode(msg.data);
         on_receive_control_message(json_msg);
       };
-    };
+    },
   },
   watch: {
-    color(color) {
-      if (this.video_channel != null) {
-        const edition_event = JSON.stringify({
-          event: "color",
-          color: color,
-          id: crypto.randomUUID(),
-        });
-        on_send_edition_command(edition_event);
-        this.video_channel.send(edition_event);
-      }
-    },
-    speed(speed) {
-      if (this.video_channel != null) {
-        const edition_event = JSON.stringify({
-          event: "speed",
-          speed: speed,
-          id: crypto.randomUUID(),
-        });
-        on_send_edition_command(edition_event);
-        this.video_channel.send(edition_event);
+    resource(resource) {
+      if (resource.description.id != "triangle") return;
+      if (this.video_channel == null) return;
+
+      for (const property of resource.properties) {
+        var edition_event = null;
+
+        if (property.name == "color") {
+          edition_event = JSON.stringify({
+            id: crypto.randomUUID(),
+            event: "color",
+            color: property.value,
+          });
+        } else if (property.name == "speed") {
+          edition_event = JSON.stringify({
+            id: crypto.randomUUID(),
+            event: "speed",
+            speed: property.value,
+          });
+        }
+
+        if (edition_event) {
+          on_send_edition_command(edition_event);
+          this.video_channel.send(JSON.stringify(edition_event));
+        }
       }
     },
   },

@@ -1,4 +1,6 @@
-import Vue from 'vue'
-import VueJsonPretty from 'vue-json-pretty'
+import Vue from 'vue';
+import VueJsonPretty from 'vue-json-pretty';
+import JsonEditor from '@kassaila/vue-json-editor';
 
-Vue.component("vue-json-pretty", VueJsonPretty)
+Vue.component("json-viewer", VueJsonPretty);
+Vue.component("json-editor", JsonEditor);

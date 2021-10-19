@@ -17,6 +17,14 @@
       <ResourcePropertyEditor
         v-model="props.item.value"
         :ptype="props.item.ptype"
+        @input="updateResource()"
+      ></ResourcePropertyEditor>
+    </template>
+    <template #[`item.default_value`]="props">
+      <ResourcePropertyEditor
+        v-model="props.item.default_value"
+        :ptype="props.item.ptype"
+        :readonly="true"
       ></ResourcePropertyEditor>
     </template>
   </v-data-table>
@@ -46,6 +54,11 @@ export default {
           groupable: false,
         },
         {
+          text: "Type",
+          value: "ptype",
+          groupable: false,
+        },
+        {
           text: "Value",
           value: "value",
           groupable: false,
@@ -59,16 +72,32 @@ export default {
       properties: [],
     };
   },
-  props: ["resource"],
+  props: ["resource-description"],
   watch: {
-    resource: {
+    resourceDescription: {
       immediate: true,
       handler(val) {
         this.queryResourceProperties(val.id);
       },
     },
+    properties: {
+      handler(val) {
+        this.updateResource();
+      },
+    },
   },
   methods: {
+    updateResource(resource) {
+      if (!resource) {
+        resource = {
+          description: this.resourceDescription,
+          properties: this.properties,
+        };
+      }
+
+      // TODO: Replace this with a real call.
+      this.$emit("resource-change", resource);
+    },
     queryResourceProperties(resourceId) {
       this.loading = true;
 
