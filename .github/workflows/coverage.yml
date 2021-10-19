@@ -3,17 +3,12 @@ name: Coverage
 on:
   schedule:
     # Run the job 6am and 6pm EDT
-    - cron:  '0 10,22 * * *'
+    - cron: "0 10,22 * * *"
 
 jobs:
   coverage:
     name: Running code coverage analysis
-    runs-on: [self-hosted, ubuntu]
-    container:
-      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
-      credentials:
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: [self-hosted, linux, base, build]
     steps:
       - uses: actions/checkout@v2
 
@@ -49,4 +44,3 @@ jobs:
           publish_dir: ./coverage
           force_orphan: true
           cname: cov.legionengine.com
-      

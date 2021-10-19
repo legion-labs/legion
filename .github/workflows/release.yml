@@ -3,23 +3,18 @@ name: Release
 on:
   schedule:
     # Run the job every 3 hours
-    - cron:  '0 */3 * * *'
+    - cron: "0 */3 * * *"
   workflow_dispatch:
     inputs:
       name:
-        description: 'Release tag'
+        description: "Release tag"
         required: false
-        default: 'preflight'
+        default: "preflight"
 
 jobs:
   build_release:
     name: Building release binaries
-    runs-on: [self-hosted, ubuntu]
-    container:
-      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
-      credentials:
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: [self-hosted, linux, base, build]
     steps:
       - uses: actions/checkout@v2
 
@@ -42,7 +37,7 @@ jobs:
     name: Building docker images and deploying them
     needs: [build_release]
     if: ${{ github.event.event_name == 'workflow_dispatch' }}
-    runs-on: [self-hosted, ubuntu]
+    runs-on: [self-hosted, linux, base, build]
     steps:
       - uses: actions/checkout@v2
 

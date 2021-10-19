@@ -11,12 +11,7 @@ on:
 jobs:
   build_book:
     name: Building book
-    runs-on: [self-hosted, ubuntu]
-    container:
-      image: ghcr.io/legion-labs/build-env-linux-rust:0.1.0
-      credentials:
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: [self-hosted, linux, base, build]
     steps:
       - uses: actions/checkout@v2
 
