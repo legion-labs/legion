@@ -3,7 +3,6 @@ name = "generic_data_runtime"
 version = "0.1.0"
 edition = "2018"
 license = "MIT OR Apache-2.0"
-build = "../../lib/data-codegen/default_build.rs"
 
 [dependencies]
 # Legion engine
