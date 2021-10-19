@@ -243,6 +243,8 @@ impl AssetRegistryPlugin {
             match event {
                 ResourceLoadEvent::Loaded(asset_id) => {
                     if asset_loading_states.get(asset_id).is_none() {
+                        // Received a load event for an untracked asset.
+                        // Most likely, this load has occurred because of loading of dependant resources.
                         asset_loading_states.insert(asset_id, LoadingState::Pending);
                         if let Ok(mut registry) = registry.lock() {
                             asset_handles
