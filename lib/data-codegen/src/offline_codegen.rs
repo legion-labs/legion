@@ -67,7 +67,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
 
         lazy_static::lazy_static! {
             static ref #offline_default_instance: #offline_identifier = #offline_identifier {
-                ..Default::default()
+                ..#offline_identifier::default()
             };
         }
     }

@@ -38,7 +38,7 @@ fn generate_offline_json_writes(
             quote! {
                 if self.#member_ident != #default_ident.#member_ident {
                     if let Ok(json_string) = serde_json::to_string(&self.#member_ident) {
-                        writer.write_all(",\n".as_bytes())?;
+                        writer.write_all(b",\n")?;
                         writer.write_all(#prop_id.as_bytes())?;
                         writer.write_all(json_string.as_bytes())?;
                     }
@@ -62,6 +62,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
 
         impl #offline_identifier {
 
+            #[allow(clippy::missing_errors_doc)]
             pub fn read_from_json(&mut self, reader: &mut dyn std::io::Read) -> std::io::Result<()> {
                 let values : serde_json::Value = serde_json::from_reader(reader).map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
                 if values["_class"] == #offline_name {
@@ -73,13 +74,13 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
                 Ok(())
             }
 
-            #[allow(clippy::float_cmp)]
+            #[allow(clippy::float_cmp, clippy::missing_errors_doc, clippy::string_lit_as_bytes)]
             pub fn write_to_json(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
-                writer.write_all("{\n\t\"_class\" : \"".as_bytes())?;
+                writer.write_all(b"{\n\t\"_class\" : \"")?;
                 writer.write_all(#offline_name.as_bytes())?;
-                writer.write_all("\"".as_bytes())?;
+                writer.write_all(b"\"")?;
                 #(#offline_fields_json_writes)*
-                writer.write_all("\n}\n".as_bytes())?;
+                writer.write_all(b"\n}\n")?;
                 Ok(())
             }
         }

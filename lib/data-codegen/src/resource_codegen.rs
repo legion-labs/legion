@@ -32,7 +32,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
 
         impl AssetLoader for #offline_identifier_processor {
             fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
-                let mut new_instance = #offline_identifier { ..Default::default()};
+                let mut new_instance = #offline_identifier { ..#offline_identifier::default()};
                 new_instance.read_from_json(reader)?;
                 Ok(Box::new(new_instance))
             }
@@ -42,7 +42,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
 
         impl ResourceProcessor for #offline_identifier_processor {
             fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
-                Box::new(#offline_identifier { ..Default::default() })
+                Box::new(#offline_identifier { ..#offline_identifier::default() })
             }
 
             fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<legion_data_offline::ResourcePathId> {

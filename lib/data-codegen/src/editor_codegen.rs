@@ -68,6 +68,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
         use legion_data_offline::data_container::{PropertyDescriptor,ParseFromStr};
         impl #offline_identifier {
 
+            #[allow(clippy::missing_errors_doc)]
             pub fn write_field_by_name(&mut self, field_name : &str, field_value : &str) -> Result<(), &'static str> {
                 let mut hasher = DefaultHasher::new();
                 field_name.hash(&mut hasher);
@@ -78,6 +79,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
                 Ok(())
             }
 
+            #[allow(clippy::missing_errors_doc)]
             pub fn get_editor_properties(&self) -> Result<Vec<legion_data_offline::data_container::PropertyDescriptor>, &'static str> {
                 let output : Vec::<PropertyDescriptor> = vec![
                     #(#offline_fields_editor_descriptors)*
