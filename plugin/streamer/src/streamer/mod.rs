@@ -170,9 +170,9 @@ impl Streamer {
                 query.get_component_mut::<VideoStream>(event.stream_id.entity)
             {
                 match &event.info {
-                    VideoStreamEventInfo::Hue { id, hue } => {
-                        log::info!("received hue command id={}", id);
-                        video_stream.hue = *hue;
+                    VideoStreamEventInfo::Color { id, color } => {
+                        log::info!("received color command id={}", id);
+                        video_stream.color = color.clone();
                     }
                     VideoStreamEventInfo::Resize { width, height } => {
                         video_stream.resize(*width, *height);

@@ -15,12 +15,6 @@ legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-graphics-offline = { path = "../../lib/graphics-offline", version = "0.1.0" }
-legion-editor-proto = { path = "../../proto/editor", version = "0.1.0" }
-
-tonic = "0.5"
-prost = "0.8"
-prost-types = "0.8"
-
 
 # temp dependency on sample-data, until runtime data moved to plugins
 sample-data-compiler = { path = "../../test/sample_data_compiler", version = "0.1.0" }

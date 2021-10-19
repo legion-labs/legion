@@ -40,8 +40,6 @@ video {
 <script scoped>
 import {
   initialize_stream,
-  search_resources,
-  get_resource_properties,
   on_receive_control_message,
   on_send_edition_command,
   on_video_close,
@@ -180,12 +178,10 @@ function debounce(func, wait, immediate) {
 export default {
   name: "Video",
   props: {
-    hue: Number,
+    color: String,
     speed: Number,
   },
   mounted() {
-    search_resources().then(console.log);
-    get_resource_properties("1").then(console.log);
     const videoElement = document.getElementById("video");
     const videoPlayer = new VideoPlayer(videoElement, () => {});
     var pc = null;
@@ -281,11 +277,11 @@ export default {
     };
   },
   watch: {
-    hue(hue) {
+    color(color) {
       if (this.video_channel != null) {
         const edition_event = JSON.stringify({
-          event: "hue",
-          hue: hue / 360,
+          event: "color",
+          color: color,
           id: crypto.randomUUID(),
         });
         on_send_edition_command(edition_event);

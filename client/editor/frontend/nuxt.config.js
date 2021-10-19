@@ -44,7 +44,6 @@ export default {
 
   // Modules: https://go.nuxtjs.dev/config-modules
   modules: [
-    '@radial-color-picker/vue-color-picker/nuxt',
     '~/modules/api',
   ],
 

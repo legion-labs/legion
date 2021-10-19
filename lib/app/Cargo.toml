@@ -29,3 +29,8 @@ web-sys = { version = "0.3", features = ["Window"] }
 [dev-dependencies]
 # legion
 legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
+
+[package.metadata.cargo-udeps.ignore]
+development = [
+    "legion-transform",
+] # Ref to TransformPlugin in add_plugin documentation
