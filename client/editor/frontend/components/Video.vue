@@ -42,6 +42,7 @@ import {
   initialize_stream,
   search_resources,
   get_resource_properties,
+  on_receive_control_message,
   on_send_edition_command,
   on_video_close,
   on_video_chunk_received,
@@ -273,7 +274,10 @@ export default {
       this.control_channel.ondatachannel = async (evt) => {
         console.log("control data channel: ", evt);
       };
-      this.control_channel.onmessage = async (msg) => {};
+      this.control_channel.onmessage = async (msg) => {
+        const json_msg = new TextDecoder().decode(msg.data);
+        on_receive_control_message(json_msg);
+      };
     };
   },
   watch: {
