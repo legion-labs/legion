@@ -1,3 +1,5 @@
+//! Generic data codegen test (offline)
+
 // BEGIN - Legion Labs lints v0.5
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
