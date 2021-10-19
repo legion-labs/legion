@@ -1,5 +1,5 @@
 use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 type QuoteRes = quote::__private::TokenStream;
 
@@ -34,12 +34,12 @@ fn generate_offline_json_writes(
         .filter(|m| !m.transient)
         .map(|m| {
             let member_ident = format_ident!("{}", &m.name);
-            let prop_id = format!("\t\"{}\" : ", &m.name);
+            let prop_id = Literal::byte_string(format!("\t\"{}\" : ", &m.name).as_bytes());
             quote! {
                 if self.#member_ident != #default_ident.#member_ident {
                     if let Ok(json_string) = serde_json::to_string(&self.#member_ident) {
                         writer.write_all(b",\n")?;
-                        writer.write_all(#prop_id.as_bytes())?;
+                        writer.write_all(#prop_id)?;
                         writer.write_all(json_string.as_bytes())?;
                     }
                 }
@@ -54,6 +54,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
         format_ident!("DEFAULT_{}", data_container_info.name.to_uppercase());
 
     let offline_name = &data_container_info.name;
+    let offline_name_as_byte_string = Literal::byte_string(offline_name.as_bytes());
     let offline_fields_json_reads = generate_offline_json_reads(&data_container_info.members);
     let offline_fields_json_writes =
         generate_offline_json_writes(&offline_default_instance, &data_container_info.members);
@@ -74,10 +75,10 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
                 Ok(())
             }
 
-            #[allow(clippy::float_cmp, clippy::missing_errors_doc, clippy::string_lit_as_bytes)]
+            #[allow(clippy::float_cmp, clippy::missing_errors_doc)]
             pub fn write_to_json(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
                 writer.write_all(b"{\n\t\"_class\" : \"")?;
-                writer.write_all(#offline_name.as_bytes())?;
+                writer.write_all(#offline_name_as_byte_string)?;
                 writer.write_all(b"\"")?;
                 #(#offline_fields_json_writes)*
                 writer.write_all(b"\n}\n")?;
