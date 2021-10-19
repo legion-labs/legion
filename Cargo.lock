@@ -2885,6 +2885,7 @@ dependencies = [
 name = "legion-asset-registry"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "legion-app",
  "legion-content-store",
  "legion-data-runtime",

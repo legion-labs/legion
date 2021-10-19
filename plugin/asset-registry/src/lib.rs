@@ -80,7 +80,9 @@ use std::{
 };
 
 #[derive(Default)]
-pub struct AssetRegistryPlugin {}
+pub struct AssetRegistryPlugin {
+    result_rx: crossbeam_channel::Receiver<LoaderResult>,
+}
 
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut legion_app::App) {
