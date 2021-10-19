@@ -4,7 +4,7 @@
     <v-card-text>Select a resource to edit.</v-card-text>
     <v-card-text>
       <v-autocomplete
-        v-model="select"
+        v-model="resource"
         :loading="loading"
         :items="resourceDescriptions"
         :search-input.sync="search"
@@ -30,11 +30,13 @@ export default {
       loading: false,
       resourceDescriptions: [],
       search: null,
-      select: null,
-      states: ["foo", "bar"],
+      resource: null,
     };
   },
   watch: {
+    resource(val) {
+      this.$emit("input", val);
+    },
     search(val) {
       val && val !== this.select && this.querySelections(val);
     },

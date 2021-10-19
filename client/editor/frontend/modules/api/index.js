@@ -15,7 +15,16 @@ export async function search_resources() {
 };
 
 export async function get_resource_properties(id) {
-    return await invoke("get_resource_properties", { id: id });
+    var resp = await invoke("get_resource_properties", { id: id });
+
+    // We receive the `value` and `default_value` fields as a JSON-string bytes
+    // array.
+    resp.properties.forEach(function (part, i, properties) {
+        properties[i].value = JSON.parse(String.fromCharCode.apply(String, part.value));
+        properties[i].default_value = JSON.parse(String.fromCharCode.apply(String, part.default_value));
+    });
+
+    return resp;
 };
 
 export function on_receive_control_message(json_msg) {

@@ -1,6 +1,10 @@
 <template>
   <div class="d-flex flex-column">
-    <ResourceSelector></ResourceSelector>
+    <ResourceSelector v-model="resource"></ResourceSelector>
+    <ResourceProperties
+      v-if="resource"
+      :resource="resource"
+    ></ResourceProperties>
     <v-color-picker
       id="color-picker"
       :value="color"
@@ -51,7 +55,9 @@ export default {
   },
   props: ["color", "speed"],
   data() {
-    return {};
+    return {
+      resource: null,
+    };
   },
 };
 </script>
