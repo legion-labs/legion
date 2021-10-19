@@ -22,6 +22,7 @@ pub async fn print_process_thread_events(
                     let line = scope.get::<u32>("line").unwrap();
                     println!("{} {} {} {}:{}", time, obj.type_name, name, filename, line);
                 }
+                true //continue
             })?;
             println!();
         }

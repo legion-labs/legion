@@ -24,6 +24,7 @@ pub async fn print_process_metrics(
                         println!("{} ({}) : {}", name, unit, float_value);
                     }
                 }
+                true //continue
             })?;
             println!();
         }

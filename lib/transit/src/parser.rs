@@ -248,6 +248,7 @@ where
     }
 }
 
+// parse_object_buffer calls fun for each object in the buffer until fun returns `false`
 pub fn parse_object_buffer<F, S>(
     dependencies: &HashMap<u64, Value, S>,
     udts: &[UserDefinedType],
@@ -255,7 +256,7 @@ pub fn parse_object_buffer<F, S>(
     mut fun: F,
 ) -> Result<()>
 where
-    F: FnMut(Value),
+    F: FnMut(Value) -> bool,
     S: BuildHasher,
 {
     let mut offset = 0;
@@ -283,7 +284,9 @@ where
         } else {
             parse_pod_instance(udt, dependencies, offset, buffer)
         };
-        fun(Value::Object(instance));
+        if !fun(Value::Object(instance)) {
+            return Ok(());
+        }
         offset += object_size;
     }
     Ok(())

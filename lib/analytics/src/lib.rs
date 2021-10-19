@@ -278,13 +278,14 @@ fn container_metadata_as_transit_udt_vec(
         .collect()
 }
 
+// parse_block calls fun for each object in the block until fun returns `false`
 pub fn parse_block<F>(
     stream: &legion_telemetry::StreamInfo,
     payload: &legion_telemetry_proto::ingestion::BlockPayload,
     fun: F,
 ) -> Result<()>
 where
-    F: FnMut(Value),
+    F: FnMut(Value) -> bool,
 {
     let dep_udts =
         container_metadata_as_transit_udt_vec(stream.dependencies_metadata.as_ref().unwrap());
@@ -300,4 +301,73 @@ where
         fun,
     )?;
     Ok(())
+}
+
+fn format_log_level(level: u8) -> &'static str {
+    match level {
+        1 => "Info",
+        2 => "Warning",
+        3 => "Error",
+        _ => "Unknown",
+    }
+}
+
+// find_process_log_entry calls pred with each log entry until pred returns Some(x)
+pub async fn find_process_log_entry<Res, Predicate: Fn(String) -> Option<Res>>(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    process_id: &str,
+    pred: Predicate,
+) -> Result<Option<Res>> {
+    let mut found_entry = None;
+    for stream in find_process_log_streams(connection, process_id).await? {
+        for b in find_stream_blocks(connection, &stream.stream_id).await? {
+            let payload = fetch_block_payload(connection, data_path, &b.block_id).await?;
+            parse_block(&stream, &payload, |val| {
+                if let Value::Object(obj) = val {
+                    match obj.type_name.as_str() {
+                        "LogMsgEvent" | "LogDynMsgEvent" => {
+                            let entry = format!(
+                                "[{}] {}",
+                                format_log_level(obj.get::<u8>("level").unwrap()),
+                                obj.get::<String>("msg").unwrap()
+                            );
+                            if let Some(x) = pred(entry) {
+                                found_entry = Some(x);
+                                return false; //do not continue
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                true //continue
+            })?;
+            if found_entry.is_some() {
+                return Ok(found_entry);
+            }
+        }
+    }
+    Ok(found_entry)
+}
+
+pub async fn for_each_process_log_entry<ProcessLogEntry: Fn(String)>(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    process_id: &str,
+    process_log_entry: ProcessLogEntry,
+) -> Result<()> {
+    find_process_log_entry(connection, data_path, process_id, |entry| {
+        process_log_entry(entry);
+        let nothing: Option<()> = None;
+        nothing //continue searching
+    })
+    .await?;
+    Ok(())
+}
+
+pub mod prelude {
+    pub use crate::alloc_sql_pool;
+    pub use crate::fetch_recent_processes;
+    pub use crate::find_process_log_entry;
+    pub use crate::for_each_process_log_entry;
 }
