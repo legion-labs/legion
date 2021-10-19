@@ -24,9 +24,11 @@ where
     T: Any + Resource,
 {
     /// Promote a reference to an active handle
-    pub fn activate(&mut self, registry: &mut AssetRegistry) {
+    pub fn activate(&mut self, registry: &AssetRegistry) {
         if let Self::Passive(resource_id) = self {
-            let handle = registry.get_untyped(*resource_id).expect("Handle to exist on load_init");
+            let handle = registry
+                .get_untyped(*resource_id)
+                .expect("Handle to exist on load_init");
             *self = Self::Active(handle.into());
         }
     }

@@ -3,6 +3,7 @@ use std::{any::Any, collections::HashMap, io, time::Duration};
 use crate::{vfs, AssetLoader, HandleUntyped, ReferenceUntyped, ResourceId, ResourceType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use flurry::TryInsertError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -63,7 +64,7 @@ pub(crate) struct AssetLoaderStub {
         crossbeam_channel::Sender<ResourceId>,
         crossbeam_channel::Receiver<ResourceId>,
     ),
-    handles: HashMap<ResourceId, ReferenceUntyped>,
+    handles: flurry::HashMap<ResourceId, ReferenceUntyped>,
     request_tx: crossbeam_channel::Sender<LoaderRequest>,
     result_rx: crossbeam_channel::Receiver<LoaderResult>,
 }
@@ -77,30 +78,38 @@ impl AssetLoaderStub {
     ) -> Self {
         Self {
             unload_channel: crossbeam_channel::unbounded(),
-            handles: HashMap::new(),
+            handles: flurry::HashMap::new(),
             request_tx,
             result_rx,
         }
     }
 
     pub(crate) fn get_handle(&self, id: ResourceId) -> Option<HandleUntyped> {
-        self.handles.get(&id).and_then(ReferenceUntyped::upgrade)
+        let map = self.handles.pin();
+        map.get(&id).and_then(ReferenceUntyped::upgrade)
     }
 
-    fn get_or_create_handle(&mut self, id: ResourceId) -> HandleUntyped {
+    fn get_or_create_handle(&self, id: ResourceId) -> HandleUntyped {
         if let Some(handle) = self.get_handle(id) {
             return handle;
         }
 
-        let created = HandleUntyped::new_handle(id, self.unload_channel.0.clone());
-        self.handles.insert(id, HandleUntyped::downgrade(&created));
-        created
+        let new_handle = HandleUntyped::new_handle(id, self.unload_channel.0.clone());
+        let weak_ref = HandleUntyped::downgrade(&new_handle);
+        match self.handles.pin().try_insert(id, weak_ref) {
+            Ok(_) => new_handle,
+            Err(TryInsertError {
+                current,
+                not_inserted: _,
+            }) => current.upgrade().unwrap(),
+        }
     }
 
-    pub(crate) fn collect_dropped_handle(&mut self) -> Vec<ResourceId> {
+    pub(crate) fn collect_dropped_handle(&self) -> Vec<ResourceId> {
         let mut all_removed = vec![];
         while let Ok(unload_id) = self.unload_channel.1.try_recv() {
-            let removed = self.handles.remove(&unload_id).expect("weak ref");
+            let handles = self.handles.pin();
+            let removed = handles.remove(&unload_id).expect("weak ref");
             assert!(removed.upgrade().is_none(), "a load after unload occured");
             all_removed.push(unload_id);
         }
@@ -111,7 +120,7 @@ impl AssetLoaderStub {
         self.request_tx.send(LoaderRequest::Terminate).unwrap();
     }
 
-    pub(crate) fn load(&mut self, resource_id: ResourceId) -> HandleUntyped {
+    pub(crate) fn load(&self, resource_id: ResourceId) -> HandleUntyped {
         let handle = self.get_or_create_handle(resource_id);
 
         // todo: for now, this is a made up number to track the id of the load request
@@ -618,89 +627,105 @@ mod tests {
 
     #[test]
     fn ref_count() {
-        let (asset_id, mut loader, _io) = setup_test();
+        let (asset_id, loader, _io) = setup_test();
 
         {
             let a = loader.load(asset_id);
             assert_eq!(a.id(), asset_id);
-            assert_eq!(loader.handles.get(&a.id()).unwrap().strong_count(), 1);
+            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
 
             {
                 let b = a.clone();
                 loader.collect_dropped_handle();
 
-                assert_eq!(loader.handles.get(&b.id()).unwrap().strong_count(), 2);
-                assert_eq!(loader.handles.get(&a.id()).unwrap().strong_count(), 2);
+                assert_eq!(loader.handles.pin().get(&b.id()).unwrap().strong_count(), 2);
+                assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
                 assert_eq!(a, b);
             }
             loader.collect_dropped_handle();
-            assert_eq!(loader.handles.get(&a.id()).unwrap().strong_count(), 1);
+            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
         }
         loader.collect_dropped_handle();
-        assert!(!loader.handles.contains_key(&asset_id));
+        assert!(!loader.handles.pin().contains_key(&asset_id));
     }
 
     #[test]
     fn typed_ref() {
-        let (asset_id, mut loader, _io) = setup_test();
+        let (asset_id, loader, _io) = setup_test();
 
         {
             let untyped = loader.load(asset_id);
-            assert_eq!(loader.handles.get(&untyped.id()).unwrap().strong_count(), 1);
+            assert_eq!(
+                loader
+                    .handles
+                    .pin()
+                    .get(&untyped.id())
+                    .unwrap()
+                    .strong_count(),
+                1
+            );
 
             assert_eq!(untyped.id(), asset_id);
 
             let typed: Handle<test_asset::TestAsset> = untyped.into();
             loader.collect_dropped_handle();
-            assert_eq!(loader.handles.get(&typed.id()).unwrap().strong_count(), 1);
+            assert_eq!(
+                loader
+                    .handles
+                    .pin()
+                    .get(&typed.id())
+                    .unwrap()
+                    .strong_count(),
+                1
+            );
 
             let mut test_timeout = Duration::from_millis(500);
-            while test_timeout > Duration::ZERO && loader.handles.get(&typed.id()).is_none() {
+            while test_timeout > Duration::ZERO && loader.handles.pin().get(&typed.id()).is_none() {
                 let sleep_time = Duration::from_millis(10);
                 thread::sleep(sleep_time);
                 test_timeout -= sleep_time;
                 loader.collect_dropped_handle();
             }
-            assert!(loader.handles.get(&typed.id()).is_some());
+            assert!(loader.handles.pin().get(&typed.id()).is_some());
         }
 
         loader.collect_dropped_handle();
 
-        assert!(!loader.handles.contains_key(&asset_id));
+        assert!(!loader.handles.pin().contains_key(&asset_id));
 
         let typed: Handle<test_asset::TestAsset> = loader.load(asset_id).into();
 
         let mut test_timeout = Duration::from_millis(500);
-        while test_timeout > Duration::ZERO && loader.handles.get(&typed.id()).is_none() {
+        while test_timeout > Duration::ZERO && loader.handles.pin().get(&typed.id()).is_none() {
             let sleep_time = Duration::from_millis(10);
             thread::sleep(sleep_time);
             test_timeout -= sleep_time;
             loader.collect_dropped_handle();
         }
-        assert!(loader.handles.get(&typed.id()).is_some());
+        assert!(loader.handles.pin().get(&typed.id()).is_some());
     }
 
     #[test]
     fn call_load_twice() {
-        let (asset_id, mut loader, _io) = setup_test();
+        let (asset_id, loader, _io) = setup_test();
 
         let a = loader.load(asset_id);
-        assert_eq!(loader.handles.get(&a.id()).unwrap().strong_count(), 1);
+        assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
         {
             let b = a.clone();
             loader.collect_dropped_handle();
             assert_eq!(a.id(), b.id());
-            assert_eq!(loader.handles.get(&a.id()).unwrap().strong_count(), 2);
+            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
             {
                 let c = loader.load(asset_id);
                 assert_eq!(a.id(), c.id());
-                assert_eq!(loader.handles.get(&a.id()).unwrap().strong_count(), 3);
+                assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 3);
             }
             loader.collect_dropped_handle();
-            assert_eq!(loader.handles.get(&a.id()).unwrap().strong_count(), 2);
+            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
         }
         loader.collect_dropped_handle();
-        assert_eq!(loader.handles.get(&a.id()).unwrap().strong_count(), 1);
+        assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
     }
 
     #[test]

@@ -29,7 +29,6 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .add_loader::<multitext_resource::MultiTextResource>()
         .add_loader::<text_resource::TextResource>()
         .create();
-    let mut resources = resources.lock().unwrap();
 
     let resource =
         resources.load_sync::<multitext_resource::MultiTextResource>(context.source.content_id());

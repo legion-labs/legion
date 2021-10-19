@@ -27,7 +27,6 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .take_registry()
         .add_loader::<legion_graphics_offline::Texture>()
         .create();
-    let mut resources = resources.lock().unwrap();
 
     let resource =
         resources.load_sync::<legion_graphics_offline::Texture>(context.source.content_id());

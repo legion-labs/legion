@@ -1,11 +1,6 @@
 //! A module providing runtime material related functionality.
 
-use std::{
-    any::Any,
-    convert::TryFrom,
-    io,
-    sync::{Arc, Mutex},
-};
+use std::{any::Any, convert::TryFrom, io, sync::Arc};
 
 use legion_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId,
@@ -35,7 +30,7 @@ impl Asset for Material {
 /// Creator of [`Material`].
 #[derive(Default)]
 pub struct MaterialLoader {
-    registry: Option<Arc<Mutex<AssetRegistry>>>,
+    registry: Option<Arc<AssetRegistry>>,
 }
 
 fn read_asset_id<T>(reader: &mut dyn std::io::Read) -> Result<Reference<T>, std::io::Error>
@@ -75,16 +70,14 @@ impl AssetLoader for MaterialLoader {
 
         // activate references
         if let Some(registry) = &self.registry {
-            let mut registry = registry.lock().unwrap();
-
-            material.albedo.activate(&mut *registry);
-            material.normal.activate(&mut *registry);
-            material.roughness.activate(&mut *registry);
-            material.metalness.activate(&mut *registry);
+            material.albedo.activate(registry);
+            material.normal.activate(registry);
+            material.roughness.activate(registry);
+            material.metalness.activate(registry);
         }
     }
 
-    fn register_registry(&mut self, registry: Arc<Mutex<AssetRegistry>>) {
+    fn register_registry(&mut self, registry: Arc<AssetRegistry>) {
         self.registry = Some(registry);
     }
 }

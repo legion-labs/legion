@@ -75,11 +75,7 @@ use legion_data_runtime::{
 };
 use legion_ecs::prelude::*;
 use sample_data_compiler::runtime_data;
-use std::{
-    fs::File,
-    path::Path,
-    sync::{Arc, Mutex},
-};
+use std::{fs::File, path::Path, sync::Arc};
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
@@ -101,7 +97,7 @@ impl Plugin for AssetRegistryPlugin {
                     .add_device_cas(Box::new(content_store), manifest)
                     .create();
 
-                let load_events = registry.lock().unwrap().receive_load_events();
+                let load_events = registry.receive_load_events();
 
                 app.insert_resource(registry)
                     .insert_resource(AssetLoadingStates::default())
@@ -128,32 +124,28 @@ impl AssetRegistryPlugin {
     /// Initial plugin setup.
     /// Request load for all assets specified in settings.
     fn setup(
-        registry: ResMut<'_, Arc<Mutex<AssetRegistry>>>,
+        registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
         settings: ResMut<'_, AssetRegistrySettings>,
     ) {
         for asset_id in &settings.assets_to_load {
             asset_loading_states.insert(*asset_id, LoadingState::Pending);
-            if let Ok(mut registry) = registry.lock() {
-                asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
-            }
+            asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
         }
 
         drop(registry);
         drop(settings);
     }
 
-    fn update_registry(registry: ResMut<'_, Arc<Mutex<AssetRegistry>>>) {
-        if let Ok(mut registry) = registry.lock() {
-            registry.update();
-        }
+    fn update_registry(registry: ResMut<'_, Arc<AssetRegistry>>) {
+        registry.update();
 
         drop(registry);
     }
 
     fn update_assets(
-        registry: ResMut<'_, Arc<Mutex<AssetRegistry>>>,
+        registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
@@ -163,13 +155,7 @@ impl AssetRegistryPlugin {
             match loading_state {
                 LoadingState::Pending => {
                     let handle = asset_handles.get(*asset_id).unwrap();
-                    let is_loaded = {
-                        if let Ok(registry) = registry.lock() {
-                            handle.is_loaded(&registry)
-                        } else {
-                            false
-                        }
-                    };
+                    let is_loaded = handle.is_loaded(&registry);
                     if is_loaded {
                         if !load_ecs_asset::<runtime_data::Entity>(
                             asset_id,
@@ -211,13 +197,7 @@ impl AssetRegistryPlugin {
 
                         *loading_state = LoadingState::Loaded;
                     } else {
-                        let is_err = {
-                            if let Ok(registry) = registry.lock() {
-                                handle.is_err(&registry)
-                            } else {
-                                false
-                            }
-                        };
+                        let is_err = handle.is_err(&registry);
 
                         if is_err {
                             eprintln!("Failed to load runtime asset {}", asset_id);
@@ -235,7 +215,7 @@ impl AssetRegistryPlugin {
 
     fn handle_load_events(
         load_events_rx: ResMut<'_, crossbeam_channel::Receiver<ResourceLoadEvent>>,
-        registry: ResMut<'_, Arc<Mutex<AssetRegistry>>>,
+        registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
     ) {
@@ -246,14 +226,12 @@ impl AssetRegistryPlugin {
                         // Received a load event for an untracked asset.
                         // Most likely, this load has occurred because of loading of dependant resources.
                         asset_loading_states.insert(asset_id, LoadingState::Pending);
-                        if let Ok(mut registry) = registry.lock() {
-                            asset_handles.insert(
-                                asset_id,
-                                registry
-                                    .get_untyped(asset_id)
-                                    .expect("handle to exist on ResourceLoadEvent"),
-                            );
-                        }
+                        asset_handles.insert(
+                            asset_id,
+                            registry
+                                .get_untyped(asset_id)
+                                .expect("handle to exist on ResourceLoadEvent"),
+                        );
                     }
                 }
                 ResourceLoadEvent::Unloaded(_asset_id) => {}
