@@ -69,9 +69,7 @@ impl AssetLoader for EntityLoader {
                 if let Reference::Passive(child_id) = child {
                     println!("activating reference to child {}", child_id);
                 }
-                if let Err(e) = child.activate(&mut *registry) {
-                    eprintln!("failed to activate child reference: {}", e);
-                }
+                child.activate(&mut *registry);
             }
         }
     }

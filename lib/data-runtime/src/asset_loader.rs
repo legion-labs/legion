@@ -99,7 +99,7 @@ impl AssetLoaderStub {
             .map(|handle_id| HandleUntyped::create(handle_id, self.refcount_channel.0.clone()))
     }
 
-    fn get_or_create_handle(&mut self, id: ResourceId) -> HandleUntyped {
+    pub(crate) fn get_or_create_handle(&mut self, id: ResourceId) -> HandleUntyped {
         let handle_id = self
             .ref_counts
             .iter_mut()

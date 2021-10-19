@@ -123,6 +123,12 @@ impl AssetRegistry {
         self.loader.get_handle(id)
     }
 
+    /// Returns a handle to the resource.
+    /// If a handle to this resource does not already exist, a new one will be created.
+    pub fn get_or_create_untyped(&mut self, id: ResourceId) -> HandleUntyped {
+        self.loader.get_or_create_handle(id)
+    }
+
     /// Same as [`Self::load_untyped`] but blocks until the resource load completes or returns an error.
     pub fn load_untyped_sync(&mut self, id: ResourceId) -> HandleUntyped {
         let handle = self.loader.load(id);
