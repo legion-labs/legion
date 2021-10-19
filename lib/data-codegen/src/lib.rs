@@ -141,28 +141,27 @@ pub fn generate_data_container_code(
 #[macro_export]
 macro_rules! data_container_gen {
     ( $( $x:expr ),* ) => {
-        {
-            let package_path = env!("CARGO_MANIFEST_DIR").to_lowercase();
+        let package_path = env!("CARGO_MANIFEST_DIR").to_lowercase();
 
-            let mut data_path = package_path.replace("_runtime", "_offline");
-            $(
-                data_path.push_str($x);
-            )*
+        let mut data_path = package_path.replace("_runtime", "_offline");
+        $(
+            data_path.push_str($x);
+        )*
 
-            if package_path.ends_with("_offline") {
-                legion_data_codegen::generate_data_container_code(
-                    std::path::Path::new(&data_path),
-                    &legion_data_codegen::GenerationType::OfflineFormat,
-                )?;
-            } else if package_path.ends_with("_runtime") {
-                legion_data_codegen::generate_data_container_code(
-                    std::path::Path::new(&data_path),
-                    &legion_data_codegen::GenerationType::RuntimeFormat,
-                )?;
-            }
-            $(
-                println!("cargo:rerun-if-changed={}", $x);
-            )*
+        if package_path.ends_with("_offline") {
+            legion_data_codegen::generate_data_container_code(
+                std::path::Path::new(&data_path),
+                &legion_data_codegen::GenerationType::OfflineFormat,
+            ).expect("Offline data codegen failed");
+        } else if package_path.ends_with("_runtime") {
+            legion_data_codegen::generate_data_container_code(
+                std::path::Path::new(&data_path),
+                &legion_data_codegen::GenerationType::RuntimeFormat,
+            ).expect("Runtime data codegen failed");
         }
+
+        $(
+            println!("cargo:rerun-if-changed={}", $x);
+        )*
     };
 }
