@@ -13,8 +13,13 @@ impl AssetLoadingStates {
     pub(crate) fn iter_mut(&mut self) -> IterMut<'_, ResourceId, LoadingState> {
         self.0.iter_mut()
     }
+
+    pub(crate) fn get(&self, asset_id: ResourceId) -> Option<LoadingState> {
+        self.0.get(&asset_id).copied()
+    }
 }
 
+#[derive(Clone, Copy)]
 pub(crate) enum LoadingState {
     Pending,
     Loaded,
