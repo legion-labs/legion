@@ -66,10 +66,15 @@ impl AssetLoader for EntityLoader {
             let mut registry = registry.lock().unwrap();
 
             for child in &mut entity.children {
-                if let Reference::Passive(child_id) = child {
-                    println!("activating reference to child {}", child_id);
-                }
                 child.activate(&mut *registry);
+            }
+
+            for component in &mut entity.components {
+                if let Some(visual) = component.downcast_mut::<Visual>() {
+                    visual.renderable_geometry.activate(&mut *registry);
+                } else if let Some(physics) = component.downcast_mut::<Physics>() {
+                    physics.collision_geometry.activate(&mut *registry);
+                }
             }
         }
     }
@@ -101,6 +106,19 @@ impl dyn Component {
             unsafe {
                 Some(&*((self as *const dyn Component).cast::<T>()))
             }
+        } else {
+            None
+        }
+    }
+
+    /// Returns some mutable reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    /// (See [`std::any::Any::downcast_mut`](https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut))
+    #[inline]
+    pub fn downcast_mut<T: Component>(&mut self) -> Option<&mut T> {
+        #[allow(unsafe_code)]
+        if self.is::<T>() {
+            unsafe { Some(&mut *(self as *mut dyn Component).cast::<T>()) }
         } else {
             None
         }
@@ -203,7 +221,9 @@ impl Asset for Instance {
 }
 
 #[derive(Default)]
-pub struct InstanceLoader {}
+pub struct InstanceLoader {
+    registry: Option<Arc<Mutex<AssetRegistry>>>,
+}
 
 impl AssetLoader for InstanceLoader {
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
@@ -211,11 +231,19 @@ impl AssetLoader for InstanceLoader {
     }
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
-        if let Some(_instance) = asset.downcast_mut::<Instance>() {
-            println!("runtime instance loaded");
-        } else {
-            eprintln!("invalid runtime instance loaded");
+        let instance = asset.downcast_mut::<Instance>().unwrap();
+        println!("runtime instance loaded");
+
+        // activate references
+        if let Some(registry) = &self.registry {
+            let mut registry = registry.lock().unwrap();
+
+            instance.original.activate(&mut *registry);
         }
+    }
+
+    fn register_registry(&mut self, registry: Arc<Mutex<AssetRegistry>>) {
+        self.registry = Some(registry);
     }
 }
 
@@ -232,7 +260,9 @@ impl Asset for Mesh {
 }
 
 #[derive(Default)]
-pub struct MeshLoader {}
+pub struct MeshLoader {
+    registry: Option<Arc<Mutex<AssetRegistry>>>,
+}
 
 impl AssetLoader for MeshLoader {
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
@@ -240,11 +270,21 @@ impl AssetLoader for MeshLoader {
     }
 
     fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
-        if let Some(_mesh) = asset.downcast_mut::<Mesh>() {
-            println!("runtime mesh loaded");
-        } else {
-            eprintln!("invalid runtime mesh loaded");
+        let mesh = asset.downcast_mut::<Mesh>().unwrap();
+        println!("runtime mesh loaded");
+
+        // activate references
+        if let Some(registry) = &self.registry {
+            let mut registry = registry.lock().unwrap();
+
+            for sub_mesh in &mut mesh.sub_meshes {
+                sub_mesh.material.activate(&mut *registry);
+            }
         }
+    }
+
+    fn register_registry(&mut self, registry: Arc<Mutex<AssetRegistry>>) {
+        self.registry = Some(registry);
     }
 }
 
