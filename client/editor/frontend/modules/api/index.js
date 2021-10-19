@@ -18,6 +18,14 @@ export async function get_resource_properties(id) {
     return await invoke("get_resource_properties", { id: id });
 };
 
+export function on_receive_control_message(json_msg) {
+    return invoke("on_receive_control_message", { jsonMsg: json_msg });
+}
+
+export function on_send_edition_command(json_command) {
+    return invoke("on_send_edition_command", { jsonCommand: json_command });
+}
+
 export function on_video_close() {
     return invoke("on_video_close");
 }

@@ -53,6 +53,10 @@ impl Dispatch {
         obj
     }
 
+    pub fn get_process_id(&self) -> String {
+        self.process_id.clone()
+    }
+
     fn on_shutdown(&mut self) {
         self.sink.on_sink_event(TelemetrySinkEvent::OnShutdown);
         self.sink = Arc::new(NullEventSink {});
@@ -234,6 +238,10 @@ pub fn init_event_dispatch(
         ));
     }
     Ok(())
+}
+
+pub fn get_process_id() -> Option<String> {
+    unsafe { G_DISPATCH.as_ref().map(Dispatch::get_process_id) }
 }
 
 pub fn shutdown_event_dispatch() {

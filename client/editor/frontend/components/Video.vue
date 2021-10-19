@@ -40,6 +40,8 @@ video {
 <script scoped>
 import {
   initialize_stream,
+  on_receive_control_message,
+  on_send_edition_command,
   on_video_close,
   on_video_chunk_received,
 } from "~/modules/api";
@@ -268,28 +270,33 @@ export default {
       this.control_channel.ondatachannel = async (evt) => {
         console.log("control data channel: ", evt);
       };
-      this.control_channel.onmessage = async (msg) => {};
+      this.control_channel.onmessage = async (msg) => {
+        const json_msg = new TextDecoder().decode(msg.data);
+        on_receive_control_message(json_msg);
+      };
     };
   },
   watch: {
     color(color) {
       if (this.video_channel != null) {
-        this.video_channel.send(
-          JSON.stringify({
-            event: "color",
-            color: color,
-          })
-        );
+        const edition_event = JSON.stringify({
+          event: "color",
+          color: color,
+          id: crypto.randomUUID(),
+        });
+        on_send_edition_command(edition_event);
+        this.video_channel.send(edition_event);
       }
     },
     speed(speed) {
       if (this.video_channel != null) {
-        this.video_channel.send(
-          JSON.stringify({
-            event: "speed",
-            speed: speed,
-          })
-        );
+        const edition_event = JSON.stringify({
+          event: "speed",
+          speed: speed,
+          id: crypto.randomUUID(),
+        });
+        on_send_edition_command(edition_event);
+        this.video_channel.send(edition_event);
       }
     },
   },

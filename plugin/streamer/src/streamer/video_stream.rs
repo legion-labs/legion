@@ -102,11 +102,20 @@ impl VideoStream {
         }
     }
 
+    fn record_frame_id_metric(&self) {
+        static FRAME_ID_RENDERED: MetricDesc = MetricDesc {
+            name: "Frame ID begin render",
+            unit: "",
+        };
+        record_int_metric(&FRAME_ID_RENDERED, self.frame_id as u64);
+    }
+
     pub(crate) fn render(
         &mut self,
         delta_secs: f32,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();
+        self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
         self.elapsed_secs += delta_secs * self.speed;

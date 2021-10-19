@@ -8,7 +8,7 @@ use webrtc::{
     peer::peer_connection::RTCPeerConnection,
 };
 
-use log::{info, warn};
+use log::{error, info, warn};
 
 mod control_stream;
 mod events;
@@ -65,6 +65,7 @@ impl Streamer {
     }
 
     pub(crate) fn handle_stream_events(
+        async_rt: ResMut<'_, TokioAsyncRuntime>,
         streamer: ResMut<'_, Self>,
         mut commands: Commands<'_, '_>,
         mut video_stream_events: EventWriter<'_, '_, VideoStreamEvent>,
@@ -121,9 +122,16 @@ impl Streamer {
                     }
                 }
                 StreamEvent::ControlChannelOpened(stream_id, data_channel) => {
-                    commands
-                        .entity(stream_id.entity)
-                        .insert(ControlStream::new(data_channel));
+                    let mut control_stream = ControlStream::new(data_channel);
+                    match control_stream.say_hello() {
+                        Ok(future) => {
+                            async_rt.start_detached(future);
+                        }
+                        Err(e) => {
+                            error!("say_hello failed: {}", e);
+                        }
+                    }
+                    commands.entity(stream_id.entity).insert(control_stream);
 
                     info!(
                         "Control channel is now opened for stream {}: adding a control-stream component",
@@ -162,13 +170,15 @@ impl Streamer {
                 query.get_component_mut::<VideoStream>(event.stream_id.entity)
             {
                 match &event.info {
-                    VideoStreamEventInfo::Color { color } => {
+                    VideoStreamEventInfo::Color { id, color } => {
+                        log::info!("received color command id={}", id);
                         video_stream.color = color.clone();
                     }
                     VideoStreamEventInfo::Resize { width, height } => {
                         video_stream.resize(*width, *height);
                     }
-                    VideoStreamEventInfo::Speed { speed } => {
+                    VideoStreamEventInfo::Speed { id, speed } => {
+                        log::info!("received speed command id={}", id);
                         video_stream.speed = *speed;
                     }
                 }
