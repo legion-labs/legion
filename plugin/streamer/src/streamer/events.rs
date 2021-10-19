@@ -39,7 +39,7 @@ impl TryFrom<String> for Color {
 
         let array: [f32; 4] = match bytes
             .into_iter()
-            .map(|x| f32::from(x) / 256.0)
+            .map(|x| f32::from(x) / 255.0)
             .collect::<Vec<f32>>()
             .try_into()
         {

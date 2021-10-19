@@ -8,7 +8,6 @@
         :loading="loading"
         :items="resourceDescriptions"
         :search-input.sync="search"
-        cache-items
         class="mx-4"
         flat
         label="Enter a resource path"

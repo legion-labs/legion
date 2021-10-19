@@ -40,8 +40,6 @@ video {
 <script scoped>
 import {
   initialize_stream,
-  search_resources,
-  get_resource_properties,
   on_video_close,
   on_video_chunk_received,
 } from "~/modules/api";
@@ -182,8 +180,6 @@ export default {
     speed: Number,
   },
   mounted() {
-    search_resources().then(console.log);
-    get_resource_properties("1").then(console.log);
     const videoElement = document.getElementById("video");
     const videoPlayer = new VideoPlayer(videoElement, () => {});
     var pc = null;
@@ -278,7 +274,6 @@ export default {
   watch: {
     color(color) {
       if (this.video_channel != null) {
-        console.log(color);
         this.video_channel.send(
           JSON.stringify({
             event: "color",
