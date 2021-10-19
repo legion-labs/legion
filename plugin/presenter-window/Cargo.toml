@@ -11,6 +11,7 @@ graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+legion-window = { path = "../../plugin/window", version = "0.1.0" }
 log = "0.4"
 
 [features]

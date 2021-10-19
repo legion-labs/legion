@@ -2509,6 +2509,7 @@ dependencies = [
  "legion-async",
  "legion-core",
  "legion-data-runtime",
+ "legion-ecs",
  "legion-input",
  "legion-presenter-window",
  "legion-renderer",
@@ -3470,6 +3471,7 @@ dependencies = [
  "legion-ecs",
  "legion-graphics-api",
  "legion-renderer",
+ "legion-window",
  "log",
 ]
 
@@ -3493,6 +3495,7 @@ dependencies = [
  "legion-ecs",
  "legion-graphics-api",
  "legion-graphics-renderer",
+ "legion-window",
  "log",
 ]
 
