@@ -3,7 +3,7 @@ name: Benchmarks
 on:
   schedule:
     # Run the job 6am and 6pm EDT
-    - cron:  '0 10,22 * * *'
+    - cron: "0 10,22 * * *"
 
 jobs:
   bench:
@@ -47,3 +47,21 @@ jobs:
           -v ${{ github.workspace }}:${{ matrix.workdir }}
           ${{ matrix.container }}
           make bench-run
+  benchmark:
+    name: Running benchmarks
+    strategy:
+      matrix:
+        os:
+          [
+            [self-hosted, windows, base, build],
+            [self-hosted, linux, base, build],
+          ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build benchmarks
+        run: make bench-build
+
+      - name: Run benchmarks
+        run: bench-run
