@@ -66,6 +66,7 @@ impl AssetRegistryOptions {
             load_errors: HashMap::new(),
             load_thread: None,
             loader,
+            load_event_channel: crossbeam_channel::unbounded(),
         }));
 
         for (kind, mut loader) in self.loaders {
@@ -95,6 +96,20 @@ pub struct AssetRegistry {
     load_errors: HashMap<ResourceId, io::ErrorKind>,
     load_thread: Option<JoinHandle<()>>,
     loader: AssetLoaderStub,
+    load_event_channel: (
+        crossbeam_channel::Sender<ResourceLoadEvent>,
+        crossbeam_channel::Receiver<ResourceLoadEvent>,
+    ),
+}
+
+/// A resource loading event is emitted when a resource is loaded, unloaded, or loading fails
+pub enum ResourceLoadEvent {
+    /// Successful resource load, resulting from either a handle load, or the loading of a dependency
+    Loaded(ResourceId),
+    /// Resource unload event
+    Unloaded(ResourceId),
+    /// Sent when a loading attempt has failed
+    LoadError(ResourceId),
 }
 
 impl Drop for AssetRegistry {
@@ -189,12 +204,24 @@ impl AssetRegistry {
             match result {
                 LoaderResult::Loaded(asset_id, asset, _load_id) => {
                     self.assets.insert(asset_id, asset);
+                    self.load_event_channel
+                        .0
+                        .send(ResourceLoadEvent::Loaded(asset_id))
+                        .unwrap();
                 }
                 LoaderResult::Unloaded(asset_id) => {
                     self.assets.remove(&asset_id);
+                    self.load_event_channel
+                        .0
+                        .send(ResourceLoadEvent::Unloaded(asset_id))
+                        .unwrap();
                 }
                 LoaderResult::LoadError(asset_id, _load_id, error_kind) => {
                     self.load_errors.insert(asset_id, error_kind);
+                    self.load_event_channel
+                        .0
+                        .send(ResourceLoadEvent::LoadError(asset_id))
+                        .unwrap();
                 }
             }
         }
@@ -205,6 +232,12 @@ impl AssetRegistry {
             return self.load_errors.contains_key(&asset_id);
         }
         false
+    }
+
+    /// Subscribe to load events, to know when resources are loaded and unloaded.
+    /// Returns a channel receiver that will receive `ResourceLoadEvent`s.
+    pub fn receive_load_events(&self) -> crossbeam_channel::Receiver<ResourceLoadEvent> {
+        self.load_event_channel.1.clone()
     }
 }
 

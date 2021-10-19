@@ -70,7 +70,9 @@ pub use settings::AssetRegistrySettings;
 
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
-use legion_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryOptions};
+use legion_data_runtime::{
+    manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceLoadEvent,
+};
 use legion_ecs::prelude::*;
 use sample_data_compiler::runtime_data;
 use std::{
@@ -99,13 +101,17 @@ impl Plugin for AssetRegistryPlugin {
                     .add_device_cas(Box::new(content_store), manifest)
                     .create();
 
+                let load_events = registry.lock().unwrap().receive_load_events();
+
                 app.insert_resource(registry)
                     .insert_resource(AssetLoadingStates::default())
                     .insert_resource(AssetHandles::default())
                     .insert_resource(AssetToEntityMap::default())
+                    .insert_resource(load_events)
                     .add_startup_system(Self::setup)
                     .add_system(Self::update_registry)
-                    .add_system(Self::update_assets);
+                    .add_system(Self::update_assets)
+                    .add_system(Self::handle_load_events);
             } else {
                 eprintln!(
                     "Unable to open content storage in {:?}",
@@ -119,6 +125,8 @@ impl Plugin for AssetRegistryPlugin {
 }
 
 impl AssetRegistryPlugin {
+    /// Initial plugin setup.
+    /// Request load for all assets specified in settings.
     fn setup(
         registry: ResMut<'_, Arc<Mutex<AssetRegistry>>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
@@ -223,6 +231,34 @@ impl AssetRegistryPlugin {
 
         drop(registry);
         drop(asset_handles);
+    }
+
+    fn handle_load_events(
+        load_events_rx: ResMut<'_, crossbeam_channel::Receiver<ResourceLoadEvent>>,
+        registry: ResMut<'_, Arc<Mutex<AssetRegistry>>>,
+        mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
+        mut asset_handles: ResMut<'_, AssetHandles>,
+    ) {
+        while let Ok(event) = load_events_rx.try_recv() {
+            match event {
+                ResourceLoadEvent::Loaded(asset_id) => {
+                    if asset_loading_states.get(asset_id).is_none() {
+                        // Received a load event for an untracked asset.
+                        // Most likely, this load has occurred because of loading of dependant resources.
+                        asset_loading_states.insert(asset_id, LoadingState::Pending);
+                        if let Ok(mut registry) = registry.lock() {
+                            asset_handles
+                                .insert(asset_id, registry.get_or_create_untyped(asset_id));
+                        }
+                    }
+                }
+                ResourceLoadEvent::Unloaded(_asset_id) => {}
+                ResourceLoadEvent::LoadError(_asset_id) => {}
+            }
+        }
+
+        drop(load_events_rx);
+        drop(registry);
     }
 
     fn read_manifest(manifest_path: impl AsRef<Path>) -> Manifest {

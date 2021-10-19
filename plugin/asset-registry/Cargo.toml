@@ -21,4 +21,5 @@ legion-transform = { path = "../transform", version = "0.1.0" }
 sample-data-compiler = { path = "../../test/sample_data_compiler", version = "0.1.0" }
 
 # other
+crossbeam-channel = "0.5.1"
 serde_json = "1.0"
