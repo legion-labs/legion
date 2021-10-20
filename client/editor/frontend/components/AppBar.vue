@@ -1,5 +1,5 @@
 <template>
-  <v-app-bar absolute dark dense clipped-left app>
+  <v-app-bar dark dense clipped-left app>
     <v-app-bar-nav-icon @click="localDrawer = !drawer"></v-app-bar-nav-icon>
     <v-spacer></v-spacer>
     <v-btn icon>

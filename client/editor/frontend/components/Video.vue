@@ -1,38 +1,58 @@
 <template>
-  <div class="video-content d-flex">
-    <video id="video"></video>
+  <div id="video-container" class="d-flex">
+    <video id="video" :class="{ show: !loading }"></video>
+    <v-progress-linear
+      indeterminate
+      color="yellow darken-2"
+      v-if="loading"
+    ></v-progress-linear>
+    <code id="resolution" v-if="videoResolution" :class="{ show: !loading }"
+      >{{ videoResolution.width }}x{{ videoResolution.height }}</code
+    >
+    >
   </div>
 </template>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-.video-content {
-  position: relative;
-  height: 100%;
-  background: url("~assets/images/disconnected.png") center center no-repeat;
+#video-container {
   background-color: black;
-  background-size: 20%;
-  background: linear-gradient(
-    180deg,
-    rgba(48, 48, 48, 1) 0%,
-    rgba(0, 0, 0, 1) 100%
-  );
+  overflow: hidden;
+  position: relative;
 }
 
-video {
+#video {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  object-fit: cover;
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  width: auto;
-  height: auto;
-  margin-left: auto;
-  margin-right: auto;
   max-width: 100%;
   max-height: 100%;
-  object-fit: fill;
+  margin: auto;
+  opacity: 0;
+  transition: opacity 0.5s linear;
+}
+
+#video.show {
+  opacity: 1;
+}
+
+#resolution {
+  position: absolute;
+  border-radius: 1em;
+  background-color: gray;
+  color: black;
+  top: 1em;
+  right: 1em;
+  opacity: 0;
+  transition: opacity 0.5s linear;
+  user-select: none;
+}
+
+#resolution.show {
+  opacity: 0.5;
 }
 </style>
 
@@ -53,10 +73,22 @@ export default {
   },
   data() {
     return {
+      videoResolution: null,
+      desiredResolution: null,
       pc: null,
       video_channel: null,
       control_channel: null,
     };
+  },
+  computed: {
+    loading: function () {
+      return (
+        !this.videoResolution ||
+        !this.desiredResolution ||
+        this.videoResolution.width != this.desiredResolution.width ||
+        this.videoResolution.height != this.desiredResolution.height
+      );
+    },
   },
   mounted() {
     const videoElement = document.getElementById("video");
@@ -98,9 +130,9 @@ export default {
         if (iceEvent.candidate === null) {
           retryForever(
             initialize_stream.bind(null, this.pc.localDescription)
-          ).then((remoteDescription) =>
-            this.pc.setRemoteDescription(remoteDescription)
-          );
+          ).then((remoteDescription) => {
+            this.pc.setRemoteDescription(remoteDescription);
+          });
         }
       };
 
@@ -108,33 +140,45 @@ export default {
         if (this.pc.iceConnectionState == "disconnected") {
           console.log("Disconnected");
 
-          videoElement.pause();
-          videoElement.removeAttribute("src");
-          videoElement.load();
-
           window.setTimeout(() => {
+            videoElement.pause();
+            videoElement.removeAttribute("src");
+            videoElement.load();
+
+            this.videoResolution = null;
+
             this.initialize(videoElement);
-          }, 0);
+          }, 600);
         }
       };
 
       this.video_channel = this.pc.createDataChannel("video");
       this.control_channel = this.pc.createDataChannel("control");
 
+      videoElement.addEventListener("loadedmetadata", (event) => {
+        const width = event.target.videoWidth;
+        const height = event.target.videoHeight;
+
+        console.log("Video resolution is now: ", width, "x", height, ".");
+        this.videoResolution = { width: width, height: height };
+      });
+
       const observer = new ResizeObserver(
-        debounce(async () => {
-          console.log(
-            "Sending resize event (",
-            videoElement.parentElement.offsetWidth,
-            videoElement.parentElement.offsetHeight,
-            ")."
-          );
+        debounce(() => {
+          // Ensure our resolution is a multiple of two.
+          const width = videoElement.parentElement.offsetWidth & ~1;
+          const height = videoElement.parentElement.offsetHeight & ~1;
+
+          if (width == 0 || height == 0) return;
+
+          console.log("Desired resolution is now: ", width, "x", height, ".");
+          this.desiredResolution = { width: width, height: height };
 
           this.video_channel.send(
             JSON.stringify({
               event: "resize",
-              width: videoElement.parentElement.offsetWidth,
-              height: videoElement.parentElement.offsetHeight,
+              width: width,
+              height: height,
             })
           );
         }, 250)

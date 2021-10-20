@@ -41,6 +41,10 @@ html {
 </style>
 
 <style scoped>
+main {
+  max-height: 100vh;
+}
+
 .v-footer {
   border-top: 1px solid silver;
   font-style: italic;

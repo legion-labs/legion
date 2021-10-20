@@ -10,6 +10,12 @@
   </div>
 </template>
 
+<style scoped>
+div {
+  max-height: 100%;
+}
+</style>
+
 <script>
 export default {
   data() {
