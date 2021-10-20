@@ -20,7 +20,7 @@ sqlx = { version = "0.5", features = [
     "runtime-tokio-native-tls",
 ] }
 chrono = "0.4"
-prost = "0.8"
+prost = "0.9"
 log = "0.4"
 simple_logger = "1.13"
 

@@ -31,5 +31,5 @@ backoff = { version = "0.3.0", features = ["tokio"] }
 tonic-build = "0.5"
 
 [dev-dependencies]
-prost = "0.8"
+prost = "0.9"
 simple_logger = "1.13"

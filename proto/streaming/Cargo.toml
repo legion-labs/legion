@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 tonic = "0.5"
-prost = "0.8"
+prost = "0.9"
 tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
 base64 = "0.13.0"
 
