@@ -1,14 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar dense clipped-left app>
-      <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-spacer></v-spacer>
-      <v-btn icon>
-        <v-avatar>
-          <v-icon>mdi-account-circle</v-icon>
-        </v-avatar>
-      </v-btn>
-    </v-app-bar>
+    <AppBar :drawer="drawer" @drawer-change="drawer = $event"></AppBar>
     <v-navigation-drawer
       v-model="drawer"
       class="pt-4"

@@ -7,7 +7,6 @@
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .video-content {
-  cursor: pointer;
   position: relative;
   height: 100%;
   background: url("~assets/images/disconnected.png") center center no-repeat;
