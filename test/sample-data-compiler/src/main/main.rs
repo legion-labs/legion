@@ -81,7 +81,7 @@ fn main() {
                 .help("Path name of the resource to compile"))
         .get_matches();
 
-    let project_dir = args.value_of(ARG_PROJECT_DIR).unwrap_or("test/sample_data");
+    let project_dir = args.value_of(ARG_PROJECT_DIR).unwrap_or("test/sample-data");
     let root_resource = args
         .value_of(ARG_RESOURCE_NAME)
         .unwrap_or("/world/sample_1.ent");

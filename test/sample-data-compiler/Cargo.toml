@@ -17,6 +17,10 @@ legion-graphics-offline = { path = "../../lib/graphics-offline" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
+# Sample data test
+sample-data-offline = { path = "../sample-data-offline", version = "0.1.0" }
+sample-data-runtime = { path = "../sample-data-runtime", version = "0.1.0" }
+
 # other
 bincode = "1.3.3"
 clap = "2.33"

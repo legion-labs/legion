@@ -65,7 +65,8 @@ use legion_data_compiler::{
 use legion_data_offline::ResourcePathId;
 use legion_data_runtime::Resource;
 use offline_to_runtime::FromOffline;
-use sample_data_compiler::{offline_data, runtime_data};
+use sample_data_offline as offline_data;
+use sample_data_runtime as runtime_data;
 use std::env;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {

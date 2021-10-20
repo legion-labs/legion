@@ -1,5 +1,7 @@
 use legion_data_runtime::Reference;
-use sample_data_compiler::{offline_data, offline_to_runtime::to_reference, runtime_data};
+use sample_data_compiler::offline_to_runtime::to_reference;
+use sample_data_offline as offline_data;
+use sample_data_runtime as runtime_data;
 
 pub trait FromOffline<T> {
     fn from_offline(offline: &T) -> Self;

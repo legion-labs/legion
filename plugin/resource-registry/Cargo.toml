@@ -16,6 +16,6 @@ legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-graphics-offline = { path = "../../lib/graphics-offline", version = "0.1.0" }
 
-# temp dependency on sample-data, until runtime data moved to plugins
-sample-data-compiler = { path = "../../test/sample_data_compiler", version = "0.1.0" }
+# temp dependency on sample-data, until offline data moved to plugins
+sample-data-offline = { path = "../../test/sample-data-offline", version = "0.1.0" }
 generic_data_offline = { path = "../../test/generic_data_offline", version = "0.1.0" }

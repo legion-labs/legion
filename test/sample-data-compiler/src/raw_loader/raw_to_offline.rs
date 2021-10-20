@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use legion_data_offline::{resource::ResourcePathName, ResourcePathId};
 use legion_data_runtime::{ResourceId, ResourceType};
-
-use crate::offline_data;
+use sample_data_offline as offline_data;
 
 use super::raw_data;
 

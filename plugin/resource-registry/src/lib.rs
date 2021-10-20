@@ -66,7 +66,7 @@ pub use settings::ResourceRegistrySettings;
 use legion_app::Plugin;
 use legion_data_offline::resource::{Project, ResourceRegistry, ResourceRegistryOptions};
 use legion_ecs::prelude::*;
-use sample_data_compiler::offline_data;
+use sample_data_offline as offline_data;
 
 #[derive(Default)]
 pub struct ResourceRegistryPlugin {}

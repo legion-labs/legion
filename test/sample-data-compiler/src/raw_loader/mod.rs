@@ -1,12 +1,12 @@
 mod raw_data;
 mod raw_to_offline;
 
-use crate::offline_data::{self};
 use legion_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
 use legion_data_runtime::{Resource, ResourceId, ResourceType};
 use legion_graphics_offline::PsdFile;
+use sample_data_offline as offline_data;
 use serde::de::DeserializeOwned;
 use std::{
     collections::{hash_map::DefaultHasher, HashMap},

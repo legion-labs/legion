@@ -94,11 +94,11 @@ fn main() {
 
     let content_store_addr = args
         .value_of(ARG_NAME_CAS)
-        .unwrap_or("test/sample_data/temp");
+        .unwrap_or("test/sample-data/temp");
 
     let game_manifest = args
         .value_of(ARG_NAME_MANIFEST)
-        .unwrap_or("test/sample_data/runtime/game.manifest");
+        .unwrap_or("test/sample-data/runtime/game.manifest");
 
     let mut assets_to_load: Vec<ResourceId> = Vec::new();
 

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use legion_data_runtime::{AssetRegistry, HandleUntyped, Reference, Resource, ResourceId};
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
-use sample_data_compiler::runtime_data;
+use sample_data_runtime as runtime_data;
 
 use crate::asset_entities::AssetToEntityMap;
 

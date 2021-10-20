@@ -18,7 +18,7 @@ legion-graphics-runtime = { path = "../../lib/graphics-runtime", version = "0.1.
 legion-transform = { path = "../transform", version = "0.1.0" }
 
 # temp dependency on sample-data, until runtime data moved to plugins
-sample-data-compiler = { path = "../../test/sample_data_compiler", version = "0.1.0" }
+sample-data-runtime = { path = "../../test/sample-data-runtime", version = "0.1.0" }
 
 # other
 crossbeam-channel = "0.5.1"

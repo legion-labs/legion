@@ -2,8 +2,8 @@ use std::any::Any;
 
 use legion_data_offline::ResourcePathId;
 use legion_data_runtime::{Reference, Resource};
-
-use crate::{offline_data, runtime_data};
+use sample_data_offline as offline_data;
+use sample_data_runtime as runtime_data;
 
 pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
     let offline_type = path.content_type();
