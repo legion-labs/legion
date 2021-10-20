@@ -34,7 +34,7 @@ async fn find_server_process_id(
     Ok(process_id)
 }
 
-async fn find_edition_commands(
+async fn find_client_edition_commands(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     editor_client_process_id: &str,
@@ -63,6 +63,33 @@ async fn find_edition_commands(
     Ok(res)
 }
 
+async fn find_server_edition_commands(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    editor_server_process_id: &str,
+) -> Result<Vec<(u64, String)>> {
+    let re = regex::Regex::new(r"received \w* command id=(?P<id>.*)")
+        .with_context(|| "find_edition_commands")?;
+    let mut res = vec![];
+    for_each_process_log_entry(
+        connection,
+        data_path,
+        editor_server_process_id,
+        |time, entry| {
+            if let Some(command_id) = re
+                .captures(&entry)
+                .map(|captures| captures.name("id"))
+                .flatten()
+                .map(|mat| mat.as_str())
+            {
+                res.push((time, String::from(command_id)));
+            }
+        },
+    )
+    .await?;
+    Ok(res)
+}
+
 pub async fn print_edition_latency(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
@@ -73,9 +100,18 @@ pub async fn print_edition_latency(
     println!("server process id: {}", server_process_id);
 
     let edition_commands =
-        find_edition_commands(connection, data_path, editor_client_process_id).await?;
+        find_client_edition_commands(connection, data_path, editor_client_process_id).await?;
+    println!("\nclient commands:");
     for command in edition_commands {
         println!("{} {}", command.0, command.1);
     }
+    let server_commands =
+        find_server_edition_commands(connection, data_path, &server_process_id).await?;
+    println!("\nserver commands:");
+    for command in server_commands {
+        println!("{} {}", command.0, command.1);
+    }
+    
+
     Ok(())
 }
