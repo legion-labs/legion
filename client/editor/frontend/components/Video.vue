@@ -230,6 +230,7 @@ export default {
     resource(resource) {
       if (resource.description.id != "triangle") return;
       if (this.video_channel == null) return;
+      if (this.video_channel.readyState != "open") return;
 
       for (const property of resource.properties) {
         var edition_event = null;

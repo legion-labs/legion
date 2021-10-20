@@ -38,19 +38,28 @@ export default {
       this.$emit("input", val);
     },
     search(val) {
-      val && val !== this.select && this.querySelections(val);
+      val && this.querySelections(val);
     },
   },
   methods: {
-    querySelections(v) {
+    async querySelections(v) {
       this.loading = true;
 
-      search_resources().then((resp) => {
+      try {
+        const resp = await search_resources();
+
         this.resourceDescriptions = resp.resource_descriptions;
+      } finally {
         this.loading = false;
-      });
+      }
     },
   },
-  mounted() {},
+  async mounted() {
+    await this.querySelections("");
+
+    if (this.resourceDescriptions.length > 0) {
+      this.resource = this.resourceDescriptions[0];
+    }
+  },
 };
 </script>
