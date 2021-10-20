@@ -203,7 +203,8 @@ pub async fn find_stream_blocks(
     let blocks = sqlx::query(
         "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
          FROM blocks
-         WHERE stream_id = ?;",
+         WHERE stream_id = ?
+         ORDER BY begin_time;",
     )
     .bind(stream_id)
     .fetch_all(connection)
@@ -363,6 +364,26 @@ pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(u64, String)>(
         nothing //continue searching
     })
     .await?;
+    Ok(())
+}
+
+pub async fn for_each_process_metric<ProcessMetric: FnMut(transit::Object)>(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    process_id: &str,
+    mut process_metric: ProcessMetric,
+) -> Result<()> {
+    for stream in find_process_metrics_streams(connection, process_id).await? {
+        for block in find_stream_blocks(connection, &stream.stream_id).await? {
+            let payload = fetch_block_payload(connection, data_path, &block.block_id).await?;
+            parse_block(&stream, &payload, |val| {
+                if let Value::Object(obj) = val {
+                    process_metric(obj);
+                }
+                true //continue
+            })?;
+        }
+    }
     Ok(())
 }
 
