@@ -111,7 +111,6 @@ pub async fn print_edition_latency(
     for command in server_commands {
         println!("{} {}", command.0, command.1);
     }
-    
 
     Ok(())
 }

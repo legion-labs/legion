@@ -18,10 +18,11 @@ pub async fn print_process_metrics(
                     let metric = obj.get::<Object>("metric").unwrap();
                     let name = metric.get::<String>("name").unwrap();
                     let unit = metric.get::<String>("unit").unwrap();
+                    let time = obj.get::<u64>("time").unwrap();
                     if let Ok(int_value) = obj.get::<u64>("value") {
-                        println!("{} ({}) : {}", name, unit, int_value);
+                        println!("{} {} ({}) : {}", time, name, unit, int_value);
                     } else if let Ok(float_value) = obj.get::<f64>("value") {
-                        println!("{} ({}) : {}", name, unit, float_value);
+                        println!("{} {} ({}) : {}", time, name, unit, float_value);
                     }
                 }
                 true //continue

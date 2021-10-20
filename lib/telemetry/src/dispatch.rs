@@ -113,10 +113,13 @@ impl Dispatch {
     }
 
     fn on_int_metric(&mut self, metric: &'static MetricDesc, value: u64) {
+        let time = now();
         let mut metrics_stream = self.metrics_stream.lock().unwrap();
-        metrics_stream
-            .get_events_mut()
-            .push(IntegerMetricEvent { metric, value });
+        metrics_stream.get_events_mut().push(IntegerMetricEvent {
+            metric,
+            value,
+            time,
+        });
         if metrics_stream.is_full() {
             drop(metrics_stream);
             self.on_metrics_buffer_full();
@@ -124,10 +127,13 @@ impl Dispatch {
     }
 
     fn on_float_metric(&mut self, metric: &'static MetricDesc, value: f64) {
+        let time = now();
         let mut metrics_stream = self.metrics_stream.lock().unwrap();
-        metrics_stream
-            .get_events_mut()
-            .push(FloatMetricEvent { metric, value });
+        metrics_stream.get_events_mut().push(FloatMetricEvent {
+            metric,
+            value,
+            time,
+        });
         if metrics_stream.is_full() {
             drop(metrics_stream);
             self.on_metrics_buffer_full();
