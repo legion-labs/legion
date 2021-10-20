@@ -91,7 +91,7 @@ impl AssetLoaderStub {
             .and_then(ReferenceUntyped::upgrade)
     }
 
-    fn get_or_create_handle(&self, id: ResourceId) -> HandleUntyped {
+    pub(crate) fn get_or_create_handle(&self, id: ResourceId) -> HandleUntyped {
         if let Some(handle) = self.get_handle(id) {
             return handle;
         }
@@ -107,7 +107,7 @@ impl AssetLoaderStub {
         }
     }
 
-    pub(crate) fn collect_dropped_handle(&self) -> Vec<ResourceId> {
+    pub(crate) fn collect_dropped_handles(&self) -> Vec<ResourceId> {
         let mut all_removed = vec![];
         while let Ok(unload_id) = self.unload_channel.1.try_recv() {
             let handles = self.handles.pin();
@@ -638,16 +638,16 @@ mod tests {
 
             {
                 let b = a.clone();
-                loader.collect_dropped_handle();
+                loader.collect_dropped_handles();
 
                 assert_eq!(loader.handles.pin().get(&b.id()).unwrap().strong_count(), 2);
                 assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
                 assert_eq!(a, b);
             }
-            loader.collect_dropped_handle();
+            loader.collect_dropped_handles();
             assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
         }
-        loader.collect_dropped_handle();
+        loader.collect_dropped_handles();
         assert!(!loader.handles.pin().contains_key(&asset_id));
     }
 
@@ -670,7 +670,7 @@ mod tests {
             assert_eq!(untyped.id(), asset_id);
 
             let typed: Handle<test_asset::TestAsset> = untyped.into();
-            loader.collect_dropped_handle();
+            loader.collect_dropped_handles();
             assert_eq!(
                 loader
                     .handles
@@ -686,12 +686,12 @@ mod tests {
                 let sleep_time = Duration::from_millis(10);
                 thread::sleep(sleep_time);
                 test_timeout -= sleep_time;
-                loader.collect_dropped_handle();
+                loader.collect_dropped_handles();
             }
             assert!(loader.handles.pin().get(&typed.id()).is_some());
         }
 
-        loader.collect_dropped_handle();
+        loader.collect_dropped_handles();
 
         assert!(!loader.handles.pin().contains_key(&asset_id));
 
@@ -702,7 +702,7 @@ mod tests {
             let sleep_time = Duration::from_millis(10);
             thread::sleep(sleep_time);
             test_timeout -= sleep_time;
-            loader.collect_dropped_handle();
+            loader.collect_dropped_handles();
         }
         assert!(loader.handles.pin().get(&typed.id()).is_some());
     }
@@ -715,7 +715,7 @@ mod tests {
         assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
         {
             let b = a.clone();
-            loader.collect_dropped_handle();
+            loader.collect_dropped_handles();
             assert_eq!(a.id(), b.id());
             assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
             {
@@ -723,10 +723,10 @@ mod tests {
                 assert_eq!(a.id(), c.id());
                 assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 3);
             }
-            loader.collect_dropped_handle();
+            loader.collect_dropped_handles();
             assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
         }
-        loader.collect_dropped_handle();
+        loader.collect_dropped_handles();
         assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
     }
 

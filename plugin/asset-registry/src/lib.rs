@@ -155,8 +155,7 @@ impl AssetRegistryPlugin {
             match loading_state {
                 LoadingState::Pending => {
                     let handle = asset_handles.get(*asset_id).unwrap();
-                    let is_loaded = handle.is_loaded(&registry);
-                    if is_loaded {
+                    if handle.is_loaded(&registry) {
                         if !load_ecs_asset::<runtime_data::Entity>(
                             asset_id,
                             handle,
@@ -196,13 +195,9 @@ impl AssetRegistryPlugin {
                         }
 
                         *loading_state = LoadingState::Loaded;
-                    } else {
-                        let is_err = handle.is_err(&registry);
-
-                        if is_err {
-                            eprintln!("Failed to load runtime asset {}", asset_id);
-                            *loading_state = LoadingState::Failed;
-                        }
+                    } else if handle.is_err(&registry) {
+                        eprintln!("Failed to load runtime asset {}", asset_id);
+                        *loading_state = LoadingState::Failed;
                     }
                 }
                 LoadingState::Loaded | LoadingState::Failed => {}
@@ -226,12 +221,7 @@ impl AssetRegistryPlugin {
                         // Received a load event for an untracked asset.
                         // Most likely, this load has occurred because of loading of dependant resources.
                         asset_loading_states.insert(asset_id, LoadingState::Pending);
-                        asset_handles.insert(
-                            asset_id,
-                            registry
-                                .get_untyped(asset_id)
-                                .expect("handle to exist on ResourceLoadEvent"),
-                        );
+                        asset_handles.insert(asset_id, registry.get_or_create_untyped(asset_id));
                     }
                 }
                 ResourceLoadEvent::Unloaded(_asset_id) => {}

@@ -26,9 +26,7 @@ where
     /// Promote a reference to an active handle
     pub fn activate(&mut self, registry: &AssetRegistry) {
         if let Self::Passive(resource_id) = self {
-            let handle = registry
-                .get_untyped(*resource_id)
-                .expect("Handle to exist on load_init");
+            let handle = registry.get_or_create_untyped(*resource_id);
             *self = Self::Active(handle.into());
         }
     }

@@ -35,6 +35,7 @@ impl<'a, T> Drop for Ref<'a, T> {
         assert!(0 < self.guard.fetch_sub(1, Ordering::Acquire));
     }
 }
+
 impl<'a, T> Deref for Ref<'a, T> {
     type Target = &'a T;
 
@@ -259,6 +260,12 @@ impl AssetRegistry {
         self.loader.get_handle(id)
     }
 
+    /// Returns a handle to the resource.
+    /// If a handle to this resource does not already exist, a new one will be created.
+    pub fn get_or_create_untyped(&self, id: ResourceId) -> HandleUntyped {
+        self.loader.get_or_create_handle(id)
+    }
+
     /// Same as [`Self::load_untyped`] but blocks until the resource load completes or returns an error.
     pub fn load_untyped_sync(&self, id: ResourceId) -> HandleUntyped {
         let handle = self.loader.load(id);
@@ -303,7 +310,7 @@ impl AssetRegistry {
     /// Unloads assets based on their reference counts.
     pub fn update(&self) {
         let mut inner = self.write_inner();
-        for removed_id in self.loader.collect_dropped_handle() {
+        for removed_id in self.loader.collect_dropped_handles() {
             inner.load_errors.remove(&removed_id);
             inner.assets.remove(&removed_id);
             self.loader.unload(removed_id);
