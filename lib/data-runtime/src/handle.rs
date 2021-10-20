@@ -51,17 +51,9 @@ impl ReferenceUntyped {
 //
 
 /// Type-less version of [`Handle`].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HandleUntyped {
     inner: Arc<Inner>,
-}
-
-impl Clone for HandleUntyped {
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
-    }
 }
 
 impl PartialEq for HandleUntyped {
