@@ -55,7 +55,11 @@ export default {
     },
   },
   async mounted() {
-    await this.querySelections("");
+    try {
+      await this.querySelections("");
+    } catch (e) {
+      console.log("Failed to query initial resources: ", e);
+    }
 
     if (this.resourceDescriptions.length > 0) {
       this.resource = this.resourceDescriptions[0];
