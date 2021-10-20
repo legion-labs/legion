@@ -104,6 +104,33 @@ pub async fn processes_by_name_substring(
     Ok(processes)
 }
 
+pub async fn find_process(
+    connection: &mut sqlx::AnyConnection,
+    process_id: String,
+) -> Result<legion_telemetry::ProcessInfo> {
+    let row = sqlx::query(
+        "SELECT exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time
+         FROM processes
+         WHERE process_id = ?;",
+    )
+    .bind(&process_id)
+    .fetch_one(connection)
+    .await?;
+    let tsc_frequency: i64 = row.get("tsc_frequency");
+    let p = legion_telemetry::ProcessInfo {
+        process_id,
+        exe: row.get("exe"),
+        username: row.get("username"),
+        realname: row.get("realname"),
+        computer: row.get("computer"),
+        distro: row.get("distro"),
+        cpu_brand: row.get("cpu_brand"),
+        tsc_frequency: tsc_frequency as u64,
+        start_time: row.get("start_time"),
+    };
+    Ok(p)
+}
+
 pub async fn fetch_recent_processes(
     connection: &mut sqlx::AnyConnection,
 ) -> Result<Vec<legion_telemetry::ProcessInfo>> {
@@ -423,6 +450,7 @@ pub async fn for_each_process_metric<ProcessMetric: FnMut(transit::Object)>(
 pub mod prelude {
     pub use crate::alloc_sql_pool;
     pub use crate::fetch_recent_processes;
+    pub use crate::find_process;
     pub use crate::find_process_log_entry;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;
