@@ -74,7 +74,7 @@ use legion_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceLoadEvent,
 };
 use legion_ecs::prelude::*;
-use sample_data_compiler::runtime_data;
+use sample_data_runtime as runtime_data;
 use std::{fs::File, path::Path, sync::Arc};
 
 #[derive(Default)]

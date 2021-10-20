@@ -9,8 +9,9 @@ use legion_data_build::DataBuildOptions;
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{resource::ResourcePathName, ResourcePathId};
 use legion_data_runtime::Resource;
+use sample_data_runtime as runtime_data;
 
-use crate::{offline_to_runtime::find_derived_path, runtime_data};
+use crate::offline_to_runtime::find_derived_path;
 
 pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
     let root_folder = root_folder.as_ref();

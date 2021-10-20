@@ -54,7 +54,7 @@
 //! List all **source resources** under a specified project:
 //!
 //! ```text
-//! $ data-scrape source .\test\sample_data\ list
+//! $ data-scrape source .\test\sample-data\ list
 //! /image/ground.psd = 13b5a84e00000000d9e5871a48bd55c5
 //! /world/sample_1/ground.mat = 2b368fed000000004e9d6dcb039451e3
 //! /world/sample_1/cube_3.ent.ins = 417862e50000000054537dedac8437c4
@@ -66,14 +66,14 @@
 //! Show the id of the resource under a specified pathname.
 //!
 //! ```text
-//! $ data-scrape source .\test\sample_data\ id /world/sample_1/cube_1.ent.ins
+//! $ data-scrape source .\test\sample-data\ id /world/sample_1/cube_1.ent.ins
 //! /world/sample_1/cube_1.ent.ins = 417862e500000000e9c81a578a265cda
 //! ```
 //!
 //! ### Find pathname of specified resource id.
 //!
 //! ```text
-//! $ data-scrape source .\test\sample_data\ name 417862e500000000e321168f3653db42
+//! $ data-scrape source .\test\sample-data\ name 417862e500000000e321168f3653db42
 //! /prefab/props/cube_group_cube_1.ent.ins = 417862e500000000e321168f3653db42
 //! ```
 //!
@@ -83,7 +83,7 @@
 //! either a single asset file, or a directory of asset files.
 //!
 //! ```text
-//! $ data-scrape asset .\test\sample_data\temp\a88c4baf56023f98e12508ae2c4488c9
+//! $ data-scrape asset .\test\sample-data\temp\a88c4baf56023f98e12508ae2c4488c9
 //!
 //! asset a88c4baf56023f98e12508ae2c4488c9
 //!         file type: asft, version: 1
@@ -91,7 +91,7 @@
 //!         asset count: 1
 //!         asset size: 209
 //!
-//! $data-scrape asset .\test\sample_data\temp
+//! $data-scrape asset .\test\sample-data\temp
 //!
 //! asset 108608222a9c9987a5589c2285b6115d
 //!         raw asset file

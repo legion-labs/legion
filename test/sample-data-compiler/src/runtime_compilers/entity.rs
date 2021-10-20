@@ -65,7 +65,8 @@ use legion_data_compiler::{
 use legion_data_offline::ResourcePathId;
 use legion_data_runtime::Resource;
 use offline_to_runtime::FromOffline;
-use sample_data_compiler::{offline_data, runtime_data};
+use sample_data_offline as offline_data;
+use sample_data_runtime as runtime_data;
 use std::env;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -73,7 +74,7 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(offline_data::Mesh::TYPE, runtime_data::Mesh::TYPE),
+    transform: &(offline_data::Entity::TYPE, runtime_data::Entity::TYPE),
     compiler_hash_func: hash_code_and_data,
     compile_func: compile,
 };
@@ -81,21 +82,30 @@ static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let resources = context
         .take_registry()
-        .add_loader::<offline_data::Mesh>()
+        .add_loader::<offline_data::Entity>()
         .create();
 
-    let mesh = resources.load_sync::<offline_data::Mesh>(context.source.content_id());
-    let mesh = mesh.get(&resources).unwrap();
+    let entity = resources.load_sync::<offline_data::Entity>(context.source.content_id());
+    let entity = entity.get(&resources).unwrap();
 
-    let runtime_mesh = runtime_data::Mesh::from_offline(&mesh);
-    let compiled_asset = bincode::serialize(&runtime_mesh).unwrap();
+    let runtime_entity = runtime_data::Entity::from_offline(&entity);
+    let compiled_asset = bincode::serialize(&runtime_entity).unwrap();
 
     let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
 
     let mut resource_references: Vec<(ResourcePathId, ResourcePathId)> = Vec::new();
-    for sub_mesh in &mesh.sub_meshes {
-        if let Some(material) = &sub_mesh.material {
-            resource_references.push((context.target_unnamed.clone(), material.clone()));
+    for child in &entity.children {
+        resource_references.push((context.target_unnamed.clone(), child.clone()));
+    }
+    for component in &entity.components {
+        if let Some(visual) = component.downcast_ref::<offline_data::Visual>() {
+            if let Some(mesh_ref) = &visual.renderable_geometry {
+                resource_references.push((context.target_unnamed.clone(), mesh_ref.clone()));
+            }
+        } else if let Some(physics) = component.downcast_ref::<offline_data::Physics>() {
+            if let Some(mesh_ref) = &physics.collision_geometry {
+                resource_references.push((context.target_unnamed.clone(), mesh_ref.clone()));
+            }
         }
     }
 

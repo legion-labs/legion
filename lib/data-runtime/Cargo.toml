@@ -9,7 +9,6 @@ license = "MIT OR Apache-2.0"
 legion-content-store = { path = "../content-store" }
 legion-data-runtime-macros = { path = "macros" }
 
-anyhow = "1.0"
 byteorder = "1.4"
 crc = "2.0.0"
 crossbeam-channel = "0.5.1"

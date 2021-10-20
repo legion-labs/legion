@@ -1,16 +1,6 @@
 [workspace]
-members = [
-    "client/*",
-    "server/*",
-    "lib/*",
-    "plugin/*",
-    "proto/*",
-    "test/*",
-]
-exclude = [
-	  "test/sample_data",
-	  "test/test_data"
-]
+members = ["client/*", "server/*", "lib/*", "plugin/*", "proto/*", "test/*"]
+exclude = ["test/sample-data", "test/test_data"]
 
 [profile.release]
 opt-level = 3

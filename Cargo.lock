@@ -2949,7 +2949,7 @@ dependencies = [
  "legion-ecs",
  "legion-graphics-runtime",
  "legion-transform",
- "sample-data-compiler",
+ "sample-data-runtime",
  "serde_json",
 ]
 
@@ -3095,7 +3095,6 @@ dependencies = [
 name = "legion-data-runtime"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "byteorder",
  "crc",
  "crossbeam-channel",
@@ -3311,7 +3310,7 @@ dependencies = [
  "legion-data-runtime",
  "legion-ecs",
  "legion-graphics-offline",
- "sample-data-compiler",
+ "sample-data-offline",
 ]
 
 [[package]]
@@ -5368,8 +5367,34 @@ dependencies = [
  "legion-math",
  "legion-utils",
  "ron",
+ "sample-data-offline",
+ "sample-data-runtime",
  "serde",
  "serde_json",
+ "typetag",
+]
+
+[[package]]
+name = "sample-data-offline"
+version = "0.1.0"
+dependencies = [
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-math",
+ "serde",
+ "serde_json",
+ "typetag",
+]
+
+[[package]]
+name = "sample-data-runtime"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "legion-data-runtime",
+ "legion-graphics-runtime",
+ "legion-math",
+ "serde",
  "typetag",
 ]
 
