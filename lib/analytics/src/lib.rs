@@ -312,12 +312,12 @@ fn format_log_level(level: u8) -> &'static str {
     }
 }
 
-// find_process_log_entry calls pred with each log entry until pred returns Some(x)
-pub async fn find_process_log_entry<Res, Predicate: Fn(String) -> Option<Res>>(
+// find_process_log_entry calls pred(time_ticks,entry_str) with each log entry until pred returns Some(x)
+pub async fn find_process_log_entry<Res, Predicate: FnMut(u64, String) -> Option<Res>>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process_id: &str,
-    pred: Predicate,
+    mut pred: Predicate,
 ) -> Result<Option<Res>> {
     let mut found_entry = None;
     for stream in find_process_log_streams(connection, process_id).await? {
@@ -327,12 +327,13 @@ pub async fn find_process_log_entry<Res, Predicate: Fn(String) -> Option<Res>>(
                 if let Value::Object(obj) = val {
                     match obj.type_name.as_str() {
                         "LogMsgEvent" | "LogDynMsgEvent" => {
+                            let time = obj.get::<u64>("time").unwrap();
                             let entry = format!(
                                 "[{}] {}",
                                 format_log_level(obj.get::<u8>("level").unwrap()),
                                 obj.get::<String>("msg").unwrap()
                             );
-                            if let Some(x) = pred(entry) {
+                            if let Some(x) = pred(time, entry) {
                                 found_entry = Some(x);
                                 return false; //do not continue
                             }
@@ -350,14 +351,14 @@ pub async fn find_process_log_entry<Res, Predicate: Fn(String) -> Option<Res>>(
     Ok(found_entry)
 }
 
-pub async fn for_each_process_log_entry<ProcessLogEntry: Fn(String)>(
+pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(u64, String)>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process_id: &str,
-    process_log_entry: ProcessLogEntry,
+    mut process_log_entry: ProcessLogEntry,
 ) -> Result<()> {
-    find_process_log_entry(connection, data_path, process_id, |entry| {
-        process_log_entry(entry);
+    find_process_log_entry(connection, data_path, process_id, |time, entry| {
+        process_log_entry(time, entry);
         let nothing: Option<()> = None;
         nothing //continue searching
     })

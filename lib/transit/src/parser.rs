@@ -159,14 +159,21 @@ where
     S: BuildHasher,
 {
     let members = match udt.name.as_str() {
+        // todo: move out of transit lib.
+        // LogDynMsgEvent belongs to the legion-telemetry lib
+        // we need a way to inject the serialization logic of custom objects
         "LogDynMsgEvent" => unsafe {
-            let level_ptr = buffer.as_ptr().add(offset);
+            let time_ptr = buffer.as_ptr().add(offset);
+            let time = read_any::<u64>(time_ptr);
+            let level_ptr = buffer.as_ptr().add(offset + 8);
             let level = read_any::<u8>(level_ptr);
+            let msg_offset = 8 + 1;
             let msg = <DynString as InProcSerialize>::read_value(
-                buffer.as_ptr().add(offset + 1),
-                Some((object_size - 1) as u32),
+                buffer.as_ptr().add(offset + msg_offset),
+                Some((object_size - msg_offset) as u32),
             );
             vec![
+                (String::from("time"), Value::U64(time)),
                 (String::from("level"), Value::U8(level)),
                 (String::from("msg"), Value::String(msg.0)),
             ]

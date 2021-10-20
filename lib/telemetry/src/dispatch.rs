@@ -151,11 +151,13 @@ impl Dispatch {
     }
 
     fn on_log_str(&mut self, level: LogLevel, msg: &'static str) {
+        let time = now();
         let mut log_stream = self.log_stream.lock().unwrap();
         if log_stream.is_empty() {
             return;
         }
         log_stream.get_events_mut().push(LogMsgEvent {
+            time,
             level: level as u8,
             msg_len: msg.len() as u32,
             msg: msg.as_ptr(),
@@ -167,8 +169,10 @@ impl Dispatch {
     }
 
     fn on_log_string(&mut self, level: LogLevel, msg: String) {
+        let time = now();
         let mut log_stream = self.log_stream.lock().unwrap();
         log_stream.get_events_mut().push(LogDynMsgEvent {
+            time,
             level: level as u8,
             msg: transit::DynString(msg),
         });

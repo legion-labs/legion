@@ -1,4 +1,5 @@
-use anyhow::{bail, Context, Result};
+mod edition_latency;
+use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_analytics::prelude::*;
 use legion_telemetry::prelude::*;
@@ -31,40 +32,12 @@ async fn main() -> Result<()> {
     match matches.subcommand() {
         ("edition-latency", Some(command_match)) => {
             let process_id = command_match.value_of("process-id").unwrap();
-            print_edition_latency(&mut connection, data_path, process_id).await?;
+            edition_latency::print_edition_latency(&mut connection, data_path, process_id).await?;
         }
         (command_name, _args) => {
             log_str(LogLevel::Info, "unknown subcommand match");
             bail!("unknown subcommand match: {:?}", &command_name);
         }
     }
-    Ok(())
-}
-
-async fn print_edition_latency(
-    connection: &mut sqlx::AnyConnection,
-    data_path: &Path,
-    editor_client_process_id: &str,
-) -> Result<()> {
-    let re = regex::Regex::new(r"received control message\. msg=(?P<msg>\{[^\}]*})").unwrap();
-    let process_id =
-        find_process_log_entry(connection, data_path, editor_client_process_id, |entry| {
-            if let Some(Ok(msg)) = re
-                .captures(&entry)
-                .map(|captures| captures.name("msg"))
-                .flatten()
-                .map(|mat| json::parse(mat.as_str()))
-            {
-                if msg["control_msg"] == "hello" {
-                    if let Some(process_id) = msg["process_id"].as_str() {
-                        return Some(process_id.to_owned());
-                    }
-                }
-            }
-            None
-        })
-        .await?
-        .with_context(|| "searching for hello control message with remote process id")?;
-    dbg!(process_id);
     Ok(())
 }

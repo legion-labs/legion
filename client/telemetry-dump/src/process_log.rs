@@ -7,7 +7,7 @@ pub async fn print_process_log(
     data_path: &Path,
     process_id: &str,
 ) -> Result<()> {
-    for_each_process_log_entry(connection, data_path, process_id, |entry| {
+    for_each_process_log_entry(connection, data_path, process_id, |_time, entry| {
         println!("{}", entry);
     })
     .await?;
