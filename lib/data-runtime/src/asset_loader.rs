@@ -85,8 +85,10 @@ impl AssetLoaderStub {
     }
 
     pub(crate) fn get_handle(&self, id: ResourceId) -> Option<HandleUntyped> {
-        let map = self.handles.pin();
-        map.get(&id).and_then(ReferenceUntyped::upgrade)
+        self.handles
+            .pin()
+            .get(&id)
+            .and_then(ReferenceUntyped::upgrade)
     }
 
     fn get_or_create_handle(&self, id: ResourceId) -> HandleUntyped {
