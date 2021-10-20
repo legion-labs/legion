@@ -63,6 +63,7 @@ mod recent_processes;
 
 use crate::{
     process_metrics::print_process_metrics, process_thread_events::print_process_thread_events,
+    recent_processes::print_process_search,
 };
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
@@ -87,6 +88,15 @@ async fn main() -> Result<()> {
         )
         .subcommand(
             SubCommand::with_name("recent-processes").about("prints a list of recent processes"),
+        )
+        .subcommand(
+            SubCommand::with_name("find-processes")
+                .about("prints a list of recent processes matching the provided string")
+                .arg(
+                    Arg::with_name("filter")
+                        .required(true)
+                        .help("executable name filter"),
+                ),
         )
         .subcommand(
             SubCommand::with_name("logs-by-process").about("prints the logs of recent processes"),
@@ -126,6 +136,10 @@ async fn main() -> Result<()> {
     match matches.subcommand() {
         ("recent-processes", Some(_command_match)) => {
             print_recent_processes(&mut connection).await;
+        }
+        ("find-processes", Some(command_match)) => {
+            let filter = command_match.value_of("filter").unwrap();
+            print_process_search(&mut connection, filter).await;
         }
         ("logs-by-process", Some(_command_match)) => {
             print_logs_by_process(&mut connection, data_path).await?;
