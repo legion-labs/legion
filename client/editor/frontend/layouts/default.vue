@@ -41,13 +41,15 @@ html {
 </style>
 
 <style scoped>
-main {
-  max-height: 100vh;
+div.v-application {
+  height: 100vh;
 }
 
-.v-footer {
-  border-top: 1px solid silver;
-  font-style: italic;
+main {
+  height: calc(100% - 1px);
+  border-right: 1px solid #333;
+  border-left: 1px solid #333;
+  border-bottom: 1px solid #333;
 }
 </style>
 

@@ -2,6 +2,7 @@
   <div id="video-container" class="d-flex">
     <video id="video" :class="{ show: !loading }"></video>
     <v-progress-linear
+      id="loading"
       indeterminate
       color="yellow darken-2"
       v-if="loading"
@@ -39,6 +40,13 @@
   opacity: 1;
 }
 
+#loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
 #resolution {
   position: absolute;
   border-radius: 1em;
@@ -49,6 +57,7 @@
   opacity: 0;
   transition: opacity 0.5s linear;
   user-select: none;
+  font-size: smaller;
 }
 
 #resolution.show {
@@ -159,8 +168,10 @@ export default {
         const width = event.target.videoWidth;
         const height = event.target.videoHeight;
 
-        console.log("Video resolution is now: ", width, "x", height, ".");
+        console.log("Video resolution is now:", width, "x", height, ".");
         this.videoResolution = { width: width, height: height };
+
+        observer.observe(videoElement.parentElement);
       });
 
       const observer = new ResizeObserver(
@@ -171,7 +182,7 @@ export default {
 
           if (width == 0 || height == 0) return;
 
-          console.log("Desired resolution is now: ", width, "x", height, ".");
+          console.log("Desired resolution is now:", width, "x", height, ".");
           this.desiredResolution = { width: width, height: height };
 
           this.video_channel.send(
@@ -189,7 +200,6 @@ export default {
       };
       this.video_channel.onopen = async () => {
         console.log("Video channel is now open.");
-        observer.observe(videoElement.parentElement);
       };
       this.video_channel.onclose = async () => {
         console.log("Video channel is now closed.");

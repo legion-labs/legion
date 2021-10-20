@@ -1,5 +1,5 @@
 <template>
-  <v-app-bar dark dense clipped-left app>
+  <v-app-bar id="app-bar" dark dense clipped-left app>
     <v-app-bar-nav-icon @click="localDrawer = !drawer"></v-app-bar-nav-icon>
     <v-spacer></v-spacer>
     <v-btn icon>
@@ -36,6 +36,7 @@ export default {
   data() {
     return {
       maximized: false,
+      downCoordinates: null,
     };
   },
   computed: {
@@ -60,11 +61,30 @@ export default {
       };
     });
 
+    // Handle both double-click and drag of the window.
     appBar.onmousedown = (e) => {
-      e.stopPropagation();
-      e.preventDefault();
+      this.downCoordinates = { x: e.clientX, y: e.clientY };
 
-      this.startDragging();
+      e.preventDefault();
+    };
+
+    appBar.onmouseup = (e) => {
+      this.downCoordinates = null;
+    };
+
+    appBar.onmousemove = (e) => {
+      if (this.downCoordinates) {
+        if (
+          Math.abs(e.clientX - this.downCoordinates.x) > 2 ||
+          Math.abs(e.clientY - this.downCoordinates.y) > 2
+        ) {
+          this.startDragging();
+        }
+      }
+    };
+
+    appBar.ondblclick = (e) => {
+      this.toggle();
     };
   },
   methods: {
@@ -78,9 +98,13 @@ export default {
       await this.windowManager.maximize();
       this.maximized = true;
     },
-    restore() {
-      this.windowManager.unmaximize();
+    async restore() {
+      await this.windowManager.unmaximize();
       this.maximized = false;
+    },
+    async toggle() {
+      await this.windowManager.toggleMaximize();
+      this.maximized = !this.maximized;
     },
     close() {
       this.windowManager.close();
