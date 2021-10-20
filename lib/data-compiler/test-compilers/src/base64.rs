@@ -29,7 +29,6 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .take_registry()
         .add_loader::<binary_resource::BinaryResource>()
         .create();
-    let mut resources = resources.lock().unwrap();
 
     let resource =
         resources.load_sync::<binary_resource::BinaryResource>(context.source.content_id());

@@ -83,12 +83,11 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         .take_registry()
         .add_loader::<offline_data::Instance>()
         .create();
-    let mut resources = resources.lock().unwrap();
 
     let instance = resources.load_sync::<offline_data::Instance>(context.source.content_id());
     let instance = instance.get(&resources).unwrap();
 
-    let runtime_instance = runtime_data::Instance::from_offline(instance);
+    let runtime_instance = runtime_data::Instance::from_offline(&instance);
     let compiled_asset = bincode::serialize(&runtime_instance).unwrap();
 
     let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;

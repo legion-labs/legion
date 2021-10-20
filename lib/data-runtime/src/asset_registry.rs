@@ -1,9 +1,14 @@
 use std::{
     any::Any,
+    cell::{Cell, UnsafeCell},
     collections::HashMap,
     io,
+    ops::{Deref, DerefMut},
     path::Path,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicIsize, Ordering},
+        Arc,
+    },
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -13,8 +18,99 @@ use legion_content_store::ContentStore;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    vfs, Asset, AssetLoader, Handle, HandleId, HandleUntyped, Resource, ResourceId, ResourceType,
+    vfs, Asset, AssetLoader, Handle, HandleUntyped, Resource, ResourceId, ResourceType,
 };
+
+/// Wraps a borrowed reference to a resource.
+///
+/// This wrapper type helps track the number of references to resources.
+/// For more see [`AssetRegistry`].
+pub struct Ref<'a, T> {
+    resource: &'a T,
+    guard: &'a AtomicIsize,
+}
+
+impl<'a, T> Drop for Ref<'a, T> {
+    fn drop(&mut self) {
+        assert!(0 < self.guard.fetch_sub(1, Ordering::Acquire));
+    }
+}
+impl<'a, T> Deref for Ref<'a, T> {
+    type Target = &'a T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.resource
+    }
+}
+
+impl<'a, T> Ref<'a, T> {
+    fn new(resource: &'a T, guard: &'a AtomicIsize) -> Self {
+        assert!(0 <= guard.fetch_add(1, Ordering::Acquire));
+        Self { resource, guard }
+    }
+}
+
+struct InnerReadGuard<'a> {
+    inner: &'a UnsafeCell<Inner>,
+    guard: &'a AtomicIsize,
+}
+
+impl<'a> InnerReadGuard<'a> {
+    fn new(inner: &'a UnsafeCell<Inner>, guard: &'a AtomicIsize) -> Self {
+        assert!(0 <= guard.fetch_add(1, Ordering::Acquire));
+        Self { inner, guard }
+    }
+
+    fn detach<'b>(&self) -> &'b Inner {
+        unsafe { self.inner.get().as_ref().unwrap() }
+    }
+}
+
+impl<'a> Drop for InnerReadGuard<'a> {
+    fn drop(&mut self) {
+        assert!(0 < self.guard.fetch_sub(1, Ordering::Acquire));
+    }
+}
+
+impl<'a> Deref for InnerReadGuard<'a> {
+    type Target = Inner;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.inner.get().as_ref().unwrap() }
+    }
+}
+
+struct InnerWriteGuard<'a> {
+    inner: &'a UnsafeCell<Inner>,
+    guard: &'a AtomicIsize,
+}
+
+impl<'a> InnerWriteGuard<'a> {
+    fn new(inner: &'a UnsafeCell<Inner>, guard: &'a AtomicIsize) -> Self {
+        assert!(0 == guard.fetch_sub(1, Ordering::Acquire));
+        Self { inner, guard }
+    }
+}
+
+impl<'a> Drop for InnerWriteGuard<'a> {
+    fn drop(&mut self) {
+        assert!(-1 == self.guard.fetch_add(1, Ordering::Acquire));
+    }
+}
+
+impl<'a> Deref for InnerWriteGuard<'a> {
+    type Target = Inner;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.inner.get().as_ref().unwrap() }
+    }
+}
+
+impl<'a> DerefMut for InnerWriteGuard<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.inner.get().as_mut().unwrap() }
+    }
+}
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
@@ -58,16 +154,19 @@ impl AssetRegistryOptions {
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
-    pub fn create(self) -> Arc<Mutex<AssetRegistry>> {
+    pub fn create(self) -> Arc<AssetRegistry> {
         let (loader, mut io) = create_loader(self.devices);
 
-        let registry = Arc::new(Mutex::new(AssetRegistry {
-            assets: HashMap::new(),
-            load_errors: HashMap::new(),
-            load_thread: None,
+        let registry = Arc::new(AssetRegistry {
+            rw_guard: AtomicIsize::new(0),
+            inner: UnsafeCell::new(Inner {
+                assets: HashMap::new(),
+                load_errors: HashMap::new(),
+            }),
             loader,
             load_event_channel: crossbeam_channel::unbounded(),
-        }));
+            load_thread: Cell::new(None),
+        });
 
         for (kind, mut loader) in self.loaders {
             loader.register_registry(Arc::clone(&registry));
@@ -79,10 +178,15 @@ impl AssetRegistryOptions {
             while loader.wait(Duration::from_millis(100)).is_some() {}
         });
 
-        registry.lock().unwrap().load_thread = Some(load_thread);
+        registry.load_thread.set(Some(load_thread));
 
         registry
     }
+}
+
+struct Inner {
+    assets: HashMap<ResourceId, Box<dyn Any + Send + Sync>>,
+    load_errors: HashMap<ResourceId, io::ErrorKind>,
 }
 
 /// Registry of all loaded [`Resource`]s.
@@ -90,16 +194,21 @@ impl AssetRegistryOptions {
 /// Provides an API to load assets by their [`ResourceId`]. The lifetime of an [`Resource`] is determined
 /// by the reference counted [`HandleUntyped`] and [`Handle`].
 ///
+/// # Safety:
+///
+/// The `update` method can only be called when no outstanding references `Ref` to resources exist.
+/// No other method can be called concurrently with `update` method.
+///
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
-    assets: HashMap<ResourceId, Box<dyn Any + Send + Sync>>,
-    load_errors: HashMap<ResourceId, io::ErrorKind>,
-    load_thread: Option<JoinHandle<()>>,
+    rw_guard: AtomicIsize,
+    inner: UnsafeCell<Inner>,
     loader: AssetLoaderStub,
     load_event_channel: (
         crossbeam_channel::Sender<ResourceLoadEvent>,
         crossbeam_channel::Receiver<ResourceLoadEvent>,
     ),
+    load_thread: Cell<Option<JoinHandle<()>>>,
 }
 
 /// A resource loading event is emitted when a resource is loaded, unloaded, or loading fails
@@ -119,33 +228,39 @@ impl Drop for AssetRegistry {
     }
 }
 
+/// Safety: it is safe share references to `AssetRegistry` between threads
+/// and the implementation will panic! if its safety rules are not fulfilled.
+unsafe impl Sync for AssetRegistry {}
+
 impl AssetRegistry {
+    fn read_inner(&self) -> InnerReadGuard<'_> {
+        InnerReadGuard::new(&self.inner, &self.rw_guard)
+    }
+
+    fn write_inner(&self) -> InnerWriteGuard<'_> {
+        InnerWriteGuard::new(&self.inner, &self.rw_guard)
+    }
+
     /// Requests an asset load.
     ///
     /// The asset will be unloaded after all instances of [`HandleUntyped`] and
     /// [`Handle`] that refer to that asset go out of scope.
-    pub fn load_untyped(&mut self, id: ResourceId) -> HandleUntyped {
+    pub fn load_untyped(&self, id: ResourceId) -> HandleUntyped {
         self.loader.load(id)
     }
 
     /// Trigger a reload of a given primary resource.
-    pub fn reload(&mut self, id: ResourceId) -> bool {
+    pub fn reload(&self, id: ResourceId) -> bool {
         self.loader.reload(id)
     }
 
     /// Returns a handle to the resource if a handle to this resource already exists.
-    pub fn get_untyped(&mut self, id: ResourceId) -> Option<HandleUntyped> {
+    pub fn get_untyped(&self, id: ResourceId) -> Option<HandleUntyped> {
         self.loader.get_handle(id)
     }
 
-    /// Returns a handle to the resource.
-    /// If a handle to this resource does not already exist, a new one will be created.
-    pub fn get_or_create_untyped(&mut self, id: ResourceId) -> HandleUntyped {
-        self.loader.get_or_create_handle(id)
-    }
-
     /// Same as [`Self::load_untyped`] but blocks until the resource load completes or returns an error.
-    pub fn load_untyped_sync(&mut self, id: ResourceId) -> HandleUntyped {
+    pub fn load_untyped_sync(&self, id: ResourceId) -> HandleUntyped {
         let handle = self.loader.load(id);
         // todo: this will be improved with async/await
         while !handle.is_loaded(self) && !handle.is_err(self) {
@@ -157,45 +272,40 @@ impl AssetRegistry {
     }
 
     /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T` for convenience.
-    pub fn load<T: Any + Resource>(&mut self, id: ResourceId) -> Handle<T> {
+    pub fn load<T: Any + Resource>(&self, id: ResourceId) -> Handle<T> {
         let handle = self.load_untyped(id);
         Handle::<T>::from(handle)
     }
 
     /// Same as [`Self::load`] but blocks until the resource load completes or returns an error.
-    pub fn load_sync<T: Any + Resource>(&mut self, id: ResourceId) -> Handle<T> {
+    pub fn load_sync<T: Any + Resource>(&self, id: ResourceId) -> Handle<T> {
         let handle = self.load_untyped_sync(id);
         Handle::<T>::from(handle)
     }
 
-    /// Retrieves the asset id associated with a handle.
-    pub(crate) fn get_asset_id(&self, handle_id: HandleId) -> Option<ResourceId> {
-        self.loader.get_asset_id(handle_id)
-    }
-
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Any + Resource>(&self, handle_id: HandleId) -> Option<&T> {
-        if let Some(asset_id) = self.get_asset_id(handle_id) {
-            if let Some(asset) = self.assets.get(&asset_id) {
-                return asset.downcast_ref::<T>();
-            }
+    pub(crate) fn get<T: Any + Resource>(&self, id: ResourceId) -> Option<Ref<'_, T>> {
+        let inner = self.read_inner();
+
+        if let Some(asset) = inner.detach().assets.get(&id) {
+            return asset
+                .downcast_ref::<T>()
+                .map(|a| Ref::new(a, &self.rw_guard));
         }
         None
     }
 
     /// Tests if an asset is loaded.
-    pub(crate) fn is_loaded(&self, handle_id: HandleId) -> bool {
-        if let Some(asset_id) = self.get_asset_id(handle_id) {
-            return self.assets.get(&asset_id).is_some();
-        }
-        false
+    pub(crate) fn is_loaded(&self, id: ResourceId) -> bool {
+        self.read_inner().assets.get(&id).is_some()
     }
 
     /// Unloads assets based on their reference counts.
-    pub fn update(&mut self) {
-        while let Some(removed_id) = self.loader.process_refcount_ops() {
-            self.load_errors.remove(&removed_id);
-            self.assets.remove(&removed_id);
+    pub fn update(&self) {
+        let mut inner = self.write_inner();
+        for removed_id in self.loader.collect_dropped_handle() {
+            inner.load_errors.remove(&removed_id);
+            inner.assets.remove(&removed_id);
             self.loader.unload(removed_id);
         }
 
@@ -203,21 +313,21 @@ impl AssetRegistry {
             // todo: add success/failure callbacks using the provided LoadId.
             match result {
                 LoaderResult::Loaded(asset_id, asset, _load_id) => {
-                    self.assets.insert(asset_id, asset);
+                    inner.assets.insert(asset_id, asset);
                     self.load_event_channel
                         .0
                         .send(ResourceLoadEvent::Loaded(asset_id))
                         .unwrap();
                 }
                 LoaderResult::Unloaded(asset_id) => {
-                    self.assets.remove(&asset_id);
+                    inner.assets.remove(&asset_id);
                     self.load_event_channel
                         .0
                         .send(ResourceLoadEvent::Unloaded(asset_id))
                         .unwrap();
                 }
                 LoaderResult::LoadError(asset_id, _load_id, error_kind) => {
-                    self.load_errors.insert(asset_id, error_kind);
+                    inner.load_errors.insert(asset_id, error_kind);
                     self.load_event_channel
                         .0
                         .send(ResourceLoadEvent::LoadError(asset_id))
@@ -227,11 +337,8 @@ impl AssetRegistry {
         }
     }
 
-    pub(crate) fn is_err(&self, handle_id: HandleId) -> bool {
-        if let Some(asset_id) = self.get_asset_id(handle_id) {
-            return self.load_errors.contains_key(&asset_id);
-        }
-        false
+    pub(crate) fn is_err(&self, id: ResourceId) -> bool {
+        self.read_inner().load_errors.contains_key(&id)
     }
 
     /// Subscribe to load events, to know when resources are loaded and unloaded.
@@ -250,7 +357,7 @@ mod tests {
 
     use super::*;
 
-    fn setup_singular_asset_test(content: &[u8]) -> (ResourceId, Arc<Mutex<AssetRegistry>>) {
+    fn setup_singular_asset_test(content: &[u8]) -> (ResourceId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
@@ -269,7 +376,7 @@ mod tests {
         (asset_id, reg)
     }
 
-    fn setup_dependency_test() -> (ResourceId, ResourceId, Arc<Mutex<AssetRegistry>>) {
+    fn setup_dependency_test() -> (ResourceId, ResourceId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
@@ -315,12 +422,11 @@ mod tests {
     #[test]
     fn load_assetfile() {
         let (asset_id, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
-        let mut reg = reg.lock().unwrap();
 
         let internal_id;
         {
             let a = reg.load_untyped(asset_id);
-            internal_id = a.id;
+            internal_id = a.id();
 
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
@@ -350,12 +456,11 @@ mod tests {
     #[test]
     fn load_rawfile() {
         let (asset_id, reg) = setup_singular_asset_test(&BINARY_RAWFILE);
-        let mut reg = reg.lock().unwrap();
 
         let internal_id;
         {
             let a = reg.load_untyped(asset_id);
-            internal_id = a.id;
+            internal_id = a.id();
 
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
@@ -385,12 +490,11 @@ mod tests {
     #[test]
     fn load_error() {
         let (_, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
-        let mut reg = reg.lock().unwrap();
 
         let internal_id;
         {
             let a = reg.load_untyped(ResourceId::new(test_asset::TestAsset::TYPE, 7));
-            internal_id = a.id;
+            internal_id = a.id();
 
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_err(&reg) {
@@ -411,12 +515,11 @@ mod tests {
     #[test]
     fn load_error_sync() {
         let (_, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
-        let mut reg = reg.lock().unwrap();
 
         let internal_id;
         {
             let a = reg.load_untyped_sync(ResourceId::new(test_asset::TestAsset::TYPE, 7));
-            internal_id = a.id;
+            internal_id = a.id();
 
             assert!(!a.is_loaded(&reg));
             assert!(a.is_err(&reg));
@@ -429,7 +532,6 @@ mod tests {
     #[test]
     fn load_dependency() {
         let (parent_id, child_id, reg) = setup_dependency_test();
-        let mut reg = reg.lock().unwrap();
 
         let parent = reg.load_untyped_sync(parent_id);
         assert!(parent.is_loaded(&reg));

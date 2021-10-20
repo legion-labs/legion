@@ -1,8 +1,9 @@
 use std::{any::Any, collections::HashMap, io, time::Duration};
 
-use crate::{vfs, AssetLoader, HandleId, HandleUntyped, RefOp, ResourceId, ResourceType};
+use crate::{vfs, AssetLoader, HandleUntyped, ReferenceUntyped, ResourceId, ResourceType};
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use flurry::TryInsertError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -59,12 +60,11 @@ pub(crate) fn create_loader(
 }
 
 pub(crate) struct AssetLoaderStub {
-    id_generator: HandleId,
-    refcount_channel: (
-        crossbeam_channel::Sender<RefOp>,
-        crossbeam_channel::Receiver<RefOp>,
+    unload_channel: (
+        crossbeam_channel::Sender<ResourceId>,
+        crossbeam_channel::Receiver<ResourceId>,
     ),
-    ref_counts: HashMap<HandleId, (ResourceId, isize)>,
+    handles: flurry::HashMap<ResourceId, ReferenceUntyped>,
     request_tx: crossbeam_channel::Sender<LoaderRequest>,
     result_rx: crossbeam_channel::Receiver<LoaderResult>,
 }
@@ -77,90 +77,65 @@ impl AssetLoaderStub {
         result_rx: crossbeam_channel::Receiver<LoaderResult>,
     ) -> Self {
         Self {
-            id_generator: 0,
-            refcount_channel: crossbeam_channel::unbounded(),
-            ref_counts: HashMap::new(),
+            unload_channel: crossbeam_channel::unbounded(),
+            handles: flurry::HashMap::new(),
             request_tx,
             result_rx,
         }
     }
 
-    pub(crate) fn get_handle(&mut self, id: ResourceId) -> Option<HandleUntyped> {
-        self.ref_counts
-            .iter_mut()
-            .find_map(|(handle_id, (referred_id, count))| {
-                if referred_id == &id {
-                    *count += 1;
-                    Some(*handle_id)
-                } else {
-                    None
-                }
-            })
-            .map(|handle_id| HandleUntyped::create(handle_id, self.refcount_channel.0.clone()))
+    pub(crate) fn get_handle(&self, id: ResourceId) -> Option<HandleUntyped> {
+        self.handles
+            .pin()
+            .get(&id)
+            .and_then(ReferenceUntyped::upgrade)
     }
 
-    pub(crate) fn get_or_create_handle(&mut self, id: ResourceId) -> HandleUntyped {
-        let handle_id = self
-            .ref_counts
-            .iter_mut()
-            .find_map(|(handle_id, (referred_id, count))| {
-                if referred_id == &id {
-                    *count += 1;
-                    Some(*handle_id)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| {
-                self.id_generator += 1;
-                let new_id = self.id_generator;
-                self.ref_counts.insert(new_id, (id, 1));
-                new_id
-            });
-        HandleUntyped::create(handle_id, self.refcount_channel.0.clone())
-    }
-
-    pub(crate) fn process_refcount_ops(&mut self) -> Option<ResourceId> {
-        while let Ok(op) = self.refcount_channel.1.try_recv() {
-            match op {
-                RefOp::AddRef(id) => {
-                    let (_, count) = self.ref_counts.get_mut(&id).unwrap();
-                    *count += 1;
-                }
-                RefOp::RemoveRef(id) => {
-                    let (resource_id, count) = self.ref_counts.get_mut(&id).unwrap();
-                    *count -= 1;
-                    let resource_id = *resource_id;
-                    if *count == 0 {
-                        self.ref_counts.remove(&id);
-                        return Some(resource_id);
-                    }
-                }
-            }
+    fn get_or_create_handle(&self, id: ResourceId) -> HandleUntyped {
+        if let Some(handle) = self.get_handle(id) {
+            return handle;
         }
-        None
+
+        let new_handle = HandleUntyped::new_handle(id, self.unload_channel.0.clone());
+        let weak_ref = HandleUntyped::downgrade(&new_handle);
+        match self.handles.pin().try_insert(id, weak_ref) {
+            Ok(_) => new_handle,
+            Err(TryInsertError {
+                current,
+                not_inserted: _,
+            }) => current.upgrade().unwrap(),
+        }
     }
 
-    /// Retrieves the asset id associated with a handle.
-    pub(crate) fn get_asset_id(&self, handle_id: HandleId) -> Option<ResourceId> {
-        self.ref_counts
-            .get(&handle_id)
-            .map(|(asset_id, _)| *asset_id)
+    pub(crate) fn collect_dropped_handle(&self) -> Vec<ResourceId> {
+        let mut all_removed = vec![];
+        while let Ok(unload_id) = self.unload_channel.1.try_recv() {
+            let handles = self.handles.pin();
+            let removed = handles.remove(&unload_id).expect("weak ref");
+            assert!(removed.upgrade().is_none(), "a load after unload occured");
+            all_removed.push(unload_id);
+        }
+        all_removed
     }
 
     pub(crate) fn terminate(&self) {
         self.request_tx.send(LoaderRequest::Terminate).unwrap();
     }
 
-    pub(crate) fn load(&mut self, resource_id: ResourceId) -> HandleUntyped {
+    pub(crate) fn load(&self, resource_id: ResourceId) -> HandleUntyped {
         let handle = self.get_or_create_handle(resource_id);
+
+        // todo: for now, this is a made up number to track the id of the load request
+        // as we don't currently have load notifications it doesn't mean much.
+        // this would have to be changed in order to add load notifications.
+        let load_id = 7;
         self.request_tx
-            .send(LoaderRequest::Load(resource_id, Some(handle.id)))
+            .send(LoaderRequest::Load(resource_id, Some(load_id)))
             .unwrap();
         handle
     }
 
-    pub(crate) fn reload(&mut self, resource_id: ResourceId) -> bool {
+    pub(crate) fn reload(&self, resource_id: ResourceId) -> bool {
         self.get_handle(resource_id).map_or(false, |_| {
             self.request_tx
                 .send(LoaderRequest::Reload(resource_id))
@@ -169,11 +144,11 @@ impl AssetLoaderStub {
         })
     }
 
-    pub(crate) fn try_result(&mut self) -> Option<LoaderResult> {
+    pub(crate) fn try_result(&self) -> Option<LoaderResult> {
         self.result_rx.try_recv().ok()
     }
 
-    pub(crate) fn unload(&mut self, id: ResourceId) {
+    pub(crate) fn unload(&self, id: ResourceId) {
         self.request_tx
             .send(LoaderRequest::Unload(id, true, None))
             .unwrap();
@@ -654,91 +629,105 @@ mod tests {
 
     #[test]
     fn ref_count() {
-        let (asset_id, mut loader, _io) = setup_test();
+        let (asset_id, loader, _io) = setup_test();
 
-        let internal_id;
         {
             let a = loader.load(asset_id);
-            internal_id = a.id;
-            assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 1);
+            assert_eq!(a.id(), asset_id);
+            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
 
             {
                 let b = a.clone();
-                while loader.process_refcount_ops().is_some() {}
+                loader.collect_dropped_handle();
 
-                assert_eq!(loader.ref_counts.get(&b.id).unwrap().1, 2);
-                assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 2);
+                assert_eq!(loader.handles.pin().get(&b.id()).unwrap().strong_count(), 2);
+                assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
                 assert_eq!(a, b);
             }
-            while loader.process_refcount_ops().is_some() {}
-            assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 1);
+            loader.collect_dropped_handle();
+            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
         }
-        while loader.process_refcount_ops().is_some() {}
-        assert!(!loader.ref_counts.contains_key(&internal_id));
+        loader.collect_dropped_handle();
+        assert!(!loader.handles.pin().contains_key(&asset_id));
     }
 
     #[test]
     fn typed_ref() {
-        let (asset_id, mut loader, _io) = setup_test();
+        let (asset_id, loader, _io) = setup_test();
 
-        let internal_id;
         {
             let untyped = loader.load(asset_id);
-            assert_eq!(loader.ref_counts.get(&untyped.id).unwrap().1, 1);
+            assert_eq!(
+                loader
+                    .handles
+                    .pin()
+                    .get(&untyped.id())
+                    .unwrap()
+                    .strong_count(),
+                1
+            );
 
-            internal_id = untyped.id;
+            assert_eq!(untyped.id(), asset_id);
 
             let typed: Handle<test_asset::TestAsset> = untyped.into();
-            while loader.process_refcount_ops().is_some() {}
-            assert_eq!(loader.ref_counts.get(&typed.id).unwrap().1, 1);
+            loader.collect_dropped_handle();
+            assert_eq!(
+                loader
+                    .handles
+                    .pin()
+                    .get(&typed.id())
+                    .unwrap()
+                    .strong_count(),
+                1
+            );
 
             let mut test_timeout = Duration::from_millis(500);
-            while test_timeout > Duration::ZERO && loader.ref_counts.get(&typed.id).is_none() {
+            while test_timeout > Duration::ZERO && loader.handles.pin().get(&typed.id()).is_none() {
                 let sleep_time = Duration::from_millis(10);
                 thread::sleep(sleep_time);
                 test_timeout -= sleep_time;
-                while loader.process_refcount_ops().is_some() {}
+                loader.collect_dropped_handle();
             }
-            assert!(loader.ref_counts.get(&typed.id).is_some());
+            assert!(loader.handles.pin().get(&typed.id()).is_some());
         }
 
-        while loader.process_refcount_ops().is_some() {} // to drop the refcount to zero.
+        loader.collect_dropped_handle();
 
-        assert!(!loader.ref_counts.contains_key(&internal_id));
+        assert!(!loader.handles.pin().contains_key(&asset_id));
 
         let typed: Handle<test_asset::TestAsset> = loader.load(asset_id).into();
 
         let mut test_timeout = Duration::from_millis(500);
-        while test_timeout > Duration::ZERO && loader.ref_counts.get(&typed.id).is_none() {
+        while test_timeout > Duration::ZERO && loader.handles.pin().get(&typed.id()).is_none() {
             let sleep_time = Duration::from_millis(10);
             thread::sleep(sleep_time);
             test_timeout -= sleep_time;
-            while loader.process_refcount_ops().is_some() {}
+            loader.collect_dropped_handle();
         }
-        assert!(loader.ref_counts.get(&typed.id).is_some());
+        assert!(loader.handles.pin().get(&typed.id()).is_some());
     }
 
     #[test]
     fn call_load_twice() {
-        let (asset_id, mut loader, _io) = setup_test();
+        let (asset_id, loader, _io) = setup_test();
 
         let a = loader.load(asset_id);
-        assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 1);
+        assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
         {
             let b = a.clone();
-            while loader.process_refcount_ops().is_some() {}
-            assert_eq!(a.id, b.id);
-            assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 2);
+            loader.collect_dropped_handle();
+            assert_eq!(a.id(), b.id());
+            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
             {
                 let c = loader.load(asset_id);
-                assert_eq!(a.id, c.id);
-                assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 3);
+                assert_eq!(a.id(), c.id());
+                assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 3);
             }
-            while loader.process_refcount_ops().is_some() {}
-            assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 2);
+            loader.collect_dropped_handle();
+            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
         }
-        while loader.process_refcount_ops().is_some() {}
-        assert_eq!(loader.ref_counts.get(&a.id).unwrap().1, 1);
+        loader.collect_dropped_handle();
+        assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
     }
 
     #[test]

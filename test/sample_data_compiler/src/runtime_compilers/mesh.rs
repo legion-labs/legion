@@ -83,12 +83,11 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         .take_registry()
         .add_loader::<offline_data::Mesh>()
         .create();
-    let mut resources = resources.lock().unwrap();
 
     let mesh = resources.load_sync::<offline_data::Mesh>(context.source.content_id());
     let mesh = mesh.get(&resources).unwrap();
 
-    let runtime_mesh = runtime_data::Mesh::from_offline(mesh);
+    let runtime_mesh = runtime_data::Mesh::from_offline(&mesh);
     let compiled_asset = bincode::serialize(&runtime_mesh).unwrap();
 
     let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;

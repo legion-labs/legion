@@ -27,7 +27,6 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .take_registry()
         .add_loader::<text_resource::TextResource>()
         .create();
-    let mut resources = resources.lock().unwrap();
 
     let resource = resources.load_sync::<text_resource::TextResource>(context.source.content_id());
     let resource = resource.get(&resources).unwrap();

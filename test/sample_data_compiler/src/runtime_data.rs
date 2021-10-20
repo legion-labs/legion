@@ -1,7 +1,7 @@
 use std::{
     any::{Any, TypeId},
     io,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use legion_data_runtime::{
@@ -49,7 +49,7 @@ impl Asset for Entity {
 
 #[derive(Default)]
 pub struct EntityLoader {
-    registry: Option<Arc<Mutex<AssetRegistry>>>,
+    registry: Option<Arc<AssetRegistry>>,
 }
 
 impl AssetLoader for EntityLoader {
@@ -63,23 +63,21 @@ impl AssetLoader for EntityLoader {
 
         // activate references
         if let Some(registry) = &self.registry {
-            let mut registry = registry.lock().unwrap();
-
             for child in &mut entity.children {
-                child.activate(&mut *registry);
+                child.activate(registry);
             }
 
             for component in &mut entity.components {
                 if let Some(visual) = component.downcast_mut::<Visual>() {
-                    visual.renderable_geometry.activate(&mut *registry);
+                    visual.renderable_geometry.activate(registry);
                 } else if let Some(physics) = component.downcast_mut::<Physics>() {
-                    physics.collision_geometry.activate(&mut *registry);
+                    physics.collision_geometry.activate(registry);
                 }
             }
         }
     }
 
-    fn register_registry(&mut self, registry: Arc<Mutex<AssetRegistry>>) {
+    fn register_registry(&mut self, registry: Arc<AssetRegistry>) {
         self.registry = Some(registry);
     }
 }
@@ -222,7 +220,7 @@ impl Asset for Instance {
 
 #[derive(Default)]
 pub struct InstanceLoader {
-    registry: Option<Arc<Mutex<AssetRegistry>>>,
+    registry: Option<Arc<AssetRegistry>>,
 }
 
 impl AssetLoader for InstanceLoader {
@@ -236,13 +234,11 @@ impl AssetLoader for InstanceLoader {
 
         // activate references
         if let Some(registry) = &self.registry {
-            let mut registry = registry.lock().unwrap();
-
-            instance.original.activate(&mut *registry);
+            instance.original.activate(registry);
         }
     }
 
-    fn register_registry(&mut self, registry: Arc<Mutex<AssetRegistry>>) {
+    fn register_registry(&mut self, registry: Arc<AssetRegistry>) {
         self.registry = Some(registry);
     }
 }
@@ -261,7 +257,7 @@ impl Asset for Mesh {
 
 #[derive(Default)]
 pub struct MeshLoader {
-    registry: Option<Arc<Mutex<AssetRegistry>>>,
+    registry: Option<Arc<AssetRegistry>>,
 }
 
 impl AssetLoader for MeshLoader {
@@ -275,15 +271,13 @@ impl AssetLoader for MeshLoader {
 
         // activate references
         if let Some(registry) = &self.registry {
-            let mut registry = registry.lock().unwrap();
-
             for sub_mesh in &mut mesh.sub_meshes {
-                sub_mesh.material.activate(&mut *registry);
+                sub_mesh.material.activate(registry);
             }
         }
     }
 
-    fn register_registry(&mut self, registry: Arc<Mutex<AssetRegistry>>) {
+    fn register_registry(&mut self, registry: Arc<AssetRegistry>) {
         self.registry = Some(registry);
     }
 }
