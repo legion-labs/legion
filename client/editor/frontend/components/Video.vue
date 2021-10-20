@@ -175,6 +175,24 @@ function debounce(func, wait, immediate) {
   };
 }
 
+function retryForever(fn) {
+  return retry(-1, fn);
+}
+
+function retry(maxRetries, fn) {
+  return fn().catch(function (err) {
+    if (maxRetries == 0) {
+      throw err;
+    }
+
+    if (maxRetries > 0) {
+      maxRetries--;
+    }
+
+    return retry(maxRetries, fn);
+  });
+}
+
 export default {
   name: "Video",
   props: {
@@ -189,10 +207,6 @@ export default {
   },
   mounted() {
     const videoElement = document.getElementById("video");
-
-    videoElement.parentElement.onclick = () => {
-      this.initialize(videoElement);
-    };
 
     this.initialize(videoElement);
   },
@@ -229,9 +243,25 @@ export default {
         console.log(iceEvent);
 
         if (iceEvent.candidate === null) {
-          this.pc.setRemoteDescription(
-            await initialize_stream(this.pc.localDescription)
+          retryForever(
+            initialize_stream.bind(null, this.pc.localDescription)
+          ).then((remoteDescription) =>
+            this.pc.setRemoteDescription(remoteDescription)
           );
+        }
+      };
+
+      this.pc.oniceconnectionstatechange = async () => {
+        if (this.pc.iceConnectionState == "disconnected") {
+          console.log("Disconnected");
+
+          videoElement.pause();
+          videoElement.removeAttribute("src");
+          videoElement.load();
+
+          window.setTimeout(() => {
+            this.initialize(videoElement);
+          }, 0);
         }
       };
 
