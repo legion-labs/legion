@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use legion_analytics::prelude::*;
 use std::path::Path;
+use transit::prelude::*;
 
 async fn find_server_process_id(
     connection: &mut sqlx::AnyConnection,
@@ -90,6 +91,30 @@ async fn find_server_edition_commands(
     Ok(res)
 }
 
+async fn find_server_begin_frame_metrics(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    editor_server_process_id: &str,
+) -> Result<Vec<(u64, u64)>> {
+    let mut res = vec![];
+    for_each_process_metric(
+        connection,
+        data_path,
+        editor_server_process_id,
+        |metric_instance| {
+            let metric_desc = metric_instance.get::<Object>("metric").unwrap();
+            let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
+            if name == "Frame ID begin render" {
+                let time = metric_instance.get::<u64>("time").unwrap();
+                let frame_id = metric_instance.get::<u64>("value").unwrap();
+                res.push((time, frame_id));
+            }
+        },
+    )
+    .await?;
+    Ok(res)
+}
+
 pub async fn print_edition_latency(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
@@ -110,6 +135,12 @@ pub async fn print_edition_latency(
     println!("\nserver commands:");
     for command in server_commands {
         println!("{} {}", command.0, command.1);
+    }
+
+    let server_frames =
+        find_server_begin_frame_metrics(connection, data_path, &server_process_id).await?;
+    for frame in server_frames {
+        println!("{} {}", frame.0, frame.1);
     }
 
     Ok(())

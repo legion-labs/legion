@@ -34,6 +34,7 @@ tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
 json = "0.12.4"
 log = "0.4"
 legion-analytics = { path = "../../lib/analytics" }
+transit = { path = "../../lib/transit" }
 regex = "1.5"
 sqlx = { version = "0.5", features = [
     "sqlite",

@@ -425,5 +425,6 @@ pub mod prelude {
     pub use crate::fetch_recent_processes;
     pub use crate::find_process_log_entry;
     pub use crate::for_each_process_log_entry;
+    pub use crate::for_each_process_metric;
     pub use crate::processes_by_name_substring;
 }

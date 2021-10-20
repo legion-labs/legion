@@ -21,6 +21,15 @@ impl Object {
         }
         bail!("member {} not found", member_name);
     }
+
+    pub fn get_ref(&self, member_name: &str) -> Result<&Value> {
+        for m in &self.members {
+            if m.0 == member_name {
+                return Ok(&m.1);
+            }
+        }
+        bail!("member {} not found", member_name);
+    }
 }
 
 pub trait TransitValue {
@@ -91,13 +100,23 @@ impl TransitValue for Object {
 
 #[derive(Debug, Clone)]
 pub enum Value {
-    String(String),
-    Object(Object),
+    String(String), //todo: change to ref-counted
+    Object(Object), //todo: change to ref-counted
     U8(u8),
     U32(u32),
     U64(u64),
     F64(f64),
     None,
+}
+
+impl Value {
+    pub fn as_str(&self) -> Option<&str> {
+        if let Value::String(s) = &self {
+            Some(s.as_str())
+        } else {
+            None
+        }
+    }
 }
 
 pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<HashMap<u64, Value>> {
