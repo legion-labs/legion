@@ -59,21 +59,22 @@ export default {
       headers: [
         {
           text: "Category",
+          value: "group",
           align: "start",
           sortable: true,
-          value: "group",
           groupable: true,
         },
         {
           text: "Property",
+          value: "name",
           align: "start",
           sortable: true,
-          value: "name",
           groupable: false,
         },
         {
           text: "Value",
           value: "value",
+          align: "center",
           groupable: false,
         },
       ],

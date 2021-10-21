@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex flex-column">
+  <div id="property-grid" :style="minWidth" class="d-flex flex-column">
     <ResourceSelector v-model="resourceDescription"></ResourceSelector>
     <ResourceProperties
       v-if="resourceDescription"
@@ -9,12 +9,25 @@
   </div>
 </template>
 
+<style scoped>
+#property-grid {
+  min-width: var(--min-width);
+}
+</style>
+
 <script>
 export default {
   data() {
     return {
       resourceDescription: null,
     };
+  },
+  computed: {
+    minWidth() {
+      return {
+        "--min-width": Math.min(this.$vuetify.breakpoint.width / 5, 350) + "px",
+      };
+    },
   },
 };
 </script>
