@@ -26,9 +26,11 @@ fn no_intermediate_resource() {
     let resource_id = {
         let resource_id = {
             let mut project = Project::create_new(project_dir).expect("new project");
-            let mut resources = ResourceRegistryOptions::new()
+            let resources = ResourceRegistryOptions::new()
                 .add_type::<refs_resource::TestResource>()
                 .create_registry();
+            let mut resources = resources.lock().unwrap();
+
             let resource = resources
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("new resource");
@@ -109,9 +111,11 @@ fn with_intermediate_resource() {
     let resource_id = {
         let resource_id = {
             let mut project = Project::create_new(project_dir).expect("new project");
-            let mut resources = ResourceRegistryOptions::new()
+            let resources = ResourceRegistryOptions::new()
                 .add_type::<text_resource::TextResource>()
                 .create_registry();
+            let mut resources = resources.lock().unwrap();
+
             let resource = resources
                 .new_resource(text_resource::TextResource::TYPE)
                 .expect("new resource");

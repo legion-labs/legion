@@ -57,17 +57,19 @@
 // crate-specific exceptions:
 #![allow()]
 
-mod resource_handles;
 mod settings;
 
 use legion_data_runtime::ResourceId;
-use resource_handles::ResourceHandles;
 pub use settings::ResourceRegistrySettings;
 
 use legion_app::Plugin;
-use legion_data_offline::resource::{Project, ResourceRegistry, ResourceRegistryOptions};
+use legion_data_offline::resource::{
+    Project, ResourceHandles, ResourceRegistry, ResourceRegistryOptions,
+};
 use legion_ecs::prelude::*;
 use sample_data_offline as offline_data;
+
+use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
 pub struct ResourceRegistryPlugin {}
@@ -82,22 +84,29 @@ impl Plugin for ResourceRegistryPlugin {
                 registry = legion_graphics_offline::register_resource_types(registry);
                 registry = generic_data_offline::register_resource_types(registry);
                 let registry = registry.create_registry();
+                let project = Arc::new(Mutex::new(project));
+                let resource_handles = Arc::new(Mutex::new(ResourceHandles::default()));
 
                 app.insert_resource(project)
                     .insert_resource(registry)
-                    .insert_resource(ResourceHandles::default())
+                    .insert_resource(resource_handles)
                     .add_startup_system(Self::setup);
             }
         }
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 impl ResourceRegistryPlugin {
     fn setup(
-        project: ResMut<'_, Project>,
-        mut registry: ResMut<'_, ResourceRegistry>,
-        mut resource_handles: ResMut<'_, ResourceHandles>,
+        project: ResMut<'_, Arc<Mutex<Project>>>,
+        registry: ResMut<'_, Arc<Mutex<ResourceRegistry>>>,
+        resource_handles: ResMut<'_, Arc<Mutex<ResourceHandles>>>,
     ) {
+        let project = project.lock().unwrap();
+        let mut registry = registry.lock().unwrap();
+        let mut resource_handles = resource_handles.lock().unwrap();
+
         for resource_id in project.resource_list() {
             Self::load_resource(&project, &mut registry, &mut resource_handles, resource_id);
         }
@@ -106,9 +115,9 @@ impl ResourceRegistryPlugin {
     }
 
     fn load_resource(
-        project: &ResMut<'_, Project>,
-        registry: &mut ResMut<'_, ResourceRegistry>,
-        resource_handles: &mut ResMut<'_, ResourceHandles>,
+        project: &Project,
+        registry: &mut ResourceRegistry,
+        resource_handles: &mut ResourceHandles,
         resource_id: ResourceId,
     ) {
         if let Some(_handle) = resource_handles.get(resource_id) {

@@ -1694,6 +1694,7 @@ dependencies = [
  "legion-asset-registry",
  "legion-async",
  "legion-codec-api",
+ "legion-data-offline",
  "legion-data-runtime",
  "legion-editor-proto",
  "legion-grpc",
@@ -5357,6 +5358,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "clap",
+ "generic_data_offline",
  "legion-content-store",
  "legion-data-build",
  "legion-data-compiler",

@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use crate::DataBuildOptions;
 use legion_content_store::ContentStoreAddr;
@@ -11,7 +12,7 @@ use tempfile::TempDir;
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
-fn setup_registry() -> ResourceRegistry {
+fn setup_registry() -> Arc<Mutex<ResourceRegistry>> {
     ResourceRegistryOptions::new()
         .add_type::<refs_resource::TestResource>()
         .create_registry()
@@ -28,7 +29,8 @@ fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
 fn no_dependencies() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     let resource = {
         let mut project = Project::create_new(&project_dir).expect("failed to create a project");
@@ -71,7 +73,8 @@ fn no_dependencies() {
 fn with_dependency() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     let (child_id, parent_id) = {
         let mut project = Project::create_new(&project_dir).expect("failed to create a project");
@@ -138,7 +141,8 @@ fn with_dependency() {
 fn with_derived_dependency() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     {
         let mut project = Project::create_new(&project_dir).expect("failed to create a project");
