@@ -101,7 +101,7 @@
 //! [`.meta`]: ../resources/index.html#resource-meta-file
 //! [`project`]: ../resources/index.html#project-index
 
-// BEGIN - Legion Labs lints v0.5
+// BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
 #![warn(future_incompatible, nonstandard_style, rust_2018_idioms)]
@@ -116,6 +116,7 @@
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
+    clippy::if_not_else,
     clippy::items_after_statements,
     clippy::missing_panics_doc,
     clippy::module_name_repetitions,
@@ -152,7 +153,7 @@
     clippy::unimplemented,
     clippy::verbose_file_reads
 )]
-// END - Legion Labs standard lints v0.5
+// END - Legion Labs lints v0.6
 // crate-specific exceptions:
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 #![warn(missing_docs)]
