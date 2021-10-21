@@ -1,5 +1,5 @@
 <template>
-  <div id="video-container" class="d-flex">
+  <div id="video-container" :style="backgroundURL()" class="d-flex">
     <video id="video" :class="{ show: !loading }"></video>
     <v-progress-linear
       id="loading"
@@ -7,8 +7,8 @@
       color="yellow darken-2"
       v-if="loading"
     ></v-progress-linear>
-    <code id="resolution" v-if="videoResolution" :class="{ show: !loading }"
-      >{{ videoResolution.width }}x{{ videoResolution.height }}</code
+    <code id="resolution" v-if="videoResolution" :class="{ show: !loading }">
+      {{ videoResolution.width }}x{{ videoResolution.height }}</code
     >
     <h3 id="connecting" v-if="stateMsg">
       <v-progress-circular
@@ -18,7 +18,6 @@
       ></v-progress-circular>
       <span>{{ stateMsg }}</span>
     </h3>
-    >
   </div>
 </template>
 
@@ -28,6 +27,12 @@
   background-color: black;
   overflow: hidden;
   position: relative;
+  background: linear-gradient(
+      to top right,
+      rgba(100, 115, 201, 0.7),
+      rgba(25, 32, 72, 0.7)
+    ),
+    no-repeat center/cover var(--bg-url);
 }
 
 #video {
@@ -123,7 +128,7 @@ export default {
     };
   },
   computed: {
-    loading: function () {
+    loading() {
       return (
         !this.videoResolution ||
         !this.desiredResolution ||
@@ -261,6 +266,23 @@ export default {
       this.control_channel.onmessage = async (msg) => {
         const json_msg = new TextDecoder().decode(msg.data);
         on_receive_control_message(json_msg);
+      };
+    },
+    backgroundURL() {
+      var width = 1024;
+      var height = 768;
+
+      if (this.desiredResolution) {
+        var { width, height } = this.desiredResolution;
+      }
+
+      return {
+        "--bg-url":
+          "url(https://source.unsplash.com/random/" +
+          width +
+          "x" +
+          height +
+          "?3d-render)",
       };
     },
   },
