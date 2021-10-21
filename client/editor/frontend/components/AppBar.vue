@@ -1,6 +1,7 @@
 <template>
   <v-app-bar id="app-bar" dark dense clipped-left app>
     <v-app-bar-nav-icon @click="localDrawer = !drawer"></v-app-bar-nav-icon>
+    <v-app-bar-title>Legion Labs Editor</v-app-bar-title>
     <v-spacer></v-spacer>
     <v-btn icon>
       <v-avatar>
