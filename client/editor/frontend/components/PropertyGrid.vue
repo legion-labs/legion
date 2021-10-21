@@ -1,8 +1,11 @@
 <template>
   <div id="property-grid" :style="minWidth" class="d-flex flex-column">
+    <v-subheader>Properties</v-subheader>
     <ResourceSelector v-model="resourceDescription"></ResourceSelector>
+    <v-divider></v-divider>
     <ResourceProperties
       v-if="resourceDescription"
+      class="flex-grow-1"
       :resource-description="resourceDescription"
       @resource-change="$emit('resource-change', $event)"
     ></ResourceProperties>
