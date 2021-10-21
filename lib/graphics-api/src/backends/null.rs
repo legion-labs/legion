@@ -115,6 +115,10 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     fn wait_for_fences(&self, fences: &[&NullFence]) -> GfxResult<()> {
         unimplemented!();
     }
+
+    fn free_gpu_memory(&self) -> GfxResult<()> {
+        unimplemented!();
+    }
 }
 
 //

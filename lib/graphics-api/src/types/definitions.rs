@@ -101,7 +101,7 @@ pub struct BufferElementData {
 }
 
 /// Used to create a `Buffer`
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct BufferDef {
     pub size: u64,
     pub memory_usage: MemoryUsage,
@@ -170,7 +170,7 @@ impl BufferDef {
 }
 
 /// Used to create a `Texture`
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct TextureDef {
     pub extents: Extents3D,
     pub array_length: u32,

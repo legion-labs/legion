@@ -25,7 +25,7 @@ impl VulkanRawImage {
             assert_ne!(self.image, vk::Image::null());
             device_context
                 .allocator()
-                .destroy_image(self.image, &allocation);
+                .destroy_image(self.image, allocation);
             self.image = vk::Image::null();
             log::trace!("destroyed ImageVulkan");
         } else {

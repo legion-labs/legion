@@ -3371,6 +3371,7 @@ name = "legion-graphics-renderer"
 version = "0.1.0"
 dependencies = [
  "legion-graphics-api",
+ "legion-utils",
  "log",
 ]
 
@@ -3494,7 +3495,6 @@ dependencies = [
  "legion-codec-api",
  "legion-ecs",
  "legion-graphics-api",
- "legion-graphics-renderer",
  "legion-window",
  "log",
 ]

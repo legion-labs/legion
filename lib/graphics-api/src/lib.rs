@@ -379,6 +379,8 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<A::ShaderModule>;
 
     fn wait_for_fences(&self, fences: &[&A::Fence]) -> GfxResult<()>;
+
+    fn free_gpu_memory(&self) -> GfxResult<()>;
 }
 
 //
