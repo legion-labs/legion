@@ -9,6 +9,7 @@ use std::io;
 
 use legion_data_runtime::Asset;
 
+use crate::PropertyDescriptor;
 use crate::ResourcePathId;
 
 /// The trait defines a resource that can be stored in a [`Project`].
@@ -37,6 +38,24 @@ pub trait ResourceProcessor {
         &mut self,
         reader: &mut dyn io::Read,
     ) -> io::Result<Box<dyn Any + Send + Sync>>;
+
+    /// Interface defining the resource properties
+    fn get_resource_properties(
+        &self,
+        _resource: &dyn Any,
+    ) -> Result<Vec<PropertyDescriptor>, &'static str> {
+        Ok(vec![])
+    }
+
+    /// Interface defining field serialization by name
+    fn write_property(
+        &self,
+        _resource: &mut dyn Any,
+        _field_name: &str,
+        _field_value: &str,
+    ) -> Result<(), &'static str> {
+        Err("write_property not implemented")
+    }
 }
 
 mod project;
@@ -54,6 +73,9 @@ pub use self::registry::*;
 
 mod handle;
 pub use self::handle::*;
+
+mod resource_handles;
+pub use self::resource_handles::*;
 
 #[cfg(test)]
 pub(crate) mod test_resource;

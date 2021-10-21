@@ -1,6 +1,7 @@
 mod raw_data;
 mod raw_to_offline;
 
+use generic_data_offline::TestEntity;
 use legion_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
@@ -15,6 +16,7 @@ use std::{
     hash::{Hash, Hasher},
     io::BufReader,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
 use self::raw_to_offline::FromRaw;
@@ -27,7 +29,8 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
             .filter(|e| e.file_type().unwrap().is_dir() && e.file_name() == "raw");
         if let Some(raw_dir) = raw_dir.next() {
             let raw_dir = raw_dir.path();
-            let (mut project, mut resources) = setup_project(root_folder);
+            let (mut project, resources) = setup_project(root_folder);
+            let mut resources = resources.lock().unwrap();
 
             let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd"]);
 
@@ -100,7 +103,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
     }
 }
 
-fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
+fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
     let project = match Project::open(root_folder) {
         Ok(project) => Ok(project),
@@ -111,6 +114,7 @@ fn setup_project(root_folder: &Path) -> (Project, ResourceRegistry) {
     let mut registry = ResourceRegistryOptions::new();
     registry = offline_data::register_resource_types(registry);
     registry = legion_graphics_offline::register_resource_types(registry);
+    registry = generic_data_offline::register_resource_types(registry);
     let registry = registry.create_registry();
 
     (project, registry)
@@ -166,6 +170,34 @@ fn create_or_find_default(
         };
         ids.insert(name.clone(), id);
     }
+
+    // Create TestEntity Generic DataContainer
+    {
+        let name: ResourcePathName = "/entity/TEST_ENTITY_NAME.dc".into();
+        let id = {
+            if let Ok(id) = project.find_resource(&name) {
+                id
+            } else {
+                let mut hasher = DefaultHasher::new();
+                name.hash(&mut hasher);
+                let resource_hash = hasher.finish();
+                let kind = TestEntity::TYPE;
+                let id = ResourceId::new(kind, resource_hash);
+                let test_entity_handle = resources.new_resource(kind).unwrap();
+                let test_entity = test_entity_handle.get_mut::<TestEntity>(resources).unwrap();
+                test_entity.test_string = "Editable String Value".into();
+                test_entity.test_float32 = 1.0;
+                test_entity.test_float64 = 2.0;
+                test_entity.test_int = 1337;
+                test_entity.test_position = legion_math::Vec3::new(0.0, 100.0, 0.0);
+                project
+                    .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)
+                    .unwrap()
+            }
+        };
+        ids.insert(name, id);
+    }
+
     ids
 }
 

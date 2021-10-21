@@ -1,8 +1,9 @@
+use std::sync::{Arc, Mutex};
 use std::{any::Any, collections::HashMap, io};
 
 use legion_data_runtime::ResourceType;
 
-use crate::ResourcePathId;
+use crate::{PropertyDescriptor, ResourcePathId};
 
 use super::{OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
 
@@ -45,7 +46,7 @@ impl ResourceRegistryOptions {
     }
 
     /// Creates a new registry with the options specified by `self`.
-    pub fn create_registry(self) -> ResourceRegistry {
+    pub fn create_registry(self) -> Arc<Mutex<ResourceRegistry>> {
         ResourceRegistry::create(self.processors)
     }
 }
@@ -68,14 +69,16 @@ pub struct ResourceRegistry {
 }
 
 impl ResourceRegistry {
-    fn create(processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>) -> Self {
-        Self {
+    fn create(
+        processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
+    ) -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(Self {
             id_generator: 0,
             refcount_channel: crossbeam_channel::unbounded(),
             ref_counts: HashMap::new(),
             resources: HashMap::new(),
             processors,
-        }
+        }))
     }
 
     /// Create a new resource of a given type in a default state.
@@ -194,6 +197,20 @@ impl ResourceRegistry {
         None
     }
 
+    /// Returns the Properties bag of a Resource
+    pub fn get_resource_properties(
+        &self,
+        kind: ResourceType,
+        handle: &ResourceHandleUntyped,
+    ) -> Result<Vec<PropertyDescriptor>, &'static str> {
+        if let Some(Some(resource)) = self.resources.get(&handle.id) {
+            if let Some(processor) = self.processors.get(&kind) {
+                return processor.get_resource_properties(resource.as_ref());
+            }
+        }
+        Err("invalid resource")
+    }
+
     /// Returns the number of loaded resources.
     pub fn len(&self) -> usize {
         self.ref_counts.len()
@@ -288,7 +305,8 @@ mod tests {
 
     #[test]
     fn reference_count_untyped() {
-        let mut resources = ResourceRegistryOptions::new().create_registry();
+        let resources = ResourceRegistryOptions::new().create_registry();
+        let mut resources = resources.lock().unwrap();
 
         {
             let handle = resources
@@ -325,7 +343,8 @@ mod tests {
 
     #[test]
     fn reference_count_typed() {
-        let mut resources = ResourceRegistryOptions::new().create_registry();
+        let resources = ResourceRegistryOptions::new().create_registry();
+        let mut resources = resources.lock().unwrap();
 
         {
             let handle = resources
@@ -364,7 +383,7 @@ mod tests {
     fn create_save_load() {
         let default_content = "default content";
 
-        let mut resources = ResourceRegistryOptions::new()
+        let resources = ResourceRegistryOptions::new()
             .add_type_processor(
                 SampleResource::TYPE,
                 Box::new(SampleProcessor {
@@ -372,6 +391,8 @@ mod tests {
                 }),
             )
             .create_registry();
+
+        let mut resources = resources.lock().unwrap();
 
         let created_handle = resources
             .new_resource(SampleResource::TYPE)

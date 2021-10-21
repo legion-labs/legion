@@ -493,6 +493,7 @@ impl fmt::Debug for Project {
 #[cfg(test)]
 mod tests {
     use std::any::Any;
+    use std::sync::{Arc, Mutex};
     use std::{fs::File, path::Path, str::FromStr};
 
     use legion_data_runtime::{resource, Resource, ResourceType};
@@ -604,10 +605,10 @@ mod tests {
         }
     }
 
-    fn create_actor(project_dir: &Path) -> (Project, ResourceRegistry) {
+    fn create_actor(project_dir: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
         let index_path = Project::root_to_index_path(project_dir);
         let mut project = Project::open(&index_path).unwrap();
-        let mut resources = ResourceRegistryOptions::new()
+        let resources_arc = ResourceRegistryOptions::new()
             .add_type_processor(RESOURCE_TEXTURE, Box::new(NullResourceProc {}))
             .add_type_processor(RESOURCE_MATERIAL, Box::new(NullResourceProc {}))
             .add_type_processor(RESOURCE_GEOMETRY, Box::new(NullResourceProc {}))
@@ -615,6 +616,7 @@ mod tests {
             .add_type_processor(RESOURCE_ACTOR, Box::new(NullResourceProc {}))
             .create_registry();
 
+        let mut resources = resources_arc.lock().unwrap();
         let texture = project
             .add_resource(
                 ResourcePathName::new("albedo.texture"),
@@ -686,7 +688,8 @@ mod tests {
             )
             .unwrap();
 
-        (project, resources)
+        drop(resources);
+        (project, resources_arc)
     }
 
     fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
@@ -795,9 +798,9 @@ mod tests {
             };
 
         let project_dir = setup_test();
-        let (mut project, mut resources) = create_actor(project_dir.path());
+        let (mut project, resources) = create_actor(project_dir.path());
         assert!(project.commit().is_ok());
-        create_sky_material(&mut project, &mut resources);
+        create_sky_material(&mut project, &mut resources.lock().unwrap());
 
         rename_assert(
             &mut project,

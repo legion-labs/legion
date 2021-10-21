@@ -16,6 +16,7 @@ legion-graphics-runtime = { path = "../../lib/graphics-runtime" }
 legion-graphics-offline = { path = "../../lib/graphics-offline" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+generic_data_offline = { path = "../generic_data_offline" }
 
 # Sample data test
 sample-data-offline = { path = "../sample-data-offline", version = "0.1.0" }

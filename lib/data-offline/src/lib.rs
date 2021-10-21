@@ -71,8 +71,10 @@
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 
-pub mod data_container;
 pub mod resource;
 
 mod resourcepathid;
 pub use resourcepathid::*;
+
+mod property_descriptor;
+pub use property_descriptor::*;

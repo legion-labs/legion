@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::{env, vec};
 
 use crate::databuild::CompileOutput;
@@ -19,7 +20,7 @@ use text_resource::{TextResource, TextResourceProc};
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 
-fn setup_registry() -> ResourceRegistry {
+fn setup_registry() -> Arc<Mutex<ResourceRegistry>> {
     ResourceRegistryOptions::new()
         .add_type::<refs_resource::TestResource>()
         .add_type::<text_resource::TextResource>()
@@ -68,7 +69,8 @@ fn create_resource(
 
 fn change_resource(resource_id: ResourceId, project_dir: &Path) {
     let mut project = Project::open(project_dir).expect("failed to open project");
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     let handle = project
         .load_resource(resource_id, &mut resources)
@@ -93,7 +95,8 @@ fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
 fn compile_change_no_deps() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     let (resource_id, resource_handle) = {
         let mut project = Project::create_new(&project_dir).expect("failed to create a project");
@@ -212,7 +215,8 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
     let mut project =
         Project::create_new(project_dir.as_ref()).expect("failed to create a project");
 
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     let res_c = create_resource(
         ResourcePathName::new("C"),
@@ -257,7 +261,8 @@ fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceId; 5] {
 fn intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     let source_magic_value = String::from("47");
 
@@ -466,7 +471,8 @@ fn unnamed_cache_use() {
 fn named_path_cache_use() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     let magic_list = vec![String::from("47"), String::from("198")];
 
@@ -606,7 +612,8 @@ fn named_path_cache_use() {
     // change "text_1" of source resource multitext resource..
     {
         let mut project = Project::open(&project_dir).expect("failed to open project");
-        let mut resources = setup_registry();
+        let resources = setup_registry();
+        let mut resources = resources.lock().unwrap();
 
         let handle = project
             .load_resource(source_id, &mut resources)
@@ -651,7 +658,8 @@ fn named_path_cache_use() {
     // change "text_0" and "text_1" of source resource multitext resource..
     {
         let mut project = Project::open(project_dir).expect("failed to open project");
-        let mut resources = setup_registry();
+        let resources = setup_registry();
+        let mut resources = resources.lock().unwrap();
 
         let handle = project
             .load_resource(source_id, &mut resources)
@@ -726,7 +734,8 @@ fn named_path_cache_use() {
 fn link() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     let parent_id = {
         let mut project = Project::create_new(&project_dir).expect("new project");
@@ -816,7 +825,8 @@ fn link() {
 fn verify_manifest() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
-    let mut resources = setup_registry();
+    let resources = setup_registry();
+    let mut resources = resources.lock().unwrap();
 
     // child_id <- test(child_id) <- parent_id = test(parent_id)
     let parent_resource = {

@@ -57,8 +57,6 @@
 #![allow()]
 #![warn(missing_docs)]
 
-mod editor_codegen;
-mod json_codegen;
 mod offline_codegen;
 mod reflection;
 mod resource_codegen;
@@ -105,12 +103,6 @@ pub fn generate_data_container_code(
                     if let Ok(meta_info) = reflection::get_data_container_info(item_struct) {
                         if *gen_type == GenerationType::OfflineFormat {
                             let out_token = offline_codegen::generate(&meta_info);
-                            gen_file.write_all(out_token.to_string().as_bytes())?;
-
-                            let out_token = json_codegen::generate(&meta_info);
-                            gen_file.write_all(out_token.to_string().as_bytes())?;
-
-                            let out_token = editor_codegen::generate(&meta_info);
                             gen_file.write_all(out_token.to_string().as_bytes())?;
 
                             let out_token = resource_codegen::generate(&meta_info);
