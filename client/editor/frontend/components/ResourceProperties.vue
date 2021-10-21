@@ -13,22 +13,40 @@
     }"
     class="elevation-1"
   >
-    <template #[`item.value`]="props">
-      <ResourcePropertyEditor
-        v-model="props.item.value"
-        :ptype="props.item.ptype"
-        @input="updateResource()"
-      ></ResourcePropertyEditor>
+    <template #[`item.name`]="{ item }">
+      <div class="d-flex">
+        <pre :class="{ changed: !isSetToDefault(item) }">{{ item.name }}</pre>
+        <v-icon
+          small
+          class="reset-to-default"
+          v-if="!isSetToDefault(item)"
+          @click="resetToDefault(item)"
+          title="Reset to default value"
+          >mdi-backup-restore</v-icon
+        >
+      </div>
     </template>
-    <template #[`item.default_value`]="props">
+    <template #[`item.value`]="{ item }">
       <ResourcePropertyEditor
-        v-model="props.item.default_value"
-        :ptype="props.item.ptype"
-        :readonly="true"
+        v-model="item.value"
+        :ptype="item.ptype"
+        @input="updateResource()"
       ></ResourcePropertyEditor>
     </template>
   </v-data-table>
 </template>
+
+<style scoped>
+.reset-to-default {
+  margin-left: 0.5rem;
+}
+
+.changed::after {
+  content: "*";
+  color: red;
+  font-weight: bold;
+}
+</style>
 
 <script>
 import { get_resource_properties } from "~/modules/api";
@@ -54,18 +72,8 @@ export default {
           groupable: false,
         },
         {
-          text: "Type",
-          value: "ptype",
-          groupable: false,
-        },
-        {
           text: "Value",
           value: "value",
-          groupable: false,
-        },
-        {
-          text: "Default",
-          value: "default_value",
           groupable: false,
         },
       ],
@@ -105,6 +113,13 @@ export default {
         this.properties = resp.properties;
         this.loading = false;
       });
+    },
+    isSetToDefault(item) {
+      return JSON.stringify(item.value) == JSON.stringify(item.default_value);
+    },
+    resetToDefault(item) {
+      item.value = JSON.parse(JSON.stringify(item.default_value));
+      this.updateResource();
     },
   },
   mounted() {},

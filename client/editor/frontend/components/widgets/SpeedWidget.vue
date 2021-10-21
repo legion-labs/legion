@@ -8,7 +8,7 @@
     :return-value.sync="localValue"
     v-else
   >
-    <span>{{ localValue }}</span>
+    <pre>{{ localValue }}</pre>
     <template #input>
       <SpeedEditor v-model="localValue"></SpeedEditor>
     </template>

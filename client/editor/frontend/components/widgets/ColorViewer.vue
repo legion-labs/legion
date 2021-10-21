@@ -4,12 +4,12 @@
 
 <style scoped>
 #color {
-  min-height: 1em;
+  height: 1.5em;
+  width: 1.5em;
+  border-radius: 2em;
   display: inline-block;
-  min-width: 4em;
   border: 1px solid silver;
   background-color: var(--bg-color);
-  border-radius: 1em;
 }
 </style>
 
