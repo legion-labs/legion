@@ -52,7 +52,7 @@
     clippy::unimplemented,
     clippy::verbose_file_reads
 )]
-// END - Legion Labs standard lints v0.5
+// END - Legion Labs lints v0.6
 // crate-specific exceptions:
 #![allow(clippy::let_underscore_drop, clippy::needless_pass_by_value)]
 #![warn(missing_docs)]
