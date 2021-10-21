@@ -1,0 +1,23 @@
+name: Build Timings
+
+on:
+  schedule:
+    # Run the job at midnight EDT
+    - cron: "0 4 * * *"
+
+jobs:
+  timings:
+    name: Running a timed build
+    runs-on: [self-hosted, linux, base, build]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build with timings
+        run: make timings
+
+      - name: Upload report
+        uses: actions/upload-artifact@v2
+        with:
+          name: timgings
+          path: ./timings
+          retention-days: 60

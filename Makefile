@@ -6,6 +6,11 @@ export RUSTDOCFLAGS=-Zinstrument-coverage -Zunstable-options --persist-doctests 
 export LLVM_PROFILE_FILE=legion-%p-%m.profraw
 endif
 
+ifeq ($(MAKECMDGOALS),timings)
+export RUSTC_BOOTSTRAP=1
+endif
+
+
 # make takes the first target as the default target, so please keep it at the top
 # all the checks used in the CI
 check: check-format check-build check-clippy check-deps check-dockerize
@@ -74,9 +79,24 @@ grcov:
 	--output-path ./target/debug/coverage/
 	find . -name "*.profraw" -type f -delete
 
+timings:
+	rm -rf timings
+	mkdir timings
+	echo "<html><head><title>Cargo Build Timings</title></head><body><h1>Build Timings</h1>" > timings/index.html 
+	for TARGET in runtime-srv editor-srv editor-client ; do \
+		cargo clean && \
+		cargo build --bin $$TARGET -Z timings=html && \
+		mv cargo-timing.html timings/$$TARGET.html && \
+		echo "<h3><a href=\"./$$TARGET.html\"> * $$TARGET </a></h3>" >> timings/index.html; \
+		cargo build --bin $$TARGET --release -Z timings=html && \
+		mv cargo-timing.html timings/$$TARGET-release.html && \
+		echo "<h3><a href=\"./$$TARGET-release.html\"> * $$TARGET - Release </a></h3>" >> timings/index.html ;\
+	done
+	rm cargo-timing-*
+	echo "</body></html>" >> timings/index.html 
+
 api-doc:
 	cargo doc --workspace --no-deps --all-features
-	echo "<meta http-equiv=\"refresh\" content=\"0; URL=legion_app/index.html\"/>" > target/doc/index.html
 
 book:
 	mdbook build ./doc/
@@ -93,4 +113,4 @@ dockerize-push:
 clean:
 	cargo clean
 
-.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release cov grcov api book dockerize dockerize-deploy clean
+.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release cov grcov timings api-doc book dockerize dockerize-deploy clean
