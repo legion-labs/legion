@@ -8,7 +8,19 @@
     v-else-if="ptype == 'speed'"
     v-model="localValue"
     :readonly="readonly"
+    direct
   ></SpeedWidget>
+  <BooleanWidget
+    v-else-if="isBooleanType(ptype)"
+    v-model="localValue"
+    :readonly="readonly"
+  ></BooleanWidget>
+  <NumberWidget
+    v-else-if="isNumberType(ptype)"
+    v-model="localValue"
+    :readonly="readonly"
+    direct
+  ></NumberWidget>
   <JSONWidget v-else v-model="localValue" :readonly="readonly"></JSONWidget>
 </template>
 
@@ -31,6 +43,14 @@ export default {
       set(val) {
         this.$emit("input", val);
       },
+    },
+  },
+  methods: {
+    isBooleanType(ptype) {
+      return ["bool"].includes(ptype);
+    },
+    isNumberType(ptype) {
+      return ["u32"].includes(ptype);
     },
   },
 };

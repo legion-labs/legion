@@ -24,6 +24,7 @@
 }
 
 #color > code {
+  cursor: text;
   border: 2px solid #333;
   border-left: 0;
   border-radius: 0;
@@ -48,6 +49,22 @@ export default {
         "--bg-color": this.value,
       };
     },
+  },
+  mounted() {
+    var self = this;
+
+    document.querySelector("#color > code").onclick = function (e) {
+      e.stopPropagation();
+    };
+
+    document.querySelector("#color > code").ondblclick = function (e) {
+      e.stopPropagation();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(this);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    };
   },
 };
 </script>

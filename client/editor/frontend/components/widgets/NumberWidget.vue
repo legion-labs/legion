@@ -1,6 +1,10 @@
 <template>
   <pre v-if="readonly">{{ localValue }}</pre>
-  <SpeedEditor v-else-if="direct" v-model="localValue"></SpeedEditor>
+  <v-text-field
+    v-else-if="direct"
+    type="number"
+    v-model="localValue"
+  ></v-text-field>
   <v-edit-dialog
     large
     persistent
@@ -11,14 +15,14 @@
   >
     <pre>{{ localValue }}</pre>
     <template #input>
-      <SpeedEditor v-model="localValue"></SpeedEditor>
+      <v-text-field type="number" v-model="localValue"></v-text-field>
     </template>
   </v-edit-dialog>
 </template>
 
 <script>
 export default {
-  name: "SpeedWidget",
+  name: "NumberWidget",
   props: {
     value: Number,
     readonly: {
