@@ -38,8 +38,8 @@
         @input="updateResource()"
       ></ResourcePropertyEditor>
     </template>
-    <template #expanded-item="{ item }">
-      <td class="text-start">Default value:</td>
+    <template #expanded-item="{ headers, item }">
+      <td class="text-start" :colspan="headers.length - 2">Default value:</td>
       <td class="text-center">
         <ResourcePropertyEditor
           v-model="item.default_value"
