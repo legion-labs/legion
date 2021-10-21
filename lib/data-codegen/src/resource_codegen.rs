@@ -169,7 +169,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
             fn write_resource(&mut self, resource: &dyn Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
                 writer.write_all(b"{\n\t\"_class\" : \"")?;
-                writer.write_all(#class_name.as_bytes())?;
+                writer.write_all(#class_name.to_string().as_bytes())?;
                 writer.write_all(b"\"")?;
                 #(#offline_fields_json_writes)*
                 writer.write_all(b"\n}\n")?;
