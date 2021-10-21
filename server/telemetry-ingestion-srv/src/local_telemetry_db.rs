@@ -26,6 +26,7 @@ async fn create_processes_table(connection: &mut sqlx::AnyConnection) -> Result<
                   cpu_brand VARCHAR(255), 
                   tsc_frequency BIGINT,
                   start_time VARCHAR(255),
+                  start_ticks BIGINT,
                   insert_date DATE);
          CREATE UNIQUE INDEX process_id on processes(process_id);
          CREATE INDEX process_insert_date on processes(insert_date);";

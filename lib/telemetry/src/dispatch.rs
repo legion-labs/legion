@@ -64,6 +64,7 @@ impl Dispatch {
 
     fn on_init_process(&mut self) {
         use raw_cpuid::CpuId;
+        let start_ticks = now();
         let start_time = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, false);
         let cpuid = CpuId::new();
         let cpu_brand = cpuid
@@ -88,6 +89,7 @@ impl Dispatch {
             cpu_brand,
             tsc_frequency,
             start_time,
+            start_ticks,
         };
         self.sink
             .on_sink_event(TelemetrySinkEvent::OnInitProcess(process_info));

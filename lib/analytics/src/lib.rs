@@ -78,7 +78,7 @@ pub async fn processes_by_name_substring(
 ) -> Result<Vec<legion_telemetry::ProcessInfo>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
-        "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time
+        "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks
          FROM processes
          WHERE exe LIKE ?
          ORDER BY start_time DESC
@@ -89,6 +89,7 @@ pub async fn processes_by_name_substring(
     .await?;
     for r in rows {
         let tsc_frequency: i64 = r.get("tsc_frequency");
+        let start_ticks: i64 = r.get("start_ticks");
         let p = legion_telemetry::ProcessInfo {
             process_id: r.get("process_id"),
             exe: r.get("exe"),
@@ -99,6 +100,7 @@ pub async fn processes_by_name_substring(
             cpu_brand: r.get("cpu_brand"),
             tsc_frequency: tsc_frequency as u64,
             start_time: r.get("start_time"),
+            start_ticks: start_ticks as u64,
         };
         processes.push(p);
     }
@@ -110,7 +112,7 @@ pub async fn find_process(
     process_id: String,
 ) -> Result<legion_telemetry::ProcessInfo> {
     let row = sqlx::query(
-        "SELECT exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time
+        "SELECT exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks
          FROM processes
          WHERE process_id = ?;",
     )
@@ -118,6 +120,7 @@ pub async fn find_process(
     .fetch_one(connection)
     .await?;
     let tsc_frequency: i64 = row.get("tsc_frequency");
+    let start_ticks: i64 = row.get("start_ticks");
     let p = legion_telemetry::ProcessInfo {
         process_id,
         exe: row.get("exe"),
@@ -128,6 +131,7 @@ pub async fn find_process(
         cpu_brand: row.get("cpu_brand"),
         tsc_frequency: tsc_frequency as u64,
         start_time: row.get("start_time"),
+        start_ticks: start_ticks as u64,
     };
     Ok(p)
 }
@@ -137,7 +141,7 @@ pub async fn fetch_recent_processes(
 ) -> Result<Vec<legion_telemetry::ProcessInfo>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
-        "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time
+        "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks
          FROM processes
          ORDER BY start_time DESC
          LIMIT 100;",
@@ -146,6 +150,7 @@ pub async fn fetch_recent_processes(
     .await?;
     for r in rows {
         let tsc_frequency: i64 = r.get("tsc_frequency");
+        let start_ticks: i64 = r.get("start_ticks");
         let p = legion_telemetry::ProcessInfo {
             process_id: r.get("process_id"),
             exe: r.get("exe"),
@@ -156,6 +161,7 @@ pub async fn fetch_recent_processes(
             cpu_brand: r.get("cpu_brand"),
             tsc_frequency: tsc_frequency as u64,
             start_time: r.get("start_time"),
+            start_ticks: start_ticks as u64,
         };
         processes.push(p);
     }

@@ -26,6 +26,7 @@ fn build_web_app() {
     } else {
         std::fs::create_dir_all("frontend/dist").unwrap();
         std::fs::write("frontend/dist/index.html", "Yarn missing from path").unwrap();
+        println!("cargo:rerun-if-env-changed=PATH");
     }
 }
 

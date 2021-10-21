@@ -168,6 +168,8 @@ pub async fn print_edition_latency(
         client_frames_reception_timestamp.insert(frame_id, time);
     }
 
+    let start_client_process = client_process_info.start_ticks;
+    dbg!(start_client_process);
     let edition_commands =
         find_client_edition_commands(connection, data_path, editor_client_process_id).await?;
     println!("\nclient command latencies:");
@@ -179,10 +181,13 @@ pub async fn print_edition_latency(
                 if let Some(client_reception_time) =
                     client_frames_reception_timestamp.get(&frame_id)
                 {
+                    let time_of_command = ((client_command_timestamp - start_client_process) * 1000)
+                        as f64
+                        / (client_process_info.tsc_frequency as f64);
                     let latency = ((client_reception_time - client_command_timestamp) * 1000)
                         as f64
                         / (client_process_info.tsc_frequency as f64);
-                    println!("{}", latency);
+                    println!("{},{}", time_of_command, latency);
                 }
             }
         }
