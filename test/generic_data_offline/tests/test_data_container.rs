@@ -98,17 +98,17 @@ fn test_write_field_by_name() {
     let processor = TestEntityProcessor {};
 
     processor
-        .write_property(&mut entity, "test_string", "New Value")
+        .write_property(&mut entity, "test_string", "\"New Value\"")
         .unwrap();
     assert_eq!(entity.test_string, "New Value");
 
     processor
-        .write_property(&mut entity, "test_position", "1.1, -2.2, 3.3")
+        .write_property(&mut entity, "test_position", "[1.1, -2.2, 3.3]")
         .unwrap();
     assert_eq!(entity.test_position, Vec3::new(1.1, -2.2, 3.3));
 
     processor
-        .write_property(&mut entity, "test_rotation", "0,1,0,0")
+        .write_property(&mut entity, "test_rotation", "[0,1,0,0]")
         .unwrap();
     assert_eq!(entity.test_rotation, Quat::from_xyzw(0.0, 1.0, 0.0, 0.0));
 
@@ -133,7 +133,7 @@ fn test_write_field_by_name() {
     assert_eq!(entity.test_int, -10);
 
     processor
-        .write_property(&mut entity, "test_blob", "\x04\x05\x06\x07")
+        .write_property(&mut entity, "test_blob", "[4,5,6,7]")
         .unwrap();
     assert_eq!(entity.test_blob, vec![4, 5, 6, 7]);
 }

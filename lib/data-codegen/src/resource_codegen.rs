@@ -109,7 +109,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
         &data_container_info.members,
     );
 
-    let offline_name_as_byte_string = Literal::byte_string(offline_name.as_bytes());
+    let class_name = &data_container_info.name;
     let offline_fields_json_reads = generate_offline_json_reads(&data_container_info.members);
     let offline_fields_json_writes =
         generate_offline_json_writes(&offline_default_instance, &data_container_info.members);
@@ -144,7 +144,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
                 let mut instance = #offline_identifier { ..#offline_identifier::default()};
 
                 let values : serde_json::Value = serde_json::from_reader(reader).map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
-                if values["_class"] == #offline_name {
+                if values["_class"] == #class_name {
                     #(#offline_fields_json_reads)*
                 }
                 else {
@@ -169,7 +169,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
             fn write_resource(&mut self, resource: &dyn Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
                 writer.write_all(b"{\n\t\"_class\" : \"")?;
-                writer.write_all(#offline_name_as_byte_string)?;
+                writer.write_all(#class_name.as_bytes())?;
                 writer.write_all(b"\"")?;
                 #(#offline_fields_json_writes)*
                 writer.write_all(b"\n}\n")?;

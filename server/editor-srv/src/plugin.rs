@@ -14,7 +14,7 @@ impl Plugin for EditorPlugin {
         let registry = app
             .world
             .get_resource::<Arc<Mutex<ResourceRegistry>>>()
-            .expect("the editor plugin requires Project resource");
+            .expect("the editor plugin requires ResourceRegistry resource");
 
         let resource_handles = app
             .world

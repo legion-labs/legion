@@ -174,22 +174,28 @@ fn create_or_find_default(
     // Create TestEntity Generic DataContainer
     {
         let name: ResourcePathName = "/entity/TEST_ENTITY_NAME.dc".into();
-        let mut hasher = DefaultHasher::new();
-        name.hash(&mut hasher);
-        let resource_hash = hasher.finish();
-        let kind = TestEntity::TYPE;
-        let id = ResourceId::new(kind, resource_hash);
-        let test_entity_handle = resources.new_resource(kind).unwrap();
-        let test_entity = test_entity_handle.get_mut::<TestEntity>(resources).unwrap();
-        test_entity.test_string = "Editable String Value".into();
-        test_entity.test_float32 = 1.0;
-        test_entity.test_float64 = 2.0;
-        test_entity.test_int = 1337;
-        test_entity.test_position = legion_math::Vec3::new(0.0, 100.0, 0.0);
-        let id = project
-            .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)
-            .unwrap();
-        ids.insert(name.clone(), id);
+        let id = {
+            if let Ok(id) = project.find_resource(&name) {
+                id
+            } else {
+                let mut hasher = DefaultHasher::new();
+                name.hash(&mut hasher);
+                let resource_hash = hasher.finish();
+                let kind = TestEntity::TYPE;
+                let id = ResourceId::new(kind, resource_hash);
+                let test_entity_handle = resources.new_resource(kind).unwrap();
+                let test_entity = test_entity_handle.get_mut::<TestEntity>(resources).unwrap();
+                test_entity.test_string = "Editable String Value".into();
+                test_entity.test_float32 = 1.0;
+                test_entity.test_float64 = 2.0;
+                test_entity.test_int = 1337;
+                test_entity.test_position = legion_math::Vec3::new(0.0, 100.0, 0.0);
+                project
+                    .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)
+                    .unwrap()
+            }
+        };
+        ids.insert(name, id);
     }
 
     ids
