@@ -1,3 +1,4 @@
+use legion_graphics_data::Color;
 use legion_math::prelude::*;
 
 #[data_container()]
@@ -5,6 +6,9 @@ pub struct TestEntity {
     // Default with string literal
     #[legion(default = "string literal", readonly, category = "Name")]
     test_string: String,
+
+    #[legion(default = (255,0,0,255))]
+    test_color: Color,
 
     // Default with Tuple()
     #[legion(default=(0.0,0.0,0.0), hidden)]

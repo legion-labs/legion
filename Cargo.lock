@@ -2138,6 +2138,7 @@ dependencies = [
  "legion-data-codegen",
  "legion-data-offline",
  "legion-data-runtime",
+ "legion-graphics-data",
  "legion-math",
  "serde",
  "serde_json",
@@ -2151,6 +2152,7 @@ dependencies = [
  "lazy_static",
  "legion-data-codegen",
  "legion-data-runtime",
+ "legion-graphics-data",
  "legion-math",
  "serde",
 ]
@@ -3177,6 +3179,13 @@ dependencies = [
  "raw-window-handle",
  "serde",
  "vk-mem",
+]
+
+[[package]]
+name = "legion-graphics-data"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

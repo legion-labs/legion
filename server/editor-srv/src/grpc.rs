@@ -107,7 +107,7 @@ impl Editor for GRPCServer {
                     .iter()
                     .map(|property| ResourceProperty {
                         name: property.name.into(),
-                        ptype: property.type_name.into(),
+                        ptype: property.type_name.to_lowercase(),
                         group: property.group.to_string(),
                         default_value: property.default_value.clone(),
                         value: property.value.clone(),
