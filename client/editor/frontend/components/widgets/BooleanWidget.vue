@@ -1,6 +1,15 @@
 <template>
-  <v-switch flat :disabled="readonly" v-model="localValue"></v-switch>
+  <span>
+    <v-switch dense :disabled="readonly" v-model="localValue"></v-switch>
+  </span>
 </template>
+
+<style scoped>
+span {
+  display: inline-block;
+  margin: auto;
+}
+</style>
 
 <script>
 export default {

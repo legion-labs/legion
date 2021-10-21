@@ -1,5 +1,6 @@
 <template>
   <v-data-table
+    id="resource-properties"
     :headers="headers"
     :items="properties"
     :items-per-page="-1"
@@ -53,6 +54,11 @@
 </template>
 
 <style scoped>
+#resource-properties {
+  max-height: 100%;
+  overflow: auto;
+}
+
 .reset-to-default {
   margin-left: 0.5rem;
 }

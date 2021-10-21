@@ -19,8 +19,17 @@
     v-else-if="isNumberType(ptype)"
     v-model="localValue"
     :readonly="readonly"
-    direct
   ></NumberWidget>
+  <StringWidget
+    v-else-if="isStringType(ptype)"
+    v-model="localValue"
+    :readonly="readonly"
+  ></StringWidget>
+  <VecWidget
+    v-else-if="isVecType(ptype)"
+    v-model="localValue"
+    :readonly="readonly"
+  ></VecWidget>
   <JSONWidget v-else v-model="localValue" :readonly="readonly"></JSONWidget>
 </template>
 
@@ -47,10 +56,20 @@ export default {
   },
   methods: {
     isBooleanType(ptype) {
+      ptype = ptype.toLowerCase();
       return ["bool"].includes(ptype);
     },
     isNumberType(ptype) {
-      return ["u32"].includes(ptype);
+      ptype = ptype.toLowerCase();
+      return ["i32", "u32", "f32", "f64"].includes(ptype);
+    },
+    isStringType(ptype) {
+      ptype = ptype.toLowerCase();
+      return ["string"].includes(ptype);
+    },
+    isVecType(ptype) {
+      ptype = ptype.toLowerCase();
+      return ["vec3", "quat"].includes(ptype);
     },
   },
 };

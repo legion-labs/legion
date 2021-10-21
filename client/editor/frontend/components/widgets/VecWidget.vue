@@ -1,6 +1,6 @@
 <template>
-  <pre v-if="readonly">{{ localValue }}</pre>
-  <NumberEditor v-else-if="direct" v-model="localValue"></NumberEditor>
+  <VecViewer v-if="readonly" v-model="localValue"></VecViewer>
+  <VecEditor v-else-if="direct" v-model="localValue"></VecEditor>
   <v-edit-dialog
     large
     persistent
@@ -9,18 +9,18 @@
     :return-value.sync="localValue"
     v-else
   >
-    <pre>{{ localValue }}</pre>
+    <VecViewer v-model="localValue"></VecViewer>
     <template #input>
-      <NumberEditor v-model="localValue"></NumberEditor>
+      <VecEditor v-model="localValue"></VecEditor>
     </template>
   </v-edit-dialog>
 </template>
 
 <script>
 export default {
-  name: "NumberWidget",
+  name: "VecWidget",
   props: {
-    value: Number,
+    value: Array,
     readonly: {
       type: Boolean,
       default: false,
