@@ -10,6 +10,14 @@
     <code id="resolution" v-if="videoResolution" :class="{ show: !loading }"
       >{{ videoResolution.width }}x{{ videoResolution.height }}</code
     >
+    <h3 id="connecting" v-if="stateMsg">
+      <v-progress-circular
+        indeterminate
+        color="white"
+        :size="30"
+      ></v-progress-circular>
+      <span>{{ stateMsg }}</span>
+    </h3>
     >
   </div>
 </template>
@@ -63,6 +71,30 @@
 #resolution.show {
   opacity: 0.5;
 }
+
+#connecting {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 48%;
+  text-align: center;
+  color: silver;
+  animation: glow 1s infinite alternate;
+}
+
+#connecting .v-progress-circular + span {
+  margin-left: 1em;
+}
+
+@keyframes glow {
+  from {
+    opacity: 0.2;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
 </style>
 
 <script scoped>
@@ -87,6 +119,7 @@ export default {
       pc: null,
       video_channel: null,
       control_channel: null,
+      stateMsg: null,
     };
   },
   computed: {
@@ -103,6 +136,7 @@ export default {
     const videoElement = document.getElementById("video");
 
     this.initialize(videoElement);
+    this.stateMsg = "Connecting...";
   },
   methods: {
     initialize(videoElement) {
@@ -155,6 +189,7 @@ export default {
             videoElement.load();
 
             this.videoResolution = null;
+            this.stateMsg = "Reconnecting...";
 
             this.initialize(videoElement);
           }, 600);
@@ -170,6 +205,7 @@ export default {
 
         console.log("Video resolution is now:", width, "x", height, ".");
         this.videoResolution = { width: width, height: height };
+        this.stateMsg = null;
 
         observer.observe(videoElement.parentElement);
       });
@@ -184,6 +220,8 @@ export default {
 
           console.log("Desired resolution is now:", width, "x", height, ".");
           this.desiredResolution = { width: width, height: height };
+
+          this.stateMsg = "Resizing...";
 
           this.video_channel.send(
             JSON.stringify({
