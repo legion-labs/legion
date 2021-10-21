@@ -163,9 +163,9 @@ impl AssetRegistryOptions {
             inner: UnsafeCell::new(Inner {
                 assets: HashMap::new(),
                 load_errors: HashMap::new(),
+                load_event_senders: Vec::new(),
             }),
             loader,
-            load_event_channel: crossbeam_channel::unbounded(),
             load_thread: Cell::new(None),
         });
 
@@ -188,6 +188,7 @@ impl AssetRegistryOptions {
 struct Inner {
     assets: HashMap<ResourceId, Box<dyn Any + Send + Sync>>,
     load_errors: HashMap<ResourceId, io::ErrorKind>,
+    load_event_senders: Vec<crossbeam_channel::Sender<ResourceLoadEvent>>,
 }
 
 /// Registry of all loaded [`Resource`]s.
@@ -205,14 +206,11 @@ pub struct AssetRegistry {
     rw_guard: AtomicIsize,
     inner: UnsafeCell<Inner>,
     loader: AssetLoaderStub,
-    load_event_channel: (
-        crossbeam_channel::Sender<ResourceLoadEvent>,
-        crossbeam_channel::Receiver<ResourceLoadEvent>,
-    ),
     load_thread: Cell<Option<JoinHandle<()>>>,
 }
 
 /// A resource loading event is emitted when a resource is loaded, unloaded, or loading fails
+#[derive(Clone, Copy)]
 pub enum ResourceLoadEvent {
     /// Successful resource load, resulting from either a handle load, or the loading of a dependency
     Loaded(ResourceId),
@@ -309,36 +307,41 @@ impl AssetRegistry {
 
     /// Unloads assets based on their reference counts.
     pub fn update(&self) {
-        let mut inner = self.write_inner();
-        for removed_id in self.loader.collect_dropped_handles() {
-            inner.load_errors.remove(&removed_id);
-            inner.assets.remove(&removed_id);
-            self.loader.unload(removed_id);
+        let mut load_events = Vec::new();
+
+        {
+            let mut inner = self.write_inner();
+            for removed_id in self.loader.collect_dropped_handles() {
+                inner.load_errors.remove(&removed_id);
+                inner.assets.remove(&removed_id);
+                self.loader.unload(removed_id);
+            }
+
+            while let Some(result) = self.loader.try_result() {
+                // todo: add success/failure callbacks using the provided LoadId.
+                match result {
+                    LoaderResult::Loaded(asset_id, asset, _load_id) => {
+                        inner.assets.insert(asset_id, asset);
+                        load_events.push(ResourceLoadEvent::Loaded(asset_id));
+                    }
+                    LoaderResult::Unloaded(asset_id) => {
+                        inner.assets.remove(&asset_id);
+                        load_events.push(ResourceLoadEvent::Unloaded(asset_id));
+                    }
+                    LoaderResult::LoadError(asset_id, _load_id, error_kind) => {
+                        inner.load_errors.insert(asset_id, error_kind);
+                        load_events.push(ResourceLoadEvent::LoadError(asset_id));
+                    }
+                }
+            }
         }
 
-        while let Some(result) = self.loader.try_result() {
-            // todo: add success/failure callbacks using the provided LoadId.
-            match result {
-                LoaderResult::Loaded(asset_id, asset, _load_id) => {
-                    inner.assets.insert(asset_id, asset);
-                    self.load_event_channel
-                        .0
-                        .send(ResourceLoadEvent::Loaded(asset_id))
-                        .unwrap();
-                }
-                LoaderResult::Unloaded(asset_id) => {
-                    inner.assets.remove(&asset_id);
-                    self.load_event_channel
-                        .0
-                        .send(ResourceLoadEvent::Unloaded(asset_id))
-                        .unwrap();
-                }
-                LoaderResult::LoadError(asset_id, _load_id, error_kind) => {
-                    inner.load_errors.insert(asset_id, error_kind);
-                    self.load_event_channel
-                        .0
-                        .send(ResourceLoadEvent::LoadError(asset_id))
-                        .unwrap();
+        {
+            // broadcast load events
+            let inner = self.read_inner();
+            for sender in &inner.load_event_senders {
+                for event in &load_events {
+                    sender.send(*event).unwrap();
                 }
             }
         }
@@ -350,8 +353,10 @@ impl AssetRegistry {
 
     /// Subscribe to load events, to know when resources are loaded and unloaded.
     /// Returns a channel receiver that will receive `ResourceLoadEvent`s.
-    pub fn receive_load_events(&self) -> crossbeam_channel::Receiver<ResourceLoadEvent> {
-        self.load_event_channel.1.clone()
+    pub fn subscribe_to_load_events(&self) -> crossbeam_channel::Receiver<ResourceLoadEvent> {
+        let (sender, receiver) = crossbeam_channel::unbounded();
+        self.write_inner().load_event_senders.push(sender);
+        receiver
     }
 }
 

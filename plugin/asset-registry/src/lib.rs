@@ -98,7 +98,7 @@ impl Plugin for AssetRegistryPlugin {
                     .add_device_cas(Box::new(content_store), manifest)
                     .create();
 
-                let load_events = registry.receive_load_events();
+                let load_events = registry.subscribe_to_load_events();
 
                 app.insert_resource(registry)
                     .insert_resource(AssetLoadingStates::default())
