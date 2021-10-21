@@ -8,6 +8,7 @@
     group-by="group"
     show-group-by
     hide-default-footer
+    show-expand
     :footer-props="{
       disableItemsPerPage: true,
     }"
@@ -15,7 +16,11 @@
   >
     <template #[`item.name`]="{ item }">
       <div class="d-flex">
-        <pre :class="{ changed: !isSetToDefault(item) }">{{ item.name }}</pre>
+        <pre
+          :class="{ changed: !isSetToDefault(item) }"
+          :title="'Property of type ' + item.ptype"
+          >{{ item.name }}</pre
+        >
         <v-icon
           small
           class="reset-to-default"
@@ -32,6 +37,17 @@
         :ptype="item.ptype"
         @input="updateResource()"
       ></ResourcePropertyEditor>
+    </template>
+    <template #expanded-item="{ item }">
+      <td class="text-start">Default value:</td>
+      <td class="text-center">
+        <ResourcePropertyEditor
+          v-model="item.default_value"
+          :ptype="item.ptype"
+          readonly
+          class="flex-grow-1"
+        ></ResourcePropertyEditor>
+      </td>
     </template>
   </v-data-table>
 </template>
@@ -76,6 +92,9 @@ export default {
           value: "value",
           align: "center",
           groupable: false,
+        },
+        {
+          value: "data-table-expand",
         },
       ],
       properties: [],

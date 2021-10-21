@@ -1,15 +1,32 @@
 <template>
-  <div id="color" :style="bgColor" :tile="localValue"></div>
+  <span id="color">
+    <span :style="bgColor" :tile="localValue"></span
+    ><code>{{ localValue }}</code>
+  </span>
 </template>
 
 <style scoped>
 #color {
   height: 1.5em;
-  width: 1.5em;
-  border-radius: 2em;
+  line-height: 100%;
+}
+
+#color > * {
+  height: inherit;
   display: inline-block;
-  border: 1px solid silver;
+  vertical-align: middle;
+}
+
+#color > span {
+  width: 1.5em;
+  border: 2px solid #333;
   background-color: var(--bg-color);
+}
+
+#color > code {
+  border: 2px solid #333;
+  border-left: 0;
+  border-radius: 0;
 }
 </style>
 

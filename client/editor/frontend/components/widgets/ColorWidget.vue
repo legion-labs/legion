@@ -1,5 +1,5 @@
 <template>
-  <ColorViewer v-model="localValue" v-if="readonly"></ColorViewer>
+  <ColorViewer v-model="localValue" readonly v-if="readonly"></ColorViewer>
   <v-edit-dialog
     large
     persistent
