@@ -1,5 +1,4 @@
-//! The resource registry plugin provides loading of offline resources.
-//!
+//! `Transaction` system
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -56,46 +55,22 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 #![allow()]
+#![allow(clippy::missing_errors_doc)]
+#![warn(missing_docs)]
 
-mod settings;
+mod data_manager;
+pub use data_manager::*;
 
-pub use settings::ResourceRegistrySettings;
+mod transaction;
+pub use transaction::Transaction;
+pub(crate) use transaction::TransactionOperation;
 
-use legion_app::Plugin;
-use legion_data_offline::resource::{Project, ResourceRegistryOptions};
-use legion_data_transaction::DataManager;
-use legion_ecs::prelude::*;
-use sample_data_offline as offline_data;
+mod lock_context;
+pub use lock_context::LockContext;
 
-use std::sync::{Arc, Mutex};
+mod create_resource_operation;
+mod delete_resource_operation;
+mod update_property_operation;
 
-#[derive(Default)]
-pub struct ResourceRegistryPlugin {}
-
-impl Plugin for ResourceRegistryPlugin {
-    fn build(&self, app: &mut legion_app::App) {
-        if let Some(settings) = app.world.get_resource::<ResourceRegistrySettings>() {
-            if let Ok(project) = Project::open(&settings.root_folder) {
-                // register resource types
-                let mut registry = ResourceRegistryOptions::new();
-                registry = offline_data::register_resource_types(registry);
-                registry = legion_graphics_offline::register_resource_types(registry);
-                registry = generic_data_offline::register_resource_types(registry);
-                let registry = registry.create_registry();
-                let project = Arc::new(Mutex::new(project));
-                let data_manager = Arc::new(Mutex::new(DataManager::new(project, registry)));
-
-                app.insert_resource(data_manager)
-                    .add_startup_system(Self::setup);
-            }
-        }
-    }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-impl ResourceRegistryPlugin {
-    fn setup(data_manager: ResMut<'_, Arc<Mutex<DataManager>>>) {
-        let mut data_manager = data_manager.lock().unwrap();
-        data_manager.load_all_resources();
-    }
-}
+#[cfg(test)]
+pub(crate) mod test_transaction;

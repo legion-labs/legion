@@ -1863,6 +1863,7 @@ dependencies = [
  "legion-codec-api",
  "legion-data-offline",
  "legion-data-runtime",
+ "legion-data-transaction",
  "legion-editor-proto",
  "legion-grpc",
  "legion-mp4",
@@ -2360,10 +2361,12 @@ dependencies = [
 name = "generic_data_offline"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "lazy_static",
  "legion-data-codegen",
  "legion-data-offline",
  "legion-data-runtime",
+ "legion-data-transaction",
  "legion-graphics-data",
  "legion-math",
  "legion-utils",
@@ -2375,6 +2378,7 @@ dependencies = [
 name = "generic_data_runtime"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bincode",
  "lazy_static",
  "legion-data-codegen",
@@ -3386,6 +3390,7 @@ dependencies = [
 name = "legion-data-offline"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "crossbeam-channel",
  "hex",
  "legion-content-store",
@@ -3395,6 +3400,8 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -3419,6 +3426,23 @@ version = "0.1.0"
 dependencies = [
  "quote",
  "syn",
+]
+
+[[package]]
+name = "legion-data-transaction"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "generic_data_offline",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-utils",
+ "log",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -3688,6 +3712,7 @@ dependencies = [
  "legion-app",
  "legion-data-offline",
  "legion-data-runtime",
+ "legion-data-transaction",
  "legion-ecs",
  "legion-graphics-offline",
  "sample-data-offline",

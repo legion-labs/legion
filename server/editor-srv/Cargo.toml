@@ -14,6 +14,7 @@ legion-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
 legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+legion-data-transaction = { path = "../../lib/data-transaction", version = "0.1.0" }
 legion-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
 legion-resource-registry = { path = "../../plugin/resource-registry", version = "0.1.0" }
 legion-streamer = { path = "../../plugin/streamer", version = "0.1.0" }

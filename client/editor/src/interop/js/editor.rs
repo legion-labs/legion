@@ -65,6 +65,16 @@ pub struct JSSearchResourcesResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JSUndoTransactionResponse {
+    pub transaction_id: i32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JSRedoTransactionResponse {
+    pub transaction_id: i32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct JSGetResourcePropertiesRequest {
     pub id: String,
 }

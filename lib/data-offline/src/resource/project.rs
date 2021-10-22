@@ -294,6 +294,24 @@ impl Project {
         Ok(id)
     }
 
+    /// Delete the resource+meta files, remove from Registry and Flush index
+    pub fn delete_resource(&mut self, id: ResourceId) -> Result<(), Error> {
+        let resource_path = self.resource_path(id);
+        let metadata_path = self.metadata_path(id);
+
+        std::fs::remove_file(resource_path).map_err(Error::IOError)?;
+        std::fs::remove_file(metadata_path).map_err(Error::IOError)?;
+
+        if let Some(pos) = self.db.local_resources.iter().position(|x| *x == id) {
+            self.db.local_resources.remove(pos);
+        }
+
+        if let Some(pos) = self.db.remote_resources.iter().position(|x| *x == id) {
+            self.db.remote_resources.remove(pos);
+        }
+        Ok(())
+    }
+
     /// Writes the resource behind `handle` from memory to disk and updates the corresponding .meta file.
     pub fn save_resource(
         &mut self,
