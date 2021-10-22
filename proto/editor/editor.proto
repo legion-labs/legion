@@ -42,14 +42,16 @@ message ResourceProperty {
 
 message UpdateResourcePropertiesRequest {
   string id = 1;
-  repeated ResourcePropertyUpdate propertyUpdates = 2;
+  uint32 version = 2;
+  repeated ResourcePropertyUpdate propertyUpdates = 3;
 }
 
 message UpdateResourcePropertiesResponse {
-  repeated ResourceProperty properties = 1;
+  uint32 version = 1;
+  repeated ResourcePropertyUpdate updatedProperties = 2;
 }
 
 message ResourcePropertyUpdate {
   string name = 1;
-  bytes value = 4;
+  bytes value = 2;
 }

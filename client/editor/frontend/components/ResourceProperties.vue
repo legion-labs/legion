@@ -34,9 +34,9 @@
     </template>
     <template #[`item.value`]="{ item }">
       <ResourcePropertyEditor
-        v-model="item.value"
+        :value="item.value"
         :ptype="item.ptype"
-        @input="updateResource()"
+        @input="updateResourceProperty(item.name, $event)"
       ></ResourcePropertyEditor>
     </template>
     <template #expanded-item="{ headers, item }">
@@ -117,32 +117,8 @@ export default {
         this.queryResourceProperties(val.id);
       },
     },
-    properties: {
-      handler(val) {
-        this.updateResource();
-      },
-    },
   },
   methods: {
-    updateResource() {
-      const resource = {
-        description: this.resourceDescription,
-        properties: this.properties,
-      };
-
-      update_resource_properties(
-        resource.description.id,
-        resource.properties.map((property) => {
-          return {
-            name: property.name,
-            value: property.value,
-          };
-        })
-      );
-
-      // TODO: Remove this eventually once we can really update the data for the triangle.
-      this.$emit("resource-change", resource);
-    },
     queryResourceProperties(resourceId) {
       this.loading = true;
 
@@ -151,12 +127,33 @@ export default {
         this.loading = false;
       });
     },
+    updateResourceProperty(name, value) {
+      const id = this.resourceDescription.id;
+      const version = this.resourceDescription.version;
+      //this.$emit("resource-change", resource);
+
+      this.loading = true;
+
+      update_resource_properties(id, version, [
+        { name: name, value: value },
+      ]).then((resp) => {
+        this.properties.forEach(function (property, i, properties) {
+          resp.updated_properties.forEach(function (updatedProperty) {
+            if (property.name == updatedProperty.name) {
+              properties[i].value = updatedProperty.value;
+            }
+          });
+        });
+
+        this.loading = false;
+      });
+    },
     isSetToDefault(item) {
       return JSON.stringify(item.value) == JSON.stringify(item.default_value);
     },
-    async resetToDefault(item) {
+    resetToDefault(item) {
       item.value = JSON.parse(JSON.stringify(item.default_value));
-      this.updateResource();
+      this.updateResourceProperty(item.name, item.value);
     },
   },
   mounted() {},

@@ -30,10 +30,11 @@ export async function get_resource_properties(id) {
     return resp;
 };
 
-export async function update_resource_properties(id, propertyUpdates) {
+export async function update_resource_properties(id, version, propertyUpdates) {
     var resp = await invoke("update_resource_properties", {
         request: {
             id: id,
+            version: version,
             property_updates: propertyUpdates.map(propertyUpdate => {
                 propertyUpdate.value = JSON.stringify(propertyUpdate.value);
 
@@ -43,9 +44,8 @@ export async function update_resource_properties(id, propertyUpdates) {
     });
 
     // We receive the `value` and `default_value` fields as a JSON strings.
-    resp.properties.forEach(function (part, i, properties) {
+    resp.updated_properties.forEach(function (part, i, properties) {
         properties[i].value = JSON.parse(part.value);
-        properties[i].default_value = JSON.parse(part.default_value);
     });
 
     return resp;

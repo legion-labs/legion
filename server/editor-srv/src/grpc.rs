@@ -136,7 +136,8 @@ impl Editor for GRPCServer {
         info!("updating resource properties for entity {}", request.id);
 
         Ok(Response::new(UpdateResourcePropertiesResponse {
-            properties: vec![],
+            version: request.version + 1,
+            updated_properties: request.property_updates,
         }))
     }
 }

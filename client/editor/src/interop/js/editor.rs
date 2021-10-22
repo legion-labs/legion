@@ -163,6 +163,7 @@ impl From<JSResourcePropertyUpdate> for ResourcePropertyUpdate {
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct JSUpdateResourcePropertiesRequest {
     pub id: String,
+    pub version: u32,
     pub property_updates: Vec<JSResourcePropertyUpdate>,
 }
 
@@ -170,6 +171,7 @@ impl From<UpdateResourcePropertiesRequest> for JSUpdateResourcePropertiesRequest
     fn from(v: UpdateResourcePropertiesRequest) -> Self {
         Self {
             id: v.id,
+            version: v.version,
             property_updates: v.property_updates.into_vec(),
         }
     }
@@ -179,6 +181,7 @@ impl From<JSUpdateResourcePropertiesRequest> for UpdateResourcePropertiesRequest
     fn from(val: JSUpdateResourcePropertiesRequest) -> Self {
         Self {
             id: val.id,
+            version: val.version,
             property_updates: val.property_updates.into_vec(),
         }
     }
@@ -186,13 +189,15 @@ impl From<JSUpdateResourcePropertiesRequest> for UpdateResourcePropertiesRequest
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct JSUpdateResourcePropertiesResponse {
-    pub properties: Vec<JSResourceProperty>,
+    pub version: u32,
+    pub updated_properties: Vec<JSResourcePropertyUpdate>,
 }
 
 impl From<UpdateResourcePropertiesResponse> for JSUpdateResourcePropertiesResponse {
     fn from(v: UpdateResourcePropertiesResponse) -> Self {
         Self {
-            properties: v.properties.into_vec(),
+            version: v.version,
+            updated_properties: v.updated_properties.into_vec(),
         }
     }
 }
