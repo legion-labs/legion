@@ -211,6 +211,22 @@ impl ResourceRegistry {
         Err("invalid resource")
     }
 
+    /// Write a Property by Name
+    pub fn write_property(
+        &mut self,
+        kind: ResourceType,
+        handle: &ResourceHandleUntyped,
+        field_name: &str,
+        field_value: &str,
+    ) -> Result<(), &'static str> {
+        if let Some(Some(resource)) = self.resources.get_mut(&handle.id) {
+            if let Some(processor) = self.processors.get(&kind) {
+                return processor.write_property(resource.as_mut(), field_name, field_value);
+            }
+        }
+        Err("invalid resource")
+    }
+
     /// Returns the number of loaded resources.
     pub fn len(&self) -> usize {
         self.ref_counts.len()

@@ -127,14 +127,43 @@ impl Editor for GRPCServer {
         &self,
         request: Request<UpdateResourcePropertiesRequest>,
     ) -> Result<Response<UpdateResourcePropertiesResponse>, Status> {
-        //let project = *self.project.lock().unwrap();
-        //let registry = *self.registry.lock().unwrap();
-        //let resource_handles = *self.resource_handles.lock().unwrap();
+        let mut project = self.project.lock().unwrap();
+        let mut registry = self.registry.lock().unwrap();
+        let resource_handles = self.resource_handles.lock().unwrap();
 
         let request = request.into_inner();
 
         info!("updating resource properties for entity {}", request.id);
 
+        let resource_id: ResourceId =
+            ResourceId::from_str(request.id.as_str()).map_err(|_err| {
+                Status::internal(format!("Invalid ResourceID format: {}", request.id))
+            })?;
+
+        if let Some(handle) = resource_handles.get(resource_id) {
+            request
+                .property_updates
+                .iter()
+                .try_for_each(|update| {
+                    registry.write_property(
+                        resource_id.ty(),
+                        handle,
+                        update.name.as_str(),
+                        update.value.as_str(),
+                    )
+                })
+                .map()
+                .map_err(Status::internal)?;
+
+            project
+                .save_resource(resource_id, handle, &mut registry)
+                .map_err(|err| {
+                    Status::internal(format!(
+                        "Failed to save ResourceId {}: {}",
+                        resource_id, err
+                    ))
+                })?;
+        }
         Ok(Response::new(UpdateResourcePropertiesResponse {
             version: request.version + 1,
             updated_properties: request.property_updates,
