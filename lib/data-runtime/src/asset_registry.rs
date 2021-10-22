@@ -210,10 +210,10 @@ pub struct AssetRegistry {
 }
 
 /// A resource loading event is emitted when a resource is loaded, unloaded, or loading fails
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum ResourceLoadEvent {
     /// Successful resource load, resulting from either a handle load, or the loading of a dependency
-    Loaded(ResourceId),
+    Loaded(HandleUntyped),
     /// Resource unload event
     Unloaded(ResourceId),
     /// Sent when a loading attempt has failed
@@ -322,7 +322,7 @@ impl AssetRegistry {
                 match result {
                     LoaderResult::Loaded(handle, asset, _load_id) => {
                         inner.assets.insert(handle.id(), asset);
-                        load_events.push(ResourceLoadEvent::Loaded(handle.id()));
+                        load_events.push(ResourceLoadEvent::Loaded(handle));
                     }
                     LoaderResult::Unloaded(id) => {
                         inner.assets.remove(&id);
@@ -341,7 +341,7 @@ impl AssetRegistry {
             let inner = self.read_inner();
             for sender in &inner.load_event_senders {
                 for event in &load_events {
-                    sender.send(*event).unwrap();
+                    sender.send(event.clone()).unwrap();
                 }
             }
         }
@@ -440,6 +440,8 @@ mod tests {
             }
         }
     }
+
+    use std::panic;
 
     use legion_content_store::RamContentStore;
 
@@ -647,5 +649,29 @@ mod tests {
         std::mem::drop(child);
         reg.update();
         assert!(reg.get_untyped(child_id).is_none());
+    }
+
+    #[test]
+    fn loaded_notification() {
+        let (asset_id, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+
+        let notif = reg.subscribe_to_load_events();
+        {
+            let _handle = reg.load_untyped_sync(asset_id);
+            reg.update();
+        } // user handle drops here..
+
+        reg.update();
+        assert!(reg.is_loaded(asset_id)); // ..but ResourceLoadEvent::Loaded still holds the reference.
+
+        match notif.try_recv() {
+            Ok(ResourceLoadEvent::Loaded(loaded)) => {
+                assert_eq!(loaded.id(), asset_id);
+                assert!(loaded.is_loaded(&reg));
+            }
+            _ => panic!(),
+        }
+        reg.update();
+        assert!(!reg.is_loaded(asset_id));
     }
 }

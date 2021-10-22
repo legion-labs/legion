@@ -211,18 +211,17 @@ impl AssetRegistryPlugin {
 
     fn handle_load_events(
         load_events_rx: ResMut<'_, crossbeam_channel::Receiver<ResourceLoadEvent>>,
-        registry: ResMut<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
     ) {
         while let Ok(event) = load_events_rx.try_recv() {
             match event {
-                ResourceLoadEvent::Loaded(asset_id) => {
-                    if asset_loading_states.get(asset_id).is_none() {
+                ResourceLoadEvent::Loaded(asset_handle) => {
+                    if asset_loading_states.get(asset_handle.id()).is_none() {
                         // Received a load event for an untracked asset.
                         // Most likely, this load has occurred because of loading of dependant resources.
-                        asset_loading_states.insert(asset_id, LoadingState::Pending);
-                        asset_handles.insert(asset_id, registry.get_or_create_untyped(asset_id));
+                        asset_loading_states.insert(asset_handle.id(), LoadingState::Pending);
+                        asset_handles.insert(asset_handle.id(), asset_handle);
                     }
                 }
                 ResourceLoadEvent::Unloaded(_asset_id) => {}
@@ -231,7 +230,6 @@ impl AssetRegistryPlugin {
         }
 
         drop(load_events_rx);
-        drop(registry);
     }
 
     fn read_manifest(manifest_path: impl AsRef<Path>) -> Manifest {
