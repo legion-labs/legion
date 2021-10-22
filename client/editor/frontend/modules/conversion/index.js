@@ -1,5 +1,5 @@
 export function u32_to_hexcolor(v) {
-    return "#" + v.toString(16);
+    return "#" + v.toString(16).padStart(8, '0');
 }
 
 export function hexcolor_to_u32(v) {
