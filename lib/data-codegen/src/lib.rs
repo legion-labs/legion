@@ -149,7 +149,7 @@ macro_rules! data_container_gen {
                     &legion_data_codegen::GenerationType::RuntimeFormat,
                 ).expect("Runtime data codegen failed");
             }
-            println!("cargo:rerun-if-changed={}", $x);
+            println!("cargo:rerun-if-changed={}", data_path);
         )*
     };
 }
