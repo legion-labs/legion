@@ -1,7 +1,4 @@
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use std::{str::FromStr, sync::Arc};
 
 use legion_data_runtime::ResourceId;
 use legion_editor_proto::{
@@ -12,6 +9,7 @@ use legion_editor_proto::{
     UndoTransactionResponse, UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
 };
 use log::info;
+use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
 
 use legion_data_transaction::{DataManager, LockContext, Transaction};
@@ -37,8 +35,8 @@ impl Editor for GRPCServer {
         &self,
         _request: Request<SearchResourcesRequest>,
     ) -> Result<Response<SearchResourcesResponse>, Status> {
-        let data_manager = self.data_manager.lock().unwrap();
-        let ctx = LockContext::new(&data_manager);
+        let data_manager = self.data_manager.lock().await;
+        let ctx = LockContext::new(&data_manager).await;
         let descriptors: Vec<ResourceDescription> = ctx
             .project
             .resource_list()
@@ -70,9 +68,10 @@ impl Editor for GRPCServer {
         &self,
         _request: Request<UndoTransactionRequest>,
     ) -> Result<Response<UndoTransactionResponse>, Status> {
-        let mut data_manager = self.data_manager.lock().unwrap();
+        let mut data_manager = self.data_manager.lock().await;
         data_manager
             .undo_transaction()
+            .await
             .map_err(|err| Status::internal(format!("Undo transaction failed: {}", err)))?;
 
         Ok(Response::new(UndoTransactionResponse { id: 0 }))
@@ -82,9 +81,10 @@ impl Editor for GRPCServer {
         &self,
         _request: Request<RedoTransactionRequest>,
     ) -> Result<Response<RedoTransactionResponse>, Status> {
-        let mut data_manager = self.data_manager.lock().unwrap();
+        let mut data_manager = self.data_manager.lock().await;
         data_manager
             .redo_transaction()
+            .await
             .map_err(|err| Status::internal(format!("Redo transaction failed: {}", err)))?;
 
         Ok(Response::new(RedoTransactionResponse { id: 0 }))
@@ -94,8 +94,6 @@ impl Editor for GRPCServer {
         &self,
         request: Request<GetResourcePropertiesRequest>,
     ) -> Result<Response<GetResourcePropertiesResponse>, Status> {
-        let data_manager = self.data_manager.lock().unwrap();
-        let ctx = LockContext::new(&data_manager);
         let resource_id: ResourceId =
             ResourceId::from_str(request.get_ref().id.as_str()).map_err(|_err| {
                 Status::internal(format!(
@@ -104,6 +102,8 @@ impl Editor for GRPCServer {
                 ))
             })?;
 
+        let data_manager = self.data_manager.lock().await;
+        let ctx = LockContext::new(&data_manager).await;
         let handle = ctx
             .loaded_resource_handles
             .get(resource_id)
@@ -163,8 +163,6 @@ impl Editor for GRPCServer {
         &self,
         request: Request<UpdateResourcePropertiesRequest>,
     ) -> Result<Response<UpdateResourcePropertiesResponse>, Status> {
-        let mut data_manager = self.data_manager.lock().unwrap();
-
         let request = request.into_inner();
 
         info!("updating resource properties for entity {}", request.id);
@@ -174,6 +172,7 @@ impl Editor for GRPCServer {
                 Status::internal(format!("Invalid ResourceID format: {}", request.id))
             })?;
 
+        let mut data_manager = self.data_manager.lock().await;
         {
             let mut transaction = Transaction::new();
             request
@@ -186,10 +185,11 @@ impl Editor for GRPCServer {
                 .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
             data_manager
                 .commit_transaction(transaction)
+                .await
                 .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
         }
 
-        let ctx = LockContext::new(&data_manager);
+        let ctx = LockContext::new(&data_manager).await;
         let handle = ctx
             .loaded_resource_handles
             .get(resource_id)

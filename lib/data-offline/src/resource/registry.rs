@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{any::Any, collections::HashMap, io};
 
 use legion_data_runtime::ResourceType;
@@ -48,8 +48,17 @@ impl ResourceRegistryOptions {
     }
 
     /// Creates a new registry with the options specified by `self`.
-    pub fn create_registry(self) -> Arc<Mutex<ResourceRegistry>> {
-        ResourceRegistry::create(self.processors)
+    pub fn create_registry(self) -> Arc<std::sync::Mutex<ResourceRegistry>> {
+        Arc::new(std::sync::Mutex::new(ResourceRegistry::create(
+            self.processors,
+        )))
+    }
+
+    /// Creates a new registry with the options specified by `self`.
+    pub fn create_async_registry(self) -> Arc<tokio::sync::Mutex<ResourceRegistry>> {
+        Arc::new(tokio::sync::Mutex::new(ResourceRegistry::create(
+            self.processors,
+        )))
     }
 }
 
@@ -71,16 +80,14 @@ pub struct ResourceRegistry {
 }
 
 impl ResourceRegistry {
-    fn create(
-        processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
-    ) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(Self {
+    fn create(processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>) -> Self {
+        Self {
             id_generator: 0,
             refcount_channel: crossbeam_channel::unbounded(),
             ref_counts: HashMap::new(),
             resources: HashMap::new(),
             processors,
-        }))
+        }
     }
 
     /// Create a new resource of a given type in a default state.

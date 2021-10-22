@@ -3393,6 +3393,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 
@@ -3425,6 +3426,7 @@ name = "legion-data-transaction"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "generic_data_offline",
  "legion-data-offline",
  "legion-data-runtime",
@@ -3434,6 +3436,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 
@@ -3702,12 +3705,14 @@ version = "0.1.0"
 dependencies = [
  "generic_data_offline",
  "legion-app",
+ "legion-async",
  "legion-data-offline",
  "legion-data-runtime",
  "legion-data-transaction",
  "legion-ecs",
  "legion-graphics-offline",
  "sample-data-offline",
+ "tokio",
 ]
 
 [[package]]

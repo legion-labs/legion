@@ -67,7 +67,8 @@ use legion_data_transaction::DataManager;
 use legion_ecs::prelude::*;
 use sample_data_offline as offline_data;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 #[derive(Default)]
 pub struct ResourceRegistryPlugin {}
@@ -81,7 +82,7 @@ impl Plugin for ResourceRegistryPlugin {
                 registry = offline_data::register_resource_types(registry);
                 registry = legion_graphics_offline::register_resource_types(registry);
                 registry = generic_data_offline::register_resource_types(registry);
-                let registry = registry.create_registry();
+                let registry = registry.create_async_registry();
                 let project = Arc::new(Mutex::new(project));
                 let data_manager = Arc::new(Mutex::new(DataManager::new(project, registry)));
 
@@ -94,8 +95,14 @@ impl Plugin for ResourceRegistryPlugin {
 
 #[allow(clippy::needless_pass_by_value)]
 impl ResourceRegistryPlugin {
-    fn setup(data_manager: ResMut<'_, Arc<Mutex<DataManager>>>) {
-        let mut data_manager = data_manager.lock().unwrap();
-        data_manager.load_all_resources();
+    fn setup(
+        data_manager: ResMut<'_, Arc<Mutex<DataManager>>>,
+        rt: ResMut<'_, legion_async::TokioAsyncRuntime>,
+    ) {
+        let data_manager = data_manager.clone();
+        rt.start_detached(async move {
+            let mut data_manager = data_manager.lock().await;
+            data_manager.load_all_resources().await;
+        });
     }
 }

@@ -1,4 +1,5 @@
 use crate::{Error, LockContext, TransactionOperation};
+use async_trait::async_trait;
 use legion_data_offline::resource::ResourcePathName;
 use legion_data_runtime::ResourceId;
 
@@ -18,8 +19,9 @@ impl DeleteResourceOperation {
     }
 }
 
+#[async_trait]
 impl TransactionOperation for DeleteResourceOperation {
-    fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         if let Some(old_handle) = ctx.loaded_resource_handles.remove(self.resource_id) {
             // On the first apply, save a copy original resource for redo
             if self.old_resource_name.is_none() {
@@ -38,7 +40,7 @@ impl TransactionOperation for DeleteResourceOperation {
         Ok(())
     }
 
-    fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         // Restore  resource from saved state, original name and id
         let old_resource_name = self
             .old_resource_name

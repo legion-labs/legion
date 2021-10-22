@@ -2,8 +2,9 @@ use crate::{LockContext, Transaction};
 use legion_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
 use legion_data_runtime::{ResourceId, ResourceType};
 use log::info;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 /// Error returned by the Transaction System.
 #[derive(Error, Debug)]
@@ -67,10 +68,10 @@ impl DataManager {
     }
 
     /// Load all resources from a `Project`
-    pub fn load_all_resources(&mut self) {
-        let project = self.project.lock().unwrap();
-        let mut resource_registry = self.resource_registry.lock().unwrap();
-        let mut resource_handles = self.loaded_resource_handles.lock().unwrap();
+    pub async fn load_all_resources(&mut self) {
+        let project = self.project.lock().await;
+        let mut resource_registry = self.resource_registry.lock().await;
+        let mut resource_handles = self.loaded_resource_handles.lock().await;
 
         for resource_id in project.resource_list() {
             project
@@ -87,26 +88,32 @@ impl DataManager {
     }
 
     /// Commit the current pending `Transaction`
-    pub fn commit_transaction(&mut self, mut transaction: Transaction) -> anyhow::Result<()> {
-        transaction.apply_transaction(LockContext::new(self))?;
+    pub async fn commit_transaction(&mut self, mut transaction: Transaction) -> anyhow::Result<()> {
+        transaction
+            .apply_transaction(LockContext::new(self).await)
+            .await?;
         self.commited_transactions.push(transaction);
         self.rollbacked_transactions.clear();
         Ok(())
     }
 
     /// Undo the last commited transaction
-    pub fn undo_transaction(&mut self) -> anyhow::Result<()> {
-        if let Some(transaction) = self.commited_transactions.pop() {
-            transaction.roll_transaction(LockContext::new(self))?;
+    pub async fn undo_transaction(&mut self) -> anyhow::Result<()> {
+        if let Some(mut transaction) = self.commited_transactions.pop() {
+            transaction
+                .rollback_transaction(LockContext::new(self).await)
+                .await?;
             self.rollbacked_transactions.push(transaction);
         }
         Ok(())
     }
 
     /// Reapply a rollbacked transaction
-    pub fn redo_transaction(&mut self) -> anyhow::Result<()> {
+    pub async fn redo_transaction(&mut self) -> anyhow::Result<()> {
         if let Some(mut transaction) = self.rollbacked_transactions.pop() {
-            transaction.apply_transaction(LockContext::new(self))?;
+            transaction
+                .apply_transaction(LockContext::new(self).await)
+                .await?;
             self.commited_transactions.push(transaction);
         }
         Ok(())

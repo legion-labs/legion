@@ -1,4 +1,5 @@
 use crate::{Error, LockContext, TransactionOperation};
+use async_trait::async_trait;
 use legion_data_offline::resource::ResourcePathName;
 use legion_data_runtime::ResourceId;
 
@@ -16,8 +17,9 @@ impl CreateResourceOperation {
     }
 }
 
+#[async_trait]
 impl TransactionOperation for CreateResourceOperation {
-    fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         let handle = ctx
             .resource_registry
             .new_resource(self.resource_id.ty())
@@ -42,7 +44,7 @@ impl TransactionOperation for CreateResourceOperation {
         Ok(())
     }
 
-    fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         if let Some(_handle) = ctx.loaded_resource_handles.remove(self.resource_id) {
             ctx.project.delete_resource(self.resource_id)?;
         }

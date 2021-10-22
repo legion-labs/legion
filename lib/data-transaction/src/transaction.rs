@@ -6,7 +6,8 @@ use crate::LockContext;
 use legion_data_offline::resource::ResourcePathName;
 use legion_data_runtime::{ResourceId, ResourceType};
 
-use log::info;
+use async_trait::async_trait;
+use log::{info, warn};
 
 /// Definition of a Transaction
 pub struct Transaction {
@@ -16,9 +17,10 @@ pub struct Transaction {
     operations: Vec<Box<dyn TransactionOperation + Send + Sync>>,
 }
 
+#[async_trait]
 pub(crate) trait TransactionOperation {
-    fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()>;
-    fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()>;
+    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()>;
+    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()>;
 }
 
 impl Transaction {
@@ -33,35 +35,73 @@ impl Transaction {
         new_transaction
     }
 
-    pub(crate) fn apply_transaction(&mut self, mut context: LockContext<'_>) -> anyhow::Result<()> {
-        self.operations
-            .iter_mut()
-            .try_for_each(|op| op.apply_operation(&mut context))?;
+    pub(crate) async fn apply_transaction(
+        &mut self,
+        mut context: LockContext<'_>,
+    ) -> anyhow::Result<()> {
+        // Try to apply all the operations
+        let mut rollback_state: Option<(anyhow::Error, usize)> = None;
+        for (index, op) in self.operations.iter_mut().enumerate() {
+            if let Err(op_err) = op.apply_operation(&mut context).await {
+                rollback_state = Some((op_err, index));
+                break;
+            }
+        }
 
-        context.save_changed_resources()?;
-
-        info!(
-            "Transaction Applied: {} / {}ops",
-            &self.id,
-            self.operations.len()
-        );
-        Ok(())
+        // If an ops failed, save the error state to rollback all the previous transaction's operations
+        if let Some((op_err, rollback_index)) = rollback_state {
+            warn!("Transaction {} failed to commit: {}", &self.id, op_err);
+            for op in self.operations.iter().take(rollback_index).rev() {
+                op.rollback_operation(&mut context)
+                    .await
+                    .unwrap_or_else(|op_err| warn!("\tfailed to rollback ops: {}", op_err));
+            }
+            Err(op_err)
+        } else {
+            // All the ops complete, the the resources
+            context.save_changed_resources().await?;
+            info!(
+                "Transaction Applied: {} / {}ops",
+                &self.id,
+                self.operations.len()
+            );
+            Ok(())
+        }
     }
 
-    pub(crate) fn roll_transaction(&self, mut context: LockContext<'_>) -> anyhow::Result<()> {
-        self.operations
-            .iter()
-            .rev()
-            .try_for_each(|op| op.rollback_operation(&mut context))?;
+    pub(crate) async fn rollback_transaction(
+        &mut self,
+        mut context: LockContext<'_>,
+    ) -> anyhow::Result<()> {
+        // Try to rollback all transaction operations (in reverse order)
+        let mut rollback_state: Option<(anyhow::Error, usize)> = None;
+        for (index, op) in self.operations.iter().rev().enumerate() {
+            if let Err(op_err) = op.rollback_operation(&mut context).await {
+                // If the rollback failed, abort rollback
+                rollback_state = Some((op_err, index));
+                break;
+            }
+        }
 
-        context.save_changed_resources()?;
-
-        info!(
-            "Transaction Rollbacked: {} / {}ops",
-            &self.id,
-            self.operations.len()
-        );
-        Ok(())
+        // If the rollback failed, reapply the previous operations that pass
+        if let Some((op_err, rollback_index)) = rollback_state {
+            warn!("Transaction {} failed to rollback: {}", &self.id, op_err);
+            for op in self.operations.iter_mut().rev().take(rollback_index).rev() {
+                op.apply_operation(&mut context)
+                    .await
+                    .unwrap_or_else(|op_err| warn!("\tfailed to reapply ops: {}", op_err));
+            }
+            Err(op_err)
+        } else {
+            // All the ops complete, the the resources
+            context.save_changed_resources().await?;
+            info!(
+                "Transaction Rollbacked: {} / {}ops",
+                &self.id,
+                self.operations.len()
+            );
+            Ok(())
+        }
     }
 
     /// Queue the Creation of a new Resource, return its `ResourceId`
