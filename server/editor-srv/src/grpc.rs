@@ -130,6 +130,8 @@ impl Editor for GRPCServer {
         //let registry = *self.registry.lock().unwrap();
         //let resource_handles = *self.resource_handles.lock().unwrap();
 
-        Ok(Response::new(UpdateResourcePropertiesResponse {}))
+        Ok(Response::new(UpdateResourcePropertiesResponse {
+            properties: vec![],
+        }))
     }
 }

@@ -45,7 +45,9 @@ message UpdateResourcePropertiesRequest {
   repeated ResourcePropertyUpdate propertyUpdates = 2;
 }
 
-message UpdateResourcePropertiesResponse {}
+message UpdateResourcePropertiesResponse {
+  repeated ResourceProperty properties = 1;
+}
 
 message ResourcePropertyUpdate {
   string name = 1;
