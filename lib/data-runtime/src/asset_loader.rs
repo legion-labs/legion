@@ -1,4 +1,4 @@
-use std::{any::Any, collections::HashMap, io, time::Duration};
+use std::{any::Any, collections::HashMap, io, ops::Deref, sync::Arc, time::Duration};
 
 use crate::{vfs, AssetLoader, HandleUntyped, ReferenceUntyped, ResourceId, ResourceType};
 
@@ -23,29 +23,67 @@ struct LoadOutput {
 }
 
 pub(crate) enum LoaderResult {
-    Loaded(ResourceId, Box<dyn Any + Send + Sync>, Option<LoadId>),
+    Loaded(HandleUntyped, Box<dyn Any + Send + Sync>, Option<LoadId>),
     Unloaded(ResourceId),
-    LoadError(ResourceId, Option<LoadId>, io::ErrorKind),
+    LoadError(HandleUntyped, Option<LoadId>, io::ErrorKind),
 }
 
 pub(crate) enum LoaderRequest {
-    Load(ResourceId, Option<LoadId>),
-    Reload(ResourceId),
+    Load(HandleUntyped, Option<LoadId>),
+    Reload(HandleUntyped),
     Unload(ResourceId, bool, Option<io::ErrorKind>),
     Terminate,
 }
 
 /// State of a load request in progress.
 struct LoadState {
-    primary_id: ResourceId,
+    primary_handle: HandleUntyped,
     /// If load_id is available it means the load was triggered by the user.
     /// Otherwise it is a load of a dependent Resource.
     load_id: Option<LoadId>,
     /// List of Resources in asset file identified by `primary_id`.
     /// None indicates a skipped secondary resource that was already loaded through another resource file.
-    assets: Vec<(ResourceId, Option<Box<dyn Any + Send + Sync>>)>,
+    assets: Vec<(HandleUntyped, Option<Box<dyn Any + Send + Sync>>)>,
     /// The list of Resources that need to be loaded before the LoadState can be considered completed.
-    references: Vec<AssetReference>,
+    references: Vec<HandleUntyped>,
+}
+
+struct HandleMap {
+    unload_tx: crossbeam_channel::Sender<ResourceId>,
+    handles: flurry::HashMap<ResourceId, ReferenceUntyped>,
+}
+
+impl HandleMap {
+    fn new(unload_tx: crossbeam_channel::Sender<ResourceId>) -> Arc<Self> {
+        Arc::new(Self {
+            unload_tx,
+            handles: flurry::HashMap::new(),
+        })
+    }
+
+    fn create_handle(&self, id: ResourceId) -> HandleUntyped {
+        let handle = HandleUntyped::new_handle(id, self.unload_tx.clone());
+
+        let weak_ref = HandleUntyped::downgrade(&handle);
+        match self.handles.pin().try_insert(id, weak_ref) {
+            Ok(_) => handle,
+            Err(TryInsertError {
+                current,
+                not_inserted: _,
+            }) => {
+                handle.forget();
+                current.upgrade().unwrap()
+            }
+        }
+    }
+}
+
+impl Deref for HandleMap {
+    type Target = flurry::HashMap<ResourceId, ReferenceUntyped>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.handles
+    }
 }
 
 pub(crate) fn create_loader(
@@ -54,17 +92,23 @@ pub(crate) fn create_loader(
     let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
     let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
 
-    let io = AssetLoaderIO::new(devices, request_tx.clone(), request_rx, result_tx);
-    let loader = AssetLoaderStub::new(request_tx, result_rx);
+    let unload_channel = crossbeam_channel::unbounded();
+    let handles = HandleMap::new(unload_channel.0);
+
+    let io = AssetLoaderIO::new(
+        devices,
+        request_tx.clone(),
+        request_rx,
+        result_tx,
+        handles.clone(),
+    );
+    let loader = AssetLoaderStub::new(request_tx, result_rx, unload_channel.1, handles);
     (loader, io)
 }
 
 pub(crate) struct AssetLoaderStub {
-    unload_channel: (
-        crossbeam_channel::Sender<ResourceId>,
-        crossbeam_channel::Receiver<ResourceId>,
-    ),
-    handles: flurry::HashMap<ResourceId, ReferenceUntyped>,
+    unload_channel_rx: crossbeam_channel::Receiver<ResourceId>,
+    handles: Arc<HandleMap>,
     request_tx: crossbeam_channel::Sender<LoaderRequest>,
     result_rx: crossbeam_channel::Receiver<LoaderResult>,
 }
@@ -75,10 +119,12 @@ impl AssetLoaderStub {
     fn new(
         request_tx: crossbeam_channel::Sender<LoaderRequest>,
         result_rx: crossbeam_channel::Receiver<LoaderResult>,
+        unload_channel_rx: crossbeam_channel::Receiver<ResourceId>,
+        handles: Arc<HandleMap>,
     ) -> Self {
         Self {
-            unload_channel: crossbeam_channel::unbounded(),
-            handles: flurry::HashMap::new(),
+            unload_channel_rx,
+            handles,
             request_tx,
             result_rx,
         }
@@ -96,20 +142,12 @@ impl AssetLoaderStub {
             return handle;
         }
 
-        let new_handle = HandleUntyped::new_handle(id, self.unload_channel.0.clone());
-        let weak_ref = HandleUntyped::downgrade(&new_handle);
-        match self.handles.pin().try_insert(id, weak_ref) {
-            Ok(_) => new_handle,
-            Err(TryInsertError {
-                current,
-                not_inserted: _,
-            }) => current.upgrade().unwrap(),
-        }
+        self.handles.create_handle(id)
     }
 
     pub(crate) fn collect_dropped_handles(&self) -> Vec<ResourceId> {
         let mut all_removed = vec![];
-        while let Ok(unload_id) = self.unload_channel.1.try_recv() {
+        while let Ok(unload_id) = self.unload_channel_rx.try_recv() {
             let handles = self.handles.pin();
             let removed = handles.remove(&unload_id).expect("weak ref");
             assert!(removed.upgrade().is_none(), "a load after unload occured");
@@ -130,16 +168,14 @@ impl AssetLoaderStub {
         // this would have to be changed in order to add load notifications.
         let load_id = 7;
         self.request_tx
-            .send(LoaderRequest::Load(resource_id, Some(load_id)))
+            .send(LoaderRequest::Load(handle.clone(), Some(load_id)))
             .unwrap();
         handle
     }
 
     pub(crate) fn reload(&self, resource_id: ResourceId) -> bool {
-        self.get_handle(resource_id).map_or(false, |_| {
-            self.request_tx
-                .send(LoaderRequest::Reload(resource_id))
-                .unwrap();
+        self.get_handle(resource_id).map_or(false, |handle| {
+            self.request_tx.send(LoaderRequest::Reload(handle)).unwrap();
             true
         })
     }
@@ -159,6 +195,8 @@ const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 
 pub(crate) struct AssetLoaderIO {
     loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
+
+    handles: Arc<HandleMap>,
 
     /// List of load requests waiting for all references to be loaded.
     processing_list: Vec<LoadState>,
@@ -190,14 +228,16 @@ pub(crate) struct AssetLoaderIO {
 // - add primary asset references and schedule new loads.
 
 impl AssetLoaderIO {
-    pub(crate) fn new(
+    fn new(
         devices: Vec<Box<dyn vfs::Device>>,
         request_tx: crossbeam_channel::Sender<LoaderRequest>,
         request_rx: crossbeam_channel::Receiver<LoaderRequest>,
         result_tx: crossbeam_channel::Sender<LoaderResult>,
+        handles: Arc<HandleMap>,
     ) -> Self {
         Self {
             loaders: HashMap::new(),
+            handles,
             processing_list: Vec::new(),
             asset_refcounts: HashMap::new(),
             devices,
@@ -230,7 +270,8 @@ impl AssetLoaderIO {
         ))
     }
 
-    fn process_reload(&mut self, primary_id: ResourceId) -> Result<(), io::Error> {
+    fn process_reload(&mut self, primary_handle: &HandleUntyped) -> Result<(), io::Error> {
+        let primary_id = primary_handle.id();
         let asset_data = self.read_resource(primary_id)?;
 
         // for now it should be empty. later - cause a reload of secondary assets?
@@ -250,7 +291,7 @@ impl AssetLoaderIO {
             }
         };
 
-        let output = load_func(primary_id, &mut &asset_data[..], &mut self.loaders)?;
+        let output = load_func(primary_handle, &mut &asset_data[..], &mut self.loaders)?;
 
         assert_eq!(
             output.assets.len(),
@@ -274,9 +315,10 @@ impl AssetLoaderIO {
 
     fn process_load(
         &mut self,
-        primary_id: ResourceId,
+        primary_handle: HandleUntyped,
         load_id: Option<u32>,
-    ) -> Result<(), (ResourceId, Option<LoadId>, io::Error)> {
+    ) -> Result<(), (HandleUntyped, Option<LoadId>, io::Error)> {
+        let primary_id = primary_handle.id();
         if self.asset_refcounts.contains_key(&primary_id) {
             // todo: we should create a LoadState based on existing load state?
             // this way the load result will be notified when the resource is actually loaded.
@@ -284,7 +326,7 @@ impl AssetLoaderIO {
         }
         let asset_data = self
             .read_resource(primary_id)
-            .map_err(|e| (primary_id, load_id, e))?;
+            .map_err(|e| (primary_handle.clone(), load_id, e))?;
 
         let load_func = {
             if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
@@ -294,8 +336,8 @@ impl AssetLoaderIO {
             }
         };
 
-        let output = load_func(primary_id, &mut &asset_data[..], &mut self.loaders)
-            .map_err(|e| (primary_id, load_id, e))?;
+        let output = load_func(&primary_handle, &mut &asset_data[..], &mut self.loaders)
+            .map_err(|e| (primary_handle.clone(), load_id, e))?;
 
         for (asset_id, asset) in &output.assets {
             match asset {
@@ -308,16 +350,30 @@ impl AssetLoaderIO {
                 }
             }
         }
-        for reference in &output.load_dependencies {
+
+        let references = output
+            .load_dependencies
+            .iter()
+            .map(|reference| self.handles.create_handle(reference.primary))
+            .collect::<Vec<_>>();
+
+        for reference in &references {
             self.request_tx
-                .send(LoaderRequest::Load(reference.primary, None))
+                .send(LoaderRequest::Load(reference.clone(), None))
                 .unwrap();
         }
         self.processing_list.push(LoadState {
-            primary_id,
+            primary_handle,
             load_id,
-            assets: output.assets,
-            references: output.load_dependencies,
+            assets: output
+                .assets
+                .into_iter()
+                .map(|(secondary_id, boxed)| {
+                    let handle = self.handles.create_handle(secondary_id);
+                    (handle, boxed)
+                })
+                .collect::<Vec<_>>(),
+            references,
         });
         Ok(())
     }
@@ -368,12 +424,14 @@ impl AssetLoaderIO {
     fn process_request(
         &mut self,
         request: LoaderRequest,
-    ) -> Result<(), (ResourceId, Option<LoadId>, io::Error)> {
+    ) -> Result<(), (HandleUntyped, Option<LoadId>, io::Error)> {
         match request {
-            LoaderRequest::Load(primary_id, load_id) => self.process_load(primary_id, load_id),
-            LoaderRequest::Reload(primary_id) => self
-                .process_reload(primary_id)
-                .map_err(|e| (primary_id, None, e)),
+            LoaderRequest::Load(primary_handle, load_id) => {
+                self.process_load(primary_handle, load_id)
+            }
+            LoaderRequest::Reload(primary_handle) => self
+                .process_reload(&primary_handle)
+                .map_err(|e| (primary_handle, None, e)),
             LoaderRequest::Unload(primary_id, user_requested, err) => {
                 self.process_unload(primary_id, user_requested, err);
                 Ok(())
@@ -404,27 +462,22 @@ impl AssetLoaderIO {
         }
 
         // todo: propagate errors to dependent assets before sending results.
-        for (failed_asset_id, _, err) in errors {
+        for (load_failed, _, err) in errors {
             let (failed, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut self.processing_list)
                 .into_iter()
-                .partition(|pending| {
-                    pending
-                        .references
-                        .iter()
-                        .any(|r| r.primary == failed_asset_id)
-                });
+                .partition(|pending| pending.references.iter().any(|reff| reff == &load_failed));
 
             for failed_pending in failed {
                 self.result_tx
                     .send(LoaderResult::LoadError(
-                        failed_pending.primary_id,
+                        failed_pending.primary_handle,
                         failed_pending.load_id,
                         err.kind(),
                     ))
                     .unwrap();
             }
             self.result_tx
-                .send(LoaderResult::LoadError(failed_asset_id, None, err.kind()))
+                .send(LoaderResult::LoadError(load_failed, None, err.kind()))
                 .unwrap();
 
             self.processing_list = pending;
@@ -436,31 +489,30 @@ impl AssetLoaderIO {
             let finished = pending
                 .references
                 .iter()
-                .all(|reference| self.asset_refcounts.contains_key(&reference.primary));
+                .all(|reference| self.asset_refcounts.contains_key(&reference.id()));
             if finished {
                 let mut loaded = self.processing_list.swap_remove(index);
 
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
-                        let loader = self.loaders.get_mut(&asset_id.ty()).unwrap();
+                        let loader = self.loaders.get_mut(&asset_id.id().ty()).unwrap();
                         loader.load_init(boxed.as_mut());
                     }
                     // if there is no boxed asset here, it means it was already loaded before.
                 }
 
                 self.primary_asset_references.insert(
-                    loaded.primary_id,
-                    loaded.references.iter().map(|e| e.primary).collect(),
+                    loaded.primary_handle.id(),
+                    loaded.references.iter().map(HandleUntyped::id).collect(),
                 );
 
                 self.secondary_assets.insert(
-                    loaded.primary_id,
+                    loaded.primary_handle.id(),
                     loaded
                         .assets
                         .iter()
                         .skip(1)
-                        .map(|(id, _)| id)
-                        .copied()
+                        .map(|(handle, _)| handle.id())
                         .collect(),
                 );
                 // send primary asset with load_id. all secondary assets without to not cause load notification.
@@ -468,7 +520,7 @@ impl AssetLoaderIO {
                 let primary_asset = asset_iter.next().unwrap().1.unwrap();
                 self.result_tx
                     .send(LoaderResult::Loaded(
-                        loaded.primary_id,
+                        loaded.primary_handle,
                         primary_asset,
                         loaded.load_id,
                     ))
@@ -488,10 +540,11 @@ impl AssetLoaderIO {
     }
 
     fn load_raw(
-        id: ResourceId,
+        handle: &HandleUntyped,
         reader: &mut dyn io::Read,
         loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
+        let id = handle.id();
         let mut content = Vec::new();
         reader.read_to_end(&mut content)?;
 
@@ -506,10 +559,11 @@ impl AssetLoaderIO {
     }
 
     fn load_asset_file(
-        primary_id: ResourceId,
+        primary_handle: &HandleUntyped,
         reader: &mut dyn io::Read,
         loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
+        let primary_id = primary_handle.id();
         const ASSET_FILE_VERSION: u16 = 1;
 
         let mut typename: [u8; 4] = [0; 4];
@@ -589,12 +643,12 @@ impl AssetLoaderIO {
 
 #[cfg(test)]
 mod tests {
-    use std::{thread, time::Duration};
+    use std::time::Duration;
 
     use legion_content_store::{ContentStore, RamContentStore};
 
     use crate::{
-        asset_loader::{LoaderRequest, LoaderResult},
+        asset_loader::{HandleMap, LoaderRequest, LoaderResult},
         manifest::Manifest,
         test_asset, vfs, Handle, Resource, ResourceId,
     };
@@ -628,67 +682,25 @@ mod tests {
     }
 
     #[test]
-    fn ref_count() {
-        let (asset_id, loader, _io) = setup_test();
-
-        {
-            let a = loader.load(asset_id);
-            assert_eq!(a.id(), asset_id);
-            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
-
-            {
-                let b = a.clone();
-                loader.collect_dropped_handles();
-
-                assert_eq!(loader.handles.pin().get(&b.id()).unwrap().strong_count(), 2);
-                assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
-                assert_eq!(a, b);
-            }
-            loader.collect_dropped_handles();
-            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
-        }
-        loader.collect_dropped_handles();
-        assert!(!loader.handles.pin().contains_key(&asset_id));
-    }
-
-    #[test]
     fn typed_ref() {
-        let (asset_id, loader, _io) = setup_test();
+        let (asset_id, loader, mut io) = setup_test();
 
         {
             let untyped = loader.load(asset_id);
-            assert_eq!(
-                loader
-                    .handles
-                    .pin()
-                    .get(&untyped.id())
-                    .unwrap()
-                    .strong_count(),
-                1
-            );
 
             assert_eq!(untyped.id(), asset_id);
 
             let typed: Handle<test_asset::TestAsset> = untyped.into();
-            loader.collect_dropped_handles();
-            assert_eq!(
-                loader
-                    .handles
-                    .pin()
-                    .get(&typed.id())
-                    .unwrap()
-                    .strong_count(),
-                1
-            );
 
-            let mut test_timeout = Duration::from_millis(500);
-            while test_timeout > Duration::ZERO && loader.handles.pin().get(&typed.id()).is_none() {
-                let sleep_time = Duration::from_millis(10);
-                thread::sleep(sleep_time);
-                test_timeout -= sleep_time;
-                loader.collect_dropped_handles();
-            }
+            io.wait(Duration::from_millis(500));
             assert!(loader.handles.pin().get(&typed.id()).is_some());
+
+            match loader.try_result() {
+                Some(LoaderResult::Loaded(handle, _, _)) => {
+                    assert!(handle.id() == typed.id());
+                }
+                _ => panic!(),
+            }
         }
 
         loader.collect_dropped_handles();
@@ -696,14 +708,8 @@ mod tests {
         assert!(!loader.handles.pin().contains_key(&asset_id));
 
         let typed: Handle<test_asset::TestAsset> = loader.load(asset_id).into();
+        io.wait(Duration::from_millis(500));
 
-        let mut test_timeout = Duration::from_millis(500);
-        while test_timeout > Duration::ZERO && loader.handles.pin().get(&typed.id()).is_none() {
-            let sleep_time = Duration::from_millis(10);
-            thread::sleep(sleep_time);
-            test_timeout -= sleep_time;
-            loader.collect_dropped_handles();
-        }
         assert!(loader.handles.pin().get(&typed.id()).is_some());
     }
 
@@ -712,22 +718,14 @@ mod tests {
         let (asset_id, loader, _io) = setup_test();
 
         let a = loader.load(asset_id);
-        assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
         {
             let b = a.clone();
-            loader.collect_dropped_handles();
             assert_eq!(a.id(), b.id());
-            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
             {
                 let c = loader.load(asset_id);
                 assert_eq!(a.id(), c.id());
-                assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 3);
             }
-            loader.collect_dropped_handles();
-            assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 2);
         }
-        loader.collect_dropped_handles();
-        assert_eq!(loader.handles.pin().get(&a.id()).unwrap().strong_count(), 1);
     }
 
     #[test]
@@ -747,6 +745,11 @@ mod tests {
             id
         };
 
+        let (unload_tx, _unload_rx) = crossbeam_channel::unbounded::<_>();
+
+        let handles = HandleMap::new(unload_tx);
+        let asset_handle = handles.create_handle(asset_id);
+
         let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
@@ -754,6 +757,7 @@ mod tests {
             request_tx.clone(),
             request_rx,
             result_tx,
+            handles,
         );
         loader.register_loader(
             test_asset::TestAsset::TYPE,
@@ -762,7 +766,7 @@ mod tests {
 
         let load_id = Some(0);
         request_tx
-            .send(LoaderRequest::Load(asset_id, load_id))
+            .send(LoaderRequest::Load(asset_handle, load_id))
             .expect("to send request");
 
         assert!(loader.asset_refcounts.get(&asset_id).is_none());
@@ -819,6 +823,9 @@ mod tests {
             parent_id
         };
 
+        let handles = HandleMap::new(crossbeam_channel::unbounded::<_>().0);
+        let asset_handle = handles.create_handle(asset_id);
+
         let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
@@ -826,6 +833,7 @@ mod tests {
             request_tx.clone(),
             request_rx,
             result_tx,
+            handles,
         );
         loader.register_loader(
             test_asset::TestAsset::TYPE,
@@ -834,7 +842,7 @@ mod tests {
 
         let load_id = Some(0);
         request_tx
-            .send(LoaderRequest::Load(asset_id, load_id))
+            .send(LoaderRequest::Load(asset_handle, load_id))
             .expect("valid tx");
 
         assert!(loader.asset_refcounts.get(&parent_id).is_none());
@@ -882,6 +890,9 @@ mod tests {
             parent_id
         };
 
+        let handles = HandleMap::new(crossbeam_channel::unbounded::<_>().0);
+        let asset_handle = handles.create_handle(asset_id);
+
         let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
@@ -889,6 +900,7 @@ mod tests {
             request_tx.clone(),
             request_rx,
             result_tx,
+            handles,
         );
         loader.register_loader(
             test_asset::TestAsset::TYPE,
@@ -897,7 +909,7 @@ mod tests {
 
         let load_id = Some(0);
         request_tx
-            .send(LoaderRequest::Load(asset_id, load_id))
+            .send(LoaderRequest::Load(asset_handle.clone(), load_id))
             .expect("to send request");
 
         assert!(loader.asset_refcounts.get(&parent_id).is_none());
@@ -946,10 +958,10 @@ mod tests {
             0
         );
 
-        if let LoaderResult::Loaded(id, asset, returned_load_id) = result {
+        if let LoaderResult::Loaded(handle, asset, returned_load_id) = result {
             let asset = asset.downcast_ref::<test_asset::TestAsset>().unwrap();
             assert_eq!(asset.content, parent_content);
-            assert_eq!(asset_id, id);
+            assert_eq!(asset_handle, handle);
             assert_eq!(returned_load_id, load_id);
         }
 
@@ -995,6 +1007,9 @@ mod tests {
             id
         };
 
+        let handles = HandleMap::new(crossbeam_channel::unbounded::<_>().0);
+        let asset_handle = handles.create_handle(asset_id);
+
         let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
@@ -1002,6 +1017,7 @@ mod tests {
             request_tx.clone(),
             request_rx,
             result_tx,
+            handles,
         );
         loader.register_loader(
             test_asset::TestAsset::TYPE,
@@ -1011,7 +1027,7 @@ mod tests {
         let load_id = Some(0);
 
         request_tx
-            .send(LoaderRequest::Load(asset_id, load_id))
+            .send(LoaderRequest::Load(asset_handle.clone(), load_id))
             .expect("to send request");
 
         assert!(loader.asset_refcounts.get(&asset_id).is_none());
@@ -1038,7 +1054,9 @@ mod tests {
         );
 
         // reload
-        request_tx.send(LoaderRequest::Reload(asset_id)).unwrap();
+        request_tx
+            .send(LoaderRequest::Reload(asset_handle))
+            .unwrap();
 
         loader.wait(Duration::from_millis(10));
 

@@ -320,17 +320,17 @@ impl AssetRegistry {
             while let Some(result) = self.loader.try_result() {
                 // todo: add success/failure callbacks using the provided LoadId.
                 match result {
-                    LoaderResult::Loaded(asset_id, asset, _load_id) => {
-                        inner.assets.insert(asset_id, asset);
-                        load_events.push(ResourceLoadEvent::Loaded(asset_id));
+                    LoaderResult::Loaded(handle, asset, _load_id) => {
+                        inner.assets.insert(handle.id(), asset);
+                        load_events.push(ResourceLoadEvent::Loaded(handle.id()));
                     }
-                    LoaderResult::Unloaded(asset_id) => {
-                        inner.assets.remove(&asset_id);
-                        load_events.push(ResourceLoadEvent::Unloaded(asset_id));
+                    LoaderResult::Unloaded(id) => {
+                        inner.assets.remove(&id);
+                        load_events.push(ResourceLoadEvent::Unloaded(id));
                     }
-                    LoaderResult::LoadError(asset_id, _load_id, error_kind) => {
-                        inner.load_errors.insert(asset_id, error_kind);
-                        load_events.push(ResourceLoadEvent::LoadError(asset_id));
+                    LoaderResult::LoadError(handle, _load_id, error_kind) => {
+                        inner.load_errors.insert(handle.id(), error_kind);
+                        load_events.push(ResourceLoadEvent::LoadError(handle.id()));
                     }
                 }
             }
@@ -363,6 +363,84 @@ impl AssetRegistry {
 #[cfg(test)]
 mod tests {
 
+    mod refs_asset {
+        //! This module defines a test asset.
+        //!
+        //! It is used to test the data compilation process until we have a proper asset available.
+
+        use std::{any::Any, convert::TryFrom, io, sync::Arc};
+
+        use crate::{resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId};
+        use byteorder::{LittleEndian, ReadBytesExt};
+        /// Asset temporarily used for testing.
+        ///
+        /// To be removed once real asset types exist.
+        #[resource("refs_asset")]
+        pub struct RefsAsset {
+            /// Test content.
+            pub content: String,
+            pub reference: Option<Reference<RefsAsset>>,
+        }
+
+        impl Asset for RefsAsset {
+            type Loader = RefsAssetLoader;
+        }
+
+        /// [`RefsAsset`]'s asset creator temporarily used for testings.
+        ///
+        /// To be removed once real asset types exists.
+        #[derive(Default)]
+        pub struct RefsAssetLoader {
+            registry: Option<Arc<AssetRegistry>>,
+        }
+
+        impl AssetLoader for RefsAssetLoader {
+            fn load(
+                &mut self,
+                reader: &mut dyn io::Read,
+            ) -> io::Result<Box<dyn Any + Send + Sync>> {
+                let len = reader.read_u64::<LittleEndian>()?;
+                let mut content = vec![0; len as usize];
+                reader.read_exact(&mut content)?;
+                let reference = read_maybe_reference::<RefsAsset>(reader)?;
+                let asset = Box::new(RefsAsset {
+                    content: String::from_utf8(content).unwrap(),
+                    reference,
+                });
+                Ok(asset)
+            }
+
+            fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+                let asset = asset.downcast_mut::<RefsAsset>().unwrap();
+                if let Some(reference) = &mut asset.reference {
+                    reference.activate(self.registry.as_ref().unwrap());
+                }
+            }
+            fn register_registry(&mut self, registry: Arc<AssetRegistry>) {
+                self.registry = Some(registry);
+            }
+        }
+
+        fn read_maybe_reference<T>(
+            reader: &mut dyn std::io::Read,
+        ) -> Result<Option<Reference<T>>, std::io::Error>
+        where
+            T: Any + Resource,
+        {
+            let underlying = reader.read_u128::<LittleEndian>()?;
+            if underlying == 0 {
+                return Ok(None);
+            }
+            match ResourceId::try_from(underlying) {
+                Ok(resource_id) => Ok(Some(Reference::Passive(resource_id))),
+                Err(_err) => Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "failed to read asset id",
+                )),
+            }
+        }
+    }
+
     use legion_content_store::RamContentStore;
 
     use crate::test_asset;
@@ -394,15 +472,17 @@ mod tests {
 
         let binary_parent_assetfile = [
             97, 115, 102, 116, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112,
-            97, 114, 101, 110, 116,
+            131, 200, 172, 79, 131, 200, 172, 79, 1, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0,
+            6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 131, 200, 172, 79,
         ];
         let binary_child_assetfile = [
-            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
-            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
+            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 131, 200, 172, 79, 1, 0, 0, 0, 0, 0,
+            0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
 
-        let child_id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
+        let child_id = ResourceId::new(refs_asset::RefsAsset::TYPE, 1);
 
         let parent_id = {
             manifest.insert(
@@ -411,14 +491,14 @@ mod tests {
                 binary_child_assetfile.len(),
             );
             let checksum = content_store.store(&binary_parent_assetfile).unwrap();
-            let id = ResourceId::new(test_asset::TestAsset::TYPE, 2);
+            let id = ResourceId::new(refs_asset::RefsAsset::TYPE, 2);
             manifest.insert(id, checksum, binary_parent_assetfile.len());
             id
         };
 
         let reg = AssetRegistryOptions::new()
             .add_device_cas(content_store, manifest)
-            .add_loader::<test_asset::TestAsset>()
+            .add_loader::<refs_asset::RefsAsset>()
             .create();
 
         (parent_id, child_id, reg)
@@ -548,7 +628,7 @@ mod tests {
         let parent = reg.load_untyped_sync(parent_id);
         assert!(parent.is_loaded(&reg));
 
-        let child = reg.load_untyped(child_id);
+        let child = reg.get_untyped(child_id).expect("be loaded indirectly");
         assert!(
             child.is_loaded(&reg),
             "The dependency should immediately be considered as loaded"

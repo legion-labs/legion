@@ -81,12 +81,23 @@ mod tests {
     use legion_content_store::RamContentStore;
     use legion_data_runtime::Resource;
 
+    fn create_ref_asset(text: &str, reference: Option<u128>) -> Vec<u8> {
+        let mut content = text.len().to_le_bytes().to_vec();
+        content.append(&mut text.as_bytes().to_vec());
+        let resource_id = match reference {
+            Some(id) => refs_asset::RefsAsset::TYPE.stamp(id),
+            None => 0,
+        };
+        content.append(&mut resource_id.to_ne_bytes().to_vec());
+        content
+    }
+
     #[test]
     fn one_asset_no_references() {
         let mut content_store = RamContentStore::default();
 
         let asset_id = ResourceId::new(refs_asset::RefsAsset::TYPE, 1);
-        let asset_content = b"test_content".to_vec();
+        let asset_content = create_ref_asset("test_content", None);
         let asset_checksum = content_store.store(&asset_content).expect("to store asset");
         assert_eq!(content_store.read(asset_checksum).unwrap(), asset_content);
 
@@ -155,12 +166,12 @@ mod tests {
         let mut content_store = RamContentStore::default();
 
         let child_id = ResourceId::new(refs_asset::RefsAsset::TYPE, 1);
-        let child_content = b"child".to_vec();
+        let child_content = create_ref_asset("child", None);
         let child_checksum = content_store.store(&child_content).expect("to store asset");
         assert_eq!(content_store.read(child_checksum).unwrap(), child_content);
 
         let parent_id = ResourceId::new(refs_asset::RefsAsset::TYPE, 2);
-        let parent_content = b"parent".to_vec();
+        let parent_content = create_ref_asset("parent", Some(1));
         let parent_checksum = content_store
             .store(&parent_content)
             .expect("to store asset");

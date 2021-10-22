@@ -14,12 +14,11 @@ use crate::{AssetRegistry, Ref, Resource, ResourceId};
 #[derive(Debug)]
 struct Inner {
     id: ResourceId,
-    unload_tx: crossbeam_channel::Sender<ResourceId>,
+    unload_tx: Option<crossbeam_channel::Sender<ResourceId>>,
 }
-
 impl Drop for Inner {
     fn drop(&mut self) {
-        self.unload_tx.send(self.id).unwrap();
+        let _ = self.unload_tx.as_ref().map(|tx| tx.send(self.id));
     }
 }
 
@@ -70,13 +69,18 @@ impl HandleUntyped {
         Self {
             inner: Arc::new(Inner {
                 id,
-                unload_tx: handle_drop_tx,
+                unload_tx: Some(handle_drop_tx),
             }),
         }
     }
 
     fn from_inner(inner: Arc<Inner>) -> Self {
         Self { inner }
+    }
+
+    pub(crate) fn forget(self) {
+        let mut inner = Arc::try_unwrap(self.inner).unwrap();
+        let _discard = inner.unload_tx.take();
     }
 
     pub(crate) fn downgrade(this: &Self) -> ReferenceUntyped {

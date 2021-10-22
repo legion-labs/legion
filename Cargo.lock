@@ -5066,6 +5066,7 @@ dependencies = [
 name = "refs-asset"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
  "legion-data-runtime",
 ]
 
