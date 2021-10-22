@@ -19,7 +19,7 @@
 export default {
   name: "ColorWidget",
   props: {
-    value: String,
+    value: Number,
     readonly: {
       type: Boolean,
       default: false,
