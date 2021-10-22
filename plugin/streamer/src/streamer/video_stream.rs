@@ -21,7 +21,7 @@ use super::Color;
 fn record_frame_time_metric(microseconds: u64) {
     trace_scope!();
     static FRAME_TIME_METRIC: MetricDesc = MetricDesc {
-        name: "Encoder Frame Time",
+        name: "Video Stream Frame Time",
         unit: "us",
     };
     record_int_metric(&FRAME_TIME_METRIC, microseconds);
