@@ -602,9 +602,9 @@ dependencies = [
 
 [[package]]
 name = "blake3"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcd555c66291d5f836dbb6883b48660ece810fe25a31f3bdfb911945dff2691f"
+checksum = "2607a74355ce2e252d0c483b2d8a348e1bba36036e786ccc2dcd777213c86ffd"
 dependencies = [
  "arrayref",
  "arrayvec 0.7.1",
@@ -667,9 +667,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.7.1"
+version = "3.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9df67f7bf9ef8498769f994239c45613ef0c5899415fb58e9add412d2c1a538"
+checksum = "8f1e260c3a9040a7c19a12468758f4c16f31a81a1fe087482be9570ec864bb6c"
 
 [[package]]
 name = "bytemuck"
@@ -2481,32 +2481,32 @@ dependencies = [
 
 [[package]]
 name = "hassle-rs"
-version = "0.5.3"
-source = "git+https://github.com/legion-labs/hassle-rs?branch=com_to_tinycom#89bc06dcd66daf44ecde7c94b871cf9bb16a6c91"
+version = "0.5.4"
+source = "git+https://github.com/legion-labs/hassle-rs?branch=com_to_tinycom#0ae29f73ccf2dc1a7624153578a0b7ae26c99e4c"
 dependencies = [
  "bitflags",
  "libc",
  "libloading",
  "thiserror",
  "tinycom",
- "widestring 0.4.3",
+ "widestring",
  "winapi",
 ]
 
 [[package]]
 name = "headers"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0b7591fb62902706ae8e7aaff416b1b0fa2c0fd0878b46dc13baa3712d8a855"
+checksum = "a4c4eb0471fcb85846d8b0690695ef354f9afb11cb03cac2e1d7c9253351afb0"
 dependencies = [
  "base64",
  "bitflags",
  "bytes",
  "headers-core",
  "http",
+ "httpdate",
  "mime",
  "sha-1",
- "time",
 ]
 
 [[package]]
@@ -2785,9 +2785,9 @@ dependencies = [
 
 [[package]]
 name = "interceptor"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86ae5b12b47c45ae5b98ac7a1ee43bde7566a584668bf253adb5f74700ba7498"
+checksum = "b96444996b096af68277a2bbd7928d1bf72d973d942311f54036efdd1d23b531"
 dependencies = [
  "async-trait",
  "bytes",
@@ -3286,7 +3286,7 @@ dependencies = [
  "legion-graphics-api",
  "log",
  "raw-window-handle",
- "widestring 0.5.0",
+ "widestring",
  "winapi",
 ]
 
@@ -5116,9 +5116,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.5"
+version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51c732d463dd300362ffb44b7b125f299c23d2990411a4253824630ebc7467fb"
+checksum = "66d2927ca2f685faf0fc620ac4834690d29e7abb153add10f5812eef20b5e280"
 dependencies = [
  "base64",
  "bytes",
@@ -5226,9 +5226,9 @@ dependencies = [
 
 [[package]]
 name = "rtcp"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9910dbb70e18c8bc0edb2a4389892d9e11e8f90ded56dab6b44dae49e09b238"
+checksum = "ace769ecc1c0cde8f95793a7f71f4bd7f4fe3475847210920c6ded64649263e1"
 dependencies = [
  "bytes",
  "thiserror",
@@ -6737,9 +6737,9 @@ dependencies = [
 
 [[package]]
 name = "tower"
-version = "0.4.9"
+version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d15a6b60cdff0cb039d81d3b37f8bc3d7e53dca09069aae3ef2502ca4834fe30"
+checksum = "c00e500fff5fa1131c866b246041a6bf96da9c965f8fe4128cb1421f23e93c00"
 dependencies = [
  "futures-core",
  "futures-util",
@@ -7321,9 +7321,9 @@ dependencies = [
 
 [[package]]
 name = "webrtc"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fb77303a4fb822765421400f364367ccc7ca72f460a9d593142829832092225"
+checksum = "df53987eb438dc5fb3a31dba347e7c943e462121d2538bb3c46d5fe47aa81265"
 dependencies = [
  "async-trait",
  "base64",
@@ -7481,9 +7481,9 @@ dependencies = [
 
 [[package]]
 name = "webrtc-srtp"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ff415eff48d46f8b158d9fdf05e35a2e44fc32065de81fa51bd0ee8599a376"
+checksum = "8d54bf19750b911dfd56643aa4f449a0b5c73f1065ad2fb405932eeaef54e0c5"
 dependencies = [
  "aead 0.4.3",
  "aes 0.7.5",
@@ -7505,9 +7505,9 @@ dependencies = [
 
 [[package]]
 name = "webrtc-util"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "098bbffdc7158ef35f802cd858b602ac860c24f64df97e41cba9fc6470bfb8df"
+checksum = "d71e0611aae3f9e983dfeb63afc4db960d1437eb41a2c0d48218ef27d3f68b59"
 dependencies = [
  "async-trait",
  "bitflags",
@@ -7518,6 +7518,7 @@ dependencies = [
  "libc",
  "log",
  "nix 0.23.0",
+ "parking_lot 0.11.2",
  "rand 0.8.4",
  "thiserror",
  "tokio",
@@ -7526,14 +7527,14 @@ dependencies = [
 
 [[package]]
 name = "webview2"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b132bb76313456e93b17037262a030d54c9fe0f11838ef1593f845e3807ef8a"
+checksum = "283bf6b0ed9c83faea8c7bfe40bb261592147a109effaa4077eed294863d5031"
 dependencies = [
  "com",
  "once_cell",
  "webview2-sys",
- "widestring 0.4.3",
+ "widestring",
  "winapi",
 ]
 
@@ -7576,12 +7577,6 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
-
-[[package]]
-name = "widestring"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c168940144dd21fd8046987c16a46a33d5fc84eec29ef9dcddc2ac9e31526b7c"
 
 [[package]]
 name = "widestring"
