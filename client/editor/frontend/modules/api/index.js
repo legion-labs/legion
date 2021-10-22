@@ -15,13 +15,37 @@ export async function search_resources() {
 };
 
 export async function get_resource_properties(id) {
-    var resp = await invoke("get_resource_properties", { id: id });
+    var resp = await invoke("get_resource_properties", {
+        request: {
+            id: id,
+        },
+    });
 
-    // We receive the `value` and `default_value` fields as a JSON-string bytes
-    // array.
+    // We receive the `value` and `default_value` fields as a JSON strings.
     resp.properties.forEach(function (part, i, properties) {
-        properties[i].value = JSON.parse(String.fromCharCode.apply(String, part.value));
-        properties[i].default_value = JSON.parse(String.fromCharCode.apply(String, part.default_value));
+        properties[i].value = JSON.parse(part.value);
+        properties[i].default_value = JSON.parse(part.default_value);
+    });
+
+    return resp;
+};
+
+export async function update_resource_properties(id, propertyUpdates) {
+    var resp = await invoke("update_resource_properties", {
+        request: {
+            id: id,
+            property_updates: propertyUpdates.map(propertyUpdate => {
+                propertyUpdate.value = JSON.stringify(propertyUpdate.value);
+
+                return propertyUpdate;
+            })
+        },
+    });
+
+    // We receive the `value` and `default_value` fields as a JSON strings.
+    resp.properties.forEach(function (part, i, properties) {
+        properties[i].value = JSON.parse(part.value);
+        properties[i].default_value = JSON.parse(part.default_value);
     });
 
     return resp;

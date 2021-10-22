@@ -64,12 +64,17 @@ mod config;
 mod interop;
 
 use config::Config;
-use interop::js::editor::{IntoVec, JSGetResourcePropertiesResponse, JSSearchResourcesResponse};
+use interop::js::editor::{
+    IntoVec, JSGetResourcePropertiesRequest, JSGetResourcePropertiesResponse,
+    JSSearchResourcesResponse, JSUpdateResourcePropertiesRequest,
+    JSUpdateResourcePropertiesResponse,
+};
 
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
 use legion_editor_proto::{
     editor_client::EditorClient, GetResourcePropertiesRequest, SearchResourcesRequest,
+    UpdateResourcePropertiesRequest,
 };
 use legion_grpc::client::Client as GRPCClient;
 use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
@@ -94,6 +99,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             initialize_stream,
             search_resources,
             get_resource_properties,
+            update_resource_properties,
             on_receive_control_message,
             on_send_edition_command,
             on_video_close,
@@ -193,6 +199,8 @@ async fn search_resources(
 
     let mut result = JSSearchResourcesResponse::default();
 
+    // TODO: perhaps this method is too smart and should be more straighforward, and let the
+    // pagination be done at the Javascript level.
     let mut search_token = String::new();
 
     loop {
@@ -214,14 +222,32 @@ async fn search_resources(
 #[legion_tauri_command]
 async fn get_resource_properties(
     editor_client: tauri::State<'_, Mutex<EditorClient<GRPCClient>>>,
-    id: String,
+    request: JSGetResourcePropertiesRequest,
 ) -> anyhow::Result<JSGetResourcePropertiesResponse> {
     let mut editor_client = editor_client.lock().await;
 
-    let request = tonic::Request::new(GetResourcePropertiesRequest { id });
+    let request: GetResourcePropertiesRequest = request.into();
+    let request = tonic::Request::new(request);
 
     Ok(editor_client
         .get_resource_properties(request)
+        .await?
+        .into_inner()
+        .into())
+}
+
+#[legion_tauri_command]
+async fn update_resource_properties(
+    editor_client: tauri::State<'_, Mutex<EditorClient<GRPCClient>>>,
+    request: JSUpdateResourcePropertiesRequest,
+) -> anyhow::Result<JSUpdateResourcePropertiesResponse> {
+    let mut editor_client = editor_client.lock().await;
+
+    let request: UpdateResourcePropertiesRequest = request.into();
+    let request = tonic::Request::new(request);
+
+    Ok(editor_client
+        .update_resource_properties(request)
         .await?
         .into_inner()
         .into())

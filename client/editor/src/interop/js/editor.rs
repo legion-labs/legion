@@ -20,7 +20,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use legion_editor_proto::{GetResourcePropertiesResponse, ResourceDescription, ResourceProperty};
+use legion_editor_proto::{
+    GetResourcePropertiesRequest, GetResourcePropertiesResponse, ResourceDescription,
+    ResourceProperty, ResourcePropertyUpdate, SearchResourcesRequest,
+    UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
+};
 
 pub trait IntoVec<T> {
     fn into_vec(self) -> Vec<T>;
@@ -36,8 +40,46 @@ where
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JSSearchResourcesRequest {
+    pub search_token: String,
+}
+
+impl From<SearchResourcesRequest> for JSSearchResourcesRequest {
+    fn from(v: SearchResourcesRequest) -> Self {
+        Self {
+            search_token: v.search_token,
+        }
+    }
+}
+
+impl From<JSSearchResourcesRequest> for SearchResourcesRequest {
+    fn from(v: JSSearchResourcesRequest) -> Self {
+        Self {
+            search_token: v.search_token,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct JSSearchResourcesResponse {
     pub resource_descriptions: Vec<JSResourceDescription>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JSGetResourcePropertiesRequest {
+    pub id: String,
+}
+
+impl From<GetResourcePropertiesRequest> for JSGetResourcePropertiesRequest {
+    fn from(v: GetResourcePropertiesRequest) -> Self {
+        Self { id: v.id }
+    }
+}
+
+impl From<JSGetResourcePropertiesRequest> for GetResourcePropertiesRequest {
+    fn from(v: JSGetResourcePropertiesRequest) -> Self {
+        Self { id: v.id }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -76,8 +118,8 @@ impl From<ResourceDescription> for JSResourceDescription {
 pub struct JSResourceProperty {
     pub name: String,
     pub ptype: String,
-    pub default_value: Vec<u8>,
-    pub value: Vec<u8>,
+    pub default_value: String, // JSON string
+    pub value: String,         // JSON string
     pub group: String,
 }
 
@@ -86,9 +128,71 @@ impl From<ResourceProperty> for JSResourceProperty {
         Self {
             name: v.name,
             ptype: v.ptype,
-            default_value: v.default_value,
-            value: v.value,
+            default_value: String::from_utf8(v.default_value)
+                .expect("invalid utf-8 string for default value"),
+            value: String::from_utf8(v.value).expect("invalid utf-8 string for value"),
             group: v.group,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JSResourcePropertyUpdate {
+    pub name: String,
+    pub value: String, // JSON string
+}
+
+impl From<ResourcePropertyUpdate> for JSResourcePropertyUpdate {
+    fn from(v: ResourcePropertyUpdate) -> Self {
+        Self {
+            name: v.name,
+            value: String::from_utf8(v.value).expect("invalid utf-8 string for value"),
+        }
+    }
+}
+
+impl From<JSResourcePropertyUpdate> for ResourcePropertyUpdate {
+    fn from(val: JSResourcePropertyUpdate) -> Self {
+        Self {
+            name: val.name,
+            value: val.value.as_bytes().to_vec(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JSUpdateResourcePropertiesRequest {
+    pub id: String,
+    pub property_updates: Vec<JSResourcePropertyUpdate>,
+}
+
+impl From<UpdateResourcePropertiesRequest> for JSUpdateResourcePropertiesRequest {
+    fn from(v: UpdateResourcePropertiesRequest) -> Self {
+        Self {
+            id: v.id,
+            property_updates: v.property_updates.into_vec(),
+        }
+    }
+}
+
+impl From<JSUpdateResourcePropertiesRequest> for UpdateResourcePropertiesRequest {
+    fn from(val: JSUpdateResourcePropertiesRequest) -> Self {
+        Self {
+            id: val.id,
+            property_updates: val.property_updates.into_vec(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JSUpdateResourcePropertiesResponse {
+    pub properties: Vec<JSResourceProperty>,
+}
+
+impl From<UpdateResourcePropertiesResponse> for JSUpdateResourcePropertiesResponse {
+    fn from(v: UpdateResourcePropertiesResponse) -> Self {
+        Self {
+            properties: v.properties.into_vec(),
         }
     }
 }

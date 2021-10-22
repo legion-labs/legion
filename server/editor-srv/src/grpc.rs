@@ -1,3 +1,4 @@
+use log::info;
 use tonic::{Request, Response, Status};
 
 use legion_editor_proto::{
@@ -124,11 +125,15 @@ impl Editor for GRPCServer {
 
     async fn update_resource_properties(
         &self,
-        _request: Request<UpdateResourcePropertiesRequest>,
+        request: Request<UpdateResourcePropertiesRequest>,
     ) -> Result<Response<UpdateResourcePropertiesResponse>, Status> {
         //let project = *self.project.lock().unwrap();
         //let registry = *self.registry.lock().unwrap();
         //let resource_handles = *self.resource_handles.lock().unwrap();
+
+        let request = request.into_inner();
+
+        info!("updating resource properties for entity {}", request.id);
 
         Ok(Response::new(UpdateResourcePropertiesResponse {
             properties: vec![],

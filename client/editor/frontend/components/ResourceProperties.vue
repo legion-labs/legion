@@ -71,7 +71,10 @@
 </style>
 
 <script>
-import { get_resource_properties } from "~/modules/api";
+import {
+  get_resource_properties,
+  update_resource_properties,
+} from "~/modules/api";
 
 export default {
   name: "ResourceProperties",
@@ -121,15 +124,23 @@ export default {
     },
   },
   methods: {
-    updateResource(resource) {
-      if (!resource) {
-        resource = {
-          description: this.resourceDescription,
-          properties: this.properties,
-        };
-      }
+    updateResource() {
+      const resource = {
+        description: this.resourceDescription,
+        properties: this.properties,
+      };
 
-      // TODO: Replace this with a real call.
+      update_resource_properties(
+        resource.description.id,
+        resource.properties.map((property) => {
+          return {
+            name: property.name,
+            value: property.value,
+          };
+        })
+      );
+
+      // TODO: Remove this eventually once we can really update the data for the triangle.
       this.$emit("resource-change", resource);
     },
     queryResourceProperties(resourceId) {
@@ -143,7 +154,7 @@ export default {
     isSetToDefault(item) {
       return JSON.stringify(item.value) == JSON.stringify(item.default_value);
     },
-    resetToDefault(item) {
+    async resetToDefault(item) {
       item.value = JSON.parse(JSON.stringify(item.default_value));
       this.updateResource();
     },
