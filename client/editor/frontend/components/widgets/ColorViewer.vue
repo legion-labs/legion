@@ -32,21 +32,23 @@
 </style>
 
 <script>
+import { u32_to_hexcolor, hexcolor_to_u32 } from "~/modules/conversion";
+
 export default {
   name: "ColorViewer",
   props: ["value"],
   computed: {
     localValue: {
       get() {
-        return this.value;
+        return u32_to_hexcolor(this.value);
       },
       set(val) {
-        this.$emit("input", val);
+        this.$emit("input", hexcolor_to_u32(val));
       },
     },
     bgColor() {
       return {
-        "--bg-color": this.value,
+        "--bg-color": this.localValue,
       };
     },
   },

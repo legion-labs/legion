@@ -11,49 +11,10 @@ export async function initialize_stream(localSessionDescription) {
 }
 
 export async function search_resources() {
-    var result = await invoke("search_resources");
-
-    // TODO: Remove this once we have a more comprehensive data-set to test on.
-    result.resource_descriptions = [
-        {
-            "id": "triangle",
-            path: "fake/triangle",
-            version: 1,
-        },
-        ...result.resource_descriptions,
-    ];
-
-    return result;
+    return await invoke("search_resources");
 };
 
 export async function get_resource_properties(id) {
-
-    // TODO: Remove this once we have a more comprehensive data-set to test on.
-    if (id == "triangle") {
-        return {
-            description: {
-                "id": "triangle",
-                path: "fake/triangle",
-                version: 1,
-            },
-            properties: [
-                {
-                    name: "color",
-                    ptype: "color",
-                    value: "#FF0000FF",
-                    default_value: "#FF0000FF",
-                    group: "material",
-                },
-                {
-                    name: "speed",
-                    ptype: "speed",
-                    value: 1,
-                    default_value: 1,
-                    group: "movement",
-                },
-            ],
-        };
-    }
     var resp = await invoke("get_resource_properties", { id: id });
 
     // We receive the `value` and `default_value` fields as a JSON-string bytes
