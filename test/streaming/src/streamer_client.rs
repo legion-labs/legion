@@ -11,12 +11,6 @@ fn main() {
     run().unwrap();
 }
 
-#[cfg(target_os = "linux")]
-fn run() -> GfxResult<()> {
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
     use codec_api::{backends::openh264::encoder, formats};
     use mp4::{AvcConfig, MediaConfig, Mp4Config};
