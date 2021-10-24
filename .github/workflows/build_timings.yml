@@ -18,6 +18,26 @@ jobs:
       - name: Upload report
         uses: actions/upload-artifact@v2
         with:
-          name: timgings
+          name: timings
           path: ./timings
           retention-days: 60
+
+  deploy_timings:
+    name: Deploying book
+    needs: [timings]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: timings
+          path: ./timings
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.BUILD_TIMINGS_DEPLOY_KEY }}
+          external_repository: legion-labs/build-timings.legionengine.com
+          publish_branch: main
+          publish_dir: ./timings
+          force_orphan: true
+          cname: build-timings.legionengine.com
