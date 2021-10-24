@@ -8,6 +8,8 @@ This is the  mono repository of legion, it contains all the application code of 
 
 * Visit https://book.legionengine.com for the legion engine book.
 * Visit https://api.legionengine.com for the legion api reference book.
+* Visit https://cov.legionengine.com for the legion code coverage statistics.
+* Visit https://build-timings.legionengine.com for build time statistic.
 
 ## Setting up your environment:
 
