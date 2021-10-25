@@ -150,6 +150,15 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
         };
         use legion_data_runtime::{Asset, AssetLoader, Resource};
         use legion_utils::DefaultHash;
+        use std::collections::HashMap;
+
+        lazy_static::lazy_static! {
+            static ref #offline_default_descriptor : HashMap<u64, PropertyDescriptor> = {
+                let mut map = HashMap::new();
+                #(#offline_fields_editor_descriptors)*
+                map
+            };
+        }
 
         lazy_static::lazy_static! {
             static ref #offline_default_descriptor : HashMap<u64, PropertyDescriptor> = {
@@ -194,9 +203,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
         impl ResourceReflection for #offline_identifier {
             /// Interface defining field serialization by name
             fn write_property(&mut self, field_name: &str, field_value: &str) -> Result<(), &'static str> {
-                let mut hasher = DefaultHasher::new();
-                field_name.hash(&mut hasher);
-                match hasher.finish() {
+                match field_name.default_hash() {
                     #(#reflection_writer)*
                     _ => return Err("invalid field"),
                 }
@@ -205,9 +212,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
 
             /// Interface defining field serialization by name
             fn read_property(&self, field_name: &str) -> Result<String, &'static str> {
-                let mut hasher = DefaultHasher::new();
-                field_name.hash(&mut hasher);
-                match hasher.finish() {
+                match field_name.default_hash() {
                     #(#reflection_read)*
                     _ => Err("invalid field"),
                 }
@@ -215,9 +220,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
 
             /// Interface defining field serialization by name
             fn read_property_default(&self, field_name: &str) -> Result<String, &'static str> {
-                let mut hasher = DefaultHasher::new();
-                field_name.hash(&mut hasher);
-                match hasher.finish() {
+                match field_name.default_hash() {
                     #(#reflection_read_default)*
                     _ => Err("invalid field"),
                 }
