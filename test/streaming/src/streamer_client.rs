@@ -14,10 +14,7 @@ fn main() {
 fn run() -> GfxResult<()> {
     use codec_api::{backends::openh264::encoder, formats};
     use mp4::{AvcConfig, MediaConfig, Mp4Config};
-    use std::{
-        convert::TryInto,
-        io::{Cursor, Write},
-    };
+    use std::io::{Cursor, Write};
 
     const TARGET_WIDTH: u32 = 1920;
     const TARGET_HEIGHT: u32 = 1080;
