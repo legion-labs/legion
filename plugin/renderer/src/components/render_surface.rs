@@ -1,4 +1,4 @@
-use graphics_api::{DefaultApi, Extents3D, Format, GfxApi, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef, TextureTiling};
+use graphics_api::{DefaultApi, Extents3D, Format, GfxApi, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef, TextureTiling, TextureViewDef};
 use legion_ecs::prelude::Component;
 use legion_window::{Window, WindowId};
 
@@ -10,6 +10,7 @@ pub struct RenderSurface {
     pub width : u32,
     pub height : u32,
     pub texture : <DefaultApi as GfxApi>::Texture,
+    pub texture_rtv : <DefaultApi as GfxApi>::TextureView,
 }
 
 impl RenderSurface {
@@ -30,24 +31,34 @@ impl RenderSurface {
             tiling: TextureTiling::Optimal,
         };        
         let texture = gpu_resource_factory.create_texture(&texture_def);
+        let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
+        let texture_rtv = texture.create_view(&rtv_def).unwrap();
+
 
         Self {
             id: window.id(),       
             width: texture_def.extents.width,     
             height: texture_def.extents.height,     
-            texture
+            texture,
+            texture_rtv
         }
     }
 
     pub fn resize(&mut self, gpu_resource_factory: &GPUResourceFactory, width: u32, height: u32) {
         if (self.width, self.height) != (width, height) {
+            
             let mut texture_def = *self.texture.texture_def();            
             texture_def.extents.width = width;
-            texture_def.extents.height = height;
+            texture_def.extents.height = height;            
             let texture = gpu_resource_factory.create_texture(&texture_def);
+            
+            let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
+            let texture_rtv = texture.create_view(&rtv_def).unwrap();
+
             self.width = texture_def.extents.width;
             self.height = texture_def.extents.height;
             self.texture = texture;
+            self.texture_rtv = texture_rtv;
         }
     }
 }

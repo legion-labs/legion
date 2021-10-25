@@ -15,7 +15,7 @@ pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut legion_app::App) {
-        let renderer = Renderer::new(1024, 1024);
+        let renderer = Renderer::new();
         let gpu_resource_factory = GPUResourceFactory::new(renderer.api().device_context().clone());
         app.insert_resource(gpu_resource_factory);
         app.insert_resource(renderer);
@@ -65,18 +65,20 @@ fn render(
     outputs: Query<(Entity, &RenderSurface)> 
 ) {
 
-    renderer.api().device_context().free_gpu_memory();
+    renderer.api().device_context().free_gpu_memory().unwrap();
 
-    for (_,_render_surface) in outputs.iter() {
+    assert!( outputs.iter().len() <= 1 );
+    for (_,render_surface) in outputs.iter() {
 
-        dbg!( "toto" );
+        // dbg!( "toto" );
         // render_surface.render();
 
+        renderer.render( &render_surface.texture_rtv );
     }
 
     // let create_output_event_reader = ManualEventReader::<CreateOutput>::default();    
     
     // create_output_event_reader.iter(events)
 
-    renderer.render();
+    
 }

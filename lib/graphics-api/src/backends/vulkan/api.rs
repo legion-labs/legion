@@ -2,7 +2,7 @@ use super::internal::VkInstance;
 use super::{
     VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
     VulkanCommandPool, VulkanDescriptorSetArray, VulkanDescriptorSetHandle,
-    VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanDeviceContextInner, VulkanFence,
+    VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanFence,
     VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
     VulkanShaderModule, VulkanSwapchain, VulkanTexture, VulkanTextureView,
 };
@@ -114,13 +114,8 @@ impl VulkanApi {
             api_def.validation_mode,
             api_def.windowing_mode,
         )?;
-
-        let inner = Arc::new(VulkanDeviceContextInner::new(
-            &instance,
-            api_def.windowing_mode,
-            api_def.video_mode,
-        )?);
-        let device_context = Some(VulkanDeviceContext::new(inner)?);
+        
+        let device_context = Some(VulkanDeviceContext::new(&instance)?);
 
         Ok(Self {
             instance,

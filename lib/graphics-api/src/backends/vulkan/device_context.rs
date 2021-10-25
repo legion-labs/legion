@@ -1,3 +1,4 @@
+use crate::backends::deferred_drop::DeferredDropper;
 use crate::vulkan::check_extensions_availability;
 use crate::{
     BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext,
@@ -7,7 +8,6 @@ use crate::{
 use ash::extensions::khr;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
-use std::cell::RefCell;
 use std::convert::TryInto;
 use std::sync::{Arc, Mutex};
 
@@ -83,151 +83,19 @@ pub struct VkQueueFamilyIndices {
     pub encode_queue_family_index: Option<u32>,
 }
 
-#[derive(Clone)]
-struct ResourceBucket {    
-    pub textures: Vec<(vk::Image, vk_mem::Allocation)>,
-    pub buffers: Vec<(vk::Buffer, vk_mem::Allocation)>,
-}
-
-impl ResourceBucket {
-    pub fn new() -> Self {
-        ResourceBucket {            
-            textures: Vec::new(),
-            buffers: Vec::new(),
-        }
-    }
-
-    pub fn free_resources(&mut self, allocator: &vk_mem::Allocator) {
-        for (image,allocation) in self.textures.drain(..) {
-            allocator.destroy_image(image, &allocation);
-        }        
-
-        for (buffer,allocation) in self.buffers.drain(..) {
-            allocator.destroy_buffer(buffer, &allocation);
-        }        
-    }
-}
-
-struct FreedResourceList {
-    render_frame_capacity: usize,
-    render_frame_index: usize,
-    resource_buckets: Vec<ResourceBucket>,
-}
-
-impl FreedResourceList {
-    pub fn new(render_frame_capacity: usize) -> Self {        
-        FreedResourceList {
-            render_frame_capacity,
-            render_frame_index: 0,
-            resource_buckets: (0..render_frame_capacity).map( |x| ResourceBucket::new() ).collect()
-        }
-    }
-
-    pub fn next_frame(&mut self, allocator: &vk_mem::Allocator) {
-        let next_render_frame = (self.render_frame_index + 1)%self.render_frame_capacity;
-        self.resource_buckets[next_render_frame].free_resources(allocator);
-        self.render_frame_index = next_render_frame;
-    }    
-
-    pub fn destroy(&mut self, allocator: &vk_mem::Allocator) {
-        for bucket in &mut self.resource_buckets {
-            bucket.free_resources(allocator);
-        }
-    }
-
-    pub fn push_texture(&mut self, image: vk::Image, allocation: vk_mem::Allocation) {
-        let mut bucket = self.current_bucket();
-        bucket.textures.push((image, allocation));
-    }   
-
-    pub fn push_buffer(&mut self, buffer: ash::vk::Buffer, allocation: vk_mem::Allocation) {
-        let mut bucket = self.current_bucket();
-        bucket.buffers.push((buffer, allocation));
-    }
-
-    fn current_bucket(&mut self) -> &mut ResourceBucket {
-        let bucket = &mut self.resource_buckets[self.render_frame_index];
-        bucket
-    }
-}
-
-pub struct GPUMemoryAllocator {
-    allocator: vk_mem::Allocator,    
-    render_frame_capacity: usize,    
-    pending_resource_list: Mutex<RefCell<FreedResourceList>>,
-}
-
-impl GPUMemoryAllocator {
-    pub fn new(render_frame_capacity: usize, allocator: vk_mem::Allocator) -> Self {
-        GPUMemoryAllocator{
-            allocator,
-            render_frame_capacity,            
-            pending_resource_list: Mutex::new(RefCell::new(FreedResourceList::new(render_frame_capacity)))            
-        }
-    }
-
-    pub fn free_gpu_memory(&self) {
-        let lockguard = self.pending_resource_list.lock().unwrap();        
-        let mut list = lockguard.borrow_mut();
-        list.next_frame(&self.allocator);
-    }    
-
-    pub fn create_image(
-        &self, 
-        image_info: &ash::vk::ImageCreateInfo, 
-        allocation_info: &vk_mem::AllocationCreateInfo
-    ) -> GfxResult<(ash::vk::Image, vk_mem::Allocation, vk_mem::AllocationInfo)> {                        
-        self.allocator.create_image(image_info, allocation_info).map_err(|e| e.into())
-    }
-
-    pub fn destroy_image(&self, image: vk::Image, allocation: vk_mem::Allocation) {
-        let lockguard = self.pending_resource_list.lock().unwrap();                
-        let mut list =  lockguard.borrow_mut();
-        list.push_texture(image, allocation);                
-    }
-
-    pub fn create_buffer(
-        &self, 
-        buffer_info: &ash::vk::BufferCreateInfo,
-        allocation_info: &vk_mem::AllocationCreateInfo) 
-        -> GfxResult<(ash::vk::Buffer, vk_mem::Allocation, vk_mem::AllocationInfo)> {
-        self.allocator.create_buffer(buffer_info, allocation_info).map_err(|e| e.into())
-    }
-
-    pub fn destroy_buffer(&self, buffer: ash::vk::Buffer, allocation: vk_mem::Allocation) {        
-        let lockguard =self.pending_resource_list.lock().unwrap();                
-        let mut list =  lockguard.borrow_mut();
-        list.push_buffer(buffer, allocation);                            
-    }
-
-    pub fn map_memory(&self, allocation: &vk_mem::Allocation) -> GfxResult<*mut u8> {
-        self.allocator.map_memory(allocation).map_err(|e| e.into())
-    }
-
-    pub fn unmap_memory(&self, allocation: &vk_mem::Allocation) {
-        self.allocator.unmap_memory(allocation)
-    }
-
-    pub fn destroy(&mut self)  {
-        let lockguard =self.pending_resource_list.lock().unwrap();                
-        let mut list =  lockguard.borrow_mut();
-        list.destroy(&self.allocator);
-        self.allocator.destroy();
-    }
-}
-
-pub struct VulkanDeviceContextInner {
+pub(super) struct VulkanDeviceContextInner {
     pub(crate) resource_cache: DeviceVulkanResourceCache,
     pub(crate) descriptor_heap: VulkanDescriptorHeap,
-    pub(crate) device_info: DeviceInfo,
-    pub(crate) queue_allocator: VkQueueAllocatorSet,
+    device_info: DeviceInfo,
+    queue_allocator: VkQueueAllocatorSet,
 
     // If we need a dedicated present queue, we share a single queue across all swapchains. This
     // lock ensures that the present operations for those swapchains do not occur concurrently
-    pub(crate) dedicated_present_queue_lock: Mutex<()>,
+    dedicated_present_queue_lock: Mutex<()>,
 
     device: ash::Device,
-    allocator: GPUMemoryAllocator,    
+    allocator: vk_mem::Allocator,    
+    deferred_dropper : DeferredDropper,    
     destroyed: AtomicBool,
     entry: Arc<ash::Entry>,
     instance: ash::Instance,
@@ -240,7 +108,9 @@ pub struct VulkanDeviceContextInner {
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
-    pub(crate) all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
+    all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
+
+    
 }
 
 impl Drop for VulkanDeviceContextInner {
@@ -290,23 +160,19 @@ impl VulkanDeviceContextInner {
             &logical_device,
             &physical_device_info.all_queue_families,
             queue_requirements,
-        );
+        );        
 
-        let allocator =
-        {
-            let allocator_create_info = vk_mem::AllocatorCreateInfo {
-                physical_device,
-                device: logical_device.clone(),
-                instance: instance.instance.clone(),
-                flags: vk_mem::AllocatorCreateFlags::default(),
-                preferred_large_heap_block_size: Default::default(),
-                frame_in_use_count: 0, // Not using CAN_BECOME_LOST, so this is not needed
-                heap_size_limits: Option::default(),
-            };
-    
-            let allocator = vk_mem::Allocator::new(&allocator_create_info)?;
-            GPUMemoryAllocator::new(3, allocator)
+        let allocator_create_info = vk_mem::AllocatorCreateInfo {
+            physical_device,
+            device: logical_device.clone(),
+            instance: instance.instance.clone(),
+            flags: vk_mem::AllocatorCreateFlags::default(),
+            preferred_large_heap_block_size: Default::default(),
+            frame_in_use_count: 0, // Not using CAN_BECOME_LOST, so this is not needed
+            heap_size_limits: Option::default(),
         };
+
+        let allocator = vk_mem::Allocator::new(&allocator_create_info)?;
 
         let limits = &physical_device_info.properties.limits;
 
@@ -344,7 +210,8 @@ impl VulkanDeviceContextInner {
             physical_device,
             physical_device_info,
             device: logical_device,
-            allocator,
+            allocator : allocator,
+            deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
 
             #[cfg(debug_assertions)]
@@ -452,7 +319,7 @@ impl VulkanDeviceContext {
         &self.physical_device_info().properties.limits
     }
 
-    pub fn allocator(&self) -> &GPUMemoryAllocator {
+    pub fn allocator(&self) -> &vk_mem::Allocator {
         &self.inner.allocator
     }   
 
@@ -468,6 +335,10 @@ impl VulkanDeviceContext {
         &self.inner.dedicated_present_queue_lock
     }
 
+    pub fn deferred_dropper(&self) -> &DeferredDropper {
+        &self.inner.deferred_dropper
+    }
+
     pub(crate) fn create_renderpass(
         &self,
         renderpass_def: &VulkanRenderpassDef,
@@ -476,10 +347,10 @@ impl VulkanDeviceContext {
     }
 
     pub fn new(        
-        inner: Arc<VulkanDeviceContextInner>,
-    ) -> GfxResult<Self> {
+        instance: &VkInstance
+    ) -> GfxResult<Self> {        
         Ok(Self {
-            inner,
+            inner: Arc::new(VulkanDeviceContextInner::new(instance)?),
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
             create_index: 0,
@@ -572,7 +443,7 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
     }
     
     fn free_gpu_memory(&self) -> GfxResult<()> {        
-        self.inner.allocator.free_gpu_memory();
+        self.inner.deferred_dropper.flush();        
         Ok(())
     }
 }

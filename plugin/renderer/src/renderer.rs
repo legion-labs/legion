@@ -1,4 +1,5 @@
 use graphics_api::prelude::*;
+use graphics_api::backends::shared::tmp_extract_root_signature_def;
 
 pub struct Renderer {
     frame_idx: usize,
@@ -10,8 +11,8 @@ pub struct Renderer {
     command_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
     vertex_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
     uniform_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
-    render_images: Vec<<DefaultApi as GfxApi>::Texture>,
-    render_views: Vec<<DefaultApi as GfxApi>::TextureView>,
+    // render_images: Vec<<DefaultApi as GfxApi>::Texture>,
+    // render_views: Vec<<DefaultApi as GfxApi>::TextureView>,
     descriptor_set_array: <DefaultApi as GfxApi>::DescriptorSetArray,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
@@ -21,7 +22,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(width: u32, height: u32) -> Renderer {
+    pub fn new() -> Renderer {
         #[allow(unsafe_code)]
         let api =
             unsafe { DefaultApi::new(None, &Default::default(), &Default::default()).unwrap() };
@@ -70,8 +71,8 @@ impl Renderer {
         let mut vertex_buffers = Vec::with_capacity(num_buffered_frames);
         let mut uniform_buffers = Vec::with_capacity(num_buffered_frames);
         let mut uniform_buffer_cbvs = Vec::with_capacity(num_buffered_frames);
-        let mut render_images = Vec::with_capacity(num_buffered_frames);
-        let mut render_views = Vec::with_capacity(num_buffered_frames);
+        // let mut render_images = Vec::with_capacity(num_buffered_frames);
+        // let mut render_views = Vec::with_capacity(num_buffered_frames);
         let mut frame_fences = Vec::with_capacity(num_buffered_frames);
         // let mut copy_images = Vec::with_capacity(parallel_render_count);
 
@@ -103,26 +104,26 @@ impl Renderer {
             let view_def = BufferViewDef::as_const_buffer(uniform_buffer.buffer_def());
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def).unwrap();
 
-            let render_image = device_context
-                .create_texture(&TextureDef {
-                    extents: Extents3D {
-                        width,
-                        height,
-                        depth: 1,
-                    },
-                    array_length: 1,
-                    mip_count: 1,
-                    format: Format::R8G8B8A8_UNORM,
-                    usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW
-                        | ResourceUsage::HAS_RENDER_TARGET_VIEW,
-                    resource_flags: ResourceFlags::empty(),
-                    mem_usage: MemoryUsage::GpuOnly,
-                    tiling: TextureTiling::Optimal,
-                })
-                .unwrap();
+            // let render_image = device_context
+            //     .create_texture(&TextureDef {
+            //         extents: Extents3D {
+            //             width,
+            //             height,
+            //             depth: 1,
+            //         },
+            //         array_length: 1,
+            //         mip_count: 1,
+            //         format: Format::R8G8B8A8_UNORM,
+            //         usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW
+            //             | ResourceUsage::HAS_RENDER_TARGET_VIEW,
+            //         resource_flags: ResourceFlags::empty(),
+            //         mem_usage: MemoryUsage::GpuOnly,
+            //         tiling: TextureTiling::Optimal,
+            //     })
+            //     .unwrap();
 
-            let render_view_def = TextureViewDef::as_render_target_view(render_image.texture_def());
-            let render_view = render_image.create_view(&render_view_def).unwrap();            
+            // let render_view_def = TextureViewDef::as_render_target_view(render_image.texture_def());
+            // let render_view = render_image.create_view(&render_view_def).unwrap();            
             let frame_fence = device_context.create_fence().unwrap();
 
             command_pools.push(command_pool);
@@ -130,8 +131,8 @@ impl Renderer {
             vertex_buffers.push(vertex_buffer);
             uniform_buffer_cbvs.push(uniform_buffer_cbv);
             uniform_buffers.push(uniform_buffer);
-            render_images.push(render_image);
-            render_views.push(render_view);
+            // render_images.push(render_image);
+            // render_views.push(render_view);
             frame_fences.push(frame_fence);            
         }
 
@@ -215,7 +216,7 @@ impl Renderer {
             .create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])
             .unwrap();
 
-        let root_signature_def = graphics_api::backends::tmp_extract_root_signature_def(
+        let root_signature_def = tmp_extract_root_signature_def(
             device_context,
             &[shader.clone()],
         )
@@ -294,7 +295,7 @@ impl Renderer {
                 blend_state: &Default::default(),
                 depth_state: &Default::default(),
                 rasterizer_state: &Default::default(),
-                color_formats: &[Format::R8G8B8A8_UNORM],
+                color_formats: &[Format::R16G16B16A16_SFLOAT],
                 sample_count: SampleCount::SampleCount1,
                 depth_stencil_format: None,
                 primitive_topology: PrimitiveTopology::TriangleList,
@@ -312,8 +313,8 @@ impl Renderer {
             command_buffers,
             vertex_buffers,
             uniform_buffers,
-            render_images,
-            render_views,
+            // render_images,
+            // render_views,
             descriptor_set_array,
             root_signature,
             pipeline,
@@ -321,7 +322,8 @@ impl Renderer {
     }
 
     pub fn render(
-        &mut self,
+        &mut self,        
+        render_view: &<DefaultApi as GfxApi>::TextureView
     ) {
         let render_frame_idx = self.render_frame_idx;
         let elapsed_secs = self.frame_idx as f32 / 60.0;
@@ -355,8 +357,8 @@ impl Renderer {
         //
         // Acquire swapchain image
         //
-        let render_texture = &self.render_images[render_frame_idx];
-        let render_view = &self.render_views[render_frame_idx];
+        // let render_texture = &self.render_images[render_frame_idx];
+        // let render_view = &self.render_views[render_frame_idx];
 
         //
         // Use the command pool/buffer assigned to this frame
@@ -387,7 +389,7 @@ impl Renderer {
             .cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::<DefaultApi>::state_transition(
-                    render_texture,
+                    render_view.texture(),
                     ResourceState::COPY_SRC,
                     ResourceState::RENDER_TARGET,
                 )],
@@ -434,7 +436,7 @@ impl Renderer {
             .cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::<DefaultApi>::state_transition(
-                    render_texture,
+                    render_view.texture(),
                     ResourceState::RENDER_TARGET,
                     ResourceState::COPY_SRC,
                 )],

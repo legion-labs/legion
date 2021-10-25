@@ -116,7 +116,7 @@ impl Drop for VulkanBufferInner {
 
         self.device_context
             .allocator()
-            .destroy_buffer(self.buffer, self.allocation);
+            .destroy_buffer(self.buffer, &self.allocation);
 
         log::trace!("destroyed BufferVulkanInner");
     }

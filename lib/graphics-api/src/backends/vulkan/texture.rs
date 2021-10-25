@@ -1,4 +1,5 @@
 use super::{VulkanApi, VulkanDeviceContext, VulkanTextureView};
+use crate::backends::deferred_drop::Drc;
 use crate::{
     Extents3D, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,
     TextureSubResource, TextureViewDef,
@@ -7,7 +8,6 @@ use ash::vk::{self};
 use std::hash::{Hash, Hasher};
 use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 // This is used to allow the underlying image/allocation to be removed from a VulkanTexture,
 // or to init a VulkanTexture with an existing image/allocation. If the allocation is none, we
@@ -25,7 +25,7 @@ impl VulkanRawImage {
             assert_ne!(self.image, vk::Image::null());
             device_context
                 .allocator()
-                .destroy_image(self.image, allocation);
+                .destroy_image(self.image, &allocation);
             self.image = vk::Image::null();
             log::trace!("destroyed ImageVulkan");
         } else {
@@ -62,7 +62,7 @@ impl Drop for TextureVulkanInner {
 /// provided `ResourceType` in the `texture_def`.
 #[derive(Clone, Debug)]
 pub struct VulkanTexture {
-    inner: Arc<TextureVulkanInner>,
+    inner: Drc<TextureVulkanInner>,
 }
 
 impl PartialEq for VulkanTexture {
@@ -422,7 +422,7 @@ impl VulkanTexture {
         };
 
         Ok(Self {
-            inner: Arc::new(inner),
+            inner: device_context.deferred_dropper().new_drc(inner),
         })
     }
 }
