@@ -58,13 +58,17 @@ impl VulkanTextureView {
             .subresource_range(subresource_range.build());
         let vk_image_view = unsafe { device.create_image_view(&builder.build(), None)? };
 
-        Ok(Self {
-            inner: Drc::new(device_context.deferred_dropper().clone(), VulkanTextureViewInner {
-                view_def: *view_def,
-                texture: texture.clone(),
-                vk_image_view,
-            }),
-        })
+        Ok(
+            Self {
+                inner: device_context.deferred_dropper().new_drc(
+                VulkanTextureViewInner {
+                        view_def: *view_def,
+                        texture: texture.clone(),
+                        vk_image_view,
+                    }
+                )
+            }                       
+        )
     }
 
     pub(super) fn vulkan_texture(&self) -> &VulkanTexture {

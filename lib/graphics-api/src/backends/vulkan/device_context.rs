@@ -95,7 +95,7 @@ pub(super) struct VulkanDeviceContextInner {
 
     device: ash::Device,
     allocator: vk_mem::Allocator,    
-    deferred_dropper : DeferredDropper,    
+    pub(crate) deferred_dropper : DeferredDropper,    
     destroyed: AtomicBool,
     entry: Arc<ash::Entry>,
     instance: ash::Instance,
@@ -118,6 +118,7 @@ impl Drop for VulkanDeviceContextInner {
         if !self.destroyed.swap(true, Ordering::AcqRel) {
             unsafe {
                 log::trace!("destroying device");
+                self.deferred_dropper.destroy();
                 self.allocator.destroy();
                 self.device.destroy_device(None);
                 //self.surface_loader.destroy_surface(self.surface, None);

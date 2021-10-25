@@ -1,6 +1,11 @@
 #![allow(unsafe_code)]
-
-use std::{any::Any, cell::RefCell, ops::Deref, process::abort, ptr::NonNull, sync::{Arc, Mutex, atomic::{self, Ordering}}};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::ptr::NonNull;
+use std::process::abort;
+use std::sync::{Arc, Mutex, atomic::{self, Ordering}};
+use std::ops::Deref;
+use std::cell::RefCell;
+use std::any::Any;
 
 #[derive(Debug, Clone)]
 pub struct DeferredDropper {
@@ -8,37 +13,81 @@ pub struct DeferredDropper {
 }
 
 impl DeferredDropper {
+
     pub fn new(render_frame_capacity: usize) -> Self {
-        DeferredDropper {
+        let (tx, rx) = mpsc::channel();
+        DeferredDropper {            
             inner: Arc::new(Mutex::new( RefCell::new( 
                 DeferredDropperInner{                    
                     render_frame_capacity,
                     render_frame_index: 0,
-                    buckets: (0..render_frame_capacity).map( |_x| ObjectBucket( Vec::new() ) ).collect()
+                    buckets: (0..render_frame_capacity).map( |_x| ObjectBucket( Vec::new() ) ).collect(),
+                    sender: tx,
+                    receiver: rx,
                 } 
             ) ))
         }
     }
 
     pub fn new_drc<T>(&self, data: T) -> Drc<T> {
-        Drc::new(self.clone(), data)
-    }
-
-    pub fn defer_drop(&self, object: Box<dyn Any>) {
         let guard = self.inner.lock().unwrap();        
-        let mut inner = guard.borrow_mut();
-        let render_frame_index = inner.render_frame_index;
-        inner.buckets[render_frame_index].0.push(object);    
+        let inner = guard.borrow();
+        Drc::new(inner.sender.clone(), data)
     }
 
     pub fn flush(&self) {
         let guard = self.inner.lock().unwrap();        
         let mut inner = guard.borrow_mut();
-        let next_render_frame = (inner.render_frame_index + 1)%inner.render_frame_capacity;
-        inner.buckets[next_render_frame].0.drain(..);    
-        inner.render_frame_index = next_render_frame;
+        
+        // Flush queue in the 'current frame' bucket.
+        {
+            let current_render_frame = inner.render_frame_index;    
+            loop {
+                if let Ok(object) = inner.receiver.try_recv() {
+                    inner.buckets[current_render_frame].0.push(object)    
+                }
+                else {
+                    break;
+                }
+            }
+        }
+        // Move to the next frame. Now, we can safely free the memory. The GPU should not have any 
+        // implicit reference on some API objects/memory.
+        {
+            let next_render_frame = (inner.render_frame_index + 1)%inner.render_frame_capacity;
+
+            inner.buckets[next_render_frame].0.drain(..);    
+            inner.render_frame_index = next_render_frame;         
+        }
+    }
+
+    pub fn destroy(&self) {
+
+        let guard = self.inner.lock().unwrap();        
+        let mut inner = guard.borrow_mut();
+
+        for i in 0..inner.buckets.len() {                        
+            inner.buckets[i].0.drain(..);                
+        }      
+
+        while let Ok(object) = inner.receiver.try_recv() {
+            drop(object);
+        }        
     }
 }
+
+impl Drop for DeferredDropper {   
+
+    fn drop(&mut self) {
+        let guard = self.inner.lock().unwrap();        
+        let inner = guard.borrow();
+        assert!(  inner.receiver.try_recv().is_err() );
+        for i in 0..inner.buckets.len() {
+            assert!(inner.buckets[i].0.is_empty());
+        }
+    }
+}
+
 
 #[derive(Debug)]
 pub struct ObjectBucket (pub Vec<Box<dyn Any>>);
@@ -48,6 +97,8 @@ struct DeferredDropperInner {
     pub render_frame_capacity: usize,
     pub render_frame_index: usize,
     pub buckets: Vec<ObjectBucket>,    
+    pub sender: Sender<Box<dyn Any>>, 
+    pub receiver: Receiver<Box<dyn Any>>, 
 }
 
 unsafe impl Send for DeferredDropperInner {}
@@ -57,7 +108,7 @@ unsafe impl Sync for DeferredDropperInner {}
 #[derive(Debug)]
 struct DrcInner<T> {
     strong: atomic::AtomicUsize,
-    dropper: DeferredDropper,
+    tx: Sender<Box<dyn Any>>,
     data: T,
 }
 
@@ -68,11 +119,11 @@ pub struct Drc<T: 'static>  {
 
 impl<T> Drc<T> {
     
-    pub fn new(dropper: DeferredDropper, data: T) -> Self {
+    pub fn new(tx: Sender<Box<dyn Any>>, data: T) -> Self {
         let x = Box::new(
             DrcInner {
                 strong: atomic::AtomicUsize::new(1),            
-                dropper,
+                tx,
                 data,
             }
         );
@@ -93,8 +144,8 @@ impl<T> Drc<T> {
     unsafe fn drop_slow(&mut self) {
 
         let boxed = Box::<dyn Any>::from_raw(self.ptr.as_ptr());
-        let dropper = &self.ptr.as_ref().dropper;
-        dropper.defer_drop(boxed);
+        let tx = &self.ptr.as_ref().tx;
+        tx.send(boxed).unwrap();        
     }
 }
 
@@ -126,7 +177,6 @@ impl<T> Deref for Drc<T> {
 
 impl<T> Drop for Drc<T> {
     fn drop(&mut self) {
-
         if self.inner().strong.fetch_sub(1, Ordering::Release) != 1 {
             return;
         }

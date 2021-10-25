@@ -41,6 +41,7 @@ impl GfxApi for VulkanApi {
             let inner = device_context.inner.clone();
             inner.descriptor_heap.clear_pools(device_context.device());
             inner.resource_cache.clear_caches();
+            inner.deferred_dropper.destroy();
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
