@@ -193,6 +193,8 @@ pub struct VkQueueRequirements {
     pub graphics_allocation_config: VkQueueAllocationConfig,
     pub compute_allocation_config: VkQueueAllocationConfig,
     pub transfer_allocation_config: VkQueueAllocationConfig,
+    pub decode_allocation_config: Option<VkQueueAllocationConfig>,
+    pub encode_allocation_config: Option<VkQueueAllocationConfig>,
 }
 
 impl VkQueueRequirements {
@@ -200,9 +202,9 @@ impl VkQueueRequirements {
         all_queue_families: &[ash::vk::QueueFamilyProperties],
         queue_counts: &mut FnvHashMap<u32, u32>,
         queue_family: u32,
-        count: VkQueueAllocationStrategy,
+        strategy: VkQueueAllocationStrategy,
     ) -> VkQueueAllocationConfig {
-        if let VkQueueAllocationStrategy::Pool(count) = count {
+        if let VkQueueAllocationStrategy::Pool(count) = strategy {
             let count_in_family = queue_counts.entry(queue_family).or_insert(0);
             if *count_in_family + count <= all_queue_families[queue_family as usize].queue_count {
                 // Increase queue_counts for this family and assign the next N queues
@@ -238,6 +240,8 @@ impl VkQueueRequirements {
         graphics_allocation_strategy: VkQueueAllocationStrategy,
         queue_allocation_strategy: VkQueueAllocationStrategy,
         transfer_allocation_strategy: VkQueueAllocationStrategy,
+        decode_allocation_strategy: VkQueueAllocationStrategy,
+        encode_allocation_strategy: VkQueueAllocationStrategy,
     ) -> Self {
         log::debug!(
             "Determine required queue counts. Allocation strategies: Graphics: {:?}, Compute: {:?}, Transfer: {:?}",
@@ -267,6 +271,28 @@ impl VkQueueRequirements {
             queue_family_indices.transfer_queue_family_index,
             transfer_allocation_strategy,
         );
+        let decode_allocation_config =
+            queue_family_indices
+                .decode_queue_family_index
+                .map(|queue_family| {
+                    Self::determine_queue_allocation_strategy(
+                        all_queue_families,
+                        &mut queue_counts,
+                        queue_family,
+                        decode_allocation_strategy,
+                    )
+                });
+        let encode_allocation_config =
+            queue_family_indices
+                .encode_queue_family_index
+                .map(|queue_family| {
+                    Self::determine_queue_allocation_strategy(
+                        all_queue_families,
+                        &mut queue_counts,
+                        queue_family,
+                        encode_allocation_strategy,
+                    )
+                });
 
         log::debug!("Queue counts: {:?}", queue_counts);
         log::debug!(
@@ -281,12 +307,22 @@ impl VkQueueRequirements {
             "Transfer queue allocation config: {:?}",
             transfer_allocation_config
         );
+        log::debug!(
+            "Transfer queue allocation config: {:?}",
+            decode_allocation_config
+        );
+        log::debug!(
+            "Transfer queue allocation config: {:?}",
+            encode_allocation_config
+        );
 
         Self {
             queue_counts,
             graphics_allocation_config,
             compute_allocation_config,
             transfer_allocation_config,
+            decode_allocation_config,
+            encode_allocation_config,
         }
     }
 }
@@ -296,6 +332,8 @@ pub struct VkQueueAllocatorSet {
     graphics_queue_allocator: Mutex<VkQueueAllocator>,
     compute_queue_allocator: Mutex<VkQueueAllocator>,
     transfer_queue_allocator: Mutex<VkQueueAllocator>,
+    decode_queue_allocator: Option<Mutex<VkQueueAllocator>>,
+    encode_queue_allocator: Option<Mutex<VkQueueAllocator>>,
 }
 
 impl VkQueueAllocatorSet {
@@ -349,11 +387,19 @@ impl VkQueueAllocatorSet {
             create_allocator(&all_queues, queue_requirements.compute_allocation_config);
         let transfer_queue_allocator =
             create_allocator(&all_queues, queue_requirements.transfer_allocation_config);
+        let decode_queue_allocator = queue_requirements
+            .decode_allocation_config
+            .map(|allocation_config| create_allocator(&all_queues, allocation_config));
+        let encode_queue_allocator = queue_requirements
+            .encode_allocation_config
+            .map(|allocation_config| create_allocator(&all_queues, allocation_config));
 
         Self {
             graphics_queue_allocator,
             compute_queue_allocator,
             transfer_queue_allocator,
+            decode_queue_allocator,
+            encode_queue_allocator,
         }
     }
 
@@ -373,6 +419,24 @@ impl VkQueueAllocatorSet {
 
     pub fn allocate_transfer_queue(&self, device_context: &VulkanDeviceContext) -> Option<VkQueue> {
         self.transfer_queue_allocator
+            .lock()
+            .unwrap()
+            .allocate_queue(device_context)
+    }
+
+    pub fn allocate_decode_queue(&self, device_context: &VulkanDeviceContext) -> Option<VkQueue> {
+        self.decode_queue_allocator
+            .as_ref()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .allocate_queue(device_context)
+    }
+
+    pub fn allocate_encode_queue(&self, device_context: &VulkanDeviceContext) -> Option<VkQueue> {
+        self.encode_queue_allocator
+            .as_ref()
+            .unwrap()
             .lock()
             .unwrap()
             .allocate_queue(device_context)

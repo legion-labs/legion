@@ -1,8 +1,10 @@
+use crate::vulkan::check_extensions_availability;
 use crate::{
     BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext,
-    DeviceInfo, Fence, GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef, SamplerDef,
-    ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
+    DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef,
+    SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
 };
+use ash::extensions::khr;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::convert::TryInto;
@@ -18,7 +20,6 @@ use super::{
     VulkanShaderModule, VulkanSwapchain, VulkanTexture,
 };
 
-use ash::extensions::khr;
 use fnv::FnvHashMap;
 use std::ffi::CStr;
 #[cfg(debug_assertions)]
@@ -69,6 +70,7 @@ pub struct PhysicalDeviceInfo {
     pub features: vk::PhysicalDeviceFeatures,
     pub extension_properties: Vec<ash::vk::ExtensionProperties>,
     pub all_queue_families: Vec<ash::vk::QueueFamilyProperties>,
+    pub required_extensions: Vec<&'static CStr>,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -76,6 +78,8 @@ pub struct VkQueueFamilyIndices {
     pub graphics_queue_family_index: u32,
     pub compute_queue_family_index: u32,
     pub transfer_queue_family_index: u32,
+    pub decode_queue_family_index: Option<u32>,
+    pub encode_queue_family_index: Option<u32>,
 }
 
 pub struct VulkanDeviceContextInner {
@@ -120,20 +124,21 @@ impl Drop for VulkanDeviceContextInner {
 }
 
 impl VulkanDeviceContextInner {
-    pub fn new(instance: &VkInstance) -> GfxResult<Self> {
-        let physical_device_type_priority = vec![
-            PhysicalDeviceType::DiscreteGpu,
-            PhysicalDeviceType::IntegratedGpu,
-        ];
-
+    pub fn new(
+        instance: &VkInstance,
+        windowing_mode: ExtensionMode,
+        video_mode: ExtensionMode,
+    ) -> GfxResult<Self> {
         // Pick a physical device
         let (physical_device, physical_device_info) =
-            choose_physical_device(&instance.instance, &physical_device_type_priority)?;
+            choose_physical_device(&instance.instance, windowing_mode, video_mode)?;
 
         //TODO: Don't hardcode queue counts
         let queue_requirements = VkQueueRequirements::determine_required_queue_counts(
             &physical_device_info.queue_family_indices,
             &physical_device_info.all_queue_families,
+            VkQueueAllocationStrategy::ShareFirstQueueInFamily,
+            VkQueueAllocationStrategy::ShareFirstQueueInFamily,
             VkQueueAllocationStrategy::ShareFirstQueueInFamily,
             VkQueueAllocationStrategy::ShareFirstQueueInFamily,
             VkQueueAllocationStrategy::ShareFirstQueueInFamily,
@@ -433,7 +438,8 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
 
 fn choose_physical_device(
     instance: &ash::Instance,
-    physical_device_type_priority: &[PhysicalDeviceType],
+    windowing_mode: ExtensionMode,
+    video_mode: ExtensionMode,
 ) -> GfxResult<(ash::vk::PhysicalDevice, PhysicalDeviceInfo)> {
     let physical_devices = unsafe { instance.enumerate_physical_devices()? };
 
@@ -444,16 +450,10 @@ fn choose_physical_device(
     let mut best_physical_device = None;
     let mut best_physical_device_info = None;
     let mut best_physical_device_score = -1;
-
     // let mut best_physical_device_queue_family_indices = None;
     for physical_device in physical_devices {
-        let result = query_physical_device_info(
-            instance,
-            physical_device,
-            //surface_loader,
-            //surface,
-            physical_device_type_priority,
-        );
+        let result =
+            query_physical_device_info(instance, physical_device, windowing_mode, video_mode);
 
         if let Some(physical_device_info) = result? {
             if physical_device_info.score > best_physical_device_score {
@@ -483,15 +483,17 @@ fn vk_version_to_string(version: u32) -> String {
 fn query_physical_device_info(
     instance: &ash::Instance,
     device: ash::vk::PhysicalDevice,
-    //surface_loader: &ash::extensions::khr::Surface,
-    //surface: ash::vk::SurfaceKHR,
-    physical_device_type_priority: &[PhysicalDeviceType],
+    windowing_mode: ExtensionMode,
+    video_mode: ExtensionMode,
 ) -> GfxResult<Option<PhysicalDeviceInfo>> {
+    let physical_device_type_priority = [
+        PhysicalDeviceType::DiscreteGpu,
+        PhysicalDeviceType::IntegratedGpu,
+    ];
     log::info!(
         "Preferred device types: {:?}",
         physical_device_type_priority
     );
-
     let properties: ash::vk::PhysicalDeviceProperties =
         unsafe { instance.get_physical_device_properties(device) };
     let device_name = unsafe {
@@ -501,9 +503,43 @@ fn query_physical_device_info(
             .to_string()
     };
 
-    //TODO: Check that the extensions we want to use are supported
     let extensions: Vec<ash::vk::ExtensionProperties> =
         unsafe { instance.enumerate_device_extension_properties(device)? };
+    log::debug!("Available device extensions: {:#?}", extensions);
+    let mut required_extensions = vec![];
+    match windowing_mode {
+        ExtensionMode::Disabled => {}
+        ExtensionMode::EnabledIfAvailable | ExtensionMode::Enabled => {
+            if check_extensions_availability(&[khr::Swapchain::name()], &extensions) {
+                required_extensions.push(khr::Swapchain::name());
+            } else if windowing_mode == ExtensionMode::EnabledIfAvailable {
+                log::warn!("Could not find the swapchain extension. Check that the proper drivers are installed.");
+            } else {
+                log::error!("Could not find the swapchain extension. Check that the proper drivers are installed.");
+                return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
+            }
+        }
+    };
+    match video_mode {
+        ExtensionMode::Disabled => {}
+        ExtensionMode::EnabledIfAvailable | ExtensionMode::Enabled => {
+            let video_extensions = [
+                vk::KhrVideoQueueFn::name(),
+                vk::KhrVideoDecodeQueueFn::name(),
+                vk::KhrVideoEncodeQueueFn::name(),
+                khr::Synchronization2::name(),
+            ];
+            if check_extensions_availability(&video_extensions, &extensions) {
+                required_extensions.extend_from_slice(&video_extensions);
+            } else if video_mode == ExtensionMode::EnabledIfAvailable {
+                log::warn!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
+            } else {
+                log::error!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
+                return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
+            }
+        }
+    };
+
     let features: vk::PhysicalDeviceFeatures =
         unsafe { instance.get_physical_device_features(device) };
     let all_queue_families: Vec<ash::vk::QueueFamilyProperties> =
@@ -517,13 +553,12 @@ fn query_physical_device_info(
             .position(|x| x == properties.device_type);
 
         // Convert it to a score
-        let rank: i32 = index
+        let device_type_rank: i32 = index
             .map_or(0, |index| physical_device_type_priority.len() - index)
             .try_into()
             .unwrap();
-
-        let mut score = 0;
-        score += rank * 100;
+        let extensions_rank: i32 = required_extensions.len().try_into().unwrap();
+        let score = device_type_rank * 1000 + extensions_rank * 10;
 
         log::info!(
             "Found suitable device '{}' API: {} DriverVersion: {} Score = {}",
@@ -540,6 +575,7 @@ fn query_physical_device_info(
             extension_properties: extensions,
             features,
             all_queue_families,
+            required_extensions,
         };
 
         log::trace!("{:#?}", properties);
@@ -557,12 +593,15 @@ fn query_physical_device_info(
 }
 
 //TODO: Could improve this by looking at vendor/device ID, VRAM size, supported feature set, etc.
+#[allow(clippy::too_many_lines)]
 fn find_queue_families(
     all_queue_families: &[ash::vk::QueueFamilyProperties],
 ) -> Option<VkQueueFamilyIndices> {
     let mut graphics_queue_family_index = None;
     let mut compute_queue_family_index = None;
     let mut transfer_queue_family_index = None;
+    let mut decode_queue_family_index = None;
+    let mut encode_queue_family_index = None;
 
     log::info!("Available queue families:");
     for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
@@ -651,11 +690,65 @@ fn find_queue_families(
         transfer_queue_family_index = graphics_queue_family_index;
     }
 
+    //
+    // Find a transfer queue family in the following order of preference:
+    // - Doesn't support graphics, compute, encode
+    // - Supports decode
+    //
+    for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
+        let queue_family_index = queue_family_index as u32;
+        let supports_graphics = queue_family.queue_flags & ash::vk::QueueFlags::GRAPHICS
+            == ash::vk::QueueFlags::GRAPHICS;
+        let supports_compute =
+            queue_family.queue_flags & ash::vk::QueueFlags::COMPUTE == ash::vk::QueueFlags::COMPUTE;
+        let supports_decode = queue_family.queue_flags & ash::vk::QueueFlags::VIDEO_DECODE_KHR
+            == ash::vk::QueueFlags::VIDEO_DECODE_KHR;
+        let supports_encode = queue_family.queue_flags & ash::vk::QueueFlags::VIDEO_ENCODE_KHR
+            == ash::vk::QueueFlags::VIDEO_ENCODE_KHR;
+
+        if !supports_graphics && !supports_compute && !supports_encode && supports_decode {
+            // Ideally we want to find a dedicated transfer queue
+            decode_queue_family_index = Some(queue_family_index);
+            break;
+        } else if supports_decode && decode_queue_family_index.is_none() {
+            // Otherwise accept the first queue that supports transfers that is NOT the graphics queue or compute queue
+            decode_queue_family_index = Some(queue_family_index);
+        }
+    }
+
+    //
+    // Find a transfer queue family in the following order of preference:
+    // - Doesn't support graphics, compute, decode
+    // - Supports encode
+    //
+    for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
+        let queue_family_index = queue_family_index as u32;
+        let supports_graphics = queue_family.queue_flags & ash::vk::QueueFlags::GRAPHICS
+            == ash::vk::QueueFlags::GRAPHICS;
+        let supports_compute =
+            queue_family.queue_flags & ash::vk::QueueFlags::COMPUTE == ash::vk::QueueFlags::COMPUTE;
+        let supports_decode = queue_family.queue_flags & ash::vk::QueueFlags::VIDEO_DECODE_KHR
+            == ash::vk::QueueFlags::VIDEO_DECODE_KHR;
+        let supports_encode = queue_family.queue_flags & ash::vk::QueueFlags::VIDEO_ENCODE_KHR
+            == ash::vk::QueueFlags::VIDEO_ENCODE_KHR;
+
+        if !supports_graphics && !supports_compute && !supports_decode && supports_encode {
+            // Ideally we want to find a dedicated transfer queue
+            encode_queue_family_index = Some(queue_family_index);
+            break;
+        } else if supports_decode && encode_queue_family_index.is_none() {
+            // Otherwise accept the first queue that supports transfers that is NOT the graphics queue or compute queue
+            encode_queue_family_index = Some(queue_family_index);
+        }
+    }
+
     log::info!(
-        "Graphics QF: {:?}  Compute QF: {:?}  Transfer QF: {:?}",
+        "Graphics QF: {:?}  Compute QF: {:?}  Transfer QF: {:?}  Decode QF: {:?}  Encode QF: {:?}",
         graphics_queue_family_index,
         compute_queue_family_index,
-        transfer_queue_family_index
+        transfer_queue_family_index,
+        decode_queue_family_index,
+        encode_queue_family_index,
     );
 
     if let (
@@ -671,6 +764,8 @@ fn find_queue_families(
             graphics_queue_family_index,
             compute_queue_family_index,
             transfer_queue_family_index,
+            decode_queue_family_index,
+            encode_queue_family_index,
         })
     } else {
         None
@@ -684,20 +779,18 @@ fn create_logical_device(
     queue_requirements: &VkQueueRequirements,
 ) -> GfxResult<ash::Device> {
     //TODO: Ideally we would set up validation layers for the logical device too.
-
-    fn khr_portability_subset_extension_name() -> &'static CStr {
-        CStr::from_bytes_with_nul(b"VK_KHR_portability_subset\0").expect("Wrong extension string")
-    }
-
-    let mut device_extension_names = vec![khr::Swapchain::name().as_ptr()];
+    let mut device_extension_names: Vec<_> = physical_device_info
+        .required_extensions
+        .iter()
+        .map(|name| name.as_ptr())
+        .collect();
 
     // Add VK_KHR_portability_subset if the extension exists (this is mandated by spec)
-    let portability_subset_extension_name = khr_portability_subset_extension_name();
     for extension in &physical_device_info.extension_properties {
         let extension_name = unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) };
 
-        if extension_name == portability_subset_extension_name {
-            device_extension_names.push(khr_portability_subset_extension_name().as_ptr());
+        if extension_name == vk::KhrPortabilitySubsetFn::name() {
+            device_extension_names.push(vk::KhrPortabilitySubsetFn::name().as_ptr());
             break;
         }
     }

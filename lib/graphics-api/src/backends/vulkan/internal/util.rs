@@ -177,6 +177,18 @@ pub(crate) fn queue_type_to_family_index(
                 .queue_family_indices()
                 .transfer_queue_family_index
         }
+        QueueType::Decode => {
+            device_context
+                .queue_family_indices()
+                .decode_queue_family_index
+                .unwrap() // we just assert if the decode queue is used when not available
+        }
+        QueueType::Encode => {
+            device_context
+                .queue_family_indices()
+                .encode_queue_family_index
+                .unwrap() // we just assert if the decode queue is used when not available
+        }
     }
 }
 
@@ -249,7 +261,7 @@ pub(crate) fn determine_pipeline_stage_flags(
                 flags |= vk::PipelineStageFlags::COMPUTE_SHADER;
             }
         }
-        QueueType::Transfer => {
+        QueueType::Transfer | QueueType::Decode | QueueType::Encode => {
             return vk::PipelineStageFlags::ALL_COMMANDS;
         }
     }
@@ -400,4 +412,18 @@ pub fn blend_state_to_create_info(
         _attachments: blend_attachments_states,
         blend_state: blend_state_create_info,
     }
+}
+
+pub fn check_extensions_availability(
+    requested_extensions: &[&'static std::ffi::CStr],
+    available_extensions: &[ash::vk::ExtensionProperties],
+) -> bool {
+    for requested_extension in requested_extensions {
+        if !available_extensions.iter().any(|extension| unsafe {
+            *requested_extension == std::ffi::CStr::from_ptr(extension.extension_name.as_ptr())
+        }) {
+            return false;
+        }
+    }
+    true
 }

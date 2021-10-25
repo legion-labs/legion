@@ -23,8 +23,7 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(width: u32, height: u32) -> Renderer {
         #[allow(unsafe_code)]
-        let api =
-            unsafe { DefaultApi::new(None, &Default::default(), &Default::default()).unwrap() };
+        let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
 
         // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
         // clean shutdown.

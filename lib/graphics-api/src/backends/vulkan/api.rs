@@ -6,38 +6,10 @@ use super::{
     VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
     VulkanShaderModule, VulkanSwapchain, VulkanTexture, VulkanTextureView,
 };
-use crate::{ApiDef, GfxApi, GfxResult, ValidationMode};
-
-use ash::vk;
-use raw_window_handle::HasRawWindowHandle;
-use std::{fmt, sync::Arc};
+use crate::{ApiDef, GfxApi, GfxResult};
 
 use std::ffi::CString;
-
-/// Vulkan-specific configuration
-pub struct ApiDefVulkan {
-    /// Used as a hint for drivers for what is being run. There are no special requirements for
-    /// this. It is not visible to end-users.
-    pub app_name: CString,
-
-    /// Used to enable/disable validation at runtime. Not all APIs allow this. Validation is helpful
-    /// during development but very expensive. Applications should not ship with validation enabled.
-    pub validation_mode: ValidationMode,
-    // The OS-specific layers/extensions are already included. Debug layers/extension are included
-    // if enable_validation is true
-    //TODO: Additional instance layer names
-    //TODO: Additional instance extension names
-    //TODO: Additional device extension names
-}
-
-impl Default for ApiDefVulkan {
-    fn default() -> Self {
-        Self {
-            app_name: CString::new(" Application").unwrap(),
-            validation_mode: ValidationMode::default(),
-        }
-    }
-}
+use std::{fmt, sync::Arc};
 
 pub struct VulkanApi {
     instance: VkInstance,
@@ -132,34 +104,22 @@ impl VulkanApi {
     /// GPU programming is fundamentally unsafe, so all  APIs that interact with the GPU should
     /// be considered unsafe. However,  APIs are only gated by unsafe if they can cause undefined
     /// behavior on the CPU for reasons other than interacting with the GPU.
-    pub unsafe fn new(
-        window: Option<&dyn HasRawWindowHandle>,
-        _api_def: &ApiDef,
-        vk_api_def: &ApiDefVulkan,
-    ) -> GfxResult<Self> {
-        let app_name = vk_api_def.app_name.clone();
-
-        let (require_validation_layers_present, validation_layer_debug_report_flags) =
-            match vk_api_def.validation_mode {
-                ValidationMode::Disabled => (false, vk::DebugUtilsMessageSeverityFlagsEXT::empty()),
-                ValidationMode::EnabledIfAvailable => {
-                    (false, vk::DebugUtilsMessageSeverityFlagsEXT::all())
-                }
-                ValidationMode::Enabled => (true, vk::DebugUtilsMessageSeverityFlagsEXT::all()),
-            };
-
-        log::info!("Validation mode: {:?}", vk_api_def.validation_mode);
-
+    pub unsafe fn new(api_def: &ApiDef) -> GfxResult<Self> {
+        let app_name = CString::new(api_def.app_name.clone())
+            .expect("app name should not contain a byte set to 0");
         let entry = ash::Entry::new()?;
         let instance = VkInstance::new(
             entry,
-            window,
             &app_name,
-            require_validation_layers_present,
-            validation_layer_debug_report_flags,
+            api_def.validation_mode,
+            api_def.windowing_mode,
         )?;
 
-        let inner = Arc::new(VulkanDeviceContextInner::new(&instance)?);
+        let inner = Arc::new(VulkanDeviceContextInner::new(
+            &instance,
+            api_def.windowing_mode,
+            api_def.video_mode,
+        )?);
         let device_context = Some(VulkanDeviceContext::new(inner)?);
 
         Ok(Self {

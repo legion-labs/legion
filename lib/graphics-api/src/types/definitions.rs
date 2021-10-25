@@ -15,10 +15,52 @@ use std::{
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
+/// Controls if an extension is enabled or not. The requirements/behaviors of validation is
+/// API-specific.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ExtensionMode {
+    /// Do not enable the related extensions
+    Disabled,
+
+    /// Enable extensions if available.
+    EnabledIfAvailable,
+
+    /// Enable validation, and fail if we cannot enable it or detect that it is not enabled through
+    /// external means. (Details on this are API-specific)
+    Enabled,
+}
+
 /// General configuration that all APIs will make best effort to respect
-#[derive(Default)]
 pub struct ApiDef {
-    // Don't have anything that's universal across APIs to add here yet
+    /// Used as a hint for drivers for what is being run. There are no special requirements for
+    /// this. It is not visible to end-users.
+    pub app_name: String,
+
+    /// Used to enable/disable validation at runtime. Not all APIs allow this. Validation is helpful
+    /// during development but very expensive. Applications should not ship with validation enabled.
+    pub validation_mode: ExtensionMode,
+
+    /// Don't enable Window interop extensions
+    pub windowing_mode: ExtensionMode,
+
+    /// Api Mode
+    pub video_mode: ExtensionMode,
+}
+
+impl Default for ApiDef {
+    fn default() -> Self {
+        #[cfg(debug_assertions)]
+        let validation_mode = ExtensionMode::EnabledIfAvailable;
+        #[cfg(not(debug_assertions))]
+        let validation_mode = ExtensionMode::Disabled;
+
+        Self {
+            app_name: "Legion Application".to_string(),
+            validation_mode,
+            windowing_mode: ExtensionMode::Enabled,
+            video_mode: ExtensionMode::Disabled,
+        }
+    }
 }
 
 bitflags::bitflags! {
