@@ -218,6 +218,8 @@ pub enum ResourceLoadEvent {
     Unloaded(ResourceId),
     /// Sent when a loading attempt has failed
     LoadError(ResourceId),
+    /// Successful resource reload
+    Reloaded(HandleUntyped),
 }
 
 impl Drop for AssetRegistry {
@@ -314,8 +316,8 @@ impl AssetRegistry {
             while let Some(result) = self.loader.try_result() {
                 // todo: add success/failure callbacks using the provided LoadId.
                 match result {
-                    LoaderResult::Loaded(handle, asset, _load_id) => {
-                        inner.assets.insert(handle.id(), asset);
+                    LoaderResult::Loaded(handle, resource, _load_id) => {
+                        inner.assets.insert(handle.id(), resource);
                         load_events.push(ResourceLoadEvent::Loaded(handle));
                     }
                     LoaderResult::Unloaded(id) => {
@@ -325,6 +327,11 @@ impl AssetRegistry {
                     LoaderResult::LoadError(handle, _load_id, error_kind) => {
                         inner.load_errors.insert(handle.id(), error_kind);
                         load_events.push(ResourceLoadEvent::LoadError(handle.id()));
+                    }
+                    LoaderResult::Reloaded(handle, resource) => {
+                        let old_resource = inner.assets.insert(handle.id(), resource);
+                        assert!(old_resource.is_some());
+                        load_events.push(ResourceLoadEvent::Reloaded(handle));
                     }
                 }
             }
@@ -667,5 +674,37 @@ mod tests {
         }
         reg.update();
         assert!(!reg.is_loaded(asset_id));
+    }
+
+    #[test]
+    fn reload_no_change() {
+        let (asset_id, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+
+        let internal_id;
+        {
+            let a = reg.load_untyped_sync(asset_id);
+            internal_id = a.id();
+
+            assert!(a.is_loaded(&reg));
+            assert!(!a.is_err(&reg));
+
+            let notif = reg.subscribe_to_load_events();
+            assert!(reg.reload(a.id()));
+
+            let mut test_timeout = Duration::from_millis(500);
+            let dt = Duration::from_millis(10);
+
+            while test_timeout > Duration::ZERO {
+                reg.update();
+                if let Ok(ResourceLoadEvent::Reloaded(reloaded)) = notif.recv_timeout(dt) {
+                    assert_eq!(a, reloaded);
+                    break;
+                }
+                test_timeout = test_timeout.saturating_sub(dt);
+            }
+            assert!(test_timeout > Duration::ZERO);
+        }
+        reg.update();
+        assert!(!reg.is_loaded(internal_id));
     }
 }

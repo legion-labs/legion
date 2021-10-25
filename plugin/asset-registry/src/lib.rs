@@ -215,17 +215,13 @@ impl AssetRegistryPlugin {
         mut asset_handles: ResMut<'_, AssetHandles>,
     ) {
         while let Ok(event) = load_events_rx.try_recv() {
-            match event {
-                ResourceLoadEvent::Loaded(asset_handle) => {
-                    if asset_loading_states.get(asset_handle.id()).is_none() {
-                        // Received a load event for an untracked asset.
-                        // Most likely, this load has occurred because of loading of dependant resources.
-                        asset_loading_states.insert(asset_handle.id(), LoadingState::Pending);
-                        asset_handles.insert(asset_handle.id(), asset_handle);
-                    }
+            if let ResourceLoadEvent::Loaded(asset_handle) = event {
+                if asset_loading_states.get(asset_handle.id()).is_none() {
+                    // Received a load event for an untracked asset.
+                    // Most likely, this load has occurred because of loading of dependant resources.
+                    asset_loading_states.insert(asset_handle.id(), LoadingState::Pending);
+                    asset_handles.insert(asset_handle.id(), asset_handle);
                 }
-                ResourceLoadEvent::Unloaded(_asset_id) => {}
-                ResourceLoadEvent::LoadError(_asset_id) => {}
             }
         }
 

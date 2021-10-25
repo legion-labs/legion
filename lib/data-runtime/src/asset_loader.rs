@@ -1,4 +1,11 @@
-use std::{any::Any, collections::HashMap, io, ops::Deref, sync::Arc, time::Duration};
+use std::{
+    any::Any,
+    collections::{HashMap, HashSet},
+    io,
+    ops::Deref,
+    sync::Arc,
+    time::Duration,
+};
 
 use crate::{vfs, AssetLoader, HandleUntyped, ReferenceUntyped, ResourceId, ResourceType};
 
@@ -26,12 +33,13 @@ pub(crate) enum LoaderResult {
     Loaded(HandleUntyped, Box<dyn Any + Send + Sync>, Option<LoadId>),
     Unloaded(ResourceId),
     LoadError(HandleUntyped, Option<LoadId>, io::ErrorKind),
+    Reloaded(HandleUntyped, Box<dyn Any + Send + Sync>),
 }
 
 pub(crate) enum LoaderRequest {
     Load(HandleUntyped, Option<LoadId>),
     Reload(HandleUntyped),
-    Unload(ResourceId, bool, Option<io::ErrorKind>),
+    Unload(ResourceId),
     Terminate,
 }
 
@@ -185,9 +193,7 @@ impl AssetLoaderStub {
     }
 
     pub(crate) fn unload(&self, id: ResourceId) {
-        self.request_tx
-            .send(LoaderRequest::Unload(id, true, None))
-            .unwrap();
+        self.request_tx.send(LoaderRequest::Unload(id)).unwrap();
     }
 }
 
@@ -201,14 +207,7 @@ pub(crate) struct AssetLoaderIO {
     /// List of load requests waiting for all references to be loaded.
     processing_list: Vec<LoadState>,
 
-    /// Reference counts of primary and secondary assets.
-    asset_refcounts: HashMap<ResourceId, isize>,
-
-    /// List of secondary assets of a primary asset.
-    secondary_assets: HashMap<ResourceId, Vec<ResourceId>>,
-
-    /// List of primary asset's references to other primary assets .
-    primary_asset_references: HashMap<ResourceId, Vec<ResourceId>>,
+    loaded_resources: HashSet<ResourceId>,
 
     devices: Vec<Box<dyn vfs::Device>>,
 
@@ -222,11 +221,6 @@ pub(crate) struct AssetLoaderIO {
     result_tx: crossbeam_channel::Sender<LoaderResult>,
 }
 
-// Asset loading:
-// - add secondary asset information to `secondary_assets`
-//     - for each secondary asset check if it is already loaded. always increase its reference count.
-// - add primary asset references and schedule new loads.
-
 impl AssetLoaderIO {
     fn new(
         devices: Vec<Box<dyn vfs::Device>>,
@@ -239,10 +233,8 @@ impl AssetLoaderIO {
             loaders: HashMap::new(),
             handles,
             processing_list: Vec::new(),
-            asset_refcounts: HashMap::new(),
+            loaded_resources: HashSet::new(),
             devices,
-            secondary_assets: HashMap::new(),
-            primary_asset_references: HashMap::new(),
             request_tx,
             request_rx: Some(request_rx),
             result_tx,
@@ -274,13 +266,6 @@ impl AssetLoaderIO {
         let primary_id = primary_handle.id();
         let asset_data = self.read_resource(primary_id)?;
 
-        // for now it should be empty. later - cause a reload of secondary assets?
-        //
-        let _secondary_assets = self.secondary_assets.get(&primary_id).unwrap();
-
-        // compare against the header. decrease relevant refcount -> cause unload? cause a new load? ;/
-        let _primary_asset_references = self.primary_asset_references.get(&primary_id).unwrap();
-
         // todo: call load_init after a reload.
 
         let load_func = {
@@ -291,7 +276,15 @@ impl AssetLoaderIO {
             }
         };
 
-        let output = load_func(primary_handle, &mut &asset_data[..], &mut self.loaders)?;
+        let mut output = load_func(primary_handle, &mut &asset_data[..], &mut self.loaders)?;
+
+        assert!(
+            output
+                .load_dependencies
+                .iter()
+                .all(|reference| self.loaded_resources.contains(&reference.primary)),
+            "Loading new dependencies not supported"
+        );
 
         assert_eq!(
             output.assets.len(),
@@ -299,17 +292,20 @@ impl AssetLoaderIO {
             "Reload of secondary assets not supported"
         );
 
-        for (asset_id, asset) in &output.assets {
-            match asset {
-                Some(_) => {
-                    let res = self.asset_refcounts.insert(*asset_id, 1);
-                    assert!(res.is_none(), "Asset was already loaded.");
-                }
-                None => {
-                    *self.asset_refcounts.get_mut(asset_id).unwrap() += 1;
-                }
-            }
+        let (_, primary_resource) = output.assets.first_mut().unwrap();
+
+        if let Some(boxed) = primary_resource {
+            let loader = self.loaders.get_mut(&primary_id.ty()).unwrap();
+            loader.load_init(boxed.as_mut());
         }
+        assert!(self.loaded_resources.contains(&primary_id));
+
+        if let Some(resource) = primary_resource.take() {
+            self.result_tx
+                .send(LoaderResult::Reloaded(primary_handle.clone(), resource))
+                .unwrap();
+        }
+
         Ok(())
     }
 
@@ -319,7 +315,12 @@ impl AssetLoaderIO {
         load_id: Option<u32>,
     ) -> Result<(), (HandleUntyped, Option<LoadId>, io::Error)> {
         let primary_id = primary_handle.id();
-        if self.asset_refcounts.contains_key(&primary_id) {
+        if self.loaded_resources.contains(&primary_id)
+            || self
+                .processing_list
+                .iter()
+                .any(|state| state.primary_handle == primary_handle)
+        {
             // todo: we should create a LoadState based on existing load state?
             // this way the load result will be notified when the resource is actually loaded.
             return Ok(());
@@ -338,18 +339,6 @@ impl AssetLoaderIO {
 
         let output = load_func(&primary_handle, &mut &asset_data[..], &mut self.loaders)
             .map_err(|e| (primary_handle.clone(), load_id, e))?;
-
-        for (asset_id, asset) in &output.assets {
-            match asset {
-                Some(_) => {
-                    let res = self.asset_refcounts.insert(*asset_id, 1);
-                    assert!(res.is_none());
-                }
-                None => {
-                    *self.asset_refcounts.get_mut(asset_id).unwrap() += 1;
-                }
-            }
-        }
 
         let references = output
             .load_dependencies
@@ -378,46 +367,11 @@ impl AssetLoaderIO {
         Ok(())
     }
 
-    fn process_unload(
-        &mut self,
-        primary_id: ResourceId,
-        user_requested: bool,
-        err: Option<std::io::ErrorKind>,
-    ) {
-        if let Some(r) = self.asset_refcounts.remove(&primary_id) {
-            assert!(r <= 1);
-
-            if let Some(primary_references) = self.primary_asset_references.remove(&primary_id) {
-                if user_requested {
-                    self.result_tx
-                        .send(LoaderResult::Unloaded(primary_id))
-                        .unwrap();
-                }
-
-                for ref_id in primary_references {
-                    let r = self.asset_refcounts.get_mut(&ref_id).unwrap();
-                    *r -= 1;
-                    if *r == 0 {
-                        // trigger internal unload
-                        self.request_tx
-                            .send(LoaderRequest::Unload(ref_id, false, err))
-                            .unwrap();
-                    }
-                }
-            }
-            if let Some(secondary_assets) = self.secondary_assets.remove(&primary_id) {
-                for id in secondary_assets {
-                    let r = self.asset_refcounts.get_mut(&id).unwrap();
-                    *r -= 1;
-                    if *r == 0 {
-                        self.asset_refcounts.remove(&id);
-                        // todo: tell the user.
-                    }
-                }
-            }
-        } else {
-            // todo(kstatik): tell the user that the id is invalid
-        }
+    fn process_unload(&mut self, resource_id: ResourceId) {
+        self.loaded_resources.remove(&resource_id);
+        self.result_tx
+            .send(LoaderResult::Unloaded(resource_id))
+            .unwrap();
     }
 
     #[allow(clippy::needless_pass_by_value)]
@@ -432,8 +386,8 @@ impl AssetLoaderIO {
             LoaderRequest::Reload(primary_handle) => self
                 .process_reload(&primary_handle)
                 .map_err(|e| (primary_handle, None, e)),
-            LoaderRequest::Unload(primary_id, user_requested, err) => {
-                self.process_unload(primary_id, user_requested, err);
+            LoaderRequest::Unload(resource_id) => {
+                self.process_unload(resource_id);
                 Ok(())
             }
             LoaderRequest::Terminate => {
@@ -489,7 +443,7 @@ impl AssetLoaderIO {
             let finished = pending
                 .references
                 .iter()
-                .all(|reference| self.asset_refcounts.contains_key(&reference.id()));
+                .all(|reference| self.loaded_resources.contains(&reference.id()));
             if finished {
                 let mut loaded = self.processing_list.swap_remove(index);
 
@@ -501,20 +455,10 @@ impl AssetLoaderIO {
                     // if there is no boxed asset here, it means it was already loaded before.
                 }
 
-                self.primary_asset_references.insert(
-                    loaded.primary_handle.id(),
-                    loaded.references.iter().map(HandleUntyped::id).collect(),
-                );
+                for (handle, _) in &loaded.assets {
+                    self.loaded_resources.insert(handle.id());
+                }
 
-                self.secondary_assets.insert(
-                    loaded.primary_handle.id(),
-                    loaded
-                        .assets
-                        .iter()
-                        .skip(1)
-                        .map(|(handle, _)| handle.id())
-                        .collect(),
-                );
                 // send primary asset with load_id. all secondary assets without to not cause load notification.
                 let mut asset_iter = loaded.assets.into_iter();
                 let primary_asset = asset_iter.next().unwrap().1.unwrap();
@@ -769,9 +713,7 @@ mod tests {
             .send(LoaderRequest::Load(asset_handle, load_id))
             .expect("to send request");
 
-        assert!(loader.asset_refcounts.get(&asset_id).is_none());
-        assert!(loader.secondary_assets.get(&asset_id).is_none());
-        assert!(loader.primary_asset_references.get(&asset_id).is_none());
+        assert!(!loader.loaded_resources.contains(&asset_id));
 
         let mut result = None;
         loader.wait(Duration::from_millis(1));
@@ -781,27 +723,16 @@ mod tests {
 
         assert!(result.is_some());
         assert!(matches!(result.unwrap(), LoaderResult::Loaded(_, _, _)));
-        assert_eq!(loader.asset_refcounts.get(&asset_id).unwrap(), &1);
-        assert_eq!(loader.secondary_assets.get(&asset_id).unwrap().len(), 0);
-        assert_eq!(
-            loader
-                .primary_asset_references
-                .get(&asset_id)
-                .unwrap()
-                .len(),
-            0
-        );
+        assert!(loader.loaded_resources.contains(&asset_id));
 
         // unload and validate references.
         request_tx
-            .send(LoaderRequest::Unload(asset_id, true, None))
+            .send(LoaderRequest::Unload(asset_id))
             .expect("valid tx");
 
         while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
 
-        assert!(loader.asset_refcounts.get(&asset_id).is_none());
-        assert!(loader.secondary_assets.get(&asset_id).is_none());
-        assert!(loader.primary_asset_references.get(&asset_id).is_none());
+        assert!(!loader.loaded_resources.contains(&asset_id));
     }
 
     #[test]
@@ -845,9 +776,7 @@ mod tests {
             .send(LoaderRequest::Load(asset_handle, load_id))
             .expect("valid tx");
 
-        assert!(loader.asset_refcounts.get(&parent_id).is_none());
-        assert!(loader.secondary_assets.get(&parent_id).is_none());
-        assert!(loader.primary_asset_references.get(&parent_id).is_none());
+        assert!(!loader.loaded_resources.contains(&asset_id));
 
         let mut result = None;
         loader.wait(Duration::from_millis(1));
@@ -912,9 +841,7 @@ mod tests {
             .send(LoaderRequest::Load(asset_handle.clone(), load_id))
             .expect("to send request");
 
-        assert!(loader.asset_refcounts.get(&parent_id).is_none());
-        assert!(loader.secondary_assets.get(&parent_id).is_none());
-        assert!(loader.primary_asset_references.get(&parent_id).is_none());
+        assert!(!loader.loaded_resources.contains(&parent_id));
 
         let mut result = None;
         while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
@@ -933,30 +860,8 @@ mod tests {
         assert!(result.is_some());
         let result = result.unwrap();
         assert!(matches!(result, LoaderResult::Loaded(_, _, _)));
-        assert_eq!(loader.asset_refcounts.get(&parent_id).unwrap(), &1);
-        assert_eq!(loader.asset_refcounts.get(&child_id).unwrap(), &1);
-        assert_eq!(loader.secondary_assets.get(&parent_id).unwrap().len(), 0);
-        assert_eq!(
-            loader
-                .primary_asset_references
-                .get(&parent_id)
-                .unwrap()
-                .len(),
-            1
-        );
-        assert_eq!(
-            loader.primary_asset_references.get(&parent_id).unwrap()[0],
-            child_id
-        );
-        assert_eq!(loader.secondary_assets.get(&child_id).unwrap().len(), 0);
-        assert_eq!(
-            loader
-                .primary_asset_references
-                .get(&child_id)
-                .unwrap()
-                .len(),
-            0
-        );
+        assert!(loader.loaded_resources.contains(&parent_id));
+        assert!(loader.loaded_resources.contains(&child_id));
 
         if let LoaderResult::Loaded(handle, asset, returned_load_id) = result {
             let asset = asset.downcast_ref::<test_asset::TestAsset>().unwrap();
@@ -968,14 +873,12 @@ mod tests {
         // unload and validate references.
 
         request_tx
-            .send(LoaderRequest::Unload(parent_id, true, None))
+            .send(LoaderRequest::Unload(parent_id))
             .expect("to send request");
 
         while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
 
-        assert!(loader.asset_refcounts.get(&parent_id).is_none());
-        assert!(loader.secondary_assets.get(&parent_id).is_none());
-        assert!(loader.primary_asset_references.get(&parent_id).is_none());
+        assert!(!loader.loaded_resources.contains(&parent_id));
 
         /*
             assert_eq!(result.assets.len(), 1);
@@ -989,8 +892,7 @@ mod tests {
         */
     }
 
-    //#[test]
-    #[allow(dead_code)]
+    #[test]
     fn reload_no_dependencies() {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
@@ -1024,15 +926,11 @@ mod tests {
             Box::new(test_asset::TestAssetLoader {}),
         );
 
-        let load_id = Some(0);
-
         request_tx
-            .send(LoaderRequest::Load(asset_handle.clone(), load_id))
+            .send(LoaderRequest::Load(asset_handle.clone(), None))
             .expect("to send request");
 
-        assert!(loader.asset_refcounts.get(&asset_id).is_none());
-        assert!(loader.secondary_assets.get(&asset_id).is_none());
-        assert!(loader.primary_asset_references.get(&asset_id).is_none());
+        assert!(!loader.loaded_resources.contains(&asset_id));
 
         let mut result = None;
         loader.wait(Duration::from_millis(1));
@@ -1042,33 +940,28 @@ mod tests {
 
         assert!(result.is_some());
         assert!(matches!(result.unwrap(), LoaderResult::Loaded(_, _, _)));
-        assert_eq!(loader.asset_refcounts.get(&asset_id).unwrap(), &1);
-        assert_eq!(loader.secondary_assets.get(&asset_id).unwrap().len(), 0);
-        assert_eq!(
-            loader
-                .primary_asset_references
-                .get(&asset_id)
-                .unwrap()
-                .len(),
-            0
-        );
+        assert!(loader.loaded_resources.contains(&asset_id));
 
         // reload
         request_tx
             .send(LoaderRequest::Reload(asset_handle))
             .unwrap();
 
+        let mut result = None;
         loader.wait(Duration::from_millis(10));
+        if let Ok(res) = result_rx.try_recv() {
+            result = Some(res);
+        }
+        assert!(result.is_some());
+        assert!(matches!(result.unwrap(), LoaderResult::Reloaded(_, _)));
 
         // unload and validate references.
         request_tx
-            .send(LoaderRequest::Unload(asset_id, true, None))
+            .send(LoaderRequest::Unload(asset_id))
             .expect("valid tx");
 
         while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
 
-        assert!(loader.asset_refcounts.get(&asset_id).is_none());
-        assert!(loader.secondary_assets.get(&asset_id).is_none());
-        assert!(loader.primary_asset_references.get(&asset_id).is_none());
+        assert!(!loader.loaded_resources.contains(&asset_id));
     }
 }
