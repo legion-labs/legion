@@ -49,7 +49,12 @@ fn run() -> GfxResult<()> {
     // behavior on the CPU for reasons other than interacting with the GPU.
     //
     #[allow(unsafe_code)]
-    let mut api = unsafe { DefaultApi::new(None, &Default::default(), &Default::default())? };
+    let mut api = unsafe {
+        DefaultApi::new(&ApiDef {
+            windowing_mode: ExtensionMode::Disabled,
+            ..ApiDef::default()
+        })?
+    };
 
     // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
     // clean shutdown.

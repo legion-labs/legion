@@ -1,12 +1,14 @@
 use std::ffi::{CStr, CString};
 
+use ash::extensions::khr;
 use ash::prelude::VkResult;
 use ash::vk;
 
 use crate::backends::vulkan::{VkCreateInstanceError::VkError, VkDebugReporter};
+use crate::vulkan::check_extensions_availability;
+use crate::ExtensionMode;
 use ash::extensions::ext::DebugUtils;
 use ash::vk::DebugUtilsMessageTypeFlagsEXT;
-use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
 /// Create one of these at startup. It never gets lost/destroyed.
@@ -56,10 +58,9 @@ impl VkInstance {
     /// Creates a vulkan instance.
     pub fn new(
         entry: ash::Entry,
-        window: Option<&dyn HasRawWindowHandle>,
         app_name: &CString,
-        require_validation_layers_present: bool,
-        validation_layer_debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
+        validation_mode: ExtensionMode,
+        windowing_mode: ExtensionMode,
     ) -> Result<Self, VkCreateInstanceError> {
         // Determine the supported version of vulkan that's available
         let vulkan_version = match entry.try_enumerate_instance_version()? {
@@ -83,13 +84,7 @@ impl VkInstance {
             return Err(VkError(vk::Result::ERROR_INCOMPATIBLE_DRIVER));
         }
 
-        // Get the available layers/extensions
-        let layers = entry.enumerate_instance_layer_properties()?;
-        log::debug!("Available Layers: {:#?}", layers);
-        let extensions = entry.enumerate_instance_extension_properties()?;
-        log::debug!("Available Extensions: {:#?}", extensions);
-
-        // Expected to be 1.1.0 or 1.0.0 depeneding on what we found in try_enumerate_instance_version
+        // Expected to be 1.1.0 or 1.0.0 depending on what we found in try_enumerate_instance_version
         // https://vulkan.lunarg.com/doc/view/1.1.70.1/windows/tutorial/html/16-vulkan_1_1_changes.html
 
         // Info that's exposed to the driver. In a real shipped product, this data might be used by
@@ -102,52 +97,17 @@ impl VkInstance {
             .engine_version(0)
             .api_version(vulkan_version);
 
-        let mut layer_names = vec![];
-        let mut extension_names = if let Some(window) = window {
-            ash_window::enumerate_required_extensions(window)?
-        } else {
-            // add vulkan video encode extension if available
-            vec![]
-        };
-        if !validation_layer_debug_report_flags.is_empty() {
-            // Find the best validation layer that's available
-            let best_validation_layer = Self::find_best_validation_layer(&layers);
-            if best_validation_layer.is_none() {
-                if require_validation_layers_present {
-                    log::error!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
-                    return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
-                }
-                log::warn!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
-            }
-
-            let debug_extension = DebugUtils::name();
-            let has_debug_extension = extensions.iter().any(|extension| unsafe {
-                debug_extension == CStr::from_ptr(extension.extension_name.as_ptr())
-            });
-
-            if !has_debug_extension {
-                if require_validation_layers_present {
-                    log::error!("Could not find the debug extension. Check that the vulkan SDK has been installed or disable validation.");
-                    return Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT.into());
-                }
-                log::warn!("Could not find the debug extension. Check that the vulkan SDK has been installed or disable validation.");
-            }
-
-            if let Some(best_validation_layer) = best_validation_layer {
-                if has_debug_extension {
-                    layer_names.push(best_validation_layer);
-                    extension_names.push(DebugUtils::name());
-                }
-            }
-        }
+        // Get the available layers/extensions
+        let (requied_layer_names, requied_extension_names) =
+            Self::find_layers_and_extensions(&entry, validation_mode, windowing_mode)?;
 
         if log::log_enabled!(log::Level::Debug) {
-            log::debug!("Using layers: {:?}", layer_names);
-            log::debug!("Using extensions: {:?}", extension_names);
+            log::debug!("Using layers: {:?}", requied_layer_names);
+            log::debug!("Using extensions: {:?}", requied_extension_names);
         }
 
-        let layer_names: Vec<_> = layer_names.iter().map(|x| x.as_ptr()).collect();
-        let extension_names: Vec<_> = extension_names.iter().map(|x| x.as_ptr()).collect();
+        let layer_names: Vec<_> = requied_layer_names.iter().map(|x| x.as_ptr()).collect();
+        let extension_names: Vec<_> = requied_extension_names.iter().map(|x| x.as_ptr()).collect();
 
         // Create the instance
         let create_info = vk::InstanceCreateInfo::builder()
@@ -159,12 +119,11 @@ impl VkInstance {
         let instance: ash::Instance = unsafe { entry.create_instance(&create_info, None)? };
 
         // Setup the debug callback for the validation layer
-        let debug_reporter = if !validation_layer_debug_report_flags.is_empty() {
-            Some(Self::setup_vulkan_debug_callback(
-                &entry,
-                &instance,
-                validation_layer_debug_report_flags,
-            )?)
+        let debug_reporter = if requied_extension_names
+            .iter()
+            .any(|extension_name| *extension_name == DebugUtils::name())
+        {
+            Some(Self::setup_vulkan_debug_callback(&entry, &instance)?)
         } else {
             None
         };
@@ -174,6 +133,75 @@ impl VkInstance {
             instance,
             debug_reporter,
         })
+    }
+
+    /// This is used to setup a debug callback for logging validation errors
+    fn setup_vulkan_debug_callback(
+        entry: &ash::Entry,
+        instance: &ash::Instance,
+    ) -> VkResult<VkDebugReporter> {
+        log::info!("Setting up vulkan debug callback");
+        let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
+            .message_severity(vk::DebugUtilsMessageSeverityFlagsEXT::all())
+            .message_type(DebugUtilsMessageTypeFlagsEXT::all())
+            .pfn_user_callback(Some(super::debug_reporter::vulkan_debug_callback));
+
+        let debug_report_loader = ash::extensions::ext::DebugUtils::new(entry, instance);
+        let debug_callback =
+            unsafe { debug_report_loader.create_debug_utils_messenger(&debug_info, None)? };
+
+        Ok(VkDebugReporter {
+            debug_report_loader,
+            debug_callback,
+        })
+    }
+
+    fn find_layers_and_extensions(
+        entry: &ash::Entry,
+        validation_mode: ExtensionMode,
+        windowing_mode: ExtensionMode,
+    ) -> Result<(Vec<&CStr>, Vec<&CStr>), VkCreateInstanceError> {
+        let layers = entry.enumerate_instance_layer_properties()?;
+        log::debug!("Available layers: {:#?}", layers);
+        let extensions = entry.enumerate_instance_extension_properties()?;
+        log::debug!("Available extensions: {:#?}", extensions);
+        let mut layer_names = vec![];
+        let mut extension_names = vec![];
+        log::info!("Validation mode: {:?}", validation_mode);
+        match validation_mode {
+            ExtensionMode::Disabled => {}
+            ExtensionMode::EnabledIfAvailable | ExtensionMode::Enabled => {
+                let validation_layer = Self::find_best_validation_layer(&layers);
+                let has_debug_extension =
+                    check_extensions_availability(&[DebugUtils::name()], &extensions);
+                if !has_debug_extension || validation_layer.is_none() {
+                    if validation_mode == ExtensionMode::EnabledIfAvailable {
+                        log::warn!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
+                    } else {
+                        log::error!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
+                        return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
+                    }
+                } else {
+                    layer_names.push(validation_layer.expect("tested above"));
+                    extension_names.push(DebugUtils::name());
+                }
+            }
+        };
+        match windowing_mode {
+            ExtensionMode::Disabled => {}
+            ExtensionMode::EnabledIfAvailable | ExtensionMode::Enabled => {
+                let window_extensions = Self::find_window_extensions(&extensions);
+                if let Some(window_extensions) = window_extensions {
+                    extension_names.extend_from_slice(&window_extensions);
+                } else if validation_mode == ExtensionMode::EnabledIfAvailable {
+                    log::warn!("Could not find the appropriate window extensions layers. Check that the appropriate drivers are installed");
+                } else {
+                    log::error!("Could not find the appropriate window extensions layers. Check that the appropriate drivers are installed");
+                    return Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT.into());
+                }
+            }
+        }
+        Ok((layer_names, extension_names))
     }
 
     fn find_best_validation_layer(layers: &[ash::vk::LayerProperties]) -> Option<&'static CStr> {
@@ -208,26 +236,40 @@ impl VkInstance {
         best_available_layer
     }
 
-    /// This is used to setup a debug callback for logging validation errors
-    fn setup_vulkan_debug_callback(
-        entry: &ash::Entry,
-        instance: &ash::Instance,
-        debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
-    ) -> VkResult<VkDebugReporter> {
-        log::info!("Seting up vulkan debug callback");
-        let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
-            .message_severity(debug_report_flags)
-            .message_type(DebugUtilsMessageTypeFlagsEXT::all())
-            .pfn_user_callback(Some(super::debug_reporter::vulkan_debug_callback));
+    fn find_window_extensions(
+        extensions: &[ash::vk::ExtensionProperties],
+    ) -> Option<Vec<&'static CStr>> {
+        #[cfg(target_os = "windows")]
+        let platform_extensions = vec![khr::Surface::name(), khr::Win32Surface::name()];
 
-        let debug_report_loader = ash::extensions::ext::DebugUtils::new(entry, instance);
-        let debug_callback =
-            unsafe { debug_report_loader.create_debug_utils_messenger(&debug_info, None)? };
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        let platform_extensions = vec![
+            khr::Surface::name(),
+            khr::WaylandSurface::name(),
+            khr::XlibSurface::name(),
+            khr::XcbSurface::name(),
+        ];
 
-        Ok(VkDebugReporter {
-            debug_report_loader,
-            debug_callback,
-        })
+        #[cfg(any(target_os = "android"))]
+        let platform_extensions = vec![khr::Surface::name(), khr::AndroidSurface::name()];
+
+        #[cfg(any(target_os = "macos"))]
+        let platform_extensions = vec![khr::Surface::name(), ext::MetalSurface::name()];
+
+        #[cfg(any(target_os = "ios"))]
+        let platform_extensions = vec![khr::Surface::name(), ext::MetalSurface::name()];
+
+        if check_extensions_availability(&platform_extensions, extensions) {
+            Some(platform_extensions)
+        } else {
+            None
+        }
     }
 }
 

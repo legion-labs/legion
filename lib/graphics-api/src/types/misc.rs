@@ -5,34 +5,6 @@ use crate::GfxApi;
 use legion_utils::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
-/// Controls if validation is enabled or not. The requirements/behaviors of validation is
-/// API-specific.
-#[derive(Copy, Clone, Debug)]
-pub enum ValidationMode {
-    /// Do not enable validation. Even if validation is turned on through external means, do not
-    /// intentionally fail initialization
-    Disabled,
-
-    /// Enable validation if possible. (Details on requirements to enable at runtime are
-    /// API-specific)
-    EnabledIfAvailable,
-
-    /// Enable validation, and fail if we cannot enable it or detect that it is not enabled through
-    /// external means. (Details on this are API-specific)
-    Enabled,
-}
-
-impl Default for ValidationMode {
-    fn default() -> Self {
-        #[cfg(debug_assertions)]
-        let validation_mode = Self::EnabledIfAvailable;
-        #[cfg(not(debug_assertions))]
-        let validation_mode = ValidationMode::Disabled;
-
-        validation_mode
-    }
-}
-
 /// Information about the device, mostly limits, requirements (like memory alignment), and flags to
 /// indicate whether certain features are supported
 pub struct DeviceInfo {
@@ -70,6 +42,14 @@ pub enum QueueType {
     /// Transfer queues are generally limited to basic operations like copying data from buffers
     /// to images.
     Transfer,
+
+    /// Decode queues are not available on all device but allow use of dedicated hardware to encode
+    /// videos
+    Decode,
+
+    /// Encode queues are not available on all device but allow use of dedicated hardware to encode
+    /// videos
+    Encode,
 }
 
 /// The color space an image data is in. The correct color space often varies between texture types

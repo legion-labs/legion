@@ -57,5 +57,8 @@ pub use descriptor_set_array::*;
 mod descriptor_set_layout;
 pub use descriptor_set_layout::*;
 
+mod video;
+pub use video::*;
+
 mod internal;
 pub(crate) use internal::*;
