@@ -16,3 +16,4 @@ anyhow = "1.0"
 prost = "0.8"
 transit = { path = "../../lib/transit" }
 legion-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
+serde_json = "1.0"

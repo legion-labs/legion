@@ -174,7 +174,7 @@ pub async fn find_process_streams_tagged(
     tag: &str,
 ) -> Result<Vec<legion_telemetry::StreamInfo>> {
     let rows = sqlx::query(&format!(
-        "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags
+        "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags, properties
          FROM streams
          WHERE tags LIKE '%{}%'
          AND process_id = ?
@@ -184,7 +184,7 @@ pub async fn find_process_streams_tagged(
     .bind(process_id)
     .fetch_all(connection)
     .await
-    .with_context(|| "find_process_log_streams")?;
+    .with_context(|| "fetch_all in find_process_streams_tagged")?;
     let mut res = Vec::new();
     for r in rows {
         let stream_id: String = r.get("stream_id");
@@ -198,12 +198,16 @@ pub async fn find_process_streams_tagged(
             legion_telemetry_proto::ingestion::ContainerMetadata::decode(&*objects_metadata_buffer)
                 .with_context(|| "decoding objects metadata")?;
         let tags_str: String = r.get("tags");
+        let properties_str: String = r.get("properties");
+        let properties: std::collections::HashMap<String, String> =
+            serde_json::from_str(&properties_str).unwrap();
         res.push(legion_telemetry::StreamInfo {
             stream_id,
             process_id: r.get("process_id"),
             dependencies_metadata: Some(dependencies_metadata),
             objects_metadata: Some(objects_metadata),
             tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
+            properties,
         });
     }
     Ok(res)
@@ -235,7 +239,7 @@ pub async fn find_stream(
     stream_id: &str,
 ) -> Result<legion_telemetry::StreamInfo> {
     let row = sqlx::query(
-        "SELECT process_id, dependencies_metadata, objects_metadata, tags
+        "SELECT process_id, dependencies_metadata, objects_metadata, tags, properties
          FROM streams
          WHERE stream_id = ?
          ;",
@@ -254,12 +258,16 @@ pub async fn find_stream(
         legion_telemetry_proto::ingestion::ContainerMetadata::decode(&*objects_metadata_buffer)
             .with_context(|| "decoding objects metadata")?;
     let tags_str: String = row.get("tags");
+    let properties_str: String = row.get("properties");
+    let properties: std::collections::HashMap<String, String> =
+        serde_json::from_str(&properties_str).unwrap();
     Ok(legion_telemetry::StreamInfo {
         stream_id: String::from(stream_id),
         process_id: row.get("process_id"),
         dependencies_metadata: Some(dependencies_metadata),
         objects_metadata: Some(objects_metadata),
         tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
+        properties,
     })
 }
 

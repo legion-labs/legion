@@ -45,7 +45,8 @@ async fn create_streams_table(connection: &mut sqlx::AnyConnection) -> Result<()
                   process_id VARCHAR(36), 
                   dependencies_metadata BLOB,
                   objects_metadata BLOB,
-                  tags TEXT
+                  tags TEXT,
+                  properties TEXT
                   );
          CREATE UNIQUE INDEX stream_id on streams(stream_id);
          CREATE INDEX stream_process_id on streams(process_id);";

@@ -2923,6 +2923,7 @@ dependencies = [
  "legion-telemetry",
  "legion-telemetry-proto",
  "prost",
+ "serde_json",
  "sqlx",
  "transit",
 ]
@@ -3454,6 +3455,7 @@ dependencies = [
  "memoffset 0.6.4",
  "prost",
  "raw-cpuid",
+ "thread-id",
  "tokio",
  "tonic",
  "transit",
@@ -6444,6 +6446,7 @@ dependencies = [
  "legion-telemetry-proto",
  "log",
  "prost",
+ "serde_json",
  "simple_logger",
  "sqlx",
  "tokio",
@@ -6541,6 +6544,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "thread-id"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fdfe0627923f7411a43ec9ec9c39c3a9b4151be313e0922042581fb6c9b717f"
+dependencies = [
+ "libc",
+ "redox_syscall 0.2.10",
+ "winapi",
 ]
 
 [[package]]

@@ -2,6 +2,7 @@ use crate::event_block::TelemetryBlock;
 use crate::queue_metadata::make_queue_metedata;
 use crate::{EncodedBlock, StreamInfo};
 use anyhow::Result;
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -20,6 +21,7 @@ pub struct EventStream<Block, DepsQueue> {
     current_block: Arc<Block>,
     initial_size: usize,
     tags: Vec<String>,
+    properties: HashMap<String, String>,
     _bogus: PhantomData<DepsQueue>,
 }
 
@@ -27,7 +29,12 @@ impl<Block, DepsQueue> EventStream<Block, DepsQueue>
 where
     Block: TelemetryBlock,
 {
-    pub fn new(buffer_size: usize, process_id: String, tags: &[String]) -> Self {
+    pub fn new(
+        buffer_size: usize,
+        process_id: String,
+        tags: &[String],
+        properties: HashMap<String, String>,
+    ) -> Self {
         let stream_id = uuid::Uuid::new_v4().to_string();
         Self {
             current_block: Arc::new(Block::new(buffer_size, stream_id.clone())),
@@ -35,6 +42,7 @@ where
             stream_id,
             process_id,
             tags: tags.to_vec(),
+            properties,
             _bogus: PhantomData::default(),
         }
     }
@@ -66,6 +74,10 @@ where
     pub fn get_tags(&self) -> Vec<String> {
         self.tags.clone()
     }
+
+    pub fn get_properties(&self) -> HashMap<String, String> {
+        self.properties.clone()
+    }
 }
 
 impl<Block, DepsQueue> Stream for EventStream<Block, DepsQueue>
@@ -83,6 +95,7 @@ where
             dependencies_metadata: Some(dependencies_meta),
             objects_metadata: Some(obj_meta),
             tags: self.get_tags(),
+            properties: self.get_properties(),
         }
     }
 

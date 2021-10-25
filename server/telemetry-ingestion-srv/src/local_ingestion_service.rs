@@ -87,13 +87,15 @@ impl TelemetryIngestion for LocalIngestionService {
                     None => Vec::new(),
                 };
                 let tags = stream_info.tags.join(" ");
+                let properties = serde_json::to_string(&stream_info.properties).unwrap();
                 info!("new stream [{}] {}", tags, stream_info.stream_id);
-                if let Err(e) = sqlx::query("INSERT INTO streams VALUES(?,?,?,?,?);")
+                if let Err(e) = sqlx::query("INSERT INTO streams VALUES(?,?,?,?,?,?);")
                     .bind(stream_info.stream_id.clone())
                     .bind(stream_info.process_id)
                     .bind(dependencies_metadata)
                     .bind(objects_metadata)
                     .bind(tags)
+                    .bind(properties)
                     .execute(&mut connection)
                     .await
                 {

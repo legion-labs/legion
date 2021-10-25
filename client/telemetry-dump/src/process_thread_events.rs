@@ -30,3 +30,14 @@ pub async fn print_process_thread_events(
     }
     Ok(())
 }
+
+pub async fn print_chrome_trace(
+    connection: &mut sqlx::AnyConnection,
+    _data_path: &Path,
+    process_id: &str,
+) -> Result<()> {
+    for stream in find_process_thread_streams(connection, process_id).await? {
+        println!("stream {}", stream.stream_id);
+    }
+    Ok(())
+}

@@ -7,6 +7,7 @@ use crate::{
     ThreadEventQueueTypeIndex, ThreadStream,
 };
 use chrono::Utc;
+use std::collections::HashMap;
 use std::{
     cell::Cell,
     sync::{Arc, Mutex},
@@ -39,11 +40,13 @@ impl Dispatch {
                 log_buffer_size,
                 process_id.clone(),
                 &[String::from("log")],
+                HashMap::new(),
             )),
             metrics_stream: Mutex::new(MetricsStream::new(
                 metrics_buffer_size,
                 process_id,
                 &[String::from("metrics")],
+                HashMap::new(),
             )),
             sink,
         };
@@ -213,10 +216,13 @@ impl Dispatch {
     }
 
     fn init_thread_stream(&mut self, cell: &Cell<Option<ThreadStream>>) {
+        let mut properties = HashMap::new();
+        properties.insert(String::from("thread-id"), format!("{}", thread_id::get()));
         let thread_stream = ThreadStream::new(
             self.thread_buffer_size,
             self.process_id.clone(),
             &[String::from("cpu")],
+            properties,
         );
         unsafe {
             let opt_ref = &mut *cell.as_ptr();
