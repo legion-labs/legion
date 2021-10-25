@@ -73,7 +73,10 @@ fn generate_reflection_write(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
 /// Generate the JSON write serialization for members.
 /// Don't serialize members at default values
 /// Skip 'transient' value
-fn generate_reflection_read(default_ident: Option<&syn::Ident>, members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
+fn generate_reflection_read(
+    default_ident: Option<&syn::Ident>,
+    members: &[MemberMetaInfo],
+) -> Vec<QuoteRes> {
     members
         .iter()
         .filter(|m| !m.transient)
@@ -84,13 +87,11 @@ fn generate_reflection_read(default_ident: Option<&syn::Ident>, members: &[Membe
             let member_ident = format_ident!("{}", &m.name);
 
             if let Some(default_ident) = default_ident {
-                quote! { #hash_value => 
-                    serde_json::to_string(&#default_ident.#member_ident).map_err(|_err| "json serialization error"),
+                quote! { #hash_value => serde_json::to_string(&#default_ident.#member_ident).map_err(|_err| "json serialization error"),
                 }
             }
             else {
-                quote! { #hash_value => 
-                    serde_json::to_string(&self.#member_ident).map_err(|_err| "json serialization error"),
+                quote! { #hash_value => serde_json::to_string(&self.#member_ident).map_err(|_err| "json serialization error"),
                 }
             }
         })
@@ -127,18 +128,19 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
     let offline_name = format!("offline_{}", data_container_info.name).to_lowercase();
     let offline_identifier_processor = format_ident!("{}Processor", data_container_info.name);
 
-
     //let offline_fields_parse_str = generate_offline_parse_str(&data_container_info.members);
     let offline_default_instance =
         format_ident!("DEFAULT_{}", data_container_info.name.to_uppercase());
 
     let offline_default_descriptor =
-    format_ident!("__{}_DESCRIPTORS", data_container_info.name.to_uppercase());
+        format_ident!("__{}_DESCRIPTORS", data_container_info.name.to_uppercase());
 
     let reflection_writer = generate_reflection_write(&data_container_info.members);
-    let reflection_read_default = generate_reflection_read(Some(&offline_default_instance), &data_container_info.members);
+    let reflection_read_default = generate_reflection_read(
+        Some(&offline_default_instance),
+        &data_container_info.members,
+    );
     let reflection_read = generate_reflection_read(None, &data_container_info.members);
-
 
     let offline_fields_editor_descriptors =
         generate_property_descriptors(&data_container_info.members);
