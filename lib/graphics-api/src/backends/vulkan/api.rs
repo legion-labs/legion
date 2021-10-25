@@ -1,11 +1,5 @@
 use super::internal::VkInstance;
-use super::{
-    VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
-    VulkanCommandPool, VulkanDescriptorSetArray, VulkanDescriptorSetHandle,
-    VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanFence,
-    VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
-    VulkanShaderModule, VulkanSwapchain, VulkanTexture, VulkanTextureView,
-};
+use super::{VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer, VulkanCommandPool, VulkanDescriptorSetArray, VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule, VulkanSwapchain, VulkanTexture, VulkanTextureView};
 use crate::{ApiDef, GfxApi, GfxResult};
 
 use std::ffi::CString;
@@ -115,8 +109,7 @@ impl VulkanApi {
             api_def.validation_mode,
             api_def.windowing_mode,
         )?;
-        
-        let device_context = Some(VulkanDeviceContext::new(&instance)?);
+        let device_context = Some(VulkanDeviceContext::new(&instance, api_def)?);
 
         Ok(Self {
             instance,

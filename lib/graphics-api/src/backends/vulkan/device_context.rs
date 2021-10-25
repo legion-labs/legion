@@ -1,10 +1,6 @@
 use crate::backends::deferred_drop::DeferredDropper;
 use crate::vulkan::check_extensions_availability;
-use crate::{
-    BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext,
-    DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef,
-    SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
-};
+use crate::{ApiDef, BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef};
 use ash::extensions::khr;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
@@ -348,10 +344,18 @@ impl VulkanDeviceContext {
     }
 
     pub fn new(        
-        instance: &VkInstance
+        instance: &VkInstance,
+        api_def: &ApiDef
     ) -> GfxResult<Self> {        
+
+        let inner = Arc::new(VulkanDeviceContextInner::new(
+            &instance,
+            api_def.windowing_mode,
+            api_def.video_mode,
+        )?);
+
         Ok(Self {
-            inner: Arc::new(VulkanDeviceContextInner::new(instance)?),
+            inner,
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
             create_index: 0,
