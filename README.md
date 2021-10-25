@@ -1,6 +1,7 @@
 [![CI - Test](https://github.com/legion-labs/legion/actions/workflows/ci_test.yml/badge.svg)](https://github.com/legion-labs/legion/actions/workflows/ci_test.yml)
 [![CI - Release](https://github.com/legion-labs/legion/actions/workflows/release.yml/badge.svg)](https://github.com/legion-labs/legion/actions/workflows/release.yml)
 [![Coverage](https://cov.legionengine.com/badges/flat.svg)](https://cov.legionengine.com/index.html)
+![MSRV](https://img.shields.io/badge/msrv-1.56-red)
 
 # Legion Monorepo
 
