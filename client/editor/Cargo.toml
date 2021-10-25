@@ -24,7 +24,7 @@ legion-streaming-proto = { path = "../../proto/streaming", version = "0.1.0" }
 legion-editor-proto = { path = "../../proto/editor", version = "0.1.0" }
 anyhow = "1.0.44"
 clap = "2.33"
-tonic = "0.5.2"
+tonic = "0.6.0"
 prost = "0.8"
 tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
 base64 = "0.13"

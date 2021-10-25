@@ -20,7 +20,7 @@ legion-grpc = { path = "../grpc", version = "0.1.0" }
 legion-telemetry = { path = "../../lib/telemetry" }
 legion-utils = { path = "../../lib/utils" }
 tokio = { version = "1.12", features = ["full"] }
-tonic = "0.5"
+tonic = "0.6"
 crossbeam = "0.8"
 webrtc = "0.2"
 interceptor = "0.4"
