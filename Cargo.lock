@@ -6401,6 +6401,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fs_extra",
+ "json",
  "legion-analytics",
  "legion-telemetry",
  "lz4",
