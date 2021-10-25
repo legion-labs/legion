@@ -1,8 +1,9 @@
 use super::{VulkanApi, VulkanDescriptorSetLayout, VulkanDeviceContext};
-use crate::{GfxResult, PipelineType, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::{GfxResult, MAX_DESCRIPTOR_SET_LAYOUTS, PipelineType, RootSignature, RootSignatureDef};
+use crate::backends::deferred_drop::Drc;
 
 use ash::vk;
-use std::sync::Arc;
+
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -30,7 +31,7 @@ impl Drop for RootSignatureVulkanInner {
 
 #[derive(Clone, Debug)]
 pub struct VulkanRootSignature {
-    inner: Arc<RootSignatureVulkanInner>,
+    inner: Drc<RootSignatureVulkanInner>,
 }
 
 impl VulkanRootSignature {
@@ -92,7 +93,7 @@ impl VulkanRootSignature {
         };
 
         Ok(Self {
-            inner: Arc::new(inner),
+            inner: device_context.deferred_dropper().new_drc(inner),
         })
     }
 }

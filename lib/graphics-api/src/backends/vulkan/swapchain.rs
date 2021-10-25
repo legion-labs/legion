@@ -1,6 +1,7 @@
 use super::{
     VulkanApi, VulkanDeviceContext, VulkanFence, VulkanRawImage, VulkanSemaphore, VulkanTexture,
 };
+use crate::backends::deferred_drop::Drc;
 use crate::{
     CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DeviceContext, Extents3D, Format,
     GfxError, GfxResult, MemoryUsage, Queue, QueueType, ResourceFlags, ResourceState,
@@ -10,7 +11,6 @@ use crate::{
 
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
-use std::sync::Arc;
 
 use ash::extensions::khr;
 use ash::prelude::VkResult;
@@ -97,7 +97,7 @@ pub struct VulkanSwapchain {
     last_image_suboptimal: bool,
     swapchain_images: Vec<SwapchainImage<VulkanApi>>,
     surface: vk::SurfaceKHR,
-    surface_loader: Arc<khr::Surface>,
+    surface_loader: Drc<khr::Surface>,
 }
 
 impl Drop for VulkanSwapchain {
@@ -129,10 +129,12 @@ impl VulkanSwapchain {
             )?
         };
 
-        let surface_loader = Arc::new(khr::Surface::new(
-            device_context.entry(),
-            device_context.instance(),
-        ));
+        let surface_loader = device_context.deferred_dropper().new_drc(
+            khr::Surface::new(
+                device_context.entry(),
+                device_context.instance(),
+            )
+        );
 
         let present_mode_priority = present_mode_priority(swapchain_def);
 
@@ -320,7 +322,7 @@ struct SwapchainVulkanInstance {
     device_context: VulkanDeviceContext,
 
     swapchain_info: SwapchainInfo,
-    swapchain_loader: Arc<khr::Swapchain>,
+    swapchain_loader: Drc<khr::Swapchain>,
     swapchain: vk::SwapchainKHR,
     swapchain_images: Vec<vk::Image>,
 
@@ -331,7 +333,7 @@ impl SwapchainVulkanInstance {
     fn new(
         device_context: &VulkanDeviceContext,
         surface: vk::SurfaceKHR,
-        surface_loader: &Arc<khr::Surface>,
+        surface_loader: &Drc<khr::Surface>,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[VkPresentMode],
         window_inner_size: Extent2D,
@@ -393,7 +395,9 @@ impl SwapchainVulkanInstance {
         Ok(Self {
             device_context: device_context.clone(),
             swapchain_info,
-            swapchain_loader: Arc::new(create_swapchain_result.swapchain_loader),
+            swapchain_loader: device_context.deferred_dropper().new_drc(
+                create_swapchain_result.swapchain_loader
+            ),
             swapchain: create_swapchain_result.swapchain,
             dedicated_present_queue: create_swapchain_result.dedicated_present_queue,
             swapchain_images,
@@ -586,7 +590,7 @@ impl SwapchainVulkanInstance {
 
     fn choose_present_queue_family_index(
         surface: vk::SurfaceKHR,
-        surface_loader: &Arc<khr::Surface>,
+        surface_loader: &Drc<khr::Surface>,
         physical_device: vk::PhysicalDevice,
         all_queue_families: &[vk::QueueFamilyProperties],
         graphics_queue_family_index: u32,

@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
 use crate::{Buffer, BufferView, BufferViewDef, GPUViewType, GfxResult, ShaderResourceType};
+use crate::backends::deferred_drop::Drc;
 
 use super::{VulkanApi, VulkanBuffer, VulkanDescriptor};
 
@@ -14,24 +13,29 @@ struct VulkanBufferViewInner {
 
 #[derive(Clone, Debug)]
 pub struct VulkanBufferView {
-    inner: Arc<VulkanBufferViewInner>,
+    inner: Drc<VulkanBufferViewInner>,
 }
 
 impl VulkanBufferView {
     pub fn from_buffer(buffer: &VulkanBuffer, view_def: &BufferViewDef) -> GfxResult<Self> {
+
         view_def.verify(buffer.buffer_def());
 
+        let device_context = buffer.device_context();
         let vk_offset = view_def.byte_offset;
         let vk_size = view_def.element_size * view_def.element_count;
 
         Ok(Self {
-            inner: Arc::new(VulkanBufferViewInner {
-                view_def: *view_def,
-                buffer: buffer.clone(),
-                vk_offset,
-                vk_size,
-            }),
-        })
+            inner: device_context.deferred_dropper().new_drc(
+                VulkanBufferViewInner {
+                        view_def: *view_def,
+                        buffer: buffer.clone(),
+                        vk_offset,
+                        vk_size,
+                    }
+                )
+            }
+        )
     }
 
     pub(super) fn vk_offset(&self) -> u64 {

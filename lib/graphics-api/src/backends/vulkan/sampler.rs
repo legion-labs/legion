@@ -1,7 +1,7 @@
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{CompareOp, GfxResult, MipMapMode, Sampler, SamplerDef};
+use crate::backends::deferred_drop::Drc;
 use ash::vk;
-use std::sync::Arc;
 
 pub struct VulkanSamplerInner {
     device_context: VulkanDeviceContext,
@@ -20,7 +20,7 @@ impl Drop for VulkanSamplerInner {
 
 #[derive(Clone)]
 pub struct VulkanSampler {
-    pub(super) inner: Arc<VulkanSamplerInner>,
+    pub(super) inner: Drc<VulkanSamplerInner>,
 }
 
 impl std::fmt::Debug for VulkanSampler {
@@ -72,7 +72,7 @@ impl VulkanSampler {
         };
 
         Ok(Self {
-            inner: Arc::new(inner),
+            inner: device_context.deferred_dropper().new_drc(inner),
         })
     }
 }

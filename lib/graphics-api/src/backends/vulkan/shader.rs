@@ -1,6 +1,6 @@
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{GfxResult, PipelineReflection, Shader, ShaderStageDef, ShaderStageFlags};
-use std::sync::Arc;
+use crate::backends::deferred_drop::Drc;
 
 #[derive(Debug)]
 struct VulkanShaderInner {
@@ -11,12 +11,12 @@ struct VulkanShaderInner {
 
 #[derive(Clone, Debug)]
 pub struct VulkanShader {
-    inner: Arc<VulkanShaderInner>,
+    inner: Drc<VulkanShaderInner>,
 }
 
 impl VulkanShader {
     pub fn new(
-        _device_context: &VulkanDeviceContext,
+        device_context: &VulkanDeviceContext,
         stages: Vec<ShaderStageDef<VulkanApi>>,
     ) -> GfxResult<Self> {
         let pipeline_reflection = PipelineReflection::from_stages(&stages)?;
@@ -32,7 +32,7 @@ impl VulkanShader {
         };
 
         Ok(Self {
-            inner: Arc::new(inner),
+            inner: device_context.deferred_dropper().new_drc(inner),
         })
     }
 

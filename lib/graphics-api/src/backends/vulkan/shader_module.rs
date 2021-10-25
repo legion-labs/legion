@@ -1,7 +1,7 @@
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{GfxResult, ShaderModule, ShaderModuleDef};
+use crate::backends::deferred_drop::Drc;
 use ash::vk;
-use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct ShaderModuleVulkanInner {
@@ -21,7 +21,7 @@ impl Drop for ShaderModuleVulkanInner {
 
 #[derive(Clone, Debug)]
 pub struct VulkanShaderModule {
-    inner: Arc<ShaderModuleVulkanInner>,
+    inner: Drc<ShaderModuleVulkanInner>,
 }
 
 impl VulkanShaderModule {
@@ -52,9 +52,8 @@ impl VulkanShaderModule {
             device_context: device_context.clone(),
             shader_module,
         };
-
         Ok(Self {
-            inner: Arc::new(inner),
+            inner: device_context.deferred_dropper().new_drc(inner),
         })
     }
 

@@ -1,9 +1,6 @@
-use std::sync::Arc;
-
 use super::{VulkanApi, VulkanBufferView, VulkanDeviceContext};
-use crate::{
-    Buffer, BufferDef, BufferMappingInfo, BufferViewDef, GfxResult, MemoryUsage, ResourceUsage,
-};
+use crate::{Buffer, BufferDef, BufferMappingInfo, BufferViewDef, GfxResult, MemoryUsage, ResourceUsage};
+use crate::backends::deferred_drop::Drc;
 use ash::vk;
 
 #[derive(Debug)]
@@ -17,7 +14,7 @@ struct VulkanBufferInner {
 
 #[derive(Clone, Debug)]
 pub struct VulkanBuffer {
-    inner: Arc<VulkanBufferInner>,
+    inner: Drc<VulkanBufferInner>,
 }
 
 impl VulkanBuffer {
@@ -83,13 +80,15 @@ impl VulkanBuffer {
         );
 
         Ok(Self {
-            inner: Arc::new(VulkanBufferInner {
-                device_context: device_context.clone(),
-                allocation_info,
-                buffer_def: buffer_def.clone(),
-                allocation,
-                buffer,
-            }),
+            inner: device_context.deferred_dropper().new_drc(
+            VulkanBufferInner {
+                    device_context: device_context.clone(),
+                    allocation_info,
+                    buffer_def: buffer_def.clone(),
+                    allocation,
+                    buffer,
+                }
+            ),
         })
     }
 
