@@ -28,7 +28,7 @@ dyn-clone = "1"
 backoff = { version = "0.3.0", features = ["tokio"] }
 
 [build-dependencies]
-tonic-build = "0.5"
+tonic-build = "0.6"
 
 [dev-dependencies]
 prost = "0.8"
