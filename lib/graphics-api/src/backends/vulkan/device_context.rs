@@ -691,7 +691,7 @@ fn find_queue_families(
     }
 
     //
-    // Find a transfer queue family in the following order of preference:
+    // Find a decode queue family in the following order of preference:
     // - Doesn't support graphics, compute, encode
     // - Supports decode
     //
@@ -717,7 +717,7 @@ fn find_queue_families(
     }
 
     //
-    // Find a transfer queue family in the following order of preference:
+    // Find a encode queue family in the following order of preference:
     // - Doesn't support graphics, compute, decode
     // - Supports encode
     //
