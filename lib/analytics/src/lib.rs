@@ -96,7 +96,7 @@ pub async fn processes_by_name_substring(
 ) -> Result<Vec<legion_telemetry::ProcessInfo>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
-        "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id,
+        "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
          FROM processes
          WHERE exe LIKE ?
          ORDER BY start_time DESC
