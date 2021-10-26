@@ -11,7 +11,7 @@ on:
 jobs:
   build_book:
     name: Building book
-    runs-on: [self-hosted, linux, base, build]
+    runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
 
