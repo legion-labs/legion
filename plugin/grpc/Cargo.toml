@@ -17,7 +17,7 @@ tokio = { version = "1.12", features = ["full"] }
 hyper = "0.14.13"
 tower = "0.4.8"
 tower-service = "0.3.1"
-tonic = "0.5"
+tonic = "0.6"
 futures-util = "0.3.17"
 http = "0.2.5"
 http-body = "0.4.3"
@@ -28,8 +28,8 @@ dyn-clone = "1"
 backoff = { version = "0.3.0", features = ["tokio"] }
 
 [build-dependencies]
-tonic-build = "0.5"
+tonic-build = "0.6"
 
 [dev-dependencies]
-prost = "0.8"
+prost = "0.9"
 simple_logger = "1.13"

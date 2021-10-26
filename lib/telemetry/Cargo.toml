@@ -11,8 +11,8 @@ legion-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
 anyhow = "1.0"
 raw-cpuid = "10.2.0"
 transit = { path = "../transit" }
-tonic = "0.5"
-prost = "0.8"
+tonic = "0.6"
+prost = "0.9"
 whoami = "1.1"
 uuid = { version = "0.8", features = ["v4"] }
 chrono = "0.4"
