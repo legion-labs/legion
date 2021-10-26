@@ -67,6 +67,13 @@ impl Dispatch {
 
     fn on_init_process(&mut self) {
         use raw_cpuid::CpuId;
+
+        let mut parent_process = String::new();
+        if let Ok(parent_process_guid) = std::env::var("LEGION_TELEMETRY_PARENT_PROCESS") {
+            parent_process = parent_process_guid;
+        }
+        std::env::set_var("LEGION_TELEMETRY_PARENT_PROCESS", &self.process_id);
+
         let start_ticks = now();
         let start_time = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, false);
         let cpuid = CpuId::new();
@@ -93,6 +100,7 @@ impl Dispatch {
             tsc_frequency,
             start_time,
             start_ticks,
+            parent_process_id: parent_process,
         };
         self.sink
             .on_sink_event(TelemetrySinkEvent::OnInitProcess(process_info));
@@ -242,20 +250,28 @@ pub fn init_event_dispatch(
     log_buffer_size: usize,
     thread_buffer_size: usize,
     metrics_buffer_size: usize,
-    sink: Arc<dyn EventBlockSink>,
+    make_sink: Box<dyn FnOnce() -> Arc<dyn EventBlockSink>>,
 ) -> Result<(), String> {
-    unsafe {
-        if G_DISPATCH.is_some() {
-            panic!("event dispatch already initialized");
-        }
-        G_DISPATCH = Some(Dispatch::new(
-            log_buffer_size,
-            thread_buffer_size,
-            metrics_buffer_size,
-            sink,
-        ));
+    lazy_static::lazy_static! {
+        static ref INIT_MUTEX: Mutex<()> = Mutex::new(());
     }
-    Ok(())
+    let _guard = INIT_MUTEX.lock().unwrap();
+
+    unsafe {
+        if G_DISPATCH.is_none() {
+            let sink: Arc<dyn EventBlockSink> = make_sink();
+            G_DISPATCH = Some(Dispatch::new(
+                log_buffer_size,
+                thread_buffer_size,
+                metrics_buffer_size,
+                sink,
+            ));
+            Ok(())
+        } else {
+            log::info!("event dispatch already initialized");
+            Err(String::from("event dispatch already initialized"))
+        }
+    }
 }
 
 pub fn get_process_id() -> Option<String> {

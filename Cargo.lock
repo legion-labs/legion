@@ -3546,6 +3546,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "ctrlc",
+ "lazy_static",
  "legion-telemetry-proto",
  "legion-utils",
  "log",
@@ -6480,6 +6481,9 @@ dependencies = [
 [[package]]
 name = "test-utils"
 version = "0.1.0"
+dependencies = [
+ "legion-telemetry",
+]
 
 [[package]]
 name = "text-resource"
