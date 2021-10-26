@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 default-run = "telemetry-ingestion-srv"
 
 [dependencies]
-tonic = "0.5.2"
+tonic = "0.6"
 tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
 legion-telemetry = { path = "../../lib/telemetry" }
 legion-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
@@ -20,7 +20,7 @@ sqlx = { version = "0.5", features = [
     "runtime-tokio-native-tls",
 ] }
 chrono = "0.4"
-prost = "0.8"
+prost = "0.9"
 log = "0.4"
 simple_logger = "1.13"
 serde_json = "1.0"
