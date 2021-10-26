@@ -12,8 +12,8 @@ jobs:
       matrix:
         os:
           [
-            [self-hosted, windows, base, build],
-            [self-hosted, linux, base, build],
+            [self-hosted, windows, common, build],
+            [self-hosted, linux, common, build],
           ]
     runs-on: ${{ matrix.os }}
     steps:
