@@ -1,5 +1,6 @@
 use legion_content_store::Checksum;
 use legion_data_compiler::CompiledResource;
+use legion_data_runtime::ResourceId;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -76,6 +77,7 @@ struct BuildIndexContent {
     resources: Vec<ResourceInfo>,
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
+    pathid_mapping: HashMap<ResourceId, ResourcePathId>,
 }
 
 impl BuildIndexContent {
@@ -134,6 +136,7 @@ impl BuildIndex {
             resources: vec![],
             compiled_resources: vec![],
             compiled_resource_references: vec![],
+            pathid_mapping: HashMap::new(),
         };
 
         serde_json::to_writer(&file, &content).map_err(|_e| Error::IOError)?;
@@ -284,12 +287,27 @@ impl BuildIndex {
         hasher.finish().into()
     }
 
+    fn record_pathid(&mut self, id: &ResourcePathId) {
+        self.content
+            .pathid_mapping
+            .insert(id.content_id(), id.clone());
+    }
+
+    pub fn lookup_pathid(&self, id: ResourceId) -> Option<ResourcePathId> {
+        self.content.pathid_mapping.get(&id).cloned()
+    }
+
     pub(crate) fn update_resource(
         &mut self,
         id: ResourcePathId,
         resource_hash: Option<ResourceHash>,
         mut deps: Vec<ResourcePathId>,
     ) -> bool {
+        self.record_pathid(&id);
+        for id in &deps {
+            self.record_pathid(id);
+        }
+
         #[allow(clippy::option_if_let_else)]
         if let Some(existing_res) = self.content.resources.iter_mut().find(|r| r.id == id) {
             deps.sort();
@@ -448,6 +466,59 @@ mod tests {
         }
 
         assert!(BuildIndex::open(&buildindex_path, "0.0.2").is_err());
+    }
+
+    #[test]
+    fn pathid_records() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let project = Project::create_new(work_dir.path()).expect("failed to create project");
+
+        // dummy ids - the actual project structure is irrelevant in this test.
+        let source_id = ResourceId::new_random_id(refs_resource::TestResource::TYPE);
+        let source_resource = ResourcePathId::from(source_id);
+        let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
+        let output_resource = intermediate_resource.push(refs_resource::TestResource::TYPE);
+
+        let buildindex_path = work_dir.path().join(TEST_BUILDINDEX_FILENAME);
+        let projectindex_path = project.indexfile_path();
+
+        {
+            let mut db =
+                BuildIndex::create_new(&buildindex_path, &projectindex_path, "0.0.1").unwrap();
+
+            // all dependencies need to be explicitly specified
+            let intermediate_deps = vec![source_resource.clone()];
+            let output_deps = vec![intermediate_resource.clone()];
+
+            let resource_hash = Some(0.into()); // this is irrelevant to the test
+
+            db.update_resource(
+                intermediate_resource.clone(),
+                resource_hash,
+                intermediate_deps.clone(),
+            );
+            db.update_resource(source_resource.clone(), resource_hash, vec![]);
+            db.update_resource(
+                intermediate_resource.clone(),
+                resource_hash,
+                intermediate_deps,
+            );
+            db.update_resource(output_resource.clone(), resource_hash, output_deps);
+
+            db.flush().unwrap();
+        }
+
+        let db = BuildIndex::open(&buildindex_path, "0.0.1").unwrap();
+        assert_eq!(db.lookup_pathid(source_id).unwrap(), source_resource);
+        assert_eq!(
+            db.lookup_pathid(intermediate_resource.content_id())
+                .unwrap(),
+            intermediate_resource
+        );
+        assert_eq!(
+            db.lookup_pathid(output_resource.content_id()).unwrap(),
+            output_resource
+        );
     }
 
     #[test]
