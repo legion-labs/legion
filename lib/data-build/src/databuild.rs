@@ -18,6 +18,7 @@ use legion_data_compiler::{CompiledResource, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{resource::Project, ResourcePathId};
 use legion_data_runtime::ResourceType;
+use legion_utils::DefaultHash;
 use petgraph::algo;
 
 use crate::asset_file_writer::write_assetfile;
@@ -553,9 +554,7 @@ impl DataBuild {
 
                         // this is how we truncate the 128 bit long checksum
                         // and convert it to a 64 bit source_hash.
-                        let mut hasher = DefaultHasher::new();
-                        source.compiled_checksum.hash(&mut hasher);
-                        hasher.finish()
+                        source.compiled_checksum.default_hash()
                     }
                 };
 

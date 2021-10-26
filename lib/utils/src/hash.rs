@@ -4,6 +4,25 @@ pub use uuid::Uuid;
 
 pub use ahash::RandomState;
 
+/// The `DefaultHash` trait is used to obtain a hash value for a single typed value.
+/// It will rely on the default `Hasher` provided by the std library.
+pub trait DefaultHash {
+    fn default_hash(&self) -> u64;
+}
+
+// Default implementation of DefaultHash for all types that implement the `Hash` trait.
+impl<T> DefaultHash for T
+where
+    T: std::hash::Hash,
+{
+    /// Returns the hash value for a single typed value, using the default `Hasher` from `HashMap`.
+    fn default_hash(&self) -> u64 {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        self.hash(&mut hasher);
+        std::hash::Hasher::finish(&hasher)
+    }
+}
+
 /// A hasher builder that will create a fixed hasher.
 #[derive(Default)]
 pub struct FixedState;
