@@ -77,6 +77,8 @@ fn init_test_dir(test_name: &str) -> PathBuf {
 
 #[test]
 fn local_repo_suite() {
+    init_telemetry(None);
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("local_repo_suite");
     let work1 = test_dir.join("work");
@@ -179,10 +181,14 @@ fn local_repo_suite() {
 
     //sync forwards
     lsc_cli_sys(&work1, &["sync"]);
+    flush_log_buffer();
+    flush_metrics_buffer();
 }
 
 #[test]
 fn local_single_branch_merge_flow() {
+    init_telemetry(None);
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("local_single_branch_merge_flow");
     let work1 = test_dir.join("work1");
@@ -228,10 +234,14 @@ fn local_single_branch_merge_flow() {
     lsc_cli_sys(&work1, &["resolves-pending"]);
     lsc_cli_sys(&work1, &["revert", "file1.txt"]);
     lsc_cli_sys(&work1, &["resolves-pending"]);
+    flush_log_buffer();
+    flush_metrics_buffer();
 }
 
 #[test]
 fn test_print_config() {
+    init_telemetry(None);
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let config_file_path = legion_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
@@ -239,10 +249,14 @@ fn test_print_config() {
     } else {
         println!("no config file, skipping test");
     }
+    flush_log_buffer();
+    flush_metrics_buffer();
 }
 
 #[test]
 fn test_branch() {
+    init_telemetry(None);
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_branch");
     let config_file_path = legion_source_control::Config::config_file_path().unwrap();
@@ -335,10 +349,14 @@ fn test_branch() {
     lsc_cli_sys(&work1, &["merge-branch", "task"]); //fast-forward
 
     //lsc_cli_sys(&work1, &["log"]);
+    flush_log_buffer();
+    flush_metrics_buffer();
 }
 
 #[test]
 fn test_locks() {
+    init_telemetry(None);
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_locks");
     let config_file_path = legion_source_control::Config::config_file_path().unwrap();
@@ -447,6 +465,8 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["unlock", "file2.txt"]);
     lsc_cli_sys(&work1, &["lock", "some_other_file.txt"]);
     lsc_cli_sys(&work1, &["attach-branch", "main"]);
+    flush_log_buffer();
+    flush_metrics_buffer();
 }
 
 fn get_root_git_directory() -> PathBuf {
@@ -461,6 +481,8 @@ fn get_root_git_directory() -> PathBuf {
 #[test]
 #[ignore] //fails in the build actions because tests don't run under a full git clone, see https://github.com/legion-labs/legion/issues/4
 fn test_import_git() {
+    init_telemetry(None);
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_import_git");
     let work1 = test_dir.join("work1");
@@ -478,4 +500,6 @@ fn test_import_git() {
         &work1,
         &["import-git-branch", root_dir.to_str().unwrap(), "main"],
     );
+    flush_log_buffer();
+    flush_metrics_buffer();
 }

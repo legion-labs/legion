@@ -37,20 +37,22 @@ impl TelemetryIngestion for LocalIngestionService {
             Ok(mut connection) => {
                 let current_date: chrono::DateTime<chrono::Utc> = chrono::Utc::now();
                 #[allow(clippy::cast_possible_wrap)]
-                if let Err(e) = sqlx::query("INSERT INTO processes VALUES(?,?,?,?,?,?,?,?,?,?,?);")
-                    .bind(process_info.process_id.clone())
-                    .bind(process_info.exe)
-                    .bind(process_info.username)
-                    .bind(process_info.realname)
-                    .bind(process_info.computer)
-                    .bind(process_info.distro)
-                    .bind(process_info.cpu_brand)
-                    .bind(process_info.tsc_frequency as i64)
-                    .bind(process_info.start_time)
-                    .bind(process_info.start_ticks as i64)
-                    .bind(current_date.format("%Y-%m-%d").to_string())
-                    .execute(&mut connection)
-                    .await
+                if let Err(e) =
+                    sqlx::query("INSERT INTO processes VALUES(?,?,?,?,?,?,?,?,?,?,?,?);")
+                        .bind(process_info.process_id.clone())
+                        .bind(process_info.exe)
+                        .bind(process_info.username)
+                        .bind(process_info.realname)
+                        .bind(process_info.computer)
+                        .bind(process_info.distro)
+                        .bind(process_info.cpu_brand)
+                        .bind(process_info.tsc_frequency as i64)
+                        .bind(process_info.start_time)
+                        .bind(process_info.start_ticks as i64)
+                        .bind(current_date.format("%Y-%m-%d").to_string())
+                        .bind(process_info.parent_process_id.clone())
+                        .execute(&mut connection)
+                        .await
                 {
                     dbg!(&e);
                     return Err(Status::internal(format!(
