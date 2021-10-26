@@ -1,12 +1,7 @@
-use std::{
-    collections::hash_map::DefaultHasher,
-    fmt,
-    hash::{Hash, Hasher},
-    num::ParseIntError,
-    str::FromStr,
-};
+use std::{fmt, hash::Hash, num::ParseIntError, str::FromStr};
 
 use legion_data_runtime::{ResourceId, ResourceType};
+use legion_utils::DefaultHash;
 use serde::{Deserialize, Serialize};
 
 /// Identifier of a path in a build graph.
@@ -255,11 +250,7 @@ impl ResourcePathId {
         if self.is_source() {
             self.source
         } else {
-            let id = {
-                let mut hasher = DefaultHasher::new();
-                self.hash(&mut hasher);
-                hasher.finish()
-            };
+            let id = self.default_hash();
             ResourceId::new(self.content_type(), id)
         }
     }

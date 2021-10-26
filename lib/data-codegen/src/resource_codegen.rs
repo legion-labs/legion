@@ -1,8 +1,7 @@
 use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
+use legion_utils::DefaultHash;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 type QuoteRes = quote::__private::TokenStream;
 
 /// Generic the JSON read serialization.
@@ -58,9 +57,7 @@ fn generate_offline_parse_str(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
         .iter()
         .filter(|m| !m.transient)
         .map(|m| {
-            let mut hasher = DefaultHasher::new();
-            m.name.hash(&mut hasher);
-            let hash_value: u64 = hasher.finish();
+            let hash_value = m.name.default_hash();
             let member_ident = format_ident!("{}", &m.name);
             quote! { #hash_value => {
                 instance.#member_ident = serde_json::from_str(field_value).map_err(|_err| "json serialization error")?;
@@ -192,9 +189,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
             #[allow(clippy::too_many_lines)]
             fn write_property(&self, resource: &mut dyn Any, field_name: &str, field_value: &str) -> Result<(), &'static str> {
                 let instance : &mut #offline_identifier = resource.downcast_mut::<#offline_identifier>().unwrap();
-                let mut hasher = DefaultHasher::new();
-                field_name.hash(&mut hasher);
-                match hasher.finish() {
+                match field_name.default_hash() {
                     #(#offline_fields_parse_str)*
                     _ => return Err("invalid field"),
                 }

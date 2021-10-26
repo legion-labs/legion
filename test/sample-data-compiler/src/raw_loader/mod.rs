@@ -7,6 +7,7 @@ use legion_data_offline::resource::{
 };
 use legion_data_runtime::{Resource, ResourceId, ResourceType};
 use legion_graphics_offline::PsdFile;
+use legion_utils::DefaultHash;
 use sample_data_offline as offline_data;
 use serde::de::DeserializeOwned;
 use std::{
@@ -153,9 +154,7 @@ fn create_or_find_default(
             if let Ok(id) = project.find_resource(name) {
                 id
             } else {
-                let mut hasher = DefaultHasher::new();
-                name.hash(&mut hasher);
-                let resource_hash = hasher.finish();
+                let resource_hash = name.default_hash();
                 let id = ResourceId::new(kind, resource_hash);
                 project
                     .add_resource_with_id(
@@ -178,9 +177,7 @@ fn create_or_find_default(
             if let Ok(id) = project.find_resource(&name) {
                 id
             } else {
-                let mut hasher = DefaultHasher::new();
-                name.hash(&mut hasher);
-                let resource_hash = hasher.finish();
+                let resource_hash = name.default_hash();
                 let kind = TestEntity::TYPE;
                 let id = ResourceId::new(kind, resource_hash);
                 let test_entity_handle = resources.new_resource(kind).unwrap();
