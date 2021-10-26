@@ -22,7 +22,7 @@
             "environment": [],
             "console": "integratedTerminal",
             "sourceFileMap": {
-                "/rustc/c8dfcfe046a7680554bf4eb612bad840e7631c4b": "/Scoop/user/persist/rustup-msvc/.rustup/toolchains/1.55.0-x86_64-pc-windows-msvc/lib/rustlib/src/rust"
+                "/rustc/09c42c45858d5f3aedfa670698275303a3d19afa": "/Scoop/user/persist/rustup-msvc/.rustup/toolchains/1.55.0-x86_64-pc-windows-msvc/lib/rustlib/src/rust"
             },
             "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
             "preLaunchTask": "${defaultBuildTask}"
@@ -38,7 +38,7 @@
             "environment": [],
             "console": "integratedTerminal",
             "sourceFileMap": {
-                "/rustc/c8dfcfe046a7680554bf4eb612bad840e7631c4b": "/Scoop/user/persist/rustup-msvc/.rustup/toolchains/1.55.0-x86_64-pc-windows-msvc/lib/rustlib/src/rust"
+                "/rustc/09c42c45858d5f3aedfa670698275303a3d19afa": "/Scoop/user/persist/rustup-msvc/.rustup/toolchains/1.55.0-x86_64-pc-windows-msvc/lib/rustlib/src/rust"
             },
             "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
             "preLaunchTask": "${defaultBuildTask}"
