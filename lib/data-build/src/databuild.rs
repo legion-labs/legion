@@ -17,7 +17,7 @@ use legion_data_compiler::CompilerHash;
 use legion_data_compiler::{CompiledResource, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{resource::Project, ResourcePathId};
-use legion_data_runtime::ResourceType;
+use legion_data_runtime::{ResourceId, ResourceType};
 use legion_utils::DefaultHash;
 use petgraph::algo;
 
@@ -170,6 +170,13 @@ impl DataBuild {
     /// Accessor for the project associated with this builder.
     pub fn project(&self) -> &Project {
         &self.project
+    }
+
+    /// Returns a source of a resource id.
+    ///
+    /// It will return None if the build never recorded a source for a given id.
+    pub fn lookup_pathid(&self, id: ResourceId) -> Option<ResourcePathId> {
+        self.build_index.lookup_pathid(id)
     }
 
     /// Updates the build database with information about resources from provided resource database.
