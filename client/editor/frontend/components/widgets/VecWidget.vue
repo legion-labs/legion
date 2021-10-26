@@ -35,8 +35,14 @@ export default {
       get() {
         return this.value;
       },
-      set(val) {
-        this.$emit("input", val);
+      set(valarray) {
+        var valNums = [];
+        for (var val of valarray) {
+          var valNum = parseFloat(val);
+          if (valNum == NaN) return;
+          valNums.push(valNum);
+        }
+        this.$emit("input", valNums);
       },
     },
   },
