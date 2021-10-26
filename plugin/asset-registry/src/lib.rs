@@ -215,13 +215,26 @@ impl AssetRegistryPlugin {
         mut asset_handles: ResMut<'_, AssetHandles>,
     ) {
         while let Ok(event) = load_events_rx.try_recv() {
-            if let ResourceLoadEvent::Loaded(asset_handle) = event {
-                if asset_loading_states.get(asset_handle.id()).is_none() {
-                    // Received a load event for an untracked asset.
-                    // Most likely, this load has occurred because of loading of dependant resources.
-                    asset_loading_states.insert(asset_handle.id(), LoadingState::Pending);
-                    asset_handles.insert(asset_handle.id(), asset_handle);
+            match event {
+                ResourceLoadEvent::Loaded(asset_handle) => {
+                    let asset_id = asset_handle.id();
+                    if asset_loading_states.get(asset_id).is_none() {
+                        // Received a load event for an untracked asset.
+                        // Most likely, this load has occurred because of loading of dependant resources.
+                        asset_loading_states.insert(asset_id, LoadingState::Pending);
+                        asset_handles.insert(asset_id, asset_handle);
+                    }
                 }
+                ResourceLoadEvent::LoadError(asset_id, error_kind) => {
+                    if asset_loading_states.get(asset_id).is_none() {
+                        eprintln!(
+                            "Failed to load runtime asset {}, error: {:?}",
+                            asset_id, error_kind
+                        );
+                        asset_loading_states.insert(asset_id, LoadingState::Failed);
+                    }
+                }
+                _ => {}
             }
         }
 

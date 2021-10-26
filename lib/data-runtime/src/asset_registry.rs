@@ -217,7 +217,7 @@ pub enum ResourceLoadEvent {
     /// Resource unload event
     Unloaded(ResourceId),
     /// Sent when a loading attempt has failed
-    LoadError(ResourceId),
+    LoadError(ResourceId, io::ErrorKind),
     /// Successful resource reload
     Reloaded(HandleUntyped),
 }
@@ -326,7 +326,7 @@ impl AssetRegistry {
                     }
                     LoaderResult::LoadError(handle, _load_id, error_kind) => {
                         inner.load_errors.insert(handle.id(), error_kind);
-                        load_events.push(ResourceLoadEvent::LoadError(handle.id()));
+                        load_events.push(ResourceLoadEvent::LoadError(handle.id(), error_kind));
                     }
                     LoaderResult::Reloaded(handle, resource) => {
                         let old_resource = inner.assets.insert(handle.id(), resource);
