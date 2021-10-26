@@ -513,10 +513,10 @@ fn query_physical_device_info(
             if check_extensions_availability(&[khr::Swapchain::name()], &extensions) {
                 required_extensions.push(khr::Swapchain::name());
             } else if windowing_mode == ExtensionMode::EnabledIfAvailable {
-                log::warn!("Could not find the swapchain extension. Check that the proper drivers are installed.");
+                log::info!("Could not find the swapchain extension. Check that the proper drivers are installed.");
             } else {
-                log::error!("Could not find the swapchain extension. Check that the proper drivers are installed.");
-                return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
+                log::warn!("Could not find the swapchain extension. Check that the proper drivers are installed.");
+                return Ok(None);
             }
         }
     };
@@ -532,10 +532,10 @@ fn query_physical_device_info(
             if check_extensions_availability(&video_extensions, &extensions) {
                 required_extensions.extend_from_slice(&video_extensions);
             } else if video_mode == ExtensionMode::EnabledIfAvailable {
-                log::warn!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
+                log::info!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
             } else {
-                log::error!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
-                return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
+                log::warn!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
+                return Ok(None);
             }
         }
     };
