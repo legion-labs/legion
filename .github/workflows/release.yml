@@ -14,7 +14,7 @@ on:
 jobs:
   build_release:
     name: Building release binaries
-    runs-on: [self-hosted, linux, base, build]
+    runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
 
@@ -37,7 +37,7 @@ jobs:
     name: Building docker images and deploying them
     needs: [build_release]
     if: ${{ github.event.event_name == 'workflow_dispatch' }}
-    runs-on: [self-hosted, linux, base, build]
+    runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
 
