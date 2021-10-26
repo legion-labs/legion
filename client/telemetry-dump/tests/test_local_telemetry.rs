@@ -71,6 +71,12 @@ fn test_list_processes() {
 }
 
 #[test]
+fn test_find_processes() {
+    let data_path = setup_data_dir("find-processes");
+    dump_cli_sys(&[data_path.to_str().unwrap(), "find-processes", "exe"])
+}
+
+#[test]
 fn test_logs_by_process() {
     let data_path = setup_data_dir("logs_by_process");
     dump_cli_sys(&[data_path.to_str().unwrap(), "logs-by-process"])
