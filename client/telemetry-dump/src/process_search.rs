@@ -17,28 +17,20 @@ pub async fn print_process_search(connection: &mut sqlx::AnyConnection, filter: 
     }
 }
 
-#[async_recursion::async_recursion]
-async fn print_process_tree_impl(
-    connection: &mut sqlx::AnyConnection,
-    root: &legion_telemetry::ProcessInfo,
-    indent_level: u16,
-) {
-    println!(
-        "{}{} {}",
-        " ".repeat(indent_level as usize * 2),
-        &root.process_id,
-        &root.exe
-    );
-
-    for child_info in fetch_child_processes(connection, &root.process_id)
-        .await
-        .unwrap()
-    {
-        print_process_tree_impl(connection, &child_info, indent_level + 1).await;
-    }
-}
-
 pub async fn print_process_tree(connection: &mut sqlx::AnyConnection, root_process_id: &str) {
     let root_process_info = find_process(connection, root_process_id).await.unwrap();
-    print_process_tree_impl(connection, &root_process_info, 0).await;
+    for_each_process_in_tree(
+        connection,
+        &root_process_info,
+        0,
+        |process_info, rec_level| {
+            println!(
+                "{}{} {}",
+                " ".repeat(rec_level as usize * 2),
+                &process_info.process_id,
+                &process_info.exe
+            );
+        },
+    )
+    .await;
 }
