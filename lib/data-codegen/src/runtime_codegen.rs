@@ -62,16 +62,16 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
 
         // Runtime Structure
         #[derive(Debug, Serialize, Deserialize)]
-        pub struct #runtime_identifier#life_time {
+        pub struct #runtime_identifier #life_time {
             #(#runtime_fields)*
         }
 
-        impl#life_time Resource for #runtime_identifier#life_time {
+        impl #life_time Resource for #runtime_identifier #life_time {
             const TYPENAME: &'static str = #runtime_name;
         }
 
         // Runtime default implementation
-        impl#life_time Default for #runtime_identifier#life_time {
+        impl #life_time Default for #runtime_identifier #life_time {
             fn default() -> Self {
                 Self {
                     #(#runtime_fields_defaults)*
@@ -79,7 +79,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
             }
         }
 
-        impl#life_time Asset for #runtime_identifier#life_time {
+        impl #life_time Asset for #runtime_identifier #life_time {
             type Loader = #runtime_loader;
         }
 
