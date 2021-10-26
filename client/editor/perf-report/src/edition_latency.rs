@@ -135,8 +135,7 @@ pub async fn print_edition_latency(
     data_path: &Path,
     editor_client_process_id: &str,
 ) -> Result<()> {
-    let client_process_info =
-        find_process(connection, String::from(editor_client_process_id)).await?;
+    let client_process_info = find_process(connection, editor_client_process_id).await?;
     let server_process_id =
         find_server_process_id(connection, data_path, editor_client_process_id).await?;
     println!("server process id: {}", server_process_id);

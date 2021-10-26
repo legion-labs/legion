@@ -76,6 +76,21 @@ fn test_find_processes() {
     dump_cli_sys(&[data_path.to_str().unwrap(), "find-processes", "exe"])
 }
 
+#[tokio::main]
+#[test]
+async fn test_process_tree() -> Result<()> {
+    let data_path = setup_data_dir("process-tree");
+    let pool = alloc_sql_pool(&data_path).await.unwrap();
+    let mut connection = pool.acquire().await.unwrap();
+    let mut process_id = find_process_with_log_data(&mut connection).await?;
+    let process_info = find_process(&mut connection, &process_id).await.unwrap();
+    if !process_info.parent_process_id.is_empty() {
+        process_id = process_info.parent_process_id;
+    }
+    dump_cli_sys(&[data_path.to_str().unwrap(), "process-tree", &process_id]);
+    Ok(())
+}
+
 #[test]
 fn test_logs_by_process() {
     let data_path = setup_data_dir("logs_by_process");

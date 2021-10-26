@@ -113,14 +113,14 @@ pub async fn processes_by_name_substring(
 
 pub async fn find_process(
     connection: &mut sqlx::AnyConnection,
-    process_id: String,
+    process_id: &str,
 ) -> Result<legion_telemetry::ProcessInfo> {
     let row = sqlx::query(
-        "SELECT exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
+        "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
          FROM processes
          WHERE process_id = ?;",
     )
-    .bind(&process_id)
+    .bind(process_id)
     .fetch_one(connection)
     .await?;
     Ok(process_from_row(&row))
@@ -136,6 +136,27 @@ pub async fn fetch_recent_processes(
          ORDER BY start_time DESC
          LIMIT 100;",
     )
+    .fetch_all(connection)
+    .await?;
+    for r in rows {
+        processes.push(process_from_row(&r));
+    }
+    Ok(processes)
+}
+
+pub async fn fetch_child_processes(
+    connection: &mut sqlx::AnyConnection,
+    parent_process_id: &str,
+) -> Result<Vec<legion_telemetry::ProcessInfo>> {
+    let mut processes = Vec::new();
+    let rows = sqlx::query(
+        "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
+         FROM processes
+         WHERE parent_process_id = ?
+         ORDER BY start_time DESC
+         ;",
+    )
+    .bind(parent_process_id)
     .fetch_all(connection)
     .await?;
     for r in rows {
@@ -440,10 +461,15 @@ pub async fn for_each_process_metric<ProcessMetric: FnMut(transit::Object)>(
 
 pub mod prelude {
     pub use crate::alloc_sql_pool;
+    pub use crate::fetch_block_payload;
+    pub use crate::fetch_child_processes;
     pub use crate::fetch_recent_processes;
     pub use crate::find_process;
     pub use crate::find_process_log_entry;
+    pub use crate::find_process_thread_streams;
+    pub use crate::find_stream_blocks;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;
+    pub use crate::parse_block;
     pub use crate::processes_by_name_substring;
 }

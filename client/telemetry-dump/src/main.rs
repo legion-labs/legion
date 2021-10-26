@@ -55,7 +55,7 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow(clippy::wildcard_imports)]
+//#![]
 
 mod process_log;
 mod process_metrics;
@@ -65,7 +65,7 @@ mod recent_processes;
 use crate::{
     process_metrics::print_process_metrics,
     process_thread_events::{print_chrome_trace, print_process_thread_events},
-    recent_processes::print_process_search,
+    recent_processes::{print_process_search, print_process_tree},
 };
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
@@ -75,6 +75,7 @@ use process_log::{print_logs_by_process, print_process_log};
 use recent_processes::print_recent_processes;
 use std::path::Path;
 
+#[allow(clippy::too_many_lines)]
 #[tokio::main]
 async fn main() -> Result<()> {
     let _telemetry_guard = TelemetrySystemGuard::new(None);
@@ -98,6 +99,15 @@ async fn main() -> Result<()> {
                     Arg::with_name("filter")
                         .required(true)
                         .help("executable name filter"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("process-tree")
+                .about("lists the process and its subprocesses")
+                .arg(
+                    Arg::with_name("process-id")
+                        .required(true)
+                        .help("process guid"),
                 ),
         )
         .subcommand(
@@ -151,6 +161,10 @@ async fn main() -> Result<()> {
         ("find-processes", Some(command_match)) => {
             let filter = command_match.value_of("filter").unwrap();
             print_process_search(&mut connection, filter).await;
+        }
+        ("process-tree", Some(command_match)) => {
+            let process_id = command_match.value_of("process-id").unwrap();
+            print_process_tree(&mut connection, process_id).await;
         }
         ("logs-by-process", Some(_command_match)) => {
             print_logs_by_process(&mut connection, data_path).await?;
