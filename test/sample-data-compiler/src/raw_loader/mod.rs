@@ -11,10 +11,9 @@ use legion_utils::DefaultHash;
 use sample_data_offline as offline_data;
 use serde::de::DeserializeOwned;
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap},
+    collections::HashMap,
     ffi::OsStr,
     fs::{self, File},
-    hash::{Hash, Hasher},
     io::BufReader,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},

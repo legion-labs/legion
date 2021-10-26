@@ -2234,6 +2234,7 @@ dependencies = [
  "legion-data-runtime",
  "legion-graphics-data",
  "legion-math",
+ "legion-utils",
  "serde",
  "serde_json",
 ]

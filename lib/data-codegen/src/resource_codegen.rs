@@ -114,12 +114,11 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
     quote! {
 
         use std::{any::Any, io};
-        use legion_data_runtime::{Asset, AssetLoader, Resource};
-        use legion_data_offline::{ PropertyDescriptor,
+        use legion_data_offline::{PropertyDescriptor,
             resource::{OfflineResource, ResourceProcessor},
         };
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hasher,Hash};
+        use legion_data_runtime::{Asset, AssetLoader, Resource};
+        use legion_utils::DefaultHash;
 
         impl Resource for #offline_identifier {
             const TYPENAME: &'static str = #offline_name;
