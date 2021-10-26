@@ -70,8 +70,10 @@ fn test_metrics() {
 
 #[test]
 fn test_log() {
-    let sink: Arc<dyn EventBlockSink> = Arc::new(DebugEventSink {});
-    init_event_dispatch(1024 * 10, 1024 * 12, 1024 * 12, Box::new(|| sink)).unwrap();
+    init_event_dispatch(1024 * 10, 1024 * 12, 1024 * 12, &mut || {
+        Arc::new(DebugEventSink {})
+    })
+    .unwrap();
     assert!(get_process_id().is_some());
     test_log_str();
     test_log_thread();
