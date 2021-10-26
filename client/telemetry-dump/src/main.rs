@@ -59,20 +59,21 @@
 
 mod process_log;
 mod process_metrics;
+mod process_search;
 mod process_thread_events;
-mod recent_processes;
 
 use crate::{
     process_metrics::print_process_metrics,
     process_thread_events::{print_chrome_trace, print_process_thread_events},
-    recent_processes::{print_process_search, print_process_tree},
 };
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_analytics::alloc_sql_pool;
 use legion_telemetry::{init_thread_stream, log_str, LogLevel, TelemetrySystemGuard};
 use process_log::{print_logs_by_process, print_process_log};
-use recent_processes::print_recent_processes;
+use process_search::print_process_search;
+use process_search::print_process_tree;
+use process_search::print_recent_processes;
 use std::path::Path;
 
 #[allow(clippy::too_many_lines)]

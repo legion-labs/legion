@@ -459,6 +459,24 @@ pub async fn for_each_process_metric<ProcessMetric: FnMut(transit::Object)>(
     Ok(())
 }
 
+#[async_recursion::async_recursion]
+pub async fn for_each_process_in_tree<F>(
+    connection: &mut sqlx::AnyConnection,
+    root: &legion_telemetry::ProcessInfo,
+    rec_level: u16,
+    fun: F,
+) where
+    F: Fn(&legion_telemetry::ProcessInfo, u16) + std::marker::Send + std::marker::Copy,
+{
+    fun(root, rec_level);
+    for child_info in fetch_child_processes(connection, &root.process_id)
+        .await
+        .unwrap()
+    {
+        for_each_process_in_tree(connection, &child_info, rec_level + 1, fun).await;
+    }
+}
+
 pub mod prelude {
     pub use crate::alloc_sql_pool;
     pub use crate::fetch_block_payload;
@@ -468,6 +486,7 @@ pub mod prelude {
     pub use crate::find_process_log_entry;
     pub use crate::find_process_thread_streams;
     pub use crate::find_stream_blocks;
+    pub use crate::for_each_process_in_tree;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;
     pub use crate::parse_block;

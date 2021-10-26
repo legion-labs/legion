@@ -3026,6 +3026,7 @@ name = "legion-analytics"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-recursion",
  "legion-telemetry",
  "legion-telemetry-proto",
  "prost",
@@ -6415,7 +6416,6 @@ name = "telemetry-dump"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-recursion",
  "clap",
  "fs_extra",
  "json",
