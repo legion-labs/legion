@@ -1,7 +1,7 @@
-use anyhow::*;
-use legion_analytics::*;
+use anyhow::Result;
+use legion_analytics::prelude::*;
 use std::path::Path;
-use transit::*;
+use transit::prelude::*;
 
 pub async fn print_process_thread_events(
     connection: &mut sqlx::AnyConnection,
@@ -37,7 +37,7 @@ pub async fn print_chrome_trace(
     data_path: &Path,
     process_id: &str,
 ) -> Result<()> {
-    let process_info = find_process(connection, String::from(process_id)).await?;
+    let process_info = find_process(connection, process_id).await?;
     let inv_tsc_frequency = 1000.0 * 1000.0 / process_info.tsc_frequency as f64;
     let process_start = process_info.start_ticks;
     let mut events = json::array![];
