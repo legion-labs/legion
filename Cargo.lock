@@ -2234,6 +2234,7 @@ dependencies = [
  "legion-data-runtime",
  "legion-graphics-data",
  "legion-math",
+ "legion-utils",
  "serde",
  "serde_json",
 ]
@@ -3116,6 +3117,7 @@ dependencies = [
  "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
+ "legion-utils",
  "multitext-resource",
  "petgraph",
  "refs-asset",
@@ -3150,6 +3152,7 @@ dependencies = [
 name = "legion-data-codegen"
 version = "0.1.0"
 dependencies = [
+ "legion-utils",
  "proc-macro2",
  "quote",
  "syn",
@@ -3183,6 +3186,7 @@ dependencies = [
  "legion-content-store",
  "legion-data-runtime",
  "legion-math",
+ "legion-utils",
  "rand 0.8.4",
  "serde",
  "serde_json",

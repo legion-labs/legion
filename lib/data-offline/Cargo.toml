@@ -7,9 +7,10 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Legion engine
-legion-content-store = { path = "../content-store" }         # for ContentType
+legion-content-store = { path = "../content-store" } # for ContentType
 legion-data-runtime = { path = "../data-runtime" }
-legion-math = { path = "../../lib/math", version = "0.1.0" }
+legion-math = { path = "../math" }
+legion-utils = { path = "../utils" }
 
 # others
 crossbeam-channel = "0.5.1"

@@ -1,8 +1,7 @@
 use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
+use legion_utils::DefaultHash;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 type QuoteRes = quote::__private::TokenStream;
 
 /// Generic the JSON read serialization.
@@ -58,9 +57,7 @@ fn generate_reflection_write(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
         .iter()
         .filter(|m| !m.transient)
         .map(|m| {
-            let mut hasher = DefaultHasher::new();
-            m.name.hash(&mut hasher);
-            let hash_value: u64 = hasher.finish();
+            let hash_value = m.name.default_hash();
             let member_ident = format_ident!("{}", &m.name);
             quote! { #hash_value => {
                 self.#member_ident = serde_json::from_str(field_value).map_err(|_err| "json serialization error")?;
@@ -81,11 +78,8 @@ fn generate_reflection_read(
         .iter()
         .filter(|m| !m.transient)
         .map(|m| {
-            let mut hasher = DefaultHasher::new();
-            m.name.hash(&mut hasher);
-            let hash_value: u64 = hasher.finish();
+            let hash_value: u64 = m.name.default_hash();
             let member_ident = format_ident!("{}", &m.name);
-
             if let Some(default_ident) = default_ident {
                 quote! { #hash_value => serde_json::to_string(&#default_ident.#member_ident).map_err(|_err| "json serialization error"),
                 }
@@ -105,9 +99,7 @@ fn generate_property_descriptors(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
     members
         .iter()
         .map(|m| {
-            let mut hasher = DefaultHasher::new();
-            m.name.hash(&mut hasher);
-            let hash_value: u64 = hasher.finish();
+            let hash_value: u64 = m.name.default_hash();
             let prop_name = &m.name;
             let group_name = &m.category;
             let prop_type = &m.type_name;
@@ -153,12 +145,11 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
     quote! {
 
         use std::{any::Any, io};
-        use legion_data_runtime::{Asset, AssetLoader, Resource};
-        use legion_data_offline::{ PropertyDescriptor,
-            resource::{OfflineResource, ResourceProcessor,ResourceReflection},
+        use legion_data_offline::{PropertyDescriptor,
+            resource::{OfflineResource, ResourceProcessor, ResourceReflection},
         };
-        use std::collections::hash_map::{HashMap, DefaultHasher};
-        use std::hash::{Hasher,Hash};
+        use legion_data_runtime::{Asset, AssetLoader, Resource};
+        use legion_utils::DefaultHash;
 
         lazy_static::lazy_static! {
             static ref #offline_default_descriptor : HashMap<u64, PropertyDescriptor> = {
