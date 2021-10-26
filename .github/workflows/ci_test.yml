@@ -11,7 +11,7 @@ on:
 jobs:
   lint:
     name: Running code checks
-    runs-on: [self-hosted, linux, base, build]
+    runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
 
@@ -37,8 +37,8 @@ jobs:
       matrix:
         os:
           [
-            [self-hosted, windows, base, build],
-            [self-hosted, linux, base, build],
+            [self-hosted, windows, common, build],
+            [self-hosted, linux, common, build],
           ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -53,7 +53,7 @@ jobs:
   build_docs:
     name: Building docs
     needs: lint
-    runs-on: [self-hosted, linux, base, build]
+    runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
 
