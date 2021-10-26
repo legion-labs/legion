@@ -22,13 +22,17 @@ impl std::ops::Drop for TelemetrySystemGuard {
 }
 
 pub fn init_telemetry(app_log: Option<Box<dyn log::Log>>) {
-    let make_sink: Box<dyn FnOnce() -> Arc<dyn EventBlockSink>> =
+    let mut make_sink: Box<dyn FnMut() -> Arc<dyn EventBlockSink>> =
         match std::env::var("LEGION_TELEMETRY_URL") {
             Ok(url) => Box::new(move || Arc::new(GRPCEventSink::new(&url))),
             Err(_no_url_in_env) => Box::new(|| Arc::new(NullEventSink {})),
         };
-    if let Err(_e) = init_event_dispatch(10 * 1024 * 1024, 5 * 1024 * 1024, 1024 * 1024, make_sink)
-    {
+    if let Err(_e) = init_event_dispatch(
+        10 * 1024 * 1024,
+        5 * 1024 * 1024,
+        1024 * 1024,
+        &mut make_sink,
+    ) {
         return;
     }
     init_panic_hook();

@@ -250,7 +250,7 @@ pub fn init_event_dispatch(
     log_buffer_size: usize,
     thread_buffer_size: usize,
     metrics_buffer_size: usize,
-    make_sink: Box<dyn FnOnce() -> Arc<dyn EventBlockSink>>,
+    make_sink: &mut dyn FnMut() -> Arc<dyn EventBlockSink>,
 ) -> Result<(), String> {
     lazy_static::lazy_static! {
         static ref INIT_MUTEX: Mutex<()> = Mutex::new(());
