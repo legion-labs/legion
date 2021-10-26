@@ -514,7 +514,7 @@ pub struct CommandBufferDef {
 }
 
 /// Used to create a `Swapchain`
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SwapchainDef {
     pub width: u32,
     pub height: u32,

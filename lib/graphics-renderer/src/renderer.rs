@@ -24,7 +24,7 @@ impl Renderer {
     pub fn new(width: u32, height: u32) -> Renderer {
         #[allow(unsafe_code)]
         let api =
-            unsafe { DefaultApi::new(None, &Default::default(), &Default::default()).unwrap() };
+            unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
 
         // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
         // clean shutdown.
@@ -215,7 +215,7 @@ impl Renderer {
             .create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])
             .unwrap();
 
-        let root_signature_def = graphics_api::backends::tmp_extract_root_signature_def(
+        let root_signature_def = graphics_api::backends::shared::tmp_extract_root_signature_def(
             device_context,
             &[shader.clone()],
         )

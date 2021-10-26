@@ -62,7 +62,7 @@ impl VkPresentMode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct SwapchainInfo {
     surface_format: vk::SurfaceFormatKHR,
     present_mode: vk::PresentModeKHR,
@@ -320,12 +320,10 @@ struct CreateSwapchainResult {
 /// whenever the swapchain is rebuilt
 struct SwapchainVulkanInstance {
     device_context: VulkanDeviceContext,
-
     swapchain_info: SwapchainInfo,
     swapchain_loader: Drc<khr::Swapchain>,
     swapchain: vk::SwapchainKHR,
     swapchain_images: Vec<vk::Image>,
-
     dedicated_present_queue: Option<vk::Queue>,
 }
 

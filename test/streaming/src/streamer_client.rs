@@ -247,7 +247,7 @@ fn run() -> GfxResult<()> {
         let shader =
             device_context.create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])?;
 
-        let root_signature_def = graphics_api::backends::tmp_extract_root_signature_def(
+        let root_signature_def = graphics_api::backends::shared::tmp_extract_root_signature_def(
             device_context,
             &[shader.clone()],
         )?;

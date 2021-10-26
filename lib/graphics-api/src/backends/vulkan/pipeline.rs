@@ -3,22 +3,19 @@ use super::{
     VulkanApi, VulkanDeviceContext, VulkanRenderpassColorAttachment, VulkanRenderpassDef,
     VulkanRenderpassDepthAttachment, VulkanRootSignature,
 };
-use crate::{
-    ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
-    ShaderStageFlags, StoreOp,
-};
+use crate::{ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, ShaderStageFlags, StoreOp, backends::deferred_drop::Drc};
 use ash::vk;
 use std::ffi::CString;
 
+
 #[derive(Debug)]
-pub struct VulkanPipeline {
+struct VulkanPipelineInner {
     pipeline_type: PipelineType,
-    pipeline: vk::Pipeline,
-    // It's a VulkanRootSignature, but stored as RootSignature so we can return refs to it
+    pipeline: vk::Pipeline,    
     root_signature: VulkanRootSignature,
 }
 
-impl Drop for VulkanPipeline {
+impl Drop for VulkanPipelineInner {
     fn drop(&mut self) {
         unsafe {
             let device = self.root_signature.device_context().device();
@@ -27,9 +24,14 @@ impl Drop for VulkanPipeline {
     }
 }
 
+#[derive(Debug)]
+pub struct VulkanPipeline {
+    inner: Drc<VulkanPipelineInner>    
+}
+
 impl VulkanPipeline {
     pub fn vk_pipeline(&self) -> vk::Pipeline {
-        self.pipeline
+        self.inner.pipeline
     }
 
     pub fn new_graphics_pipeline(
@@ -192,10 +194,14 @@ impl VulkanPipeline {
             }
         }?[0];
 
-        Ok(Self {
-            pipeline_type: PipelineType::Graphics,
-            pipeline,
-            root_signature: pipeline_def.root_signature.clone(),
+        Ok(Self { 
+            inner: device_context.deferred_dropper().new_drc(
+                VulkanPipelineInner {
+                    pipeline_type: PipelineType::Graphics,
+                    pipeline,
+                    root_signature: pipeline_def.root_signature.clone(),
+                }
+            )
         })
     }
 
@@ -244,20 +250,24 @@ impl VulkanPipeline {
             }
         }?[0];
 
-        Ok(Self {
-            pipeline_type: PipelineType::Compute,
-            pipeline,
-            root_signature: pipeline_def.root_signature.clone(),
+        Ok(Self { 
+            inner: device_context.deferred_dropper().new_drc(
+                VulkanPipelineInner {
+                    pipeline_type: PipelineType::Compute,
+                    pipeline,
+                    root_signature: pipeline_def.root_signature.clone(),
+                }
+            )
         })
     }
 }
 
 impl Pipeline<VulkanApi> for VulkanPipeline {
     fn pipeline_type(&self) -> PipelineType {
-        self.pipeline_type
+        self.inner.pipeline_type
     }
 
     fn root_signature(&self) -> &VulkanRootSignature {
-        &self.root_signature
+        &self.inner.root_signature
     }
 }

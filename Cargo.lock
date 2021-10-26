@@ -2510,6 +2510,7 @@ dependencies = [
  "legion-core",
  "legion-data-runtime",
  "legion-ecs",
+ "legion-graphics-api",
  "legion-input",
  "legion-presenter-window",
  "legion-renderer",
@@ -3468,12 +3469,15 @@ dependencies = [
 name = "legion-presenter-window"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
+ "instant",
  "legion-app",
  "legion-ecs",
  "legion-graphics-api",
  "legion-renderer",
  "legion-window",
  "log",
+ "raw-window-handle",
 ]
 
 [[package]]
@@ -3497,6 +3501,7 @@ dependencies = [
  "legion-graphics-api",
  "legion-window",
  "log",
+ "raw-window-handle",
 ]
 
 [[package]]

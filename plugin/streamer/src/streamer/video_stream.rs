@@ -70,7 +70,7 @@ impl VideoStream {
         trace_scope!();
         let resolution = Resolution::new(1024, 768);
         let encoder = VideoStreamEncoder::new(resolution)?;
-        let renderer = Renderer::new(resolution.width, resolution.height);
+        let renderer = Renderer::new();
 
         Ok(Self {
             video_data_channel,
@@ -97,7 +97,8 @@ impl VideoStream {
             self.resolution = Resolution::new(width, height);
 
             // TODO: Fix this: this is probably bad but I wrote that just to test it.
-            self.renderer = Renderer::new(self.resolution.width, self.resolution.height);
+            // self.renderer = Renderer::new(self.resolution.width, self.resolution.height);
+            self.renderer = Renderer::new();
             self.encoder = VideoStreamEncoder::new(self.resolution).unwrap();
         }
     }
@@ -114,56 +115,57 @@ impl VideoStream {
         &mut self,
         delta_secs: f32,
     ) -> impl std::future::Future<Output = ()> + 'static {
-        trace_scope!();
-        self.record_frame_id_metric();
-        let now = tokio::time::Instant::now();
+        // trace_scope!();
+        // self.record_frame_id_metric();
+        // let now = tokio::time::Instant::now();
 
-        self.elapsed_secs += delta_secs * self.speed;
+        // self.elapsed_secs += delta_secs * self.speed;
 
-        self.renderer.render(
-            self.frame_id as usize,
-            self.elapsed_secs,
-            self.color.0 .0,
-            &mut self.encoder.converter,
-        );
+        // self.renderer.render(
+        //     self.frame_id as usize,
+        //     self.elapsed_secs,
+        //     self.color.0 .0,
+        //     &mut self.encoder.converter,
+        // );
 
-        let chunks = self.encoder.encode(self.frame_id);
+        // let chunks = self.encoder.encode(self.frame_id);
 
-        let elapsed = now.elapsed().as_micros() as u64;
-        record_frame_time_metric(elapsed);
-        let max_frame_time: u64 = 16_000;
+        // let elapsed = now.elapsed().as_micros() as u64;
+        // record_frame_time_metric(elapsed);
+        // let max_frame_time: u64 = 16_000;
 
-        if elapsed >= max_frame_time {
-            warn!(
-                "stream: frame {:?} took {}ms",
-                self.frame_id,
-                elapsed / 1000
-            );
-        }
+        // if elapsed >= max_frame_time {
+        //     warn!(
+        //         "stream: frame {:?} took {}ms",
+        //         self.frame_id,
+        //         elapsed / 1000
+        //     );
+        // }
 
-        let video_data_channel = Arc::clone(&self.video_data_channel);
-        let frame_id = self.frame_id;
+        // let video_data_channel = Arc::clone(&self.video_data_channel);
+        // let frame_id = self.frame_id;
 
-        self.frame_id += 1;
+        // self.frame_id += 1;
 
-        async move {
-            for (i, data) in chunks.iter().enumerate() {
-                #[allow(clippy::redundant_else)]
-                if let Err(err) = video_data_channel.send(data).await {
-                    warn!(
-                        "Failed to send frame {}-{} ({} bytes): streaming will stop: {}",
-                        frame_id,
-                        i,
-                        data.len(),
-                        err.to_string(),
-                    );
+        // async move {
+        //     for (i, data) in chunks.iter().enumerate() {
+        //         #[allow(clippy::redundant_else)]
+        //         if let Err(err) = video_data_channel.send(data).await {
+        //             warn!(
+        //                 "Failed to send frame {}-{} ({} bytes): streaming will stop: {}",
+        //                 frame_id,
+        //                 i,
+        //                 data.len(),
+        //                 err.to_string(),
+        //             );
 
-                    return;
-                } else {
-                    debug!("Sent frame {}-{} ({} bytes).", frame_id, i, data.len());
-                }
-            }
-        }
+        //             return;
+        //         } else {
+        //             debug!("Sent frame {}-{} ({} bytes).", frame_id, i, data.len());
+        //         }
+        //     }
+        // }
+        async move {}
     }
 }
 

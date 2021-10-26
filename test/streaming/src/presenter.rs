@@ -194,7 +194,7 @@ fn run() -> GfxResult<()> {
         // TMP: TMP_extract_root_signature_def will create the root signature definition.
         // In the process, it will instanciate the DescriptorSetLayout(s).
         //
-        let root_signature_def = graphics_api::backends::tmp_extract_root_signature_def(
+        let root_signature_def = graphics_api::backends::shared::tmp_extract_root_signature_def(
             device_context,
             &[shader.clone()],
         )?;
