@@ -2887,12 +2887,31 @@ dependencies = [
  "bytes",
  "log",
  "rand 0.8.4",
- "rtcp",
+ "rtcp 0.5.1",
  "rtp",
  "thiserror",
  "tokio",
  "waitgroup",
- "webrtc-srtp",
+ "webrtc-srtp 0.7.1",
+ "webrtc-util",
+]
+
+[[package]]
+name = "interceptor"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "317a9f01e122c7f93ede7b7487954919bc5edff13f11fecaf6355ced3bc60aa7"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "log",
+ "rand 0.8.4",
+ "rtcp 0.6.0",
+ "rtp",
+ "thiserror",
+ "tokio",
+ "waitgroup",
+ "webrtc-srtp 0.8.0",
  "webrtc-util",
 ]
 
@@ -3457,7 +3476,7 @@ dependencies = [
  "crossbeam",
  "futures-lite",
  "hex",
- "interceptor",
+ "interceptor 0.6.0",
  "legion-app",
  "legion-async",
  "legion-codec-api",
@@ -5318,6 +5337,17 @@ name = "rtcp"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ace769ecc1c0cde8f95793a7f71f4bd7f4fe3475847210920c6ded64649263e1"
+dependencies = [
+ "bytes",
+ "thiserror",
+ "webrtc-util",
+]
+
+[[package]]
+name = "rtcp"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1859bf2372b6e750a7ec29ea4a718f3d9f09c47c01a232ef0d3b5842d3f38e7"
 dependencies = [
  "bytes",
  "thiserror",
@@ -7319,14 +7349,14 @@ dependencies = [
  "base64",
  "bytes",
  "chrono",
- "interceptor",
+ "interceptor 0.4.1",
  "lazy_static",
  "log",
  "rand 0.8.4",
  "rcgen",
  "regex",
  "ring",
- "rtcp",
+ "rtcp 0.5.1",
  "rtp",
  "rustls",
  "sdp",
@@ -7345,7 +7375,7 @@ dependencies = [
  "webrtc-mdns",
  "webrtc-media",
  "webrtc-sctp",
- "webrtc-srtp",
+ "webrtc-srtp 0.7.1",
  "webrtc-util",
 ]
 
@@ -7484,7 +7514,31 @@ dependencies = [
  "ctr 0.8.0",
  "hmac 0.11.0",
  "log",
- "rtcp",
+ "rtcp 0.5.1",
+ "rtp",
+ "sha-1",
+ "subtle",
+ "thiserror",
+ "tokio",
+ "webrtc-util",
+]
+
+[[package]]
+name = "webrtc-srtp"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "394011469127fdac04fb245bf1e16356b26916dd6842e0f217f08ed4bbaa0e2c"
+dependencies = [
+ "aead 0.4.3",
+ "aes 0.7.5",
+ "aes-gcm 0.9.4",
+ "async-trait",
+ "byteorder",
+ "bytes",
+ "ctr 0.8.0",
+ "hmac 0.11.0",
+ "log",
+ "rtcp 0.6.0",
  "rtp",
  "sha-1",
  "subtle",
