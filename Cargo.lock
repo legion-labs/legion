@@ -3616,9 +3616,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.104"
+version = "0.2.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b2f96d100e1cf1929e7719b7edb3b90ab5298072638fccd77be9ce942ecdfce"
+checksum = "869d572136620d55835903746bcb5cdc54cb2851fd0aeec53220b4bb65ef3013"
 
 [[package]]
 name = "libgit2-sys"
@@ -4551,9 +4551,9 @@ dependencies = [
 
 [[package]]
 name = "pem"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f2373df5233932a893d3bc2c78a0bf3f6d12590a1edd546b4fbefcac32c5c0f"
+checksum = "06673860db84d02a63942fa69cd9543f2624a5df3aea7f33173048fa7ad5cf1a"
 dependencies = [
  "base64",
  "once_cell",
@@ -4726,9 +4726,9 @@ dependencies = [
 
 [[package]]
 name = "pkg-config"
-version = "0.3.21"
+version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10e2fcbb64ecbe64c8e040a386c3104d384583af58b956d870aaaf229df6e66d"
+checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
 
 [[package]]
 name = "png"
@@ -4792,9 +4792,9 @@ dependencies = [
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3ca011bd0129ff4ae15cd04c4eef202cadf6c51c21e47aba319b4e0501db741"
+checksum = "ed0cfbc8191465bed66e1718596ee0b0b35d5ee1f41c5df2189d0fe8bde535ba"
 
 [[package]]
 name = "precomputed-hash"
@@ -5108,7 +5108,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5911d1403f4143c9d56a702069d593e8d0f3fab880a85e103604d0893ea31ba7"
 dependencies = [
  "chrono",
- "pem 1.0.0",
+ "pem 1.0.1",
  "ring",
  "x509-parser 0.12.0",
  "yasna",
@@ -5315,9 +5315,9 @@ dependencies = [
 
 [[package]]
 name = "rtcp"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ace769ecc1c0cde8f95793a7f71f4bd7f4fe3475847210920c6ded64649263e1"
+checksum = "32147942891a952fa118df14a8f9e0b07915577dfde8ca19f77792cf46d90b21"
 dependencies = [
  "bytes",
  "thiserror",
@@ -5326,9 +5326,9 @@ dependencies = [
 
 [[package]]
 name = "rtp"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04e48e83fd2729f7b3cad62c33fe07df1f617913d40f3c470be63a69d5dfadd3"
+checksum = "51c875ec7e59cd2f2a242c38d6e63df742d1a2cb43a21d5b1a57f608434d63c2"
 dependencies = [
  "async-trait",
  "bytes",
