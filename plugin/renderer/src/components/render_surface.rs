@@ -6,11 +6,12 @@ use crate::{Renderer, TmpRenderPass};
 
 #[derive(Debug, Component)]
 pub struct RenderSurface {
-    pub window_id : WindowId,
-    pub width : u32,
-    pub height : u32,
-    pub texture : <DefaultApi as GfxApi>::Texture,
-    pub texture_rtv : <DefaultApi as GfxApi>::TextureView,
+    pub window_id: WindowId,
+    pub width: u32,
+    pub height: u32,
+    pub texture: <DefaultApi as GfxApi>::Texture,
+    pub texture_srv: <DefaultApi as GfxApi>::TextureView,
+    pub texture_rtv: <DefaultApi as GfxApi>::TextureView,    
     pub test_renderpass: TmpRenderPass
 }
 
@@ -33,6 +34,10 @@ impl RenderSurface {
             tiling: TextureTiling::Optimal,
         };        
         let texture = device_context.create_texture(&texture_def).unwrap();
+        
+        let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
+        let texture_srv = texture.create_view(&srv_def).unwrap();
+
         let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
         let texture_rtv = texture.create_view(&rtv_def).unwrap();
 
@@ -41,6 +46,7 @@ impl RenderSurface {
             width: texture_def.extents.width,     
             height: texture_def.extents.height,     
             texture,
+            texture_srv,
             texture_rtv,
             test_renderpass: TmpRenderPass::new(renderer)
         }
@@ -54,12 +60,16 @@ impl RenderSurface {
             texture_def.extents.height = height;            
             let texture = device_context.create_texture(&texture_def).unwrap();
             
+            let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
+            let texture_srv = texture.create_view(&srv_def).unwrap();
+
             let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
             let texture_rtv = texture.create_view(&rtv_def).unwrap();
 
             self.width = texture_def.extents.width;
             self.height = texture_def.extents.height;
             self.texture = texture;
+            self.texture_srv = texture_srv;
             self.texture_rtv = texture_rtv;
         }
     }

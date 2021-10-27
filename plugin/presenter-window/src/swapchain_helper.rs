@@ -110,44 +110,27 @@ impl<A: GfxApi> PresentableFrame<A> {
     pub fn present(
         mut self,
         queue: &A::Queue,
+        wait_sem: &A::Semaphore,
         command_buffers: &[&A::CommandBuffer],
     ) -> GfxResult<PresentSuccessResult> {
         log::trace!(
             "Calling PresentableFrame::present with {} command buffers",
             command_buffers.len()
         );
-        let result = self.do_present(queue, command_buffers);
+        let result = self.do_present(queue, wait_sem, command_buffers);
 
         // Let the shared state arc drop, this will unblock the next frame
         let shared_state = self.shared_state.take().unwrap();
         shared_state.result_tx.send(result.clone()).unwrap();
 
         result
-    }
-
-    /// Presents the current swapchain image and returns the given error during the next image
-    /// acquisition attempt
-    pub fn present_with_error(mut self, queue: &A::Queue, error: GfxError) {
-        log::warn!("Calling PresentableFrame::present_with_error {:?}", error);
-
-        //TODO: AFAIK there is no way to simply trigger the semaphore and skip calling do_present
-        // with no command buffers. The downside of doing this is that we end up with both the
-        // end user's result and a result from do_present and have no sensible way of merging them
-
-        //TODO: Might be able to do this without presenting by having command buffers that can be
-        // submitted that trigger the semaphore.
-        #[allow(clippy::let_underscore_drop)]
-        let _ = self.do_present(queue, &[]);
-
-        // Let the shared state arc drop, this will unblock the next frame
-        let shared_state = self.shared_state.take().unwrap();
-        shared_state.result_tx.send(Err(error)).unwrap();
-    }
+    }    
 
     /// Present the current swapchain
     pub fn do_present(
         &mut self,
         queue: &A::Queue,
+        wait_sem: &A::Semaphore,
         command_buffers: &[&A::CommandBuffer],
     ) -> GfxResult<PresentSuccessResult> {
         // A present can only occur using the result from the previous acquire_next_image call
@@ -156,7 +139,7 @@ impl<A: GfxApi> PresentableFrame<A> {
         assert!(self.sync_frame_index == sync_frame_index);
 
         let frame_fence = &shared_state.in_flight_fences[sync_frame_index];
-        let wait_semaphores = [&shared_state.image_available_semaphores[sync_frame_index]];
+        let wait_semaphores = [wait_sem, &shared_state.image_available_semaphores[sync_frame_index]];
         let signal_semaphores = [&shared_state.render_finished_semaphores[sync_frame_index]];
 
         queue.submit(

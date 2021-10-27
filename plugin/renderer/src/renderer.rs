@@ -5,6 +5,7 @@ pub struct Renderer {
     frame_idx: usize,
     render_frame_idx: usize,
     num_render_frames: usize,
+    frame_signal_sems: Vec<<DefaultApi as GfxApi>::Semaphore>,
     frame_fences: Vec<<DefaultApi as GfxApi>::Fence>,
     graphics_queue: <DefaultApi as GfxApi>::Queue,
     command_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
@@ -47,7 +48,8 @@ impl Renderer {
         // processed, so we need one per swapchain image
         //
         let mut command_pools = Vec::with_capacity(num_render_frames);
-        let mut command_buffers = Vec::with_capacity(num_render_frames);                
+        let mut command_buffers = Vec::with_capacity(num_render_frames);   
+        let mut frame_signal_sems = Vec::with_capacity(num_render_frames);
         let mut frame_fences = Vec::with_capacity(num_render_frames);
 
         for _ in 0..num_render_frames {
@@ -61,10 +63,13 @@ impl Renderer {
                 })
                 .unwrap();
                                  
+            let frame_signal_sem = device_context.create_semaphore().unwrap();
+
             let frame_fence = device_context.create_fence().unwrap();
 
             command_pools.push(command_pool);
             command_buffers.push(command_buffer);            
+            frame_signal_sems.push(frame_signal_sem);
             frame_fences.push(frame_fence);            
         }
 
@@ -98,6 +103,7 @@ impl Renderer {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
+            frame_signal_sems,
             frame_fences,            
             graphics_queue,
             command_pools,
@@ -121,6 +127,11 @@ impl Renderer {
     pub fn get_cmd_buffer(&self) -> &<DefaultApi as GfxApi>::CommandBuffer {
         let render_frame_index = self.render_frame_idx;
         &self.command_buffers[ render_frame_index ]
+    }
+
+    pub fn frame_signal_semaphore(&self) -> &<DefaultApi as GfxApi>::Semaphore {
+        let render_frame_index = self.render_frame_idx;
+        &self.frame_signal_sems[ render_frame_index ]
     }
 
     pub fn begin_frame(&self) {
@@ -154,13 +165,14 @@ impl Renderer {
 
     pub fn end_frame(&mut self) {                
         let render_frame_idx = self.render_frame_idx;
+        let signal_semaphore = &self.frame_signal_sems[render_frame_idx];
         let signal_fence = &self.frame_fences[render_frame_idx];
         let cmd_buffer = &self.command_buffers[render_frame_idx];
 
         cmd_buffer.end().unwrap();
 
         self.graphics_queue
-            .submit(&[cmd_buffer], &[], &[], Some(signal_fence))
+            .submit(&[cmd_buffer], &[], &[&signal_semaphore], Some(signal_fence))
             .unwrap();
 
         self.frame_idx = self.frame_idx + 1;

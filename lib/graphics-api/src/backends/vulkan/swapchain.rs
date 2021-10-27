@@ -363,7 +363,7 @@ impl SwapchainVulkanInstance {
                 .graphics_queue_family_index,
         )?;
 
-        let swapchain_image_usage_flags = vk::ImageUsageFlags::COLOR_ATTACHMENT;
+        let swapchain_image_usage_flags = vk::ImageUsageFlags::COLOR_ATTACHMENT|vk::ImageUsageFlags::TRANSFER_DST;
         let create_swapchain_result = Self::create_swapchain(
             device_context,
             surface,

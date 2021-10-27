@@ -372,6 +372,19 @@ pub struct TextureViewDef {
 }
 
 impl TextureViewDef {
+
+    pub fn as_shader_resource_view(texture_def: &TextureDef) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::ShaderResourceView,
+            view_dimension: ViewDimension::_2D,
+            first_mip: 0,
+            mip_count: texture_def.mip_count,
+            plane_slice: PlaneSlice::DefaultPlane,
+            first_array_slice: 0,
+            array_size: texture_def.array_length,
+        }
+    }
+
     pub fn as_render_target_view(_texture: &TextureDef) -> Self {
         Self {
             gpu_view_type: GPUViewType::RenderTargetView,
