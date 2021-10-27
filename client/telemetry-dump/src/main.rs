@@ -165,7 +165,7 @@ async fn main() -> Result<()> {
         }
         ("process-tree", Some(command_match)) => {
             let process_id = command_match.value_of("process-id").unwrap();
-            print_process_tree(&mut connection, process_id).await;
+            print_process_tree(&pool, process_id).await?;
         }
         ("logs-by-process", Some(_command_match)) => {
             print_logs_by_process(&mut connection, data_path).await?;
@@ -180,7 +180,7 @@ async fn main() -> Result<()> {
         }
         ("print-chrome-trace", Some(command_match)) => {
             let process_id = command_match.value_of("process-id").unwrap();
-            print_chrome_trace(&mut connection, data_path, process_id).await?;
+            print_chrome_trace(&pool, data_path, process_id).await?;
         }
         ("process-metrics", Some(command_match)) => {
             let process_id = command_match.value_of("process-id").unwrap();

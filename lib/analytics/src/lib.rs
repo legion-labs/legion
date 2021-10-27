@@ -461,20 +461,24 @@ pub async fn for_each_process_metric<ProcessMetric: FnMut(transit::Object)>(
 
 #[async_recursion::async_recursion]
 pub async fn for_each_process_in_tree<F>(
-    connection: &mut sqlx::AnyConnection,
+    pool: &sqlx::AnyPool,
     root: &legion_telemetry::ProcessInfo,
     rec_level: u16,
     fun: F,
-) where
-    F: Fn(&legion_telemetry::ProcessInfo, u16) + std::marker::Send + std::marker::Copy,
+) -> Result<()>
+where
+    F: Fn(&legion_telemetry::ProcessInfo, u16) + std::marker::Send + Clone,
 {
     fun(root, rec_level);
-    for child_info in fetch_child_processes(connection, &root.process_id)
+    let mut connection = pool.acquire().await?;
+    for child_info in fetch_child_processes(&mut connection, &root.process_id)
         .await
         .unwrap()
     {
-        for_each_process_in_tree(connection, &child_info, rec_level + 1, fun).await;
+        let fun_clone = fun.clone();
+        for_each_process_in_tree(pool, &child_info, rec_level + 1, fun_clone).await?;
     }
+    Ok(())
 }
 
 pub mod prelude {
