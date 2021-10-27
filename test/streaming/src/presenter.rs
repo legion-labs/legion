@@ -19,7 +19,7 @@ fn run() -> GfxResult<()> {
 #[cfg(target_os = "windows")]
 fn run() -> GfxResult<()> {
     use presenter::window::*;
-    use pso_compiler::{CompileParams, HLSLCompiler, ShaderSource};
+    use pso_compiler::{CompileParams, HlslCompiler, ShaderSource};
     const WINDOW_WIDTH: u32 = 900;
     const WINDOW_HEIGHT: u32 = 600;
 
@@ -127,7 +127,7 @@ fn run() -> GfxResult<()> {
         // The resulting shader modules represent a loaded shader GPU object that is used to create
         // shaders. Shader modules can be discarded once the graphics pipeline is built.
         //
-        let compiler = HLSLCompiler::new().map_err(|e| e.to_string())?;
+        let compiler = HlslCompiler::new().map_err(|e| e.to_string())?;
 
         let legion_folder = std::env::current_dir()?;
         let test_data_folder = legion_folder.join("test/test_data/shaders/");
