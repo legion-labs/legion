@@ -1,11 +1,12 @@
 use legion_content_store::Checksum;
 use legion_data_compiler::CompiledResource;
 use legion_data_runtime::ResourceId;
+use legion_utils::DefaultHasher;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     cmp::Ordering,
-    collections::{hash_map::DefaultHasher, HashMap, VecDeque},
+    collections::{HashMap, VecDeque},
     fs::{File, OpenOptions},
     hash::{Hash, Hasher},
     io::Seek,

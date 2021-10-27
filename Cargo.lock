@@ -3180,6 +3180,7 @@ dependencies = [
  "legion-content-store",
  "legion-data-offline",
  "legion-data-runtime",
+ "legion-utils",
  "multitext-resource",
  "refs-asset",
  "refs-resource",

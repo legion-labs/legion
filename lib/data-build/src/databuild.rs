@@ -1,4 +1,3 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
@@ -18,7 +17,7 @@ use legion_data_compiler::{CompiledResource, Manifest};
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{resource::Project, ResourcePathId};
 use legion_data_runtime::{ResourceId, ResourceType};
-use legion_utils::DefaultHash;
+use legion_utils::{DefaultHash, DefaultHasher};
 use petgraph::algo;
 
 use crate::asset_file_writer::write_assetfile;

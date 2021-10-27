@@ -1,12 +1,10 @@
 //! Compiler utilities - transformations helpful when compiling data.
 
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-};
+use std::hash::{Hash, Hasher};
 
 use legion_data_offline::ResourcePathId;
 use legion_data_runtime::ResourceId;
+use legion_utils::DefaultHasher;
 
 use crate::{CompilerHash, Locale, Platform, Target};
 
