@@ -70,6 +70,17 @@ impl CompiledResourceReference {
     }
 }
 
+fn ordered_map<S>(
+    value: &HashMap<ResourceId, ResourcePathId>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let ordered: BTreeMap<_, _> = value.iter().collect();
+    ordered.serialize(serializer)
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct BuildIndexContent {
     version: String,
@@ -77,7 +88,8 @@ struct BuildIndexContent {
     resources: Vec<ResourceInfo>,
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
-    pathid_mapping: BTreeMap<ResourceId, ResourcePathId>,
+    #[serde(serialize_with = "ordered_map")]
+    pathid_mapping: HashMap<ResourceId, ResourcePathId>,
 }
 
 impl BuildIndexContent {
@@ -136,7 +148,7 @@ impl BuildIndex {
             resources: vec![],
             compiled_resources: vec![],
             compiled_resource_references: vec![],
-            pathid_mapping: BTreeMap::new(),
+            pathid_mapping: HashMap::new(),
         };
 
         serde_json::to_writer(&file, &content).map_err(|_e| Error::IOError)?;
