@@ -1,4 +1,4 @@
-use std::{convert::TryInto, fmt, str::FromStr};
+use std::{fmt, str::FromStr};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use siphasher::sip128;

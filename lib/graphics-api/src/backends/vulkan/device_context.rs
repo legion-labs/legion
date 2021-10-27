@@ -7,7 +7,6 @@ use crate::{
 use ash::extensions::khr;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
-use std::convert::TryInto;
 use std::sync::{Arc, Mutex};
 
 use super::internal::{

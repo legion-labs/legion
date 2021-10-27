@@ -2,7 +2,7 @@
 //!
 //! It is used to test the data compilation process until we have a proper asset available.
 
-use std::{any::Any, convert::TryFrom, io, sync::Arc};
+use std::{any::Any, io, sync::Arc};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use legion_data_runtime::{

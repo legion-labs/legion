@@ -1,6 +1,6 @@
 //! A module providing runtime material related functionality.
 
-use std::{any::Any, convert::TryFrom, io, sync::Arc};
+use std::{any::Any, io, sync::Arc};
 
 use legion_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId,

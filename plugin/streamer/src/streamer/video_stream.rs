@@ -2,7 +2,7 @@ use bytes::Bytes;
 use legion_ecs::prelude::*;
 
 use log::{debug, warn};
-use std::{cmp::min, convert::TryInto, io::Cursor, sync::Arc};
+use std::{cmp::min, io::Cursor, sync::Arc};
 
 use webrtc::data::data_channel::RTCDataChannel;
 
