@@ -6,7 +6,7 @@ use legion_data_compiler::{
     Locale, Platform, Target,
 };
 use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{Resource, ResourceId};
+use legion_data_runtime::{AssetLoader, Resource, ResourceId};
 
 mod common;
 
@@ -79,7 +79,18 @@ fn command_compile() {
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
     assert!(cas.exists(checksum));
 
-    let resource_content = cas.read(checksum).expect("asset content");
+    let resource_content = {
+        let mut loader = refs_asset::RefsAssetLoader::default();
+        let content = cas.read(checksum).expect("asset content");
+        let loaded_resource = loader.load(&mut &content[..]).expect("valid data");
+        loaded_resource
+            .as_ref()
+            .downcast_ref::<refs_asset::RefsAsset>()
+            .unwrap()
+            .content
+            .as_bytes()
+            .to_owned()
+    };
     let mut reversed = content.as_bytes().to_owned();
     reversed.reverse();
     assert_eq!(&resource_content[..], &reversed[..]);

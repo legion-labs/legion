@@ -32,8 +32,11 @@ pub struct RefsAssetLoader {
 
 impl AssetLoader for RefsAssetLoader {
     fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
-        let mut content = String::new();
-        reader.read_to_string(&mut content)?;
+        let nbytes = reader.read_u64::<LittleEndian>().expect("valid data");
+
+        let mut content = vec![0u8; nbytes as usize];
+        reader.read_exact(&mut content)?;
+        let content = String::from_utf8(content).expect("valid utf8");
         let reference = read_maybe_reference::<RefsAsset>(reader)?;
         let asset = Box::new(RefsAsset { content, reference });
         Ok(asset)

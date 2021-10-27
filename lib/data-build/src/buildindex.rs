@@ -287,7 +287,7 @@ impl BuildIndex {
         hasher.finish().into()
     }
 
-    fn record_pathid(&mut self, id: &ResourcePathId) {
+    pub fn record_pathid(&mut self, id: &ResourcePathId) {
         self.content
             .pathid_mapping
             .insert(id.content_id(), id.clone());
