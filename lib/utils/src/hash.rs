@@ -1,5 +1,5 @@
 use ahash::{AHasher, RandomState};
-use std::hash::Hasher;
+use std::hash::{BuildHasher, Hasher};
 
 /// The `DefaultHash` trait is used to obtain a hash value for a single typed value.
 /// It will rely on the default `Hasher` provided by the std library.
@@ -20,44 +20,56 @@ where
     }
 }
 
-pub type DefaultHasher = FixedState;
+pub type DefaultHasher = HasherFromBuildHasher<FixedState>;
+
+pub struct HasherFromBuildHasher<S>
+where
+    S: BuildHasher + Default,
+{
+    hasher: S::Hasher,
+}
+
+impl<S> HasherFromBuildHasher<S>
+where
+    S: BuildHasher + Default,
+{
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        let build_hasher = S::default();
+        Self {
+            hasher: build_hasher.build_hasher(),
+        }
+    }
+}
+
+impl<S> Hasher for HasherFromBuildHasher<S>
+where
+    S: BuildHasher + Default,
+{
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.hasher.finish()
+    }
+
+    #[inline]
+    fn write(&mut self, bytes: &[u8]) {
+        self.hasher.write(bytes);
+    }
+}
 
 /// A hasher builder that will create a fixed hasher.
+#[derive(Default)]
 pub struct FixedState(AHasher);
 
-impl FixedState {
-    pub fn new() -> Self {
-        Self(AHasher::new_with_keys(
-            0b1001010111101110000001001100010000000011001001101011001001111000,
-            0b1100111101101011011110001011010100000100001111100011010011010101,
-        ))
-    }
-}
-
-impl Default for FixedState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl std::hash::BuildHasher for FixedState {
-    type Hasher = Self;
+impl BuildHasher for FixedState {
+    type Hasher = AHasher;
 
     #[inline]
     fn build_hasher(&self) -> Self::Hasher {
-        Self::new()
-    }
-}
-
-impl Hasher for FixedState {
-    #[inline]
-    fn write(&mut self, msg: &[u8]) {
-        self.0.write(msg);
-    }
-
-    #[inline]
-    fn finish(&self) -> u64 {
-        self.0.finish()
+        AHasher::new_with_keys(
+            0b1001010111101110000001001100010000000011001001101011001001111000,
+            0b1100111101101011011110001011010100000100001111100011010011010101,
+        )
     }
 }
 
