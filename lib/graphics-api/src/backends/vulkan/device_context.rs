@@ -1,6 +1,10 @@
 use crate::backends::deferred_drop::DeferredDropper;
 use crate::vulkan::check_extensions_availability;
-use crate::{ApiDef, BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef};
+use crate::{
+    ApiDef, BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef,
+    DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef, QueueType,
+    RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
+};
 use ash::extensions::khr;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
@@ -90,8 +94,8 @@ pub(super) struct VulkanDeviceContextInner {
     dedicated_present_queue_lock: Mutex<()>,
 
     device: ash::Device,
-    allocator: vk_mem::Allocator,    
-    pub(crate) deferred_dropper : DeferredDropper,    
+    allocator: vk_mem::Allocator,
+    pub(crate) deferred_dropper: DeferredDropper,
     destroyed: AtomicBool,
     entry: Arc<ash::Entry>,
     instance: ash::Instance,
@@ -105,8 +109,6 @@ pub(super) struct VulkanDeviceContextInner {
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
     all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
-
-    
 }
 
 impl Drop for VulkanDeviceContextInner {
@@ -157,7 +159,7 @@ impl VulkanDeviceContextInner {
             &logical_device,
             &physical_device_info.all_queue_families,
             queue_requirements,
-        );        
+        );
 
         let allocator_create_info = vk_mem::AllocatorCreateInfo {
             physical_device,
@@ -207,7 +209,7 @@ impl VulkanDeviceContextInner {
             physical_device,
             physical_device_info,
             device: logical_device,
-            allocator : allocator,
+            allocator: allocator,
             deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
 
@@ -281,8 +283,6 @@ impl Drop for VulkanDeviceContext {
     }
 }
 
-
-
 impl VulkanDeviceContext {
     pub(crate) fn resource_cache(&self) -> &DeviceVulkanResourceCache {
         &self.inner.resource_cache
@@ -318,7 +318,7 @@ impl VulkanDeviceContext {
 
     pub fn allocator(&self) -> &vk_mem::Allocator {
         &self.inner.allocator
-    }   
+    }
 
     pub fn queue_allocator(&self) -> &VkQueueAllocatorSet {
         &self.inner.queue_allocator
@@ -343,11 +343,7 @@ impl VulkanDeviceContext {
         VulkanRenderpass::new(self, renderpass_def)
     }
 
-    pub fn new(        
-        instance: &VkInstance,
-        api_def: &ApiDef
-    ) -> GfxResult<Self> {        
-
+    pub fn new(instance: &VkInstance, api_def: &ApiDef) -> GfxResult<Self> {
         let inner = Arc::new(VulkanDeviceContextInner::new(
             &instance,
             api_def.windowing_mode,
@@ -446,9 +442,9 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
     fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<VulkanShaderModule> {
         VulkanShaderModule::new(self, data)
     }
-    
-    fn free_gpu_memory(&self) -> GfxResult<()> {        
-        self.inner.deferred_dropper.flush();        
+
+    fn free_gpu_memory(&self) -> GfxResult<()> {
+        self.inner.deferred_dropper.flush();
         Ok(())
     }
 }

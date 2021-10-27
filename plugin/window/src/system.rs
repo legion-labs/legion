@@ -9,4 +9,3 @@ pub fn exit_on_window_close_system(
         app_exit_events.send(AppExit);
     }
 }
-

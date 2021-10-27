@@ -1,4 +1,7 @@
-use graphics_api::{DefaultApi, DeviceContext, Extents3D, Format, GfxApi, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef, TextureTiling, TextureViewDef};
+use graphics_api::{
+    DefaultApi, DeviceContext, Extents3D, Format, GfxApi, MemoryUsage, ResourceFlags,
+    ResourceUsage, Texture, TextureDef, TextureTiling, TextureViewDef,
+};
 use legion_ecs::prelude::Component;
 use legion_window::{Window, WindowId};
 
@@ -11,13 +14,12 @@ pub struct RenderSurface {
     pub height: u32,
     pub texture: <DefaultApi as GfxApi>::Texture,
     pub texture_srv: <DefaultApi as GfxApi>::TextureView,
-    pub texture_rtv: <DefaultApi as GfxApi>::TextureView,    
-    pub test_renderpass: TmpRenderPass
+    pub texture_rtv: <DefaultApi as GfxApi>::TextureView,
+    pub test_renderpass: TmpRenderPass,
 }
 
 impl RenderSurface {
-    pub fn from_window(renderer: &Renderer, window: &Window) -> Self {        
-
+    pub fn from_window(renderer: &Renderer, window: &Window) -> Self {
         let device_context = renderer.device_context();
         let texture_def = TextureDef {
             extents: Extents3D {
@@ -28,13 +30,14 @@ impl RenderSurface {
             array_length: 1,
             mip_count: 1,
             format: Format::R16G16B16A16_SFLOAT,
-            usage_flags: ResourceUsage::HAS_RENDER_TARGET_VIEW|ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+            usage_flags: ResourceUsage::HAS_RENDER_TARGET_VIEW
+                | ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
-        };        
+        };
         let texture = device_context.create_texture(&texture_def).unwrap();
-        
+
         let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
         let texture_srv = texture.create_view(&srv_def).unwrap();
 
@@ -42,24 +45,28 @@ impl RenderSurface {
         let texture_rtv = texture.create_view(&rtv_def).unwrap();
 
         Self {
-            window_id: window.id(),       
-            width: texture_def.extents.width,     
-            height: texture_def.extents.height,     
+            window_id: window.id(),
+            width: texture_def.extents.width,
+            height: texture_def.extents.height,
             texture,
             texture_srv,
             texture_rtv,
-            test_renderpass: TmpRenderPass::new(renderer)
+            test_renderpass: TmpRenderPass::new(renderer),
         }
     }
 
-    pub fn resize(&mut self, device_context: &<DefaultApi as GfxApi>::DeviceContext, width: u32, height: u32) {
+    pub fn resize(
+        &mut self,
+        device_context: &<DefaultApi as GfxApi>::DeviceContext,
+        width: u32,
+        height: u32,
+    ) {
         if (self.width, self.height) != (width, height) {
-            
-            let mut texture_def = *self.texture.texture_def();            
+            let mut texture_def = *self.texture.texture_def();
             texture_def.extents.width = width;
-            texture_def.extents.height = height;            
+            texture_def.extents.height = height;
             let texture = device_context.create_texture(&texture_def).unwrap();
-            
+
             let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
             let texture_srv = texture.create_view(&srv_def).unwrap();
 
@@ -76,7 +83,5 @@ impl RenderSurface {
 }
 
 impl Drop for RenderSurface {
-    fn drop(&mut self) {
-        
-    }
+    fn drop(&mut self) {}
 }

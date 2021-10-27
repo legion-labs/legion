@@ -1,6 +1,8 @@
 use super::{VulkanApi, VulkanBufferView, VulkanDeviceContext};
-use crate::{Buffer, BufferDef, BufferMappingInfo, BufferViewDef, GfxResult, MemoryUsage, ResourceUsage};
 use crate::backends::deferred_drop::Drc;
+use crate::{
+    Buffer, BufferDef, BufferMappingInfo, BufferViewDef, GfxResult, MemoryUsage, ResourceUsage,
+};
 use ash::vk;
 
 #[derive(Debug)]
@@ -80,15 +82,15 @@ impl VulkanBuffer {
         );
 
         Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(
-            VulkanBufferInner {
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(VulkanBufferInner {
                     device_context: device_context.clone(),
                     allocation_info,
                     buffer_def: buffer_def.clone(),
                     allocation,
                     buffer,
-                }
-            ),
+                }),
         })
     }
 

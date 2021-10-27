@@ -124,7 +124,7 @@ impl<A: GfxApi> PresentableFrame<A> {
         shared_state.result_tx.send(result.clone()).unwrap();
 
         result
-    }    
+    }
 
     /// Present the current swapchain
     pub fn do_present(
@@ -139,7 +139,10 @@ impl<A: GfxApi> PresentableFrame<A> {
         assert!(self.sync_frame_index == sync_frame_index);
 
         let frame_fence = &shared_state.in_flight_fences[sync_frame_index];
-        let wait_semaphores = [wait_sem, &shared_state.image_available_semaphores[sync_frame_index]];
+        let wait_semaphores = [
+            wait_sem,
+            &shared_state.image_available_semaphores[sync_frame_index],
+        ];
         let signal_semaphores = [&shared_state.render_finished_semaphores[sync_frame_index]];
 
         queue.submit(

@@ -1,8 +1,8 @@
 use graphics_api::{CommandBuffer, DefaultApi, ResourceState, TextureBarrier};
-use legion_app::{Plugin};
+use legion_app::Plugin;
 use legion_ecs::{prelude::*, system::IntoSystem};
 
-use crate::{Renderer, components::RenderSurface};
+use crate::{components::RenderSurface, Renderer};
 
 use super::labels::*;
 
@@ -10,29 +10,24 @@ use super::labels::*;
 pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
-    fn build(&self, app: &mut legion_app::App) {        
-        
-        let renderer = Renderer::new();        
+    fn build(&self, app: &mut legion_app::App) {
+        let renderer = Renderer::new();
 
-        app.insert_resource(renderer);                
-        app.add_system_set( SystemSet::new()            
-                .with_system(
-                    render.system()
-                )
-            .label(RendererSystemLabel::Main)            
-        ); 
+        app.insert_resource(renderer);
+        app.add_system_set(
+            SystemSet::new()
+                .with_system(render.system())
+                .label(RendererSystemLabel::Main),
+        );
     }
 }
 
-fn render(    
-    mut renderer: ResMut<Renderer>,
-    outputs: Query<(Entity, &RenderSurface)> 
-) { 
-    renderer.begin_frame();    
+fn render(mut renderer: ResMut<Renderer>, outputs: Query<(Entity, &RenderSurface)>) {
+    renderer.begin_frame();
 
     let cmd_buffer = renderer.get_cmd_buffer();
-    
-    for (_,render_surface) in outputs.iter() {        
+
+    for (_, render_surface) in outputs.iter() {
         let render_pass = &render_surface.test_renderpass;
         let render_target = &render_surface.texture;
         let render_target_view = &render_surface.texture_rtv;
@@ -42,7 +37,7 @@ fn render(
                 &[],
                 &[TextureBarrier::<DefaultApi>::state_transition(
                     render_target,
-                    ResourceState::SHADER_RESOURCE|ResourceState::COPY_SRC,
+                    ResourceState::SHADER_RESOURCE | ResourceState::COPY_SRC,
                     ResourceState::RENDER_TARGET,
                 )],
             )
@@ -56,10 +51,10 @@ fn render(
                 &[TextureBarrier::<DefaultApi>::state_transition(
                     render_target,
                     ResourceState::RENDER_TARGET,
-                    ResourceState::SHADER_RESOURCE|ResourceState::COPY_SRC,
+                    ResourceState::SHADER_RESOURCE | ResourceState::COPY_SRC,
                 )],
             )
-            .unwrap(); 
+            .unwrap();
     }
 
     renderer.end_frame();

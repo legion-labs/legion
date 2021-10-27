@@ -372,7 +372,6 @@ pub struct TextureViewDef {
 }
 
 impl TextureViewDef {
-
     pub fn as_shader_resource_view(texture_def: &TextureDef) -> Self {
         Self {
             gpu_view_type: GPUViewType::ShaderResourceView,

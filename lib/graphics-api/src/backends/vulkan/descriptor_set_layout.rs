@@ -1,7 +1,7 @@
 use ash::vk;
 
-use crate::{DescriptorSetLayout, DescriptorSetLayoutDef, GfxError, GfxResult, ShaderResourceType};
 use crate::backends::deferred_drop::Drc;
+use crate::{DescriptorSetLayout, DescriptorSetLayoutDef, GfxError, GfxResult, ShaderResourceType};
 
 use super::{VulkanApi, VulkanDeviceContext};
 
@@ -113,15 +113,15 @@ impl VulkanDescriptorSetLayout {
         };
 
         let result = Self {
-            inner: device_context.deferred_dropper().new_drc(
-                VulkanDescriptorSetLayoutInner {
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(VulkanDescriptorSetLayoutInner {
                     device_context: device_context.clone(),
                     set_index: descriptor_set_layout_def.frequency,
                     update_data_count_per_set,
                     descriptors,
                     vk_layout,
-                }
-            )
+                }),
         };
 
         Ok(result)

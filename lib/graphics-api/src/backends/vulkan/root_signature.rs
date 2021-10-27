@@ -1,9 +1,8 @@
 use super::{VulkanApi, VulkanDescriptorSetLayout, VulkanDeviceContext};
-use crate::{GfxResult, MAX_DESCRIPTOR_SET_LAYOUTS, PipelineType, RootSignature, RootSignatureDef};
 use crate::backends::deferred_drop::Drc;
+use crate::{GfxResult, PipelineType, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 
 use ash::vk;
-
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

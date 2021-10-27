@@ -1,5 +1,11 @@
 use super::internal::VkInstance;
-use super::{VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer, VulkanCommandPool, VulkanDescriptorSetArray, VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule, VulkanSwapchain, VulkanTexture, VulkanTextureView};
+use super::{
+    VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
+    VulkanCommandPool, VulkanDescriptorSetArray, VulkanDescriptorSetHandle,
+    VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanFence, VulkanPipeline, VulkanQueue,
+    VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule,
+    VulkanSwapchain, VulkanTexture, VulkanTextureView,
+};
 use crate::{ApiDef, GfxApi, GfxResult};
 
 use std::ffi::CString;

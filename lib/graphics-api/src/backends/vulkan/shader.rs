@@ -1,6 +1,6 @@
 use super::{VulkanApi, VulkanDeviceContext};
-use crate::{GfxResult, PipelineReflection, Shader, ShaderStageDef, ShaderStageFlags};
 use crate::backends::deferred_drop::Drc;
+use crate::{GfxResult, PipelineReflection, Shader, ShaderStageDef, ShaderStageFlags};
 
 #[derive(Debug)]
 struct VulkanShaderInner {

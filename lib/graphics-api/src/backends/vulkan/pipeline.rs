@@ -3,15 +3,17 @@ use super::{
     VulkanApi, VulkanDeviceContext, VulkanRenderpassColorAttachment, VulkanRenderpassDef,
     VulkanRenderpassDepthAttachment, VulkanRootSignature,
 };
-use crate::{ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType, ShaderStageFlags, StoreOp, backends::deferred_drop::Drc};
+use crate::{
+    backends::deferred_drop::Drc, ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef,
+    LoadOp, Pipeline, PipelineType, ShaderStageFlags, StoreOp,
+};
 use ash::vk;
 use std::ffi::CString;
-
 
 #[derive(Debug)]
 struct VulkanPipelineInner {
     pipeline_type: PipelineType,
-    pipeline: vk::Pipeline,    
+    pipeline: vk::Pipeline,
     root_signature: VulkanRootSignature,
 }
 
@@ -26,7 +28,7 @@ impl Drop for VulkanPipelineInner {
 
 #[derive(Debug)]
 pub struct VulkanPipeline {
-    inner: Drc<VulkanPipelineInner>    
+    inner: Drc<VulkanPipelineInner>,
 }
 
 impl VulkanPipeline {
@@ -194,14 +196,14 @@ impl VulkanPipeline {
             }
         }?[0];
 
-        Ok(Self { 
-            inner: device_context.deferred_dropper().new_drc(
-                VulkanPipelineInner {
+        Ok(Self {
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(VulkanPipelineInner {
                     pipeline_type: PipelineType::Graphics,
                     pipeline,
                     root_signature: pipeline_def.root_signature.clone(),
-                }
-            )
+                }),
         })
     }
 
@@ -250,14 +252,14 @@ impl VulkanPipeline {
             }
         }?[0];
 
-        Ok(Self { 
-            inner: device_context.deferred_dropper().new_drc(
-                VulkanPipelineInner {
+        Ok(Self {
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(VulkanPipelineInner {
                     pipeline_type: PipelineType::Compute,
                     pipeline,
                     root_signature: pipeline_def.root_signature.clone(),
-                }
-            )
+                }),
         })
     }
 }

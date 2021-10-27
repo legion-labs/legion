@@ -1,6 +1,6 @@
 use super::{VulkanApi, VulkanDeviceContext};
-use crate::{GfxResult, ShaderModule, ShaderModuleDef};
 use crate::backends::deferred_drop::Drc;
+use crate::{GfxResult, ShaderModule, ShaderModuleDef};
 use ash::vk;
 
 #[derive(Debug)]

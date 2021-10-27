@@ -23,8 +23,7 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(width: u32, height: u32) -> Renderer {
         #[allow(unsafe_code)]
-        let api =
-            unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
+        let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
 
         // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
         // clean shutdown.
@@ -122,7 +121,7 @@ impl Renderer {
                 .unwrap();
 
             let render_view_def = TextureViewDef::as_render_target_view(render_image.texture_def());
-            let render_view = render_image.create_view(&render_view_def).unwrap();            
+            let render_view = render_image.create_view(&render_view_def).unwrap();
             let frame_fence = device_context.create_fence().unwrap();
 
             command_pools.push(command_pool);
@@ -132,7 +131,7 @@ impl Renderer {
             uniform_buffers.push(uniform_buffer);
             render_images.push(render_image);
             render_views.push(render_view);
-            frame_fences.push(frame_fence);            
+            frame_fences.push(frame_fence);
         }
 
         //
@@ -320,9 +319,7 @@ impl Renderer {
         }
     }
 
-    pub fn render(
-        &mut self,
-    ) {
+    pub fn render(&mut self) {
         let render_frame_idx = self.render_frame_idx;
         let elapsed_secs = self.frame_idx as f32 / 60.0;
 
@@ -442,7 +439,7 @@ impl Renderer {
             .unwrap();
 
         cmd_buffer.end().unwrap();
-        
+
         self.graphics_queue
             .submit(&[cmd_buffer], &[], &[], Some(signal_fence))
             .unwrap();

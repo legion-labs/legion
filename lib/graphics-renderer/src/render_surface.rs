@@ -1,9 +1,3 @@
+pub struct RenderSurfaceDef {}
 
-
-pub struct RenderSurfaceDef {
-    
-}
-
-pub struct RenderSurface {
-    
-}
+pub struct RenderSurface {}

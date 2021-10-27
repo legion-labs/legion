@@ -1,5 +1,5 @@
-use graphics_api::prelude::*;
 use graphics_api::backends::shared::tmp_extract_root_signature_def;
+use graphics_api::prelude::*;
 
 pub struct Renderer {
     frame_idx: usize,
@@ -18,7 +18,7 @@ pub struct Renderer {
 impl Renderer {
     pub fn new() -> Renderer {
         #[allow(unsafe_code)]
-        let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };        
+        let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
 
         // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
         // clean shutdown.
@@ -34,7 +34,7 @@ impl Renderer {
         // differently. Most recommendations I've seen are to just use one graphics queue. (The
         // rendering hardware is shared among them)
         //
-        let graphics_queue = device_context.create_queue(QueueType::Graphics).unwrap();        
+        let graphics_queue = device_context.create_queue(QueueType::Graphics).unwrap();
 
         //
         // Create command pools/command buffers. The command pools need to be immutable while they are
@@ -48,7 +48,7 @@ impl Renderer {
         // processed, so we need one per swapchain image
         //
         let mut command_pools = Vec::with_capacity(num_render_frames);
-        let mut command_buffers = Vec::with_capacity(num_render_frames);   
+        let mut command_buffers = Vec::with_capacity(num_render_frames);
         let mut frame_signal_sems = Vec::with_capacity(num_render_frames);
         let mut frame_fences = Vec::with_capacity(num_render_frames);
 
@@ -62,15 +62,15 @@ impl Renderer {
                     is_secondary: false,
                 })
                 .unwrap();
-                                 
+
             let frame_signal_sem = device_context.create_semaphore().unwrap();
 
             let frame_fence = device_context.create_fence().unwrap();
 
             command_pools.push(command_pool);
-            command_buffers.push(command_buffer);            
+            command_buffers.push(command_buffer);
             frame_signal_sems.push(frame_signal_sem);
-            frame_fences.push(frame_fence);            
+            frame_fences.push(frame_fence);
         }
 
         //
@@ -97,20 +97,19 @@ impl Renderer {
         //
         // Some default data we can render
         //
-        
 
         Renderer {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
             frame_signal_sems,
-            frame_fences,            
+            frame_fences,
             graphics_queue,
             command_pools,
-            command_buffers,            
+            command_buffers,
             api,
         }
-    }    
+    }
 
     pub fn api(&self) -> &DefaultApi {
         &self.api
@@ -126,16 +125,15 @@ impl Renderer {
 
     pub fn get_cmd_buffer(&self) -> &<DefaultApi as GfxApi>::CommandBuffer {
         let render_frame_index = self.render_frame_idx;
-        &self.command_buffers[ render_frame_index ]
+        &self.command_buffers[render_frame_index]
     }
 
     pub fn frame_signal_semaphore(&self) -> &<DefaultApi as GfxApi>::Semaphore {
         let render_frame_index = self.render_frame_idx;
-        &self.frame_signal_sems[ render_frame_index ]
+        &self.frame_signal_sems[render_frame_index]
     }
 
     pub fn begin_frame(&self) {
-        
         let render_frame_idx = self.render_frame_idx;
         let signal_fence = &self.frame_fences[render_frame_idx];
 
@@ -146,7 +144,7 @@ impl Renderer {
             signal_fence.wait().unwrap();
         }
 
-        // 
+        //
         // Now, it is safe to free memory
         //
         let device_context = self.api.device_context();
@@ -157,13 +155,12 @@ impl Renderer {
         //
         let cmd_pool = &self.command_pools[render_frame_idx];
         let cmd_buffer = &self.command_buffers[render_frame_idx];
-        
+
         cmd_pool.reset_command_pool().unwrap();
         cmd_buffer.begin().unwrap();
-
     }
 
-    pub fn end_frame(&mut self) {                
+    pub fn end_frame(&mut self) {
         let render_frame_idx = self.render_frame_idx;
         let signal_semaphore = &self.frame_signal_sems[render_frame_idx];
         let signal_fence = &self.frame_fences[render_frame_idx];
@@ -189,21 +186,20 @@ impl Drop for Renderer {
 #[derive(Debug)]
 pub struct TmpRenderPass {
     vertex_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
-    uniform_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,    
+    uniform_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
     descriptor_set_array: <DefaultApi as GfxApi>::DescriptorSetArray,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
-} 
+}
 
 impl TmpRenderPass {
     pub fn new(renderer: &Renderer) -> Self {
-        
         let device_context = renderer.device_context();
         let num_render_frames = renderer.num_render_frames;
         let mut vertex_buffers = Vec::with_capacity(num_render_frames);
         let mut uniform_buffers = Vec::with_capacity(num_render_frames);
         let mut uniform_buffer_cbvs = Vec::with_capacity(num_render_frames);
-        
+
         //
         // Shaders
         //
@@ -250,20 +246,17 @@ impl TmpRenderPass {
                 push_constants: Vec::new(),
             },
         };
-        
+
         let shader = device_context
             .create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])
             .unwrap();
 
         //
         // Root signature
-        // 
+        //
 
-        let root_signature_def = tmp_extract_root_signature_def(
-            device_context,
-            &[shader.clone()],
-        )
-        .unwrap();
+        let root_signature_def =
+            tmp_extract_root_signature_def(device_context, &[shader.clone()]).unwrap();
 
         let root_signature = device_context
             .create_root_signature(&root_signature_def)
@@ -271,16 +264,16 @@ impl TmpRenderPass {
         let descriptor_set_layout = root_signature_def.descriptor_set_layouts[0]
             .as_ref()
             .unwrap();
-            let mut descriptor_set_array = device_context
-        .create_descriptor_set_array(&DescriptorSetArrayDef {
-            descriptor_set_layout,
-            array_length: 3, // One per swapchain image.
-        })
-        .unwrap();
+        let mut descriptor_set_array = device_context
+            .create_descriptor_set_array(&DescriptorSetArrayDef {
+                descriptor_set_layout,
+                array_length: 3, // One per swapchain image.
+            })
+            .unwrap();
 
         //
         // Pipeline state
-        // 
+        //
         let vertex_layout = VertexLayout {
             attributes: vec![
                 VertexLayoutAttribute {
@@ -322,8 +315,7 @@ impl TmpRenderPass {
         //
         // Per frame resources
         //
-        for i in 0..renderer.num_render_frames {           
-
+        for i in 0..renderer.num_render_frames {
             let vertex_data = [0f32; 15];
 
             let vertex_buffer = device_context
@@ -345,7 +337,8 @@ impl TmpRenderPass {
             let view_def = BufferViewDef::as_const_buffer(uniform_buffer.buffer_def());
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def).unwrap();
 
-            descriptor_set_array.update_descriptor_set(&[DescriptorUpdate {
+            descriptor_set_array
+                .update_descriptor_set(&[DescriptorUpdate {
                     array_index: i as u32,
                     descriptor_key: DescriptorKey::Name("color"),
                     elements: DescriptorElements {
@@ -353,12 +346,13 @@ impl TmpRenderPass {
                         ..Default::default()
                     },
                     ..Default::default()
-                }]).unwrap();
+                }])
+                .unwrap();
 
             vertex_buffers.push(vertex_buffer);
             uniform_buffer_cbvs.push(uniform_buffer_cbv);
-            uniform_buffers.push(uniform_buffer);            
-        }        
+            uniform_buffers.push(uniform_buffer);
+        }
 
         Self {
             vertex_buffers,
@@ -370,13 +364,13 @@ impl TmpRenderPass {
     }
 
     pub fn render(
-        &self,        
+        &self,
         renderer: &Renderer,
         cmd_buffer: &<DefaultApi as GfxApi>::CommandBuffer,
-        render_view: &<DefaultApi as GfxApi>::TextureView
+        render_view: &<DefaultApi as GfxApi>::TextureView,
     ) {
         let render_frame_idx = renderer.render_frame_idx;
-        let elapsed_secs = renderer.frame_idx as f32 / 60.0;        
+        let elapsed_secs = renderer.frame_idx as f32 / 60.0;
 
         //
         // Update vertices
@@ -412,12 +406,11 @@ impl TmpRenderPass {
 
         uniform_buffer
             .copy_to_host_visible_buffer(&uniform_data)
-            .unwrap();       
+            .unwrap();
 
         //
         // Fill command buffer
         //
-        
 
         cmd_buffer
             .cmd_begin_render_pass(
@@ -458,7 +451,5 @@ impl TmpRenderPass {
 }
 
 impl Drop for TmpRenderPass {
-    fn drop(&mut self) {
-        
-    }
+    fn drop(&mut self) {}
 }

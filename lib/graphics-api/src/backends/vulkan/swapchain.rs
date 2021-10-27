@@ -129,12 +129,10 @@ impl VulkanSwapchain {
             )?
         };
 
-        let surface_loader = device_context.deferred_dropper().new_drc(
-            khr::Surface::new(
-                device_context.entry(),
-                device_context.instance(),
-            )
-        );
+        let surface_loader = device_context.deferred_dropper().new_drc(khr::Surface::new(
+            device_context.entry(),
+            device_context.instance(),
+        ));
 
         let present_mode_priority = present_mode_priority(swapchain_def);
 
@@ -363,7 +361,8 @@ impl SwapchainVulkanInstance {
                 .graphics_queue_family_index,
         )?;
 
-        let swapchain_image_usage_flags = vk::ImageUsageFlags::COLOR_ATTACHMENT|vk::ImageUsageFlags::TRANSFER_DST;
+        let swapchain_image_usage_flags =
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_DST;
         let create_swapchain_result = Self::create_swapchain(
             device_context,
             surface,
@@ -393,9 +392,9 @@ impl SwapchainVulkanInstance {
         Ok(Self {
             device_context: device_context.clone(),
             swapchain_info,
-            swapchain_loader: device_context.deferred_dropper().new_drc(
-                create_swapchain_result.swapchain_loader
-            ),
+            swapchain_loader: device_context
+                .deferred_dropper()
+                .new_drc(create_swapchain_result.swapchain_loader),
             swapchain: create_swapchain_result.swapchain,
             dedicated_present_queue: create_swapchain_result.dedicated_present_queue,
             swapchain_images,

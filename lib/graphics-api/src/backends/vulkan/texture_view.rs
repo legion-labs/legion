@@ -1,11 +1,13 @@
 use ash::vk;
 
-use crate::{GfxResult, Texture, TextureView, TextureViewDef, VulkanApi, backends::deferred_drop::Drc};
+use crate::{
+    backends::deferred_drop::Drc, GfxResult, Texture, TextureView, TextureViewDef, VulkanApi,
+};
 
-use super::{VulkanTexture};
+use super::VulkanTexture;
 
 #[derive(Clone, Debug)]
-struct VulkanTextureViewInner {    
+struct VulkanTextureViewInner {
     view_def: TextureViewDef,
     texture: VulkanTexture,
     vk_image_view: vk::ImageView,
@@ -37,7 +39,6 @@ impl TextureView<VulkanApi> for VulkanTextureView {
 
 impl VulkanTextureView {
     pub(super) fn new(texture: &VulkanTexture, view_def: &TextureViewDef) -> GfxResult<Self> {
-        
         view_def.verify(texture.texture_def());
 
         let device_context = texture.device_context();
@@ -58,17 +59,15 @@ impl VulkanTextureView {
             .subresource_range(subresource_range.build());
         let vk_image_view = unsafe { device.create_image_view(&builder.build(), None)? };
 
-        Ok(
-            Self {
-                inner: device_context.deferred_dropper().new_drc(
-                VulkanTextureViewInner {
-                        view_def: *view_def,
-                        texture: texture.clone(),
-                        vk_image_view,
-                    }
-                )
-            }                       
-        )
+        Ok(Self {
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(VulkanTextureViewInner {
+                    view_def: *view_def,
+                    texture: texture.clone(),
+                    vk_image_view,
+                }),
+        })
     }
 
     pub(super) fn vulkan_texture(&self) -> &VulkanTexture {
