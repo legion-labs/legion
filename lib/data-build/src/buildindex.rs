@@ -6,7 +6,7 @@ use petgraph::{Directed, Graph};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     cmp::Ordering,
-    collections::{HashMap, VecDeque},
+    collections::{BTreeMap, HashMap, VecDeque},
     fs::{File, OpenOptions},
     hash::{Hash, Hasher},
     io::Seek,
@@ -77,7 +77,7 @@ struct BuildIndexContent {
     resources: Vec<ResourceInfo>,
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
-    pathid_mapping: HashMap<ResourceId, ResourcePathId>,
+    pathid_mapping: BTreeMap<ResourceId, ResourcePathId>,
 }
 
 impl BuildIndexContent {
@@ -136,7 +136,7 @@ impl BuildIndex {
             resources: vec![],
             compiled_resources: vec![],
             compiled_resource_references: vec![],
-            pathid_mapping: HashMap::new(),
+            pathid_mapping: BTreeMap::new(),
         };
 
         serde_json::to_writer(&file, &content).map_err(|_e| Error::IOError)?;
