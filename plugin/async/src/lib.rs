@@ -70,7 +70,8 @@ pub use operation::*;
 pub use runtime::*;
 
 // Provides async online capabilities via an online runtime.
-pub struct AsyncPlugin {}
+#[derive(Default)]
+pub struct AsyncPlugin;
 
 impl Plugin for AsyncPlugin {
     fn build(&self, app: &mut App) {

@@ -4,7 +4,7 @@ use graphics_api::{
     TextureBarrier, TextureView,
 };
 use legion_ecs::prelude::Component;
-use legion_renderer::Renderer;
+use legion_renderer::{Renderer, components::RenderSurfaceId};
 use legion_window::{Window, WindowId};
 use raw_window_handle::HasRawWindowHandle;
 
@@ -13,6 +13,7 @@ use crate::swapchain_helper::SwapchainHelper;
 #[derive(Component)]
 pub struct PresenterWindow {
     pub window_id: WindowId,
+    pub render_surface_id: RenderSurfaceId,
     swapchain_helper: SwapchainHelper<DefaultApi>,
     cmd_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
     cmd_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
@@ -25,7 +26,12 @@ impl std::fmt::Debug for PresenterWindow {
 }
 
 impl PresenterWindow {
-    pub fn from_window(renderer: &Renderer, wnd: &Window, hwnd: &dyn HasRawWindowHandle) -> Self {
+    pub fn from_window(
+        renderer: &Renderer, 
+        wnd: &Window, 
+        hwnd: &dyn HasRawWindowHandle, 
+        render_surface_id: RenderSurfaceId,
+    ) -> Self {
         let device_context = renderer.device_context();
         let present_queue = renderer.graphics_queue();
         let swapchain = device_context
@@ -62,6 +68,7 @@ impl PresenterWindow {
 
         Self {
             window_id: wnd.id(),
+            render_surface_id,
             swapchain_helper,
             cmd_pools,
             cmd_buffers,

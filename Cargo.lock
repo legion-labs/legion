@@ -1831,6 +1831,7 @@ dependencies = [
  "legion-editor-proto",
  "legion-grpc",
  "legion-mp4",
+ "legion-renderer",
  "legion-resource-registry",
  "legion-streamer",
  "legion-telemetry",
@@ -3490,9 +3491,8 @@ dependencies = [
  "legion-codec-api",
  "legion-ecs",
  "legion-graphics-api",
- "legion-window",
+ "legion-utils",
  "log",
- "raw-window-handle",
 ]
 
 [[package]]

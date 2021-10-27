@@ -3,13 +3,22 @@ use graphics_api::{
     ResourceUsage, Texture, TextureDef, TextureTiling, TextureViewDef,
 };
 use legion_ecs::prelude::Component;
-use legion_window::{Window, WindowId};
+use legion_utils::Uuid;
 
 use crate::{Renderer, TmpRenderPass};
 
+#[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct RenderSurfaceId(Uuid);
+
+impl RenderSurfaceId {
+    fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
 #[derive(Debug, Component)]
 pub struct RenderSurface {
-    pub window_id: WindowId,
+    pub id: RenderSurfaceId,
     pub width: u32,
     pub height: u32,
     pub texture: <DefaultApi as GfxApi>::Texture,
@@ -19,12 +28,12 @@ pub struct RenderSurface {
 }
 
 impl RenderSurface {
-    pub fn from_window(renderer: &Renderer, window: &Window) -> Self {
+    pub fn new(renderer: &Renderer, width: u32, height: u32) -> Self {
         let device_context = renderer.device_context();
         let texture_def = TextureDef {
             extents: Extents3D {
-                width: window.physical_width(),
-                height: window.physical_height(),
+                width,
+                height,
                 depth: 1,
             },
             array_length: 1,
@@ -45,7 +54,7 @@ impl RenderSurface {
         let texture_rtv = texture.create_view(&rtv_def).unwrap();
 
         Self {
-            window_id: window.id(),
+            id: RenderSurfaceId::new(),
             width: texture_def.extents.width,
             height: texture_def.extents.height,
             texture,
@@ -57,11 +66,13 @@ impl RenderSurface {
 
     pub fn resize(
         &mut self,
-        device_context: &<DefaultApi as GfxApi>::DeviceContext,
+        renderer: &Renderer,        
         width: u32,
         height: u32,
     ) {
         if (self.width, self.height) != (width, height) {
+            let device_context = renderer.device_context();
+
             let mut texture_def = *self.texture.texture_def();
             texture_def.extents.width = width;
             texture_def.extents.height = height;

@@ -100,7 +100,8 @@ impl Default for GRPCPluginSettings {
 }
 
 // Provides gRPC server capabilities to the engine.
-pub struct GRPCPlugin {}
+#[derive(Default)]
+pub struct GRPCPlugin;
 
 impl Plugin for GRPCPlugin {
     fn build(&self, app: &mut App) {

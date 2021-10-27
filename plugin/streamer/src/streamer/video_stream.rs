@@ -11,7 +11,7 @@ use legion_codec_api::{
     formats::{self, RBGYUVConverter},
 };
 use legion_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
-use legion_renderer::Renderer;
+use legion_renderer::{Renderer, components::RenderSurface};
 use legion_telemetry::prelude::*;
 use legion_utils::memory::write_any;
 use serde::Serialize;
@@ -60,17 +60,19 @@ pub struct VideoStream {
     resolution: Resolution,
     pub color: Color,
     pub speed: f32,
-    renderer: Renderer,
+    pub render_surface: RenderSurface,
+    // renderer: Renderer,
     encoder: VideoStreamEncoder,
     elapsed_secs: f32,
 }
 
 impl VideoStream {
-    pub fn new(video_data_channel: Arc<RTCDataChannel>) -> anyhow::Result<Self> {
+    pub fn new(renderer: &Renderer, video_data_channel: Arc<RTCDataChannel>) -> anyhow::Result<Self> {
         trace_scope!();
         let resolution = Resolution::new(1024, 768);
         let encoder = VideoStreamEncoder::new(resolution)?;
-        let renderer = Renderer::new();
+        // let renderer = Renderer::new();
+        let render_surface = RenderSurface::new(renderer, resolution.width, resolution.height);
 
         Ok(Self {
             video_data_channel,
@@ -78,13 +80,14 @@ impl VideoStream {
             resolution,
             color: Color::default(),
             speed: 1.0,
-            renderer,
+            render_surface,
+            // renderer,
             encoder,
             elapsed_secs: 0.0,
         })
     }
 
-    pub(crate) fn resize(&mut self, width: u32, mut height: u32) {
+    pub(crate) fn resize(&mut self, renderer: &Renderer, width: u32, mut height: u32) {
         trace_scope!();
         // Make sure height is a multiple of 2.
         if height & 1 == 1 {
@@ -98,7 +101,8 @@ impl VideoStream {
 
             // TODO: Fix this: this is probably bad but I wrote that just to test it.
             // self.renderer = Renderer::new(self.resolution.width, self.resolution.height);
-            self.renderer = Renderer::new();
+            // self.renderer = Renderer::new();
+            self.render_surface.resize(renderer, self.resolution.width, self.resolution.height);
             self.encoder = VideoStreamEncoder::new(self.resolution).unwrap();
         }
     }
@@ -115,12 +119,12 @@ impl VideoStream {
         &mut self,
         delta_secs: f32,
     ) -> impl std::future::Future<Output = ()> + 'static {
-        // trace_scope!();
-        // self.record_frame_id_metric();
-        // let now = tokio::time::Instant::now();
+        trace_scope!();
+        self.record_frame_id_metric();
+        let now = tokio::time::Instant::now();
 
-        // self.elapsed_secs += delta_secs * self.speed;
-
+        self.elapsed_secs += delta_secs * self.speed;
+        
         // self.renderer.render(
         //     self.frame_id as usize,
         //     self.elapsed_secs,
@@ -128,44 +132,44 @@ impl VideoStream {
         //     &mut self.encoder.converter,
         // );
 
-        // let chunks = self.encoder.encode(self.frame_id);
+        let chunks = self.encoder.encode(self.frame_id);
 
-        // let elapsed = now.elapsed().as_micros() as u64;
-        // record_frame_time_metric(elapsed);
-        // let max_frame_time: u64 = 16_000;
+        let elapsed = now.elapsed().as_micros() as u64;
+        record_frame_time_metric(elapsed);
+        let max_frame_time: u64 = 16_000;
 
-        // if elapsed >= max_frame_time {
-        //     warn!(
-        //         "stream: frame {:?} took {}ms",
-        //         self.frame_id,
-        //         elapsed / 1000
-        //     );
-        // }
+        if elapsed >= max_frame_time {
+            warn!(
+                "stream: frame {:?} took {}ms",
+                self.frame_id,
+                elapsed / 1000
+            );
+        }
 
-        // let video_data_channel = Arc::clone(&self.video_data_channel);
-        // let frame_id = self.frame_id;
+        let video_data_channel = Arc::clone(&self.video_data_channel);
+        let frame_id = self.frame_id;
 
-        // self.frame_id += 1;
+        self.frame_id += 1;
 
-        // async move {
-        //     for (i, data) in chunks.iter().enumerate() {
-        //         #[allow(clippy::redundant_else)]
-        //         if let Err(err) = video_data_channel.send(data).await {
-        //             warn!(
-        //                 "Failed to send frame {}-{} ({} bytes): streaming will stop: {}",
-        //                 frame_id,
-        //                 i,
-        //                 data.len(),
-        //                 err.to_string(),
-        //             );
+        async move {
+            for (i, data) in chunks.iter().enumerate() {
+                #[allow(clippy::redundant_else)]
+                if let Err(err) = video_data_channel.send(data).await {
+                    warn!(
+                        "Failed to send frame {}-{} ({} bytes): streaming will stop: {}",
+                        frame_id,
+                        i,
+                        data.len(),
+                        err.to_string(),
+                    );
 
-        //             return;
-        //         } else {
-        //             debug!("Sent frame {}-{} ({} bytes).", frame_id, i, data.len());
-        //         }
-        //     }
-        // }
-        async move {}
+                    return;
+                } else {
+                    debug!("Sent frame {}-{} ({} bytes).", frame_id, i, data.len());
+                }
+            }
+        }
+        // async move {}
     }
 }
 

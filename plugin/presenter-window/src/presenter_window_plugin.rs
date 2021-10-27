@@ -32,7 +32,7 @@ fn render_presenter_windows(
 
         let src_texture_view = render_surfaces
             .iter()
-            .find(|x| pres_window.window_id.eq(&x.window_id))
+            .find(|x| pres_window.render_surface_id.eq(&x.id))
             .map(|x| &x.texture_srv);
 
         pres_window.present(wnd, graphics_queue, wait_sem, src_texture_view);

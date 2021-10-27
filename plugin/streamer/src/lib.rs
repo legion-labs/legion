@@ -65,7 +65,8 @@ mod streamer;
 mod webrtc;
 
 /// Provides streaming capabilities to the engine.
-pub struct StreamerPlugin {}
+#[derive(Default)]
+pub struct StreamerPlugin;
 
 impl Plugin for StreamerPlugin {
     fn build(&self, app: &mut App) {

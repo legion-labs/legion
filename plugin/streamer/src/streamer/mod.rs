@@ -1,6 +1,7 @@
 use legion_async::TokioAsyncRuntime;
 use legion_core::Time;
 use legion_ecs::prelude::*;
+use legion_renderer::Renderer;
 
 use std::{fmt::Display, sync::Arc};
 use webrtc::{
@@ -67,6 +68,7 @@ impl Streamer {
     pub(crate) fn handle_stream_events(
         async_rt: ResMut<'_, TokioAsyncRuntime>,
         streamer: ResMut<'_, Self>,
+        renderer: Res<'_, Renderer>,
         mut commands: Commands<'_, '_>,
         mut video_stream_events: EventWriter<'_, '_, VideoStreamEvent>,
     ) {
@@ -96,7 +98,7 @@ impl Streamer {
                 StreamEvent::VideoChannelOpened(stream_id, data_channel) => {
                     commands
                         .entity(stream_id.entity)
-                        .insert(VideoStream::new(data_channel).unwrap());
+                        .insert(VideoStream::new(&renderer, data_channel).unwrap());
 
                     info!(
                         "Video channel is now opened for stream {}: adding a video-stream component",
@@ -159,6 +161,7 @@ impl Streamer {
 
     pub(crate) fn update_streams(
         async_rt: ResMut<'_, TokioAsyncRuntime>,
+        renderer: Res<'_, Renderer>,
         mut query: Query<'_, '_, (Option<&mut ControlStream>, Option<&mut VideoStream>)>,
         mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
         mut time: ResMut<'_, Time>,
@@ -175,7 +178,7 @@ impl Streamer {
                         video_stream.color = color.clone();
                     }
                     VideoStreamEventInfo::Resize { width, height } => {
-                        video_stream.resize(*width, *height);
+                        video_stream.resize(&renderer, *width, *height);
                     }
                     VideoStreamEventInfo::Speed { id, speed } => {
                         log::info!("received speed command id={}", id);
