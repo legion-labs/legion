@@ -69,6 +69,7 @@ impl DeviceContext<NullApi> for NullDeviceContext {
         unimplemented!();
     }
     fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<NullTexture> {
+        crate::backends::shared::NEXT_TEXTURE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         unimplemented!();
     }
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<NullBuffer> {
