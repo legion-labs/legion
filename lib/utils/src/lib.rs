@@ -70,7 +70,10 @@ pub use enum_variant_meta::*;
 mod hash;
 pub use hash::*;
 
+// republish types
+pub use instant::{Duration, Instant};
 pub use tracing;
+pub use uuid::Uuid;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;

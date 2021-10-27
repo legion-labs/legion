@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 legion-data-offline = { path = "../data-offline" }
 legion-content-store = { path = "../content-store" }
 legion-data-runtime = { path = "../data-runtime" }
+legion-utils = { path = "../utils" }
 clap = "2.33"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

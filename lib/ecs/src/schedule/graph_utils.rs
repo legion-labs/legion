@@ -1,5 +1,5 @@
 use fixedbitset::FixedBitSet;
-use legion_utils::{tracing::warn, HashMap, HashSet, RandomState};
+use legion_utils::{tracing::warn, AHashExt, HashMap, HashSet};
 use std::{borrow::Cow, fmt::Debug, hash::Hash};
 
 pub enum DependencyGraphError<Labels> {
@@ -35,7 +35,7 @@ where
             .or_insert_with(|| FixedBitSet::with_capacity(nodes.len()))
             .insert(index);
     }
-    let mut graph = HashMap::with_capacity_and_hasher(nodes.len(), RandomState::default());
+    let mut graph = HashMap::with_capacity(nodes.len());
     for (index, node) in nodes.iter().enumerate() {
         let dependencies = graph.entry(index).or_insert_with(HashMap::default);
         for label in node.after() {
@@ -106,7 +106,7 @@ pub fn topological_order<Labels: Clone>(
     }
     let mut sorted = Vec::with_capacity(graph.len());
     let mut current = Vec::with_capacity(graph.len());
-    let mut unvisited = HashSet::with_capacity_and_hasher(graph.len(), RandomState::default());
+    let mut unvisited = HashSet::with_capacity(graph.len());
     unvisited.extend(graph.keys().copied());
     while let Some(node) = unvisited.iter().next().copied() {
         if check_if_cycles_and_visit(node, graph, &mut sorted, &mut unvisited, &mut current) {
