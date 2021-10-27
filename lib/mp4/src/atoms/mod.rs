@@ -9,7 +9,6 @@
 ///
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::Serialize;
-use std::convert::TryInto;
 use std::io::{Read, Seek, SeekFrom, Write};
 
 pub use bytes::Bytes;

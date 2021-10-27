@@ -6,7 +6,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     cmp::Ordering,
     collections::{hash_map::DefaultHasher, HashMap, VecDeque},
-    convert::TryInto,
     fs::{File, OpenOptions},
     hash::{Hash, Hasher},
     io::Seek,

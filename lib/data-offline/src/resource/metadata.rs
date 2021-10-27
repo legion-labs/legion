@@ -2,7 +2,7 @@ use crate::{resource::ResourcePathName, ResourcePathId};
 use legion_content_store::Checksum;
 use legion_utils::DefaultHash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{convert::TryInto, fmt, hash::Hash};
+use std::{fmt, hash::Hash};
 
 /// Hash of resource's content.
 ///

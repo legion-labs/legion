@@ -1,5 +1,4 @@
 use serde::Serialize;
-use std::convert::TryFrom;
 use std::fmt;
 
 pub use bytes::Bytes;

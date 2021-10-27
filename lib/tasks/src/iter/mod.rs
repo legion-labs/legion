@@ -194,7 +194,7 @@ where
     // TODO: Investigate optimizations for less copying
     fn collect<C>(mut self, pool: &TaskPool) -> C
     where
-        C: std::iter::FromIterator<Self::Item>,
+        C: FromIterator<Self::Item>,
         Self::Item: Send + 'static,
     {
         pool.scope(|s| {

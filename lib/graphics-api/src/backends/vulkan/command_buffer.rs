@@ -13,7 +13,6 @@ use crate::{
 };
 use ash::vk;
 use std::{
-    convert::TryInto,
     mem, ptr,
     sync::atomic::{AtomicBool, Ordering},
 };

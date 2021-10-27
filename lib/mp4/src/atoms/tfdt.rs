@@ -1,9 +1,6 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::Serialize;
-use std::{
-    convert::TryInto,
-    io::{Read, Seek, Write},
-};
+use std::io::{Read, Seek, Write};
 
 use crate::{Error, FourCC, Result};
 

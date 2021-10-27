@@ -8,7 +8,6 @@ pub use map_entities::*;
 
 use crate::{archetype::ArchetypeId, storage::SparseSetIndex};
 use std::{
-    convert::TryFrom,
     fmt, mem,
     sync::atomic::{AtomicI64, Ordering},
 };
