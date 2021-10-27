@@ -26,31 +26,27 @@ fn build_device() {
 
     // create project that contains test resource.
     let source_id = {
-        let resource_id = {
-            let mut project = Project::create_new(project_dir).expect("new project");
-            let resources = ResourceRegistryOptions::new()
-                .add_type::<refs_resource::TestResource>()
-                .create_registry();
-            let mut resources = resources.lock().unwrap();
+        let mut project = Project::create_new(project_dir).expect("new project");
+        let resources = ResourceRegistryOptions::new()
+            .add_type::<refs_resource::TestResource>()
+            .create_registry();
+        let mut resources = resources.lock().unwrap();
 
-            let resource = resources
-                .new_resource(refs_resource::TestResource::TYPE)
-                .expect("new resource")
-                .typed::<refs_resource::TestResource>();
+        let resource = resources
+            .new_resource(refs_resource::TestResource::TYPE)
+            .expect("new resource")
+            .typed::<refs_resource::TestResource>();
 
-            resource.get_mut(&mut resources).unwrap().content = initial_content.to_string();
+        resource.get_mut(&mut resources).unwrap().content = initial_content.to_string();
 
-            project
-                .add_resource(
-                    ResourcePathName::new("test_source"),
-                    refs_resource::TestResource::TYPE,
-                    &resource,
-                    &mut resources,
-                )
-                .expect("adding the resource")
-        };
-
-        resource_id
+        project
+            .add_resource(
+                ResourcePathName::new("test_source"),
+                refs_resource::TestResource::TYPE,
+                &resource,
+                &mut resources,
+            )
+            .expect("adding the resource")
     };
 
     let target_dir = {
