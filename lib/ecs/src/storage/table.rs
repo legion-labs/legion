@@ -5,10 +5,9 @@ use crate::{
     entity::Entity,
     storage::{BlobVec, SparseSet},
 };
-use legion_utils::{AHasher, HashMap};
+use legion_utils::{DefaultHash, HashMap};
 use std::{
     cell::UnsafeCell,
-    hash::{Hash, Hasher},
     ops::{Index, IndexMut},
     ptr::NonNull,
 };
@@ -471,9 +470,7 @@ impl Tables {
         component_ids: &[ComponentId],
         components: &Components,
     ) -> TableId {
-        let mut hasher = AHasher::default();
-        component_ids.hash(&mut hasher);
-        let hash = hasher.finish();
+        let hash = component_ids.default_hash();
         let tables = &mut self.tables;
         *self.table_ids.entry(hash).or_insert_with(move || {
             let mut table = Table::with_capacity(0, component_ids.len());

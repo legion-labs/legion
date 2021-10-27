@@ -1,8 +1,5 @@
-pub use ahash::AHasher;
-pub use instant::{Duration, Instant};
-pub use uuid::Uuid;
-
-pub use ahash::RandomState;
+use ahash::{AHasher, RandomState};
+use std::hash::Hasher;
 
 /// The `DefaultHash` trait is used to obtain a hash value for a single typed value.
 /// It will rely on the default `Hasher` provided by the std library.
@@ -17,25 +14,50 @@ where
 {
     /// Returns the hash value for a single typed value, using the default `Hasher` from `HashMap`.
     fn default_hash(&self) -> u64 {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);
-        std::hash::Hasher::finish(&hasher)
+        hasher.finish()
     }
 }
 
+pub type DefaultHasher = FixedState;
+
 /// A hasher builder that will create a fixed hasher.
-#[derive(Default)]
-pub struct FixedState;
+pub struct FixedState(AHasher);
 
-impl std::hash::BuildHasher for FixedState {
-    type Hasher = AHasher;
-
-    #[inline]
-    fn build_hasher(&self) -> AHasher {
-        AHasher::new_with_keys(
+impl FixedState {
+    pub fn new() -> Self {
+        Self(AHasher::new_with_keys(
             0b1001010111101110000001001100010000000011001001101011001001111000,
             0b1100111101101011011110001011010100000100001111100011010011010101,
-        )
+        ))
+    }
+}
+
+impl Default for FixedState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::hash::BuildHasher for FixedState {
+    type Hasher = Self;
+
+    #[inline]
+    fn build_hasher(&self) -> Self::Hasher {
+        Self::new()
+    }
+}
+
+impl Hasher for FixedState {
+    #[inline]
+    fn write(&mut self, msg: &[u8]) {
+        self.0.write(msg);
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0.finish()
     }
 }
 

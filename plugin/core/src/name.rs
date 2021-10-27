@@ -1,5 +1,5 @@
 use legion_ecs::component::Component;
-use legion_utils::AHasher;
+use legion_utils::DefaultHash;
 use std::{
     borrow::Cow,
     hash::{Hash, Hasher},
@@ -45,9 +45,7 @@ impl Name {
     }
 
     fn update_hash(&mut self) {
-        let mut hasher = AHasher::default();
-        self.name.hash(&mut hasher);
-        self.hash = hasher.finish();
+        self.hash = self.name.default_hash();
     }
 }
 

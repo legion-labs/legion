@@ -2,7 +2,7 @@ use proc_macro2::{TokenStream, TokenTree};
 use quote::{format_ident, quote};
 //type QuoteRes = quote::__private::TokenStream;
 
-use std::collections::hash_map::DefaultHasher;
+use legion_utils::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 const LEGION_TAG: &str = "legion";
