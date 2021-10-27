@@ -3155,6 +3155,7 @@ dependencies = [
  "legion-data-runtime",
  "refs-asset",
  "refs-resource",
+ "serde_json",
  "syn",
  "tempfile",
  "text-resource",
@@ -3219,6 +3220,7 @@ dependencies = [
  "legion-data-runtime-macros",
  "rand 0.8.4",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -84,7 +84,7 @@ fn compute_context_hash(
 ///
 /// let manifest = build.compile(
 ///                         compile_path,
-///                         &manifest_file,
+///                         Some(manifest_file.to_path_buf()),
 ///                         Target::Game,
 ///                         Platform::Windows,
 ///                         &Locale::new("en"),
@@ -223,7 +223,7 @@ impl DataBuild {
     pub fn compile(
         &mut self,
         compile_path: ResourcePathId,
-        manifest_file: &Path,
+        manifest_file: Option<PathBuf>,
         target: Target,
         platform: Platform,
         locale: &Locale,
@@ -233,29 +233,33 @@ impl DataBuild {
             return Err(Error::NotFound);
         }
 
-        let (mut manifest, mut file) = {
-            if let Ok(file) = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .append(false)
-                .open(manifest_file)
-            {
-                if file.metadata().unwrap().len() == 0 {
-                    (Manifest::default(), file)
-                } else {
-                    let manifest_content: Manifest =
-                        serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
-                    (manifest_content, file)
-                }
-            } else {
-                let file = OpenOptions::new()
+        let (mut manifest, file) = {
+            if let Some(manifest_file) = manifest_file {
+                if let Ok(file) = OpenOptions::new()
                     .read(true)
                     .write(true)
-                    .create_new(true)
-                    .open(manifest_file)
-                    .map_err(|_e| Error::InvalidManifest)?;
+                    .append(false)
+                    .open(&manifest_file)
+                {
+                    if file.metadata().unwrap().len() == 0 {
+                        (Manifest::default(), Some(file))
+                    } else {
+                        let manifest_content: Manifest =
+                            serde_json::from_reader(&file).map_err(|_e| Error::InvalidManifest)?;
+                        (manifest_content, Some(file))
+                    }
+                } else {
+                    let file = OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .create_new(true)
+                        .open(manifest_file)
+                        .map_err(|_e| Error::InvalidManifest)?;
 
-                (Manifest::default(), file)
+                    (Manifest::default(), Some(file))
+                }
+            } else {
+                (Manifest::default(), None)
             }
         };
 
@@ -279,11 +283,12 @@ impl DataBuild {
             }
         }
 
-        file.set_len(0).unwrap();
-        file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        manifest.pre_serialize();
-        serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
-
+        if let Some(mut file) = file {
+            file.set_len(0).unwrap();
+            file.seek(std::io::SeekFrom::Start(0)).unwrap();
+            manifest.pre_serialize();
+            serde_json::to_writer_pretty(&file, &manifest).map_err(|_e| Error::InvalidManifest)?;
+        }
         Ok(manifest)
     }
 
@@ -404,6 +409,8 @@ impl DataBuild {
         platform: Platform,
         locale: &Locale,
     ) -> Result<CompileOutput, Error> {
+        self.build_index.record_pathid(&compile_path);
+
         let build_graph = self.build_index.generate_build_graph(compile_path);
 
         let topological_order: Vec<_> = algo::toposort(&build_graph, None).map_err(|_e| {

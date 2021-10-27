@@ -35,6 +35,11 @@ impl Manifest {
     pub fn resources(&self) -> impl Iterator<Item = &ResourceId> {
         self.0.keys()
     }
+
+    /// Extends the manifest with the contents of another manifest.
+    pub fn extend(&mut self, other: Self) {
+        self.0.extend(other.0);
+    }
 }
 
 impl Serialize for Manifest {

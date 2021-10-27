@@ -13,7 +13,7 @@ use std::{
     time::Duration,
 };
 
-use legion_content_store::ContentStore;
+use legion_content_store::{ContentStore, ContentStoreAddr};
 
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
@@ -88,14 +88,14 @@ struct InnerWriteGuard<'a> {
 
 impl<'a> InnerWriteGuard<'a> {
     fn new(inner: &'a UnsafeCell<Inner>, guard: &'a AtomicIsize) -> Self {
-        assert!(0 == guard.fetch_sub(1, Ordering::Acquire));
+        assert_eq!(0, guard.fetch_sub(1, Ordering::Acquire));
         Self { inner, guard }
     }
 }
 
 impl<'a> Drop for InnerWriteGuard<'a> {
     fn drop(&mut self) {
-        assert!(-1 == self.guard.fetch_add(1, Ordering::Acquire));
+        assert_eq!(-1, self.guard.fetch_add(1, Ordering::Acquire));
     }
 }
 
@@ -145,6 +145,26 @@ impl AssetRegistryOptions {
     ) -> Self {
         self.devices
             .push(Box::new(vfs::CasDevice::new(manifest, content_store)));
+        self
+    }
+
+    /// Specifying `build device` will mount a device that allows to build resources
+    /// as they are being requested.
+    pub fn add_device_build(
+        mut self,
+        content_store: Box<dyn ContentStore>,
+        cas_addr: ContentStoreAddr,
+        manifest: Manifest,
+        build_bin: impl AsRef<Path>,
+        buildindex: impl AsRef<Path>,
+    ) -> Self {
+        self.devices.push(Box::new(vfs::BuildDevice::new(
+            manifest,
+            content_store,
+            cas_addr,
+            build_bin,
+            buildindex,
+        )));
         self
     }
 

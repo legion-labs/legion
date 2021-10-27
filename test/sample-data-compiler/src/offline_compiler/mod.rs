@@ -58,7 +58,7 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
         let manifest = build
             .compile(
                 asset_path,
-                &offline_manifest_path,
+                Some(offline_manifest_path),
                 Target::Server,
                 platform,
                 &locale,
