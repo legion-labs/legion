@@ -34,8 +34,14 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
     let resource = resource.get(&resources).unwrap();
 
     let compiled_asset = {
-        let mut content = resource.content.as_bytes().to_owned();
-        content.reverse();
+        let mut text = resource.content.as_bytes().to_owned();
+        text.reverse();
+        let mut content = text.len().to_le_bytes().to_vec();
+        content.append(&mut text);
+
+        // the compiled asset has no reference.
+        let reference_id = 0u128;
+        content.append(&mut reference_id.to_ne_bytes().to_vec());
         content
     };
 

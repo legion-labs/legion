@@ -877,7 +877,7 @@ fn verify_manifest() {
     let manifest = build
         .compile(
             compile_path,
-            &output_manifest_file,
+            Some(output_manifest_file.clone()),
             Target::Game,
             Platform::Windows,
             &Locale::new("en"),
