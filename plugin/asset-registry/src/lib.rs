@@ -68,6 +68,7 @@ use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
 use loading_states::{AssetLoadingStates, LoadingState};
 pub use settings::AssetRegistrySettings;
+pub use settings::DataBuildSettings;
 
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
@@ -94,9 +95,21 @@ impl Plugin for AssetRegistryPlugin {
                 let mut registry = AssetRegistryOptions::new();
                 registry = runtime_data::add_loaders(registry);
                 registry = legion_graphics_runtime::add_loaders(registry);
-                let registry = registry
-                    .add_device_cas(Box::new(content_store), manifest)
-                    .create();
+
+                if let Some(databuild_settings) = &settings.databuild_settings {
+                    registry = registry.add_device_build(
+                        Box::new(content_store),
+                        ContentStoreAddr::from(settings.content_store_addr.clone()),
+                        manifest,
+                        &databuild_settings.build_bin,
+                        &databuild_settings.buildindex,
+                        false,
+                    );
+                } else {
+                    registry = registry.add_device_cas(Box::new(content_store), manifest);
+                }
+
+                let registry = registry.create();
 
                 let load_events = registry.subscribe_to_load_events();
 

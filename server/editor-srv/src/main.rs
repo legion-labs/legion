@@ -1,8 +1,11 @@
-use std::time::Duration;
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuildSettings};
 use legion_async::AsyncPlugin;
 use legion_data_runtime::ResourceId;
 use legion_grpc::{GRPCPlugin, GRPCPluginSettings};
@@ -30,6 +33,8 @@ fn main() {
     const ARG_NAME_PROJECT: &str = "project";
     const ARG_NAME_CAS: &str = "cas";
     const ARG_NAME_MANIFEST: &str = "manifest";
+    const ARG_NAME_BUILDINDEX: &str = "buildindex";
+    const ARG_NAME_DATABUILD_CLI: &str = "databuild";
 
     let args = clap::App::new("Legion Labs editor server")
         .author(clap::crate_authors!())
@@ -59,6 +64,18 @@ fn main() {
                 .takes_value(true)
                 .help("Path to the game manifest"),
         )
+        .arg(
+            Arg::with_name(ARG_NAME_BUILDINDEX)
+                .long(ARG_NAME_BUILDINDEX)
+                .takes_value(true)
+                .help("Path to the build index"),
+        )
+        .arg(
+            Arg::with_name(ARG_NAME_DATABUILD_CLI)
+                .long(ARG_NAME_DATABUILD_CLI)
+                .takes_value(true)
+                .help("Path to data build command line interface"),
+        )
         .get_matches();
 
     let addr = args
@@ -79,6 +96,29 @@ fn main() {
         .value_of(ARG_NAME_MANIFEST)
         .unwrap_or("test/sample-data/runtime/game.manifest");
 
+    let databuild_settings = {
+        let build_bin = {
+            args.value_of(ARG_NAME_DATABUILD_CLI).map_or_else(
+                || {
+                    std::env::current_exe().ok().map_or_else(
+                        || panic!("cannot find test directory"),
+                        |mut path| {
+                            path.pop();
+                            path.as_path().join("data-build.exe")
+                        },
+                    )
+                },
+                PathBuf::from,
+            )
+        };
+        let buildindex = args.value_of(ARG_NAME_BUILDINDEX).map_or_else(
+            || Path::new(content_store_addr).join("build.index"),
+            PathBuf::from,
+        );
+
+        Some(DataBuildSettings::new(build_bin, buildindex))
+    };
+
     let assets_to_load: Vec<ResourceId> = Vec::new();
 
     App::new()
@@ -98,6 +138,7 @@ fn main() {
             content_store_addr,
             game_manifest,
             assets_to_load,
+            databuild_settings,
         ))
         .add_plugin(AssetRegistryPlugin::default())
         .run();

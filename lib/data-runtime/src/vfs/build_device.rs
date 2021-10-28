@@ -70,7 +70,6 @@ impl BuildDevice {
             &self.cas_addr,
             &self.buildindex,
         );
-        println!("building '{}'..", resource_id);
         let output = command.output()?;
 
         if !output.status.success() {
@@ -95,7 +94,6 @@ impl BuildDevice {
         let manifest: Manifest = serde_json::from_slice(&output.stdout).map_err(|_e| {
             std::io::Error::new(io::ErrorKind::InvalidData, "Failed to read manifest")
         })?;
-        println!("building '{}' ended with {:?}!", resource_id, manifest);
 
         Ok(manifest)
     }
