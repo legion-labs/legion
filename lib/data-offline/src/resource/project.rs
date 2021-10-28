@@ -331,7 +331,7 @@ impl Project {
             content_checksum_from_read(&mut resource_file).map_err(Error::IOError)?
         };
 
-        metadata.content_checksum = content_checksum.into();
+        metadata.content_checksum = content_checksum;
         metadata.dependencies = build_dependencies;
 
         meta_file.set_len(0).unwrap();

@@ -1,7 +1,6 @@
 use std::{fmt, str::FromStr};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use siphasher::sip128;
 
 /// Represents the checksum of a content file, as an unsigned 128-bit value.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
@@ -17,12 +16,6 @@ impl Checksum {
 impl From<u128> for Checksum {
     fn from(value: u128) -> Self {
         Self(value)
-    }
-}
-
-impl From<sip128::Hash128> for Checksum {
-    fn from(value: sip128::Hash128) -> Self {
-        value.as_u128().into()
     }
 }
 
