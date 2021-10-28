@@ -58,7 +58,6 @@
 #![warn(missing_docs)]
 
 use legion_utils::{DefaultHash, DefaultHasher128};
-use siphasher::sip128::Hasher128;
 use std::{
     fmt,
     hash::Hasher,
@@ -88,7 +87,7 @@ pub fn content_checksum_from_read(data: &mut impl io::Read) -> io::Result<Checks
         hasher.write(&buffer[..count]);
     }
 
-    Ok(hasher.finish128().as_u128().into())
+    Ok(hasher.finish_128().into())
 }
 
 /// The address of the [`ContentStore`].
