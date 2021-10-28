@@ -152,32 +152,30 @@ impl VulkanTexture {
             let mut usage_flags = vk::ImageUsageFlags::empty();
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::HAS_SHADER_RESOURCE_VIEW)
-            {
+                .intersects(ResourceUsage::AS_SHADER_RESOURCE) {
                 usage_flags |= vk::ImageUsageFlags::SAMPLED;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW)
-            {
+                .intersects(ResourceUsage::AS_UNORDERED_ACCESS) {
                 usage_flags |= vk::ImageUsageFlags::STORAGE;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::HAS_RENDER_TARGET_VIEW)
-            {
+                .intersects(ResourceUsage::AS_RENDER_TARGET) {
                 usage_flags |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::HAS_DEPTH_STENCIL_VIEW)
-            {
+                .intersects(ResourceUsage::AS_DEPTH_STENCIL) {
                 usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
             }
-            if usage_flags.intersects(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::STORAGE) {
+            if texture_def
+                .usage_flags
+                .intersects(ResourceUsage::AS_TRANSFERABLE) {
                 usage_flags |=
                     vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST;
-            }
+            }            
             //
             // Determine image create flags
             //
@@ -188,7 +186,6 @@ impl VulkanTexture {
             if image_type == vk::ImageType::TYPE_3D {
                 create_flags |= vk::ImageCreateFlags::TYPE_2D_ARRAY_COMPATIBLE_KHR;
             }
-
             let required_flags = if texture_def.mem_usage != MemoryUsage::GpuOnly {
                 vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT
             } else {

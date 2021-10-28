@@ -59,6 +59,8 @@
 
 use legion_app::prelude::*;
 use legion_core::Time;
+use legion_ecs::{prelude::IntoSystem, schedule::ParallelSystemDescriptorCoercion};
+use legion_renderer::RendererSystemLabel;
 
 mod grpc;
 mod streamer;
@@ -81,8 +83,9 @@ impl Plugin for StreamerPlugin {
         app.insert_resource(streamer)
             .insert_resource(time)
             .add_event::<streamer::VideoStreamEvent>()
-            .add_system(streamer::Streamer::handle_stream_events)
-            .add_system(streamer::Streamer::update_streams);
+            .add_system(streamer::handle_stream_events)
+            .add_system(streamer::update_streams)
+            .add_system(streamer::render_streams.system().after(RendererSystemLabel::Main));
 
         let webrtc_server =
             webrtc::WebRTCServer::new().expect("failed to instanciate a WebRTC server");

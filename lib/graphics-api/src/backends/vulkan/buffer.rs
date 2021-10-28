@@ -26,7 +26,7 @@ impl VulkanBuffer {
 
         if buffer_def
             .usage_flags
-            .intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW)
+            .intersects(ResourceUsage::AS_CONST_BUFFER)
         {
             allocation_size = legion_utils::memory::round_size_up_to_alignment_u64(
                 buffer_def.size,

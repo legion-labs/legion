@@ -98,19 +98,27 @@ fn compile_to_unoptimized_spirv(params: &CompileParams, shader_code: &str) -> Re
     .map_err(|err| anyhow!(err))
 }
 
-fn get_shader_source(params: &CompileParams) -> Result<String, anyhow::Error> {
-    let mut shader_code = String::new();
-
-    match &params.shader_source {
-        ShaderSource::Code(code) => {
-            shader_code = code.to_string();
-        }
-        ShaderSource::Path(path) => {
-            let mut f = std::fs::File::open(path).unwrap();
-            f.read_to_string(&mut shader_code)?;
+fn get_shader_source(params: &CompileParams) -> Result<String> {
+    
+    let shader_code = {
+        match params.shader_source {
+            ShaderSource::Code(code) => {
+                code.to_string()
+            }
+            ShaderSource::Path(path) => {
+                match std::fs::File::open(path) {
+                    Ok(mut file) => {
+                        let mut shader_code = String::new();
+                        file.read_to_string(&mut shader_code)?;
+                        shader_code
+                    }
+                    Err(e) => {
+                        return Err(anyhow!(e));
+                    }
+                }
+            }
         }
     };
-
     Ok(shader_code)
 }
 

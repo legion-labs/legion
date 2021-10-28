@@ -19,25 +19,25 @@ pub(crate) fn resource_type_buffer_usage_flags(
 ) -> vk::BufferUsageFlags {
     let mut usage_flags = vk::BufferUsageFlags::TRANSFER_SRC;
 
-    if resource_usage.intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW) {
+    if resource_usage.intersects(ResourceUsage::AS_CONST_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::UNIFORM_BUFFER;
     }
 
     if resource_usage.intersects(
-        ResourceUsage::HAS_UNORDERED_ACCESS_VIEW | ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+        ResourceUsage::AS_UNORDERED_ACCESS | ResourceUsage::AS_SHADER_RESOURCE,
     ) {
         usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
     }
 
-    if resource_usage.intersects(ResourceUsage::HAS_INDEX_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::AS_INDEX_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::INDEX_BUFFER;
     }
 
-    if resource_usage.intersects(ResourceUsage::HAS_VERTEX_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::AS_VERTEX_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::VERTEX_BUFFER;
     }
 
-    if resource_usage.intersects(ResourceUsage::HAS_INDIRECT_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::AS_INDIRECT_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::INDIRECT_BUFFER;
     }
 

@@ -66,29 +66,32 @@ impl Default for ApiDef {
 bitflags::bitflags! {
     pub struct ResourceUsage: u16 {
         // buffer
-        const HAS_CONST_BUFFER_VIEW = 0x0001;
+        const AS_CONST_BUFFER = 0x0001;
         // buffer/texture
-        const HAS_SHADER_RESOURCE_VIEW = 0x0002;
+        const AS_SHADER_RESOURCE = 0x0002;
         // buffer/texture
-        const HAS_UNORDERED_ACCESS_VIEW = 0x0004;
+        const AS_UNORDERED_ACCESS = 0x0004;
         // buffer/texture
-        const HAS_RENDER_TARGET_VIEW = 0x0008;
+        const AS_RENDER_TARGET = 0x0008;
         // texture
-        const HAS_DEPTH_STENCIL_VIEW = 0x0010;
+        const AS_DEPTH_STENCIL = 0x0010;
         // buffer
-        const HAS_VERTEX_BUFFER = 0x0020;
+        const AS_VERTEX_BUFFER = 0x0020;
         // buffer
-        const HAS_INDEX_BUFFER = 0x0040;
+        const AS_INDEX_BUFFER = 0x0040;
         // buffer
-        const HAS_INDIRECT_BUFFER  = 0x0080;
+        const AS_INDIRECT_BUFFER  = 0x0080;
+        // texture
+        const AS_TRANSFERABLE = 0x0100;
         // meta
         const BUFFER_ONLY_USAGE_FLAGS =
-            Self::HAS_CONST_BUFFER_VIEW.bits|
-            Self::HAS_VERTEX_BUFFER.bits|
-            Self::HAS_INDEX_BUFFER.bits|
-            Self::HAS_INDIRECT_BUFFER.bits;
+            Self::AS_CONST_BUFFER.bits|
+            Self::AS_VERTEX_BUFFER.bits|
+            Self::AS_INDEX_BUFFER.bits|
+            Self::AS_INDIRECT_BUFFER.bits;
         const TEXTURE_ONLY_USAGE_FLAGS =
-            Self::HAS_DEPTH_STENCIL_VIEW.bits;
+            Self::AS_DEPTH_STENCIL.bits|
+            Self::AS_TRANSFERABLE.bits;
     }
 }
 
@@ -145,27 +148,27 @@ impl BufferDef {
     }
 
     pub fn for_staging_vertex_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size, ResourceUsage::HAS_VERTEX_BUFFER)
+        Self::for_staging_buffer(size, ResourceUsage::AS_VERTEX_BUFFER)
     }
 
     pub fn for_staging_vertex_buffer_data<T: Copy>(data: &[T]) -> Self {
-        Self::for_staging_buffer_data(data, ResourceUsage::HAS_VERTEX_BUFFER)
+        Self::for_staging_buffer_data(data, ResourceUsage::AS_VERTEX_BUFFER)
     }
 
     pub fn for_staging_index_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size, ResourceUsage::HAS_INDEX_BUFFER)
+        Self::for_staging_buffer(size, ResourceUsage::AS_INDEX_BUFFER)
     }
 
     pub fn for_staging_index_buffer_data<T: Copy>(data: &[T]) -> Self {
-        Self::for_staging_buffer_data(data, ResourceUsage::HAS_INDEX_BUFFER)
+        Self::for_staging_buffer_data(data, ResourceUsage::AS_INDEX_BUFFER)
     }
 
     pub fn for_staging_uniform_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size, ResourceUsage::HAS_CONST_BUFFER_VIEW)
+        Self::for_staging_buffer(size, ResourceUsage::AS_CONST_BUFFER)
     }
 
     pub fn for_staging_uniform_buffer_data<T: Copy>(data: &[T]) -> Self {
-        Self::for_staging_buffer_data(data, ResourceUsage::HAS_CONST_BUFFER_VIEW)
+        Self::for_staging_buffer_data(data, ResourceUsage::AS_CONST_BUFFER)
     }
 }
 
@@ -234,7 +237,7 @@ impl TextureDef {
             !(self.format.has_depth()
                 && self
                     .usage_flags
-                    .intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW)),
+                    .intersects(ResourceUsage::AS_UNORDERED_ACCESS)),
             "Cannot use depth stencil as UAV"
         );
     }
@@ -313,7 +316,7 @@ impl BufferViewDef {
             GPUViewType::ConstantBufferView => {
                 assert!(buffer_def
                     .usage_flags
-                    .intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW));
+                    .intersects(ResourceUsage::AS_CONST_BUFFER));
                 assert!(self.element_size > 0);
                 assert!(self.byte_offset == 0);
                 assert!(self.element_count == 1);
@@ -322,7 +325,7 @@ impl BufferViewDef {
             GPUViewType::ShaderResourceView | GPUViewType::UnorderedAccessView => {
                 assert!(buffer_def
                     .usage_flags
-                    .intersects(ResourceUsage::HAS_SHADER_RESOURCE_VIEW));
+                    .intersects(ResourceUsage::AS_SHADER_RESOURCE));
                 if self
                     .buffer_view_flags
                     .intersects(BufferViewFlags::RAW_BUFFER)
@@ -413,7 +416,7 @@ impl TextureViewDef {
             GPUViewType::ShaderResourceView => {
                 assert!(texture_def
                     .usage_flags
-                    .intersects(ResourceUsage::HAS_SHADER_RESOURCE_VIEW));
+                    .intersects(ResourceUsage::AS_SHADER_RESOURCE));
 
                 match self.view_dimension {
                     ViewDimension::_2D => {
@@ -434,7 +437,7 @@ impl TextureViewDef {
             GPUViewType::UnorderedAccessView => {
                 assert!(texture_def
                     .usage_flags
-                    .intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW));
+                    .intersects(ResourceUsage::AS_UNORDERED_ACCESS));
 
                 assert!(self.mip_count == 1);
 
@@ -455,7 +458,7 @@ impl TextureViewDef {
             GPUViewType::RenderTargetView => {
                 assert!(texture_def
                     .usage_flags
-                    .intersects(ResourceUsage::HAS_RENDER_TARGET_VIEW));
+                    .intersects(ResourceUsage::AS_RENDER_TARGET));
 
                 assert!(self.mip_count == 1);
 
@@ -476,7 +479,7 @@ impl TextureViewDef {
             GPUViewType::DepthStencilView => {
                 assert!(texture_def
                     .usage_flags
-                    .intersects(ResourceUsage::HAS_DEPTH_STENCIL_VIEW));
+                    .intersects(ResourceUsage::AS_DEPTH_STENCIL));
 
                 assert!(self.mip_count == 1);
 
@@ -719,6 +722,15 @@ pub struct VertexLayout {
     pub buffers: Vec<VertexLayoutBuffer>,
 }
 
+impl Default for VertexLayout {
+    fn default() -> Self {
+        Self {
+            attributes: Vec::new(),
+            buffers: Vec::new(),
+        }
+    }
+}
+
 /// Affects depth testing and stencil usage. Commonly used to enable "Z-buffering".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
@@ -806,7 +818,7 @@ impl Hash for RasterizerState {
 impl Default for RasterizerState {
     fn default() -> Self {
         Self {
-            cull_mode: CullMode::None,
+            cull_mode: CullMode::default(),
             front_face: FrontFace::default(),
             fill_mode: FillMode::default(),
             depth_bias: 0.0,

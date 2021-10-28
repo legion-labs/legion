@@ -39,8 +39,7 @@ impl RenderSurface {
             array_length: 1,
             mip_count: 1,
             format: Format::R16G16B16A16_SFLOAT,
-            usage_flags: ResourceUsage::HAS_RENDER_TARGET_VIEW
-                | ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+            usage_flags: ResourceUsage::AS_RENDER_TARGET|ResourceUsage::AS_SHADER_RESOURCE|ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,

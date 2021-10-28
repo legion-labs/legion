@@ -62,7 +62,6 @@ impl PresenterWindow {
                 .unwrap();
 
             cmd_pools.push(cmd_pool);
-
             cmd_buffers.push(cmd_buffer);
         }
 

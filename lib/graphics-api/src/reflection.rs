@@ -90,9 +90,7 @@ impl ShaderResource {
 /// Reflection data for a single shader stage
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-pub struct ShaderStageReflection {
-    // For now, this doesn't do anything, so commented out
-    //pub vertex_inputs: Vec<VertexInput>,
+pub struct ShaderStageReflection {    
     pub shader_stage: ShaderStageFlags,
     pub shader_resources: Vec<ShaderResource>,
     pub push_constants: Vec<PushConstant>,

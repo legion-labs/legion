@@ -132,8 +132,7 @@ fn run() -> GfxResult<()> {
                 mip_count: 1,
                 // sample_count: SampleCount::SampleCount1,
                 format: Format::R8G8B8A8_UNORM,
-                usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW
-                    | ResourceUsage::HAS_RENDER_TARGET_VIEW,
+                usage_flags: ResourceUsage::AS_SHADER_RESOURCE|ResourceUsage::AS_RENDER_TARGET,
                 resource_flags: ResourceFlags::empty(),
                 mem_usage: MemoryUsage::GpuOnly,
                 // dimensions: TextureDimensions::Dim2D,
@@ -154,7 +153,7 @@ fn run() -> GfxResult<()> {
                 mip_count: 1,
                 format: Format::R8G8B8A8_UNORM,
                 mem_usage: MemoryUsage::GpuToCpu,
-                usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
+                usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
                 resource_flags: ResourceFlags::empty(),
                 tiling: TextureTiling::Linear,
             })?;

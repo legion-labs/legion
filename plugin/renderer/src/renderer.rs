@@ -190,6 +190,8 @@ pub struct TmpRenderPass {
     descriptor_set_array: <DefaultApi as GfxApi>::DescriptorSetArray,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
+    pub color: [f32; 4],
+    pub speed: f32,
 }
 
 impl TmpRenderPass {
@@ -360,6 +362,8 @@ impl TmpRenderPass {
             descriptor_set_array,
             root_signature,
             pipeline,
+            color: [0f32, 0f32, 0f32, 1.0f32],
+            speed: 1.0f32,
         }
     }
 
@@ -370,7 +374,7 @@ impl TmpRenderPass {
         render_view: &<DefaultApi as GfxApi>::TextureView,
     ) {
         let render_frame_idx = renderer.render_frame_idx;
-        let elapsed_secs = renderer.frame_idx as f32 / 60.0;
+        let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
 
         //
         // Update vertices
@@ -418,7 +422,7 @@ impl TmpRenderPass {
                     texture_view: render_view,
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
-                    clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
+                    clear_value: ColorClearValue(self.color),
                 }],
                 None,
             )

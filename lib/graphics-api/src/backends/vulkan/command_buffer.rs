@@ -2,14 +2,14 @@
 use super::{
     internal, VulkanApi, VulkanBuffer, VulkanCommandPool, VulkanDescriptorSetArray,
     VulkanDescriptorSetHandle, VulkanDeviceContext, VulkanPipeline, VulkanRootSignature,
-    VulkanTexture,
+    VulkanTexture, 
 };
 use crate::{
     BarrierQueueTransition, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
     CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
     DepthStencilRenderTargetBinding, DescriptorSetArray, GfxResult, IndexBufferBinding, Pipeline,
     QueueType, ResourceState, RootSignature, Texture, TextureBarrier, TextureView,
-    VertexBufferBinding,
+    VertexBufferBinding, ResourceUsage
 };
 use ash::vk;
 use std::{
@@ -769,7 +769,10 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         src_texture: &VulkanTexture,
         dst_texture: &VulkanTexture,
         params: &CmdBlitParams,
-    ) -> GfxResult<()> {
+    ) -> GfxResult<()> {        
+        assert!(src_texture.texture_def().usage_flags.intersects(ResourceUsage::AS_TRANSFERABLE));
+        assert!(dst_texture.texture_def().usage_flags.intersects(ResourceUsage::AS_TRANSFERABLE));
+
         let src_aspect_mask =
             super::internal::image_format_to_aspect_mask(src_texture.texture_def().format);
         let dst_aspect_mask =
@@ -849,6 +852,10 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         dst_texture: &VulkanTexture,
         params: &CmdCopyTextureParams,
     ) -> GfxResult<()> {
+
+        assert!( src_texture.texture_def().usage_flags.intersects(ResourceUsage::AS_TRANSFERABLE));
+        assert!( dst_texture.texture_def().usage_flags.intersects(ResourceUsage::AS_TRANSFERABLE));
+
         let src_aspect_mask =
             super::internal::image_format_to_aspect_mask(src_texture.texture_def().format);
         let dst_aspect_mask =

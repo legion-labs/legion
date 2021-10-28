@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{error::Error, sync::Arc};
 
 pub type GfxResult<T> = Result<T, GfxError>;
 
@@ -15,6 +15,22 @@ pub enum GfxError {
     VkCreateInstanceError(Arc<crate::vulkan::VkCreateInstanceError>),
     #[cfg(feature = "vulkan")]
     VkMemError(Arc<vk_mem::Error>),
+}
+
+impl std::fmt::Display for GfxError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {                
+        match self {
+            GfxError::StringError(msg) => write!(f, "{}", msg ),
+            GfxError::IoError(e) => e.fmt(f),
+            GfxError::VkError(e) => e.fmt(f),
+            GfxError::VkLoadingError(e) => e.fmt(f),
+            GfxError::VkCreateInstanceError(e) => e.fmt(f),
+            GfxError::VkMemError(e) => e.fmt(f),
+        }
+    }
+}
+
+impl Error for GfxError {    
 }
 
 impl From<&str> for GfxError {

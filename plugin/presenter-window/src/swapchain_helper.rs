@@ -1,5 +1,4 @@
 //! Swapchain helper
-
 use crossbeam_channel::{Receiver, Sender};
 use graphics_api::{
     DeviceContext, Fence, Format, GfxApi, GfxError, GfxResult, PresentSuccessResult, Queue,
@@ -100,7 +99,8 @@ impl<A: GfxApi> PresentableFrame<A> {
         &self.swapchain_image.texture
     }
 
-    /// Returns the acquired swapchain image
+    /// Returns the acquired swapchain image    
+    #[allow(dead_code)]
     pub fn swapchain_rtv(&self) -> &A::TextureView {
         &self.swapchain_image.render_target_view
     }
@@ -281,6 +281,7 @@ impl<A: GfxApi> SwapchainHelper<A> {
     }
 
     /// Get format
+    #[allow(dead_code)]
     pub fn format(&self) -> Format {
         self.format
     }
@@ -291,6 +292,7 @@ impl<A: GfxApi> SwapchainHelper<A> {
     }
 
     /// Get swapchain definition
+    #[allow(dead_code)]
     pub fn swapchain_def(&self) -> &SwapchainDef {
         &self.swapchain_def
     }

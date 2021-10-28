@@ -3556,6 +3556,7 @@ dependencies = [
  "legion-graphics-api",
  "legion-grpc",
  "legion-mp4",
+ "legion-pso-compiler",
  "legion-renderer",
  "legion-streaming-proto",
  "legion-telemetry",
