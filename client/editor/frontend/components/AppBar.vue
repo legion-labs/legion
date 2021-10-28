@@ -3,7 +3,7 @@
     <v-app-bar-nav-icon @click="localDrawer = !drawer"></v-app-bar-nav-icon>
     <v-app-bar-title>Legion Labs Editor</v-app-bar-title>
     <v-spacer></v-spacer>
-    <v-btn icon>
+    <v-btn icon @click="authenticate()">
       <v-avatar>
         <v-icon>mdi-account-circle</v-icon>
       </v-avatar>
@@ -29,6 +29,8 @@
 </template>
 
 <script>
+import { authenticate } from "~/modules/api/index";
+
 export default {
   name: "AppBar",
   props: {
@@ -109,6 +111,9 @@ export default {
     },
     close() {
       this.windowManager.close();
+    },
+    async authenticate() {
+      console.log(await authenticate());
     },
   },
 };

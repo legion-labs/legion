@@ -2,6 +2,12 @@ import { invoke } from "@tauri-apps/api/tauri";
 
 import { bytes_in, bytes_out } from "./conversion";
 
+export async function authenticate() {
+    const result = await invoke("authenticate");
+
+    return result;
+}
+
 export async function initialize_stream(localSessionDescription) {
     const result = await invoke("initialize_stream", {
         rtcSessionDescription: bytes_out(localSessionDescription.toJSON()),

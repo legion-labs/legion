@@ -72,6 +72,7 @@ use interop::js::editor::{
 
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
+use legion_auth::authenticator::Authenticator;
 use legion_editor_proto::{
     editor_client::EditorClient, GetResourcePropertiesRequest, SearchResourcesRequest,
     UpdateResourcePropertiesRequest,
@@ -80,22 +81,30 @@ use legion_grpc::client::Client as GRPCClient;
 use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
 use legion_telemetry::prelude::*;
-use std::{error::Error, str::FromStr};
+use simple_logger::SimpleLogger;
+use std::error::Error;
 use tauri::async_runtime::Mutex;
-use tonic::codegen::http::Uri;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let _telemetry_guard = TelemetrySystemGuard::new(None);
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
     let config = Config::new_from_environment()?;
-    let grpc_client = GRPCClient::new(Uri::from_str(&config.server_addr)?);
+
+    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
+        SimpleLogger::new().with_level(config.log_level),
+    )));
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+
+    let authenticator = Authenticator::from_authorization_url(&config.authorization_url)?;
+    let grpc_client = GRPCClient::new(config.server_addr.clone());
     let streamer_client = Mutex::new(StreamerClient::new(grpc_client.clone()));
     let editor_client = Mutex::new(EditorClient::new(grpc_client));
+
     let builder = tauri::Builder::default()
         .manage(config)
+        .manage(authenticator)
         .manage(streamer_client)
         .manage(editor_client)
         .invoke_handler(tauri::generate_handler![
+            authenticate,
             initialize_stream,
             search_resources,
             get_resource_properties,
@@ -165,6 +174,11 @@ fn on_video_chunk_received(chunk_header: &str) {
             log::error!("Error parsing chunk header: {}", e);
         }
     }
+}
+
+#[legion_tauri_command]
+async fn authenticate(authenticator: tauri::State<'_, Authenticator>) -> anyhow::Result<String> {
+    authenticator.get_authorization_code().await
 }
 
 #[legion_tauri_command]
