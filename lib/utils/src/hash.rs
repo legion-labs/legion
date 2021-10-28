@@ -1,10 +1,13 @@
 use ahash::{AHasher, RandomState};
+use siphasher::sip128::{Hasher128, SipHasher};
 use std::hash::{BuildHasher, Hash, Hasher};
 
 /// The `DefaultHash` trait is used to obtain a hash value for a single typed value.
 /// It will rely on the default `Hasher` provided by the std library.
 pub trait DefaultHash {
     fn default_hash(&self) -> u64;
+
+    fn default_hash_128(&self) -> u128;
 }
 
 // Default implementation of DefaultHash for all types that implement the `Hash` trait.
@@ -18,6 +21,13 @@ where
         self.hash(&mut hasher);
         hasher.finish()
     }
+
+    /// Returns a 128-bit hash value for a single typed value, using `DefaultHasher128`.
+    fn default_hash_128(&self) -> u128 {
+        let mut hasher = DefaultHasher128::new();
+        self.hash(&mut hasher);
+        hasher.finish128().as_u128()
+    }
 }
 
 pub struct DefaultHasher {}
@@ -27,6 +37,15 @@ impl DefaultHasher {
     pub fn new() -> AHasher {
         let builder = FixedState::default();
         builder.build_hasher()
+    }
+}
+
+pub struct DefaultHasher128 {}
+
+impl DefaultHasher128 {
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new() -> SipHasher {
+        SipHasher::new()
     }
 }
 

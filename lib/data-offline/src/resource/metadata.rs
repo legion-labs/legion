@@ -84,13 +84,13 @@ impl Metadata {
 
     pub(crate) fn new_with_dependencies(
         name: ResourcePathName,
-        content_checksum: u128,
+        content_checksum: Checksum,
         deps: &[ResourcePathId],
     ) -> Self {
         Self {
             name,
             dependencies: deps.to_vec(),
-            content_checksum: content_checksum.into(),
+            content_checksum,
         }
     }
 

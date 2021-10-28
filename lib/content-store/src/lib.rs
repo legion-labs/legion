@@ -57,20 +57,18 @@
 #![allow()]
 #![warn(missing_docs)]
 
-use siphasher::sip128::{self, Hasher128};
-use std::hash::Hasher;
+use legion_utils::{DefaultHash, DefaultHasher128};
+use siphasher::sip128::Hasher128;
 use std::{
     fmt,
-    hash::Hash,
+    hash::Hasher,
     io,
     path::{Path, PathBuf},
 };
 
 /// Returns the hash of the provided data.
 pub fn content_checksum(data: &[u8]) -> Checksum {
-    let mut hasher = sip128::SipHasher::new();
-    data.hash(&mut hasher);
-    hasher.finish128().into()
+    data.default_hash_128().into()
 }
 
 /// Returns the hash of the data provided through a Read trait.
@@ -78,8 +76,8 @@ pub fn content_checksum(data: &[u8]) -> Checksum {
 /// # Errors
 ///
 /// If an error is returned, the checksum is unavailable.
-pub fn content_checksum_from_read(data: &mut impl io::Read) -> io::Result<u128> {
-    let mut hasher = sip128::SipHasher::new();
+pub fn content_checksum_from_read(data: &mut impl io::Read) -> io::Result<Checksum> {
+    let mut hasher = DefaultHasher128::new();
     let mut buffer = [0; 1024];
     loop {
         let count = data.read(&mut buffer)?;
@@ -90,7 +88,7 @@ pub fn content_checksum_from_read(data: &mut impl io::Read) -> io::Result<u128> 
         hasher.write(&buffer[..count]);
     }
 
-    Ok(hasher.finish128().into())
+    Ok(hasher.finish128().as_u128().into())
 }
 
 /// The address of the [`ContentStore`].
