@@ -98,6 +98,7 @@ fn build_device() {
             manifest,
             DATABUILD_EXE,
             buildindex_path,
+            true,
         )
         .create();
 

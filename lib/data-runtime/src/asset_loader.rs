@@ -249,9 +249,9 @@ impl AssetLoaderIO {
         self.loaders.insert(kind, loader);
     }
 
-    fn read_resource(&self, id: ResourceId) -> io::Result<Vec<u8>> {
+    fn load_resource(&self, id: ResourceId) -> io::Result<Vec<u8>> {
         for device in &self.devices {
-            if let Some(content) = device.lookup(id) {
+            if let Some(content) = device.load(id) {
                 return Ok(content);
             }
         }
@@ -262,11 +262,20 @@ impl AssetLoaderIO {
         ))
     }
 
+    fn reload_resource(&self, id: ResourceId) -> io::Result<Vec<u8>> {
+        for device in &self.devices {
+            if let Some(content) = device.reload(id) {
+                return Ok(content);
+            }
+        }
+
+        // fallback to loading existing resources.
+        self.load_resource(id)
+    }
+
     fn process_reload(&mut self, primary_handle: &HandleUntyped) -> Result<(), io::Error> {
         let primary_id = primary_handle.id();
-        let asset_data = self.read_resource(primary_id)?;
-
-        // todo: call load_init after a reload.
+        let asset_data = self.reload_resource(primary_id)?;
 
         let load_func = {
             if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
@@ -326,7 +335,7 @@ impl AssetLoaderIO {
             return Ok(());
         }
         let asset_data = self
-            .read_resource(primary_id)
+            .load_resource(primary_id)
             .map_err(|e| (primary_handle.clone(), load_id, e))?;
 
         let load_func = {

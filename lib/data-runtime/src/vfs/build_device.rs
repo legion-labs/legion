@@ -16,6 +16,7 @@ pub(crate) struct BuildDevice {
     databuild_bin: PathBuf,
     cas_addr: ContentStoreAddr,
     buildindex: PathBuf,
+    force_recompile: bool,
 }
 
 impl BuildDevice {
@@ -25,6 +26,7 @@ impl BuildDevice {
         cas_addr: ContentStoreAddr,
         build_bin: impl AsRef<Path>,
         buildindex: impl AsRef<Path>,
+        force_recompile: bool,
     ) -> Self {
         Self {
             manifest: RefCell::new(manifest),
@@ -32,12 +34,24 @@ impl BuildDevice {
             databuild_bin: build_bin.as_ref().to_owned(),
             cas_addr,
             buildindex: buildindex.as_ref().to_owned(),
+            force_recompile,
         }
     }
 }
 
 impl Device for BuildDevice {
-    fn lookup(&self, id: ResourceId) -> Option<Vec<u8>> {
+    fn load(&self, id: ResourceId) -> Option<Vec<u8>> {
+        if self.force_recompile {
+            self.reload(id)
+        } else {
+            let (checksum, size) = self.manifest.borrow().find(id)?;
+            let content = self.content_store.read(checksum)?;
+            assert_eq!(content.len(), size);
+            Some(content)
+        }
+    }
+
+    fn reload(&self, id: ResourceId) -> Option<Vec<u8>> {
         let output = self.build_resource(id).ok()?;
         self.manifest.borrow_mut().extend(output);
 
@@ -56,6 +70,7 @@ impl BuildDevice {
             &self.cas_addr,
             &self.buildindex,
         );
+        println!("building '{}'..", resource_id);
         let output = command.output()?;
 
         if !output.status.success() {
@@ -80,6 +95,7 @@ impl BuildDevice {
         let manifest: Manifest = serde_json::from_slice(&output.stdout).map_err(|_e| {
             std::io::Error::new(io::ErrorKind::InvalidData, "Failed to read manifest")
         })?;
+        println!("building '{}' ended with {:?}!", resource_id, manifest);
 
         Ok(manifest)
     }

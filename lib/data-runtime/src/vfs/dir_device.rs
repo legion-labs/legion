@@ -18,7 +18,7 @@ impl DirDevice {
 }
 
 impl Device for DirDevice {
-    fn lookup(&self, id: ResourceId) -> Option<Vec<u8>> {
+    fn load(&self, id: ResourceId) -> Option<Vec<u8>> {
         let path = self.dir.join(format!("{:x}", id));
         std::fs::read(path).ok()
     }

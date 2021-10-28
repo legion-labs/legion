@@ -2,7 +2,10 @@ use crate::ResourceId;
 
 // todo: this should return `Box<dyn io::Read>` instead of `Vec<u8>`.
 pub(crate) trait Device: Send {
-    fn lookup(&self, id: ResourceId) -> Option<Vec<u8>>;
+    fn load(&self, id: ResourceId) -> Option<Vec<u8>>;
+    fn reload(&self, _id: ResourceId) -> Option<Vec<u8>> {
+        None
+    }
 }
 
 mod build_device;

@@ -19,7 +19,7 @@ impl CasDevice {
 }
 
 impl Device for CasDevice {
-    fn lookup(&self, id: ResourceId) -> Option<Vec<u8>> {
+    fn load(&self, id: ResourceId) -> Option<Vec<u8>> {
         let (checksum, size) = self.manifest.find(id)?;
         let content = self.content_store.read(checksum)?;
         assert_eq!(content.len(), size);

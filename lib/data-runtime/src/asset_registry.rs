@@ -150,6 +150,8 @@ impl AssetRegistryOptions {
 
     /// Specifying `build device` will mount a device that allows to build resources
     /// as they are being requested.
+    ///
+    /// `force_recompile` if set will cause each load request to go through data compilation.
     pub fn add_device_build(
         mut self,
         content_store: Box<dyn ContentStore>,
@@ -157,6 +159,7 @@ impl AssetRegistryOptions {
         manifest: Manifest,
         build_bin: impl AsRef<Path>,
         buildindex: impl AsRef<Path>,
+        force_recompile: bool,
     ) -> Self {
         self.devices.push(Box::new(vfs::BuildDevice::new(
             manifest,
@@ -164,6 +167,7 @@ impl AssetRegistryOptions {
             cas_addr,
             build_bin,
             buildindex,
+            force_recompile,
         )));
         self
     }
