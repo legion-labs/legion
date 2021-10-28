@@ -26,7 +26,7 @@ where
     fn default_hash_128(&self) -> u128 {
         let mut hasher = DefaultHasher128::new();
         self.hash(&mut hasher);
-        hasher.finish128().as_u128()
+        hasher.finish_128()
     }
 }
 
@@ -40,12 +40,31 @@ impl DefaultHasher {
     }
 }
 
-pub struct DefaultHasher128 {}
+pub struct DefaultHasher128(SipHasher);
 
 impl DefaultHasher128 {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> SipHasher {
-        SipHasher::new()
+    pub fn new() -> Self {
+        Self(SipHasher::new())
+    }
+
+    pub fn finish_128(&self) -> u128 {
+        self.0.finish128().as_u128()
+    }
+}
+
+impl Default for DefaultHasher128 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Hasher for DefaultHasher128 {
+    fn write(&mut self, bytes: &[u8]) {
+        self.0.write(bytes);
+    }
+
+    fn finish(&self) -> u64 {
+        self.0.finish()
     }
 }
 

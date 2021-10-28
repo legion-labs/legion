@@ -3103,7 +3103,6 @@ dependencies = [
  "hex",
  "legion-utils",
  "serde",
- "siphasher",
 ]
 
 [[package]]
