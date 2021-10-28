@@ -20,6 +20,7 @@ legion-streamer = { path = "../../plugin/streamer", version = "0.1.0" }
 legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
 legion-editor-proto = { path = "../../proto/editor", version = "0.1.0" }
 legion-telemetry = { path = "../../lib/telemetry" }
+legion-settings = { path = "../../lib/settings" }
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
 clap = "2.33"

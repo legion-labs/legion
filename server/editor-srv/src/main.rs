@@ -1,7 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
@@ -11,6 +8,7 @@ use legion_data_runtime::ResourceId;
 use legion_grpc::{GRPCPlugin, GRPCPluginSettings};
 use legion_renderer::RendererPlugin;
 use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
+use legion_settings::Settings;
 use legion_streamer::StreamerPlugin;
 use legion_telemetry::prelude::*;
 use legion_transform::TransformPlugin;
@@ -78,23 +76,37 @@ fn main() {
         )
         .get_matches();
 
-    let addr = args
-        .value_of(ARG_NAME_ADDR)
-        .unwrap_or("[::1]:50051")
-        .parse()
-        .unwrap();
+    let settings = Settings::new();
 
-    let project_folder = args
-        .value_of(ARG_NAME_PROJECT)
-        .unwrap_or("test/sample-data");
+    let server_addr: SocketAddr = {
+        if let Some(addr) = args.value_of(ARG_NAME_ADDR) {
+            addr.parse()
+        } else if let Some(addr) = settings.get::<SocketAddr>("editor_srv.server_addr") {
+            Ok(addr)
+        } else {
+            "[::1]:50051".parse()
+        }
+    }
+    .unwrap();
 
-    let content_store_addr = args
+    let project_folder = {
+        if let Some(params) = args.value_of(ARG_NAME_PROJECT) {
+            PathBuf::from(params)
+        } else {
+            settings
+                .get_absolute_path("editor_srv.project_dir")
+                .unwrap_or_else(|| PathBuf::from("test/sample-data"))
+        }
+    };
+
+    let content_store_path = args
         .value_of(ARG_NAME_CAS)
-        .unwrap_or("test/sample-data/temp");
+        .map_or_else(|| project_folder.join("temp"), PathBuf::from);
 
-    let game_manifest = args
-        .value_of(ARG_NAME_MANIFEST)
-        .unwrap_or("test/sample-data/runtime/game.manifest");
+    let game_manifest_path = args.value_of(ARG_NAME_MANIFEST).map_or_else(
+        || project_folder.join("runtime").join("game.manifest"),
+        PathBuf::from,
+    );
 
     let databuild_settings = {
         let build_bin = {
@@ -111,10 +123,9 @@ fn main() {
                 PathBuf::from,
             )
         };
-        let buildindex = args.value_of(ARG_NAME_BUILDINDEX).map_or_else(
-            || Path::new(content_store_addr).join("build.index"),
-            PathBuf::from,
-        );
+        let buildindex = args
+            .value_of(ARG_NAME_BUILDINDEX)
+            .map_or_else(|| content_store_path.join("build.index"), PathBuf::from);
 
         Some(DataBuildSettings::new(build_bin, buildindex))
     };
@@ -129,15 +140,15 @@ fn main() {
         .add_plugin(AsyncPlugin::default())
         .insert_resource(ResourceRegistrySettings::new(project_folder))
         .add_plugin(ResourceRegistryPlugin::default())
-        .insert_resource(GRPCPluginSettings::new(addr))
+        .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
         .add_plugin(RendererPlugin::default())
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
-            content_store_addr,
-            game_manifest,
+            content_store_path,
+            game_manifest_path,
             assets_to_load,
             databuild_settings,
         ))
