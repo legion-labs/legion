@@ -160,14 +160,6 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
             };
         }
 
-        lazy_static::lazy_static! {
-            static ref #offline_default_descriptor : HashMap<u64, PropertyDescriptor> = {
-                let mut map = HashMap::new();
-                #(#offline_fields_editor_descriptors)*
-                map
-            };
-        }
-
         impl Resource for #offline_identifier {
             const TYPENAME: &'static str = #offline_name;
         }
