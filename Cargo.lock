@@ -2238,7 +2238,6 @@ dependencies = [
 name = "generic_data_offline"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "lazy_static",
  "legion-data-codegen",
  "legion-data-offline",
@@ -3199,7 +3198,6 @@ dependencies = [
  "hex",
  "legion-content-store",
  "legion-data-runtime",
- "legion-math",
  "legion-utils",
  "rand 0.8.4",
  "serde",
