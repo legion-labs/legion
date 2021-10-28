@@ -22,7 +22,10 @@ export default {
         return this.value;
       },
       set(val) {
-        this.$emit("input", val);
+        var numVal = parseFloat(val);
+        if (numVal != NaN) {
+          this.$emit("input", numVal);
+        }
       },
     },
   },

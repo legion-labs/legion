@@ -3,9 +3,12 @@ use std::{any::Any, collections::HashMap, io};
 
 use legion_data_runtime::ResourceType;
 
-use crate::{PropertyDescriptor, ResourcePathId};
+use crate::ResourcePathId;
 
-use super::{OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
+use super::{
+    OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor,
+    ResourceReflection,
+};
 
 /// Options which can be used to configure [`ResourceRegistry`] creation.
 pub struct ResourceRegistryOptions {
@@ -198,17 +201,31 @@ impl ResourceRegistry {
     }
 
     /// Returns the Properties bag of a Resource
-    pub fn get_resource_properties(
-        &self,
+    pub fn get_resource_reflection<'a>(
+        &'a self,
         kind: ResourceType,
         handle: &ResourceHandleUntyped,
-    ) -> Result<Vec<PropertyDescriptor>, &'static str> {
+    ) -> Option<&'a dyn ResourceReflection> {
         if let Some(Some(resource)) = self.resources.get(&handle.id) {
             if let Some(processor) = self.processors.get(&kind) {
-                return processor.get_resource_properties(resource.as_ref());
+                return processor.get_resource_reflection(resource.as_ref());
             }
         }
-        Err("invalid resource")
+        None
+    }
+
+    /// Returns the Properties bag of a Resource
+    pub fn get_resource_reflection_mut<'a>(
+        &'a mut self,
+        kind: ResourceType,
+        handle: &ResourceHandleUntyped,
+    ) -> Option<&'a mut dyn ResourceReflection> {
+        if let Some(Some(resource)) = self.resources.get_mut(&handle.id) {
+            if let Some(processor) = self.processors.get(&kind) {
+                return processor.get_resource_reflection_mut(resource.as_mut());
+            }
+        }
+        None
     }
 
     /// Returns the number of loaded resources.

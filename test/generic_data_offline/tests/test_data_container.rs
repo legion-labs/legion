@@ -3,7 +3,7 @@ use legion_math::prelude::*;
 use std::io::Cursor;
 
 use generic_data_offline::{TestEntity, TestEntityProcessor};
-use legion_data_offline::resource::ResourceProcessor;
+use legion_data_offline::resource::ResourceReflection;
 
 #[test]
 fn test_default_implementation() {
@@ -95,46 +95,32 @@ fn test_write_field_by_name() {
         ..Default::default()
     };
 
-    let processor = TestEntityProcessor {};
-
-    processor
-        .write_property(&mut entity, "test_string", "\"New Value\"")
+    entity
+        .write_property("test_string", "\"New Value\"")
         .unwrap();
     assert_eq!(entity.test_string, "New Value");
 
-    processor
-        .write_property(&mut entity, "test_position", "[1.1, -2.2, 3.3]")
+    entity
+        .write_property("test_position", "[1.1, -2.2, 3.3]")
         .unwrap();
     assert_eq!(entity.test_position, Vec3::new(1.1, -2.2, 3.3));
 
-    processor
-        .write_property(&mut entity, "test_rotation", "[0,1,0,0]")
-        .unwrap();
+    entity.write_property("test_rotation", "[0,1,0,0]").unwrap();
     assert_eq!(entity.test_rotation, Quat::from_xyzw(0.0, 1.0, 0.0, 0.0));
 
-    processor
-        .write_property(&mut entity, "test_bool", " true")
-        .unwrap();
+    entity.write_property("test_bool", " true").unwrap();
     assert!(entity.test_bool);
 
-    processor
-        .write_property(&mut entity, "test_float32", " 1.23 ")
-        .unwrap();
+    entity.write_property("test_float32", " 1.23 ").unwrap();
     assert!((entity.test_float32 - 1.23).abs() < f32::EPSILON);
 
-    processor
-        .write_property(&mut entity, "test_float64", "  2.45 ")
-        .unwrap();
+    entity.write_property("test_float64", "  2.45 ").unwrap();
     assert!((entity.test_float64 - 2.45).abs() < f64::EPSILON);
 
-    processor
-        .write_property(&mut entity, "test_int", " -10")
-        .unwrap();
+    entity.write_property("test_int", " -10").unwrap();
     assert_eq!(entity.test_int, -10);
 
-    processor
-        .write_property(&mut entity, "test_blob", "[4,5,6,7]")
-        .unwrap();
+    entity.write_property("test_blob", "[4,5,6,7]").unwrap();
     assert_eq!(entity.test_blob, vec![4, 5, 6, 7]);
 }
 
@@ -144,7 +130,5 @@ fn test_editor_descriptors() {
         ..Default::default()
     };
 
-    let processor = TestEntityProcessor {};
-
-    let _descriptors = processor.get_resource_properties(&entity).unwrap();
+    entity.get_property_descriptors().unwrap();
 }

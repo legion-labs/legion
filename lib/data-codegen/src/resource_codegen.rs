@@ -52,7 +52,7 @@ fn generate_offline_json_writes(
 /// Generate the JSON write serialization for members.
 /// Don't serialize members at default values
 /// Skip 'transient' value
-fn generate_offline_parse_str(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
+fn generate_reflection_write(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
     members
         .iter()
         .filter(|m| !m.transient)
@@ -60,51 +60,82 @@ fn generate_offline_parse_str(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
             let hash_value = m.name.default_hash();
             let member_ident = format_ident!("{}", &m.name);
             quote! { #hash_value => {
-                instance.#member_ident = serde_json::from_str(field_value).map_err(|_err| "json serialization error")?;
+                self.#member_ident = serde_json::from_str(field_value).map_err(|_err| "json serialization error")?;
             },
             }
         })
         .collect()
 }
 
-/// Generate the Editor Property Descriptor info
-fn generate_offline_editor_descriptors(
-    default_ident: &syn::Ident,
+/// Generate the JSON write serialization for members.
+/// Don't serialize members at default values
+/// Skip 'transient' value
+fn generate_reflection_read(
+    default_ident: Option<&syn::Ident>,
     members: &[MemberMetaInfo],
 ) -> Vec<QuoteRes> {
     members
         .iter()
         .filter(|m| !m.transient)
         .map(|m| {
+            let hash_value: u64 = m.name.default_hash();
             let member_ident = format_ident!("{}", &m.name);
-            let prop_name = &m.name;
-            let group_name = &m.category;
-            let prop_type = &m.type_name;
-            quote! {
-                PropertyDescriptor {
-                    name : #prop_name,
-                    type_name : #prop_type,
-                    default_value : serde_json::to_string(&#default_ident.#member_ident).map_err(|_err| "json serialization error")?.as_bytes().to_vec(),
-                    value : serde_json::to_string(&instance.#member_ident).map_err(|_err| "json serialization error")?.as_bytes().to_vec(),
-                    group : #group_name.into(),
-                },
+            if let Some(default_ident) = default_ident {
+                quote! { #hash_value => serde_json::to_string(&#default_ident.#member_ident).map_err(|_err| "json serialization error"),
+                }
+            }
+            else {
+                quote! { #hash_value => serde_json::to_string(&self.#member_ident).map_err(|_err| "json serialization error"),
+                }
             }
         })
         .collect()
 }
 
+/// Generate the JSON write serialization for members.
+/// Don't serialize members at default values
+/// Skip 'transient' value
+fn generate_property_descriptors(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
+    members
+        .iter()
+        .map(|m| {
+            let hash_value: u64 = m.name.default_hash();
+            let prop_name = &m.name;
+            let group_name = &m.category;
+            let prop_type = &m.type_name;
+            quote! {
+                map.insert(#hash_value, PropertyDescriptor {
+                    name : #prop_name,
+                    type_name : #prop_type,
+                    group : #group_name,
+                });
+            }
+        })
+        .collect()
+}
+
+#[allow(clippy::too_many_lines)]
 pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
     let offline_identifier = format_ident!("{}", data_container_info.name);
     let offline_name = format!("offline_{}", data_container_info.name).to_lowercase();
     let offline_identifier_processor = format_ident!("{}Processor", data_container_info.name);
-    let offline_fields_parse_str = generate_offline_parse_str(&data_container_info.members);
+
+    //let offline_fields_parse_str = generate_offline_parse_str(&data_container_info.members);
     let offline_default_instance =
         format_ident!("DEFAULT_{}", data_container_info.name.to_uppercase());
 
-    let offline_fields_editor_descriptors = generate_offline_editor_descriptors(
-        &offline_default_instance,
+    let offline_default_descriptor =
+        format_ident!("__{}_DESCRIPTORS", data_container_info.name.to_uppercase());
+
+    let reflection_writer = generate_reflection_write(&data_container_info.members);
+    let reflection_read_default = generate_reflection_read(
+        Some(&offline_default_instance),
         &data_container_info.members,
     );
+    let reflection_read = generate_reflection_read(None, &data_container_info.members);
+
+    let offline_fields_editor_descriptors =
+        generate_property_descriptors(&data_container_info.members);
 
     let class_name = &data_container_info.name;
     let offline_fields_json_reads = generate_offline_json_reads(&data_container_info.members);
@@ -115,10 +146,19 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
 
         use std::{any::Any, io};
         use legion_data_offline::{PropertyDescriptor,
-            resource::{OfflineResource, ResourceProcessor},
+            resource::{OfflineResource, ResourceProcessor, ResourceReflection},
         };
         use legion_data_runtime::{Asset, AssetLoader, Resource};
         use legion_utils::DefaultHash;
+        use std::collections::HashMap;
+
+        lazy_static::lazy_static! {
+            static ref #offline_default_descriptor : HashMap<u64, PropertyDescriptor> = {
+                let mut map = HashMap::new();
+                #(#offline_fields_editor_descriptors)*
+                map
+            };
+        }
 
         impl Resource for #offline_identifier {
             const TYPENAME: &'static str = #offline_name;
@@ -152,6 +192,37 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
             fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
         }
 
+        impl ResourceReflection for #offline_identifier {
+            /// Interface defining field serialization by name
+            fn write_property(&mut self, field_name: &str, field_value: &str) -> Result<(), &'static str> {
+                match field_name.default_hash() {
+                    #(#reflection_writer)*
+                    _ => return Err("invalid field"),
+                }
+                Ok(())
+            }
+
+            /// Interface defining field serialization by name
+            fn read_property(&self, field_name: &str) -> Result<String, &'static str> {
+                match field_name.default_hash() {
+                    #(#reflection_read)*
+                    _ => Err("invalid field"),
+                }
+            }
+
+            /// Interface defining field serialization by name
+            fn read_property_default(&self, field_name: &str) -> Result<String, &'static str> {
+                match field_name.default_hash() {
+                    #(#reflection_read_default)*
+                    _ => Err("invalid field"),
+                }
+            }
+
+            fn get_property_descriptors(&self) -> Option<&'static HashMap<u64,PropertyDescriptor>> {
+                Some(&#offline_default_descriptor)
+            }
+        }
+
         impl ResourceProcessor for #offline_identifier_processor {
             fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
                 Box::new(#offline_identifier { ..#offline_identifier::default() })
@@ -177,22 +248,18 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
                 self.load(reader)
             }
 
-            #[allow(clippy::too_many_lines)]
-            fn get_resource_properties(&self, resource: &dyn Any) -> Result<Vec<PropertyDescriptor>, &'static str> {
-                let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
-                Ok(vec![
-                    #(#offline_fields_editor_descriptors)*
-                ])
+            fn get_resource_reflection<'a>(&self, resource: &'a dyn Any) -> Option<&'a dyn ResourceReflection> {
+                if let Some(instance) = resource.downcast_ref::<#offline_identifier>() {
+                    return Some(instance);
+                }
+                None
             }
 
-            #[allow(clippy::too_many_lines)]
-            fn write_property(&self, resource: &mut dyn Any, field_name: &str, field_value: &str) -> Result<(), &'static str> {
-                let instance : &mut #offline_identifier = resource.downcast_mut::<#offline_identifier>().unwrap();
-                match field_name.default_hash() {
-                    #(#offline_fields_parse_str)*
-                    _ => return Err("invalid field"),
+            fn get_resource_reflection_mut<'a>(&self, resource: &'a mut dyn Any) -> Option<&'a mut dyn ResourceReflection> {
+                if let Some(instance) = resource.downcast_mut::<#offline_identifier>() {
+                    return Some(instance);
                 }
-                Ok(())
+                None
             }
 
         }
