@@ -1,5 +1,5 @@
-use graphics_api::backends::shared::tmp_extract_root_signature_def;
-use graphics_api::prelude::*;
+use graphics_api::{GfxError, MAX_DESCRIPTOR_SET_LAYOUTS, prelude::*};
+use legion_pso_compiler::{CompileParams, HlslCompiler, ShaderProduct, ShaderSource};
 
 pub struct Renderer {
     frame_idx: usize,
@@ -187,7 +187,7 @@ impl Drop for Renderer {
 pub struct TmpRenderPass {
     vertex_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
     uniform_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
-    descriptor_set_array: <DefaultApi as GfxApi>::DescriptorSetArray,
+    descriptor_set_arrays: Vec<<DefaultApi as GfxApi>::DescriptorSetArray>,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
     pub color: [f32; 4],
@@ -205,73 +205,161 @@ impl TmpRenderPass {
         //
         // Shaders
         //
-        let vert_shader_package =
-            ShaderPackage::SpirV(include_bytes!("../shaders/shader.vert.spv").to_vec());
+        let shader_compiler = HlslCompiler::new().unwrap();
 
-        let frag_shader_package =
-            ShaderPackage::SpirV(include_bytes!("../shaders/shader.frag.spv").to_vec());
+        let shader_source = String::from_utf8(include_bytes!("../shaders/shader.hlsl").to_vec()).unwrap();
+
+        let shader_build_result = shader_compiler.compile(&CompileParams {
+            shader_source: ShaderSource::Code(shader_source),
+            defines: Vec::new(),
+            products: vec!(
+                ShaderProduct {
+                    defines: Vec::new(),
+                    entry_point: "main_vs".to_owned(),
+                    target_profile: "vs_6_0".to_owned(),
+                },
+                ShaderProduct {
+                    defines: Vec::new(),
+                    entry_point: "main_ps".to_owned(),
+                    target_profile: "ps_6_0".to_owned(),
+                }
+            )            
+        }).unwrap();        
 
         let vert_shader_module = device_context
-            .create_shader_module(vert_shader_package.module_def())
-            .unwrap();
+            .create_shader_module(ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone()).module_def()).unwrap();
+
         let frag_shader_module = device_context
-            .create_shader_module(frag_shader_package.module_def())
-            .unwrap();
+            .create_shader_module(ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone()).module_def()).unwrap();
 
-        let color_shader_resource = ShaderResource {
-            name: "color".to_string(),
-            set_index: 0,
-            binding: 0,
-            shader_resource_type: ShaderResourceType::ConstantBuffer,
-            element_count: 0,
-            used_in_shader_stages: ShaderStageFlags::VERTEX,
-        };
+        // let vert_shader_module = device_context
+        //     .create_shader_module(vert_shader_package.module_def())
+        //     .unwrap();
+        // let frag_shader_module = device_context
+        //     .create_shader_module(frag_shader_package.module_def())
+        //     .unwrap();
 
-        let vert_shader_stage_def = ShaderStageDef {
-            shader_module: vert_shader_module,
-            reflection: ShaderStageReflection {
-                entry_point_name: "main".to_string(),
-                shader_stage: ShaderStageFlags::VERTEX,
-                compute_threads_per_group: None,
-                shader_resources: vec![color_shader_resource],
-                push_constants: Vec::new(),
-            },
-        };
+        // let color_shader_resource = ShaderResource {
+        //     name: "color".to_owned(),
+        //     set_index: 0,
+        //     binding: 0,
+        //     shader_resource_type: ShaderResourceType::ConstantBuffer,
+        //     element_count: 0,
+        //     used_in_shader_stages: ShaderStageFlags::VERTEX,
+        // };
 
-        let frag_shader_stage_def = ShaderStageDef {
-            shader_module: frag_shader_module,
-            reflection: ShaderStageReflection {
-                entry_point_name: "main".to_string(),
-                shader_stage: ShaderStageFlags::FRAGMENT,
-                compute_threads_per_group: None,
-                shader_resources: Vec::new(),
-                push_constants: Vec::new(),
-            },
-        };
+        // let vert_shader_stage_def = ShaderStageDef {
+        //     entry_point: "main".to_owned(),
+        //     shader_stage: ShaderStageFlags::VERTEX,
+        //     shader_module: vert_shader_module,
+        //     // reflection: ShaderStageReflection {
+        //     //     entry_point_name: "main".to_owned(),
+        //     //     shader_stage: ShaderStageFlags::VERTEX,
+        //     //     compute_threads_per_group: None,
+        //     //     shader_resources: vec![color_shader_resource],
+        //     //     push_constants: Vec::new(),
+        //     // },
+        // };
 
-        let shader = device_context
-            .create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])
-            .unwrap();
+        // let frag_shader_stage_def = ShaderStageDef {
+        //     entry_point: "main".to_owned(),
+        //     shader_stage: ShaderStageFlags::FRAGMENT,
+        //     shader_module: vert_shader_module,
+        //     // reflection: ShaderStageReflection {
+        //     //     entry_point_name: "main".to_owned(),
+        //     //     shader_stage: ShaderStageFlags::FRAGMENT,
+        //     //     compute_threads_per_group: None,
+        //     //     shader_resources: Vec::new(),
+        //     //     push_constants: Vec::new(),
+        //     // },
+        // };
+
+        let shader = device_context.create_shader(
+            vec![
+                ShaderStageDef {
+                    entry_point: "main_vs".to_owned(),
+                    shader_stage: ShaderStageFlags::VERTEX,
+                    shader_module: vert_shader_module,
+                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
+                },
+                ShaderStageDef {
+                    entry_point: "main_ps".to_owned(),
+                    shader_stage: ShaderStageFlags::FRAGMENT,
+                    shader_module: frag_shader_module,
+                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
+                }
+            ],
+            &shader_build_result.pipeline_reflection
+        ).unwrap();
+
+        // let shader = device_context
+        //     .create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])
+        //     .unwrap();
 
         //
         // Root signature
         //
 
-        let root_signature_def =
-            tmp_extract_root_signature_def(device_context, &[shader.clone()]).unwrap();
+        let mut descriptor_set_layouts = Vec::new();
+        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
+            
+            let shader_resources : Vec<_> = 
+                shader_build_result.
+                pipeline_reflection.
+                shader_resources.
+                iter().
+                filter(| x| x.set_index as usize == set_index ).
+                collect();
+
+            if !shader_resources.is_empty() {
+
+                let descriptor_defs = 
+                    shader_resources.
+                    iter().
+                    map(|sr| DescriptorDef{
+                        name: sr.name.clone(),
+                        binding: sr.binding,
+                        shader_resource_type: sr.shader_resource_type,
+                        array_size: sr.element_count,
+                    }).collect();
+
+                let def = DescriptorSetLayoutDef {
+                    frequency: set_index as u32,
+                    descriptor_defs,
+                };
+                let descriptor_set_layout = device_context.create_descriptorset_layout(&def).unwrap();
+                descriptor_set_layouts.push(descriptor_set_layout);
+            }
+        }       
+
+        let mut root_signature_def = RootSignatureDef {
+            pipeline_type: PipelineType::Graphics,
+            descriptor_set_layouts,
+            push_constant_def: None
+        };
 
         let root_signature = device_context
             .create_root_signature(&root_signature_def)
             .unwrap();
-        let descriptor_set_layout = root_signature_def.descriptor_set_layouts[0]
-            .as_ref()
-            .unwrap();
-        let mut descriptor_set_array = device_context
+
+        let mut descriptor_set_arrays  = Vec::new();
+        for descriptor_set_layout in &root_signature_def.descriptor_set_layouts {
+            let descriptor_set_array = device_context
             .create_descriptor_set_array(&DescriptorSetArrayDef {
                 descriptor_set_layout,
                 array_length: 3, // One per swapchain image.
-            })
-            .unwrap();
+            }).unwrap();    
+            descriptor_set_arrays.push(descriptor_set_array);
+        } 
+        // let descriptor_set_layout = root_signature_def.descriptor_set_layouts[0]
+        //     .as_ref()
+        //     .unwrap();
+        // let mut descriptor_set_array = device_context
+        //     .create_descriptor_set_array(&DescriptorSetArrayDef {
+        //         descriptor_set_layout,
+        //         array_length: 3, // One per swapchain image.
+        //     })
+        //     .unwrap();
 
         //
         // Pipeline state
@@ -283,14 +371,14 @@ impl TmpRenderPass {
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
-                    gl_attribute_name: Some("pos".to_string()),
+                    gl_attribute_name: Some("pos".to_owned()),
                 },
                 VertexLayoutAttribute {
                     format: Format::R32G32B32_SFLOAT,
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
-                    gl_attribute_name: Some("in_color".to_string()),
+                    gl_attribute_name: Some("in_color".to_owned()),
                 },
             ],
             buffers: vec![VertexLayoutBuffer {
@@ -339,10 +427,10 @@ impl TmpRenderPass {
             let view_def = BufferViewDef::as_const_buffer(uniform_buffer.buffer_def());
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def).unwrap();
 
-            descriptor_set_array
+            descriptor_set_arrays[0]
                 .update_descriptor_set(&[DescriptorUpdate {
                     array_index: i as u32,
-                    descriptor_key: DescriptorKey::Name("color"),
+                    descriptor_key: DescriptorKey::Name("uniform_data"),
                     elements: DescriptorElements {
                         buffer_views: Some(&[&uniform_buffer_cbv]),
                         ..Default::default()
@@ -359,7 +447,7 @@ impl TmpRenderPass {
         Self {
             vertex_buffers,
             uniform_buffers,
-            descriptor_set_array,
+            descriptor_set_arrays,
             root_signature,
             pipeline,
             color: [0f32, 0f32, 0f32, 1.0f32],
@@ -442,7 +530,7 @@ impl TmpRenderPass {
         cmd_buffer
             .cmd_bind_descriptor_set(
                 &self.root_signature,
-                &self.descriptor_set_array,
+                &self.descriptor_set_arrays[0],
                 (render_frame_idx) as _,
             )
             .unwrap();

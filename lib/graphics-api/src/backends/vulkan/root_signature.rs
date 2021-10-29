@@ -1,3 +1,5 @@
+use std::cmp;
+
 use super::{VulkanApi, VulkanDescriptorSetLayout, VulkanDeviceContext};
 use crate::backends::deferred_drop::Drc;
 use crate::{GfxResult, PipelineType, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
@@ -14,7 +16,8 @@ pub(crate) struct PushConstantIndex(pub(crate) u32);
 struct RootSignatureVulkanInner {
     device_context: VulkanDeviceContext,
     pipeline_type: PipelineType,
-    layouts: [Option<VulkanDescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    // layouts: [Option<VulkanDescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    layouts: Vec<VulkanDescriptorSetLayout>,
     pipeline_layout: vk::PipelineLayout,
 }
 
@@ -58,10 +61,11 @@ impl VulkanRootSignature {
         for layout in root_signature_def
             .descriptor_set_layouts
             .iter()
-            .filter_map(|x| x.as_ref())
+            // .filter_map(|x| x.as_ref())
         {
-            vk_descriptor_set_layouts[descriptor_set_layout_count] = layout.vk_layout();
-            descriptor_set_layout_count += 1;
+            let set_index = layout.set_index() as usize;
+            vk_descriptor_set_layouts[set_index] = layout.vk_layout();
+            descriptor_set_layout_count = cmp::max(descriptor_set_layout_count, set_index + 1);
         }
 
         let mut push_constant_ranges = Vec::new();

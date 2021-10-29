@@ -1,7 +1,7 @@
 use super::{
     AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
     Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PipelineType,
-    PrimitiveTopology, QueueType, SampleCount, ShaderStageFlags, ShaderStageReflection, StencilOp,
+    PrimitiveTopology, QueueType, SampleCount, ShaderStageFlags, StencilOp,
     TextureTiling, VertexAttributeRate,
 };
 
@@ -540,41 +540,43 @@ pub struct SwapchainDef {
 /// Describes a single stage within a shader
 #[derive(Clone, Debug)]
 pub struct ShaderStageDef<A: GfxApi> {
+    pub entry_point: String,
+    pub shader_stage: ShaderStageFlags,
     pub shader_module: A::ShaderModule,
-    pub reflection: ShaderStageReflection,
+    // pub reflection: ShaderStageReflection,
 }
 
-impl<A: GfxApi> ShaderStageDef<A> {
-    pub fn hash_definition<HasherT: std::hash::Hasher, ShaderModuleHashT: Hash>(
-        hasher: &mut HasherT,
-        reflection_data: &[&ShaderStageReflection],
-        shader_module_hashes: &[ShaderModuleHashT],
-    ) {
-        assert_eq!(reflection_data.len(), shader_module_hashes.len());
-        fn hash_stage<HasherT: std::hash::Hasher, ShaderModuleHashT: Hash>(
-            hasher: &mut HasherT,
-            stage_flag: ShaderStageFlags,
-            reflection_data: &[&ShaderStageReflection],
-            shader_module_hashes: &[ShaderModuleHashT],
-        ) {
-            for (reflection, shader_module_hash) in reflection_data.iter().zip(shader_module_hashes)
-            {
-                if reflection.shader_stage.intersects(stage_flag) {
-                    reflection.shader_stage.hash(hasher);
-                    reflection.entry_point_name.hash(hasher);
-                    reflection.shader_resources.hash(hasher);
-                    shader_module_hash.hash(hasher);
-                    break;
-                }
-            }
-        }
+// impl<A: GfxApi> ShaderStageDef<A> {
+//     pub fn hash_definition<HasherT: std::hash::Hasher, ShaderModuleHashT: Hash>(
+//         hasher: &mut HasherT,
+//         reflection_data: &[&ShaderStageReflection],
+//         shader_module_hashes: &[ShaderModuleHashT],
+//     ) {
+//         assert_eq!(reflection_data.len(), shader_module_hashes.len());
+//         fn hash_stage<HasherT: std::hash::Hasher, ShaderModuleHashT: Hash>(
+//             hasher: &mut HasherT,
+//             stage_flag: ShaderStageFlags,
+//             reflection_data: &[&ShaderStageReflection],
+//             shader_module_hashes: &[ShaderModuleHashT],
+//         ) {
+//             for (reflection, shader_module_hash) in reflection_data.iter().zip(shader_module_hashes)
+//             {
+//                 if reflection.shader_stage.intersects(stage_flag) {
+//                     reflection.shader_stage.hash(hasher);
+//                     // reflection.entry_point_name.hash(hasher);
+//                     reflection.shader_resources.hash(hasher);
+//                     shader_module_hash.hash(hasher);
+//                     break;
+//                 }
+//             }
+//         }
 
-        // Hash stages in a deterministic order
-        for stage_flag in &super::ALL_SHADER_STAGE_FLAGS {
-            hash_stage(hasher, *stage_flag, reflection_data, shader_module_hashes);
-        }
-    }
-}
+//         // Hash stages in a deterministic order
+//         for stage_flag in &super::ALL_SHADER_STAGE_FLAGS {
+//             hash_stage(hasher, *stage_flag, reflection_data, shader_module_hashes);
+//         }
+//     }
+// }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ShaderResourceType {
@@ -634,8 +636,19 @@ pub struct PushConstantDef {
 
 pub struct RootSignatureDef<A: GfxApi> {
     pub pipeline_type: PipelineType,
-    pub descriptor_set_layouts: [Option<A::DescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    // pub descriptor_set_layouts: [Option<A::DescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    pub descriptor_set_layouts: Vec<A::DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
+}
+
+impl<A: GfxApi> Default for RootSignatureDef<A> {
+    fn default() -> Self {
+        Self {
+            pipeline_type: PipelineType::Graphics,
+            descriptor_set_layouts: Vec::new(), // [Option::<_>::None; MAX_DESCRIPTOR_SET_LAYOUTS],
+            push_constant_def: None
+        }
+    }
 }
 
 /// Used to create a `Sampler`

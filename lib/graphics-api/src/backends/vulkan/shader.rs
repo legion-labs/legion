@@ -18,17 +18,19 @@ impl VulkanShader {
     pub fn new(
         device_context: &VulkanDeviceContext,
         stages: Vec<ShaderStageDef<VulkanApi>>,
+        pipeline_reflection: &PipelineReflection,
     ) -> GfxResult<Self> {
-        let pipeline_reflection = PipelineReflection::from_stages(&stages)?;
+        // let pipeline_reflection = PipelineReflection::from_stages(&stages)?;
         let mut stage_flags = ShaderStageFlags::empty();
         for stage in &stages {
-            stage_flags |= stage.reflection.shader_stage;
+            // stage_flags |= stage.reflection.shader_stage;
+            stage_flags |= stage.shader_stage
         }
 
         let inner = VulkanShaderInner {
             stage_flags,
             stages,
-            pipeline_reflection,
+            pipeline_reflection: pipeline_reflection.clone(),
         };
 
         Ok(Self {

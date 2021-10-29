@@ -1,15 +1,8 @@
 use bytes::Bytes;
 use legion_ecs::prelude::*;
 
-use legion_graphics_api::{
-    CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding, CommandBuffer,
-    CommandBufferDef, CommandPool, CommandPoolDef, CullMode, DefaultApi, DescriptorSetLayoutDef,
-    DeviceContext, Extents3D, Format, GfxApi, GraphicsPipelineDef, LoadOp, MemoryUsage, Offset3D,
-    PipelineType, PrimitiveTopology, Queue, RasterizerState, ResourceFlags, ResourceState,
-    ResourceUsage, RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, StoreOp, Texture,
-    TextureBarrier, TextureDef, TextureTiling, TextureViewDef,
-};
-use legion_pso_compiler::{CompileParams, HlslCompiler, ShaderSource};
+use legion_graphics_api::{CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, CullMode, DefaultApi, DescriptorDef, DescriptorSetLayoutDef, DeviceContext, Extents3D, Format, GfxApi, GraphicsPipelineDef, LoadOp, MAX_DESCRIPTOR_SET_LAYOUTS, MemoryUsage, Offset3D, PipelineReflection, PipelineType, PrimitiveTopology, Queue, RasterizerState, ResourceFlags, ResourceState, ResourceUsage, RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, ShaderStageFlags, StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef};
+use legion_pso_compiler::{CompileParams, HlslCompiler, ShaderProduct, ShaderSource};
 use log::{debug, warn};
 use std::{cmp::min, io::Cursor, sync::Arc};
 
@@ -104,49 +97,85 @@ impl VideoStream {
         //
         let shader_compiler = HlslCompiler::new().unwrap();
 
-        let shader_source = std::str::from_utf8(include_bytes!("../data/display_mapper.hlsl"))?;
+        let shader_source = String::from_utf8(include_bytes!("../data/display_mapper.hlsl").to_vec())?;
 
-        let vert_shader_result = shader_compiler.compile(&CompileParams {
+        let shader_build_result = shader_compiler.compile(&CompileParams {
             shader_source: ShaderSource::Code(shader_source),
-            entry_point: "main_vs",
-            target_profile: "vs_6_0",
             defines: Vec::new(),
-        })?;
-
-        let frag_shader_result = shader_compiler.compile(&CompileParams {
-            shader_source: ShaderSource::Code(shader_source),
-            entry_point: "main_ps",
-            target_profile: "ps_6_0",
-            defines: Vec::new(),
-        })?;
+            products: vec!(
+                ShaderProduct {
+                    defines: Vec::new(),
+                    entry_point: "main_vs".to_owned(),
+                    target_profile: "vs_6_0".to_owned(),
+                },
+                ShaderProduct {
+                    defines: Vec::new(),
+                    entry_point: "main_ps".to_owned(),
+                    target_profile: "ps_6_0".to_owned(),
+                }
+            )            
+        })?;        
 
         let vert_shader_module = device_context
-            .create_shader_module(ShaderPackage::SpirV(vert_shader_result.bytecode).module_def())?;
+            .create_shader_module(ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone()).module_def())?;
 
         let frag_shader_module = device_context
-            .create_shader_module(ShaderPackage::SpirV(frag_shader_result.bytecode).module_def())?;
+            .create_shader_module(ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone()).module_def())?;
 
-        let shader = device_context.create_shader(vec![
-            ShaderStageDef {
-                shader_module: vert_shader_module,
-                reflection: vert_shader_result.refl_info.unwrap(),
-            },
-            ShaderStageDef {
-                shader_module: frag_shader_module,
-                reflection: frag_shader_result.refl_info.unwrap(),
-            },
-        ])?;
+        let shader = device_context.create_shader(
+            vec![
+                ShaderStageDef {
+                    entry_point: "main_vs".to_owned(),
+                    shader_stage: ShaderStageFlags::VERTEX,
+                    shader_module: vert_shader_module,
+                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
+                },
+                ShaderStageDef {
+                    entry_point: "main_ps".to_owned(),
+                    shader_stage: ShaderStageFlags::FRAGMENT,
+                    shader_module: frag_shader_module,
+                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
+                },
+            ],
+            &shader_build_result.pipeline_reflection
+        )?;
 
-        let descriptor_set_layout =
-            device_context.create_descriptorset_layout(&DescriptorSetLayoutDef {
-                frequency: 0,
-                descriptor_defs: vec![],
-            })?;
+        let mut descriptor_set_layouts = Vec::new();
+        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
+            
+            let shader_resources : Vec<_> = 
+                shader_build_result.
+                pipeline_reflection.
+                shader_resources.
+                iter().
+                filter(| x| x.set_index as usize == set_index ).
+                collect();
 
-        let root_signature_def = RootSignatureDef {
+            if !shader_resources.is_empty() {
+
+                let descriptor_defs = 
+                    shader_resources.
+                    iter().
+                    map(|sr| DescriptorDef{
+                        name: sr.name.clone(),
+                        binding: sr.binding,
+                        shader_resource_type: sr.shader_resource_type,
+                        array_size: sr.element_count,
+                    }).collect();
+
+                let def = DescriptorSetLayoutDef {
+                    frequency: set_index as u32,
+                    descriptor_defs,
+                };
+                let descriptor_set_layout = device_context.create_descriptorset_layout(&def).unwrap();
+                descriptor_set_layouts.push(descriptor_set_layout);
+            }
+        }       
+
+        let mut root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
-            descriptor_set_layouts: [Some(descriptor_set_layout.clone()), None, None, None],
-            push_constant_def: None,
+            descriptor_set_layouts,
+            push_constant_def: None
         };
 
         let root_signature = device_context.create_root_signature(&root_signature_def)?;

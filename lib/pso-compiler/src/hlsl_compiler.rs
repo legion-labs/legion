@@ -1,153 +1,183 @@
 use anyhow::{anyhow, Result};
-use graphics_api::{
-    PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags, ShaderStageReflection,
-};
-use hassle_rs::{compile_hlsl, Dxc};
+use graphics_api::{PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags};
+use hassle_rs::compile_hlsl;
 use spirv_reflect::types::{
     ReflectBlockVariable, ReflectDecorationFlags, ReflectDescriptorBinding, ReflectShaderStageFlags,
 };
 use spirv_tools::{opt::Optimizer, TargetEnv};
-use std::{io::Read, path::Path};
+use std::{io::Read, path::PathBuf};
 
 pub struct CompileDefine {
     name: String,
     value: Option<String>,
 }
 
-pub enum ShaderSource<'a> {
-    Code(&'a str),
-    Path(&'a Path),
+pub enum ShaderSource {
+    Code(String),
+    Path(PathBuf),
 }
 
-pub struct CompileParams<'a> {
-    pub shader_source: ShaderSource<'a>,
-    pub entry_point: &'a str,
-    pub target_profile: &'a str,
+pub struct ShaderProduct {
     pub defines: Vec<CompileDefine>,
+    pub entry_point: String,
+    pub target_profile: String,
 }
 
-impl<'a> CompileParams<'a> {
+pub struct CompileParams {
+    pub shader_source: ShaderSource,
+    pub defines: Vec<CompileDefine>,
+    pub products: Vec<ShaderProduct>,
+}
+
+impl CompileParams {
     fn path_as_string(&self) -> &str {
-        match self.shader_source {
+        match &self.shader_source {
             ShaderSource::Code(_) => "_code.hlsl",
             ShaderSource::Path(path) => path.to_str().unwrap(),
         }
     }
 }
 
-pub struct CompileResult {
+pub struct SpirvBinary {
     pub bytecode: Vec<u8>,
-    pub refl_info: Option<ShaderStageReflection>,
 }
 
-pub struct HlslCompiler {
-    _dxc: Dxc,
+pub struct CompileResult {
+    pub pipeline_reflection: PipelineReflection,
+    pub spirv_binaries: Vec<SpirvBinary>,
 }
+
+pub struct HlslCompiler;
 
 impl HlslCompiler {
     pub fn new() -> Result<Self> {
-        let dxc = Dxc::new(None)?;
-
-        Ok(HlslCompiler { _dxc: dxc })
+        Ok(Self {})
     }
 
     pub fn compile(&self, params: &CompileParams) -> Result<CompileResult> {
         // Shader source
         let shader_code = get_shader_source(params)?;
 
-        // Compilation
-        let unopt_bytecode = compile_to_unoptimized_spirv(params, &shader_code)?;
+        // For each compilation target        
+        let mut spirv_binaries = Vec::with_capacity(params.products.len());
+        let mut pipeline_reflection = PipelineReflection::default();
+        
 
-        // Reflection
-        let reflection_info = extract_reflection_info(&unopt_bytecode, params);
+        for (product_idx, _) in params.products.iter().enumerate() {
+            // Compilation
+            let unopt_spirv = compile_to_unoptimized_spirv(params, product_idx, &shader_code)?;
 
-        // Optimize
-        let opt_bytecode = optimize_spirv(&unopt_bytecode)?;
+            // Reflection
+            let shader_reflection = extract_reflection_info(&unopt_spirv, params, product_idx);            
+            // reflection_info = reflection_info_union(reflection_info, local_reflection_info);
+            pipeline_reflection = PipelineReflection::merge( &pipeline_reflection, &shader_reflection )?;
+
+            // Optimize
+            let opt_spirv = optimize_spirv(&unopt_spirv)?;
+
+            // Push in the same order
+            spirv_binaries.push(opt_spirv);
+        }
 
         // Finalize
         Ok(CompileResult {
-            bytecode: opt_bytecode,
-            refl_info: Some(reflection_info),
+            pipeline_reflection,
+            spirv_binaries,
         })
     }
 }
 
-fn optimize_spirv(bytecode: &[u8]) -> Result<Vec<u8>> {
-    let u32spirv = spirv_tools::binary::to_binary(bytecode)?;
+fn optimize_spirv(spirv: &SpirvBinary) -> Result<SpirvBinary> {
+    let u32spirv = spirv_tools::binary::to_binary(&spirv.bytecode)?;
     let mut optimizer = spirv_tools::opt::create(Some(TargetEnv::Vulkan_1_2));
     optimizer.register_performance_passes();
     let opt_binary = optimizer.optimize(u32spirv, &mut OptimizerCallback {}, None)?;
-    Ok(opt_binary.as_bytes().to_vec())
+    Ok(SpirvBinary{bytecode: opt_binary.as_bytes().to_vec()})
 }
 
-fn compile_to_unoptimized_spirv(params: &CompileParams, shader_code: &str) -> Result<Vec<u8>> {
-    let defines = params
+fn compile_to_unoptimized_spirv(
+    params: &CompileParams,
+    product_idx: usize,
+    shader_code: &str,
+) -> Result<SpirvBinary> {
+    let shader_product = &params.products[product_idx];
+
+    let mut defines = params
         .defines
         .iter()
         .map(|x| (x.name.as_str(), x.value.as_deref()))
         .collect::<Vec<_>>();
 
-    compile_hlsl(
+    defines.extend(
+        shader_product
+            .defines
+            .iter()
+            .map(|x| (x.name.as_str(), x.value.as_deref())),
+    );
+
+    let bytecode = compile_hlsl(
         params.path_as_string(),
         shader_code,
-        params.entry_point,
-        params.target_profile,
+        &shader_product.entry_point,
+        &shader_product.target_profile,
         &["-Od", "-spirv", "-fspv-target-env=vulkan1.1"],
         &defines,
     )
-    .map_err(|err| anyhow!(err))
+    .map_err(|err| anyhow!(err))?;
+
+    Ok(SpirvBinary { bytecode })
 }
 
 fn get_shader_source(params: &CompileParams) -> Result<String> {
-    
     let shader_code = {
-        match params.shader_source {
-            ShaderSource::Code(code) => {
-                code.to_string()
-            }
-            ShaderSource::Path(path) => {
-                match std::fs::File::open(path) {
-                    Ok(mut file) => {
-                        let mut shader_code = String::new();
-                        file.read_to_string(&mut shader_code)?;
-                        shader_code
-                    }
-                    Err(e) => {
-                        return Err(anyhow!(e));
-                    }
+        match &params.shader_source {
+            ShaderSource::Code(code) => code.to_string(),
+            ShaderSource::Path(path) => match std::fs::File::open(path) {
+                Ok(mut file) => {
+                    let mut shader_code = String::new();
+                    file.read_to_string(&mut shader_code)?;
+                    shader_code
                 }
-            }
+                Err(e) => {
+                    return Err(anyhow!(e));
+                }
+            },
         }
     };
     Ok(shader_code)
 }
 
-fn extract_reflection_info(bytecode: &[u8], params: &CompileParams) -> ShaderStageReflection {
-    let shader_mod = spirv_reflect::create_shader_module(bytecode).unwrap();
+fn extract_reflection_info(
+    spirv: &SpirvBinary,
+    params: &CompileParams,
+    product_idx: usize,
+) -> PipelineReflection {
+    let shader_product = &params.products[product_idx];
+    let shader_mod = spirv_reflect::create_shader_module(&spirv.bytecode).unwrap();
     let shader_stage = to_shader_stage_flags(shader_mod.get_shader_stage());
 
     let mut shader_resources = Vec::new();
     for descriptor in &shader_mod
-        .enumerate_descriptor_bindings(Some(params.entry_point))
+        .enumerate_descriptor_bindings(Some(&shader_product.entry_point))
         .unwrap()
     {
         shader_resources.push(to_shader_resource(shader_stage, descriptor));
     }
 
-    let mut push_constants = Vec::new();
-    for push_constant in &shader_mod
-        .enumerate_push_constant_blocks(Some(params.entry_point))
-        .unwrap()
-    {
-        push_constants.push(to_push_constant(shader_stage, push_constant));
-    }
+    let mut push_constant = None;
+    // for push_constant in &shader_mod
+    //     .enumerate_push_constant_blocks(Some(&shader_product.entry_point))
+    //     .unwrap()
+    // {
+    //     push_constants.push(to_push_constant(shader_stage, push_constant));
+    // }
 
-    ShaderStageReflection {
-        shader_stage,
+    PipelineReflection {
+        // shader_stage,
         shader_resources,
-        push_constants,
+        push_constant,
         compute_threads_per_group: None,
-        entry_point_name: params.entry_point.to_owned(),
+        // entry_point_name: shader_product.entry_point.to_owned(),
     }
 }
 
@@ -265,6 +295,7 @@ fn to_push_constant(
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use graphics_api::ShaderStageFlags;
@@ -361,7 +392,7 @@ mod tests {
         let vs_out = compiler
             .compile(&compile_params)
             .expect("Shader compilation to succeed");
-        let refl_info = vs_out.refl_info.expect("Valid reflection info");
+        let refl_info = vs_out.pipeline_reflection.expect("Valid reflection info");
         assert_eq!(refl_info.shader_stage, ShaderStageFlags::VERTEX);
         assert_eq!(&refl_info.entry_point_name, "main_vs");
         assert_eq!(refl_info.shader_resources.len(), 1);
@@ -391,7 +422,7 @@ mod tests {
         let ps_out = compiler
             .compile(&compile_params)
             .expect("Shader compilation to succeed");
-        let refl_info = ps_out.refl_info.expect("Valid reflection info");
+        let refl_info = ps_out.pipeline_reflection.expect("Valid reflection info");
         assert_eq!(&refl_info.entry_point_name, "main_ps");
         assert_eq!(refl_info.shader_stage, ShaderStageFlags::FRAGMENT);
         assert_eq!(refl_info.shader_resources.len(), 0);

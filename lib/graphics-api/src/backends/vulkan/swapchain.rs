@@ -422,7 +422,7 @@ impl SwapchainVulkanInstance {
                     array_length: 1,
                     mip_count: 1,
                     format,
-                    usage_flags: ResourceUsage::AS_SHADER_RESOURCE| ResourceUsage::AS_RENDER_TARGET,
+                    usage_flags: ResourceUsage::AS_SHADER_RESOURCE| ResourceUsage::AS_RENDER_TARGET|ResourceUsage::AS_TRANSFERABLE,
                     resource_flags: ResourceFlags::empty(),
                     mem_usage: MemoryUsage::GpuOnly,
                     tiling: TextureTiling::Optimal,
