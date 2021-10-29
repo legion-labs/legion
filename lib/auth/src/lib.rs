@@ -57,4 +57,12 @@
 // crate-specific exceptions:
 #![allow(clippy::implicit_hasher, clippy::missing_errors_doc)]
 
-pub mod authenticator;
+mod authenticator;
+mod token_cache;
+mod token_set;
+mod user_info;
+
+pub use authenticator::Authenticator;
+pub use token_cache::TokenCache;
+pub use token_set::TokenSet;
+pub use user_info::UserInfo;

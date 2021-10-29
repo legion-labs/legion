@@ -15,7 +15,7 @@ impl Config {
         Ok(Self {
             authorization_url: args
                 .value_of("authorization-url")
-                .unwrap_or("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/")
+                .unwrap_or("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+https://legionlabs.com/editor/allocate+openid+profile&redirect_uri=http://localhost:5001/&identity_provider=Azure")
                 .parse()?,
             server_addr: args
                 .value_of("server-addr")

@@ -14,20 +14,38 @@ pub struct Authenticator {
     pub domain_name: String,
     pub region: String,
     pub client_id: String,
+    pub client_secret: Option<String>,
     pub scopes: Vec<String>,
     pub port: u16,
+    pub identity_provider: Option<String>,
 }
 
+use super::TokenSet;
+use super::UserInfo;
+
+/// An `Authenticator`'s primary goal is to authenticate a user and return a `TokenSet` containing
+/// the user's access token and refresh token.
+///
+/// It can do so by:
+/// - Authenticating the user interactively with the identity provider in a web-browser.
+/// - Exchanging a refresh token for a new access token.
+///
+/// It can also validate a user's access token and return a `UserInfo` struct containing the user's
+/// username and email address, if available.
 impl Authenticator {
     /// Creates an authenticator from a valid AWS Cognito URL.
+    ///
+    /// # Warnings
+    ///
+    /// The `client_secret` cannot be part of the specified URL and has to be specified separately.
     ///
     /// # Example
     ///
     /// ```
-    /// use legion_auth::authenticator::Authenticator;
+    /// use legion_auth::Authenticator;
     /// use url::Url;
     ///
-    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/").unwrap();
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
     /// let auth = Authenticator::from_authorization_url(&url).unwrap();
     /// ```
     pub fn from_authorization_url(authorization_url: &Url) -> anyhow::Result<Self> {
@@ -69,6 +87,11 @@ impl Authenticator {
             .expect("no redirect_uri in URL")
             .parse()?;
 
+        let identity_provider: Option<String> = authorization_url
+            .query_pairs()
+            .find(|(k, _)| k == "identity_provider")
+            .map(|(_, v)| v.to_string());
+
         if redirect_uri.scheme() != "http" {
             anyhow::bail!("redirect_uri must use the `http` scheme");
         }
@@ -86,8 +109,10 @@ impl Authenticator {
             domain_name,
             region,
             client_id,
+            client_secret: None,
             scopes,
             port,
+            identity_provider,
         })
     }
 
@@ -95,34 +120,163 @@ impl Authenticator {
         SocketAddr::from(([127, 0, 0, 1], self.port))
     }
 
-    fn get_authorization_url(&self) -> String {
-        let mut url = Url::parse(&format!(
-            "https://{}.auth.{}.amazoncognito.com/oauth2/authorize",
-            self.domain_name, self.region
+    fn get_redirect_uri(&self) -> String {
+        format!("http://localhost:{}/", self.port)
+    }
+
+    fn get_base_url(&self, path: &str) -> Url {
+        Url::parse(&format!(
+            "https://{}.auth.{}.amazoncognito.com/{}",
+            self.domain_name, self.region, path
         ))
-        .unwrap();
+        .unwrap()
+    }
+
+    /// Get the authorization URL.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use legion_auth::Authenticator;
+    ///
+    /// # fn main() {
+    /// let auth = Authenticator{
+    ///     domain_name: "legionlabs-playground".to_string(),
+    ///     region: "ca-central-1".to_string(),
+    ///     client_id: "4a6vcgqr108in51n3di730hk25".to_string(),
+    ///     client_secret: None,
+    ///     scopes: vec![
+    ///         "aws.cognito.signin.user.admin".to_string(),
+    ///         "email".to_string(),
+    ///         "openid".to_string(),
+    ///     ],
+    ///     port: 5001,
+    ///     identity_provider: Some("Azure".to_string()),
+    /// };
+    ///
+    /// assert_eq!(
+    ///     auth.get_authorization_url().as_str(),
+    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin%2Bemail%2Bopenid&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2F&identity_provider=Azure",
+    /// );
+    /// # }
+    /// ```
+    pub fn get_authorization_url(&self) -> String {
+        let mut url = self.get_base_url("oauth2/authorize");
 
         url.query_pairs_mut()
             .append_pair("client_id", &self.client_id)
             .append_pair("response_type", "code")
             .append_pair("scope", &self.scopes.join("+"))
-            .append_pair("redirect_uri", &format!("http://localhost:{}/", self.port));
+            .append_pair("redirect_uri", &self.get_redirect_uri());
+
+        if let Some(identity_provider) = &self.identity_provider {
+            url.query_pairs_mut()
+                .append_pair("identity_provider", identity_provider);
+        }
 
         url.to_string()
     }
 
-    fn get_logout_url(&self) -> String {
-        let mut url = Url::parse(&format!(
-            "https://{}.auth.{}.amazoncognito.com/logout",
-            self.domain_name, self.region
-        ))
-        .unwrap();
+    /// Get the logout URL.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use legion_auth::Authenticator;
+    ///
+    /// # fn main() {
+    /// let auth = Authenticator{
+    ///     domain_name: "legionlabs-playground".to_string(),
+    ///     region: "ca-central-1".to_string(),
+    ///     client_id: "4a6vcgqr108in51n3di730hk25".to_string(),
+    ///     client_secret: None,
+    ///     scopes: vec![
+    ///         "aws.cognito.signin.user.admin".to_string(),
+    ///         "email".to_string(),
+    ///         "openid".to_string(),
+    ///     ],
+    ///     port: 5001,
+    ///     identity_provider: Some("Azure".to_string()),
+    /// };
+    ///
+    /// assert_eq!(
+    ///     auth.get_logout_url().as_str(),
+    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/logout?client_id=4a6vcgqr108in51n3di730hk25&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2F",
+    /// );
+    /// # }
+    /// ```
+    pub fn get_logout_url(&self) -> String {
+        let mut url = self.get_base_url("logout");
 
         url.query_pairs_mut()
             .append_pair("client_id", &self.client_id)
-            .append_pair("redirect_uri", &format!("http://localhost:{}/", self.port));
+            .append_pair("redirect_uri", &self.get_redirect_uri());
 
         url.to_string()
+    }
+
+    /// Get the access token URL.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use legion_auth::Authenticator;
+    ///
+    /// # fn main() {
+    /// let auth = Authenticator{
+    ///     domain_name: "legionlabs-playground".to_string(),
+    ///     region: "ca-central-1".to_string(),
+    ///     client_id: "4a6vcgqr108in51n3di730hk25".to_string(),
+    ///     client_secret: None,
+    ///     scopes: vec![
+    ///         "aws.cognito.signin.user.admin".to_string(),
+    ///         "email".to_string(),
+    ///         "openid".to_string(),
+    ///     ],
+    ///     port: 5001,
+    ///     identity_provider: Some("Azure".to_string()),
+    /// };
+    ///
+    /// assert_eq!(
+    ///     auth.get_access_token_url().as_str(),
+    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/token",
+    /// );
+    /// # }
+    /// ```
+    pub fn get_access_token_url(&self) -> String {
+        self.get_base_url("oauth2/token").to_string()
+    }
+
+    /// Get the user info URL.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use legion_auth::Authenticator;
+    ///
+    /// # fn main() {
+    /// let auth = Authenticator{
+    ///     domain_name: "legionlabs-playground".to_string(),
+    ///     region: "ca-central-1".to_string(),
+    ///     client_id: "4a6vcgqr108in51n3di730hk25".to_string(),
+    ///     client_secret: None,
+    ///     scopes: vec![
+    ///         "aws.cognito.signin.user.admin".to_string(),
+    ///         "email".to_string(),
+    ///         "openid".to_string(),
+    ///     ],
+    ///     port: 5001,
+    ///     identity_provider: Some("Azure".to_string()),
+    /// };
+    ///
+    /// assert_eq!(
+    ///     auth.get_user_info_url().as_str(),
+    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/userInfo",
+    /// );
+    /// # }
+    /// ```
+    pub fn get_user_info_url(&self) -> String {
+        self.get_base_url("oauth2/userInfo").to_string()
     }
 
     async fn receive_authorization_code(&self) -> anyhow::Result<String> {
@@ -212,7 +366,10 @@ impl Authenticator {
             .serve(make_service)
             .with_graceful_shutdown(async {
                 code = rx.await.unwrap();
-                info!("received authorization code `{}`: shutting down", code);
+                info!(
+                    "received authorization code `{}`: shutting down temporary HTTP server",
+                    code
+                );
             });
 
         if let Err(e) = server.await {
@@ -285,7 +442,7 @@ impl Authenticator {
             .serve(make_service)
             .with_graceful_shutdown(async {
                 rx.await.unwrap();
-                info!("received logout confirmation: shutting down");
+                info!("received logout confirmation: shutting down temporary HTTP server");
             });
 
         if let Err(e) = server.await {
@@ -295,7 +452,8 @@ impl Authenticator {
         Ok(())
     }
 
-    pub async fn get_authorization_code(&self) -> anyhow::Result<String> {
+    /// Get the authorization code by opening an interactive browser window.
+    pub async fn get_authorization_code_interactive(&self) -> anyhow::Result<String> {
         let authorization_url = self.get_authorization_url();
 
         info!("Opening web-browser at: {}", authorization_url);
@@ -305,6 +463,7 @@ impl Authenticator {
         self.receive_authorization_code().await
     }
 
+    /// Logout by opening an interactive browser window.
     pub async fn logout(&self) -> anyhow::Result<()> {
         let logout_url = self.get_logout_url();
 
@@ -313,5 +472,143 @@ impl Authenticator {
         webbrowser::open(logout_url.as_str())?;
 
         self.receive_logout_confirmation().await
+    }
+
+    /// Get an access token from an authorization code.
+    pub async fn get_access_token_from_authorization_code(
+        &self,
+        code: &str,
+    ) -> anyhow::Result<TokenSet> {
+        let client =
+            hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
+
+        let req = hyper::Request::builder()
+            .method(hyper::Method::POST)
+            .uri(self.get_access_token_url().as_str())
+            .header(
+                hyper::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded",
+            );
+
+        let req = req.body(Body::from(format!(
+            "grant_type=authorization_code&client_id={}&code={}&redirect_uri={}",
+            self.client_id,
+            code,
+            self.get_redirect_uri(),
+        )))?;
+
+        let resp = client.request(req).await?;
+        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
+        serde_json::from_slice(&bytes).map_err(Into::into)
+    }
+
+    /// Get an access token by opening a possible interactive browser window.
+    ///
+    /// This is just a helper method that fetches an authorization code and then uses it to get an
+    /// access token.
+    pub async fn get_access_token_interactive(&self) -> anyhow::Result<TokenSet> {
+        let code = self.get_authorization_code_interactive().await?;
+
+        self.get_access_token_from_authorization_code(&code).await
+    }
+
+    /// Get an access token from a refresh token.
+    ///
+    /// If the call does not return a new refresh token within the `TokenSet`, the specified
+    /// refresh token will be filled in instead.
+    pub async fn get_access_token_from_refresh_token(
+        &self,
+        refresh_token: &str,
+    ) -> anyhow::Result<TokenSet> {
+        let client =
+            hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
+
+        let req = hyper::Request::builder()
+            .method(hyper::Method::POST)
+            .uri(self.get_access_token_url().as_str())
+            .header(
+                hyper::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded",
+            );
+
+        let req = req.body(Body::from(format!(
+            "grant_type=refresh_token&client_id={}&refresh_token={}",
+            self.client_id, refresh_token,
+        )))?;
+
+        let resp = client.request(req).await?;
+        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
+        serde_json::from_slice(&bytes)
+            .map_err(Into::into)
+            .map(|mut token_set: TokenSet| {
+                if token_set.refresh_token.is_none() {
+                    token_set.refresh_token = Some(refresh_token.to_owned());
+                }
+
+                token_set
+            })
+    }
+
+    /// Get an access token from a server.
+    ///
+    /// This call requires setting a `client_secret` on the instance and should as such never been
+    /// called on the client side.
+    ///
+    /// If a client had access to the `client_secret` it could gain access to any user's account.
+    pub async fn get_access_token_from_server(
+        &self,
+        scopes: &[String],
+    ) -> anyhow::Result<TokenSet> {
+        let client_secret = match &self.client_secret {
+            Some(secret) => secret,
+            None => bail!("a client_secret is required"),
+        };
+
+        let client =
+            hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
+
+        let req = hyper::Request::builder()
+            .method(hyper::Method::POST)
+            .uri(self.get_access_token_url().as_str())
+            .header(
+                hyper::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded",
+            )
+            .header(
+                hyper::header::AUTHORIZATION,
+                format!(
+                    "Basic {}",
+                    base64::encode(&format!("{}:{}", self.client_id, client_secret))
+                ),
+            );
+
+        let req = req.body(Body::from(format!(
+            "grant_type=client_credentials&scope={}",
+            scopes.join(" "),
+        )))?;
+
+        let resp = client.request(req).await?;
+        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
+        serde_json::from_slice(&bytes).map_err(Into::into)
+    }
+
+    /// Get user information from an access token.
+    pub async fn get_user_info(&self, access_token: &str) -> anyhow::Result<UserInfo> {
+        let client =
+            hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
+
+        let req = hyper::Request::builder()
+            .method(hyper::Method::GET)
+            .uri(self.get_user_info_url().as_str())
+            .header(
+                hyper::header::AUTHORIZATION,
+                format!("Bearer {}", access_token),
+            )
+            .body(Body::empty())?;
+
+        let resp = client.request(req).await?;
+        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
+        println!("{}", String::from_utf8_lossy(&bytes));
+        serde_json::from_slice(&bytes).map_err(Into::into)
     }
 }

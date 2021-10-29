@@ -45,6 +45,7 @@ sqlx = { version = "0.5", features = [
     "mysql",
     "runtime-tokio-native-tls",
 ] }
+directories = "4"
 
 [features]
 default = ["custom-protocol"]
