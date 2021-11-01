@@ -132,7 +132,7 @@
 //! $ data-scrape configure
 //!
 //! Configuration '"D:\\github.com\\legion-labs\\legion\\target\\debug\\scrape-config.json"' created!
-//!     ode Paths: ["D:\\github.com\\legion-labs\\legion\\lib\\", "D:\\github.com\\legion-labs\\legion\\client\\", "D:\\github.com\\legion-labs\\legion\\test\\"].
+//!     Code Paths: ["D:\\github.com\\legion-labs\\legion\\lib\\", "D:\\github.com\\legion-labs\\legion\\client\\", "D:\\github.com\\legion-labs\\legion\\test\\"].
 //!     Project: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\project.index".
 //!     Build Index: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\temp\\build.index".
 //!     Resource Type Count: 20.

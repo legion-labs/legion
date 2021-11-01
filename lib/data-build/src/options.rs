@@ -69,7 +69,7 @@ impl DataBuildOptions {
     }
 
     /// Create new build index for a specified project.
-    /// 
+    ///
     /// `project_dir` must be either an absolute path or path relative to `buildindex_path`.
     pub fn create(&self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
         DataBuild::new(self, project_dir.as_ref())
