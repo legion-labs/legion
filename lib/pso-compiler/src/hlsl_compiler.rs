@@ -167,7 +167,7 @@ fn extract_reflection_info(
         shader_resources.push(to_shader_resource(shader_stage, descriptor));
     }
 
-    let mut push_constant = None;    
+    let mut push_constant = None;
 
     PipelineReflection {
         shader_resources,

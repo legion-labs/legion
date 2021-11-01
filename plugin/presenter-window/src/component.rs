@@ -1,7 +1,7 @@
 use graphics_api::{
     CmdBlitParams, CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DefaultApi,
     DeviceContext, FilterType, GfxApi, Offset3D, Queue, ResourceState, SwapchainDef, Texture,
-    TextureBarrier
+    TextureBarrier,
 };
 use legion_ecs::prelude::Component;
 use legion_renderer::{

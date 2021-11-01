@@ -47,12 +47,12 @@ impl ShaderResource {
         }
 
         Ok(())
-    }    
+    }
 }
 
 /// Reflection data for a pipeline, created by merging shader stage reflection data
 #[derive(Clone, Debug)]
-pub struct PipelineReflection {    
+pub struct PipelineReflection {
     pub shader_resources: Vec<ShaderResource>,
     pub push_constant: Option<PushConstant>,
     pub compute_threads_per_group: Option<[u32; 3]>,
@@ -68,7 +68,7 @@ impl Default for PipelineReflection {
     }
 }
 
-impl PipelineReflection {    
+impl PipelineReflection {
     pub fn merge(
         left_op: &PipelineReflection,
         right_op: &PipelineReflection,
@@ -92,7 +92,7 @@ fn merge_pushconstant(reflections: &[&PipelineReflection]) -> GfxResult<Option<P
                     let message = format!("Cannot merge pushconstants of different size",);
                     log::error!("{}", message);
                     return Err(message.into());
-                }                
+                }
                 push_constant.used_in_shader_stages |= other_push_constant.used_in_shader_stages;
             }
         } else {
