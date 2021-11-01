@@ -355,7 +355,11 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<A::Sampler>;
     fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<A::Texture>;
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<A::Buffer>;
-    fn create_shader(&self, stages: Vec<ShaderStageDef<A>>, pipeline_reflection: &PipelineReflection) -> GfxResult<A::Shader>;
+    fn create_shader(
+        &self,
+        stages: Vec<ShaderStageDef<A>>,
+        pipeline_reflection: &PipelineReflection,
+    ) -> GfxResult<A::Shader>;
     fn create_descriptorset_layout(
         &self,
         def: &DescriptorSetLayoutDef,

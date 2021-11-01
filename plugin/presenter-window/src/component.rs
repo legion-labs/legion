@@ -4,7 +4,10 @@ use graphics_api::{
     TextureBarrier, TextureView,
 };
 use legion_ecs::prelude::Component;
-use legion_renderer::{Renderer, components::RenderSurfaceId};
+use legion_renderer::{
+    components::{RenderSurface, RenderSurfaceId},
+    Renderer,
+};
 use legion_window::{Window, WindowId};
 use raw_window_handle::HasRawWindowHandle;
 
@@ -27,9 +30,9 @@ impl std::fmt::Debug for PresenterWindow {
 
 impl PresenterWindow {
     pub fn from_window(
-        renderer: &Renderer, 
-        wnd: &Window, 
-        hwnd: &dyn HasRawWindowHandle, 
+        renderer: &Renderer,
+        wnd: &Window,
+        hwnd: &dyn HasRawWindowHandle,
         render_surface_id: RenderSurfaceId,
     ) -> Self {
         let device_context = renderer.device_context();
@@ -79,7 +82,7 @@ impl PresenterWindow {
         wnd: &Window,
         present_queue: &<DefaultApi as GfxApi>::Queue,
         wait_sem: &<DefaultApi as GfxApi>::Semaphore,
-        src_texture_view: Option<&<DefaultApi as GfxApi>::TextureView>,
+        render_surface: Option<&mut RenderSurface>,
     ) {
         //
         // Acquire backbuffer
@@ -100,7 +103,9 @@ impl PresenterWindow {
             cmd_pool.reset_command_pool().unwrap();
             cmd_buffer.begin().unwrap();
 
-            if let Some(src_texture_view) = src_texture_view {
+            if let Some(render_surface) = render_surface {
+                render_surface.transition_to(cmd_buffer, ResourceState::COPY_SRC);
+
                 cmd_buffer
                     .cmd_resource_barrier(
                         &[],
@@ -112,12 +117,12 @@ impl PresenterWindow {
                     )
                     .unwrap();
 
-                let src_texture = src_texture_view.texture();
+                let src_texture = render_surface.texture();
                 let src_texture_def = src_texture.texture_def();
                 let dst_texture = swapchain_texture;
                 let dst_texture_def = dst_texture.texture_def();
                 let blit_params = CmdBlitParams {
-                    src_state: ResourceState::COPY_SRC | ResourceState::SHADER_RESOURCE,
+                    src_state: ResourceState::COPY_SRC,
                     dst_state: ResourceState::COPY_DST,
                     src_offsets: [
                         Offset3D { x: 0, y: 0, z: 0 },

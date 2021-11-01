@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Result};
-use graphics_api::{PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags};
+use graphics_api::{
+    PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags,
+};
 use hassle_rs::compile_hlsl;
 use spirv_reflect::types::{
     ReflectBlockVariable, ReflectDecorationFlags, ReflectDescriptorBinding, ReflectShaderStageFlags,
@@ -58,19 +60,19 @@ impl HlslCompiler {
         // Shader source
         let shader_code = get_shader_source(params)?;
 
-        // For each compilation target        
+        // For each compilation target
         let mut spirv_binaries = Vec::with_capacity(params.products.len());
         let mut pipeline_reflection = PipelineReflection::default();
-        
 
         for (product_idx, _) in params.products.iter().enumerate() {
             // Compilation
             let unopt_spirv = compile_to_unoptimized_spirv(params, product_idx, &shader_code)?;
 
             // Reflection
-            let shader_reflection = extract_reflection_info(&unopt_spirv, params, product_idx);            
+            let shader_reflection = extract_reflection_info(&unopt_spirv, params, product_idx);
             // reflection_info = reflection_info_union(reflection_info, local_reflection_info);
-            pipeline_reflection = PipelineReflection::merge( &pipeline_reflection, &shader_reflection )?;
+            pipeline_reflection =
+                PipelineReflection::merge(&pipeline_reflection, &shader_reflection)?;
 
             // Optimize
             let opt_spirv = optimize_spirv(&unopt_spirv)?;
@@ -92,7 +94,9 @@ fn optimize_spirv(spirv: &SpirvBinary) -> Result<SpirvBinary> {
     let mut optimizer = spirv_tools::opt::create(Some(TargetEnv::Vulkan_1_2));
     optimizer.register_performance_passes();
     let opt_binary = optimizer.optimize(u32spirv, &mut OptimizerCallback {}, None)?;
-    Ok(SpirvBinary{bytecode: opt_binary.as_bytes().to_vec()})
+    Ok(SpirvBinary {
+        bytecode: opt_binary.as_bytes().to_vec(),
+    })
 }
 
 fn compile_to_unoptimized_spirv(
@@ -294,7 +298,6 @@ fn to_push_constant(
         size: push_constant.size,
     }
 }
-
 
 #[cfg(test)]
 mod tests {

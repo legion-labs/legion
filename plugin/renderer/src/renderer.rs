@@ -1,5 +1,7 @@
-use graphics_api::{GfxError, MAX_DESCRIPTOR_SET_LAYOUTS, prelude::*};
+use graphics_api::{prelude::*, GfxError, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_pso_compiler::{CompileParams, HlslCompiler, ShaderProduct, ShaderSource};
+
+use crate::components::RenderSurface;
 
 pub struct Renderer {
     frame_idx: usize,
@@ -207,30 +209,41 @@ impl TmpRenderPass {
         //
         let shader_compiler = HlslCompiler::new().unwrap();
 
-        let shader_source = String::from_utf8(include_bytes!("../shaders/shader.hlsl").to_vec()).unwrap();
+        let shader_source =
+            String::from_utf8(include_bytes!("../shaders/shader.hlsl").to_vec()).unwrap();
 
-        let shader_build_result = shader_compiler.compile(&CompileParams {
-            shader_source: ShaderSource::Code(shader_source),
-            defines: Vec::new(),
-            products: vec!(
-                ShaderProduct {
-                    defines: Vec::new(),
-                    entry_point: "main_vs".to_owned(),
-                    target_profile: "vs_6_0".to_owned(),
-                },
-                ShaderProduct {
-                    defines: Vec::new(),
-                    entry_point: "main_ps".to_owned(),
-                    target_profile: "ps_6_0".to_owned(),
-                }
-            )            
-        }).unwrap();        
+        let shader_build_result = shader_compiler
+            .compile(&CompileParams {
+                shader_source: ShaderSource::Code(shader_source),
+                defines: Vec::new(),
+                products: vec![
+                    ShaderProduct {
+                        defines: Vec::new(),
+                        entry_point: "main_vs".to_owned(),
+                        target_profile: "vs_6_0".to_owned(),
+                    },
+                    ShaderProduct {
+                        defines: Vec::new(),
+                        entry_point: "main_ps".to_owned(),
+                        target_profile: "ps_6_0".to_owned(),
+                    },
+                ],
+            })
+            .unwrap();
 
         let vert_shader_module = device_context
-            .create_shader_module(ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone()).module_def()).unwrap();
+            .create_shader_module(
+                ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
+                    .module_def(),
+            )
+            .unwrap();
 
         let frag_shader_module = device_context
-            .create_shader_module(ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone()).module_def()).unwrap();
+            .create_shader_module(
+                ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
+                    .module_def(),
+            )
+            .unwrap();
 
         // let vert_shader_module = device_context
         //     .create_shader_module(vert_shader_package.module_def())
@@ -274,23 +287,25 @@ impl TmpRenderPass {
         //     // },
         // };
 
-        let shader = device_context.create_shader(
-            vec![
-                ShaderStageDef {
-                    entry_point: "main_vs".to_owned(),
-                    shader_stage: ShaderStageFlags::VERTEX,
-                    shader_module: vert_shader_module,
-                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
-                },
-                ShaderStageDef {
-                    entry_point: "main_ps".to_owned(),
-                    shader_stage: ShaderStageFlags::FRAGMENT,
-                    shader_module: frag_shader_module,
-                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
-                }
-            ],
-            &shader_build_result.pipeline_reflection
-        ).unwrap();
+        let shader = device_context
+            .create_shader(
+                vec![
+                    ShaderStageDef {
+                        entry_point: "main_vs".to_owned(),
+                        shader_stage: ShaderStageFlags::VERTEX,
+                        shader_module: vert_shader_module,
+                        // reflection: shader_build_result.reflection_info.clone().unwrap(),
+                    },
+                    ShaderStageDef {
+                        entry_point: "main_ps".to_owned(),
+                        shader_stage: ShaderStageFlags::FRAGMENT,
+                        shader_module: frag_shader_module,
+                        // reflection: shader_build_result.reflection_info.clone().unwrap(),
+                    },
+                ],
+                &shader_build_result.pipeline_reflection,
+            )
+            .unwrap();
 
         // let shader = device_context
         //     .create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])
@@ -302,64 +317,54 @@ impl TmpRenderPass {
 
         let mut descriptor_set_layouts = Vec::new();
         for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            
-            let shader_resources : Vec<_> = 
-                shader_build_result.
-                pipeline_reflection.
-                shader_resources.
-                iter().
-                filter(| x| x.set_index as usize == set_index ).
-                collect();
+            let shader_resources: Vec<_> = shader_build_result
+                .pipeline_reflection
+                .shader_resources
+                .iter()
+                .filter(|x| x.set_index as usize == set_index)
+                .collect();
 
             if !shader_resources.is_empty() {
-
-                let descriptor_defs = 
-                    shader_resources.
-                    iter().
-                    map(|sr| DescriptorDef{
+                let descriptor_defs = shader_resources
+                    .iter()
+                    .map(|sr| DescriptorDef {
                         name: sr.name.clone(),
                         binding: sr.binding,
                         shader_resource_type: sr.shader_resource_type,
                         array_size: sr.element_count,
-                    }).collect();
+                    })
+                    .collect();
 
                 let def = DescriptorSetLayoutDef {
                     frequency: set_index as u32,
                     descriptor_defs,
                 };
-                let descriptor_set_layout = device_context.create_descriptorset_layout(&def).unwrap();
+                let descriptor_set_layout =
+                    device_context.create_descriptorset_layout(&def).unwrap();
                 descriptor_set_layouts.push(descriptor_set_layout);
             }
-        }       
+        }
 
         let mut root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts,
-            push_constant_def: None
+            push_constant_def: None,
         };
 
         let root_signature = device_context
             .create_root_signature(&root_signature_def)
             .unwrap();
 
-        let mut descriptor_set_arrays  = Vec::new();
+        let mut descriptor_set_arrays = Vec::new();
         for descriptor_set_layout in &root_signature_def.descriptor_set_layouts {
             let descriptor_set_array = device_context
-            .create_descriptor_set_array(&DescriptorSetArrayDef {
-                descriptor_set_layout,
-                array_length: 3, // One per swapchain image.
-            }).unwrap();    
+                .create_descriptor_set_array(&DescriptorSetArrayDef {
+                    descriptor_set_layout,
+                    array_length: 3, // One per swapchain image.
+                })
+                .unwrap();
             descriptor_set_arrays.push(descriptor_set_array);
-        } 
-        // let descriptor_set_layout = root_signature_def.descriptor_set_layouts[0]
-        //     .as_ref()
-        //     .unwrap();
-        // let mut descriptor_set_array = device_context
-        //     .create_descriptor_set_array(&DescriptorSetArrayDef {
-        //         descriptor_set_layout,
-        //         array_length: 3, // One per swapchain image.
-        //     })
-        //     .unwrap();
+        }
 
         //
         // Pipeline state
@@ -458,8 +463,8 @@ impl TmpRenderPass {
     pub fn render(
         &self,
         renderer: &Renderer,
+        render_surface: &RenderSurface,
         cmd_buffer: &<DefaultApi as GfxApi>::CommandBuffer,
-        render_view: &<DefaultApi as GfxApi>::TextureView,
     ) {
         let render_frame_idx = renderer.render_frame_idx;
         let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
@@ -507,7 +512,7 @@ impl TmpRenderPass {
         cmd_buffer
             .cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
-                    texture_view: render_view,
+                    texture_view: render_surface.render_target_view(),
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_value: ColorClearValue(self.color),

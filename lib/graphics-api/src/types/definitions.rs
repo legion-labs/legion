@@ -1,8 +1,8 @@
 use super::{
     AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
     Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PipelineType,
-    PrimitiveTopology, QueueType, SampleCount, ShaderStageFlags, StencilOp,
-    TextureTiling, VertexAttributeRate,
+    PrimitiveTopology, QueueType, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
+    VertexAttributeRate,
 };
 
 use crate::{GfxApi, ResourceFlags, MAX_DESCRIPTOR_SET_LAYOUTS};
@@ -646,7 +646,7 @@ impl<A: GfxApi> Default for RootSignatureDef<A> {
         Self {
             pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: Vec::new(), // [Option::<_>::None; MAX_DESCRIPTOR_SET_LAYOUTS],
-            push_constant_def: None
+            push_constant_def: None,
         }
     }
 }

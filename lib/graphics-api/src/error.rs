@@ -18,9 +18,9 @@ pub enum GfxError {
 }
 
 impl std::fmt::Display for GfxError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {                
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GfxError::StringError(msg) => write!(f, "{}", msg ),
+            GfxError::StringError(msg) => write!(f, "{}", msg),
             GfxError::IoError(e) => e.fmt(f),
             GfxError::VkError(e) => e.fmt(f),
             GfxError::VkLoadingError(e) => e.fmt(f),
@@ -30,8 +30,7 @@ impl std::fmt::Display for GfxError {
     }
 }
 
-impl Error for GfxError {    
-}
+impl Error for GfxError {}
 
 impl From<&str> for GfxError {
     fn from(str: &str) -> Self {

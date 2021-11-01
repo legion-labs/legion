@@ -5,7 +5,7 @@ use ash::vk;
 
 #[derive(Debug)]
 pub struct ShaderModuleVulkanInner {
-    device_context: VulkanDeviceContext,    
+    device_context: VulkanDeviceContext,
     shader_module: vk::ShaderModule,
 }
 

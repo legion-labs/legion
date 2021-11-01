@@ -1,7 +1,17 @@
 use bytes::Bytes;
 use legion_ecs::prelude::*;
 
-use legion_graphics_api::{CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, CullMode, DefaultApi, DescriptorDef, DescriptorSetLayoutDef, DeviceContext, Extents3D, Format, GfxApi, GraphicsPipelineDef, LoadOp, MAX_DESCRIPTOR_SET_LAYOUTS, MemoryUsage, Offset3D, PipelineReflection, PipelineType, PrimitiveTopology, Queue, RasterizerState, ResourceFlags, ResourceState, ResourceUsage, RootSignatureDef, SampleCount, ShaderPackage, ShaderStageDef, ShaderStageFlags, StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef};
+use legion_graphics_api::{
+    AddressMode, CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding, CommandBuffer,
+    CommandBufferDef, CommandPool, CommandPoolDef, CullMode, DefaultApi, DescriptorDef,
+    DescriptorElements, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef,
+    DescriptorSetLayoutDef, DescriptorUpdate, DeviceContext, Extents3D, FilterType, Format, GfxApi,
+    GraphicsPipelineDef, LoadOp, MemoryUsage, MipMapMode, Offset3D, PipelineType,
+    PrimitiveTopology, Queue, RasterizerState, ResourceFlags, ResourceState, ResourceUsage,
+    RootSignatureDef, SampleCount, SamplerDef, ShaderPackage, ShaderStageDef, ShaderStageFlags,
+    StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 use legion_pso_compiler::{CompileParams, HlslCompiler, ShaderProduct, ShaderSource};
 use log::{debug, warn};
 use std::{cmp::min, io::Cursor, sync::Arc};
@@ -67,18 +77,16 @@ pub struct VideoStream {
     frame_id: i32,
     render_frame_count: u32,
     resolution: Resolution,
-    // pub color: Color,
-    // pub speed: f32,
-    // pub render_surface: RenderSurface,
     encoder: VideoStreamEncoder,
-    // elapsed_secs: f32,
     render_images: Vec<<DefaultApi as GfxApi>::Texture>,
     render_image_rtvs: Vec<<DefaultApi as GfxApi>::TextureView>,
     copy_images: Vec<<DefaultApi as GfxApi>::Texture>,
     cmd_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
     cmd_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
-    // root_signature: <DefaultApi as GfxApi>::RootSignature,
+    root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
+    descriptor_set_arrays: Vec<<DefaultApi as GfxApi>::DescriptorSetArray>,
+    bilinear_sampler: <DefaultApi as GfxApi>::Sampler,
 }
 
 impl VideoStream {
@@ -97,12 +105,13 @@ impl VideoStream {
         //
         let shader_compiler = HlslCompiler::new().unwrap();
 
-        let shader_source = String::from_utf8(include_bytes!("../data/display_mapper.hlsl").to_vec())?;
+        let shader_source =
+            String::from_utf8(include_bytes!("../data/display_mapper.hlsl").to_vec())?;
 
         let shader_build_result = shader_compiler.compile(&CompileParams {
             shader_source: ShaderSource::Code(shader_source),
             defines: Vec::new(),
-            products: vec!(
+            products: vec![
                 ShaderProduct {
                     defines: Vec::new(),
                     entry_point: "main_vs".to_owned(),
@@ -112,15 +121,19 @@ impl VideoStream {
                     defines: Vec::new(),
                     entry_point: "main_ps".to_owned(),
                     target_profile: "ps_6_0".to_owned(),
-                }
-            )            
-        })?;        
+                },
+            ],
+        })?;
 
-        let vert_shader_module = device_context
-            .create_shader_module(ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone()).module_def())?;
+        let vert_shader_module = device_context.create_shader_module(
+            ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
+                .module_def(),
+        )?;
 
-        let frag_shader_module = device_context
-            .create_shader_module(ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone()).module_def())?;
+        let frag_shader_module = device_context.create_shader_module(
+            ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
+                .module_def(),
+        )?;
 
         let shader = device_context.create_shader(
             vec![
@@ -137,45 +150,43 @@ impl VideoStream {
                     // reflection: shader_build_result.reflection_info.clone().unwrap(),
                 },
             ],
-            &shader_build_result.pipeline_reflection
+            &shader_build_result.pipeline_reflection,
         )?;
 
         let mut descriptor_set_layouts = Vec::new();
         for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
-            
-            let shader_resources : Vec<_> = 
-                shader_build_result.
-                pipeline_reflection.
-                shader_resources.
-                iter().
-                filter(| x| x.set_index as usize == set_index ).
-                collect();
+            let shader_resources: Vec<_> = shader_build_result
+                .pipeline_reflection
+                .shader_resources
+                .iter()
+                .filter(|x| x.set_index as usize == set_index)
+                .collect();
 
             if !shader_resources.is_empty() {
-
-                let descriptor_defs = 
-                    shader_resources.
-                    iter().
-                    map(|sr| DescriptorDef{
+                let descriptor_defs = shader_resources
+                    .iter()
+                    .map(|sr| DescriptorDef {
                         name: sr.name.clone(),
                         binding: sr.binding,
                         shader_resource_type: sr.shader_resource_type,
                         array_size: sr.element_count,
-                    }).collect();
+                    })
+                    .collect();
 
                 let def = DescriptorSetLayoutDef {
                     frequency: set_index as u32,
                     descriptor_defs,
                 };
-                let descriptor_set_layout = device_context.create_descriptorset_layout(&def).unwrap();
+                let descriptor_set_layout =
+                    device_context.create_descriptorset_layout(&def).unwrap();
                 descriptor_set_layouts.push(descriptor_set_layout);
             }
-        }       
+        }
 
         let mut root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts,
-            push_constant_def: None
+            push_constant_def: None,
         };
 
         let root_signature = device_context.create_root_signature(&root_signature_def)?;
@@ -195,6 +206,17 @@ impl VideoStream {
             depth_stencil_format: None,
             sample_count: SampleCount::SampleCount1,
         })?;
+
+        let sampler_def = SamplerDef {
+            min_filter: FilterType::Linear,
+            mag_filter: FilterType::Linear,
+            mip_map_mode: MipMapMode::Linear,
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            ..Default::default()
+        };
+        let bilinear_sampler = device_context.create_sampler(&sampler_def)?;
 
         //
         // Frame dependant resources
@@ -256,6 +278,17 @@ impl VideoStream {
             cmd_buffers.push(cmd_buffer);
         }
 
+        let mut descriptor_set_arrays = Vec::new();
+        for descriptor_set_layout in &root_signature_def.descriptor_set_layouts {
+            let descriptor_set_array = device_context
+                .create_descriptor_set_array(&DescriptorSetArrayDef {
+                    descriptor_set_layout,
+                    array_length: render_frame_count,
+                })
+                .unwrap();
+            descriptor_set_arrays.push(descriptor_set_array);
+        }
+
         Ok(Self {
             video_data_channel,
             frame_id: 0,
@@ -267,12 +300,18 @@ impl VideoStream {
             copy_images,
             cmd_pools,
             cmd_buffers,
-            // root_signature,
+            root_signature,
             pipeline,
+            descriptor_set_arrays,
+            bilinear_sampler,
         })
     }
 
-    pub(crate) fn resize(&mut self, renderer: &Renderer, resolution: Resolution) -> anyhow::Result<()> {
+    pub(crate) fn resize(
+        &mut self,
+        renderer: &Renderer,
+        resolution: Resolution,
+    ) -> anyhow::Result<()> {
         trace_scope!();
 
         if resolution != self.resolution {
@@ -280,7 +319,7 @@ impl VideoStream {
             let render_frame_count = self.render_frame_count as usize;
             let mut render_images = Vec::with_capacity(render_frame_count);
             let mut render_image_rtvs = Vec::with_capacity(render_frame_count);
-            let mut copy_images = Vec::with_capacity(render_frame_count );
+            let mut copy_images = Vec::with_capacity(render_frame_count);
 
             for _ in 0..render_frame_count {
                 let render_image = device_context.create_texture(&TextureDef {
@@ -349,7 +388,7 @@ impl VideoStream {
         &mut self,
         graphics_queue: &<DefaultApi as GfxApi>::Queue,
         wait_sem: &<DefaultApi as GfxApi>::Semaphore,
-        render_surface: &RenderSurface,
+        render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();
         self.record_frame_id_metric();
@@ -359,13 +398,12 @@ impl VideoStream {
         // Render
         //
         {
-            let render_frame_index = 0;
-            let cmd_pool = &self.cmd_pools[render_frame_index];
-            let cmd_buffer = &self.cmd_buffers[render_frame_index];
-            let _src_texture = &render_surface.texture;
-            let render_texture = &self.render_images[render_frame_index];
-            let render_texture_rtv = &self.render_image_rtvs[render_frame_index];
-            let copy_texture = &self.copy_images[render_frame_index];
+            let render_frame_idx = 0;
+            let cmd_pool = &self.cmd_pools[render_frame_idx];
+            let cmd_buffer = &self.cmd_buffers[render_frame_idx];
+            let render_texture = &self.render_images[render_frame_idx];
+            let render_texture_rtv = &self.render_image_rtvs[render_frame_idx];
+            let copy_texture = &self.copy_images[render_frame_idx];
 
             cmd_pool.reset_command_pool().unwrap();
             cmd_buffer.begin().unwrap();
@@ -373,6 +411,8 @@ impl VideoStream {
             //
             // RenderPass
             //
+
+            render_surface.transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
 
             cmd_buffer
                 .cmd_resource_barrier(
@@ -398,6 +438,37 @@ impl VideoStream {
                 .unwrap();
 
             cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
+
+            self.descriptor_set_arrays[0]
+                .update_descriptor_set(&[
+                    DescriptorUpdate {
+                        array_index: render_frame_idx as u32,
+                        descriptor_key: DescriptorKey::Name("hdr_sampler"),
+                        elements: DescriptorElements {
+                            samplers: Some(&[&self.bilinear_sampler]),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    DescriptorUpdate {
+                        array_index: render_frame_idx as u32,
+                        descriptor_key: DescriptorKey::Name("hdr_image"),
+                        elements: DescriptorElements {
+                            texture_views: Some(&[render_surface.shader_resource_view()]),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                ])
+                .unwrap();
+
+            cmd_buffer
+                .cmd_bind_descriptor_set(
+                    &self.root_signature,
+                    &self.descriptor_set_arrays[0],
+                    (render_frame_idx) as _,
+                )
+                .unwrap();
 
             cmd_buffer.cmd_draw(3, 0).unwrap();
 

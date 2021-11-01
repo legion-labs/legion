@@ -1,6 +1,7 @@
 use graphics_api::{
-    DefaultApi, DeviceContext, Extents3D, Format, GfxApi, MemoryUsage, ResourceFlags,
-    ResourceUsage, Texture, TextureDef, TextureTiling, TextureViewDef,
+    CommandBuffer, DefaultApi, DeviceContext, Extents3D, Format, GfxApi, MemoryUsage,
+    ResourceFlags, ResourceState, ResourceUsage, Texture, TextureBarrier, TextureDef,
+    TextureTiling, TextureView, TextureViewDef,
 };
 use legion_ecs::prelude::Component;
 use legion_utils::Uuid;
@@ -21,10 +22,11 @@ pub struct RenderSurface {
     pub id: RenderSurfaceId,
     pub width: u32,
     pub height: u32,
-    pub texture: <DefaultApi as GfxApi>::Texture,
-    pub texture_srv: <DefaultApi as GfxApi>::TextureView,
-    pub texture_rtv: <DefaultApi as GfxApi>::TextureView,
     pub test_renderpass: TmpRenderPass,
+    texture: <DefaultApi as GfxApi>::Texture,
+    texture_srv: <DefaultApi as GfxApi>::TextureView,
+    texture_rtv: <DefaultApi as GfxApi>::TextureView,
+    texture_state: ResourceState,
 }
 
 impl RenderSurface {
@@ -39,7 +41,9 @@ impl RenderSurface {
             array_length: 1,
             mip_count: 1,
             format: Format::R16G16B16A16_SFLOAT,
-            usage_flags: ResourceUsage::AS_RENDER_TARGET|ResourceUsage::AS_SHADER_RESOURCE|ResourceUsage::AS_TRANSFERABLE,
+            usage_flags: ResourceUsage::AS_RENDER_TARGET
+                | ResourceUsage::AS_SHADER_RESOURCE
+                | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
@@ -59,16 +63,12 @@ impl RenderSurface {
             texture,
             texture_srv,
             texture_rtv,
+            texture_state: ResourceState::UNDEFINED,
             test_renderpass: TmpRenderPass::new(renderer),
         }
     }
 
-    pub fn resize(
-        &mut self,
-        renderer: &Renderer,        
-        width: u32,
-        height: u32,
-    ) {
+    pub fn resize(&mut self, renderer: &Renderer, width: u32, height: u32) {
         if (self.width, self.height) != (width, height) {
             let device_context = renderer.device_context();
 
@@ -88,6 +88,42 @@ impl RenderSurface {
             self.texture = texture;
             self.texture_srv = texture_srv;
             self.texture_rtv = texture_rtv;
+            self.texture_state = ResourceState::UNDEFINED;
+        }
+    }
+
+    pub fn texture(&self) -> &<DefaultApi as GfxApi>::Texture {
+        &self.texture
+    }
+
+    pub fn render_target_view(&self) -> &<DefaultApi as GfxApi>::TextureView {
+        &self.texture_rtv
+    }
+
+    pub fn shader_resource_view(&self) -> &<DefaultApi as GfxApi>::TextureView {
+        &self.texture_srv
+    }
+
+    pub fn transition_to(
+        &mut self,
+        cmd_buffer: &<DefaultApi as GfxApi>::CommandBuffer,
+        dst_state: ResourceState,
+    ) {
+        let src_state = self.texture_state;
+        let dst_state = dst_state;
+
+        if src_state != dst_state {
+            cmd_buffer
+                .cmd_resource_barrier(
+                    &[],
+                    &[TextureBarrier::<DefaultApi>::state_transition(
+                        &self.texture,
+                        src_state,
+                        dst_state,
+                    )],
+                )
+                .unwrap();
+            self.texture_state = dst_state;
         }
     }
 }

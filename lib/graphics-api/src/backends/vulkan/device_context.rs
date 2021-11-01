@@ -1,6 +1,11 @@
 use crate::backends::deferred_drop::DeferredDropper;
 use crate::vulkan::check_extensions_availability;
-use crate::{ApiDef, BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef, PipelineReflection, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef};
+use crate::{
+    ApiDef, BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef,
+    DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef,
+    PipelineReflection, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef,
+    SwapchainDef, TextureDef,
+};
 use ash::extensions::khr;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
@@ -396,7 +401,11 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
         VulkanBuffer::new(self, buffer_def)
     }
 
-    fn create_shader(&self, stages: Vec<ShaderStageDef<VulkanApi>>, pipeline_reflection: &PipelineReflection) -> GfxResult<VulkanShader> {
+    fn create_shader(
+        &self,
+        stages: Vec<ShaderStageDef<VulkanApi>>,
+        pipeline_reflection: &PipelineReflection,
+    ) -> GfxResult<VulkanShader> {
         VulkanShader::new(self, stages, pipeline_reflection)
     }
 

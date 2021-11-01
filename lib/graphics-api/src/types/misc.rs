@@ -737,6 +737,7 @@ pub struct OffsetSize {
 pub struct DescriptorElements<'a, A: GfxApi> {
     pub samplers: Option<&'a [&'a A::Sampler]>,
     pub buffer_views: Option<&'a [&'a A::BufferView]>,
+    pub texture_views: Option<&'a [&'a A::TextureView]>,
 }
 
 impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
@@ -744,6 +745,7 @@ impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
         Self {
             samplers: None,
             buffer_views: None,
+            texture_views: None,
         }
     }
 }

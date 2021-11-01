@@ -169,7 +169,7 @@ pub(crate) fn handle_stream_events(
     }
 }
 
-pub(crate) fn update_streams(    
+pub(crate) fn update_streams(
     renderer: Res<'_, Renderer>,
     mut query: Query<'_, '_, (&mut VideoStream, &mut RenderSurface)>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
@@ -206,13 +206,11 @@ pub(crate) fn render_streams(
     let graphics_queue = renderer.graphics_queue();
     let wait_sem = renderer.frame_signal_semaphore();
 
-    for (mut video_stream, render_surface) in query.iter_mut() {
-        async_rt.start_detached(
-            video_stream.render(            
-                graphics_queue,
-                wait_sem,
-                &render_surface,
-            )
-        );
+    for (mut video_stream, mut render_surface) in query.iter_mut() {
+        async_rt.start_detached(video_stream.render(
+            graphics_queue,
+            wait_sem,
+            render_surface.into_inner(),
+        ));
     }
 }

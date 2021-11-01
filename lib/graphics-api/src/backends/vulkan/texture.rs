@@ -152,30 +152,35 @@ impl VulkanTexture {
             let mut usage_flags = vk::ImageUsageFlags::empty();
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::AS_SHADER_RESOURCE) {
+                .intersects(ResourceUsage::AS_SHADER_RESOURCE)
+            {
                 usage_flags |= vk::ImageUsageFlags::SAMPLED;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::AS_UNORDERED_ACCESS) {
+                .intersects(ResourceUsage::AS_UNORDERED_ACCESS)
+            {
                 usage_flags |= vk::ImageUsageFlags::STORAGE;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::AS_RENDER_TARGET) {
+                .intersects(ResourceUsage::AS_RENDER_TARGET)
+            {
                 usage_flags |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::AS_DEPTH_STENCIL) {
+                .intersects(ResourceUsage::AS_DEPTH_STENCIL)
+            {
                 usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::AS_TRANSFERABLE) {
+                .intersects(ResourceUsage::AS_TRANSFERABLE)
+            {
                 usage_flags |=
                     vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST;
-            }            
+            }
             //
             // Determine image create flags
             //

@@ -22,39 +22,29 @@ impl Plugin for RendererPlugin {
     }
 }
 
-fn render(mut renderer: ResMut<Renderer>, outputs: Query<(Entity, &RenderSurface)>) {
+fn render(mut renderer: ResMut<Renderer>, mut outputs: Query<(Entity, &mut RenderSurface)>) {
     renderer.begin_frame();
 
     let cmd_buffer = renderer.get_cmd_buffer();
 
-    for (_, render_surface) in outputs.iter() {
-        let render_pass = &render_surface.test_renderpass;
-        let render_target = &render_surface.texture;
-        let render_target_view = &render_surface.texture_rtv;
+    for (_, mut render_surface) in outputs.iter_mut() {
+        render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::<DefaultApi>::state_transition(
-                    render_target,
-                    ResourceState::SHADER_RESOURCE | ResourceState::COPY_SRC,
-                    ResourceState::RENDER_TARGET,
-                )],
-            )
-            .unwrap();
+        {
+            let render_pass = &render_surface.test_renderpass;
+            render_pass.render(&renderer, &render_surface, cmd_buffer);
+        }
 
-        render_pass.render(&renderer, cmd_buffer, render_target_view);
-
-        cmd_buffer
-            .cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::<DefaultApi>::state_transition(
-                    render_target,
-                    ResourceState::RENDER_TARGET,
-                    ResourceState::SHADER_RESOURCE | ResourceState::COPY_SRC,
-                )],
-            )
-            .unwrap();
+        // cmd_buffer
+        //     .cmd_resource_barrier(
+        //         &[],
+        //         &[TextureBarrier::<DefaultApi>::state_transition(
+        //             render_target,
+        //             ResourceState::RENDER_TARGET,
+        //             ResourceState::SHADER_RESOURCE | ResourceState::COPY_SRC,
+        //         )],
+        //     )
+        //     .unwrap();
     }
 
     renderer.end_frame();

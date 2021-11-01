@@ -24,9 +24,7 @@ pub struct Color(pub [f32; 4]);
 impl Default for Color {
     fn default() -> Self {
         // This is red.
-        Self(
-            [1.0f32, 0.0f32, 0.0f32, 1.0f32]
-        )
+        Self([1.0f32, 0.0f32, 0.0f32, 1.0f32])
     }
 }
 
