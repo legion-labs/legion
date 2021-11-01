@@ -29,11 +29,13 @@ fn render_presenter_windows(
 
     for mut pres_window in pres_windows.iter_mut() {
         let wnd = windows.get(pres_window.window_id()).unwrap();
-        let render_surface = render_surfaces
-            .iter_mut()
-            .find(|x| pres_window.render_surface_id().eq(&x.id()))
-            .map(|x| x.into_inner());
-
-        pres_window.present(wnd, graphics_queue, wait_sem, render_surface);
+        if wnd.physical_width() > 0 && wnd.physical_height() > 0 {
+            let render_surface = render_surfaces
+                .iter_mut()
+                .find(|x| pres_window.render_surface_id().eq(&x.id()))
+                .map(|x| x.into_inner());
+    
+            pres_window.present(wnd, graphics_queue, wait_sem, render_surface);
+        }
     }
 }
