@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+[lib]
+doc = false
+
 [dependencies]
 # Legion engine
 legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
