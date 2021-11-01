@@ -74,14 +74,10 @@ fn on_window_created(
 ) {
     for ev in ev_wnd_created.iter() {
         let wnd = wnd_list.get(ev.id).unwrap();
-        let render_surface =
-            RenderSurface::new(
-                &renderer, 
-                RenderSurfaceExtents::new(
-                    wnd.physical_width(), 
-                    wnd.physical_height()
-                )
-            );
+        let render_surface = RenderSurface::new(
+            &renderer,
+            RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
+        );
         let render_surface_id = render_surface.id();
         render_surfaces.insert(ev.id, render_surface_id);
 
@@ -110,10 +106,10 @@ fn on_window_resized(
             let render_surface = query.iter_mut().find(|x| x.id() == *render_surface_id);
             if let Some(mut render_surface) = render_surface {
                 let wnd = wnd_list.get(ev.id).unwrap();
-                render_surface.resize(&renderer, RenderSurfaceExtents::new(
-                    wnd.physical_width(),
-                    wnd.physical_height()
-                ));                
+                render_surface.resize(
+                    &renderer,
+                    RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
+                );
             }
         }
     }

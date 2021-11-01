@@ -87,7 +87,7 @@ impl VulkanBuffer {
                 .new_drc(VulkanBufferInner {
                     device_context: device_context.clone(),
                     allocation_info,
-                    buffer_def: buffer_def.clone(),
+                    buffer_def: *buffer_def,
                     allocation,
                     buffer,
                 }),

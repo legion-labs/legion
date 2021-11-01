@@ -2,7 +2,7 @@ use graphics_api::ResourceState;
 use legion_app::Plugin;
 use legion_ecs::{prelude::*, system::IntoSystem};
 
-use crate::{FrameContext, Renderer, components::RenderSurface};
+use crate::{components::RenderSurface, FrameContext, Renderer};
 
 use super::labels::*;
 
@@ -23,7 +23,6 @@ impl Plugin for RendererPlugin {
 }
 
 fn render(renderer: ResMut<Renderer>, mut outputs: Query<(Entity, &mut RenderSurface)>) {
-    
     let frame_context = FrameContext::new(renderer.into_inner());
 
     let cmd_buffer = frame_context.renderer().get_cmd_buffer();
@@ -33,11 +32,7 @@ fn render(renderer: ResMut<Renderer>, mut outputs: Query<(Entity, &mut RenderSur
 
         {
             let render_pass = &render_surface.test_renderpass;
-            render_pass.render(
-                frame_context.renderer(), 
-                &render_surface, 
-                cmd_buffer
-            );
+            render_pass.render(frame_context.renderer(), &render_surface, cmd_buffer);
         }
-    }    
+    }
 }

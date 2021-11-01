@@ -157,7 +157,7 @@ impl HlslCompiler {
         })
     }
 
-    fn extract_reflection_info(        
+    fn extract_reflection_info(
         spirv: &SpirvBinary,
         params: &CompileParams,
         entry_point_idx: usize,
@@ -198,7 +198,7 @@ impl HlslCompiler {
         }
     }
 
-    fn to_shader_resource(        
+    fn to_shader_resource(
         shader_stage_flags: ShaderStageFlags,
         descriptor_binding: &ReflectDescriptorBinding,
     ) -> ShaderResource {
@@ -213,7 +213,7 @@ impl HlslCompiler {
     }
 
     /// Reference: https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst
-    fn to_shader_resource_type(        
+    fn to_shader_resource_type(
         descriptor_binding: &ReflectDescriptorBinding,
     ) -> ShaderResourceType {
         match descriptor_binding.descriptor_type {
@@ -288,7 +288,7 @@ impl HlslCompiler {
             == (descriptor_binding.block.decoration_flags & ReflectDecorationFlags::NON_WRITABLE)
     }
 
-    fn to_push_constant(        
+    fn to_push_constant(
         shader_stage_flags: ShaderStageFlags,
         push_constant: &ReflectBlockVariable,
     ) -> PushConstant {

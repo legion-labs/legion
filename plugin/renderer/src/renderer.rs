@@ -1,8 +1,8 @@
 use std::num::NonZeroU32;
 
-use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use legion_pso_compiler::{CompileParams, HlslCompiler, EntryPoint, ShaderSource};
 use crate::components::RenderSurface;
+use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 pub struct Renderer {
     frame_idx: usize,
     render_frame_idx: usize,
@@ -18,15 +18,13 @@ pub struct Renderer {
 }
 
 pub struct FrameContext<'a> {
-    renderer: &'a mut Renderer
+    renderer: &'a mut Renderer,
 }
 
 impl<'a> FrameContext<'a> {
     pub fn new(renderer: &'a mut Renderer) -> Self {
         renderer.begin_frame();
-        Self {
-            renderer
-        }
+        Self { renderer }
     }
 
     pub fn renderer(&self) -> &Renderer {
@@ -42,8 +40,7 @@ impl<'a> Drop for FrameContext<'a> {
 
 impl Renderer {
     pub fn new() -> Renderer {
-        
-        let num_render_frames = 2;        
+        let num_render_frames = 2;
         let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
         let graphics_queue = device_context.create_queue(QueueType::Graphics).unwrap();
@@ -71,7 +68,7 @@ impl Renderer {
             command_buffers.push(command_buffer);
             frame_signal_sems.push(frame_signal_sem);
             frame_fences.push(frame_fence);
-        }        
+        }
 
         Renderer {
             frame_idx: 0,
@@ -109,18 +106,17 @@ impl Renderer {
     }
 
     fn begin_frame(&mut self) {
-
         //
         // Update frame indices
-        //         
+        //
         self.frame_idx = self.frame_idx + 1;
         self.render_frame_idx = self.frame_idx % self.num_render_frames;
-        
-        // 
+
+        //
         // Store on stack
-        // 
+        //
         let render_frame_idx = self.render_frame_idx;
-        
+
         //
         // Wait for the next frame to be available
         //
@@ -146,7 +142,6 @@ impl Renderer {
     }
 
     fn end_frame(&self) {
-
         let render_frame_idx = self.render_frame_idx;
         let signal_semaphore = &self.frame_signal_sems[render_frame_idx];
         let signal_fence = &self.frame_fences[render_frame_idx];
@@ -155,12 +150,8 @@ impl Renderer {
         cmd_buffer.end().unwrap();
 
         self.graphics_queue
-            .submit(
-                &[cmd_buffer],
-                &[],
-                &[&signal_semaphore], 
-                Some(signal_fence)
-            ).unwrap();        
+            .submit(&[cmd_buffer], &[], &[&signal_semaphore], Some(signal_fence))
+            .unwrap();
     }
 }
 
@@ -287,15 +278,13 @@ impl TmpRenderPass {
         let root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts,
-            push_constant_def: 
-                shader_build_result.
-                pipeline_reflection.
-                push_constant.
-                map(|x| PushConstantDef{
-                        used_in_shader_stages: x.used_in_shader_stages,
-                        size: NonZeroU32::new(x.size).unwrap()
-                    }  
-                ),
+            push_constant_def: shader_build_result
+                .pipeline_reflection
+                .push_constant
+                .map(|x| PushConstantDef {
+                    used_in_shader_stages: x.used_in_shader_stages,
+                    size: NonZeroU32::new(x.size).unwrap(),
+                }),
         };
 
         let root_signature = device_context
@@ -317,15 +306,13 @@ impl TmpRenderPass {
         // Pipeline state
         //
         let vertex_layout = VertexLayout {
-            attributes: vec![
-                VertexLayoutAttribute {
-                    format: Format::R32G32_SFLOAT,
-                    buffer_index: 0,
-                    location: 0,
-                    byte_offset: 0,
-                    gl_attribute_name: Some("pos".to_owned()),
-                },                
-            ],
+            attributes: vec![VertexLayoutAttribute {
+                format: Format::R32G32_SFLOAT,
+                buffer_index: 0,
+                location: 0,
+                byte_offset: 0,
+                gl_attribute_name: Some("pos".to_owned()),
+            }],
             buffers: vec![VertexLayoutBuffer {
                 stride: 8,
                 rate: VertexAttributeRate::Vertex,
@@ -413,9 +400,12 @@ impl TmpRenderPass {
         // Update vertices
         //
         let vertex_data = [
-            0.0f32, 0.5,            
-            0.5 - (elapsed_secs.cos() / 2. + 0.5), -0.5,
-            -0.5 + (elapsed_secs.cos() / 2. + 0.5), -0.5,
+            0.0f32,
+            0.5,
+            0.5 - (elapsed_secs.cos() / 2. + 0.5),
+            -0.5,
+            -0.5 + (elapsed_secs.cos() / 2. + 0.5),
+            -0.5,
         ];
         let vertex_buffer = &self.vertex_buffers[render_frame_idx];
         vertex_buffer
@@ -446,7 +436,8 @@ impl TmpRenderPass {
                     clear_value: ColorClearValue(self.color),
                 }],
                 None,
-            ).unwrap();
+            )
+            .unwrap();
 
         cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
 
@@ -465,10 +456,13 @@ impl TmpRenderPass {
                 &self.root_signature,
                 &self.descriptor_set_arrays[0],
                 (render_frame_idx) as _,
-            ).unwrap();
+            )
+            .unwrap();
 
         let push_constant_data = [1.0f32, 1.0, 1.0, 1.0];
-        cmd_buffer.cmd_push_constants(&self.root_signature, &push_constant_data).unwrap();    
+        cmd_buffer
+            .cmd_push_constants(&self.root_signature, &push_constant_data)
+            .unwrap();
 
         cmd_buffer.cmd_draw(3, 0).unwrap();
 

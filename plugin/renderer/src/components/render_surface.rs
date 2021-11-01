@@ -1,6 +1,10 @@
 use std::cmp::max;
 
-use graphics_api::{CommandBuffer, DefaultApi, DeviceContext, Extents2D, Extents3D, Format, GfxApi, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef};
+use graphics_api::{
+    CommandBuffer, DefaultApi, DeviceContext, Extents2D, Extents3D, Format, GfxApi, MemoryUsage,
+    ResourceFlags, ResourceState, ResourceUsage, Texture, TextureBarrier, TextureDef,
+    TextureTiling, TextureViewDef,
+};
 use legion_ecs::prelude::Component;
 use legion_utils::Uuid;
 
@@ -17,16 +21,16 @@ impl RenderSurfaceId {
 
 #[derive(Debug, PartialEq)]
 pub struct RenderSurfaceExtents {
-    extents_2d: Extents2D,    
+    extents_2d: Extents2D,
 }
 
 impl RenderSurfaceExtents {
-    pub fn new(width: u32, height: u32) -> RenderSurfaceExtents {        
-        Self {            
+    pub fn new(width: u32, height: u32) -> RenderSurfaceExtents {
+        Self {
             extents_2d: Extents2D {
                 width: max(1u32, width),
-                height: max(1u32, height)
-            }
+                height: max(1u32, height),
+            },
         }
     }
 
@@ -39,7 +43,6 @@ impl RenderSurfaceExtents {
     }
 }
 
-
 #[derive(Debug, Component)]
 pub struct RenderSurface {
     id: RenderSurfaceId,
@@ -48,18 +51,18 @@ pub struct RenderSurface {
     texture_srv: <DefaultApi as GfxApi>::TextureView,
     texture_rtv: <DefaultApi as GfxApi>::TextureView,
     texture_state: ResourceState,
-    
+
     // tmp
     pub test_renderpass: TmpRenderPass,
 }
 
 impl RenderSurface {
     pub fn new(renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
-        Self::new_with_id(RenderSurfaceId::new(), renderer, extents)        
+        Self::new_with_id(RenderSurfaceId::new(), renderer, extents)
     }
 
     pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
-        if (self.extents) != extents {                      
+        if (self.extents) != extents {
             *self = Self::new_with_id(self.id, renderer, extents);
         }
     }
@@ -103,7 +106,11 @@ impl RenderSurface {
         }
     }
 
-    fn new_with_id(id: RenderSurfaceId, renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
+    fn new_with_id(
+        id: RenderSurfaceId,
+        renderer: &Renderer,
+        extents: RenderSurfaceExtents,
+    ) -> Self {
         let device_context = renderer.device_context();
         let texture_def = TextureDef {
             extents: Extents3D {
@@ -131,7 +138,7 @@ impl RenderSurface {
 
         Self {
             id,
-            extents,            
+            extents,
             texture,
             texture_srv,
             texture_rtv,

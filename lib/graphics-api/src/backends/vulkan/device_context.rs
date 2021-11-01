@@ -210,7 +210,7 @@ impl VulkanDeviceContextInner {
             physical_device,
             physical_device_info,
             device: logical_device,
-            allocator: allocator,
+            allocator,
             deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
 
@@ -346,7 +346,7 @@ impl VulkanDeviceContext {
 
     pub fn new(instance: &VkInstance, api_def: &ApiDef) -> GfxResult<Self> {
         let inner = Arc::new(VulkanDeviceContextInner::new(
-            &instance,
+            instance,
             api_def.windowing_mode,
             api_def.video_mode,
         )?);

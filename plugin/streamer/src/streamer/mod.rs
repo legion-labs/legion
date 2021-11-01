@@ -1,7 +1,10 @@
 use legion_async::TokioAsyncRuntime;
 use legion_core::Time;
 use legion_ecs::prelude::*;
-use legion_renderer::{Renderer, components::{RenderSurface, RenderSurfaceExtents}};
+use legion_renderer::{
+    components::{RenderSurface, RenderSurfaceExtents},
+    Renderer,
+};
 
 use std::{fmt::Display, sync::Arc};
 use webrtc::{
@@ -104,10 +107,7 @@ pub(crate) fn handle_stream_events(
                     .entity(stream_id.entity)
                     .insert(RenderSurface::new(
                         &renderer,
-                        RenderSurfaceExtents::new(
-                            resolution.width(),
-                            resolution.height()
-                        )                        
+                        RenderSurfaceExtents::new(resolution.width(), resolution.height()),
                     ))
                     .insert(VideoStream::new(&renderer, resolution, data_channel).unwrap());
 
@@ -186,10 +186,10 @@ pub(crate) fn update_streams(
             }
             VideoStreamEventInfo::Resize { width, height } => {
                 let resolution = Resolution::new(*width, *height);
-                render_surface.resize(&renderer, RenderSurfaceExtents::new(
-                    resolution.width(), 
-                    resolution.height()
-                ));
+                render_surface.resize(
+                    &renderer,
+                    RenderSurfaceExtents::new(resolution.width(), resolution.height()),
+                );
                 video_stream.resize(&renderer, resolution).unwrap();
             }
             VideoStreamEventInfo::Speed { id, speed } => {

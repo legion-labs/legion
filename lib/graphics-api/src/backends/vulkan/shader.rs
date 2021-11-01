@@ -24,7 +24,7 @@ impl VulkanShader {
         let mut stage_flags = ShaderStageFlags::empty();
         for stage in &stages {
             // stage_flags |= stage.reflection.shader_stage;
-            stage_flags |= stage.shader_stage
+            stage_flags |= stage.shader_stage;
         }
 
         let inner = VulkanShaderInner {

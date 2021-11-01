@@ -18,7 +18,7 @@ pub struct DeferredDropper {
 impl DeferredDropper {
     pub fn new(render_frame_capacity: usize) -> Self {
         let (tx, rx) = mpsc::channel();
-        DeferredDropper {
+        Self {
             inner: Arc::new(Mutex::new(RefCell::new(DeferredDropperInner {
                 render_frame_capacity,
                 render_frame_index: 0,
@@ -44,12 +44,8 @@ impl DeferredDropper {
         // Flush queue in the 'current frame' bucket.
         {
             let current_render_frame = inner.render_frame_index;
-            loop {
-                if let Ok(object) = inner.receiver.try_recv() {
-                    inner.buckets[current_render_frame].0.push(object)
-                } else {
-                    break;
-                }
+            while let Ok(object) = inner.receiver.try_recv() {
+                inner.buckets[current_render_frame].0.push(object);
             }
         }
         // Move to the next frame. Now, we can safely free the memory. The GPU should not have any
@@ -146,7 +142,7 @@ unsafe impl<T> Send for Drc<T> where T: Send {}
 unsafe impl<T> Sync for Drc<T> where T: Sync {}
 
 impl<T> Clone for Drc<T> {
-    fn clone(&self) -> Drc<T> {
+    fn clone(&self) -> Self {
         let old_size = self.inner().strong.fetch_add(1, Ordering::Relaxed);
 
         const MAX_REFCOUNT: usize = (isize::MAX) as usize;

@@ -1,6 +1,10 @@
 use std::cmp::max;
 
-use graphics_api::{CmdBlitParams, CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DefaultApi, DeviceContext, Extents2D, FilterType, GfxApi, Offset3D, Queue, ResourceState, SwapchainDef, Texture, TextureBarrier};
+use graphics_api::{
+    CmdBlitParams, CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DefaultApi,
+    DeviceContext, Extents2D, FilterType, GfxApi, Offset3D, Queue, ResourceState, SwapchainDef,
+    Texture, TextureBarrier,
+};
 use legion_ecs::prelude::Component;
 use legion_renderer::{
     components::{RenderSurface, RenderSurfaceId},
@@ -77,7 +81,7 @@ impl PresenterWindow {
     }
 
     pub fn present(
-        &mut self,        
+        &mut self,
         wnd: &Window,
         present_queue: &<DefaultApi as GfxApi>::Queue,
         wait_sem: &<DefaultApi as GfxApi>::Semaphore,
@@ -183,9 +187,9 @@ impl PresenterWindow {
     }
 
     fn get_window_extents(wnd: &Window) -> Extents2D {
-        Extents2D{
+        Extents2D {
             width: max(1u32, wnd.physical_width()),
-            height: max(1u32, wnd.physical_height())
+            height: max(1u32, wnd.physical_height()),
         }
     }
 }

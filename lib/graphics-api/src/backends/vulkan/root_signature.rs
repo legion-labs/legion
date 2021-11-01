@@ -58,9 +58,7 @@ impl VulkanRootSignature {
             [vk::DescriptorSetLayout::null(); MAX_DESCRIPTOR_SET_LAYOUTS];
 
         let mut descriptor_set_layout_count = 0;
-        for layout in root_signature_def.descriptor_set_layouts.iter()
-        // .filter_map(|x| x.as_ref())
-        {
+        for layout in &root_signature_def.descriptor_set_layouts {
             let set_index = layout.set_index() as usize;
             vk_descriptor_set_layouts[set_index] = layout.vk_layout();
             descriptor_set_layout_count = cmp::max(descriptor_set_layout_count, set_index + 1);

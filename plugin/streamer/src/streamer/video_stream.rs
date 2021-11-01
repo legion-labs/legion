@@ -12,7 +12,7 @@ use legion_graphics_api::{
     StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use legion_pso_compiler::{CompileParams, HlslCompiler, EntryPoint, ShaderSource};
+use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use log::{debug, warn};
 use std::{cmp::min, io::Cursor, sync::Arc};
 

@@ -60,7 +60,7 @@ pub struct PipelineReflection {
 
 impl Default for PipelineReflection {
     fn default() -> Self {
-        PipelineReflection {
+        Self {
             shader_resources: Vec::new(),
             push_constant: None,
             compute_threads_per_group: None,
@@ -69,12 +69,9 @@ impl Default for PipelineReflection {
 }
 
 impl PipelineReflection {
-    pub fn merge(
-        left_op: &PipelineReflection,
-        right_op: &PipelineReflection,
-    ) -> GfxResult<PipelineReflection> {
+    pub fn merge(left_op: &Self, right_op: &Self) -> GfxResult<Self> {
         let arr = [left_op, right_op];
-        Ok(PipelineReflection {
+        Ok(Self {
             shader_resources: merge_resources(&arr).unwrap(),
             push_constant: merge_pushconstant(&arr).unwrap(),
             compute_threads_per_group: None,
@@ -89,14 +86,14 @@ fn merge_pushconstant(reflections: &[&PipelineReflection]) -> GfxResult<Option<P
         if let Some(push_constant) = &mut result {
             if let Some(other_push_constant) = reflection.push_constant {
                 if push_constant.size != other_push_constant.size {
-                    let message = format!("Cannot merge pushconstants of different size",);
+                    let message = "Cannot merge pushconstants of different size".to_owned();
                     log::error!("{}", message);
                     return Err(message.into());
                 }
                 push_constant.used_in_shader_stages |= other_push_constant.used_in_shader_stages;
             }
         } else {
-            result = reflection.push_constant
+            result = reflection.push_constant;
         }
     }
 
@@ -112,21 +109,24 @@ fn merge_resources(reflections: &[&PipelineReflection]) -> GfxResult<Vec<ShaderR
                 let found = result
                     .iter_mut()
                     .find(|x| other_shader_resource.name == x.name);
-                if found.is_none() {
-                    result.push(other_shader_resource.clone());
-                } else {
-                    let shader_resource = found.unwrap();
-                    if shader_resource.shader_resource_type
-                        == other_shader_resource.shader_resource_type
-                        && shader_resource.binding == other_shader_resource.binding
-                        && shader_resource.element_count == other_shader_resource.element_count
-                    {
-                        shader_resource.used_in_shader_stages |=
-                            other_shader_resource.used_in_shader_stages;
-                    } else {
-                        let message = format!("Cannot merge shader resource of different size",);
-                        log::error!("{}", message);
-                        return Err(message.into());
+                match found {
+                    Some(shader_resource) => {
+                        if shader_resource.shader_resource_type
+                            == other_shader_resource.shader_resource_type
+                            && shader_resource.binding == other_shader_resource.binding
+                            && shader_resource.element_count == other_shader_resource.element_count
+                        {
+                            shader_resource.used_in_shader_stages |=
+                                other_shader_resource.used_in_shader_stages;
+                        } else {
+                            let message =
+                                "Cannot merge shader resource of different size".to_owned();
+                            log::error!("{}", message);
+                            return Err(message.into());
+                        }
+                    }
+                    None => {
+                        result.push(other_shader_resource.clone());
                     }
                 }
             }

@@ -34,7 +34,7 @@ fn render_presenter_windows(
                 .iter_mut()
                 .find(|x| pres_window.render_surface_id().eq(&x.id()))
                 .map(|x| x.into_inner());
-    
+
             pres_window.present(wnd, graphics_queue, wait_sem, render_surface);
         }
     }

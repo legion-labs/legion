@@ -415,7 +415,7 @@ impl VulkanTexture {
         let texture_id = crate::backends::shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
 
         let inner = TextureVulkanInner {
-            texture_def: texture_def.clone(),
+            texture_def: *texture_def,
             device_context: device_context.clone(),
             image,
             aspect_mask,
