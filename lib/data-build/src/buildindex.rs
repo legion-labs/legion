@@ -84,6 +84,7 @@ where
 #[derive(Serialize, Deserialize, Debug)]
 struct BuildIndexContent {
     version: String,
+    /// Path can be either absolute or relative to build index.
     project_index: PathBuf,
     resources: Vec<ResourceInfo>,
     compiled_resources: Vec<CompiledResourceInfo>,
@@ -122,6 +123,7 @@ impl BuildIndexContent {
 #[derive(Debug)]
 pub(crate) struct BuildIndex {
     content: BuildIndexContent,
+    buildindex_path: PathBuf,
     file: File,
 }
 
@@ -131,9 +133,9 @@ impl BuildIndex {
         projectindex_path: &Path,
         version: &str,
     ) -> Result<Self, Error> {
-        if !projectindex_path.exists() {
-            return Err(Error::InvalidProject);
-        }
+        // construct_project_path is called to validate the project's path
+        #[allow(clippy::let_underscore_drop)]
+        let _ = Self::construct_project_path(buildindex_path, projectindex_path)?;
 
         let file = OpenOptions::new()
             .read(true)
@@ -153,7 +155,11 @@ impl BuildIndex {
 
         serde_json::to_writer(&file, &content).map_err(|_e| Error::IOError)?;
 
-        Ok(Self { content, file })
+        Ok(Self {
+            content,
+            buildindex_path: buildindex_path.to_path_buf(),
+            file,
+        })
     }
 
     pub(crate) fn open(buildindex_path: &Path, version: &str) -> Result<Self, Error> {
@@ -166,7 +172,9 @@ impl BuildIndex {
         let content: BuildIndexContent =
             serde_json::from_reader(&file).map_err(|_e| Error::IOError)?;
 
-        if !content.project_index.exists() {
+        let project_path = Self::construct_project_path(buildindex_path, &content.project_index)?;
+
+        if !project_path.exists() {
             return Err(Error::InvalidProject);
         }
 
@@ -174,18 +182,33 @@ impl BuildIndex {
             return Err(Error::VersionMismatch);
         }
 
-        Ok(Self { content, file })
+        Ok(Self {
+            content,
+            buildindex_path: buildindex_path.to_path_buf(),
+            file,
+        })
     }
 
     pub(crate) fn open_project(&self) -> Result<Project, Error> {
-        if !self.validate_project_index() {
-            return Err(Error::InvalidProject);
-        }
-        Project::open(&self.content.project_index).map_err(|_e| Error::InvalidProject)
+        let project_path = self.project_path()?;
+        Project::open(project_path).map_err(|_e| Error::InvalidProject)
     }
 
-    pub(crate) fn validate_project_index(&self) -> bool {
-        self.content.project_index.exists()
+    /// `projectindex_path` is either absolute or relative to `buildindex_path`.
+    pub(crate) fn construct_project_path(
+        buildindex_path: &Path,
+        projectindex_path: &Path,
+    ) -> Result<PathBuf, Error> {
+        let project_path = buildindex_path.parent().unwrap().join(projectindex_path);
+        if !project_path.exists() {
+            Err(Error::InvalidProject)
+        } else {
+            Ok(project_path)
+        }
+    }
+
+    pub(crate) fn project_path(&self) -> Result<PathBuf, Error> {
+        Self::construct_project_path(&self.buildindex_path, &self.content.project_index)
     }
 
     /// Create an ordered build graph with edges directed towards `compile_path`.

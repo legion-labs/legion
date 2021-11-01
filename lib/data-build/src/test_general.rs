@@ -37,9 +37,9 @@ fn create() {
     let index = BuildIndex::open(&buildindex_path, DataBuild::version())
         .expect("failed to open build index file");
 
-    assert!(index.validate_project_index());
+    assert!(index.project_path().is_ok());
 
     fs::remove_file(projectindex_path).unwrap();
 
-    assert!(!index.validate_project_index());
+    assert!(!index.project_path().is_ok());
 }

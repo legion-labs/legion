@@ -99,11 +99,15 @@ pub struct DataBuild {
 
 impl DataBuild {
     pub(crate) fn new(config: &DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
-        let project = Self::open_project(project_dir)?;
+        let projectindex_path = Project::root_to_index_path(project_dir);
+        let corrected_path =
+            BuildIndex::construct_project_path(&config.buildindex_path, &projectindex_path)?;
+
+        let project = Self::open_project(&corrected_path)?;
 
         let build_index = BuildIndex::create_new(
             &config.buildindex_path,
-            &project.indexfile_path(),
+            &Project::root_to_index_path(project_dir),
             Self::version(),
         )
         .map_err(|_e| Error::IOError)?;

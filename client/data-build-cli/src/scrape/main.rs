@@ -5,7 +5,8 @@
 //! The diagnostic tools in this binary include:
 //! * **rty** - `ResourceType` <-> String lookup utility.
 //! * **source** - `ResourceId` <-> `ResourcePathName` lookup utility.
-//! * **asset** - Asset file header output
+//! * **asset** - Asset file header output.
+//! * **explain** - Prints `ResourcePathId`-related details of a specified `ResourceId`.
 //!
 //! # `rty` - Resource Type Tool
 //!
@@ -107,6 +108,35 @@
 //!         file type: asft, version: 1
 //! ...
 //! ```
+//!
+//! # `explain` - Tool that shows details about specified `ResourceId`
+//!
+//! Prints information about the source of a given `ResourceId` - the `ResourcePathId`. It includes a human readable representation of that id.
+//!
+//! ```text
+//! $ data-scrape explain ea2510e8000000007354d8806dd36e41
+//!
+//! Explained:      /world/sample_1/ground.mesh => offline_mesh => runtime_mesh
+//! ResourcePathId: 4e1dd441000000007714d9ad404557f7|ea2510e8
+//! ```
+//!
+//! **NOTE**: It requires running `data-scrape configure` first.
+//!
+//! # `configure` - Scrape tool configuration.
+//!
+//! Creates a configuration file used by `data-scrape` tool to easily find a project file, build index and cache resource type names.
+//!
+//! By default it will point to project and build index located in **sample-data** directory and to the legion workspace's code directories.
+//!
+//! ```text
+//! $ data-scrape configure
+//!
+//! Configuration '"D:\\github.com\\legion-labs\\legion\\target\\debug\\scrape-config.json"' created!
+//!     ode Paths: ["D:\\github.com\\legion-labs\\legion\\lib\\", "D:\\github.com\\legion-labs\\legion\\client\\", "D:\\github.com\\legion-labs\\legion\\test\\"].
+//!     Project: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\project.index".
+//!     Build Index: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\temp\\build.index".
+//!     Resource Type Count: 20.
+//! ```
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -165,6 +195,7 @@
 #![allow()]
 
 use std::{
+    collections::BTreeMap,
     fs::File,
     io::Read,
     path::{Path, PathBuf},
@@ -173,8 +204,14 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{AppSettings, Arg, SubCommand};
-use legion_data_offline::resource::{Project, ResourcePathName};
+use legion_data_offline::{
+    resource::{Project, ResourcePathName},
+    ResourcePathId,
+};
 use legion_data_runtime::{ResourceId, ResourceType};
+
+mod config;
+use config::Config;
 
 #[allow(clippy::too_many_lines)]
 fn main() -> Result<(), String> {
@@ -207,6 +244,10 @@ fn main() -> Result<(), String> {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("explain")
+                .arg(Arg::with_name("id").help("Id to explain").required(true)),
+        )
+        .subcommand(
             SubCommand::with_name("source")
                 .about("Parse project index for source resource information")
                 .arg(Arg::with_name("path").help("Path to directory containing the project"))
@@ -237,7 +278,34 @@ fn main() -> Result<(), String> {
                     "Path to single asset file, or directory containing several asset files",
                 )),
         )
+        .subcommand(
+            SubCommand::with_name("configure")
+                .about("Creates a configuration file containing paths to relevant locations")
+                .arg(
+                    Arg::with_name("code_path")
+                        .long("code_path")
+                        .help("Paths to code directories to scan for resource types")
+                        .use_delimiter(true),
+                )
+                .arg(
+                    Arg::with_name("project")
+                        .long("project")
+                        .takes_value(true)
+                        .help("Path to project index to be able to resolve ResourcePathName."),
+                )
+                .arg(
+                    Arg::with_name("buildindex")
+                        .long("buildindex")
+                        .takes_value(true)
+                        .help("Path to build index to be able to resolve ResourcePathId"),
+                ),
+        )
         .get_matches();
+
+    //
+    // try opening the configuration file first.
+    //
+    let config = Config::read(Config::default_path()).ok();
 
     if let ("rty", Some(cmd_args)) = matches.subcommand() {
         let code_dir = cmd_args
@@ -325,6 +393,74 @@ fn main() -> Result<(), String> {
         } else {
             println!("{}", cmd_args.usage());
         }
+    } else if let ("explain", Some(cmd_args)) = matches.subcommand() {
+        if let Some(config) = config {
+            let (build, project) = config.open()?;
+
+            if let Ok(resource_id) = ResourceId::from_str(cmd_args.value_of("id").unwrap()) {
+                if let Ok(name) = project.resource_name(resource_id) {
+                    println!("{} = {}", resource_id, name);
+                }
+                if let Some(rid) = build.lookup_pathid(resource_id) {
+                    let pretty = pretty_name_from_pathid(&rid, &project, &config);
+                    println!("Explained: \t{}", pretty);
+                    println!("ResourcePathId: {}", rid);
+                }
+            }
+        } else {
+            return Err("Configuration not found. Run 'data-scrape configure' first.".to_string());
+        }
+    } else if let ("configure", Some(cmd_args)) = matches.subcommand() {
+        let config_path = Config::default_path();
+        let workspace_dir = Config::workspace_dir();
+
+        let code_paths = cmd_args.values_of("code_path").map_or_else(
+            || {
+                vec![
+                    workspace_dir.join("lib\\"),
+                    workspace_dir.join("client\\"),
+                    workspace_dir.join("test\\"),
+                ]
+            },
+            |args| args.into_iter().map(PathBuf::from).collect::<Vec<_>>(),
+        );
+
+        let buildindex = cmd_args.value_of("buildindex").map_or(
+            workspace_dir.join("test\\sample-data\\temp\\build.index"),
+            PathBuf::from,
+        );
+
+        let project = cmd_args.value_of("project").map_or(
+            workspace_dir.join("test\\sample-data\\project.index"),
+            PathBuf::from,
+        );
+
+        let type_map = {
+            let mut t = BTreeMap::<ResourceType, String>::new();
+            for dir in &code_paths {
+                for (name, ty) in ResourceTypeIterator::new(find_files(&dir, &["rs"])) {
+                    t.insert(ty, name);
+                }
+            }
+            t
+        };
+
+        let config = Config {
+            code_paths,
+            project,
+            buildindex,
+            type_map,
+        };
+
+        config
+            .write(&config_path)
+            .map_err(|e| format!("failed with: '{}'", e))?;
+
+        println!("Configuration '{:?}' created!", config_path);
+        println!("\tCode Paths: {:?}.", config.code_paths);
+        println!("\tProject: {:?}.", config.project);
+        println!("\tBuild Index: {:?}.", config.buildindex);
+        println!("\tResource Type Count: {}.", config.type_map.len());
     }
     Ok(())
 }
@@ -479,4 +615,36 @@ fn parse_asset_file(path: impl AsRef<Path>) {
 
     let nbytes = f.read_u64::<LittleEndian>().expect("valid data");
     println!("\tasset content size: {}", nbytes);
+}
+
+fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Config) -> String {
+    let mut name = String::new();
+
+    if let Ok(source_name) = project.resource_name(rid.source_resource()) {
+        name.push_str(&source_name.to_string());
+    } else {
+        name.push_str(&rid.source_resource().to_string());
+    }
+
+    let mut transforms = String::new();
+    let mut rid = Some(rid.clone());
+    while let Some(id) = rid {
+        let ty = id.content_type();
+        let ty_pretty = config
+            .type_map
+            .get(&ty)
+            .cloned()
+            .unwrap_or_else(|| ty.to_string());
+        let mut transform = format!(" => {}", ty_pretty);
+        if let Some(name) = id.name() {
+            transform.push_str(&format!("('{}')", name));
+        }
+        transform.push_str(&transforms);
+        transforms = transform;
+        rid = id.direct_dependency();
+    }
+
+    name.push_str(&transforms);
+
+    name
 }

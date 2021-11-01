@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "project_index": "test/sample-data\\project.index",
+  "project_index": "..\\project.index",
   "resources": [
     {
       "id": "13b5a84e0000000061f6de1be4764697",

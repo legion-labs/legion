@@ -3182,6 +3182,7 @@ dependencies = [
  "legion-data-runtime",
  "refs-asset",
  "refs-resource",
+ "serde",
  "serde_json",
  "syn",
  "tempfile",

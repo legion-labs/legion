@@ -1,7 +1,7 @@
 use std::{
     env,
     fs::{self, OpenOptions},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use legion_content_store::ContentStoreAddr;
@@ -25,7 +25,7 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
     let asset_store_path = ContentStoreAddr::from(temp_dir.clone());
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
-    let project_dir = root_folder.to_owned();
+    let project_dir = PathBuf::from("..\\");
 
     let mut build = DataBuildOptions::new(build_index_path)
         .content_store(&asset_store_path)

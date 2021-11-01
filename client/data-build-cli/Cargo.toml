@@ -9,17 +9,18 @@ license = "MIT OR Apache-2.0"
 
 [[bin]]
 name = "data-build"
-path = "src/main.rs"
+path = "src/data-build/main.rs"
 doc = false
 
 [[bin]]
 name = "data-scrape"
-path = "src/scrape.rs"
+path = "src/scrape/main.rs"
 
 [dependencies]
 byteorder = "1.4"
 clap = "2.33"
 syn = { version = "1.0", features = ["full"] }
+serde = "1.0"
 serde_json = "1.0"
 legion-data-build = { path = "../../lib/data-build" }
 legion-data-compiler = { path = "../../lib/data-compiler" }
