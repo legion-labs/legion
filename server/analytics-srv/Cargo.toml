@@ -1,0 +1,20 @@
+[package]
+name = "analytics-srv"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tonic = "0.6"
+tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
+sqlx = { version = "0.5", features = [
+    "sqlite",
+    "any",
+    "mysql",
+    "runtime-tokio-native-tls",
+] }
+prost = "0.9"
+log = "0.4"
+simple_logger = "1.13"
