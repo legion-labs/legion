@@ -608,7 +608,6 @@ impl Authenticator {
 
         let resp = client.request(req).await?;
         let bytes = hyper::body::to_bytes(resp.into_body()).await?;
-        println!("{}", String::from_utf8_lossy(&bytes));
         serde_json::from_slice(&bytes).map_err(Into::into)
     }
 }

@@ -30,6 +30,17 @@ pub struct UserInfo {
     #[serde(deserialize_with = "deserialize_string_bool")]
     pub phone_number_verified: Option<bool>,
     pub updated_at: Option<String>,
+
+    // Azure-specific fields.
+    //
+    // This is a merely a convention, but we need one.
+    //
+    // These fields contains the Azure-specific information about the user, which allow us to query
+    // the Azure API for extended user information (like the user's photo).
+    #[serde(rename = "custom:azure_oid")]
+    pub azure_oid: Option<String>,
+    #[serde(rename = "custom:azure_tid")]
+    pub azure_tid: Option<String>,
 }
 
 fn deserialize_string_bool<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>

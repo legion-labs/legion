@@ -46,6 +46,11 @@ impl TokenCache {
         }
     }
 
+    /// Get the `Authenticator` used by this `TokenCache`.
+    pub fn authenticator(&self) -> &Authenticator {
+        &self.authenticator
+    }
+
     /// Get the access token from the cache if it exists, or performs an implicit refresh.
     ///
     /// If that fails to, the call will fall back to the `Authenticator`'s

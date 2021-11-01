@@ -180,12 +180,14 @@ fn on_video_chunk_received(chunk_header: &str) {
 }
 
 #[legion_tauri_command]
-async fn authenticate(token_cache: tauri::State<'_, TokenCache>) -> anyhow::Result<String> {
+async fn authenticate(
+    token_cache: tauri::State<'_, TokenCache>,
+) -> anyhow::Result<legion_auth::UserInfo> {
+    let access_token = token_cache.get_access_token().await?.access_token;
     token_cache
-        .get_access_token()
-        .await?
-        .id_token
-        .ok_or_else(|| anyhow::anyhow!("Token set contains no ID token"))
+        .authenticator()
+        .get_user_info(&access_token)
+        .await
 }
 
 #[legion_tauri_command]
