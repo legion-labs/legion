@@ -147,7 +147,7 @@ dependencies = [
  "prost",
  "simple_logger",
  "sqlx",
- "tokio",
+ "tokio 1.12.0",
  "tonic",
 ]
 
@@ -459,11 +459,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "aws-lambda-profile"
+name = "aws-lambda-authorizer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "lambda_runtime",
+ "legion-aws",
  "log",
  "serde",
  "serde_json",
@@ -3368,6 +3369,17 @@ dependencies = [
  "tokio 1.12.0",
  "url",
  "webbrowser",
+]
+
+[[package]]
+name = "legion-aws"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "lambda_runtime",
+ "log",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
