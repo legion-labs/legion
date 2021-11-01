@@ -12,5 +12,5 @@ keywords = ["ecs", "game", "legion", "tauri"]
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-tauri-macros = { path = "./tauri-macros" }
-tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
 tauri = { version = "1.0.0-beta.8", features = ["api-all"] }

@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 tonic = "0.6"
 prost = "0.9"
-tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
 base64 = "0.13"
 
 [build-dependencies]

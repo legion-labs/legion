@@ -19,7 +19,7 @@ legion-async = { path = "../async", version = "0.1.0" }
 legion-grpc = { path = "../grpc", version = "0.1.0" }
 legion-telemetry = { path = "../../lib/telemetry" }
 legion-utils = { path = "../../lib/utils" }
-tokio = { version = "1.12", features = ["full"] }
+tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
 crossbeam = "0.8"
 webrtc = "0.2"

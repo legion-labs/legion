@@ -7,7 +7,7 @@ default-run = "telemetry-ingestion-srv"
 
 [dependencies]
 tonic = "0.6"
-tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
 legion-telemetry = { path = "../../lib/telemetry" }
 legion-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
 uuid = { version = "0.8", features = ["v4"] }

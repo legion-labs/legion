@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 tonic = "0.6"
-tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
 sqlx = { version = "0.5", features = [
     "sqlite",
     "any",
