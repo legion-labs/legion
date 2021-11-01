@@ -19,8 +19,8 @@
             <td>{{ process.exe }}</td>
             <td>{{ process.parent_id }}</td>
             <td>
-              <p><a href="timeline">timeline</a></p>
-              <a href="log">log</a>
+              <p><router-link to="/timeline">timeline</router-link></p>
+              <router-link to="/log">log</router-link>
             </td>
           </TR>
         </template>
