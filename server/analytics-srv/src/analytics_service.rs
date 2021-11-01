@@ -31,9 +31,11 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         _request: Request<RecentProcessesRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
+        log::info!("list_recent_processes");
         match self.list_recent_processes_impl().await {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };
+                log::info!("list_recent_processes_impl ok");
                 Ok(Response::new(reply))
             }
             Err(e) => {

@@ -1,7 +1,7 @@
 syntax = "proto3";
 import public "process.proto";
-import "stream.proto";
-import "block.proto";
+import public "stream.proto";
+import public "block.proto";
 
 package analytics;
 

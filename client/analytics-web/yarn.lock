@@ -3188,10 +3188,25 @@ globby@^9.2.0:
     pify "^4.0.1"
     slash "^2.0.0"
 
+goog@^0.2.1:
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/goog/-/goog-0.2.1.tgz#f175971aac69d5e080e7e09cb81a4f2c558805be"
+  integrity sha1-8XWXGqxp1eCA5+CcuBpPLFWIBb4=
+
+google-protobuf@^3.19.1:
+  version "3.19.1"
+  resolved "https://registry.yarnpkg.com/google-protobuf/-/google-protobuf-3.19.1.tgz#5af5390e8206c446d8f49febaffd4b7f4ac28f41"
+  integrity sha512-Isv1RlNC+IzZzilcxnlVSf+JvuhxmY7DaxYCBy+zPS9XVuJRtlTTIXR9hnZ1YL1MMusJn/7eSy2swCzZIomQSg==
+
 graceful-fs@^4.1.11, graceful-fs@^4.1.15, graceful-fs@^4.1.2, graceful-fs@^4.1.6:
   version "4.2.8"
   resolved "https://registry.yarnpkg.com/graceful-fs/-/graceful-fs-4.2.8.tgz#e412b8d33f5e006593cbd3cee6df9f2cebbe802a"
   integrity sha512-qkIilPUYcNhJpd33n0GBXTB1MMPp14TxEsEs0pTrsSVucApsYzW5V+Q8Qxhik6KU3evy+qkAAowTByymK0avdg==
+
+grpc-web@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/grpc-web/-/grpc-web-1.3.0.tgz#4c36d97e7a7b6102a7df463e7822cd86d4f65ed8"
+  integrity sha512-nePImtnrnkZLErFq00Sr1H6AqaRrRptOJEhjUnlTB6RiJgs8ULYvRI9cX2hDwMvyYgakmO3H/wThYvS+Ibdreg==
 
 gzip-size@^5.0.0:
   version "5.1.1"

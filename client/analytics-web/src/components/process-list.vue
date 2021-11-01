@@ -31,8 +31,26 @@
 </template>
 
 <script>
+import { RecentProcessesRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
+
 export default {
   name: 'ProcessList',
+  created: function () {
+    this.client = new PerformanceAnalyticsClient('http://localhost:9090', null, null)
+    try {
+      var request = new RecentProcessesRequest()
+      this.client.list_recent_processes(request, null, (err, response) => {
+        if (err) {
+          console.log('err', err)
+        } else {
+          console.log('response', response.getProcessesList())
+        }
+      })
+    } catch (err) {
+      console.error(err.message)
+      throw err
+    }
+  },
   data: function () {
     return {
       msg: 'test_msg',
