@@ -183,7 +183,7 @@ impl VideoStream {
             }
         }
 
-        let mut root_signature_def = RootSignatureDef {
+        let root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts,
             push_constant_def: None,

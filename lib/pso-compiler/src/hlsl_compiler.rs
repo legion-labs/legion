@@ -70,7 +70,6 @@ impl HlslCompiler {
 
             // Reflection
             let shader_reflection = extract_reflection_info(&unopt_spirv, params, product_idx);
-            // reflection_info = reflection_info_union(reflection_info, local_reflection_info);
             pipeline_reflection =
                 PipelineReflection::merge(&pipeline_reflection, &shader_reflection)?;
 
@@ -168,20 +167,12 @@ fn extract_reflection_info(
         shader_resources.push(to_shader_resource(shader_stage, descriptor));
     }
 
-    let mut push_constant = None;
-    // for push_constant in &shader_mod
-    //     .enumerate_push_constant_blocks(Some(&shader_product.entry_point))
-    //     .unwrap()
-    // {
-    //     push_constants.push(to_push_constant(shader_stage, push_constant));
-    // }
+    let mut push_constant = None;    
 
     PipelineReflection {
-        // shader_stage,
         shader_resources,
         push_constant,
         compute_threads_per_group: None,
-        // entry_point_name: shader_product.entry_point.to_owned(),
     }
 }
 

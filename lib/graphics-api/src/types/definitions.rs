@@ -5,7 +5,7 @@ use super::{
     VertexAttributeRate,
 };
 
-use crate::{GfxApi, ResourceFlags, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::{GfxApi, ResourceFlags};
 use legion_utils::decimal::DecimalF32;
 use std::{
     hash::{Hash, Hasher},

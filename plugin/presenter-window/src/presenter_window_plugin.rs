@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-
 use legion_app::{App, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
 use legion_renderer::{components::RenderSurface, Renderer, RendererSystemLabel};

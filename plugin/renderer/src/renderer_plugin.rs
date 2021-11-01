@@ -1,4 +1,4 @@
-use graphics_api::{CommandBuffer, DefaultApi, ResourceState, TextureBarrier};
+use graphics_api::ResourceState;
 use legion_app::Plugin;
 use legion_ecs::{prelude::*, system::IntoSystem};
 
@@ -34,17 +34,6 @@ fn render(mut renderer: ResMut<Renderer>, mut outputs: Query<(Entity, &mut Rende
             let render_pass = &render_surface.test_renderpass;
             render_pass.render(&renderer, &render_surface, cmd_buffer);
         }
-
-        // cmd_buffer
-        //     .cmd_resource_barrier(
-        //         &[],
-        //         &[TextureBarrier::<DefaultApi>::state_transition(
-        //             render_target,
-        //             ResourceState::RENDER_TARGET,
-        //             ResourceState::SHADER_RESOURCE | ResourceState::COPY_SRC,
-        //         )],
-        //     )
-        //     .unwrap();
     }
 
     renderer.end_frame();

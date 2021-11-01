@@ -1,7 +1,7 @@
 use graphics_api::{
     CommandBuffer, DefaultApi, DeviceContext, Extents3D, Format, GfxApi, MemoryUsage,
     ResourceFlags, ResourceState, ResourceUsage, Texture, TextureBarrier, TextureDef,
-    TextureTiling, TextureView, TextureViewDef,
+    TextureTiling, TextureViewDef,
 };
 use legion_ecs::prelude::Component;
 use legion_utils::Uuid;

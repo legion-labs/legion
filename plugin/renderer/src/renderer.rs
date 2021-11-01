@@ -1,4 +1,4 @@
-use graphics_api::{prelude::*, GfxError, MAX_DESCRIPTOR_SET_LAYOUTS};
+use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_pso_compiler::{CompileParams, HlslCompiler, ShaderProduct, ShaderSource};
 
 use crate::components::RenderSurface;
@@ -345,7 +345,7 @@ impl TmpRenderPass {
             }
         }
 
-        let mut root_signature_def = RootSignatureDef {
+        let root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts,
             push_constant_def: None,
