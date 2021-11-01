@@ -1,8 +1,6 @@
-use graphics_api::{
-    CmdBlitParams, CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DefaultApi,
-    DeviceContext, FilterType, GfxApi, Offset3D, Queue, ResourceState, SwapchainDef, Texture,
-    TextureBarrier,
-};
+use std::cmp::max;
+
+use graphics_api::{CmdBlitParams, CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DefaultApi, DeviceContext, Extents2D, FilterType, GfxApi, Offset3D, Queue, ResourceState, SwapchainDef, Texture, TextureBarrier};
 use legion_ecs::prelude::Component;
 use legion_renderer::{
     components::{RenderSurface, RenderSurfaceId},
@@ -15,8 +13,8 @@ use crate::swapchain_helper::SwapchainHelper;
 
 #[derive(Component)]
 pub struct PresenterWindow {
-    pub window_id: WindowId,
-    pub render_surface_id: RenderSurfaceId,
+    window_id: WindowId,
+    render_surface_id: RenderSurfaceId,
     swapchain_helper: SwapchainHelper<DefaultApi>,
     cmd_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
     cmd_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
@@ -35,14 +33,15 @@ impl PresenterWindow {
         hwnd: &dyn HasRawWindowHandle,
         render_surface_id: RenderSurfaceId,
     ) -> Self {
+        let extents = Self::get_window_extents(wnd);
         let device_context = renderer.device_context();
         let present_queue = renderer.graphics_queue();
         let swapchain = device_context
             .create_swapchain(
                 hwnd,
                 &SwapchainDef {
-                    width: wnd.physical_width(),
-                    height: wnd.physical_height(),
+                    width: extents.width,
+                    height: extents.height,
                     enable_vsync: true,
                 },
             )
@@ -78,7 +77,7 @@ impl PresenterWindow {
     }
 
     pub fn present(
-        &mut self,
+        &mut self,        
         wnd: &Window,
         present_queue: &<DefaultApi as GfxApi>::Queue,
         wait_sem: &<DefaultApi as GfxApi>::Semaphore,
@@ -87,9 +86,10 @@ impl PresenterWindow {
         //
         // Acquire backbuffer
         //
+        let extents = Self::get_window_extents(wnd);
         let presentable_frame = self
             .swapchain_helper
-            .acquire_next_image(wnd.physical_width(), wnd.physical_height(), None)
+            .acquire_next_image(extents.width, extents.height, None)
             .unwrap();
 
         //
@@ -172,6 +172,21 @@ impl PresenterWindow {
         presentable_frame
             .present(&present_queue, wait_sem, &[cmd_buffer])
             .unwrap();
+    }
+
+    pub fn window_id(&self) -> WindowId {
+        self.window_id
+    }
+
+    pub fn render_surface_id(&self) -> RenderSurfaceId {
+        self.render_surface_id
+    }
+
+    fn get_window_extents(wnd: &Window) -> Extents2D {
+        Extents2D{
+            width: max(1u32, wnd.physical_width()),
+            height: max(1u32, wnd.physical_height())
+        }
     }
 }
 

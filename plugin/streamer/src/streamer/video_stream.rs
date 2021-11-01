@@ -12,7 +12,7 @@ use legion_graphics_api::{
     StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use legion_pso_compiler::{CompileParams, HlslCompiler, ShaderProduct, ShaderSource};
+use legion_pso_compiler::{CompileParams, HlslCompiler, EntryPoint, ShaderSource};
 use log::{debug, warn};
 use std::{cmp::min, io::Cursor, sync::Arc};
 
@@ -110,16 +110,16 @@ impl VideoStream {
 
         let shader_build_result = shader_compiler.compile(&CompileParams {
             shader_source: ShaderSource::Code(shader_source),
-            defines: Vec::new(),
-            products: vec![
-                ShaderProduct {
+            glob_defines: Vec::new(),
+            entry_points: vec![
+                EntryPoint {
                     defines: Vec::new(),
-                    entry_point: "main_vs".to_owned(),
+                    name: "main_vs".to_owned(),
                     target_profile: "vs_6_0".to_owned(),
                 },
-                ShaderProduct {
+                EntryPoint {
                     defines: Vec::new(),
-                    entry_point: "main_ps".to_owned(),
+                    name: "main_ps".to_owned(),
                     target_profile: "ps_6_0".to_owned(),
                 },
             ],

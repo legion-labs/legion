@@ -10,7 +10,7 @@ use legion_ecs::prelude::*;
 use legion_input::InputPlugin;
 use legion_presenter_window::component::PresenterWindow;
 use legion_presenter_window::PresenterWindowPlugin;
-use legion_renderer::components::{RenderSurface, RenderSurfaceId};
+use legion_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
 use legion_renderer::{Renderer, RendererPlugin};
 use legion_tao::{TaoPlugin, TaoWindows};
 use legion_window::{
@@ -75,8 +75,14 @@ fn on_window_created(
     for ev in ev_wnd_created.iter() {
         let wnd = wnd_list.get(ev.id).unwrap();
         let render_surface =
-            RenderSurface::new(&renderer, wnd.physical_width(), wnd.physical_height());
-        let render_surface_id = render_surface.id;
+            RenderSurface::new(
+                &renderer, 
+                RenderSurfaceExtents::new(
+                    wnd.physical_width(), 
+                    wnd.physical_height()
+                )
+            );
+        let render_surface_id = render_surface.id();
         render_surfaces.insert(ev.id, render_surface_id);
 
         commands.spawn().insert(render_surface);
@@ -101,14 +107,13 @@ fn on_window_resized(
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
         if let Some(render_surface_id) = render_surface_id {
-            let render_surface = query.iter_mut().find(|x| x.id == *render_surface_id);
+            let render_surface = query.iter_mut().find(|x| x.id() == *render_surface_id);
             if let Some(mut render_surface) = render_surface {
                 let wnd = wnd_list.get(ev.id).unwrap();
-                let wnd_width = wnd.physical_width();
-                let wnd_height = wnd.physical_height();
-                if (render_surface.width, render_surface.height) != (wnd_width, wnd_height) {
-                    render_surface.resize(&renderer, wnd_width, wnd_height);
-                }
+                render_surface.resize(&renderer, RenderSurfaceExtents::new(
+                    wnd.physical_width(),
+                    wnd.physical_height()
+                ));                
             }
         }
     }
@@ -126,7 +131,7 @@ fn on_window_close_requested(
         if let Some(render_surface_id) = render_surface_id {
             let query_result = query_render_surface
                 .iter()
-                .find(|x| x.1.id == *render_surface_id);
+                .find(|x| x.1.id() == *render_surface_id);
             if let Some(query_result) = query_result {
                 commands.entity(query_result.0).despawn();
             }
@@ -134,7 +139,7 @@ fn on_window_close_requested(
         {
             let query_result = query_presenter_window
                 .iter()
-                .find(|x| x.1.window_id == ev.id);
+                .find(|x| x.1.window_id() == ev.id);
             if let Some(query_result) = query_result {
                 commands.entity(query_result.0).despawn();
             }

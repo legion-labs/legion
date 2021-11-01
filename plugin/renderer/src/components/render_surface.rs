@@ -1,8 +1,6 @@
-use graphics_api::{
-    CommandBuffer, DefaultApi, DeviceContext, Extents3D, Format, GfxApi, MemoryUsage,
-    ResourceFlags, ResourceState, ResourceUsage, Texture, TextureBarrier, TextureDef,
-    TextureTiling, TextureViewDef,
-};
+use std::cmp::max;
+
+use graphics_api::{CommandBuffer, DefaultApi, DeviceContext, Extents2D, Extents3D, Format, GfxApi, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef};
 use legion_ecs::prelude::Component;
 use legion_utils::Uuid;
 
@@ -17,79 +15,57 @@ impl RenderSurfaceId {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct RenderSurfaceExtents {
+    extents_2d: Extents2D,    
+}
+
+impl RenderSurfaceExtents {
+    pub fn new(width: u32, height: u32) -> RenderSurfaceExtents {        
+        Self {            
+            extents_2d: Extents2D {
+                width: max(1u32, width),
+                height: max(1u32, height)
+            }
+        }
+    }
+
+    pub fn width(&self) -> u32 {
+        self.extents_2d.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.extents_2d.height
+    }
+}
+
+
 #[derive(Debug, Component)]
 pub struct RenderSurface {
-    pub id: RenderSurfaceId,
-    pub width: u32,
-    pub height: u32,
-    pub test_renderpass: TmpRenderPass,
+    id: RenderSurfaceId,
+    extents: RenderSurfaceExtents,
     texture: <DefaultApi as GfxApi>::Texture,
     texture_srv: <DefaultApi as GfxApi>::TextureView,
     texture_rtv: <DefaultApi as GfxApi>::TextureView,
     texture_state: ResourceState,
+    
+    // tmp
+    pub test_renderpass: TmpRenderPass,
 }
 
 impl RenderSurface {
-    pub fn new(renderer: &Renderer, width: u32, height: u32) -> Self {
-        let device_context = renderer.device_context();
-        let texture_def = TextureDef {
-            extents: Extents3D {
-                width,
-                height,
-                depth: 1,
-            },
-            array_length: 1,
-            mip_count: 1,
-            format: Format::R16G16B16A16_SFLOAT,
-            usage_flags: ResourceUsage::AS_RENDER_TARGET
-                | ResourceUsage::AS_SHADER_RESOURCE
-                | ResourceUsage::AS_TRANSFERABLE,
-            resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
-            tiling: TextureTiling::Optimal,
-        };
-        let texture = device_context.create_texture(&texture_def).unwrap();
+    pub fn new(renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
+        Self::new_with_id(RenderSurfaceId::new(), renderer, extents)        
+    }
 
-        let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
-        let texture_srv = texture.create_view(&srv_def).unwrap();
-
-        let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
-        let texture_rtv = texture.create_view(&rtv_def).unwrap();
-
-        Self {
-            id: RenderSurfaceId::new(),
-            width: texture_def.extents.width,
-            height: texture_def.extents.height,
-            texture,
-            texture_srv,
-            texture_rtv,
-            texture_state: ResourceState::UNDEFINED,
-            test_renderpass: TmpRenderPass::new(renderer),
+    pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
+        if (self.extents) != extents {                      
+            *self = Self::new_with_id(self.id, renderer, extents);
         }
     }
 
-    pub fn resize(&mut self, renderer: &Renderer, width: u32, height: u32) {
-        if (self.width, self.height) != (width, height) {
-            let device_context = renderer.device_context();
-
-            let mut texture_def = *self.texture.texture_def();
-            texture_def.extents.width = width;
-            texture_def.extents.height = height;
-            let texture = device_context.create_texture(&texture_def).unwrap();
-
-            let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
-            let texture_srv = texture.create_view(&srv_def).unwrap();
-
-            let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
-            let texture_rtv = texture.create_view(&rtv_def).unwrap();
-
-            self.width = texture_def.extents.width;
-            self.height = texture_def.extents.height;
-            self.texture = texture;
-            self.texture_srv = texture_srv;
-            self.texture_rtv = texture_rtv;
-            self.texture_state = ResourceState::UNDEFINED;
-        }
+    pub fn id(&self) -> RenderSurfaceId {
+        self.id
     }
 
     pub fn texture(&self) -> &<DefaultApi as GfxApi>::Texture {
@@ -124,6 +100,43 @@ impl RenderSurface {
                 )
                 .unwrap();
             self.texture_state = dst_state;
+        }
+    }
+
+    fn new_with_id(id: RenderSurfaceId, renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
+        let device_context = renderer.device_context();
+        let texture_def = TextureDef {
+            extents: Extents3D {
+                width: extents.width(),
+                height: extents.height(),
+                depth: 1,
+            },
+            array_length: 1,
+            mip_count: 1,
+            format: Format::R16G16B16A16_SFLOAT,
+            usage_flags: ResourceUsage::AS_RENDER_TARGET
+                | ResourceUsage::AS_SHADER_RESOURCE
+                | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            mem_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Optimal,
+        };
+        let texture = device_context.create_texture(&texture_def).unwrap();
+
+        let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
+        let texture_srv = texture.create_view(&srv_def).unwrap();
+
+        let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
+        let texture_rtv = texture.create_view(&rtv_def).unwrap();
+
+        Self {
+            id,
+            extents,            
+            texture,
+            texture_srv,
+            texture_rtv,
+            texture_state: ResourceState::UNDEFINED,
+            test_renderpass: TmpRenderPass::new(renderer),
         }
     }
 }

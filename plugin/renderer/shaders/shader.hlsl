@@ -18,6 +18,9 @@ struct ConstData {
 
 ConstantBuffer<ConstData> uniform_data;
 
+[[vk::push_constant]]
+ConstantBuffer<ConstData> push_constant;
+
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    return uniform_data.uniform_color;
+    return uniform_data.uniform_color * push_constant.uniform_color;
 }

@@ -1,8 +1,8 @@
+use std::num::NonZeroU32;
+
 use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use legion_pso_compiler::{CompileParams, HlslCompiler, ShaderProduct, ShaderSource};
-
+use legion_pso_compiler::{CompileParams, HlslCompiler, EntryPoint, ShaderSource};
 use crate::components::RenderSurface;
-
 pub struct Renderer {
     frame_idx: usize,
     render_frame_idx: usize,
@@ -17,38 +17,36 @@ pub struct Renderer {
     api: DefaultApi,
 }
 
+pub struct FrameContext<'a> {
+    renderer: &'a mut Renderer
+}
+
+impl<'a> FrameContext<'a> {
+    pub fn new(renderer: &'a mut Renderer) -> Self {
+        renderer.begin_frame();
+        Self {
+            renderer
+        }
+    }
+
+    pub fn renderer(&self) -> &Renderer {
+        self.renderer
+    }
+}
+
+impl<'a> Drop for FrameContext<'a> {
+    fn drop(&mut self) {
+        self.renderer.end_frame();
+    }
+}
+
 impl Renderer {
     pub fn new() -> Renderer {
-        #[allow(unsafe_code)]
+        
+        let num_render_frames = 2;        
         let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
-
-        // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
-        // clean shutdown.
-
-        // A cloneable device handle, these are lightweight and can be passed across threads
         let device_context = api.device_context();
-
-        let num_render_frames = 2;
-
-        //
-        // Allocate a graphics queue. By default, there is just one graphics queue and it is shared.
-        // There currently is no API for customizing this but the code would be easy to adapt to act
-        // differently. Most recommendations I've seen are to just use one graphics queue. (The
-        // rendering hardware is shared among them)
-        //
         let graphics_queue = device_context.create_queue(QueueType::Graphics).unwrap();
-
-        //
-        // Create command pools/command buffers. The command pools need to be immutable while they are
-        // being processed by a queue, so create one per swapchain image.
-        //
-        // Create vertex buffers (with position/color information) and a uniform buffers that we
-        // can bind to pass additional info.
-        //
-        // In this demo, the color data in the shader is pulled from
-        // the uniform instead of the vertex buffer. Buffers also need to be immutable while
-        // processed, so we need one per swapchain image
-        //
         let mut command_pools = Vec::with_capacity(num_render_frames);
         let mut command_buffers = Vec::with_capacity(num_render_frames);
         let mut frame_signal_sems = Vec::with_capacity(num_render_frames);
@@ -73,32 +71,7 @@ impl Renderer {
             command_buffers.push(command_buffer);
             frame_signal_sems.push(frame_signal_sem);
             frame_fences.push(frame_fence);
-        }
-
-        //
-        // Load a shader from source - this part is API-specific. vulkan will want SPV, metal wants
-        // source code or even better a pre-compiled library. But the metal compiler toolchain only
-        // works on mac/windows and is a command line tool without programmatic access.
-        //
-        // In an engine, it would be better to pack different formats depending on the platform
-        // being built. Higher level rafx crates can help with this. But this is meant as a simple
-        // example without needing those crates.
-        //
-        // ShaderPackage holds all the data needed to create a GPU shader module object. It is
-        // heavy-weight, fully owning the data. We create by loading files from disk. This object
-        // can be stored as an opaque, binary object and loaded directly if you prefer.
-        //
-        // ShaderModuleDef is a lightweight reference to this data. Here we create it from the
-        // ShaderPackage, but you can create it yourself if you already loaded the data in some
-        // other way.
-        //
-        // The resulting shader modules represent a loaded shader GPU object that is used to create
-        // shaders. Shader modules can be discarded once the graphics pipeline is built.
-        //
-
-        //
-        // Some default data we can render
-        //
+        }        
 
         Renderer {
             frame_idx: 0,
@@ -135,13 +108,23 @@ impl Renderer {
         &self.frame_signal_sems[render_frame_index]
     }
 
-    pub fn begin_frame(&self) {
-        let render_frame_idx = self.render_frame_idx;
-        let signal_fence = &self.frame_fences[render_frame_idx];
+    fn begin_frame(&mut self) {
 
+        //
+        // Update frame indices
+        //         
+        self.frame_idx = self.frame_idx + 1;
+        self.render_frame_idx = self.frame_idx % self.num_render_frames;
+        
+        // 
+        // Store on stack
+        // 
+        let render_frame_idx = self.render_frame_idx;
+        
         //
         // Wait for the next frame to be available
         //
+        let signal_fence = &self.frame_fences[render_frame_idx];
         if signal_fence.get_fence_status().unwrap() == FenceStatus::Incomplete {
             signal_fence.wait().unwrap();
         }
@@ -162,7 +145,8 @@ impl Renderer {
         cmd_buffer.begin().unwrap();
     }
 
-    pub fn end_frame(&mut self) {
+    fn end_frame(&self) {
+
         let render_frame_idx = self.render_frame_idx;
         let signal_semaphore = &self.frame_signal_sems[render_frame_idx];
         let signal_fence = &self.frame_fences[render_frame_idx];
@@ -171,11 +155,12 @@ impl Renderer {
         cmd_buffer.end().unwrap();
 
         self.graphics_queue
-            .submit(&[cmd_buffer], &[], &[&signal_semaphore], Some(signal_fence))
-            .unwrap();
-
-        self.frame_idx = self.frame_idx + 1;
-        self.render_frame_idx = self.frame_idx % self.num_render_frames;
+            .submit(
+                &[cmd_buffer],
+                &[],
+                &[&signal_semaphore], 
+                Some(signal_fence)
+            ).unwrap();        
     }
 }
 
@@ -215,16 +200,16 @@ impl TmpRenderPass {
         let shader_build_result = shader_compiler
             .compile(&CompileParams {
                 shader_source: ShaderSource::Code(shader_source),
-                defines: Vec::new(),
-                products: vec![
-                    ShaderProduct {
+                glob_defines: Vec::new(),
+                entry_points: vec![
+                    EntryPoint {
                         defines: Vec::new(),
-                        entry_point: "main_vs".to_owned(),
+                        name: "main_vs".to_owned(),
                         target_profile: "vs_6_0".to_owned(),
                     },
-                    ShaderProduct {
+                    EntryPoint {
                         defines: Vec::new(),
-                        entry_point: "main_ps".to_owned(),
+                        name: "main_ps".to_owned(),
                         target_profile: "ps_6_0".to_owned(),
                     },
                 ],
@@ -245,48 +230,6 @@ impl TmpRenderPass {
             )
             .unwrap();
 
-        // let vert_shader_module = device_context
-        //     .create_shader_module(vert_shader_package.module_def())
-        //     .unwrap();
-        // let frag_shader_module = device_context
-        //     .create_shader_module(frag_shader_package.module_def())
-        //     .unwrap();
-
-        // let color_shader_resource = ShaderResource {
-        //     name: "color".to_owned(),
-        //     set_index: 0,
-        //     binding: 0,
-        //     shader_resource_type: ShaderResourceType::ConstantBuffer,
-        //     element_count: 0,
-        //     used_in_shader_stages: ShaderStageFlags::VERTEX,
-        // };
-
-        // let vert_shader_stage_def = ShaderStageDef {
-        //     entry_point: "main".to_owned(),
-        //     shader_stage: ShaderStageFlags::VERTEX,
-        //     shader_module: vert_shader_module,
-        //     // reflection: ShaderStageReflection {
-        //     //     entry_point_name: "main".to_owned(),
-        //     //     shader_stage: ShaderStageFlags::VERTEX,
-        //     //     compute_threads_per_group: None,
-        //     //     shader_resources: vec![color_shader_resource],
-        //     //     push_constants: Vec::new(),
-        //     // },
-        // };
-
-        // let frag_shader_stage_def = ShaderStageDef {
-        //     entry_point: "main".to_owned(),
-        //     shader_stage: ShaderStageFlags::FRAGMENT,
-        //     shader_module: vert_shader_module,
-        //     // reflection: ShaderStageReflection {
-        //     //     entry_point_name: "main".to_owned(),
-        //     //     shader_stage: ShaderStageFlags::FRAGMENT,
-        //     //     compute_threads_per_group: None,
-        //     //     shader_resources: Vec::new(),
-        //     //     push_constants: Vec::new(),
-        //     // },
-        // };
-
         let shader = device_context
             .create_shader(
                 vec![
@@ -306,10 +249,6 @@ impl TmpRenderPass {
                 &shader_build_result.pipeline_reflection,
             )
             .unwrap();
-
-        // let shader = device_context
-        //     .create_shader(vec![vert_shader_stage_def, frag_shader_stage_def])
-        //     .unwrap();
 
         //
         // Root signature
@@ -348,7 +287,15 @@ impl TmpRenderPass {
         let root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts,
-            push_constant_def: None,
+            push_constant_def: 
+                shader_build_result.
+                pipeline_reflection.
+                push_constant.
+                map(|x| PushConstantDef{
+                        used_in_shader_stages: x.used_in_shader_stages,
+                        size: NonZeroU32::new(x.size).unwrap()
+                    }  
+                ),
         };
 
         let root_signature = device_context
@@ -377,17 +324,10 @@ impl TmpRenderPass {
                     location: 0,
                     byte_offset: 0,
                     gl_attribute_name: Some("pos".to_owned()),
-                },
-                VertexLayoutAttribute {
-                    format: Format::R32G32B32_SFLOAT,
-                    buffer_index: 0,
-                    location: 1,
-                    byte_offset: 8,
-                    gl_attribute_name: Some("in_color".to_owned()),
-                },
+                },                
             ],
             buffers: vec![VertexLayoutBuffer {
-                stride: 20,
+                stride: 8,
                 rate: VertexAttributeRate::Vertex,
             }],
         };
@@ -473,21 +413,9 @@ impl TmpRenderPass {
         // Update vertices
         //
         let vertex_data = [
-            0.0f32,
-            0.5,
-            1.0,
-            0.0,
-            0.0,
-            0.5 - (elapsed_secs.cos() / 2. + 0.5),
-            -0.5,
-            0.0,
-            1.0,
-            0.0,
-            -0.5 + (elapsed_secs.cos() / 2. + 0.5),
-            -0.5,
-            0.0,
-            0.0,
-            1.0,
+            0.0f32, 0.5,            
+            0.5 - (elapsed_secs.cos() / 2. + 0.5), -0.5,
+            -0.5 + (elapsed_secs.cos() / 2. + 0.5), -0.5,
         ];
         let vertex_buffer = &self.vertex_buffers[render_frame_idx];
         vertex_buffer
@@ -518,8 +446,7 @@ impl TmpRenderPass {
                     clear_value: ColorClearValue(self.color),
                 }],
                 None,
-            )
-            .unwrap();
+            ).unwrap();
 
         cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
 
@@ -532,21 +459,19 @@ impl TmpRenderPass {
                 }],
             )
             .unwrap();
+
         cmd_buffer
             .cmd_bind_descriptor_set(
                 &self.root_signature,
                 &self.descriptor_set_arrays[0],
                 (render_frame_idx) as _,
-            )
-            .unwrap();
-        cmd_buffer.cmd_draw(3, 0).unwrap();
+            ).unwrap();
 
-        // Put it into a layout where we can present it
+        let push_constant_data = [1.0f32, 1.0, 1.0, 1.0];
+        cmd_buffer.cmd_push_constants(&self.root_signature, &push_constant_data).unwrap();    
+
+        cmd_buffer.cmd_draw(3, 0).unwrap();
 
         cmd_buffer.cmd_end_render_pass().unwrap();
     }
-}
-
-impl Drop for TmpRenderPass {
-    fn drop(&mut self) {}
 }
