@@ -10,7 +10,7 @@ legion-content-store = { path = "../content-store" }
 legion-data-runtime-macros = { path = "macros" }
 
 byteorder = "1.4"
-crc = "2.0.0"
+crc = "2.1.0"
 crossbeam-channel = "0.5.1"
 hex = "0.4.3"
 rand = "0.8"
