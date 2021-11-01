@@ -136,6 +136,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "legion-analytics",
+ "legion-telemetry",
  "legion-telemetry-proto",
  "log",
  "prost",

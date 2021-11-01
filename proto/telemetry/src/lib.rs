@@ -9,6 +9,6 @@ pub mod ingestion {
     tonic::include_proto!("ingestion");
 }
 
-pub mod analytics{
+pub mod analytics {
     tonic::include_proto!("analytics");
 }

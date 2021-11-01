@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 legion-telemetry-proto = { path = "../../proto/telemetry" }
 legion-analytics = { path = "../../lib/analytics" }
+legion-telemetry = { path = "../../lib/telemetry" }
 anyhow = "1.0"
 tonic = "0.6"
 tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }

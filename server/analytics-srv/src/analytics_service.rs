@@ -1,3 +1,5 @@
+use anyhow::Result;
+use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
@@ -5,13 +7,21 @@ use std::path::PathBuf;
 use tonic::{Request, Response, Status};
 
 pub struct AnalyticsService {
-    db_pool: sqlx::any::AnyPool,
-    data_dir: PathBuf,
+    pool: sqlx::any::AnyPool,
+    _data_dir: PathBuf,
 }
 
 impl AnalyticsService {
-    pub fn new(db_pool: sqlx::AnyPool, data_dir: PathBuf) -> Self {
-        Self { db_pool, data_dir }
+    pub fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Self {
+        Self {
+            pool,
+            _data_dir: data_dir,
+        }
+    }
+
+    async fn list_recent_processes_impl(&self) -> Result<Vec<legion_telemetry::ProcessInfo>> {
+        let mut connection = self.pool.acquire().await?;
+        fetch_recent_processes(&mut connection).await
     }
 }
 
@@ -21,6 +31,17 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         _request: Request<RecentProcessesRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
-        return Err(Status::internal(String::from("not implemented")));
+        match self.list_recent_processes_impl().await {
+            Ok(processes) => {
+                let reply = ProcessListReply { processes };
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                return Err(Status::internal(format!(
+                    "Error in list_recent_processes_impl: {}",
+                    e
+                )));
+            }
+        }
     }
 }

@@ -71,7 +71,7 @@ use legion_telemetry_proto::analytics::performance_analytics_server::Performance
 use std::path::PathBuf;
 use tonic::transport::Server;
 
-pub fn get_data_directory() -> Result<PathBuf> {
+fn get_data_directory() -> Result<PathBuf> {
     let folder =
         std::env::var("LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY").with_context(|| {
             String::from("Error reading env variable LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY")
