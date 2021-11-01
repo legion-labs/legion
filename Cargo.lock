@@ -134,12 +134,16 @@ dependencies = [
 name = "analytics-srv"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "legion-analytics",
+ "legion-telemetry-proto",
  "log",
  "prost",
  "simple_logger",
  "sqlx",
  "tokio",
  "tonic",
+ "tonic-build",
 ]
 
 [[package]]

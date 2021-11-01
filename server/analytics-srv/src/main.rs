@@ -62,8 +62,32 @@
 // crate-specific exceptions:
 #![allow()]
 
+mod analytics_service;
+
+use analytics_service::AnalyticsService;
+use anyhow::{Context, Result};
+use legion_analytics::alloc_sql_pool;
+use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
+use std::path::PathBuf;
+use tonic::transport::Server;
+
+pub fn get_data_directory() -> Result<PathBuf> {
+    let folder =
+        std::env::var("LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY").with_context(|| {
+            String::from("Error reading env variable LEGION_TELEMETRY_INGESTION_SRC_DATA_DIRECTORY")
+        })?;
+    Ok(PathBuf::from(folder))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Allo monde");
+    let addr = "127.0.0.1:9090".parse()?;
+    let data_dir = get_data_directory()?;
+    let pool = alloc_sql_pool(&data_dir).await?;
+    let service = AnalyticsService::new(pool, data_dir);
+    Server::builder()
+        .add_service(PerformanceAnalyticsServer::new(service))
+        .serve(addr)
+        .await?;
     Ok(())
 }

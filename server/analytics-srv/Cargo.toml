@@ -7,6 +7,9 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+legion-telemetry-proto = { path = "../../proto/telemetry" }
+legion-analytics = { path = "../../lib/analytics" }
+anyhow = "1.0"
 tonic = "0.6"
 tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
 sqlx = { version = "0.5", features = [
@@ -18,3 +21,6 @@ sqlx = { version = "0.5", features = [
 prost = "0.9"
 log = "0.4"
 simple_logger = "1.13"
+
+[build-dependencies]
+tonic-build = "0.6"

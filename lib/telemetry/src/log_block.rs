@@ -37,7 +37,7 @@ impl StreamBlock for LogBlock {
             }
         }
 
-        let payload = legion_telemetry_proto::ingestion::BlockPayload {
+        let payload = legion_telemetry_proto::telemetry::BlockPayload {
             dependencies: compress(deps.as_bytes())?,
             objects: compress(self.events.as_bytes())?,
         };

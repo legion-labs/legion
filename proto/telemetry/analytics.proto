@@ -1,0 +1,15 @@
+syntax = "proto3";
+import public "process.proto";
+import "stream.proto";
+import "block.proto";
+
+package analytics;
+
+service PerformanceAnalytics {
+    rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
+}
+
+message RecentProcessesRequest{
+}
+
+message ProcessListReply { repeated telemetry.Process processes = 1; }

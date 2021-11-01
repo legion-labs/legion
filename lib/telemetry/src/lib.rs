@@ -92,10 +92,10 @@ pub use thread_events::*;
 
 pub use transit::HeterogeneousQueue;
 
-pub type ProcessInfo = legion_telemetry_proto::ingestion::Process;
-pub type StreamInfo = legion_telemetry_proto::ingestion::Stream;
-pub type EncodedBlock = legion_telemetry_proto::ingestion::Block;
-pub use legion_telemetry_proto::ingestion::ContainerMetadata;
+pub type ProcessInfo = legion_telemetry_proto::telemetry::Process;
+pub type StreamInfo = legion_telemetry_proto::telemetry::Stream;
+pub type EncodedBlock = legion_telemetry_proto::telemetry::Block;
+pub use legion_telemetry_proto::telemetry::ContainerMetadata;
 
 pub mod prelude {
     pub use crate::dispatch::*;

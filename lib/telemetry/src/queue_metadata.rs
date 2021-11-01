@@ -1,4 +1,4 @@
-use legion_telemetry_proto::ingestion::{ContainerMetadata, UdtMember, UserDefinedType};
+use legion_telemetry_proto::telemetry::{ContainerMetadata, UdtMember, UserDefinedType};
 
 pub fn make_queue_metedata<Queue: transit::HeterogeneousQueue>() -> ContainerMetadata {
     let udts = Queue::reflect_contained();
