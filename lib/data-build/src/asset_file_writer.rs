@@ -28,8 +28,8 @@ pub fn write_assetfile(
 
     let mut primary_dependencies: Vec<ResourceId> =
         reference_list.into_iter().map(|r| r.1 .0).collect();
-    primary_dependencies.dedup();
     primary_dependencies.sort();
+    primary_dependencies.dedup();
 
     writer
         .write_u64::<LittleEndian>(primary_dependencies.len() as u64)
