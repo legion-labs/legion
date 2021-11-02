@@ -1,53 +1,53 @@
 [
   {
     "guid": "019c822300000000264b29e1daf98c75",
-    "checksum": "faf87ab541104a4b7a604cecebfa2c35",
-    "size": 193
+    "checksum": "913a68321dac61ea57cdd08403d1ed8f",
+    "size": 184
   },
   {
     "guid": "019c82230000000052d85baf2a2c79a4",
-    "checksum": "e78e7286ca92b19db52895ff05f545d4",
-    "size": 210
+    "checksum": "0b744cac48775275c4d8f5018e0fbb94",
+    "size": 201
   },
   {
     "guid": "019c822300000000b34c39427317a636",
-    "checksum": "545b6531fddfd77cc39f501e7624d17d",
-    "size": 381
+    "checksum": "1530af4a7050efa51074c1f190232b0e",
+    "size": 363
   },
   {
     "guid": "019c822300000000b4e464b9fef217e6",
-    "checksum": "49f0e459fd211d67e95611385e53c236",
-    "size": 259
+    "checksum": "221e2598e158f812202bc60788768051",
+    "size": 250
   },
   {
     "guid": "0cd05ad8000000005aa0bf3c69af020f",
-    "checksum": "6890837cadef557acfe4b8f895bb99c7",
-    "size": 70
+    "checksum": "eba4df0d73ed6bc409674427018bdd79",
+    "size": 67
   },
   {
     "guid": "0cd05ad800000000691906ec63d6d8d8",
-    "checksum": "6890837cadef557acfe4b8f895bb99c7",
-    "size": 70
+    "checksum": "eba4df0d73ed6bc409674427018bdd79",
+    "size": 67
   },
   {
     "guid": "0cd05ad8000000009ce518e3cf3927a3",
-    "checksum": "6890837cadef557acfe4b8f895bb99c7",
-    "size": 70
+    "checksum": "eba4df0d73ed6bc409674427018bdd79",
+    "size": 67
   },
   {
     "guid": "0cd05ad800000000a5c01d33d46b3d82",
-    "checksum": "6890837cadef557acfe4b8f895bb99c7",
-    "size": 70
+    "checksum": "eba4df0d73ed6bc409674427018bdd79",
+    "size": 67
   },
   {
     "guid": "0cd05ad800000000bfb87946adf03803",
-    "checksum": "6bb06bf5e1d24cb21eeba51acfb3cf82",
-    "size": 70
+    "checksum": "b2e1d24efb44dbd85028e7d3263dd9b5",
+    "size": 67
   },
   {
     "guid": "0cd05ad800000000f271e52bf0a8c4f1",
-    "checksum": "6890837cadef557acfe4b8f895bb99c7",
-    "size": 70
+    "checksum": "eba4df0d73ed6bc409674427018bdd79",
+    "size": 67
   },
   {
     "guid": "669eb7d000000000c9875c015d617949",
@@ -56,8 +56,8 @@
   },
   {
     "guid": "ea2510e8000000007354d8806dd36e41",
-    "checksum": "c20a97954b3ad64da90e10ed32493f3b",
-    "size": 950
+    "checksum": "06b9db3c818c41c96593f747bbb6e1f1",
+    "size": 947
   },
   {
     "guid": "f9c9670d0000000062572ca04da3b129",
