@@ -1,6 +1,7 @@
 use std::num::NonZeroU32;
 
 use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use legion_ecs::prelude::Query;
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 
 use crate::components::RenderSurface;
@@ -16,27 +17,6 @@ pub struct Renderer {
 
     // This should be last, as it must be destroyed last.
     api: DefaultApi,
-}
-
-pub struct FrameContext<'a> {
-    renderer: &'a mut Renderer,
-}
-
-impl<'a> FrameContext<'a> {
-    pub fn new(renderer: &'a mut Renderer) -> Self {
-        renderer.begin_frame();
-        Self { renderer }
-    }
-
-    pub fn renderer(&self) -> &Renderer {
-        self.renderer
-    }
-}
-
-impl<'a> Drop for FrameContext<'a> {
-    fn drop(&mut self) {
-        self.renderer.end_frame();
-    }
 }
 
 impl Renderer {
@@ -107,7 +87,7 @@ impl Renderer {
         &self.frame_signal_sems[render_frame_index]
     }
 
-    fn begin_frame(&mut self) {
+    pub(crate) fn begin_frame(&mut self) {
         //
         // Update frame indices
         //
@@ -143,7 +123,20 @@ impl Renderer {
         cmd_buffer.begin().unwrap();
     }
 
-    fn end_frame(&self) {
+    pub(crate) fn update(&mut self, q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>) {
+        let cmd_buffer = self.get_cmd_buffer();
+
+        for mut render_surface in q_render_surfaces.iter_mut() {
+            render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
+
+            {
+                let render_pass = &render_surface.test_renderpass;
+                render_pass.render(self, &render_surface, cmd_buffer);
+            }
+        }
+    }
+
+    pub(crate) fn end_frame(&mut self) {
         let render_frame_idx = self.render_frame_idx;
         let signal_semaphore = &self.frame_signal_sems[render_frame_idx];
         let signal_fence = &self.frame_fences[render_frame_idx];
