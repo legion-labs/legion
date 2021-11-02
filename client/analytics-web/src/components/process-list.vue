@@ -13,11 +13,11 @@
       </thead>
       <tbody>
         <template v-for="process in process_list">
-          <TR :key="process.id">
-            <td>{{ process.start_time }}</td>
-            <td>{{ process.id }}</td>
-            <td>{{ process.exe }}</td>
-            <td>{{ process.parent_id }}</td>
+          <TR :key="process.getProcessId()">
+            <td>{{ process.getStartTime() }}</td>
+            <td>{{ process.getProcessId() }}</td>
+            <td>{{ process.getExe() }}</td>
+            <td>{{ process.getParentProcessId() }}</td>
             <td>
               <p><router-link to="/timeline">timeline</router-link></p>
               <router-link to="/log">log</router-link>
@@ -41,9 +41,9 @@ export default {
       var request = new RecentProcessesRequest()
       this.client.list_recent_processes(request, null, (err, response) => {
         if (err) {
-          console.log('err', err)
+          console.error('error in list_recent_processes', err)
         } else {
-          console.log('response', response.getProcessesList())
+          this.process_list = response.getProcessesList()
         }
       })
     } catch (err) {
@@ -53,8 +53,7 @@ export default {
   },
   data: function () {
     return {
-      msg: 'test_msg',
-      process_list: [{ start_time: '0:00', id: '1', exe: 'exe0' }, { start_time: '1:00', id: '2', exe: 'exe1', parent_id: 1 }]
+      process_list: []
     }
   }
 }
