@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
+use legion_telemetry_proto::analytics::ListProcessStreamsRequest;
+use legion_telemetry_proto::analytics::ListStreamsReply;
 use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
 use tonic::{Request, Response, Status};
@@ -46,5 +48,12 @@ impl PerformanceAnalytics for AnalyticsService {
                 )));
             }
         }
+    }
+
+    async fn list_process_streams(
+        &self,
+        _request: Request<ListProcessStreamsRequest>,
+    ) -> Result<Response<ListStreamsReply>, Status> {
+        Err(Status::internal(String::from("not implemented")))
     }
 }

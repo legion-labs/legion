@@ -7,9 +7,20 @@ package analytics;
 
 service PerformanceAnalytics {
     rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
+    rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
 }
 
 message RecentProcessesRequest{
 }
 
-message ProcessListReply { repeated telemetry.Process processes = 1; }
+message ProcessListReply {
+    repeated telemetry.Process processes = 1;
+}
+
+message ListProcessStreamsRequest{
+    string process_id = 1;
+}
+
+message ListStreamsReply{
+    repeated telemetry.Stream streams = 1;
+}
