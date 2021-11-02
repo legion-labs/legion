@@ -542,41 +542,8 @@ pub struct SwapchainDef {
 pub struct ShaderStageDef<A: GfxApi> {
     pub entry_point: String,
     pub shader_stage: ShaderStageFlags,
-    pub shader_module: A::ShaderModule,
-    // pub reflection: ShaderStageReflection,
+    pub shader_module: A::ShaderModule,    
 }
-
-// impl<A: GfxApi> ShaderStageDef<A> {
-//     pub fn hash_definition<HasherT: std::hash::Hasher, ShaderModuleHashT: Hash>(
-//         hasher: &mut HasherT,
-//         reflection_data: &[&ShaderStageReflection],
-//         shader_module_hashes: &[ShaderModuleHashT],
-//     ) {
-//         assert_eq!(reflection_data.len(), shader_module_hashes.len());
-//         fn hash_stage<HasherT: std::hash::Hasher, ShaderModuleHashT: Hash>(
-//             hasher: &mut HasherT,
-//             stage_flag: ShaderStageFlags,
-//             reflection_data: &[&ShaderStageReflection],
-//             shader_module_hashes: &[ShaderModuleHashT],
-//         ) {
-//             for (reflection, shader_module_hash) in reflection_data.iter().zip(shader_module_hashes)
-//             {
-//                 if reflection.shader_stage.intersects(stage_flag) {
-//                     reflection.shader_stage.hash(hasher);
-//                     // reflection.entry_point_name.hash(hasher);
-//                     reflection.shader_resources.hash(hasher);
-//                     shader_module_hash.hash(hasher);
-//                     break;
-//                 }
-//             }
-//         }
-
-//         // Hash stages in a deterministic order
-//         for stage_flag in &super::ALL_SHADER_STAGE_FLAGS {
-//             hash_stage(hasher, *stage_flag, reflection_data, shader_module_hashes);
-//         }
-//     }
-// }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ShaderResourceType {

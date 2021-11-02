@@ -22,8 +22,7 @@ impl VulkanShader {
     ) -> GfxResult<Self> {
         // let pipeline_reflection = PipelineReflection::from_stages(&stages)?;
         let mut stage_flags = ShaderStageFlags::empty();
-        for stage in &stages {
-            // stage_flags |= stage.reflection.shader_stage;
+        for stage in &stages {            
             stage_flags |= stage.shader_stage;
         }
 

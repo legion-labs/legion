@@ -16,7 +16,6 @@ pub(crate) struct PushConstantIndex(pub(crate) u32);
 struct RootSignatureVulkanInner {
     device_context: VulkanDeviceContext,
     pipeline_type: PipelineType,
-    // layouts: [Option<VulkanDescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
     layouts: Vec<VulkanDescriptorSetLayout>,
     pipeline_layout: vk::PipelineLayout,
 }

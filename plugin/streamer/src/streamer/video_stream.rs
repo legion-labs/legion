@@ -364,12 +364,7 @@ impl VideoStream {
             self.resolution = resolution;
             self.render_images = render_images;
             self.render_image_rtvs = render_image_rtvs;
-            self.copy_images = copy_images;
-
-            // TODO: Fix this: this is probably bad but I wrote that just to test it.
-            // self.renderer = Renderer::new(self.resolution.width, self.resolution.height);
-            // self.renderer = Renderer::new();
-            // self.render_surface.resize(renderer, self.resolution.width, self.resolution.height);
+            self.copy_images = copy_images;            
             self.encoder = VideoStreamEncoder::new(self.resolution)?;
         }
 
@@ -550,15 +545,6 @@ impl VideoStream {
                 .convert_rgba(sub_resource.data, sub_resource.row_pitch as usize);
             copy_texture.unmap_texture().unwrap();
         }
-
-        // self.elapsed_secs += delta_secs * self.speed;
-
-        // self.renderer.render(
-        //     self.frame_id as usize,
-        //     self.elapsed_secs,
-        //     self.color.0 .0,
-        //     &mut self.encoder.converter,
-        // );
 
         let chunks = self.encoder.encode(self.frame_id);
 
