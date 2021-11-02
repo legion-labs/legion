@@ -2,6 +2,8 @@
 
 use std::borrow::Cow;
 
+use async_trait::async_trait;
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration},
     component::ComponentId,
@@ -69,7 +71,7 @@ impl BoxedRunCriteria {
         self.initialized = false;
     }
 
-    pub(crate) fn should_run(&mut self, world: &mut World) -> ShouldRun {
+    pub(crate) async fn should_run(&mut self, world: &mut World) -> ShouldRun {
         if let Some(ref mut run_criteria) = self.criteria_system {
             if !self.initialized {
                 run_criteria.initialize(world);
@@ -84,7 +86,7 @@ impl BoxedRunCriteria {
                 run_criteria.new_archetype(archetype);
             }
 
-            let should_run = run_criteria.run((), world);
+            let should_run = run_criteria.run((), world).await;
             run_criteria.apply_buffers(world);
             should_run
         } else {
@@ -416,6 +418,7 @@ impl Default for RunOnce {
     }
 }
 
+#[async_trait]
 impl System for RunOnce {
     type In = ();
     type Out = ShouldRun;
@@ -438,7 +441,7 @@ impl System for RunOnce {
         true
     }
 
-    unsafe fn run_unsafe(&mut self, _input: (), _world: &World) -> ShouldRun {
+    async unsafe fn run_unsafe(&mut self, _input: (), _world: &World) -> ShouldRun {
         if self.ran {
             ShouldRun::No
         } else {

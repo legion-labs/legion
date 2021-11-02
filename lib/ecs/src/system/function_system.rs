@@ -2,6 +2,7 @@
 
 use std::{borrow::Cow, marker::PhantomData};
 
+use async_trait::async_trait;
 use legion_ecs_macros::all_tuples;
 
 use crate::{
@@ -308,8 +309,8 @@ pub struct IsFunctionSystem;
 
 impl<In, Out, Param, Marker, F> IntoSystem<In, Out, (IsFunctionSystem, Param, Marker)> for F
 where
-    In: 'static,
-    Out: 'static,
+    In: Send + 'static,
+    Out: Send + 'static,
     Param: SystemParam + 'static,
     Marker: 'static,
     F: SystemParamFunction<In, Out, Param, Marker> + Send + Sync + 'static,
@@ -326,10 +327,11 @@ where
     }
 }
 
+#[async_trait]
 impl<In, Out, Param, Marker, F> System for FunctionSystem<In, Out, Param, Marker, F>
 where
-    In: 'static,
-    Out: 'static,
+    In: Send + 'static,
+    Out: Send + 'static,
     Param: SystemParam + 'static,
     Marker: 'static,
     F: SystemParamFunction<In, Out, Param, Marker> + Send + Sync + 'static,
@@ -364,7 +366,7 @@ where
     }
 
     #[inline]
-    unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out {
+    async unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out {
         let change_tick = world.increment_change_tick();
         let out = self.func.run(
             input,

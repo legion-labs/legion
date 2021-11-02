@@ -2,6 +2,8 @@
 
 use std::borrow::Cow;
 
+use async_trait::async_trait;
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
@@ -55,6 +57,7 @@ pub struct ChainSystem<SystemA, SystemB> {
     archetype_component_access: Access<ArchetypeComponentId>,
 }
 
+#[async_trait]
 impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem<SystemA, SystemB> {
     type In = SystemA::In;
     type Out = SystemB::Out;
@@ -85,9 +88,9 @@ impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem
         self.system_a.is_send() && self.system_b.is_send()
     }
 
-    unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out {
-        let out = self.system_a.run_unsafe(input, world);
-        self.system_b.run_unsafe(out, world)
+    async unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out {
+        let out = self.system_a.run_unsafe(input, world).await;
+        self.system_b.run_unsafe(out, world).await
     }
 
     fn apply_buffers(&mut self, world: &mut World) {

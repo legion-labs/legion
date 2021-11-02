@@ -3470,6 +3470,7 @@ name = "legion-ecs"
 version = "0.1.0"
 dependencies = [
  "async-channel",
+ "async-trait",
  "downcast-rs",
  "fixedbitset",
  "fxhash",

@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use async_trait::async_trait;
 use legion_utils::tracing::warn;
 
 use crate::{
@@ -19,12 +20,13 @@ use crate::{
 /// Systems are executed in parallel, in opportunistic order; data access is managed automatically.
 /// It's possible to specify explicit execution order between specific systems,
 /// see [`SystemDescriptor`](crate::schedule::SystemDescriptor).
+#[async_trait]
 pub trait System: Send + Sync + 'static {
     /// The system's input. See [`In`](crate::system::In) for
     /// [`FunctionSystem`](crate::system::FunctionSystem)s.
-    type In;
+    type In: Send;
     /// The system's output.
-    type Out;
+    type Out: Send;
     /// Returns the system's name.
     fn name(&self) -> Cow<'static, str>;
     /// Register a new archetype for this system.
@@ -46,11 +48,11 @@ pub trait System: Send + Sync + 'static {
     ///     1. This system is the only system running on the given world across all threads.
     ///     2. This system only runs in parallel with other systems that do not conflict with the
     ///        [`System::archetype_component_access()`].
-    unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out;
+    async unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out;
     /// Runs the system with the given input in the world.
-    fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {
+    async fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {
         // SAFE: world and resources are exclusively borrowed
-        unsafe { self.run_unsafe(input, world) }
+        unsafe { self.run_unsafe(input, world).await }
     }
     fn apply_buffers(&mut self, world: &mut World);
     /// Initialize the system.
