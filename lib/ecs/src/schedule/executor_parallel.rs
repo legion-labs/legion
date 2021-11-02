@@ -1,4 +1,5 @@
 use async_channel::{Receiver, Sender};
+use async_trait::async_trait;
 use fixedbitset::FixedBitSet;
 use legion_tasks::{ComputeTaskPool, Scope, TaskPool};
 #[cfg(test)]
@@ -74,6 +75,7 @@ impl Default for ParallelExecutor {
     }
 }
 
+#[async_trait]
 impl ParallelSystemExecutor for ParallelExecutor {
     fn rebuild_cached_data(&mut self, systems: &[ParallelSystemContainer]) {
         self.system_metadata.clear();
@@ -104,7 +106,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
         }
     }
 
-    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
+    async fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
         #[cfg(test)]
         if self.events_sender.is_none() {
             let (sender, receiver) = async_channel::unbounded::<SchedulingEvent>();
@@ -168,7 +170,7 @@ impl ParallelExecutor {
 
     /// Populates `should_run` bitset, spawns tasks for systems that should run this iteration,
     /// queues systems with no dependencies to run (or skip) at next opportunity.
-    fn prepare_systems<'scope>(
+    async fn prepare_systems<'scope>(
         &mut self,
         scope: &mut Scope<'scope, ()>,
         systems: &'scope [ParallelSystemContainer],
@@ -193,7 +195,7 @@ impl ParallelExecutor {
                     #[cfg(feature = "trace")]
                     let system_guard = system_span.enter();
                     unsafe {
-                        system.run_unsafe((), world);
+                        system.run_unsafe((), world).await;
                     };
                     #[cfg(feature = "trace")]
                     drop(system_guard);

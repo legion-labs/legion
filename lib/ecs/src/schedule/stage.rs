@@ -831,7 +831,7 @@ impl Stage for SystemStage {
                     container.should_run =
                         should_run(container, &self.run_criteria, default_should_run);
                 }
-                self.executor.run_systems(&mut self.parallel, world);
+                self.executor.run_systems(&mut self.parallel, world).await;
 
                 // Run systems that want to be between parallel systems and their command buffers.
                 for container in &mut self.exclusive_before_commands {

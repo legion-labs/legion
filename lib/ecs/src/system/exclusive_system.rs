@@ -1,15 +1,18 @@
 use std::borrow::Cow;
 
+use async_trait::async_trait;
+
 use crate::{
     archetype::ArchetypeGeneration,
     system::{check_system_change_tick, BoxedSystem, IntoSystem},
     world::World,
 };
 
+#[async_trait]
 pub trait ExclusiveSystem: Send + Sync + 'static {
     fn name(&self) -> Cow<'static, str>;
 
-    fn run(&mut self, world: &mut World);
+    async fn run(&mut self, world: &mut World);
 
     fn initialize(&mut self, world: &mut World);
 
@@ -22,6 +25,7 @@ pub struct ExclusiveSystemFn<F> {
     last_change_tick: u32,
 }
 
+#[async_trait]
 impl<F> ExclusiveSystem for ExclusiveSystemFn<F>
 where
     F: FnMut(&mut World) + Send + Sync + 'static,
@@ -30,7 +34,7 @@ where
         self.name.clone()
     }
 
-    fn run(&mut self, world: &mut World) {
+    async fn run(&mut self, world: &mut World) {
         // The previous value is saved in case this exclusive system is run by another exclusive
         // system
         let saved_last_tick = world.last_change_tick;
@@ -74,12 +78,13 @@ pub struct ExclusiveSystemCoerced {
     archetype_generation: ArchetypeGeneration,
 }
 
+#[async_trait]
 impl ExclusiveSystem for ExclusiveSystemCoerced {
     fn name(&self) -> Cow<'static, str> {
         self.system.name()
     }
 
-    fn run(&mut self, world: &mut World) {
+    async fn run(&mut self, world: &mut World) {
         let archetypes = world.archetypes();
         let new_generation = archetypes.generation();
         let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);

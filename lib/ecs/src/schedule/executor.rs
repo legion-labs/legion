@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use downcast_rs::{impl_downcast, Downcast};
 
 use crate::{archetype::ArchetypeGeneration, schedule::ParallelSystemContainer, world::World};
@@ -6,7 +7,7 @@ pub trait ParallelSystemExecutor: Downcast + Send + Sync {
     /// Called by `SystemStage` whenever `systems` have been changed.
     fn rebuild_cached_data(&mut self, systems: &[ParallelSystemContainer]);
 
-    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World);
+    async fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World);
 }
 
 impl_downcast!(ParallelSystemExecutor);
@@ -23,10 +24,12 @@ impl Default for SingleThreadedExecutor {
         }
     }
 }
+
+#[async_trait]
 impl ParallelSystemExecutor for SingleThreadedExecutor {
     fn rebuild_cached_data(&mut self, _: &[ParallelSystemContainer]) {}
 
-    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
+    async fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
         self.update_archetypes(systems, world);
 
         for system in systems {
