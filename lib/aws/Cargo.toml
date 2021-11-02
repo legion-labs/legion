@@ -7,7 +7,10 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 anyhow = "1.0"
-lambda_runtime = "0.1"
+lambda_runtime = "0.4"
+tokio = { version = "1.13", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 log = "0.4"
+strum = "0.22"
+strum_macros = "0.22"

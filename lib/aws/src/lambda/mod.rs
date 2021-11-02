@@ -1,3 +1,5 @@
+use log::error;
+
 pub mod api_gateway;
 
 /// Run a lambda once locally by expecting a JSON event payload on the specified reader, and writing
@@ -9,7 +11,7 @@ pub mod api_gateway;
 /// use std::io::{Read, Write};
 /// use serde::{Deserialize, Serialize};
 ///
-/// use lambda_runtime::{error::HandlerError, Context};
+/// use lambda_runtime::{Context, handler_fn};
 ///
 /// #[derive(Deserialize, Clone)]
 /// pub struct Event {
@@ -21,9 +23,9 @@ pub mod api_gateway;
 ///     message: String,
 /// }
 ///
-/// pub fn handler(e: Event, c: Context) -> Result<Output, HandlerError> {
+/// pub async fn handler(e: Event, _: Context) -> anyhow::Result<Output> {
 ///     if e.name.is_empty() {
-///         return Err(c.new_error("Empty name name"));
+///         return Err(anyhow::anyhow!("name is empty"));
 ///     }
 ///
 ///     Ok(Output {
@@ -31,23 +33,26 @@ pub mod api_gateway;
 ///     })
 /// }
 ///
-/// fn main() -> anyhow::Result<()> {
+/// #[tokio::main]
+/// async fn main() -> Result<(), lambda_runtime::Error> {
 ///     let reader = "{\"name\": \"John Doe\"}".as_bytes();
 ///     let mut writer = Vec::<u8>::new();
 ///
-///     legion_aws::lambda::run_lambda_once(handler, reader, &mut writer)?;
+///     legion_aws::lambda::run_lambda_once(handler_fn(handler), reader, &mut writer).await?;
 ///     
 ///     assert_eq!(String::from_utf8_lossy(&writer), "{\"message\":\"Hello, John Doe!\"}");
 ///     
 ///     Ok(())
 /// }
 /// ```
-pub fn run_lambda_once<H, I, O, R, W>(handler: H, reader: R, writer: &mut W) -> anyhow::Result<()>
+pub async fn run_lambda_once<H, I, O, R, W>(
+    handler: H,
+    reader: R,
+    writer: &mut W,
+) -> Result<(), lambda_runtime::Error>
 where
-    H: Fn(I, lambda_runtime::Context) -> Result<O, lambda_runtime::error::HandlerError>
-        + Send
-        + Sync
-        + 'static,
+    H: lambda_runtime::Handler<I, O>,
+    <H as lambda_runtime::Handler<I, O>>::Error: Into<lambda_runtime::Error>,
     I: for<'de> serde::Deserialize<'de>,
     O: serde::Serialize,
     R: std::io::Read,
@@ -55,33 +60,28 @@ where
 {
     let i: I = serde_json::from_reader(reader)?;
     let context = lambda_runtime::Context::default();
-    let o = handler(i, context)?;
+    let o = handler.call(i, context).await.map_err(Into::into)?;
+
     serde_json::to_writer(writer, &o).map_err(Into::into)
 }
 
-/// Run a lamba function locally on stdin/stdout unless `API` is set in the environment.
-#[macro_export]
-macro_rules! lambda {
-    ($handler:ident) => {
-        if std::env::var("API").is_err() {
-            log::info!("API is not set, running locally and expecting event as JSON on stdin");
-            legion_aws::lambda::run_lambda_once($handler, std::io::stdin(), &mut std::io::stdout())
-        } else {
-            lambda_runtime::lambda!($handler);
-
-            Ok(())
-        }
-    };
-    ($handler:ident, $runtime:expr) => {
-        if std::env::var("API").is_err() {
-            log::info!("API is not set, running locally and expecting event as JSON on stdin");
-            legion_aws::lambda::run_lambda_once($handler, std::io::stdin(), &mut std::io::stdout())
-        } else {
-            lambda_runtime::lambda!($handler, $runtime);
-
-            Ok(())
-        }
-    };
+/// Run a lamba handler locally unless the `API` environment variable is set.
+pub async fn run_lambda<H, I, O>(handler: H) -> Result<(), lambda_runtime::Error>
+where
+    H: lambda_runtime::Handler<I, O>,
+    <H as lambda_runtime::Handler<I, O>>::Error: Into<lambda_runtime::Error> + std::fmt::Display,
+    I: for<'de> serde::Deserialize<'de>,
+    O: serde::Serialize,
+{
+    if std::env::var("AWS_LAMBDA_RUNTIME_API").is_err() {
+        log::info!("`AWS_LAMBDA_RUNTIME_API` is not set, running locally and expecting event as JSON on stdin");
+        run_lambda_once(handler, std::io::stdin(), &mut std::io::stdout())
+            .await
+            .map_err(|err| {
+                error!("Execution failed with: {}", err);
+                err
+            })
+    } else {
+        lambda_runtime::run(handler).await
+    }
 }
-
-pub use lambda;

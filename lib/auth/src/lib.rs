@@ -61,8 +61,10 @@ mod authenticator;
 mod token_cache;
 mod token_set;
 mod user_info;
+mod validator;
 
 pub use authenticator::Authenticator;
 pub use token_cache::TokenCache;
 pub use token_set::TokenSet;
 pub use user_info::UserInfo;
+pub use validator::Validator;

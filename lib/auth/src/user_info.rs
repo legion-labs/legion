@@ -1,10 +1,22 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
-use std::str::FromStr;
 
 /// Contains user information.
 ///
 /// Standard OIDC claims, as specified in the [`OpenID`
 /// RFC](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims).
+///
+/// # Example
+///
+/// ```rust
+/// use legion_auth::UserInfo;
+///
+/// // Bare minimum: we the `sub` field.
+/// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo"}"#).unwrap();
+///
+/// // Boolean fields support both string and bool representation.
+/// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo", "email_verified": "true"}"#).unwrap();
+/// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo", "email_verified": true}"#).unwrap();
+/// ```
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserInfo {
     pub sub: String,
@@ -47,8 +59,16 @@ fn deserialize_string_bool<'de, D>(deserializer: D) -> Result<Option<bool>, D::E
 where
     D: Deserializer<'de>,
 {
-    match Option::<String>::deserialize(deserializer)? {
-        Some(s) => bool::from_str(&s).map(Some).map_err(de::Error::custom),
-        None => Ok(None),
+    let value: serde_json::Value = Deserialize::deserialize(deserializer)?;
+
+    if value.is_null() {
+        Ok(None)
+    } else if let Some(b) = value.as_bool() {
+        Ok(Some(b))
+    } else {
+        match value.as_str() {
+            Some(s) => Ok(Some(s.parse().map_err(de::Error::custom)?)),
+            None => Err(de::Error::custom("expected bool or string")),
+        }
     }
 }
