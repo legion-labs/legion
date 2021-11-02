@@ -77,13 +77,17 @@ impl BoxedRunCriteria {
                 run_criteria.initialize(world);
                 self.initialized = true;
             }
-            let archetypes = world.archetypes();
-            let new_generation = archetypes.generation();
-            let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);
-            let archetype_index_range = old_generation.value()..new_generation.value();
 
-            for archetype in archetypes.archetypes[archetype_index_range].iter() {
-                run_criteria.new_archetype(archetype);
+            {
+                let archetypes = world.archetypes();
+                let new_generation = archetypes.generation();
+                let old_generation =
+                    std::mem::replace(&mut self.archetype_generation, new_generation);
+                let archetype_index_range = old_generation.value()..new_generation.value();
+
+                for archetype in archetypes.archetypes[archetype_index_range].iter() {
+                    run_criteria.new_archetype(archetype);
+                }
             }
 
             let should_run = run_criteria.run((), world).await;
