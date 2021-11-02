@@ -18,7 +18,7 @@ const routes = [
     component: Log
   },
   {
-    path: '/timeline',
+    path: '/timeline/:process_id',
     name: 'Timeline',
     component: Timeline
   },

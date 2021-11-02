@@ -19,7 +19,7 @@
             <td>{{ process.getExe() }}</td>
             <td>{{ process.getParentProcessId() }}</td>
             <td>
-              <p><router-link to="/timeline">timeline</router-link></p>
+              <p><router-link v-bind:to="{ name: 'Timeline', params: {process_id: process.getProcessId() } }">timeline</router-link></p>
               <router-link to="/log">log</router-link>
             </td>
           </TR>
