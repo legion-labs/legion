@@ -9,7 +9,7 @@ clap = "2.33"
 legion-telemetry = { path = "../../lib/telemetry" }
 legion-analytics = { path = "../../lib/analytics" }
 transit = { path = "../../lib/transit" }
-tokio = { version = "1.12", features = ["full"] }
+tokio = { version = "1.13", features = ["full"] }
 sqlx = { version = "0.5", features = [
     "sqlite",
     "any",
