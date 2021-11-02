@@ -19,10 +19,10 @@ impl Plugin for PresenterWindowPlugin {
 }
 
 fn render_presenter_windows(
-    windows: Res<Windows>,
-    renderer: Res<Renderer>,
-    mut pres_windows: Query<&mut PresenterWindow>,
-    mut render_surfaces: Query<&mut RenderSurface>,
+    windows: Res<'_, Windows>,
+    renderer: Res<'_, Renderer>,
+    mut pres_windows: Query<'_, '_, &mut PresenterWindow>,
+    mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {
     let graphics_queue = renderer.graphics_queue();
     let wait_sem = renderer.frame_signal_semaphore();

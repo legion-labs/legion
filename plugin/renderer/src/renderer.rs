@@ -39,7 +39,8 @@ impl<'a> Drop for FrameContext<'a> {
 }
 
 impl Renderer {
-    pub fn new() -> Renderer {
+    pub fn new() -> Self {
+        #![allow(unsafe_code)]
         let num_render_frames = 2;
         let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
@@ -70,7 +71,7 @@ impl Renderer {
             frame_fences.push(frame_fence);
         }
 
-        Renderer {
+        Self {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
@@ -109,7 +110,7 @@ impl Renderer {
         //
         // Update frame indices
         //
-        self.frame_idx = self.frame_idx + 1;
+        self.frame_idx += 1;
         self.render_frame_idx = self.frame_idx % self.num_render_frames;
 
         //
@@ -150,7 +151,7 @@ impl Renderer {
         cmd_buffer.end().unwrap();
 
         self.graphics_queue
-            .submit(&[cmd_buffer], &[], &[&signal_semaphore], Some(signal_fence))
+            .submit(&[cmd_buffer], &[], &[signal_semaphore], Some(signal_fence))
             .unwrap();
     }
 }
@@ -324,7 +325,7 @@ impl TmpRenderPass {
                 shader: &shader,
                 root_signature: &root_signature,
                 vertex_layout: &vertex_layout,
-                blend_state: &Default::default(),
+                blend_state: &BlendState::default(),
                 depth_state: &Default::default(),
                 rasterizer_state: &Default::default(),
                 color_formats: &[Format::R16G16B16A16_SFLOAT],

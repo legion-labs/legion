@@ -2,14 +2,14 @@ use bytes::Bytes;
 use legion_ecs::prelude::*;
 
 use legion_graphics_api::{
-    AddressMode, CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding, CommandBuffer,
-    CommandBufferDef, CommandPool, CommandPoolDef, CullMode, DefaultApi, DescriptorDef,
-    DescriptorElements, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef,
+    AddressMode, BlendState, CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding,
+    CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, CullMode, DefaultApi, DepthState,
+    DescriptorDef, DescriptorElements, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef,
     DescriptorSetLayoutDef, DescriptorUpdate, DeviceContext, Extents3D, FilterType, Format, GfxApi,
     GraphicsPipelineDef, LoadOp, MemoryUsage, MipMapMode, Offset3D, PipelineType,
     PrimitiveTopology, Queue, RasterizerState, ResourceFlags, ResourceState, ResourceUsage,
     RootSignatureDef, SampleCount, SamplerDef, ShaderPackage, ShaderStageDef, ShaderStageFlags,
-    StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef,
+    StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef, VertexLayout,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
@@ -61,11 +61,11 @@ impl Resolution {
         }
     }
 
-    pub fn width(&self) -> u32 {
+    pub fn width(self) -> u32 {
         self.width
     }
 
-    pub fn height(&self) -> u32 {
+    pub fn height(self) -> u32 {
         self.height
     }
 }
@@ -194,12 +194,12 @@ impl VideoStream {
         let pipeline = device_context.create_graphics_pipeline(&GraphicsPipelineDef {
             shader: &shader,
             root_signature: &root_signature,
-            vertex_layout: &Default::default(),
-            blend_state: &Default::default(),
-            depth_state: &Default::default(),
+            vertex_layout: &VertexLayout::default(),
+            blend_state: &BlendState::default(),
+            depth_state: &DepthState::default(),
             rasterizer_state: &RasterizerState {
                 cull_mode: CullMode::Back,
-                ..Default::default()
+                ..RasterizerState::default()
             },
             primitive_topology: PrimitiveTopology::TriangleList,
             color_formats: &[Format::R8G8B8A8_UNORM],
@@ -214,7 +214,7 @@ impl VideoStream {
             address_mode_u: AddressMode::ClampToEdge,
             address_mode_v: AddressMode::ClampToEdge,
             address_mode_w: AddressMode::ClampToEdge,
-            ..Default::default()
+            ..SamplerDef::default()
         };
         let bilinear_sampler = device_context.create_sampler(&sampler_def)?;
 
@@ -446,18 +446,18 @@ impl VideoStream {
                         descriptor_key: DescriptorKey::Name("hdr_sampler"),
                         elements: DescriptorElements {
                             samplers: Some(&[&self.bilinear_sampler]),
-                            ..Default::default()
+                            ..DescriptorElements::default()
                         },
-                        ..Default::default()
+                        ..DescriptorUpdate::default()
                     },
                     DescriptorUpdate {
                         array_index: render_frame_idx as u32,
                         descriptor_key: DescriptorKey::Name("hdr_image"),
                         elements: DescriptorElements {
                             texture_views: Some(&[render_surface.shader_resource_view()]),
-                            ..Default::default()
+                            ..DescriptorElements::default()
                         },
-                        ..Default::default()
+                        ..DescriptorUpdate::default()
                     },
                 ])
                 .unwrap();

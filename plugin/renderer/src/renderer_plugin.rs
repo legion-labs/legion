@@ -4,7 +4,7 @@ use legion_ecs::{prelude::*, system::IntoSystem};
 
 use crate::{components::RenderSurface, FrameContext, Renderer};
 
-use super::labels::*;
+use super::labels::RendererSystemLabel;
 
 #[derive(Default)]
 pub struct RendererPlugin;
@@ -22,7 +22,10 @@ impl Plugin for RendererPlugin {
     }
 }
 
-fn render(renderer: ResMut<Renderer>, mut outputs: Query<(Entity, &mut RenderSurface)>) {
+fn render(
+    renderer: ResMut<'_, Renderer>,
+    mut outputs: Query<'_, '_, (Entity, &mut RenderSurface)>,
+) {
     let frame_context = FrameContext::new(renderer.into_inner());
 
     let cmd_buffer = frame_context.renderer().get_cmd_buffer();

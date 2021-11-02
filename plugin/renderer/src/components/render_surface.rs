@@ -25,7 +25,7 @@ pub struct RenderSurfaceExtents {
 }
 
 impl RenderSurfaceExtents {
-    pub fn new(width: u32, height: u32) -> RenderSurfaceExtents {
+    pub fn new(width: u32, height: u32) -> Self {
         Self {
             extents_2d: Extents2D {
                 width: max(1u32, width),

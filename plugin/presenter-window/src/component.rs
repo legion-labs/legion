@@ -174,7 +174,7 @@ impl PresenterWindow {
         // Present
         //
         presentable_frame
-            .present(&present_queue, wait_sem, &[cmd_buffer])
+            .present(present_queue, wait_sem, &[cmd_buffer])
             .unwrap();
     }
 
