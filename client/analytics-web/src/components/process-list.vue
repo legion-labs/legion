@@ -36,7 +36,7 @@ import { RecentProcessesRequest, PerformanceAnalyticsClient } from '../proto/ana
 export default {
   name: 'ProcessList',
   created: function () {
-    this.client = new PerformanceAnalyticsClient('http://localhost:9090', null, null)
+    this.client = new PerformanceAnalyticsClient('http://' + location.hostname + ':9090', null, null)
     try {
       var request = new RecentProcessesRequest()
       this.client.list_recent_processes(request, null, (err, response) => {
