@@ -53,6 +53,7 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 #![allow(clippy::new_without_default)]
+#![allow(clippy::cast_precision_loss)]
 
 mod labels;
 pub use labels::*;

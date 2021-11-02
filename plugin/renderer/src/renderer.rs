@@ -174,6 +174,7 @@ pub struct TmpRenderPass {
 }
 
 impl TmpRenderPass {
+    #![allow(clippy::too_many_lines)]        
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
         let num_render_frames = renderer.num_render_frames;
@@ -326,8 +327,8 @@ impl TmpRenderPass {
                 root_signature: &root_signature,
                 vertex_layout: &vertex_layout,
                 blend_state: &BlendState::default(),
-                depth_state: &Default::default(),
-                rasterizer_state: &Default::default(),
+                depth_state: &DepthState::default(),
+                rasterizer_state: &RasterizerState::default(),
                 color_formats: &[Format::R16G16B16A16_SFLOAT],
                 sample_count: SampleCount::SampleCount1,
                 depth_stencil_format: None,
@@ -366,9 +367,9 @@ impl TmpRenderPass {
                     descriptor_key: DescriptorKey::Name("uniform_data"),
                     elements: DescriptorElements {
                         buffer_views: Some(&[&uniform_buffer_cbv]),
-                        ..Default::default()
+                        ..DescriptorElements::default()
                     },
-                    ..Default::default()
+                    ..DescriptorUpdate::default()
                 }])
                 .unwrap();
 
@@ -387,7 +388,7 @@ impl TmpRenderPass {
             speed: 1.0f32,
         }
     }
-
+    
     pub fn render(
         &self,
         renderer: &Renderer,

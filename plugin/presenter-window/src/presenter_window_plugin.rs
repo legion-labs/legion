@@ -1,3 +1,5 @@
+#![allow(clippy::needless_pass_by_value)]
+
 use legion_app::{App, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
 use legion_renderer::{components::RenderSurface, Renderer, RendererSystemLabel};
@@ -12,8 +14,8 @@ impl Plugin for PresenterWindowPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             render_presenter_windows
-                .system()
-                .after(RendererSystemLabel::Main),
+            .system()
+            .after(RendererSystemLabel::Main),
         );
     }
 }
@@ -33,7 +35,7 @@ fn render_presenter_windows(
             let render_surface = render_surfaces
                 .iter_mut()
                 .find(|x| pres_window.render_surface_id().eq(&x.id()))
-                .map(|x| x.into_inner());
+                .map(Mut::into_inner);
 
             pres_window.present(wnd, graphics_queue, wait_sem, render_surface);
         }
