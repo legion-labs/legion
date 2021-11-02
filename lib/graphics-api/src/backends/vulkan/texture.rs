@@ -1,4 +1,5 @@
 use super::{VulkanApi, VulkanDeviceContext, VulkanTextureView};
+use crate::backends::deferred_drop::Drc;
 use crate::{
     Extents3D, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,
     TextureSubResource, TextureViewDef,
@@ -7,7 +8,6 @@ use ash::vk::{self};
 use std::hash::{Hash, Hasher};
 use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 // This is used to allow the underlying image/allocation to be removed from a VulkanTexture,
 // or to init a VulkanTexture with an existing image/allocation. If the allocation is none, we
@@ -62,7 +62,7 @@ impl Drop for TextureVulkanInner {
 /// provided `ResourceType` in the `texture_def`.
 #[derive(Clone, Debug)]
 pub struct VulkanTexture {
-    inner: Arc<TextureVulkanInner>,
+    inner: Drc<TextureVulkanInner>,
 }
 
 impl PartialEq for VulkanTexture {
@@ -152,29 +152,32 @@ impl VulkanTexture {
             let mut usage_flags = vk::ImageUsageFlags::empty();
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::HAS_SHADER_RESOURCE_VIEW)
+                .intersects(ResourceUsage::AS_SHADER_RESOURCE)
             {
                 usage_flags |= vk::ImageUsageFlags::SAMPLED;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::HAS_UNORDERED_ACCESS_VIEW)
+                .intersects(ResourceUsage::AS_UNORDERED_ACCESS)
             {
                 usage_flags |= vk::ImageUsageFlags::STORAGE;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::HAS_RENDER_TARGET_VIEW)
+                .intersects(ResourceUsage::AS_RENDER_TARGET)
             {
                 usage_flags |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
             }
             if texture_def
                 .usage_flags
-                .intersects(ResourceUsage::HAS_DEPTH_STENCIL_VIEW)
+                .intersects(ResourceUsage::AS_DEPTH_STENCIL)
             {
                 usage_flags |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
             }
-            if usage_flags.intersects(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::STORAGE) {
+            if texture_def
+                .usage_flags
+                .intersects(ResourceUsage::AS_TRANSFERABLE)
+            {
                 usage_flags |=
                     vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST;
             }
@@ -188,7 +191,6 @@ impl VulkanTexture {
             if image_type == vk::ImageType::TYPE_3D {
                 create_flags |= vk::ImageCreateFlags::TYPE_2D_ARRAY_COMPATIBLE_KHR;
             }
-
             let required_flags = if texture_def.mem_usage != MemoryUsage::GpuOnly {
                 vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT
             } else {
@@ -413,7 +415,7 @@ impl VulkanTexture {
         let texture_id = crate::backends::shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
 
         let inner = TextureVulkanInner {
-            texture_def: texture_def.clone(),
+            texture_def: *texture_def,
             device_context: device_context.clone(),
             image,
             aspect_mask,
@@ -422,7 +424,7 @@ impl VulkanTexture {
         };
 
         Ok(Self {
-            inner: Arc::new(inner),
+            inner: device_context.deferred_dropper().new_drc(inner),
         })
     }
 }

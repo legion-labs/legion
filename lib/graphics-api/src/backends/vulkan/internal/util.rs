@@ -19,25 +19,25 @@ pub(crate) fn resource_type_buffer_usage_flags(
 ) -> vk::BufferUsageFlags {
     let mut usage_flags = vk::BufferUsageFlags::TRANSFER_SRC;
 
-    if resource_usage.intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW) {
+    if resource_usage.intersects(ResourceUsage::AS_CONST_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::UNIFORM_BUFFER;
     }
 
-    if resource_usage.intersects(
-        ResourceUsage::HAS_UNORDERED_ACCESS_VIEW | ResourceUsage::HAS_SHADER_RESOURCE_VIEW,
-    ) {
+    if resource_usage
+        .intersects(ResourceUsage::AS_UNORDERED_ACCESS | ResourceUsage::AS_SHADER_RESOURCE)
+    {
         usage_flags |= vk::BufferUsageFlags::STORAGE_BUFFER;
     }
 
-    if resource_usage.intersects(ResourceUsage::HAS_INDEX_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::AS_INDEX_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::INDEX_BUFFER;
     }
 
-    if resource_usage.intersects(ResourceUsage::HAS_VERTEX_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::AS_VERTEX_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::VERTEX_BUFFER;
     }
 
-    if resource_usage.intersects(ResourceUsage::HAS_INDIRECT_BUFFER) {
+    if resource_usage.intersects(ResourceUsage::AS_INDIRECT_BUFFER) {
         usage_flags |= vk::BufferUsageFlags::INDIRECT_BUFFER;
     }
 
@@ -135,22 +135,31 @@ pub(crate) fn resource_state_to_access_flags(state: ResourceState) -> vk::Access
 
 pub(crate) fn resource_state_to_image_layout(state: ResourceState) -> Option<vk::ImageLayout> {
     if state.intersects(ResourceState::COPY_SRC) {
+        assert!(state.difference(ResourceState::COPY_SRC).is_empty());
         Some(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
     } else if state.intersects(ResourceState::COPY_DST) {
+        assert!(state.difference(ResourceState::COPY_DST).is_empty());
         Some(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
     } else if state.intersects(ResourceState::RENDER_TARGET) {
+        assert!(state.difference(ResourceState::RENDER_TARGET).is_empty());
         Some(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
     } else if state.intersects(ResourceState::DEPTH_WRITE) {
+        assert!(state.difference(ResourceState::DEPTH_WRITE).is_empty());
         Some(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
     } else if state.intersects(ResourceState::UNORDERED_ACCESS) {
+        assert!(state.difference(ResourceState::UNORDERED_ACCESS).is_empty());
         Some(vk::ImageLayout::GENERAL)
     } else if state.intersects(ResourceState::SHADER_RESOURCE) {
+        assert!(state.difference(ResourceState::SHADER_RESOURCE).is_empty());
         Some(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
     } else if state.intersects(ResourceState::PRESENT) {
+        assert!(state.difference(ResourceState::PRESENT).is_empty());
         Some(vk::ImageLayout::PRESENT_SRC_KHR)
     } else if state.intersects(ResourceState::COMMON) {
+        assert!(state.difference(ResourceState::COMMON).is_empty());
         Some(vk::ImageLayout::GENERAL)
     } else if state == ResourceState::UNDEFINED {
+        assert!(state.difference(ResourceState::UNDEFINED).is_empty());
         Some(vk::ImageLayout::UNDEFINED)
     } else {
         None

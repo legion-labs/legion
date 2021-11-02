@@ -1831,6 +1831,7 @@ dependencies = [
  "legion-editor-proto",
  "legion-grpc",
  "legion-mp4",
+ "legion-renderer",
  "legion-resource-registry",
  "legion-streamer",
  "legion-telemetry",
@@ -2499,6 +2500,25 @@ dependencies = [
  "glib-sys 0.14.0",
  "libc",
  "system-deps 3.2.0",
+]
+
+[[package]]
+name = "graphics-sandbox"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+ "legion-async",
+ "legion-core",
+ "legion-data-runtime",
+ "legion-ecs",
+ "legion-graphics-api",
+ "legion-input",
+ "legion-presenter-window",
+ "legion-renderer",
+ "legion-tao",
+ "legion-window",
+ "log",
+ "simple_logger",
 ]
 
 [[package]]
@@ -3438,6 +3458,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-presenter-window"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "instant",
+ "legion-app",
+ "legion-ecs",
+ "legion-graphics-api",
+ "legion-renderer",
+ "legion-window",
+ "log",
+ "raw-window-handle",
+]
+
+[[package]]
 name = "legion-pso-compiler"
 version = "0.1.0"
 dependencies = [
@@ -3452,8 +3487,12 @@ dependencies = [
 name = "legion-renderer"
 version = "0.1.0"
 dependencies = [
+ "legion-app",
  "legion-codec-api",
+ "legion-ecs",
  "legion-graphics-api",
+ "legion-pso-compiler",
+ "legion-utils",
  "log",
 ]
 
@@ -3518,6 +3557,7 @@ dependencies = [
  "legion-graphics-api",
  "legion-grpc",
  "legion-mp4",
+ "legion-pso-compiler",
  "legion-renderer",
  "legion-streaming-proto",
  "legion-telemetry",
@@ -6057,19 +6097,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "streaming-tests"
-version = "0.1.0"
-dependencies = [
- "legion-codec-api",
- "legion-graphics-api",
- "legion-mp4",
- "legion-presenter",
- "legion-pso-compiler",
- "log",
- "simple_logger",
-]
 
 [[package]]
 name = "string_cache"

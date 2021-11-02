@@ -1,6 +1,7 @@
 use super::{
     VulkanApi, VulkanDeviceContext, VulkanFence, VulkanRawImage, VulkanSemaphore, VulkanTexture,
 };
+use crate::backends::deferred_drop::Drc;
 use crate::{
     CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DeviceContext, Extents3D, Format,
     GfxError, GfxResult, MemoryUsage, Queue, QueueType, ResourceFlags, ResourceState,
@@ -10,7 +11,6 @@ use crate::{
 
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
-use std::sync::Arc;
 
 use ash::extensions::khr;
 use ash::prelude::VkResult;
@@ -62,7 +62,7 @@ impl VkPresentMode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct SwapchainInfo {
     surface_format: vk::SurfaceFormatKHR,
     present_mode: vk::PresentModeKHR,
@@ -97,7 +97,7 @@ pub struct VulkanSwapchain {
     last_image_suboptimal: bool,
     swapchain_images: Vec<SwapchainImage<VulkanApi>>,
     surface: vk::SurfaceKHR,
-    surface_loader: Arc<khr::Surface>,
+    surface_loader: Drc<khr::Surface>,
 }
 
 impl Drop for VulkanSwapchain {
@@ -129,7 +129,7 @@ impl VulkanSwapchain {
             )?
         };
 
-        let surface_loader = Arc::new(khr::Surface::new(
+        let surface_loader = device_context.deferred_dropper().new_drc(khr::Surface::new(
             device_context.entry(),
             device_context.instance(),
         ));
@@ -318,12 +318,10 @@ struct CreateSwapchainResult {
 /// whenever the swapchain is rebuilt
 struct SwapchainVulkanInstance {
     device_context: VulkanDeviceContext,
-
     swapchain_info: SwapchainInfo,
-    swapchain_loader: Arc<khr::Swapchain>,
+    swapchain_loader: Drc<khr::Swapchain>,
     swapchain: vk::SwapchainKHR,
     swapchain_images: Vec<vk::Image>,
-
     dedicated_present_queue: Option<vk::Queue>,
 }
 
@@ -331,7 +329,7 @@ impl SwapchainVulkanInstance {
     fn new(
         device_context: &VulkanDeviceContext,
         surface: vk::SurfaceKHR,
-        surface_loader: &Arc<khr::Surface>,
+        surface_loader: &Drc<khr::Surface>,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[VkPresentMode],
         window_inner_size: Extent2D,
@@ -363,7 +361,8 @@ impl SwapchainVulkanInstance {
                 .graphics_queue_family_index,
         )?;
 
-        let swapchain_image_usage_flags = vk::ImageUsageFlags::COLOR_ATTACHMENT;
+        let swapchain_image_usage_flags =
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_DST;
         let create_swapchain_result = Self::create_swapchain(
             device_context,
             surface,
@@ -393,7 +392,9 @@ impl SwapchainVulkanInstance {
         Ok(Self {
             device_context: device_context.clone(),
             swapchain_info,
-            swapchain_loader: Arc::new(create_swapchain_result.swapchain_loader),
+            swapchain_loader: device_context
+                .deferred_dropper()
+                .new_drc(create_swapchain_result.swapchain_loader),
             swapchain: create_swapchain_result.swapchain,
             dedicated_present_queue: create_swapchain_result.dedicated_present_queue,
             swapchain_images,
@@ -421,8 +422,9 @@ impl SwapchainVulkanInstance {
                     array_length: 1,
                     mip_count: 1,
                     format,
-                    usage_flags: ResourceUsage::HAS_SHADER_RESOURCE_VIEW
-                        | ResourceUsage::HAS_RENDER_TARGET_VIEW,
+                    usage_flags: ResourceUsage::AS_SHADER_RESOURCE
+                        | ResourceUsage::AS_RENDER_TARGET
+                        | ResourceUsage::AS_TRANSFERABLE,
                     resource_flags: ResourceFlags::empty(),
                     mem_usage: MemoryUsage::GpuOnly,
                     tiling: TextureTiling::Optimal,
@@ -586,7 +588,7 @@ impl SwapchainVulkanInstance {
 
     fn choose_present_queue_family_index(
         surface: vk::SurfaceKHR,
-        surface_loader: &Arc<khr::Surface>,
+        surface_loader: &Drc<khr::Surface>,
         physical_device: vk::PhysicalDevice,
         all_queue_families: &[vk::QueueFamilyProperties],
         graphics_queue_family_index: u32,

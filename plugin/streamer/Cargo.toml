@@ -13,6 +13,7 @@ legion-streaming-proto = { path = "../../proto/streaming", version = "0.1.0" }
 legion-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
 legion-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
 legion-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
+legion-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
 legion-renderer = { path = "../renderer", version = "0.1.0" }
 legion-core = { path = "../core", version = "0.1.0" }
 legion-async = { path = "../async", version = "0.1.0" }

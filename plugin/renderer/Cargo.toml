@@ -5,14 +5,15 @@ authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
-# [dependencies]
-# graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
-
 [dependencies]
 graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
+legion-app = { path = "../../lib/app", version = "0.1.0"  }
 legion-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
+legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+legion-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
+legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 log = "0.4"
 
 [features]
-default = []
+default = ["graphics-api/vulkan"]
 vulkan = ["graphics-api/vulkan"]

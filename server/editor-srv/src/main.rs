@@ -9,6 +9,7 @@ use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuil
 use legion_async::AsyncPlugin;
 use legion_data_runtime::ResourceId;
 use legion_grpc::{GRPCPlugin, GRPCPluginSettings};
+use legion_renderer::RendererPlugin;
 use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use legion_streamer::StreamerPlugin;
 use legion_telemetry::prelude::*;
@@ -126,13 +127,14 @@ fn main() {
             1.0 / 60.0,
         )))
         .add_plugin(ScheduleRunnerPlugin::default())
-        .add_plugin(AsyncPlugin {})
+        .add_plugin(AsyncPlugin::default())
         .insert_resource(ResourceRegistrySettings::new(project_folder))
         .add_plugin(ResourceRegistryPlugin::default())
         .insert_resource(GRPCPluginSettings::new(addr))
-        .add_plugin(GRPCPlugin {})
-        .add_plugin(StreamerPlugin {})
-        .add_plugin(EditorPlugin {})
+        .add_plugin(GRPCPlugin::default())
+        .add_plugin(RendererPlugin::default())
+        .add_plugin(StreamerPlugin::default())
+        .add_plugin(EditorPlugin::default())
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,

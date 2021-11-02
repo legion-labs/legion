@@ -4,21 +4,20 @@ use super::{
     VulkanRenderpassDepthAttachment, VulkanRootSignature,
 };
 use crate::{
-    ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef, LoadOp, Pipeline, PipelineType,
-    ShaderStageFlags, StoreOp,
+    backends::deferred_drop::Drc, ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef,
+    LoadOp, Pipeline, PipelineType, ShaderStageFlags, StoreOp,
 };
 use ash::vk;
 use std::ffi::CString;
 
 #[derive(Debug)]
-pub struct VulkanPipeline {
+struct VulkanPipelineInner {
     pipeline_type: PipelineType,
     pipeline: vk::Pipeline,
-    // It's a VulkanRootSignature, but stored as RootSignature so we can return refs to it
     root_signature: VulkanRootSignature,
 }
 
-impl Drop for VulkanPipeline {
+impl Drop for VulkanPipelineInner {
     fn drop(&mut self) {
         unsafe {
             let device = self.root_signature.device_context().device();
@@ -27,9 +26,14 @@ impl Drop for VulkanPipeline {
     }
 }
 
+#[derive(Debug)]
+pub struct VulkanPipeline {
+    inner: Drc<VulkanPipelineInner>,
+}
+
 impl VulkanPipeline {
     pub fn vk_pipeline(&self) -> vk::Pipeline {
-        self.pipeline
+        self.inner.pipeline
     }
 
     pub fn new_graphics_pipeline(
@@ -74,18 +78,17 @@ impl VulkanPipeline {
 
         let mut entry_point_names = vec![];
         for stage in pipeline_def.shader.stages() {
-            entry_point_names
-                .push(CString::new(stage.reflection.entry_point_name.clone()).unwrap());
+            entry_point_names.push(CString::new(stage.entry_point.clone()).unwrap());
         }
 
         let mut stages = vec![];
-        for (stage, entry_point_cstr) in pipeline_def.shader.stages().iter().zip(&entry_point_names)
+        for (stage, entry_point_name) in pipeline_def.shader.stages().iter().zip(&entry_point_names)
         {
             stages.push(
                 vk::PipelineShaderStageCreateInfo::builder()
-                    .name(entry_point_cstr)
+                    .name(entry_point_name)
                     .module(stage.shader_module.vk_shader_module())
-                    .stage(stage.reflection.shader_stage.into())
+                    .stage(stage.shader_stage.into())
                     .build(),
             );
         }
@@ -193,9 +196,13 @@ impl VulkanPipeline {
         }?[0];
 
         Ok(Self {
-            pipeline_type: PipelineType::Graphics,
-            pipeline,
-            root_signature: pipeline_def.root_signature.clone(),
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(VulkanPipelineInner {
+                    pipeline_type: PipelineType::Graphics,
+                    pipeline,
+                    root_signature: pipeline_def.root_signature.clone(),
+                }),
         })
     }
 
@@ -214,13 +221,11 @@ impl VulkanPipeline {
 
         let mut entry_point_names = vec![];
         for stage in vk_shader.stages() {
-            entry_point_names
-                .push(CString::new(stage.reflection.entry_point_name.clone()).unwrap());
+            entry_point_names.push(CString::new(stage.entry_point.clone()).unwrap());
         }
 
         let compute_stage = &vk_shader.stages()[0];
-        let entry_point_name =
-            CString::new(compute_stage.reflection.entry_point_name.clone()).unwrap();
+        let entry_point_name = CString::new(compute_stage.entry_point.clone()).unwrap();
         let stage = vk::PipelineShaderStageCreateInfo::builder()
             .name(&entry_point_name)
             .module(compute_stage.shader_module.vk_shader_module())
@@ -245,19 +250,23 @@ impl VulkanPipeline {
         }?[0];
 
         Ok(Self {
-            pipeline_type: PipelineType::Compute,
-            pipeline,
-            root_signature: pipeline_def.root_signature.clone(),
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(VulkanPipelineInner {
+                    pipeline_type: PipelineType::Compute,
+                    pipeline,
+                    root_signature: pipeline_def.root_signature.clone(),
+                }),
         })
     }
 }
 
 impl Pipeline<VulkanApi> for VulkanPipeline {
     fn pipeline_type(&self) -> PipelineType {
-        self.pipeline_type
+        self.inner.pipeline_type
     }
 
     fn root_signature(&self) -> &VulkanRootSignature {
-        &self.root_signature
+        &self.inner.root_signature
     }
 }

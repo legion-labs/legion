@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
 use super::{VulkanApi, VulkanBufferView, VulkanDeviceContext};
+use crate::backends::deferred_drop::Drc;
 use crate::{
     Buffer, BufferDef, BufferMappingInfo, BufferViewDef, GfxResult, MemoryUsage, ResourceUsage,
 };
@@ -17,7 +16,7 @@ struct VulkanBufferInner {
 
 #[derive(Clone, Debug)]
 pub struct VulkanBuffer {
-    inner: Arc<VulkanBufferInner>,
+    inner: Drc<VulkanBufferInner>,
 }
 
 impl VulkanBuffer {
@@ -27,7 +26,7 @@ impl VulkanBuffer {
 
         if buffer_def
             .usage_flags
-            .intersects(ResourceUsage::HAS_CONST_BUFFER_VIEW)
+            .intersects(ResourceUsage::AS_CONST_BUFFER)
         {
             allocation_size = legion_utils::memory::round_size_up_to_alignment_u64(
                 buffer_def.size,
@@ -83,13 +82,15 @@ impl VulkanBuffer {
         );
 
         Ok(Self {
-            inner: Arc::new(VulkanBufferInner {
-                device_context: device_context.clone(),
-                allocation_info,
-                buffer_def: buffer_def.clone(),
-                allocation,
-                buffer,
-            }),
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(VulkanBufferInner {
+                    device_context: device_context.clone(),
+                    allocation_info,
+                    buffer_def: *buffer_def,
+                    allocation,
+                    buffer,
+                }),
         })
     }
 

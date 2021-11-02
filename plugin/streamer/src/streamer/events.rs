@@ -19,16 +19,12 @@ impl VideoStreamEvent {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(try_from = "String")]
-pub struct Color(pub legion_graphics_api::ColorClearValue);
+pub struct Color(pub [f32; 4]);
 
 impl Default for Color {
     fn default() -> Self {
         // This is red.
-        let mut c = legion_graphics_api::ColorClearValue::default();
-        c.0[0] = 1.0;
-        c.0[3] = 1.0;
-
-        Self(c)
+        Self([1.0f32, 0.0f32, 0.0f32, 1.0f32])
     }
 }
 
@@ -56,7 +52,7 @@ impl TryFrom<String> for Color {
             Err(v) => bail!("expected #RGBA but got vector with {} element(s)", v.len()),
         };
 
-        Ok(Self(legion_graphics_api::ColorClearValue(array)))
+        Ok(Self(array))
     }
 }
 

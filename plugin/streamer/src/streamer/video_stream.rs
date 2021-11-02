@@ -1,6 +1,18 @@
 use bytes::Bytes;
 use legion_ecs::prelude::*;
 
+use legion_graphics_api::{
+    AddressMode, BlendState, CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding,
+    CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, CullMode, DefaultApi, DepthState,
+    DescriptorDef, DescriptorElements, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef,
+    DescriptorSetLayoutDef, DescriptorUpdate, DeviceContext, Extents3D, FilterType, Format, GfxApi,
+    GraphicsPipelineDef, LoadOp, MemoryUsage, MipMapMode, Offset3D, PipelineType,
+    PrimitiveTopology, Queue, RasterizerState, ResourceFlags, ResourceState, ResourceUsage,
+    RootSignatureDef, SampleCount, SamplerDef, ShaderPackage, ShaderStageDef, ShaderStageFlags,
+    StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef, VertexLayout,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
+};
+use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use log::{debug, warn};
 use std::{cmp::min, io::Cursor, sync::Arc};
 
@@ -11,12 +23,10 @@ use legion_codec_api::{
     formats::{self, RBGYUVConverter},
 };
 use legion_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
-use legion_renderer::Renderer;
+use legion_renderer::{components::RenderSurface, Renderer};
 use legion_telemetry::prelude::*;
 use legion_utils::memory::write_any;
 use serde::Serialize;
-
-use super::Color;
 
 fn record_frame_time_metric(microseconds: u64) {
     trace_scope!();
@@ -28,13 +38,13 @@ fn record_frame_time_metric(microseconds: u64) {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-struct Resolution {
+pub struct Resolution {
     width: u32,
     height: u32,
 }
 
 impl Resolution {
-    fn new(mut width: u32, mut height: u32) -> Self {
+    pub fn new(mut width: u32, mut height: u32) -> Self {
         // Ensure a minimum size for the resolution.
         if width < 16 {
             width = 16;
@@ -50,6 +60,84 @@ impl Resolution {
             height: height & !1,
         }
     }
+
+    pub fn width(self) -> u32 {
+        self.width
+    }
+
+    pub fn height(self) -> u32 {
+        self.height
+    }
+}
+
+struct ResolutionDependentResources {
+    resolution: Resolution,
+    encoder: VideoStreamEncoder,
+    render_images: Vec<<DefaultApi as GfxApi>::Texture>,
+    render_image_rtvs: Vec<<DefaultApi as GfxApi>::TextureView>,
+    copy_images: Vec<<DefaultApi as GfxApi>::Texture>,
+}
+
+impl ResolutionDependentResources {
+    fn new(
+        renderer: &Renderer,
+        render_frame_count: usize,
+        resolution: Resolution,
+    ) -> Result<Self, anyhow::Error> {
+        let device_context = renderer.device_context();
+        let mut render_images = Vec::with_capacity(render_frame_count);
+        let mut render_image_rtvs = Vec::with_capacity(render_frame_count);
+        let mut copy_images = Vec::with_capacity(render_frame_count);
+        for _ in 0..render_frame_count {
+            let render_image = device_context.create_texture(&TextureDef {
+                extents: Extents3D {
+                    width: resolution.width,
+                    height: resolution.height,
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: Format::R8G8B8A8_UNORM,
+                mem_usage: MemoryUsage::GpuOnly,
+                usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                tiling: TextureTiling::Optimal,
+            })?;
+
+            let render_image_rtv = render_image.create_view(
+                &TextureViewDef::as_render_target_view(render_image.texture_def()),
+            )?;
+
+            let copy_image = device_context.create_texture(&TextureDef {
+                extents: Extents3D {
+                    width: resolution.width,
+                    height: resolution.height,
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: Format::R8G8B8A8_UNORM,
+                mem_usage: MemoryUsage::GpuToCpu,
+                usage_flags: ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                tiling: TextureTiling::Linear,
+            })?;
+
+            render_images.push(render_image);
+            render_image_rtvs.push(render_image_rtv);
+            copy_images.push(copy_image);
+        }
+
+        let encoder = VideoStreamEncoder::new(resolution)?;
+
+        Ok(Self {
+            resolution,
+            encoder,
+            render_images,
+            render_image_rtvs,
+            copy_images,
+        })
+    }
 }
 
 #[derive(Component)]
@@ -57,49 +145,209 @@ impl Resolution {
 pub struct VideoStream {
     video_data_channel: Arc<RTCDataChannel>,
     frame_id: i32,
-    resolution: Resolution,
-    pub color: Color,
-    pub speed: f32,
-    renderer: Renderer,
-    encoder: VideoStreamEncoder,
-    elapsed_secs: f32,
+    render_frame_count: u32,
+    resolution_dependent_resources: ResolutionDependentResources,
+    cmd_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
+    cmd_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
+    root_signature: <DefaultApi as GfxApi>::RootSignature,
+    pipeline: <DefaultApi as GfxApi>::Pipeline,
+    descriptor_set_arrays: Vec<<DefaultApi as GfxApi>::DescriptorSetArray>,
+    bilinear_sampler: <DefaultApi as GfxApi>::Sampler,
 }
 
 impl VideoStream {
-    pub fn new(video_data_channel: Arc<RTCDataChannel>) -> anyhow::Result<Self> {
+    pub fn new(
+        renderer: &Renderer,
+        resolution: Resolution,
+        video_data_channel: Arc<RTCDataChannel>,
+    ) -> anyhow::Result<Self> {
         trace_scope!();
-        let resolution = Resolution::new(1024, 768);
-        let encoder = VideoStreamEncoder::new(resolution)?;
-        let renderer = Renderer::new(resolution.width, resolution.height);
+
+        let device_context = renderer.device_context();
+
+        //
+        // Immutable resources
+        //
+        let shader_compiler = HlslCompiler::new().unwrap();
+
+        let shader_source =
+            String::from_utf8(include_bytes!("../data/display_mapper.hlsl").to_vec())?;
+
+        let shader_build_result = shader_compiler.compile(&CompileParams {
+            shader_source: ShaderSource::Code(shader_source),
+            glob_defines: Vec::new(),
+            entry_points: vec![
+                EntryPoint {
+                    defines: Vec::new(),
+                    name: "main_vs".to_owned(),
+                    target_profile: "vs_6_0".to_owned(),
+                },
+                EntryPoint {
+                    defines: Vec::new(),
+                    name: "main_ps".to_owned(),
+                    target_profile: "ps_6_0".to_owned(),
+                },
+            ],
+        })?;
+
+        let vert_shader_module = device_context.create_shader_module(
+            ShaderPackage::SpirV(shader_build_result.spirv_binaries[0].bytecode.clone())
+                .module_def(),
+        )?;
+
+        let frag_shader_module = device_context.create_shader_module(
+            ShaderPackage::SpirV(shader_build_result.spirv_binaries[1].bytecode.clone())
+                .module_def(),
+        )?;
+
+        let shader = device_context.create_shader(
+            vec![
+                ShaderStageDef {
+                    entry_point: "main_vs".to_owned(),
+                    shader_stage: ShaderStageFlags::VERTEX,
+                    shader_module: vert_shader_module,
+                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
+                },
+                ShaderStageDef {
+                    entry_point: "main_ps".to_owned(),
+                    shader_stage: ShaderStageFlags::FRAGMENT,
+                    shader_module: frag_shader_module,
+                    // reflection: shader_build_result.reflection_info.clone().unwrap(),
+                },
+            ],
+            &shader_build_result.pipeline_reflection,
+        )?;
+
+        let mut descriptor_set_layouts = Vec::new();
+        for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
+            let shader_resources: Vec<_> = shader_build_result
+                .pipeline_reflection
+                .shader_resources
+                .iter()
+                .filter(|x| x.set_index as usize == set_index)
+                .collect();
+
+            if !shader_resources.is_empty() {
+                let descriptor_defs = shader_resources
+                    .iter()
+                    .map(|sr| DescriptorDef {
+                        name: sr.name.clone(),
+                        binding: sr.binding,
+                        shader_resource_type: sr.shader_resource_type,
+                        array_size: sr.element_count,
+                    })
+                    .collect();
+
+                let def = DescriptorSetLayoutDef {
+                    frequency: set_index as u32,
+                    descriptor_defs,
+                };
+                let descriptor_set_layout =
+                    device_context.create_descriptorset_layout(&def).unwrap();
+                descriptor_set_layouts.push(descriptor_set_layout);
+            }
+        }
+
+        let root_signature_def = RootSignatureDef {
+            pipeline_type: PipelineType::Graphics,
+            descriptor_set_layouts,
+            push_constant_def: None,
+        };
+
+        let root_signature = device_context.create_root_signature(&root_signature_def)?;
+
+        let pipeline = device_context.create_graphics_pipeline(&GraphicsPipelineDef {
+            shader: &shader,
+            root_signature: &root_signature,
+            vertex_layout: &VertexLayout::default(),
+            blend_state: &BlendState::default(),
+            depth_state: &DepthState::default(),
+            rasterizer_state: &RasterizerState {
+                cull_mode: CullMode::Back,
+                ..RasterizerState::default()
+            },
+            primitive_topology: PrimitiveTopology::TriangleList,
+            color_formats: &[Format::R8G8B8A8_UNORM],
+            depth_stencil_format: None,
+            sample_count: SampleCount::SampleCount1,
+        })?;
+
+        let sampler_def = SamplerDef {
+            min_filter: FilterType::Linear,
+            mag_filter: FilterType::Linear,
+            mip_map_mode: MipMapMode::Linear,
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            ..SamplerDef::default()
+        };
+        let bilinear_sampler = device_context.create_sampler(&sampler_def)?;
+
+        //
+        // Frame dependant resources
+        //
+        let render_frame_count = 2;
+
+        let resolution_dependent_resources =
+            ResolutionDependentResources::new(renderer, render_frame_count, resolution)?;
+
+        let graphics_queue = renderer.graphics_queue();
+        let mut cmd_pools = Vec::with_capacity(render_frame_count);
+        let mut cmd_buffers = Vec::with_capacity(render_frame_count);
+
+        for _ in 0..render_frame_count {
+            let cmd_pool =
+                graphics_queue.create_command_pool(&CommandPoolDef { transient: true })?;
+
+            let cmd_buffer = cmd_pool.create_command_buffer(&CommandBufferDef {
+                is_secondary: false,
+            })?;
+
+            cmd_pools.push(cmd_pool);
+            cmd_buffers.push(cmd_buffer);
+        }
+
+        let mut descriptor_set_arrays = Vec::new();
+        for descriptor_set_layout in &root_signature_def.descriptor_set_layouts {
+            let descriptor_set_array = device_context
+                .create_descriptor_set_array(&DescriptorSetArrayDef {
+                    descriptor_set_layout,
+                    array_length: render_frame_count,
+                })
+                .unwrap();
+            descriptor_set_arrays.push(descriptor_set_array);
+        }
 
         Ok(Self {
             video_data_channel,
             frame_id: 0,
-            resolution,
-            color: Color::default(),
-            speed: 1.0,
-            renderer,
-            encoder,
-            elapsed_secs: 0.0,
+            render_frame_count: render_frame_count as u32,
+            resolution_dependent_resources,
+            cmd_pools,
+            cmd_buffers,
+            root_signature,
+            pipeline,
+            descriptor_set_arrays,
+            bilinear_sampler,
         })
     }
 
-    pub(crate) fn resize(&mut self, width: u32, mut height: u32) {
+    pub(crate) fn resize(
+        &mut self,
+        renderer: &Renderer,
+        resolution: Resolution,
+    ) -> anyhow::Result<()> {
         trace_scope!();
-        // Make sure height is a multiple of 2.
-        if height & 1 == 1 {
-            height += 1;
+
+        if resolution != self.resolution_dependent_resources.resolution {
+            self.resolution_dependent_resources = ResolutionDependentResources::new(
+                renderer,
+                self.render_frame_count as usize,
+                resolution,
+            )?;
         }
 
-        let resolution = Resolution { width, height };
-
-        if resolution != self.resolution {
-            self.resolution = Resolution::new(width, height);
-
-            // TODO: Fix this: this is probably bad but I wrote that just to test it.
-            self.renderer = Renderer::new(self.resolution.width, self.resolution.height);
-            self.encoder = VideoStreamEncoder::new(self.resolution).unwrap();
-        }
+        Ok(())
     }
 
     fn record_frame_id_metric(&self) {
@@ -112,22 +360,177 @@ impl VideoStream {
 
     pub(crate) fn render(
         &mut self,
-        delta_secs: f32,
+        graphics_queue: &<DefaultApi as GfxApi>::Queue,
+        wait_sem: &<DefaultApi as GfxApi>::Semaphore,
+        render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();
         self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
-        self.elapsed_secs += delta_secs * self.speed;
+        //
+        // Render
+        //
+        {
+            let render_frame_idx = 0;
+            let cmd_pool = &self.cmd_pools[render_frame_idx];
+            let cmd_buffer = &self.cmd_buffers[render_frame_idx];
+            let render_texture =
+                &self.resolution_dependent_resources.render_images[render_frame_idx];
+            let render_texture_rtv =
+                &self.resolution_dependent_resources.render_image_rtvs[render_frame_idx];
+            let copy_texture = &self.resolution_dependent_resources.copy_images[render_frame_idx];
 
-        self.renderer.render(
-            self.frame_id as usize,
-            self.elapsed_secs,
-            self.color.0 .0,
-            &mut self.encoder.converter,
-        );
+            cmd_pool.reset_command_pool().unwrap();
+            cmd_buffer.begin().unwrap();
 
-        let chunks = self.encoder.encode(self.frame_id);
+            //
+            // RenderPass
+            //
+
+            render_surface.transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
+
+            cmd_buffer
+                .cmd_resource_barrier(
+                    &[],
+                    &[TextureBarrier::<DefaultApi>::state_transition(
+                        render_texture,
+                        ResourceState::COPY_SRC,
+                        ResourceState::RENDER_TARGET,
+                    )],
+                )
+                .unwrap();
+
+            cmd_buffer
+                .cmd_begin_render_pass(
+                    &[ColorRenderTargetBinding {
+                        texture_view: render_texture_rtv,
+                        load_op: LoadOp::DontCare,
+                        store_op: StoreOp::Store,
+                        clear_value: ColorClearValue::default(),
+                    }],
+                    None,
+                )
+                .unwrap();
+
+            cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
+
+            self.descriptor_set_arrays[0]
+                .update_descriptor_set(&[
+                    DescriptorUpdate {
+                        array_index: render_frame_idx as u32,
+                        descriptor_key: DescriptorKey::Name("hdr_sampler"),
+                        elements: DescriptorElements {
+                            samplers: Some(&[&self.bilinear_sampler]),
+                            ..DescriptorElements::default()
+                        },
+                        ..DescriptorUpdate::default()
+                    },
+                    DescriptorUpdate {
+                        array_index: render_frame_idx as u32,
+                        descriptor_key: DescriptorKey::Name("hdr_image"),
+                        elements: DescriptorElements {
+                            texture_views: Some(&[render_surface.shader_resource_view()]),
+                            ..DescriptorElements::default()
+                        },
+                        ..DescriptorUpdate::default()
+                    },
+                ])
+                .unwrap();
+
+            cmd_buffer
+                .cmd_bind_descriptor_set(
+                    &self.root_signature,
+                    &self.descriptor_set_arrays[0],
+                    (render_frame_idx) as _,
+                )
+                .unwrap();
+
+            cmd_buffer.cmd_draw(3, 0).unwrap();
+
+            cmd_buffer.cmd_end_render_pass().unwrap();
+
+            cmd_buffer
+                .cmd_resource_barrier(
+                    &[],
+                    &[TextureBarrier::<DefaultApi>::state_transition(
+                        render_texture,
+                        ResourceState::RENDER_TARGET,
+                        ResourceState::COPY_SRC,
+                    )],
+                )
+                .unwrap();
+
+            //
+            // Copy
+            //
+
+            cmd_buffer
+                .cmd_resource_barrier(
+                    &[],
+                    &[TextureBarrier::<DefaultApi>::state_transition(
+                        copy_texture,
+                        ResourceState::COMMON,
+                        ResourceState::COPY_DST,
+                    )],
+                )
+                .unwrap();
+
+            let copy_extents = render_texture.texture_def().extents;
+            assert_eq!(copy_texture.texture_def().extents, copy_extents);
+
+            cmd_buffer
+                .cmd_copy_image(
+                    render_texture,
+                    copy_texture,
+                    &CmdCopyTextureParams {
+                        src_state: ResourceState::COPY_SRC,
+                        dst_state: ResourceState::COPY_DST,
+                        src_offset: Offset3D { x: 0, y: 0, z: 0 },
+                        dst_offset: Offset3D { x: 0, y: 0, z: 0 },
+                        src_mip_level: 0,
+                        dst_mip_level: 0,
+                        src_array_slice: 0,
+                        dst_array_slice: 0,
+                        extent: copy_extents,
+                    },
+                )
+                .unwrap();
+
+            cmd_buffer
+                .cmd_resource_barrier(
+                    &[],
+                    &[TextureBarrier::<DefaultApi>::state_transition(
+                        copy_texture,
+                        ResourceState::COPY_DST,
+                        ResourceState::COMMON,
+                    )],
+                )
+                .unwrap();
+            cmd_buffer.end().unwrap();
+
+            //
+            // Present the image
+            //
+
+            graphics_queue
+                .submit(&[cmd_buffer], &[wait_sem], &[], None)
+                .unwrap();
+
+            graphics_queue.wait_for_queue_idle().unwrap();
+
+            let sub_resource = copy_texture.map_texture().unwrap();
+            self.resolution_dependent_resources
+                .encoder
+                .converter
+                .convert_rgba(sub_resource.data, sub_resource.row_pitch as usize);
+            copy_texture.unmap_texture().unwrap();
+        }
+
+        let chunks = self
+            .resolution_dependent_resources
+            .encoder
+            .encode(self.frame_id);
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
@@ -200,8 +603,7 @@ impl VideoStreamEncoder {
             },
             60,
             &mut writer,
-        )
-        .unwrap();
+        )?;
 
         Ok(Self {
             encoder,

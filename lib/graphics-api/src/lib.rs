@@ -355,7 +355,11 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<A::Sampler>;
     fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<A::Texture>;
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<A::Buffer>;
-    fn create_shader(&self, stages: Vec<ShaderStageDef<A>>) -> GfxResult<A::Shader>;
+    fn create_shader(
+        &self,
+        stages: Vec<ShaderStageDef<A>>,
+        pipeline_reflection: &PipelineReflection,
+    ) -> GfxResult<A::Shader>;
     fn create_descriptorset_layout(
         &self,
         def: &DescriptorSetLayoutDef,
@@ -379,6 +383,8 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<A::ShaderModule>;
 
     fn wait_for_fences(&self, fences: &[&A::Fence]) -> GfxResult<()>;
+
+    fn free_gpu_memory(&self) -> GfxResult<()>;
 }
 
 //

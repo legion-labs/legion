@@ -75,7 +75,11 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<NullBuffer> {
         unimplemented!();
     }
-    fn create_shader(&self, stages: Vec<ShaderStageDef<NullApi>>) -> GfxResult<NullShader> {
+    fn create_shader(
+        &self,
+        stages: Vec<ShaderStageDef<NullApi>>,
+        pipeline_reflection: &PipelineReflection,
+    ) -> GfxResult<NullShader> {
         unimplemented!();
     }
     fn create_descriptorset_layout(
@@ -113,6 +117,10 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     }
 
     fn wait_for_fences(&self, fences: &[&NullFence]) -> GfxResult<()> {
+        unimplemented!();
+    }
+
+    fn free_gpu_memory(&self) -> GfxResult<()> {
         unimplemented!();
     }
 }

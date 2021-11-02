@@ -1,12 +1,15 @@
+use crate::backends::deferred_drop::DeferredDropper;
 use crate::vulkan::check_extensions_availability;
 use crate::{
-    BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext,
-    DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef, QueueType, RootSignatureDef,
-    SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
+    ApiDef, BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef,
+    DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef,
+    PipelineReflection, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef,
+    SwapchainDef, TextureDef,
 };
 use ash::extensions::khr;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
+use std::convert::TryInto;
 use std::sync::{Arc, Mutex};
 
 use super::internal::{
@@ -81,18 +84,19 @@ pub struct VkQueueFamilyIndices {
     pub encode_queue_family_index: Option<u32>,
 }
 
-pub struct VulkanDeviceContextInner {
+pub(super) struct VulkanDeviceContextInner {
     pub(crate) resource_cache: DeviceVulkanResourceCache,
     pub(crate) descriptor_heap: VulkanDescriptorHeap,
-    pub(crate) device_info: DeviceInfo,
-    pub(crate) queue_allocator: VkQueueAllocatorSet,
+    device_info: DeviceInfo,
+    queue_allocator: VkQueueAllocatorSet,
 
     // If we need a dedicated present queue, we share a single queue across all swapchains. This
     // lock ensures that the present operations for those swapchains do not occur concurrently
-    pub(crate) dedicated_present_queue_lock: Mutex<()>,
+    dedicated_present_queue_lock: Mutex<()>,
 
     device: ash::Device,
     allocator: vk_mem::Allocator,
+    pub(crate) deferred_dropper: DeferredDropper,
     destroyed: AtomicBool,
     entry: Arc<ash::Entry>,
     instance: ash::Instance,
@@ -105,7 +109,7 @@ pub struct VulkanDeviceContextInner {
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
-    pub(crate) all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
+    all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 }
 
 impl Drop for VulkanDeviceContextInner {
@@ -113,6 +117,7 @@ impl Drop for VulkanDeviceContextInner {
         if !self.destroyed.swap(true, Ordering::AcqRel) {
             unsafe {
                 log::trace!("destroying device");
+                self.deferred_dropper.destroy();
                 self.allocator.destroy();
                 self.device.destroy_device(None);
                 //self.surface_loader.destroy_surface(self.surface, None);
@@ -206,6 +211,7 @@ impl VulkanDeviceContextInner {
             physical_device_info,
             device: logical_device,
             allocator,
+            deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
 
             #[cfg(debug_assertions)]
@@ -327,6 +333,10 @@ impl VulkanDeviceContext {
         &self.inner.dedicated_present_queue_lock
     }
 
+    pub fn deferred_dropper(&self) -> &DeferredDropper {
+        &self.inner.deferred_dropper
+    }
+
     pub(crate) fn create_renderpass(
         &self,
         renderpass_def: &VulkanRenderpassDef,
@@ -334,12 +344,12 @@ impl VulkanDeviceContext {
         VulkanRenderpass::new(self, renderpass_def)
     }
 
-    pub fn new(
-        // instance: &VkInstance,
-        // window: &dyn HasRawWindowHandle,
-        inner: Arc<VulkanDeviceContextInner>,
-    ) -> GfxResult<Self> {
-        //let inner = VulkanDeviceContextInner::new(instance, window)?;
+    pub fn new(instance: &VkInstance, api_def: &ApiDef) -> GfxResult<Self> {
+        let inner = Arc::new(VulkanDeviceContextInner::new(
+            instance,
+            api_def.windowing_mode,
+            api_def.video_mode,
+        )?);
 
         Ok(Self {
             inner,
@@ -391,8 +401,12 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
         VulkanBuffer::new(self, buffer_def)
     }
 
-    fn create_shader(&self, stages: Vec<ShaderStageDef<VulkanApi>>) -> GfxResult<VulkanShader> {
-        VulkanShader::new(self, stages)
+    fn create_shader(
+        &self,
+        stages: Vec<ShaderStageDef<VulkanApi>>,
+        pipeline_reflection: &PipelineReflection,
+    ) -> GfxResult<VulkanShader> {
+        VulkanShader::new(self, stages, pipeline_reflection)
     }
 
     fn create_descriptorset_layout(
@@ -432,6 +446,11 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
 
     fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<VulkanShaderModule> {
         VulkanShaderModule::new(self, data)
+    }
+
+    fn free_gpu_memory(&self) -> GfxResult<()> {
+        self.inner.deferred_dropper.flush();
+        Ok(())
     }
 }
 

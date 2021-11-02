@@ -54,18 +54,25 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow(clippy::let_underscore_drop, clippy::needless_pass_by_value)]
+#![allow(
+    clippy::let_underscore_drop,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines
+)]
 #![warn(missing_docs)]
 
 use legion_app::prelude::*;
 use legion_core::Time;
+use legion_ecs::{prelude::IntoSystem, schedule::ParallelSystemDescriptorCoercion};
+use legion_renderer::RendererSystemLabel;
 
 mod grpc;
 mod streamer;
 mod webrtc;
 
 /// Provides streaming capabilities to the engine.
-pub struct StreamerPlugin {}
+#[derive(Default)]
+pub struct StreamerPlugin;
 
 impl Plugin for StreamerPlugin {
     fn build(&self, app: &mut App) {
@@ -80,8 +87,13 @@ impl Plugin for StreamerPlugin {
         app.insert_resource(streamer)
             .insert_resource(time)
             .add_event::<streamer::VideoStreamEvent>()
-            .add_system(streamer::Streamer::handle_stream_events)
-            .add_system(streamer::Streamer::update_streams);
+            .add_system(streamer::handle_stream_events)
+            .add_system(streamer::update_streams)
+            .add_system(
+                streamer::render_streams
+                    .system()
+                    .after(RendererSystemLabel::Main),
+            );
 
         let webrtc_server =
             webrtc::WebRTCServer::new().expect("failed to instanciate a WebRTC server");

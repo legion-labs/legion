@@ -2,7 +2,8 @@ use legion_app::prelude::*;
 use legion_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
 use std::sync::{Arc, Mutex};
 
-pub struct EditorPlugin {}
+#[derive(Default)]
+pub struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {

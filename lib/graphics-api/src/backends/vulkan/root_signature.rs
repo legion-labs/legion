@@ -1,8 +1,10 @@
+use std::cmp;
+
 use super::{VulkanApi, VulkanDescriptorSetLayout, VulkanDeviceContext};
+use crate::backends::deferred_drop::Drc;
 use crate::{GfxResult, PipelineType, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 
 use ash::vk;
-use std::sync::Arc;
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -14,7 +16,7 @@ pub(crate) struct PushConstantIndex(pub(crate) u32);
 struct RootSignatureVulkanInner {
     device_context: VulkanDeviceContext,
     pipeline_type: PipelineType,
-    layouts: [Option<VulkanDescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    layouts: Vec<VulkanDescriptorSetLayout>,
     pipeline_layout: vk::PipelineLayout,
 }
 
@@ -30,7 +32,7 @@ impl Drop for RootSignatureVulkanInner {
 
 #[derive(Clone, Debug)]
 pub struct VulkanRootSignature {
-    inner: Arc<RootSignatureVulkanInner>,
+    inner: Drc<RootSignatureVulkanInner>,
 }
 
 impl VulkanRootSignature {
@@ -55,13 +57,10 @@ impl VulkanRootSignature {
             [vk::DescriptorSetLayout::null(); MAX_DESCRIPTOR_SET_LAYOUTS];
 
         let mut descriptor_set_layout_count = 0;
-        for layout in root_signature_def
-            .descriptor_set_layouts
-            .iter()
-            .filter_map(|x| x.as_ref())
-        {
-            vk_descriptor_set_layouts[descriptor_set_layout_count] = layout.vk_layout();
-            descriptor_set_layout_count += 1;
+        for layout in &root_signature_def.descriptor_set_layouts {
+            let set_index = layout.set_index() as usize;
+            vk_descriptor_set_layouts[set_index] = layout.vk_layout();
+            descriptor_set_layout_count = cmp::max(descriptor_set_layout_count, set_index + 1);
         }
 
         let mut push_constant_ranges = Vec::new();
@@ -92,7 +91,7 @@ impl VulkanRootSignature {
         };
 
         Ok(Self {
-            inner: Arc::new(inner),
+            inner: device_context.deferred_dropper().new_drc(inner),
         })
     }
 }

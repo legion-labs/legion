@@ -1,7 +1,4 @@
-//! Async plugin for Legion's ECS.
-//!
-//! Provides an async <-> sync bridge between Legion's ECS systems and various
-//! async runtimes, like `tokio`.
+//! Presenter plugin made for windowing system.
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -57,27 +54,10 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow()]
 
-use legion_app::prelude::*;
-use legion_ecs::prelude::*;
+mod presenter_window_plugin;
+pub use presenter_window_plugin::PresenterWindowPlugin;
 
-pub mod operation;
-pub mod runtime;
-pub mod sync;
+pub mod component;
 
-pub use operation::*;
-pub use runtime::*;
-
-// Provides async online capabilities via an online runtime.
-#[derive(Default)]
-pub struct AsyncPlugin;
-
-impl Plugin for AsyncPlugin {
-    fn build(&self, app: &mut App) {
-        app.insert_resource(TokioAsyncRuntime::default());
-        app.add_system(|mut rt: ResMut<'_, TokioAsyncRuntime>| {
-            rt.poll();
-        });
-    }
-}
+mod swapchain_helper;
