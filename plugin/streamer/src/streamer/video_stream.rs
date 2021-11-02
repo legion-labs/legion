@@ -70,17 +70,81 @@ impl Resolution {
     }
 }
 
-#[derive(Component)]
-#[component(storage = "Table")]
-pub struct VideoStream {
-    video_data_channel: Arc<RTCDataChannel>,
-    frame_id: i32,
-    render_frame_count: u32,
+struct ResolutionDependentResources {    
     resolution: Resolution,
     encoder: VideoStreamEncoder,
     render_images: Vec<<DefaultApi as GfxApi>::Texture>,
     render_image_rtvs: Vec<<DefaultApi as GfxApi>::TextureView>,
     copy_images: Vec<<DefaultApi as GfxApi>::Texture>,
+}
+
+impl ResolutionDependentResources {
+    fn new(renderer: &Renderer, render_frame_count: usize, resolution: Resolution) -> Result<Self, anyhow::Error> {
+        let device_context = renderer.device_context();        
+        let mut render_images = Vec::with_capacity(render_frame_count);
+        let mut render_image_rtvs = Vec::with_capacity(render_frame_count);
+        let mut copy_images = Vec::with_capacity(render_frame_count);
+        for _ in 0..render_frame_count {
+            let render_image = device_context.create_texture(&TextureDef {
+                extents: Extents3D {
+                    width: resolution.width,
+                    height: resolution.height,
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: Format::R8G8B8A8_UNORM,
+                mem_usage: MemoryUsage::GpuOnly,
+                usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                tiling: TextureTiling::Optimal,
+            })?;
+    
+            let render_image_rtv = render_image.create_view(
+                &TextureViewDef::as_render_target_view(render_image.texture_def()),
+            )?;
+    
+            let copy_image = device_context.create_texture(&TextureDef {
+                extents: Extents3D {
+                    width: resolution.width,
+                    height: resolution.height,
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: Format::R8G8B8A8_UNORM,
+                mem_usage: MemoryUsage::GpuToCpu,
+                usage_flags: ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                tiling: TextureTiling::Linear,
+            })?;
+    
+            render_images.push(render_image);
+            render_image_rtvs.push(render_image_rtv);
+            copy_images.push(copy_image);
+        }        
+
+        let encoder = VideoStreamEncoder::new(resolution)?;
+    
+        Ok(Self {         
+            resolution,
+            render_images,
+            render_image_rtvs,
+            copy_images,
+            encoder
+        })
+    }
+}
+
+
+
+#[derive(Component)]
+#[component(storage = "Table")]
+pub struct VideoStream {
+    video_data_channel: Arc<RTCDataChannel>,
+    frame_id: i32,
+    render_frame_count: u32,    
+    resolution_dependent_resources: ResolutionDependentResources,    
     cmd_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
     cmd_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
@@ -96,8 +160,7 @@ impl VideoStream {
         video_data_channel: Arc<RTCDataChannel>,
     ) -> anyhow::Result<Self> {
         trace_scope!();
-
-        let encoder = VideoStreamEncoder::new(resolution)?;
+        
         let device_context = renderer.device_context();
 
         //
@@ -222,48 +285,18 @@ impl VideoStream {
         // Frame dependant resources
         //
         let render_frame_count = 2;
+
+        let resolution_dependent_resources = ResolutionDependentResources::new(
+            renderer,
+            render_frame_count,
+            resolution
+        )?;        
+        
         let graphics_queue = renderer.graphics_queue();
-        let mut render_images = Vec::with_capacity(render_frame_count);
-        let mut render_image_rtvs = Vec::with_capacity(render_frame_count);
-        let mut copy_images = Vec::with_capacity(render_frame_count);
         let mut cmd_pools = Vec::with_capacity(render_frame_count);
         let mut cmd_buffers = Vec::with_capacity(render_frame_count);
 
         for _ in 0..render_frame_count {
-            let render_image = device_context.create_texture(&TextureDef {
-                extents: Extents3D {
-                    width: resolution.width,
-                    height: resolution.height,
-                    depth: 1,
-                },
-                array_length: 1,
-                mip_count: 1,
-                format: Format::R8G8B8A8_UNORM,
-                mem_usage: MemoryUsage::GpuOnly,
-                usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
-                resource_flags: ResourceFlags::empty(),
-                tiling: TextureTiling::Optimal,
-            })?;
-
-            let render_image_rtv = render_image.create_view(
-                &TextureViewDef::as_render_target_view(render_image.texture_def()),
-            )?;
-
-            let copy_image = device_context.create_texture(&TextureDef {
-                extents: Extents3D {
-                    width: resolution.width,
-                    height: resolution.height,
-                    depth: 1,
-                },
-                array_length: 1,
-                mip_count: 1,
-                format: Format::R8G8B8A8_UNORM,
-                mem_usage: MemoryUsage::GpuToCpu,
-                usage_flags: ResourceUsage::AS_TRANSFERABLE,
-                resource_flags: ResourceFlags::empty(),
-                tiling: TextureTiling::Linear,
-            })?;
-
             let cmd_pool =
                 graphics_queue.create_command_pool(&CommandPoolDef { transient: true })?;
 
@@ -271,9 +304,6 @@ impl VideoStream {
                 is_secondary: false,
             })?;
 
-            render_images.push(render_image);
-            render_image_rtvs.push(render_image_rtv);
-            copy_images.push(copy_image);
             cmd_pools.push(cmd_pool);
             cmd_buffers.push(cmd_buffer);
         }
@@ -292,12 +322,8 @@ impl VideoStream {
         Ok(Self {
             video_data_channel,
             frame_id: 0,
-            render_frame_count: render_frame_count as u32,
-            resolution,
-            encoder,
-            render_images,
-            render_image_rtvs,
-            copy_images,
+            render_frame_count: render_frame_count as u32,            
+            resolution_dependent_resources,            
             cmd_pools,
             cmd_buffers,
             root_signature,
@@ -314,62 +340,18 @@ impl VideoStream {
     ) -> anyhow::Result<()> {
         trace_scope!();
 
-        if resolution != self.resolution {
-            let device_context = renderer.device_context();
-            let render_frame_count = self.render_frame_count as usize;
-            let mut render_images = Vec::with_capacity(render_frame_count);
-            let mut render_image_rtvs = Vec::with_capacity(render_frame_count);
-            let mut copy_images = Vec::with_capacity(render_frame_count);
-
-            for _ in 0..render_frame_count {
-                let render_image = device_context.create_texture(&TextureDef {
-                    extents: Extents3D {
-                        width: resolution.width,
-                        height: resolution.height,
-                        depth: 1,
-                    },
-                    array_length: 1,
-                    mip_count: 1,
-                    format: Format::R8G8B8A8_UNORM,
-                    mem_usage: MemoryUsage::GpuOnly,
-                    usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
-                    resource_flags: ResourceFlags::empty(),
-                    tiling: TextureTiling::Optimal,
-                })?;
-
-                let render_image_rtv = render_image.create_view(
-                    &TextureViewDef::as_render_target_view(render_image.texture_def()),
-                )?;
-
-                let copy_image = device_context.create_texture(&TextureDef {
-                    extents: Extents3D {
-                        width: resolution.width,
-                        height: resolution.height,
-                        depth: 1,
-                    },
-                    array_length: 1,
-                    mip_count: 1,
-                    format: Format::R8G8B8A8_UNORM,
-                    mem_usage: MemoryUsage::GpuToCpu,
-                    usage_flags: ResourceUsage::AS_TRANSFERABLE,
-                    resource_flags: ResourceFlags::empty(),
-                    tiling: TextureTiling::Linear,
-                })?;
-
-                render_images.push(render_image);
-                render_image_rtvs.push(render_image_rtv);
-                copy_images.push(copy_image);
-            }
-
-            self.resolution = resolution;
-            self.render_images = render_images;
-            self.render_image_rtvs = render_image_rtvs;
-            self.copy_images = copy_images;
-            self.encoder = VideoStreamEncoder::new(self.resolution)?;
+        if resolution != self.resolution_dependent_resources.resolution {
+            self.resolution_dependent_resources = ResolutionDependentResources::new(
+                    renderer,
+                    self.render_frame_count as usize,
+                    resolution
+            )?;            
         }
 
         Ok(())
     }
+
+    
 
     fn record_frame_id_metric(&self) {
         static FRAME_ID_RENDERED: MetricDesc = MetricDesc {
@@ -396,9 +378,9 @@ impl VideoStream {
             let render_frame_idx = 0;
             let cmd_pool = &self.cmd_pools[render_frame_idx];
             let cmd_buffer = &self.cmd_buffers[render_frame_idx];
-            let render_texture = &self.render_images[render_frame_idx];
-            let render_texture_rtv = &self.render_image_rtvs[render_frame_idx];
-            let copy_texture = &self.copy_images[render_frame_idx];
+            let render_texture = &self.resolution_dependent_resources.render_images[render_frame_idx];
+            let render_texture_rtv = &self.resolution_dependent_resources.render_image_rtvs[render_frame_idx];
+            let copy_texture = &self.resolution_dependent_resources.copy_images[render_frame_idx];
 
             cmd_pool.reset_command_pool().unwrap();
             cmd_buffer.begin().unwrap();
@@ -495,6 +477,9 @@ impl VideoStream {
                 )
                 .unwrap();
 
+            let copy_extents = render_texture.texture_def().extents;
+            assert_eq!( copy_texture.texture_def().extents, copy_extents );
+
             cmd_buffer
                 .cmd_copy_image(
                     render_texture,
@@ -508,11 +493,7 @@ impl VideoStream {
                         dst_mip_level: 0,
                         src_array_slice: 0,
                         dst_array_slice: 0,
-                        extent: Extents3D {
-                            width: self.resolution.width,
-                            height: self.resolution.height,
-                            depth: 1,
-                        },
+                        extent: copy_extents,
                     },
                 )
                 .unwrap();
@@ -540,13 +521,13 @@ impl VideoStream {
             graphics_queue.wait_for_queue_idle().unwrap();
 
             let sub_resource = copy_texture.map_texture().unwrap();
-            self.encoder
+            self.resolution_dependent_resources.encoder
                 .converter
                 .convert_rgba(sub_resource.data, sub_resource.row_pitch as usize);
             copy_texture.unmap_texture().unwrap();
         }
 
-        let chunks = self.encoder.encode(self.frame_id);
+        let chunks = self.resolution_dependent_resources.encoder.encode(self.frame_id);
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
