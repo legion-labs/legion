@@ -20,7 +20,8 @@ const routes = [
   {
     path: '/timeline/:process_id',
     name: 'Timeline',
-    component: Timeline
+    component: Timeline,
+    props: true
   },
   {
     path: '/about',

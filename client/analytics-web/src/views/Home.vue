@@ -6,7 +6,6 @@
 </template>
 
 <script>
-// @ is an alias to /src
 import ProcessList from '@/components/process-list.vue'
 
 export default {
