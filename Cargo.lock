@@ -3302,6 +3302,7 @@ dependencies = [
 name = "legion-core"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bytemuck",
  "legion-app",
  "legion-derive",

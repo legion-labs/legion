@@ -17,6 +17,7 @@ legion-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
+async-trait = "0.1"
 bytemuck = "1.7"
 
 [dev-dependencies]

@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 
+use async_trait::async_trait;
 use legion_ecs::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
@@ -144,6 +145,7 @@ impl State {
     }
 }
 
+#[async_trait]
 impl System for FixedTimestep {
     type In = ();
     type Out = ShouldRun;
@@ -168,10 +170,10 @@ impl System for FixedTimestep {
         self.internal_system.is_send()
     }
 
-    unsafe fn run_unsafe(&mut self, _input: (), world: &World) -> ShouldRun {
+    async unsafe fn run_unsafe(&mut self, _input: (), world: &World) -> ShouldRun {
         // SAFE: this system inherits the internal system's component access and archetype component
         // access, which means the caller has ensured running the internal system is safe
-        self.internal_system.run_unsafe((), world)
+        self.internal_system.run_unsafe((), world).await
     }
 
     fn apply_buffers(&mut self, world: &mut World) {

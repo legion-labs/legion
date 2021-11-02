@@ -787,7 +787,7 @@ impl Stage for SystemStage {
                 criteria.update_archetypes(world);
                 match &mut criteria.inner {
                     RunCriteriaInner::Single(system) => {
-                        criteria.should_run = system.run((), world).await
+                        criteria.should_run = system.run((), world).await;
                     }
                     RunCriteriaInner::Piped {
                         input: parent,
@@ -795,7 +795,7 @@ impl Stage for SystemStage {
                         ..
                     } => {
                         criteria.should_run =
-                            system.run(run_criteria[*parent].should_run, world).await
+                            system.run(run_criteria[*parent].should_run, world).await;
                     }
                 }
             }
