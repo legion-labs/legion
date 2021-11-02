@@ -211,6 +211,48 @@ pub async fn find_process_streams_tagged(
     Ok(res)
 }
 
+pub async fn find_process_streams(
+    connection: &mut sqlx::AnyConnection,
+    process_id: &str,
+) -> Result<Vec<legion_telemetry::StreamInfo>> {
+    let rows = sqlx::query(
+        "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags, properties
+         FROM streams
+         WHERE process_id = ?
+         ;",
+    )
+    .bind(process_id)
+    .fetch_all(connection)
+    .await
+    .with_context(|| "fetch_all in find_process_streams")?;
+    let mut res = Vec::new();
+    for r in rows {
+        let stream_id: String = r.get("stream_id");
+        let dependencies_metadata_buffer: Vec<u8> = r.get("dependencies_metadata");
+        let dependencies_metadata = legion_telemetry_proto::telemetry::ContainerMetadata::decode(
+            &*dependencies_metadata_buffer,
+        )
+        .with_context(|| "decoding dependencies metadata")?;
+        let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
+        let objects_metadata =
+            legion_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+                .with_context(|| "decoding objects metadata")?;
+        let tags_str: String = r.get("tags");
+        let properties_str: String = r.get("properties");
+        let properties: std::collections::HashMap<String, String> =
+            serde_json::from_str(&properties_str).unwrap();
+        res.push(legion_telemetry::StreamInfo {
+            stream_id,
+            process_id: r.get("process_id"),
+            dependencies_metadata: Some(dependencies_metadata),
+            objects_metadata: Some(objects_metadata),
+            tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
+            properties,
+        });
+    }
+    Ok(res)
+}
+
 pub async fn find_process_log_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -489,6 +531,7 @@ pub mod prelude {
     pub use crate::fetch_recent_processes;
     pub use crate::find_process;
     pub use crate::find_process_log_entry;
+    pub use crate::find_process_streams;
     pub use crate::find_process_thread_streams;
     pub use crate::find_stream_blocks;
     pub use crate::for_each_process_in_tree;

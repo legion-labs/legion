@@ -26,6 +26,14 @@ impl AnalyticsService {
         let mut connection = self.pool.acquire().await?;
         fetch_recent_processes(&mut connection).await
     }
+
+    async fn list_process_streams_impl(
+        &self,
+        process_id: &str,
+    ) -> Result<Vec<legion_telemetry::StreamInfo>> {
+        let mut connection = self.pool.acquire().await?;
+        find_process_streams(&mut connection, process_id).await
+    }
 }
 
 #[tonic::async_trait]
@@ -52,8 +60,26 @@ impl PerformanceAnalytics for AnalyticsService {
 
     async fn list_process_streams(
         &self,
-        _request: Request<ListProcessStreamsRequest>,
+        request: Request<ListProcessStreamsRequest>,
     ) -> Result<Response<ListStreamsReply>, Status> {
-        Err(Status::internal(String::from("not implemented")))
+        log::info!("list_process_streams");
+        let list_request = request.into_inner();
+
+        match self
+            .list_process_streams_impl(&list_request.process_id)
+            .await
+        {
+            Ok(streams) => {
+                let reply = ListStreamsReply { streams };
+                log::info!("list_process_streams ok");
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                return Err(Status::internal(format!(
+                    "Error in list_process_streams: {}",
+                    e
+                )));
+            }
+        }
     }
 }
