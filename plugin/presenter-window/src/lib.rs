@@ -1,3 +1,5 @@
+//! Presenter plugin made for windowing system.
+
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
 #![deny(unsafe_code)]
