@@ -6,8 +6,17 @@ import public "block.proto";
 package analytics;
 
 service PerformanceAnalytics {
+    rpc find_process(FindProcessRequest) returns (FindProcessReply);
     rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
     rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
+}
+
+message FindProcessRequest{
+    string process_id = 1;
+}
+
+message FindProcessReply{
+    telemetry.Process process = 1;
 }
 
 message RecentProcessesRequest{

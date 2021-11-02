@@ -3,14 +3,10 @@
  * @enhanceable
  * @public
  */
-/* eslint-disable */
-// @ts-nocheck
 
 // GENERATED CODE -- DO NOT EDIT!
-
-
-
-
+/* eslint-disable */
+// @ts-nocheck
 
 const grpc = {};
 grpc.web = require('grpc-web');
@@ -73,6 +69,67 @@ proto.analytics.PerformanceAnalyticsPromiseClient =
    */
   this.hostname_ = hostname;
 
+};
+
+
+/**
+ * @const
+ * @type {!grpc.web.MethodDescriptor<
+ *   !proto.analytics.FindProcessRequest,
+ *   !proto.analytics.FindProcessReply>}
+ */
+const methodDescriptor_PerformanceAnalytics_find_process = new grpc.web.MethodDescriptor(
+  '/analytics.PerformanceAnalytics/find_process',
+  grpc.web.MethodType.UNARY,
+  proto.analytics.FindProcessRequest,
+  proto.analytics.FindProcessReply,
+  /**
+   * @param {!proto.analytics.FindProcessRequest} request
+   * @return {!Uint8Array}
+   */
+  function(request) {
+    return request.serializeBinary();
+  },
+  proto.analytics.FindProcessReply.deserializeBinary
+);
+
+
+/**
+ * @param {!proto.analytics.FindProcessRequest} request The
+ *     request proto
+ * @param {?Object<string, string>} metadata User defined
+ *     call metadata
+ * @param {function(?grpc.web.RpcError, ?proto.analytics.FindProcessReply)}
+ *     callback The callback function(error, response)
+ * @return {!grpc.web.ClientReadableStream<!proto.analytics.FindProcessReply>|undefined}
+ *     The XHR Node Readable Stream
+ */
+proto.analytics.PerformanceAnalyticsClient.prototype.find_process =
+    function(request, metadata, callback) {
+  return this.client_.rpcCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/find_process',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_find_process,
+      callback);
+};
+
+
+/**
+ * @param {!proto.analytics.FindProcessRequest} request The
+ *     request proto
+ * @param {?Object<string, string>=} metadata User defined
+ *     call metadata
+ * @return {!Promise<!proto.analytics.FindProcessReply>}
+ *     Promise that resolves to the response
+ */
+proto.analytics.PerformanceAnalyticsPromiseClient.prototype.find_process =
+    function(request, metadata) {
+  return this.client_.unaryCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/find_process',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_find_process);
 };
 
 

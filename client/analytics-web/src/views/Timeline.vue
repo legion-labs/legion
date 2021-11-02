@@ -1,6 +1,7 @@
 <template>
   <div>
     <div>process_id {{ process_id }}</div>
+    <div>exe {{ process_info.getExe() }}</div>
     <template v-for="stream in stream_list">
       <div :key="stream.getStreamId()">Stream {{ stream.getStreamId() }}</div>
     </template>
@@ -8,7 +9,7 @@
 </template>
 
 <script>
-import { ListProcessStreamsRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
+import { ListProcessStreamsRequest, FindProcessRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
 
 function fetchStreams () {
   try {
@@ -33,9 +34,27 @@ function fetchStreams () {
   }
 }
 
+function fetchProcessInfo () {
+  try {
+    var request = new FindProcessRequest()
+    request.setProcessId(this.process_id)
+    this.client.find_process(request, null, (err, response) => {
+      if (err) {
+        console.error('error in list_process_streams', err)
+      } else {
+        this.process_info = response.getProcess()
+      }
+    })
+  } catch (err) {
+    console.error(err.message)
+    throw err
+  }
+}
+
 function onTimelineCreated () {
   this.client = new PerformanceAnalyticsClient('http://' + location.hostname + ':9090', null, null)
   this.fetchStreams()
+  this.fetchProcessInfo()
 }
 
 export default {
@@ -49,10 +68,13 @@ export default {
   created: onTimelineCreated,
   data: function () {
     return {
-      process_info: {},
+      process_info: { getExe: function () { return '' } },
       stream_list: []
     }
   },
-  methods: { fetchStreams: fetchStreams }
+  methods: {
+    fetchStreams: fetchStreams,
+    fetchProcessInfo: fetchProcessInfo
+  }
 }
 </script>
