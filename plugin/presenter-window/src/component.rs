@@ -1,4 +1,7 @@
+#![allow(clippy::pedantic)]
+
 use std::cmp::max;
+use std::convert::TryFrom;
 
 use graphics_api::{
     CmdBlitParams, CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DefaultApi,
@@ -131,16 +134,16 @@ impl PresenterWindow {
                     src_offsets: [
                         Offset3D { x: 0, y: 0, z: 0 },
                         Offset3D {
-                            x: src_texture_def.extents.width as i32,
-                            y: src_texture_def.extents.height as i32,
+                            x: i32::try_from(src_texture_def.extents.width).unwrap(),
+                            y: i32::try_from(src_texture_def.extents.height).unwrap(),
                             z: 1,
                         },
                     ],
                     dst_offsets: [
                         Offset3D { x: 0, y: 0, z: 0 },
                         Offset3D {
-                            x: dst_texture_def.extents.width as i32,
-                            y: dst_texture_def.extents.height as i32,
+                            x: i32::try_from(dst_texture_def.extents.width).unwrap(),
+                            y: i32::try_from(dst_texture_def.extents.height).unwrap(),
                             z: 1,
                         },
                     ],

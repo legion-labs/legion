@@ -14,8 +14,8 @@ impl Plugin for PresenterWindowPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(
             render_presenter_windows
-            .system()
-            .after(RendererSystemLabel::Main),
+                .system()
+                .after(RendererSystemLabel::Main),
         );
     }
 }

@@ -174,7 +174,7 @@ pub struct TmpRenderPass {
 }
 
 impl TmpRenderPass {
-    #![allow(clippy::too_many_lines)]        
+    #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
         let num_render_frames = renderer.num_render_frames;
@@ -388,7 +388,7 @@ impl TmpRenderPass {
             speed: 1.0f32,
         }
     }
-    
+
     pub fn render(
         &self,
         renderer: &Renderer,

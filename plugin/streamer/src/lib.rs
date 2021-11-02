@@ -54,7 +54,11 @@
 )]
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
-#![allow(clippy::let_underscore_drop, clippy::needless_pass_by_value)]
+#![allow(
+    clippy::let_underscore_drop,
+    clippy::needless_pass_by_value,
+    clippy::too_many_lines
+)]
 #![warn(missing_docs)]
 
 use legion_app::prelude::*;
