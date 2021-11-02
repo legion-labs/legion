@@ -97,7 +97,7 @@ where
 pub struct Entity {
     pub name: String,
     pub children: Vec<Reference<Entity>>,
-    pub parent: Reference<Entity>,
+    pub parent: Option<Reference<Entity>>,
     pub components: Vec<Box<dyn Component>>,
 }
 
@@ -127,9 +127,13 @@ impl AssetLoader for EntityLoader {
 
             for component in &mut entity.components {
                 if let Some(visual) = component.downcast_mut::<Visual>() {
-                    visual.renderable_geometry.activate(registry);
+                    if let Some(geometry) = &mut visual.renderable_geometry {
+                        geometry.activate(registry);
+                    }
                 } else if let Some(physics) = component.downcast_mut::<Physics>() {
-                    physics.collision_geometry.activate(registry);
+                    if let Some(geometry) = &mut physics.collision_geometry {
+                        geometry.activate(registry);
+                    }
                 }
             }
         }
@@ -194,7 +198,7 @@ impl Component for Transform {}
 
 #[derive(Serialize, Deserialize)]
 pub struct Visual {
-    pub renderable_geometry: Reference<Mesh>,
+    pub renderable_geometry: Option<Reference<Mesh>>,
     pub shadow_receiver: bool,
     pub shadow_caster_sun: bool,
     pub shadow_caster_local: bool,
@@ -258,7 +262,7 @@ impl Component for Light {}
 #[derive(Serialize, Deserialize)]
 pub struct Physics {
     pub dynamic: bool,
-    pub collision_geometry: Reference<Mesh>,
+    pub collision_geometry: Option<Reference<Mesh>>,
 }
 
 #[typetag::serde]
@@ -269,7 +273,7 @@ impl Component for Physics {}
 #[resource("runtime_instance")]
 #[derive(Serialize, Deserialize)]
 pub struct Instance {
-    pub original: Reference<Entity>,
+    pub original: Option<Reference<Entity>>,
 }
 
 impl Asset for Instance {
@@ -292,7 +296,9 @@ impl AssetLoader for InstanceLoader {
 
         // activate references
         if let Some(registry) = &self.registry {
-            instance.original.activate(registry);
+            if let Some(original) = &mut instance.original {
+                original.activate(registry);
+            }
         }
     }
 
@@ -330,7 +336,9 @@ impl AssetLoader for MeshLoader {
         // activate references
         if let Some(registry) = &self.registry {
             for sub_mesh in &mut mesh.sub_meshes {
-                sub_mesh.material.activate(registry);
+                if let Some(material) = &mut sub_mesh.material {
+                    material.activate(registry);
+                }
             }
         }
     }
@@ -346,5 +354,5 @@ pub struct SubMesh {
     pub normals: Vec<Vec3>,
     pub uvs: Vec<Vec2>,
     pub indices: Vec<u16>,
-    pub material: Reference<Material>,
+    pub material: Option<Reference<Material>>,
 }

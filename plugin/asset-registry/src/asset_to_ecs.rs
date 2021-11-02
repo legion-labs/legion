@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use legion_data_runtime::{AssetRegistry, HandleUntyped, Reference, Resource, ResourceId};
+use legion_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceId};
 use legion_ecs::prelude::*;
 use legion_transform::prelude::*;
 use sample_data_runtime as runtime_data;
@@ -81,11 +81,10 @@ impl AssetToECS for runtime_data::Entity {
         entity.insert(GlobalTransform::identity());
 
         // parent, if it exists, must already be loaded since parents load their children
-        let parent = if let Reference::Passive(parent) = runtime_entity.parent {
-            asset_to_entity_map.get(parent)
-        } else {
-            None
-        };
+        let parent = runtime_entity
+            .parent
+            .as_ref()
+            .and_then(|parent| asset_to_entity_map.get(parent.id()));
 
         if let Some(parent) = parent {
             entity.insert(Parent(parent));

@@ -23,12 +23,10 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
     }
 }
 
-pub fn to_reference<T>(path: &Option<ResourcePathId>) -> Reference<T>
+pub fn to_reference<T>(path: &Option<ResourcePathId>) -> Option<Reference<T>>
 where
     T: Any + Resource,
 {
-    match path {
-        Some(path) => Reference::Passive(path.content_id()),
-        None => Reference::None,
-    }
+    path.as_ref()
+        .map(|path| Reference::Passive(path.content_id()))
 }

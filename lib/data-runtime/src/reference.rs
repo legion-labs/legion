@@ -10,9 +10,6 @@ where
     /// Reference is not yet active, and is simply described as an id
     Passive(ResourceId),
 
-    /// Reference is unset
-    None,
-
     /// Reference is active, and be accessed through a typed handle
     Active(Handle<T>),
 }
@@ -21,6 +18,14 @@ impl<T> Reference<T>
 where
     T: Any + Resource,
 {
+    /// Returns resource id associated with this Reference
+    pub fn id(&self) -> ResourceId {
+        match self {
+            Self::Passive(resource_id) => *resource_id,
+            Self::Active(handle) => handle.id(),
+        }
+    }
+
     /// Promote a reference to an active handle
     pub fn activate(&mut self, registry: &AssetRegistry) {
         if let Self::Passive(resource_id) = self {
@@ -38,12 +43,7 @@ where
     where
         S: Serializer,
     {
-        let resource_id = match self {
-            Self::Passive(resource_id) => Some(*resource_id),
-            Self::None => None,
-            Self::Active(handle) => Some(handle.id()),
-        };
-        resource_id.serialize(serializer)
+        self.id().serialize(serializer)
     }
 }
 
@@ -55,11 +55,8 @@ where
     where
         D: Deserializer<'de>,
     {
-        // Unless unset (None), a Reference will be deserialized as passive, and will require activation
-        let resource_id = Option::<ResourceId>::deserialize(deserializer)?;
-        match resource_id {
-            Some(resource_id) => Ok(Self::Passive(resource_id)),
-            None => Ok(Self::None),
-        }
+        // A Reference is always deserialized as passive, and will require activation
+        let resource_id = ResourceId::deserialize(deserializer)?;
+        Ok(Self::Passive(resource_id))
     }
 }
