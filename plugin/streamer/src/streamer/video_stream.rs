@@ -70,7 +70,7 @@ impl Resolution {
     }
 }
 
-struct ResolutionDependentResources {    
+struct ResolutionDependentResources {
     resolution: Resolution,
     encoder: VideoStreamEncoder,
     render_images: Vec<<DefaultApi as GfxApi>::Texture>,
@@ -79,8 +79,12 @@ struct ResolutionDependentResources {
 }
 
 impl ResolutionDependentResources {
-    fn new(renderer: &Renderer, render_frame_count: usize, resolution: Resolution) -> Result<Self, anyhow::Error> {
-        let device_context = renderer.device_context();        
+    fn new(
+        renderer: &Renderer,
+        render_frame_count: usize,
+        resolution: Resolution,
+    ) -> Result<Self, anyhow::Error> {
+        let device_context = renderer.device_context();
         let mut render_images = Vec::with_capacity(render_frame_count);
         let mut render_image_rtvs = Vec::with_capacity(render_frame_count);
         let mut copy_images = Vec::with_capacity(render_frame_count);
@@ -99,11 +103,11 @@ impl ResolutionDependentResources {
                 resource_flags: ResourceFlags::empty(),
                 tiling: TextureTiling::Optimal,
             })?;
-    
+
             let render_image_rtv = render_image.create_view(
                 &TextureViewDef::as_render_target_view(render_image.texture_def()),
             )?;
-    
+
             let copy_image = device_context.create_texture(&TextureDef {
                 extents: Extents3D {
                     width: resolution.width,
@@ -118,33 +122,31 @@ impl ResolutionDependentResources {
                 resource_flags: ResourceFlags::empty(),
                 tiling: TextureTiling::Linear,
             })?;
-    
+
             render_images.push(render_image);
             render_image_rtvs.push(render_image_rtv);
             copy_images.push(copy_image);
-        }        
+        }
 
         let encoder = VideoStreamEncoder::new(resolution)?;
-    
-        Ok(Self {         
+
+        Ok(Self {
             resolution,
+            encoder,
             render_images,
             render_image_rtvs,
             copy_images,
-            encoder
         })
     }
 }
-
-
 
 #[derive(Component)]
 #[component(storage = "Table")]
 pub struct VideoStream {
     video_data_channel: Arc<RTCDataChannel>,
     frame_id: i32,
-    render_frame_count: u32,    
-    resolution_dependent_resources: ResolutionDependentResources,    
+    render_frame_count: u32,
+    resolution_dependent_resources: ResolutionDependentResources,
     cmd_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
     cmd_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
@@ -160,7 +162,7 @@ impl VideoStream {
         video_data_channel: Arc<RTCDataChannel>,
     ) -> anyhow::Result<Self> {
         trace_scope!();
-        
+
         let device_context = renderer.device_context();
 
         //
@@ -286,12 +288,9 @@ impl VideoStream {
         //
         let render_frame_count = 2;
 
-        let resolution_dependent_resources = ResolutionDependentResources::new(
-            renderer,
-            render_frame_count,
-            resolution
-        )?;        
-        
+        let resolution_dependent_resources =
+            ResolutionDependentResources::new(renderer, render_frame_count, resolution)?;
+
         let graphics_queue = renderer.graphics_queue();
         let mut cmd_pools = Vec::with_capacity(render_frame_count);
         let mut cmd_buffers = Vec::with_capacity(render_frame_count);
@@ -322,8 +321,8 @@ impl VideoStream {
         Ok(Self {
             video_data_channel,
             frame_id: 0,
-            render_frame_count: render_frame_count as u32,            
-            resolution_dependent_resources,            
+            render_frame_count: render_frame_count as u32,
+            resolution_dependent_resources,
             cmd_pools,
             cmd_buffers,
             root_signature,
@@ -342,16 +341,14 @@ impl VideoStream {
 
         if resolution != self.resolution_dependent_resources.resolution {
             self.resolution_dependent_resources = ResolutionDependentResources::new(
-                    renderer,
-                    self.render_frame_count as usize,
-                    resolution
-            )?;            
+                renderer,
+                self.render_frame_count as usize,
+                resolution,
+            )?;
         }
 
         Ok(())
     }
-
-    
 
     fn record_frame_id_metric(&self) {
         static FRAME_ID_RENDERED: MetricDesc = MetricDesc {
@@ -378,8 +375,10 @@ impl VideoStream {
             let render_frame_idx = 0;
             let cmd_pool = &self.cmd_pools[render_frame_idx];
             let cmd_buffer = &self.cmd_buffers[render_frame_idx];
-            let render_texture = &self.resolution_dependent_resources.render_images[render_frame_idx];
-            let render_texture_rtv = &self.resolution_dependent_resources.render_image_rtvs[render_frame_idx];
+            let render_texture =
+                &self.resolution_dependent_resources.render_images[render_frame_idx];
+            let render_texture_rtv =
+                &self.resolution_dependent_resources.render_image_rtvs[render_frame_idx];
             let copy_texture = &self.resolution_dependent_resources.copy_images[render_frame_idx];
 
             cmd_pool.reset_command_pool().unwrap();
@@ -478,7 +477,7 @@ impl VideoStream {
                 .unwrap();
 
             let copy_extents = render_texture.texture_def().extents;
-            assert_eq!( copy_texture.texture_def().extents, copy_extents );
+            assert_eq!(copy_texture.texture_def().extents, copy_extents);
 
             cmd_buffer
                 .cmd_copy_image(
@@ -521,13 +520,17 @@ impl VideoStream {
             graphics_queue.wait_for_queue_idle().unwrap();
 
             let sub_resource = copy_texture.map_texture().unwrap();
-            self.resolution_dependent_resources.encoder
+            self.resolution_dependent_resources
+                .encoder
                 .converter
                 .convert_rgba(sub_resource.data, sub_resource.row_pitch as usize);
             copy_texture.unmap_texture().unwrap();
         }
 
-        let chunks = self.resolution_dependent_resources.encoder.encode(self.frame_id);
+        let chunks = self
+            .resolution_dependent_resources
+            .encoder
+            .encode(self.frame_id);
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
