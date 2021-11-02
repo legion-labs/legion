@@ -542,7 +542,7 @@ pub struct SwapchainDef {
 pub struct ShaderStageDef<A: GfxApi> {
     pub entry_point: String,
     pub shader_stage: ShaderStageFlags,
-    pub shader_module: A::ShaderModule,    
+    pub shader_module: A::ShaderModule,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

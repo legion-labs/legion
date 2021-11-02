@@ -364,7 +364,7 @@ impl VideoStream {
             self.resolution = resolution;
             self.render_images = render_images;
             self.render_image_rtvs = render_image_rtvs;
-            self.copy_images = copy_images;            
+            self.copy_images = copy_images;
             self.encoder = VideoStreamEncoder::new(self.resolution)?;
         }
 
