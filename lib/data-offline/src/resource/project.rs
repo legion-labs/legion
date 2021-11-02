@@ -1,10 +1,3 @@
-use crate::ResourcePathId;
-
-use crate::resource::{
-    metadata::{Metadata, ResourceHash},
-    ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
-};
-
 use core::fmt;
 use std::{
     fs::{self, File, OpenOptions},
@@ -15,6 +8,12 @@ use std::{
 use legion_content_store::content_checksum_from_read;
 use legion_data_runtime::{ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
+
+use crate::resource::{
+    metadata::{Metadata, ResourceHash},
+    ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
+};
+use crate::ResourcePathId;
 
 const METADATA_EXT: &str = "meta";
 
@@ -499,6 +498,7 @@ mod tests {
     use legion_data_runtime::{resource, Resource, ResourceType};
     use tempfile::TempDir;
 
+    use super::ResourceDb;
     use crate::resource::project::Project;
     use crate::{
         resource::{
@@ -506,8 +506,6 @@ mod tests {
         },
         ResourcePathId,
     };
-
-    use super::ResourceDb;
 
     fn setup_test() -> TempDir {
         let root = tempfile::tempdir().unwrap();

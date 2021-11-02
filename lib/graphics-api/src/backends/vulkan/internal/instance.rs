@@ -1,15 +1,15 @@
 use std::ffi::{CStr, CString};
+use std::sync::Arc;
 
+use ash::extensions::ext::DebugUtils;
 use ash::extensions::khr;
 use ash::prelude::VkResult;
 use ash::vk;
+use ash::vk::DebugUtilsMessageTypeFlagsEXT;
 
 use crate::backends::vulkan::{VkCreateInstanceError::VkError, VkDebugReporter};
 use crate::vulkan::check_extensions_availability;
 use crate::ExtensionMode;
-use ash::extensions::ext::DebugUtils;
-use ash::vk::DebugUtilsMessageTypeFlagsEXT;
-use std::sync::Arc;
 
 /// Create one of these at startup. It never gets lost/destroyed.
 pub struct VkInstance {

@@ -1,10 +1,10 @@
-use ash::vk;
-
 use std::sync::{Arc, Mutex};
 
-use crate::backends::vulkan::{VkQueueFamilyIndices, VulkanDeviceContext};
+use ash::vk;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::FnvHashMap;
+
+use crate::backends::vulkan::{VkQueueFamilyIndices, VulkanDeviceContext};
 
 /// Has the indexes for all the queue families we will need. It's possible that a single queue
 /// family will need to be shared across these usages

@@ -1,10 +1,9 @@
-use tokio::sync::RwLock;
-
-use super::async_reverse_single_lock::AsyncReverseSingleLock;
-
 use anyhow::Context;
 use lazy_static::lazy_static;
 use log::{info, warn};
+use tokio::sync::RwLock;
+
+use super::async_reverse_single_lock::AsyncReverseSingleLock;
 
 lazy_static! {
     static ref TERMINATION_RWLOCK: RwLock<()> = RwLock::new(());

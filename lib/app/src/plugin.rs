@@ -1,5 +1,6 @@
-use crate::App;
 use std::any::Any;
+
+use crate::App;
 
 /// A collection of Legion App logic and configuration
 ///

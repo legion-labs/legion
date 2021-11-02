@@ -1,8 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::ResourceId;
-
 use super::Device;
+use crate::ResourceId;
 
 /// Directory storage device. Resources are stored if files named by their ids.
 pub(crate) struct DirDevice {

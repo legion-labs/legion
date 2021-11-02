@@ -1,10 +1,11 @@
+use ash::vk;
+
 use super::internal::VkQueue;
 use super::{
     VulkanApi, VulkanCommandBuffer, VulkanCommandPool, VulkanDeviceContext, VulkanFence,
     VulkanSemaphore, VulkanSwapchain,
 };
 use crate::{CommandPoolDef, GfxResult, PresentSuccessResult, Queue, QueueType};
-use ash::vk;
 
 #[derive(Clone, Debug)]
 pub struct VulkanQueue {

@@ -1,8 +1,10 @@
+use std::collections::HashSet;
+
+use anyhow::Result;
+use transit::prelude::*;
+
 use crate::prelude::*;
 use crate::{compress, event_block::EventBlock, EncodedBlock, EventStream, StreamBlock};
-use anyhow::Result;
-use std::collections::HashSet;
-use transit::prelude::*;
 
 declare_queue_struct!(
     struct MetricsMsgQueue<IntegerMetricEvent, FloatMetricEvent> {}

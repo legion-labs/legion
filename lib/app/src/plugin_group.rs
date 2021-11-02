@@ -1,6 +1,8 @@
-use crate::{App, Plugin};
-use legion_utils::{tracing::debug, HashMap};
 use std::any::TypeId;
+
+use legion_utils::{tracing::debug, HashMap};
+
+use crate::{App, Plugin};
 
 pub trait PluginGroup {
     fn build(&mut self, group: &mut PluginGroupBuilder);

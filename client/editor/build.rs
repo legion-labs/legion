@@ -1,6 +1,7 @@
 #[cfg(feature = "custom-protocol")]
 fn build_web_app() {
     use std::process::Command;
+
     use which::which;
 
     if let Ok(yarn_path) = which("yarn") {

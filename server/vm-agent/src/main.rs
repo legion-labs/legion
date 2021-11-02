@@ -63,17 +63,16 @@
 mod config;
 
 use std::process::Stdio;
+
+use anyhow::Context;
+use config::{CommandConfig, Config};
+use legion_cli::termination_handler::AsyncTerminationHandler;
+use log::{debug, info};
+use simple_logger::SimpleLogger;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
 };
-
-use config::{CommandConfig, Config};
-
-use anyhow::Context;
-use legion_cli::termination_handler::AsyncTerminationHandler;
-use log::{debug, info};
-use simple_logger::SimpleLogger;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

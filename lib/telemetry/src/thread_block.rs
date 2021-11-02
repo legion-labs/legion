@@ -1,10 +1,12 @@
+use std::collections::HashSet;
+
+use anyhow::Result;
+use transit::prelude::*;
+
 use crate::{
     compress, event_block::EventBlock, BeginScopeEvent, EncodedBlock, EndScopeEvent, EventStream,
     ReferencedScope, ScopeEvent, StreamBlock,
 };
-use anyhow::Result;
-use std::collections::HashSet;
-use transit::prelude::*;
 
 declare_queue_struct!(
     struct ThreadEventQueue<BeginScopeEvent, EndScopeEvent> {}

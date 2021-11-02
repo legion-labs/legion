@@ -1,9 +1,9 @@
+use std::hash::{Hash, Hasher};
+
+//type QuoteRes = quote::__private::TokenStream;
+use legion_utils::DefaultHasher;
 use proc_macro2::{TokenStream, TokenTree};
 use quote::{format_ident, quote};
-//type QuoteRes = quote::__private::TokenStream;
-
-use legion_utils::DefaultHasher;
-use std::hash::{Hash, Hasher};
 
 const LEGION_TAG: &str = "legion";
 const DEFAULT_ATTR: &str = "default";

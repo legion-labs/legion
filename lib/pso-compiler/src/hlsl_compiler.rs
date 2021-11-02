@@ -1,3 +1,5 @@
+use std::{io::Read, path::PathBuf};
+
 use anyhow::{anyhow, Result};
 use graphics_api::{
     PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags,
@@ -7,7 +9,6 @@ use spirv_reflect::types::{
     ReflectBlockVariable, ReflectDecorationFlags, ReflectDescriptorBinding, ReflectShaderStageFlags,
 };
 use spirv_tools::{opt::Optimizer, TargetEnv};
-use std::{io::Read, path::PathBuf};
 
 pub struct CompileDefine {
     name: String,

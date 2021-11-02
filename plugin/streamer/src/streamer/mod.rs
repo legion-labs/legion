@@ -1,3 +1,5 @@
+use std::{fmt::Display, sync::Arc};
+
 use legion_async::TokioAsyncRuntime;
 use legion_core::Time;
 use legion_ecs::prelude::*;
@@ -5,14 +7,11 @@ use legion_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     Renderer,
 };
-
-use std::{fmt::Display, sync::Arc};
+use log::{error, info, warn};
 use webrtc::{
     data::data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
     peer::peer_connection::RTCPeerConnection,
 };
-
-use log::{error, info, warn};
 
 mod control_stream;
 mod events;

@@ -1,6 +1,7 @@
 #![allow(unsafe_code)]
 
-use crate::Time;
+use std::borrow::Cow;
+
 use legion_ecs::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
@@ -10,7 +11,8 @@ use legion_ecs::{
     world::World,
 };
 use legion_utils::HashMap;
-use std::borrow::Cow;
+
+use crate::Time;
 
 pub struct FixedTimestepState {
     pub step: f64,

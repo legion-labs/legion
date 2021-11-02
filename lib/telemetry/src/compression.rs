@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
 use std::io::{Read, Write};
+
+use anyhow::{Context, Result};
 
 pub fn compress(src: &[u8]) -> Result<Vec<u8>> {
     let mut compressed = Vec::new();

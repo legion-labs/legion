@@ -9,10 +9,13 @@ mod system_container;
 mod system_descriptor;
 mod system_set;
 
+use std::fmt::Debug;
+
 pub use executor::*;
 pub use executor_parallel::*;
 pub use graph_utils::GraphNode;
 pub use label::*;
+use legion_utils::HashMap;
 pub use run_criteria::*;
 pub use stage::*;
 pub use state::*;
@@ -20,10 +23,7 @@ pub use system_container::*;
 pub use system_descriptor::*;
 pub use system_set::*;
 
-use std::fmt::Debug;
-
 use crate::{system::System, world::World};
-use legion_utils::HashMap;
 
 /// A container of [`Stage`]s set to be run in a linear order.
 ///

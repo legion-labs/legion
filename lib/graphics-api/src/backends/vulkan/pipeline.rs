@@ -1,4 +1,8 @@
 #![allow(clippy::too_many_lines)]
+use std::ffi::CString;
+
+use ash::vk;
+
 use super::{
     VulkanApi, VulkanDeviceContext, VulkanRenderpassColorAttachment, VulkanRenderpassDef,
     VulkanRenderpassDepthAttachment, VulkanRootSignature,
@@ -7,8 +11,6 @@ use crate::{
     backends::deferred_drop::Drc, ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef,
     LoadOp, Pipeline, PipelineType, ShaderStageFlags, StoreOp,
 };
-use ash::vk;
-use std::ffi::CString;
 
 #[derive(Debug)]
 struct VulkanPipelineInner {

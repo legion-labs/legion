@@ -62,9 +62,10 @@ mod reflection;
 mod resource_codegen;
 mod runtime_codegen;
 
-use quote::ToTokens;
 use std::io::Write;
 use std::process::Command;
+
+use quote::ToTokens;
 
 /// Type of Generation
 #[derive(PartialEq)]

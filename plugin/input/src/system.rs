@@ -1,9 +1,10 @@
+use legion_app::AppExit;
+use legion_ecs::prelude::{EventReader, EventWriter};
+
 use crate::{
     keyboard::{KeyCode, KeyboardInput},
     ElementState,
 };
-use legion_app::AppExit;
-use legion_ecs::prelude::{EventReader, EventWriter};
 
 /// Sends the `AppExit` event whenever the "esc" key is pressed.
 pub fn exit_on_esc_system(

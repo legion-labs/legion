@@ -1,9 +1,10 @@
+use std::borrow::Cow;
+
 use crate::{
     archetype::ArchetypeGeneration,
     system::{check_system_change_tick, BoxedSystem, IntoSystem},
     world::World,
 };
-use std::borrow::Cow;
 
 pub trait ExclusiveSystem: Send + Sync + 'static {
     fn name(&self) -> Cow<'static, str>;

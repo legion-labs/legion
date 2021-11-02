@@ -1,7 +1,6 @@
+use super::{VulkanApi, VulkanBuffer, VulkanDescriptor};
 use crate::backends::deferred_drop::Drc;
 use crate::{Buffer, BufferView, BufferViewDef, GPUViewType, GfxResult, ShaderResourceType};
-
-use super::{VulkanApi, VulkanBuffer, VulkanDescriptor};
 
 #[derive(Clone, Debug)]
 struct VulkanBufferViewInner {

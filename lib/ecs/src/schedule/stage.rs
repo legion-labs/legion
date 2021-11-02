@@ -1,3 +1,10 @@
+use std::fmt::Debug;
+
+use downcast_rs::{impl_downcast, Downcast};
+use fixedbitset::FixedBitSet;
+use legion_utils::{tracing::info, HashMap, HashSet};
+
+use super::IntoSystemDescriptor;
 use crate::{
     component::ComponentId,
     prelude::IntoSystem,
@@ -11,12 +18,6 @@ use crate::{
     },
     world::{World, WorldId},
 };
-use downcast_rs::{impl_downcast, Downcast};
-use fixedbitset::FixedBitSet;
-use legion_utils::{tracing::info, HashMap, HashSet};
-use std::fmt::Debug;
-
-use super::IntoSystemDescriptor;
 
 /// A type that can run as a step of a [`Schedule`](super::Schedule).
 pub trait Stage: Downcast + Send + Sync {
@@ -892,6 +893,8 @@ impl Stage for SystemStage {
 
 #[cfg(test)]
 mod tests {
+    use crate as legion_ecs;
+    use crate::component::Component;
     use crate::{
         entity::Entity,
         query::{ChangeTrackers, Changed},
@@ -903,9 +906,6 @@ mod tests {
         system::{In, IntoExclusiveSystem, IntoSystem, Local, Query, ResMut},
         world::World,
     };
-
-    use crate as legion_ecs;
-    use crate::component::Component;
     #[derive(Component)]
     struct W<T>(T);
 

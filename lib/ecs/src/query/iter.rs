@@ -1,12 +1,13 @@
 #![allow(unsafe_code)]
 
+use std::mem::MaybeUninit;
+
 use crate::{
     archetype::{ArchetypeId, Archetypes},
     query::{Fetch, FilterFetch, QueryState, ReadOnlyFetch, WorldQuery},
     storage::{TableId, Tables},
     world::World,
 };
-use std::mem::MaybeUninit;
 
 /// An [`Iterator`] over query results of a [`Query`](crate::system::Query).
 ///

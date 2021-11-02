@@ -1,3 +1,12 @@
+use std::{
+    fmt::Debug,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
+
+pub use legion_ecs_macros::SystemParam;
+use legion_ecs_macros::{all_tuples, impl_query_set};
+
 pub use crate::change_detection::{NonSendMut, ResMut};
 use crate::{
     archetype::{Archetype, Archetypes},
@@ -10,13 +19,6 @@ use crate::{
     },
     system::{CommandQueue, Commands, Query, SystemMeta},
     world::{FromWorld, World},
-};
-pub use legion_ecs_macros::SystemParam;
-use legion_ecs_macros::{all_tuples, impl_query_set};
-use std::{
-    fmt::Debug,
-    marker::PhantomData,
-    ops::{Deref, DerefMut},
 };
 
 /// A parameter that can be used in a [`System`](super::System).

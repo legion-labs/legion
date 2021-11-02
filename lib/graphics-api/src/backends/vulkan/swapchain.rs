@@ -1,3 +1,11 @@
+use std::mem::ManuallyDrop;
+
+use ash::extensions::khr;
+use ash::prelude::VkResult;
+use ash::vk;
+use ash::vk::Extent2D;
+use raw_window_handle::HasRawWindowHandle;
+
 use super::{
     VulkanApi, VulkanDeviceContext, VulkanFence, VulkanRawImage, VulkanSemaphore, VulkanTexture,
 };
@@ -8,15 +16,6 @@ use crate::{
     ResourceUsage, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef,
     TextureTiling, TextureViewDef,
 };
-
-use ash::vk;
-use raw_window_handle::HasRawWindowHandle;
-
-use ash::extensions::khr;
-use ash::prelude::VkResult;
-
-use ash::vk::Extent2D;
-use std::mem::ManuallyDrop;
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 

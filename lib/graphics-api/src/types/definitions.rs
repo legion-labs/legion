@@ -1,19 +1,19 @@
+use std::{
+    hash::{Hash, Hasher},
+    num::NonZeroU32,
+};
+
+use legion_utils::decimal::DecimalF32;
+#[cfg(feature = "serde-support")]
+use serde::{Deserialize, Serialize};
+
 use super::{
     AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
     Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PipelineType,
     PrimitiveTopology, QueueType, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
     VertexAttributeRate,
 };
-
 use crate::{GfxApi, ResourceFlags};
-use legion_utils::decimal::DecimalF32;
-use std::{
-    hash::{Hash, Hasher},
-    num::NonZeroU32,
-};
-
-#[cfg(feature = "serde-support")]
-use serde::{Deserialize, Serialize};
 
 /// Controls if an extension is enabled or not. The requirements/behaviors of validation is
 /// API-specific.

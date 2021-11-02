@@ -1,6 +1,7 @@
-use crate::prelude::*;
 use std::io::Write;
 use std::panic::{take_hook, PanicInfo};
+
+use crate::prelude::*;
 
 pub fn init_panic_hook() {
     type BoxedHook = Box<dyn Fn(&PanicInfo<'_>) + Sync + Send + 'static>;

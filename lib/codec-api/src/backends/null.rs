@@ -64,9 +64,8 @@ impl Default for NullEncoderConfig {
 mod tests {
     use std::{sync::Arc, thread};
 
-    use crate::{GpuImage, VideoProcessor};
-
     use super::{NullEncoder, NullEncoderConfig};
+    use crate::{GpuImage, VideoProcessor};
 
     #[test]
     fn null_encoder() {

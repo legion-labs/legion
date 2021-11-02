@@ -237,8 +237,9 @@ mod test {
 
     #[test]
     fn touch_update() {
-        use crate::{touch::Touch, Touches};
         use legion_math::Vec2;
+
+        use crate::{touch::Touch, Touches};
 
         let mut touches = Touches::default();
 
@@ -268,8 +269,9 @@ mod test {
 
     #[test]
     fn touch_process() {
-        use crate::{touch::TouchPhase, TouchInput, Touches};
         use legion_math::Vec2;
+
+        use crate::{touch::TouchPhase, TouchInput, Touches};
 
         let mut touches = Touches::default();
 
@@ -343,8 +345,9 @@ mod test {
 
     #[test]
     fn touch_pressed() {
-        use crate::{touch::TouchPhase, TouchInput, Touches};
         use legion_math::Vec2;
+
+        use crate::{touch::TouchPhase, TouchInput, Touches};
 
         let mut touches = Touches::default();
 
@@ -365,8 +368,9 @@ mod test {
 
     #[test]
     fn touch_released() {
-        use crate::{touch::TouchPhase, TouchInput, Touches};
         use legion_math::Vec2;
+
+        use crate::{touch::TouchPhase, TouchInput, Touches};
 
         let mut touches = Touches::default();
 
@@ -387,8 +391,9 @@ mod test {
 
     #[test]
     fn touch_cancelled() {
-        use crate::{touch::TouchPhase, TouchInput, Touches};
         use legion_math::Vec2;
+
+        use crate::{touch::TouchPhase, TouchInput, Touches};
 
         let mut touches = Touches::default();
 

@@ -1,10 +1,9 @@
 #![allow(unsafe_code)]
 
-pub use legion_derive::Bytes;
-
 // NOTE: we can reexport common traits and methods from bytemuck to avoid requiring dependency most of
 // the time, but unfortunately we can't use derive macros that way due to hardcoded path in generated code.
 pub use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
+pub use legion_derive::Bytes;
 
 // FIXME: `Bytes` trait doesn't specify the expected encoding format,
 // which means types that implement it have to know what format is expected
@@ -57,8 +56,9 @@ where
 #[cfg(test)]
 mod tests {
 
-    use super::{Bytes, FromBytes};
     use legion_math::{Mat4, Vec2, Vec3, Vec4};
+
+    use super::{Bytes, FromBytes};
 
     fn test_round_trip<T: Bytes + FromBytes + std::fmt::Debug + PartialEq>(value: T) {
         let mut bytes = vec![0; value.byte_len()];

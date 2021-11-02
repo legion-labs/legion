@@ -18,13 +18,12 @@
 //! In any case, maintaining the mappings below should not be a huge burden and very straighforward
 //! in most cases.
 
-use serde::{Deserialize, Serialize};
-
 use legion_editor_proto::{
     GetResourcePropertiesRequest, GetResourcePropertiesResponse, ResourceDescription,
     ResourceProperty, ResourcePropertyUpdate, SearchResourcesRequest,
     UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
 };
+use serde::{Deserialize, Serialize};
 
 pub trait IntoVec<T> {
     fn into_vec(self) -> Vec<T>;

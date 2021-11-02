@@ -1,6 +1,7 @@
+use std::sync::{Arc, Mutex};
+
 use legion_app::prelude::*;
 use legion_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
-use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
 pub struct EditorPlugin;

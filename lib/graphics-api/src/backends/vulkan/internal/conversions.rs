@@ -1,10 +1,11 @@
+use ash::vk;
+
 use crate::{
     AddressMode, BlendFactor, BlendOp, ColorClearValue, ColorFlags, CompareOp, CullMode,
     DepthStencilClearValue, FillMode, FilterType, FrontFace, IndexType, LoadOp, MemoryUsage,
     MipMapMode, PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, StoreOp,
     TextureTiling, VertexAttributeRate, ViewDimension,
 };
-use ash::vk;
 
 impl From<SampleCount> for vk::SampleCountFlags {
     fn from(val: SampleCount) -> Self {

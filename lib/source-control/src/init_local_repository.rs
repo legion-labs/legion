@@ -1,3 +1,7 @@
+use std::fs;
+use std::path::Path;
+use std::sync::Arc;
+
 use crate::sql_repository_query::{Databases, SqlRepositoryQuery};
 use crate::{
     create_branches_table, init_commit_database, init_config_database, init_forest_database,
@@ -5,9 +9,6 @@ use crate::{
     sql::{create_database, SqlConnectionPool},
     trace_scope, BlobStorageSpec, Branch, Commit, RepositoryQuery, Tree,
 };
-use std::fs;
-use std::path::Path;
-use std::sync::Arc;
 
 pub async fn init_repo_database(
     sql_connection: &mut sqlx::AnyConnection,

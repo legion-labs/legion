@@ -1,6 +1,7 @@
-use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
+
+use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
 //type QuoteRes = quote::__private::TokenStream;
 
 /// Generate Offline members definition

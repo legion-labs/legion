@@ -2,6 +2,9 @@
 //!
 //! This module contains the `Bundle` trait and some other helper types.
 
+use std::{any::TypeId, collections::HashMap};
+
+use legion_ecs_macros::all_tuples;
 pub use legion_ecs_macros::Bundle;
 
 use crate::{
@@ -10,8 +13,6 @@ use crate::{
     entity::{Entities, Entity, EntityLocation},
     storage::{SparseSetIndex, SparseSets, Storages, Table},
 };
-use legion_ecs_macros::all_tuples;
-use std::{any::TypeId, collections::HashMap};
 
 /// An ordered collection of components.
 ///

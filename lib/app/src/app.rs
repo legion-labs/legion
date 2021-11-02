@@ -1,4 +1,5 @@
-use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupStage};
+use std::fmt::Debug;
+
 use legion_ecs::{
     prelude::{FromWorld, IntoExclusiveSystem},
     schedule::{
@@ -9,10 +10,10 @@ use legion_ecs::{
     world::World,
 };
 use legion_utils::tracing::debug;
-use std::fmt::Debug;
-
 #[cfg(feature = "trace")]
 use legion_utils::tracing::info_span;
+
+use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupStage};
 
 #[allow(clippy::needless_doctest_main)]
 /// Containers of app logic and data

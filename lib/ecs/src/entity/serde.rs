@@ -1,5 +1,6 @@
-use crate::entity::Entity;
 use serde::{de::Visitor, Deserialize, Serialize, Serializer};
+
+use crate::entity::Entity;
 
 impl Serialize for Entity {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

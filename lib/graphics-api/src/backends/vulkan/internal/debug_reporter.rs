@@ -2,7 +2,6 @@ use std::ffi::CStr;
 use std::os::raw::c_void;
 
 use ash::extensions::ext::DebugUtils;
-
 use ash::vk;
 
 const ERRORS_TO_IGNORE: [&str; 0] = [

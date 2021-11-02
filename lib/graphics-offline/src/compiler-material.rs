@@ -1,3 +1,5 @@
+use std::env;
+
 use legion_data_compiler::{
     compiler_api::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
@@ -7,7 +9,6 @@ use legion_data_compiler::{
 };
 use legion_data_offline::ResourcePathId;
 use legion_data_runtime::Resource;
-use std::env;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),

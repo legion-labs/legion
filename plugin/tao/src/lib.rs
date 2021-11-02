@@ -2,16 +2,13 @@ mod converters;
 mod tao_config;
 mod tao_windows;
 
+use legion_app::{App, AppExit, CoreStage, Events, ManualEventReader, Plugin};
+use legion_ecs::{system::IntoExclusiveSystem, world::World};
 use legion_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseMotion, MouseScrollUnit, MouseWheel},
     touch::TouchInput,
 };
-pub use tao_config::*;
-pub use tao_windows::*;
-
-use legion_app::{App, AppExit, CoreStage, Events, ManualEventReader, Plugin};
-use legion_ecs::{system::IntoExclusiveSystem, world::World};
 use legion_math::{ivec2, Vec2};
 use legion_utils::tracing::{error, trace, warn};
 use legion_window::{
@@ -19,13 +16,14 @@ use legion_window::{
     WindowBackendScaleFactorChanged, WindowCloseRequested, WindowCreated, WindowFocused,
     WindowMoved, WindowResized, WindowScaleFactorChanged, Windows,
 };
+use tao::dpi::LogicalSize;
 use tao::{
     dpi::PhysicalPosition,
     event::{self, DeviceEvent, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
 };
-
-use tao::dpi::LogicalSize;
+pub use tao_config::*;
+pub use tao_windows::*;
 
 #[derive(Default)]
 pub struct TaoPlugin;

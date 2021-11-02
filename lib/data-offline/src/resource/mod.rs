@@ -5,15 +5,15 @@
 //! [`ResourceRegistry`] takes responsibility of managing the in-memory representation of resources.
 
 use std::any::Any;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::io;
 
 use legion_data_runtime::Asset;
 
 use crate::PropertyDescriptor;
 use crate::ResourcePathId;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 
 /// The trait defines a resource that can be stored in a [`Project`].
 pub trait OfflineResource: Asset {

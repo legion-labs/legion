@@ -1,7 +1,9 @@
-use crate::{read_text_file, trace_scope};
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+
+use serde::{Deserialize, Serialize};
+
+use crate::{read_text_file, trace_scope};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {

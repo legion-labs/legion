@@ -63,13 +63,14 @@
 mod config;
 mod interop;
 
+use std::error::Error;
+
 use config::Config;
 use interop::js::editor::{
     IntoVec, JSGetResourcePropertiesRequest, JSGetResourcePropertiesResponse,
     JSSearchResourcesResponse, JSUpdateResourcePropertiesRequest,
     JSUpdateResourcePropertiesResponse,
 };
-
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
 use legion_auth::authenticator::Authenticator;
@@ -82,7 +83,6 @@ use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRe
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
 use legion_telemetry::prelude::*;
 use simple_logger::SimpleLogger;
-use std::error::Error;
 use tauri::async_runtime::Mutex;
 
 fn main() -> Result<(), Box<dyn Error>> {

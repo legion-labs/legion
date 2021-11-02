@@ -1,9 +1,8 @@
 use ash::vk;
 
+use super::{VulkanApi, VulkanDeviceContext};
 use crate::backends::deferred_drop::Drc;
 use crate::{DescriptorSetLayout, DescriptorSetLayoutDef, GfxError, GfxResult, ShaderResourceType};
-
-use super::{VulkanApi, VulkanDeviceContext};
 
 #[derive(Clone, Debug)]
 pub(super) struct VulkanDescriptor {

@@ -1,7 +1,9 @@
-use crate::entity::Entity;
-use legion_utils::HashMap;
 use std::collections::hash_map::Entry;
+
+use legion_utils::HashMap;
 use thiserror::Error;
+
+use crate::entity::Entity;
 
 #[derive(Error, Debug)]
 pub enum MapEntitiesError {

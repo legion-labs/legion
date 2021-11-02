@@ -168,8 +168,9 @@ fn to_tauri_result_type(t: &syn::Type) -> syn::Type {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use syn::parse_quote;
+
+    use super::*;
 
     #[test]
     fn test_legion_tauri_command() {

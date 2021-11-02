@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use legion_utils::tracing::warn;
 
 use crate::{
@@ -6,7 +8,6 @@ use crate::{
     query::Access,
     world::World,
 };
-use std::borrow::Cow;
 
 /// An ECS system that can be added to a [Schedule](crate::schedule::Schedule)
 ///

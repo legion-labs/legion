@@ -1,12 +1,13 @@
 //! Swapchain helper
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+
 use crossbeam_channel::{Receiver, Sender};
 use graphics_api::{
     DeviceContext, Fence, Format, GfxApi, GfxError, GfxResult, PresentSuccessResult, Queue,
     Swapchain, SwapchainDef, SwapchainImage,
 };
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
 
 /// May be implemented to get callbacks related to the swapchain being created/destroyed. This is
 /// optional.

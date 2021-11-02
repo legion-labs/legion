@@ -1,6 +1,7 @@
-use legion_telemetry::*;
 use std::sync::Arc;
 use std::thread;
+
+use legion_telemetry::*;
 mod debug_event_sink;
 use debug_event_sink::DebugEventSink;
 

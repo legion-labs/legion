@@ -1,15 +1,17 @@
 #![allow(unsafe_code)]
 
-use crate::{
-    component::{ComponentId, ComponentInfo, ComponentTicks, Components},
-    entity::Entity,
-    storage::{BlobVec, SparseSet},
-};
-use legion_utils::{DefaultHash, HashMap};
 use std::{
     cell::UnsafeCell,
     ops::{Index, IndexMut},
     ptr::NonNull,
+};
+
+use legion_utils::{DefaultHash, HashMap};
+
+use crate::{
+    component::{ComponentId, ComponentInfo, ComponentTicks, Components},
+    entity::Entity,
+    storage::{BlobVec, SparseSet},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

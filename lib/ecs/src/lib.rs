@@ -103,6 +103,17 @@ pub mod prelude {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        any::TypeId,
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        },
+    };
+
+    use legion_tasks::TaskPool;
+    use parking_lot::Mutex;
+
     use crate as legion_ecs;
     use crate::{
         bundle::Bundle,
@@ -112,15 +123,6 @@ mod tests {
             Added, ChangeTrackers, Changed, FilterFetch, FilteredAccess, With, Without, WorldQuery,
         },
         world::{Mut, World},
-    };
-    use legion_tasks::TaskPool;
-    use parking_lot::Mutex;
-    use std::{
-        any::TypeId,
-        sync::{
-            atomic::{AtomicUsize, Ordering},
-            Arc,
-        },
     };
 
     #[derive(Component, Debug, PartialEq, Eq, Clone, Copy)]

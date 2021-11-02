@@ -1,10 +1,11 @@
 #![allow(clippy::too_many_lines)]
+use ash::vk;
+
 use super::{VulkanApi, VulkanDescriptorHeap, VulkanDescriptorSetLayout, VulkanDeviceContext};
 use crate::{
     BufferView, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle,
     DescriptorUpdate, GfxResult, ShaderResourceType,
 };
-use ash::vk;
 
 struct DescriptorUpdateData {
     // one per set * elements in each descriptor

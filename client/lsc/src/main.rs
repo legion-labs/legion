@@ -57,10 +57,11 @@
 // crate-specific exceptions:
 #![allow(clippy::exit, clippy::too_many_lines, clippy::wildcard_imports)]
 
+use std::path::Path;
+
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_source_control::*;
 use legion_telemetry::*;
-use std::path::Path;
 
 fn main() {
     let _telemetry_guard = TelemetrySystemGuard::new(None);

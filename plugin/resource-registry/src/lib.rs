@@ -59,17 +59,16 @@
 
 mod settings;
 
-use legion_data_runtime::ResourceId;
-pub use settings::ResourceRegistrySettings;
+use std::sync::{Arc, Mutex};
 
 use legion_app::Plugin;
 use legion_data_offline::resource::{
     Project, ResourceHandles, ResourceRegistry, ResourceRegistryOptions,
 };
+use legion_data_runtime::ResourceId;
 use legion_ecs::prelude::*;
 use sample_data_offline as offline_data;
-
-use std::sync::{Arc, Mutex};
+pub use settings::ResourceRegistrySettings;
 
 #[derive(Default)]
 pub struct ResourceRegistryPlugin {}

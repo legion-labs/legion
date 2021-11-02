@@ -1,6 +1,5 @@
 #![allow(unsafe_code)]
 
-use crate::prelude::{Children, Parent, PreviousParent};
 use legion_ecs::{
     bundle::Bundle,
     entity::Entity,
@@ -8,6 +7,8 @@ use legion_ecs::{
     world::{EntityMut, World},
 };
 use smallvec::SmallVec;
+
+use crate::prelude::{Children, Parent, PreviousParent};
 
 #[derive(Debug)]
 pub struct InsertChildren {
@@ -334,8 +335,6 @@ impl<'w> BuildWorldChildren for WorldChildBuilder<'w> {
 
 #[cfg(test)]
 mod tests {
-    use super::{BuildChildren, BuildWorldChildren};
-    use crate::prelude::{Children, Parent, PreviousParent};
     use legion_ecs::{
         component::Component,
         entity::Entity,
@@ -343,6 +342,9 @@ mod tests {
         world::World,
     };
     use smallvec::{smallvec, SmallVec};
+
+    use super::{BuildChildren, BuildWorldChildren};
+    use crate::prelude::{Children, Parent, PreviousParent};
 
     #[derive(Component)]
     struct C(u32);

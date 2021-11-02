@@ -1,13 +1,15 @@
+use std::hash::{Hash, Hasher};
+use std::ptr::slice_from_raw_parts;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use ash::vk::{self};
+
 use super::{VulkanApi, VulkanDeviceContext, VulkanTextureView};
 use crate::backends::deferred_drop::Drc;
 use crate::{
     Extents3D, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,
     TextureSubResource, TextureViewDef,
 };
-use ash::vk::{self};
-use std::hash::{Hash, Hasher};
-use std::ptr::slice_from_raw_parts;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 // This is used to allow the underlying image/allocation to be removed from a VulkanTexture,
 // or to init a VulkanTexture with an existing image/allocation. If the allocation is none, we

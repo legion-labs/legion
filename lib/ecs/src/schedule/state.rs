@@ -1,3 +1,7 @@
+use std::{any::TypeId, fmt::Debug, hash::Hash};
+
+use thiserror::Error;
+
 use crate::{
     schedule::{
         RunCriteriaDescriptor, RunCriteriaDescriptorCoercion, RunCriteriaLabel, ShouldRun,
@@ -5,8 +9,6 @@ use crate::{
     },
     system::{ConfigurableSystem, In, IntoChainSystem, Local, Res, ResMut},
 };
-use std::{any::TypeId, fmt::Debug, hash::Hash};
-use thiserror::Error;
 
 pub trait StateData: Send + Sync + Clone + Eq + Debug + Hash + 'static {}
 impl<T> StateData for T where T: Send + Sync + Clone + Eq + Debug + Hash + 'static {}

@@ -61,9 +61,8 @@ pub mod material;
 pub use material::Material;
 
 pub mod texture;
-pub use texture::Texture;
-
 use legion_data_runtime::AssetRegistryOptions;
+pub use texture::Texture;
 
 /// Register crate's asset types to asset registry
 pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {

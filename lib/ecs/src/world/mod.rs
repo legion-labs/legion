@@ -2,11 +2,17 @@ mod entity_ref;
 mod spawn_batch;
 mod world_cell;
 
-pub use crate::change_detection::Mut;
+use std::{
+    any::TypeId,
+    fmt,
+    sync::atomic::{AtomicU32, Ordering},
+};
+
 pub use entity_ref::*;
 pub use spawn_batch::*;
 pub use world_cell::*;
 
+pub use crate::change_detection::Mut;
 use crate::{
     archetype::{ArchetypeComponentId, ArchetypeComponentInfo, ArchetypeId, Archetypes},
     bundle::{Bundle, BundleInserter, BundleSpawner, Bundles},
@@ -16,11 +22,6 @@ use crate::{
     query::{FilterFetch, QueryState, WorldQuery},
     storage::{Column, SparseSet, Storages},
     system::Resource,
-};
-use std::{
-    any::TypeId,
-    fmt,
-    sync::atomic::{AtomicU32, Ordering},
 };
 
 mod identifier;

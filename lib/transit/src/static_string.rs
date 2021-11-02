@@ -1,5 +1,6 @@
-use crate::{InProcSerialize, Reflect, UserDefinedType};
 use legion_utils::memory::{read_any, write_any};
+
+use crate::{InProcSerialize, Reflect, UserDefinedType};
 
 // StaticString serializes the value of the pointer and the contents of the string
 #[derive(Debug)]

@@ -1,7 +1,8 @@
 //! Types that detect when their internal data mutate.
 
-use crate::{component::ComponentTicks, system::Resource};
 use std::ops::{Deref, DerefMut};
+
+use crate::{component::ComponentTicks, system::Resource};
 
 /// Types that implement reliable change detection.
 ///

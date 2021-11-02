@@ -1,5 +1,6 @@
-use sqlx::Connection;
 use std::path::{Path, PathBuf};
+
+use sqlx::Connection;
 
 pub struct LocalWorkspaceConnection {
     workspace_path: PathBuf,

@@ -1,5 +1,6 @@
-use crate::ScopeDesc;
 use transit::prelude::*;
+
+use crate::ScopeDesc;
 
 pub type GetScopeDesc = fn() -> ScopeDesc;
 

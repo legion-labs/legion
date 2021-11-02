@@ -1,7 +1,6 @@
-use serde::Serialize;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{Error, FourCC, Result};
+use serde::Serialize;
 
 use super::mvex::MvexAtom;
 use super::mvhd::MvhdAtom;
@@ -9,6 +8,7 @@ use super::trak::TrakAtom;
 use super::{
     box_start, skip_atom, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE,
 };
+use crate::{Error, FourCC, Result};
 
 /// Movie Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
@@ -116,6 +116,8 @@ impl<W: Write> WriteAtom<&mut W> for MoovAtom {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::avc1::Avc1Atom;
     use crate::atoms::mehd::MehdAtom;
@@ -123,7 +125,6 @@ mod tests {
     use crate::atoms::trex::TrexAtom;
     use crate::atoms::vmhd::VmhdAtom;
     use crate::atoms::{AtomHeader, SampleFlags};
-    use std::io::Cursor;
 
     #[test]
     fn test_moov() {

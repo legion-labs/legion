@@ -1,5 +1,7 @@
 #![allow(unsafe_code)]
 
+use std::borrow::Cow;
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration},
     component::ComponentId,
@@ -8,7 +10,6 @@ use crate::{
     system::{BoxedSystem, IntoSystem, System},
     world::World,
 };
-use std::borrow::Cow;
 
 /// Determines whether a system should be executed or not, and how many times it should be ran each
 /// time the stage is executed.

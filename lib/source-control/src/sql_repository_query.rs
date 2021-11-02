@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use sqlx::Row;
+
 use crate::{
     sql::SqlConnectionPool, trace_scope, BlobStorageSpec, Branch, ChangeType, Commit, HashedChange,
     Lock, RepositoryQuery, Tree, TreeNode, TreeNodeType, Workspace,
 };
-use async_trait::async_trait;
-use sqlx::Row;
-use std::sync::Arc;
 
 pub enum Databases {
     Sqlite,

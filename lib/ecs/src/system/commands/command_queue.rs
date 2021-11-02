@@ -113,7 +113,6 @@ impl CommandQueue {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::{
         panic::AssertUnwindSafe,
         sync::{
@@ -121,6 +120,8 @@ mod test {
             Arc,
         },
     };
+
+    use super::*;
 
     struct DropCheck(Arc<AtomicU32>);
 

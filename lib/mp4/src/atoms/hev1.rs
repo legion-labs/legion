@@ -1,13 +1,13 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::Serialize;
 use std::io::{Read, Seek, Write};
 
-use crate::{Error, FourCC, HevcConfig, Result};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use serde::Serialize;
 
 use super::{
     box_start, skip_bytes, skip_bytes_to, value_u32, write_zeros, Atom, AtomHeader, FixedPointU16,
     ReadAtom, WriteAtom, HEADER_SIZE,
 };
+use crate::{Error, FourCC, HevcConfig, Result};
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Hev1Atom {
@@ -202,9 +202,10 @@ impl<W: Write> WriteAtom<&mut W> for HvcCAtom {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     #[test]
     fn test_hev1() {

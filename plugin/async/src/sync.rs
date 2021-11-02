@@ -6,6 +6,7 @@ use std::{
     ops::{Deref, DerefMut},
     pin::Pin,
 };
+
 use tokio::sync::{Mutex, MutexGuard};
 
 /// `LazyMutex` is an async Mutex - not unlike `tokio::sync::Mutex` - that lazy

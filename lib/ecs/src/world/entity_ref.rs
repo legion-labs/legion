@@ -1,5 +1,7 @@
 #![allow(unsafe_code)]
 
+use std::any::TypeId;
+
 use crate::{
     archetype::{Archetype, ArchetypeId, Archetypes},
     bundle::{Bundle, BundleInfo},
@@ -9,7 +11,6 @@ use crate::{
     storage::{SparseSet, Storages},
     world::{Mut, World},
 };
-use std::any::TypeId;
 
 pub struct EntityRef<'w> {
     world: &'w World,

@@ -1,15 +1,17 @@
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+
+use sha2::{Digest, Sha256};
+
 use crate::{
     connect_to_server, find_file_hash_in_tree, find_workspace_root, make_file_read_only,
     read_bin_file, read_current_branch, read_local_changes, read_workspace_spec,
     save_resolve_pending, trace_scope, update_current_branch, Commit, LocalWorkspaceConnection,
     RepositoryConnection, ResolvePending,
 };
-use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
 
 async fn find_commit_range(
     connection: &RepositoryConnection,

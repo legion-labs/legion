@@ -1,6 +1,8 @@
-use crate::GfxResult;
-use ash::vk;
 use std::sync::{Arc, Mutex};
+
+use ash::vk;
+
+use crate::GfxResult;
 
 struct DescriptorHeapPoolConfig {
     pool_flags: vk::DescriptorPoolCreateFlags,

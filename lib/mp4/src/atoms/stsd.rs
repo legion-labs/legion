@@ -1,8 +1,7 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::Serialize;
 use std::io::{Read, Seek, Write};
 
-use crate::{FourCC, Result};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use serde::Serialize;
 
 use super::avc1::Avc1Atom;
 use super::hev1::Hev1Atom;
@@ -13,6 +12,7 @@ use super::{
     box_start, read_atom_header_ext, skip_bytes_to, write_atom_header_ext, Atom, AtomHeader,
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
+use crate::{FourCC, Result};
 
 /// Sample Description Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]

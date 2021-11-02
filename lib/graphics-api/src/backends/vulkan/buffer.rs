@@ -1,9 +1,10 @@
+use ash::vk;
+
 use super::{VulkanApi, VulkanBufferView, VulkanDeviceContext};
 use crate::backends::deferred_drop::Drc;
 use crate::{
     Buffer, BufferDef, BufferMappingInfo, BufferViewDef, GfxResult, MemoryUsage, ResourceUsage,
 };
-use ash::vk;
 
 #[derive(Debug)]
 struct VulkanBufferInner {

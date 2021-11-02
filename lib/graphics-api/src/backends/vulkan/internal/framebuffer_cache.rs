@@ -1,8 +1,10 @@
+use std::hash::{Hash, Hasher};
+
+use fnv::FnvHasher;
+
 use super::{FramebufferVulkan, FramebufferVulkanAttachment, FramebufferVulkanDef, LruCache};
 use crate::backends::vulkan::{VulkanApi, VulkanDeviceContext, VulkanRenderpass};
 use crate::{ColorRenderTargetBinding, DepthStencilRenderTargetBinding, GfxResult, TextureView};
-use fnv::FnvHasher;
-use std::hash::{Hash, Hasher};
 
 pub(crate) struct VulkanFramebufferCache {
     cache: LruCache<FramebufferVulkan>,

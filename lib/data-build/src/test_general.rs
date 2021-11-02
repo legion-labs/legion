@@ -1,9 +1,10 @@
 use std::{fs, path::PathBuf};
 
-use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
 use legion_content_store::ContentStoreAddr;
 use legion_data_offline::resource::Project;
 use tempfile::TempDir;
+
+use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 

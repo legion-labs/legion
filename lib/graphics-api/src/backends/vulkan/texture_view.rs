@@ -1,10 +1,9 @@
 use ash::vk;
 
+use super::VulkanTexture;
 use crate::{
     backends::deferred_drop::Drc, GfxResult, Texture, TextureView, TextureViewDef, VulkanApi,
 };
-
-use super::VulkanTexture;
 
 #[derive(Clone, Debug)]
 struct VulkanTextureViewInner {

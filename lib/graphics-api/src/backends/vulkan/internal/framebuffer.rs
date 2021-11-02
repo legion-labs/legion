@@ -1,8 +1,9 @@
-use crate::{GfxError, GfxResult, Texture};
+use std::sync::Arc;
+
+use ash::vk;
 
 use super::super::{VulkanDeviceContext, VulkanRenderpass, VulkanTextureView};
-use ash::vk;
-use std::sync::Arc;
+use crate::{GfxError, GfxResult, Texture};
 
 pub(crate) struct FramebufferVulkanAttachment {
     pub(crate) texture_view: VulkanTextureView,

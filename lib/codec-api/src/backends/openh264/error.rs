@@ -1,5 +1,6 @@
-use openh264_sys2::{dsErrorFree, DECODING_STATE};
 use std::fmt::{Debug, Display, Formatter};
+
+use openh264_sys2::{dsErrorFree, DECODING_STATE};
 
 /// Error struct if something goes wrong.
 #[derive(Debug)]
@@ -94,8 +95,9 @@ impl_native_error!(i32);
 
 #[cfg(test)]
 mod test {
-    use super::super::Error;
     use openh264_sys2::dsRefListNullPtrs;
+
+    use super::super::Error;
 
     #[test]
     fn errors_wont_panic() {

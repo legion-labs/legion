@@ -12,11 +12,9 @@
 
 #![allow(unsafe_code)]
 
-use std::prelude::v1::*;
-
 #[cfg(feature = "std")]
 use std::error::Error;
-
+use std::prelude::v1::*;
 use std::{
     cell::UnsafeCell,
     fmt::{Display, Error as FormatError, Formatter},

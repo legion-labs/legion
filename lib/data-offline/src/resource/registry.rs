@@ -3,12 +3,11 @@ use std::{any::Any, collections::HashMap, io};
 
 use legion_data_runtime::ResourceType;
 
-use crate::ResourcePathId;
-
 use super::{
     OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor,
     ResourceReflection,
 };
+use crate::ResourcePathId;
 
 /// Options which can be used to configure [`ResourceRegistry`] creation.
 pub struct ResourceRegistryOptions {

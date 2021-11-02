@@ -1,15 +1,15 @@
+use async_channel::{Receiver, Sender};
+use fixedbitset::FixedBitSet;
+use legion_tasks::{ComputeTaskPool, Scope, TaskPool};
+#[cfg(test)]
+use SchedulingEvent::StartedSystems;
+
 use crate::{
     archetype::{ArchetypeComponentId, ArchetypeGeneration},
     query::Access,
     schedule::{ParallelSystemContainer, ParallelSystemExecutor},
     world::World,
 };
-use async_channel::{Receiver, Sender};
-use fixedbitset::FixedBitSet;
-use legion_tasks::{ComputeTaskPool, Scope, TaskPool};
-
-#[cfg(test)]
-use SchedulingEvent::StartedSystems;
 
 struct SystemSchedulingMetadata {
     /// Used to signal the system's task to start the system.
@@ -315,16 +315,16 @@ enum SchedulingEvent {
 
 #[cfg(test)]
 mod tests {
+    use async_channel::Receiver;
+
     use super::SchedulingEvent::{self, StartedSystems};
+    use crate as legion_ecs;
+    use crate::component::Component;
     use crate::{
         schedule::{SingleThreadedExecutor, Stage, SystemStage},
         system::{NonSend, Query, Res, ResMut},
         world::World,
     };
-    use async_channel::Receiver;
-
-    use crate as legion_ecs;
-    use crate::component::Component;
     #[derive(Component)]
     struct W<T>(T);
 

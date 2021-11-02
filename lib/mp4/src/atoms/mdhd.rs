@@ -1,14 +1,14 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::Serialize;
 use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use std::io::{Read, Seek, Write};
 
-use crate::{Error, FourCC, Result};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use serde::Serialize;
 
 use super::{
     box_start, read_atom_header_ext, skip_bytes_to, write_atom_header_ext, Atom, AtomHeader,
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
+use crate::{Error, FourCC, Result};
 
 /// Media Header Atom
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -154,9 +154,10 @@ fn language_code(language: &str) -> u16 {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     fn test_language_code(lang: &str) {
         let code = language_code(lang);

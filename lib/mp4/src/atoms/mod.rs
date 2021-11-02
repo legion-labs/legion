@@ -1,3 +1,5 @@
+use std::io::{Read, Seek, SeekFrom, Write};
+
 /// All ISO-MP4 boxes (atoms) operations.
 ///
 /// * [ISO/IEC 14496-12](https://en.wikipedia.org/wiki/MPEG-4_Part_12) - ISO Base Media File Format (`QuickTime`, MPEG-4, etc)
@@ -8,11 +10,9 @@
 /// * [Quicktime Documentation](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
 ///
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::Serialize;
-use std::io::{Read, Seek, SeekFrom, Write};
-
 pub use bytes::Bytes;
 pub use num_rational::Ratio;
+use serde::Serialize;
 
 use crate::{FourCC, Result};
 
@@ -472,8 +472,9 @@ impl From<u32> for SampleFlags {
 
 #[allow(clippy::trivially_copy_pass_by_ref)] // we need to conform to the serializer interface
 mod value_u32 {
-    use super::FixedPointU16;
     use serde::{self, Serializer};
+
+    use super::FixedPointU16;
 
     pub fn serialize<S>(fixed: &FixedPointU16, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -485,8 +486,9 @@ mod value_u32 {
 
 #[allow(clippy::trivially_copy_pass_by_ref)] // we need to conform to the serializer interface
 mod value_i16 {
-    use super::FixedPointI8;
     use serde::{self, Serializer};
+
+    use super::FixedPointI8;
 
     pub fn serialize<S>(fixed: &FixedPointI8, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -498,8 +500,9 @@ mod value_i16 {
 
 #[allow(clippy::trivially_copy_pass_by_ref)] // we need to conform to the serializer interface
 mod value_u8 {
-    use super::FixedPointU8;
     use serde::{self, Serializer};
+
+    use super::FixedPointU8;
 
     pub fn serialize<S>(fixed: &FixedPointU8, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -511,9 +514,8 @@ mod value_u8 {
 
 #[cfg(test)]
 mod tests {
-    use crate::atoms::SampleDependsOn;
-
     use super::SampleFlags;
+    use crate::atoms::SampleDependsOn;
 
     #[test]
     fn sample_flags() {

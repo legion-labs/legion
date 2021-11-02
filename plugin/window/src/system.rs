@@ -1,5 +1,6 @@
-use crate::WindowCloseRequested;
 use legion_app::{AppExit, EventReader, EventWriter};
+
+use crate::WindowCloseRequested;
 
 pub fn exit_on_window_close_system(
     mut app_exit_events: EventWriter<'_, '_, AppExit>,

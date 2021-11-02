@@ -1,8 +1,8 @@
-use serde::Serialize;
 use std::fmt;
 
 pub use bytes::Bytes;
 pub use num_rational::Ratio;
+use serde::Serialize;
 
 use crate::{Error, Result};
 

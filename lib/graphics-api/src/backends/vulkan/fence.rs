@@ -1,7 +1,9 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use ash::vk;
+
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{Fence, FenceStatus, GfxResult};
-use ash::vk;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct VulkanFence {
     device_context: VulkanDeviceContext,

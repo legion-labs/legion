@@ -1,5 +1,6 @@
-use crate::{Branch, Commit, Lock, Tree, Workspace};
 use serde::{Deserialize, Serialize};
+
+use crate::{Branch, Commit, Lock, Tree, Workspace};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PingRequest {

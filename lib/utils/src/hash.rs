@@ -1,6 +1,7 @@
+use std::hash::{BuildHasher, Hash, Hasher};
+
 use ahash::{AHasher, RandomState};
 use siphasher::sip128::{Hasher128, SipHasher};
-use std::hash::{BuildHasher, Hash, Hasher};
 
 /// The `DefaultHash` trait is used to obtain a hash value for a single typed value.
 /// It will rely on the default `Hasher` provided by the std library.

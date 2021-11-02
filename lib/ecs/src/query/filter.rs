@@ -1,5 +1,9 @@
 #![allow(unsafe_code)]
 
+use std::{cell::UnsafeCell, marker::PhantomData, ptr};
+
+use legion_ecs_macros::all_tuples;
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::{Component, ComponentId, ComponentStorage, ComponentTicks, StorageType},
@@ -8,8 +12,6 @@ use crate::{
     storage::{ComponentSparseSet, Table, Tables},
     world::World,
 };
-use legion_ecs_macros::all_tuples;
-use std::{cell::UnsafeCell, marker::PhantomData, ptr};
 
 /// Extension trait for [`Fetch`] containing methods used by query filters.
 /// This trait exists to allow "short circuit" behaviors for relevant query filter fetches.

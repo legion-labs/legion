@@ -5,7 +5,6 @@ use legion_data_offline::{
     ResourcePathId,
 };
 use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
-
 use serde::{Deserialize, Serialize};
 
 #[resource("text")]

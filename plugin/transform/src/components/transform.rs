@@ -1,7 +1,9 @@
-use super::GlobalTransform;
+use std::ops::Mul;
+
 use legion_ecs::component::Component;
 use legion_math::{Mat3, Mat4, Quat, Vec3};
-use std::ops::Mul;
+
+use super::GlobalTransform;
 
 /// Describe the position of an entity. If the entity has a parent, the position is relative
 /// to its parent position.

@@ -1,9 +1,10 @@
-use crate::bytes_of;
 use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
     ops::Neg,
 };
+
+use crate::bytes_of;
 
 /// A wrapper type that enables ordering floats. This is a work around for the famous "rust float
 /// ordering" problem. By using it, you acknowledge that sorting NaN is undefined according to spec.

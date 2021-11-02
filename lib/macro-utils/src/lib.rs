@@ -63,12 +63,12 @@ extern crate proc_macro;
 mod attrs;
 mod symbol;
 
-pub use attrs::*;
-pub use symbol::*;
+use std::{env, path::PathBuf};
 
+pub use attrs::*;
 use cargo_manifest::{DepsSet, Manifest};
 use proc_macro::TokenStream;
-use std::{env, path::PathBuf};
+pub use symbol::*;
 
 pub struct LegionManifest {
     manifest: Manifest,

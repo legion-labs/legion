@@ -1,4 +1,11 @@
 #![allow(clippy::too_many_lines)]
+use std::{
+    mem, ptr,
+    sync::atomic::{AtomicBool, Ordering},
+};
+
+use ash::vk;
+
 use super::{
     internal, VulkanApi, VulkanBuffer, VulkanCommandPool, VulkanDescriptorSetArray,
     VulkanDescriptorSetHandle, VulkanDeviceContext, VulkanPipeline, VulkanRootSignature,
@@ -10,11 +17,6 @@ use crate::{
     DepthStencilRenderTargetBinding, DescriptorSetArray, GfxResult, IndexBufferBinding, Pipeline,
     QueueType, ResourceState, ResourceUsage, RootSignature, Texture, TextureBarrier, TextureView,
     VertexBufferBinding,
-};
-use ash::vk;
-use std::{
-    mem, ptr,
-    sync::atomic::{AtomicBool, Ordering},
 };
 
 #[derive(Debug)]

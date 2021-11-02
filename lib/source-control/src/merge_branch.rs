@@ -1,3 +1,11 @@
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::collections::VecDeque;
+use std::path::Path;
+
+use serde::{Deserialize, Serialize};
+use sqlx::Row;
+
 use crate::{
     compute_file_hash, connect_to_server, delete_local_file, edit_file, find_branch_commits,
     find_workspace_root, make_file_read_only, read_current_branch, read_workspace_spec,
@@ -5,12 +13,6 @@ use crate::{
     update_current_branch, Branch, Commit, LocalWorkspaceConnection, RepositoryConnection,
     ResolvePending,
 };
-use serde::{Deserialize, Serialize};
-use sqlx::Row;
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
-use std::collections::VecDeque;
-use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PendingBranchMerge {

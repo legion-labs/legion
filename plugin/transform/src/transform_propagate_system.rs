@@ -1,9 +1,10 @@
-use crate::components::{Children, GlobalTransform, Parent, Transform};
 use legion_ecs::{
     entity::Entity,
     query::{Changed, With, Without},
     system::Query,
 };
+
+use crate::components::{Children, GlobalTransform, Parent, Transform};
 
 /// Update [`GlobalTransform`] component of entities based on entity hierarchy and
 /// [`Transform`] component.

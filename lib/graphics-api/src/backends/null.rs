@@ -3,8 +3,9 @@
 #![allow(unused_variables)]
 #![allow(clippy::unimplemented)]
 
-use crate::{prelude::*, BufferMappingInfo};
 use raw_window_handle::HasRawWindowHandle;
+
+use crate::{prelude::*, BufferMappingInfo};
 
 //
 // Root of the API

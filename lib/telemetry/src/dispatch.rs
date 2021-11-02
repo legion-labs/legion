@@ -1,3 +1,11 @@
+use std::collections::HashMap;
+use std::{
+    cell::Cell,
+    sync::{Arc, Mutex},
+};
+
+use chrono::Utc;
+
 use crate::event_block::TelemetryBlock;
 use crate::metrics_block::MetricsStream;
 use crate::{
@@ -5,12 +13,6 @@ use crate::{
     IntegerMetricEvent, LogBlock, LogDynMsgEvent, LogLevel, LogMsgEvent, LogStream, MetricDesc,
     MetricsBlock, NullEventSink, ProcessInfo, Stream, TelemetrySinkEvent, ThreadBlock,
     ThreadEventQueueTypeIndex, ThreadStream,
-};
-use chrono::Utc;
-use std::collections::HashMap;
-use std::{
-    cell::Cell,
-    sync::{Arc, Mutex},
 };
 
 struct Dispatch {

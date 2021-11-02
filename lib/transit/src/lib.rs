@@ -77,9 +77,10 @@ pub use static_string::*;
 extern crate derive_transit;
 
 pub mod prelude {
+    pub use derive_transit::*;
+
     pub use crate::{
         DynString, HeterogeneousQueue, InProcSerialize, Member, Object, QueueIterator, Reflect,
         StaticString, UserDefinedType, Value,
     };
-    pub use derive_transit::*;
 }

@@ -1,17 +1,18 @@
 //! Types for defining [`Archetype`]s, collections of entities that have the same set of
 //! components.
 
-use crate::{
-    bundle::BundleId,
-    component::{ComponentId, StorageType},
-    entity::{Entity, EntityLocation},
-    storage::{Column, SparseArray, SparseSet, SparseSetIndex, TableId},
-};
 use std::{
     borrow::Cow,
     collections::HashMap,
     hash::Hash,
     ops::{Index, IndexMut},
+};
+
+use crate::{
+    bundle::BundleId,
+    component::{ComponentId, StorageType},
+    entity::{Entity, EntityLocation},
+    storage::{Column, SparseArray, SparseSet, SparseSetIndex, TableId},
 };
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]

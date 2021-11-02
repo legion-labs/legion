@@ -1,3 +1,5 @@
+use std::{borrow::Cow, fmt::Debug};
+
 use legion_ecs::{
     component::Component,
     entity::Entity,
@@ -5,7 +7,6 @@ use legion_ecs::{
     system::{Query, RemovedComponents, ResMut},
 };
 use legion_utils::{HashMap, HashSet};
-use std::{borrow::Cow, fmt::Debug};
 
 /// A collection of labels
 #[derive(Component, Default)]

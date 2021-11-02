@@ -56,6 +56,8 @@
 
 mod offline_to_runtime;
 
+use std::env;
+
 use legion_data_compiler::{
     compiler_api::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
@@ -68,7 +70,6 @@ use legion_data_runtime::Resource;
 use offline_to_runtime::FromOffline;
 use sample_data_offline as offline_data;
 use sample_data_runtime as runtime_data;
-use std::env;
 
 static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),

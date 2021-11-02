@@ -1,7 +1,6 @@
-use serde::Serialize;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{Error, FourCC, Result};
+use serde::Serialize;
 
 use super::dinf::DinfAtom;
 use super::smhd::SmhdAtom;
@@ -10,6 +9,7 @@ use super::vmhd::VmhdAtom;
 use super::{
     box_start, skip_atom, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE,
 };
+use crate::{Error, FourCC, Result};
 
 /// Media Information Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]

@@ -1,7 +1,8 @@
+use ash::vk;
+
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::backends::deferred_drop::Drc;
 use crate::{CompareOp, GfxResult, MipMapMode, Sampler, SamplerDef};
-use ash::vk;
 
 pub struct VulkanSamplerInner {
     device_context: VulkanDeviceContext,

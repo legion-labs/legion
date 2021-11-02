@@ -1,7 +1,7 @@
-use crate::{manifest::Manifest, ResourceId};
 use legion_content_store::ContentStore;
 
 use super::Device;
+use crate::{manifest::Manifest, ResourceId};
 
 /// Content addressable storage device. Resources are accessed through a manifest access table.
 pub(crate) struct CasDevice {

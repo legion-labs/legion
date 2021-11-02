@@ -1,3 +1,8 @@
+use std::{any::TypeId, fmt::Debug};
+
+use legion_tasks::TaskPool;
+use thiserror::Error;
+
 use crate::{
     component::Component,
     entity::Entity,
@@ -7,9 +12,6 @@ use crate::{
     },
     world::{Mut, World},
 };
-use legion_tasks::TaskPool;
-use std::{any::TypeId, fmt::Debug};
-use thiserror::Error;
 
 /// Provides scoped access to components in a [`World`].
 ///

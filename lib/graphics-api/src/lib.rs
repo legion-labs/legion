@@ -285,14 +285,12 @@ pub mod prelude {
     };
 }
 
-pub use error::*;
-pub use types::*;
-
 pub use backends::null;
-pub use null::NullApi;
-
 #[cfg(feature = "vulkan")]
 pub use backends::vulkan;
+pub use error::*;
+pub use null::NullApi;
+pub use types::*;
 #[cfg(feature = "vulkan")]
 pub use vulkan::VulkanApi;
 #[cfg(feature = "vulkan")]

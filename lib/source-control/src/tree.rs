@@ -1,11 +1,13 @@
-use crate::{make_file_read_only, ChangeType, HashedChange, RepositoryConnection, RepositoryQuery};
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::hash_map::HashMap;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use unicase::UniCase;
+
+use crate::{make_file_read_only, ChangeType, HashedChange, RepositoryConnection, RepositoryQuery};
 
 pub enum TreeNodeType {
     Directory = 1,

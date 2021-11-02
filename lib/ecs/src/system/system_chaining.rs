@@ -1,5 +1,7 @@
 #![allow(unsafe_code)]
 
+use std::borrow::Cow;
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
@@ -7,7 +9,6 @@ use crate::{
     system::{IntoSystem, System},
     world::World,
 };
-use std::borrow::Cow;
 
 /// A [`System`] that chains two systems together, creating a new system that routes the output of
 /// the first system into the input of the second system, yielding the output of the second system.

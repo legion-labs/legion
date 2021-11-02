@@ -1,6 +1,7 @@
-use crate::{ElementState, Input};
 use legion_app::EventReader;
 use legion_ecs::system::ResMut;
+
+use crate::{ElementState, Input};
 
 /// A key input event from a keyboard device
 #[derive(Debug, Clone)]

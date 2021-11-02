@@ -1,6 +1,7 @@
+use url::Url;
+
 use crate::server_request::{execute_request, DestroyRepositoryRequest, ServerRequest};
 use crate::sql;
-use url::Url;
 
 pub async fn destroy_repository_command(uri: &str) -> Result<(), String> {
     legion_telemetry::trace_scope!();

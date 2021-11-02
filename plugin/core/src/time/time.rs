@@ -91,8 +91,9 @@ pub(crate) fn time_system(mut time: ResMut<'_, Time>) {
 #[cfg(test)]
 #[allow(clippy::float_cmp)]
 mod tests {
-    use super::Time;
     use legion_utils::{Duration, Instant};
+
+    use super::Time;
 
     #[test]
     fn update_test() {

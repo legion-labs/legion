@@ -111,6 +111,7 @@ pub use import_git_repo::*;
 pub use init_local_repository::*;
 pub use init_remote_repository::*;
 pub use init_workspace::*;
+pub(crate) use legion_telemetry::trace_scope;
 pub use local_change::*;
 pub use local_workspace_connection::*;
 pub use lock::*;
@@ -130,5 +131,3 @@ pub use sync::*;
 pub use tree::*;
 pub use utils::*;
 pub use workspace::*;
-
-pub(crate) use legion_telemetry::trace_scope;

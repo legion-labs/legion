@@ -56,11 +56,12 @@
 // crate-specific exceptions:
 #![allow(clippy::missing_errors_doc)]
 
+use std::path::Path;
+
 use anyhow::{bail, Context, Result};
 use legion_telemetry::{decompress, ContainerMetadata};
 use prost::Message;
 use sqlx::Row;
-use std::path::Path;
 use transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {

@@ -1,5 +1,6 @@
-use crate::{EventBlockSink, StreamBlock, TelemetrySinkEvent};
 use legion_telemetry_proto::ingestion::telemetry_ingestion_client::TelemetryIngestionClient;
+
+use crate::{EventBlockSink, StreamBlock, TelemetrySinkEvent};
 
 pub struct GRPCEventSink {
     thread: Option<std::thread::JoinHandle<()>>,

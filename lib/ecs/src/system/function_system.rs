@@ -1,5 +1,9 @@
 #![allow(unsafe_code)]
 
+use std::{borrow::Cow, marker::PhantomData};
+
+use legion_ecs_macros::all_tuples;
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration, ArchetypeId},
     component::ComponentId,
@@ -10,8 +14,6 @@ use crate::{
     },
     world::{World, WorldId},
 };
-use legion_ecs_macros::all_tuples;
-use std::{borrow::Cow, marker::PhantomData};
 
 /// The metadata of a [`System`].
 pub struct SystemMeta {

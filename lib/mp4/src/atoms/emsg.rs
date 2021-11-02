@@ -4,12 +4,11 @@ use std::io::{Read, Seek, Write};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::Serialize;
 
-use crate::{Error, FourCC, Result};
-
 use super::{
     box_start, read_atom_header_ext, skip_bytes_to, write_atom_header_ext, Atom, AtomHeader,
     ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
+use crate::{Error, FourCC, Result};
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct EmsgAtom {
@@ -184,9 +183,8 @@ fn write_null_terminated_str<W: Write>(writer: &mut W, string: &str) -> Result<(
 mod tests {
     use std::io::Cursor;
 
-    use crate::atoms::AtomHeader;
-
     use super::*;
+    use crate::atoms::AtomHeader;
 
     #[test]
     fn test_emsg_version0() {

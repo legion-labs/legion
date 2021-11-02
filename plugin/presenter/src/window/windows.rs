@@ -7,9 +7,8 @@ use winapi::{
     um::{libloaderapi, shellscalingapi, winuser},
 };
 
-use crate::window;
-
 use super::{Monitor, WindowApi, WindowHandle};
+use crate::window;
 
 pub struct WindowsWindowHandle {
     hwnd: windef::HWND,

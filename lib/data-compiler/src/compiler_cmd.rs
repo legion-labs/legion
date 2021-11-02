@@ -56,15 +56,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use legion_content_store::ContentStoreAddr;
+use legion_data_offline::ResourcePathId;
+use legion_data_runtime::ResourceType;
+use serde::{Deserialize, Serialize};
+
 use crate::{
     compiler_api::CompilerDescriptor, CompiledResource, CompilerHash, Locale, Platform, Target,
 };
-
-use legion_content_store::ContentStoreAddr;
-use legion_data_offline::ResourcePathId;
-
-use legion_data_runtime::ResourceType;
-use serde::{Deserialize, Serialize};
 
 /// Description of a compiler.
 #[derive(Debug, Clone)]

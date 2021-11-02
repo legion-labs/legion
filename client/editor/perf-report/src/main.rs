@@ -1,9 +1,10 @@
 mod edition_latency;
+use std::path::Path;
+
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_analytics::prelude::*;
 use legion_telemetry::prelude::*;
-use std::path::Path;
 
 #[tokio::main]
 async fn main() -> Result<()> {

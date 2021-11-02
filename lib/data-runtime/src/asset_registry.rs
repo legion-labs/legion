@@ -395,8 +395,9 @@ mod tests {
 
         use std::{any::Any, io, sync::Arc};
 
-        use crate::{resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId};
         use byteorder::{LittleEndian, ReadBytesExt};
+
+        use crate::{resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId};
         /// Asset temporarily used for testing.
         ///
         /// To be removed once real asset types exist.
@@ -470,9 +471,8 @@ mod tests {
 
     use legion_content_store::RamContentStore;
 
-    use crate::test_asset;
-
     use super::*;
+    use crate::test_asset;
 
     fn setup_singular_asset_test(content: &[u8]) -> (ResourceId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());

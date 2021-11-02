@@ -1,5 +1,6 @@
-use crate::{LogBlock, MetricsBlock, ProcessInfo, StreamInfo, ThreadBlock};
 use std::sync::Arc;
+
+use crate::{LogBlock, MetricsBlock, ProcessInfo, StreamInfo, ThreadBlock};
 
 // TelemetrySinkEvent are sent when something is worth 'writing home about'
 //  i.e. writing it to disk or sending it to the server

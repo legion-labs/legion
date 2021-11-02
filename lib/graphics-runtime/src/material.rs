@@ -2,13 +2,12 @@
 
 use std::{any::Any, io, sync::Arc};
 
+use byteorder::{LittleEndian, ReadBytesExt};
 use legion_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId,
 };
 
 use crate::Texture;
-
-use byteorder::{LittleEndian, ReadBytesExt};
 
 /// Runtime material.
 #[resource("runtime_material")]

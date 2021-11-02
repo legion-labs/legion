@@ -1,13 +1,13 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::Serialize;
 use std::io::{Read, Seek, Write};
 
-use crate::{Error, FourCC, Result};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use serde::Serialize;
 
 use super::{
     box_start, read_atom_header_ext, value_u32, write_atom_header_ext, Atom, AtomHeader,
     FixedPointU16, FixedPointU8, Matrix, ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
+use crate::{Error, FourCC, Result};
 
 /// Movie Header Atom
 /// This box defines overall information which is media-independent, and relevant to the entire presentation considered as a whole
@@ -187,9 +187,10 @@ impl<W: Write> WriteAtom<&mut W> for MvhdAtom {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     #[test]
     fn test_mvhd32() {

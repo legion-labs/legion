@@ -1,13 +1,15 @@
+use std::fs;
+use std::path::Path;
+
+use serde::{Deserialize, Serialize};
+use sqlx::Row;
+
 use crate::{
     assert_not_locked, connect_to_server, find_file_hash_at_commit, find_workspace_root,
     make_canonical_relative_path, make_file_read_only, make_path_absolute, read_current_branch,
     read_workspace_spec, sql::execute_sql, trace_scope, LocalWorkspaceConnection,
     RepositoryConnection, RepositoryQuery,
 };
-use serde::{Deserialize, Serialize};
-use sqlx::Row;
-use std::fs;
-use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ChangeType {

@@ -1,14 +1,14 @@
+use std::io::{Read, Seek, Write};
+
 use bitflags::bitflags;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::Serialize;
-use std::io::{Read, Seek, Write};
-
-use crate::{Error, FourCC, Result};
 
 use super::{
     box_start, read_atom_header_ext, skip_bytes_to, write_atom_header_ext, Atom, AtomHeader,
     ReadAtom, SampleFlags, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
+use crate::{Error, FourCC, Result};
 
 /// Track Fragment Run Atom
 /// If the duration-is-empty flag is set in the `tf_flags`, there are no track runs.
@@ -210,9 +210,10 @@ impl<W: Write> WriteAtom<&mut W> for TrunAtom {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     #[test]
     fn test_trun_same_size() {

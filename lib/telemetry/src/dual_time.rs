@@ -1,5 +1,6 @@
-use chrono::{DateTime, Utc};
 use core::arch::x86_64::_rdtsc;
+
+use chrono::{DateTime, Utc};
 
 #[derive(Debug)]
 pub struct DualTime {

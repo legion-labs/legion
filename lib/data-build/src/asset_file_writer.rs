@@ -1,7 +1,8 @@
-use crate::Error;
 use byteorder::{LittleEndian, WriteBytesExt};
 use legion_content_store::{Checksum, ContentStore};
 use legion_data_runtime::{ResourceId, ResourceType};
+
+use crate::Error;
 
 const ASSET_FILE_VERSION: u16 = 1;
 const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
@@ -74,13 +75,13 @@ pub fn write_assetfile(
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-
     use std::io::Read;
 
     use byteorder::ReadBytesExt;
     use legion_content_store::RamContentStore;
     use legion_data_runtime::Resource;
+
+    use super::*;
 
     fn create_ref_asset(text: &str, reference: Option<u128>) -> Vec<u8> {
         let mut content = text.len().to_le_bytes().to_vec();

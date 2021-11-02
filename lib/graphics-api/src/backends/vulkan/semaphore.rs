@@ -1,7 +1,9 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use ash::vk;
+
 use super::{VulkanApi, VulkanDeviceContext};
 use crate::{GfxResult, Semaphore};
-use ash::vk;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct VulkanSemaphore {
     device_context: VulkanDeviceContext,

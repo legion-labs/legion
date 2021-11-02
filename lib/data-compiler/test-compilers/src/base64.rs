@@ -1,7 +1,6 @@
 use std::env;
 
 use base64::encode;
-
 use legion_data_compiler::{
     compiler_api::{
         compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,

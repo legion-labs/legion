@@ -1,9 +1,8 @@
+use super::IntoSystemDescriptor;
 use crate::schedule::{
     AmbiguitySetLabel, BoxedAmbiguitySetLabel, BoxedSystemLabel, IntoRunCriteria,
     RunCriteriaDescriptorOrLabel, State, StateData, SystemDescriptor, SystemLabel,
 };
-
-use super::IntoSystemDescriptor;
 
 /// A builder for describing several systems at the same time.
 pub struct SystemSet {

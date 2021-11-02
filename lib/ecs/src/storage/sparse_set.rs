@@ -1,11 +1,12 @@
 #![allow(unsafe_code)]
 
+use std::{cell::UnsafeCell, marker::PhantomData};
+
 use crate::{
     component::{ComponentId, ComponentInfo, ComponentTicks},
     entity::Entity,
     storage::BlobVec,
 };
-use std::{cell::UnsafeCell, marker::PhantomData};
 
 #[derive(Debug)]
 pub struct SparseArray<I, V = I> {

@@ -1,8 +1,9 @@
 use std::num::NonZeroU32;
 
-use crate::components::RenderSurface;
 use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+
+use crate::components::RenderSurface;
 pub struct Renderer {
     frame_idx: usize,
     render_frame_idx: usize,

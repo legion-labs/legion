@@ -1,9 +1,9 @@
-use serde::Serialize;
 use std::io::{Read, Seek, Write};
 
-use crate::{FourCC, Result};
+use serde::Serialize;
 
 use super::{box_start, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE};
+use crate::{FourCC, Result};
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum MdatAtom<'a> {
@@ -66,9 +66,10 @@ impl<'a, W: Write> WriteAtom<&mut W> for MdatAtom<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     #[test]
     fn test_mdat_owned() {

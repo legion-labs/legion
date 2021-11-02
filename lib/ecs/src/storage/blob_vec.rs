@@ -268,8 +268,9 @@ const fn padding_needed_for(layout: &Layout, align: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::BlobVec;
     use std::{alloc::Layout, cell::RefCell, rc::Rc};
+
+    use super::BlobVec;
 
     // SAFETY: The pointer points to a valid value of type `T` and it is safe to drop this value.
     unsafe fn drop_ptr<T>(x: *mut u8) {

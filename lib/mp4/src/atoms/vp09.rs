@@ -3,13 +3,12 @@ use std::io::{Read, Seek, Write};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::Serialize;
 
-use crate::{FourCC, Result, Vp9Config};
-
 use super::vpcc::VpccAtom;
 use super::{
     box_start, read_atom_header_ext, skip_bytes_to, write_atom_header_ext, Atom, AtomHeader,
     ReadAtom, WriteAtom,
 };
+use crate::{FourCC, Result, Vp9Config};
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct Vp09Atom {
@@ -180,9 +179,10 @@ impl<W: Write> WriteAtom<&mut W> for Vp09Atom {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     #[test]
     fn test_vpcc() {

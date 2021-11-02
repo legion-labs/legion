@@ -1,7 +1,8 @@
+use std::path::{Path, PathBuf};
+
 use anyhow::*;
 use legion_analytics::*;
 use sqlx::Row;
-use std::path::{Path, PathBuf};
 use test_utils::*;
 
 static DUMP_EXE_VAR: &str = env!("CARGO_BIN_EXE_telemetry-dump");

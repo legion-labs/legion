@@ -1,6 +1,8 @@
-use crate::GfxResult;
-use fnv::FnvHashMap;
 use std::collections::hash_map::Entry;
+
+use fnv::FnvHashMap;
+
+use crate::GfxResult;
 
 pub struct LruCacheEntry<T: Clone> {
     value: T,

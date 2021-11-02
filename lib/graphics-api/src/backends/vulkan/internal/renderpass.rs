@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
+use ash::vk;
+
 use crate::backends::vulkan::VulkanDeviceContext;
 use crate::{Format, GfxResult, LoadOp, StoreOp};
-use ash::vk;
-use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub(crate) struct VulkanRenderpassColorAttachment {

@@ -1,5 +1,7 @@
 #![allow(unsafe_code)]
 
+use std::{borrow::Cow, cell::UnsafeCell};
+
 use crate::{
     component::ComponentId,
     query::Access,
@@ -9,7 +11,6 @@ use crate::{
     },
     system::{ExclusiveSystem, System},
 };
-use std::{borrow::Cow, cell::UnsafeCell};
 
 /// System metadata like its name, labels, order requirements and component access.
 pub trait SystemContainer: GraphNode<Label = BoxedSystemLabel> {

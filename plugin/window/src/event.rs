@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use super::{WindowDescriptor, WindowId};
 use legion_math::{IVec2, Vec2};
+
+use super::{WindowDescriptor, WindowId};
 
 /// A window event that is sent whenever a windows logical size has changed
 #[derive(Debug, Clone)]

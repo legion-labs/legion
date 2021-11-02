@@ -1,10 +1,10 @@
-use serde::Serialize;
 use std::io::{Read, Seek, Write};
 
-use crate::{FourCC, Result};
+use serde::Serialize;
 
 use super::elst::ElstAtom;
 use super::{box_start, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE};
+use crate::{FourCC, Result};
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct EdtsAtom {

@@ -1,10 +1,10 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::Serialize;
 use std::io::{Read, Seek, Write};
 
-use crate::{FourCC, Result};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use serde::Serialize;
 
 use super::{box_start, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE};
+use crate::{FourCC, Result};
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Tx3gAtom {
@@ -143,9 +143,10 @@ impl<W: Write> WriteAtom<&mut W> for Tx3gAtom {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     #[test]
     fn test_tx3g() {

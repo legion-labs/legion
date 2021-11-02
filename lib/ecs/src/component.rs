@@ -1,15 +1,17 @@
 //! Types for declaring and storing [`Component`]s.
 
-use crate::{
-    storage::{SparseSetIndex, Storages},
-    system::Resource,
-};
-pub use legion_ecs_macros::Component;
 use std::{
     alloc::Layout,
     any::{Any, TypeId},
 };
+
+pub use legion_ecs_macros::Component;
 use thiserror::Error;
+
+use crate::{
+    storage::{SparseSetIndex, Storages},
+    system::Resource,
+};
 
 /// A component is data associated with an [`Entity`](crate::entity::Entity). Each entity can have
 /// multiple different types of components, but only one of them per type.

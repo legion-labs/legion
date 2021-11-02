@@ -6,9 +6,8 @@ use std::{any::Any, io, str::FromStr};
 
 use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
 
-use crate::{resource::ResourceProcessor, ResourcePathId};
-
 use super::OfflineResource;
+use crate::{resource::ResourceProcessor, ResourcePathId};
 
 /// Resource temporarily used for testing.
 ///

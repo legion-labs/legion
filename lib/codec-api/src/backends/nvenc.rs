@@ -1,6 +1,5 @@
-use crate::{CpuBuffer, GpuImage, VideoProcessor};
-
 use super::EncoderConfig;
+use crate::{CpuBuffer, GpuImage, VideoProcessor};
 
 /// Nvenc Encoder Config
 #[derive(Debug)]

@@ -1,10 +1,11 @@
-use legion_ecs::component::Component;
-use legion_utils::DefaultHash;
 use std::{
     borrow::Cow,
     hash::{Hash, Hasher},
     ops::Deref,
 };
+
+use legion_ecs::component::Component;
+use legion_utils::DefaultHash;
 
 /// Component used to identify an entity. Stores a hash for faster comparisons
 #[derive(Component, Debug, Clone)]

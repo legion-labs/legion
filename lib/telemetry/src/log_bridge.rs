@@ -1,6 +1,7 @@
-use crate::{log_string, LogLevel};
 use anyhow::Result;
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
+
+use crate::{log_string, LogLevel};
 
 struct LogBridge {
     pub opt_app_log: Option<Box<dyn log::Log>>,

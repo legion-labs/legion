@@ -1,8 +1,9 @@
-use legion_telemetry::*;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use legion_telemetry::*;
 use test_utils::*;
 
 fn write_lorem_ipsum(p: &Path) {

@@ -1,6 +1,8 @@
-use crate::storage::SparseSetIndex;
-use fixedbitset::FixedBitSet;
 use std::marker::PhantomData;
+
+use fixedbitset::FixedBitSet;
+
+use crate::storage::SparseSetIndex;
 
 /// `Access` keeps track of read and write accesses to values within a collection.
 ///

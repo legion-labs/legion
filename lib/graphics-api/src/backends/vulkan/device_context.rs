@@ -1,16 +1,15 @@
-use crate::backends::deferred_drop::DeferredDropper;
-use crate::vulkan::check_extensions_availability;
-use crate::{
-    ApiDef, BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef,
-    DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef,
-    PipelineReflection, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef,
-    SwapchainDef, TextureDef,
-};
+use std::convert::TryInto;
+use std::ffi::CStr;
+#[cfg(debug_assertions)]
+#[cfg(feature = "track-device-contexts")]
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+
 use ash::extensions::khr;
 use ash::vk;
+use fnv::FnvHashMap;
 use raw_window_handle::HasRawWindowHandle;
-use std::convert::TryInto;
-use std::sync::{Arc, Mutex};
 
 use super::internal::{
     DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
@@ -21,13 +20,14 @@ use super::{
     VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
     VulkanShaderModule, VulkanSwapchain, VulkanTexture,
 };
-
-use fnv::FnvHashMap;
-use std::ffi::CStr;
-#[cfg(debug_assertions)]
-#[cfg(feature = "track-device-contexts")]
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::{AtomicBool, Ordering};
+use crate::backends::deferred_drop::DeferredDropper;
+use crate::vulkan::check_extensions_availability;
+use crate::{
+    ApiDef, BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef,
+    DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef,
+    PipelineReflection, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef,
+    SwapchainDef, TextureDef,
+};
 
 /// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
 /// spec to understand precisely what these types mean

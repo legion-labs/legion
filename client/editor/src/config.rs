@@ -1,5 +1,4 @@
 use clap::Arg;
-
 use log::LevelFilter;
 use tonic::codegen::http::Uri;
 use url::Url;

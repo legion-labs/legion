@@ -1,6 +1,11 @@
-use bytes::Bytes;
-use legion_ecs::prelude::*;
+use std::{cmp::min, io::Cursor, sync::Arc};
 
+use bytes::Bytes;
+use legion_codec_api::{
+    backends::openh264::encoder::{self, Encoder},
+    formats::{self, RBGYUVConverter},
+};
+use legion_ecs::prelude::*;
 use legion_graphics_api::{
     AddressMode, BlendState, CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding,
     CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, CullMode, DefaultApi, DepthState,
@@ -12,21 +17,14 @@ use legion_graphics_api::{
     StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureViewDef, VertexLayout,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
-use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use log::{debug, warn};
-use std::{cmp::min, io::Cursor, sync::Arc};
-
-use webrtc::data::data_channel::RTCDataChannel;
-
-use legion_codec_api::{
-    backends::openh264::encoder::{self, Encoder},
-    formats::{self, RBGYUVConverter},
-};
 use legion_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
+use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_renderer::{components::RenderSurface, Renderer};
 use legion_telemetry::prelude::*;
 use legion_utils::memory::write_any;
+use log::{debug, warn};
 use serde::Serialize;
+use webrtc::data::data_channel::RTCDataChannel;
 
 fn record_frame_time_metric(microseconds: u64) {
     trace_scope!();

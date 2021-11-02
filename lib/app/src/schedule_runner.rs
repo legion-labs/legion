@@ -1,15 +1,16 @@
+#[cfg(target_arch = "wasm32")]
+use std::{cell::RefCell, rc::Rc};
+
+use legion_ecs::event::Events;
+use legion_utils::{Duration, Instant};
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::{prelude::*, JsCast};
+
 use crate::{
     app::{App, AppExit},
     plugin::Plugin,
     ManualEventReader,
 };
-use legion_ecs::event::Events;
-use legion_utils::{Duration, Instant};
-
-#[cfg(target_arch = "wasm32")]
-use std::{cell::RefCell, rc::Rc};
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::{prelude::*, JsCast};
 
 /// Determines the method used to run an [App]'s `Schedule`
 #[derive(Copy, Clone, Debug)]

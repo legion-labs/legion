@@ -1,9 +1,11 @@
+use std::path::Path;
+
+use serde::{Deserialize, Serialize};
+
 use crate::{
     connect_to_server, find_workspace_root, make_canonical_relative_path, read_current_branch,
     read_workspace_spec, sql::execute_sql, trace_scope, LocalWorkspaceConnection, RepositoryQuery,
 };
-use serde::{Deserialize, Serialize};
-use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Lock {

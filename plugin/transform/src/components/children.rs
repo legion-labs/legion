@@ -1,9 +1,10 @@
+use std::ops::Deref;
+
 use legion_ecs::{
     component::Component,
     entity::{Entity, EntityMap, MapEntities, MapEntitiesError},
 };
 use smallvec::SmallVec;
-use std::ops::Deref;
 
 #[derive(Component, Default, Clone, Debug)]
 pub struct Children(pub(crate) SmallVec<[Entity; 8]>);

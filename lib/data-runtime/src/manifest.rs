@@ -1,9 +1,11 @@
 //! Module containing information about compiled assets.
 
-use crate::ResourceId;
+use std::collections::HashMap;
+
 use legion_content_store::Checksum;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
+use crate::ResourceId;
 
 /// Description of a compiled asset.
 #[derive(Serialize, Deserialize)]

@@ -1,3 +1,7 @@
+use std::{path::PathBuf, sync::Arc};
+
+use url::Url;
+
 use crate::{
     http_repository_query::HTTPRepositoryQuery,
     sql::SqlConnectionPool,
@@ -5,8 +9,6 @@ use crate::{
     BlobStorage, BlobStorageSpec, DiskBlobStorage, RepositoryAddr, RepositoryQuery, S3BlobStorage,
     Workspace,
 };
-use std::{path::PathBuf, sync::Arc};
-use url::Url;
 
 pub struct RepositoryConnection {
     blob_storage_spec: BlobStorageSpec,

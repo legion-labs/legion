@@ -1,11 +1,11 @@
-pub use legion_ecs_macros::{AmbiguitySetLabel, RunCriteriaLabel, StageLabel, SystemLabel};
-
 use std::{
     any::Any,
     borrow::Cow,
     fmt::Debug,
     hash::{Hash, Hasher},
 };
+
+pub use legion_ecs_macros::{AmbiguitySetLabel, RunCriteriaLabel, StageLabel, SystemLabel};
 
 pub trait DynEq: Any {
     fn as_any(&self) -> &dyn Any;

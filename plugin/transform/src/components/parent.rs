@@ -1,9 +1,10 @@
+use std::ops::{Deref, DerefMut};
+
 use legion_ecs::{
     component::Component,
     entity::{Entity, EntityMap, MapEntities, MapEntitiesError},
     world::{FromWorld, World},
 };
-use std::ops::{Deref, DerefMut};
 
 #[derive(Component, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Parent(pub Entity);

@@ -1,9 +1,9 @@
 #![allow(unsafe_code)]
 //! Converts YUV / RGB images to NAL packets.
 
-use super::error::NativeErrorExt;
-use super::Error;
-use crate::formats::YUVSource;
+use std::os::raw::{c_int, c_uchar, c_void};
+use std::ptr::{addr_of_mut, null};
+
 use openh264_sys2::{
     videoFormatI420, EVideoFormatType, ISVCEncoder, ISVCEncoderVtbl, SEncParamBase, SEncParamExt,
     SFrameBSInfo, SSourcePicture, WelsCreateSVCEncoder, WelsDestroySVCEncoder, CONSTANT_ID,
@@ -11,8 +11,10 @@ use openh264_sys2::{
     LEVEL_5_2, PRO_HIGH, RC_QUALITY_MODE, VIDEO_CODING_LAYER, WELS_LOG_DETAIL, WELS_LOG_QUIET,
 };
 use smallvec::SmallVec;
-use std::os::raw::{c_int, c_uchar, c_void};
-use std::ptr::{addr_of_mut, null};
+
+use super::error::NativeErrorExt;
+use super::Error;
+use crate::formats::YUVSource;
 
 /// Convenience wrapper with guaranteed function pointers for easy access.
 ///

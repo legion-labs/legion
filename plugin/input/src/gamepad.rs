@@ -1,7 +1,8 @@
-use crate::{Axis, Input};
 use legion_app::{EventReader, EventWriter};
 use legion_ecs::system::{Res, ResMut};
 use legion_utils::HashMap;
+
+use crate::{Axis, Input};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]

@@ -1,14 +1,13 @@
-use crate::{streamer::StreamEvent, webrtc::WebRTCServer};
-
-use log::{debug, info, warn};
 use std::sync::Arc;
-
-use tonic::{Request, Response, Status};
 
 use legion_streaming_proto::{
     streamer_server::{Streamer, StreamerServer},
     InitializeStreamRequest, InitializeStreamResponse,
 };
+use log::{debug, info, warn};
+use tonic::{Request, Response, Status};
+
+use crate::{streamer::StreamEvent, webrtc::WebRTCServer};
 
 /// The `gRPC` server implementation for the streaming server.
 pub(crate) struct GRPCServer {

@@ -62,7 +62,6 @@ use std::net::SocketAddr;
 
 use legion_app::prelude::*;
 use legion_ecs::prelude::*;
-
 use log::{info, warn};
 use service::multiplexer::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder};
 use tonic::transport::NamedService;

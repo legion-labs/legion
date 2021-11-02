@@ -63,6 +63,18 @@
 // This disables the lint crate-wide as a workaround to allow the doc above.
 #![allow(clippy::needless_doctest_main)]
 
+use std::{
+    env,
+    io::{self, stdout},
+    path::PathBuf,
+    str::FromStr,
+};
+
+use clap::{AppSettings, Arg, ArgMatches, SubCommand};
+use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use legion_data_offline::ResourcePathId;
+use legion_data_runtime::{AssetRegistryOptions, ResourceType};
+
 use crate::{
     compiler_cmd::{
         CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
@@ -72,16 +84,6 @@ use crate::{
         COMMAND_NAME_INFO,
     },
     CompiledResource, CompilerHash, Locale, Manifest, Platform, Target,
-};
-use clap::{AppSettings, Arg, ArgMatches, SubCommand};
-use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{AssetRegistryOptions, ResourceType};
-use std::{
-    env,
-    io::{self, stdout},
-    path::PathBuf,
-    str::FromStr,
 };
 
 /// Current version of data pipeline.

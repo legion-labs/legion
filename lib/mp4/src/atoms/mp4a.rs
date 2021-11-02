@@ -1,13 +1,13 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::Serialize;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{AacConfig, Error, FourCC, Result};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use serde::Serialize;
 
 use super::{
     box_start, read_atom_header_ext, skip_bytes, skip_bytes_to, value_u32, write_atom_header_ext,
     Atom, AtomHeader, FixedPointU16, ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
+use crate::{AacConfig, Error, FourCC, Result};
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Mp4aAtom {
@@ -544,9 +544,10 @@ impl<W: Write> WriteDesc<&mut W> for SLConfigDescriptor {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     #[test]
     fn test_mp4a() {

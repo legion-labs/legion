@@ -12,15 +12,13 @@ use echo::{
     echoer_server::{Echoer, EchoerServer},
     EchoRequest, EchoResponse,
 };
-
+use log::{info, LevelFilter};
+use simple_logger::SimpleLogger;
 use sum::{
     summer_client::SummerClient,
     summer_server::{Summer, SummerServer},
     SumRequest, SumResponse,
 };
-
-use log::{info, LevelFilter};
-use simple_logger::SimpleLogger;
 use tonic::{Request, Response, Status};
 
 struct Service {}

@@ -7,11 +7,11 @@ use std::{
     time::Duration,
 };
 
-use crate::{vfs, AssetLoader, HandleUntyped, ReferenceUntyped, ResourceId, ResourceType};
-
 use byteorder::{LittleEndian, ReadBytesExt};
 use flurry::TryInsertError;
 use serde::{Deserialize, Serialize};
+
+use crate::{vfs, AssetLoader, HandleUntyped, ReferenceUntyped, ResourceId, ResourceType};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AssetReference {
@@ -600,13 +600,12 @@ mod tests {
 
     use legion_content_store::{ContentStore, RamContentStore};
 
+    use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
     use crate::{
         asset_loader::{HandleMap, LoaderRequest, LoaderResult},
         manifest::Manifest,
         test_asset, vfs, Handle, Resource, ResourceId,
     };
-
-    use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
 
     fn setup_test() -> (ResourceId, AssetLoaderStub, AssetLoaderIO) {
         let mut content_store = Box::new(RamContentStore::default());

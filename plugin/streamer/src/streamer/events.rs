@@ -1,6 +1,7 @@
-use super::StreamID;
 use anyhow::bail;
 use serde::Deserialize;
+
+use super::StreamID;
 
 #[derive(Debug)]
 pub(crate) struct VideoStreamEvent {

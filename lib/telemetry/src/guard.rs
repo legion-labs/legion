@@ -1,10 +1,11 @@
+use std::sync::Arc;
+
 use crate::{
     flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
     init_thread_stream,
     panic_hook::{init_ctrlc_hook, init_panic_hook},
     setup_log_bridge, shutdown_event_dispatch, EventBlockSink, GRPCEventSink, NullEventSink,
 };
-use std::sync::Arc;
 
 pub struct TelemetrySystemGuard {}
 

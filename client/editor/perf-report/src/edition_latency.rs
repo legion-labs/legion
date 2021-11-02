@@ -1,6 +1,7 @@
+use std::{collections::HashMap, path::Path};
+
 use anyhow::{Context, Result};
 use legion_analytics::prelude::*;
-use std::{collections::HashMap, path::Path};
 use transit::prelude::*;
 
 async fn find_server_process_id(

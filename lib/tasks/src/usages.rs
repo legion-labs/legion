@@ -10,8 +10,9 @@
 //! await receiving data from somewhere (i.e. disk) and signal other systems when the data is ready
 //! for consumption. (likely via channels)
 
-use super::TaskPool;
 use std::ops::Deref;
+
+use super::TaskPool;
 
 /// A newtype for a task pool for CPU-intensive work that must be completed to deliver the next
 /// frame

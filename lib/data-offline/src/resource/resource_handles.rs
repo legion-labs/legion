@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use super::ResourceHandleUntyped;
 use legion_data_runtime::ResourceId;
+
+use super::ResourceHandleUntyped;
 
 /// Mapping between a `ResourceId` and `ResourceHandleUntyped`
 #[derive(Default)]

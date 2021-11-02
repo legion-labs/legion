@@ -3,14 +3,15 @@
 mod map_entities;
 mod serde;
 
-pub use self::serde::*;
-pub use map_entities::*;
-
-use crate::{archetype::ArchetypeId, storage::SparseSetIndex};
 use std::{
     fmt, mem,
     sync::atomic::{AtomicI64, Ordering},
 };
+
+pub use map_entities::*;
+
+pub use self::serde::*;
+use crate::{archetype::ArchetypeId, storage::SparseSetIndex};
 
 /// Lightweight unique ID of an entity.
 ///

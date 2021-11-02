@@ -89,7 +89,6 @@ pub use scope::*;
 pub use stream::*;
 pub use thread_block::*;
 pub use thread_events::*;
-
 pub use transit::HeterogeneousQueue;
 
 pub type ProcessInfo = legion_telemetry_proto::telemetry::Process;

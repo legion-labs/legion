@@ -1,8 +1,8 @@
-use crate::types::ShaderStageFlags;
-use crate::{GfxResult, ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
-
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
+
+use crate::types::ShaderStageFlags;
+use crate::{GfxResult, ShaderResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
 
 /// Indicates where a resource is bound
 #[derive(PartialEq, Eq, Hash, Default)]

@@ -1,4 +1,3 @@
-use crate::components::{Children, Parent, PreviousParent};
 use legion_ecs::{
     entity::Entity,
     prelude::Changed,
@@ -7,6 +6,8 @@ use legion_ecs::{
 };
 use legion_utils::HashMap;
 use smallvec::SmallVec;
+
+use crate::components::{Children, Parent, PreviousParent};
 
 pub fn parent_update_system(
     mut commands: Commands<'_, '_>,

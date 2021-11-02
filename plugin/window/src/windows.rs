@@ -1,5 +1,6 @@
-use super::{Window, WindowId};
 use legion_utils::HashMap;
+
+use super::{Window, WindowId};
 
 #[derive(Debug, Default)]
 pub struct Windows {

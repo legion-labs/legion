@@ -1,3 +1,6 @@
+use std::ffi::CString;
+use std::{fmt, sync::Arc};
+
 use super::internal::VkInstance;
 use super::{
     VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
@@ -7,9 +10,6 @@ use super::{
     VulkanSwapchain, VulkanTexture, VulkanTextureView,
 };
 use crate::{ApiDef, GfxApi, GfxResult};
-
-use std::ffi::CString;
-use std::{fmt, sync::Arc};
 
 pub struct VulkanApi {
     instance: VkInstance,

@@ -84,15 +84,14 @@ pub mod prelude {
     };
 }
 
-use keyboard::{keyboard_input_system, KeyCode, KeyboardInput};
-use legion_app::prelude::*;
-use mouse::{mouse_button_input_system, MouseButton, MouseButtonInput, MouseMotion, MouseWheel};
-use touch::{touch_screen_input_system, TouchInput, Touches};
-
 use gamepad::{
     gamepad_event_system, GamepadAxis, GamepadButton, GamepadEvent, GamepadEventRaw,
     GamepadSettings,
 };
+use keyboard::{keyboard_input_system, KeyCode, KeyboardInput};
+use legion_app::prelude::*;
+use mouse::{mouse_button_input_system, MouseButton, MouseButtonInput, MouseMotion, MouseWheel};
+use touch::{touch_screen_input_system, TouchInput, Touches};
 
 /// Adds keyboard and mouse input to an App
 #[derive(Default)]

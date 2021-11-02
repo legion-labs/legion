@@ -3,10 +3,10 @@ use std::{
     sync::{Arc, Mutex, Weak},
 };
 
-use super::operation::{AsyncOperation, AsyncOperationError, AsyncOperationResult};
-
 use retain_mut::RetainMut;
 use tokio::runtime::{Builder, Runtime};
+
+use super::operation::{AsyncOperation, AsyncOperationError, AsyncOperationResult};
 
 // Wraps a tokio::runtime::Runtime to make it compatible with the 'systems'
 // system.

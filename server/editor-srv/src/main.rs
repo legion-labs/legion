@@ -14,7 +14,6 @@ use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings}
 use legion_streamer::StreamerPlugin;
 use legion_telemetry::prelude::*;
 use legion_transform::TransformPlugin;
-
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 

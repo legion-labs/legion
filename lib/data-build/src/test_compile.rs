@@ -3,8 +3,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::{env, vec};
 
-use crate::databuild::CompileOutput;
-use crate::{databuild::DataBuild, DataBuildOptions};
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use legion_data_compiler::{Locale, Manifest, Platform, Target};
@@ -17,6 +15,9 @@ use legion_data_runtime::{AssetLoader, Resource, ResourceId};
 use multitext_resource::MultiTextResource;
 use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};
+
+use crate::databuild::CompileOutput;
+use crate::{databuild::DataBuild, DataBuildOptions};
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 

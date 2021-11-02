@@ -1,16 +1,17 @@
 mod command_queue;
 
+use std::marker::PhantomData;
+
+pub use command_queue::CommandQueue;
+use legion_utils::tracing::{error, warn};
+
+use super::Resource;
 use crate::{
     bundle::Bundle,
     component::Component,
     entity::{Entities, Entity},
     world::World,
 };
-pub use command_queue::CommandQueue;
-use legion_utils::tracing::{error, warn};
-use std::marker::PhantomData;
-
-use super::Resource;
 
 /// A [`World`] mutation.
 pub trait Command: Send + Sync + 'static {
@@ -735,15 +736,16 @@ impl<T: Resource> Command for RemoveResource<T> {
 #[cfg(test)]
 #[allow(clippy::float_cmp, clippy::approx_constant)]
 mod tests {
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
+
     use crate::{
         self as legion_ecs,
         component::Component,
         system::{CommandQueue, Commands},
         world::World,
-    };
-    use std::sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
     };
 
     #[derive(Component)]

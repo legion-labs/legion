@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use anyhow::{Context, Result};
 use legion_analytics::prelude::*;
-use std::path::Path;
 use transit::prelude::*;
 
 pub async fn print_process_thread_events(

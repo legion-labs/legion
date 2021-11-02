@@ -1,14 +1,15 @@
-use crate::{
-    archetype::ArchetypeComponentId,
-    storage::SparseSet,
-    system::Resource,
-    world::{Mut, World},
-};
 use std::{
     any::TypeId,
     cell::RefCell,
     ops::{Deref, DerefMut},
     rc::Rc,
+};
+
+use crate::{
+    archetype::ArchetypeComponentId,
+    storage::SparseSet,
+    system::Resource,
+    world::{Mut, World},
 };
 
 /// Exposes safe mutable access to multiple resources at a time in a World. Attempting to access
@@ -239,9 +240,10 @@ impl<'w> WorldCell<'w> {
 
 #[cfg(test)]
 mod tests {
+    use std::any::TypeId;
+
     use super::BASE_ACCESS;
     use crate::{archetype::ArchetypeId, world::World};
-    use std::any::TypeId;
 
     #[test]
     fn world_cell() {

@@ -1,5 +1,6 @@
-use crate::backends::vulkan::{VulkanFramebufferCache, VulkanRenderpassCache};
 use std::sync::Mutex;
+
+use crate::backends::vulkan::{VulkanFramebufferCache, VulkanRenderpassCache};
 
 pub(crate) struct DeviceVulkanResourceCacheInner {
     pub(crate) renderpass_cache: VulkanRenderpassCache,

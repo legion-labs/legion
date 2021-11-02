@@ -1,8 +1,10 @@
-use crate::{resource::ResourcePathName, ResourcePathId};
+use std::{fmt, hash::Hash};
+
 use legion_content_store::Checksum;
 use legion_utils::DefaultHash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, hash::Hash};
+
+use crate::{resource::ResourcePathName, ResourcePathId};
 
 /// Hash of resource's content.
 ///

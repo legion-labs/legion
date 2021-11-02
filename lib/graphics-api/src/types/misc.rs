@@ -1,9 +1,10 @@
+use std::hash::{Hash, Hasher};
+
+use legion_utils::decimal::DecimalF32;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
 use crate::GfxApi;
-use legion_utils::decimal::DecimalF32;
-use std::hash::{Hash, Hasher};
 
 /// Information about the device, mostly limits, requirements (like memory alignment), and flags to
 /// indicate whether certain features are supported

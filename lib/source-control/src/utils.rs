@@ -1,9 +1,10 @@
-use sha2::{Digest, Sha256};
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::result::Result;
+
+use sha2::{Digest, Sha256};
 
 pub enum SearchResult<T, E> {
     Ok(T),

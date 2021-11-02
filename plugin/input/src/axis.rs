@@ -1,5 +1,6 @@
-use legion_utils::HashMap;
 use std::hash::Hash;
+
+use legion_utils::HashMap;
 
 #[derive(Debug)]
 pub struct Axis<T> {

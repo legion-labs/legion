@@ -1,7 +1,8 @@
 //! A module providing Color type definition
 
-use serde::{Deserialize, Deserializer, Serialize};
 use std::ops::{Shl, Shr};
+
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// Structure definining a RGBA colors
 #[derive(Debug, PartialEq)]

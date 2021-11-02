@@ -61,6 +61,8 @@
 // crate-specific exceptions:
 #![allow()]
 
+use std::str::FromStr;
+
 use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
@@ -68,7 +70,6 @@ use legion_core::CorePlugin;
 use legion_data_runtime::ResourceId;
 use legion_transform::prelude::*;
 use legion_utils::Duration;
-use std::str::FromStr;
 
 fn main() {
     const ARG_NAME_CAS: &str = "cas";

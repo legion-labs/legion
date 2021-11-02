@@ -1,5 +1,13 @@
 #![allow(unsafe_code)]
 
+use std::{
+    cell::UnsafeCell,
+    marker::PhantomData,
+    ptr::{self, NonNull},
+};
+
+use legion_ecs_macros::all_tuples;
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     change_detection::Ticks,
@@ -8,12 +16,6 @@ use crate::{
     query::{Access, FilteredAccess},
     storage::{ComponentSparseSet, Table, Tables},
     world::{Mut, World},
-};
-use legion_ecs_macros::all_tuples;
-use std::{
-    cell::UnsafeCell,
-    marker::PhantomData,
-    ptr::{self, NonNull},
 };
 
 /// Types that can be queried from a [`World`].

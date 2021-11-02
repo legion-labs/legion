@@ -1,8 +1,9 @@
+use chrono::{DateTime, Local};
+
 use crate::{
     connect_to_server, find_branch_commits, find_workspace_root, read_current_branch,
     read_workspace_spec, trace_scope, LocalWorkspaceConnection,
 };
-use chrono::{DateTime, Local};
 
 pub async fn log_command() -> Result<(), String> {
     trace_scope!();

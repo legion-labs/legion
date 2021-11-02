@@ -1,13 +1,15 @@
 //! Event handling types.
 
-use crate::system::{Local, Res, ResMut, SystemParam};
-use crate::{self as legion_ecs, system::Resource};
-use legion_utils::tracing::trace;
 use std::{
     fmt::{self},
     hash::Hash,
     marker::PhantomData,
 };
+
+use legion_utils::tracing::trace;
+
+use crate::system::{Local, Res, ResMut, SystemParam};
+use crate::{self as legion_ecs, system::Resource};
 
 /// An `EventId` uniquely identifies an event.
 ///

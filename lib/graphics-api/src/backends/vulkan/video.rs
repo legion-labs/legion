@@ -3,7 +3,6 @@ use std::ffi::CStr;
 use ash::vk;
 
 //use crate::GfxResult;
-
 use super::VulkanDeviceContext;
 
 #[derive(Clone)]

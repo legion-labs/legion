@@ -1,7 +1,8 @@
-use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
 use legion_utils::DefaultHash;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
+
+use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
 type QuoteRes = quote::__private::TokenStream;
 
 /// Generic the JSON read serialization.

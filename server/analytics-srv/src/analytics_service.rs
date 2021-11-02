@@ -1,9 +1,10 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
-use std::path::PathBuf;
 use tonic::{Request, Response, Status};
 
 pub struct AnalyticsService {

@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum RepositoryAddr {

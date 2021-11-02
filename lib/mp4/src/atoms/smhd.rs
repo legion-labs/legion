@@ -1,13 +1,13 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::Serialize;
 use std::io::{Read, Seek, Write};
 
-use crate::{FourCC, Result};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use serde::Serialize;
 
 use super::{
     box_start, read_atom_header_ext, skip_bytes_to, value_i16, write_atom_header_ext, Atom,
     AtomHeader, FixedPointI8, ReadAtom, WriteAtom, HEADER_EXT_SIZE, HEADER_SIZE,
 };
+use crate::{FourCC, Result};
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SmhdAtom {
@@ -78,9 +78,10 @@ impl<W: Write> WriteAtom<&mut W> for SmhdAtom {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     #[test]
     fn test_smhd() {

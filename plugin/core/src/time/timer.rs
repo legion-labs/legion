@@ -1,6 +1,7 @@
-use crate::Stopwatch;
 use legion_ecs::component::Component;
 use legion_utils::Duration;
+
+use crate::Stopwatch;
 
 /// Tracks elapsed time. Enters the finished state once `duration` is reached.
 ///

@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use crate::DataBuildOptions;
 use legion_content_store::ContentStoreAddr;
 use legion_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
@@ -9,6 +8,8 @@ use legion_data_offline::{
 };
 use legion_data_runtime::Resource;
 use tempfile::TempDir;
+
+use crate::DataBuildOptions;
 
 pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 

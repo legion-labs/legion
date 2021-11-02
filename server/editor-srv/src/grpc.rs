@@ -1,19 +1,18 @@
-use log::info;
-use tonic::{Request, Response, Status};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 
+use legion_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
+use legion_data_runtime::ResourceId;
 use legion_editor_proto::{
     editor_server::{Editor, EditorServer},
     GetResourcePropertiesRequest, GetResourcePropertiesResponse, ResourceDescription,
     ResourceProperty, ResourcePropertyUpdate, SearchResourcesRequest, SearchResourcesResponse,
     UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
 };
-
-use legion_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
-use legion_data_runtime::ResourceId;
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use log::info;
+use tonic::{Request, Response, Status};
 
 pub(crate) struct GRPCServer {
     project: Arc<Mutex<Project>>,

@@ -1,7 +1,9 @@
-use crate::{DynString, InProcSerialize, UserDefinedType};
+use std::{collections::HashMap, hash::BuildHasher};
+
 use anyhow::{bail, Result};
 use legion_utils::memory::read_any;
-use std::{collections::HashMap, hash::BuildHasher};
+
+use crate::{DynString, InProcSerialize, UserDefinedType};
 
 #[derive(Debug, Clone)]
 pub struct Object {

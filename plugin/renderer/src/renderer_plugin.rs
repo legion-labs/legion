@@ -2,9 +2,8 @@ use graphics_api::ResourceState;
 use legion_app::Plugin;
 use legion_ecs::{prelude::*, system::IntoSystem};
 
-use crate::{components::RenderSurface, FrameContext, Renderer};
-
 use super::labels::RendererSystemLabel;
+use crate::{components::RenderSurface, FrameContext, Renderer};
 
 #[derive(Default)]
 pub struct RendererPlugin;

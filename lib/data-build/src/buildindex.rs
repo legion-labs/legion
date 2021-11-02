@@ -1,9 +1,3 @@
-use legion_content_store::Checksum;
-use legion_data_compiler::CompiledResource;
-use legion_data_runtime::ResourceId;
-use legion_utils::DefaultHasher;
-use petgraph::{Directed, Graph};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap, VecDeque},
@@ -13,11 +7,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::Error;
+use legion_content_store::Checksum;
+use legion_data_compiler::CompiledResource;
 use legion_data_offline::{
     resource::{Project, ResourceHash},
     ResourcePathId,
 };
+use legion_data_runtime::ResourceId;
+use legion_utils::DefaultHasher;
+use petgraph::{Directed, Graph};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ResourceInfo {
@@ -481,9 +482,10 @@ impl BuildIndex {
 #[cfg(test)]
 mod tests {
 
-    use super::BuildIndex;
     use legion_data_offline::{resource::Project, ResourcePathId};
     use legion_data_runtime::{Resource, ResourceId};
+
+    use super::BuildIndex;
 
     pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
 

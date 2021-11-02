@@ -1,11 +1,12 @@
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::Path;
+
 use crate::{
     connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec,
     remove_dir_rec, sync_file, trace_scope, update_current_branch, LocalWorkspaceConnection,
     RepositoryConnection,
 };
-use std::collections::BTreeMap;
-use std::fs;
-use std::path::Path;
 
 pub fn sync_tree_diff(
     runtime: &tokio::runtime::Runtime,

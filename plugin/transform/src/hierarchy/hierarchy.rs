@@ -1,10 +1,11 @@
-use crate::components::{Children, Parent};
 use legion_ecs::{
     entity::Entity,
     system::{Command, EntityCommands},
     world::{EntityMut, World},
 };
 use legion_utils::tracing::debug;
+
+use crate::components::{Children, Parent};
 
 #[derive(Debug)]
 pub struct DespawnRecursive {

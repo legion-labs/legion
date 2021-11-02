@@ -62,10 +62,8 @@ mod process_metrics;
 mod process_search;
 mod process_thread_events;
 
-use crate::{
-    process_metrics::print_process_metrics,
-    process_thread_events::{print_chrome_trace, print_process_thread_events},
-};
+use std::path::Path;
+
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
 use legion_analytics::alloc_sql_pool;
@@ -74,7 +72,11 @@ use process_log::{print_logs_by_process, print_process_log};
 use process_search::print_process_search;
 use process_search::print_process_tree;
 use process_search::print_recent_processes;
-use std::path::Path;
+
+use crate::{
+    process_metrics::print_process_metrics,
+    process_thread_events::{print_chrome_trace, print_process_thread_events},
+};
 
 #[allow(clippy::too_many_lines)]
 #[tokio::main]

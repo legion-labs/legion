@@ -1,7 +1,6 @@
-use serde::Serialize;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{Error, FourCC, Result};
+use serde::Serialize;
 
 use super::tfdt::TfdtAtom;
 use super::tfhd::TfhdAtom;
@@ -9,6 +8,7 @@ use super::trun::TrunAtom;
 use super::{
     box_start, skip_atom, skip_bytes_to, Atom, AtomHeader, ReadAtom, WriteAtom, HEADER_SIZE,
 };
+use crate::{Error, FourCC, Result};
 
 /// Track Fragment Atom
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
@@ -108,9 +108,10 @@ impl<W: Write> WriteAtom<&mut W> for TrafAtom {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::atoms::AtomHeader;
-    use std::io::Cursor;
 
     #[test]
     fn test_traf_same_size() {

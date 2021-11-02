@@ -56,13 +56,14 @@
 // crate-specific exceptions:
 #![allow()]
 
-use legion_telemetry::prelude::*;
 use std::process::Command;
 use std::{
     fs::{self, DirEntry},
     io,
     path::{Path, PathBuf},
 };
+
+use legion_telemetry::prelude::*;
 
 //std::fs::remove_dir_all leaves read-only files and reports an error
 fn force_delete_all(dir: &Path) {

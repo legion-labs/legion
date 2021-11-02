@@ -1,5 +1,6 @@
-use crate::{BlobStorageSpec, Branch, Commit, Lock, Tree, Workspace};
 use async_trait::async_trait;
+
+use crate::{BlobStorageSpec, Branch, Commit, Lock, Tree, Workspace};
 
 #[async_trait]
 pub trait RepositoryQuery {

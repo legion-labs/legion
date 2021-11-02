@@ -4,10 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{manifest::Manifest, ResourceId};
 use legion_content_store::{ContentStore, ContentStoreAddr};
 
 use super::Device;
+use crate::{manifest::Manifest, ResourceId};
 
 /// Storage device that builds resources on demand. Resources are accessed through a manifest access table.
 pub(crate) struct BuildDevice {

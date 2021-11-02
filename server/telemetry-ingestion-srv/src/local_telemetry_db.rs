@@ -1,6 +1,7 @@
+use std::path::{Path, PathBuf};
+
 use anyhow::{Context, Result};
 use sqlx::migrate::MigrateDatabase;
-use std::path::{Path, PathBuf};
 
 pub fn get_data_directory() -> Result<PathBuf> {
     let folder =

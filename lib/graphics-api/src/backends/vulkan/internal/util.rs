@@ -1,9 +1,10 @@
+use ash::vk;
+
 use crate::backends::vulkan::VulkanDeviceContext;
 use crate::{
     BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format,
     PipelineType, QueueType, RasterizerState, ResourceState, ResourceUsage, ShaderResourceType,
 };
-use ash::vk;
 
 pub(crate) fn pipeline_type_pipeline_bind_point(
     pipeline_type: PipelineType,

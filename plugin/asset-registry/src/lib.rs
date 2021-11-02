@@ -63,21 +63,21 @@ mod asset_to_ecs;
 mod loading_states;
 mod settings;
 
+use std::{fs::File, path::Path, sync::Arc};
+
 use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
-use loading_states::{AssetLoadingStates, LoadingState};
-pub use settings::AssetRegistrySettings;
-pub use settings::DataBuildSettings;
-
 use legion_app::Plugin;
 use legion_content_store::{ContentStoreAddr, HddContentStore};
 use legion_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceLoadEvent,
 };
 use legion_ecs::prelude::*;
+use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data_runtime as runtime_data;
-use std::{fs::File, path::Path, sync::Arc};
+pub use settings::AssetRegistrySettings;
+pub use settings::DataBuildSettings;
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}

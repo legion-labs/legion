@@ -1,9 +1,11 @@
-use crate::{compute_file_hash, lz4_decompress, lz4_read, BlobStorage};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use http::Uri;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+
+use crate::{compute_file_hash, lz4_decompress, lz4_read, BlobStorage};
 
 pub struct S3BlobStorage {
     bucket_name: String,

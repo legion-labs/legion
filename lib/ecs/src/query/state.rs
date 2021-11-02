@@ -1,5 +1,9 @@
 #![allow(unsafe_code)]
 
+use fixedbitset::FixedBitSet;
+use legion_tasks::TaskPool;
+use thiserror::Error;
+
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration, ArchetypeId},
     component::ComponentId,
@@ -11,9 +15,6 @@ use crate::{
     storage::TableId,
     world::{World, WorldId},
 };
-use fixedbitset::FixedBitSet;
-use legion_tasks::TaskPool;
-use thiserror::Error;
 
 /// Provides scoped access to a [`World`] state according to a given [`WorldQuery`] and query filter.
 pub struct QueryState<Q: WorldQuery, F: WorldQuery = ()>

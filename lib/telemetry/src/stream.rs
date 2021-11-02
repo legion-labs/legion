@@ -1,10 +1,12 @@
-use crate::event_block::TelemetryBlock;
-use crate::queue_metadata::make_queue_metedata;
-use crate::{EncodedBlock, StreamInfo};
-use anyhow::Result;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
+
+use anyhow::Result;
+
+use crate::event_block::TelemetryBlock;
+use crate::queue_metadata::make_queue_metedata;
+use crate::{EncodedBlock, StreamInfo};
 
 pub trait Stream {
     fn get_stream_info(&self) -> StreamInfo;

@@ -1,6 +1,7 @@
-use crate::{ElementState, Input};
 use legion_ecs::{event::EventReader, system::ResMut};
 use legion_math::Vec2;
+
+use crate::{ElementState, Input};
 
 /// A mouse button input event
 #[derive(Debug, Clone)]

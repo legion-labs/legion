@@ -1,10 +1,11 @@
+use std::path::Path;
+
 use crate::{
     commit_local_changes, connect_to_server, delete_local_file, edit_file, find_local_change,
     find_workspace_root, make_canonical_relative_path, read_workspace_spec, revert_file,
     trace_scope, track_new_file, write_file, ChangeType, LocalWorkspaceConnection,
     RepositoryConnection, RepositoryQuery,
 };
-use std::path::Path;
 
 fn format_commit(c: &git2::Commit<'_>) -> String {
     format!("{} {}", c.id(), c.summary().unwrap())

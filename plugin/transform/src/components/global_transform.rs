@@ -1,7 +1,9 @@
-use super::Transform;
+use std::ops::Mul;
+
 use legion_ecs::component::Component;
 use legion_math::{Mat3, Mat4, Quat, Vec3};
-use std::ops::Mul;
+
+use super::Transform;
 
 /// Describe the position of an entity relative to the reference frame.
 ///

@@ -1,8 +1,5 @@
 use std::collections::HashMap;
 
-use log::LevelFilter;
-use simple_logger::SimpleLogger;
-
 use legion_app::App;
 use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
@@ -16,6 +13,8 @@ use legion_tao::{TaoPlugin, TaoWindows};
 use legion_window::{
     WindowCloseRequested, WindowCreated, WindowId, WindowPlugin, WindowResized, Windows,
 };
+use log::LevelFilter;
+use simple_logger::SimpleLogger;
 
 struct RenderSurfaces {
     window_id_mapper: HashMap<WindowId, RenderSurfaceId>,

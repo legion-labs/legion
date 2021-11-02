@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use legion_async::{AsyncOperationError, TokioAsyncRuntime};
-
 use ntest::timeout;
 
 #[test]

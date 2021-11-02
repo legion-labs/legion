@@ -1,6 +1,15 @@
 mod raw_data;
 mod raw_to_offline;
 
+use std::{
+    collections::HashMap,
+    ffi::OsStr,
+    fs::{self, File},
+    io::BufReader,
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
+};
+
 use generic_data_offline::TestEntity;
 use legion_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
@@ -10,14 +19,6 @@ use legion_graphics_offline::PsdFile;
 use legion_utils::DefaultHash;
 use sample_data_offline as offline_data;
 use serde::de::DeserializeOwned;
-use std::{
-    collections::HashMap,
-    ffi::OsStr,
-    fs::{self, File},
-    io::BufReader,
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex},
-};
 
 use self::raw_to_offline::FromRaw;
 

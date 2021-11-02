@@ -1,3 +1,7 @@
+use std::{fs, sync::Arc};
+
+use url::Url;
+
 use crate::{
     execute_request, init_repo_database, push_init_repo_data,
     sql::{create_database, SqlConnectionPool},
@@ -5,8 +9,6 @@ use crate::{
     trace_scope, validate_connection_to_bucket, BlobStorageSpec, InitRepositoryRequest,
     ServerRequest,
 };
-use std::{fs, sync::Arc};
-use url::Url;
 
 pub async fn init_mysql_repo_db(
     blob_storage: &BlobStorageSpec,

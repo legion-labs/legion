@@ -57,9 +57,10 @@
 #![allow()]
 #![warn(missing_docs)]
 
+use std::stringify;
+
 use proc_macro::TokenStream;
 use quote::quote;
-use std::stringify;
 use syn::{parse_macro_input, ItemStruct, LitStr};
 
 /// Derives a default implementation of the Resource trait for a type.
