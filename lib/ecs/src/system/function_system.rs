@@ -368,13 +368,16 @@ where
     #[inline]
     async unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out {
         let change_tick = world.increment_change_tick();
-        let out = self.func.run(
-            input,
-            self.param_state.as_mut().unwrap(),
-            &self.system_meta,
-            world,
-            change_tick,
-        );
+        let out = self
+            .func
+            .run(
+                input,
+                self.param_state.as_mut().unwrap(),
+                &self.system_meta,
+                world,
+                change_tick,
+            )
+            .await;
         self.system_meta.last_change_tick = change_tick;
         out
     }
@@ -405,12 +408,13 @@ where
 }
 
 /// A trait implemented for all functions that can be used as [`System`]s.
+#[async_trait]
 pub trait SystemParamFunction<In, Out, Param: SystemParam, Marker>: Send + Sync + 'static {
     /// # Safety
     ///
     /// This call might access any of the input parameters in an unsafe way. Make sure the data
     /// access is safe in the context of the system scheduler.
-    unsafe fn run(
+    async unsafe fn run(
         &mut self,
         input: In,
         state: &mut Param::Fetch,
@@ -422,22 +426,24 @@ pub trait SystemParamFunction<In, Out, Param: SystemParam, Marker>: Send + Sync 
 
 macro_rules! impl_system_function {
     ($($param: ident),*) => {
+        #[async_trait]
         #[allow(non_snake_case)]
         impl<Out, Func: Send + Sync + 'static, $($param: SystemParam),*> SystemParamFunction<(), Out, ($($param,)*), ()> for Func
         where
         for <'a> &'a mut Func:
                 FnMut($($param),*) -> Out +
-                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out, Out: 'static
+                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out,
+        Out: 'static
         {
             #[inline]
-            unsafe fn run(&mut self, _input: (), state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
+            async unsafe fn run(&mut self, _input: (), state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
                 // Yes, this is strange, but rustc fails to compile this impl
                 // without using this function.
                 #[allow(clippy::too_many_arguments)]
                 fn call_inner<Out, $($param,)*>(
-                    mut f: impl FnMut($($param,)*)->Out,
+                    mut f: impl FnMut($($param,)*) -> Out,
                     $($param: $param,)*
-                )->Out{
+                ) -> Out {
                     f($($param,)*)
                 }
                 let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
@@ -445,21 +451,24 @@ macro_rules! impl_system_function {
             }
         }
 
+        #[async_trait]
         #[allow(non_snake_case)]
         impl<Input, Out, Func: Send + Sync + 'static, $($param: SystemParam),*> SystemParamFunction<Input, Out, ($($param,)*), InputMarker> for Func
         where
         for <'a> &'a mut Func:
                 FnMut(In<Input>, $($param),*) -> Out +
-                FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out, Out: 'static
+                FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out,
+        Input: Send + 'static,
+        Out: 'static
         {
             #[inline]
-            unsafe fn run(&mut self, input: Input, state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
+            async unsafe fn run(&mut self, input: Input, state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
                 #[allow(clippy::too_many_arguments)]
                 fn call_inner<Input, Out, $($param,)*>(
-                    mut f: impl FnMut(In<Input>, $($param,)*)->Out,
+                    mut f: impl FnMut(In<Input>, $($param,)*) -> Out,
                     input: In<Input>,
                     $($param: $param,)*
-                )->Out{
+                ) -> Out {
                     f(input, $($param,)*)
                 }
                 let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
