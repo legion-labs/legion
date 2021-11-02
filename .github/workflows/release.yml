@@ -42,10 +42,7 @@ jobs:
         with:
           name: lambda-release
           path: |
-            ./target/x86_64-unknown-linux-musl/release
-            !./target/x86_64-unknown-linux-musl/release/build
-            !./target/x86_64-unknown-linux-musl/release/deps
-            !./target/x86_64-unknown-linux-musl/release/incremental
+            ./target/x86_64-unknown-linux-musl/release/aws-lambda-*
           retention-days: 5
 
   dockerize:
