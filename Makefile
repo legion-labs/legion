@@ -63,6 +63,9 @@ build:
 build-release:
 	cargo build --release
 
+build-release-musl:
+	cargo build --bin "aws-lambda-*" --target x86_64-unknown-linux-musl --release
+
 cov:
 	cargo clean
 	cargo build
