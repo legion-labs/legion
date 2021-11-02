@@ -6,9 +6,12 @@ use legion_telemetry_proto::analytics::performance_analytics_server::Performance
 use legion_telemetry_proto::analytics::FindProcessReply;
 use legion_telemetry_proto::analytics::FindProcessRequest;
 use legion_telemetry_proto::analytics::ListProcessStreamsRequest;
+use legion_telemetry_proto::analytics::ListStreamBlocksReply;
+use legion_telemetry_proto::analytics::ListStreamBlocksRequest;
 use legion_telemetry_proto::analytics::ListStreamsReply;
 use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
+
 use tonic::{Request, Response, Status};
 
 pub struct AnalyticsService {
@@ -41,6 +44,14 @@ impl AnalyticsService {
         let mut connection = self.pool.acquire().await?;
         find_process_streams(&mut connection, process_id).await
     }
+
+    async fn list_stream_blocks_impl(
+        &self,
+        stream_id: &str,
+    ) -> Result<Vec<legion_telemetry::EncodedBlock>> {
+        let mut connection = self.pool.acquire().await?;
+        find_stream_blocks(&mut connection, stream_id).await
+    }
 }
 
 #[tonic::async_trait]
@@ -53,7 +64,9 @@ impl PerformanceAnalytics for AnalyticsService {
         let find_request = request.into_inner();
         match self.find_process_impl(&find_request.process_id).await {
             Ok(process) => {
-                let reply = FindProcessReply { process: Some(process) };
+                let reply = FindProcessReply {
+                    process: Some(process),
+                };
                 Ok(Response::new(reply))
             }
             Err(e) => {
@@ -100,6 +113,25 @@ impl PerformanceAnalytics for AnalyticsService {
             Err(e) => {
                 return Err(Status::internal(format!(
                     "Error in list_process_streams: {}",
+                    e
+                )));
+            }
+        }
+    }
+
+    async fn list_stream_blocks(
+        &self,
+        request: Request<ListStreamBlocksRequest>,
+    ) -> Result<Response<ListStreamBlocksReply>, Status> {
+        let list_request = request.into_inner();
+        match self.list_stream_blocks_impl(&list_request.stream_id).await {
+            Ok(blocks) => {
+                let reply = ListStreamBlocksReply { blocks };
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                return Err(Status::internal(format!(
+                    "Error in list_stream_blocks: {}",
                     e
                 )));
             }

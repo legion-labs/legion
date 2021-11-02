@@ -9,6 +9,7 @@ service PerformanceAnalytics {
     rpc find_process(FindProcessRequest) returns (FindProcessReply);
     rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
     rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
+    rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
 }
 
 message FindProcessRequest{
@@ -32,4 +33,12 @@ message ListProcessStreamsRequest{
 
 message ListStreamsReply{
     repeated telemetry.Stream streams = 1;
+}
+
+message ListStreamBlocksRequest{
+    string stream_id = 1;
+}
+
+message ListStreamBlocksReply{
+    repeated telemetry.Block blocks = 1;
 }

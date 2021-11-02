@@ -255,5 +255,66 @@ proto.analytics.PerformanceAnalyticsPromiseClient.prototype.list_process_streams
 };
 
 
+/**
+ * @const
+ * @type {!grpc.web.MethodDescriptor<
+ *   !proto.analytics.ListStreamBlocksRequest,
+ *   !proto.analytics.ListStreamBlocksReply>}
+ */
+const methodDescriptor_PerformanceAnalytics_list_stream_blocks = new grpc.web.MethodDescriptor(
+  '/analytics.PerformanceAnalytics/list_stream_blocks',
+  grpc.web.MethodType.UNARY,
+  proto.analytics.ListStreamBlocksRequest,
+  proto.analytics.ListStreamBlocksReply,
+  /**
+   * @param {!proto.analytics.ListStreamBlocksRequest} request
+   * @return {!Uint8Array}
+   */
+  function(request) {
+    return request.serializeBinary();
+  },
+  proto.analytics.ListStreamBlocksReply.deserializeBinary
+);
+
+
+/**
+ * @param {!proto.analytics.ListStreamBlocksRequest} request The
+ *     request proto
+ * @param {?Object<string, string>} metadata User defined
+ *     call metadata
+ * @param {function(?grpc.web.RpcError, ?proto.analytics.ListStreamBlocksReply)}
+ *     callback The callback function(error, response)
+ * @return {!grpc.web.ClientReadableStream<!proto.analytics.ListStreamBlocksReply>|undefined}
+ *     The XHR Node Readable Stream
+ */
+proto.analytics.PerformanceAnalyticsClient.prototype.list_stream_blocks =
+    function(request, metadata, callback) {
+  return this.client_.rpcCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/list_stream_blocks',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_list_stream_blocks,
+      callback);
+};
+
+
+/**
+ * @param {!proto.analytics.ListStreamBlocksRequest} request The
+ *     request proto
+ * @param {?Object<string, string>=} metadata User defined
+ *     call metadata
+ * @return {!Promise<!proto.analytics.ListStreamBlocksReply>}
+ *     Promise that resolves to the response
+ */
+proto.analytics.PerformanceAnalyticsPromiseClient.prototype.list_stream_blocks =
+    function(request, metadata) {
+  return this.client_.unaryCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/list_stream_blocks',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_list_stream_blocks);
+};
+
+
 module.exports = proto.analytics;
 
