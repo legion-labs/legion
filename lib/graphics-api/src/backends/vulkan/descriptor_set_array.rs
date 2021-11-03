@@ -94,7 +94,7 @@ impl VulkanDescriptorSetArray {
             .allocate_descriptor_sets(device_context.device(), &descriptors_set_layouts)?;
 
         Ok(Self {
-            descriptor_heap: descriptor_heap.clone(),
+            descriptor_heap,
             descriptor_set_layout: descriptor_set_layout.clone(),
             descriptor_sets,
             update_data,

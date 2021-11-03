@@ -23,7 +23,7 @@ struct DescriptorHeapPoolConfig {
 
 impl DescriptorHeapPoolConfig {
     fn new(definition: &DescriptorHeapDef) -> Self {
-        DescriptorHeapPoolConfig {
+        Self {
             pool_flags: if definition.transient {
                 vk::DescriptorPoolCreateFlags::empty()
             } else {

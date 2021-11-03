@@ -966,7 +966,7 @@ impl DescriptorHeapDef {
         transient: bool,
         max_descriptor_sets: u32,
     ) -> Self {
-        let mut result = DescriptorHeapDef {
+        let mut result = Self {
             transient,
             max_descriptor_sets,
             ..Self::default()
