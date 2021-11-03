@@ -1,5 +1,5 @@
 [package]
-name = "legion-presenter-window"
+name = "legion-presenter-snapshot"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -13,8 +13,12 @@ legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-presenter = { path = "../../lib/presenter", version = "0.1.0" }
 legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
 legion-window = { path = "../../plugin/window", version = "0.1.0" }
+log = "0.4"
 raw-window-handle = "0.3"
+crossbeam-channel = "0.5"
+instant = "0.1"
+anyhow = "1.0"
 
 [features]
 default = []
-vulkan = ["graphics-api/vulkan", "legion-presenter/vulkan"]
+vulkan = ["graphics-api/vulkan"]

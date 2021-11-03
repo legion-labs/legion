@@ -1,0 +1,24 @@
+[package]
+name = "legion-presenter"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+legion-graphics-api = { path = "../graphics-api", version = "0.1.0" }
+legion-pso-compiler = { path = "../pso-compiler", version = "0.1.0" }
+legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+log = "0.4"
+raw-window-handle = "0.3"
+crossbeam-channel = "0.5"
+instant = "0.1"
+anyhow = "1.0"
+
+# vulkan backend
+ash = { version = ">= 0.33", optional = true }
+
+[features]
+default = []
+vulkan = ["ash", "legion-graphics-api/vulkan"]

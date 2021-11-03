@@ -3,11 +3,7 @@
 use std::cmp::max;
 use std::convert::TryFrom;
 
-use graphics_api::{
-    CmdBlitParams, CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, DefaultApi,
-    DeviceContext, Extents2D, FilterType, GfxApi, Offset3D, Queue, ResourceState, SwapchainDef,
-    Texture, TextureBarrier,
-};
+use graphics_api::prelude::*;
 use legion_ecs::prelude::Component;
 use legion_renderer::{
     components::{RenderSurface, RenderSurfaceId},
@@ -16,7 +12,7 @@ use legion_renderer::{
 use legion_window::{Window, WindowId};
 use raw_window_handle::HasRawWindowHandle;
 
-use crate::swapchain_helper::SwapchainHelper;
+use legion_presenter::swapchain_helper::SwapchainHelper;
 
 #[derive(Component)]
 pub struct PresenterWindow {

@@ -3443,18 +3443,47 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-presenter-window"
+name = "legion-presenter"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "ash",
+ "crossbeam-channel",
+ "instant",
+ "legion-graphics-api",
+ "legion-pso-compiler",
+ "legion-renderer",
+ "log",
+ "raw-window-handle",
+]
+
+[[package]]
+name = "legion-presenter-snapshot"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
  "crossbeam-channel",
  "instant",
  "legion-app",
  "legion-ecs",
  "legion-graphics-api",
+ "legion-presenter",
  "legion-renderer",
  "legion-window",
  "log",
+ "raw-window-handle",
+]
+
+[[package]]
+name = "legion-presenter-window"
+version = "0.1.0"
+dependencies = [
+ "legion-app",
+ "legion-ecs",
+ "legion-graphics-api",
+ "legion-presenter",
+ "legion-renderer",
+ "legion-window",
  "raw-window-handle",
 ]
 
@@ -3543,6 +3572,7 @@ dependencies = [
  "legion-graphics-api",
  "legion-grpc",
  "legion-mp4",
+ "legion-presenter",
  "legion-pso-compiler",
  "legion-renderer",
  "legion-streaming-proto",

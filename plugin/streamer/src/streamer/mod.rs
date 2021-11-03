@@ -3,6 +3,7 @@ use std::{fmt::Display, sync::Arc};
 use legion_async::TokioAsyncRuntime;
 use legion_core::Time;
 use legion_ecs::prelude::*;
+use legion_presenter::offscreen_helper::Resolution;
 use legion_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     Renderer,
@@ -20,8 +21,6 @@ mod video_stream;
 use control_stream::ControlStream;
 pub(crate) use events::*;
 use video_stream::VideoStream;
-
-use crate::streamer::video_stream::Resolution;
 
 // Streamer provides interaction with the async network components (gRPC &
 // WebRTC) from the synchronous game-loop.
@@ -211,7 +210,7 @@ pub(crate) fn render_streams(
     let wait_sem = renderer.frame_signal_semaphore();
 
     for (mut video_stream, render_surface) in query.iter_mut() {
-        async_rt.start_detached(video_stream.render(
+        async_rt.start_detached(video_stream.present(
             graphics_queue,
             wait_sem,
             render_surface.into_inner(),
