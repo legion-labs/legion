@@ -10,6 +10,7 @@ service PerformanceAnalytics {
     rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
     rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
     rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
+    rpc block_call_tree(BlockCallTreeRequest) returns (BlockCallTreeReply);
 }
 
 message FindProcessRequest{
@@ -41,4 +42,21 @@ message ListStreamBlocksRequest{
 
 message ListStreamBlocksReply{
     repeated telemetry.Block blocks = 1;
+}
+
+message BlockCallTreeRequest{
+    string block_id = 1 ;
+    telemetry.Process process = 2;
+}
+
+message ScopeInstance{
+    string name = 1; //factor out scope_desc
+    uint64 begin_ticks = 2;
+    uint64 end_ticks = 3;
+    repeated ScopeInstance scopes = 4;
+}
+
+message BlockCallTreeReply{
+    repeated ScopeInstance scopes = 1;
+   
 }

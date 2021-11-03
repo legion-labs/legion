@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
+use legion_telemetry_proto::analytics::BlockCallTreeReply;
+use legion_telemetry_proto::analytics::BlockCallTreeRequest;
 use legion_telemetry_proto::analytics::FindProcessReply;
 use legion_telemetry_proto::analytics::FindProcessRequest;
 use legion_telemetry_proto::analytics::ListProcessStreamsRequest;
@@ -11,6 +13,7 @@ use legion_telemetry_proto::analytics::ListStreamBlocksRequest;
 use legion_telemetry_proto::analytics::ListStreamsReply;
 use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
+use legion_telemetry_proto::analytics::ScopeInstance;
 
 use tonic::{Request, Response, Status};
 
@@ -51,6 +54,11 @@ impl AnalyticsService {
     ) -> Result<Vec<legion_telemetry::EncodedBlock>> {
         let mut connection = self.pool.acquire().await?;
         find_stream_blocks(&mut connection, stream_id).await
+    }
+
+    async fn block_call_tree_impl(&self, _block_id: &str) -> Result<Vec<ScopeInstance>> {
+        let mut _connection = self.pool.acquire().await?;
+        anyhow::bail!("not impl")
     }
 }
 
@@ -134,6 +142,22 @@ impl PerformanceAnalytics for AnalyticsService {
                     "Error in list_stream_blocks: {}",
                     e
                 )));
+            }
+        }
+    }
+
+    async fn block_call_tree(
+        &self,
+        request: Request<BlockCallTreeRequest>,
+    ) -> Result<Response<BlockCallTreeReply>, Status> {
+        let inner_request = request.into_inner();
+        match self.block_call_tree_impl(&inner_request.block_id).await {
+            Ok(scopes) => {
+                let reply = BlockCallTreeReply { scopes };
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                return Err(Status::internal(format!("Error in block_call_tree: {}", e)));
             }
         }
     }
