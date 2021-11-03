@@ -18,7 +18,7 @@ use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::{resource::Project, ResourcePathId};
 use legion_data_runtime::{ResourceId, ResourceType};
 use legion_utils::{DefaultHash, DefaultHasher};
-use petgraph::algo;
+use petgraph::{algo, Graph};
 
 use crate::asset_file_writer::write_assetfile;
 use crate::buildindex::{BuildIndex, CompiledResourceInfo, CompiledResourceReference};
@@ -399,6 +399,31 @@ impl DataBuild {
         };
 
         Ok((resource_infos, resource_references, stats))
+    }
+
+    /// Returns build graph in a Graphviz DOT format.
+    ///
+    /// Graphviz format documentation can be found [here](https://www.graphviz.org/doc/info/lang.html)
+    ///
+    /// `std::string::ToString::to_string` can be used as a default `name_parser`.
+    pub fn print_build_graph(
+        &self,
+        compile_path: ResourcePathId,
+        name_parser: impl Fn(&ResourcePathId) -> String,
+    ) -> String {
+        let build_graph = self.build_index.generate_build_graph(compile_path);
+        let inner_getter = |_g: &Graph<ResourcePathId, ()>,
+                            nr: <&petgraph::Graph<legion_data_offline::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
+            format!("label = \"{}\"", (name_parser)(nr.1))
+        };
+        let dot = petgraph::dot::Dot::with_attr_getters(
+            &build_graph,
+            &[petgraph::dot::Config::EdgeNoLabel],
+            &|_, _| String::new(),
+            &inner_getter,
+        );
+
+        format!("{:?}", dot)
     }
 
     /// Compile a resource identified by [`ResourcePathId`] and all its dependencies and update the *build index* with compilation results.

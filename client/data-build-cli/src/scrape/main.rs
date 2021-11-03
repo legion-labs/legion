@@ -7,6 +7,7 @@
 //! * **source** - `ResourceId` <-> `ResourcePathName` lookup utility.
 //! * **asset** - Asset file header output.
 //! * **explain** - Prints `ResourcePathId`-related details of a specified `ResourceId`.
+//! * **graph** - Prints a build graph of a specified resource (`ResourcePathId` or `ResourceId`) in Graphviz DOT format.
 //!
 //! # `rty` - Resource Type Tool
 //!
@@ -20,6 +21,7 @@
 //!
 //! ```text
 //! $ data-scrape rty lib\ list
+//!
 //! runtime_texture = f9c9670d
 //! runtime_material = 669eb7d0
 //! offline_texture = 74dc0e53
@@ -32,6 +34,7 @@
 //!
 //! ```text
 //! $ data-scrape rty lib\ encode psd
+//!
 //! psd = 13b5a84e
 //! ```
 //!
@@ -41,6 +44,7 @@
 //!
 //! ```text
 //! $ data-scrape rty lib\ decode runtime_texture
+//!
 //! runtime_texture = f9c9670d
 //! ```
 //!
@@ -56,6 +60,7 @@
 //!
 //! ```text
 //! $ data-scrape source .\test\sample-data\ list
+//!
 //! /image/ground.psd = 13b5a84e00000000d9e5871a48bd55c5
 //! /world/sample_1/ground.mat = 2b368fed000000004e9d6dcb039451e3
 //! /world/sample_1/cube_3.ent.ins = 417862e50000000054537dedac8437c4
@@ -68,6 +73,7 @@
 //!
 //! ```text
 //! $ data-scrape source .\test\sample-data\ id /world/sample_1/cube_1.ent.ins
+//!
 //! /world/sample_1/cube_1.ent.ins = 417862e500000000e9c81a578a265cda
 //! ```
 //!
@@ -75,6 +81,7 @@
 //!
 //! ```text
 //! $ data-scrape source .\test\sample-data\ name 417862e500000000e321168f3653db42
+//!
 //! /prefab/props/cube_group_cube_1.ent.ins = 417862e500000000e321168f3653db42
 //! ```
 //!
@@ -121,6 +128,21 @@
 //! ```
 //!
 //! **NOTE**: It requires running `data-scrape configure` first.
+//!
+//!  # `graph` - Tool that prints a build graph in Graphviz DOT format
+//!
+//! Prints a build graph of a specified resources (`ResourcePathId` or `ResourceId`) in a [Graphviz DOT](https://www.graphviz.org/doc/info/lang.html) format.
+//!
+//! ```text
+//! $ data-scrape graph d004cd1c00000000fcd3242ec9691beb
+//!
+//! digraph {
+//! 0 [ label = "d004cd1c00000000fcd3242ec9691beb" label = "/world/sample_1.ent => offline_entity"]
+//! 1 [ label = "417862e5000000005127bdca42145845|0cd05ad8" label = "/world/sample_1/cube_group_1.ent.ins => offline_instance => runtime_instance"]
+//! 2 [ label = "417862e5000000007a80bfadcb6549e7|0cd05ad8" label = "/world/sample_1/cube_2.ent.ins => offline_instance => runtime_instance"]
+//! 3 [ label = "417862e5000000007df5d0fcdb1eb69b|0cd05ad8" label = "/world/sample_1/cube_3.ent.ins => offline_instance => runtime_instance"]
+//! ...
+//! ```
 //!
 //! # `configure` - Scrape tool configuration.
 //!
@@ -279,6 +301,13 @@ fn main() -> Result<(), String> {
                 )),
         )
         .subcommand(
+            SubCommand::with_name("graph")
+                .about("Print Graphviz representation of a build graph in DOT format")
+                .arg(Arg::with_name("id").takes_value(true).help(
+                    "Compile path (either ResourcePathId or ResourceId) to print the graph of.",
+                )),
+        )
+        .subcommand(
             SubCommand::with_name("configure")
                 .about("Creates a configuration file containing paths to relevant locations")
                 .arg(
@@ -407,6 +436,26 @@ fn main() -> Result<(), String> {
                     println!("ResourcePathId: {}", rid);
                 }
             }
+        } else {
+            return Err("Configuration not found. Run 'data-scrape configure' first.".to_string());
+        }
+    } else if let ("graph", Some(cmd_args)) = matches.subcommand() {
+        let text_id = cmd_args.value_of("id").unwrap();
+        if let Some(config) = config {
+            let (build, project) = config.open()?;
+            let rid = {
+                if let Ok(resource_id) = ResourceId::from_str(text_id) {
+                    build
+                        .lookup_pathid(resource_id)
+                        .ok_or(format!("ResourceId '{}' not found", resource_id))?
+                } else {
+                    ResourcePathId::from_str(text_id)
+                        .map_err(|_e| format!("Invalid ResourcePathId '{}'", text_id))?
+                }
+            };
+            let output =
+                build.print_build_graph(rid, |rid| pretty_name_from_pathid(rid, &project, &config));
+            println!("{}", output);
         } else {
             return Err("Configuration not found. Run 'data-scrape configure' first.".to_string());
         }
