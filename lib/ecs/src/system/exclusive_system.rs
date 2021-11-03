@@ -19,16 +19,21 @@ pub trait ExclusiveSystem: Send + Sync + 'static {
     fn check_change_tick(&mut self, change_tick: u32);
 }
 
-pub struct ExclusiveSystemFn<F> {
+pub struct ExclusiveSystemFn<F, Out>
+where
+    F: FnMut(&mut World) -> Out + Send + Sync + 'static,
+    Out: Future<Output = ()> + Send + 'static,
+{
     func: F,
     name: Cow<'static, str>,
     last_change_tick: u32,
 }
 
 #[async_trait]
-impl<F> ExclusiveSystem for ExclusiveSystemFn<F>
+impl<F, Out> ExclusiveSystem for ExclusiveSystemFn<F, Out>
 where
     F: FnMut(&mut World) + Send + Sync + 'static,
+    Out: Future<Output = ()> + Send + 'static,
 {
     fn name(&self) -> Cow<'static, str> {
         self.name.clone()
@@ -60,11 +65,12 @@ pub trait IntoExclusiveSystem<Params, SystemType> {
     fn exclusive_system(self) -> SystemType;
 }
 
-impl<F> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F>> for F
+impl<F, Out> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F, Out>> for F
 where
-    F: ExclusiveAsyncFn,
+    F: FnMut(&mut World) + Send + Sync + 'static,
+    Out: Future<Output = ()> + Send + 'static,
 {
-    fn exclusive_system(self) -> ExclusiveSystemFn<F> {
+    fn exclusive_system(self) -> ExclusiveSystemFn<F, Out> {
         ExclusiveSystemFn {
             func: self,
             name: core::any::type_name::<F>().into(),
@@ -72,7 +78,6 @@ where
         }
     }
 }
-
 pub struct ExclusiveSystemCoerced {
     system: BoxedSystem<(), ()>,
     archetype_generation: ArchetypeGeneration,
