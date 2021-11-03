@@ -56,18 +56,19 @@ impl AwsCognitoSignatureValidation {
 }
 
 impl SignatureValidation for AwsCognitoSignatureValidation {
-    fn validate_signature(
+    fn validate_signature<'a>(
         &self,
-        alg: &str,
-        kid: Option<&str>,
-        message: &str,
-        signature: &[u8],
-    ) -> ValidationResult {
+        alg: &'a str,
+        kid: Option<&'a str>,
+        message: &'a str,
+        signature: &'a [u8],
+    ) -> ValidationResult<'a> {
         match kid {
-            Some(kid) => self.keys.get(kid).map_or(Unsupported, |key| {
-                key.validate_signature(alg, Some(kid), message, signature)
-            }),
-            None => Unsupported,
+            Some(kid) => self.keys.get(kid).map_or_else(
+                || Unsupported(alg, Some(kid)),
+                |key| key.validate_signature(alg, Some(kid), message, signature),
+            ),
+            None => Unsupported(alg, kid),
         }
     }
 }

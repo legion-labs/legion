@@ -6,16 +6,16 @@ pub use rsa_signature_validation::RsaSignatureValidation;
 
 /// `ValidationResult` represents the result of a validation.
 #[derive(Debug)]
-pub enum ValidationResult {
+pub enum ValidationResult<'a> {
     /// The signature is valid.
     Valid,
     /// The signature is invalid.
     Invalid(anyhow::Error),
     /// The signature has an unsupported format.
-    Unsupported,
+    Unsupported(&'a str, Option<&'a str>),
 }
 
-impl ValidationResult {
+impl ValidationResult<'_> {
     /// Returns the current validation result or calls the specified function if the result is
     /// `ValidationResult::Unsupported`.
     ///
@@ -24,7 +24,7 @@ impl ValidationResult {
     /// ```rust
     /// use legion_online::authentication::jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported};
     ///
-    /// assert!(Unsupported.or_else(|| Valid).is_valid());
+    /// assert!(Unsupported("", None).or_else(|| Valid).is_valid());
     /// assert!(Invalid(anyhow::anyhow!("error")).or_else(|| Valid).is_invalid());
     /// assert!(Valid.or_else(|| Invalid(anyhow::anyhow!("error"))).is_valid());
     /// ```
@@ -32,7 +32,7 @@ impl ValidationResult {
     where
         F: FnOnce() -> Self,
     {
-        if let Self::Unsupported = self {
+        if let Self::Unsupported(_, _) = self {
             f()
         } else {
             self
@@ -48,7 +48,7 @@ impl ValidationResult {
     }
 
     pub fn is_unsupported(&self) -> bool {
-        matches!(self, Self::Unsupported)
+        matches!(self, Self::Unsupported(_, _))
     }
 
     /// Returns the current validation result as a standard result.
@@ -60,26 +60,33 @@ impl ValidationResult {
     ///
     /// assert!(Valid.ok().is_ok());
     /// assert!(Invalid(anyhow::anyhow!("error")).ok().is_err());
-    /// assert!(Unsupported.ok().is_err());
+    /// assert!(Unsupported("", None).ok().is_err());
     /// ```
     pub fn ok(self) -> Result<(), anyhow::Error> {
         match self {
             Self::Valid => Ok(()),
             Self::Invalid(e) => Err(e),
-            Self::Unsupported => Err(anyhow::anyhow!("unsupported")),
+            Self::Unsupported(alg, kid) => match kid {
+                Some(kid) => Err(anyhow::anyhow!(
+                    "unsupported signature algorithm '{}' with kid '{}'",
+                    alg,
+                    kid
+                )),
+                None => Err(anyhow::anyhow!("unsupported signature algorithm '{}'", alg)),
+            },
         }
     }
 }
 
 /// A type implementing `SignatureValidation` is able to validate the signature of a JWT.
 pub trait SignatureValidation {
-    fn validate_signature(
+    fn validate_signature<'a>(
         &self,
-        alg: &str,
-        kid: Option<&str>,
-        message: &str,
-        signature: &[u8],
-    ) -> ValidationResult;
+        alg: &'a str,
+        kid: Option<&'a str>,
+        message: &'a str,
+        signature: &'a [u8],
+    ) -> ValidationResult<'a>;
 }
 
 /// Chains two `SignatureValidation`s that will be tried in sequence.
@@ -106,13 +113,13 @@ where
     First: SignatureValidation,
     Second: SignatureValidation,
 {
-    fn validate_signature(
+    fn validate_signature<'a>(
         &self,
-        alg: &str,
-        kid: Option<&str>,
-        message: &str,
-        signature: &[u8],
-    ) -> ValidationResult {
+        alg: &'a str,
+        kid: Option<&'a str>,
+        message: &'a str,
+        signature: &'a [u8],
+    ) -> ValidationResult<'a> {
         self.first
             .validate_signature(alg, kid, message, signature)
             .or_else(|| self.second.validate_signature(alg, kid, message, signature))

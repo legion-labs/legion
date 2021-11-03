@@ -65,20 +65,19 @@ impl SignatureValidation for RsaSignatureValidation {
     ///
     /// token.validate_signature(&validation).unwrap();
     /// ```
-    fn validate_signature(
+    fn validate_signature<'a>(
         &self,
-        alg: &str,
-        _kid: Option<&str>,
-        message: &str,
-        signature: &[u8],
-    ) -> ValidationResult {
-        println!("{}", message);
+        alg: &'a str,
+        kid: Option<&'a str>,
+        message: &'a str,
+        signature: &'a [u8],
+    ) -> ValidationResult<'a> {
         match Self::alg_to_rsa_parameters(alg) {
             Ok(parameters) => match self.key.verify(parameters, message.as_bytes(), signature) {
                 Ok(()) => ValidationResult::Valid,
                 Err(_) => ValidationResult::Invalid(anyhow!("the signature does not match")),
             },
-            Err(_) => ValidationResult::Unsupported,
+            Err(_) => ValidationResult::Unsupported(alg, kid),
         }
     }
 }

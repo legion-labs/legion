@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use anyhow::{anyhow, Context};
 
-use super::Header;
+use super::{signature_validation::SignatureValidation, Header, Validation};
 
 /// A JWT.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,42 +32,47 @@ impl<'a> Token<'a> {
 
     /// Convert the token into its claims.
     ///
-    /// This method does not validate the signature and should **NOT** be used most of the time.
-    pub fn into_claims_unsafe<Claims>(self) -> anyhow::Result<Claims>
+    /// This method does not validate the token and should **NOT** be used most of the time.
+    pub fn into_claims_unsafe<C>(self) -> anyhow::Result<C>
     where
-        Claims: serde::de::Deserialize<'a>,
+        C: serde::de::DeserializeOwned,
     {
-        serde_json::from_str(self.payload).map_err(Into::into)
+        self.to_claims_unsafe()
+    }
+
+    /// Parse the token into claims.
+    ///
+    /// This method does not validate the token and should **NOT** be used most of the time.
+    pub(crate) fn to_claims_unsafe<C>(&self) -> anyhow::Result<C>
+    where
+        C: serde::de::DeserializeOwned,
+    {
+        let payload = base64::decode_config(self.payload, base64::URL_SAFE_NO_PAD)
+            .context("failed to decode base64 JWT payload")?;
+
+        serde_json::from_slice(payload.as_slice())
+            .context("failed to convert JWT payload into claims")
+            .map_err(Into::into)
     }
 
     /// Convert the token into its claims.
     ///
-    /// This method validates the signature and is recommended.
-    pub fn into_claims<Claims, SignatureValidation>(
-        self,
-        signature_validation: &SignatureValidation,
-    ) -> anyhow::Result<Claims>
+    /// This method validates the token and is recommended.
+    pub fn into_claims<C, T>(self, validation: &Validation<'_, T>) -> anyhow::Result<C>
     where
-        Claims: serde::de::Deserialize<'a>,
-        SignatureValidation: super::signature_validation::SignatureValidation,
+        C: serde::de::DeserializeOwned,
+        T: SignatureValidation,
     {
-        let header = self.header()?;
-        let signature = self.signature()?;
-
-        signature_validation
-            .validate_signature(&header.alg, header.kid.as_deref(), self.signed, &signature)
-            .ok()?;
+        validation.validate_signature(&self)?;
+        validation.validate_claims(&self)?;
 
         self.into_claims_unsafe()
     }
 
     /// Validate the signature on the token without consuming it.
-    pub fn validate_signature<SignatureValidation>(
-        &self,
-        signature_validation: &SignatureValidation,
-    ) -> anyhow::Result<()>
+    pub fn validate_signature<T>(&self, signature_validation: &T) -> anyhow::Result<()>
     where
-        SignatureValidation: super::signature_validation::SignatureValidation,
+        T: SignatureValidation,
     {
         let header = self.header()?;
         let signature = self.signature()?;
