@@ -2501,7 +2501,6 @@ dependencies = [
  "legion-app",
  "legion-async",
  "legion-core",
- "legion-data-runtime",
  "legion-ecs",
  "legion-graphics-api",
  "legion-input",
@@ -3469,7 +3468,6 @@ dependencies = [
  "legion-graphics-api",
  "legion-presenter",
  "legion-renderer",
- "legion-window",
  "log",
  "raw-window-handle",
 ]
@@ -3503,7 +3501,6 @@ name = "legion-renderer"
 version = "0.1.0"
 dependencies = [
  "legion-app",
- "legion-codec-api",
  "legion-ecs",
  "legion-graphics-api",
  "legion-pso-compiler",

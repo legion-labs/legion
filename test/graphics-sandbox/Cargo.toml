@@ -11,7 +11,6 @@ graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-async = { path = "../../plugin/async", version = "0.1.0" }
 legion-core = { path = "../../plugin/core", version = "0.1.0" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-input = { path = "../../plugin/input" }
 legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
