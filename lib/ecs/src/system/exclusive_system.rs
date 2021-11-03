@@ -85,16 +85,18 @@ impl ExclusiveSystem for ExclusiveSystemCoerced {
     }
 
     async fn run(&mut self, world: &mut World) {
-        let archetypes = world.archetypes();
-        let new_generation = archetypes.generation();
-        let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);
-        let archetype_index_range = old_generation.value()..new_generation.value();
+        {
+            let archetypes = world.archetypes();
+            let new_generation = archetypes.generation();
+            let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);
+            let archetype_index_range = old_generation.value()..new_generation.value();
 
-        for archetype in archetypes.archetypes[archetype_index_range].iter() {
-            self.system.new_archetype(archetype);
+            for archetype in archetypes.archetypes[archetype_index_range].iter() {
+                self.system.new_archetype(archetype);
+            }
         }
 
-        self.system.run((), world);
+        self.system.run((), world).await;
         self.system.apply_buffers(world);
     }
 
