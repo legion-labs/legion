@@ -170,7 +170,7 @@ impl ParallelExecutor {
 
     /// Populates `should_run` bitset, spawns tasks for systems that should run this iteration,
     /// queues systems with no dependencies to run (or skip) at next opportunity.
-    async fn prepare_systems<'scope>(
+    fn prepare_systems<'scope>(
         &mut self,
         scope: &mut Scope<'scope, ()>,
         systems: &'scope [ParallelSystemContainer],
