@@ -973,15 +973,15 @@ impl DescriptorHeapDef {
         };
 
         for descriptor_def in &definition.descriptor_defs {
-            let count = descriptor_def.array_size_normalized();
+            let count = max_descriptor_sets * descriptor_def.array_size_normalized();
             match descriptor_def.shader_resource_type {
                 ShaderResourceType::Sampler => result.sampler_count += count,
                 ShaderResourceType::ConstantBuffer => result.constant_buffer_count += count,
                 ShaderResourceType::StructuredBuffer | ShaderResourceType::ByteAdressBuffer => {
-                    result.buffer_count += count
+                    result.buffer_count += count;
                 }
                 ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAdressBuffer => {
-                    result.rw_buffer_count += count
+                    result.rw_buffer_count += count;
                 }
                 ShaderResourceType::Texture2D
                 | ShaderResourceType::Texture2DArray
