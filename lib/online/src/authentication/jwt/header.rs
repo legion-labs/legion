@@ -36,7 +36,10 @@ impl Header {
     ///     kid: None,
     /// });
     /// ```
-    pub fn from_base64(base64: &str) -> anyhow::Result<Self> {
+    pub fn from_base64<T>(base64: T) -> anyhow::Result<Self>
+    where
+        T: AsRef<[u8]>,
+    {
         serde_json::from_slice(
             base64::decode_config(base64, base64::URL_SAFE_NO_PAD)
                 .context("failed to decode base64 JWT header")?

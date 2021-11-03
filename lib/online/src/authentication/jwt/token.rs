@@ -1,90 +1,119 @@
-use anyhow::{anyhow, Context};
-use serde::{de::DeserializeOwned, Serialize};
+use std::ops::Deref;
 
-use std::str::FromStr;
+use anyhow::{anyhow, Context};
 
 use super::Header;
 
-/// A JWT token.
+/// A JWT.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Token<Claims> {
-    pub header: Header,
-    pub payload: Claims,
-    pub signature: Vec<u8>,
+pub struct Token<'a> {
+    raw: &'a str,
+    signed: &'a str,
+    header: &'a str,
+    payload: &'a str,
+    signature: &'a str,
 }
 
-impl<Claims> FromStr for Token<Claims>
-where
-    Claims: DeserializeOwned,
-{
-    type Err = anyhow::Error;
+impl<'a> Token<'a> {
+    /// Get the header of the JWT.
+    ///
+    /// This may fail if the header is not valid.
+    pub fn header(&self) -> anyhow::Result<Header> {
+        Header::from_base64(self.header).context("invalid base64 JWT header")
+    }
 
-    /// Parses a JWT token from a string.
+    // Get the signature of the JWT.
+    //
+    // This may fail if the signature is not valid.
+    pub fn signature(&self) -> anyhow::Result<Vec<u8>> {
+        base64::decode_config(self.signature, base64::URL_SAFE_NO_PAD)
+            .context("invalid base64 JWT signature")
+    }
+
+    /// Convert the token into its claims.
+    ///
+    /// This method does not validate the signature and should **NOT** be used most of the time.
+    pub fn into_claims_unsafe<Claims>(self) -> anyhow::Result<Claims>
+    where
+        Claims: serde::de::Deserialize<'a>,
+    {
+        serde_json::from_str(self.payload).map_err(Into::into)
+    }
+
+    /// Convert the token into its claims.
+    ///
+    /// This method validates the signature and is recommended.
+    pub fn into_claims<Claims, SignatureValidation>(
+        self,
+        signature_validation: &SignatureValidation,
+    ) -> anyhow::Result<Claims>
+    where
+        Claims: serde::de::Deserialize<'a>,
+        SignatureValidation: super::signature_validation::SignatureValidation,
+    {
+        let header = self.header()?;
+        let signature = self.signature()?;
+
+        signature_validation
+            .validate_signature(&header.alg, self.signed, &signature)
+            .ok()?;
+
+        self.into_claims_unsafe()
+    }
+
+    /// Validate the signature on the token without consuming it.
+    pub fn validate_signature<SignatureValidation>(
+        &self,
+        signature_validation: &SignatureValidation,
+    ) -> anyhow::Result<()>
+    where
+        SignatureValidation: super::signature_validation::SignatureValidation,
+    {
+        let header = self.header()?;
+        let signature = self.signature()?;
+
+        signature_validation
+            .validate_signature(&header.alg, self.signed, &signature)
+            .ok()
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.raw
+    }
+}
+
+impl<'a> TryFrom<&'a str> for Token<'a> {
+    type Error = anyhow::Error;
+
+    /// Parses a JWT from a string.
     ///
     /// The string must be in the format `<header>.<payload>.<signature>`.
     ///
-    /// The header and payload are base64 encoded.
-    /// The signature is base64 encoded and must be a valid signature for the header and payload.
+    /// The header, payload and signature are base64 encoded, as per RFC 7519.
     ///
     /// Note: The signature is **NOT** verified.
     ///
-    /// The Claims type must implement `DeserializeOwned`.
-    ///
     /// # Example
     /// ```
-    /// use serde::Deserialize;
+    /// use legion_online::authentication::jwt::Token;
     ///
-    /// use legion_online::authentication::jwt::{Header, Token};
-    ///
-    /// #[derive(Deserialize, Debug, Eq, PartialEq)]
-    /// struct Claims {
-    ///     sub: String,
-    ///     name: String,
-    ///     iat: u64,
-    /// }
-    ///
-    /// let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c".parse::<Token<Claims>>().unwrap();
+    /// let raw_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+    /// let token: Token = raw_token.clone().try_into().unwrap();
     ///
     /// assert_eq!(
-    ///     token,
-    ///     Token{
-    ///         header: Header{
-    ///             alg: "HS256".to_string(),
-    ///             typ: Some("JWT".to_string()),
-    ///             kid: None,
-    ///         },
-    ///         payload: Claims{
-    ///             sub: "1234567890".to_string(),
-    ///             name: "John Doe".to_string(),
-    ///             iat: 1516239022,
-    ///         },
-    ///         signature: vec![
-    ///             73, 249, 74, 199, 4, 73, 72, 199,
-    ///             138, 40, 93, 144, 79, 135, 240, 164,
-    ///             199, 137, 127, 126, 143, 58, 78, 178,
-    ///             37, 95, 218, 117, 11, 44, 195, 151,
-    ///         ],
-    ///     }
-    /// )
+    ///     token.as_str(),
+    ///     raw_token,
+    /// );
     /// ```
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.splitn(3, '.').collect();
-
-        if parts.len() != 3 {
-            return Err(anyhow!("invalid token: {}", s));
-        }
-
-        let header = Header::from_base64(parts[0])?;
-        let payload = serde_json::from_slice(
-            base64::decode_config(parts[1], base64::URL_SAFE_NO_PAD)
-                .context("failed to decode base64 JWT payload")?
-                .as_slice(),
-        )
-        .context("failed to decode JSON JWT payload")?;
-        let signature = base64::decode_config(parts[2], base64::URL_SAFE_NO_PAD)
-            .context("failed to decode base64 JWT signature")?;
+    fn try_from(raw: &'a str) -> Result<Self, Self::Error> {
+        let (signed, signature) = raw.rsplit_once('.').ok_or_else(|| anyhow!("invalid JWT"))?;
+        let mut parts = signed.splitn(2, '.');
+        let header = parts.next().ok_or_else(|| anyhow!("missing header"))?;
+        let payload = parts.next().ok_or_else(|| anyhow!("missing payload"))?;
 
         Ok(Self {
+            raw,
+            signed,
             header,
             payload,
             signature,
@@ -92,61 +121,16 @@ where
     }
 }
 
-impl<Claims> ToString for Token<Claims>
-where
-    Claims: Serialize,
-{
-    /// Serializes a JWT token to a string.
-    ///
-    /// The string is in the format `<header>.<payload>.<signature>`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use serde::Serialize;
-    ///
-    /// use legion_online::authentication::jwt::{Header, Token};
-    ///
-    /// #[derive(Serialize, Debug, Eq, PartialEq)]
-    /// struct Claims {
-    ///     sub: String,
-    ///     name: String,
-    ///     iat: u64,
-    /// }
-    ///
-    /// let token = Token{
-    ///     header: Header{
-    ///         alg: "HS256".to_string(),
-    ///         typ: Some("JWT".to_string()),
-    ///         kid: None,
-    ///     },
-    ///     payload: Claims{
-    ///         sub: "1234567890".to_string(),
-    ///         name: "John Doe".to_string(),
-    ///         iat: 1516239022,
-    ///     },
-    ///     signature: vec![
-    ///         73, 249, 74, 199, 4, 73, 72, 199,
-    ///         138, 40, 93, 144, 79, 135, 240, 164,
-    ///         199, 137, 127, 126, 143, 58, 78, 178,
-    ///         37, 95, 218, 117, 11, 44, 195, 151,
-    ///     ],
-    /// };
-    ///
-    /// assert_eq!(
-    ///     token.to_string(),
-    ///     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-    /// )
-    /// ```
-    fn to_string(&self) -> String {
-        format!(
-            "{}.{}.{}",
-            self.header.to_base64(),
-            base64::encode_config(
-                serde_json::to_string(&self.payload).expect("failed to encode JSON JWT payload"),
-                base64::URL_SAFE_NO_PAD
-            ),
-            base64::encode_config(&self.signature, base64::URL_SAFE_NO_PAD),
-        )
+impl<'a> From<Token<'a>> for &'a str {
+    fn from(token: Token<'a>) -> Self {
+        token.raw
+    }
+}
+
+impl Deref for Token<'_> {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        self.raw
     }
 }
