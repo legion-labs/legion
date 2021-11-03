@@ -278,10 +278,10 @@ pub mod types;
 pub mod prelude {
     pub use crate::types::*;
     pub use crate::{
-        Buffer, BufferView, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray,
-        DescriptorSetHandle, DescriptorSetLayout, DeviceContext, Fence, GfxApi, GfxResult,
-        Pipeline, Queue, RootSignature, Sampler, Semaphore, Shader, ShaderModule, Swapchain,
-        Texture, TextureView, DescriptorHeap
+        Buffer, BufferView, CommandBuffer, CommandPool, DefaultApi, DescriptorHeap,
+        DescriptorSetArray, DescriptorSetHandle, DescriptorSetLayout, DeviceContext, Fence, GfxApi,
+        GfxResult, Pipeline, Queue, RootSignature, Sampler, Semaphore, Shader, ShaderModule,
+        Swapchain, Texture, TextureView,
     };
 }
 
@@ -469,9 +469,7 @@ pub trait DescriptorSetArray<A: GfxApi>: std::fmt::Debug {
 //
 // DescriptorHeap
 //
-pub trait DescriptorHeap<A: GfxApi> {
-    
-}
+pub trait DescriptorHeap<A: GfxApi> {}
 
 //
 // Queues, Command Buffers

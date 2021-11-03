@@ -3,7 +3,6 @@ use std::sync::{Arc, Mutex};
 use crate::{DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi};
 use ash::vk;
 
-
 use super::VulkanDeviceContext;
 
 struct DescriptorHeapPoolConfig {
@@ -24,8 +23,12 @@ struct DescriptorHeapPoolConfig {
 
 impl DescriptorHeapPoolConfig {
     fn new(definition: &DescriptorHeapDef) -> Self {
-        DescriptorHeapPoolConfig{
-            pool_flags: if definition.transient { vk::DescriptorPoolCreateFlags::empty() } else { vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET },
+        DescriptorHeapPoolConfig {
+            pool_flags: if definition.transient {
+                vk::DescriptorPoolCreateFlags::empty()
+            } else {
+                vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET
+            },
             descriptor_sets: definition.max_descriptor_sets,
             samplers: definition.sampler_count,
             combined_image_samplers: 0,
@@ -112,12 +115,13 @@ pub struct VulkanDescriptorHeap {
     inner: Arc<Mutex<DescriptorHeapVulkanInner>>,
 }
 
-impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {
-    
-}
+impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {}
 
 impl VulkanDescriptorHeap {
-    pub(crate) fn new(device_context: &VulkanDeviceContext, definition: &DescriptorHeapDef) -> GfxResult<Self> {            
+    pub(crate) fn new(
+        device_context: &VulkanDeviceContext,
+        definition: &DescriptorHeapDef,
+    ) -> GfxResult<Self> {
         let device = device_context.device();
         let heap_pool_config = DescriptorHeapPoolConfig::new(definition);
         let pool = heap_pool_config.create_pool(device)?;
@@ -168,5 +172,3 @@ impl VulkanDescriptorHeap {
         Ok(unsafe { device.allocate_descriptor_sets(&allocate_info)? })
     }
 }
-
-

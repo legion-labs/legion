@@ -77,7 +77,8 @@ impl VulkanDescriptorSetArray {
             * descriptor_set_layout.update_data_count_per_set();
 
         // these persist
-        let mut descriptors_set_layouts = Vec::with_capacity(descriptor_set_array_def.array_length as usize);
+        let mut descriptors_set_layouts =
+            Vec::with_capacity(descriptor_set_array_def.array_length as usize);
 
         let update_data = DescriptorUpdateData::new(update_data_count);
 
@@ -89,8 +90,8 @@ impl VulkanDescriptorSetArray {
             descriptors_set_layouts.push(descriptor_set_layout.vk_layout());
         }
 
-        let descriptor_sets =
-            descriptor_heap.allocate_descriptor_sets(device_context.device(), &descriptors_set_layouts)?;
+        let descriptor_sets = descriptor_heap
+            .allocate_descriptor_sets(device_context.device(), &descriptors_set_layouts)?;
 
         Ok(Self {
             descriptor_heap: descriptor_heap.clone(),
@@ -170,7 +171,10 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                     )
                 )?;
                 let begin_index = descriptor_first_update_data + update.dst_element_offset;
-                assert!(begin_index as usize + samplers.len() <= self.update_data.update_data_count as usize);
+                assert!(
+                    begin_index as usize + samplers.len()
+                        <= self.update_data.update_data_count as usize
+                );
 
                 // Modify the update data
                 let mut next_index = begin_index;
@@ -186,7 +190,10 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                 // Queue a descriptor write
                 self.pending_writes.push(
                     write_descriptor_builder
-                        .image_info(&self.update_data.image_infos[begin_index as usize .. next_index as usize])
+                        .image_info(
+                            &self.update_data.image_infos
+                                [begin_index as usize..next_index as usize],
+                        )
                         .build(),
                 );
             }
@@ -207,7 +214,10 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                     )
                 )?;
                 let begin_index = descriptor_first_update_data + update.dst_element_offset;
-                assert!(begin_index as usize + buffer_views.len() <= self.update_data.update_data_count as usize);
+                assert!(
+                    begin_index as usize + buffer_views.len()
+                        <= self.update_data.update_data_count as usize
+                );
 
                 // Validation
                 for buffer_view in buffer_views.iter() {
@@ -228,7 +238,10 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                 // Queue a descriptor write
                 self.pending_writes.push(
                     write_descriptor_builder
-                        .buffer_info(&self.update_data.buffer_infos[begin_index as usize .. next_index as usize])
+                        .buffer_info(
+                            &self.update_data.buffer_infos
+                                [begin_index as usize..next_index as usize],
+                        )
                         .build(),
                 );
             }
@@ -249,7 +262,10 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                 )?;
 
                 let begin_index = descriptor_first_update_data + update.dst_element_offset;
-                assert!(begin_index as usize + texture_views.len() <= self.update_data.update_data_count as usize);
+                assert!(
+                    begin_index as usize + texture_views.len()
+                        <= self.update_data.update_data_count as usize
+                );
 
                 let mut next_index = begin_index;
                 for texture_view in texture_views {
@@ -297,7 +313,10 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
 
                 self.pending_writes.push(
                     write_descriptor_builder
-                        .image_info(&self.update_data.image_infos[begin_index as usize .. next_index as usize])
+                        .image_info(
+                            &self.update_data.image_infos
+                                [begin_index as usize..next_index as usize],
+                        )
                         .build(),
                 );
             }

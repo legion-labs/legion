@@ -604,7 +604,7 @@ pub struct PushConstantDef {
 }
 
 pub struct RootSignatureDef<A: GfxApi> {
-    pub pipeline_type: PipelineType,    
+    pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: Vec<A::DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
 }
@@ -964,10 +964,9 @@ impl DescriptorHeapDef {
     pub fn from_descriptor_set_layout_def(
         definition: &DescriptorSetLayoutDef,
         transient: bool,
-        max_descriptor_sets: u32
+        max_descriptor_sets: u32,
     ) -> Self {
-        
-        let mut result = DescriptorHeapDef{
+        let mut result = DescriptorHeapDef {
             transient,
             max_descriptor_sets,
             ..Self::default()
@@ -978,21 +977,23 @@ impl DescriptorHeapDef {
             match descriptor_def.shader_resource_type {
                 ShaderResourceType::Sampler => result.sampler_count += count,
                 ShaderResourceType::ConstantBuffer => result.constant_buffer_count += count,
-                ShaderResourceType::StructuredBuffer |
-                ShaderResourceType::ByteAdressBuffer => result.buffer_count += count,
-                ShaderResourceType::RWStructuredBuffer |
-                ShaderResourceType::RWByteAdressBuffer => result.rw_buffer_count += count,
-                ShaderResourceType::Texture2D |
-                ShaderResourceType::Texture2DArray |
-                ShaderResourceType::Texture3D | 
-                ShaderResourceType::TextureCube => result.texture_count += count,
-                ShaderResourceType::RWTexture2D |
-                ShaderResourceType::RWTexture2DArray |
-                ShaderResourceType::RWTexture3D |
-                ShaderResourceType::TextureCubeArray => result.rw_texture_count += count,
+                ShaderResourceType::StructuredBuffer | ShaderResourceType::ByteAdressBuffer => {
+                    result.buffer_count += count
+                }
+                ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAdressBuffer => {
+                    result.rw_buffer_count += count
+                }
+                ShaderResourceType::Texture2D
+                | ShaderResourceType::Texture2DArray
+                | ShaderResourceType::Texture3D
+                | ShaderResourceType::TextureCube => result.texture_count += count,
+                ShaderResourceType::RWTexture2D
+                | ShaderResourceType::RWTexture2DArray
+                | ShaderResourceType::RWTexture3D
+                | ShaderResourceType::TextureCubeArray => result.rw_texture_count += count,
             }
-        }  
-        
+        }
+
         result
     }
 }

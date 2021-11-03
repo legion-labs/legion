@@ -19,7 +19,12 @@ use super::{
 };
 use crate::backends::deferred_drop::DeferredDropper;
 use crate::vulkan::check_extensions_availability;
-use crate::{ApiDef, BufferDef, ComputePipelineDef, DescriptorHeapDef, DescriptorSetArrayDef, DescriptorSetLayoutDef, DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef, PipelineReflection, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef};
+use crate::{
+    ApiDef, BufferDef, ComputePipelineDef, DescriptorHeapDef, DescriptorSetArrayDef,
+    DescriptorSetLayoutDef, DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult,
+    GraphicsPipelineDef, PipelineReflection, QueueType, RootSignatureDef, SamplerDef,
+    ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
+};
 
 /// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
 /// spec to understand precisely what these types mean

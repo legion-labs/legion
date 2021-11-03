@@ -205,7 +205,7 @@ impl OffscreenHelper {
         let root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
             descriptor_set_layouts: descriptor_set_layouts.clone(),
-            push_constant_def: None,            
+            push_constant_def: None,
         };
 
         let root_signature = device_context.create_root_signature(&root_signature_def)?;
@@ -246,7 +246,7 @@ impl OffscreenHelper {
             ResolutionDependentResources::new(device_context, render_frame_count, resolution)?;
 
         let mut cmd_pools = Vec::with_capacity(render_frame_count as usize);
-        let mut cmd_buffers = Vec::with_capacity(render_frame_count as usize) ;
+        let mut cmd_buffers = Vec::with_capacity(render_frame_count as usize);
 
         for _ in 0..render_frame_count {
             let cmd_pool =
@@ -273,9 +273,10 @@ impl OffscreenHelper {
                 .create_descriptor_set_array(
                     descriptor_heap.clone(),
                     &DescriptorSetArrayDef {
-                    descriptor_set_layout,
-                    array_length: render_frame_count,
-                })
+                        descriptor_set_layout,
+                        array_length: render_frame_count,
+                    },
+                )
                 .unwrap();
             descriptor_set_arrays.push(descriptor_set_array);
         }

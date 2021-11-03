@@ -102,7 +102,7 @@ impl DeviceContext<NullApi> for NullDeviceContext {
         descriptor_set_array_def: &DescriptorSetArrayDef<'_, NullApi>,
     ) -> GfxResult<NullDescriptorSetArray> {
         unimplemented!();
-    }    
+    }
     fn create_descriptor_heap(
         &self,
         descriptor_heap_def: &DescriptorHeapDef,
@@ -132,8 +132,6 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     fn free_gpu_memory(&self) -> GfxResult<()> {
         unimplemented!();
     }
-
-    
 }
 
 //
@@ -294,9 +292,7 @@ impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
 //
 
 pub struct NullDescriptorHeap;
-impl DescriptorHeap<NullApi> for NullDescriptorHeap {
-
-}
+impl DescriptorHeap<NullApi> for NullDescriptorHeap {}
 
 //
 // Queues, Command Buffers
