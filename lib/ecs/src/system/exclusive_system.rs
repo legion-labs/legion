@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, future::Future, pin::Pin};
 
 use async_trait::async_trait;
 
@@ -40,7 +40,7 @@ where
         let saved_last_tick = world.last_change_tick;
         world.last_change_tick = self.last_change_tick;
 
-        (self.func)(world);
+        (self.func)(world).await;
 
         let change_tick = world.change_tick.get_mut();
         self.last_change_tick = *change_tick;
@@ -62,7 +62,7 @@ pub trait IntoExclusiveSystem<Params, SystemType> {
 
 impl<F> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F>> for F
 where
-    F: FnMut(&mut World) + Send + Sync + 'static,
+    F: ExclusiveAsyncFn,
 {
     fn exclusive_system(self) -> ExclusiveSystemFn<F> {
         ExclusiveSystemFn {
