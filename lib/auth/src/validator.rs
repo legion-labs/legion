@@ -41,6 +41,9 @@ impl Validator {
     }
 
     pub async fn validate(&self, kid: &str, token: &str) -> anyhow::Result<UserInfo> {
+        // This function should implement the steps documented at:
+        // https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
+
         let key = self.keys.get(kid).context("JWK not found")?;
 
         let validation = jsonwebtoken::Validation {
@@ -49,6 +52,15 @@ impl Validator {
             algorithms: vec![key.algorithm],
             ..jsonwebtoken::Validation::default()
         };
+
+        // TODO: Implement these rules too.
+        // The audience (aud) claim should match the app client ID that was created in the Amazon Cognito user pool.
+        // The issuer (iss) claim should match your user pool. For example, a user pool created in the us-east-1 Region will have the following iss value:
+        // https://cognito-idp.us-east-1.amazonaws.com/<userpoolID>.
+        // Check the token_use claim.
+        // If you are only accepting the access token in your web API operations, its value must be access.
+        // If you are only using the ID token, its value must be id.
+        // If you are using both ID and access tokens, the token_use claim must be either id or access.
 
         jsonwebtoken::decode(token, &key.key, &validation)
             .context("Failed to validate token")
