@@ -107,7 +107,6 @@ impl VulkanBuffer {
 impl Drop for VulkanBufferInner {
     fn drop(&mut self) {
         log::trace!("destroying BufferVulkanInner");
-        let _device = self.device_context.device();
 
         log::trace!(
             "Buffer {:?} destroying with size {} (always mapped: {:?})",
@@ -145,7 +144,7 @@ impl BufferMappingInfo<VulkanApi> for VulkanBufferMappingInfo {
 }
 
 impl Buffer<VulkanApi> for VulkanBuffer {
-    fn buffer_def(&self) -> &BufferDef {
+    fn definition(&self) -> &BufferDef {
         &self.inner.buffer_def
     }
 

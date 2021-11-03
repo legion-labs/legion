@@ -431,7 +431,7 @@ impl SwapchainVulkanInstance {
             )?;
 
             let render_target_view = texture.create_view(
-                &TextureViewDef::as_render_target_view(texture.texture_def()),
+                &TextureViewDef::as_render_target_view(texture.definition()),
             )?;
 
             swapchain_images.push(SwapchainImage {

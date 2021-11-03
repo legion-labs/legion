@@ -27,7 +27,7 @@ pub struct VulkanTextureView {
 }
 
 impl TextureView<VulkanApi> for VulkanTextureView {
-    fn view_def(&self) -> &TextureViewDef {
+    fn definition(&self) -> &TextureViewDef {
         &self.inner.view_def
     }
 
@@ -38,11 +38,11 @@ impl TextureView<VulkanApi> for VulkanTextureView {
 
 impl VulkanTextureView {
     pub(super) fn new(texture: &VulkanTexture, view_def: &TextureViewDef) -> GfxResult<Self> {
-        view_def.verify(texture.texture_def());
+        view_def.verify(texture.definition());
 
         let device_context = texture.device_context();
         let device = device_context.device();
-        let texture_def = texture.texture_def();
+        let texture_def = texture.definition();
         let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(aspect_mask)

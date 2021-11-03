@@ -47,12 +47,12 @@ struct ResolutionDependentResources {
 impl ResolutionDependentResources {
     fn new(
         device_context: &<DefaultApi as GfxApi>::DeviceContext,
-        render_frame_count: usize,
+        render_frame_count: u32,
         resolution: Resolution,
     ) -> Result<Self, anyhow::Error> {
-        let mut render_images = Vec::with_capacity(render_frame_count);
-        let mut render_image_rtvs = Vec::with_capacity(render_frame_count);
-        let mut copy_images = Vec::with_capacity(render_frame_count);
+        let mut render_images = Vec::with_capacity(render_frame_count as usize);
+        let mut render_image_rtvs = Vec::with_capacity(render_frame_count as usize);
+        let mut copy_images = Vec::with_capacity(render_frame_count as usize);
         for _ in 0..render_frame_count {
             let render_image = device_context.create_texture(&TextureDef {
                 extents: Extents3D {
@@ -70,7 +70,7 @@ impl ResolutionDependentResources {
             })?;
 
             let render_image_rtv = render_image.create_view(
-                &TextureViewDef::as_render_target_view(render_image.texture_def()),
+                &TextureViewDef::as_render_target_view(render_image.definition()),
             )?;
 
             let copy_image = device_context.create_texture(&TextureDef {
@@ -204,8 +204,8 @@ impl OffscreenHelper {
 
         let root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
-            descriptor_set_layouts,
-            push_constant_def: None,
+            descriptor_set_layouts: descriptor_set_layouts.clone(),
+            push_constant_def: None,            
         };
 
         let root_signature = device_context.create_root_signature(&root_signature_def)?;
@@ -240,13 +240,13 @@ impl OffscreenHelper {
         //
         // Frame dependant resources
         //
-        let render_frame_count = 2;
+        let render_frame_count = 1u32;
 
         let resolution_dependent_resources =
             ResolutionDependentResources::new(device_context, render_frame_count, resolution)?;
 
-        let mut cmd_pools = Vec::with_capacity(render_frame_count);
-        let mut cmd_buffers = Vec::with_capacity(render_frame_count);
+        let mut cmd_pools = Vec::with_capacity(render_frame_count as usize);
+        let mut cmd_buffers = Vec::with_capacity(render_frame_count as usize) ;
 
         for _ in 0..render_frame_count {
             let cmd_pool =
@@ -260,10 +260,19 @@ impl OffscreenHelper {
             cmd_buffers.push(cmd_buffer);
         }
 
+        let heap_def = DescriptorHeapDef::from_descriptor_set_layout_def(
+            descriptor_set_layouts[0].definition(),
+            false,
+            render_frame_count,
+        );
+        let descriptor_heap = device_context.create_descriptor_heap(&heap_def).unwrap();
+
         let mut descriptor_set_arrays = Vec::new();
         for descriptor_set_layout in &root_signature_def.descriptor_set_layouts {
             let descriptor_set_array = device_context
-                .create_descriptor_set_array(&DescriptorSetArrayDef {
+                .create_descriptor_set_array(
+                    descriptor_heap.clone(),
+                    &DescriptorSetArrayDef {
                     descriptor_set_layout,
                     array_length: render_frame_count,
                 })
@@ -291,7 +300,7 @@ impl OffscreenHelper {
         if resolution != self.resolution_dependent_resources.resolution {
             self.resolution_dependent_resources = ResolutionDependentResources::new(
                 device_context,
-                self.render_frame_count as usize,
+                self.render_frame_count,
                 resolution,
             )?;
             Ok(true)
@@ -412,8 +421,8 @@ impl OffscreenHelper {
             )
             .unwrap();
 
-        let copy_extents = render_texture.texture_def().extents;
-        assert_eq!(copy_texture.texture_def().extents, copy_extents);
+        let copy_extents = render_texture.definition().extents;
+        assert_eq!(copy_texture.definition().extents, copy_extents);
 
         cmd_buffer
             .cmd_copy_image(

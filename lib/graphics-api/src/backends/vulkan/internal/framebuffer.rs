@@ -56,12 +56,12 @@ impl FramebufferVulkan {
     ) -> GfxResult<Self> {
         let (extents, array_length) =
             if let Some(first_color_rt) = framebuffer_def.color_attachments.first() {
-                let texture_def = first_color_rt.texture_view.vulkan_texture().texture_def();
+                let texture_def = first_color_rt.texture_view.vulkan_texture().definition();
                 let view_def = first_color_rt.texture_view.view_def();
                 let extents = texture_def.extents;
                 (extents, view_def.array_size)
             } else if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {
-                let texture_def = depth_rt.texture_view.vulkan_texture().texture_def();
+                let texture_def = depth_rt.texture_view.vulkan_texture().definition();
                 let view_def = depth_rt.texture_view.view_def();
                 let extents = texture_def.extents;
                 (extents, view_def.array_size)

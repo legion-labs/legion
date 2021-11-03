@@ -563,6 +563,7 @@ pub enum ShaderResourceType {
     TextureCubeArray = 0x20_00,
 }
 
+#[derive(Debug, Clone)]
 pub struct DescriptorDef {
     pub name: String,
     pub binding: u32,
@@ -576,6 +577,7 @@ impl DescriptorDef {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DescriptorSetLayoutDef {
     pub frequency: u32,
     pub descriptor_defs: Vec<DescriptorDef>,
@@ -602,8 +604,7 @@ pub struct PushConstantDef {
 }
 
 pub struct RootSignatureDef<A: GfxApi> {
-    pub pipeline_type: PipelineType,
-    // pub descriptor_set_layouts: [Option<A::DescriptorSetLayout>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    pub pipeline_type: PipelineType,    
     pub descriptor_set_layouts: Vec<A::DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
 }
@@ -944,5 +945,54 @@ pub struct ComputePipelineDef<'a, A: GfxApi> {
 pub struct DescriptorSetArrayDef<'a, A: GfxApi> {
     pub descriptor_set_layout: &'a A::DescriptorSetLayout,
     /// The number of descriptor sets in the array
-    pub array_length: usize,
+    pub array_length: u32,
+}
+
+#[derive(Default, Clone, Copy)]
+pub struct DescriptorHeapDef {
+    pub transient: bool,
+    pub max_descriptor_sets: u32,
+    pub sampler_count: u32,
+    pub constant_buffer_count: u32,
+    pub buffer_count: u32,
+    pub rw_buffer_count: u32,
+    pub texture_count: u32,
+    pub rw_texture_count: u32,
+}
+
+impl DescriptorHeapDef {
+    pub fn from_descriptor_set_layout_def(
+        definition: &DescriptorSetLayoutDef,
+        transient: bool,
+        max_descriptor_sets: u32
+    ) -> Self {
+        
+        let mut result = DescriptorHeapDef{
+            transient,
+            max_descriptor_sets,
+            ..Self::default()
+        };
+
+        for descriptor_def in &definition.descriptor_defs {
+            let count = descriptor_def.array_size_normalized();
+            match descriptor_def.shader_resource_type {
+                ShaderResourceType::Sampler => result.sampler_count += count,
+                ShaderResourceType::ConstantBuffer => result.constant_buffer_count += count,
+                ShaderResourceType::StructuredBuffer |
+                ShaderResourceType::ByteAdressBuffer => result.buffer_count += count,
+                ShaderResourceType::RWStructuredBuffer |
+                ShaderResourceType::RWByteAdressBuffer => result.rw_buffer_count += count,
+                ShaderResourceType::Texture2D |
+                ShaderResourceType::Texture2DArray |
+                ShaderResourceType::Texture3D | 
+                ShaderResourceType::TextureCube => result.texture_count += count,
+                ShaderResourceType::RWTexture2D |
+                ShaderResourceType::RWTexture2DArray |
+                ShaderResourceType::RWTexture3D |
+                ShaderResourceType::TextureCubeArray => result.rw_texture_count += count,
+            }
+        }  
+        
+        result
+    }
 }

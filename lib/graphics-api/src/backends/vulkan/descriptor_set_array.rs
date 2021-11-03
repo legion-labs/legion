@@ -1,4 +1,6 @@
 #![allow(clippy::too_many_lines)]
+#![allow(dead_code)]
+
 use ash::vk;
 
 use super::{VulkanApi, VulkanDescriptorHeap, VulkanDescriptorSetLayout, VulkanDeviceContext};
@@ -11,14 +13,14 @@ struct DescriptorUpdateData {
     // one per set * elements in each descriptor
     image_infos: Vec<vk::DescriptorImageInfo>,
     buffer_infos: Vec<vk::DescriptorBufferInfo>,
-    update_data_count: usize,
+    update_data_count: u32,
 }
 
 impl DescriptorUpdateData {
-    fn new(update_data_count: usize) -> Self {
+    fn new(update_data_count: u32) -> Self {
         Self {
-            image_infos: vec![vk::DescriptorImageInfo::default(); update_data_count],
-            buffer_infos: vec![vk::DescriptorBufferInfo::default(); update_data_count],
+            image_infos: vec![vk::DescriptorImageInfo::default(); update_data_count as usize],
+            buffer_infos: vec![vk::DescriptorBufferInfo::default(); update_data_count as usize],
             update_data_count,
         }
     }
@@ -30,6 +32,7 @@ pub struct VulkanDescriptorSetHandle(pub vk::DescriptorSet);
 impl DescriptorSetHandle<VulkanApi> for VulkanDescriptorSetHandle {}
 
 pub struct VulkanDescriptorSetArray {
+    descriptor_heap: VulkanDescriptorHeap,
     descriptor_set_layout: VulkanDescriptorSetLayout,
     // one per set
     descriptor_sets: Vec<vk::DescriptorSet>,
@@ -65,16 +68,16 @@ impl VulkanDescriptorSetArray {
 
     pub(crate) fn new(
         device_context: &VulkanDeviceContext,
-        heap: &VulkanDescriptorHeap,
+        descriptor_heap: VulkanDescriptorHeap,
         descriptor_set_array_def: &DescriptorSetArrayDef<'_, VulkanApi>,
     ) -> GfxResult<Self> {
         let descriptor_set_layout = descriptor_set_array_def.descriptor_set_layout;
 
         let update_data_count = descriptor_set_array_def.array_length
-            * descriptor_set_layout.update_data_count_per_set() as usize;
+            * descriptor_set_layout.update_data_count_per_set();
 
         // these persist
-        let mut descriptors_set_layouts = Vec::with_capacity(descriptor_set_array_def.array_length);
+        let mut descriptors_set_layouts = Vec::with_capacity(descriptor_set_array_def.array_length as usize);
 
         let update_data = DescriptorUpdateData::new(update_data_count);
 
@@ -87,9 +90,10 @@ impl VulkanDescriptorSetArray {
         }
 
         let descriptor_sets =
-            heap.allocate_descriptor_sets(device_context.device(), &descriptors_set_layouts)?;
+            descriptor_heap.allocate_descriptor_sets(device_context.device(), &descriptors_set_layouts)?;
 
         Ok(Self {
+            descriptor_heap: descriptor_heap.clone(),
             descriptor_set_layout: descriptor_set_layout.clone(),
             descriptor_sets,
             update_data,
@@ -165,14 +169,13 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         descriptor.shader_resource_type,
                     )
                 )?;
-                let begin_index =
-                    (descriptor_first_update_data + update.dst_element_offset) as usize;
-                assert!(begin_index + samplers.len() <= self.update_data.update_data_count);
+                let begin_index = descriptor_first_update_data + update.dst_element_offset;
+                assert!(begin_index as usize + samplers.len() <= self.update_data.update_data_count as usize);
 
                 // Modify the update data
                 let mut next_index = begin_index;
                 for sampler in samplers {
-                    let image_info = &mut self.update_data.image_infos[next_index];
+                    let image_info = &mut self.update_data.image_infos[next_index as usize];
                     next_index += 1;
 
                     image_info.sampler = sampler.vk_sampler();
@@ -183,7 +186,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                 // Queue a descriptor write
                 self.pending_writes.push(
                     write_descriptor_builder
-                        .image_info(&self.update_data.image_infos[begin_index..next_index])
+                        .image_info(&self.update_data.image_infos[begin_index as usize .. next_index as usize])
                         .build(),
                 );
             }
@@ -203,9 +206,8 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                         descriptor.shader_resource_type,
                     )
                 )?;
-                let begin_index =
-                    (descriptor_first_update_data + update.dst_element_offset) as usize;
-                assert!(begin_index + buffer_views.len() <= self.update_data.update_data_count);
+                let begin_index = descriptor_first_update_data + update.dst_element_offset;
+                assert!(begin_index as usize + buffer_views.len() <= self.update_data.update_data_count as usize);
 
                 // Validation
                 for buffer_view in buffer_views.iter() {
@@ -215,7 +217,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                 // Modify the update data
                 let mut next_index = begin_index;
                 for buffer_view in buffer_views.iter() {
-                    let buffer_info = &mut self.update_data.buffer_infos[next_index];
+                    let buffer_info = &mut self.update_data.buffer_infos[next_index as usize];
                     next_index += 1;
 
                     buffer_info.buffer = buffer_view.buffer().vk_buffer();
@@ -226,7 +228,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                 // Queue a descriptor write
                 self.pending_writes.push(
                     write_descriptor_builder
-                        .buffer_info(&self.update_data.buffer_infos[begin_index..next_index])
+                        .buffer_info(&self.update_data.buffer_infos[begin_index as usize .. next_index as usize])
                         .build(),
                 );
             }
@@ -246,13 +248,12 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
                     )
                 )?;
 
-                let begin_index =
-                    (descriptor_first_update_data + update.dst_element_offset) as usize;
-                assert!(begin_index + texture_views.len() <= self.update_data.update_data_count);
+                let begin_index = descriptor_first_update_data + update.dst_element_offset;
+                assert!(begin_index as usize + texture_views.len() <= self.update_data.update_data_count as usize);
 
                 let mut next_index = begin_index;
                 for texture_view in texture_views {
-                    let image_info = &mut self.update_data.image_infos[next_index];
+                    let image_info = &mut self.update_data.image_infos[next_index as usize];
                     next_index += 1;
 
                     image_info.sampler = vk::Sampler::null();
@@ -296,7 +297,7 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
 
                 self.pending_writes.push(
                     write_descriptor_builder
-                        .image_info(&self.update_data.image_infos[begin_index..next_index])
+                        .image_info(&self.update_data.image_infos[begin_index as usize .. next_index as usize])
                         .build(),
                 );
             }

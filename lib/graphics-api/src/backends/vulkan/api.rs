@@ -2,13 +2,7 @@ use std::ffi::CString;
 use std::{fmt, sync::Arc};
 
 use super::internal::VkInstance;
-use super::{
-    VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
-    VulkanCommandPool, VulkanDescriptorSetArray, VulkanDescriptorSetHandle,
-    VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanFence, VulkanPipeline, VulkanQueue,
-    VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule,
-    VulkanSwapchain, VulkanTexture, VulkanTextureView,
-};
+use super::{VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer, VulkanCommandPool, VulkanDescriptorHeap, VulkanDescriptorSetArray, VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule, VulkanSwapchain, VulkanTexture, VulkanTextureView};
 use crate::{ApiDef, GfxApi, GfxResult};
 
 pub struct VulkanApi {
@@ -38,8 +32,7 @@ impl GfxApi for VulkanApi {
     fn destroy(&mut self) -> GfxResult<()> {
         if let Some(device_context) = self.device_context.take() {
             // Clear any internal caches that may hold references to the device
-            let inner = device_context.inner.clone();
-            inner.descriptor_heap.clear_pools(device_context.device());
+            let inner = device_context.inner.clone();            
             inner.resource_cache.clear_caches();
             inner.deferred_dropper.destroy();
 
@@ -91,6 +84,7 @@ impl GfxApi for VulkanApi {
     type Pipeline = VulkanPipeline;
     type DescriptorSetHandle = VulkanDescriptorSetHandle;
     type DescriptorSetArray = VulkanDescriptorSetArray;
+    type DescriptorHeap = VulkanDescriptorHeap;
     type Queue = VulkanQueue;
     type CommandPool = VulkanCommandPool;
     type CommandBuffer = VulkanCommandBuffer;
