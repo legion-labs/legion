@@ -10,6 +10,7 @@ license = "MIT OR Apache-2.0"
 legion-telemetry-proto = { path = "../../proto/telemetry" }
 legion-analytics = { path = "../../lib/analytics" }
 legion-telemetry = { path = "../../lib/telemetry" }
+legion-transit = { path = "../../lib/transit" }
 anyhow = "1.0"
 tonic = "0.6"
 tonic-web = "0.2"

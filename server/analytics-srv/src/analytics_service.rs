@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::call_tree::compute_block_call_tree;
 use anyhow::Result;
 use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
@@ -19,15 +20,12 @@ use tonic::{Request, Response, Status};
 
 pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
-    _data_dir: PathBuf,
+    data_dir: PathBuf,
 }
 
 impl AnalyticsService {
     pub fn new(pool: sqlx::AnyPool, data_dir: PathBuf) -> Self {
-        Self {
-            pool,
-            _data_dir: data_dir,
-        }
+        Self { pool, data_dir }
     }
 
     async fn find_process_impl(&self, process_id: &str) -> Result<legion_telemetry::ProcessInfo> {
@@ -56,8 +54,14 @@ impl AnalyticsService {
         find_stream_blocks(&mut connection, stream_id).await
     }
 
-    async fn block_call_tree_impl(&self, _block_id: &str) -> Result<Vec<ScopeInstance>> {
-        let mut _connection = self.pool.acquire().await?;
+    async fn block_call_tree_impl(
+        &self,
+        process: &legion_telemetry::ProcessInfo,
+        stream: &legion_telemetry::StreamInfo,
+        block_id: &str,
+    ) -> Result<Vec<ScopeInstance>> {
+        let mut connection = self.pool.acquire().await?;
+        compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id).await?;
         anyhow::bail!("not impl")
     }
 }
@@ -151,7 +155,26 @@ impl PerformanceAnalytics for AnalyticsService {
         request: Request<BlockCallTreeRequest>,
     ) -> Result<Response<BlockCallTreeReply>, Status> {
         let inner_request = request.into_inner();
-        match self.block_call_tree_impl(&inner_request.block_id).await {
+
+        if inner_request.process.is_none() {
+            return Err(Status::internal(String::from(
+                "Missing process in block_call_tree",
+            )));
+        }
+        if inner_request.stream.is_none() {
+            return Err(Status::internal(String::from(
+                "Missing stream in block_call_tree",
+            )));
+        }
+
+        match self
+            .block_call_tree_impl(
+                &inner_request.process.unwrap(),
+                &inner_request.stream.unwrap(),
+                &inner_request.block_id,
+            )
+            .await
+        {
             Ok(scopes) => {
                 let reply = BlockCallTreeReply { scopes };
                 Ok(Response::new(reply))

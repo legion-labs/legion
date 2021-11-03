@@ -138,6 +138,7 @@ dependencies = [
  "legion-analytics",
  "legion-telemetry",
  "legion-telemetry-proto",
+ "legion-transit",
  "log",
  "prost",
  "simple_logger",

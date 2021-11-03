@@ -63,13 +63,13 @@
 #![allow()]
 
 mod analytics_service;
-
-use std::path::PathBuf;
+pub mod call_tree;
 
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
 use legion_analytics::alloc_sql_pool;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
+use std::path::PathBuf;
 use tonic::transport::Server;
 
 fn get_data_directory() -> Result<PathBuf> {

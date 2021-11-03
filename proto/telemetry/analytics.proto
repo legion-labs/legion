@@ -45,14 +45,15 @@ message ListStreamBlocksReply{
 }
 
 message BlockCallTreeRequest{
-    string block_id = 1 ;
-    telemetry.Process process = 2;
+    telemetry.Process process = 1;
+    telemetry.Stream stream = 2;
+    string block_id = 3;
 }
 
 message ScopeInstance{
     string name = 1; //factor out scope_desc
-    uint64 begin_ticks = 2;
-    uint64 end_ticks = 3;
+    double begin_ms = 2;
+    double end_ms = 3;
     repeated ScopeInstance scopes = 4;
 }
 

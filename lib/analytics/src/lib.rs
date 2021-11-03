@@ -311,6 +311,35 @@ pub async fn find_stream(
     })
 }
 
+pub async fn find_block(
+    connection: &mut sqlx::AnyConnection,
+    block_id: &str,
+) -> Result<legion_telemetry::EncodedBlock> {
+    let row = sqlx::query(
+        "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks
+         FROM blocks
+         WHERE block_id = ?
+         ;",
+    )
+    .bind(block_id)
+    .fetch_one(connection)
+    .await
+    .with_context(|| "find_block")?;
+
+    let begin_ticks: i64 = row.get("begin_ticks");
+    let end_ticks: i64 = row.get("end_ticks");
+    let block = legion_telemetry::EncodedBlock {
+        block_id: String::from(block_id),
+        stream_id: row.get("stream_id"),
+        begin_time: row.get("begin_time"),
+        begin_ticks: begin_ticks as u64,
+        end_time: row.get("end_time"),
+        end_ticks: end_ticks as u64,
+        payload: None,
+    };
+    Ok(block)
+}
+
 pub async fn find_stream_blocks(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
@@ -529,6 +558,7 @@ pub mod prelude {
     pub use crate::fetch_block_payload;
     pub use crate::fetch_child_processes;
     pub use crate::fetch_recent_processes;
+    pub use crate::find_block;
     pub use crate::find_process;
     pub use crate::find_process_log_entry;
     pub use crate::find_process_streams;
