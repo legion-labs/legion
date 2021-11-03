@@ -1,6 +1,7 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::bail;
+use async_trait::async_trait;
 use hyper::{
     server::conn::AddrStream,
     service::{make_service_fn, service_fn},
@@ -9,6 +10,8 @@ use hyper::{
 use log::{debug, info, warn};
 use tokio::sync::Mutex;
 use url::Url;
+
+use super::Authenticator;
 
 pub struct AwsCognitoClientAuthenticator {
     pub domain_name: String,
@@ -443,7 +446,7 @@ impl AwsCognitoClientAuthenticator {
     }
 
     /// Get the authorization code by opening an interactive browser window.
-    pub async fn get_authorization_code_interactive(&self) -> anyhow::Result<String> {
+    async fn get_authorization_code_interactive(&self) -> anyhow::Result<String> {
         let authorization_url = self.get_authorization_url();
 
         info!("Opening web-browser at: {}", authorization_url);
@@ -453,19 +456,8 @@ impl AwsCognitoClientAuthenticator {
         self.receive_authorization_code().await
     }
 
-    /// Logout by opening an interactive browser window.
-    pub async fn logout(&self) -> anyhow::Result<()> {
-        let logout_url = self.get_logout_url();
-
-        info!("Opening web-browser at: {}", logout_url);
-
-        webbrowser::open(logout_url.as_str())?;
-
-        self.receive_logout_confirmation().await
-    }
-
-    /// Get an access token from an authorization code.
-    pub async fn get_access_token_from_authorization_code(
+    /// Get a token set from an authorization code.
+    async fn get_token_set_from_authorization_code(
         &self,
         code: &str,
     ) -> anyhow::Result<ClientTokenSet> {
@@ -492,24 +484,40 @@ impl AwsCognitoClientAuthenticator {
         serde_json::from_slice(&bytes).map_err(Into::into)
     }
 
-    /// Get an access token by opening a possible interactive browser window.
-    ///
-    /// This is just a helper method that fetches an authorization code and then uses it to get an
-    /// access token.
-    pub async fn get_access_token_interactive(&self) -> anyhow::Result<ClientTokenSet> {
+    /// Get user information from an access token.
+    pub async fn get_user_info(&self, access_token: &str) -> anyhow::Result<UserInfo> {
+        let client =
+            hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
+
+        let req = hyper::Request::builder()
+            .method(hyper::Method::GET)
+            .uri(self.get_user_info_url().as_str())
+            .header(
+                hyper::header::AUTHORIZATION,
+                format!("Bearer {}", access_token),
+            )
+            .body(Body::empty())?;
+
+        let resp = client.request(req).await?;
+        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
+        serde_json::from_slice(&bytes).map_err(Into::into)
+    }
+}
+
+#[async_trait]
+impl Authenticator for AwsCognitoClientAuthenticator {
+    /// Get a token set by opening a possible interactive browser window.
+    async fn login(&self) -> anyhow::Result<ClientTokenSet> {
         let code = self.get_authorization_code_interactive().await?;
 
-        self.get_access_token_from_authorization_code(&code).await
+        self.get_token_set_from_authorization_code(&code).await
     }
 
-    /// Get an access token from a refresh token.
+    /// Get a token set from a refresh token.
     ///
     /// If the call does not return a new refresh token within the `TokenSet`, the specified
     /// refresh token will be filled in instead.
-    pub async fn get_access_token_from_refresh_token(
-        &self,
-        refresh_token: &str,
-    ) -> anyhow::Result<ClientTokenSet> {
+    async fn refresh_login(&self, refresh_token: &str) -> anyhow::Result<ClientTokenSet> {
         let client =
             hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
 
@@ -539,22 +547,14 @@ impl AwsCognitoClientAuthenticator {
             })
     }
 
-    /// Get user information from an access token.
-    pub async fn get_user_info(&self, access_token: &str) -> anyhow::Result<UserInfo> {
-        let client =
-            hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
+    /// Logout by opening an interactive browser window.
+    async fn logout(&self) -> anyhow::Result<()> {
+        let logout_url = self.get_logout_url();
 
-        let req = hyper::Request::builder()
-            .method(hyper::Method::GET)
-            .uri(self.get_user_info_url().as_str())
-            .header(
-                hyper::header::AUTHORIZATION,
-                format!("Bearer {}", access_token),
-            )
-            .body(Body::empty())?;
+        info!("Opening web-browser at: {}", logout_url);
 
-        let resp = client.request(req).await?;
-        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
-        serde_json::from_slice(&bytes).map_err(Into::into)
+        webbrowser::open(logout_url.as_str())?;
+
+        self.receive_logout_confirmation().await
     }
 }

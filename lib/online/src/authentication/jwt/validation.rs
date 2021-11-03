@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::{signature_validation::SignatureValidation, Token};
 
 /// Provides JWT validation.
-pub struct Validation<'a, T> {
+pub struct Validation<'a, T = ()> {
     /// A tolerance for the not-before and expiry times.
     leeway: time::Duration,
 
