@@ -3443,24 +3443,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-presenter"
-version = "0.1.0"
-dependencies = [
- "bitflags",
- "crossbeam-channel",
- "instant",
- "lazy_static",
- "legion-graphics-api",
- "log",
- "raw-window-handle",
- "widestring 0.5.1",
- "winapi",
-]
-
-[[package]]
 name = "legion-presenter-window"
 version = "0.1.0"
 dependencies = [
+ "ash",
  "crossbeam-channel",
  "instant",
  "legion-app",

@@ -17,6 +17,9 @@ raw-window-handle = "0.3"
 crossbeam-channel = "0.5"
 instant = "0.1"
 
+# vulkan backend
+ash = { version = ">= 0.33", optional = true }
+
 [features]
 default = []
-vulkan = ["graphics-api/vulkan"]
+vulkan = ["ash", "graphics-api/vulkan"]

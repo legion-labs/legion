@@ -420,8 +420,8 @@ impl<A: GfxApi> SwapchainHelper<A> {
         window_height: u32,
     ) -> GfxResult<TryAcquireNextImageResult<A>> {
         match self.do_try_acquire_next_image(window_width, window_height) {
-            #[cfg(feature = "rafx-vulkan")]
-            Err(Error::VkError(ash::vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
+            #[cfg(feature = "vulkan")]
+            Err(GfxError::VkError(ash::vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
                 Ok(TryAcquireNextImageResult::DeviceReset)
             }
             result => result,
