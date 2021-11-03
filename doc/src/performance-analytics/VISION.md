@@ -214,11 +214,10 @@ Septembre 2021
 
 ![bg right](figures/bibli.jpg)
 
-- Session
-  - Process instance 
-    - Stream
-      - Stream block
-        - Event
+- Process instance 
+  - Stream
+    - Stream block
+      - Event
 
 ---
 # Architecture
@@ -264,7 +263,7 @@ Could support the interface to get visibility into crates that are already instr
 - CLI analytics (csv output)
 
 ## Christmas
-- Analytics client using Tauri
+- Web Analytics client (Vue.js & Canvas)
 - Visualization of call tree timeline
 
 ---
