@@ -38,7 +38,7 @@ impl Header {
     /// ```
     pub fn from_base64(base64: &str) -> anyhow::Result<Self> {
         serde_json::from_slice(
-            base64::decode(base64)
+            base64::decode_config(base64, base64::URL_SAFE_NO_PAD)
                 .context("failed to decode base64 JWT header")?
                 .as_slice(),
         )
@@ -58,11 +58,12 @@ impl Header {
     ///     kid: None,
     /// };
     ///
-    /// assert_eq!(header.to_base64().unwrap(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
+    /// assert_eq!(header.to_base64(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
     /// ```
-    pub fn to_base64(&self) -> anyhow::Result<String> {
-        Ok(base64::encode(
-            serde_json::to_string(self).context("failed to serialize header")?,
-        ))
+    pub fn to_base64(&self) -> String {
+        base64::encode_config(
+            serde_json::to_string(self).expect("failed to encode JSON JWT header"),
+            base64::URL_SAFE_NO_PAD,
+        )
     }
 }
