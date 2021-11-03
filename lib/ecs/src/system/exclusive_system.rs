@@ -67,7 +67,7 @@ pub trait IntoExclusiveSystem<Params, SystemType> {
 
 impl<F, Out> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F, Out>> for F
 where
-    F: FnMut(&mut World) + Send + Sync + 'static,
+    F: FnMut(&mut World) -> Out + Send + Sync + 'static,
     Out: Future<Output = ()> + Send + 'static,
 {
     fn exclusive_system(self) -> ExclusiveSystemFn<F, Out> {
