@@ -126,15 +126,7 @@ impl AssetLoader for EntityLoader {
             }
 
             for component in &mut entity.components {
-                if let Some(visual) = component.downcast_mut::<Visual>() {
-                    if let Some(geometry) = &mut visual.renderable_geometry {
-                        geometry.activate(registry);
-                    }
-                } else if let Some(physics) = component.downcast_mut::<Physics>() {
-                    if let Some(geometry) = &mut physics.collision_geometry {
-                        geometry.activate(registry);
-                    }
-                }
+                component.activate_references(registry);
             }
         }
     }
@@ -145,7 +137,9 @@ impl AssetLoader for EntityLoader {
 }
 
 #[typetag::serde]
-pub trait Component: Any + Send + Sync {}
+pub trait Component: Any + Send + Sync {
+    fn activate_references(&mut self, _registry: &AssetRegistry) {}
+}
 
 /// Note: Based on impl of dyn Any
 impl dyn Component {
@@ -206,7 +200,13 @@ pub struct Visual {
 }
 
 #[typetag::serde]
-impl Component for Visual {}
+impl Component for Visual {
+    fn activate_references(&mut self, registry: &AssetRegistry) {
+        if let Some(geometry) = &mut self.renderable_geometry {
+            geometry.activate(registry);
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub enum GIContribution {
@@ -266,7 +266,13 @@ pub struct Physics {
 }
 
 #[typetag::serde]
-impl Component for Physics {}
+impl Component for Physics {
+    fn activate_references(&mut self, registry: &AssetRegistry) {
+        if let Some(geometry) = &mut self.collision_geometry {
+            geometry.activate(registry);
+        }
+    }
+}
 
 // ------------------ Instance  -----------------------------------
 
