@@ -3504,6 +3504,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-online"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.13.0",
+ "directories",
+ "futures-util",
+ "hyper",
+ "hyper-tls",
+ "log",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+ "webbrowser",
+]
+
+[[package]]
 name = "legion-presenter"
 version = "0.1.0"
 dependencies = [
