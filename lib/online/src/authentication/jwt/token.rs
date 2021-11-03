@@ -19,7 +19,7 @@ impl<'a> Token<'a> {
     ///
     /// This may fail if the header is not valid.
     pub fn header(&self) -> anyhow::Result<Header> {
-        Header::from_base64(self.header).context("invalid base64 JWT header")
+        self.header.parse()
     }
 
     // Get the signature of the JWT.

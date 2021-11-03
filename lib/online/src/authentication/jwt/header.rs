@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +13,9 @@ pub struct Header {
     pub kid: Option<String>,
 }
 
-impl Header {
+impl FromStr for Header {
+    type Err = anyhow::Error;
+
     /// Creates a new JWT header from its base64 representation.
     ///
     /// # Arguments
@@ -28,7 +32,7 @@ impl Header {
     /// ```
     /// use legion_online::authentication::jwt::Header;
     ///
-    /// let header = Header::from_base64("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9").unwrap();
+    /// let header: Header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9".parse().unwrap();
     ///
     /// assert_eq!(header, Header {
     ///     alg: "HS256".to_string(),
@@ -36,18 +40,17 @@ impl Header {
     ///     kid: None,
     /// });
     /// ```
-    pub fn from_base64<T>(base64: T) -> anyhow::Result<Self>
-    where
-        T: AsRef<[u8]>,
-    {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_slice(
-            base64::decode_config(base64, base64::URL_SAFE_NO_PAD)
+            base64::decode_config(s, base64::URL_SAFE_NO_PAD)
                 .context("failed to decode base64 JWT header")?
                 .as_slice(),
         )
         .context("failed to parse JSON JWT header")
     }
+}
 
+impl ToString for Header {
     /// Returns the base64 representation of the header.
     ///
     /// # Examples
@@ -61,9 +64,9 @@ impl Header {
     ///     kid: None,
     /// };
     ///
-    /// assert_eq!(header.to_base64(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
+    /// assert_eq!(header.to_string(), "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
     /// ```
-    pub fn to_base64(&self) -> String {
+    fn to_string(&self) -> String {
         base64::encode_config(
             serde_json::to_string(self).expect("failed to encode JSON JWT header"),
             base64::URL_SAFE_NO_PAD,
