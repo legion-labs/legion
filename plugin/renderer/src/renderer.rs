@@ -1,13 +1,14 @@
 use std::num::NonZeroU32;
 
 use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use legion_ecs::prelude::Query;
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 
 use crate::components::RenderSurface;
 pub struct Renderer {
     frame_idx: usize,
-    render_frame_idx: usize,
-    num_render_frames: usize,
+    render_frame_idx: u32,
+    num_render_frames: u32,
     frame_signal_sems: Vec<<DefaultApi as GfxApi>::Semaphore>,
     frame_fences: Vec<<DefaultApi as GfxApi>::Fence>,
     graphics_queue: <DefaultApi as GfxApi>::Queue,
@@ -18,38 +19,17 @@ pub struct Renderer {
     api: DefaultApi,
 }
 
-pub struct FrameContext<'a> {
-    renderer: &'a mut Renderer,
-}
-
-impl<'a> FrameContext<'a> {
-    pub fn new(renderer: &'a mut Renderer) -> Self {
-        renderer.begin_frame();
-        Self { renderer }
-    }
-
-    pub fn renderer(&self) -> &Renderer {
-        self.renderer
-    }
-}
-
-impl<'a> Drop for FrameContext<'a> {
-    fn drop(&mut self) {
-        self.renderer.end_frame();
-    }
-}
-
 impl Renderer {
     pub fn new() -> Self {
         #![allow(unsafe_code)]
-        let num_render_frames = 2;
+        let num_render_frames = 2u32;
         let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
         let graphics_queue = device_context.create_queue(QueueType::Graphics).unwrap();
-        let mut command_pools = Vec::with_capacity(num_render_frames);
-        let mut command_buffers = Vec::with_capacity(num_render_frames);
-        let mut frame_signal_sems = Vec::with_capacity(num_render_frames);
-        let mut frame_fences = Vec::with_capacity(num_render_frames);
+        let mut command_pools = Vec::with_capacity(num_render_frames as usize);
+        let mut command_buffers = Vec::with_capacity(num_render_frames as usize);
+        let mut frame_signal_sems = Vec::with_capacity(num_render_frames as usize);
+        let mut frame_fences = Vec::with_capacity(num_render_frames as usize);
 
         for _ in 0..num_render_frames {
             let command_pool = graphics_queue
@@ -99,20 +79,20 @@ impl Renderer {
 
     pub fn get_cmd_buffer(&self) -> &<DefaultApi as GfxApi>::CommandBuffer {
         let render_frame_index = self.render_frame_idx;
-        &self.command_buffers[render_frame_index]
+        &self.command_buffers[render_frame_index as usize]
     }
 
     pub fn frame_signal_semaphore(&self) -> &<DefaultApi as GfxApi>::Semaphore {
         let render_frame_index = self.render_frame_idx;
-        &self.frame_signal_sems[render_frame_index]
+        &self.frame_signal_sems[render_frame_index as usize]
     }
 
-    fn begin_frame(&mut self) {
+    pub(crate) fn begin_frame(&mut self) {
         //
         // Update frame indices
         //
         self.frame_idx += 1;
-        self.render_frame_idx = self.frame_idx % self.num_render_frames;
+        self.render_frame_idx = (self.frame_idx % self.num_render_frames as usize) as u32;
 
         //
         // Store on stack
@@ -122,7 +102,7 @@ impl Renderer {
         //
         // Wait for the next frame to be available
         //
-        let signal_fence = &self.frame_fences[render_frame_idx];
+        let signal_fence = &self.frame_fences[render_frame_idx as usize];
         if signal_fence.get_fence_status().unwrap() == FenceStatus::Incomplete {
             signal_fence.wait().unwrap();
         }
@@ -136,18 +116,31 @@ impl Renderer {
         //
         // Tmp. Reset command buffer.
         //
-        let cmd_pool = &self.command_pools[render_frame_idx];
-        let cmd_buffer = &self.command_buffers[render_frame_idx];
+        let cmd_pool = &self.command_pools[render_frame_idx as usize];
+        let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
 
         cmd_pool.reset_command_pool().unwrap();
         cmd_buffer.begin().unwrap();
     }
 
-    fn end_frame(&self) {
+    pub(crate) fn update(&mut self, q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>) {
+        let cmd_buffer = self.get_cmd_buffer();
+
+        for mut render_surface in q_render_surfaces.iter_mut() {
+            render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
+
+            {
+                let render_pass = &render_surface.test_renderpass;
+                render_pass.render(self, &render_surface, cmd_buffer);
+            }
+        }
+    }
+
+    pub(crate) fn end_frame(&mut self) {
         let render_frame_idx = self.render_frame_idx;
-        let signal_semaphore = &self.frame_signal_sems[render_frame_idx];
-        let signal_fence = &self.frame_fences[render_frame_idx];
-        let cmd_buffer = &self.command_buffers[render_frame_idx];
+        let signal_semaphore = &self.frame_signal_sems[render_frame_idx as usize];
+        let signal_fence = &self.frame_fences[render_frame_idx as usize];
+        let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
 
         cmd_buffer.end().unwrap();
 
@@ -179,9 +172,9 @@ impl TmpRenderPass {
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
         let num_render_frames = renderer.num_render_frames;
-        let mut vertex_buffers = Vec::with_capacity(num_render_frames);
-        let mut uniform_buffers = Vec::with_capacity(num_render_frames);
-        let mut uniform_buffer_cbvs = Vec::with_capacity(num_render_frames);
+        let mut vertex_buffers = Vec::with_capacity(num_render_frames as usize);
+        let mut uniform_buffers = Vec::with_capacity(num_render_frames as usize);
+        let mut uniform_buffer_cbvs = Vec::with_capacity(num_render_frames as usize);
 
         //
         // Shaders
@@ -280,7 +273,7 @@ impl TmpRenderPass {
 
         let root_signature_def = RootSignatureDef {
             pipeline_type: PipelineType::Graphics,
-            descriptor_set_layouts,
+            descriptor_set_layouts: descriptor_set_layouts.clone(),
             push_constant_def: shader_build_result
                 .pipeline_reflection
                 .push_constant
@@ -294,13 +287,23 @@ impl TmpRenderPass {
             .create_root_signature(&root_signature_def)
             .unwrap();
 
+        let heap_def = DescriptorHeapDef::from_descriptor_set_layout_def(
+            descriptor_set_layouts[0].definition(),
+            false,
+            num_render_frames,
+        );
+        let descriptor_heap = device_context.create_descriptor_heap(&heap_def).unwrap();
+
         let mut descriptor_set_arrays = Vec::new();
-        for descriptor_set_layout in &root_signature_def.descriptor_set_layouts {
+        for descriptor_set_layout in &descriptor_set_layouts {
             let descriptor_set_array = device_context
-                .create_descriptor_set_array(&DescriptorSetArrayDef {
-                    descriptor_set_layout,
-                    array_length: 3, // One per swapchain image.
-                })
+                .create_descriptor_set_array(
+                    descriptor_heap.clone(),
+                    &DescriptorSetArrayDef {
+                        descriptor_set_layout,
+                        array_length: num_render_frames,
+                    },
+                )
                 .unwrap();
             descriptor_set_arrays.push(descriptor_set_array);
         }
@@ -359,7 +362,7 @@ impl TmpRenderPass {
                 .copy_to_host_visible_buffer(&uniform_data)
                 .unwrap();
 
-            let view_def = BufferViewDef::as_const_buffer(uniform_buffer.buffer_def());
+            let view_def = BufferViewDef::as_const_buffer(uniform_buffer.definition());
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def).unwrap();
 
             descriptor_set_arrays[0]
@@ -410,7 +413,7 @@ impl TmpRenderPass {
             -0.5 + (elapsed_secs.cos() / 2. + 0.5),
             -0.5,
         ];
-        let vertex_buffer = &self.vertex_buffers[render_frame_idx];
+        let vertex_buffer = &self.vertex_buffers[render_frame_idx as usize];
         vertex_buffer
             .copy_to_host_visible_buffer(&vertex_data)
             .unwrap();
@@ -420,7 +423,7 @@ impl TmpRenderPass {
         //
 
         let uniform_data = [1.0f32, 0.0, 0.0, 1.0];
-        let uniform_buffer = &self.uniform_buffers[render_frame_idx];
+        let uniform_buffer = &self.uniform_buffers[render_frame_idx as usize];
 
         uniform_buffer
             .copy_to_host_visible_buffer(&uniform_data)

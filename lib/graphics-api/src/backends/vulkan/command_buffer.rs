@@ -585,7 +585,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             if let Some(array_slice) = array_slice {
                 subresource_range.layer_count = 1;
                 subresource_range.base_array_layer = u32::from(array_slice);
-                assert!(u32::from(array_slice) < texture.texture_def().array_length);
+                assert!(u32::from(array_slice) < texture.definition().array_length);
             } else {
                 subresource_range.layer_count = vk::REMAINING_ARRAY_LAYERS;
                 subresource_range.base_array_layer = 0;
@@ -594,7 +594,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             if let Some(mip_slice) = mip_slice {
                 subresource_range.level_count = 1;
                 subresource_range.base_mip_level = u32::from(mip_slice);
-                assert!(u32::from(mip_slice) < texture.texture_def().mip_count);
+                assert!(u32::from(mip_slice) < texture.definition().mip_count);
             } else {
                 subresource_range.level_count = vk::REMAINING_MIP_LEVELS;
                 subresource_range.base_mip_level = 0;
@@ -731,7 +731,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         dst_texture: &VulkanTexture,
         params: &CmdCopyBufferToTextureParams,
     ) -> GfxResult<()> {
-        let texture_def = dst_texture.texture_def();
+        let texture_def = dst_texture.definition();
 
         let width = 1.max(texture_def.extents.width >> params.mip_level);
         let height = 1.max(texture_def.extents.height >> params.mip_level);
@@ -773,18 +773,18 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         params: &CmdBlitParams,
     ) -> GfxResult<()> {
         assert!(src_texture
-            .texture_def()
+            .definition()
             .usage_flags
             .intersects(ResourceUsage::AS_TRANSFERABLE));
         assert!(dst_texture
-            .texture_def()
+            .definition()
             .usage_flags
             .intersects(ResourceUsage::AS_TRANSFERABLE));
 
         let src_aspect_mask =
-            super::internal::image_format_to_aspect_mask(src_texture.texture_def().format);
+            super::internal::image_format_to_aspect_mask(src_texture.definition().format);
         let dst_aspect_mask =
-            super::internal::image_format_to_aspect_mask(dst_texture.texture_def().format);
+            super::internal::image_format_to_aspect_mask(dst_texture.definition().format);
 
         let mut src_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)
@@ -861,18 +861,18 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         params: &CmdCopyTextureParams,
     ) -> GfxResult<()> {
         assert!(src_texture
-            .texture_def()
+            .definition()
             .usage_flags
             .intersects(ResourceUsage::AS_TRANSFERABLE));
         assert!(dst_texture
-            .texture_def()
+            .definition()
             .usage_flags
             .intersects(ResourceUsage::AS_TRANSFERABLE));
 
         let src_aspect_mask =
-            super::internal::image_format_to_aspect_mask(src_texture.texture_def().format);
+            super::internal::image_format_to_aspect_mask(src_texture.definition().format);
         let dst_aspect_mask =
-            super::internal::image_format_to_aspect_mask(dst_texture.texture_def().format);
+            super::internal::image_format_to_aspect_mask(dst_texture.definition().format);
 
         let mut src_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)

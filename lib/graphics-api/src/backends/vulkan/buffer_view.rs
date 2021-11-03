@@ -17,7 +17,7 @@ pub struct VulkanBufferView {
 
 impl VulkanBufferView {
     pub fn from_buffer(buffer: &VulkanBuffer, view_def: &BufferViewDef) -> GfxResult<Self> {
-        view_def.verify(buffer.buffer_def());
+        view_def.verify(buffer.definition());
 
         let device_context = buffer.device_context();
         let vk_offset = view_def.byte_offset;
@@ -69,7 +69,7 @@ impl VulkanBufferView {
 }
 
 impl BufferView<VulkanApi> for VulkanBufferView {
-    fn view_def(&self) -> &BufferViewDef {
+    fn definition(&self) -> &BufferViewDef {
         &self.inner.view_def
     }
 

@@ -1,9 +1,6 @@
 mod debug_reporter;
 pub(crate) use debug_reporter::*;
 
-mod descriptor_heap;
-pub(crate) use descriptor_heap::*;
-
 mod framebuffer;
 pub(crate) use framebuffer::*;
 

@@ -278,10 +278,10 @@ pub mod types;
 pub mod prelude {
     pub use crate::types::*;
     pub use crate::{
-        Buffer, BufferView, CommandBuffer, CommandPool, DefaultApi, DescriptorSetArray,
-        DescriptorSetHandle, DescriptorSetLayout, DeviceContext, Fence, GfxApi, GfxResult,
-        Pipeline, Queue, RootSignature, Sampler, Semaphore, Shader, ShaderModule, Swapchain,
-        Texture, TextureView,
+        Buffer, BufferView, CommandBuffer, CommandPool, DefaultApi, DescriptorHeap,
+        DescriptorSetArray, DescriptorSetHandle, DescriptorSetLayout, DeviceContext, Fence, GfxApi,
+        GfxResult, Pipeline, Queue, RootSignature, Sampler, Semaphore, Shader, ShaderModule,
+        Swapchain, Texture, TextureView,
     };
 }
 
@@ -332,6 +332,7 @@ pub trait GfxApi: Sized {
     type Pipeline: Pipeline<Self>;
     type DescriptorSetHandle: DescriptorSetHandle<Self>;
     type DescriptorSetArray: DescriptorSetArray<Self>;
+    type DescriptorHeap: DescriptorHeap<Self>;
     type Queue: Queue<Self>;
     type CommandPool: CommandPool<Self>;
     type CommandBuffer: CommandBuffer<Self>;
@@ -368,8 +369,13 @@ pub trait DeviceContext<A: GfxApi>: Clone {
     ) -> GfxResult<A::RootSignature>;
     fn create_descriptor_set_array(
         &self,
+        descriptor_heap: A::DescriptorHeap,
         descriptor_set_array_def: &DescriptorSetArrayDef<'_, A>,
     ) -> GfxResult<A::DescriptorSetArray>;
+    fn create_descriptor_heap(
+        &self,
+        descriptor_heap_def: &DescriptorHeapDef,
+    ) -> GfxResult<A::DescriptorHeap>;
     fn create_graphics_pipeline(
         &self,
         graphics_pipeline_def: &GraphicsPipelineDef<'_, A>,
@@ -393,7 +399,7 @@ pub trait BufferMappingInfo<A: GfxApi> {
 }
 
 pub trait Buffer<A: GfxApi>: std::fmt::Debug {
-    fn buffer_def(&self) -> &BufferDef;
+    fn definition(&self) -> &BufferDef;
     fn map_buffer(&self) -> GfxResult<A::BufferMappingInfo>;
     fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()>;
     fn copy_to_host_visible_buffer_with_offset<T: Copy>(
@@ -405,7 +411,7 @@ pub trait Buffer<A: GfxApi>: std::fmt::Debug {
 }
 
 pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
-    fn texture_def(&self) -> &TextureDef;
+    fn definition(&self) -> &TextureDef;
     fn map_texture(&self) -> GfxResult<TextureSubResource<'_>>;
     fn unmap_texture(&self) -> GfxResult<()>;
     fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<A::TextureView>;
@@ -417,12 +423,12 @@ pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
 // Views (BufferView, TextureView)
 //
 pub trait BufferView<A: GfxApi>: Clone + std::fmt::Debug {
-    fn view_def(&self) -> &BufferViewDef;
+    fn definition(&self) -> &BufferViewDef;
     fn buffer(&self) -> &A::Buffer;
 }
 
 pub trait TextureView<A: GfxApi>: Clone + std::fmt::Debug {
-    fn view_def(&self) -> &TextureViewDef;
+    fn definition(&self) -> &TextureViewDef;
     fn texture(&self) -> &A::Texture;
 }
 
@@ -435,7 +441,9 @@ pub trait Shader<A: GfxApi>: Clone + std::fmt::Debug {
     fn pipeline_reflection(&self) -> &PipelineReflection;
 }
 
-pub trait DescriptorSetLayout<A: GfxApi>: Clone + std::fmt::Debug {}
+pub trait DescriptorSetLayout<A: GfxApi>: Clone + std::fmt::Debug {
+    fn definition(&self) -> &DescriptorSetLayoutDef;
+}
 
 pub trait RootSignature<A: GfxApi>: Clone + std::fmt::Debug {
     fn pipeline_type(&self) -> PipelineType;
@@ -457,6 +465,11 @@ pub trait DescriptorSetArray<A: GfxApi>: std::fmt::Debug {
     fn queue_descriptor_set_update(&mut self, update: &DescriptorUpdate<'_, A>) -> GfxResult<()>;
     fn flush_descriptor_set_updates(&mut self) -> GfxResult<()>;
 }
+
+//
+// DescriptorHeap
+//
+pub trait DescriptorHeap<A: GfxApi> {}
 
 //
 // Queues, Command Buffers

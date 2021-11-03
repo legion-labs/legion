@@ -1,8 +1,4 @@
-use std::convert::TryInto;
 use std::ffi::CStr;
-#[cfg(debug_assertions)]
-#[cfg(feature = "track-device-contexts")]
-use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -13,20 +9,21 @@ use raw_window_handle::HasRawWindowHandle;
 
 use super::internal::{
     DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
-    VkQueueRequirements, VulkanDescriptorHeap, VulkanRenderpass, VulkanRenderpassDef,
+    VkQueueRequirements, VulkanRenderpass, VulkanRenderpassDef,
 };
 use super::{
-    VulkanApi, VulkanBuffer, VulkanDescriptorSetArray, VulkanDescriptorSetLayout, VulkanFence,
-    VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
-    VulkanShaderModule, VulkanSwapchain, VulkanTexture,
+    VulkanApi, VulkanBuffer, VulkanDescriptorHeap, VulkanDescriptorSetArray,
+    VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature,
+    VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule, VulkanSwapchain,
+    VulkanTexture,
 };
 use crate::backends::deferred_drop::DeferredDropper;
 use crate::vulkan::check_extensions_availability;
 use crate::{
-    ApiDef, BufferDef, ComputePipelineDef, DescriptorSetArrayDef, DescriptorSetLayoutDef,
-    DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef,
-    PipelineReflection, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef,
-    SwapchainDef, TextureDef,
+    ApiDef, BufferDef, ComputePipelineDef, DescriptorHeapDef, DescriptorSetArrayDef,
+    DescriptorSetLayoutDef, DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult,
+    GraphicsPipelineDef, PipelineReflection, QueueType, RootSignatureDef, SamplerDef,
+    ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
 };
 
 /// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
@@ -86,7 +83,7 @@ pub struct VkQueueFamilyIndices {
 
 pub(super) struct VulkanDeviceContextInner {
     pub(crate) resource_cache: DeviceVulkanResourceCache,
-    pub(crate) descriptor_heap: VulkanDescriptorHeap,
+    // pub(crate) descriptor_heap: VulkanDescriptorHeap,
     device_info: DeviceInfo,
     queue_allocator: VkQueueAllocatorSet,
 
@@ -188,7 +185,18 @@ impl VulkanDeviceContextInner {
         };
 
         let resource_cache = DeviceVulkanResourceCache::default();
-        let descriptor_heap = VulkanDescriptorHeap::new(&logical_device)?;
+        // let descriptor_heap = VulkanDescriptorHeap::new_old(&logical_device,
+        //     &DescriptorHeapDef {
+        //         transient: false,
+        //         max_descriptor_sets: 8192,
+        //         sampler_count: 1024,
+        //         constant_buffer_count: 8192,
+        //         buffer_count: 8192,
+        //         rw_buffer_count: 1024,
+        //         texture_count: 8192,
+        //         rw_texture_count: 1024,
+        //     }
+        // )?;
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
@@ -201,7 +209,6 @@ impl VulkanDeviceContextInner {
 
         Ok(Self {
             resource_cache,
-            descriptor_heap,
             device_info,
             queue_allocator,
             dedicated_present_queue_lock: Mutex::default(),
@@ -287,10 +294,6 @@ impl Drop for VulkanDeviceContext {
 impl VulkanDeviceContext {
     pub(crate) fn resource_cache(&self) -> &DeviceVulkanResourceCache {
         &self.inner.resource_cache
-    }
-
-    pub(crate) fn descriptor_heap(&self) -> &VulkanDescriptorHeap {
-        &self.inner.descriptor_heap
     }
 
     pub fn entry(&self) -> &ash::Entry {
@@ -425,9 +428,17 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
 
     fn create_descriptor_set_array(
         &self,
+        descriptor_heap: VulkanDescriptorHeap,
         descriptor_set_array_def: &DescriptorSetArrayDef<'_, VulkanApi>,
     ) -> GfxResult<VulkanDescriptorSetArray> {
-        VulkanDescriptorSetArray::new(self, self.descriptor_heap(), descriptor_set_array_def)
+        VulkanDescriptorSetArray::new(self, descriptor_heap, descriptor_set_array_def)
+    }
+
+    fn create_descriptor_heap(
+        &self,
+        descriptor_heap_def: &DescriptorHeapDef,
+    ) -> GfxResult<VulkanDescriptorHeap> {
+        VulkanDescriptorHeap::new(self, descriptor_heap_def)
     }
 
     fn create_graphics_pipeline(

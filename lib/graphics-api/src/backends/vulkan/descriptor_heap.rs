@@ -1,8 +1,11 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
+use crate::{
+    backends::deferred_drop::Drc, DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi,
+};
 use ash::vk;
 
-use crate::GfxResult;
+use super::VulkanDeviceContext;
 
 struct DescriptorHeapPoolConfig {
     pool_flags: vk::DescriptorPoolCreateFlags,
@@ -20,27 +23,29 @@ struct DescriptorHeapPoolConfig {
     input_attachments: u32,
 }
 
-impl Default for DescriptorHeapPoolConfig {
-    fn default() -> Self {
+impl DescriptorHeapPoolConfig {
+    fn new(definition: &DescriptorHeapDef) -> Self {
         Self {
-            pool_flags: vk::DescriptorPoolCreateFlags::empty(),
-            descriptor_sets: 8192,
-            samplers: 1024,
+            pool_flags: if definition.transient {
+                vk::DescriptorPoolCreateFlags::empty()
+            } else {
+                vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET
+            },
+            descriptor_sets: definition.max_descriptor_sets,
+            samplers: definition.sampler_count,
             combined_image_samplers: 0,
-            sampled_images: 8192,
-            storage_images: 1024,
-            uniform_texel_buffers: 1024,
-            storage_texel_buffers: 1024,
-            uniform_buffers: 8192,
-            storage_buffers: 1024,
-            dynamic_uniform_buffers: 1024,
+            sampled_images: definition.texture_count,
+            storage_images: definition.rw_texture_count,
+            uniform_texel_buffers: 0,
+            storage_texel_buffers: 0,
+            uniform_buffers: definition.constant_buffer_count,
+            storage_buffers: definition.buffer_count + definition.rw_buffer_count,
+            dynamic_uniform_buffers: 0,
             dynamic_storage_buffers: 0,
             input_attachments: 0,
         }
     }
-}
 
-impl DescriptorHeapPoolConfig {
     fn create_pool(&self, device: &ash::Device) -> GfxResult<vk::DescriptorPool> {
         let mut pool_sizes = Vec::with_capacity(16);
 
@@ -85,27 +90,22 @@ impl DescriptorHeapPoolConfig {
 }
 
 struct DescriptorHeapVulkanInner {
-    heap_pool_config: DescriptorHeapPoolConfig,
+    device_context: VulkanDeviceContext,
+    pub definition: DescriptorHeapDef,
     pools: Vec<vk::DescriptorPool>,
-}
-
-impl DescriptorHeapVulkanInner {
-    fn clear_pools(&mut self, device: &ash::Device) {
-        for &pool in &self.pools {
-            unsafe {
-                device.destroy_descriptor_pool(pool, None);
-            }
-        }
-
-        self.pools.clear();
-    }
 }
 
 impl Drop for DescriptorHeapVulkanInner {
     fn drop(&mut self) {
         // Assert that everything was destroyed. (We can't do it automatically since we don't have
         // a reference to the device)
-        assert!(self.pools.is_empty());
+        // assert!(self.pools.is_empty());
+        let device = self.device_context.device();
+        for pool in &self.pools {
+            unsafe {
+                device.destroy_descriptor_pool(*pool, None);
+            }
+        }
     }
 }
 
@@ -113,27 +113,30 @@ impl Drop for DescriptorHeapVulkanInner {
 // It also takes locks on every operation. So it's better to allocate large chunks of descriptors
 // and pool/reuse them.
 #[derive(Clone)]
-pub(crate) struct VulkanDescriptorHeap {
-    inner: Arc<Mutex<DescriptorHeapVulkanInner>>,
+pub struct VulkanDescriptorHeap {
+    inner: Drc<Mutex<DescriptorHeapVulkanInner>>,
 }
 
+impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {}
+
 impl VulkanDescriptorHeap {
-    pub(crate) fn new(device: &ash::Device) -> GfxResult<Self> {
-        let heap_pool_config = DescriptorHeapPoolConfig::default();
+    pub(crate) fn new(
+        device_context: &VulkanDeviceContext,
+        definition: &DescriptorHeapDef,
+    ) -> GfxResult<Self> {
+        let device = device_context.device();
+        let heap_pool_config = DescriptorHeapPoolConfig::new(definition);
         let pool = heap_pool_config.create_pool(device)?;
 
         let inner = DescriptorHeapVulkanInner {
-            heap_pool_config,
+            device_context: device_context.clone(),
+            definition: *definition,
             pools: vec![pool],
         };
 
         Ok(Self {
-            inner: Arc::new(Mutex::new(inner)),
+            inner: device_context.deferred_dropper().new_drc(Mutex::new(inner)),
         })
-    }
-
-    pub(crate) fn clear_pools(&self, device: &ash::Device) {
-        self.inner.lock().unwrap().clear_pools(device);
     }
 
     pub(crate) fn allocate_descriptor_sets(
@@ -162,7 +165,8 @@ impl VulkanDescriptorHeap {
 
         // We either didn't have any pools, or assume the pool wasn't large enough. Create a new
         // pool and try again
-        let new_pool = heap.heap_pool_config.create_pool(device)?;
+        let heap_pool_config = DescriptorHeapPoolConfig::new(&heap.definition);
+        let new_pool = heap_pool_config.create_pool(device)?;
         heap.pools.push(new_pool);
 
         let pool = *heap.pools.last().unwrap();

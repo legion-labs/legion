@@ -92,7 +92,7 @@ impl Plugin for StreamerPlugin {
             .add_system(
                 streamer::render_streams
                     .system()
-                    .after(RendererSystemLabel::Main),
+                    .after(RendererSystemLabel::FrameDone),
             );
 
         let webrtc_server =

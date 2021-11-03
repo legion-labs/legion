@@ -72,7 +72,7 @@ impl Plugin for PresenterSnapshotPlugin {
         app.add_system(
             render_presenter_snapshots
                 .system()
-                .after(RendererSystemLabel::Main),
+                .after(RendererSystemLabel::FrameDone),
         );
     }
 }

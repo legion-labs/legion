@@ -432,7 +432,7 @@ impl VulkanTexture {
 }
 
 impl Texture<VulkanApi> for VulkanTexture {
-    fn texture_def(&self) -> &TextureDef {
+    fn definition(&self) -> &TextureDef {
         &self.inner.texture_def
     }
     fn map_texture(&self) -> GfxResult<TextureSubResource<'_>> {

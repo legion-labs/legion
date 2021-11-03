@@ -17,6 +17,7 @@ pub(super) struct VulkanDescriptor {
 #[derive(Clone, Debug)]
 pub struct VulkanDescriptorSetLayoutInner {
     device_context: VulkanDeviceContext,
+    definition: DescriptorSetLayoutDef,
     set_index: u32,
     update_data_count_per_set: u32,
     descriptors: Vec<VulkanDescriptor>,
@@ -72,13 +73,13 @@ impl VulkanDescriptorSetLayout {
 
     pub(super) fn new(
         device_context: &VulkanDeviceContext,
-        descriptor_set_layout_def: &DescriptorSetLayoutDef,
+        definition: &DescriptorSetLayoutDef,
     ) -> GfxResult<Self> {
         let mut descriptors = Vec::new();
         let mut vk_bindings = Vec::<vk::DescriptorSetLayoutBinding>::new();
         let mut update_data_count_per_set = 0;
 
-        for descriptor_def in &descriptor_set_layout_def.descriptor_defs {
+        for descriptor_def in &definition.descriptor_defs {
             let vk_descriptor_type = super::internal::shader_resource_type_to_descriptor_type(
                 descriptor_def.shader_resource_type,
             );
@@ -116,7 +117,8 @@ impl VulkanDescriptorSetLayout {
                 .deferred_dropper()
                 .new_drc(VulkanDescriptorSetLayoutInner {
                     device_context: device_context.clone(),
-                    set_index: descriptor_set_layout_def.frequency,
+                    definition: definition.clone(),
+                    set_index: definition.frequency,
                     update_data_count_per_set,
                     descriptors,
                     vk_layout,
@@ -127,4 +129,8 @@ impl VulkanDescriptorSetLayout {
     }
 }
 
-impl DescriptorSetLayout<VulkanApi> for VulkanDescriptorSetLayout {}
+impl DescriptorSetLayout<VulkanApi> for VulkanDescriptorSetLayout {
+    fn definition(&self) -> &DescriptorSetLayoutDef {
+        &self.inner.definition
+    }
+}

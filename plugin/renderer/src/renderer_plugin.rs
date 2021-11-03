@@ -1,9 +1,7 @@
-use graphics_api::ResourceState;
-use legion_app::Plugin;
+use legion_app::{CoreStage, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
 
-use super::labels::RendererSystemLabel;
-use crate::{components::RenderSurface, FrameContext, Renderer};
+use crate::{components::RenderSurface, labels::RendererSystemLabel, Renderer};
 
 #[derive(Default)]
 pub struct RendererPlugin;
@@ -13,28 +11,38 @@ impl Plugin for RendererPlugin {
         let renderer = Renderer::new();
 
         app.insert_resource(renderer);
+
+        // Pre-Update
+        app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update.system());
+
+        // Update
         app.add_system_set(
             SystemSet::new()
-                .with_system(render.system())
-                .label(RendererSystemLabel::Main),
+                .with_system(render_update.system())
+                .label(RendererSystemLabel::FrameUpdate),
+        );
+
+        // Post-Update
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
+            render_post_update
+                .system()
+                .label(RendererSystemLabel::FrameDone),
         );
     }
 }
 
-fn render(
-    renderer: ResMut<'_, Renderer>,
-    mut outputs: Query<'_, '_, (Entity, &mut RenderSurface)>,
+fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
+    renderer.begin_frame();
+}
+
+fn render_update(
+    mut renderer: ResMut<'_, Renderer>,
+    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {
-    let frame_context = FrameContext::new(renderer.into_inner());
+    renderer.update(&mut q_render_surfaces);
+}
 
-    let cmd_buffer = frame_context.renderer().get_cmd_buffer();
-
-    for (_, mut render_surface) in outputs.iter_mut() {
-        render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
-
-        {
-            let render_pass = &render_surface.test_renderpass;
-            render_pass.render(frame_context.renderer(), &render_surface, cmd_buffer);
-        }
-    }
+fn render_post_update(mut renderer: ResMut<'_, Renderer>) {
+    renderer.end_frame();
 }

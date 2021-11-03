@@ -121,9 +121,9 @@ impl PresenterWindow {
                     .unwrap();
 
                 let src_texture = render_surface.texture();
-                let src_texture_def = src_texture.texture_def();
+                let src_texture_def = src_texture.definition();
                 let dst_texture = swapchain_texture;
-                let dst_texture_def = dst_texture.texture_def();
+                let dst_texture_def = dst_texture.definition();
                 let blit_params = CmdBlitParams {
                     src_state: ResourceState::COPY_SRC,
                     dst_state: ResourceState::COPY_DST,

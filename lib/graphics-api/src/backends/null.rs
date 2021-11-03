@@ -35,6 +35,7 @@ impl GfxApi for NullApi {
     type Pipeline = NullPipeline;
     type DescriptorSetHandle = NullDescriptorSetHandle;
     type DescriptorSetArray = NullDescriptorSetArray;
+    type DescriptorHeap = NullDescriptorHeap;
     type Queue = NullQueue;
     type CommandPool = NullCommandPool;
     type CommandBuffer = NullCommandBuffer;
@@ -97,8 +98,15 @@ impl DeviceContext<NullApi> for NullDeviceContext {
     }
     fn create_descriptor_set_array(
         &self,
+        descriptor_heap: NullDescriptorHeap,
         descriptor_set_array_def: &DescriptorSetArrayDef<'_, NullApi>,
     ) -> GfxResult<NullDescriptorSetArray> {
+        unimplemented!();
+    }
+    fn create_descriptor_heap(
+        &self,
+        descriptor_heap_def: &DescriptorHeapDef,
+    ) -> GfxResult<NullDescriptorHeap> {
         unimplemented!();
     }
     fn create_graphics_pipeline(
@@ -141,7 +149,7 @@ impl BufferMappingInfo<NullApi> for NullBufferMappingInfo {
 #[derive(Debug)]
 pub struct NullBuffer;
 impl Buffer<NullApi> for NullBuffer {
-    fn buffer_def(&self) -> &BufferDef {
+    fn definition(&self) -> &BufferDef {
         unimplemented!()
     }
     fn map_buffer(&self) -> GfxResult<NullBufferMappingInfo> {
@@ -165,7 +173,7 @@ impl Buffer<NullApi> for NullBuffer {
 #[derive(Clone, Debug)]
 pub struct NullTexture;
 impl Texture<NullApi> for NullTexture {
-    fn texture_def(&self) -> &TextureDef {
+    fn definition(&self) -> &TextureDef {
         unimplemented!()
     }
     fn map_texture(&self) -> GfxResult<TextureSubResource<'_>> {
@@ -193,7 +201,7 @@ impl BufferView<NullApi> for NullBufferView {
         unimplemented!();
     }
 
-    fn view_def(&self) -> &BufferViewDef {
+    fn definition(&self) -> &BufferViewDef {
         unimplemented!();
     }
 }
@@ -205,7 +213,7 @@ impl TextureView<NullApi> for NullTextureView {
         unimplemented!();
     }
 
-    fn view_def(&self) -> &TextureViewDef {
+    fn definition(&self) -> &TextureViewDef {
         unimplemented!();
     }
 }
@@ -227,7 +235,11 @@ impl Shader<NullApi> for NullShader {
 
 #[derive(Clone, Debug)]
 pub struct NullDescriptorSetLayout;
-impl DescriptorSetLayout<NullApi> for NullDescriptorSetLayout {}
+impl DescriptorSetLayout<NullApi> for NullDescriptorSetLayout {
+    fn definition(&self) -> &DescriptorSetLayoutDef {
+        unimplemented!()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct NullRootSignature;
@@ -274,6 +286,13 @@ impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
         unimplemented!();
     }
 }
+
+//
+// DescriptorHeap
+//
+
+pub struct NullDescriptorHeap;
+impl DescriptorHeap<NullApi> for NullDescriptorHeap {}
 
 //
 // Queues, Command Buffers

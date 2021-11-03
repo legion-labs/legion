@@ -56,7 +56,7 @@
 // crate-specific exceptions:
 #![allow()]
 
-use legion_app::{App, Plugin};
+use legion_app::{App, CoreStage, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
 use legion_renderer::{components::RenderSurface, Renderer, RendererSystemLabel};
 use legion_window::Windows;
@@ -70,10 +70,11 @@ pub struct PresenterWindowPlugin;
 
 impl Plugin for PresenterWindowPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
             render_presenter_windows
                 .system()
-                .after(RendererSystemLabel::Main),
+                .after(RendererSystemLabel::FrameDone),
         );
     }
 }
