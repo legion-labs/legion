@@ -60,9 +60,9 @@ use std::path::Path;
 
 use anyhow::{bail, Context, Result};
 use legion_telemetry::{decompress, ContainerMetadata};
+use legion_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
 use sqlx::Row;
-use transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
     let db_uri = format!("sqlite://{}/telemetry.db3", data_folder.display());
@@ -372,7 +372,7 @@ pub async fn fetch_block_payload(
 
 fn container_metadata_as_transit_udt_vec(
     value: &ContainerMetadata,
-) -> Vec<transit::UserDefinedType> {
+) -> Vec<legion_transit::UserDefinedType> {
     value
         .types
         .iter()
@@ -482,7 +482,7 @@ pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(u64, String)>(
     Ok(())
 }
 
-pub async fn for_each_process_metric<ProcessMetric: FnMut(transit::Object)>(
+pub async fn for_each_process_metric<ProcessMetric: FnMut(legion_transit::Object)>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process_id: &str,

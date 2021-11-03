@@ -1,4 +1,4 @@
-use transit::prelude::*;
+use legion_transit::prelude::*;
 
 pub trait MetricEvent {
     fn get_metric(&self) -> &'static MetricDesc;

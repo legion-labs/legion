@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use legion_analytics::prelude::*;
-use transit::prelude::*;
+use legion_transit::prelude::*;
 
 pub async fn print_process_thread_events(
     connection: &mut sqlx::AnyConnection,

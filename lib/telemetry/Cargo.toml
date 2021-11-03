@@ -8,9 +8,10 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 legion-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
+legion-utils = { path = "../utils", version = "0.1.0" }
+legion-transit = { path = "../transit", version = "0.1.0" }
 anyhow = "1.0"
 raw-cpuid = "10.2.0"
-transit = { path = "../transit" }
 tonic = "0.6"
 prost = "0.9"
 whoami = "1.1"
@@ -21,6 +22,5 @@ memoffset = "0.6"
 lz4 = "1.23"
 log = { version = "0.4", features = ["std"] }
 ctrlc = "3.2.0"
-legion-utils = { path = "../utils" }
 thread-id = "4.0"
 lazy_static = "1.4"

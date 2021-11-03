@@ -82,6 +82,7 @@ pub use compression::*;
 pub use dual_time::*;
 pub use event_block_sink::*;
 pub use grpc_event_sink::*;
+pub use legion_transit::HeterogeneousQueue;
 pub use log_block::*;
 pub use log_bridge::*;
 pub use metrics_block::*;
@@ -89,7 +90,6 @@ pub use scope::*;
 pub use stream::*;
 pub use thread_block::*;
 pub use thread_events::*;
-pub use transit::HeterogeneousQueue;
 
 pub type ProcessInfo = legion_telemetry_proto::telemetry::Process;
 pub type StreamInfo = legion_telemetry_proto::telemetry::Stream;

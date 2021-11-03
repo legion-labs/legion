@@ -1,4 +1,4 @@
-use transit::prelude::*;
+use legion_transit::prelude::*;
 
 use crate::ScopeDesc;
 

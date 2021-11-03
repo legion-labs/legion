@@ -1600,14 +1600,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derive-transit"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
 name = "derive_builder"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1800,6 +1792,7 @@ dependencies = [
  "legion-streaming-proto",
  "legion-tauri",
  "legion-telemetry",
+ "legion-transit",
  "log",
  "prost",
  "regex",
@@ -1811,7 +1804,6 @@ dependencies = [
  "tauri-build",
  "tokio",
  "tonic",
- "transit",
  "url",
  "which",
 ]
@@ -3069,10 +3061,10 @@ dependencies = [
  "async-recursion",
  "legion-telemetry",
  "legion-telemetry-proto",
+ "legion-transit",
  "prost",
  "serde_json",
  "sqlx",
- "transit",
 ]
 
 [[package]]
@@ -3289,6 +3281,14 @@ name = "legion-derive"
 version = "0.1.0"
 dependencies = [
  "legion-macro-utils",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "legion-derive-transit"
+version = "0.1.0"
+dependencies = [
  "quote",
  "syn",
 ]
@@ -3622,6 +3622,7 @@ dependencies = [
  "ctrlc",
  "lazy_static",
  "legion-telemetry-proto",
+ "legion-transit",
  "legion-utils",
  "log",
  "lz4",
@@ -3631,7 +3632,6 @@ dependencies = [
  "thread-id",
  "tokio",
  "tonic",
- "transit",
  "uuid",
  "whoami",
 ]
@@ -3656,6 +3656,17 @@ dependencies = [
  "legion-math",
  "legion-utils",
  "smallvec",
+]
+
+[[package]]
+name = "legion-transit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "legion-derive-transit",
+ "legion-utils",
+ "memoffset 0.6.4",
+ "serde",
 ]
 
 [[package]]
@@ -6471,12 +6482,12 @@ dependencies = [
  "json",
  "legion-analytics",
  "legion-telemetry",
+ "legion-transit",
  "lz4",
  "prost",
  "sqlx",
  "test-utils",
  "tokio",
- "transit",
 ]
 
 [[package]]
@@ -6931,17 +6942,6 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
-]
-
-[[package]]
-name = "transit"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "derive-transit",
- "legion-utils",
- "memoffset 0.6.4",
- "serde",
 ]
 
 [[package]]

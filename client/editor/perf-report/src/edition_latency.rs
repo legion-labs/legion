@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use anyhow::{Context, Result};
 use legion_analytics::prelude::*;
-use transit::prelude::*;
+use legion_transit::prelude::*;
 
 async fn find_server_process_id(
     connection: &mut sqlx::AnyConnection,

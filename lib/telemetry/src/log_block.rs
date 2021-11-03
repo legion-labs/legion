@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use transit::prelude::*;
+use legion_transit::prelude::*;
 
 use crate::{
     compress, event_block::EventBlock, EncodedBlock, EventStream, LogDynMsgEvent, LogMsgEvent,

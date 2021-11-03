@@ -23,6 +23,8 @@ legion-grpc = { path = "../../plugin/grpc", version = "0.1.0" }
 legion-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
 legion-streaming-proto = { path = "../../proto/streaming", version = "0.1.0" }
 legion-editor-proto = { path = "../../proto/editor", version = "0.1.0" }
+legion-analytics = { path = "../../lib/analytics", version = "0.1.0" }
+legion-transit = { path = "../../lib/transit", version = "0.1.0" }
 anyhow = "1.0.44"
 clap = "2.33"
 tonic = "0.6"
@@ -35,8 +37,6 @@ tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
 json = "0.12.4"
 log = "0.4"
 simple_logger = "1.13"
-legion-analytics = { path = "../../lib/analytics" }
-transit = { path = "../../lib/transit" }
 regex = "1.5"
 url = "2.2.2"
 sqlx = { version = "0.5", features = [
