@@ -96,13 +96,15 @@ fn on_window_resized(
     mut ev_wnd_resized: EventReader<WindowResized>,
     wnd_list: Res<Windows>,
     renderer: Res<Renderer>,
-    mut query: Query<&mut RenderSurface>,
+    mut q_render_surfaces: Query<&mut RenderSurface>,
     render_surfaces: Res<RenderSurfaces>,
 ) {
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
         if let Some(render_surface_id) = render_surface_id {
-            let render_surface = query.iter_mut().find(|x| x.id() == *render_surface_id);
+            let render_surface = q_render_surfaces
+                .iter_mut()
+                .find(|x| x.id() == *render_surface_id);
             if let Some(mut render_surface) = render_surface {
                 let wnd = wnd_list.get(ev.id).unwrap();
                 render_surface.resize(

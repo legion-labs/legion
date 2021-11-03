@@ -1,6 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
-use crate::{DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi};
+use crate::{
+    backends::deferred_drop::Drc, DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi,
+};
 use ash::vk;
 
 use super::VulkanDeviceContext;
@@ -112,7 +114,7 @@ impl Drop for DescriptorHeapVulkanInner {
 // and pool/reuse them.
 #[derive(Clone)]
 pub struct VulkanDescriptorHeap {
-    inner: Arc<Mutex<DescriptorHeapVulkanInner>>,
+    inner: Drc<Mutex<DescriptorHeapVulkanInner>>,
 }
 
 impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {}
@@ -133,7 +135,7 @@ impl VulkanDescriptorHeap {
         };
 
         Ok(Self {
-            inner: Arc::new(Mutex::new(inner)),
+            inner: device_context.deferred_dropper().new_drc(Mutex::new(inner)),
         })
     }
 
