@@ -262,8 +262,10 @@ mod tests {
         let mut update = SystemStage::parallel();
         update.add_system(incr_e_on_flip);
         schedule.add_stage("update", update);
-        let x = legion_ecs::system::wrap_async_fn(World::clear_trackers);
-        schedule.add_stage("clear_trackers", SystemStage::single(x.exclusive_system()));
+        schedule.add_stage(
+            "clear_trackers",
+            SystemStage::single(World::clear_trackers.exclusive_system()),
+        );
 
         schedule.run(&mut world);
         assert_eq!(world.get_resource::<Added>().unwrap().0, 1);

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, future::Future, pin::Pin};
+use std::{borrow::Cow, future::Future};
 
 use async_trait::async_trait;
 
@@ -32,7 +32,7 @@ where
 #[async_trait]
 impl<F, Out> ExclusiveSystem for ExclusiveSystemFn<F, Out>
 where
-    F: FnMut(&mut World) + Send + Sync + 'static,
+    F: FnMut(&mut World) -> Out + Send + Sync + 'static,
     Out: Future<Output = ()> + Send + 'static,
 {
     fn name(&self) -> Cow<'static, str> {
@@ -78,6 +78,7 @@ where
         }
     }
 }
+
 pub struct ExclusiveSystemCoerced {
     system: BoxedSystem<(), ()>,
     archetype_generation: ArchetypeGeneration,

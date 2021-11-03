@@ -1,4 +1,7 @@
+use std::future::Future;
+
 use crate::{
+    prelude::World,
     schedule::{
         AmbiguitySetLabel, BoxedAmbiguitySetLabel, BoxedSystemLabel, IntoRunCriteria,
         RunCriteriaDescriptorOrLabel, SystemLabel,
@@ -78,9 +81,10 @@ impl IntoSystemDescriptor<()> for ExclusiveSystemDescriptor {
     }
 }
 
-impl<F> IntoSystemDescriptor<()> for ExclusiveSystemFn<F>
+impl<F, Out> IntoSystemDescriptor<()> for ExclusiveSystemFn<F, Out>
 where
-    F: FnMut(&mut crate::prelude::World) + Send + Sync + 'static,
+    F: FnMut(&mut World) -> Out + Send + Sync + 'static,
+    Out: Future<Output = ()> + Send + 'static,
 {
     fn into_descriptor(self) -> SystemDescriptor {
         new_exclusive_descriptor(Box::new(self)).into_descriptor()
