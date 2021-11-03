@@ -55,7 +55,7 @@ impl<'a> Token<'a> {
         let signature = self.signature()?;
 
         signature_validation
-            .validate_signature(&header.alg, self.signed, &signature)
+            .validate_signature(&header.alg, header.kid.as_deref(), self.signed, &signature)
             .ok()?;
 
         self.into_claims_unsafe()
@@ -73,7 +73,7 @@ impl<'a> Token<'a> {
         let signature = self.signature()?;
 
         signature_validation
-            .validate_signature(&header.alg, self.signed, &signature)
+            .validate_signature(&header.alg, header.kid.as_deref(), self.signed, &signature)
             .ok()
     }
 

@@ -65,7 +65,13 @@ impl SignatureValidation for RsaSignatureValidation {
     ///
     /// token.validate_signature(&validation).unwrap();
     /// ```
-    fn validate_signature(&self, alg: &str, message: &str, signature: &[u8]) -> ValidationResult {
+    fn validate_signature(
+        &self,
+        alg: &str,
+        _kid: Option<&str>,
+        message: &str,
+        signature: &[u8],
+    ) -> ValidationResult {
         println!("{}", message);
         match Self::alg_to_rsa_parameters(alg) {
             Ok(parameters) => match self.key.verify(parameters, message.as_bytes(), signature) {

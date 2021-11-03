@@ -73,7 +73,13 @@ impl ValidationResult {
 
 /// A type implementing `SignatureValidation` is able to validate the signature of a JWT.
 pub trait SignatureValidation {
-    fn validate_signature(&self, alg: &str, message: &str, signature: &[u8]) -> ValidationResult;
+    fn validate_signature(
+        &self,
+        alg: &str,
+        kid: Option<&str>,
+        message: &str,
+        signature: &[u8],
+    ) -> ValidationResult;
 }
 
 /// Chains two `SignatureValidation`s that will be tried in sequence.
@@ -100,10 +106,16 @@ where
     First: SignatureValidation,
     Second: SignatureValidation,
 {
-    fn validate_signature(&self, alg: &str, message: &str, signature: &[u8]) -> ValidationResult {
+    fn validate_signature(
+        &self,
+        alg: &str,
+        kid: Option<&str>,
+        message: &str,
+        signature: &[u8],
+    ) -> ValidationResult {
         self.first
-            .validate_signature(alg, message, signature)
-            .or_else(|| self.second.validate_signature(alg, message, signature))
+            .validate_signature(alg, kid, message, signature)
+            .or_else(|| self.second.validate_signature(alg, kid, message, signature))
     }
 }
 
