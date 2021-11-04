@@ -1,7 +1,9 @@
 <template>
   <div>
     <div>process_id {{ process_id }}</div>
-    <div>exe {{ process_info.getExe() }}</div>
+    <template v-for="process in process_list">
+      <div :key="process.getProcessId()">exe {{ process.getExe() }}</div>
+    </template>
     <template v-for="stream in stream_list">
       <div :key="stream.getStreamId()">Stream {{ stream.getStreamId() }}</div>
     </template>
@@ -12,7 +14,25 @@
 </template>
 
 <script>
-import { ListStreamBlocksRequest, ListProcessStreamsRequest, FindProcessRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
+import { BlockCallTreeRequest, ListStreamBlocksRequest, ListProcessStreamsRequest, FindProcessRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
+
+function fetchCallTree (block) {
+  const streamId = block.getStreamId()
+  const stream = this.stream_list.find(stream => stream.getStreamId() === streamId)
+  const process = this.process_list.find(process => process.getProcessId() === stream.getProcessId())
+  const request = new BlockCallTreeRequest()
+  request.setProcess(process)
+  request.setStream(stream)
+  request.setBlockId(block.getBlockId())
+  this.client.block_call_tree(request, null, (err, response) => {
+    if (err) {
+      console.error('error in block_call_tree', err)
+    } else {
+      console.log(response.toObject())
+    }
+  })
+  console.log(request)
+}
 
 function fetchBlocks (streamId) {
   try {
@@ -22,7 +42,9 @@ function fetchBlocks (streamId) {
       if (err) {
         console.error('error in list_stream_blocks', err)
       } else {
-        this.block_list = this.block_list.concat(response.getBlocksList())
+        const newBlocks = response.getBlocksList()
+        this.block_list = this.block_list.concat(newBlocks)
+        newBlocks.forEach(block => this.fetchCallTree(block))
       }
     })
   } catch (err) {
@@ -63,7 +85,8 @@ function fetchProcessInfo () {
       if (err) {
         console.error('error in list_process_streams', err)
       } else {
-        this.process_info = response.getProcess()
+        this.process_list.push(response.getProcess())
+        this.fetchStreams()
       }
     })
   } catch (err) {
@@ -74,7 +97,6 @@ function fetchProcessInfo () {
 
 function onTimelineCreated () {
   this.client = new PerformanceAnalyticsClient('http://' + location.hostname + ':9090', null, null)
-  this.fetchStreams()
   this.fetchProcessInfo()
 }
 
@@ -90,12 +112,13 @@ export default {
   data: function () {
     return {
       block_list: [],
-      process_info: { getExe: function () { return '' } },
+      process_list: [],
       stream_list: []
     }
   },
   methods: {
     fetchBlocks: fetchBlocks,
+    fetchCallTree: fetchCallTree,
     fetchStreams: fetchStreams,
     fetchProcessInfo: fetchProcessInfo
   }

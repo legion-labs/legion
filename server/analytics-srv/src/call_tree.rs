@@ -67,7 +67,7 @@ impl CallTreeBuilder {
                 scopes: vec![],
             };
         }
-        while !self.stack.len() > 1 {
+        while self.stack.len() > 1 {
             let top = self.stack.pop().unwrap();
             let last_index = self.stack.len() - 1;
             let parent = &mut self.stack[last_index];

@@ -316,5 +316,66 @@ proto.analytics.PerformanceAnalyticsPromiseClient.prototype.list_stream_blocks =
 };
 
 
+/**
+ * @const
+ * @type {!grpc.web.MethodDescriptor<
+ *   !proto.analytics.BlockCallTreeRequest,
+ *   !proto.analytics.BlockCallTreeReply>}
+ */
+const methodDescriptor_PerformanceAnalytics_block_call_tree = new grpc.web.MethodDescriptor(
+  '/analytics.PerformanceAnalytics/block_call_tree',
+  grpc.web.MethodType.UNARY,
+  proto.analytics.BlockCallTreeRequest,
+  proto.analytics.BlockCallTreeReply,
+  /**
+   * @param {!proto.analytics.BlockCallTreeRequest} request
+   * @return {!Uint8Array}
+   */
+  function(request) {
+    return request.serializeBinary();
+  },
+  proto.analytics.BlockCallTreeReply.deserializeBinary
+);
+
+
+/**
+ * @param {!proto.analytics.BlockCallTreeRequest} request The
+ *     request proto
+ * @param {?Object<string, string>} metadata User defined
+ *     call metadata
+ * @param {function(?grpc.web.RpcError, ?proto.analytics.BlockCallTreeReply)}
+ *     callback The callback function(error, response)
+ * @return {!grpc.web.ClientReadableStream<!proto.analytics.BlockCallTreeReply>|undefined}
+ *     The XHR Node Readable Stream
+ */
+proto.analytics.PerformanceAnalyticsClient.prototype.block_call_tree =
+    function(request, metadata, callback) {
+  return this.client_.rpcCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/block_call_tree',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_block_call_tree,
+      callback);
+};
+
+
+/**
+ * @param {!proto.analytics.BlockCallTreeRequest} request The
+ *     request proto
+ * @param {?Object<string, string>=} metadata User defined
+ *     call metadata
+ * @return {!Promise<!proto.analytics.BlockCallTreeReply>}
+ *     Promise that resolves to the response
+ */
+proto.analytics.PerformanceAnalyticsPromiseClient.prototype.block_call_tree =
+    function(request, metadata) {
+  return this.client_.unaryCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/block_call_tree',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_block_call_tree);
+};
+
+
 module.exports = proto.analytics;
 

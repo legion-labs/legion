@@ -61,8 +61,14 @@ impl AnalyticsService {
         block_id: &str,
     ) -> Result<Vec<ScopeInstance>> {
         let mut connection = self.pool.acquire().await?;
-        compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id).await?;
-        anyhow::bail!("not impl")
+        let scope =
+            compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
+                .await?;
+        if !scope.name.is_empty() {
+            Ok(vec![scope])
+        } else {
+            Ok(scope.scopes)
+        }
     }
 }
 
