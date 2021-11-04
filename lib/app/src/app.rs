@@ -50,7 +50,7 @@ impl Default for App {
         let mut app = Self::empty();
         app.add_default_stages()
             .add_event::<AppExit>()
-            .add_system_to_stage(CoreStage::Last, World::clear_trackers);
+            .add_system_to_stage(CoreStage::Last, World::clear_trackers.exclusive_system());
 
         #[cfg(feature = "legion_ci_testing")]
         {
