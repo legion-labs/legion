@@ -1,4 +1,4 @@
-use std::{borrow::Cow, future::Future};
+use std::borrow::Cow;
 
 use async_trait::async_trait;
 
@@ -19,10 +19,9 @@ pub trait ExclusiveSystem: Send + Sync {
     fn check_change_tick(&mut self, change_tick: u32);
 }
 
-pub struct ExclusiveSystemFn<F, AsyncResult>
+pub struct ExclusiveSystemFn<F>
 where
-    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync,
-    AsyncResult: Future + Send,
+    F: FnMut(&mut World) + Send + Sync + 'static,
 {
     func: F,
     name: Cow<'static, str>,
@@ -30,10 +29,9 @@ where
 }
 
 #[async_trait]
-impl<F, AsyncResult> ExclusiveSystem for ExclusiveSystemFn<F, AsyncResult>
+impl<F> ExclusiveSystem for ExclusiveSystemFn<F>
 where
-    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync,
-    AsyncResult: Future + Send,
+    F: FnMut(&mut World) + Send + Sync + 'static,
 {
     fn name(&self) -> Cow<'static, str> {
         self.name.clone()
@@ -45,7 +43,7 @@ where
         let saved_last_tick = world.last_change_tick;
         world.last_change_tick = self.last_change_tick;
 
-        (self.func)(world).await;
+        (self.func)(world);
 
         let change_tick = world.change_tick.get_mut();
         self.last_change_tick = *change_tick;
@@ -65,12 +63,11 @@ pub trait IntoExclusiveSystem<Params, SystemType> {
     fn exclusive_system(self) -> SystemType;
 }
 
-impl<F, AsyncResult> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F, AsyncResult>> for F
+impl<F> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F>> for F
 where
-    F: FnMut(&mut World) -> AsyncResult + Send + Sync,
-    AsyncResult: Future + Send,
+    F: FnMut(&mut World) + Send + Sync + 'static,
 {
-    fn exclusive_system(self) -> ExclusiveSystemFn<F, AsyncResult> {
+    fn exclusive_system(self) -> ExclusiveSystemFn<F> {
         ExclusiveSystemFn {
             func: self,
             name: core::any::type_name::<F>().into(),

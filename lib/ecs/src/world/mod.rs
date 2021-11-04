@@ -461,7 +461,7 @@ impl World {
     }
 
     /// Clears component tracker state
-    pub async fn clear_trackers(&mut self) {
+    pub fn clear_trackers(&mut self) {
         for entities in self.removed_components.values_mut() {
             entities.clear();
         }
