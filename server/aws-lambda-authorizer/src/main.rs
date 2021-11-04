@@ -21,9 +21,7 @@ async fn main() -> Result<(), lambda_runtime::Error> {
     //    .context("`AWS_COGNITO_EDITOR_CLIENT_ID` is not set")?;
 
     let validation = Arc::new(
-        Validation::default().with_signature_validation(
-            AwsCognitoSignatureValidation::new(&region, &user_pool_id).await?,
-        ), //TODO: Fix this: .with_aud(&editor_client_id),
+        Validation::new(AwsCognitoSignatureValidation::new(&region, &user_pool_id).await?), //TODO: Fix this: .with_aud(&editor_client_id),
     );
 
     let handler = lambda_runtime::handler_fn(|request, context| async {
