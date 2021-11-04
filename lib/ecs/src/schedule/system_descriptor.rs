@@ -83,8 +83,8 @@ impl IntoSystemDescriptor<()> for ExclusiveSystemDescriptor {
 
 impl<F, AsyncResult> IntoSystemDescriptor<()> for ExclusiveSystemFn<F, AsyncResult>
 where
-    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync + 'static,
-    AsyncResult: Future<Output = ()> + Send + 'static,
+    F: FnMut(&mut World) -> AsyncResult + Send + Sync + 'static,
+    AsyncResult: Future + Send + 'static,
 {
     fn into_descriptor(self) -> SystemDescriptor {
         new_exclusive_descriptor(Box::new(self)).into_descriptor()

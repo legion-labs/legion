@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[async_trait]
-pub trait ExclusiveSystem: Send + Sync + 'static {
+pub trait ExclusiveSystem: Send + Sync {
     fn name(&self) -> Cow<'static, str>;
 
     async fn run(&mut self, world: &mut World);
@@ -21,8 +21,8 @@ pub trait ExclusiveSystem: Send + Sync + 'static {
 
 pub struct ExclusiveSystemFn<F, AsyncResult>
 where
-    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync + 'static,
-    AsyncResult: Future<Output = ()> + Send + 'static,
+    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync,
+    AsyncResult: Future + Send,
 {
     func: F,
     name: Cow<'static, str>,
@@ -32,8 +32,8 @@ where
 #[async_trait]
 impl<F, AsyncResult> ExclusiveSystem for ExclusiveSystemFn<F, AsyncResult>
 where
-    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync + 'static,
-    AsyncResult: Future<Output = ()> + Send + 'static,
+    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync,
+    AsyncResult: Future + Send,
 {
     fn name(&self) -> Cow<'static, str> {
         self.name.clone()
@@ -67,8 +67,8 @@ pub trait IntoExclusiveSystem<Params, SystemType> {
 
 impl<F, AsyncResult> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F, AsyncResult>> for F
 where
-    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync + 'static,
-    AsyncResult: Future<Output = ()> + Send + 'static,
+    F: FnMut(&mut World) -> AsyncResult + Send + Sync,
+    AsyncResult: Future + Send,
 {
     fn exclusive_system(self) -> ExclusiveSystemFn<F, AsyncResult> {
         ExclusiveSystemFn {
