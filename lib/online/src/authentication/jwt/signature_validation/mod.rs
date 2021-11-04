@@ -89,6 +89,20 @@ pub trait SignatureValidation {
     ) -> ValidationResult<'a>;
 }
 
+/// A signature validation that always succeeds.
+pub struct NoSignatureValidation;
+
+impl SignatureValidation for NoSignatureValidation {
+    fn validate_signature<'a>(
+        &self,
+        _alg: &'a str,
+        _kid: Option<&'a str>,
+        _message: &'a str,
+        _signature: &'a [u8],
+    ) -> ValidationResult<'a> {
+        ValidationResult::Valid
+    }
+}
 /// Chains two `SignatureValidation`s that will be tried in sequence.
 ///
 /// If the first `SignatureValidation` returns `ValidationResult::Unsupported`, the second one will

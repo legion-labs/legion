@@ -3,17 +3,20 @@ use std::time;
 use anyhow::{bail, Context};
 use serde::{Deserialize, Serialize};
 
-use super::{signature_validation::SignatureValidation, Token};
+use super::{
+    signature_validation::{NoSignatureValidation, SignatureValidation},
+    Token,
+};
 
 /// Provides JWT validation.
-pub struct Validation<'a, T = ()> {
+pub struct Validation<'a, SV = NoSignatureValidation> {
     /// A tolerance for the not-before and expiry times.
     leeway: time::Duration,
 
     /// The signature validation method.
     ///
     /// If `None`, the signature is not verified which is not recommended.
-    signature_validation: Option<T>,
+    signature_validation: Option<SV>,
 
     /// A function that returns the current time.
     time_fn: fn() -> time::SystemTime,
@@ -34,7 +37,7 @@ pub struct Validation<'a, T = ()> {
     aud: Option<&'a str>,
 }
 
-impl<T> Default for Validation<'_, T> {
+impl<SV> Default for Validation<'_, SV> {
     fn default() -> Self {
         Self {
             leeway: time::Duration::from_secs(0),
@@ -49,9 +52,9 @@ impl<T> Default for Validation<'_, T> {
     }
 }
 
-impl<'a, T> Validation<'a, T>
+impl<'a, SV> Validation<'a, SV>
 where
-    T: SignatureValidation,
+    SV: SignatureValidation,
 {
     /// Sets the leeway for the not-before and expiry times.
     pub fn with_leeway(mut self, leeway: time::Duration) -> Self {
@@ -60,7 +63,7 @@ where
     }
 
     /// Sets the signature validation method.
-    pub fn with_signature_validation(mut self, signature_validation: T) -> Self {
+    pub fn with_signature_validation(mut self, signature_validation: SV) -> Self {
         self.signature_validation = Some(signature_validation);
         self
     }

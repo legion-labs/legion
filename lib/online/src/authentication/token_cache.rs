@@ -7,22 +7,22 @@ use anyhow::Context;
 use directories::ProjectDirs;
 use log::{debug, warn};
 
-use super::jwt::signature_validation::SignatureValidation;
+use super::jwt::signature_validation::{NoSignatureValidation, SignatureValidation};
 use super::jwt::Validation;
 use super::Authenticator;
 use super::ClientTokenSet;
 
 /// A `TokenCache` stores authentication tokens and handles their lifetime.
-pub struct TokenCache<A, V> {
+pub struct TokenCache<A, SV = NoSignatureValidation> {
     authenticator: A,
     project_dirs: ProjectDirs,
-    validation: Validation<'static, V>,
+    validation: Validation<'static, SV>,
 }
 
-impl<A, V> TokenCache<A, V>
+impl<A, SV> TokenCache<A, SV>
 where
     A: Authenticator,
-    V: SignatureValidation,
+    SV: SignatureValidation,
 {
     /// Instanciate a new `TokenCache`.
     pub fn new(authenticator: A, project_dirs: ProjectDirs) -> Self {
@@ -91,7 +91,7 @@ where
     /// Get the access token from the cache if it exists, or performs an implicit refresh.
     ///
     /// If that fails to, the call will fall back to the `Authenticator`'s
-    /// `get_access_token_interactive` method, which may prompt the user for credentials.
+    /// `login` method, which may prompt the user for credentials.
     ///
     /// If the tokens end up being refreshed, they will be stored in the cache.
     async fn login(&self) -> anyhow::Result<ClientTokenSet> {

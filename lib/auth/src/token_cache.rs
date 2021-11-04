@@ -51,13 +51,13 @@ impl TokenCache {
         &self.authenticator
     }
 
-    /// Get the access token from the cache if it exists, or performs an implicit refresh.
+    /// Get the token set from the cache if it exists, or performs an implicit refresh.
     ///
     /// If that fails to, the call will fall back to the `Authenticator`'s
-    /// `get_access_token_interactive` method, which may prompt the user for credentials.
+    /// `login` method, which may prompt the user for credentials.
     ///
     /// If the tokens end up being refreshed, they will be stored in the cache.
-    pub async fn get_access_token(&self) -> anyhow::Result<TokenSet> {
+    pub async fn login_with_cache(&self) -> anyhow::Result<TokenSet> {
         let token_set = match self.read_access_token_from_cache() {
             Ok(token_set) => {
                 if self.has_valid_access_token(&token_set) {
