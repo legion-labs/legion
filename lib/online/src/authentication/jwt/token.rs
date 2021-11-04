@@ -62,10 +62,18 @@ impl<'a> Token<'a> {
         C: serde::de::DeserializeOwned,
         T: SignatureValidation,
     {
+        self.validate(validation)?.into_claims_unsafe()
+    }
+
+    /// Validate the token without consuming it.
+    pub fn validate<T>(self, validation: &Validation<'_, T>) -> anyhow::Result<Self>
+    where
+        T: SignatureValidation,
+    {
         validation.validate_signature(&self)?;
         validation.validate_claims(&self)?;
 
-        self.into_claims_unsafe()
+        Ok(self)
     }
 
     /// Validate the signature on the token without consuming it.

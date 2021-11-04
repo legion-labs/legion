@@ -1,21 +1,30 @@
 use std::sync::Arc;
 
-use anyhow::bail;
 use legion_aws::lambda::api_gateway::{
     APIGatewayCustomAuthorizerRequest, APIGatewayCustomAuthorizerResponse, APIGatewayPolicyBuilder,
 };
-use log::{error, info};
+use log::info;
 
 use lambda_runtime::Context;
 use serde_json::json;
 
-pub struct Handler {
-    validator: Arc<legion_auth::Validator>,
+use legion_online::authentication::{
+    jwt::{signature_validation::SignatureValidation, Token, Validation},
+    UserInfo,
+};
+
+pub struct Handler<V> {
+    validation: Arc<Validation<'static, V>>,
 }
 
-impl Handler {
-    pub fn new(validator: Arc<legion_auth::Validator>) -> Self {
-        Self { validator }
+impl<V> Handler<V>
+where
+    V: SignatureValidation,
+{
+    pub fn new(validator: Arc<Validation<'static, V>>) -> Self {
+        Self {
+            validation: validator,
+        }
     }
 
     pub async fn handle(
@@ -26,31 +35,8 @@ impl Handler {
         info!("Client token: {}", request.authorization_token);
         info!("Method ARN: {}", request.method_arn.to_string());
 
-        let header = match jsonwebtoken::decode_header(&request.authorization_token) {
-            Ok(header) => header,
-            Err(err) => {
-                error!("Error decoding JWT header: {}", err);
-
-                bail!("Invalid token");
-            }
-        };
-
-        let kid = match header.kid {
-            Some(kid) => kid,
-            None => {
-                error!("No kid in JWT header");
-
-                bail!("Invalid token");
-            }
-        };
-
-        info!("Key identifier (kid): {}", kid);
-        info!("Algorithm: {:?}", header.alg);
-
-        let user_info = self
-            .validator
-            .validate(&kid, &request.authorization_token)
-            .await?;
+        let token: Token = (&request.authorization_token[..]).try_into()?;
+        let user_info: UserInfo = token.into_claims(&self.validation)?;
 
         let policy = APIGatewayPolicyBuilder::new(request.method_arn.base_method_arn)
             .allow_all_methods()
