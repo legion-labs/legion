@@ -1854,6 +1854,7 @@ dependencies = [
  "legion-mp4",
  "legion-renderer",
  "legion-resource-registry",
+ "legion-settings",
  "legion-streamer",
  "legion-telemetry",
  "legion-transform",
@@ -3605,6 +3606,16 @@ dependencies = [
  "legion-ecs",
  "legion-graphics-offline",
  "sample-data-offline",
+]
+
+[[package]]
+name = "legion-settings"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "log",
+ "serde",
+ "toml",
 ]
 
 [[package]]
