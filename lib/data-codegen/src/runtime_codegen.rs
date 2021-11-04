@@ -35,6 +35,8 @@ fn generate_runtime_defaults(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
                 }
             } else if m.is_option() {
                 quote! {#member_ident : None, }
+            } else if m.is_vec() {
+                quote! {#member_ident : Vec::new(), }
             } else {
                 quote! { #member_ident : Default::default(), }
             }
@@ -42,7 +44,24 @@ fn generate_runtime_defaults(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
         .collect()
 }
 
-pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
+/// Generate code `AssetLoader` Runtime Registration
+pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStream {
+    let entries: Vec<QuoteRes> = structs
+        .iter()
+        .map(|struct_meta| {
+            let type_name = format_ident!("{}", &struct_meta.name);
+            quote! { .add_loader::<#type_name>() }
+        })
+        .collect();
+    quote! {
+        pub fn add_loaders(registry: legion_data_runtime::AssetRegistryOptions) -> legion_data_runtime::AssetRegistryOptions {
+            registry
+            #(#entries)*
+        }
+    }
+}
+
+pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> TokenStream {
     let runtime_identifier = format_ident!("{}", data_container_info.name);
     let runtime_name = format!("runtime_{}", data_container_info.name).to_lowercase();
     let runtime_loader = format_ident!("{}Loader", data_container_info.name);
@@ -55,14 +74,22 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
         quote! {}
     };
 
-    quote! {
-
+    let use_quotes = if add_uses {
+        quote! {
         use std::{any::Any, io};
         use serde::{Deserialize, Serialize};
-        use legion_data_runtime::{Asset, AssetLoader,Resource};
+        use legion_data_runtime::{Asset, AssetLoader,Resource,Reference};
+        }
+    } else {
+        quote! {}
+    };
+
+    quote! {
+
+        #use_quotes
 
         // Runtime Structure
-        #[derive(Debug, Serialize, Deserialize)]
+        #[derive(Serialize, Deserialize)]
         pub struct #runtime_identifier #life_time {
             #(#runtime_fields)*
         }

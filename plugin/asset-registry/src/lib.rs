@@ -95,6 +95,7 @@ impl Plugin for AssetRegistryPlugin {
                 let mut registry = AssetRegistryOptions::new();
                 registry = runtime_data::add_loaders(registry);
                 registry = legion_graphics_runtime::add_loaders(registry);
+                registry = generic_data_runtime::add_loaders(registry);
 
                 if let Some(databuild_settings) = &settings.databuild_settings {
                     registry = registry.add_device_build(
@@ -200,6 +201,12 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                        ) && !load_ecs_asset::<generic_data_runtime::DebugCube>(
+                            asset_id,
+                            handle,
+                            &registry,
+                            &mut commands,
+                            &mut asset_to_entity_map,
                         ) {
                             eprintln!(
                                 "Unhandled runtime type: {}, asset: {}",
@@ -247,7 +254,15 @@ impl AssetRegistryPlugin {
                         asset_loading_states.insert(asset_id, LoadingState::Failed);
                     }
                 }
-                _ => {}
+                ResourceLoadEvent::Reloaded(asset_handle) => {
+                    let asset_id = asset_handle.id();
+                    if asset_loading_states.get(asset_id).is_some() {
+                        asset_loading_states.insert(asset_id, LoadingState::Pending);
+                    }
+                }
+                ResourceLoadEvent::Unloaded(_asset_handle) => {
+                    // TODO
+                }
             }
         }
 

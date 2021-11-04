@@ -11,8 +11,8 @@
   },
   {
     "guid": "019c822300000000b34c39427317a636",
-    "checksum": "41e4c35abb3a3c12f742e1cfca1a49cc",
-    "size": 358
+    "checksum": "0211a93e29ac9b87960407537b475872",
+    "size": 390
   },
   {
     "guid": "019c822300000000b4e464b9fef217e6",
@@ -48,6 +48,11 @@
     "guid": "0cd05ad800000000f271e52bf0a8c4f1",
     "checksum": "eba4df0d73ed6bc409674427018bdd79",
     "size": 67
+  },
+  {
+    "guid": "19abfd3d00000000e02b6bc4835de5c4",
+    "checksum": "739bfda3699e2c0f54a2e0cf7f2d32ec",
+    "size": 74
   },
   {
     "guid": "669eb7d000000000c9875c015d617949",

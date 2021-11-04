@@ -2,7 +2,7 @@ use generic_data_offline::TestEntity;
 use legion_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
 
 use crate::{DataManager, Transaction};
-use legion_data_runtime::Resource;
+use legion_data_runtime::{AssetRegistryOptions, Resource};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -19,8 +19,12 @@ async fn test_transaction_system() -> anyhow::Result<()> {
     registry = generic_data_offline::register_resource_types(registry);
     let registry = registry.create_async_registry();
 
+    let asset_registry = AssetRegistryOptions::new();
+    //asset_registry = generic_data_offline::add_loader(asset_registry);
+    let asset_registry = asset_registry.create();
+
     {
-        let mut data_manager = DataManager::new(project.clone(), registry.clone());
+        let mut data_manager = DataManager::new(project.clone(), registry.clone(), asset_registry);
         let resource_path: ResourcePathName = "/entity/create_test.dc".into();
 
         // Create a new Resource, Edit some properties and Commit it

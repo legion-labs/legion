@@ -17,6 +17,7 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
         legion_graphics_offline::Material::TYPE => {
             path.push(legion_graphics_runtime::Material::TYPE)
         }
+        generic_data_offline::DebugCube::TYPE => path.push(generic_data_runtime::DebugCube::TYPE),
         _ => {
             panic!("unrecognized offline type {}", offline_type);
         }

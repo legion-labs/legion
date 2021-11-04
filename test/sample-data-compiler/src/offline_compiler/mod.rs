@@ -85,6 +85,7 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
                     | runtime_data::Mesh::TYPE
                     | legion_graphics_runtime::Texture::TYPE
                     | legion_graphics_runtime::Material::TYPE
+                    | generic_data_runtime::DebugCube::TYPE
             )
         };
 

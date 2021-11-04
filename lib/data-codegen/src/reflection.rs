@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 //type QuoteRes = quote::__private::TokenStream;
 use legion_utils::DefaultHasher;
 use proc_macro2::{TokenStream, TokenTree};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 
 const LEGION_TAG: &str = "legion";
 const DEFAULT_ATTR: &str = "default";
@@ -43,6 +43,27 @@ impl DataContainerMetaInfo {
         // TODO: Add proper support for life_time with inplace deserialization
         //self.members.iter().any(|a| a.type_name == "String")
     }
+
+    pub fn calculate_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.name.hash(&mut hasher);
+        self.members.iter().for_each(|m| {
+            m.name.hash(&mut hasher);
+            m.type_name.hash(&mut hasher);
+            if let Some(res) = m.resource_type.as_ref() {
+                res.hash(&mut hasher);
+            }
+            m.type_name.hash(&mut hasher);
+            m.offline.hash(&mut hasher);
+            m.transient.hash(&mut hasher);
+            m.default_literal
+                .to_token_stream()
+                .to_string()
+                .hash(&mut hasher);
+        });
+
+        hasher.finish()
+    }
 }
 
 pub fn get_data_container_info(
@@ -71,16 +92,17 @@ pub fn get_data_container_info(
 }
 
 impl MemberMetaInfo {
-    pub fn _calculate_hash(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.name.hash(&mut hasher);
-        self.type_name.hash(&mut hasher);
-        hasher.finish()
+    pub fn is_option(&self) -> bool {
+        if let syn::Type::Path(type_path) = &self.type_id {
+            !type_path.path.segments.is_empty() && type_path.path.segments[0].ident == "Option"
+        } else {
+            false
+        }
     }
 
-    pub fn is_option(&self) -> bool {
-        if let syn::Type::Path(type_path) = self.type_id.clone() {
-            !type_path.path.segments.is_empty() && type_path.path.segments[0].ident == "Option"
+    pub fn is_vec(&self) -> bool {
+        if let syn::Type::Path(type_path) = &self.type_id {
+            !type_path.path.segments.is_empty() && type_path.path.segments[0].ident == "Vec"
         } else {
             false
         }
@@ -97,17 +119,26 @@ impl MemberMetaInfo {
             "Option < ResourcePathId >" => {
                 if let Some(resource_type) = &self.resource_type {
                     let ident = format_ident!("{}", resource_type);
-                    quote! { Reference<#ident> }
+                    quote! { Option<Reference<#ident>> }
                 } else {
-                    quote! { Reference<Resource> }
+                    quote! { Option<Reference<Resource>> }
                 }
             }
+            "Vec < ResourcePathId >" => {
+                if let Some(resource_type) = &self.resource_type {
+                    let ident = format_ident!("{}", resource_type);
+                    quote! { Vec<Reference<#ident>> }
+                } else {
+                    quote! { Vec<Reference<Resource>> }
+                }
+            }
+
             _ => quote! { #member_type },
         }
     }
 
     pub fn _clone_on_compile(&self) -> bool {
-        if let syn::Type::Path(type_path) = self.type_id.clone() {
+        if let syn::Type::Path(type_path) = &self.type_id {
             !type_path.path.segments.is_empty() && type_path.path.segments[0].ident == "Vec"
         } else {
             false
@@ -187,6 +218,19 @@ fn get_default_token_stream(
     panic!("Legion proc-macro: invalid syntax for attribute 'default'");
 }
 
+fn get_next_identifier(
+    group_iter: &mut std::iter::Peekable<proc_macro2::token_stream::IntoIter>,
+) -> syn::Ident {
+    if let Some(TokenTree::Punct(punct)) = group_iter.next() {
+        if punct.as_char() == '=' {
+            if let Some(TokenTree::Ident(ident)) = group_iter.next() {
+                return ident;
+            }
+        }
+    }
+    panic!("Legion proc-macro: expecting identifier");
+}
+
 fn metadata_from_type(t: &syn::Type) -> Option<TokenStream> {
     match t {
         syn::Type::BareFn(fun) => Some(quote! {#fun}),
@@ -235,7 +279,7 @@ pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
                         TRANSIENT_ATTR => member_info.transient = true,
                         RESOURCE_TYPE_ATTR => {
                             member_info.resource_type =
-                                Some(get_attribute_literal(&mut group_iter));
+                                Some(get_next_identifier(&mut group_iter).to_string());
                         }
                         TOOLTIP_ATTR => {
                             member_info.tooltip = get_attribute_literal(&mut group_iter);

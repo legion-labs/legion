@@ -37,3 +37,34 @@ pub struct TestEntity {
     #[legion(default=[0,1,2,3])]
     test_blob: Vec<u8>,
 }
+
+#[data_container()]
+struct DebugCube {
+    #[legion(default=(0.0,0.0,0.0))]
+    pub position: Vec3,
+
+    #[legion(default= Quat::IDENTITY)]
+    pub rotation: Quat,
+
+    #[legion(default=(1.0,1.0,1.0))]
+    pub scale: Vec3,
+}
+
+#[data_container()]
+struct InstanceDc {
+    #[legion(resource_type = EntityDc)]
+    pub original: Option<ResourcePathId>,
+}
+
+#[data_container()]
+struct EntityDc {
+    #[legion(default = "unnamed")]
+    pub name: String,
+
+    #[legion(resource_type = EntityDc)]
+    pub children: Vec<ResourcePathId>,
+
+    #[legion(resource_type = EntityDc)]
+    pub parent: Option<ResourcePathId>,
+    //pub components: Vec<Box<dyn Component>>,
+}

@@ -33,6 +33,8 @@ fn generate_offline_defaults(members: &[MemberMetaInfo]) -> Vec<TokenStream> {
                 }
             } else if m.is_option() {
                 quote! { #member_ident : None, }
+            } else if m.is_vec() {
+                quote! { #member_ident : Vec::new(), }
             } else {
                 quote! { #member_ident : Default::default(), }
             }
@@ -47,14 +49,19 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
     let offline_default_instance =
         format_ident!("DEFAULT_{}", data_container_info.name.to_uppercase());
 
+    let signature_hash = data_container_info.calculate_hash();
+
     quote! {
 
-        use serde::{Deserialize, Serialize};
-
         // Offline Structure
-        #[derive(Debug, Serialize, Deserialize)]
+        #[derive(Debug, serde::Serialize, serde::Deserialize)]
         pub struct #offline_identifier {
             #(#offline_fields)*
+        }
+
+        impl #offline_identifier {
+            #[allow(dead_code)]
+            const SIGNATURE_HASH: u64 = #signature_hash;
         }
 
         // Offline default implementation

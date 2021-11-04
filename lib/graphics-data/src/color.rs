@@ -5,7 +5,7 @@ use std::ops::{Shl, Shr};
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// Structure definining a RGBA colors
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Color {
     /// Red color
     pub r: u8,

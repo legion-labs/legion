@@ -11,7 +11,7 @@ impl AssetToEntityMap {
         self.0.get(&asset_id).copied()
     }
 
-    pub(crate) fn insert(&mut self, asset_id: ResourceId, entity: Entity) {
-        self.0.insert(asset_id, entity);
+    pub(crate) fn insert(&mut self, asset_id: ResourceId, entity: Entity) -> Option<Entity> {
+        self.0.insert(asset_id, entity)
     }
 }

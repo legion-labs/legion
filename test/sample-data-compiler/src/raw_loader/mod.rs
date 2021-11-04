@@ -10,7 +10,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use generic_data_offline::TestEntity;
+use generic_data_offline::{DebugCube, TestEntity};
 use legion_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
@@ -189,6 +189,24 @@ fn create_or_find_default(
                 test_entity.test_position = legion_math::Vec3::new(0.0, 100.0, 0.0);
                 project
                     .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)
+                    .unwrap()
+            }
+        };
+        ids.insert(name, id);
+    }
+
+    // Create TestEntity Generic DataContainer
+    {
+        let name: ResourcePathName = "/entity/DebugCube".into();
+        let id = {
+            if let Ok(id) = project.find_resource(&name) {
+                id
+            } else {
+                let kind = DebugCube::TYPE;
+                let id = ResourceId::new(kind, name.default_hash());
+                let cube_entity_handle = resources.new_resource(kind).unwrap();
+                project
+                    .add_resource_with_id(name.clone(), kind, id, cube_entity_handle, resources)
                     .unwrap()
             }
         };

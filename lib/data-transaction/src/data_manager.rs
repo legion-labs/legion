@@ -1,6 +1,6 @@
 use crate::{LockContext, Transaction};
 use legion_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
-use legion_data_runtime::{ResourceId, ResourceType};
+use legion_data_runtime::{AssetRegistry, ResourceId, ResourceType};
 use log::info;
 use std::sync::Arc;
 use thiserror::Error;
@@ -49,6 +49,7 @@ pub struct DataManager {
 
     pub(crate) project: Arc<Mutex<Project>>,
     pub(crate) resource_registry: Arc<Mutex<ResourceRegistry>>,
+    pub(crate) asset_registry: Arc<AssetRegistry>,
     pub(crate) loaded_resource_handles: Arc<Mutex<ResourceHandles>>,
 }
 
@@ -57,12 +58,14 @@ impl DataManager {
     pub fn new(
         project: Arc<Mutex<Project>>,
         resource_registry: Arc<Mutex<ResourceRegistry>>,
+        asset_registry: Arc<AssetRegistry>,
     ) -> Self {
         Self {
             commited_transactions: Vec::new(),
             rollbacked_transactions: Vec::new(),
             project,
             resource_registry,
+            asset_registry,
             loaded_resource_handles: Arc::new(Mutex::new(ResourceHandles::default())),
         }
     }

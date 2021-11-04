@@ -63,6 +63,7 @@ pub use settings::ResourceRegistrySettings;
 
 use legion_app::Plugin;
 use legion_data_offline::resource::{Project, ResourceRegistryOptions};
+use legion_data_runtime::AssetRegistry;
 use legion_data_transaction::DataManager;
 use legion_ecs::prelude::*;
 use sample_data_offline as offline_data;
@@ -84,7 +85,17 @@ impl Plugin for ResourceRegistryPlugin {
                 registry = generic_data_offline::register_resource_types(registry);
                 let registry = registry.create_async_registry();
                 let project = Arc::new(Mutex::new(project));
-                let data_manager = Arc::new(Mutex::new(DataManager::new(project, registry)));
+
+                let asset_registry = app
+                    .world
+                    .get_resource::<Arc<AssetRegistry>>()
+                    .expect("the editor plugin requires AssetRegistry resource");
+
+                let data_manager = Arc::new(Mutex::new(DataManager::new(
+                    project,
+                    registry,
+                    asset_registry.clone(),
+                )));
 
                 app.insert_resource(data_manager)
                     .add_startup_system(Self::setup);
