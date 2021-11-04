@@ -456,6 +456,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-lambda-authorizer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "lambda_runtime",
+ "legion-aws",
+ "legion-online",
+ "log",
+ "serde",
+ "serde_json",
+ "simple_logger",
+ "tokio",
+]
+
+[[package]]
 name = "aws-sdk-s3"
 version = "0.0.22-alpha"
 source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.22-alpha#6c874ba3c63387254ecd00d651fe04c367070132"
@@ -1662,6 +1677,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "directories"
+version = "4.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f51c5d4ddabd36886dd3e1438cb358cdcb0d7c499cb99cb4ac2e38e18b5cb210"
+dependencies = [
+ "dirs-sys",
+]
+
+[[package]]
 name = "dirs"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1781,14 +1805,15 @@ dependencies = [
  "anyhow",
  "base64",
  "clap",
+ "directories",
  "json",
  "legion-analytics",
  "legion-app",
  "legion-async",
- "legion-auth",
  "legion-ecs",
  "legion-editor-proto",
  "legion-grpc",
+ "legion-online",
  "legion-streaming-proto",
  "legion-tauri",
  "legion-telemetry",
@@ -3044,6 +3069,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "lambda_runtime"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17ed88d8421123f9546cbd0c4235386803859c4a20b80a6eb613a652b486df8e"
+dependencies = [
+ "async-stream",
+ "bytes",
+ "futures",
+ "http",
+ "hyper",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tower-service",
+ "tracing",
+ "tracing-error",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3108,16 +3153,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-auth"
+name = "legion-aws"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "futures-util",
- "hyper",
+ "lambda_runtime",
  "log",
+ "serde",
+ "serde_json",
+ "strum 0.22.0",
+ "strum_macros 0.22.0",
  "tokio",
- "url",
- "webbrowser",
 ]
 
 [[package]]
@@ -3439,6 +3485,28 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "legion-online"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64",
+ "directories",
+ "futures-util",
+ "hyper",
+ "hyper-tls",
+ "log",
+ "reqwest",
+ "ring",
+ "serde",
+ "serde_json",
+ "simple_asn1",
+ "tokio",
+ "url",
+ "webbrowser",
 ]
 
 [[package]]
@@ -6192,6 +6260,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "strum"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7ac893c7d471c8a21f31cfe213ec4f6d9afeed25537c772e08ef3f005f8729e"
+
+[[package]]
 name = "strum_macros"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6208,6 +6282,18 @@ name = "strum_macros"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d06aaeeee809dbc59eb4556183dd927df67db1540de5be8d3ec0b6636358a5ec"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "339f799d8b549e3744c7ac7feb216383e4005d94bdb22561b3ab8f3b808ae9fb"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -6916,6 +7002,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f4ed65637b8390770814083d20756f87bfa2c21bf2f110babdc5438351746e4"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "tracing-error"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4d7c0b83d4a500748fa5879461652b361edf5c9d51ede2a2ac03875ca185e24"
+dependencies = [
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

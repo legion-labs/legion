@@ -1,0 +1,20 @@
+[package]
+name = "aws-lambda-authorizer"
+version = "0.1.0"
+edition = "2021"
+description = "Legion AWS Lambda that authorizes requests"
+authors = ["devs@legionlabs.com"]
+repository = ""
+license = "MIT OR Apache-2.0"
+keywords = ["game", "legion"]
+
+[dependencies]
+legion-aws = { path = "../../lib/aws", version = "0.1.0" }
+legion-online = { path = "../../lib/online", version = "0.1.0" }
+tokio = { version = "1.13", features = ["full"] }
+anyhow = "1.0"
+lambda_runtime = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+simple_logger = "1.13"

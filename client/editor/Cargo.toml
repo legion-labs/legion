@@ -17,7 +17,7 @@ which = "4.2.2"
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-telemetry = { path = "../../lib/telemetry" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-auth = { path = "../../lib/auth", version = "0.1.0" }
+legion-online = { path = "../../lib/online", version = "0.1.0" }
 legion-async = { path = "../../plugin/async", version = "0.1.0" }
 legion-grpc = { path = "../../plugin/grpc", version = "0.1.0" }
 legion-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
@@ -45,6 +45,7 @@ sqlx = { version = "0.5", features = [
     "mysql",
     "runtime-tokio-native-tls",
 ] }
+directories = "4"
 
 [features]
 default = ["custom-protocol"]

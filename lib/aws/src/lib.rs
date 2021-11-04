@@ -1,4 +1,4 @@
-//! Legion auth crate, contains authentication utilities.
+//! Legion aws crate, contains AWS helpers.
 //!
 
 // BEGIN - Legion Labs lints v0.6
@@ -57,4 +57,4 @@
 // crate-specific exceptions:
 #![allow(clippy::implicit_hasher, clippy::missing_errors_doc)]
 
-pub mod authenticator;
+pub mod lambda;

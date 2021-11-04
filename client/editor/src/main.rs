@@ -73,17 +73,22 @@ use interop::js::editor::{
 };
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
-use legion_auth::authenticator::Authenticator;
 use legion_editor_proto::{
     editor_client::EditorClient, GetResourcePropertiesRequest, SearchResourcesRequest,
     UpdateResourcePropertiesRequest,
 };
 use legion_grpc::client::Client as GRPCClient;
+use legion_online::authentication::{
+    jwt::signature_validation::NoSignatureValidation, Authenticator, AwsCognitoClientAuthenticator,
+    TokenCache as OnlineTokenCache,
+};
 use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
 use legion_telemetry::prelude::*;
 use simple_logger::SimpleLogger;
 use tauri::async_runtime::Mutex;
+
+type TokenCache = OnlineTokenCache<AwsCognitoClientAuthenticator, NoSignatureValidation>;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::new_from_environment()?;
@@ -93,14 +98,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     )));
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
 
-    let authenticator = Authenticator::from_authorization_url(&config.authorization_url)?;
+    let authenticator =
+        AwsCognitoClientAuthenticator::from_authorization_url(&config.authorization_url)?;
+    let projects_dir = directories::ProjectDirs::from("com", "legionlabs", "legion-editor")
+        .expect("Failed to get project directory");
+    let token_cache = TokenCache::new(authenticator, projects_dir);
     let grpc_client = GRPCClient::new(config.server_addr.clone());
     let streamer_client = Mutex::new(StreamerClient::new(grpc_client.clone()));
     let editor_client = Mutex::new(EditorClient::new(grpc_client));
 
     let builder = tauri::Builder::default()
         .manage(config)
-        .manage(authenticator)
+        .manage(token_cache)
         .manage(streamer_client)
         .manage(editor_client)
         .invoke_handler(tauri::generate_handler![
@@ -177,8 +186,15 @@ fn on_video_chunk_received(chunk_header: &str) {
 }
 
 #[legion_tauri_command]
-async fn authenticate(authenticator: tauri::State<'_, Authenticator>) -> anyhow::Result<String> {
-    authenticator.get_authorization_code().await
+async fn authenticate(
+    token_cache: tauri::State<'_, TokenCache>,
+) -> anyhow::Result<legion_online::authentication::UserInfo> {
+    let access_token = token_cache.login().await?.access_token;
+
+    token_cache
+        .authenticator()
+        .get_user_info(&access_token)
+        .await
 }
 
 #[legion_tauri_command]
