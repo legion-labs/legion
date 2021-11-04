@@ -462,6 +462,9 @@ name = "aws-lambda-grpc-test"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
+ "http",
+ "http-body",
  "lambda_http",
  "lambda_runtime",
  "legion-aws",
