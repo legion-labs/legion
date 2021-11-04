@@ -45,12 +45,34 @@ pub struct App {
     pub schedule: Schedule,
 }
 
+fn bup<F, AsyncResult>(p: F) -> legion_ecs::system::ExclusiveSystemFn<F, AsyncResult>
+where
+    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync + 'static,
+    AsyncResult: std::future::Future<Output = ()> + Send + 'static,
+{
+    p.exclusive_system()
+}
+
+fn cup<F, AsyncResult>(
+    ex: legion_ecs::system::ExclusiveSystemFn<F, AsyncResult>,
+) -> legion_ecs::schedule::SystemDescriptor
+where
+    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync + 'static,
+    AsyncResult: std::future::Future<Output = ()> + Send + 'static,
+{
+    ex.into_system_descriptor()
+}
+
 impl Default for App {
     fn default() -> Self {
         let mut app = Self::empty();
+
+        let a = bup(World::clear_trackers);
+        let c = cup(a);
+
         app.add_default_stages()
             .add_event::<AppExit>()
-            .add_system_to_stage(CoreStage::Last, World::clear_trackers.exclusive_system());
+            .add_system_to_stage(CoreStage::Last, c);
 
         #[cfg(feature = "legion_ci_testing")]
         {

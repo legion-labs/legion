@@ -21,7 +21,7 @@ pub trait ExclusiveSystem: Send + Sync + 'static {
 
 pub struct ExclusiveSystemFn<F, AsyncResult>
 where
-    F: FnMut(&mut World) -> AsyncResult + Send + Sync + 'static,
+    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync + 'static,
     AsyncResult: Future<Output = ()> + Send + 'static,
 {
     func: F,
@@ -32,7 +32,7 @@ where
 #[async_trait]
 impl<F, AsyncResult> ExclusiveSystem for ExclusiveSystemFn<F, AsyncResult>
 where
-    F: FnMut(&mut World) -> AsyncResult + Send + Sync + 'static,
+    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync + 'static,
     AsyncResult: Future<Output = ()> + Send + 'static,
 {
     fn name(&self) -> Cow<'static, str> {
@@ -67,7 +67,7 @@ pub trait IntoExclusiveSystem<Params, SystemType> {
 
 impl<F, AsyncResult> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F, AsyncResult>> for F
 where
-    F: FnMut(&mut World) -> AsyncResult + Send + Sync + 'static,
+    F: for<'a> FnMut(&'a mut World) -> AsyncResult + Send + Sync + 'static,
     AsyncResult: Future<Output = ()> + Send + 'static,
 {
     fn exclusive_system(self) -> ExclusiveSystemFn<F, AsyncResult> {
