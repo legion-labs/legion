@@ -8,6 +8,7 @@ use super::{
     Token,
 };
 
+pub type UnsecureValidation<'a> = Validation<'a, NoSignatureValidation>;
 /// Provides JWT validation.
 pub struct Validation<'a, SV = NoSignatureValidation> {
     /// A tolerance for the not-before and expiry times.
@@ -16,7 +17,7 @@ pub struct Validation<'a, SV = NoSignatureValidation> {
     /// The signature validation method.
     ///
     /// If `None`, the signature is not verified which is not recommended.
-    signature_validation: Option<SV>,
+    signature_validation: SV,
 
     /// A function that returns the current time.
     time_fn: fn() -> time::SystemTime,
@@ -37,11 +38,14 @@ pub struct Validation<'a, SV = NoSignatureValidation> {
     aud: Option<&'a str>,
 }
 
-impl<SV> Default for Validation<'_, SV> {
+impl<SV> Default for Validation<'_, SV>
+where
+    SV: Default,
+{
     fn default() -> Self {
         Self {
             leeway: time::Duration::from_secs(0),
-            signature_validation: None,
+            signature_validation: SV::default(),
             time_fn: std::time::SystemTime::now,
             validate_exp: true,
             validate_nbf: true,
@@ -56,6 +60,19 @@ impl<'a, SV> Validation<'a, SV>
 where
     SV: SignatureValidation,
 {
+    pub fn new(signature_validation: SV) -> Self {
+        Self {
+            leeway: time::Duration::from_secs(0),
+            signature_validation,
+            time_fn: std::time::SystemTime::now,
+            validate_exp: true,
+            validate_nbf: true,
+            iss: None,
+            sub: None,
+            aud: None,
+        }
+    }
+
     /// Sets the leeway for the not-before and expiry times.
     pub fn with_leeway(mut self, leeway: time::Duration) -> Self {
         self.leeway = leeway;
@@ -64,7 +81,7 @@ where
 
     /// Sets the signature validation method.
     pub fn with_signature_validation(mut self, signature_validation: SV) -> Self {
-        self.signature_validation = Some(signature_validation);
+        self.signature_validation = signature_validation;
         self
     }
 
@@ -106,11 +123,7 @@ where
 
     /// Validate the specified token's signature.
     pub(crate) fn validate_signature(&self, token: &Token<'_>) -> anyhow::Result<()> {
-        self.signature_validation
-            .as_ref()
-            .map_or(Ok(()), |signature_validation| {
-                token.validate_signature(signature_validation)
-            })
+        token.validate_signature(&self.signature_validation)
     }
 
     /// Validate the specified token's claims.
@@ -219,8 +232,7 @@ mod tests {
          "AQAB",
     ).unwrap();
 
-        let validation = Validation::default()
-            .with_signature_validation(signature_validation)
+        let validation = Validation::new(signature_validation)
             .with_time_fn(|| {
                 time::UNIX_EPOCH
                     .checked_add(time::Duration::from_secs(1635964695))

@@ -7,29 +7,27 @@ use anyhow::Context;
 use directories::ProjectDirs;
 use log::{debug, warn};
 
-use super::jwt::signature_validation::{NoSignatureValidation, SignatureValidation};
-use super::jwt::Validation;
+use super::jwt::UnsecureValidation;
 use super::Authenticator;
 use super::ClientTokenSet;
 
 /// A `TokenCache` stores authentication tokens and handles their lifetime.
-pub struct TokenCache<A, SV = NoSignatureValidation> {
+pub struct TokenCache<A> {
     authenticator: A,
     project_dirs: ProjectDirs,
-    validation: Validation<'static, SV>,
+    validation: UnsecureValidation<'static>,
 }
 
-impl<A, SV> TokenCache<A, SV>
+impl<A> TokenCache<A>
 where
     A: Authenticator,
-    SV: SignatureValidation,
 {
-    /// Instanciate a new `TokenCache`.
+    /// Instanciate a new `TokenCache`
     pub fn new(authenticator: A, project_dirs: ProjectDirs) -> Self {
         Self {
             authenticator,
             project_dirs,
-            validation: Validation::default(),
+            validation: UnsecureValidation::default(),
         }
     }
 
@@ -83,10 +81,9 @@ where
 }
 
 #[async_trait]
-impl<T, V> Authenticator for TokenCache<T, V>
+impl<T> Authenticator for TokenCache<T>
 where
     T: Authenticator + Send + Sync,
-    V: SignatureValidation + Send + Sync,
 {
     /// Get the access token from the cache if it exists, or performs an implicit refresh.
     ///

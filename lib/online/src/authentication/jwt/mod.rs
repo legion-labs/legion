@@ -6,4 +6,4 @@ pub mod signature_validation;
 
 pub use header::Header;
 pub use token::Token;
-pub use validation::Validation;
+pub use validation::{UnsecureValidation, Validation};

@@ -90,6 +90,7 @@ pub trait SignatureValidation {
 }
 
 /// A signature validation that always succeeds.
+#[derive(Default)]
 pub struct NoSignatureValidation;
 
 impl SignatureValidation for NoSignatureValidation {

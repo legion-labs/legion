@@ -79,8 +79,7 @@ use legion_editor_proto::{
 };
 use legion_grpc::client::Client as GRPCClient;
 use legion_online::authentication::{
-    jwt::signature_validation::NoSignatureValidation, Authenticator, AwsCognitoClientAuthenticator,
-    TokenCache as OnlineTokenCache,
+    Authenticator, AwsCognitoClientAuthenticator, TokenCache as OnlineTokenCache,
 };
 use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
@@ -88,7 +87,7 @@ use legion_telemetry::prelude::*;
 use simple_logger::SimpleLogger;
 use tauri::async_runtime::Mutex;
 
-type TokenCache = OnlineTokenCache<AwsCognitoClientAuthenticator, NoSignatureValidation>;
+type TokenCache = OnlineTokenCache<AwsCognitoClientAuthenticator>;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::new_from_environment()?;
