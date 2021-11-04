@@ -1,11 +1,9 @@
 use std::env;
-use std::fs::File;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{RwLock, RwLockReadGuard};
 use toml::value::{Table, Value};
 
-const DEFAULT_CONFIG_FILENAME: &str = "legionapp.toml";
+const DEFAULT_CONFIG_FILENAME: &str = "legion.toml";
 
 pub struct Settings {
     config_path: PathBuf,
@@ -27,26 +25,36 @@ impl Settings {
             config_dir.push(file);
 
             if config_dir.is_file() {
-                if let Ok(mut file) = File::open(&config_dir) {
-                    let mut config_toml = String::new();
-                    if file.read_to_string(&mut config_toml).is_ok() {
-                        let parsed_value = config_toml.parse::<Value>().unwrap_or_else(|err| {
-                            log::warn!("Failed to parse TOML {:?}: {}", &config_dir, err);
-                            Table::default().into()
-                        });
-                        if let Ok(converted_table) = parsed_value.try_into::<Table>() {
-                            table = Some(converted_table);
-                        } else {
-                            log::warn!("Invalid TOML format {:?}. Not a table", &config_dir);
-                        }
-                    }
-                    config_dir.pop();
-                }
+                table = std::fs::read_to_string(&config_dir)
+                    .map_err(|err| format!("Failed to read TOML file {:?}: {}", &config_dir, err))
+                    .and_then(|config_toml| {
+                        config_toml
+                            .parse::<Value>()
+                            .map_err(|err| {
+                                format!("Failed to parse TOML file {:?}: {}", &config_dir, err)
+                            })
+                            .and_then(|table| {
+                                table.try_into::<Table>().map_err(|err| {
+                                    format!("Invalid TOML format {:?}: {}", &config_dir, err)
+                                })
+                            })
+                    })
+                    .map_err(|err| {
+                        log::warn!("{}", err);
+                        err
+                    })
+                    .ok();
+
+                config_dir.pop();
                 break;
             }
             if !(config_dir.pop() && config_dir.pop()) {
                 break;
             }
+        }
+
+        if table.is_none() {
+            log::warn!("Config file {:?} not found", file);
         }
 
         Self {
@@ -59,36 +67,32 @@ impl Settings {
         entries: &'a RwLockReadGuard<Table>,
         property_name: &str,
     ) -> Option<&'a Value> {
-        if let Some((table_name, variable_name)) = property_name.split_once('.') {
-            if let Some(value) = entries.get(table_name) {
-                if let Some(table) = value.as_table() {
-                    return table.get(variable_name);
-                }
-            }
-        }
-        log::warn!("Settings entry not found: {}", property_name);
-        None
+        property_name
+            .split_once('.')
+            .and_then(|(table_name, variable_name)| {
+                entries
+                    .get(table_name)
+                    .and_then(|value| value.as_table())
+                    .and_then(|table| table.get(variable_name))
+            })
+            .or_else(|| {
+                log::warn!("Settings entry not found: {}", property_name);
+                None
+            })
     }
 
     pub fn get<'de, T>(&self, key: &str) -> Option<T>
     where
         T: serde::Deserialize<'de>,
     {
-        if let Some(value_entry) = Self::find_table_entry(&self.table.read().unwrap(), key) {
-            if let Ok(value) = value_entry.clone().try_into() {
-                return Some(value);
-            }
-        }
-        None
+        Self::find_table_entry(&self.table.read().unwrap(), key)
+            .and_then(|value_entry| value_entry.clone().try_into::<T>().ok())
     }
 
     pub fn get_absolute_path(&self, key: &str) -> Option<PathBuf> {
-        if let Some(value) = Self::find_table_entry(&self.table.read().unwrap(), key) {
-            if let Some(str) = value.as_str() {
-                return Some(self.config_path.join(str));
-            }
-        }
-        None
+        Self::find_table_entry(&self.table.read().unwrap(), key)
+            .and_then(|value_entry| value_entry.as_str())
+            .map(|str| self.config_path.join(str))
     }
 }
 
