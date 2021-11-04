@@ -377,5 +377,66 @@ proto.analytics.PerformanceAnalyticsPromiseClient.prototype.block_call_tree =
 };
 
 
+/**
+ * @const
+ * @type {!grpc.web.MethodDescriptor<
+ *   !proto.analytics.BlockSpansRequest,
+ *   !proto.analytics.BlockSpansReply>}
+ */
+const methodDescriptor_PerformanceAnalytics_block_spans = new grpc.web.MethodDescriptor(
+  '/analytics.PerformanceAnalytics/block_spans',
+  grpc.web.MethodType.UNARY,
+  proto.analytics.BlockSpansRequest,
+  proto.analytics.BlockSpansReply,
+  /**
+   * @param {!proto.analytics.BlockSpansRequest} request
+   * @return {!Uint8Array}
+   */
+  function(request) {
+    return request.serializeBinary();
+  },
+  proto.analytics.BlockSpansReply.deserializeBinary
+);
+
+
+/**
+ * @param {!proto.analytics.BlockSpansRequest} request The
+ *     request proto
+ * @param {?Object<string, string>} metadata User defined
+ *     call metadata
+ * @param {function(?grpc.web.RpcError, ?proto.analytics.BlockSpansReply)}
+ *     callback The callback function(error, response)
+ * @return {!grpc.web.ClientReadableStream<!proto.analytics.BlockSpansReply>|undefined}
+ *     The XHR Node Readable Stream
+ */
+proto.analytics.PerformanceAnalyticsClient.prototype.block_spans =
+    function(request, metadata, callback) {
+  return this.client_.rpcCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/block_spans',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_block_spans,
+      callback);
+};
+
+
+/**
+ * @param {!proto.analytics.BlockSpansRequest} request The
+ *     request proto
+ * @param {?Object<string, string>=} metadata User defined
+ *     call metadata
+ * @return {!Promise<!proto.analytics.BlockSpansReply>}
+ *     Promise that resolves to the response
+ */
+proto.analytics.PerformanceAnalyticsPromiseClient.prototype.block_spans =
+    function(request, metadata) {
+  return this.client_.unaryCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/block_spans',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_block_spans);
+};
+
+
 module.exports = proto.analytics;
 

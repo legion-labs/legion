@@ -14,17 +14,17 @@
 </template>
 
 <script>
-import { BlockCallTreeRequest, ListStreamBlocksRequest, ListProcessStreamsRequest, FindProcessRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
+import { BlockSpansRequest, ListStreamBlocksRequest, ListProcessStreamsRequest, FindProcessRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
 
-function fetchCallTree (block) {
+function fetchBlockSpans (block) {
   const streamId = block.getStreamId()
   const stream = this.stream_list.find(stream => stream.getStreamId() === streamId)
   const process = this.process_list.find(process => process.getProcessId() === stream.getProcessId())
-  const request = new BlockCallTreeRequest()
+  const request = new BlockSpansRequest()
   request.setProcess(process)
   request.setStream(stream)
   request.setBlockId(block.getBlockId())
-  this.client.block_call_tree(request, null, (err, response) => {
+  this.client.block_spans(request, null, (err, response) => {
     if (err) {
       console.error('error in block_call_tree', err)
     } else {
@@ -44,7 +44,7 @@ function fetchBlocks (streamId) {
       } else {
         const newBlocks = response.getBlocksList()
         this.block_list = this.block_list.concat(newBlocks)
-        newBlocks.forEach(block => this.fetchCallTree(block))
+        newBlocks.forEach(block => this.fetchBlockSpans(block))
       }
     })
   } catch (err) {
@@ -118,7 +118,7 @@ export default {
   },
   methods: {
     fetchBlocks: fetchBlocks,
-    fetchCallTree: fetchCallTree,
+    fetchBlockSpans: fetchBlockSpans,
     fetchStreams: fetchStreams,
     fetchProcessInfo: fetchProcessInfo
   }

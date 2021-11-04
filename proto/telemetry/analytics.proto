@@ -11,8 +11,10 @@ service PerformanceAnalytics {
     rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
     rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
     rpc block_call_tree(BlockCallTreeRequest) returns (BlockCallTreeReply);
+    rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
 }
 
+// find_process
 message FindProcessRequest{
     string process_id = 1;
 }
@@ -21,6 +23,7 @@ message FindProcessReply{
     telemetry.Process process = 1;
 }
 
+// list_recent_processes
 message RecentProcessesRequest{
 }
 
@@ -28,6 +31,7 @@ message ProcessListReply {
     repeated telemetry.Process processes = 1;
 }
 
+// list_process_streams
 message ListProcessStreamsRequest{
     string process_id = 1;
 }
@@ -36,6 +40,7 @@ message ListStreamsReply{
     repeated telemetry.Stream streams = 1;
 }
 
+// list_stream_blocks
 message ListStreamBlocksRequest{
     string stream_id = 1;
 }
@@ -44,20 +49,48 @@ message ListStreamBlocksReply{
     repeated telemetry.Block blocks = 1;
 }
 
+// block_call_tree
+// ScopeInstance: tree data structure to store function calls
+message CallTreeNode{
+    string name = 1; // factor out scope_desc
+    double begin_ms = 2;
+    double end_ms = 3;
+    repeated CallTreeNode scopes = 4;
+}
+
 message BlockCallTreeRequest{
     telemetry.Process process = 1;
     telemetry.Stream stream = 2;
     string block_id = 3;
 }
 
-message ScopeInstance{
-    string name = 1; //factor out scope_desc
-    double begin_ms = 2;
-    double end_ms = 3;
-    repeated ScopeInstance scopes = 4;
+message BlockCallTreeReply{
+    repeated CallTreeNode nodes = 1;
 }
 
-message BlockCallTreeReply{
-    repeated ScopeInstance scopes = 1;
-   
+// block_spans
+// Span: represents a function call instance
+message Span{
+    uint32 scope_hash = 1;
+    uint32 depth = 2; // how many function calls are above this one in the thread
+    double begin_ms = 3;
+    double end_ms = 4;
+}
+
+message ScopeDesc{
+    string name = 1;
+    string filename = 2;
+    uint32 line = 3;
+    uint32 hash = 4;
+}
+
+message BlockSpansRequest{
+    telemetry.Process process = 1;
+    telemetry.Stream stream = 2;
+    string block_id = 3;
+}
+
+message BlockSpansReply{
+    repeated ScopeDesc scopes = 1;
+    repeated Span spans = 2;
 }

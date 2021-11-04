@@ -2,7 +2,9 @@ use std::path::Path;
 
 use anyhow::Result;
 use legion_analytics::prelude::*;
-use legion_telemetry_proto::analytics::ScopeInstance;
+use legion_telemetry_proto::analytics::CallTreeNode;
+use legion_telemetry_proto::analytics::ScopeDesc;
+use legion_telemetry_proto::analytics::Span;
 use legion_transit::prelude::*;
 
 trait ThreadBlockProcessor {
@@ -39,7 +41,7 @@ struct CallTreeBuilder {
     ts_end_block: u64,
     ts_offset: u64,
     inv_tsc_frequency: f64,
-    stack: Vec<ScopeInstance>,
+    stack: Vec<CallTreeNode>,
 }
 
 impl CallTreeBuilder {
@@ -58,9 +60,9 @@ impl CallTreeBuilder {
         }
     }
 
-    pub fn finish(mut self) -> ScopeInstance {
+    pub fn finish(mut self) -> CallTreeNode {
         if self.stack.is_empty() {
-            return ScopeInstance {
+            return CallTreeNode {
                 name: String::new(),
                 begin_ms: self.get_time(self.ts_begin_block),
                 end_ms: self.get_time(self.ts_end_block),
@@ -82,12 +84,12 @@ impl CallTreeBuilder {
         (ts - self.ts_offset) as f64 * self.inv_tsc_frequency
     }
 
-    fn add_child_to_top(&mut self, scope: ScopeInstance) {
+    fn add_child_to_top(&mut self, scope: CallTreeNode) {
         if let Some(mut top) = self.stack.pop() {
             top.scopes.push(scope);
             self.stack.push(top);
         } else {
-            let new_root = ScopeInstance {
+            let new_root = CallTreeNode {
                 name: String::new(),
                 begin_ms: self.get_time(self.ts_begin_block),
                 end_ms: self.get_time(self.ts_end_block),
@@ -101,7 +103,7 @@ impl CallTreeBuilder {
 impl ThreadBlockProcessor for CallTreeBuilder {
     fn on_begin_scope(&mut self, scope_name: String, ts: u64) {
         let time = self.get_time(ts);
-        let scope = ScopeInstance {
+        let scope = CallTreeNode {
             name: scope_name,
             begin_ms: time,
             end_ms: self.get_time(self.ts_end_block),
@@ -124,7 +126,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
                 panic!("top scope mismatch");
             }
         } else {
-            let scope = ScopeInstance {
+            let scope = CallTreeNode {
                 name: scope_name,
                 begin_ms: self.get_time(self.ts_begin_block),
                 end_ms: time,
@@ -142,7 +144,7 @@ pub(crate) async fn compute_block_call_tree(
     process: &legion_telemetry::ProcessInfo,
     stream: &legion_telemetry::StreamInfo,
     block_id: &str,
-) -> Result<ScopeInstance> {
+) -> Result<CallTreeNode> {
     let ts_offset = process.start_ticks;
     let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64;
     let block = find_block(connection, block_id).await?;
@@ -154,4 +156,58 @@ pub(crate) async fn compute_block_call_tree(
     );
     parse_thread_bock(connection, data_path, stream, block_id, &mut builder).await?;
     Ok(builder.finish())
+}
+
+type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
+const CRC32: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_ISCSI);
+
+fn make_spans_from_tree(
+    tree: &CallTreeNode,
+    depth: u32,
+    scopes: &mut ScopeHashMap,
+    spans: &mut Vec<Span>,
+) {
+    let scope_hash = CRC32.checksum(tree.name.as_bytes()); //todo: add filename
+    scopes.entry(scope_hash).or_insert_with(|| ScopeDesc {
+        name: tree.name.clone(),
+        filename: "".to_string(),
+        line: 0,
+        hash: scope_hash,
+    });
+    let span = Span {
+        scope_hash,
+        depth,
+        begin_ms: tree.begin_ms,
+        end_ms: tree.end_ms,
+    };
+    spans.push(span);
+    for child in &tree.scopes {
+        make_spans_from_tree(child, depth + 1, scopes, spans);
+    }
+}
+
+pub(crate) async fn compute_block_spans(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    process: &legion_telemetry::ProcessInfo,
+    stream: &legion_telemetry::StreamInfo,
+    block_id: &str,
+) -> Result<(Vec<ScopeDesc>, Vec<Span>)> {
+    let tree = compute_block_call_tree(connection, data_path, process, stream, block_id).await?;
+    let mut scopes = ScopeHashMap::new();
+    let mut spans = vec![];
+    if tree.name.is_empty() {
+        for child in &tree.scopes {
+            make_spans_from_tree(child, 0, &mut scopes, &mut spans);
+        }
+    } else {
+        make_spans_from_tree(&tree, 0, &mut scopes, &mut spans);
+    }
+
+    let mut scope_vec = vec![];
+    scope_vec.reserve(scopes.len());
+    for (_k, v) in scopes.drain() {
+        scope_vec.push(v);
+    }
+    Ok((scope_vec, spans))
 }

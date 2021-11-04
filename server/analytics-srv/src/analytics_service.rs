@@ -1,11 +1,14 @@
 use std::path::PathBuf;
 
-use crate::call_tree::compute_block_call_tree;
+use crate::call_tree::{compute_block_call_tree, compute_block_spans};
 use anyhow::Result;
 use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use legion_telemetry_proto::analytics::BlockCallTreeReply;
 use legion_telemetry_proto::analytics::BlockCallTreeRequest;
+use legion_telemetry_proto::analytics::BlockSpansReply;
+use legion_telemetry_proto::analytics::BlockSpansRequest;
+use legion_telemetry_proto::analytics::CallTreeNode;
 use legion_telemetry_proto::analytics::FindProcessReply;
 use legion_telemetry_proto::analytics::FindProcessRequest;
 use legion_telemetry_proto::analytics::ListProcessStreamsRequest;
@@ -14,7 +17,8 @@ use legion_telemetry_proto::analytics::ListStreamBlocksRequest;
 use legion_telemetry_proto::analytics::ListStreamsReply;
 use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
-use legion_telemetry_proto::analytics::ScopeInstance;
+use legion_telemetry_proto::analytics::ScopeDesc;
+use legion_telemetry_proto::analytics::Span;
 
 use tonic::{Request, Response, Status};
 
@@ -59,7 +63,7 @@ impl AnalyticsService {
         process: &legion_telemetry::ProcessInfo,
         stream: &legion_telemetry::StreamInfo,
         block_id: &str,
-    ) -> Result<Vec<ScopeInstance>> {
+    ) -> Result<Vec<CallTreeNode>> {
         let mut connection = self.pool.acquire().await?;
         let scope =
             compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
@@ -69,6 +73,16 @@ impl AnalyticsService {
         } else {
             Ok(scope.scopes)
         }
+    }
+
+    async fn block_spans_impl(
+        &self,
+        process: &legion_telemetry::ProcessInfo,
+        stream: &legion_telemetry::StreamInfo,
+        block_id: &str,
+    ) -> Result<(Vec<ScopeDesc>, Vec<Span>)> {
+        let mut connection = self.pool.acquire().await?;
+        compute_block_spans(&mut connection, &self.data_dir, process, stream, block_id).await
     }
 }
 
@@ -181,8 +195,43 @@ impl PerformanceAnalytics for AnalyticsService {
             )
             .await
         {
-            Ok(scopes) => {
-                let reply = BlockCallTreeReply { scopes };
+            Ok(nodes) => {
+                let reply = BlockCallTreeReply { nodes };
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                return Err(Status::internal(format!("Error in block_call_tree: {}", e)));
+            }
+        }
+    }
+
+    async fn block_spans(
+        &self,
+        request: Request<BlockSpansRequest>,
+    ) -> Result<Response<BlockSpansReply>, Status> {
+        let inner_request = request.into_inner();
+
+        if inner_request.process.is_none() {
+            return Err(Status::internal(String::from(
+                "Missing process in block_call_tree",
+            )));
+        }
+        if inner_request.stream.is_none() {
+            return Err(Status::internal(String::from(
+                "Missing stream in block_call_tree",
+            )));
+        }
+
+        match self
+            .block_spans_impl(
+                &inner_request.process.unwrap(),
+                &inner_request.stream.unwrap(),
+                &inner_request.block_id,
+            )
+            .await
+        {
+            Ok((scopes, spans)) => {
+                let reply = BlockSpansReply { scopes, spans };
                 Ok(Response::new(reply))
             }
             Err(e) => {

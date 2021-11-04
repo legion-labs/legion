@@ -135,6 +135,7 @@ name = "analytics-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crc",
  "legion-analytics",
  "legion-telemetry",
  "legion-telemetry-proto",
