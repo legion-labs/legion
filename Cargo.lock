@@ -965,7 +965,7 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "time 0.1.44",
+ "time",
  "winapi",
 ]
 
@@ -3478,7 +3478,7 @@ dependencies = [
  "ring",
  "serde",
  "serde_json",
- "simple_asn1 0.6.0",
+ "simple_asn1",
  "tokio",
  "url",
  "webbrowser",
@@ -5051,15 +5051,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
-name = "quickcheck"
-version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "588f6378e4dd99458b60ec275b4477add41ce4fa9f64dcba6f15adccb19b50d6"
-dependencies = [
- "rand 0.8.4",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5433,7 +5424,7 @@ dependencies = [
  "num-traits",
  "pem 0.8.3",
  "rand 0.8.4",
- "simple_asn1 0.5.4",
+ "simple_asn1",
  "subtle",
  "zeroize",
 ]
@@ -5883,18 +5874,6 @@ dependencies = [
  "num-bigint 0.4.2",
  "num-traits",
  "thiserror",
-]
-
-[[package]]
-name = "simple_asn1"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69e392b68e8f171f7399608dabaa3a099525b7daca0fd1c8690bda08eb110355"
-dependencies = [
- "num-bigint 0.4.2",
- "num-traits",
- "thiserror",
- "time 0.3.4",
 ]
 
 [[package]]
@@ -6710,24 +6689,6 @@ dependencies = [
  "wasi 0.10.0+wasi-snapshot-preview1",
  "winapi",
 ]
-
-[[package]]
-name = "time"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99beeb0daeac2bd1e86ac2c21caddecb244b39a093594da1a661ec2060c7aedd"
-dependencies = [
- "itoa",
- "libc",
- "quickcheck",
- "time-macros",
-]
-
-[[package]]
-name = "time-macros"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 
 [[package]]
 name = "tinycom"
@@ -8081,7 +8042,7 @@ dependencies = [
  "crc32fast",
  "flate2",
  "thiserror",
- "time 0.1.44",
+ "time",
 ]
 
 [[package]]
