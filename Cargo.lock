@@ -457,18 +457,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "aws-lambda-authorizer"
+name = "aws-lambda-grpc-test"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "lambda_http",
  "lambda_runtime",
  "legion-aws",
  "legion-online",
+ "legion-streaming-proto",
  "log",
  "serde",
  "serde_json",
  "simple_logger",
  "tokio",
+ "tonic",
 ]
 
 [[package]]
@@ -3067,6 +3070,20 @@ dependencies = [
  "html5ever",
  "matches",
  "selectors",
+]
+
+[[package]]
+name = "lambda_http"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f10599c844cf7584c0dfbf6030df7c174cd5c91f2515412f8875de2a0f2b3fc5"
+dependencies = [
+ "base64",
+ "http",
+ "lambda_runtime",
+ "serde",
+ "serde_json",
+ "serde_urlencoded 0.7.0",
 ]
 
 [[package]]
