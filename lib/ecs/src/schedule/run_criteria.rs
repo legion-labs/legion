@@ -71,7 +71,7 @@ impl BoxedRunCriteria {
         self.initialized = false;
     }
 
-    pub(crate) async fn should_run(&mut self, world: &mut World) -> ShouldRun {
+    pub(crate) fn should_run(&mut self, world: &mut World) -> ShouldRun {
         if let Some(ref mut run_criteria) = self.criteria_system {
             if !self.initialized {
                 run_criteria.initialize(world);

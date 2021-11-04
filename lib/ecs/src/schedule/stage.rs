@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-use async_trait::async_trait;
 use downcast_rs::{impl_downcast, Downcast};
 use fixedbitset::FixedBitSet;
 use legion_utils::{tracing::info, HashMap, HashSet};
@@ -21,11 +20,10 @@ use crate::{
 };
 
 /// A type that can run as a step of a [`Schedule`](super::Schedule).
-#[async_trait]
 pub trait Stage: Downcast + Send + Sync {
     /// Runs the stage; this happens once per update.
     /// Implementors must initialize all of their state and systems before running the first time.
-    async fn run(&mut self, world: &mut World);
+    fn run(&mut self, world: &mut World);
 }
 
 impl_downcast!(Stage);
@@ -741,10 +739,9 @@ fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<
     ambiguities
 }
 
-#[async_trait]
 impl Stage for SystemStage {
     #[allow(clippy::too_many_lines)]
-    async fn run(&mut self, world: &mut World) {
+    fn run(&mut self, world: &mut World) {
         if let Some(world_id) = self.world_id {
             assert!(
                 world.id() == world_id,
@@ -770,7 +767,7 @@ impl Stage for SystemStage {
 
         let mut run_stage_loop = true;
         while run_stage_loop {
-            let should_run = self.stage_run_criteria.should_run(world).await;
+            let should_run = self.stage_run_criteria.should_run(world);
             match should_run {
                 ShouldRun::No => return,
                 ShouldRun::NoAndCheckAgain => continue,
