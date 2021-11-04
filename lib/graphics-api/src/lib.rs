@@ -270,6 +270,8 @@
 #![allow(clippy::missing_errors_doc)]
 //#![warn(missing_docs)]
 
+use std::fmt::Debug;
+
 pub mod backends;
 pub mod error;
 pub mod reflection;
@@ -398,7 +400,7 @@ pub trait BufferMappingInfo<A: GfxApi> {
     fn data_ptr(&self) -> *mut u8;
 }
 
-pub trait Buffer<A: GfxApi>: std::fmt::Debug {
+pub trait Buffer<A: GfxApi>: Debug {
     fn definition(&self) -> &BufferDef;
     fn map_buffer(&self) -> GfxResult<A::BufferMappingInfo>;
     fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()>;
@@ -410,24 +412,24 @@ pub trait Buffer<A: GfxApi>: std::fmt::Debug {
     fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<A::BufferView>;
 }
 
-pub trait Texture<A: GfxApi>: Clone + std::fmt::Debug {
+pub trait Texture<A: GfxApi>: Clone + Debug {
     fn definition(&self) -> &TextureDef;
     fn map_texture(&self) -> GfxResult<TextureSubResource<'_>>;
     fn unmap_texture(&self) -> GfxResult<()>;
     fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<A::TextureView>;
 }
 
-pub trait Sampler<A: GfxApi>: Clone + std::fmt::Debug {}
+pub trait Sampler<A: GfxApi>: Clone + Debug {}
 
 //
 // Views (BufferView, TextureView)
 //
-pub trait BufferView<A: GfxApi>: Clone + std::fmt::Debug {
+pub trait BufferView<A: GfxApi>: Clone + Debug {
     fn definition(&self) -> &BufferViewDef;
     fn buffer(&self) -> &A::Buffer;
 }
 
-pub trait TextureView<A: GfxApi>: Clone + std::fmt::Debug {
+pub trait TextureView<A: GfxApi>: Clone + Debug {
     fn definition(&self) -> &TextureViewDef;
     fn texture(&self) -> &A::Texture;
 }
@@ -435,21 +437,22 @@ pub trait TextureView<A: GfxApi>: Clone + std::fmt::Debug {
 //
 // Shaders/Pipelines
 //
-pub trait ShaderModule<A: GfxApi>: Clone + std::fmt::Debug {}
+pub trait ShaderModule<A: GfxApi>: Clone + Debug {}
 
-pub trait Shader<A: GfxApi>: Clone + std::fmt::Debug {
+pub trait Shader<A: GfxApi>: Clone + Debug {
     fn pipeline_reflection(&self) -> &PipelineReflection;
 }
 
-pub trait DescriptorSetLayout<A: GfxApi>: Clone + std::fmt::Debug {
+pub trait DescriptorSetLayout<A: GfxApi>: Clone + Debug {
     fn definition(&self) -> &DescriptorSetLayoutDef;
 }
 
-pub trait RootSignature<A: GfxApi>: Clone + std::fmt::Debug {
+pub trait RootSignature<A: GfxApi>: Clone + Debug {
     fn pipeline_type(&self) -> PipelineType;
+    fn definition(&self) -> &RootSignatureDef<A>;
 }
 
-pub trait Pipeline<A: GfxApi>: std::fmt::Debug {
+pub trait Pipeline<A: GfxApi>: Debug {
     fn pipeline_type(&self) -> PipelineType;
     fn root_signature(&self) -> &A::RootSignature;
 }
@@ -457,9 +460,9 @@ pub trait Pipeline<A: GfxApi>: std::fmt::Debug {
 //
 // Descriptor Sets
 //
-pub trait DescriptorSetHandle<A: GfxApi>: std::fmt::Debug {}
+pub trait DescriptorSetHandle<A: GfxApi>: Debug {}
 
-pub trait DescriptorSetArray<A: GfxApi>: std::fmt::Debug {
+pub trait DescriptorSetArray<A: GfxApi>: Debug {
     fn handle(&self, array_index: u32) -> Option<A::DescriptorSetHandle>;
     fn update_descriptor_set(&mut self, params: &[DescriptorUpdate<'_, A>]) -> GfxResult<()>;
     fn queue_descriptor_set_update(&mut self, update: &DescriptorUpdate<'_, A>) -> GfxResult<()>;
@@ -469,12 +472,18 @@ pub trait DescriptorSetArray<A: GfxApi>: std::fmt::Debug {
 //
 // DescriptorHeap
 //
-pub trait DescriptorHeap<A: GfxApi> {}
+pub trait DescriptorHeap<A: GfxApi> {
+    fn reset(&self) -> GfxResult<()>;
+    fn allocate_descriptor_set(
+        &self,
+        descriptor_set_layout: &A::DescriptorSetLayout,
+    ) -> GfxResult<A::DescriptorSetHandle>;
+}
 
 //
 // Queues, Command Buffers
 //
-pub trait Queue<A: GfxApi>: Clone + std::fmt::Debug {
+pub trait Queue<A: GfxApi>: Clone + Debug {
     fn device_context(&self) -> &A::DeviceContext;
     fn queue_id(&self) -> u32;
     fn queue_type(&self) -> QueueType;
@@ -504,7 +513,7 @@ pub trait CommandPool<A: GfxApi> {
     fn reset_command_pool(&self) -> GfxResult<()>;
 }
 
-pub trait CommandBuffer<A: GfxApi>: std::fmt::Debug {
+pub trait CommandBuffer<A: GfxApi>: Debug {
     fn begin(&self) -> GfxResult<()>;
     fn end(&self) -> GfxResult<()>;
     fn return_to_pool(&self) -> GfxResult<()>;

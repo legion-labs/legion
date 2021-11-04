@@ -8,19 +8,19 @@ pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut legion_app::App) {
-        let renderer = Renderer::new();
+        let renderer = Renderer::new().unwrap();
 
         app.insert_resource(renderer);
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update.system());
-
+        
         // Update
         app.add_system_set(
             SystemSet::new()
                 .with_system(render_update.system())
                 .label(RendererSystemLabel::FrameUpdate),
-        );
+        );        
 
         // Post-Update
         app.add_system_to_stage(

@@ -1,11 +1,9 @@
-use std::sync::Mutex;
-
 use crate::{
     backends::deferred_drop::Drc, DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi,
 };
 use ash::vk;
 
-use super::VulkanDeviceContext;
+use super::{VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanDeviceContext};
 
 struct DescriptorHeapPoolConfig {
     pool_flags: vk::DescriptorPoolCreateFlags,
@@ -23,14 +21,10 @@ struct DescriptorHeapPoolConfig {
     input_attachments: u32,
 }
 
-impl DescriptorHeapPoolConfig {
-    fn new(definition: &DescriptorHeapDef) -> Self {
+impl From<&DescriptorHeapDef> for DescriptorHeapPoolConfig {
+    fn from(definition: &DescriptorHeapDef) -> Self {
         Self {
-            pool_flags: if definition.transient {
-                vk::DescriptorPoolCreateFlags::empty()
-            } else {
-                vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET
-            },
+            pool_flags: vk::DescriptorPoolCreateFlags::empty(),
             descriptor_sets: definition.max_descriptor_sets,
             samplers: definition.sampler_count,
             combined_image_samplers: 0,
@@ -45,7 +39,9 @@ impl DescriptorHeapPoolConfig {
             input_attachments: 0,
         }
     }
+}
 
+impl DescriptorHeapPoolConfig {
     fn create_pool(&self, device: &ash::Device) -> GfxResult<vk::DescriptorPool> {
         let mut pool_sizes = Vec::with_capacity(16);
 
@@ -77,47 +73,66 @@ impl DescriptorHeapPoolConfig {
             add_if_not_zero(&mut pool_sizes, vk::DescriptorType::INPUT_ATTACHMENT, self.input_attachments);
         };
 
-        unsafe {
-            Ok(device.create_descriptor_pool(
+        let vk_pool = unsafe {
+            device.create_descriptor_pool(
                 &*vk::DescriptorPoolCreateInfo::builder()
                     .flags(self.pool_flags)
                     .max_sets(self.descriptor_sets)
                     .pool_sizes(&pool_sizes),
                 None,
-            )?)
-        }
+            )?
+        };
+
+        Ok(vk_pool)
     }
 }
 
 struct DescriptorHeapVulkanInner {
     device_context: VulkanDeviceContext,
-    pub definition: DescriptorHeapDef,
-    pools: Vec<vk::DescriptorPool>,
+    _definition: DescriptorHeapDef,
+    vk_pool: vk::DescriptorPool,
 }
 
 impl Drop for DescriptorHeapVulkanInner {
     fn drop(&mut self) {
-        // Assert that everything was destroyed. (We can't do it automatically since we don't have
-        // a reference to the device)
-        // assert!(self.pools.is_empty());
         let device = self.device_context.device();
-        for pool in &self.pools {
-            unsafe {
-                device.destroy_descriptor_pool(*pool, None);
-            }
+        unsafe {
+            device.destroy_descriptor_pool(self.vk_pool, None);
         }
     }
 }
 
-// This is an endlessly growing descriptor pools. New pools are allocated in large chunks as needed.
-// It also takes locks on every operation. So it's better to allocate large chunks of descriptors
-// and pool/reuse them.
 #[derive(Clone)]
 pub struct VulkanDescriptorHeap {
-    inner: Drc<Mutex<DescriptorHeapVulkanInner>>,
+    inner: Drc<DescriptorHeapVulkanInner>,
 }
 
-impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {}
+impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {
+    fn reset(&self) -> GfxResult<()> {
+        let inner = &self.inner;
+        let device = inner.device_context.device();
+        let result = unsafe {
+            device.reset_descriptor_pool(inner.vk_pool, vk::DescriptorPoolResetFlags::default())?
+        };
+        Ok(result)
+    }
+
+    fn allocate_descriptor_set(
+        &self,
+        descriptor_set_layout: &VulkanDescriptorSetLayout,
+    ) -> GfxResult<VulkanDescriptorSetHandle> {
+        let inner = &self.inner;
+        let device = inner.device_context.device();
+        let allocate_info = vk::DescriptorSetAllocateInfo::builder()
+            .set_layouts(&[descriptor_set_layout.vk_layout()])
+            .descriptor_pool(inner.vk_pool)
+            .build();
+
+        let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
+
+        Ok(VulkanDescriptorSetHandle(result[0]))
+    }
+}
 
 impl VulkanDescriptorHeap {
     pub(crate) fn new(
@@ -125,17 +140,17 @@ impl VulkanDescriptorHeap {
         definition: &DescriptorHeapDef,
     ) -> GfxResult<Self> {
         let device = device_context.device();
-        let heap_pool_config = DescriptorHeapPoolConfig::new(definition);
-        let pool = heap_pool_config.create_pool(device)?;
+        let heap_pool_config: DescriptorHeapPoolConfig = definition.into();
+        let vk_pool = heap_pool_config.create_pool(device)?;
 
         let inner = DescriptorHeapVulkanInner {
             device_context: device_context.clone(),
-            definition: *definition,
-            pools: vec![pool],
+            _definition: *definition,
+            vk_pool,
         };
 
         Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(Mutex::new(inner)),
+            inner: device_context.deferred_dropper().new_drc(inner),
         })
     }
 
@@ -144,33 +159,17 @@ impl VulkanDescriptorHeap {
         device: &ash::Device,
         set_layouts: &[vk::DescriptorSetLayout],
     ) -> GfxResult<Vec<vk::DescriptorSet>> {
-        let mut heap = self.inner.lock().unwrap();
+        let inner = &self.inner;
 
-        let mut allocate_info = vk::DescriptorSetAllocateInfo::builder()
+        let allocate_info = vk::DescriptorSetAllocateInfo::builder()
             .set_layouts(set_layouts)
+            .descriptor_pool(inner.vk_pool)
             .build();
 
-        // Heap might have been cleared
-        if !heap.pools.is_empty() {
-            let pool = *heap.pools.last().unwrap();
-            allocate_info.descriptor_pool = pool;
-
-            let result = unsafe { device.allocate_descriptor_sets(&allocate_info) };
-
-            // If successful bail, otherwise allocate a new pool below
-            if let Ok(result) = result {
-                return Ok(result);
-            }
+        unsafe {
+            device
+                .allocate_descriptor_sets(&allocate_info)
+                .map_err(|e| e.into())
         }
-
-        // We either didn't have any pools, or assume the pool wasn't large enough. Create a new
-        // pool and try again
-        let heap_pool_config = DescriptorHeapPoolConfig::new(&heap.definition);
-        let new_pool = heap_pool_config.create_pool(device)?;
-        heap.pools.push(new_pool);
-
-        let pool = *heap.pools.last().unwrap();
-        allocate_info.descriptor_pool = pool;
-        Ok(unsafe { device.allocate_descriptor_sets(&allocate_info)? })
     }
 }

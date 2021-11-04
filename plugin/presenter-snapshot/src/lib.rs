@@ -56,7 +56,7 @@
 // crate-specific exceptions:
 #![allow()]
 
-use legion_app::{App, Plugin};
+use legion_app::{App, CoreStage, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
 use legion_renderer::{components::RenderSurface, Renderer, RendererSystemLabel};
 
@@ -69,7 +69,8 @@ pub struct PresenterSnapshotPlugin;
 
 impl Plugin for PresenterSnapshotPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
             render_presenter_snapshots
                 .system()
                 .after(RendererSystemLabel::FrameDone),

@@ -1,5 +1,7 @@
 use std::num::NonZeroU32;
 
+use anyhow::Result;
+
 use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
@@ -14,14 +16,16 @@ pub struct Renderer {
     graphics_queue: <DefaultApi as GfxApi>::Queue,
     command_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
     command_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
+    transient_descriptor_heaps: Vec<<DefaultApi as GfxApi>::DescriptorHeap>,
 
     // This should be last, as it must be destroyed last.
     api: DefaultApi,
 }
 
 impl Renderer {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {        
         #![allow(unsafe_code)]
+
         let num_render_frames = 2u32;
         let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
@@ -30,29 +34,43 @@ impl Renderer {
         let mut command_buffers = Vec::with_capacity(num_render_frames as usize);
         let mut frame_signal_sems = Vec::with_capacity(num_render_frames as usize);
         let mut frame_fences = Vec::with_capacity(num_render_frames as usize);
+        let mut transient_descriptor_heaps= Vec::with_capacity(num_render_frames as usize);
 
         for _ in 0..num_render_frames {
             let command_pool = graphics_queue
-                .create_command_pool(&CommandPoolDef { transient: true })
-                .unwrap();
+                .create_command_pool(&CommandPoolDef { transient: true })?;
 
             let command_buffer = command_pool
                 .create_command_buffer(&CommandBufferDef {
                     is_secondary: false,
-                })
-                .unwrap();
+                })?;
 
-            let frame_signal_sem = device_context.create_semaphore().unwrap();
+            let frame_signal_sem = device_context.create_semaphore()?;
 
-            let frame_fence = device_context.create_fence().unwrap();
+            let frame_fence = device_context.create_fence()?;
+
+            let transient_descriptor_heap_def = DescriptorHeapDef{
+                transient: true,
+                max_descriptor_sets: 10*1024,
+                sampler_count: 256,
+                constant_buffer_count: 10*1024,
+                buffer_count: 10*1024,
+                rw_buffer_count: 10*1024,
+                texture_count: 10*1024,
+                rw_texture_count: 10*1024,
+            };
+            let transient_descriptor_heap = device_context.create_descriptor_heap(
+                &transient_descriptor_heap_def
+            )?;            
 
             command_pools.push(command_pool);
             command_buffers.push(command_buffer);
             frame_signal_sems.push(frame_signal_sem);
             frame_fences.push(frame_fence);
+            transient_descriptor_heaps.push(transient_descriptor_heap);
         }
 
-        Self {
+        Ok(Self {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
@@ -61,8 +79,9 @@ impl Renderer {
             graphics_queue,
             command_pools,
             command_buffers,
+            transient_descriptor_heaps,
             api,
-        }
+        })
     }
 
     pub fn api(&self) -> &DefaultApi {
@@ -85,6 +104,11 @@ impl Renderer {
     pub fn frame_signal_semaphore(&self) -> &<DefaultApi as GfxApi>::Semaphore {
         let render_frame_index = self.render_frame_idx;
         &self.frame_signal_sems[render_frame_index as usize]
+    }
+
+    pub fn transient_descriptor_heap(&self) -> &<DefaultApi as GfxApi>::DescriptorHeap {
+        let render_frame_index = self.render_frame_idx;
+        &self.transient_descriptor_heaps[render_frame_index as usize]
     }
 
     pub(crate) fn begin_frame(&mut self) {
@@ -118,9 +142,11 @@ impl Renderer {
         //
         let cmd_pool = &self.command_pools[render_frame_idx as usize];
         let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
+        let transient_descriptor_heap = &self.transient_descriptor_heaps[render_frame_idx as usize];
 
         cmd_pool.reset_command_pool().unwrap();
         cmd_buffer.begin().unwrap();
+        transient_descriptor_heap.reset().unwrap();
     }
 
     pub(crate) fn update(&mut self, q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>) {
@@ -456,6 +482,9 @@ impl TmpRenderPass {
                 }],
             )
             .unwrap();
+
+        let heap = renderer.transient_descriptor_heap();
+        heap.allocate_descriptor_set(&self.pipeline.root_signature().definition().descriptor_set_layouts[0] ).unwrap();
 
         cmd_buffer
             .cmd_bind_descriptor_set(

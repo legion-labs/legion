@@ -247,6 +247,9 @@ impl RootSignature<NullApi> for NullRootSignature {
     fn pipeline_type(&self) -> PipelineType {
         unimplemented!()
     }
+    fn definition(&self) -> &RootSignatureDef<NullApi> {
+        unimplemented!()
+    }
 }
 
 #[derive(Debug)]
@@ -292,7 +295,18 @@ impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
 //
 
 pub struct NullDescriptorHeap;
-impl DescriptorHeap<NullApi> for NullDescriptorHeap {}
+impl DescriptorHeap<NullApi> for NullDescriptorHeap {
+    fn reset(&self) -> GfxResult<()> {
+        unimplemented!();
+    }
+
+    fn allocate_descriptor_set(
+        &self,
+        descriptor_set_layout: &NullDescriptorSetLayout,
+    ) -> GfxResult<NullDescriptorSetHandle> {
+        unimplemented!();
+    }
+}
 
 //
 // Queues, Command Buffers
