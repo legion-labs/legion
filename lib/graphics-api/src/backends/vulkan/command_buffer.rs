@@ -7,15 +7,14 @@ use std::{
 use ash::vk;
 
 use super::{
-    internal, VulkanApi, VulkanBuffer, VulkanCommandPool,
-    VulkanDescriptorSetHandle, VulkanDeviceContext, VulkanPipeline, VulkanRootSignature,
-    VulkanTexture,
+    internal, VulkanApi, VulkanBuffer, VulkanCommandPool, VulkanDescriptorSetHandle,
+    VulkanDeviceContext, VulkanPipeline, VulkanRootSignature, VulkanTexture,
 };
 use crate::{
     BarrierQueueTransition, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
     CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
-    DepthStencilRenderTargetBinding, GfxResult, IndexBufferBinding, Pipeline,
-    QueueType, ResourceState, ResourceUsage, RootSignature, Texture, TextureBarrier, TextureView,
+    DepthStencilRenderTargetBinding, GfxResult, IndexBufferBinding, Pipeline, QueueType,
+    ResourceState, ResourceUsage, RootSignature, Texture, TextureBarrier, TextureView,
     VertexBufferBinding,
 };
 

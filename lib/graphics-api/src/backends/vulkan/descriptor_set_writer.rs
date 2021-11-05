@@ -1,11 +1,16 @@
 use ash::vk;
 
 use crate::{
-    BufferView, DescriptorRef, DescriptorSetBufWriter, GfxError, GfxResult, ShaderResourceType,
-    VulkanApi,
+    BufferView, DescriptorRef, DescriptorSetBufWriter, DescriptorSetHandle, GfxError, GfxResult,
+    ShaderResourceType, VulkanApi,
 };
 
-use super::{VulkanDescriptorSetHandle, VulkanDescriptorSetLayout};
+use super::VulkanDescriptorSetLayout;
+
+#[derive(Clone, Copy)]
+pub struct VulkanDescriptorSetHandle(pub vk::DescriptorSet);
+
+impl DescriptorSetHandle<VulkanApi> for VulkanDescriptorSetHandle {}
 
 struct VkDescriptors {
     // one per set * elements in each descriptor
@@ -52,6 +57,7 @@ impl VulkanDescriptorSetBufWriter {
 }
 
 impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
+    #[allow(clippy::todo)]
     fn set_descriptors<'a>(
         &mut self,
         name: &str,
@@ -61,7 +67,7 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
         let layout = &self.descriptor_set_layout;
         let descriptor_index = layout
             .find_descriptor_index_by_name(name)
-            .ok_or(GfxError::from("toto"))?;
+            .ok_or_else(|| GfxError::from("Invalid descriptor name"))?;
         let descriptor = layout.descriptor(descriptor_index)?;
         assert!(
             descriptor_offset as usize + update_datas.len() <= descriptor.element_count as usize
@@ -171,7 +177,6 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
     }
 
     fn flush(&mut self) -> GfxResult<VulkanDescriptorSetHandle> {
-
         if !self.pending_writes.is_empty() {
             let device = self.descriptor_set_layout.device_context().device();
             unsafe {

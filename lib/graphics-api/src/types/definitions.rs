@@ -614,9 +614,9 @@ pub struct RootSignatureDef<A: GfxApi> {
 impl<A: GfxApi> Clone for RootSignatureDef<A> {
     fn clone(&self) -> Self {
         Self {
-            pipeline_type: self.pipeline_type.clone(),
+            pipeline_type: self.pipeline_type,
             descriptor_set_layouts: self.descriptor_set_layouts.clone(),
-            push_constant_def: self.push_constant_def.clone(),
+            push_constant_def: self.push_constant_def,
         }
     }
 }
@@ -953,13 +953,7 @@ pub struct ComputePipelineDef<'a, A: GfxApi> {
     pub root_signature: &'a A::RootSignature,
 }
 
-/// Used to create a `DescriptorSetArray`
-pub struct DescriptorSetArrayDef<'a, A: GfxApi> {
-    pub descriptor_set_layout: &'a A::DescriptorSetLayout,
-    /// The number of descriptor sets in the array
-    pub array_length: u32,
-}
-
+/// Used to create a `DescriptorHeap`
 #[derive(Default, Clone, Copy)]
 pub struct DescriptorHeapDef {
     pub transient: bool,

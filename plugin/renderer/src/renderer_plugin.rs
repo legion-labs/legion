@@ -14,13 +14,13 @@ impl Plugin for RendererPlugin {
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update.system());
-        
+
         // Update
         app.add_system_set(
             SystemSet::new()
                 .with_system(render_update.system())
                 .label(RendererSystemLabel::FrameUpdate),
-        );        
+        );
 
         // Post-Update
         app.add_system_to_stage(

@@ -1,7 +1,12 @@
-use crate::{DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi, backends::deferred_drop::Drc};
+use crate::{
+    backends::deferred_drop::Drc, DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi,
+};
 use ash::vk;
 
-use super::{VulkanDescriptorSetBufWriter, VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanDeviceContext};
+use super::{
+    VulkanDescriptorSetBufWriter, VulkanDescriptorSetHandle, VulkanDescriptorSetLayout,
+    VulkanDeviceContext,
+};
 
 struct DescriptorHeapPoolConfig {
     pool_flags: vk::DescriptorPoolCreateFlags,
@@ -109,10 +114,11 @@ impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {
     fn reset(&self) -> GfxResult<()> {
         let inner = &self.inner;
         let device = inner.device_context.device();
-        let result = unsafe {
-            device.reset_descriptor_pool(inner.vk_pool, vk::DescriptorPoolResetFlags::default())?
-        };
-        Ok(result)
+        unsafe {
+            device
+                .reset_descriptor_pool(inner.vk_pool, vk::DescriptorPoolResetFlags::default())
+                .map_err(|x| x.into())
+        }
     }
 
     fn allocate_descriptor_set(
@@ -130,7 +136,7 @@ impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {
 
         VulkanDescriptorSetBufWriter::new(
             VulkanDescriptorSetHandle(result[0]),
-            descriptor_set_layout,      
+            descriptor_set_layout,
         )
     }
 }
@@ -153,24 +159,5 @@ impl VulkanDescriptorHeap {
         Ok(Self {
             inner: device_context.deferred_dropper().new_drc(inner),
         })
-    }
-
-    pub(crate) fn allocate_descriptor_sets(
-        &self,
-        device: &ash::Device,
-        set_layouts: &[vk::DescriptorSetLayout],
-    ) -> GfxResult<Vec<vk::DescriptorSet>> {
-        let inner = &self.inner;
-
-        let allocate_info = vk::DescriptorSetAllocateInfo::builder()
-            .set_layouts(set_layouts)
-            .descriptor_pool(inner.vk_pool)
-            .build();
-
-        unsafe {
-            device
-                .allocate_descriptor_sets(&allocate_info)
-                .map_err(|e| e.into())
-        }
     }
 }

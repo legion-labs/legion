@@ -81,7 +81,7 @@ impl VulkanRootSignature {
                 .device()
                 .create_pipeline_layout(&pipeline_layout_create_info, None)?
         };
-        
+
         let inner = RootSignatureVulkanInner {
             device_context: device_context.clone(),
             definition: definition.clone(),
@@ -98,7 +98,7 @@ impl RootSignature<VulkanApi> for VulkanRootSignature {
     fn pipeline_type(&self) -> PipelineType {
         self.inner.definition.pipeline_type
     }
-    fn definition(&self) -> &RootSignatureDef::<VulkanApi> {
+    fn definition(&self) -> &RootSignatureDef<VulkanApi> {
         &self.inner.definition
     }
 }

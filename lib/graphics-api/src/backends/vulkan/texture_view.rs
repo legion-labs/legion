@@ -91,21 +91,21 @@ impl VulkanTextureView {
             | ShaderResourceType::RWByteAdressBuffer
             | ShaderResourceType::Sampler => false,
 
-            ShaderResourceType::Texture2D |
-            ShaderResourceType::Texture3D | 
-            ShaderResourceType::Texture2DArray |
-            ShaderResourceType::TextureCube |
-            ShaderResourceType::TextureCubeArray => {
-                self.inner.definition.gpu_view_type == GPUViewType::ShaderResourceView && 
-                self.inner.definition.array_size == 1
-            }            
+            ShaderResourceType::Texture2D
+            | ShaderResourceType::Texture3D
+            | ShaderResourceType::Texture2DArray
+            | ShaderResourceType::TextureCube
+            | ShaderResourceType::TextureCubeArray => {
+                self.inner.definition.gpu_view_type == GPUViewType::ShaderResourceView
+                    && self.inner.definition.array_size == 1
+            }
 
-            ShaderResourceType::RWTexture2D |
-            ShaderResourceType::RWTexture2DArray |
-            ShaderResourceType::RWTexture3D => {
-                self.inner.definition.gpu_view_type == GPUViewType::UnorderedAccessView && 
-                self.inner.definition.array_size == 1
-            }                         
+            ShaderResourceType::RWTexture2D
+            | ShaderResourceType::RWTexture2DArray
+            | ShaderResourceType::RWTexture3D => {
+                self.inner.definition.gpu_view_type == GPUViewType::UnorderedAccessView
+                    && self.inner.definition.array_size == 1
+            }
         }
     }
 }

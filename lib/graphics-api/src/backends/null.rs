@@ -5,7 +5,7 @@
 
 use raw_window_handle::HasRawWindowHandle;
 
-use crate::{BufferMappingInfo, DescriptorSetBufWriter, prelude::*};
+use crate::{prelude::*, BufferMappingInfo, DescriptorSetBufWriter};
 
 //
 // Root of the API
@@ -34,7 +34,6 @@ impl GfxApi for NullApi {
     type RootSignature = NullRootSignature;
     type Pipeline = NullPipeline;
     type DescriptorSetHandle = NullDescriptorSetHandle;
-    type DescriptorSetArray = NullDescriptorSetArray;
     type DescriptorSetBufWriter = NullDescriptorSetBufWriter;
     type DescriptorHeap = NullDescriptorHeap;
     type Queue = NullQueue;
@@ -95,13 +94,6 @@ impl DeviceContext<NullApi> for NullDeviceContext {
         &self,
         root_signature_def: &RootSignatureDef<NullApi>,
     ) -> GfxResult<NullRootSignature> {
-        unimplemented!();
-    }
-    fn create_descriptor_set_array(
-        &self,
-        descriptor_heap: NullDescriptorHeap,
-        descriptor_set_array_def: &DescriptorSetArrayDef<'_, NullApi>,
-    ) -> GfxResult<NullDescriptorSetArray> {
         unimplemented!();
     }
     fn create_descriptor_heap(
@@ -265,31 +257,11 @@ impl Pipeline<NullApi> for NullPipeline {
 }
 
 //
-// Descriptor Sets
+// DescriptorSetHandle
 //
 #[derive(Clone, Copy, Debug)]
 pub struct NullDescriptorSetHandle;
 impl DescriptorSetHandle<NullApi> for NullDescriptorSetHandle {}
-
-#[derive(Debug)]
-pub struct NullDescriptorSetArray;
-impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
-    fn handle(&self, array_index: u32) -> Option<NullDescriptorSetHandle> {
-        unimplemented!();
-    }
-    fn update_descriptor_set(&mut self, params: &[DescriptorUpdate<'_, NullApi>]) -> GfxResult<()> {
-        unimplemented!();
-    }
-    fn queue_descriptor_set_update(
-        &mut self,
-        update: &DescriptorUpdate<'_, NullApi>,
-    ) -> GfxResult<()> {
-        unimplemented!();
-    }
-    fn flush_descriptor_set_updates(&mut self) -> GfxResult<()> {
-        unimplemented!();
-    }
-}
 
 //
 // DescriptorSetBufWriter
@@ -297,13 +269,13 @@ impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
 pub struct NullDescriptorSetBufWriter;
 impl DescriptorSetBufWriter<NullApi> for NullDescriptorSetBufWriter {
     fn set_descriptors(
-        &mut self, 
-        name: &str, 
-        descriptor_offset: u32,        
-        update_data: &[DescriptorRef<'_, NullApi>]
+        &mut self,
+        name: &str,
+        descriptor_offset: u32,
+        update_data: &[DescriptorRef<'_, NullApi>],
     ) -> GfxResult<()> {
         unimplemented!()
-    }    
+    }
     fn flush(&mut self) -> GfxResult<NullDescriptorSetHandle> {
         unimplemented!()
     }
@@ -438,14 +410,6 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_, NullApi>) -> GfxResult<()> {
         unimplemented!()
     }
-    // fn cmd_bind_descriptor_set(
-    //     &self,
-    //     root_signature: &NullRootSignature,
-    //     descriptor_set_array: &NullDescriptorSetArray,
-    //     index: u32,
-    // ) -> GfxResult<()> {
-    //     unimplemented!()
-    // }
     fn cmd_bind_descriptor_set_handle(
         &self,
         root_signature: &NullRootSignature,

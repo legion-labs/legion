@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_lines)]
 
-use legion_graphics_api::{DescriptorSetBufWriter, MAX_DESCRIPTOR_SET_LAYOUTS, prelude::*};
+use legion_graphics_api::{prelude::*, DescriptorSetBufWriter, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_renderer::components::RenderSurface;
 
@@ -109,7 +109,6 @@ pub struct OffscreenHelper {
     cmd_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
-    // descriptor_set_arrays: Vec<<DefaultApi as GfxApi>::DescriptorSetArray>,    
     bilinear_sampler: <DefaultApi as GfxApi>::Sampler,
 }
 
@@ -260,27 +259,6 @@ impl OffscreenHelper {
             cmd_buffers.push(cmd_buffer);
         }
 
-        let heap_def = DescriptorHeapDef::from_descriptor_set_layout_def(
-            descriptor_set_layouts[0].definition(),
-            false,
-            render_frame_count,
-        );
-        let descriptor_heap = device_context.create_descriptor_heap(&heap_def).unwrap();
-
-        let mut descriptor_set_arrays = Vec::new();
-        for descriptor_set_layout in &root_signature_def.descriptor_set_layouts {
-            let descriptor_set_array = device_context
-                .create_descriptor_set_array(
-                    descriptor_heap.clone(),
-                    &DescriptorSetArrayDef {
-                        descriptor_set_layout,
-                        array_length: render_frame_count,
-                    },
-                )
-                .unwrap();
-            descriptor_set_arrays.push(descriptor_set_array);
-        }
-
         Ok(Self {
             render_frame_count: render_frame_count as u32,
             resolution_dependent_resources,
@@ -288,7 +266,6 @@ impl OffscreenHelper {
             cmd_buffers,
             root_signature,
             pipeline,
-            // descriptor_set_arrays,
             bilinear_sampler,
         })
     }
@@ -347,7 +324,7 @@ impl OffscreenHelper {
                 )],
             )
             .unwrap();
-            
+
         cmd_buffer
             .cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
@@ -361,58 +338,40 @@ impl OffscreenHelper {
             .unwrap();
 
         cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
-        
-        let descriptor_set_layout = &self.pipeline.root_signature().definition().descriptor_set_layouts[0];
-        let mut descriptor_set_writer = transient_descriptor_heap.allocate_descriptor_set(descriptor_set_layout).unwrap();                
-        descriptor_set_writer.set_descriptors(
-            "hdr_sampler",
-            0,
-            &[DescriptorRef::Sampler(&self.bilinear_sampler)]
-        ).unwrap();       
-        descriptor_set_writer.set_descriptors(
-            "hdr_image",
-            0,
-            &[DescriptorRef::TextureView(render_surface.shader_resource_view())]
-        ).unwrap();   
+
+        let descriptor_set_layout = &self
+            .pipeline
+            .root_signature()
+            .definition()
+            .descriptor_set_layouts[0];
+        let mut descriptor_set_writer = transient_descriptor_heap
+            .allocate_descriptor_set(descriptor_set_layout)
+            .unwrap();
+        descriptor_set_writer
+            .set_descriptors(
+                "hdr_sampler",
+                0,
+                &[DescriptorRef::Sampler(&self.bilinear_sampler)],
+            )
+            .unwrap();
+        descriptor_set_writer
+            .set_descriptors(
+                "hdr_image",
+                0,
+                &[DescriptorRef::TextureView(
+                    render_surface.shader_resource_view(),
+                )],
+            )
+            .unwrap();
         let descriptor_set_handle = descriptor_set_writer.flush().unwrap();
 
-        cmd_buffer.cmd_bind_descriptor_set_handle(
-            &self.root_signature,
-            descriptor_set_layout.definition().frequency, 
-            descriptor_set_handle
-        ).unwrap();
-
-
-        // self.descriptor_set_arrays[0]
-        //     .update_descriptor_set(&[
-        //         DescriptorUpdate {
-        //             array_index: render_frame_idx as u32,
-        //             descriptor_key: DescriptorKey::Name("hdr_sampler"),
-        //             elements: DescriptorElements {
-        //                 samplers: Some(&[&self.bilinear_sampler]),
-        //                 ..DescriptorElements::default()
-        //             },
-        //             ..DescriptorUpdate::default()
-        //         },
-        //         DescriptorUpdate {
-        //             array_index: render_frame_idx as u32,
-        //             descriptor_key: DescriptorKey::Name("hdr_image"),
-        //             elements: DescriptorElements {
-        //                 texture_views: Some(&[render_surface.shader_resource_view()]),
-        //                 ..DescriptorElements::default()
-        //             },
-        //             ..DescriptorUpdate::default()
-        //         },
-        //     ])
-        //     .unwrap();
-
-        // cmd_buffer
-        //     .cmd_bind_descriptor_set(
-        //         &self.root_signature,
-        //         &self.descriptor_set_arrays[0],
-        //         (render_frame_idx) as _,
-        //     )
-        //     .unwrap();
+        cmd_buffer
+            .cmd_bind_descriptor_set_handle(
+                &self.root_signature,
+                descriptor_set_layout.definition().frequency,
+                descriptor_set_handle,
+            )
+            .unwrap();
 
         cmd_buffer.cmd_draw(3, 0).unwrap();
 
