@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 use bytes::Bytes;
 use http_body::Body;
 use lambda_http::{IntoResponse, Request as LambdaRequest, Response as LambdaResponse};
@@ -46,10 +46,12 @@ async fn from_tonic_response(
     >,
 ) -> Result<impl IntoResponse, Error> {
     let (parts, mut body) = response.into_parts();
-    let size_hint = body
-        .size_hint()
-        .exact()
-        .ok_or_else(|| anyhow!("body size is not known"))?;
+    let size_hint = body.size_hint();
+
+    let size_hint = size_hint.upper().unwrap_or_else(|| size_hint.lower());
+
+    info!("size_hint: {}", size_hint);
+
     let mut buf = Vec::<u8>::with_capacity(size_hint as usize);
     while let Some(chunk) = body.data().await {
         let chunk = chunk.context("failed to read data chunk")?;
