@@ -1,9 +1,7 @@
 //! Provides client helper methods for making `gRPC` calls.
 
-use std::time::Duration;
-
 use hyper::client::HttpConnector;
-use hyper_tls::HttpsConnector;
+use hyper_rustls::HttpsConnector;
 use tonic::{body::BoxBody, codegen::BoxFuture};
 
 fn prepare_grpc_request<T>(mut req: hyper::Request<T>, uri: &hyper::Uri) -> hyper::Request<T> {
@@ -19,12 +17,8 @@ fn prepare_grpc_request<T>(mut req: hyper::Request<T>, uri: &hyper::Uri) -> hype
     req
 }
 
-pub type HttpClient<Connector = HttpConnector, ReqBody = BoxBody> = Client<Connector, ReqBody>;
-pub type HttpsClient<Connector = HttpsConnector<HttpConnector>, ReqBody = BoxBody> =
-    Client<Connector, ReqBody>;
-
 /// A `gRPC` generic client.
-pub struct Client<Connector, ReqBody = BoxBody> {
+pub struct Client<Connector = HttpsConnector<HttpConnector>, ReqBody = BoxBody> {
     client: hyper::Client<Connector, ReqBody>,
     uri: hyper::Uri,
 }
@@ -37,7 +31,11 @@ where
 {
     pub fn new_from_connector<U: Into<hyper::Uri>>(uri: U, connector: Connector) -> Self {
         Self {
-            client: hyper::Client::builder().http2_only(true).build(connector),
+            client: hyper::Client::builder()
+                .pool_max_idle_per_host(std::usize::MAX)
+                .pool_idle_timeout(None)
+                .http2_only(true)
+                .build(connector),
             uri: uri.into(),
         }
     }
@@ -83,22 +81,11 @@ where
     }
 }
 
-impl Client<HttpConnector, BoxBody> {
-    pub fn new_http<U: Into<hyper::Uri>>(uri: U) -> Self {
-        let mut connector = HttpConnector::new();
-        connector.set_connect_timeout(Some(Duration::from_secs(5)));
-
-        Self::new_from_connector(uri, connector)
-    }
-}
-
 impl Client<HttpsConnector<HttpConnector>, BoxBody> {
-    pub fn new_https<U: Into<hyper::Uri>>(uri: U) -> Self {
-        let mut connector = HttpConnector::new();
-        connector.set_connect_timeout(Some(Duration::from_secs(5)));
-        let connector = HttpsConnector::new_with_connector(connector);
+    pub fn new<U: Into<hyper::Uri>>(uri: U) -> Self {
+        let https = hyper_rustls::HttpsConnector::with_native_roots();
 
-        Self::new_from_connector(uri, connector)
+        Self::new_from_connector(uri, https)
     }
 }
 

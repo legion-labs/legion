@@ -77,7 +77,7 @@ use legion_editor_proto::{
     editor_client::EditorClient, GetResourcePropertiesRequest, SearchResourcesRequest,
     UpdateResourcePropertiesRequest,
 };
-use legion_grpc::client::HttpsClient as GRPCClient;
+use legion_grpc::client::Client as GRPCClient;
 use legion_online::authentication::{
     Authenticator, AwsCognitoClientAuthenticator, TokenCache as OnlineTokenCache,
 };
@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let projects_dir = directories::ProjectDirs::from("com", "legionlabs", "legion-editor")
         .expect("Failed to get project directory");
     let token_cache = TokenCache::new(authenticator, projects_dir);
-    let grpc_client = GRPCClient::new_https(config.server_addr.clone());
+    let grpc_client = GRPCClient::new(config.server_addr.clone());
     let streamer_client = Mutex::new(StreamerClient::new(grpc_client.clone()));
     let editor_client = Mutex::new(EditorClient::new(grpc_client));
 
