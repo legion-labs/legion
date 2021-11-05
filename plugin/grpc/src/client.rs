@@ -24,7 +24,7 @@ pub type HttpsClient<Connector = HttpsConnector<HttpConnector>, ReqBody = BoxBod
     Client<Connector, ReqBody>;
 
 /// A `gRPC` generic client.
-pub struct Client<Connector = HttpConnector, ReqBody = BoxBody> {
+pub struct Client<Connector, ReqBody = BoxBody> {
     client: hyper::Client<Connector, ReqBody>,
     uri: hyper::Uri,
 }
@@ -84,7 +84,7 @@ where
 }
 
 impl Client<HttpConnector, BoxBody> {
-    pub fn new<U: Into<hyper::Uri>>(uri: U) -> Self {
+    pub fn new_http<U: Into<hyper::Uri>>(uri: U) -> Self {
         let mut connector = HttpConnector::new();
         connector.set_connect_timeout(Some(Duration::from_secs(5)));
 
@@ -93,7 +93,7 @@ impl Client<HttpConnector, BoxBody> {
 }
 
 impl Client<HttpsConnector<HttpConnector>, BoxBody> {
-    pub fn new<U: Into<hyper::Uri>>(uri: U) -> Self {
+    pub fn new_https<U: Into<hyper::Uri>>(uri: U) -> Self {
         let mut connector = HttpConnector::new();
         connector.set_connect_timeout(Some(Duration::from_secs(5)));
         let connector = HttpsConnector::new_with_connector(connector);
