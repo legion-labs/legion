@@ -245,8 +245,8 @@ impl ResourcePathId {
         Some(dependency)
     }
 
-    /// Returns `ContentId` representing the path.
-    pub fn content_id(&self) -> ResourceId {
+    /// Returns `ResourceId` representing the path.
+    pub fn resource_id(&self) -> ResourceId {
         if self.is_source() {
             self.source
         } else {

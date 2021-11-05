@@ -305,15 +305,15 @@ fn run(matches: &ArgMatches<'_>, descriptor: &CompilerDescriptor) -> Result<(), 
             };
 
             /*
-            eprintln!("# Target: {}({})", derived, derived.content_id());
+            eprintln!("# Target: {}({})", derived, derived.resource_id());
             if let Some(source) = derived.direct_dependency() {
-                eprintln!("# Source: {}({})", source, source.content_id());
+                eprintln!("# Source: {}({})", source, source.resource_id());
             }
             for derived_input in &manifest.compiled_resources {
                 eprintln!(
                     "# Derived Input: {}({}) chk: {} size: {}",
                     derived_input.path,
-                    derived_input.path.content_id(),
+                    derived_input.path.resource_id(),
                     derived_input.checksum,
                     derived_input.size
                 );

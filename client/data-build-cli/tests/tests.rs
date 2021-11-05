@@ -106,7 +106,7 @@ fn build_device() {
     std::mem::drop(build);
 
     // load (and build/fetch from cache) derived resource
-    let derived_id = derived.content_id();
+    let derived_id = derived.resource_id();
     {
         let handle = registry.load_sync::<refs_asset::RefsAsset>(derived_id);
         assert!(handle.is_loaded(&registry));

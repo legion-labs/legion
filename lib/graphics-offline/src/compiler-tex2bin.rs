@@ -29,7 +29,7 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .create();
 
     let resource =
-        resources.load_sync::<legion_graphics_offline::Texture>(context.source.content_id());
+        resources.load_sync::<legion_graphics_offline::Texture>(context.source.resource_id());
     let resource = resource.get(&resources).unwrap();
 
     let compiled_asset = resource.rgba.clone();

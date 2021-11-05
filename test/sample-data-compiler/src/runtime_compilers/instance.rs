@@ -87,7 +87,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         .add_loader::<offline_data::Instance>()
         .create();
 
-    let instance = resources.load_sync::<offline_data::Instance>(context.source.content_id());
+    let instance = resources.load_sync::<offline_data::Instance>(context.source.resource_id());
     let instance = instance.get(&resources).unwrap();
 
     let runtime_instance = runtime_data::Instance::from_offline(&instance);

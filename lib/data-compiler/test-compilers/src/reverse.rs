@@ -29,7 +29,7 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .add_loader::<text_resource::TextResource>()
         .create();
 
-    let resource = resources.load_sync::<text_resource::TextResource>(context.source.content_id());
+    let resource = resources.load_sync::<text_resource::TextResource>(context.source.resource_id());
     let resource = resource.get(&resources).unwrap();
 
     let bytes = {

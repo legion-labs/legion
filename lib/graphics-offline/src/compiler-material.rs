@@ -30,7 +30,7 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .create();
 
     let resource =
-        resources.load_sync::<legion_graphics_offline::Material>(context.source.content_id());
+        resources.load_sync::<legion_graphics_offline::Material>(context.source.resource_id());
 
     let resource = resource.get(&resources).unwrap();
 

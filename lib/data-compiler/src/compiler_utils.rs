@@ -10,7 +10,7 @@ use crate::{CompilerHash, Locale, Platform, Target};
 
 /// Converts `ResourcePathId` to `ResourceId`.
 pub fn path_id_to_asset_id(path: &Option<ResourcePathId>) -> Option<ResourceId> {
-    path.as_ref().map(ResourcePathId::content_id)
+    path.as_ref().map(ResourcePathId::resource_id)
 }
 
 /// Converts `ResourceId` to underlying binary representation.

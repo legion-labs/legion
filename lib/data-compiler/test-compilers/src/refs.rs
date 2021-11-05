@@ -28,7 +28,7 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .add_loader::<refs_resource::TestResource>()
         .create();
 
-    let resource = resources.load_sync::<refs_resource::TestResource>(context.source.content_id());
+    let resource = resources.load_sync::<refs_resource::TestResource>(context.source.resource_id());
     assert!(!resource.is_err(&resources));
     assert!(resource.is_loaded(&resources));
     let resource = resource.get(&resources).unwrap();

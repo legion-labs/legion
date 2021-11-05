@@ -31,7 +31,7 @@ fn compile(mut context: CompilerContext) -> Result<CompilationOutput, CompilerEr
         .create();
 
     let resource =
-        resources.load_sync::<multitext_resource::MultiTextResource>(context.source.content_id());
+        resources.load_sync::<multitext_resource::MultiTextResource>(context.source.resource_id());
     let resource = resource.get(&resources).unwrap();
 
     let source_text_list = resource.text_list.clone();

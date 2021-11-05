@@ -658,7 +658,7 @@ impl DataBuild {
             //
             // for now, every derived resource gets an `assetfile` representation.
             //
-            let asset_id = resource.compiled_path.content_id();
+            let asset_id = resource.compiled_path.resource_id();
 
             let mut output: Vec<u8> = vec![];
             let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
@@ -667,10 +667,10 @@ impl DataBuild {
                 .filter(|r| r.is_reference_of(resource))
                 .map(|r| {
                     (
-                        resource.compiled_path.content_id(),
+                        resource.compiled_path.resource_id(),
                         (
-                            r.compiled_reference.content_id(),
-                            r.compiled_reference.content_id(),
+                            r.compiled_reference.resource_id(),
+                            r.compiled_reference.resource_id(),
                         ),
                     )
                 });

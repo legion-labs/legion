@@ -28,5 +28,5 @@ where
     T: Any + Resource,
 {
     path.as_ref()
-        .map(|path| Reference::Passive(path.content_id()))
+        .map(|path| Reference::Passive(path.resource_id()))
 }

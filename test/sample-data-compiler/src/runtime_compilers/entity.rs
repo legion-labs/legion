@@ -87,7 +87,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         .add_loader::<offline_data::Entity>()
         .create();
 
-    let entity = resources.load_sync::<offline_data::Entity>(context.source.content_id());
+    let entity = resources.load_sync::<offline_data::Entity>(context.source.resource_id());
     let entity = entity.get(&resources).unwrap();
 
     let runtime_entity = runtime_data::Entity::from_offline(&entity);

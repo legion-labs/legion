@@ -14,7 +14,7 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
         let children = offline
             .children
             .iter()
-            .map(|path| Reference::Passive(path.content_id()))
+            .map(|path| Reference::Passive(path.resource_id()))
             .collect();
         let mut components: Vec<Box<dyn runtime_data::Component>> = Vec::new();
         for component in &offline.components {

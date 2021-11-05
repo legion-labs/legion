@@ -70,7 +70,7 @@ impl ResourceId {
         Self::new(kind, rand_id)
     }
 
-    /// Returns the type of `ContentId`.
+    /// Returns the type of `ResourceId`.
     pub fn ty(&self) -> ResourceType {
         let type_id = (self.0.get() >> (u128::BITS - ResourceType::num_bits())) as u32;
         ResourceType::from_raw(type_id)

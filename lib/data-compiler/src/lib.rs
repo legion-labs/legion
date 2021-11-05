@@ -145,7 +145,11 @@ impl Manifest {
             .collect::<Vec<_>>();
 
         for resource in runtime_resources {
-            output.insert(resource.path.content_id(), resource.checksum, resource.size);
+            output.insert(
+                resource.path.resource_id(),
+                resource.checksum,
+                resource.size,
+            );
         }
         output
     }

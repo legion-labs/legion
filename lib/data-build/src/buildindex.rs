@@ -326,7 +326,7 @@ impl BuildIndex {
     pub fn record_pathid(&mut self, id: &ResourcePathId) {
         self.content
             .pathid_mapping
-            .insert(id.content_id(), id.clone());
+            .insert(id.resource_id(), id.clone());
     }
 
     pub fn lookup_pathid(&self, id: ResourceId) -> Option<ResourcePathId> {
@@ -548,12 +548,12 @@ mod tests {
         let db = BuildIndex::open(&buildindex_path, "0.0.1").unwrap();
         assert_eq!(db.lookup_pathid(source_id).unwrap(), source_resource);
         assert_eq!(
-            db.lookup_pathid(intermediate_resource.content_id())
+            db.lookup_pathid(intermediate_resource.resource_id())
                 .unwrap(),
             intermediate_resource
         );
         assert_eq!(
-            db.lookup_pathid(output_resource.content_id()).unwrap(),
+            db.lookup_pathid(output_resource.resource_id()).unwrap(),
             output_resource
         );
     }

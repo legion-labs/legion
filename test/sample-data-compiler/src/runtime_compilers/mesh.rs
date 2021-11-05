@@ -87,7 +87,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
         .add_loader::<offline_data::Mesh>()
         .create();
 
-    let mesh = resources.load_sync::<offline_data::Mesh>(context.source.content_id());
+    let mesh = resources.load_sync::<offline_data::Mesh>(context.source.resource_id());
     let mesh = mesh.get(&resources).unwrap();
 
     let runtime_mesh = runtime_data::Mesh::from_offline(&mesh);
