@@ -365,19 +365,6 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         Ok(())
     }
 
-    // fn cmd_bind_descriptor_set(
-    //     &self,
-    //     root_signature: &VulkanRootSignature,
-    //     descriptor_set_array: &VulkanDescriptorSetArray,
-    //     index: u32,
-    // ) -> GfxResult<()> {
-    //     self.cmd_bind_descriptor_set_handle(
-    //         root_signature,
-    //         descriptor_set_array.set_index(),
-    //         &descriptor_set_array.handle(index).unwrap(),
-    //     )
-    // }
-
     fn cmd_bind_descriptor_set_handle(
         &self,
         root_signature: &VulkanRootSignature,

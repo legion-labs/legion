@@ -707,71 +707,7 @@ pub struct CmdCopyTextureParams {
     pub extent: Extents3D,
 }
 
-/// A legion-specific index that refers to a particular binding. Instead of doing name/binding lookups
-/// every frame, query the descriptor index during startup and use it instead. This is a more
-/// efficient way to address descriptors.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct DescriptorIndex(pub(crate) u32);
-
-/// Selects a particular descriptor in a descriptor set
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub enum DescriptorKey<'a> {
-    Undefined,
-    Name(&'a str),
-}
-
-impl<'a> Default for DescriptorKey<'a> {
-    fn default() -> Self {
-        DescriptorKey::Undefined
-    }
-}
-
-/// Used when binding buffers to descriptor sets
-#[derive(Default, Clone, Copy, Debug)]
-pub struct OffsetSize {
-    pub byte_offset: u64,
-    pub size: u64,
-}
-
-/// Specifies what value to assign to a descriptor set
-#[derive(Debug)]
-pub struct DescriptorElements<'a, A: GfxApi> {
-    pub samplers: Option<&'a [&'a A::Sampler]>,
-    pub buffer_views: Option<&'a [&'a A::BufferView]>,
-    pub texture_views: Option<&'a [&'a A::TextureView]>,
-}
-
-impl<'a, A: GfxApi> Default for DescriptorElements<'a, A> {
-    fn default() -> Self {
-        Self {
-            samplers: None,
-            buffer_views: None,
-            texture_views: None,
-        }
-    }
-}
-
-/// Describes how to update a single descriptor
-#[derive(Debug)]
-pub struct DescriptorUpdate<'a, A: GfxApi> {
-    pub array_index: u32,
-    pub descriptor_key: DescriptorKey<'a>,
-    pub elements: DescriptorElements<'a, A>,
-    pub dst_element_offset: u32,
-}
-
-impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {
-    fn default() -> Self {
-        DescriptorUpdate {
-            array_index: 0,
-            descriptor_key: DescriptorKey::Undefined,
-            elements: DescriptorElements::default(),
-            dst_element_offset: 0,
-        }
-    }
-}
-
-//
+/// Wraps all the possible types used to fill a `DescriptorSet`
 pub enum DescriptorRef<'a, A: GfxApi> {
     Sampler(&'a A::Sampler),
     BufferView(&'a A::BufferView),

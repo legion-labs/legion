@@ -247,13 +247,11 @@ impl TmpRenderPass {
                         entry_point: "main_vs".to_owned(),
                         shader_stage: ShaderStageFlags::VERTEX,
                         shader_module: vert_shader_module,
-                        // reflection: shader_build_result.reflection_info.clone().unwrap(),
                     },
                     ShaderStageDef {
                         entry_point: "main_ps".to_owned(),
                         shader_stage: ShaderStageFlags::FRAGMENT,
                         shader_module: frag_shader_module,
-                        // reflection: shader_build_result.reflection_info.clone().unwrap(),
                     },
                 ],
                 &shader_build_result.pipeline_reflection,
@@ -472,14 +470,6 @@ impl TmpRenderPass {
                 descriptor_set_handle,
             )
             .unwrap();
-
-        // cmd_buffer
-        //     .cmd_bind_descriptor_set(
-        //         &self.root_signature,
-        //         &self.descriptor_set_arrays[0],
-        //         (render_frame_idx) as _,
-        //     )
-        //     .unwrap();
 
         let push_constant_data = [1.0f32, 1.0, 1.0, 1.0];
         cmd_buffer
