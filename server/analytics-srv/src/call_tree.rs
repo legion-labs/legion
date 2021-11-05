@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 use legion_analytics::prelude::*;
+use legion_telemetry_proto::analytics::BlockSpansReply;
 use legion_telemetry_proto::analytics::CallTreeNode;
 use legion_telemetry_proto::analytics::ScopeDesc;
 use legion_telemetry_proto::analytics::Span;
@@ -192,7 +193,7 @@ pub(crate) async fn compute_block_spans(
     process: &legion_telemetry::ProcessInfo,
     stream: &legion_telemetry::StreamInfo,
     block_id: &str,
-) -> Result<(Vec<ScopeDesc>, Vec<Span>)> {
+) -> Result<BlockSpansReply> {
     let tree = compute_block_call_tree(connection, data_path, process, stream, block_id).await?;
     let mut scopes = ScopeHashMap::new();
     let mut spans = vec![];
@@ -209,5 +210,11 @@ pub(crate) async fn compute_block_spans(
     for (_k, v) in scopes.drain() {
         scope_vec.push(v);
     }
-    Ok((scope_vec, spans))
+    Ok(BlockSpansReply {
+        scopes: scope_vec,
+        spans,
+        block_id: block_id.to_owned(),
+        begin_ms: tree.begin_ms,
+        end_ms: tree.end_ms,
+    })
 }

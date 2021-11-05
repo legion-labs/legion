@@ -10,6 +10,7 @@
     <template v-for="block in block_list">
       <div :key="block.getBlockId()">Block {{ block.getBlockId() }}</div>
     </template>
+    <canvas id="canvas_timeline" width="1024px" height="640px"></canvas>
   </div>
 </template>
 
@@ -28,10 +29,12 @@ function fetchBlockSpans (block) {
     if (err) {
       console.error('error in block_call_tree', err)
     } else {
-      console.log(response.toObject())
+      response.getScopesList().forEach(scopeDesc => {
+        this.scopes[scopeDesc.getHash()] = scopeDesc
+      })
+      this.span_block_list.push(response)
     }
   })
-  console.log(request)
 }
 
 function fetchBlocks (streamId) {
@@ -100,6 +103,49 @@ function onTimelineCreated () {
   this.fetchProcessInfo()
 }
 
+function onMounted () {
+  const canvas = document.getElementById('canvas_timeline')
+  this.renderingContext = canvas.getContext('2d')
+}
+
+function drawCanvas () {
+  const begin = Math.min(...this.span_block_list.map(block => block.getBeginMs()))
+  const end = Math.max(...this.span_block_list.map(block => block.getEndMs()))
+  const invTimeSpan = 1.0 / (end - begin)
+  const canvas = document.getElementById('canvas_timeline')
+  const canvasWidth = canvas.clientWidth
+  const msToPixelsFactor = invTimeSpan * canvasWidth
+  this.renderingContext.font = '15px arial'
+
+  const testString = '<>_w'
+  const testTextMetrics = this.renderingContext.measureText(testString)
+  const characterWidth = testTextMetrics.width / testString.length
+  const characterHeight = testTextMetrics.actualBoundingBoxAscent
+  this.span_block_list.forEach(blockSpans => {
+    blockSpans.getSpansList().forEach(span => {
+      const beginPixels = (span.getBeginMs() - begin) * msToPixelsFactor
+      const endPixels = (span.getEndMs() - begin) * msToPixelsFactor
+      const callWidth = endPixels - beginPixels
+      const depth = span.getDepth()
+      const offsetY = depth * 20
+      if (depth % 2 === 0) {
+        this.renderingContext.fillStyle = '#7DF9FF'
+      } else {
+        this.renderingContext.fillStyle = '#A0A0CC'
+      }
+      this.renderingContext.fillRect(beginPixels, offsetY, callWidth, 20)
+      const scope = this.scopes[span.getScopeHash()]
+      const name = scope.getName()
+      if (callWidth > (characterWidth * 5)) {
+        const nbChars = Math.floor(callWidth / characterWidth)
+        this.renderingContext.fillStyle = '#000000'
+        const extraHeight = 0.5 * (20 - characterHeight)
+        this.renderingContext.fillText(name.slice(0, nbChars), beginPixels + 5, offsetY + characterHeight + extraHeight, callWidth)
+      }
+    })
+  })
+}
+
 export default {
   name: 'Timeline',
   props: {
@@ -109,18 +155,25 @@ export default {
     }
   },
   created: onTimelineCreated,
+  mounted: onMounted,
   data: function () {
     return {
       block_list: [],
       process_list: [],
+      span_block_list: [],
+      scopes: {},
       stream_list: []
     }
+  },
+  watch: {
+    span_block_list: drawCanvas
   },
   methods: {
     fetchBlocks: fetchBlocks,
     fetchBlockSpans: fetchBlockSpans,
     fetchStreams: fetchStreams,
-    fetchProcessInfo: fetchProcessInfo
+    fetchProcessInfo: fetchProcessInfo,
+    drawCanvas: drawCanvas
   }
 }
 </script>

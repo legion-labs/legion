@@ -93,4 +93,7 @@ message BlockSpansRequest{
 message BlockSpansReply{
     repeated ScopeDesc scopes = 1;
     repeated Span spans = 2;
+    string block_id = 3;
+    double begin_ms = 4;
+    double end_ms = 5;
 }

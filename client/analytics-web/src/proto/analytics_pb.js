@@ -2829,7 +2829,10 @@ proto.analytics.BlockSpansReply.toObject = function(includeInstance, msg) {
     scopesList: jspb.Message.toObjectList(msg.getScopesList(),
     proto.analytics.ScopeDesc.toObject, includeInstance),
     spansList: jspb.Message.toObjectList(msg.getSpansList(),
-    proto.analytics.Span.toObject, includeInstance)
+    proto.analytics.Span.toObject, includeInstance),
+    blockId: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    beginMs: jspb.Message.getFloatingPointFieldWithDefault(msg, 4, 0.0),
+    endMs: jspb.Message.getFloatingPointFieldWithDefault(msg, 5, 0.0)
   };
 
   if (includeInstance) {
@@ -2876,6 +2879,18 @@ proto.analytics.BlockSpansReply.deserializeBinaryFromReader = function(msg, read
       reader.readMessage(value,proto.analytics.Span.deserializeBinaryFromReader);
       msg.addSpans(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setBlockId(value);
+      break;
+    case 4:
+      var value = /** @type {number} */ (reader.readDouble());
+      msg.setBeginMs(value);
+      break;
+    case 5:
+      var value = /** @type {number} */ (reader.readDouble());
+      msg.setEndMs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2919,6 +2934,27 @@ proto.analytics.BlockSpansReply.serializeBinaryToWriter = function(message, writ
       2,
       f,
       proto.analytics.Span.serializeBinaryToWriter
+    );
+  }
+  f = message.getBlockId();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
+  f = message.getBeginMs();
+  if (f !== 0.0) {
+    writer.writeDouble(
+      4,
+      f
+    );
+  }
+  f = message.getEndMs();
+  if (f !== 0.0) {
+    writer.writeDouble(
+      5,
+      f
     );
   }
 };
@@ -2997,6 +3033,60 @@ proto.analytics.BlockSpansReply.prototype.addSpans = function(opt_value, opt_ind
  */
 proto.analytics.BlockSpansReply.prototype.clearSpansList = function() {
   return this.setSpansList([]);
+};
+
+
+/**
+ * optional string block_id = 3;
+ * @return {string}
+ */
+proto.analytics.BlockSpansReply.prototype.getBlockId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.analytics.BlockSpansReply} returns this
+ */
+proto.analytics.BlockSpansReply.prototype.setBlockId = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional double begin_ms = 4;
+ * @return {number}
+ */
+proto.analytics.BlockSpansReply.prototype.getBeginMs = function() {
+  return /** @type {number} */ (jspb.Message.getFloatingPointFieldWithDefault(this, 4, 0.0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.analytics.BlockSpansReply} returns this
+ */
+proto.analytics.BlockSpansReply.prototype.setBeginMs = function(value) {
+  return jspb.Message.setProto3FloatField(this, 4, value);
+};
+
+
+/**
+ * optional double end_ms = 5;
+ * @return {number}
+ */
+proto.analytics.BlockSpansReply.prototype.getEndMs = function() {
+  return /** @type {number} */ (jspb.Message.getFloatingPointFieldWithDefault(this, 5, 0.0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.analytics.BlockSpansReply} returns this
+ */
+proto.analytics.BlockSpansReply.prototype.setEndMs = function(value) {
+  return jspb.Message.setProto3FloatField(this, 5, value);
 };
 
 

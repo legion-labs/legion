@@ -17,8 +17,6 @@ use legion_telemetry_proto::analytics::ListStreamBlocksRequest;
 use legion_telemetry_proto::analytics::ListStreamsReply;
 use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
-use legion_telemetry_proto::analytics::ScopeDesc;
-use legion_telemetry_proto::analytics::Span;
 
 use tonic::{Request, Response, Status};
 
@@ -80,7 +78,7 @@ impl AnalyticsService {
         process: &legion_telemetry::ProcessInfo,
         stream: &legion_telemetry::StreamInfo,
         block_id: &str,
-    ) -> Result<(Vec<ScopeDesc>, Vec<Span>)> {
+    ) -> Result<BlockSpansReply> {
         let mut connection = self.pool.acquire().await?;
         compute_block_spans(&mut connection, &self.data_dir, process, stream, block_id).await
     }
@@ -230,10 +228,7 @@ impl PerformanceAnalytics for AnalyticsService {
             )
             .await
         {
-            Ok((scopes, spans)) => {
-                let reply = BlockSpansReply { scopes, spans };
-                Ok(Response::new(reply))
-            }
+            Ok(block_spans) => Ok(Response::new(block_spans)),
             Err(e) => {
                 return Err(Status::internal(format!("Error in block_call_tree: {}", e)));
             }
