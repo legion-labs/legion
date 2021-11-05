@@ -254,6 +254,60 @@ impl ResourcePathId {
             ResourceId::new(self.content_type(), id)
         }
     }
+
+    /// Produces an iterator over transformations contained within the resource path.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use legion_data_runtime::{ResourceType, ResourceId};
+    /// # use legion_data_offline::{ResourcePathId};
+    /// # const FOO_TYPE: ResourceType = ResourceType::new(b"foo");
+    /// # const BAR_TYPE: ResourceType = ResourceType::new(b"bar");
+    /// let source = ResourceId::new_random_id(FOO_TYPE);
+    /// let path = ResourcePathId::from(source).push(BAR_TYPE).push_named(FOO_TYPE, "parameter");
+    ///
+    /// let mut transforms = path.transforms();
+    /// assert_eq!(transforms.next(), Some((FOO_TYPE, BAR_TYPE, None)));
+    /// assert_eq!(transforms.next(), Some((BAR_TYPE, FOO_TYPE, Some(&"parameter".to_string()))));
+    /// assert_eq!(transforms.next(), None);
+    /// ```
+    pub fn transforms(&self) -> Transforms<'_> {
+        Transforms {
+            path_id: self,
+            target_index: 0,
+        }
+    }
+}
+
+/// An iterator over the transformations of a [`ResourcePathId`].
+///
+/// This struct is created by the [`transforms`] method on [`ResourcePathId`].
+///
+/// [`transforms`]: ResourcePathId::transforms
+pub struct Transforms<'a> {
+    path_id: &'a ResourcePathId,
+    target_index: usize,
+}
+
+impl<'a> Iterator for Transforms<'a> {
+    type Item = (ResourceType, ResourceType, Option<&'a String>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.target_index < self.path_id.transforms.len() {
+            let source = if self.target_index == 0 {
+                self.path_id.source.ty()
+            } else {
+                self.path_id.transforms[self.target_index - 1].0
+            };
+            let (target, name) = &self.path_id.transforms[self.target_index];
+            let out = Some((source, *target, name.as_ref()));
+            self.target_index += 1;
+            out
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -261,7 +315,7 @@ mod tests {
 
     use std::str::FromStr;
 
-    use legion_data_runtime::{Resource, ResourceId};
+    use legion_data_runtime::{Resource, ResourceId, ResourceType};
 
     use crate::{resource::test_resource, ResourcePathId};
 
@@ -288,5 +342,28 @@ mod tests {
 
         let hello_text = format!("{}", source_hello);
         assert_eq!(source_hello, ResourcePathId::from_str(&hello_text).unwrap());
+    }
+
+    #[test]
+    fn transform_iter() {
+        let foo_type = ResourceType::new(b"foo");
+        let bar_type = ResourceType::new(b"bar");
+        let source = ResourceId::new_random_id(foo_type);
+
+        let source_only = ResourcePathId::from(source);
+        assert_eq!(source_only.transforms().next(), None);
+
+        let path = ResourcePathId::from(source)
+            .push(bar_type)
+            .push_named(foo_type, "test_name");
+
+        let mut transform_iter = path.transforms();
+        assert_eq!(transform_iter.next(), Some((foo_type, bar_type, None)));
+        assert_eq!(
+            transform_iter.next(),
+            Some((bar_type, foo_type, Some(&"test_name".to_string())))
+        );
+        assert_eq!(transform_iter.next(), None);
+        assert_eq!(transform_iter.next(), None);
     }
 }

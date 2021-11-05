@@ -667,33 +667,32 @@ fn parse_asset_file(path: impl AsRef<Path>) {
 }
 
 fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Config) -> String {
-    let mut name = String::new();
+    let mut output_text = String::new();
 
     if let Ok(source_name) = project.resource_name(rid.source_resource()) {
-        name.push_str(&source_name.to_string());
+        output_text.push_str(&source_name.to_string());
     } else {
-        name.push_str(&rid.source_resource().to_string());
+        output_text.push_str(&rid.source_resource().to_string());
     }
 
-    let mut transforms = String::new();
-    let mut rid = Some(rid.clone());
-    while let Some(id) = rid {
-        let ty = id.content_type();
-        let ty_pretty = config
+    let source_ty_pretty = config
+        .type_map
+        .get(&rid.source_resource().ty())
+        .cloned()
+        .unwrap_or_else(|| rid.source_resource().ty().to_string());
+    output_text.push_str(&format!(" => {}", source_ty_pretty));
+
+    for (_, target, name) in rid.transforms() {
+        let target_ty_pretty = config
             .type_map
-            .get(&ty)
+            .get(&target)
             .cloned()
-            .unwrap_or_else(|| ty.to_string());
-        let mut transform = format!(" => {}", ty_pretty);
-        if let Some(name) = id.name() {
-            transform.push_str(&format!("('{}')", name));
+            .unwrap_or_else(|| target.to_string());
+        output_text.push_str(&format!(" => {}", target_ty_pretty));
+        if let Some(name) = name {
+            output_text.push_str(&format!("('{}')", name));
         }
-        transform.push_str(&transforms);
-        transforms = transform;
-        rid = id.direct_dependency();
     }
 
-    name.push_str(&transforms);
-
-    name
+    output_text
 }
