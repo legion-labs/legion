@@ -27,7 +27,7 @@ On windows we recommand using scoop using `scoop`:
 
 ```powershell
 scoop install cmake ninja python
-scoop install legion-labs/cuda legion-labs/vulkan
+scoop install legion-labs/vulkan
 ```
 
 ### License
