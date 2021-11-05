@@ -13,6 +13,7 @@ legion-aws = { path = "../../lib/aws", version = "0.1.0" }
 legion-online = { path = "../../lib/online", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
+tonic-web = "0.2"
 anyhow = "1.0"
 lambda_runtime = "0.4"
 lambda_http = "0.4"

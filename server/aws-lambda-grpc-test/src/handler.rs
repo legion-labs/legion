@@ -18,7 +18,8 @@ pub async fn endpoint(
     _context: Context,
 ) -> Result<impl IntoResponse, Error> {
     // TODO: This should be done only once at the very beginning of the application.
-    let mut server = StreamerServer::new(MyStreamer);
+    let server = StreamerServer::new(MyStreamer);
+    let mut server = tonic_web::enable(server);
 
     // Take a lambda request and convert it to an HttpRequest that we can the feed to the `gRPC`
     // server.
@@ -27,10 +28,9 @@ pub async fn endpoint(
     from_tonic_response(tonic_response).await
 }
 
-fn into_tonic_request(request: LambdaRequest) -> http::Request<http_body::Full<Bytes>> {
+fn into_tonic_request(request: LambdaRequest) -> http::Request<tonic::transport::Body> {
     let (parts, body) = request.into_parts();
-    let body = Bytes::from(body.to_vec());
-    let body = http_body::Full::new(body);
+    let body = Bytes::from(body.to_vec()).into();
     http::Request::from_parts(parts, body)
 
     //*result.version_mut() = http::Version::HTTP_2;

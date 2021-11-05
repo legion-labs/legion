@@ -476,6 +476,7 @@ dependencies = [
  "simple_logger",
  "tokio",
  "tonic",
+ "tonic-web",
 ]
 
 [[package]]
