@@ -65,8 +65,9 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
     let addr = "127.0.0.1:50051".parse()?;
 
     async fn f() -> anyhow::Result<()> {
-        let client =
-            legion_grpc::client::Client::new(hyper::Uri::from_static("http://127.0.0.1:50051"));
+        let client = legion_grpc::client::Client::new_http(hyper::Uri::from_static(
+            "http://127.0.0.1:50051",
+        ));
 
         {
             let msg: String = "hello".into();
