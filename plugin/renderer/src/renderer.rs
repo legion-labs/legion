@@ -1,6 +1,8 @@
 use std::num::NonZeroU32;
 
-use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use anyhow::Result;
+
+use graphics_api::{prelude::*, DescriptorSetBufWriter, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 
@@ -14,13 +16,14 @@ pub struct Renderer {
     graphics_queue: <DefaultApi as GfxApi>::Queue,
     command_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
     command_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
+    transient_descriptor_heaps: Vec<<DefaultApi as GfxApi>::DescriptorHeap>,
 
     // This should be last, as it must be destroyed last.
     api: DefaultApi,
 }
 
 impl Renderer {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         #![allow(unsafe_code)]
         let num_render_frames = 2u32;
         let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
@@ -30,29 +33,41 @@ impl Renderer {
         let mut command_buffers = Vec::with_capacity(num_render_frames as usize);
         let mut frame_signal_sems = Vec::with_capacity(num_render_frames as usize);
         let mut frame_fences = Vec::with_capacity(num_render_frames as usize);
+        let mut transient_descriptor_heaps = Vec::with_capacity(num_render_frames as usize);
 
         for _ in 0..num_render_frames {
-            let command_pool = graphics_queue
-                .create_command_pool(&CommandPoolDef { transient: true })
-                .unwrap();
+            let command_pool =
+                graphics_queue.create_command_pool(&CommandPoolDef { transient: true })?;
 
-            let command_buffer = command_pool
-                .create_command_buffer(&CommandBufferDef {
-                    is_secondary: false,
-                })
-                .unwrap();
+            let command_buffer = command_pool.create_command_buffer(&CommandBufferDef {
+                is_secondary: false,
+            })?;
 
-            let frame_signal_sem = device_context.create_semaphore().unwrap();
+            let frame_signal_sem = device_context.create_semaphore()?;
 
-            let frame_fence = device_context.create_fence().unwrap();
+            let frame_fence = device_context.create_fence()?;
+
+            let transient_descriptor_heap_def = DescriptorHeapDef {
+                transient: true,
+                max_descriptor_sets: 10 * 1024,
+                sampler_count: 256,
+                constant_buffer_count: 10 * 1024,
+                buffer_count: 10 * 1024,
+                rw_buffer_count: 10 * 1024,
+                texture_count: 10 * 1024,
+                rw_texture_count: 10 * 1024,
+            };
+            let transient_descriptor_heap =
+                device_context.create_descriptor_heap(&transient_descriptor_heap_def)?;
 
             command_pools.push(command_pool);
             command_buffers.push(command_buffer);
             frame_signal_sems.push(frame_signal_sem);
             frame_fences.push(frame_fence);
+            transient_descriptor_heaps.push(transient_descriptor_heap);
         }
 
-        Self {
+        Ok(Self {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
@@ -61,8 +76,9 @@ impl Renderer {
             graphics_queue,
             command_pools,
             command_buffers,
+            transient_descriptor_heaps,
             api,
-        }
+        })
     }
 
     pub fn api(&self) -> &DefaultApi {
@@ -85,6 +101,11 @@ impl Renderer {
     pub fn frame_signal_semaphore(&self) -> &<DefaultApi as GfxApi>::Semaphore {
         let render_frame_index = self.render_frame_idx;
         &self.frame_signal_sems[render_frame_index as usize]
+    }
+
+    pub fn transient_descriptor_heap(&self) -> &<DefaultApi as GfxApi>::DescriptorHeap {
+        let render_frame_index = self.render_frame_idx;
+        &self.transient_descriptor_heaps[render_frame_index as usize]
     }
 
     pub(crate) fn begin_frame(&mut self) {
@@ -118,9 +139,11 @@ impl Renderer {
         //
         let cmd_pool = &self.command_pools[render_frame_idx as usize];
         let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
+        let transient_descriptor_heap = &self.transient_descriptor_heaps[render_frame_idx as usize];
 
         cmd_pool.reset_command_pool().unwrap();
         cmd_buffer.begin().unwrap();
+        transient_descriptor_heap.reset().unwrap();
     }
 
     pub(crate) fn update(&mut self, q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>) {
@@ -160,7 +183,7 @@ impl Drop for Renderer {
 pub struct TmpRenderPass {
     vertex_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
     uniform_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
-    descriptor_set_arrays: Vec<<DefaultApi as GfxApi>::DescriptorSetArray>,
+    uniform_buffer_cbvs: Vec<<DefaultApi as GfxApi>::BufferView>,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
     pub color: [f32; 4],
@@ -224,13 +247,11 @@ impl TmpRenderPass {
                         entry_point: "main_vs".to_owned(),
                         shader_stage: ShaderStageFlags::VERTEX,
                         shader_module: vert_shader_module,
-                        // reflection: shader_build_result.reflection_info.clone().unwrap(),
                     },
                     ShaderStageDef {
                         entry_point: "main_ps".to_owned(),
                         shader_stage: ShaderStageFlags::FRAGMENT,
                         shader_module: frag_shader_module,
-                        // reflection: shader_build_result.reflection_info.clone().unwrap(),
                     },
                 ],
                 &shader_build_result.pipeline_reflection,
@@ -287,27 +308,6 @@ impl TmpRenderPass {
             .create_root_signature(&root_signature_def)
             .unwrap();
 
-        let heap_def = DescriptorHeapDef::from_descriptor_set_layout_def(
-            descriptor_set_layouts[0].definition(),
-            false,
-            num_render_frames,
-        );
-        let descriptor_heap = device_context.create_descriptor_heap(&heap_def).unwrap();
-
-        let mut descriptor_set_arrays = Vec::new();
-        for descriptor_set_layout in &descriptor_set_layouts {
-            let descriptor_set_array = device_context
-                .create_descriptor_set_array(
-                    descriptor_heap.clone(),
-                    &DescriptorSetArrayDef {
-                        descriptor_set_layout,
-                        array_length: num_render_frames,
-                    },
-                )
-                .unwrap();
-            descriptor_set_arrays.push(descriptor_set_array);
-        }
-
         //
         // Pipeline state
         //
@@ -343,7 +343,7 @@ impl TmpRenderPass {
         //
         // Per frame resources
         //
-        for i in 0..renderer.num_render_frames {
+        for _ in 0..renderer.num_render_frames {
             let vertex_data = [0f32; 15];
 
             let vertex_buffer = device_context
@@ -365,18 +365,6 @@ impl TmpRenderPass {
             let view_def = BufferViewDef::as_const_buffer(uniform_buffer.definition());
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def).unwrap();
 
-            descriptor_set_arrays[0]
-                .update_descriptor_set(&[DescriptorUpdate {
-                    array_index: i as u32,
-                    descriptor_key: DescriptorKey::Name("uniform_data"),
-                    elements: DescriptorElements {
-                        buffer_views: Some(&[&uniform_buffer_cbv]),
-                        ..DescriptorElements::default()
-                    },
-                    ..DescriptorUpdate::default()
-                }])
-                .unwrap();
-
             vertex_buffers.push(vertex_buffer);
             uniform_buffer_cbvs.push(uniform_buffer_cbv);
             uniform_buffers.push(uniform_buffer);
@@ -385,7 +373,7 @@ impl TmpRenderPass {
         Self {
             vertex_buffers,
             uniform_buffers,
-            descriptor_set_arrays,
+            uniform_buffer_cbvs,
             root_signature,
             pipeline,
             color: [0f32, 0f32, 0f32, 1.0f32],
@@ -424,6 +412,7 @@ impl TmpRenderPass {
 
         let uniform_data = [1.0f32, 0.0, 0.0, 1.0];
         let uniform_buffer = &self.uniform_buffers[render_frame_idx as usize];
+        let uniform_buffer_cbv = &self.uniform_buffer_cbvs[render_frame_idx as usize];
 
         uniform_buffer
             .copy_to_host_visible_buffer(&uniform_data)
@@ -457,11 +446,28 @@ impl TmpRenderPass {
             )
             .unwrap();
 
+        let heap = renderer.transient_descriptor_heap();
+        let descriptor_set_layout = &self
+            .pipeline
+            .root_signature()
+            .definition()
+            .descriptor_set_layouts[0];
+        let mut descriptor_set_writer =
+            heap.allocate_descriptor_set(descriptor_set_layout).unwrap();
+        descriptor_set_writer
+            .set_descriptors(
+                "uniform_data",
+                0,
+                &[DescriptorRef::BufferView(uniform_buffer_cbv)],
+            )
+            .unwrap();
+        let descriptor_set_handle = descriptor_set_writer.flush().unwrap();
+
         cmd_buffer
-            .cmd_bind_descriptor_set(
+            .cmd_bind_descriptor_set_handle(
                 &self.root_signature,
-                &self.descriptor_set_arrays[0],
-                (render_frame_idx) as _,
+                descriptor_set_layout.definition().frequency,
+                descriptor_set_handle,
             )
             .unwrap();
 

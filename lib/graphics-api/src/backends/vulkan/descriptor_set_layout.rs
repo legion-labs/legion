@@ -11,7 +11,7 @@ pub(super) struct VulkanDescriptor {
     pub(super) shader_resource_type: ShaderResourceType,
     pub(super) vk_type: vk::DescriptorType,
     pub(super) element_count: u32,
-    pub(super) update_data_offset_in_set: u32,
+    pub(super) update_data_offset: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -19,7 +19,7 @@ pub struct VulkanDescriptorSetLayoutInner {
     device_context: VulkanDeviceContext,
     definition: DescriptorSetLayoutDef,
     set_index: u32,
-    update_data_count_per_set: u32,
+    update_data_count: u32,
     descriptors: Vec<VulkanDescriptor>,
     vk_layout: vk::DescriptorSetLayout,
 }
@@ -48,8 +48,8 @@ impl VulkanDescriptorSetLayout {
         self.inner.set_index
     }
 
-    pub(super) fn update_data_count_per_set(&self) -> u32 {
-        self.inner.update_data_count_per_set
+    pub(super) fn update_data_count(&self) -> u32 {
+        self.inner.update_data_count
     }
 
     pub(super) fn vk_layout(&self) -> vk::DescriptorSetLayout {
@@ -77,7 +77,7 @@ impl VulkanDescriptorSetLayout {
     ) -> GfxResult<Self> {
         let mut descriptors = Vec::new();
         let mut vk_bindings = Vec::<vk::DescriptorSetLayoutBinding>::new();
-        let mut update_data_count_per_set = 0;
+        let mut update_data_count = 0;
 
         for descriptor_def in &definition.descriptor_defs {
             let vk_descriptor_type = super::internal::shader_resource_type_to_descriptor_type(
@@ -97,12 +97,12 @@ impl VulkanDescriptorSetLayout {
                 shader_resource_type: descriptor_def.shader_resource_type,
                 vk_type: vk_descriptor_type,
                 element_count: descriptor_def.array_size,
-                update_data_offset_in_set: update_data_count_per_set,
+                update_data_offset: update_data_count,
             };
             descriptors.push(descriptor);
             vk_bindings.push(vk_binding);
 
-            update_data_count_per_set += vk_binding.descriptor_count;
+            update_data_count += vk_binding.descriptor_count;
         }
 
         let vk_layout = unsafe {
@@ -119,7 +119,7 @@ impl VulkanDescriptorSetLayout {
                     device_context: device_context.clone(),
                     definition: definition.clone(),
                     set_index: definition.frequency,
-                    update_data_count_per_set,
+                    update_data_count,
                     descriptors,
                     vk_layout,
                 }),

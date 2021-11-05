@@ -4,7 +4,7 @@ use crate::{Buffer, BufferView, BufferViewDef, GPUViewType, GfxResult, ShaderRes
 
 #[derive(Clone, Debug)]
 struct VulkanBufferViewInner {
-    view_def: BufferViewDef,
+    definition: BufferViewDef,
     buffer: VulkanBuffer,
     vk_offset: u64,
     vk_size: u64,
@@ -27,7 +27,7 @@ impl VulkanBufferView {
             inner: device_context
                 .deferred_dropper()
                 .new_drc(VulkanBufferViewInner {
-                    view_def: *view_def,
+                    definition: *view_def,
                     buffer: buffer.clone(),
                     vk_offset,
                     vk_size,
@@ -46,15 +46,14 @@ impl VulkanBufferView {
     pub(super) fn is_compatible_with_descriptor(&self, descriptor: &VulkanDescriptor) -> bool {
         match descriptor.shader_resource_type {
             ShaderResourceType::ConstantBuffer => {
-                self.inner.view_def.gpu_view_type == GPUViewType::ConstantBufferView
+                self.inner.definition.gpu_view_type == GPUViewType::ConstantBufferView
             }
             ShaderResourceType::StructuredBuffer | ShaderResourceType::ByteAdressBuffer => {
-                self.inner.view_def.gpu_view_type == GPUViewType::ShaderResourceView
+                self.inner.definition.gpu_view_type == GPUViewType::ShaderResourceView
             }
             ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAdressBuffer => {
-                self.inner.view_def.gpu_view_type == GPUViewType::UnorderedAccessView
+                self.inner.definition.gpu_view_type == GPUViewType::UnorderedAccessView
             }
-            // ShaderResourceType::Undefined |
             ShaderResourceType::Sampler
             | ShaderResourceType::Texture2D
             | ShaderResourceType::RWTexture2D
@@ -70,7 +69,7 @@ impl VulkanBufferView {
 
 impl BufferView<VulkanApi> for VulkanBufferView {
     fn definition(&self) -> &BufferViewDef {
-        &self.inner.view_def
+        &self.inner.definition
     }
 
     fn buffer(&self) -> &VulkanBuffer {

@@ -80,6 +80,7 @@ impl VideoStream {
     pub(crate) fn present(
         &mut self,
         graphics_queue: &<DefaultApi as GfxApi>::Queue,
+        transient_descriptor_heap: &<DefaultApi as GfxApi>::DescriptorHeap,
         wait_sem: &<DefaultApi as GfxApi>::Semaphore,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
@@ -94,6 +95,7 @@ impl VideoStream {
             self.offscreen_helper
                 .present(
                     graphics_queue,
+                    transient_descriptor_heap,
                     wait_sem,
                     render_surface,
                     |rgba: &[u8], row_pitch: usize| {

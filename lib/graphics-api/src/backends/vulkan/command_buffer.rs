@@ -7,15 +7,14 @@ use std::{
 use ash::vk;
 
 use super::{
-    internal, VulkanApi, VulkanBuffer, VulkanCommandPool, VulkanDescriptorSetArray,
-    VulkanDescriptorSetHandle, VulkanDeviceContext, VulkanPipeline, VulkanRootSignature,
-    VulkanTexture,
+    internal, VulkanApi, VulkanBuffer, VulkanCommandPool, VulkanDescriptorSetHandle,
+    VulkanDeviceContext, VulkanPipeline, VulkanRootSignature, VulkanTexture,
 };
 use crate::{
     BarrierQueueTransition, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
     CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
-    DepthStencilRenderTargetBinding, DescriptorSetArray, GfxResult, IndexBufferBinding, Pipeline,
-    QueueType, ResourceState, ResourceUsage, RootSignature, Texture, TextureBarrier, TextureView,
+    DepthStencilRenderTargetBinding, GfxResult, IndexBufferBinding, Pipeline, QueueType,
+    ResourceState, ResourceUsage, RootSignature, Texture, TextureBarrier, TextureView,
     VertexBufferBinding,
 };
 
@@ -366,24 +365,11 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         Ok(())
     }
 
-    fn cmd_bind_descriptor_set(
-        &self,
-        root_signature: &VulkanRootSignature,
-        descriptor_set_array: &VulkanDescriptorSetArray,
-        index: u32,
-    ) -> GfxResult<()> {
-        self.cmd_bind_descriptor_set_handle(
-            root_signature,
-            descriptor_set_array.set_index(),
-            &descriptor_set_array.handle(index).unwrap(),
-        )
-    }
-
     fn cmd_bind_descriptor_set_handle(
         &self,
         root_signature: &VulkanRootSignature,
         set_index: u32,
-        descriptor_set_handle: &VulkanDescriptorSetHandle,
+        descriptor_set_handle: VulkanDescriptorSetHandle,
     ) -> GfxResult<()> {
         let bind_point = root_signature.pipeline_type();
 

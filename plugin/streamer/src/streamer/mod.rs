@@ -201,17 +201,19 @@ pub(crate) fn update_streams(
 pub(crate) fn render_streams(
     async_rt: ResMut<'_, TokioAsyncRuntime>,
     renderer: Res<'_, Renderer>,
-    mut query: Query<'_, '_, (&mut VideoStream, &mut RenderSurface)>,
+    mut q_vs_rs: Query<'_, '_, (&mut VideoStream, &mut RenderSurface)>,
     mut time: ResMut<'_, Time>,
 ) {
     time.update();
 
     let graphics_queue = renderer.graphics_queue();
+    let transient_descriptor_heap = renderer.transient_descriptor_heap();
     let wait_sem = renderer.frame_signal_semaphore();
 
-    for (mut video_stream, render_surface) in query.iter_mut() {
+    for (mut video_stream, render_surface) in q_vs_rs.iter_mut() {
         async_rt.start_detached(video_stream.present(
             graphics_queue,
+            transient_descriptor_heap,
             wait_sem,
             render_surface.into_inner(),
         ));

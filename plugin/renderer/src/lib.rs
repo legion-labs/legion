@@ -56,6 +56,7 @@
 // crate-specific exceptions:
 #![allow(clippy::new_without_default)]
 #![allow(clippy::cast_precision_loss)]
+#![allow(clippy::missing_errors_doc)]
 
 mod labels;
 pub use labels::*;

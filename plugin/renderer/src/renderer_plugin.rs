@@ -8,7 +8,7 @@ pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut legion_app::App) {
-        let renderer = Renderer::new();
+        let renderer = Renderer::new().unwrap();
 
         app.insert_resource(renderer);
 

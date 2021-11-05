@@ -45,6 +45,7 @@ impl PresenterSnapshot {
     pub(crate) fn present(
         &mut self,
         graphics_queue: &<DefaultApi as GfxApi>::Queue,
+        transient_descriptor_heap: &<DefaultApi as GfxApi>::DescriptorHeap,
         wait_sem: &<DefaultApi as GfxApi>::Semaphore,
         render_surface: &mut RenderSurface,
     ) -> anyhow::Result<()> {
@@ -53,6 +54,7 @@ impl PresenterSnapshot {
         //
         self.offscreen_helper.present(
             graphics_queue,
+            transient_descriptor_heap,
             wait_sem,
             render_surface,
             |_rgba: &[u8], _row_pitch: usize| {

@@ -12,18 +12,17 @@ use super::internal::{
     VkQueueRequirements, VulkanRenderpass, VulkanRenderpassDef,
 };
 use super::{
-    VulkanApi, VulkanBuffer, VulkanDescriptorHeap, VulkanDescriptorSetArray,
-    VulkanDescriptorSetLayout, VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature,
-    VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule, VulkanSwapchain,
-    VulkanTexture,
+    VulkanApi, VulkanBuffer, VulkanDescriptorHeap, VulkanDescriptorSetLayout, VulkanFence,
+    VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
+    VulkanShaderModule, VulkanSwapchain, VulkanTexture,
 };
 use crate::backends::deferred_drop::DeferredDropper;
 use crate::vulkan::check_extensions_availability;
 use crate::{
-    ApiDef, BufferDef, ComputePipelineDef, DescriptorHeapDef, DescriptorSetArrayDef,
-    DescriptorSetLayoutDef, DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult,
-    GraphicsPipelineDef, PipelineReflection, QueueType, RootSignatureDef, SamplerDef,
-    ShaderModuleDef, ShaderStageDef, SwapchainDef, TextureDef,
+    ApiDef, BufferDef, ComputePipelineDef, DescriptorHeapDef, DescriptorSetLayoutDef,
+    DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef,
+    PipelineReflection, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef,
+    SwapchainDef, TextureDef,
 };
 
 /// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
@@ -424,14 +423,6 @@ impl DeviceContext<VulkanApi> for VulkanDeviceContext {
         root_signature_def: &RootSignatureDef<VulkanApi>,
     ) -> GfxResult<VulkanRootSignature> {
         VulkanRootSignature::new(self, root_signature_def)
-    }
-
-    fn create_descriptor_set_array(
-        &self,
-        descriptor_heap: VulkanDescriptorHeap,
-        descriptor_set_array_def: &DescriptorSetArrayDef<'_, VulkanApi>,
-    ) -> GfxResult<VulkanDescriptorSetArray> {
-        VulkanDescriptorSetArray::new(self, descriptor_heap, descriptor_set_array_def)
     }
 
     fn create_descriptor_heap(

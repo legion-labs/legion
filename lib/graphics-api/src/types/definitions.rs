@@ -598,22 +598,34 @@ impl Default for DescriptorSetLayoutDef {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct PushConstantDef {
     pub used_in_shader_stages: ShaderStageFlags,
     pub size: NonZeroU32,
 }
 
+#[derive(Debug)]
 pub struct RootSignatureDef<A: GfxApi> {
     pub pipeline_type: PipelineType,
     pub descriptor_set_layouts: Vec<A::DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
 }
 
+impl<A: GfxApi> Clone for RootSignatureDef<A> {
+    fn clone(&self) -> Self {
+        Self {
+            pipeline_type: self.pipeline_type,
+            descriptor_set_layouts: self.descriptor_set_layouts.clone(),
+            push_constant_def: self.push_constant_def,
+        }
+    }
+}
+
 impl<A: GfxApi> Default for RootSignatureDef<A> {
     fn default() -> Self {
         Self {
             pipeline_type: PipelineType::Graphics,
-            descriptor_set_layouts: Vec::new(), // [Option::<_>::None; MAX_DESCRIPTOR_SET_LAYOUTS],
+            descriptor_set_layouts: Vec::new(),
             push_constant_def: None,
         }
     }
@@ -941,13 +953,7 @@ pub struct ComputePipelineDef<'a, A: GfxApi> {
     pub root_signature: &'a A::RootSignature,
 }
 
-/// Used to create a `DescriptorSetArray`
-pub struct DescriptorSetArrayDef<'a, A: GfxApi> {
-    pub descriptor_set_layout: &'a A::DescriptorSetLayout,
-    /// The number of descriptor sets in the array
-    pub array_length: u32,
-}
-
+/// Used to create a `DescriptorHeap`
 #[derive(Default, Clone, Copy)]
 pub struct DescriptorHeapDef {
     pub transient: bool,
