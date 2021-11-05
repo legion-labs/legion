@@ -8,10 +8,10 @@ use legion_data_runtime::ResourceId;
 use legion_grpc::{GRPCPlugin, GRPCPluginSettings};
 use legion_renderer::RendererPlugin;
 use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
-use legion_settings::Settings;
 use legion_streamer::StreamerPlugin;
 use legion_telemetry::prelude::*;
 use legion_transform::TransformPlugin;
+use legion_utils::Settings;
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 
@@ -78,16 +78,13 @@ fn main() {
 
     let settings = Settings::new();
 
-    let server_addr: SocketAddr = {
-        if let Some(addr) = args.value_of(ARG_NAME_ADDR) {
-            addr.parse()
-        } else if let Some(addr) = settings.get::<SocketAddr>("editor_srv.server_addr") {
-            Ok(addr)
-        } else {
-            "[::1]:50051".parse()
-        }
-    }
-    .unwrap();
+    let server_addr = {
+        let url = args
+            .value_of(ARG_NAME_ADDR)
+            .unwrap_or_else(|| settings.get_or("editor_srv.server_addr", "[::1]:50051"));
+        url.parse::<SocketAddr>()
+            .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
+    };
 
     let project_folder = {
         if let Some(params) = args.value_of(ARG_NAME_PROJECT) {

@@ -74,6 +74,9 @@ pub use instant::{Duration, Instant};
 pub use tracing;
 pub use uuid::Uuid;
 
+mod settings;
+pub use settings::*;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 

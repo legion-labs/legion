@@ -1868,10 +1868,10 @@ dependencies = [
  "legion-mp4",
  "legion-renderer",
  "legion-resource-registry",
- "legion-settings",
  "legion-streamer",
  "legion-telemetry",
  "legion-transform",
+ "legion-utils",
  "log",
  "simple_logger",
  "tokio",
@@ -3694,16 +3694,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-settings"
-version = "0.1.0"
-dependencies = [
- "lazy_static",
- "log",
- "serde",
- "toml",
-]
-
-[[package]]
 name = "legion-source-control"
 version = "0.1.0"
 dependencies = [
@@ -3885,8 +3875,12 @@ dependencies = [
  "ahash 0.7.6",
  "getrandom 0.2.3",
  "instant",
+ "lazy_static",
  "legion-derive",
+ "log",
+ "serde",
  "siphasher",
+ "toml",
  "tracing",
  "uuid",
 ]

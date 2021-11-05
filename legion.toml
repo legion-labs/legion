@@ -2,6 +2,8 @@
 project_dir = "test/sample-data"
 server_addr = "[::1]:50051"
 
+[streamer]
+max_frame_time = 16_000 #microsec
 
 [test_settings]
 test_bool = false

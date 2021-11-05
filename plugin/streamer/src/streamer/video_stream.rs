@@ -11,7 +11,7 @@ use legion_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use legion_presenter::offscreen_helper::{self, Resolution};
 use legion_renderer::{components::RenderSurface, Renderer};
 use legion_telemetry::prelude::*;
-use legion_utils::memory::write_any;
+use legion_utils::{memory::write_any, setting_get_or};
 use log::{debug, warn};
 use serde::Serialize;
 use webrtc::data::data_channel::RTCDataChannel;
@@ -109,7 +109,7 @@ impl VideoStream {
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
-        let max_frame_time: u64 = 16_000;
+        let max_frame_time: u64 = setting_get_or!("streamer.max_frame_time", 16_000u64);
 
         if elapsed >= max_frame_time {
             warn!(
