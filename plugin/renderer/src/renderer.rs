@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
-use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use graphics_api::{DescriptorSetBufWriter, MAX_DESCRIPTOR_SET_LAYOUTS, prelude::*};
 use legion_ecs::prelude::Query;
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 
@@ -186,6 +186,7 @@ impl Drop for Renderer {
 pub struct TmpRenderPass {
     vertex_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
     uniform_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
+    uniform_buffer_cbvs: Vec<<DefaultApi as GfxApi>::BufferView>,
     descriptor_set_arrays: Vec<<DefaultApi as GfxApi>::DescriptorSetArray>,
     root_signature: <DefaultApi as GfxApi>::RootSignature,
     pipeline: <DefaultApi as GfxApi>::Pipeline,
@@ -411,6 +412,7 @@ impl TmpRenderPass {
         Self {
             vertex_buffers,
             uniform_buffers,
+            uniform_buffer_cbvs,
             descriptor_set_arrays,
             root_signature,
             pipeline,
@@ -450,6 +452,7 @@ impl TmpRenderPass {
 
         let uniform_data = [1.0f32, 0.0, 0.0, 1.0];
         let uniform_buffer = &self.uniform_buffers[render_frame_idx as usize];
+        let uniform_buffer_cbv = &self.uniform_buffer_cbvs[render_frame_idx as usize];
 
         uniform_buffer
             .copy_to_host_visible_buffer(&uniform_data)
@@ -484,15 +487,30 @@ impl TmpRenderPass {
             .unwrap();
 
         let heap = renderer.transient_descriptor_heap();
-        heap.allocate_descriptor_set(&self.pipeline.root_signature().definition().descriptor_set_layouts[0] ).unwrap();
+        let descriptor_set_layout = &self.pipeline.root_signature().definition().descriptor_set_layouts[0];
+        let descriptor_set = heap.allocate_descriptor_set(descriptor_set_layout).unwrap();        
+        let mut descriptor_set_writer = descriptor_set.get_writer(descriptor_set_layout).unwrap();
+        descriptor_set_writer.set_descriptors(
+            "uniform_data",
+            0,
+            &[DescriptorRef::BufferView(uniform_buffer_cbv)]
+        ).unwrap();       
 
-        cmd_buffer
-            .cmd_bind_descriptor_set(
-                &self.root_signature,
-                &self.descriptor_set_arrays[0],
-                (render_frame_idx) as _,
-            )
-            .unwrap();
+        descriptor_set_writer.flush();
+
+        cmd_buffer.cmd_bind_descriptor_set_handle(
+            &self.root_signature,
+            descriptor_set_layout.definition().frequency, 
+            &descriptor_set
+        ).unwrap();
+
+        // cmd_buffer
+        //     .cmd_bind_descriptor_set(
+        //         &self.root_signature,
+        //         &self.descriptor_set_arrays[0],
+        //         (render_frame_idx) as _,
+        //     )
+        //     .unwrap();
 
         let push_constant_data = [1.0f32, 1.0, 1.0, 1.0];
         cmd_buffer

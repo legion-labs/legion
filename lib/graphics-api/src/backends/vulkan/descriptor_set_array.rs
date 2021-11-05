@@ -3,7 +3,7 @@
 
 use ash::vk;
 
-use super::{VulkanApi, VulkanDescriptorHeap, VulkanDescriptorSetLayout, VulkanDeviceContext};
+use super::{VulkanApi, VulkanDescriptorHeap, VulkanDescriptorSetBufWriter, VulkanDescriptorSetLayout, VulkanDeviceContext};
 use crate::{
     BufferView, DescriptorKey, DescriptorSetArray, DescriptorSetArrayDef, DescriptorSetHandle,
     DescriptorUpdate, GfxResult, ShaderResourceType,
@@ -26,10 +26,14 @@ impl DescriptorUpdateData {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct VulkanDescriptorSetHandle(pub vk::DescriptorSet);
 
-impl DescriptorSetHandle<VulkanApi> for VulkanDescriptorSetHandle {}
+impl DescriptorSetHandle<VulkanApi> for VulkanDescriptorSetHandle {
+    fn get_writer(&self, descriptor_set_layout: &VulkanDescriptorSetLayout) -> GfxResult<VulkanDescriptorSetBufWriter> {
+        VulkanDescriptorSetBufWriter::new(self, descriptor_set_layout)
+    }
+}
 
 pub struct VulkanDescriptorSetArray {
     descriptor_heap: VulkanDescriptorHeap,
@@ -74,7 +78,7 @@ impl VulkanDescriptorSetArray {
         let descriptor_set_layout = descriptor_set_array_def.descriptor_set_layout;
 
         let update_data_count = descriptor_set_array_def.array_length
-            * descriptor_set_layout.update_data_count_per_set();
+            * descriptor_set_layout.update_data_count();
 
         // these persist
         let mut descriptors_set_layouts =
@@ -136,8 +140,8 @@ impl DescriptorSetArray<VulkanApi> for VulkanDescriptorSetArray {
 
         let descriptor = layout.descriptor(descriptor_index).unwrap();
 
-        let descriptor_first_update_data = descriptor.update_data_offset_in_set
-            + (layout.update_data_count_per_set() * update.array_index);
+        let descriptor_first_update_data = descriptor.update_data_offset
+            + (layout.update_data_count() * update.array_index);
 
         let vk_set = self.descriptor_sets[update.array_index as usize];
         let write_descriptor_builder = vk::WriteDescriptorSet::builder()

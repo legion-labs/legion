@@ -771,6 +771,13 @@ impl<'a, A: GfxApi> Default for DescriptorUpdate<'a, A> {
     }
 }
 
+// 
+pub enum DescriptorRef<'a, A: GfxApi> {
+    Sampler(&'a A::Sampler),
+    BufferView(&'a A::BufferView),
+    TextureView(&'a A::TextureView)
+}
+
 /// Set the texture tiling (internally swizzled, linear)
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TextureTiling {

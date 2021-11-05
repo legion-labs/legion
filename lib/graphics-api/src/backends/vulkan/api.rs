@@ -4,10 +4,11 @@ use std::{fmt, sync::Arc};
 use super::internal::VkInstance;
 use super::{
     VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
-    VulkanCommandPool, VulkanDescriptorHeap, VulkanDescriptorSetArray, VulkanDescriptorSetHandle,
-    VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanFence, VulkanPipeline, VulkanQueue,
-    VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule,
-    VulkanSwapchain, VulkanTexture, VulkanTextureView,
+    VulkanCommandPool, VulkanDescriptorHeap, VulkanDescriptorSetArray,
+    VulkanDescriptorSetBufWriter, VulkanDescriptorSetHandle, VulkanDescriptorSetLayout,
+    VulkanDeviceContext, VulkanFence, VulkanPipeline, VulkanQueue, VulkanRootSignature,
+    VulkanSampler, VulkanSemaphore, VulkanShader, VulkanShaderModule, VulkanSwapchain,
+    VulkanTexture, VulkanTextureView,
 };
 use crate::{ApiDef, GfxApi, GfxResult};
 
@@ -90,6 +91,7 @@ impl GfxApi for VulkanApi {
     type Pipeline = VulkanPipeline;
     type DescriptorSetHandle = VulkanDescriptorSetHandle;
     type DescriptorSetArray = VulkanDescriptorSetArray;
+    type DescriptorSetBufWriter = VulkanDescriptorSetBufWriter;
     type DescriptorHeap = VulkanDescriptorHeap;
     type Queue = VulkanQueue;
     type CommandPool = VulkanCommandPool;

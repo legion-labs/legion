@@ -54,6 +54,9 @@ pub use pipeline::*;
 mod descriptor_heap;
 pub use descriptor_heap::*;
 
+mod descriptor_set_writer;
+pub use descriptor_set_writer::*;
+
 mod descriptor_set_array;
 pub use descriptor_set_array::*;
 

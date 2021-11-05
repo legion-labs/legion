@@ -324,7 +324,7 @@ pub trait GfxApi: Sized {
     type Buffer: Buffer<Self>;
     type Texture: Texture<Self>;
     type Sampler: Sampler<Self>;
-    type BufferMappingInfo; //: BufferMappingInfo<Self>;
+    type BufferMappingInfo;
     type BufferView: BufferView<Self>;
     type TextureView: TextureView<Self>;
     type ShaderModule: ShaderModule<Self>;
@@ -334,6 +334,7 @@ pub trait GfxApi: Sized {
     type Pipeline: Pipeline<Self>;
     type DescriptorSetHandle: DescriptorSetHandle<Self>;
     type DescriptorSetArray: DescriptorSetArray<Self>;
+    type DescriptorSetBufWriter: DescriptorSetBufWriter<Self>;
     type DescriptorHeap: DescriptorHeap<Self>;
     type Queue: Queue<Self>;
     type CommandPool: CommandPool<Self>;
@@ -460,13 +461,31 @@ pub trait Pipeline<A: GfxApi>: Debug {
 //
 // Descriptor Sets
 //
-pub trait DescriptorSetHandle<A: GfxApi>: Debug {}
+pub trait DescriptorSetHandle<A: GfxApi> {
+    fn get_writer(
+        &self,
+        descriptor_set_layout: &A::DescriptorSetLayout,
+    ) -> GfxResult<A::DescriptorSetBufWriter>;
+}
 
 pub trait DescriptorSetArray<A: GfxApi>: Debug {
     fn handle(&self, array_index: u32) -> Option<A::DescriptorSetHandle>;
     fn update_descriptor_set(&mut self, params: &[DescriptorUpdate<'_, A>]) -> GfxResult<()>;
     fn queue_descriptor_set_update(&mut self, update: &DescriptorUpdate<'_, A>) -> GfxResult<()>;
     fn flush_descriptor_set_updates(&mut self) -> GfxResult<()>;
+}
+
+//
+// DescriptorSetBufWriter
+//
+pub trait DescriptorSetBufWriter<A: GfxApi> {
+    fn set_descriptors<'a>(
+        &mut self,
+        name: &str,
+        descriptor_offset: u32,
+        update_data: &[DescriptorRef<'a, A>],
+    ) -> GfxResult<()>;    
+    fn flush(&mut self) -> GfxResult<()>;
 }
 
 //

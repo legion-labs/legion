@@ -5,7 +5,7 @@
 
 use raw_window_handle::HasRawWindowHandle;
 
-use crate::{prelude::*, BufferMappingInfo};
+use crate::{BufferMappingInfo, DescriptorSetBufWriter, prelude::*};
 
 //
 // Root of the API
@@ -35,6 +35,7 @@ impl GfxApi for NullApi {
     type Pipeline = NullPipeline;
     type DescriptorSetHandle = NullDescriptorSetHandle;
     type DescriptorSetArray = NullDescriptorSetArray;
+    type DescriptorSetBufWriter = NullDescriptorSetBufWriter;
     type DescriptorHeap = NullDescriptorHeap;
     type Queue = NullQueue;
     type CommandPool = NullCommandPool;
@@ -268,7 +269,11 @@ impl Pipeline<NullApi> for NullPipeline {
 //
 #[derive(Clone, Debug)]
 pub struct NullDescriptorSetHandle;
-impl DescriptorSetHandle<NullApi> for NullDescriptorSetHandle {}
+impl DescriptorSetHandle<NullApi> for NullDescriptorSetHandle {
+    fn get_writer(&self, descriptor_set_layout: &NullDescriptorSetLayout) -> GfxResult<NullDescriptorSetBufWriter> {
+        unimplemented!()
+    }
+}
 
 #[derive(Debug)]
 pub struct NullDescriptorSetArray;
@@ -287,6 +292,24 @@ impl DescriptorSetArray<NullApi> for NullDescriptorSetArray {
     }
     fn flush_descriptor_set_updates(&mut self) -> GfxResult<()> {
         unimplemented!();
+    }
+}
+
+//
+// DescriptorSetBufWriter
+//
+pub struct NullDescriptorSetBufWriter;
+impl DescriptorSetBufWriter<NullApi> for NullDescriptorSetBufWriter {
+    fn set_descriptors(
+        &mut self, 
+        name: &str, 
+        descriptor_offset: u32,        
+        update_data: &[DescriptorRef<'_, NullApi>]
+    ) -> GfxResult<()> {
+        unimplemented!()
+    }    
+    fn flush(&mut self) -> GfxResult<()> {
+        unimplemented!()
     }
 }
 

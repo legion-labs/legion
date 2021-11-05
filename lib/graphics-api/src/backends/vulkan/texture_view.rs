@@ -1,13 +1,14 @@
 use ash::vk;
 
-use super::VulkanTexture;
+use super::{VulkanDescriptor, VulkanTexture};
 use crate::{
-    backends::deferred_drop::Drc, GfxResult, Texture, TextureView, TextureViewDef, VulkanApi,
+    backends::deferred_drop::Drc, GPUViewType, GfxResult, ShaderResourceType, Texture, TextureView,
+    TextureViewDef, VulkanApi,
 };
 
 #[derive(Clone, Debug)]
 struct VulkanTextureViewInner {
-    view_def: TextureViewDef,
+    definition: TextureViewDef,
     texture: VulkanTexture,
     vk_image_view: vk::ImageView,
 }
@@ -28,7 +29,7 @@ pub struct VulkanTextureView {
 
 impl TextureView<VulkanApi> for VulkanTextureView {
     fn definition(&self) -> &TextureViewDef {
-        &self.inner.view_def
+        &self.inner.definition
     }
 
     fn texture(&self) -> &VulkanTexture {
@@ -62,7 +63,7 @@ impl VulkanTextureView {
             inner: device_context
                 .deferred_dropper()
                 .new_drc(VulkanTextureViewInner {
-                    view_def: *view_def,
+                    definition: *view_def,
                     texture: texture.clone(),
                     vk_image_view,
                 }),
@@ -74,10 +75,37 @@ impl VulkanTextureView {
     }
 
     pub(super) fn view_def(&self) -> &TextureViewDef {
-        &self.inner.view_def
+        &self.inner.definition
     }
 
     pub(super) fn vk_image_view(&self) -> vk::ImageView {
         self.inner.vk_image_view
+    }
+
+    pub(super) fn is_compatible_with_descriptor(&self, descriptor: &VulkanDescriptor) -> bool {
+        match descriptor.shader_resource_type {
+            ShaderResourceType::ConstantBuffer
+            | ShaderResourceType::StructuredBuffer
+            | ShaderResourceType::ByteAdressBuffer
+            | ShaderResourceType::RWStructuredBuffer
+            | ShaderResourceType::RWByteAdressBuffer
+            | ShaderResourceType::Sampler => false,
+
+            ShaderResourceType::Texture2D |
+            ShaderResourceType::Texture3D | 
+            ShaderResourceType::Texture2DArray |
+            ShaderResourceType::TextureCube |
+            ShaderResourceType::TextureCubeArray => {
+                self.inner.definition.gpu_view_type == GPUViewType::ShaderResourceView && 
+                self.inner.definition.array_size == 1
+            }            
+
+            ShaderResourceType::RWTexture2D |
+            ShaderResourceType::RWTexture2DArray |
+            ShaderResourceType::RWTexture3D => {
+                self.inner.definition.gpu_view_type == GPUViewType::UnorderedAccessView && 
+                self.inner.definition.array_size == 1
+            }                         
+        }
     }
 }
