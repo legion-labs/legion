@@ -461,12 +461,7 @@ pub trait Pipeline<A: GfxApi>: Debug {
 //
 // Descriptor Sets
 //
-pub trait DescriptorSetHandle<A: GfxApi> {
-    fn get_writer(
-        &self,
-        descriptor_set_layout: &A::DescriptorSetLayout,
-    ) -> GfxResult<A::DescriptorSetBufWriter>;
-}
+pub trait DescriptorSetHandle<A: GfxApi> : Copy {}
 
 pub trait DescriptorSetArray<A: GfxApi>: Debug {
     fn handle(&self, array_index: u32) -> Option<A::DescriptorSetHandle>;
@@ -485,7 +480,7 @@ pub trait DescriptorSetBufWriter<A: GfxApi> {
         descriptor_offset: u32,
         update_data: &[DescriptorRef<'a, A>],
     ) -> GfxResult<()>;    
-    fn flush(&mut self) -> GfxResult<()>;
+    fn flush(&mut self) -> GfxResult<A::DescriptorSetHandle>;
 }
 
 //
@@ -496,7 +491,7 @@ pub trait DescriptorHeap<A: GfxApi> {
     fn allocate_descriptor_set(
         &self,
         descriptor_set_layout: &A::DescriptorSetLayout,
-    ) -> GfxResult<A::DescriptorSetHandle>;
+    ) -> GfxResult<A::DescriptorSetBufWriter>;
 }
 
 //
@@ -562,17 +557,17 @@ pub trait CommandBuffer<A: GfxApi>: Debug {
         bindings: &[VertexBufferBinding<'_, A>],
     ) -> GfxResult<()>;
     fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_, A>) -> GfxResult<()>;
-    fn cmd_bind_descriptor_set(
-        &self,
-        root_signature: &A::RootSignature,
-        descriptor_set_array: &A::DescriptorSetArray,
-        index: u32,
-    ) -> GfxResult<()>;
+    // fn cmd_bind_descriptor_set(
+    //     &self,
+    //     root_signature: &A::RootSignature,
+    //     descriptor_set_array: &A::DescriptorSetArray,
+    //     index: u32,
+    // ) -> GfxResult<()>;
     fn cmd_bind_descriptor_set_handle(
         &self,
         root_signature: &A::RootSignature,
         set_index: u32,
-        descriptor_set_handle: &A::DescriptorSetHandle,
+        descriptor_set_handle: A::DescriptorSetHandle,
     ) -> GfxResult<()>;
     fn cmd_push_constants<T: Sized>(
         &self,

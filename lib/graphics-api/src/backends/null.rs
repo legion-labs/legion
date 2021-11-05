@@ -267,13 +267,9 @@ impl Pipeline<NullApi> for NullPipeline {
 //
 // Descriptor Sets
 //
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct NullDescriptorSetHandle;
-impl DescriptorSetHandle<NullApi> for NullDescriptorSetHandle {
-    fn get_writer(&self, descriptor_set_layout: &NullDescriptorSetLayout) -> GfxResult<NullDescriptorSetBufWriter> {
-        unimplemented!()
-    }
-}
+impl DescriptorSetHandle<NullApi> for NullDescriptorSetHandle {}
 
 #[derive(Debug)]
 pub struct NullDescriptorSetArray;
@@ -308,7 +304,7 @@ impl DescriptorSetBufWriter<NullApi> for NullDescriptorSetBufWriter {
     ) -> GfxResult<()> {
         unimplemented!()
     }    
-    fn flush(&mut self) -> GfxResult<()> {
+    fn flush(&mut self) -> GfxResult<NullDescriptorSetHandle> {
         unimplemented!()
     }
 }
@@ -326,7 +322,7 @@ impl DescriptorHeap<NullApi> for NullDescriptorHeap {
     fn allocate_descriptor_set(
         &self,
         descriptor_set_layout: &NullDescriptorSetLayout,
-    ) -> GfxResult<NullDescriptorSetHandle> {
+    ) -> GfxResult<NullDescriptorSetBufWriter> {
         unimplemented!();
     }
 }
@@ -442,19 +438,19 @@ impl CommandBuffer<NullApi> for NullCommandBuffer {
     fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_, NullApi>) -> GfxResult<()> {
         unimplemented!()
     }
-    fn cmd_bind_descriptor_set(
-        &self,
-        root_signature: &NullRootSignature,
-        descriptor_set_array: &NullDescriptorSetArray,
-        index: u32,
-    ) -> GfxResult<()> {
-        unimplemented!()
-    }
+    // fn cmd_bind_descriptor_set(
+    //     &self,
+    //     root_signature: &NullRootSignature,
+    //     descriptor_set_array: &NullDescriptorSetArray,
+    //     index: u32,
+    // ) -> GfxResult<()> {
+    //     unimplemented!()
+    // }
     fn cmd_bind_descriptor_set_handle(
         &self,
         root_signature: &NullRootSignature,
         set_index: u32,
-        descriptor_set_handle: &NullDescriptorSetHandle,
+        descriptor_set_handle: NullDescriptorSetHandle,
     ) -> GfxResult<()> {
         unimplemented!()
     }

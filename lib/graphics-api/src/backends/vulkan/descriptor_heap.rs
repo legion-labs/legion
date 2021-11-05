@@ -1,9 +1,7 @@
-use crate::{
-    backends::deferred_drop::Drc, DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi,
-};
+use crate::{DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi, backends::deferred_drop::Drc};
 use ash::vk;
 
-use super::{VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanDeviceContext};
+use super::{VulkanDescriptorSetBufWriter, VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanDeviceContext};
 
 struct DescriptorHeapPoolConfig {
     pool_flags: vk::DescriptorPoolCreateFlags,
@@ -120,7 +118,7 @@ impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {
     fn allocate_descriptor_set(
         &self,
         descriptor_set_layout: &VulkanDescriptorSetLayout,
-    ) -> GfxResult<VulkanDescriptorSetHandle> {
+    ) -> GfxResult<VulkanDescriptorSetBufWriter> {
         let inner = &self.inner;
         let device = inner.device_context.device();
         let allocate_info = vk::DescriptorSetAllocateInfo::builder()
@@ -130,7 +128,10 @@ impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {
 
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
 
-        Ok(VulkanDescriptorSetHandle(result[0]))
+        VulkanDescriptorSetBufWriter::new(
+            VulkanDescriptorSetHandle(result[0]),
+            descriptor_set_layout,      
+        )
     }
 }
 

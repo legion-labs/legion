@@ -81,17 +81,23 @@ impl Plugin for PresenterSnapshotPlugin {
 #[allow(clippy::needless_pass_by_value)]
 fn render_presenter_snapshots(
     renderer: Res<'_, Renderer>,
-    mut pres_snapshots: Query<'_, '_, &mut PresenterSnapshot>,
-    mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    mut q_pres_snapshots: Query<'_, '_, &mut PresenterSnapshot>,
+    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {
     let graphics_queue = renderer.graphics_queue();
+    let transient_descriptor_heap = renderer.transient_descriptor_heap();
     let wait_sem = renderer.frame_signal_semaphore();
 
-    for mut pres_snapshot in pres_snapshots.iter_mut() {
+    for mut pres_snapshot in q_pres_snapshots.iter_mut() {
         // this loop is wrong, it's wip code, we need to add some snapshot render_surface mapping
-        for render_surface in render_surfaces.iter_mut() {
+        for render_surface in q_render_surfaces.iter_mut() {
             pres_snapshot
-                .present(graphics_queue, wait_sem, render_surface.into_inner())
+                .present(
+                    graphics_queue,
+                    transient_descriptor_heap,
+                    wait_sem,
+                    render_surface.into_inner(),
+                )
                 .unwrap();
         }
     }

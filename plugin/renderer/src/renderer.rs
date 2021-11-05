@@ -488,20 +488,18 @@ impl TmpRenderPass {
 
         let heap = renderer.transient_descriptor_heap();
         let descriptor_set_layout = &self.pipeline.root_signature().definition().descriptor_set_layouts[0];
-        let descriptor_set = heap.allocate_descriptor_set(descriptor_set_layout).unwrap();        
-        let mut descriptor_set_writer = descriptor_set.get_writer(descriptor_set_layout).unwrap();
+        let mut descriptor_set_writer = heap.allocate_descriptor_set(descriptor_set_layout).unwrap();                
         descriptor_set_writer.set_descriptors(
             "uniform_data",
             0,
             &[DescriptorRef::BufferView(uniform_buffer_cbv)]
         ).unwrap();       
-
-        descriptor_set_writer.flush();
+        let descriptor_set_handle = descriptor_set_writer.flush().unwrap();
 
         cmd_buffer.cmd_bind_descriptor_set_handle(
             &self.root_signature,
             descriptor_set_layout.definition().frequency, 
-            &descriptor_set
+            descriptor_set_handle
         ).unwrap();
 
         // cmd_buffer

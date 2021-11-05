@@ -31,7 +31,7 @@ pub struct VulkanDescriptorSetBufWriter {
 
 impl VulkanDescriptorSetBufWriter {
     pub fn new(
-        descriptor_set: &VulkanDescriptorSetHandle,
+        descriptor_set: VulkanDescriptorSetHandle,
         descriptor_set_layout: &VulkanDescriptorSetLayout,
     ) -> GfxResult<Self> {
         if descriptor_set_layout.vk_layout() == vk::DescriptorSetLayout::null() {
@@ -43,7 +43,7 @@ impl VulkanDescriptorSetBufWriter {
         let pending_writes = Vec::with_capacity(update_data_count as usize);
 
         Ok(Self {
-            descriptor_set: *descriptor_set,
+            descriptor_set,
             descriptor_set_layout: descriptor_set_layout.clone(),
             vk_descriptors,
             pending_writes,
@@ -170,8 +170,8 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
         Ok(())
     }
 
-    fn flush(&mut self) -> GfxResult<()> {
-        
+    fn flush(&mut self) -> GfxResult<VulkanDescriptorSetHandle> {
+
         if !self.pending_writes.is_empty() {
             let device = self.descriptor_set_layout.device_context().device();
             unsafe {
@@ -181,6 +181,6 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
             self.pending_writes.clear();
         }
 
-        Ok(())
+        Ok(self.descriptor_set)
     }
 }
