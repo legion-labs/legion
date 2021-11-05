@@ -77,7 +77,7 @@ use legion_editor_proto::{
     editor_client::EditorClient, GetResourcePropertiesRequest, SearchResourcesRequest,
     UpdateResourcePropertiesRequest,
 };
-use legion_grpc::client::Client as GRPCClient;
+use legion_grpc::client::HttpsClient as GRPCClient;
 use legion_online::authentication::{
     Authenticator, AwsCognitoClientAuthenticator, TokenCache as OnlineTokenCache,
 };

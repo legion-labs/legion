@@ -3457,6 +3457,7 @@ dependencies = [
  "http",
  "http-body",
  "hyper",
+ "hyper-tls",
  "legion-app",
  "legion-async",
  "legion-ecs",

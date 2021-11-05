@@ -15,6 +15,7 @@ legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-async = { path = "../async", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 hyper = "0.14"
+hyper-tls = "0.5"
 tower = "0.4.8"
 tower-service = "0.3.1"
 tonic = "0.6"

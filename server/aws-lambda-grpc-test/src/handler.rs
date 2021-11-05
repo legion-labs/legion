@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Context as _};
 use bytes::Bytes;
 use http_body::Body;
 use lambda_http::{IntoResponse, Request as LambdaRequest, Response as LambdaResponse};
@@ -7,6 +8,7 @@ use legion_streaming_proto::{
     streamer_server::{Streamer, StreamerServer},
     InitializeStreamRequest, InitializeStreamResponse,
 };
+use log::info;
 use tonic::{codegen::Service, Request, Response, Status};
 
 struct MyStreamer;
@@ -44,11 +46,16 @@ async fn from_tonic_response(
     >,
 ) -> Result<impl IntoResponse, Error> {
     let (parts, mut body) = response.into_parts();
-    let body = body
-        .data()
-        .await
-        .expect("HTTP response contains no data")?
-        .to_vec();
+    let size_hint = body
+        .size_hint()
+        .exact()
+        .ok_or_else(|| anyhow!("body size is not known"))?;
+    let mut buf = Vec::<u8>::with_capacity(size_hint as usize);
+    while let Some(chunk) = body.data().await {
+        let chunk = chunk.context("failed to read data chunk")?;
+        buf.extend_from_slice(&chunk);
+    }
+    let body = buf.to_vec();
     Ok(LambdaResponse::from_parts(parts, body))
 }
 
@@ -59,6 +66,7 @@ impl Streamer for MyStreamer {
         request: Request<InitializeStreamRequest>,
     ) -> Result<Response<InitializeStreamResponse>, Status> {
         let request = request.into_inner();
+        info!("gRPC request received: {:?}", request);
         let response = InitializeStreamResponse {
             rtc_session_description: request.rtc_session_description,
             error: "".to_string(),
