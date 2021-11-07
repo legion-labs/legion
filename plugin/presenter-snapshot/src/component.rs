@@ -3,12 +3,16 @@
 use graphics_api::prelude::*;
 use legion_ecs::prelude::Component;
 use legion_presenter::offscreen_helper::{self, Resolution};
-use legion_renderer::{components::RenderSurface, Renderer};
+use legion_renderer::{
+    components::{RenderSurface, RenderSurfaceId},
+    Renderer,
+};
 
 #[derive(Component)]
 pub struct PresenterSnapshot {
-    frame_id: i32,
+    frame_idx: i32,
     frame_target: i32,
+    render_surface_id: RenderSurfaceId,
     offscreen_helper: offscreen_helper::OffscreenHelper,
 }
 
@@ -19,27 +23,22 @@ impl std::fmt::Debug for PresenterSnapshot {
 }
 
 impl PresenterSnapshot {
-    pub fn new(renderer: &Renderer, resolution: Resolution) -> anyhow::Result<Self> {
+    pub fn new(
+        renderer: &Renderer,
+        render_surface_id: RenderSurfaceId,
+        resolution: Resolution,
+    ) -> anyhow::Result<Self> {
         let device_context = renderer.device_context();
         let graphics_queue = renderer.graphics_queue();
         let offscreen_helper =
             offscreen_helper::OffscreenHelper::new(device_context, graphics_queue, resolution)?;
 
         Ok(Self {
-            frame_id: 0,
+            frame_idx: 0,
             frame_target: 0,
+            render_surface_id,
             offscreen_helper,
         })
-    }
-
-    pub(crate) fn _resize(
-        &mut self,
-        renderer: &Renderer,
-        resolution: Resolution,
-    ) -> anyhow::Result<()> {
-        let device_context = renderer.device_context();
-        self.offscreen_helper.resize(device_context, resolution)?;
-        Ok(())
     }
 
     pub(crate) fn present(
@@ -57,17 +56,31 @@ impl PresenterSnapshot {
             transient_descriptor_heap,
             wait_sem,
             render_surface,
-            |_rgba: &[u8], _row_pitch: usize| {
+            |rgba: &[u8], row_pitch: usize| {
                 // write frame to file
-                if self.frame_id == self.frame_target {
-                    //let mut file =
-                    //    std::fs::File::create(format!("presenter_snapshot_{}.png", self.frame_id))
-                    //        .unwrap();
+                if self.frame_idx == self.frame_target {
+                    let file =
+                        std::fs::File::create(format!("presenter_snapshot_{}.png", self.frame_idx))
+                            .unwrap();
+                    let mut buf_writer = std::io::BufWriter::new(file);
+                    let mut encoder = png::Encoder::new(
+                        &mut buf_writer,
+                        (row_pitch / 4) as u32,
+                        (rgba.len() / row_pitch) as u32,
+                    );
+                    encoder.set_color(png::ColorType::Rgba);
+                    encoder.set_depth(png::BitDepth::Eight);
+                    let mut writer = encoder.write_header().unwrap();
+                    writer.write_image_data(rgba).unwrap(); // Save
                 }
             },
         )?;
 
-        self.frame_id += 1;
+        self.frame_idx += 1;
         Ok(())
+    }
+
+    pub fn render_surface_id(&self) -> RenderSurfaceId {
+        self.render_surface_id
     }
 }

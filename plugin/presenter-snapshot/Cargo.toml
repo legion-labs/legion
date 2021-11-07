@@ -17,6 +17,7 @@ raw-window-handle = "0.3"
 crossbeam-channel = "0.5"
 instant = "0.1"
 anyhow = "1.0"
+png = "0.17"
 
 [features]
 default = []

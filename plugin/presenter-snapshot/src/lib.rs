@@ -63,6 +63,7 @@ use legion_renderer::{components::RenderSurface, Renderer, RendererSystemLabel};
 use crate::component::PresenterSnapshot;
 
 pub mod component;
+pub use legion_presenter::offscreen_helper::Resolution;
 
 #[derive(Default)]
 pub struct PresenterSnapshotPlugin;
@@ -90,13 +91,18 @@ fn render_presenter_snapshots(
 
     for mut pres_snapshot in q_pres_snapshots.iter_mut() {
         // this loop is wrong, it's wip code, we need to add some snapshot render_surface mapping
-        for render_surface in q_render_surfaces.iter_mut() {
+        let render_surface = q_render_surfaces
+            .iter_mut()
+            .find(|x| pres_snapshot.render_surface_id().eq(&x.id()))
+            .map(Mut::into_inner);
+
+        if let Some(render_surface) = render_surface {
             pres_snapshot
                 .present(
                     graphics_queue,
                     transient_descriptor_heap,
                     wait_sem,
-                    render_surface.into_inner(),
+                    render_surface,
                 )
                 .unwrap();
         }

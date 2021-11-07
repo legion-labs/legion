@@ -1,17 +1,20 @@
 use std::collections::HashMap;
 
-use legion_app::App;
+use legion_app::{App, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
 use legion_ecs::prelude::*;
 use legion_input::InputPlugin;
+use legion_presenter_snapshot::component::PresenterSnapshot;
+use legion_presenter_snapshot::{PresenterSnapshotPlugin, Resolution};
 use legion_presenter_window::component::PresenterWindow;
 use legion_presenter_window::PresenterWindowPlugin;
 use legion_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
 use legion_renderer::{Renderer, RendererPlugin};
 use legion_tao::{TaoPlugin, TaoWindows};
 use legion_window::{
-    WindowCloseRequested, WindowCreated, WindowId, WindowPlugin, WindowResized, Windows,
+    WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
+    Windows,
 };
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
@@ -42,25 +45,80 @@ impl RenderSurfaces {
     }
 }
 
+struct SnapshotDescriptor {
+    width: f32,
+    height: f32,
+}
+
 fn main() {
-    let logger = Box::new(SimpleLogger::new().with_level(LevelFilter::Debug));
-    logger.init().unwrap();
+    let matches = clap::App::new("graphics-sandbox")
+        .version(env!("CARGO_PKG_VERSION"))
+        .author("Legion Labs")
+        .about("A sandbox for graphics")
+        .arg(
+            clap::Arg::with_name("width")
+                .short("w")
+                .long("width")
+                .help("The width of the window")
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("height")
+                .short("h")
+                .long("height")
+                .help("The height of the window")
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("snapshot")
+                .short("s")
+                .long("snapshot")
+                .help("Saves a snapshot of the scene")
+                .takes_value(false),
+        )
+        .get_matches();
 
-    let render_surfaces = RenderSurfaces::new();
+    SimpleLogger::new()
+        .with_level(LevelFilter::Warn)
+        .init()
+        .unwrap();
 
-    App::new()
-        .add_plugin(CorePlugin::default())
+    let mut app = App::new();
+    app.add_plugin(CorePlugin::default())
         .add_plugin(AsyncPlugin {})
-        .add_plugin(WindowPlugin::default())
-        .add_plugin(InputPlugin::default())
-        .add_plugin(TaoPlugin::default())
-        .add_plugin(RendererPlugin::default())
-        .add_plugin(PresenterWindowPlugin::default())
-        .add_system(on_window_created.exclusive_system())
-        .add_system(on_window_resized.exclusive_system())
-        .add_system(on_window_close_requested.exclusive_system())
-        .insert_resource(render_surfaces)
-        .run();
+        .add_plugin(RendererPlugin::default());
+
+    let width = matches
+        .value_of("width")
+        .map(|s| s.parse::<f32>().unwrap())
+        .unwrap_or(1280.0);
+    let height = matches
+        .value_of("height")
+        .map(|s| s.parse::<f32>().unwrap())
+        .unwrap_or(720.0);
+
+    if matches.is_present("snapshot") {
+        app.insert_resource(SnapshotDescriptor { width, height })
+            .insert_resource(ScheduleRunnerSettings::run_once())
+            .add_plugin(ScheduleRunnerPlugin::default())
+            .add_plugin(PresenterSnapshotPlugin::default())
+            .add_startup_system(add_presenter_snapshot_system.system());
+    } else {
+        app.insert_resource(WindowDescriptor {
+            width,
+            height,
+            ..WindowDescriptor::default()
+        });
+        app.add_plugin(WindowPlugin::default())
+            .add_plugin(InputPlugin::default())
+            .add_plugin(TaoPlugin::default())
+            .add_plugin(PresenterWindowPlugin::default())
+            .add_system(on_window_created.exclusive_system())
+            .add_system(on_window_resized.exclusive_system())
+            .add_system(on_window_close_requested.exclusive_system())
+            .insert_resource(RenderSurfaces::new());
+    }
+    app.run();
 }
 
 fn on_window_created(
@@ -143,4 +201,32 @@ fn on_window_close_requested(
         }
         render_surfaces.remove(ev.id);
     }
+}
+
+fn add_presenter_snapshot_system(
+    mut commands: Commands,
+    snapshot_descriptor: Res<SnapshotDescriptor>,
+    renderer: Res<Renderer>,
+) {
+    let render_surface = RenderSurface::new(
+        &renderer,
+        RenderSurfaceExtents::new(
+            snapshot_descriptor.width as u32,
+            snapshot_descriptor.height as u32,
+        ),
+    );
+    let render_surface_id = render_surface.id();
+
+    commands.spawn().insert(render_surface);
+    commands.spawn().insert(
+        PresenterSnapshot::new(
+            renderer.into_inner(),
+            render_surface_id,
+            Resolution::new(
+                snapshot_descriptor.width as u32,
+                snapshot_descriptor.height as u32,
+            ),
+        )
+        .unwrap(),
+    );
 }
