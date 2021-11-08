@@ -21,3 +21,6 @@ legion-window = { path = "../../plugin/window", version = "0.1.0" }
 log = "0.4"
 simple_logger = "1.13"
 clap = "2.33"
+
+[dev-dependencies]
+png = "0.17"

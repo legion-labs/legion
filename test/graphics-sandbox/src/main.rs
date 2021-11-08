@@ -46,6 +46,7 @@ impl RenderSurfaces {
 }
 
 struct SnapshotDescriptor {
+    setup_name: String,
     width: f32,
     height: f32,
 }
@@ -77,11 +78,11 @@ fn main() {
                 .takes_value(false),
         )
         .arg(
-            clap::Arg::with_name("compare")
-                .short("c")
-                .long("compare")
-                .help("Compares snapshot with a reference, -s, --snapshot must be present")
-                .takes_value(false),
+            clap::Arg::with_name("setup-name")
+                .long("setup-name")
+                .takes_value(true)
+                .help("Name of the setup to launch")
+                .takes_value(true),
         )
         .get_matches();
 
@@ -89,11 +90,6 @@ fn main() {
         .with_level(LevelFilter::Warn)
         .init()
         .unwrap();
-
-    let mut app = App::new();
-    app.add_plugin(CorePlugin::default())
-        .add_plugin(AsyncPlugin {})
-        .add_plugin(RendererPlugin::default());
 
     let width = matches
         .value_of("width")
@@ -103,14 +99,24 @@ fn main() {
         .value_of("height")
         .map(|s| s.parse::<f32>().unwrap())
         .unwrap_or(720.0);
-    // matches.is_present("snapshot")
-    if true {
-        app.insert_resource(SnapshotDescriptor { width, height })
-            .insert_resource(ScheduleRunnerSettings::default())
-            .add_plugin(ScheduleRunnerPlugin::default())
-            .add_plugin(PresenterSnapshotPlugin::default())
-            .add_startup_system(add_presenter_snapshot_system.system())
-            .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
+    let setup_name = matches.value_of("setup-name").unwrap_or("triangle");
+
+    let mut app = App::new();
+    app.add_plugin(CorePlugin::default())
+        .add_plugin(AsyncPlugin {})
+        .add_plugin(RendererPlugin::default());
+
+    if matches.is_present("snapshot") {
+        app.insert_resource(SnapshotDescriptor {
+            setup_name: setup_name.to_string(),
+            width,
+            height,
+        })
+        .insert_resource(ScheduleRunnerSettings::default())
+        .add_plugin(ScheduleRunnerPlugin::default())
+        .add_plugin(PresenterSnapshotPlugin::default())
+        .add_startup_system(add_presenter_snapshot_system.system())
+        .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
         app.insert_resource(WindowDescriptor {
             width,
@@ -228,6 +234,7 @@ fn add_presenter_snapshot_system(
     commands.spawn().insert(render_surface);
     commands.spawn().insert(
         PresenterSnapshot::new(
+            &snapshot_descriptor.setup_name,
             renderer.into_inner(),
             render_surface_id,
             Resolution::new(

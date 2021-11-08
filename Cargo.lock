@@ -2619,6 +2619,7 @@ dependencies = [
  "legion-tao",
  "legion-window",
  "log",
+ "png 0.17.2",
  "simple_logger",
 ]
 

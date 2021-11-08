@@ -10,6 +10,7 @@ use legion_renderer::{
 
 #[derive(Component)]
 pub struct PresenterSnapshot {
+    snapshot_name: String,
     frame_idx: i32,
     frame_target: i32,
     render_surface_id: RenderSurfaceId,
@@ -24,6 +25,7 @@ impl std::fmt::Debug for PresenterSnapshot {
 
 impl PresenterSnapshot {
     pub fn new(
+        snapshot_name: &str,
         renderer: &Renderer,
         render_surface_id: RenderSurfaceId,
         resolution: Resolution,
@@ -34,6 +36,7 @@ impl PresenterSnapshot {
             offscreen_helper::OffscreenHelper::new(device_context, graphics_queue, resolution)?;
 
         Ok(Self {
+            snapshot_name: snapshot_name.to_string(),
             frame_idx: 0,
             frame_target: 0,
             render_surface_id,
@@ -61,8 +64,7 @@ impl PresenterSnapshot {
                 // write frame to file
                 if snapshot_frame {
                     let file =
-                        std::fs::File::create(format!("presenter_snapshot_{}.png", self.frame_idx))
-                            .unwrap();
+                        std::fs::File::create(format!("{}.png", self.snapshot_name)).unwrap();
                     let mut buf_writer = std::io::BufWriter::new(file);
                     let mut encoder = png::Encoder::new(
                         &mut buf_writer,
