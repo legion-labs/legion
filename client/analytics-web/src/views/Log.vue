@@ -3,7 +3,7 @@
     <div>process_id {{ process_id }}</div>
     <template v-for="(entry, index) in log_entries_list">
       <div class="logentry" :key="index">
-        <span class="logentrytime">{{ entry.getTimeMs().toFixed(3) }}</span>
+        <span class="logentrytime">{{ formatTime(entry.getTimeMs()) }}</span>
         <span>{{ entry.getMsg() }}</span>
       </div>
     </template>
@@ -12,6 +12,20 @@
 
 <script>
 import { ProcessLogRequest, FindProcessRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
+
+function formatTime (ms) {
+  const seconds = ms / 1000
+  const secondsWhole = Math.floor(seconds)
+  const secondsStr = String(secondsWhole % 60).padStart(2, '0')
+  const secondsFraction = String(Math.round(ms % 1000)).padStart(3, '0')
+  const minutes = secondsWhole / 60
+  const minutesWhole = Math.floor(minutes)
+  const minutesStr = String(minutesWhole).padStart(2, '0')
+  const hours = minutesWhole / 60
+  const hoursWhole = Math.floor(hours)
+  const hoursStr = String(hoursWhole).padStart(2, '0')
+  return hoursStr + ':' + minutesStr + ':' + secondsStr + '.' + secondsFraction
+}
 
 function onCreated () {
   this.client = new PerformanceAnalyticsClient('http://' + location.hostname + ':9090', null, null)
@@ -67,7 +81,8 @@ export default {
   },
   methods: {
     fetchProcessInfo: fetchProcessInfo,
-    fetchLog: fetchLog
+    fetchLog: fetchLog,
+    formatTime: formatTime
   }
 }
 </script>
