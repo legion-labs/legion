@@ -28,8 +28,15 @@ message FindProcessReply{
 message RecentProcessesRequest{
 }
 
+message ProcessInstance{
+    telemetry.Process process_info = 1;
+    uint32 nb_cpu_blocks = 2;
+    uint32 nb_log_blocks = 3;
+    uint32 nb_metric_blocks = 4;
+}
+
 message ProcessListReply {
-    repeated telemetry.Process processes = 1;
+    repeated ProcessInstance processes = 1;
 }
 
 // list_process_streams

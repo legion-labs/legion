@@ -37,7 +37,9 @@ impl AnalyticsService {
         find_process(&mut connection, process_id).await
     }
 
-    async fn list_recent_processes_impl(&self) -> Result<Vec<legion_telemetry::ProcessInfo>> {
+    async fn list_recent_processes_impl(
+        &self,
+    ) -> Result<Vec<legion_telemetry_proto::analytics::ProcessInstance>> {
         let mut connection = self.pool.acquire().await?;
         fetch_recent_processes(&mut connection).await
     }

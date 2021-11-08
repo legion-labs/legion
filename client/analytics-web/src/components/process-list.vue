@@ -13,16 +13,18 @@
       </thead>
       <tbody>
         <template v-for="process in process_list">
-          <TR :key="process.getProcessId()">
-            <td>{{ process.getStartTime() }}</td>
-            <td>{{ process.getProcessId() }}</td>
-            <td>{{ process.getExe() }}</td>
-            <td>{{ process.getParentProcessId() }}</td>
+          <TR :key="process.getProcessInfo().getProcessId()">
+            <td>{{ process.getProcessInfo().getStartTime() }}</td>
+            <td>{{ process.getProcessInfo().getProcessId() }}</td>
+            <td>{{ process.getProcessInfo().getExe() }}</td>
+            <td>{{ process.getProcessInfo().getParentProcessId() }}</td>
             <td>
-              <p>
-                <router-link v-bind:to="{ name: 'Timeline', params: {process_id: process.getProcessId() } }">timeline</router-link>
-              </p>
-              <router-link v-bind:to="{ name: 'Log', params: {process_id: process.getProcessId() } }">log</router-link>
+              <div v-if="process.getNbCpuBlocks() > 0">
+                <router-link v-bind:to="{ name: 'Timeline', params: {process_id: process.getProcessInfo().getProcessId() } }">timeline</router-link>
+              </div>
+              <div v-if="process.getNbLogBlocks() > 0">
+                <router-link v-bind:to="{ name: 'Log', params: {process_id: process.getProcessInfo().getProcessId() } }">log</router-link>
+              </div>
             </td>
           </TR>
         </template>
@@ -80,11 +82,13 @@ table th
 }
 table td
 {
-   padding:     0 5px;
+   padding: 5px;
    text-align:  left;
    font-family: monospace;
-   white-space: nowrap;
    border:      1px solid rgb(153, 153, 153);
+}
+table td div{
+   padding: 5px;
 }
 a {
     color: #42b983;

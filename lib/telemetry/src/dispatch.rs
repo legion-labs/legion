@@ -205,6 +205,9 @@ impl Dispatch {
 
     fn on_log_buffer_full(&mut self) {
         let mut log_stream = self.log_stream.lock().unwrap();
+        if log_stream.is_empty() {
+            return;
+        }
         let stream_id = log_stream.get_stream_id();
         let mut old_event_block =
             log_stream.replace_block(Arc::new(LogBlock::new(self.log_buffer_size, stream_id)));
@@ -215,6 +218,9 @@ impl Dispatch {
     }
 
     fn on_thread_buffer_full(&mut self, stream: &mut ThreadStream) {
+        if stream.is_empty() {
+            return;
+        }
         let mut old_block = stream.replace_block(Arc::new(ThreadBlock::new(
             self.thread_buffer_size,
             stream.get_stream_id(),

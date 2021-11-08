@@ -20,8 +20,12 @@ pub async fn print_logs_by_process(
     data_path: &Path,
 ) -> Result<()> {
     for p in fetch_recent_processes(connection).await.unwrap() {
-        println!("{} {} {}", p.start_time, p.process_id, p.exe);
-        print_process_log(connection, data_path, &p.process_id).await?;
+        let process_info = p.process_info.unwrap();
+        println!(
+            "{} {} {}",
+            process_info.start_time, process_info.process_id, process_info.exe
+        );
+        print_process_log(connection, data_path, &process_info.process_id).await?;
         println!();
     }
     Ok(())

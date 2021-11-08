@@ -129,10 +129,38 @@ pub async fn find_process(
 
 pub async fn fetch_recent_processes(
     connection: &mut sqlx::AnyConnection,
-) -> Result<Vec<legion_telemetry::ProcessInfo>> {
+) -> Result<Vec<legion_telemetry_proto::analytics::ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
-        "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
+        "SELECT process_id, 
+                exe, 
+                username, 
+                realname, 
+                computer, 
+                distro, 
+                cpu_brand, 
+                tsc_frequency, 
+                start_time, 
+                start_ticks, 
+                parent_process_id,
+                (
+                  SELECT count(*)
+                  FROM blocks, streams
+                  WHERE blocks.stream_id = streams.stream_id
+                  AND streams.process_id = processes.process_id
+                  AND streams.tags LIKE '%cpu%' ) as nb_cpu_blocks,
+                (
+                  SELECT count(*)
+                  FROM blocks, streams
+                  WHERE blocks.stream_id = streams.stream_id
+                  AND streams.process_id = processes.process_id
+                  AND streams.tags LIKE '%log%' ) as nb_log_blocks,
+                (
+                  SELECT count(*)
+                  FROM blocks, streams
+                  WHERE blocks.stream_id = streams.stream_id
+                  AND streams.process_id = processes.process_id
+                  AND streams.tags LIKE '%metric%' ) as nb_metric_blocks
          FROM processes
          ORDER BY start_time DESC
          LIMIT 100;",
@@ -140,7 +168,16 @@ pub async fn fetch_recent_processes(
     .fetch_all(connection)
     .await?;
     for r in rows {
-        processes.push(process_from_row(&r));
+        let nb_cpu_blocks: i32 = r.get("nb_cpu_blocks");
+        let nb_log_blocks: i32 = r.get("nb_log_blocks");
+        let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
+        let instance = legion_telemetry_proto::analytics::ProcessInstance {
+            process_info: Some(process_from_row(&r)),
+            nb_cpu_blocks: nb_cpu_blocks as u32,
+            nb_log_blocks: nb_log_blocks as u32,
+            nb_metric_blocks: nb_metric_blocks as u32,
+        };
+        processes.push(instance);
     }
     Ok(processes)
 }

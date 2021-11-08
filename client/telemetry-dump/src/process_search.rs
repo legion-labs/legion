@@ -3,7 +3,11 @@ use legion_analytics::prelude::*;
 
 pub async fn print_recent_processes(connection: &mut sqlx::AnyConnection) {
     for p in fetch_recent_processes(connection).await.unwrap() {
-        println!("{} {} {}", p.start_time, p.process_id, p.exe);
+        let process_info = p.process_info.unwrap();
+        println!(
+            "{} {} {}",
+            process_info.start_time, process_info.process_id, process_info.exe
+        );
     }
 }
 
