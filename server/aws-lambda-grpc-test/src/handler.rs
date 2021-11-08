@@ -1,6 +1,4 @@
-use anyhow::Context as _;
 use bytes::Bytes;
-use http_body::Body;
 use lambda_http::{IntoResponse, Request as LambdaRequest, Response as LambdaResponse};
 use lambda_runtime::{Context, Error};
 
@@ -29,9 +27,7 @@ pub async fn endpoint(
 }
 
 fn into_tonic_request(request: LambdaRequest) -> http::Request<tonic::transport::Body> {
-    let (parts, body) = request.into_parts();
-    let body = Bytes::from(body.to_vec()).into();
-    http::Request::from_parts(parts, body)
+    request.map(|b| Bytes::from(b.to_vec()).into())
 
     //*result.version_mut() = http::Version::HTTP_2;
     //*result.method_mut() = http::Method::POST;
@@ -45,19 +41,8 @@ async fn from_tonic_response(
         http_body::combinators::UnsyncBoxBody<bytes::Bytes, tonic::Status>,
     >,
 ) -> Result<impl IntoResponse, Error> {
-    let (parts, mut body) = response.into_parts();
-    let size_hint = body.size_hint();
-
-    let size_hint = size_hint.upper().unwrap_or_else(|| size_hint.lower());
-
-    info!("size_hint: {}", size_hint);
-
-    let mut buf = Vec::<u8>::with_capacity(size_hint as usize);
-    while let Some(chunk) = body.data().await {
-        let chunk = chunk.context("failed to read data chunk")?;
-        buf.extend_from_slice(&chunk);
-    }
-    let body = buf.to_vec();
+    let (parts, body) = response.into_parts();
+    let body = hyper::body::to_bytes(body).await?.to_vec();
     Ok(LambdaResponse::from_parts(parts, body))
 }
 

@@ -12,7 +12,8 @@ use echo::{
     echoer_server::{Echoer, EchoerServer},
     EchoRequest, EchoResponse,
 };
-use log::{info, LevelFilter};
+use legion_online::grpc::web::client::GrpcWebClient;
+use log::{error, info, LevelFilter};
 use simple_logger::SimpleLogger;
 use sum::{
     summer_client::SummerClient,
@@ -26,9 +27,11 @@ struct Service {}
 #[tonic::async_trait]
 impl Echoer for Service {
     async fn echo(&self, request: Request<EchoRequest>) -> Result<Response<EchoResponse>, Status> {
-        Ok(Response::new(EchoResponse {
-            msg: request.into_inner().msg,
-        }))
+        let request = request.into_inner();
+
+        info!("Got a request: {:?}", request);
+
+        Ok(Response::new(EchoResponse { msg: request.msg }))
     }
 }
 
@@ -37,18 +40,31 @@ impl Summer for Service {
     async fn sum(&self, request: Request<SumRequest>) -> Result<Response<SumResponse>, Status> {
         let request = request.into_inner();
 
+        info!("Got a request: {:?}", request);
+
         Ok(Response::new(SumResponse {
             result: request.a + request.b,
         }))
     }
 }
 
+#[cfg(test)]
+static INIT: std::sync::Once = std::sync::Once::new();
+
+#[cfg(test)]
+fn setup_test_logger() {
+    INIT.call_once(|| {
+        SimpleLogger::new()
+            .with_level(LevelFilter::Debug)
+            .init()
+            .unwrap();
+    });
+}
+
 #[tokio::test]
+#[serial_test::serial]
 async fn test_service_multiplexer() -> anyhow::Result<()> {
-    SimpleLogger::new()
-        .with_level(LevelFilter::Debug)
-        .init()
-        .unwrap();
+    setup_test_logger();
 
     //let server = legion_grpc::server::transport::http2::Server::default();
     let echo_service = EchoerServer::new(Service {});
@@ -74,9 +90,15 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
             let resp = backoff::future::retry(ExponentialBackoff::default(), || async {
                 let mut echo_client = EchoerClient::new(client.clone());
 
-                Ok(echo_client
+                let resp = echo_client
                     .echo(Request::new(EchoRequest { msg: msg.clone() }))
-                    .await?)
+                    .await;
+
+                if let Err(e) = &resp {
+                    error!("unexpected error: {}", e);
+                }
+
+                Ok(resp?)
             })
             .await?;
 
@@ -90,11 +112,132 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
             let resp = backoff::future::retry(ExponentialBackoff::default(), || async {
                 let mut sum_client = SummerClient::new(client.clone());
 
-                Ok(sum_client.sum(Request::new(SumRequest { a, b })).await?)
+                let resp = sum_client.sum(Request::new(SumRequest { a, b })).await;
+
+                if let Err(e) = &resp {
+                    error!("unexpected error: {}", e);
+                }
+
+                Ok(resp?)
             })
             .await?;
 
             assert_eq!(resp.into_inner().result, result);
+        }
+
+        Ok(())
+    }
+
+    loop {
+        tokio::select! {
+            res = async {
+                info!("starting gRPC server...");
+
+                server.serve(addr).await
+            } => panic!("server is no longer bound: {}", res.unwrap_err()),
+            res = f() => match res {
+                Ok(_) => break,
+                Err(err) => panic!("client execution failed: {}", err),
+            },
+        };
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_http2_client_and_server() -> anyhow::Result<()> {
+    setup_test_logger();
+
+    let echo_service = EchoerServer::new(Service {});
+
+    let server = tonic::transport::Server::builder().add_service(echo_service);
+
+    let addr = "127.0.0.1:50051".parse()?;
+
+    async fn f() -> anyhow::Result<()> {
+        let client =
+            legion_grpc::client::Client::new(hyper::Uri::from_static("http://127.0.0.1:50051"));
+
+        {
+            let msg: String = "hello".into();
+
+            let resp = backoff::future::retry(ExponentialBackoff::default(), || async {
+                let mut echo_client = EchoerClient::new(client.clone());
+
+                let resp = echo_client
+                    .echo(Request::new(EchoRequest { msg: msg.clone() }))
+                    .await;
+
+                if let Err(e) = &resp {
+                    error!("unexpected error: {}", e);
+                }
+
+                Ok(resp?)
+            })
+            .await?;
+
+            assert_eq!(resp.into_inner().msg, msg);
+        }
+
+        Ok(())
+    }
+
+    loop {
+        tokio::select! {
+            res = async {
+                info!("starting gRPC server...");
+
+                server.serve(addr).await
+            } => panic!("server is no longer bound: {}", res.unwrap_err()),
+            res = f() => match res {
+                Ok(_) => break,
+                Err(err) => panic!("client execution failed: {}", err),
+            },
+        };
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_http1_client_and_server() -> anyhow::Result<()> {
+    setup_test_logger();
+
+    let echo_service = EchoerServer::new(Service {});
+
+    let server = tonic::transport::Server::builder()
+        .accept_http1(true)
+        .add_service(tonic_web::enable(echo_service));
+
+    let addr = "127.0.0.1:50051".parse()?;
+
+    async fn f() -> anyhow::Result<()> {
+        let client =
+            legion_grpc::client::Client::new(hyper::Uri::from_static("http://127.0.0.1:50051"));
+        let client = GrpcWebClient::new(client);
+
+        {
+            let msg: String = "hello".into();
+
+            let resp = backoff::future::retry(ExponentialBackoff::default(), || async {
+                let mut echo_client = EchoerClient::new(client.clone());
+
+                let resp = echo_client
+                    .echo(Request::new(EchoRequest { msg: msg.clone() }))
+                    .await;
+
+                if let Err(e) = &resp {
+                    error!("unexpected error: {}", e);
+                }
+
+                Ok(resp?)
+            })
+            .await?;
+
+            assert_eq!(resp.into_inner().msg, msg);
         }
 
         Ok(())

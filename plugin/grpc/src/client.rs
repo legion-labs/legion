@@ -1,5 +1,6 @@
 //! Provides client helper methods for making `gRPC` calls.
 
+use http::{Request, Response};
 use hyper::client::HttpConnector;
 use hyper_rustls::HttpsConnector;
 use tonic::{body::BoxBody, codegen::BoxFuture};
@@ -34,7 +35,7 @@ where
             client: hyper::Client::builder()
                 .pool_max_idle_per_host(std::usize::MAX)
                 .pool_idle_timeout(None)
-                .http2_only(true)
+                .http2_only(false)
                 .build(connector),
             uri: uri.into(),
         }
@@ -54,7 +55,7 @@ where
     }
 }
 
-impl<Connector, ReqBody> tower::Service<http::Request<ReqBody>> for Client<Connector, ReqBody>
+impl<Connector, ReqBody> tower::Service<Request<ReqBody>> for Client<Connector, ReqBody>
 where
     Connector: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
     ReqBody: tonic::codegen::Body + Send + 'static,
@@ -62,7 +63,7 @@ where
     <ReqBody as tonic::codegen::Body>::Error:
         Into<Box<(dyn std::error::Error + Send + Sync + 'static)>>,
 {
-    type Response = http::Response<hyper::Body>;
+    type Response = Response<hyper::Body>;
 
     type Error = hyper::Error;
 
@@ -75,7 +76,7 @@ where
         std::task::Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: http::Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         let req = prepare_grpc_request(req, &self.uri);
         Box::pin(self.client.request(req))
     }
@@ -88,7 +89,6 @@ impl Client<HttpsConnector<HttpConnector>, BoxBody> {
         Self::new_from_connector(uri, https)
     }
 }
-
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.

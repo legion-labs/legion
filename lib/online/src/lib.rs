@@ -58,3 +58,4 @@
 #![allow(clippy::implicit_hasher, clippy::missing_errors_doc)]
 
 pub mod authentication;
+pub mod grpc;

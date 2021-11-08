@@ -3,10 +3,12 @@ use std::{net::SocketAddr, sync::Arc};
 use anyhow::bail;
 use async_trait::async_trait;
 use hyper::{
+    client::HttpConnector,
     server::conn::AddrStream,
     service::{make_service_fn, service_fn},
-    Body, Request, Response, Server, StatusCode,
+    Body, Client, Request, Response, Server, StatusCode,
 };
+use hyper_rustls::HttpsConnector;
 use log::{debug, info, warn};
 use tokio::sync::Mutex;
 use url::Url;
@@ -20,6 +22,8 @@ pub struct AwsCognitoClientAuthenticator {
     pub scopes: Vec<String>,
     pub port: u16,
     pub identity_provider: Option<String>,
+
+    client: Client<HttpsConnector<HttpConnector>>,
 }
 
 use super::ClientTokenSet;
@@ -103,6 +107,9 @@ impl AwsCognitoClientAuthenticator {
         // If there is no explicit port, assume the default port for the scheme.
         let port = redirect_uri.port().unwrap_or(80);
 
+        let client = hyper::Client::builder()
+            .build::<_, hyper::Body>(hyper_rustls::HttpsConnector::with_native_roots());
+
         Ok(Self {
             domain_name,
             region,
@@ -110,6 +117,7 @@ impl AwsCognitoClientAuthenticator {
             scopes,
             port,
             identity_provider,
+            client,
         })
     }
 
@@ -135,24 +143,15 @@ impl AwsCognitoClientAuthenticator {
     ///
     /// ```
     /// use legion_online::authentication::AwsCognitoClientAuthenticator;
+    /// use url::Url;
     ///
     /// # fn main() {
-    /// let auth = AwsCognitoClientAuthenticator{
-    ///     domain_name: "legionlabs-playground".to_string(),
-    ///     region: "ca-central-1".to_string(),
-    ///     client_id: "4a6vcgqr108in51n3di730hk25".to_string(),
-    ///     scopes: vec![
-    ///         "aws.cognito.signin.user.admin".to_string(),
-    ///         "email".to_string(),
-    ///         "openid".to_string(),
-    ///     ],
-    ///     port: 5001,
-    ///     identity_provider: Some("Azure".to_string()),
-    /// };
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
+    /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     ///
     /// assert_eq!(
     ///     auth.get_authorization_url().as_str(),
-    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin%2Bemail%2Bopenid&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2F&identity_provider=Azure",
+    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2F&identity_provider=Azure",
     /// );
     /// # }
     /// ```
@@ -179,20 +178,11 @@ impl AwsCognitoClientAuthenticator {
     ///
     /// ```
     /// use legion_online::authentication::AwsCognitoClientAuthenticator;
+    /// use url::Url;
     ///
     /// # fn main() {
-    /// let auth = AwsCognitoClientAuthenticator{
-    ///     domain_name: "legionlabs-playground".to_string(),
-    ///     region: "ca-central-1".to_string(),
-    ///     client_id: "4a6vcgqr108in51n3di730hk25".to_string(),
-    ///     scopes: vec![
-    ///         "aws.cognito.signin.user.admin".to_string(),
-    ///         "email".to_string(),
-    ///         "openid".to_string(),
-    ///     ],
-    ///     port: 5001,
-    ///     identity_provider: Some("Azure".to_string()),
-    /// };
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
+    /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     ///
     /// assert_eq!(
     ///     auth.get_logout_url().as_str(),
@@ -216,20 +206,11 @@ impl AwsCognitoClientAuthenticator {
     ///
     /// ```
     /// use legion_online::authentication::AwsCognitoClientAuthenticator;
+    /// use url::Url;
     ///
     /// # fn main() {
-    /// let auth = AwsCognitoClientAuthenticator{
-    ///     domain_name: "legionlabs-playground".to_string(),
-    ///     region: "ca-central-1".to_string(),
-    ///     client_id: "4a6vcgqr108in51n3di730hk25".to_string(),
-    ///     scopes: vec![
-    ///         "aws.cognito.signin.user.admin".to_string(),
-    ///         "email".to_string(),
-    ///         "openid".to_string(),
-    ///     ],
-    ///     port: 5001,
-    ///     identity_provider: Some("Azure".to_string()),
-    /// };
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
+    /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     ///
     /// assert_eq!(
     ///     auth.get_access_token_url().as_str(),
@@ -247,20 +228,11 @@ impl AwsCognitoClientAuthenticator {
     ///
     /// ```
     /// use legion_online::authentication::AwsCognitoClientAuthenticator;
+    /// use url::Url;
     ///
     /// # fn main() {
-    /// let auth = AwsCognitoClientAuthenticator{
-    ///     domain_name: "legionlabs-playground".to_string(),
-    ///     region: "ca-central-1".to_string(),
-    ///     client_id: "4a6vcgqr108in51n3di730hk25".to_string(),
-    ///     scopes: vec![
-    ///         "aws.cognito.signin.user.admin".to_string(),
-    ///         "email".to_string(),
-    ///         "openid".to_string(),
-    ///     ],
-    ///     port: 5001,
-    ///     identity_provider: Some("Azure".to_string()),
-    /// };
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
+    /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     ///
     /// assert_eq!(
     ///     auth.get_user_info_url().as_str(),
@@ -461,9 +433,6 @@ impl AwsCognitoClientAuthenticator {
         &self,
         code: &str,
     ) -> anyhow::Result<ClientTokenSet> {
-        let client =
-            hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
-
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .uri(self.get_access_token_url().as_str())
@@ -479,16 +448,13 @@ impl AwsCognitoClientAuthenticator {
             self.get_redirect_uri(),
         )))?;
 
-        let resp = client.request(req).await?;
+        let resp = self.client.request(req).await?;
         let bytes = hyper::body::to_bytes(resp.into_body()).await?;
         serde_json::from_slice(&bytes).map_err(Into::into)
     }
 
     /// Get user information from an access token.
     pub async fn get_user_info(&self, access_token: &str) -> anyhow::Result<UserInfo> {
-        let client =
-            hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
-
         let req = hyper::Request::builder()
             .method(hyper::Method::GET)
             .uri(self.get_user_info_url().as_str())
@@ -498,7 +464,7 @@ impl AwsCognitoClientAuthenticator {
             )
             .body(Body::empty())?;
 
-        let resp = client.request(req).await?;
+        let resp = self.client.request(req).await?;
         let bytes = hyper::body::to_bytes(resp.into_body()).await?;
         serde_json::from_slice(&bytes).map_err(Into::into)
     }
@@ -518,9 +484,6 @@ impl Authenticator for AwsCognitoClientAuthenticator {
     /// If the call does not return a new refresh token within the `TokenSet`, the specified
     /// refresh token will be filled in instead.
     async fn refresh_login(&self, refresh_token: &str) -> anyhow::Result<ClientTokenSet> {
-        let client =
-            hyper::Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
-
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .uri(self.get_access_token_url().as_str())
@@ -534,7 +497,7 @@ impl Authenticator for AwsCognitoClientAuthenticator {
             self.client_id, refresh_token,
         )))?;
 
-        let resp = client.request(req).await?;
+        let resp = self.client.request(req).await?;
         let bytes = hyper::body::to_bytes(resp.into_body()).await?;
         serde_json::from_slice(&bytes)
             .map_err(Into::into)
