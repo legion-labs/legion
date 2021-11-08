@@ -13,9 +13,10 @@ const routes = [
     component: Home
   },
   {
-    path: '/log',
+    path: '/log/:process_id',
     name: 'Log',
-    component: Log
+    component: Log,
+    props: true
   },
   {
     path: '/timeline/:process_id',

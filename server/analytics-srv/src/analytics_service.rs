@@ -15,9 +15,11 @@ use legion_telemetry_proto::analytics::ListProcessStreamsRequest;
 use legion_telemetry_proto::analytics::ListStreamBlocksReply;
 use legion_telemetry_proto::analytics::ListStreamBlocksRequest;
 use legion_telemetry_proto::analytics::ListStreamsReply;
+use legion_telemetry_proto::analytics::LogEntry;
 use legion_telemetry_proto::analytics::ProcessListReply;
+use legion_telemetry_proto::analytics::ProcessLogReply;
+use legion_telemetry_proto::analytics::ProcessLogRequest;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
-
 use tonic::{Request, Response, Status};
 
 pub struct AnalyticsService {
@@ -81,6 +83,31 @@ impl AnalyticsService {
     ) -> Result<BlockSpansReply> {
         let mut connection = self.pool.acquire().await?;
         compute_block_spans(&mut connection, &self.data_dir, process, stream, block_id).await
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    async fn process_log_impl(
+        &self,
+        process: &legion_telemetry::ProcessInfo,
+    ) -> Result<ProcessLogReply> {
+        let mut connection = self.pool.acquire().await?;
+        let mut entries = vec![];
+        let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64; // factor out
+        let ts_offset = process.start_ticks;
+        for_each_process_log_entry(
+            &mut connection,
+            &self.data_dir,
+            &process.process_id,
+            |ts, entry| {
+                let time_ms = (ts - ts_offset) as f64 * inv_tsc_frequency;
+                entries.push(LogEntry {
+                    msg: entry,
+                    time_ms,
+                });
+            },
+        )
+        .await?;
+        Ok(ProcessLogReply { entries })
     }
 }
 
@@ -232,6 +259,25 @@ impl PerformanceAnalytics for AnalyticsService {
             Err(e) => {
                 return Err(Status::internal(format!("Error in block_call_tree: {}", e)));
             }
+        }
+    }
+
+    async fn list_process_log_entries(
+        &self,
+        request: Request<ProcessLogRequest>,
+    ) -> Result<Response<ProcessLogReply>, Status> {
+        let inner_request = request.into_inner();
+        if inner_request.process.is_none() {
+            return Err(Status::internal(String::from(
+                "Missing process in block_call_tree",
+            )));
+        }
+        match self.process_log_impl(&inner_request.process.unwrap()).await {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => Err(Status::internal(format!(
+                "Error in list_process_log_entries: {}",
+                e
+            ))),
         }
     }
 }

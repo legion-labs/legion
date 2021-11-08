@@ -6,12 +6,13 @@ import public "block.proto";
 package analytics;
 
 service PerformanceAnalytics {
-    rpc find_process(FindProcessRequest) returns (FindProcessReply);
-    rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
-    rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
-    rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
     rpc block_call_tree(BlockCallTreeRequest) returns (BlockCallTreeReply);
     rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
+    rpc find_process(FindProcessRequest) returns (FindProcessReply);
+    rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
+    rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
+    rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
+    rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
 }
 
 // find_process
@@ -96,4 +97,18 @@ message BlockSpansReply{
     string block_id = 3;
     double begin_ms = 4;
     double end_ms = 5;
+}
+
+// list_process_log_entries
+message ProcessLogRequest{
+    telemetry.Process process = 1;
+}
+
+message LogEntry{
+    double time_ms = 1;
+    string msg = 2;
+}
+
+message ProcessLogReply{
+    repeated LogEntry entries = 1;
 }
