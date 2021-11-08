@@ -302,13 +302,8 @@ impl Project {
         std::fs::remove_file(resource_path).map_err(Error::IOError)?;
         std::fs::remove_file(metadata_path).map_err(Error::IOError)?;
 
-        if let Some(pos) = self.db.local_resources.iter().position(|x| *x == id) {
-            self.db.local_resources.remove(pos);
-        }
-
-        if let Some(pos) = self.db.remote_resources.iter().position(|x| *x == id) {
-            self.db.remote_resources.remove(pos);
-        }
+        self.db.local_resources.retain(|x| *x != id);
+        self.db.remote_resources.retain(|x| *x != id);
         Ok(())
     }
 
