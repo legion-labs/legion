@@ -27,7 +27,7 @@ function fetchBlockSpans (block) {
   request.setBlockId(block.getBlockId())
   this.client.block_spans(request, null, (err, response) => {
     if (err) {
-      console.error('error in block_call_tree', err)
+      console.error('error in block_spans', err)
     } else {
       response.getScopesList().forEach(scopeDesc => {
         this.scopes[scopeDesc.getHash()] = scopeDesc
@@ -86,7 +86,7 @@ function fetchProcessInfo () {
     request.setProcessId(this.process_id)
     this.client.find_process(request, null, (err, response) => {
       if (err) {
-        console.error('error in list_process_streams', err)
+        console.error('error in find_process', err)
       } else {
         this.process_list.push(response.getProcess())
         this.fetchStreams()
