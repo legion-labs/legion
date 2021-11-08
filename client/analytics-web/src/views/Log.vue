@@ -1,6 +1,12 @@
 <template>
   <div>
     <div>process_id {{ process_id }}</div>
+    <template v-for="(entry, index) in log_entries_list">
+      <div class="logentry" :key="index">
+        <span class="logentrytime">{{ entry.getTimeMs().toFixed(3) }}</span>
+        <span>{{ entry.getMsg() }}</span>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -38,7 +44,8 @@ function fetchLog (process) {
     if (err) {
       console.error('error in list_process_log_entries', err)
     } else {
-      console.log(response.getEntriesList())
+      const newLogEntries = response.getEntriesList()
+      this.log_entries_list = this.log_entries_list.concat(newLogEntries)
     }
   })
 }
@@ -54,7 +61,8 @@ export default {
   created: onCreated,
   data: function () {
     return {
-      process_list: []
+      process_list: [],
+      log_entries_list: []
     }
   },
   methods: {
@@ -63,3 +71,15 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.logentry {
+  text-align: left;
+  background-color: #F0F0F0;
+}
+
+.logentrytime {
+  font-weight: bold;
+  padding-right: 20px;
+}
+</style>
