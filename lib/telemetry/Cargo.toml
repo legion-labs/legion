@@ -14,7 +14,7 @@ anyhow = "1.0"
 raw-cpuid = "10.2.0"
 tonic = "0.6"
 prost = "0.9"
-whoami = "1.1"
+whoami = "1.2"
 uuid = { version = "0.8", features = ["v4"] }
 chrono = "0.4"
 tokio = { version = "1.13", features = ["full"] }
