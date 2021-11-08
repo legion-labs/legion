@@ -56,7 +56,7 @@
 // crate-specific exceptions:
 #![allow()]
 
-use legion_app::{App, CoreStage, Plugin};
+use legion_app::{App, AppExit, CoreStage, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
 use legion_renderer::{components::RenderSurface, Renderer, RendererSystemLabel};
 
@@ -84,6 +84,7 @@ fn render_presenter_snapshots(
     renderer: Res<'_, Renderer>,
     mut q_pres_snapshots: Query<'_, '_, &mut PresenterSnapshot>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    mut app_exit_events: EventWriter<'_, '_, AppExit>,
 ) {
     let graphics_queue = renderer.graphics_queue();
     let transient_descriptor_heap = renderer.transient_descriptor_heap();
@@ -97,14 +98,17 @@ fn render_presenter_snapshots(
             .map(Mut::into_inner);
 
         if let Some(render_surface) = render_surface {
-            pres_snapshot
+            if pres_snapshot
                 .present(
                     graphics_queue,
                     transient_descriptor_heap,
                     wait_sem,
                     render_surface,
                 )
-                .unwrap();
+                .unwrap()
+            {
+                app_exit_events.send(AppExit);
+            }
         }
     }
 }

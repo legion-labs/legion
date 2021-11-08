@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use legion_app::{App, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use legion_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
 use legion_ecs::prelude::*;
@@ -76,6 +76,13 @@ fn main() {
                 .help("Saves a snapshot of the scene")
                 .takes_value(false),
         )
+        .arg(
+            clap::Arg::with_name("compare")
+                .short("c")
+                .long("compare")
+                .help("Compares snapshot with a reference, -s, --snapshot must be present")
+                .takes_value(false),
+        )
         .get_matches();
 
     SimpleLogger::new()
@@ -96,13 +103,14 @@ fn main() {
         .value_of("height")
         .map(|s| s.parse::<f32>().unwrap())
         .unwrap_or(720.0);
-
-    if matches.is_present("snapshot") {
+    // matches.is_present("snapshot")
+    if true {
         app.insert_resource(SnapshotDescriptor { width, height })
-            .insert_resource(ScheduleRunnerSettings::run_once())
+            .insert_resource(ScheduleRunnerSettings::default())
             .add_plugin(ScheduleRunnerPlugin::default())
             .add_plugin(PresenterSnapshotPlugin::default())
-            .add_startup_system(add_presenter_snapshot_system.system());
+            .add_startup_system(add_presenter_snapshot_system.system())
+            .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
         app.insert_resource(WindowDescriptor {
             width,
@@ -229,4 +237,20 @@ fn add_presenter_snapshot_system(
         )
         .unwrap(),
     );
+}
+
+fn on_snapshot_app_exit(
+    mut commands: Commands,
+    mut app_exit: EventReader<AppExit>,
+    query_render_surface: Query<(Entity, &RenderSurface)>,
+    query_presenter_snapshot: Query<(Entity, &PresenterSnapshot)>,
+) {
+    if app_exit.iter().last().is_some() {
+        for (entity, _) in query_render_surface.iter() {
+            commands.entity(entity).despawn();
+        }
+        for (entity, _) in query_presenter_snapshot.iter() {
+            commands.entity(entity).despawn();
+        }
+    }
 }

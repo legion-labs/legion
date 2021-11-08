@@ -47,10 +47,11 @@ impl PresenterSnapshot {
         transient_descriptor_heap: &<DefaultApi as GfxApi>::DescriptorHeap,
         wait_sem: &<DefaultApi as GfxApi>::Semaphore,
         render_surface: &mut RenderSurface,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<bool> {
         //
         // Render
         //
+        let snapshot_frame = self.frame_idx == self.frame_target;
         self.offscreen_helper.present(
             graphics_queue,
             transient_descriptor_heap,
@@ -58,7 +59,7 @@ impl PresenterSnapshot {
             render_surface,
             |rgba: &[u8], row_pitch: usize| {
                 // write frame to file
-                if self.frame_idx == self.frame_target {
+                if snapshot_frame {
                     let file =
                         std::fs::File::create(format!("presenter_snapshot_{}.png", self.frame_idx))
                             .unwrap();
@@ -77,7 +78,11 @@ impl PresenterSnapshot {
         )?;
 
         self.frame_idx += 1;
-        Ok(())
+        if snapshot_frame {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     pub fn render_surface_id(&self) -> RenderSurfaceId {
