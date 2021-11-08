@@ -116,15 +116,28 @@
 //! ...
 //! ```
 //!
-//! # `explain` - Tool that shows details about specified `ResourceId`
+//! # `explain` - Tool that shows details about specified `ResourceId` or `ResourcePathId`
 //!
-//! Prints information about the source of a given `ResourceId` - the `ResourcePathId`. It includes a human readable representation of that id.
+//! The tool prints detailed information about the specified `ResourcePathId` - such as the name of the source resource, its type and all transformations with their parameters.
+//!
+//! It also accepts `ResourceId` as input - in which case it will try to find its corresponding `ResourcePathId` (if it occured during data compilation).
+//!
+//! ## `ResourceId` as input
 //!
 //! ```text
 //! $ data-scrape explain ea2510e8000000007354d8806dd36e41
 //!
-//! Explained:      /world/sample_1/ground.mesh => offline_mesh => runtime_mesh
+//! Explained:      /world/sample_1/ground.mesh (offline_mesh) => runtime_mesh
 //! ResourcePathId: 4e1dd441000000007714d9ad404557f7|ea2510e8
+//! ```
+//!
+//! ## `ResourcePathId` as input
+//!
+//! ```text
+//! $ data-scrape explain '13b5a84e0000000061f6de1be4764697|74dc0e53_albedo|f9c9670d'
+//!
+//! Explained:      /image/ground.psd (psd) => offline_texture('albedo') => runtime_texture
+//! ResourcePathId: 13b5a84e0000000061f6de1be4764697|74dc0e53_albedo|f9c9670d
 //! ```
 //!
 //! **NOTE**: It requires running `data-scrape configure` first.
@@ -425,17 +438,28 @@ fn main() -> Result<(), String> {
     } else if let ("explain", Some(cmd_args)) = matches.subcommand() {
         if let Some(config) = config {
             let (build, project) = config.open()?;
+            let text_id = cmd_args.value_of("id").unwrap();
 
-            if let Ok(resource_id) = ResourceId::from_str(cmd_args.value_of("id").unwrap()) {
-                if let Ok(name) = project.resource_name(resource_id) {
-                    println!("{} = {}", resource_id, name);
+            let rid = {
+                if let Ok(rid) = ResourcePathId::from_str(text_id) {
+                    rid
+                } else if let Ok(resource_id) = ResourceId::from_str(text_id) {
+                    if let Some(rid) = build.lookup_pathid(resource_id) {
+                        rid
+                    } else {
+                        return Err(format!(
+                            "Failed to find a source ResroucePathId for ResourceId '{}'",
+                            resource_id
+                        ));
+                    }
+                } else {
+                    return Err(format!("Failed to parse id: '{}'", text_id));
                 }
-                if let Some(rid) = build.lookup_pathid(resource_id) {
-                    let pretty = pretty_name_from_pathid(&rid, &project, &config);
-                    println!("Explained: \t{}", pretty);
-                    println!("ResourcePathId: {}", rid);
-                }
-            }
+            };
+
+            let pretty = pretty_name_from_pathid(&rid, &project, &config);
+            println!("Explained: \t{}", pretty);
+            println!("ResourcePathId: {}", rid);
         } else {
             return Err("Configuration not found. Run 'data-scrape configure' first.".to_string());
         }
@@ -680,7 +704,7 @@ fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Con
         .get(&rid.source_resource().ty())
         .cloned()
         .unwrap_or_else(|| rid.source_resource().ty().to_string());
-    output_text.push_str(&format!(" => {}", source_ty_pretty));
+    output_text.push_str(&format!(" ({})", source_ty_pretty));
 
     for (_, target, name) in rid.transforms() {
         let target_ty_pretty = config
