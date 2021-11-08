@@ -349,18 +349,18 @@ impl OffscreenHelper {
             .unwrap();
         descriptor_set_writer
             .set_descriptors(
-                "hdr_sampler",
-                0,
-                &[DescriptorRef::Sampler(&self.bilinear_sampler)],
-            )
-            .unwrap();
-        descriptor_set_writer
-            .set_descriptors(
                 "hdr_image",
                 0,
                 &[DescriptorRef::TextureView(
                     render_surface.shader_resource_view(),
                 )],
+            )
+            .unwrap();
+        descriptor_set_writer
+            .set_descriptors(
+                "hdr_sampler",
+                0,
+                &[DescriptorRef::Sampler(&self.bilinear_sampler)],
             )
             .unwrap();
         let descriptor_set_handle = descriptor_set_writer.flush().unwrap();

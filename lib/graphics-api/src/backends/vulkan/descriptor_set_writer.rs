@@ -73,9 +73,9 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
             descriptor_offset as usize + update_datas.len() <= descriptor.element_count as usize
         );
         let descriptor_first_update_data = descriptor.update_data_offset;
-        let descriptorset = &self.descriptor_set;
+        let descriptor_set = &self.descriptor_set;
         let write_descriptor_builder = vk::WriteDescriptorSet::builder()
-            .dst_set(descriptorset.0)
+            .dst_set(descriptor_set.0)
             .dst_binding(descriptor.binding)
             .dst_array_element(descriptor_offset)
             .descriptor_type(descriptor.vk_type);
@@ -146,7 +146,6 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
                     if let DescriptorRef::TextureView(texture_view) = update_data {
                         assert!(texture_view.is_compatible_with_descriptor(descriptor));
                         let image_info = &mut self.vk_descriptors.image_infos[next_index as usize];
-                        next_index += 1;
 
                         image_info.sampler = vk::Sampler::null();
                         image_info.image_view = texture_view.vk_image_view();
