@@ -24,7 +24,7 @@ legion-utils = { path = "../../lib/utils" }
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
 crossbeam = "0.8"
-webrtc = "0.2"
+webrtc = "0.3"
 interceptor = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
