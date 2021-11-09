@@ -19,7 +19,7 @@ impl ResourceHandles {
         self.0.insert(resource_id, handle);
     }
 
-    /// Insert a `ResourceHandleUntyped`
+    /// Remove a `ResourceHandleUntyped`
     pub fn remove(&mut self, resource_id: ResourceId) -> Option<ResourceHandleUntyped> {
         self.0.remove(&resource_id)
     }
