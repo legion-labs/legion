@@ -2838,6 +2838,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "graphics-cgen"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_yaml",
+ "strum 0.21.0",
+]
+
+[[package]]
 name = "graphics-sandbox"
 version = "0.1.0"
 dependencies = [
@@ -7269,6 +7279,9 @@ name = "strum"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaf86bbcfd1fa9670b7a129f64fc0c9fcbbfe4f1bc4210e9e98fe71ffc12cde2"
+dependencies = [
+ "strum_macros 0.21.1",
+]
 
 [[package]]
 name = "strum"
