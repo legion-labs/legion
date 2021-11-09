@@ -13,8 +13,6 @@ use legion_utils::DefaultHash;
 
 use crate::PropertyDescriptor;
 use crate::ResourcePathId;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 
 /// The trait defines a resource that can be stored in a [`Project`].
 pub trait OfflineResource: Asset {
