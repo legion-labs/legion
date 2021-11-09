@@ -1,6 +1,6 @@
 #![allow(unsafe_code)]
 
-use std::{borrow::Cow, future::Future, marker::PhantomData};
+use std::{borrow::Cow, marker::PhantomData};
 
 use async_trait::async_trait;
 use legion_ecs_macros::all_tuples;
