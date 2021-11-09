@@ -7,7 +7,12 @@
         </div>
       </div>
     </template>
-    <canvas id="canvas_timeline" width="1024px" height="640px" v-on:wheel.prevent="onZoom"></canvas>
+    <canvas id="canvas_timeline"
+            width="1024px"
+            height="640px"
+            v-on:wheel.prevent="onZoom"
+            v-on:mousemove="onPan"
+            />
   </div>
 </template>
 
@@ -163,6 +168,25 @@ function drawCanvas () {
   }
 }
 
+function onPan (evt) {
+  if (evt.buttons !== 1) {
+    this.begin_drag = undefined
+    return
+  }
+  if (!this.begin_drag) {
+    this.begin_drag = {
+      beginMouseX: evt.offsetX,
+      beginMouseY: evt.offsetY,
+      viewRange: this.getViewRange()
+    }
+  }
+  const canvas = document.getElementById('canvas_timeline')
+  const factor = (this.begin_drag.viewRange[1] - this.begin_drag.viewRange[0]) / canvas.width
+  const offsetMs = factor * (this.begin_drag.beginMouseX - evt.offsetX)
+  this.view_range = [this.begin_drag.viewRange[0] + offsetMs, this.begin_drag.viewRange[1] + offsetMs]
+  this.drawCanvas()
+}
+
 function onZoom (evt) {
   const speed = 1.25
   const factor = evt.wheelDeltaY > 0 ? (1.0 / speed) : speed
@@ -192,6 +216,7 @@ function reset (processId) {
   this.min_ms = Infinity
   this.max_ms = -Infinity
   this.view_range = undefined
+  this.begin_drag = undefined
   this.fetchProcessInfo()
 }
 
@@ -213,7 +238,8 @@ export default {
       threads: {},
       min_ms: Infinity,
       max_ms: -Infinity,
-      view_range: undefined
+      view_range: undefined,
+      begin_drag: undefined
     }
   },
   methods: {
@@ -224,6 +250,7 @@ export default {
     fetchProcessInfo: fetchProcessInfo,
     fetchStreams: fetchStreams,
     getViewRange: getViewRange,
+    onPan: onPan,
     onZoom: onZoom,
     reset: reset
   }
