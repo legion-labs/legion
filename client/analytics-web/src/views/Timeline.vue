@@ -2,12 +2,12 @@
   <div>
     <template v-for="process in process_list">
       <div :key="process.getProcessId()">{{ process.getExe() }} {{ process.getProcessId() }}
-        <div v-if="process.getParentProcessId() != ''">
+  <div v-if="process.getParentProcessId() != ''">
           <router-link v-bind:to="{ name: 'Timeline', params: {process_id: process.getParentProcessId() } }">Parent timeline</router-link>
         </div>
       </div>
     </template>
-    <canvas id="canvas_timeline" width="1024px" height="640px"></canvas>
+    <canvas id="canvas_timeline" width="1024px" height="640px" v-on:wheel.prevent="onZoom"></canvas>
   </div>
 </template>
 
@@ -116,8 +116,9 @@ function onMounted () {
 }
 
 function drawThread (thread, threadVerticalOffset) {
-  const begin = this.min_ms
-  const end = this.max_ms
+  const viewRange = this.getViewRange()
+  const begin = viewRange[0]
+  const end = viewRange[1]
   const invTimeSpan = 1.0 / (end - begin)
   const canvas = document.getElementById('canvas_timeline')
   const canvasWidth = canvas.clientWidth
@@ -162,6 +163,26 @@ function drawCanvas () {
   }
 }
 
+function onZoom (evt) {
+  const speed = 1.25
+  const factor = evt.wheelDeltaY > 0 ? (1.0 / speed) : speed
+  const oldRange = this.getViewRange()
+  const length = oldRange[1] - oldRange[0]
+  const newLength = length * factor
+  const canvas = document.getElementById('canvas_timeline')
+  const pctCursor = evt.offsetX / canvas.width
+  const pivot = oldRange[0] + (length * pctCursor)
+  this.view_range = [pivot - (newLength * pctCursor), pivot + (newLength * (1 - pctCursor))]
+  this.drawCanvas()
+}
+
+function getViewRange () {
+  if (this.view_range) {
+    return this.view_range
+  }
+  return [this.min_ms, this.max_ms]
+}
+
 function reset (processId) {
   this.process_id = processId
   this.block_list = []
@@ -170,6 +191,7 @@ function reset (processId) {
   this.threads = []
   this.min_ms = Infinity
   this.max_ms = -Infinity
+  this.view_range = undefined
   this.fetchProcessInfo()
 }
 
@@ -190,7 +212,8 @@ export default {
       scopes: {},
       threads: {},
       min_ms: Infinity,
-      max_ms: -Infinity
+      max_ms: -Infinity,
+      view_range: undefined
     }
   },
   methods: {
@@ -200,6 +223,8 @@ export default {
     fetchBlocks: fetchBlocks,
     fetchProcessInfo: fetchProcessInfo,
     fetchStreams: fetchStreams,
+    getViewRange: getViewRange,
+    onZoom: onZoom,
     reset: reset
   }
 }
