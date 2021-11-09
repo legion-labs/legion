@@ -5,12 +5,11 @@
 //! [`ResourceRegistry`] takes responsibility of managing the in-memory representation of resources.
 
 use std::any::Any;
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::io;
 
 use legion_data_runtime::Asset;
+use legion_utils::DefaultHash;
 
 use crate::PropertyDescriptor;
 use crate::ResourcePathId;
@@ -50,9 +49,7 @@ pub trait ResourceReflection {
     /// Retrieve a Property Descriptor for a field
     fn get_property_descriptor(&self, field_name: &str) -> Option<&PropertyDescriptor> {
         if let Some(descriptors) = self.get_property_descriptors() {
-            let mut hasher = DefaultHasher::new();
-            field_name.hash(&mut hasher);
-            return descriptors.get(&hasher.finish());
+            return descriptors.get(&field_name.default_hash());
         }
         None
     }
