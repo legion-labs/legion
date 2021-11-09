@@ -1,8 +1,11 @@
 <template>
   <div>
-    <div>process_id {{ process_id }}</div>
     <template v-for="process in process_list">
-      <div :key="process.getProcessId()">exe {{ process.getExe() }}</div>
+      <div :key="process.getProcessId()">{{ process.getExe() }} {{ process.getProcessId() }}
+        <div v-if="process.getParentProcessId() != ''">
+          <router-link v-bind:to="{ name: 'Timeline', params: {process_id: process.getParentProcessId() } }">Parent timeline</router-link>
+        </div>
+      </div>
     </template>
     <template v-for="stream in stream_list">
       <div :key="stream.getStreamId()">Stream {{ stream.getStreamId() }}</div>
@@ -99,6 +102,18 @@ function fetchProcessInfo () {
 }
 
 function onTimelineCreated () {
+  this.$watch(
+    () => this.$route.params,
+    (toParams, previousParams) => {
+      this.process_id = toParams.process_id
+      this.block_list = []
+      this.process_list = []
+      this.span_block_list = []
+      this.scopes = {}
+      this.stream_list = []
+      this.fetchProcessInfo()
+    }
+  )
   this.client = new PerformanceAnalyticsClient('http://' + location.hostname + ':9090', null, null)
   this.fetchProcessInfo()
 }
