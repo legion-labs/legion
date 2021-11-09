@@ -40,7 +40,7 @@ impl ParallelSystemExecutor for SingleThreadedExecutor {
                     legion_utils::tracing::info_span!("system", name = &*system.name());
                 #[cfg(feature = "trace")]
                 let _system_guard = system_span.enter();
-                system.system_mut().run((), world);
+                system.system_mut().run((), world).await;
             }
         }
     }

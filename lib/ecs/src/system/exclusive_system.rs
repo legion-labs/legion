@@ -19,19 +19,18 @@ pub trait ExclusiveSystem: Send + Sync {
     fn check_change_tick(&mut self, change_tick: u32);
 }
 
-pub struct ExclusiveSystemFn<F, Params, AsyncResult> {
+pub struct ExclusiveSystemFn<F, AsyncResult> {
     func: F,
     name: Cow<'static, str>,
     last_change_tick: u32,
-    params: PhantomData<Params>,
     async_result: PhantomData<AsyncResult>,
 }
 
 #[async_trait]
-impl<F, AsyncResult> ExclusiveSystem for ExclusiveSystemFn<F, &mut World, AsyncResult>
+impl<F, AsyncResult> ExclusiveSystem for ExclusiveSystemFn<F, AsyncResult>
 where
     F: FnMut(&mut World) -> AsyncResult + Send + Sync + 'static,
-    AsyncResult: Future + Send + Sync,
+    AsyncResult: Future + Send + Sync + 'static,
 {
     fn name(&self) -> Cow<'static, str> {
         self.name.clone()
@@ -63,18 +62,16 @@ pub trait IntoExclusiveSystem<Params, SystemType> {
     fn exclusive_system(self) -> SystemType;
 }
 
-impl<F, Params, AsyncResult>
-    IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F, Params, AsyncResult>> for F
+impl<F, AsyncResult> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F, AsyncResult>> for F
 where
-    F: FnMut(Params) -> AsyncResult + Send + Sync + 'static,
-    AsyncResult: Future + Send,
+    F: FnMut(&mut World) -> AsyncResult + Send + Sync + 'static,
+    AsyncResult: Future + Send + Sync + 'static,
 {
-    fn exclusive_system(self) -> ExclusiveSystemFn<F, Params, AsyncResult> {
+    fn exclusive_system(self) -> ExclusiveSystemFn<F, AsyncResult> {
         ExclusiveSystemFn {
             func: self,
             name: core::any::type_name::<F>().into(),
             last_change_tick: 0,
-            params: PhantomData,
             async_result: PhantomData,
         }
     }

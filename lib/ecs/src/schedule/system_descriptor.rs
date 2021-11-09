@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use crate::{
     schedule::{
         AmbiguitySetLabel, BoxedAmbiguitySetLabel, BoxedSystemLabel, IntoRunCriteria,
@@ -78,8 +80,10 @@ impl IntoSystemDescriptor<()> for ExclusiveSystemDescriptor {
     }
 }
 
-impl<F, Params, AsyncResult> IntoSystemDescriptor<()>
-    for ExclusiveSystemFn<F, Params, AsyncResult>
+impl<F, AsyncResult> IntoSystemDescriptor<()> for ExclusiveSystemFn<F, AsyncResult>
+where
+    F: FnMut(&mut crate::prelude::World) -> AsyncResult + Send + Sync + 'static,
+    AsyncResult: Future + Send + Sync + 'static,
 {
     fn into_descriptor(self) -> SystemDescriptor {
         new_exclusive_descriptor(Box::new(self)).into_descriptor()
