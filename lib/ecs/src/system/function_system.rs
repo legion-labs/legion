@@ -461,7 +461,7 @@ macro_rules! impl_system_function {
                 FnMut(In<Input>, $($param),*) -> Out +
                 FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out,
         Input: Send + 'static,
-        Out: Future + 'static
+        Out: Send + 'static
         {
             #[inline]
             async unsafe fn run(&mut self, input: Input, state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
