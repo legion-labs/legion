@@ -12,7 +12,7 @@ use crate::{
 pub trait ExclusiveSystem: Send + Sync {
     fn name(&self) -> Cow<'static, str>;
 
-    async fn run(&mut self, world: &mut World);
+    async fn run<'w>(&mut self, world: &'w mut World);
 
     fn initialize(&mut self, world: &mut World);
 
@@ -29,14 +29,14 @@ pub struct ExclusiveSystemFn<F, AsyncResult> {
 #[async_trait]
 impl<F, AsyncResult> ExclusiveSystem for ExclusiveSystemFn<F, AsyncResult>
 where
-    F: FnMut(&mut World) -> AsyncResult + Send + Sync + 'static,
+    F: for<'w> FnMut(&'w mut World) -> AsyncResult + Send + Sync + 'static,
     AsyncResult: Future + Send + Sync + 'static,
 {
     fn name(&self) -> Cow<'static, str> {
         self.name.clone()
     }
 
-    async fn run(&mut self, world: &mut World) {
+    async fn run<'w>(&mut self, world: &'w mut World) {
         // The previous value is saved in case this exclusive system is run by another exclusive
         // system
         let saved_last_tick = world.last_change_tick;
@@ -62,9 +62,9 @@ pub trait IntoExclusiveSystem<Params, SystemType> {
     fn exclusive_system(self) -> SystemType;
 }
 
-impl<F, AsyncResult> IntoExclusiveSystem<&mut World, ExclusiveSystemFn<F, AsyncResult>> for F
+impl<F, Params, AsyncResult> IntoExclusiveSystem<Params, ExclusiveSystemFn<F, AsyncResult>> for F
 where
-    F: FnMut(&mut World) -> AsyncResult + Send + Sync + 'static,
+    F: FnMut(Params) -> AsyncResult + Send + Sync + 'static,
     AsyncResult: Future + Send + Sync + 'static,
 {
     fn exclusive_system(self) -> ExclusiveSystemFn<F, AsyncResult> {
@@ -88,7 +88,7 @@ impl ExclusiveSystem for ExclusiveSystemCoerced {
         self.system.name()
     }
 
-    async fn run(&mut self, world: &mut World) {
+    async fn run<'w>(&mut self, world: &'w mut World) {
         {
             let archetypes = world.archetypes();
             let new_generation = archetypes.generation();

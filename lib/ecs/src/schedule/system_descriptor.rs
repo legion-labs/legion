@@ -82,7 +82,7 @@ impl IntoSystemDescriptor<()> for ExclusiveSystemDescriptor {
 
 impl<F, AsyncResult> IntoSystemDescriptor<()> for ExclusiveSystemFn<F, AsyncResult>
 where
-    F: FnMut(&mut crate::prelude::World) -> AsyncResult + Send + Sync + 'static,
+    F: for<'w> FnMut(&'w mut crate::prelude::World) -> AsyncResult + Send + Sync + 'static,
     AsyncResult: Future + Send + Sync + 'static,
 {
     fn into_descriptor(self) -> SystemDescriptor {
