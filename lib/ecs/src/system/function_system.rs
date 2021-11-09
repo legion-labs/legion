@@ -428,29 +428,28 @@ macro_rules! impl_system_function {
     ($($param: ident),*) => {
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<Out, Func: Send + Sync + 'static, AsyncResult, $($param: SystemParam),*>
+        impl<Out, Func: Send + Sync + 'static, $($param: SystemParam),*>
             SystemParamFunction<(), Out, ($($param,)*), ()>
         for Func
         where
             for <'a> &'a mut Func:
-                FnMut($($param),*) -> AsyncResult +
-                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> AsyncResult,
-            AsyncResult: Future<Output = Out> + Send + 'static
+                FnMut($($param),*) -> Out +
+                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out,
+            Out: Send + 'static
         {
             #[inline]
             async unsafe fn run(&mut self, _input: (), state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
                 // Yes, this is strange, but rustc fails to compile this impl
                 // without using this function.
                 #[allow(clippy::too_many_arguments)]
-                async fn call_inner<Out, AsyncResult, $($param,)*>(
-                    mut f: impl FnMut($($param,)*) -> AsyncResult,
+                fn call_inner<Out, $($param,)*>(
+                    mut f: impl FnMut($($param,)*) -> Out,
                     $($param: $param,)*
-                ) -> Out
-                where AsyncResult: Future<Output = Out> + Send {
-                    f($($param,)*).await
+                ) -> Out {
+                    f($($param,)*)
                 }
                 let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
-                call_inner(self, $($param),*).await
+                call_inner(self, $($param),*)
             }
         }
 

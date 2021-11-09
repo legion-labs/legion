@@ -11,6 +11,8 @@ mod system_set;
 
 use std::fmt::Debug;
 
+use async_trait::async_trait;
+
 pub use executor::*;
 pub use executor_parallel::*;
 pub use graph_utils::GraphNode;
@@ -350,10 +352,11 @@ impl Schedule {
     }
 }
 
+#[async_trait]
 impl Stage for Schedule {
-    fn run(&mut self, world: &mut World) {
+    async fn run(&mut self, world: &mut World) {
         loop {
-            match self.run_criteria.should_run(world) {
+            match self.run_criteria.should_run(world).await {
                 ShouldRun::No => return,
                 ShouldRun::Yes => {
                     self.run_once(world);
