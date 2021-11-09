@@ -7,12 +7,6 @@
         </div>
       </div>
     </template>
-    <template v-for="stream in stream_list">
-      <div :key="stream.getStreamId()">Stream {{ stream.getStreamId() }}</div>
-    </template>
-    <template v-for="block in block_list">
-      <div :key="block.getBlockId()">Block {{ block.getBlockId() }}</div>
-    </template>
     <canvas id="canvas_timeline" width="1024px" height="640px"></canvas>
   </div>
 </template>
@@ -22,7 +16,7 @@ import { BlockSpansRequest, ListStreamBlocksRequest, ListProcessStreamsRequest, 
 
 function fetchBlockSpans (block) {
   const streamId = block.getStreamId()
-  const stream = this.stream_list.find(stream => stream.getStreamId() === streamId)
+  const stream = this.threads[streamId].streamInfo
   const process = this.process_list.find(process => process.getProcessId() === stream.getProcessId())
   const request = new BlockSpansRequest()
   request.setProcess(process)
@@ -35,7 +29,10 @@ function fetchBlockSpans (block) {
       response.getScopesList().forEach(scopeDesc => {
         this.scopes[scopeDesc.getHash()] = scopeDesc
       })
-      this.span_block_list.push(response)
+      this.min_ms = Math.min(this.min_ms, response.getBeginMs())
+      this.max_ms = Math.max(this.max_ms, response.getEndMs())
+      this.threads[streamId].spanBlocks.push(response)
+      this.drawCanvas()
     }
   })
 }
@@ -67,14 +64,15 @@ function fetchStreams () {
       if (err) {
         console.error('error in list_process_streams', err)
       } else {
-        const filteredStreams = []
         response.getStreamsList().forEach(stream => {
           if (stream.getTagsList().includes('cpu')) {
+            this.threads[stream.getStreamId()] = {
+              streamInfo: stream,
+              spanBlocks: []
+            }
             this.fetchBlocks(stream.getStreamId())
-            filteredStreams.push(stream)
           }
         })
-        this.stream_list = filteredStreams
       }
     })
   } catch (err) {
@@ -105,13 +103,7 @@ function onTimelineCreated () {
   this.$watch(
     () => this.$route.params,
     (toParams, previousParams) => {
-      this.process_id = toParams.process_id
-      this.block_list = []
-      this.process_list = []
-      this.span_block_list = []
-      this.scopes = {}
-      this.stream_list = []
-      this.fetchProcessInfo()
+      this.reset(toParams.process_id)
     }
   )
   this.client = new PerformanceAnalyticsClient('http://' + location.hostname + ':9090', null, null)
@@ -123,26 +115,25 @@ function onMounted () {
   this.renderingContext = canvas.getContext('2d')
 }
 
-function drawCanvas () {
-  const begin = Math.min(...this.span_block_list.map(block => block.getBeginMs()))
-  const end = Math.max(...this.span_block_list.map(block => block.getEndMs()))
+function drawThread (thread, threadVerticalOffset) {
+  const begin = this.min_ms
+  const end = this.max_ms
   const invTimeSpan = 1.0 / (end - begin)
   const canvas = document.getElementById('canvas_timeline')
   const canvasWidth = canvas.clientWidth
   const msToPixelsFactor = invTimeSpan * canvasWidth
   this.renderingContext.font = '15px arial'
-
   const testString = '<>_w'
   const testTextMetrics = this.renderingContext.measureText(testString)
   const characterWidth = testTextMetrics.width / testString.length
   const characterHeight = testTextMetrics.actualBoundingBoxAscent
-  this.span_block_list.forEach(blockSpans => {
+  thread.spanBlocks.forEach(blockSpans => {
     blockSpans.getSpansList().forEach(span => {
       const beginPixels = (span.getBeginMs() - begin) * msToPixelsFactor
       const endPixels = (span.getEndMs() - begin) * msToPixelsFactor
       const callWidth = endPixels - beginPixels
       const depth = span.getDepth()
-      const offsetY = depth * 20
+      const offsetY = threadVerticalOffset + (depth * 20)
       if (depth % 2 === 0) {
         this.renderingContext.fillStyle = '#7DF9FF'
       } else {
@@ -161,6 +152,27 @@ function drawCanvas () {
   })
 }
 
+function drawCanvas () {
+  const canvas = document.getElementById('canvas_timeline')
+  this.renderingContext.clearRect(0, 0, canvas.width, canvas.height)
+  let threadVerticalOffset = 0
+  for (const streamId in this.threads) {
+    this.drawThread(this.threads[streamId], threadVerticalOffset)
+    threadVerticalOffset += 110
+  }
+}
+
+function reset (processId) {
+  this.process_id = processId
+  this.block_list = []
+  this.process_list = []
+  this.scopes = {}
+  this.threads = []
+  this.min_ms = Infinity
+  this.max_ms = -Infinity
+  this.fetchProcessInfo()
+}
+
 export default {
   name: 'Timeline',
   props: {
@@ -175,20 +187,20 @@ export default {
     return {
       block_list: [],
       process_list: [],
-      span_block_list: [],
       scopes: {},
-      stream_list: []
+      threads: {},
+      min_ms: Infinity,
+      max_ms: -Infinity
     }
   },
-  watch: {
-    span_block_list: drawCanvas
-  },
   methods: {
-    fetchBlocks: fetchBlocks,
+    drawCanvas: drawCanvas,
+    drawThread: drawThread,
     fetchBlockSpans: fetchBlockSpans,
-    fetchStreams: fetchStreams,
+    fetchBlocks: fetchBlocks,
     fetchProcessInfo: fetchProcessInfo,
-    drawCanvas: drawCanvas
+    fetchStreams: fetchStreams,
+    reset: reset
   }
 }
 </script>
