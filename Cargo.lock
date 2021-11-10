@@ -468,7 +468,6 @@ dependencies = [
  "lambda_http",
  "lambda_runtime",
  "legion-aws",
- "legion-online",
  "legion-streaming-proto",
  "log",
  "serde",

@@ -10,7 +10,6 @@ keywords = ["game", "legion"]
 
 [dependencies]
 legion-aws = { path = "../../lib/aws", version = "0.1.0" }
-legion-online = { path = "../../lib/online", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
 tonic-web = "0.2"
