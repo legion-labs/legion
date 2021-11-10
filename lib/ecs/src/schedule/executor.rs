@@ -1,14 +1,13 @@
-use async_trait::async_trait;
 use downcast_rs::{impl_downcast, Downcast};
+use legion_tasks::{ComputeTaskPool, TaskPool};
 
 use crate::{archetype::ArchetypeGeneration, schedule::ParallelSystemContainer, world::World};
 
-#[async_trait]
 pub trait ParallelSystemExecutor: Downcast + Send + Sync {
     /// Called by `SystemStage` whenever `systems` have been changed.
     fn rebuild_cached_data(&mut self, systems: &[ParallelSystemContainer]);
 
-    async fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World);
+    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World);
 }
 
 impl_downcast!(ParallelSystemExecutor);
@@ -26,23 +25,30 @@ impl Default for SingleThreadedExecutor {
     }
 }
 
-#[async_trait]
 impl ParallelSystemExecutor for SingleThreadedExecutor {
     fn rebuild_cached_data(&mut self, _: &[ParallelSystemContainer]) {}
 
-    async fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
+    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
         self.update_archetypes(systems, world);
 
-        for system in systems {
-            if system.should_run() {
-                #[cfg(feature = "trace")]
-                let system_span =
-                    legion_utils::tracing::info_span!("system", name = &*system.name());
-                #[cfg(feature = "trace")]
-                let _system_guard = system_span.enter();
-                system.system_mut().run((), world).await;
-            }
-        }
+        let compute_pool = world
+            .get_resource_or_insert_with(|| ComputeTaskPool(TaskPool::default()))
+            .clone();
+
+        compute_pool.scope(|scope| {
+            scope.spawn(async {
+                for system in systems {
+                    if system.should_run() {
+                        #[cfg(feature = "trace")]
+                        let system_span =
+                            legion_utils::tracing::info_span!("system", name = &*system.name());
+                        #[cfg(feature = "trace")]
+                        let _system_guard = system_span.enter();
+                        system.system_mut().run((), world).await;
+                    }
+                }
+            });
+        });
     }
 }
 

@@ -106,7 +106,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
         }
     }
 
-    async fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
+    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
         #[cfg(test)]
         if self.events_sender.is_none() {
             let (sender, receiver) = async_channel::unbounded::<SchedulingEvent>();
