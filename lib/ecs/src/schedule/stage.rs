@@ -821,7 +821,7 @@ impl Stage for SystemStage {
                 // Run systems that want to be at the start of stage.
                 for container in &mut self.exclusive_at_start {
                     if should_run(container, &self.run_criteria, default_should_run) {
-                        container.system_mut().run(world);
+                        container.system_mut().run(world).await;
                     }
                 }
 

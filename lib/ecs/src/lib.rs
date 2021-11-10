@@ -784,235 +784,255 @@ mod tests {
 
     #[test]
     fn remove_tracking() {
-        let mut world = World::new();
+        let pool = TaskPool::default();
+        pool.scope(|scope| {
+            scope.spawn(async {
+                let mut world = World::new();
 
-        let a = world.spawn().insert_bundle((SparseStored(0), A(123))).id();
-        let b = world.spawn().insert_bundle((SparseStored(1), A(123))).id();
+                let a = world.spawn().insert_bundle((SparseStored(0), A(123))).id();
+                let b = world.spawn().insert_bundle((SparseStored(1), A(123))).id();
 
-        world.entity_mut(a).despawn();
-        assert_eq!(
-            world.removed::<A>().collect::<Vec<_>>(),
-            &[a],
-            "despawning results in 'removed component' state for table components"
-        );
-        assert_eq!(
-            world.removed::<SparseStored>().collect::<Vec<_>>(),
-            &[a],
-            "despawning results in 'removed component' state for sparse set components"
-        );
+                world.entity_mut(a).despawn();
+                assert_eq!(
+                    world.removed::<A>().collect::<Vec<_>>(),
+                    &[a],
+                    "despawning results in 'removed component' state for table components"
+                );
+                assert_eq!(
+                    world.removed::<SparseStored>().collect::<Vec<_>>(),
+                    &[a],
+                    "despawning results in 'removed component' state for sparse set components"
+                );
 
-        world.entity_mut(b).insert(B(1));
-        assert_eq!(
-            world.removed::<A>().collect::<Vec<_>>(),
-            &[a],
-            "archetype moves does not result in 'removed component' state"
-        );
+                world.entity_mut(b).insert(B(1));
+                assert_eq!(
+                    world.removed::<A>().collect::<Vec<_>>(),
+                    &[a],
+                    "archetype moves does not result in 'removed component' state"
+                );
 
-        world.entity_mut(b).remove::<A>();
-        assert_eq!(
-            world.removed::<A>().collect::<Vec<_>>(),
-            &[a, b],
-            "removing a component results in a 'removed component' state"
-        );
+                world.entity_mut(b).remove::<A>();
+                assert_eq!(
+                    world.removed::<A>().collect::<Vec<_>>(),
+                    &[a, b],
+                    "removing a component results in a 'removed component' state"
+                );
 
-        world.clear_trackers();
-        assert_eq!(
-            world.removed::<A>().collect::<Vec<_>>(),
-            &[],
-            "clearning trackers clears removals"
-        );
-        assert_eq!(
-            world.removed::<SparseStored>().collect::<Vec<_>>(),
-            &[],
-            "clearning trackers clears removals"
-        );
-        assert_eq!(
-            world.removed::<B>().collect::<Vec<_>>(),
-            &[],
-            "clearning trackers clears removals"
-        );
+                world.clear_trackers().await;
+                assert_eq!(
+                    world.removed::<A>().collect::<Vec<_>>(),
+                    &[],
+                    "clearning trackers clears removals"
+                );
+                assert_eq!(
+                    world.removed::<SparseStored>().collect::<Vec<_>>(),
+                    &[],
+                    "clearning trackers clears removals"
+                );
+                assert_eq!(
+                    world.removed::<B>().collect::<Vec<_>>(),
+                    &[],
+                    "clearning trackers clears removals"
+                );
 
-        // TODO: uncomment when world.clear() is implemented
-        // let c = world.spawn().insert_bundle(("abc", 123)).id();
-        // let d = world.spawn().insert_bundle(("abc", 123)).id();
-        // world.clear();
-        // assert_eq!(
-        //     world.removed::<i32>(),
-        //     &[c, d],
-        //     "world clears result in 'removed component' states"
-        // );
-        // assert_eq!(
-        //     world.removed::<&'static str>(),
-        //     &[c, d, b],
-        //     "world clears result in 'removed component' states"
-        // );
-        // assert_eq!(
-        //     world.removed::<f64>(),
-        //     &[b],
-        //     "world clears result in 'removed component' states"
-        // );
+                // TODO: uncomment when world.clear() is implemented
+                // let c = world.spawn().insert_bundle(("abc", 123)).id();
+                // let d = world.spawn().insert_bundle(("abc", 123)).id();
+                // world.clear();
+                // assert_eq!(
+                //     world.removed::<i32>(),
+                //     &[c, d],
+                //     "world clears result in 'removed component' states"
+                // );
+                // assert_eq!(
+                //     world.removed::<&'static str>(),
+                //     &[c, d, b],
+                //     "world clears result in 'removed component' states"
+                // );
+                // assert_eq!(
+                //     world.removed::<f64>(),
+                //     &[b],
+                //     "world clears result in 'removed component' states"
+                // );
+            });
+        });
     }
 
     #[test]
     fn added_tracking() {
-        let mut world = World::new();
-        let a = world.spawn().insert(A(123)).id();
+        let pool = TaskPool::default();
+        pool.scope(|scope| {
+            scope.spawn(async {
+                let mut world = World::new();
+                let a = world.spawn().insert(A(123)).id();
 
-        assert_eq!(world.query::<&A>().iter(&world).count(), 1);
-        assert_eq!(
-            world.query_filtered::<(), Added<A>>().iter(&world).count(),
-            1
-        );
-        assert_eq!(world.query::<&A>().iter(&world).count(), 1);
-        assert_eq!(
-            world.query_filtered::<(), Added<A>>().iter(&world).count(),
-            1
-        );
-        assert!(world.query::<&A>().get(&world, a).is_ok());
-        assert!(world
-            .query_filtered::<(), Added<A>>()
-            .get(&world, a)
-            .is_ok());
-        assert!(world.query::<&A>().get(&world, a).is_ok());
-        assert!(world
-            .query_filtered::<(), Added<A>>()
-            .get(&world, a)
-            .is_ok());
+                assert_eq!(world.query::<&A>().iter(&world).count(), 1);
+                assert_eq!(
+                    world.query_filtered::<(), Added<A>>().iter(&world).count(),
+                    1
+                );
+                assert_eq!(world.query::<&A>().iter(&world).count(), 1);
+                assert_eq!(
+                    world.query_filtered::<(), Added<A>>().iter(&world).count(),
+                    1
+                );
+                assert!(world.query::<&A>().get(&world, a).is_ok());
+                assert!(world
+                    .query_filtered::<(), Added<A>>()
+                    .get(&world, a)
+                    .is_ok());
+                assert!(world.query::<&A>().get(&world, a).is_ok());
+                assert!(world
+                    .query_filtered::<(), Added<A>>()
+                    .get(&world, a)
+                    .is_ok());
 
-        world.clear_trackers();
+                world.clear_trackers().await;
 
-        assert_eq!(world.query::<&A>().iter(&world).count(), 1);
-        assert_eq!(
-            world.query_filtered::<(), Added<A>>().iter(&world).count(),
-            0
-        );
-        assert_eq!(world.query::<&A>().iter(&world).count(), 1);
-        assert_eq!(
-            world.query_filtered::<(), Added<A>>().iter(&world).count(),
-            0
-        );
-        assert!(world.query::<&A>().get(&world, a).is_ok());
-        assert!(world
-            .query_filtered::<(), Added<A>>()
-            .get(&world, a)
-            .is_err());
-        assert!(world.query::<&A>().get(&world, a).is_ok());
-        assert!(world
-            .query_filtered::<(), Added<A>>()
-            .get(&world, a)
-            .is_err());
+                assert_eq!(world.query::<&A>().iter(&world).count(), 1);
+                assert_eq!(
+                    world.query_filtered::<(), Added<A>>().iter(&world).count(),
+                    0
+                );
+                assert_eq!(world.query::<&A>().iter(&world).count(), 1);
+                assert_eq!(
+                    world.query_filtered::<(), Added<A>>().iter(&world).count(),
+                    0
+                );
+                assert!(world.query::<&A>().get(&world, a).is_ok());
+                assert!(world
+                    .query_filtered::<(), Added<A>>()
+                    .get(&world, a)
+                    .is_err());
+                assert!(world.query::<&A>().get(&world, a).is_ok());
+                assert!(world
+                    .query_filtered::<(), Added<A>>()
+                    .get(&world, a)
+                    .is_err());
+            });
+        });
     }
 
     #[test]
     fn added_queries() {
-        let mut world = World::default();
-        let e1 = world.spawn().insert(A(0)).id();
+        let pool = TaskPool::default();
+        pool.scope(|scope| {
+            scope.spawn(async {
+                let mut world = World::default();
+                let e1 = world.spawn().insert(A(0)).id();
 
-        fn get_added<Com: Component>(world: &mut World) -> Vec<Entity> {
-            world
-                .query_filtered::<Entity, Added<Com>>()
-                .iter(world)
-                .collect::<Vec<Entity>>()
-        }
+                fn get_added<Com: Component>(world: &mut World) -> Vec<Entity> {
+                    world
+                        .query_filtered::<Entity, Added<Com>>()
+                        .iter(world)
+                        .collect::<Vec<Entity>>()
+                }
 
-        assert_eq!(get_added::<A>(&mut world), vec![e1]);
-        world.entity_mut(e1).insert(B(0));
-        assert_eq!(get_added::<A>(&mut world), vec![e1]);
-        assert_eq!(get_added::<B>(&mut world), vec![e1]);
+                assert_eq!(get_added::<A>(&mut world), vec![e1]);
+                world.entity_mut(e1).insert(B(0));
+                assert_eq!(get_added::<A>(&mut world), vec![e1]);
+                assert_eq!(get_added::<B>(&mut world), vec![e1]);
 
-        world.clear_trackers();
-        assert!(get_added::<A>(&mut world).is_empty());
-        let e2 = world.spawn().insert_bundle((A(1), B(1))).id();
-        assert_eq!(get_added::<A>(&mut world), vec![e2]);
-        assert_eq!(get_added::<B>(&mut world), vec![e2]);
+                world.clear_trackers().await;
+                assert!(get_added::<A>(&mut world).is_empty());
+                let e2 = world.spawn().insert_bundle((A(1), B(1))).id();
+                assert_eq!(get_added::<A>(&mut world), vec![e2]);
+                assert_eq!(get_added::<B>(&mut world), vec![e2]);
 
-        let added = world
-            .query_filtered::<Entity, (Added<A>, Added<B>)>()
-            .iter(&world)
-            .collect::<Vec<Entity>>();
-        assert_eq!(added, vec![e2]);
+                let added = world
+                    .query_filtered::<Entity, (Added<A>, Added<B>)>()
+                    .iter(&world)
+                    .collect::<Vec<Entity>>();
+                assert_eq!(added, vec![e2]);
+            });
+        });
     }
 
     #[test]
     fn changed_trackers() {
-        let mut world = World::default();
-        let e1 = world.spawn().insert_bundle((A(0), B(0))).id();
-        let e2 = world.spawn().insert_bundle((A(0), B(0))).id();
-        let e3 = world.spawn().insert_bundle((A(0), B(0))).id();
-        world.spawn().insert_bundle((A(0), B(0)));
+        let pool = TaskPool::default();
+        pool.scope(|scope| {
+            scope.spawn(async {
+                let mut world = World::default();
+                let e1 = world.spawn().insert_bundle((A(0), B(0))).id();
+                let e2 = world.spawn().insert_bundle((A(0), B(0))).id();
+                let e3 = world.spawn().insert_bundle((A(0), B(0))).id();
+                world.spawn().insert_bundle((A(0), B(0)));
 
-        world.clear_trackers();
+                world.clear_trackers().await;
 
-        for (i, mut a) in world.query::<&mut A>().iter_mut(&mut world).enumerate() {
-            if i % 2 == 0 {
-                a.0 += 1;
-            }
-        }
+                for (i, mut a) in world.query::<&mut A>().iter_mut(&mut world).enumerate() {
+                    if i % 2 == 0 {
+                        a.0 += 1;
+                    }
+                }
 
-        fn get_filtered<F: WorldQuery>(world: &mut World) -> Vec<Entity>
-        where
-            F::Fetch: FilterFetch,
-        {
-            world
-                .query_filtered::<Entity, F>()
-                .iter(world)
-                .collect::<Vec<Entity>>()
-        }
+                fn get_filtered<F: WorldQuery>(world: &mut World) -> Vec<Entity>
+                where
+                    F::Fetch: FilterFetch,
+                {
+                    world
+                        .query_filtered::<Entity, F>()
+                        .iter(world)
+                        .collect::<Vec<Entity>>()
+                }
 
-        assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e1, e3]);
+                assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e1, e3]);
 
-        // ensure changing an entity's archetypes also moves its changed state
-        world.entity_mut(e1).insert(C);
+                // ensure changing an entity's archetypes also moves its changed state
+                world.entity_mut(e1).insert(C);
 
-        assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e3, e1], "changed entities list should not change (although the order will due to archetype moves)");
+                assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e3, e1], "changed entities list should not change (although the order will due to archetype moves)");
 
-        // spawning a new A entity should not change existing changed state
-        world.entity_mut(e1).insert_bundle((A(0), B(0)));
-        assert_eq!(
-            get_filtered::<Changed<A>>(&mut world),
-            vec![e3, e1],
-            "changed entities list should not change"
-        );
+                // spawning a new A entity should not change existing changed state
+                world.entity_mut(e1).insert_bundle((A(0), B(0)));
+                assert_eq!(
+                    get_filtered::<Changed<A>>(&mut world),
+                    vec![e3, e1],
+                    "changed entities list should not change"
+                );
 
-        // removing an unchanged entity should not change changed state
-        assert!(world.despawn(e2));
-        assert_eq!(
-            get_filtered::<Changed<A>>(&mut world),
-            vec![e3, e1],
-            "changed entities list should not change"
-        );
+                // removing an unchanged entity should not change changed state
+                assert!(world.despawn(e2));
+                assert_eq!(
+                    get_filtered::<Changed<A>>(&mut world),
+                    vec![e3, e1],
+                    "changed entities list should not change"
+                );
 
-        // removing a changed entity should remove it from enumeration
-        assert!(world.despawn(e1));
-        assert_eq!(
-            get_filtered::<Changed<A>>(&mut world),
-            vec![e3],
-            "e1 should no longer be returned"
-        );
+                // removing a changed entity should remove it from enumeration
+                assert!(world.despawn(e1));
+                assert_eq!(
+                    get_filtered::<Changed<A>>(&mut world),
+                    vec![e3],
+                    "e1 should no longer be returned"
+                );
 
-        world.clear_trackers();
+                world.clear_trackers().await;
 
-        assert!(get_filtered::<Changed<A>>(&mut world).is_empty());
+                assert!(get_filtered::<Changed<A>>(&mut world).is_empty());
 
-        let e4 = world.spawn().id();
+                let e4 = world.spawn().id();
 
-        world.entity_mut(e4).insert(A(0));
-        assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e4]);
-        assert_eq!(get_filtered::<Added<A>>(&mut world), vec![e4]);
+                world.entity_mut(e4).insert(A(0));
+                assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e4]);
+                assert_eq!(get_filtered::<Added<A>>(&mut world), vec![e4]);
 
-        world.entity_mut(e4).insert(A(1));
-        assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e4]);
+                world.entity_mut(e4).insert(A(1));
+                assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e4]);
 
-        world.clear_trackers();
+                world.clear_trackers().await;
 
-        // ensure inserting multiple components set changed state for all components and set added
-        // state for non existing components even when changing archetype.
-        world.entity_mut(e4).insert_bundle((A(0), B(0)));
+                // ensure inserting multiple components set changed state for all components and set added
+                // state for non existing components even when changing archetype.
+                world.entity_mut(e4).insert_bundle((A(0), B(0)));
 
-        assert!(get_filtered::<Added<A>>(&mut world).is_empty());
-        assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e4]);
-        assert_eq!(get_filtered::<Added<B>>(&mut world), vec![e4]);
-        assert_eq!(get_filtered::<Changed<B>>(&mut world), vec![e4]);
+                assert!(get_filtered::<Added<A>>(&mut world).is_empty());
+                assert_eq!(get_filtered::<Changed<A>>(&mut world), vec![e4]);
+                assert_eq!(get_filtered::<Added<B>>(&mut world), vec![e4]);
+                assert_eq!(get_filtered::<Changed<B>>(&mut world), vec![e4]);
+            });
+        });
     }
 
     #[test]
@@ -1036,20 +1056,25 @@ mod tests {
 
     #[test]
     fn changed_query() {
-        let mut world = World::default();
-        let e1 = world.spawn().insert_bundle((A(0), B(0))).id();
+        let pool = TaskPool::default();
+        pool.scope(|scope| {
+            scope.spawn(async {
+                let mut world = World::default();
+                let e1 = world.spawn().insert_bundle((A(0), B(0))).id();
 
-        fn get_changed(world: &mut World) -> Vec<Entity> {
-            world
-                .query_filtered::<Entity, Changed<A>>()
-                .iter(world)
-                .collect::<Vec<Entity>>()
-        }
-        assert_eq!(get_changed(&mut world), vec![e1]);
-        world.clear_trackers();
-        assert_eq!(get_changed(&mut world), vec![]);
-        *world.get_mut(e1).unwrap() = A(1);
-        assert_eq!(get_changed(&mut world), vec![e1]);
+                fn get_changed(world: &mut World) -> Vec<Entity> {
+                    world
+                        .query_filtered::<Entity, Changed<A>>()
+                        .iter(world)
+                        .collect::<Vec<Entity>>()
+                }
+                assert_eq!(get_changed(&mut world), vec![e1]);
+                world.clear_trackers().await;
+                assert_eq!(get_changed(&mut world), vec![]);
+                *world.get_mut(e1).unwrap() = A(1);
+                assert_eq!(get_changed(&mut world), vec![e1]);
+            });
+        });
     }
 
     #[test]
@@ -1268,26 +1293,31 @@ mod tests {
 
     #[test]
     fn trackers_query() {
-        let mut world = World::default();
-        let e1 = world.spawn().insert_bundle((A(0), B(0))).id();
-        world.spawn().insert(B(0));
+        let pool = TaskPool::default();
+        pool.scope(|scope| {
+            scope.spawn(async {
+                let mut world = World::default();
+                let e1 = world.spawn().insert_bundle((A(0), B(0))).id();
+                world.spawn().insert(B(0));
 
-        let mut trackers_query = world.query::<Option<ChangeTrackers<A>>>();
-        let trackers = trackers_query.iter(&world).collect::<Vec<_>>();
-        let a_trackers = trackers[0].as_ref().unwrap();
-        assert!(trackers[1].is_none());
-        assert!(a_trackers.is_added());
-        assert!(a_trackers.is_changed());
-        world.clear_trackers();
-        let trackers = trackers_query.iter(&world).collect::<Vec<_>>();
-        let a_trackers = trackers[0].as_ref().unwrap();
-        assert!(!a_trackers.is_added());
-        assert!(!a_trackers.is_changed());
-        *world.get_mut(e1).unwrap() = A(1);
-        let trackers = trackers_query.iter(&world).collect::<Vec<_>>();
-        let a_trackers = trackers[0].as_ref().unwrap();
-        assert!(!a_trackers.is_added());
-        assert!(a_trackers.is_changed());
+                let mut trackers_query = world.query::<Option<ChangeTrackers<A>>>();
+                let trackers = trackers_query.iter(&world).collect::<Vec<_>>();
+                let a_trackers = trackers[0].as_ref().unwrap();
+                assert!(trackers[1].is_none());
+                assert!(a_trackers.is_added());
+                assert!(a_trackers.is_changed());
+                world.clear_trackers().await;
+                let trackers = trackers_query.iter(&world).collect::<Vec<_>>();
+                let a_trackers = trackers[0].as_ref().unwrap();
+                assert!(!a_trackers.is_added());
+                assert!(!a_trackers.is_changed());
+                *world.get_mut(e1).unwrap() = A(1);
+                let trackers = trackers_query.iter(&world).collect::<Vec<_>>();
+                let a_trackers = trackers[0].as_ref().unwrap();
+                assert!(!a_trackers.is_added());
+                assert!(a_trackers.is_changed());
+            });
+        });
     }
 
     #[test]
