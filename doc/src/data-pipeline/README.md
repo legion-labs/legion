@@ -18,7 +18,7 @@ One of the goals of the runtime format is to do as little post-load processing o
 
 ##### Structured Data Model
 
-[Structured Data Model](./data-model.html) chapter is dedicated to the problem of declaring offline and runtime data formats, data edition, compilation and many other related matters.
+[Structured Data Model](./data-model.md) chapter is dedicated to the problem of declaring offline and runtime data formats, data edition, compilation and many other related matters.
 
 #### Focus on Many Different Workflows
 
