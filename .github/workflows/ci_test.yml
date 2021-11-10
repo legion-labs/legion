@@ -52,7 +52,7 @@ jobs:
 
   test_gpu:
     name: Running gpu tests
-    if: ${{ false }}  # disable for now
+    if: ${{ true }}  # enable it back for now
     needs: lint
     strategy:
       matrix:
