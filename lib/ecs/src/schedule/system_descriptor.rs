@@ -1,11 +1,12 @@
-use std::future::Future;
-
 use crate::{
     schedule::{
         AmbiguitySetLabel, BoxedAmbiguitySetLabel, BoxedSystemLabel, IntoRunCriteria,
         RunCriteriaDescriptorOrLabel, SystemLabel,
     },
-    system::{BoxedSystem, ExclusiveSystem, ExclusiveSystemCoerced, ExclusiveSystemFn, IntoSystem},
+    system::{
+        AsyncExclusiveSystemFn, BoxedSystem, ExclusiveSystem, ExclusiveSystemCoerced,
+        ExclusiveSystemFn, IntoSystem,
+    },
 };
 
 /// Encapsulates a system and information on when it run in a `SystemStage`.
@@ -80,10 +81,9 @@ impl IntoSystemDescriptor<()> for ExclusiveSystemDescriptor {
     }
 }
 
-impl<F, AsyncResult> IntoSystemDescriptor<()> for ExclusiveSystemFn<F, AsyncResult>
+impl<F> IntoSystemDescriptor<()> for ExclusiveSystemFn<F>
 where
-    F: for<'w> FnMut(&'w mut crate::prelude::World) -> AsyncResult + Send + Sync + 'static,
-    AsyncResult: Future + Send + Sync + 'static,
+    F: for<'w> AsyncExclusiveSystemFn<'w> + 'static,
 {
     fn into_descriptor(self) -> SystemDescriptor {
         new_exclusive_descriptor(Box::new(self)).into_descriptor()
