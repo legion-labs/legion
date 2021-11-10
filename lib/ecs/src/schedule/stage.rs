@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use async_trait::async_trait;
 use downcast_rs::{impl_downcast, Downcast};
 use fixedbitset::FixedBitSet;
+use legion_tasks::TaskPool;
 use legion_utils::{tracing::info, HashMap, HashSet};
 
 use super::IntoSystemDescriptor;
@@ -21,11 +21,10 @@ use crate::{
 };
 
 /// A type that can run as a step of a [`Schedule`](super::Schedule).
-#[async_trait]
 pub trait Stage: Downcast + Send + Sync {
     /// Runs the stage; this happens once per update.
     /// Implementors must initialize all of their state and systems before running the first time.
-    async fn run(&mut self, world: &mut World);
+    fn run(&mut self, world: &mut World);
 }
 
 impl_downcast!(Stage);
@@ -741,10 +740,9 @@ fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<
     ambiguities
 }
 
-#[async_trait]
 impl Stage for SystemStage {
     #[allow(clippy::too_many_lines)]
-    async fn run(&mut self, world: &mut World) {
+    fn run(&mut self, world: &mut World) {
         if let Some(world_id) = self.world_id {
             assert!(
                 world.id() == world_id,
@@ -770,7 +768,7 @@ impl Stage for SystemStage {
 
         let mut run_stage_loop = true;
         while run_stage_loop {
-            let should_run = self.stage_run_criteria.should_run(world).await;
+            let should_run = self.stage_run_criteria.should_run(world);
             match should_run {
                 ShouldRun::No => return,
                 ShouldRun::NoAndCheckAgain => continue,
@@ -781,24 +779,29 @@ impl Stage for SystemStage {
             };
 
             // Evaluate system run criteria.
-            for index in 0..self.run_criteria.len() {
-                let (run_criteria, tail) = self.run_criteria.split_at_mut(index);
-                let mut criteria = &mut tail[0];
-                criteria.update_archetypes(world);
-                match &mut criteria.inner {
-                    RunCriteriaInner::Single(system) => {
-                        criteria.should_run = system.run((), world).await;
+            let pool = TaskPool::default();
+            pool.scope(|scope| {
+                scope.spawn(async {
+                    for index in 0..self.run_criteria.len() {
+                        let (run_criteria, tail) = self.run_criteria.split_at_mut(index);
+                        let mut criteria = &mut tail[0];
+                        criteria.update_archetypes(world);
+                        match &mut criteria.inner {
+                            RunCriteriaInner::Single(system) => {
+                                criteria.should_run = system.run((), world).await;
+                            }
+                            RunCriteriaInner::Piped {
+                                input: parent,
+                                system,
+                                ..
+                            } => {
+                                criteria.should_run =
+                                    system.run(run_criteria[*parent].should_run, world).await;
+                            }
+                        }
                     }
-                    RunCriteriaInner::Piped {
-                        input: parent,
-                        system,
-                        ..
-                    } => {
-                        criteria.should_run =
-                            system.run(run_criteria[*parent].should_run, world).await;
-                    }
-                }
-            }
+                });
+            });
 
             let mut run_system_loop = true;
             let mut default_should_run = ShouldRun::Yes;
@@ -819,11 +822,16 @@ impl Stage for SystemStage {
                 }
 
                 // Run systems that want to be at the start of stage.
-                for container in &mut self.exclusive_at_start {
-                    if should_run(container, &self.run_criteria, default_should_run) {
-                        container.system_mut().run(world).await;
-                    }
-                }
+                let pool = TaskPool::default();
+                pool.scope(|scope| {
+                    scope.spawn(async {
+                        for container in &mut self.exclusive_at_start {
+                            if should_run(container, &self.run_criteria, default_should_run) {
+                                container.system_mut().run(world).await;
+                            }
+                        }
+                    });
+                });
 
                 // Run parallel systems using the executor.
                 // TODO: hard dependencies, nested sets, whatever... should be evaluated here.
@@ -834,11 +842,16 @@ impl Stage for SystemStage {
                 self.executor.run_systems(&mut self.parallel, world);
 
                 // Run systems that want to be between parallel systems and their command buffers.
-                for container in &mut self.exclusive_before_commands {
-                    if should_run(container, &self.run_criteria, default_should_run) {
-                        container.system_mut().run(world);
-                    }
-                }
+                let pool = TaskPool::default();
+                pool.scope(|scope| {
+                    scope.spawn(async {
+                        for container in &mut self.exclusive_before_commands {
+                            if should_run(container, &self.run_criteria, default_should_run) {
+                                container.system_mut().run(world).await;
+                            }
+                        }
+                    });
+                });
 
                 // Apply parallel systems' buffers.
                 for container in &mut self.parallel {
@@ -848,49 +861,60 @@ impl Stage for SystemStage {
                 }
 
                 // Run systems that want to be at the end of stage.
-                for container in &mut self.exclusive_at_end {
-                    if should_run(container, &self.run_criteria, default_should_run) {
-                        container.system_mut().run(world);
-                    }
-                }
+                let pool = TaskPool::default();
+                pool.scope(|scope| {
+                    scope.spawn(async {
+                        for container in &mut self.exclusive_at_end {
+                            if should_run(container, &self.run_criteria, default_should_run) {
+                                container.system_mut().run(world).await;
+                            }
+                        }
+                    });
+                });
 
                 // Check for old component and system change ticks
                 self.check_change_ticks(world);
 
                 // Evaluate run criteria.
-                let run_criteria = &mut self.run_criteria;
-                for index in 0..run_criteria.len() {
-                    let (run_criteria, tail) = run_criteria.split_at_mut(index);
-                    let criteria = &mut tail[0];
-                    criteria.update_archetypes(world);
-                    match criteria.should_run {
-                        ShouldRun::No => (),
-                        ShouldRun::Yes => criteria.should_run = ShouldRun::No,
-                        ShouldRun::YesAndCheckAgain | ShouldRun::NoAndCheckAgain => {
-                            match &mut criteria.inner {
-                                RunCriteriaInner::Single(system) => {
-                                    criteria.should_run = system.run((), world).await;
-                                }
-                                RunCriteriaInner::Piped {
-                                    input: parent,
-                                    system,
-                                    ..
-                                } => {
-                                    criteria.should_run =
-                                        system.run(run_criteria[*parent].should_run, world).await;
-                                }
-                            }
+                let pool = TaskPool::default();
+                pool.scope(|scope| {
+                    scope.spawn(async {
+                        let run_criteria = &mut self.run_criteria;
+                        for index in 0..run_criteria.len() {
+                            let (run_criteria, tail) = run_criteria.split_at_mut(index);
+                            let criteria = &mut tail[0];
+                            criteria.update_archetypes(world);
                             match criteria.should_run {
-                                ShouldRun::Yes
-                                | ShouldRun::YesAndCheckAgain
-                                | ShouldRun::NoAndCheckAgain => {
-                                    run_system_loop = true;
-                                }
                                 ShouldRun::No => (),
+                                ShouldRun::Yes => criteria.should_run = ShouldRun::No,
+                                ShouldRun::YesAndCheckAgain | ShouldRun::NoAndCheckAgain => {
+                                    match &mut criteria.inner {
+                                        RunCriteriaInner::Single(system) => {
+                                            criteria.should_run = system.run((), world).await;
+                                        }
+                                        RunCriteriaInner::Piped {
+                                            input: parent,
+                                            system,
+                                            ..
+                                        } => {
+                                            criteria.should_run = system
+                                                .run(run_criteria[*parent].should_run, world)
+                                                .await;
+                                        }
+                                    }
+                                    match criteria.should_run {
+                                        ShouldRun::Yes
+                                        | ShouldRun::YesAndCheckAgain
+                                        | ShouldRun::NoAndCheckAgain => {
+                                            run_system_loop = true;
+                                        }
+                                        ShouldRun::No => (),
+                                    }
+                                }
                             }
                         }
-                    }
-                }
+                    });
+                });
 
                 // after the first loop, default to not running systems without run criteria
                 default_should_run = ShouldRun::No;

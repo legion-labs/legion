@@ -33,13 +33,11 @@ fn main() {
     // Add the Stage with our systems to the Schedule
     schedule.add_stage("update", update);
 
-    async {
-        // Simulate 10 frames in our world
-        for iteration in 1..=10 {
-            println!("Simulating frame {}/10", iteration);
-            schedule.run(&mut world).await;
-        }
-    };
+    // Simulate 10 frames in our world
+    for iteration in 1..=10 {
+        println!("Simulating frame {}/10", iteration);
+        schedule.run(&mut world);
+    }
 }
 
 // This struct will be used as a Resource keeping track of the total amount of spawned entities

@@ -86,6 +86,8 @@ pub use system_param::*;
 mod tests {
     use std::any::TypeId;
 
+    use legion_tasks::TaskPool;
+
     use crate::{
         self as legion_ecs,
         archetype::Archetypes,
@@ -119,7 +121,7 @@ mod tests {
 
     #[test]
     fn simple_system() {
-        fn sys(query: Query<'_, '_, &A>) {
+        fn sys(query: Query<'_, '_, &'static A>) {
             for a in query.iter() {
                 println!("{:?}", a);
             }
@@ -133,7 +135,13 @@ mod tests {
         for archetype in world.archetypes.iter() {
             system.new_archetype(archetype);
         }
-        system.run((), &mut world);
+
+        let pool = TaskPool::default();
+        pool.scope(|scope| {
+            scope.spawn(async {
+                system.run((), &mut world).await;
+            });
+        });
     }
 
     fn run_system<Param, S: IntoSystem<(), (), Param>>(world: &mut World, system: S) {

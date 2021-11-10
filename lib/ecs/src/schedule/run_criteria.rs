@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 
 use async_trait::async_trait;
+use legion_tasks::TaskPool;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration},
@@ -71,7 +72,7 @@ impl BoxedRunCriteria {
         self.initialized = false;
     }
 
-    pub(crate) async fn should_run(&mut self, world: &mut World) -> ShouldRun {
+    pub(crate) fn should_run(&mut self, world: &mut World) -> ShouldRun {
         if let Some(ref mut run_criteria) = self.criteria_system {
             if !self.initialized {
                 run_criteria.initialize(world);
@@ -90,9 +91,12 @@ impl BoxedRunCriteria {
                 }
             }
 
-            let should_run = run_criteria.run((), world).await;
+            let pool = TaskPool::default();
+            let should_run = pool.scope(|scope| {
+                scope.spawn(async { run_criteria.run((), world).await });
+            });
             run_criteria.apply_buffers(world);
-            should_run
+            should_run[0]
         } else {
             ShouldRun::Yes
         }
