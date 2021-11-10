@@ -24,3 +24,4 @@ clap = "2.33"
 
 [dev-dependencies]
 png = "0.17"
+legion-test-utils = { path = "../../lib/test-utils" }

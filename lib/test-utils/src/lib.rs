@@ -1,4 +1,4 @@
-//! test-utils : provides utility functions to help you build integration & unit tests
+//! legion-test-utils : provides utility functions to help you build integration & unit tests
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -122,4 +122,22 @@ pub fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
         .status()
         .expect("failed to execute command");
     assert_eq!(status.success(), should_succeed);
+}
+
+pub fn rgba_image_diff(img_a: &[u8], img_b: &[u8], width: u32, height: u32) -> f64 {
+    let mut max_value: f64 = 0.0;
+    let mut current_value: f64 = 0.0;
+    for y in 0..height {
+        for x in 0..width {
+            let left_bound = ((y * width + x) * 4) as usize;
+            let right_bound = (left_bound + 4) as usize;
+            let a = &img_a[left_bound..right_bound];
+            let b = &img_b[left_bound..right_bound];
+            for (a, b) in a.iter().zip(b.iter()) {
+                current_value += (f64::from(*a) - f64::from(*b)).abs();
+                max_value += f64::from(std::cmp::max(*a, *b));
+            }
+        }
+    }
+    current_value / max_value
 }

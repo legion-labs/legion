@@ -22,5 +22,5 @@ lz4 = "1.23"
 json = "0.12"
 
 [dev-dependencies]
-test-utils = { path = "../../lib/test-utils" }
+legion-test-utils = { path = "../../lib/test-utils" }
 fs_extra = "1.2"

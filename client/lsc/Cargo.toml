@@ -14,4 +14,4 @@ legion-telemetry = { path = "../../lib/telemetry" }
 tokio = { version = "1.13", features = ["full"] }
 
 [dev-dependencies]
-test-utils = { path = "../../lib/test-utils" }
+legion-test-utils = { path = "../../lib/test-utils" }

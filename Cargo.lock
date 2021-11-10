@@ -2617,6 +2617,7 @@ dependencies = [
  "legion-presenter-window",
  "legion-renderer",
  "legion-tao",
+ "legion-test-utils",
  "legion-window",
  "log",
  "png 0.17.2",
@@ -3847,6 +3848,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-test-utils"
+version = "0.1.0"
+dependencies = [
+ "legion-telemetry",
+]
+
+[[package]]
 name = "legion-transform"
 version = "0.1.0"
 dependencies = [
@@ -4030,7 +4038,7 @@ dependencies = [
  "clap",
  "legion-source-control",
  "legion-telemetry",
- "test-utils",
+ "legion-test-utils",
  "tokio",
 ]
 
@@ -6738,11 +6746,11 @@ dependencies = [
  "json",
  "legion-analytics",
  "legion-telemetry",
+ "legion-test-utils",
  "legion-transit",
  "lz4",
  "prost",
  "sqlx",
- "test-utils",
  "tokio",
 ]
 
@@ -6805,13 +6813,6 @@ dependencies = [
  "refs-asset",
  "refs-resource",
  "text-resource",
-]
-
-[[package]]
-name = "test-utils"
-version = "0.1.0"
-dependencies = [
- "legion-telemetry",
 ]
 
 [[package]]

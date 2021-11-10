@@ -1,3 +1,4 @@
+use legion_test_utils::*;
 use std::{
     fs::File,
     io,
@@ -57,9 +58,8 @@ fn load_image(path: &Path) -> io::Result<SnapshotData> {
     }
 }
 
-#[ignore = "GPU"]
 #[test]
-fn triangle_render() {
+fn gpu_triangle_render() {
     let test_name = "triangle_render";
     let setup_name = "triangle_render";
     let wd = init_test_dir(test_name);
@@ -69,6 +69,16 @@ fn triangle_render() {
         .join("tests")
         .join("refs")
         .join(&format!("{}_{}.png", test_name, setup_name));
+
     let ref_snapshot = load_image(&ref_path).unwrap();
-    assert_eq!(snapshot, ref_snapshot);
+    assert_eq!(snapshot.width, ref_snapshot.width);
+    assert_eq!(snapshot.height, ref_snapshot.height);
+    assert!(
+        rgba_image_diff(
+            &snapshot.data,
+            &ref_snapshot.data,
+            snapshot.width,
+            snapshot.height
+        ) < 0.001
+    );
 }

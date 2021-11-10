@@ -45,7 +45,10 @@ test-build:
 	cargo test --no-run
 
 test-run:
-	cargo test
+	cargo test -- --skip gpu_
+
+test-gpu-run:
+	cargo test -- gpu_
 
 bench: bench-build bench-run
 
