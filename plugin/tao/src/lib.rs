@@ -36,7 +36,7 @@ impl Plugin for TaoPlugin {
     }
 }
 
-fn change_window(world: &mut World) {
+async fn change_window(world: &mut World) {
     let world = world.cell();
     let tao_windows = world.get_resource::<TaoWindows>().unwrap();
     let mut windows = world.get_resource_mut::<Windows>().unwrap();
