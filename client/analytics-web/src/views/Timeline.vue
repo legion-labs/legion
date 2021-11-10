@@ -120,6 +120,20 @@ function onMounted () {
   this.renderingContext = canvas.getContext('2d')
 }
 
+function formatExecutionTime (time) {
+  let unit = 'ms'
+  if (time < 1) {
+    unit = 'us'
+    time = time * 1000
+    return time.toFixed(3) + ' ' + unit
+  }
+  if (time > 1000) {
+    unit = 'seconds'
+    time = time / 1000
+  }
+  return time.toFixed(3) + ' ' + unit
+}
+
 function drawThread (thread, threadVerticalOffset) {
   const viewRange = this.getViewRange()
   const begin = viewRange[0]
@@ -147,12 +161,13 @@ function drawThread (thread, threadVerticalOffset) {
       }
       this.renderingContext.fillRect(beginPixels, offsetY, callWidth, 20)
       const scope = this.scopes[span.getScopeHash()]
-      const name = scope.getName()
       if (callWidth > (characterWidth * 5)) {
         const nbChars = Math.floor(callWidth / characterWidth)
         this.renderingContext.fillStyle = '#000000'
         const extraHeight = 0.5 * (20 - characterHeight)
-        this.renderingContext.fillText(name.slice(0, nbChars), beginPixels + 5, offsetY + characterHeight + extraHeight, callWidth)
+        const name = scope.getName()
+        const caption = name + ' ' + formatExecutionTime(span.getEndMs() - span.getBeginMs())
+        this.renderingContext.fillText(caption.slice(0, nbChars), beginPixels + 5, offsetY + characterHeight + extraHeight, callWidth)
       }
     })
   })
