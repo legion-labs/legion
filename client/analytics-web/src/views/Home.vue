@@ -1,6 +1,5 @@
 <template>
   <div id="app">
-    <img alt="logo" src="../assets/logo.png">
     <ProcessList/>
   </div>
 </template>
