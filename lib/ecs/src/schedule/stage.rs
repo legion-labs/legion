@@ -901,6 +901,8 @@ impl Stage for SystemStage {
 
 #[cfg(test)]
 mod tests {
+    use std::future::Future;
+
     use crate as legion_ecs;
     use crate::component::Component;
     use crate::{
@@ -911,14 +913,35 @@ mod tests {
             RunCriteria, RunCriteriaDescriptorCoercion, RunCriteriaPiping, ShouldRun,
             SingleThreadedExecutor, Stage, SystemSet, SystemStage,
         },
-        system::{In, IntoExclusiveSystem, IntoSystem, Local, Query, ResMut},
+        system::{
+            AsyncExclusiveSystemFn, In, IntoExclusiveSystem, IntoSystem, Local, Query, ResMut,
+        },
         world::World,
     };
     #[derive(Component)]
     struct W<T>(T);
 
-    fn make_exclusive(tag: usize) -> impl FnMut(&mut World) {
-        move |world| world.get_resource_mut::<Vec<usize>>().unwrap().push(tag)
+    struct X {
+        tag: usize,
+    }
+
+    impl<'w, Output> AsyncExclusiveSystemFn<'w> for X
+    where
+        Output: Future<Output = ()> + Send + 'w,
+    {
+        type Output = Output;
+        fn call_mut(&mut self, world: &'w mut World) -> Self::Output {
+            async {
+                world
+                    .get_resource_mut::<Vec<usize>>()
+                    .unwrap()
+                    .push(self.tag);
+            }
+        }
+    }
+
+    fn make_exclusive<Output>(tag: usize) -> X {
+        X { tag }
     }
 
     fn make_parallel(tag: usize) -> impl FnMut(ResMut<'_, Vec<usize>>) {
