@@ -225,10 +225,6 @@ Septembre 2021
 
 ![bg right:65%](figures/telemetry_architecture.svg)
 
-Eventually, the analytics app could be hybrid like the editor.
-
-Great bandwidth to read data, native rendering of complex graphs, stream result.
-
 ---
 # Architecture
 ## Integration/reuse of existing solutions
