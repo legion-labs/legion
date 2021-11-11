@@ -8,7 +8,7 @@ on:
 jobs:
   coverage:
     name: Running code coverage analysis
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, gpu, build]
     steps:
       - uses: actions/checkout@v2
 
