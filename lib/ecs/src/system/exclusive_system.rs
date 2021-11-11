@@ -12,7 +12,7 @@ use crate::{
 pub trait ExclusiveSystem: Send + Sync {
     fn name(&self) -> Cow<'static, str>;
 
-    async fn run<'w>(&mut self, world: &'w mut World);
+    async fn run(&mut self, world: &mut World);
 
     fn initialize(&mut self, world: &mut World);
 
@@ -50,7 +50,7 @@ where
         self.name.clone()
     }
 
-    async fn run<'w>(&mut self, world: &'w mut World) {
+    async fn run(&mut self, world: &mut World) {
         // The previous value is saved in case this exclusive system is run by another exclusive
         // system
         let saved_last_tick = world.last_change_tick;
@@ -100,7 +100,7 @@ impl ExclusiveSystem for ExclusiveSystemCoerced {
         self.system.name()
     }
 
-    async fn run<'w>(&mut self, world: &'w mut World) {
+    async fn run(&mut self, world: &mut World) {
         {
             let archetypes = world.archetypes();
             let new_generation = archetypes.generation();
