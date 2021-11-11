@@ -211,13 +211,14 @@ impl<In, Out, Sys: System<In = In, Out = Out>> IntoSystem<In, Out, AlreadyWasSys
 ///
 /// ```
 /// use legion_ecs::prelude::*;
+/// use legion_tasks::future;
 ///
 /// fn main() {
 ///     let mut square_system = square.system();
 ///
 ///     let mut world = World::default();
 ///     square_system.initialize(&mut world);
-///     assert_eq!(square_system.run(12, &mut world), 144);
+///     assert_eq!(future::block_on(square_system.run(12, &mut world)), 144);
 /// }
 ///
 /// fn square(In(input): In<usize>) -> usize {

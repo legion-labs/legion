@@ -28,6 +28,7 @@ use crate::{
 /// use std::num::ParseIntError;
 ///
 /// use legion_ecs::prelude::*;
+/// use legion_tasks::future;
 ///
 /// fn main() {
 ///     let mut world = World::default();
@@ -36,7 +37,7 @@ use crate::{
 ///     // chain the `parse_message_system`'s output into the `filter_system`s input
 ///     let mut chained_system = parse_message_system.chain(filter_system);
 ///     chained_system.initialize(&mut world);
-///     assert_eq!(chained_system.run((), &mut world), Some(42));
+///     assert_eq!(future::block_on(chained_system.run((), &mut world)), Some(42));
 /// }
 ///
 /// struct Message(String);

@@ -542,6 +542,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for CommandQueue {
 ///
 /// ```
 /// # use legion_ecs::prelude::*;
+/// # use legion_tasks::future;
 /// # let world = &mut World::default();
 /// fn write_to_local(mut local: Local<usize>) {
 ///     *local = 42;
@@ -554,10 +555,10 @@ impl<'w, 's> SystemParamFetch<'w, 's> for CommandQueue {
 /// write_system.initialize(world);
 /// read_system.initialize(world);
 ///
-/// assert_eq!(read_system.run((), world), 0);
+/// assert_eq!(future::block_on(read_system.run((), world)), 0);
 /// write_system.run((), world);
 /// // Note how the read local is still 0 due to the locals not being shared.
-/// assert_eq!(read_system.run((), world), 0);
+/// assert_eq!(future::block_on(read_system.run((), world)), 0);
 /// ```
 pub struct Local<'a, T: Resource>(&'a mut T);
 
