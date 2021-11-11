@@ -1,5 +1,5 @@
 use downcast_rs::{impl_downcast, Downcast};
-use legion_tasks::{ComputeTaskPool, TaskPool};
+use legion_tasks::future;
 
 use crate::{archetype::ArchetypeGeneration, schedule::ParallelSystemContainer, world::World};
 
@@ -31,24 +31,16 @@ impl ParallelSystemExecutor for SingleThreadedExecutor {
     fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
         self.update_archetypes(systems, world);
 
-        let compute_pool = world
-            .get_resource_or_insert_with(|| ComputeTaskPool(TaskPool::default()))
-            .clone();
-
-        compute_pool.scope(|scope| {
-            scope.spawn(async {
-                for system in systems {
-                    if system.should_run() {
-                        #[cfg(feature = "trace")]
-                        let system_span =
-                            legion_utils::tracing::info_span!("system", name = &*system.name());
-                        #[cfg(feature = "trace")]
-                        let _system_guard = system_span.enter();
-                        system.system_mut().run((), world).await;
-                    }
-                }
-            });
-        });
+        for system in systems {
+            if system.should_run() {
+                #[cfg(feature = "trace")]
+                let system_span =
+                    legion_utils::tracing::info_span!("system", name = &*system.name());
+                #[cfg(feature = "trace")]
+                let _system_guard = system_span.enter();
+                future::block_on(system.system_mut().run((), world));
+            }
+        }
     }
 }
 

@@ -83,6 +83,8 @@ pub use countdown_event::CountdownEvent;
 mod iter;
 pub use iter::ParallelIterator;
 
+pub mod future;
+
 pub mod prelude {
     #[doc(hidden)]
     pub use crate::{

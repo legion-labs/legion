@@ -6,9 +6,9 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-use futures_lite::{future, pin};
+use futures_lite::{future::poll_once, pin};
 
-use crate::Task;
+use crate::{future, Task};
 
 /// Used to create a `TaskPool`
 #[derive(Debug, Default, Clone)]
@@ -217,7 +217,7 @@ impl TaskPool {
                 // simply calling future::block_on(spawned) would deadlock.)
                 let mut spawned = local_executor.spawn(fut);
                 loop {
-                    if let Some(result) = future::block_on(future::poll_once(&mut spawned)) {
+                    if let Some(result) = future::block_on(poll_once(&mut spawned)) {
                         break result;
                     };
 
