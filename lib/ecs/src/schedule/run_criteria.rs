@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 
 use async_trait::async_trait;
-use legion_tasks::TaskPool;
+use legion_tasks::future;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration},
@@ -91,12 +91,9 @@ impl BoxedRunCriteria {
                 }
             }
 
-            let pool = TaskPool::default();
-            let should_run = pool.scope(|scope| {
-                scope.spawn(async { run_criteria.run((), world).await });
-            });
+            let should_run = future::block_on(run_criteria.run((), world));
             run_criteria.apply_buffers(world);
-            should_run[0]
+            should_run
         } else {
             ShouldRun::Yes
         }

@@ -142,12 +142,7 @@ mod tests {
             system.new_archetype(archetype);
         }
 
-        let pool = TaskPool::default();
-        pool.scope(|scope| {
-            scope.spawn(async {
-                system.run((), &mut world).await;
-            });
-        });
+        future::block_on(system.run((), &mut world));
         */
     }
 
@@ -606,21 +601,16 @@ mod tests {
             assert!(empty.is_empty());
         }
 
-        let pool = TaskPool::default();
-        pool.scope(|scope| {
-            scope.spawn(async {
-                let mut world = World::default();
-                world.spawn().insert(A).insert(C);
+        let mut world = World::default();
+        world.spawn().insert(A).insert(C);
 
-                let mut without_filter = without_filter.system();
-                without_filter.initialize(&mut world);
-                without_filter.run((), &mut world).await;
+        let mut without_filter = without_filter.system();
+        without_filter.initialize(&mut world);
+        future::block_on(without_filter.run((), &mut world));
 
-                let mut with_filter = with_filter.system();
-                with_filter.initialize(&mut world);
-                with_filter.run((), &mut world).await;
-            });
-        });
+        let mut with_filter = with_filter.system();
+        with_filter.initialize(&mut world);
+        future::block_on(with_filter.run((), &mut world));
         */
     }
 
