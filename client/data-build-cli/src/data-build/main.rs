@@ -65,6 +65,7 @@ use legion_data_runtime::ResourceId;
 
 const ARG_NAME_RESOURCE_PATH: &str = "resource";
 const ARG_NAME_BUILDINDEX: &str = "buildindex";
+const ARG_NAME_PROJECT: &str = "project";
 const ARG_NAME_CAS: &str = "cas";
 const ARG_NAME_MANIFEST: &str = "manifest";
 const ARG_RUNTIME_FLAG: &str = "rt";
@@ -78,6 +79,22 @@ fn main() -> Result<(), String> {
         .setting(AppSettings::ArgRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))
         .about("Data Build CLI")
+        .subcommand(
+            SubCommand::with_name("create")
+                .about("Create build index at a specified location")
+                .arg(
+                    Arg::with_name(ARG_NAME_BUILDINDEX)
+                        .required(true)
+                        .help("New build index path."),
+                )
+                .arg(
+                    Arg::with_name(ARG_NAME_PROJECT)
+                        .required(true)
+                        .takes_value(true)
+                        .long(ARG_NAME_PROJECT)
+                        .help("Source project path."),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("compile")
                 .about("Compile input resource.")
@@ -138,7 +155,20 @@ fn main() -> Result<(), String> {
         )
         .get_matches();
 
-    if let ("compile", Some(cmd_args)) = matches.subcommand() {
+    if let ("create", Some(cmd_args)) = matches.subcommand() {
+        let buildindex_path = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
+        let project_path = PathBuf::from(cmd_args.value_of(ARG_NAME_PROJECT).unwrap());
+
+        let mut build = DataBuildOptions::new(&buildindex_path)
+            .content_store(&ContentStoreAddr::from("."))
+            .create(project_path)
+            .map_err(|e| format!("failed creating build index {}", e))?;
+
+        if let Err(e) = build.source_pull() {
+            eprintln!("Source Pull failed with '{}'", e);
+            let _res = std::fs::remove_file(buildindex_path);
+        }
+    } else if let ("compile", Some(cmd_args)) = matches.subcommand() {
         let derived = cmd_args.value_of(ARG_NAME_RESOURCE_PATH).unwrap();
         let target = cmd_args.value_of(ARG_NAME_TARGET).unwrap();
         let platform = cmd_args.value_of(ARG_NAME_PLATFORM).unwrap();
@@ -191,6 +221,10 @@ fn main() -> Result<(), String> {
             }
         };
 
+        //
+        // for now, each time we build we make sure we have a fresh input data indexed
+        // by doing a source_pull. this should most likely be executed only on demand.
+        //
         build
             .source_pull()
             .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
@@ -204,7 +238,8 @@ fn main() -> Result<(), String> {
             let output = serde_json::to_string(&output).unwrap();
             println!("{}", output);
         } else {
-            println!("{:?}", output);
+            let output = serde_json::to_string(&output).unwrap();
+            println!("{}", output);
         }
     }
     Ok(())

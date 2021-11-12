@@ -8,7 +8,7 @@ members = [
     "test/*",
     "compiler/*",
 ]
-exclude = ["test/sample-data", "test/test_data"]
+exclude = ["test/test_data"]
 
 [profile.dev]
 panic = 'abort'

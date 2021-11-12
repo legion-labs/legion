@@ -1,0 +1,124 @@
+---
+source: test/sample-data/tests/build.rs
+expression: manifest
+
+---
+{
+  "compiled_resources": [
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53",
+      "checksum": "fecb9ee0113ef7016116f0ce9f520779",
+      "size": 2719557
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_metalness",
+      "checksum": "12fb356494c92be198a504ba2e915978",
+      "size": 2500668
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_roughness",
+      "checksum": "12fb356494c92be198a504ba2e915978",
+      "size": 2500668
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_albedo",
+      "checksum": "12fb356494c92be198a504ba2e915978",
+      "size": 2500668
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_normal",
+      "checksum": "12fb356494c92be198a504ba2e915978",
+      "size": 2500668
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_Ferris",
+      "checksum": "16c30cd5c1e637e4b93a6a726db93f86",
+      "size": 2500668
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_Black Background",
+      "checksum": "cb8b91003cf7027057f8627598d86016",
+      "size": 2500082
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_roughness|f9c9670d",
+      "checksum": "13955f2e5e320e0002d36bed544d34ee",
+      "size": 1000034
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_normal|f9c9670d",
+      "checksum": "13955f2e5e320e0002d36bed544d34ee",
+      "size": 1000034
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_metalness|f9c9670d",
+      "checksum": "13955f2e5e320e0002d36bed544d34ee",
+      "size": 1000034
+    },
+    {
+      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_albedo|f9c9670d",
+      "checksum": "13955f2e5e320e0002d36bed544d34ee",
+      "size": 1000034
+    },
+    {
+      "path": "2b368fed00000000f8b1bd1dceaf6f33|669eb7d0",
+      "checksum": "3608434ab8c0fdff6df541aa921ac9c5",
+      "size": 162
+    },
+    {
+      "path": "4e1dd441000000007714d9ad404557f7|ea2510e8",
+      "checksum": "06b9db3c818c41c96593f747bbb6e1f1",
+      "size": 947
+    },
+    {
+      "path": "d004cd1c0000000091d021d6f4e05efe|019c8223",
+      "checksum": "913a68321dac61ea57cdd08403d1ed8f",
+      "size": 184
+    },
+    {
+      "path": "417862e500000000e578fadce0648bcc|0cd05ad8",
+      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "size": 67
+    },
+    {
+      "path": "417862e500000000ce1185cf2b953536|0cd05ad8",
+      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "size": 67
+    },
+    {
+      "path": "d004cd1c0000000062aa07fb54e7a8ee|019c8223",
+      "checksum": "d42631a3095f58a97bacc3378e8235a9",
+      "size": 199
+    },
+    {
+      "path": "d004cd1c00000000519d4a9f47df0ce5|019c8223",
+      "checksum": "221e2598e158f812202bc60788768051",
+      "size": 250
+    },
+    {
+      "path": "417862e50000000090b1c112655b00e8|0cd05ad8",
+      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "size": 67
+    },
+    {
+      "path": "417862e5000000007df5d0fcdb1eb69b|0cd05ad8",
+      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "size": 67
+    },
+    {
+      "path": "417862e5000000007a80bfadcb6549e7|0cd05ad8",
+      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "size": 67
+    },
+    {
+      "path": "417862e5000000005127bdca42145845|0cd05ad8",
+      "checksum": "b2e1d24efb44dbd85028e7d3263dd9b5",
+      "size": 67
+    },
+    {
+      "path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
+      "checksum": "41e4c35abb3a3c12f742e1cfca1a49cc",
+      "size": 358
+    }
+  ]
+}
