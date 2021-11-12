@@ -11,11 +11,13 @@ use legion_telemetry_proto::analytics::BlockSpansRequest;
 use legion_telemetry_proto::analytics::CallTreeNode;
 use legion_telemetry_proto::analytics::FindProcessReply;
 use legion_telemetry_proto::analytics::FindProcessRequest;
+use legion_telemetry_proto::analytics::ListProcessChildrenRequest;
 use legion_telemetry_proto::analytics::ListProcessStreamsRequest;
 use legion_telemetry_proto::analytics::ListStreamBlocksReply;
 use legion_telemetry_proto::analytics::ListStreamBlocksRequest;
 use legion_telemetry_proto::analytics::ListStreamsReply;
 use legion_telemetry_proto::analytics::LogEntry;
+use legion_telemetry_proto::analytics::ProcessChildrenReply;
 use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::ProcessLogReply;
 use legion_telemetry_proto::analytics::ProcessLogRequest;
@@ -110,6 +112,14 @@ impl AnalyticsService {
         )
         .await?;
         Ok(ProcessLogReply { entries })
+    }
+
+    async fn list_process_children_impl(&self, process_id: &str) -> Result<ProcessChildrenReply> {
+        let mut connection = self.pool.acquire().await?;
+        let children = fetch_child_processes(&mut connection, process_id).await?;
+        Ok(ProcessChildrenReply {
+            processes: children,
+        })
     }
 }
 
@@ -240,12 +250,12 @@ impl PerformanceAnalytics for AnalyticsService {
 
         if inner_request.process.is_none() {
             return Err(Status::internal(String::from(
-                "Missing process in block_call_tree",
+                "Missing process in block_spans",
             )));
         }
         if inner_request.stream.is_none() {
             return Err(Status::internal(String::from(
-                "Missing stream in block_call_tree",
+                "Missing stream in block_spans",
             )));
         }
 
@@ -271,10 +281,32 @@ impl PerformanceAnalytics for AnalyticsService {
         let inner_request = request.into_inner();
         if inner_request.process.is_none() {
             return Err(Status::internal(String::from(
-                "Missing process in block_call_tree",
+                "Missing process in list_process_log_entries",
             )));
         }
         match self.process_log_impl(&inner_request.process.unwrap()).await {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => Err(Status::internal(format!(
+                "Error in list_process_log_entries: {}",
+                e
+            ))),
+        }
+    }
+
+    async fn list_process_children(
+        &self,
+        request: Request<ListProcessChildrenRequest>,
+    ) -> Result<Response<ProcessChildrenReply>, Status> {
+        let inner_request = request.into_inner();
+        if inner_request.process_id.is_empty() {
+            return Err(Status::internal(String::from(
+                "Missing process_id in list_process_children",
+            )));
+        }
+        match self
+            .list_process_children_impl(&inner_request.process_id)
+            .await
+        {
             Ok(reply) => Ok(Response::new(reply)),
             Err(e) => Err(Status::internal(format!(
                 "Error in list_process_log_entries: {}",

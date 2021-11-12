@@ -258,6 +258,67 @@ proto.analytics.PerformanceAnalyticsPromiseClient.prototype.find_process =
 /**
  * @const
  * @type {!grpc.web.MethodDescriptor<
+ *   !proto.analytics.ListProcessChildrenRequest,
+ *   !proto.analytics.ProcessChildrenReply>}
+ */
+const methodDescriptor_PerformanceAnalytics_list_process_children = new grpc.web.MethodDescriptor(
+  '/analytics.PerformanceAnalytics/list_process_children',
+  grpc.web.MethodType.UNARY,
+  proto.analytics.ListProcessChildrenRequest,
+  proto.analytics.ProcessChildrenReply,
+  /**
+   * @param {!proto.analytics.ListProcessChildrenRequest} request
+   * @return {!Uint8Array}
+   */
+  function(request) {
+    return request.serializeBinary();
+  },
+  proto.analytics.ProcessChildrenReply.deserializeBinary
+);
+
+
+/**
+ * @param {!proto.analytics.ListProcessChildrenRequest} request The
+ *     request proto
+ * @param {?Object<string, string>} metadata User defined
+ *     call metadata
+ * @param {function(?grpc.web.RpcError, ?proto.analytics.ProcessChildrenReply)}
+ *     callback The callback function(error, response)
+ * @return {!grpc.web.ClientReadableStream<!proto.analytics.ProcessChildrenReply>|undefined}
+ *     The XHR Node Readable Stream
+ */
+proto.analytics.PerformanceAnalyticsClient.prototype.list_process_children =
+    function(request, metadata, callback) {
+  return this.client_.rpcCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/list_process_children',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_list_process_children,
+      callback);
+};
+
+
+/**
+ * @param {!proto.analytics.ListProcessChildrenRequest} request The
+ *     request proto
+ * @param {?Object<string, string>=} metadata User defined
+ *     call metadata
+ * @return {!Promise<!proto.analytics.ProcessChildrenReply>}
+ *     Promise that resolves to the response
+ */
+proto.analytics.PerformanceAnalyticsPromiseClient.prototype.list_process_children =
+    function(request, metadata) {
+  return this.client_.unaryCall(this.hostname_ +
+      '/analytics.PerformanceAnalytics/list_process_children',
+      request,
+      metadata || {},
+      methodDescriptor_PerformanceAnalytics_list_process_children);
+};
+
+
+/**
+ * @const
+ * @type {!grpc.web.MethodDescriptor<
  *   !proto.analytics.ProcessLogRequest,
  *   !proto.analytics.ProcessLogReply>}
  */

@@ -1,9 +1,13 @@
 <template>
   <div>
-    <template v-for="process in process_list">
-      <div :key="process.getProcessId()">{{ process.getExe() }} {{ process.getProcessId() }}
-  <div v-if="process.getParentProcessId() != ''">
-          <router-link v-bind:to="{ name: 'Timeline', params: {process_id: process.getParentProcessId() } }">Parent timeline</router-link>
+    <template v-bind:process="current_process">
+      <div v-if="current_process">
+        <div>{{ current_process.getExe() }} {{ current_process.getProcessId() }}</div>
+        <div v-if="current_process.getParentProcessId() != ''">
+          <router-link
+            v-bind:to="{ name: 'Timeline', params: {process_id: current_process.getParentProcessId() } }">
+            Parent timeline
+          </router-link>
         </div>
       </div>
     </template>
@@ -17,7 +21,7 @@
 </template>
 
 <script>
-import { BlockSpansRequest, ListStreamBlocksRequest, ListProcessStreamsRequest, FindProcessRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
+import { ListProcessChildrenRequest, BlockSpansRequest, ListStreamBlocksRequest, ListProcessStreamsRequest, FindProcessRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
 
 function fetchBlockSpans (block) {
   const streamId = block.getStreamId()
@@ -61,10 +65,10 @@ function fetchBlocks (streamId) {
   }
 }
 
-function fetchStreams () {
+function fetchStreams (process) {
   try {
     var request = new ListProcessStreamsRequest()
-    request.setProcessId(this.process_id)
+    request.setProcessId(process.getProcessId())
     this.client.list_process_streams(request, null, (err, response) => {
       if (err) {
         console.error('error in list_process_streams', err)
@@ -88,14 +92,29 @@ function fetchStreams () {
 
 function fetchProcessInfo () {
   try {
-    var request = new FindProcessRequest()
-    request.setProcessId(this.process_id)
-    this.client.find_process(request, null, (err, response) => {
+    var findProcessRequest = new FindProcessRequest()
+    findProcessRequest.setProcessId(this.process_id)
+    this.client.find_process(findProcessRequest, null, (err, response) => {
       if (err) {
         console.error('error in find_process', err)
       } else {
-        this.process_list.push(response.getProcess())
-        this.fetchStreams()
+        const process = response.getProcess()
+        this.process_list.push(process)
+        this.fetchStreams(process)
+        this.current_process = process
+      }
+    })
+
+    var listChildrenRequest = new ListProcessChildrenRequest()
+    listChildrenRequest.setProcessId(this.process_id)
+    this.client.list_process_children(listChildrenRequest, null, (err, response) => {
+      if (err) {
+        console.error('error in list_process_children', err)
+      } else {
+        response.getProcessesList().forEach(process => {
+          this.process_list.push(process)
+          this.fetchStreams(process)
+        })
       }
     })
   } catch (err) {
@@ -226,6 +245,7 @@ function reset (processId) {
   this.process_id = processId
   this.block_list = []
   this.process_list = []
+  this.current_process = undefined
   this.scopes = {}
   this.threads = []
   this.min_ms = Infinity
@@ -249,6 +269,7 @@ export default {
     return {
       block_list: [],
       process_list: [],
+      current_process: undefined,
       scopes: {},
       threads: {},
       min_ms: Infinity,

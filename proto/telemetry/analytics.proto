@@ -9,6 +9,7 @@ service PerformanceAnalytics {
     rpc block_call_tree(BlockCallTreeRequest) returns (BlockCallTreeReply);
     rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
     rpc find_process(FindProcessRequest) returns (FindProcessReply);
+    rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
     rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
     rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
     rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
@@ -118,4 +119,13 @@ message LogEntry{
 
 message ProcessLogReply{
     repeated LogEntry entries = 1;
+}
+
+// list_process_children
+message ListProcessChildrenRequest{
+    string process_id = 1;
+}
+
+message ProcessChildrenReply{
+    repeated telemetry.Process processes = 1;
 }
