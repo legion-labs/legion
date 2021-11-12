@@ -3205,7 +3205,8 @@ proto.analytics.BlockSpansReply.toObject = function(includeInstance, msg) {
     proto.analytics.Span.toObject, includeInstance),
     blockId: jspb.Message.getFieldWithDefault(msg, 3, ""),
     beginMs: jspb.Message.getFloatingPointFieldWithDefault(msg, 4, 0.0),
-    endMs: jspb.Message.getFloatingPointFieldWithDefault(msg, 5, 0.0)
+    endMs: jspb.Message.getFloatingPointFieldWithDefault(msg, 5, 0.0),
+    maxDepth: jspb.Message.getFieldWithDefault(msg, 6, 0)
   };
 
   if (includeInstance) {
@@ -3263,6 +3264,10 @@ proto.analytics.BlockSpansReply.deserializeBinaryFromReader = function(msg, read
     case 5:
       var value = /** @type {number} */ (reader.readDouble());
       msg.setEndMs(value);
+      break;
+    case 6:
+      var value = /** @type {number} */ (reader.readUint32());
+      msg.setMaxDepth(value);
       break;
     default:
       reader.skipField();
@@ -3327,6 +3332,13 @@ proto.analytics.BlockSpansReply.serializeBinaryToWriter = function(message, writ
   if (f !== 0.0) {
     writer.writeDouble(
       5,
+      f
+    );
+  }
+  f = message.getMaxDepth();
+  if (f !== 0) {
+    writer.writeUint32(
+      6,
       f
     );
   }
@@ -3460,6 +3472,24 @@ proto.analytics.BlockSpansReply.prototype.getEndMs = function() {
  */
 proto.analytics.BlockSpansReply.prototype.setEndMs = function(value) {
   return jspb.Message.setProto3FloatField(this, 5, value);
+};
+
+
+/**
+ * optional uint32 max_depth = 6;
+ * @return {number}
+ */
+proto.analytics.BlockSpansReply.prototype.getMaxDepth = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.analytics.BlockSpansReply} returns this
+ */
+proto.analytics.BlockSpansReply.prototype.setMaxDepth = function(value) {
+  return jspb.Message.setProto3IntField(this, 6, value);
 };
 
 

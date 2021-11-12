@@ -13,7 +13,7 @@
     </template>
     <canvas id="canvas_timeline"
             width="1024px"
-            height="640px"
+            height="768px"
             v-on:wheel.prevent="onZoom"
             v-on:mousemove="onPan"
             />
@@ -166,7 +166,9 @@ function drawThread (thread, threadVerticalOffset) {
   const testTextMetrics = this.renderingContext.measureText(testString)
   const characterWidth = testTextMetrics.width / testString.length
   const characterHeight = testTextMetrics.actualBoundingBoxAscent
+  let maxDepth = 0
   thread.spanBlocks.forEach(blockSpans => {
+    maxDepth = Math.max(maxDepth, blockSpans.getMaxDepth())
     blockSpans.getSpansList().forEach(span => {
       const beginPixels = (span.getBeginMs() - begin) * msToPixelsFactor
       const endPixels = (span.getEndMs() - begin) * msToPixelsFactor
@@ -190,15 +192,17 @@ function drawThread (thread, threadVerticalOffset) {
       }
     })
   })
+  return maxDepth
 }
 
 function drawCanvas () {
   const canvas = document.getElementById('canvas_timeline')
+  canvas.height = window.innerHeight - canvas.getBoundingClientRect().top - 20
   this.renderingContext.clearRect(0, 0, canvas.width, canvas.height)
   let threadVerticalOffset = this.y_offset
   for (const streamId in this.threads) {
-    this.drawThread(this.threads[streamId], threadVerticalOffset)
-    threadVerticalOffset += 110
+    const maxDepth = this.drawThread(this.threads[streamId], threadVerticalOffset)
+    threadVerticalOffset += (maxDepth + 2) * 20
   }
 }
 

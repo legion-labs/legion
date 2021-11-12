@@ -105,6 +105,7 @@ message BlockSpansReply{
     string block_id = 3;
     double begin_ms = 4;
     double end_ms = 5;
+    uint32 max_depth = 6;
 }
 
 // list_process_log_entries

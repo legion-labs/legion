@@ -167,7 +167,7 @@ fn make_spans_from_tree(
     depth: u32,
     scopes: &mut ScopeHashMap,
     spans: &mut Vec<Span>,
-) {
+) -> u32 {
     let scope_hash = CRC32.checksum(tree.name.as_bytes()); //todo: add filename
     scopes.entry(scope_hash).or_insert_with(|| ScopeDesc {
         name: tree.name.clone(),
@@ -182,9 +182,14 @@ fn make_spans_from_tree(
         end_ms: tree.end_ms,
     };
     spans.push(span);
+    let mut max_depth = depth;
     for child in &tree.scopes {
-        make_spans_from_tree(child, depth + 1, scopes, spans);
+        max_depth = std::cmp::max(
+            max_depth,
+            make_spans_from_tree(child, depth + 1, scopes, spans),
+        );
     }
+    max_depth
 }
 
 pub(crate) async fn compute_block_spans(
@@ -197,12 +202,16 @@ pub(crate) async fn compute_block_spans(
     let tree = compute_block_call_tree(connection, data_path, process, stream, block_id).await?;
     let mut scopes = ScopeHashMap::new();
     let mut spans = vec![];
+    let mut max_depth = 0;
     if tree.name.is_empty() {
         for child in &tree.scopes {
-            make_spans_from_tree(child, 0, &mut scopes, &mut spans);
+            max_depth = std::cmp::max(
+                max_depth,
+                make_spans_from_tree(child, 0, &mut scopes, &mut spans),
+            );
         }
     } else {
-        make_spans_from_tree(&tree, 0, &mut scopes, &mut spans);
+        max_depth = make_spans_from_tree(&tree, 0, &mut scopes, &mut spans);
     }
 
     let mut scope_vec = vec![];
@@ -216,5 +225,6 @@ pub(crate) async fn compute_block_spans(
         block_id: block_id.to_owned(),
         begin_ms: tree.begin_ms,
         end_ms: tree.end_ms,
+        max_depth,
     })
 }
