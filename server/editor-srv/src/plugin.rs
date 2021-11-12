@@ -1,33 +1,18 @@
-use std::sync::{Arc, Mutex};
-
 use legion_app::prelude::*;
-use legion_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
+use legion_data_transaction::DataManager;
+use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
 pub struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
-        let project = app
+        let data_manager = app
             .world
-            .get_resource::<Arc<Mutex<Project>>>()
+            .get_resource::<Arc<Mutex<DataManager>>>()
             .expect("the editor plugin requires Project resource");
 
-        let registry = app
-            .world
-            .get_resource::<Arc<Mutex<ResourceRegistry>>>()
-            .expect("the editor plugin requires ResourceRegistry resource");
-
-        let resource_handles = app
-            .world
-            .get_resource::<Arc<Mutex<ResourceHandles>>>()
-            .expect("the editor plugin requires ResourceHandles resource");
-
-        let grpc_server = super::grpc::GRPCServer::new(
-            project.clone(),
-            registry.clone(),
-            resource_handles.clone(),
-        );
+        let grpc_server = super::grpc::GRPCServer::new(data_manager.clone());
 
         app.world
             .get_resource_mut::<legion_grpc::GRPCPluginSettings>()

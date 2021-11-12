@@ -20,6 +20,14 @@ export async function search_resources() {
     return await invoke("search_resources");
 };
 
+export async function undo_transaction() {
+    return await invoke("undo_transaction");
+}
+
+export async function redo_transaction() {
+    return await invoke("redo_transaction")
+}
+
 export async function get_resource_properties(id) {
     var resp = await invoke("get_resource_properties", {
         request: {

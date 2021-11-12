@@ -61,7 +61,7 @@ fn generate_reflection_write(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
             let hash_value = m.name.default_hash();
             let member_ident = format_ident!("{}", &m.name);
             quote! { #hash_value => {
-                self.#member_ident = serde_json::from_str(field_value).map_err(|_err| "json serialization error")?;
+                self.#member_ident = serde_json::from_str(field_value)?;
             },
             }
         })
@@ -82,11 +82,11 @@ fn generate_reflection_read(
             let hash_value: u64 = m.name.default_hash();
             let member_ident = format_ident!("{}", &m.name);
             if let Some(default_ident) = default_ident {
-                quote! { #hash_value => serde_json::to_string(&#default_ident.#member_ident).map_err(|_err| "json serialization error"),
+                quote! { #hash_value => serde_json::to_string(&#default_ident.#member_ident).map_err(Into::into),
                 }
             }
             else {
-                quote! { #hash_value => serde_json::to_string(&self.#member_ident).map_err(|_err| "json serialization error"),
+                quote! { #hash_value => serde_json::to_string(&self.#member_ident).map_err(Into::into),
                 }
             }
         })
@@ -146,10 +146,10 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
     quote! {
 
         use std::{any::Any, io};
-        use legion_data_offline::{PropertyDescriptor,
-            resource::{OfflineResource, ResourceProcessor, ResourceReflection},
-        };
         use legion_data_runtime::{Asset, AssetLoader, Resource};
+        use legion_data_offline::{ PropertyDescriptor,
+            resource::{OfflineResource, ResourceProcessor,ResourceReflection},
+        };
         use legion_utils::DefaultHash;
         use std::collections::HashMap;
 
@@ -195,27 +195,27 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
 
         impl ResourceReflection for #offline_identifier {
             /// Interface defining field serialization by name
-            fn write_property(&mut self, field_name: &str, field_value: &str) -> Result<(), &'static str> {
+            fn write_property(&mut self, field_name: &str, field_value: &str) -> anyhow::Result<()> {
                 match field_name.default_hash() {
                     #(#reflection_writer)*
-                    _ => return Err("invalid field"),
+                    _ => return Err(anyhow::anyhow!("write_property error: invalid field '{}'", field_name)),
                 }
                 Ok(())
             }
 
             /// Interface defining field serialization by name
-            fn read_property(&self, field_name: &str) -> Result<String, &'static str> {
+            fn read_property(&self, field_name: &str) -> anyhow::Result<String> {
                 match field_name.default_hash() {
                     #(#reflection_read)*
-                    _ => Err("invalid field"),
+                    _ => return Err(anyhow::anyhow!("read_property error: invalid field '{}'", field_name)),
                 }
             }
 
             /// Interface defining field serialization by name
-            fn read_property_default(&self, field_name: &str) -> Result<String, &'static str> {
+            fn read_property_default(&self, field_name: &str) -> anyhow::Result<String> {
                 match field_name.default_hash() {
                     #(#reflection_read_default)*
-                    _ => Err("invalid field"),
+                    _ => return Err(anyhow::anyhow!("read_property_default error: invalid field '{}'", field_name)),
                 }
             }
 

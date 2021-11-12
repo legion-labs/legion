@@ -23,22 +23,18 @@ pub trait OfflineResource: Asset {
 /// The trait defines the reflection interface
 pub trait ResourceReflection {
     /// Interface defining field serialization by name
-    fn write_property(
-        &mut self,
-        _field_name: &str,
-        _field_value: &str,
-    ) -> Result<(), &'static str> {
-        Err("write_property not implemented")
+    fn write_property(&mut self, _field_name: &str, _field_value: &str) -> anyhow::Result<()> {
+        Err(anyhow::anyhow!("write_property not implemented"))
     }
 
     /// Interface defining field serialization by name
-    fn read_property(&self, _field_name: &str) -> Result<String, &'static str> {
-        Err("read_property not implemented")
+    fn read_property(&self, _field_name: &str) -> anyhow::Result<String> {
+        Err(anyhow::anyhow!("read_property not implemented"))
     }
 
     /// Interface defining field serialization by name
-    fn read_property_default(&self, _field_name: &str) -> Result<String, &'static str> {
-        Err("read_property_default not implemented")
+    fn read_property_default(&self, _field_name: &str) -> anyhow::Result<String> {
+        Err(anyhow::anyhow!("read_property_default not implemented"))
     }
 
     /// Retrieve the Property Descriptors for a Resource

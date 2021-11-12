@@ -1,5 +1,5 @@
 [package]
-name = "legion-data-offline"
+name = "legion-data-transaction"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -7,25 +7,18 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Legion engine
-legion-content-store = { path = "../content-store" } # for ContentType
 legion-data-runtime = { path = "../data-runtime" }
+legion-data-offline = { path = "../data-offline" }
 legion-utils = { path = "../utils" }
 
 # others
-crossbeam-channel = "0.5.1"
-hex = "0.4.3"
-rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "0.8", features = ["v4"] }
 thiserror = "1.0"
 anyhow = "1.0"
-
+log = "0.4"
 
 [dev-dependencies]
+generic_data_offline = { path = "../../test/generic_data_offline", version = "0.1.0" }
 tempfile = "3.2.0"
-
-[features]
-default = ["offline_data", "runtime_data"]
-offline_data = []
-runtime_data = []

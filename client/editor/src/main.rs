@@ -68,14 +68,14 @@ use std::error::Error;
 use config::Config;
 use interop::js::editor::{
     IntoVec, JSGetResourcePropertiesRequest, JSGetResourcePropertiesResponse,
-    JSSearchResourcesResponse, JSUpdateResourcePropertiesRequest,
-    JSUpdateResourcePropertiesResponse,
+    JSRedoTransactionResponse, JSSearchResourcesResponse, JSUndoTransactionResponse,
+    JSUpdateResourcePropertiesRequest, JSUpdateResourcePropertiesResponse,
 };
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
 use legion_editor_proto::{
-    editor_client::EditorClient, GetResourcePropertiesRequest, SearchResourcesRequest,
-    UpdateResourcePropertiesRequest,
+    editor_client::EditorClient, GetResourcePropertiesRequest, RedoTransactionRequest,
+    SearchResourcesRequest, UndoTransactionRequest, UpdateResourcePropertiesRequest,
 };
 use legion_grpc::client::Client as GRPCClient;
 use legion_online::authentication::{
@@ -115,6 +115,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             authenticate,
             initialize_stream,
             search_resources,
+            undo_transaction,
+            redo_transaction,
             get_resource_properties,
             update_resource_properties,
             on_receive_control_message,
@@ -246,6 +248,33 @@ async fn search_resources(
             return Ok(result);
         }
     }
+}
+
+#[legion_tauri_command]
+async fn undo_transaction(
+    editor_client: tauri::State<'_, Mutex<EditorClient<GRPCClient>>>,
+) -> anyhow::Result<JSUndoTransactionResponse> {
+    let mut editor_client = editor_client.lock().await;
+
+    let mut result = JSUndoTransactionResponse::default();
+
+    let request = tonic::Request::new(UndoTransactionRequest { id: -1 });
+    let response = editor_client.undo_transaction(request).await?.into_inner();
+    result.transaction_id = response.id;
+    Ok(result)
+}
+
+#[legion_tauri_command]
+async fn redo_transaction(
+    editor_client: tauri::State<'_, Mutex<EditorClient<GRPCClient>>>,
+) -> anyhow::Result<JSRedoTransactionResponse> {
+    let mut editor_client = editor_client.lock().await;
+
+    let mut result = JSRedoTransactionResponse::default();
+    let request = tonic::Request::new(RedoTransactionRequest { id: -1 });
+    let response = editor_client.redo_transaction(request).await?.into_inner();
+    result.transaction_id = response.id;
+    Ok(result)
 }
 
 #[legion_tauri_command]

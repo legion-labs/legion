@@ -4,12 +4,21 @@ package editor;
 service Editor {
   rpc SearchResources(SearchResourcesRequest) returns (SearchResourcesResponse);
 
+  rpc UndoTransaction(UndoTransactionRequest) returns (UndoTransactionResponse);
+
+  rpc RedoTransaction(RedoTransactionRequest) returns (RedoTransactionResponse);
+
   rpc GetResourceProperties(GetResourcePropertiesRequest)
       returns (GetResourcePropertiesResponse);
 
   rpc UpdateResourceProperties(UpdateResourcePropertiesRequest)
       returns (UpdateResourcePropertiesResponse);
 }
+
+message UndoTransactionRequest { int32 id = 1; }
+message UndoTransactionResponse { int32 id = 1; }
+message RedoTransactionRequest { int32 id = 1; }
+message RedoTransactionResponse { int32 id = 1; }
 
 message SearchResourcesRequest { string searchToken = 1; }
 

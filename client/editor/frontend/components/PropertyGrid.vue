@@ -1,6 +1,7 @@
 <template>
   <div id="property-grid" :style="minWidth" class="d-flex flex-column">
     <v-subheader>Properties</v-subheader>
+    <EditToolBar :resource-description="resourceDescription"></EditToolBar>
     <ResourceSelector v-model="resourceDescription"></ResourceSelector>
     <v-divider></v-divider>
     <ResourceProperties
