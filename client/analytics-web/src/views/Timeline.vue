@@ -195,7 +195,7 @@ function drawThread (thread, threadVerticalOffset) {
 function drawCanvas () {
   const canvas = document.getElementById('canvas_timeline')
   this.renderingContext.clearRect(0, 0, canvas.width, canvas.height)
-  let threadVerticalOffset = 0
+  let threadVerticalOffset = this.y_offset
   for (const streamId in this.threads) {
     this.drawThread(this.threads[streamId], threadVerticalOffset)
     threadVerticalOffset += 110
@@ -211,13 +211,15 @@ function onPan (evt) {
     this.begin_drag = {
       beginMouseX: evt.offsetX,
       beginMouseY: evt.offsetY,
-      viewRange: this.getViewRange()
+      viewRange: this.getViewRange(),
+      beginYOffset: this.y_offset
     }
   }
   const canvas = document.getElementById('canvas_timeline')
   const factor = (this.begin_drag.viewRange[1] - this.begin_drag.viewRange[0]) / canvas.width
   const offsetMs = factor * (this.begin_drag.beginMouseX - evt.offsetX)
   this.view_range = [this.begin_drag.viewRange[0] + offsetMs, this.begin_drag.viewRange[1] + offsetMs]
+  this.y_offset = this.begin_drag.beginYOffset + evt.offsetY - this.begin_drag.beginMouseY
   this.drawCanvas()
 }
 
@@ -252,6 +254,7 @@ function reset (processId) {
   this.max_ms = -Infinity
   this.view_range = undefined
   this.begin_drag = undefined
+  this.y_offset = 0
   this.fetchProcessInfo()
 }
 
@@ -275,7 +278,8 @@ export default {
       min_ms: Infinity,
       max_ms: -Infinity,
       view_range: undefined,
-      begin_drag: undefined
+      begin_drag: undefined,
+      y_offset: 0
     }
   },
   methods: {
