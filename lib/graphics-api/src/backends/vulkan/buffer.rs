@@ -1,23 +1,13 @@
 use ash::vk;
 
-use super::{VulkanApi, VulkanBufferView, VulkanDeviceContext};
-use crate::backends::deferred_drop::Drc;
-use crate::{
-    Buffer, BufferDef, BufferMappingInfo, BufferViewDef, GfxResult, MemoryUsage, ResourceUsage,
-};
+use super::VulkanDeviceContext;
+use crate::{BufferDef, GfxResult, MemoryUsage, ResourceUsage};
 
 #[derive(Debug)]
-struct VulkanBufferInner {
-    buffer_def: BufferDef,
-    device_context: VulkanDeviceContext,
+pub(crate) struct VulkanBuffer {
     allocation_info: vk_mem::AllocationInfo,
     allocation: vk_mem::Allocation,
     buffer: vk::Buffer,
-}
-
-#[derive(Clone, Debug)]
-pub struct VulkanBuffer {
-    inner: Drc<VulkanBufferInner>,
 }
 
 impl VulkanBuffer {
@@ -83,111 +73,45 @@ impl VulkanBuffer {
         );
 
         Ok(Self {
-            inner: device_context
-                .deferred_dropper()
-                .new_drc(VulkanBufferInner {
-                    device_context: device_context.clone(),
-                    allocation_info,
-                    buffer_def: *buffer_def,
-                    allocation,
-                    buffer,
-                }),
+            allocation_info,
+            allocation,
+            buffer,
         })
     }
 
-    pub fn device_context(&self) -> &VulkanDeviceContext {
-        &self.inner.device_context
-    }
-
-    pub fn vk_buffer(&self) -> vk::Buffer {
-        self.inner.buffer
-    }
-}
-
-impl Drop for VulkanBufferInner {
-    fn drop(&mut self) {
+    pub fn destroy(&self, device_context: &VulkanDeviceContext, buffer_def: &BufferDef) {
         log::trace!("destroying BufferVulkanInner");
 
         log::trace!(
             "Buffer {:?} destroying with size {} (always mapped: {:?})",
             self.buffer,
-            self.buffer_def.size,
-            self.buffer_def.always_mapped
+            buffer_def.size,
+            buffer_def.always_mapped
         );
 
-        self.device_context
+        device_context
             .allocator()
             .destroy_buffer(self.buffer, &self.allocation);
 
         log::trace!("destroyed BufferVulkanInner");
     }
-}
 
-pub struct VulkanBufferMappingInfo {
-    buffer: VulkanBuffer,
-    data_ptr: *mut u8,
-}
+    pub fn map_buffer(&self, device_context: &VulkanDeviceContext) -> GfxResult<*mut u8> {
+        let ptr = device_context
+            .allocator()
+            .map_memory(&self.allocation)
+            .map_err(|e| {
+                log::error!("Error mapping buffer {:?}", e);
+                vk::Result::ERROR_UNKNOWN
+            })?;
+        Ok(ptr)
+    }
 
-impl Drop for VulkanBufferMappingInfo {
-    fn drop(&mut self) {
+    pub fn unmap_buffer(&self, device_context: &VulkanDeviceContext) {
+        device_context.allocator().unmap_memory(&self.allocation);
+    }
+
+    pub fn vk_buffer(&self) -> vk::Buffer {
         self.buffer
-            .device_context()
-            .allocator()
-            .unmap_memory(&self.buffer.inner.allocation);
-    }
-}
-
-impl BufferMappingInfo<VulkanApi> for VulkanBufferMappingInfo {
-    fn data_ptr(&self) -> *mut u8 {
-        self.data_ptr
-    }
-}
-
-impl Buffer<VulkanApi> for VulkanBuffer {
-    fn definition(&self) -> &BufferDef {
-        &self.inner.buffer_def
-    }
-
-    fn map_buffer(&self) -> GfxResult<VulkanBufferMappingInfo> {
-        let ptr = self
-            .inner
-            .device_context
-            .allocator()
-            .map_memory(&self.inner.allocation)?;
-        Ok(VulkanBufferMappingInfo {
-            buffer: self.clone(),
-            data_ptr: ptr,
-        })
-    }
-
-    fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()> {
-        // Cannot check size of data == buffer because buffer size might be rounded up
-        self.copy_to_host_visible_buffer_with_offset(data, 0)
-    }
-
-    fn copy_to_host_visible_buffer_with_offset<T: Copy>(
-        &self,
-        data: &[T],
-        buffer_byte_offset: u64,
-    ) -> GfxResult<()> {
-        let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
-        assert!(buffer_byte_offset + data_size_in_bytes <= self.inner.buffer_def.size);
-
-        let src = data.as_ptr().cast::<u8>();
-
-        let required_alignment = std::mem::align_of::<T>();
-
-        let mapping_info = self.map_buffer()?;
-        unsafe {
-            let dst = mapping_info.data_ptr().add(buffer_byte_offset as usize);
-            assert_eq!(((dst as usize) % required_alignment), 0);
-            std::ptr::copy_nonoverlapping(src, dst, data_size_in_bytes as usize);
-        }
-
-        Ok(())
-    }
-
-    fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<VulkanBufferView> {
-        VulkanBufferView::from_buffer(self, view_def)
     }
 }

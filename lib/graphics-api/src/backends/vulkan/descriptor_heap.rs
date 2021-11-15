@@ -1,12 +1,8 @@
 use crate::{
-    backends::deferred_drop::Drc, DescriptorHeap, DescriptorHeapDef, GfxResult, VulkanApi,
+    DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetHandle, DescriptorSetLayout,
+    DeviceContext, GfxResult,
 };
 use ash::vk;
-
-use super::{
-    VulkanDescriptorSetBufWriter, VulkanDescriptorSetHandle, VulkanDescriptorSetLayout,
-    VulkanDeviceContext,
-};
 
 struct DescriptorHeapPoolConfig {
     pool_flags: vk::DescriptorPoolCreateFlags,
@@ -90,74 +86,51 @@ impl DescriptorHeapPoolConfig {
     }
 }
 
-struct DescriptorHeapVulkanInner {
-    device_context: VulkanDeviceContext,
-    _definition: DescriptorHeapDef,
+pub(crate) struct VulkanDescriptorHeap {
     vk_pool: vk::DescriptorPool,
 }
 
-impl Drop for DescriptorHeapVulkanInner {
-    fn drop(&mut self) {
-        let device = self.device_context.device();
+impl VulkanDescriptorHeap {
+    pub fn new(device_context: &DeviceContext, definition: &DescriptorHeapDef) -> GfxResult<Self> {
+        let device = device_context.platform_device();
+        let heap_pool_config: DescriptorHeapPoolConfig = definition.into();
+        let vk_pool = heap_pool_config.create_pool(device)?;
+
+        Ok(Self { vk_pool })
+    }
+
+    pub fn destroy(&self, device_context: &DeviceContext) {
+        let device = device_context.platform_device();
         unsafe {
             device.destroy_descriptor_pool(self.vk_pool, None);
         }
     }
-}
 
-#[derive(Clone)]
-pub struct VulkanDescriptorHeap {
-    inner: Drc<DescriptorHeapVulkanInner>,
-}
-
-impl DescriptorHeap<VulkanApi> for VulkanDescriptorHeap {
-    fn reset(&self) -> GfxResult<()> {
-        let inner = &self.inner;
-        let device = inner.device_context.device();
+    pub fn reset(&self, device_context: &DeviceContext) -> GfxResult<()> {
+        let device = device_context.platform_device();
         unsafe {
             device
-                .reset_descriptor_pool(inner.vk_pool, vk::DescriptorPoolResetFlags::default())
+                .reset_descriptor_pool(self.vk_pool, vk::DescriptorPoolResetFlags::default())
                 .map_err(|x| x.into())
         }
     }
 
-    fn allocate_descriptor_set(
+    pub fn allocate_descriptor_set(
         &self,
-        descriptor_set_layout: &VulkanDescriptorSetLayout,
-    ) -> GfxResult<VulkanDescriptorSetBufWriter> {
-        let inner = &self.inner;
-        let device = inner.device_context.device();
+        device_context: &DeviceContext,
+        descriptor_set_layout: &DescriptorSetLayout,
+    ) -> GfxResult<DescriptorSetBufWriter> {
+        let device = device_context.platform_device();
         let allocate_info = vk::DescriptorSetAllocateInfo::builder()
-            .set_layouts(&[descriptor_set_layout.vk_layout()])
-            .descriptor_pool(inner.vk_pool)
+            .set_layouts(&[descriptor_set_layout.platform_layout().vk_layout()])
+            .descriptor_pool(self.vk_pool)
             .build();
 
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
 
-        VulkanDescriptorSetBufWriter::new(
-            VulkanDescriptorSetHandle(result[0]),
+        DescriptorSetBufWriter::new(
+            DescriptorSetHandle { vk_type: result[0] },
             descriptor_set_layout,
         )
-    }
-}
-
-impl VulkanDescriptorHeap {
-    pub(crate) fn new(
-        device_context: &VulkanDeviceContext,
-        definition: &DescriptorHeapDef,
-    ) -> GfxResult<Self> {
-        let device = device_context.device();
-        let heap_pool_config: DescriptorHeapPoolConfig = definition.into();
-        let vk_pool = heap_pool_config.create_pool(device)?;
-
-        let inner = DescriptorHeapVulkanInner {
-            device_context: device_context.clone(),
-            _definition: *definition,
-            vk_pool,
-        };
-
-        Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(inner),
-        })
     }
 }

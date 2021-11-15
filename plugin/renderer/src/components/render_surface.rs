@@ -1,9 +1,8 @@
 use std::cmp::max;
 
 use graphics_api::{
-    CommandBuffer, DefaultApi, DeviceContext, Extents2D, Extents3D, Format, GfxApi, MemoryUsage,
-    ResourceFlags, ResourceState, ResourceUsage, Texture, TextureBarrier, TextureDef,
-    TextureTiling, TextureViewDef,
+    CommandBuffer, Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState,
+    ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 use legion_ecs::prelude::Component;
 use legion_utils::Uuid;
@@ -43,13 +42,13 @@ impl RenderSurfaceExtents {
     }
 }
 
-#[derive(Debug, Component)]
+#[derive(Component)]
 pub struct RenderSurface {
     id: RenderSurfaceId,
     extents: RenderSurfaceExtents,
-    texture: <DefaultApi as GfxApi>::Texture,
-    texture_srv: <DefaultApi as GfxApi>::TextureView,
-    texture_rtv: <DefaultApi as GfxApi>::TextureView,
+    texture: Texture,
+    texture_srv: TextureView,
+    texture_rtv: TextureView,
     texture_state: ResourceState,
 
     // tmp
@@ -71,23 +70,19 @@ impl RenderSurface {
         self.id
     }
 
-    pub fn texture(&self) -> &<DefaultApi as GfxApi>::Texture {
+    pub fn texture(&self) -> &Texture {
         &self.texture
     }
 
-    pub fn render_target_view(&self) -> &<DefaultApi as GfxApi>::TextureView {
+    pub fn render_target_view(&self) -> &TextureView {
         &self.texture_rtv
     }
 
-    pub fn shader_resource_view(&self) -> &<DefaultApi as GfxApi>::TextureView {
+    pub fn shader_resource_view(&self) -> &TextureView {
         &self.texture_srv
     }
 
-    pub fn transition_to(
-        &mut self,
-        cmd_buffer: &<DefaultApi as GfxApi>::CommandBuffer,
-        dst_state: ResourceState,
-    ) {
+    pub fn transition_to(&mut self, cmd_buffer: &CommandBuffer, dst_state: ResourceState) {
         let src_state = self.texture_state;
         let dst_state = dst_state;
 
@@ -95,7 +90,7 @@ impl RenderSurface {
             cmd_buffer
                 .cmd_resource_barrier(
                     &[],
-                    &[TextureBarrier::<DefaultApi>::state_transition(
+                    &[TextureBarrier::state_transition(
                         &self.texture,
                         src_state,
                         dst_state,

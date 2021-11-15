@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
 mod api;
-pub use api::*;
+pub(crate) use api::*;
 
 mod device_context;
 pub use device_context::*;
@@ -10,55 +10,49 @@ mod swapchain;
 pub use swapchain::*;
 
 mod shader_module;
-pub use shader_module::*;
-
-mod shader;
-pub use shader::*;
+pub(crate) use shader_module::*;
 
 mod queue;
-pub use queue::*;
+pub(crate) use queue::*;
 
 mod command_pool;
-pub use command_pool::*;
+pub(crate) use command_pool::*;
 
 mod command_buffer;
-pub use command_buffer::*;
+pub(crate) use command_buffer::*;
 
 mod fence;
-pub use fence::*;
+pub(crate) use fence::*;
 
 mod semaphore;
-pub use semaphore::*;
+pub(crate) use semaphore::*;
 
 mod texture;
-pub use texture::*;
+pub(crate) use texture::*;
 
 mod buffer;
-pub use buffer::*;
+pub(crate) use buffer::*;
 
 mod sampler;
-pub use sampler::*;
-
-mod buffer_view;
-pub use buffer_view::*;
+pub(crate) use sampler::*;
 
 mod texture_view;
-pub use texture_view::*;
+pub(crate) use texture_view::*;
 
 mod root_signature;
-pub use root_signature::*;
+pub(crate) use root_signature::*;
 
 mod pipeline;
-pub use pipeline::*;
+pub(crate) use pipeline::*;
 
 mod descriptor_heap;
-pub use descriptor_heap::*;
+pub(crate) use descriptor_heap::*;
 
 mod descriptor_set_writer;
 pub use descriptor_set_writer::*;
 
 mod descriptor_set_layout;
-pub use descriptor_set_layout::*;
+pub(crate) use descriptor_set_layout::*;
 
 mod video;
 pub use video::*;

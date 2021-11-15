@@ -6,10 +6,8 @@ use super::LruCache;
 use super::{
     VulkanRenderpassColorAttachment, VulkanRenderpassDef, VulkanRenderpassDepthAttachment,
 };
-use crate::backends::vulkan::{VulkanApi, VulkanDeviceContext, VulkanRenderpass};
-use crate::{
-    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, GfxResult, Texture, TextureView,
-};
+use crate::backends::vulkan::VulkanRenderpass;
+use crate::{ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult};
 
 pub(crate) struct VulkanRenderpassCache {
     cache: LruCache<VulkanRenderpass>,
@@ -27,8 +25,8 @@ impl VulkanRenderpassCache {
     }
 
     pub(crate) fn renderpass_hash(
-        color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
-        depth_target: Option<&DepthStencilRenderTargetBinding<'_, VulkanApi>>,
+        color_targets: &[ColorRenderTargetBinding<'_>],
+        depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,
     ) -> u64 {
         let mut hasher = FnvHasher::default();
         for color_target in color_targets {
@@ -49,9 +47,9 @@ impl VulkanRenderpassCache {
     }
 
     pub(crate) fn create_renderpass(
-        device_context: &VulkanDeviceContext,
-        color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
-        depth_target: Option<&DepthStencilRenderTargetBinding<'_, VulkanApi>>,
+        device_context: &DeviceContext,
+        color_targets: &[ColorRenderTargetBinding<'_>],
+        depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<VulkanRenderpass> {
         let color_attachments: Vec<_> = color_targets
             .iter()
@@ -83,9 +81,9 @@ impl VulkanRenderpassCache {
 
     pub(crate) fn get_or_create_renderpass(
         &mut self,
-        device_context: &VulkanDeviceContext,
-        color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
-        depth_target: Option<&DepthStencilRenderTargetBinding<'_, VulkanApi>>,
+        device_context: &DeviceContext,
+        color_targets: &[ColorRenderTargetBinding<'_>],
+        depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<VulkanRenderpass> {
         //
         // Hash it

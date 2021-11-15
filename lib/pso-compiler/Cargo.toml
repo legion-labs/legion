@@ -13,6 +13,3 @@ graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api
 spirv-reflect = "0.2"
 spirv-tools = "0.7"
 anyhow = "1"
-
-[features]
-default = ["graphics-api/vulkan"]

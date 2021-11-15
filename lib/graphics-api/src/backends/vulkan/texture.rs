@@ -1,23 +1,19 @@
-use std::hash::{Hash, Hasher};
 use std::ptr::slice_from_raw_parts;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 
 use ash::vk::{self};
 
-use super::{VulkanApi, VulkanDeviceContext, VulkanTextureView};
-use crate::backends::deferred_drop::Drc;
-use crate::{
-    Extents3D, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,
-    TextureSubResource, TextureViewDef,
-};
+use crate::{GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, TextureDef, TextureSubResource};
+
+use super::VulkanDeviceContext;
 
 // This is used to allow the underlying image/allocation to be removed from a VulkanTexture,
 // or to init a VulkanTexture with an existing image/allocation. If the allocation is none, we
 // will not destroy the image when VulkanRawImage is dropped
 #[derive(Debug)]
-pub struct VulkanRawImage {
-    pub image: vk::Image,
-    pub allocation: Option<vk_mem::Allocation>,
+pub(crate) struct VulkanRawImage {
+    pub(crate) image: vk::Image,
+    pub(crate) allocation: Option<vk_mem::Allocation>,
 }
 
 impl VulkanRawImage {
@@ -44,82 +40,22 @@ impl Drop for VulkanRawImage {
 }
 
 #[derive(Debug)]
-pub struct TextureVulkanInner {
-    device_context: VulkanDeviceContext,
-    texture_def: TextureDef,
-    image: VulkanRawImage,
-    aspect_mask: vk::ImageAspectFlags,
-    is_undefined_layout: AtomicBool,
-    texture_id: u32,
-}
-
-impl Drop for TextureVulkanInner {
-    fn drop(&mut self) {
-        let _device = self.device_context.device();
-        self.image.destroy_image(&self.device_context);
-    }
-}
-
-/// Holds the `vk::Image` and allocation as well as a few `vk::ImageViews` depending on the
-/// provided `ResourceType` in the `texture_def`.
-#[derive(Clone, Debug)]
-pub struct VulkanTexture {
-    inner: Drc<TextureVulkanInner>,
-}
-
-impl PartialEq for VulkanTexture {
-    fn eq(&self, other: &Self) -> bool {
-        self.inner.texture_id == other.inner.texture_id
-    }
-}
-
-impl Eq for VulkanTexture {}
-
-impl Hash for VulkanTexture {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.inner.texture_id.hash(state);
-    }
+pub(crate) struct VulkanTexture {
+    pub image: VulkanRawImage,
+    pub aspect_mask: vk::ImageAspectFlags,
 }
 
 impl VulkanTexture {
-    pub fn extents(&self) -> &Extents3D {
-        &self.inner.texture_def.extents
+    pub(super) fn vk_aspect_mask(&self) -> vk::ImageAspectFlags {
+        self.aspect_mask
     }
 
-    pub fn array_length(&self) -> u32 {
-        self.inner.texture_def.array_length
+    pub(super) fn vk_image(&self) -> vk::Image {
+        self.image.image
     }
 
-    pub fn vk_aspect_mask(&self) -> vk::ImageAspectFlags {
-        self.inner.aspect_mask
-    }
-
-    pub fn vk_image(&self) -> vk::Image {
-        self.inner.image.image
-    }
-
-    pub fn vk_allocation(&self) -> Option<vk_mem::Allocation> {
-        self.inner.image.allocation
-    }
-
-    pub fn device_context(&self) -> &VulkanDeviceContext {
-        &self.inner.device_context
-    }
-
-    // Used internally as part of the hash for creating/reusing framebuffers
-    pub(crate) fn texture_id(&self) -> u32 {
-        self.inner.texture_id
-    }
-
-    // Command buffers check this to see if an image needs to be transitioned from UNDEFINED
-    pub(crate) fn take_is_undefined_layout(&self) -> bool {
-        self.inner
-            .is_undefined_layout
-            .swap(false, Ordering::Relaxed)
-    }
-
-    pub fn new(device_context: &VulkanDeviceContext, texture_def: &TextureDef) -> GfxResult<Self> {
-        Self::from_existing(device_context, None, texture_def)
+    pub(super) fn vk_allocation(&self) -> Option<vk_mem::Allocation> {
+        self.image.allocation
     }
 
     // This path is mostly so we can wrap a provided swapchain image
@@ -128,7 +64,7 @@ impl VulkanTexture {
         device_context: &VulkanDeviceContext,
         existing_image: Option<VulkanRawImage>,
         texture_def: &TextureDef,
-    ) -> GfxResult<Self> {
+    ) -> GfxResult<(Self, u32)> {
         texture_def.verify();
         //
         // Determine desired image type
@@ -416,29 +352,18 @@ impl VulkanTexture {
         // Used for hashing framebuffers
         let texture_id = crate::backends::shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
 
-        let inner = TextureVulkanInner {
-            texture_def: *texture_def,
-            device_context: device_context.clone(),
-            image,
-            aspect_mask,
-            texture_id,
-            is_undefined_layout: AtomicBool::new(true),
-        };
-
-        Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(inner),
-        })
+        Ok((Self { image, aspect_mask }, texture_id))
     }
-}
 
-impl Texture<VulkanApi> for VulkanTexture {
-    fn definition(&self) -> &TextureDef {
-        &self.inner.texture_def
+    pub fn destroy(&mut self, device_context: &VulkanDeviceContext) {
+        self.image.destroy_image(device_context);
     }
-    fn map_texture(&self) -> GfxResult<TextureSubResource<'_>> {
-        let ptr = self
-            .inner
-            .device_context
+
+    pub fn map_texture(
+        &self,
+        device_context: &VulkanDeviceContext,
+    ) -> GfxResult<TextureSubResource<'_>> {
+        let ptr = device_context
             .allocator()
             .map_memory(&self.vk_allocation().unwrap())?;
 
@@ -447,11 +372,9 @@ impl Texture<VulkanApi> for VulkanTexture {
             .build();
 
         unsafe {
-            let sub_res_layout = self
-                .inner
-                .device_context
+            let sub_res_layout = device_context
                 .device()
-                .get_image_subresource_layout(self.inner.image.image, sub_res);
+                .get_image_subresource_layout(self.image.image, sub_res);
 
             Ok(TextureSubResource {
                 data: &*slice_from_raw_parts(
@@ -465,16 +388,9 @@ impl Texture<VulkanApi> for VulkanTexture {
         }
     }
 
-    fn unmap_texture(&self) -> GfxResult<()> {
-        self.inner
-            .device_context
+    pub fn unmap_texture(&self, device_context: &VulkanDeviceContext) {
+        device_context
             .allocator()
             .unmap_memory(&self.vk_allocation().unwrap());
-
-        Ok(())
-    }
-
-    fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<VulkanTextureView> {
-        VulkanTextureView::new(self, view_def)
     }
 }

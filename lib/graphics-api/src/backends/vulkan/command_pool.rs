@@ -1,40 +1,19 @@
 use ash::vk;
 
-use super::{VulkanApi, VulkanCommandBuffer, VulkanDeviceContext, VulkanQueue};
-use crate::{CommandBufferDef, CommandPool, CommandPoolDef, GfxResult, Queue, QueueType};
+use super::VulkanQueue;
+use crate::{CommandPoolDef, DeviceContext, GfxResult};
 
-pub struct VulkanCommandPool {
-    device_context: VulkanDeviceContext,
+pub(crate) struct VulkanCommandPool {
     vk_command_pool: vk::CommandPool,
-    queue_type: QueueType,
-    queue_family_index: u32,
-}
-
-impl Drop for VulkanCommandPool {
-    fn drop(&mut self) {
-        unsafe {
-            self.device_context
-                .device()
-                .destroy_command_pool(self.vk_command_pool, None);
-        }
-    }
 }
 
 impl VulkanCommandPool {
-    pub fn queue_type(&self) -> QueueType {
-        self.queue_type
-    }
-
-    pub fn queue_family_index(&self) -> u32 {
-        self.queue_family_index
-    }
-
-    pub fn vk_command_pool(&self) -> vk::CommandPool {
-        self.vk_command_pool
-    }
-
-    pub fn new(queue: &VulkanQueue, command_pool_def: &CommandPoolDef) -> GfxResult<Self> {
-        let queue_family_index = queue.queue().queue_family_index();
+    pub(crate) fn new(
+        devie_context: &DeviceContext,
+        queue: &VulkanQueue,
+        command_pool_def: &CommandPoolDef,
+    ) -> GfxResult<Self> {
+        let queue_family_index = queue.vk_queue().queue_family_index();
         log::trace!(
             "Creating command pool on queue family index {:?}",
             queue_family_index
@@ -50,39 +29,32 @@ impl VulkanCommandPool {
             .queue_family_index(queue_family_index);
 
         let vk_command_pool = unsafe {
-            queue
-                .device_context()
-                .device()
+            devie_context
+                .platform_device()
                 .create_command_pool(&pool_create_info, None)?
         };
 
-        Ok(Self {
-            device_context: queue.device_context().clone(),
-            vk_command_pool,
-            queue_type: queue.queue_type(),
-            queue_family_index,
-        })
-    }
-}
-
-impl CommandPool<VulkanApi> for VulkanCommandPool {
-    fn device_context(&self) -> &VulkanDeviceContext {
-        &self.device_context
+        Ok(Self { vk_command_pool })
     }
 
-    fn create_command_buffer(
-        &self,
-        command_buffer_def: &CommandBufferDef,
-    ) -> GfxResult<VulkanCommandBuffer> {
-        VulkanCommandBuffer::new(self, command_buffer_def)
-    }
-
-    fn reset_command_pool(&self) -> GfxResult<()> {
+    pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
-            self.device_context
-                .device()
+            device_context
+                .platform_device()
+                .destroy_command_pool(self.vk_command_pool, None);
+        }
+    }
+
+    pub fn reset_command_pool(&self, device_context: &DeviceContext) -> GfxResult<()> {
+        unsafe {
+            device_context
+                .platform_device()
                 .reset_command_pool(self.vk_command_pool, vk::CommandPoolResetFlags::empty())?;
         }
         Ok(())
+    }
+
+    pub fn vk_command_pool(&self) -> vk::CommandPool {
+        self.vk_command_pool
     }
 }

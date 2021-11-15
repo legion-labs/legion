@@ -1,38 +1,31 @@
 use ash::vk;
 
-use super::{VulkanApi, VulkanDeviceContext};
-use crate::backends::deferred_drop::Drc;
-use crate::{GfxResult, ShaderModule, ShaderModuleDef};
+use super::VulkanDeviceContext;
+use crate::{DeviceContext, GfxResult, ShaderModuleDef};
 
 #[derive(Debug)]
-pub struct ShaderModuleVulkanInner {
-    device_context: VulkanDeviceContext,
+pub(crate) struct VulkanShaderModule {
     shader_module: vk::ShaderModule,
 }
 
-impl Drop for ShaderModuleVulkanInner {
-    fn drop(&mut self) {
-        unsafe {
-            self.device_context
-                .device()
-                .destroy_shader_module(self.shader_module, None);
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct VulkanShaderModule {
-    inner: Drc<ShaderModuleVulkanInner>,
-}
-
 impl VulkanShaderModule {
-    pub fn new(device_context: &VulkanDeviceContext, data: ShaderModuleDef<'_>) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, data: ShaderModuleDef<'_>) -> GfxResult<Self> {
         match data {
-            ShaderModuleDef::SpirVBytes(bytes) => Self::new_from_bytes(device_context, bytes),
+            ShaderModuleDef::SpirVBytes(bytes) => {
+                Self::new_from_bytes(device_context.platform_device_context(), bytes)
+            }
             ShaderModuleDef::Null(_) => unreachable!(),
             //ShaderModuleDef::VkSpvPrepared(spv) => {
             //    VulkanShaderModule::new_from_spv(device_context, spv)
             //}
+        }
+    }
+
+    pub fn destroy(&self, device_context: &DeviceContext) {
+        unsafe {
+            device_context
+                .platform_device()
+                .destroy_shader_module(self.shader_module, None);
         }
     }
 
@@ -49,18 +42,11 @@ impl VulkanShaderModule {
                 .device()
                 .create_shader_module(&create_info, None)?
         };
-        let inner = ShaderModuleVulkanInner {
-            device_context: device_context.clone(),
-            shader_module,
-        };
-        Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(inner),
-        })
+
+        Ok(Self { shader_module })
     }
 
     pub fn vk_shader_module(&self) -> vk::ShaderModule {
-        self.inner.shader_module
+        self.shader_module
     }
 }
-
-impl ShaderModule<VulkanApi> for VulkanShaderModule {}

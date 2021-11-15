@@ -2,13 +2,11 @@ use std::ffi::CStr;
 
 use ash::vk;
 
-use crate::GfxResult;
-
-use super::VulkanDeviceContext;
+use crate::{DeviceContext, GfxResult};
 
 #[derive(Clone)]
 pub struct VideoQueue {
-    device_ctx: VulkanDeviceContext,
+    device_ctx: DeviceContext,
     video_queue_fn: vk::KhrVideoQueueFn,
 }
 
@@ -21,12 +19,13 @@ pub struct VideoQueue {
 //} StdVideoH264ProfileIdc;
 
 impl VideoQueue {
-    pub fn new(device_ctx: VulkanDeviceContext) -> Self {
+    pub fn new(device_ctx: DeviceContext) -> Self {
         let mut video_queue_fn = vk::KhrVideoQueueFn::load(|name| unsafe {
             std::mem::transmute(
                 device_ctx
+                    .platform_device_context()
                     .instance()
-                    .get_device_proc_addr(device_ctx.device().handle(), name.as_ptr()),
+                    .get_device_proc_addr(device_ctx.platform_device().handle(), name.as_ptr()),
             )
         });
         // The following functions need to be loaded from the instance rather than from the device
@@ -36,8 +35,12 @@ impl VideoQueue {
                     b"vkGetPhysicalDeviceVideoCapabilitiesKHR\0",
                 );
                 device_ctx
+                    .platform_device_context()
                     .entry()
-                    .get_instance_proc_addr(device_ctx.instance().handle(), cname.as_ptr())
+                    .get_instance_proc_addr(
+                        device_ctx.platform_device_context().instance().handle(),
+                        cname.as_ptr(),
+                    )
             };
             if let Some(func) = func {
                 video_queue_fn.get_physical_device_video_capabilities_khr =
@@ -50,8 +53,12 @@ impl VideoQueue {
                     b"vkGetPhysicalDeviceVideoFormatPropertiesKHR\0",
                 );
                 device_ctx
+                    .platform_device_context()
                     .entry()
-                    .get_instance_proc_addr(device_ctx.instance().handle(), cname.as_ptr())
+                    .get_instance_proc_addr(
+                        device_ctx.platform_device_context().instance().handle(),
+                        cname.as_ptr(),
+                    )
             };
             if let Some(func) = func {
                 video_queue_fn.get_physical_device_video_format_properties_khr =
@@ -80,7 +87,7 @@ impl VideoQueue {
         unsafe {
             self.video_queue_fn
                 .get_physical_device_video_capabilities_khr(
-                    self.device_ctx.physical_device(),
+                    self.device_ctx.platform_device_context().physical_device(),
                     video_profile,
                     capabilities,
                 )
@@ -98,7 +105,7 @@ impl VideoQueue {
         unsafe {
             self.video_queue_fn
                 .get_physical_device_video_format_properties_khr(
-                    self.device_ctx.physical_device(),
+                    self.device_ctx.platform_device_context().physical_device(),
                     video_format_info,
                     &mut video_format_info_count,
                     std::ptr::null_mut(),
@@ -110,7 +117,7 @@ impl VideoQueue {
             );
             self.video_queue_fn
                 .get_physical_device_video_format_properties_khr(
-                    self.device_ctx.physical_device(),
+                    self.device_ctx.platform_device_context().physical_device(),
                     video_format_info,
                     &mut video_format_info_count,
                     video_format_properties.as_mut_ptr(),
@@ -128,7 +135,7 @@ impl VideoQueue {
         unsafe {
             self.video_queue_fn
                 .create_video_session_khr(
-                    self.device_ctx.device().handle(),
+                    self.device_ctx.platform_device_context().device().handle(),
                     video_session_info,
                     std::ptr::null(),
                     &mut video_session,
@@ -141,7 +148,7 @@ impl VideoQueue {
     pub fn destroy_video_session(&self, video_session: vk::VideoSessionKHR) {
         unsafe {
             self.video_queue_fn.destroy_video_session_khr(
-                self.device_ctx.device().handle(),
+                self.device_ctx.platform_device().handle(),
                 video_session,
                 std::ptr::null(),
             );
@@ -158,7 +165,7 @@ impl VideoQueue {
         unsafe {
             self.video_queue_fn
                 .get_video_session_memory_requirements_khr(
-                    self.device_ctx.device().handle(),
+                    self.device_ctx.platform_device().handle(),
                     video_session,
                     &mut video_session_memory_requirements_count,
                     std::ptr::null_mut(),
@@ -179,7 +186,7 @@ impl VideoQueue {
 
             self.video_queue_fn
                 .get_video_session_memory_requirements_khr(
-                    self.device_ctx.device().handle(),
+                    self.device_ctx.platform_device().handle(),
                     video_session,
                     &mut video_session_memory_requirements_count,
                     video_session_memory_requirements.as_mut_ptr(),

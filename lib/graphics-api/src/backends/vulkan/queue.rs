@@ -1,54 +1,54 @@
 use ash::vk;
 
 use super::internal::VkQueue;
-use super::{
-    VulkanApi, VulkanCommandBuffer, VulkanCommandPool, VulkanDeviceContext, VulkanFence,
-    VulkanSemaphore, VulkanSwapchain,
+use super::{VulkanDeviceContext, VulkanSwapchain};
+use crate::{
+    CommandBuffer, DeviceContext, Fence, GfxResult, PresentSuccessResult, QueueType, Semaphore,
+    Swapchain,
 };
-use crate::{CommandPoolDef, GfxResult, PresentSuccessResult, Queue, QueueType};
 
 #[derive(Clone, Debug)]
-pub struct VulkanQueue {
-    device_context: VulkanDeviceContext,
+pub(crate) struct VulkanQueue {
     queue: VkQueue,
-    queue_type: QueueType,
 }
 
 impl VulkanQueue {
-    pub fn queue(&self) -> &VkQueue {
+    pub fn vk_queue(&self) -> &VkQueue {
         &self.queue
     }
 
-    pub fn new(device_context: &VulkanDeviceContext, queue_type: QueueType) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> GfxResult<Self> {
         let queue = match queue_type {
             QueueType::Graphics => device_context
+                .platform_device_context()
                 .queue_allocator()
                 .allocate_graphics_queue(device_context),
             QueueType::Compute => device_context
+                .platform_device_context()
                 .queue_allocator()
                 .allocate_compute_queue(device_context),
             QueueType::Transfer => device_context
+                .platform_device_context()
                 .queue_allocator()
                 .allocate_transfer_queue(device_context),
             QueueType::Decode => device_context
+                .platform_device_context()
                 .queue_allocator()
                 .allocate_decode_queue(device_context),
             QueueType::Encode => device_context
+                .platform_device_context()
                 .queue_allocator()
                 .allocate_encode_queue(device_context),
         }
         .ok_or_else(|| format!("All queues of type {:?} already allocated", queue_type))?;
 
-        Ok(Self {
-            device_context: device_context.clone(),
-            queue,
-            queue_type,
-        })
+        Ok(Self { queue })
     }
 
     // Make sure we always use the dedicated queue if it exists
-    fn present_to_given_or_dedicated_queue(
+    pub(self) fn present_to_given_or_dedicated_queue(
         &self,
+        vulkan_device_context: &VulkanDeviceContext,
         swapchain: &VulkanSwapchain,
         present_info: &vk::PresentInfoKHR,
     ) -> GfxResult<bool> {
@@ -57,8 +57,7 @@ impl VulkanQueue {
                 // Because of the way we search for present-compatible queues, we don't necessarily have
                 // the same underlying mutex in all instances of a dedicated present queue. So fallback
                 // to a single global lock
-                let _dedicated_present_lock = self
-                    .device_context
+                let _dedicated_present_lock = vulkan_device_context
                     .dedicated_present_queue_lock()
                     .lock()
                     .unwrap();
@@ -83,38 +82,21 @@ impl VulkanQueue {
 
         Ok(is_suboptimal)
     }
-}
 
-impl Queue<VulkanApi> for VulkanQueue {
-    fn device_context(&self) -> &VulkanDeviceContext {
-        &self.device_context
+    pub fn queue_family_index(&self) -> u32 {
+        self.queue.queue_family_index()
     }
 
-    fn queue_id(&self) -> u32 {
-        (self.queue.queue_family_index() << 16) | (self.queue.queue_index())
-    }
-
-    fn queue_type(&self) -> QueueType {
-        self.queue_type
-    }
-
-    fn create_command_pool(
+    pub fn submit(
         &self,
-        command_pool_def: &CommandPoolDef,
-    ) -> GfxResult<VulkanCommandPool> {
-        VulkanCommandPool::new(self, command_pool_def)
-    }
-
-    fn submit(
-        &self,
-        command_buffers: &[&VulkanCommandBuffer],
-        wait_semaphores: &[&VulkanSemaphore],
-        signal_semaphores: &[&VulkanSemaphore],
-        signal_fence: Option<&VulkanFence>,
+        command_buffers: &[&CommandBuffer],
+        wait_semaphores: &[&Semaphore],
+        signal_semaphores: &[&Semaphore],
+        signal_fence: Option<&Fence>,
     ) -> GfxResult<()> {
         let mut command_buffer_list = Vec::with_capacity(command_buffers.len());
         for command_buffer in command_buffers {
-            command_buffer_list.push(command_buffer.vk_command_buffer());
+            command_buffer_list.push(command_buffer.platform_command_buffer().vk_command_buffer());
         }
 
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
@@ -123,7 +105,7 @@ impl Queue<VulkanApi> for VulkanQueue {
             // Don't wait on a semaphore that will never signal
             //TODO: Assert or fail here?
             if wait_semaphore.signal_available() {
-                wait_semaphore_list.push(wait_semaphore.vk_semaphore());
+                wait_semaphore_list.push(wait_semaphore.platform_semaphore().vk_semaphore());
                 wait_dst_stage_mask.push(vk::PipelineStageFlags::ALL_COMMANDS);
 
                 wait_semaphore.set_signal_available(false);
@@ -135,7 +117,7 @@ impl Queue<VulkanApi> for VulkanQueue {
             // Don't signal a semaphore if something is already going to signal it
             //TODO: Assert or fail here?
             if !signal_semaphore.signal_available() {
-                signal_semaphore_list.push(signal_semaphore.vk_semaphore());
+                signal_semaphore_list.push(signal_semaphore.platform_semaphore().vk_semaphore());
                 signal_semaphore.set_signal_available(true);
             }
         }
@@ -146,7 +128,7 @@ impl Queue<VulkanApi> for VulkanQueue {
             .signal_semaphores(&signal_semaphore_list)
             .command_buffers(&command_buffer_list);
 
-        let fence = signal_fence.map_or(vk::Fence::null(), VulkanFence::vk_fence);
+        let fence = signal_fence.map_or(vk::Fence::null(), Fence::vk_fence);
         unsafe {
             let queue = self.queue.queue().lock().unwrap();
             log::trace!(
@@ -167,21 +149,22 @@ impl Queue<VulkanApi> for VulkanQueue {
         Ok(())
     }
 
-    fn present(
+    pub fn present(
         &self,
-        swapchain: &VulkanSwapchain,
-        wait_semaphores: &[&VulkanSemaphore],
+        device_context: &DeviceContext,
+        swapchain: &Swapchain,
+        wait_semaphores: &[&Semaphore],
         image_index: u32,
     ) -> GfxResult<PresentSuccessResult> {
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
         for wait_semaphore in wait_semaphores {
             if wait_semaphore.signal_available() {
-                wait_semaphore_list.push(wait_semaphore.vk_semaphore());
+                wait_semaphore_list.push(wait_semaphore.platform_semaphore().vk_semaphore());
                 wait_semaphore.set_signal_available(false);
             }
         }
 
-        let swapchains = [swapchain.vk_swapchain()];
+        let swapchains = [swapchain.platform_swap_chain().vk_swapchain()];
         let image_indices = [image_index];
         let present_info = vk::PresentInfoKHR::builder()
             .wait_semaphores(&wait_semaphore_list)
@@ -191,7 +174,11 @@ impl Queue<VulkanApi> for VulkanQueue {
         //TODO: PresentInfoKHRBuilder::results() is only useful for presenting multiple swapchains -
         // presumably that's for multiwindow cases.
 
-        let result = self.present_to_given_or_dedicated_queue(swapchain, &*present_info);
+        let result = self.present_to_given_or_dedicated_queue(
+            device_context.platform_device_context(),
+            swapchain.platform_swap_chain(),
+            &*present_info,
+        );
 
         match result {
             Ok(is_suboptimial) => {
@@ -211,7 +198,7 @@ impl Queue<VulkanApi> for VulkanQueue {
         }
     }
 
-    fn wait_for_queue_idle(&self) -> GfxResult<()> {
+    pub fn wait_for_queue_idle(&self) -> GfxResult<()> {
         let queue = self.queue.queue().lock().unwrap();
         unsafe {
             self.queue

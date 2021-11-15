@@ -7,8 +7,8 @@ use ash::prelude::VkResult;
 use ash::vk;
 use ash::vk::DebugUtilsMessageTypeFlagsEXT;
 
+use crate::backends::vulkan::check_extensions_availability;
 use crate::backends::vulkan::{VkCreateInstanceError::VkError, VkDebugReporter};
-use crate::vulkan::check_extensions_availability;
 use crate::ExtensionMode;
 
 /// Create one of these at startup. It never gets lost/destroyed.

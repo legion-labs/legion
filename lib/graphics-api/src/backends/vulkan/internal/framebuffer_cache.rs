@@ -3,8 +3,8 @@ use std::hash::{Hash, Hasher};
 use fnv::FnvHasher;
 
 use super::{FramebufferVulkan, FramebufferVulkanAttachment, FramebufferVulkanDef, LruCache};
-use crate::backends::vulkan::{VulkanApi, VulkanDeviceContext, VulkanRenderpass};
-use crate::{ColorRenderTargetBinding, DepthStencilRenderTargetBinding, GfxResult, TextureView};
+use crate::backends::vulkan::VulkanRenderpass;
+use crate::{ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult};
 
 pub(crate) struct VulkanFramebufferCache {
     cache: LruCache<FramebufferVulkan>,
@@ -22,8 +22,8 @@ impl VulkanFramebufferCache {
     }
 
     pub(crate) fn framebuffer_hash(
-        color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
-        depth_target: Option<&DepthStencilRenderTargetBinding<'_, VulkanApi>>,
+        color_targets: &[ColorRenderTargetBinding<'_>],
+        depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,
     ) -> u64 {
         let mut hasher = FnvHasher::default();
         for color_target in color_targets {
@@ -34,12 +34,12 @@ impl VulkanFramebufferCache {
                 .hash(&mut hasher);
             color_target
                 .texture_view
-                .view_def()
+                .definition()
                 .first_mip
                 .hash(&mut hasher);
             color_target
                 .texture_view
-                .view_def()
+                .definition()
                 .first_array_slice
                 .hash(&mut hasher);
         }
@@ -52,12 +52,12 @@ impl VulkanFramebufferCache {
                 .hash(&mut hasher);
             depth_target
                 .texture_view
-                .view_def()
+                .definition()
                 .first_mip
                 .hash(&mut hasher);
             depth_target
                 .texture_view
-                .view_def()
+                .definition()
                 .first_array_slice
                 .hash(&mut hasher);
         }
@@ -65,10 +65,10 @@ impl VulkanFramebufferCache {
     }
 
     pub(crate) fn create_framebuffer(
-        device_context: &VulkanDeviceContext,
+        device_context: &DeviceContext,
         renderpass: &VulkanRenderpass,
-        color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
-        depth_target: Option<&DepthStencilRenderTargetBinding<'_, VulkanApi>>,
+        color_targets: &[ColorRenderTargetBinding<'_>],
+        depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<FramebufferVulkan> {
         let mut color_attachments = Vec::with_capacity(color_targets.len());
 
@@ -94,10 +94,10 @@ impl VulkanFramebufferCache {
 
     pub(crate) fn get_or_create_framebuffer(
         &mut self,
-        device_context: &VulkanDeviceContext,
+        device_context: &DeviceContext,
         renderpass: &VulkanRenderpass,
-        color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
-        depth_target: Option<&DepthStencilRenderTargetBinding<'_, VulkanApi>>,
+        color_targets: &[ColorRenderTargetBinding<'_>],
+        depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<FramebufferVulkan> {
         //
         // Hash it

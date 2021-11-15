@@ -18,9 +18,9 @@ use legion_presenter::swapchain_helper::SwapchainHelper;
 pub struct PresenterWindow {
     window_id: WindowId,
     render_surface_id: RenderSurfaceId,
-    swapchain_helper: SwapchainHelper<DefaultApi>,
-    cmd_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
-    cmd_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
+    swapchain_helper: SwapchainHelper,
+    cmd_pools: Vec<CommandPool>,
+    cmd_buffers: Vec<CommandBuffer>,
 }
 
 impl std::fmt::Debug for PresenterWindow {
@@ -50,8 +50,7 @@ impl PresenterWindow {
             )
             .unwrap();
 
-        let swapchain_helper =
-            SwapchainHelper::<DefaultApi>::new(device_context, swapchain, None).unwrap();
+        let swapchain_helper = SwapchainHelper::new(device_context, swapchain, None).unwrap();
 
         let mut cmd_pools = Vec::with_capacity(swapchain_helper.image_count());
         let mut cmd_buffers = Vec::with_capacity(swapchain_helper.image_count());
@@ -82,8 +81,8 @@ impl PresenterWindow {
     pub fn present(
         &mut self,
         wnd: &Window,
-        present_queue: &<DefaultApi as GfxApi>::Queue,
-        wait_sem: &<DefaultApi as GfxApi>::Semaphore,
+        present_queue: &Queue,
+        wait_sem: &Semaphore,
         render_surface: Option<&mut RenderSurface>,
     ) {
         //

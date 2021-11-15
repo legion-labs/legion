@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
-use graphics_api::{prelude::*, DescriptorSetBufWriter, MAX_DESCRIPTOR_SET_LAYOUTS};
+use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 
@@ -11,22 +11,22 @@ pub struct Renderer {
     frame_idx: usize,
     render_frame_idx: u32,
     num_render_frames: u32,
-    frame_signal_sems: Vec<<DefaultApi as GfxApi>::Semaphore>,
-    frame_fences: Vec<<DefaultApi as GfxApi>::Fence>,
-    graphics_queue: <DefaultApi as GfxApi>::Queue,
-    command_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
-    command_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
-    transient_descriptor_heaps: Vec<<DefaultApi as GfxApi>::DescriptorHeap>,
+    frame_signal_sems: Vec<Semaphore>,
+    frame_fences: Vec<Fence>,
+    graphics_queue: Queue,
+    command_pools: Vec<CommandPool>,
+    command_buffers: Vec<CommandBuffer>,
+    transient_descriptor_heaps: Vec<DescriptorHeap>,
 
     // This should be last, as it must be destroyed last.
-    api: DefaultApi,
+    api: GfxApi,
 }
 
 impl Renderer {
     pub fn new() -> Result<Self> {
         #![allow(unsafe_code)]
         let num_render_frames = 2u32;
-        let api = unsafe { DefaultApi::new(&ApiDef::default()).unwrap() };
+        let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
         let graphics_queue = device_context.create_queue(QueueType::Graphics).unwrap();
         let mut command_pools = Vec::with_capacity(num_render_frames as usize);
@@ -85,25 +85,25 @@ impl Renderer {
         &self.api
     }
 
-    pub fn device_context(&self) -> &<DefaultApi as GfxApi>::DeviceContext {
+    pub fn device_context(&self) -> &DeviceContext {
         self.api.device_context()
     }
 
-    pub fn graphics_queue(&self) -> &<DefaultApi as GfxApi>::Queue {
+    pub fn graphics_queue(&self) -> &Queue {
         &self.graphics_queue
     }
 
-    pub fn get_cmd_buffer(&self) -> &<DefaultApi as GfxApi>::CommandBuffer {
+    pub fn get_cmd_buffer(&self) -> &CommandBuffer {
         let render_frame_index = self.render_frame_idx;
         &self.command_buffers[render_frame_index as usize]
     }
 
-    pub fn frame_signal_semaphore(&self) -> &<DefaultApi as GfxApi>::Semaphore {
+    pub fn frame_signal_semaphore(&self) -> &Semaphore {
         let render_frame_index = self.render_frame_idx;
         &self.frame_signal_sems[render_frame_index as usize]
     }
 
-    pub fn transient_descriptor_heap(&self) -> &<DefaultApi as GfxApi>::DescriptorHeap {
+    pub fn transient_descriptor_heap(&self) -> &DescriptorHeap {
         let render_frame_index = self.render_frame_idx;
         &self.transient_descriptor_heaps[render_frame_index as usize]
     }
@@ -179,13 +179,12 @@ impl Drop for Renderer {
     }
 }
 
-#[derive(Debug)]
 pub struct TmpRenderPass {
-    vertex_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
-    uniform_buffers: Vec<<DefaultApi as GfxApi>::Buffer>,
-    uniform_buffer_cbvs: Vec<<DefaultApi as GfxApi>::BufferView>,
-    root_signature: <DefaultApi as GfxApi>::RootSignature,
-    pipeline: <DefaultApi as GfxApi>::Pipeline,
+    vertex_buffers: Vec<Buffer>,
+    uniform_buffers: Vec<Buffer>,
+    uniform_buffer_cbvs: Vec<BufferView>,
+    root_signature: RootSignature,
+    pipeline: Pipeline,
     pub color: [f32; 4],
     pub speed: f32,
 }
@@ -385,7 +384,7 @@ impl TmpRenderPass {
         &self,
         renderer: &Renderer,
         render_surface: &RenderSurface,
-        cmd_buffer: &<DefaultApi as GfxApi>::CommandBuffer,
+        cmd_buffer: &CommandBuffer,
     ) {
         let render_frame_idx = renderer.render_frame_idx;
         let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
@@ -430,7 +429,7 @@ impl TmpRenderPass {
                     store_op: StoreOp::Store,
                     clear_value: ColorClearValue(self.color),
                 }],
-                None,
+                &None,
             )
             .unwrap();
 
@@ -461,7 +460,7 @@ impl TmpRenderPass {
                 &[DescriptorRef::BufferView(uniform_buffer_cbv)],
             )
             .unwrap();
-        let descriptor_set_handle = descriptor_set_writer.flush().unwrap();
+        let descriptor_set_handle = descriptor_set_writer.flush(renderer.device_context());
 
         cmd_buffer
             .cmd_bind_descriptor_set_handle(

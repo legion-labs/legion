@@ -1,51 +1,17 @@
 use std::ffi::CStr;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use ash::extensions::khr;
 use ash::vk;
 use fnv::FnvHashMap;
-use raw_window_handle::HasRawWindowHandle;
 
-use super::internal::{
+use super::{
     DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
     VkQueueRequirements, VulkanRenderpass, VulkanRenderpassDef,
 };
-use super::{
-    VulkanApi, VulkanBuffer, VulkanDescriptorHeap, VulkanDescriptorSetLayout, VulkanFence,
-    VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
-    VulkanShaderModule, VulkanSwapchain, VulkanTexture,
-};
-use crate::backends::deferred_drop::DeferredDropper;
-use crate::vulkan::check_extensions_availability;
-use crate::{
-    ApiDef, BufferDef, ComputePipelineDef, DescriptorHeapDef, DescriptorSetLayoutDef,
-    DeviceContext, DeviceInfo, ExtensionMode, Fence, GfxResult, GraphicsPipelineDef,
-    PipelineReflection, QueueType, RootSignatureDef, SamplerDef, ShaderModuleDef, ShaderStageDef,
-    SwapchainDef, TextureDef,
-};
 
-/// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
-/// spec to understand precisely what these types mean
-///
-/// Values here match `VkPhysicalDeviceType`, `DiscreteGpu` is the recommended default
-#[derive(Copy, Clone, Debug)]
-pub enum PhysicalDeviceType {
-    /// Corresponds to `VK_PHYSICAL_DEVICE_TYPE_OTHER`
-    Other = 0,
-
-    /// Corresponds to `VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU`
-    IntegratedGpu = 1,
-
-    /// Corresponds to `VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU`
-    DiscreteGpu = 2,
-
-    /// Corresponds to `VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU`
-    VirtualGpu = 3,
-
-    /// Corresponds to `VK_PHYSICAL_DEVICE_TYPE_CPU`
-    Cpu = 4,
-}
+use crate::backends::vulkan::check_extensions_availability;
+use crate::{DeviceContext, DeviceInfo, ExtensionMode, GfxResult, PhysicalDeviceType};
 
 impl PhysicalDeviceType {
     /// Convert to `vk::PhysicalDeviceType`
@@ -80,10 +46,9 @@ pub struct VkQueueFamilyIndices {
     pub encode_queue_family_index: Option<u32>,
 }
 
-pub(super) struct VulkanDeviceContextInner {
+pub(crate) struct VulkanDeviceContext {
     pub(crate) resource_cache: DeviceVulkanResourceCache,
     // pub(crate) descriptor_heap: VulkanDescriptorHeap,
-    device_info: DeviceInfo,
     queue_allocator: VkQueueAllocatorSet,
 
     // If we need a dedicated present queue, we share a single queue across all swapchains. This
@@ -92,8 +57,6 @@ pub(super) struct VulkanDeviceContextInner {
 
     device: ash::Device,
     allocator: vk_mem::Allocator,
-    pub(crate) deferred_dropper: DeferredDropper,
-    destroyed: AtomicBool,
     entry: Arc<ash::Entry>,
     instance: ash::Instance,
     physical_device: vk::PhysicalDevice,
@@ -108,27 +71,12 @@ pub(super) struct VulkanDeviceContextInner {
     all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
 }
 
-impl Drop for VulkanDeviceContextInner {
-    fn drop(&mut self) {
-        if !self.destroyed.swap(true, Ordering::AcqRel) {
-            unsafe {
-                log::trace!("destroying device");
-                self.deferred_dropper.destroy();
-                self.allocator.destroy();
-                self.device.destroy_device(None);
-                //self.surface_loader.destroy_surface(self.surface, None);
-                log::trace!("destroyed device");
-            }
-        }
-    }
-}
-
-impl VulkanDeviceContextInner {
+impl VulkanDeviceContext {
     pub fn new(
         instance: &VkInstance,
         windowing_mode: ExtensionMode,
         video_mode: ExtensionMode,
-    ) -> GfxResult<Self> {
+    ) -> GfxResult<(Self, DeviceInfo)> {
         // Pick a physical device
         let (physical_device, physical_device_info) =
             choose_physical_device(&instance.instance, windowing_mode, video_mode)?;
@@ -206,113 +154,59 @@ impl VulkanDeviceContextInner {
             all_contexts
         };
 
-        Ok(Self {
-            resource_cache,
+        Ok((
+            Self {
+                resource_cache,
+                queue_allocator,
+                dedicated_present_queue_lock: Mutex::default(),
+                entry: instance.entry.clone(),
+                instance: instance.instance.clone(),
+                physical_device,
+                physical_device_info,
+                device: logical_device,
+                allocator,
+
+                #[cfg(debug_assertions)]
+                #[cfg(feature = "track-device-contexts")]
+                all_contexts: Mutex::new(all_contexts),
+
+                #[cfg(debug_assertions)]
+                #[cfg(feature = "track-device-contexts")]
+                next_create_index: AtomicU64::new(1),
+            },
             device_info,
-            queue_allocator,
-            dedicated_present_queue_lock: Mutex::default(),
-            entry: instance.entry.clone(),
-            instance: instance.instance.clone(),
-            physical_device,
-            physical_device_info,
-            device: logical_device,
-            allocator,
-            deferred_dropper: DeferredDropper::new(3),
-            destroyed: AtomicBool::new(false),
-
-            #[cfg(debug_assertions)]
-            #[cfg(feature = "track-device-contexts")]
-            all_contexts: Mutex::new(all_contexts),
-
-            #[cfg(debug_assertions)]
-            #[cfg(feature = "track-device-contexts")]
-            next_create_index: AtomicU64::new(1),
-        })
+        ))
     }
-}
 
-pub struct VulkanDeviceContext {
-    pub(super) inner: Arc<VulkanDeviceContextInner>,
-    #[cfg(debug_assertions)]
-    #[cfg(feature = "track-device-contexts")]
-    pub(super) create_index: u64,
-}
-
-impl std::fmt::Debug for VulkanDeviceContext {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("VulkanDeviceContext")
-            .field("handle", &self.device().handle())
-            .finish()
-    }
-}
-
-impl Clone for VulkanDeviceContext {
-    fn clone(&self) -> Self {
-        #[cfg(debug_assertions)]
-        #[cfg(feature = "track-device-contexts")]
-        let create_index = {
-            let create_index = self.inner.next_create_index.fetch_add(1, Ordering::Relaxed);
-
-            #[cfg(feature = "track-device-contexts")]
-            {
-                let create_backtrace = backtrace::Backtrace::new_unresolved();
-                self.inner
-                    .as_ref()
-                    .all_contexts
-                    .lock()
-                    .unwrap()
-                    .insert(create_index, create_backtrace);
-            }
-
-            log::trace!("Cloned VulkanDeviceContext create_index {}", create_index);
-            create_index
-        };
-        Self {
-            inner: self.inner.clone(),
-            #[cfg(debug_assertions)]
-            #[cfg(feature = "track-device-contexts")]
-            create_index,
+    pub fn destroy(&mut self) {
+        unsafe {
+            self.allocator.destroy();
+            self.device.destroy_device(None);
         }
     }
-}
 
-impl Drop for VulkanDeviceContext {
-    fn drop(&mut self) {
-        #[cfg(debug_assertions)]
-        #[cfg(feature = "track-device-contexts")]
-        {
-            self.inner
-                .all_contexts
-                .lock()
-                .unwrap()
-                .remove(&self.create_index);
-        }
-    }
-}
-
-impl VulkanDeviceContext {
     pub(crate) fn resource_cache(&self) -> &DeviceVulkanResourceCache {
-        &self.inner.resource_cache
+        &self.resource_cache
     }
 
     pub fn entry(&self) -> &ash::Entry {
-        &*self.inner.entry
+        &*self.entry
     }
 
     pub fn instance(&self) -> &ash::Instance {
-        &self.inner.instance
+        &self.instance
     }
 
     pub fn device(&self) -> &ash::Device {
-        &self.inner.device
+        &self.device
     }
 
     pub fn physical_device(&self) -> vk::PhysicalDevice {
-        self.inner.physical_device
+        self.physical_device
     }
 
     pub fn physical_device_info(&self) -> &PhysicalDeviceInfo {
-        &self.inner.physical_device_info
+        &self.physical_device_info
     }
 
     pub fn limits(&self) -> &vk::PhysicalDeviceLimits {
@@ -320,139 +214,26 @@ impl VulkanDeviceContext {
     }
 
     pub fn allocator(&self) -> &vk_mem::Allocator {
-        &self.inner.allocator
+        &self.allocator
     }
 
     pub fn queue_allocator(&self) -> &VkQueueAllocatorSet {
-        &self.inner.queue_allocator
+        &self.queue_allocator
     }
 
     pub fn queue_family_indices(&self) -> &VkQueueFamilyIndices {
-        &self.inner.physical_device_info.queue_family_indices
+        &self.physical_device_info.queue_family_indices
     }
 
     pub fn dedicated_present_queue_lock(&self) -> &Mutex<()> {
-        &self.inner.dedicated_present_queue_lock
-    }
-
-    pub fn deferred_dropper(&self) -> &DeferredDropper {
-        &self.inner.deferred_dropper
+        &self.dedicated_present_queue_lock
     }
 
     pub(crate) fn create_renderpass(
-        &self,
+        device_context: &DeviceContext,
         renderpass_def: &VulkanRenderpassDef,
     ) -> GfxResult<VulkanRenderpass> {
-        VulkanRenderpass::new(self, renderpass_def)
-    }
-
-    pub fn new(instance: &VkInstance, api_def: &ApiDef) -> GfxResult<Self> {
-        let inner = Arc::new(VulkanDeviceContextInner::new(
-            instance,
-            api_def.windowing_mode,
-            api_def.video_mode,
-        )?);
-
-        Ok(Self {
-            inner,
-            #[cfg(debug_assertions)]
-            #[cfg(feature = "track-device-contexts")]
-            create_index: 0,
-        })
-    }
-}
-
-impl DeviceContext<VulkanApi> for VulkanDeviceContext {
-    fn device_info(&self) -> &DeviceInfo {
-        &self.inner.device_info
-    }
-
-    fn create_queue(&self, queue_type: QueueType) -> GfxResult<VulkanQueue> {
-        VulkanQueue::new(self, queue_type)
-    }
-
-    fn create_fence(&self) -> GfxResult<VulkanFence> {
-        VulkanFence::new(self)
-    }
-
-    fn create_semaphore(&self) -> GfxResult<VulkanSemaphore> {
-        VulkanSemaphore::new(self)
-    }
-
-    fn create_swapchain(
-        &self,
-        raw_window_handle: &dyn HasRawWindowHandle,
-        swapchain_def: &SwapchainDef,
-    ) -> GfxResult<VulkanSwapchain> {
-        VulkanSwapchain::new(self, raw_window_handle, swapchain_def)
-    }
-
-    fn wait_for_fences(&self, fences: &[&VulkanFence]) -> GfxResult<()> {
-        VulkanFence::wait_for_fences(self, fences)
-    }
-
-    fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<VulkanSampler> {
-        VulkanSampler::new(self, sampler_def)
-    }
-
-    fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<VulkanTexture> {
-        VulkanTexture::new(self, texture_def)
-    }
-
-    fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<VulkanBuffer> {
-        VulkanBuffer::new(self, buffer_def)
-    }
-
-    fn create_shader(
-        &self,
-        stages: Vec<ShaderStageDef<VulkanApi>>,
-        pipeline_reflection: &PipelineReflection,
-    ) -> GfxResult<VulkanShader> {
-        VulkanShader::new(self, stages, pipeline_reflection)
-    }
-
-    fn create_descriptorset_layout(
-        &self,
-        descriptorset_layout_def: &DescriptorSetLayoutDef,
-    ) -> GfxResult<VulkanDescriptorSetLayout> {
-        VulkanDescriptorSetLayout::new(self, descriptorset_layout_def)
-    }
-
-    fn create_root_signature(
-        &self,
-        root_signature_def: &RootSignatureDef<VulkanApi>,
-    ) -> GfxResult<VulkanRootSignature> {
-        VulkanRootSignature::new(self, root_signature_def)
-    }
-
-    fn create_descriptor_heap(
-        &self,
-        descriptor_heap_def: &DescriptorHeapDef,
-    ) -> GfxResult<VulkanDescriptorHeap> {
-        VulkanDescriptorHeap::new(self, descriptor_heap_def)
-    }
-
-    fn create_graphics_pipeline(
-        &self,
-        graphics_pipeline_def: &GraphicsPipelineDef<'_, VulkanApi>,
-    ) -> GfxResult<VulkanPipeline> {
-        VulkanPipeline::new_graphics_pipeline(self, graphics_pipeline_def)
-    }
-
-    fn create_compute_pipeline(
-        &self,
-        compute_pipeline_def: &ComputePipelineDef<'_, VulkanApi>,
-    ) -> GfxResult<VulkanPipeline> {
-        VulkanPipeline::new_compute_pipeline(self, compute_pipeline_def)
-    }
-
-    fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<VulkanShaderModule> {
-        VulkanShaderModule::new(self, data)
-    }
-
-    fn free_gpu_memory(&self) -> GfxResult<()> {
-        self.inner.deferred_dropper.flush();
-        Ok(())
+        VulkanRenderpass::new(device_context, renderpass_def)
     }
 }
 

@@ -4,43 +4,34 @@ use std::ffi::CString;
 use ash::vk;
 
 use super::{
-    VulkanApi, VulkanDeviceContext, VulkanRenderpassColorAttachment, VulkanRenderpassDef,
-    VulkanRenderpassDepthAttachment, VulkanRootSignature,
+    VulkanDeviceContext, VulkanRenderpassColorAttachment, VulkanRenderpassDef,
+    VulkanRenderpassDepthAttachment,
 };
 use crate::{
-    backends::deferred_drop::Drc, ComputePipelineDef, Format, GfxResult, GraphicsPipelineDef,
-    LoadOp, Pipeline, PipelineType, ShaderStageFlags, StoreOp,
+    ComputePipelineDef, DeviceContext, Format, GfxResult, GraphicsPipelineDef, LoadOp,
+    ShaderStageFlags, StoreOp,
 };
 
 #[derive(Debug)]
-struct VulkanPipelineInner {
-    pipeline_type: PipelineType,
+pub(crate) struct VulkanPipeline {
     pipeline: vk::Pipeline,
-    root_signature: VulkanRootSignature,
-}
-
-impl Drop for VulkanPipelineInner {
-    fn drop(&mut self) {
-        unsafe {
-            let device = self.root_signature.device_context().device();
-            device.destroy_pipeline(self.pipeline, None);
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct VulkanPipeline {
-    inner: Drc<VulkanPipelineInner>,
 }
 
 impl VulkanPipeline {
     pub fn vk_pipeline(&self) -> vk::Pipeline {
-        self.inner.pipeline
+        self.pipeline
+    }
+
+    pub fn destroy(&self, device_context: &VulkanDeviceContext) {
+        unsafe {
+            let device = device_context.device();
+            device.destroy_pipeline(self.pipeline, None);
+        }
     }
 
     pub fn new_graphics_pipeline(
-        device_context: &VulkanDeviceContext,
-        pipeline_def: &GraphicsPipelineDef<'_, VulkanApi>,
+        device_context: &DeviceContext,
+        pipeline_def: &GraphicsPipelineDef<'_>,
     ) -> GfxResult<Self> {
         //log::trace!("Create pipeline\n{:#?}", pipeline_def);
 
@@ -73,10 +64,13 @@ impl VulkanPipeline {
         };
 
         // Temporary renderpass, required to create pipeline but don't need to keep it
-        let renderpass = device_context.create_renderpass(&VulkanRenderpassDef {
-            color_attachments,
-            depth_attachment,
-        })?;
+        let renderpass = VulkanDeviceContext::create_renderpass(
+            device_context,
+            &VulkanRenderpassDef {
+                color_attachments,
+                depth_attachment,
+            },
+        )?;
 
         let mut entry_point_names = vec![];
         for stage in pipeline_def.shader.stages() {
@@ -89,7 +83,12 @@ impl VulkanPipeline {
             stages.push(
                 vk::PipelineShaderStageCreateInfo::builder()
                     .name(entry_point_name)
-                    .module(stage.shader_module.vk_shader_module())
+                    .module(
+                        stage
+                            .shader_module
+                            .platform_shader_module()
+                            .vk_shader_module(),
+                    )
                     .stage(stage.shader_stage.into())
                     .build(),
             );
@@ -172,7 +171,11 @@ impl VulkanPipeline {
             .depth_stencil_state(&depth_state)
             .color_blend_state(blend_state.blend_state())
             .dynamic_state(&dynamic_states_create_info)
-            .layout(vk_root_signature.vk_pipeline_layout())
+            .layout(
+                vk_root_signature
+                    .platform_root_signature()
+                    .vk_pipeline_layout(),
+            )
             .render_pass(renderpass.vk_renderpass())
             .subpass(0)
             .base_pipeline_handle(vk::Pipeline::null())
@@ -187,7 +190,7 @@ impl VulkanPipeline {
         // };
 
         let pipeline = unsafe {
-            match device_context.device().create_graphics_pipelines(
+            match device_context.platform_device().create_graphics_pipelines(
                 vk::PipelineCache::null(),
                 &[pipeline_create_info],
                 None,
@@ -197,20 +200,12 @@ impl VulkanPipeline {
             }
         }?[0];
 
-        Ok(Self {
-            inner: device_context
-                .deferred_dropper()
-                .new_drc(VulkanPipelineInner {
-                    pipeline_type: PipelineType::Graphics,
-                    pipeline,
-                    root_signature: pipeline_def.root_signature.clone(),
-                }),
-        })
+        Ok(Self { pipeline })
     }
 
     pub fn new_compute_pipeline(
         device_context: &VulkanDeviceContext,
-        pipeline_def: &ComputePipelineDef<'_, VulkanApi>,
+        pipeline_def: &ComputePipelineDef<'_>,
     ) -> GfxResult<Self> {
         //log::trace!("Create pipeline\n{:#?}", pipeline_def);
 
@@ -230,12 +225,21 @@ impl VulkanPipeline {
         let entry_point_name = CString::new(compute_stage.entry_point.clone()).unwrap();
         let stage = vk::PipelineShaderStageCreateInfo::builder()
             .name(&entry_point_name)
-            .module(compute_stage.shader_module.vk_shader_module())
+            .module(
+                compute_stage
+                    .shader_module
+                    .platform_shader_module()
+                    .vk_shader_module(),
+            )
             .stage(vk::ShaderStageFlags::COMPUTE);
 
         let pipeline_create_info = vk::ComputePipelineCreateInfo::builder()
             .stage(*stage)
-            .layout(vk_root_signature.vk_pipeline_layout())
+            .layout(
+                vk_root_signature
+                    .platform_root_signature()
+                    .vk_pipeline_layout(),
+            )
             .base_pipeline_handle(vk::Pipeline::null())
             .base_pipeline_index(-1)
             .build();
@@ -251,24 +255,6 @@ impl VulkanPipeline {
             }
         }?[0];
 
-        Ok(Self {
-            inner: device_context
-                .deferred_dropper()
-                .new_drc(VulkanPipelineInner {
-                    pipeline_type: PipelineType::Compute,
-                    pipeline,
-                    root_signature: pipeline_def.root_signature.clone(),
-                }),
-        })
-    }
-}
-
-impl Pipeline<VulkanApi> for VulkanPipeline {
-    fn pipeline_type(&self) -> PipelineType {
-        self.inner.pipeline_type
-    }
-
-    fn root_signature(&self) -> &VulkanRootSignature {
-        &self.inner.root_signature
+        Ok(Self { pipeline })
     }
 }
