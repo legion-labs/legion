@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use crate::aws::lambda::{is_running_as_lambda, run_lambda};
+use crate::aws::lambda::is_running_as_lambda;
 use http::{Request, Response};
 use lambda_http::handler;
 use log::info;
@@ -41,7 +41,7 @@ impl Server {
                     "AWS Lambda execution environment detected: starting gRPC-web server as lambda..."
                 );
 
-                run_lambda(handler)
+                lambda_runtime::run(handler)
                     .await
                     .map_err(Into::into)
                     .map_err(Error::Other)

@@ -19,7 +19,7 @@ impl<S> AwsLambdaHandler<S> {
     }
 }
 
-impl<'a, S> Handler<'a> for AwsLambdaHandler<S>
+impl<S> Handler<'static> for AwsLambdaHandler<S>
 where
     S: Service<Request<hyper::Body>, Response = Response<BoxBody>> + Send + 'static,
     S::Future: Send + 'static,

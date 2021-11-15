@@ -32,7 +32,7 @@ impl TokioAsyncRuntime {
     pub fn start_detached<F>(&self, future: F)
     where
         F: Future + Send + 'static,
-        F::Output: Sized + Send + Sync + 'static,
+        F::Output: Send + 'static,
     {
         self.tokio_runtime.spawn(future);
     }
