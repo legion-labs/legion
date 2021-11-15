@@ -468,7 +468,6 @@ dependencies = [
  "hyper",
  "lambda_http",
  "lambda_runtime",
- "legion-aws",
  "legion-online",
  "legion-streaming-proto",
  "log",
@@ -3232,20 +3231,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-aws"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "lambda_runtime",
- "log",
- "serde",
- "serde_json",
- "strum 0.22.0",
- "strum_macros 0.22.0",
- "tokio",
-]
-
-[[package]]
 name = "legion-cli"
 version = "0.1.0"
 dependencies = [
@@ -3602,6 +3587,8 @@ dependencies = [
  "serial_test",
  "simple_asn1",
  "simple_logger",
+ "strum 0.22.0",
+ "strum_macros 0.22.0",
  "thiserror",
  "tokio",
  "tonic",

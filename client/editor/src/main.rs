@@ -84,6 +84,7 @@ use legion_online::grpc::GrpcWebClient;
 use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
 use legion_telemetry::prelude::*;
+use log::error;
 use simple_logger::SimpleLogger;
 use tauri::async_runtime::Mutex;
 
@@ -210,10 +211,14 @@ async fn initialize_stream(
 
     let mut streamer_client = streamer_client.lock().await;
 
-    let response = streamer_client
-        .initialize_stream(request)
-        .await?
-        .into_inner();
+    let response = match streamer_client.initialize_stream(request).await {
+        Ok(response) => Ok(response.into_inner()),
+        Err(e) => {
+            error!("Error initializing stream: {}", e);
+
+            Err(e)
+        }
+    }?;
 
     if response.error.is_empty() {
         Ok(base64::encode(response.rtc_session_description))
