@@ -12,7 +12,7 @@ use echo::{
     echoer_server::{Echoer, EchoerServer},
     EchoRequest, EchoResponse,
 };
-use legion_online::grpc::web::client::GrpcWebClient;
+use legion_online::grpc::{GrpcClient, GrpcWebClient};
 use log::{error, info, LevelFilter};
 use simple_logger::SimpleLogger;
 use sum::{
@@ -69,7 +69,7 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
     //let server = legion_grpc::server::transport::http2::Server::default();
     let echo_service = EchoerServer::new(Service {});
     let sum_service = SummerServer::new(Service {});
-    let service = legion_grpc::service::multiplexer::MultiplexerService::builder()
+    let service = legion_online::grpc::MultiplexerService::builder()
         .add_service(echo_service)
         .add_service(sum_service)
         .build();
@@ -81,8 +81,7 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
     let addr = "127.0.0.1:50051".parse()?;
 
     async fn f() -> anyhow::Result<()> {
-        let client =
-            legion_grpc::client::Client::new(hyper::Uri::from_static("http://127.0.0.1:50051"));
+        let client = GrpcClient::new("http://127.0.0.1:50051".parse()?);
 
         {
             let msg: String = "hello".into();
@@ -157,8 +156,7 @@ async fn test_http2_client_and_server() -> anyhow::Result<()> {
     let addr = "127.0.0.1:50051".parse()?;
 
     async fn f() -> anyhow::Result<()> {
-        let client =
-            legion_grpc::client::Client::new(hyper::Uri::from_static("http://127.0.0.1:50051"));
+        let client = GrpcClient::new("http://127.0.0.1:50051".parse()?);
 
         {
             let msg: String = "hello".into();
@@ -215,9 +213,7 @@ async fn test_http1_client_and_server() -> anyhow::Result<()> {
     let addr = "127.0.0.1:50051".parse()?;
 
     async fn f() -> anyhow::Result<()> {
-        let client =
-            legion_grpc::client::Client::new(hyper::Uri::from_static("http://127.0.0.1:50051"));
-        let client = GrpcWebClient::new(client);
+        let client = GrpcWebClient::new("http://127.0.0.1:50051".parse()?);
 
         {
             let msg: String = "hello".into();

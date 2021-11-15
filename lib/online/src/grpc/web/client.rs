@@ -9,13 +9,15 @@ use tonic::{
     codegen::{BoxFuture, StdError},
 };
 
+use super::super::consts::{GRPC, GRPC_WEB, PROTOBUF};
+
 use super::{Error, Result};
 
 /// A gRPC-Web client wrapper that causes all outgoing `gRPC` requests to be sent as HTTP 1.1
 /// gRPC-Web requests.
 #[derive(Clone)]
 pub struct GrpcWebClient<C> {
-    client: C,
+    inner: C,
 }
 
 use super::{BoxBuf, GrpcWebResponse};
@@ -32,14 +34,14 @@ where
     <C::ResponseBody as Body>::Error: Into<StdError>,
 {
     pub fn new(c: C) -> Self {
-        Self { client: c }
+        Self { inner: c }
     }
 
     fn forward_request(
         &mut self,
         request: Request<BoxBody>,
     ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error> {
-        let resp = self.client.call(request);
+        let resp = self.inner.call(request);
 
         Box::pin(async move {
             // This might look complex but we just wrap the response body data into a `BoxBuf`,
@@ -83,7 +85,7 @@ where
         };
 
         let resp = match coerce_request(request) {
-            Ok(request) => self.client.call(request),
+            Ok(request) => self.inner.call(request),
             Err(err) => return Box::pin(async move { Err(err) }),
         };
 
@@ -149,14 +151,12 @@ where
     <C::ResponseBody as Body>::Data: Send,
     <C::ResponseBody as Body>::Error: Into<StdError>,
 {
-    // We always read the full body before returning it so we can't stream it and it can't possibly
-    // fail, hence the `Infallible` hereafter.
     type ResponseBody = UnsyncBoxBody<BoxBuf, Error>;
     type Error = Error;
     type Future = BoxFuture<Response<Self::ResponseBody>, Self::Error>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<()>> {
-        self.client
+        self.inner
             .poll_ready(cx)
             .map_err(Into::into)
             .map_err(Error::Other)
@@ -191,11 +191,6 @@ enum RequestKind<'a> {
     // All other requests, including `application/grpc`
     Other(Version),
 }
-
-const GRPC: &str = "application/grpc";
-const GRPC_WEB: &str = "application/grpc-web";
-
-const PROTOBUF: &str = "proto";
 
 impl<'a> RequestKind<'a> {
     fn new(headers: &'a HeaderMap, method: &'a Method, version: Version) -> Self {

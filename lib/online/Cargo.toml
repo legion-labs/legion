@@ -17,7 +17,6 @@ tonic = { version = "0.6", features = ["tls-roots"] }
 tonic-web = "0.2"
 rustls = "0.20"
 webbrowser = "0.5"
-futures-util = "0.3"
 url = "2.2"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
@@ -32,3 +31,13 @@ bytes = "1.1"
 http = "0.2"
 http-body = "0.4"
 pin-project = "1"
+dyn-clone = "1"
+backoff = { version = "0.3.0", features = ["tokio"] }
+
+[build-dependencies]
+tonic-build = "0.6"
+
+[dev-dependencies]
+prost = "0.9"
+simple_logger = "1.13"
+serial_test = "0.5"

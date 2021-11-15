@@ -62,12 +62,11 @@ use std::net::SocketAddr;
 
 use legion_app::prelude::*;
 use legion_ecs::prelude::*;
+use legion_online::grpc::multiplexer_service::{
+    MultiplexableService, MultiplexerService, MultiplexerServiceBuilder,
+};
 use log::{info, warn};
-use service::multiplexer::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder};
 use tonic::transport::NamedService;
-
-pub mod client;
-pub mod service;
 
 pub struct GRPCPluginSettings {
     pub grpc_server_addr: SocketAddr,
