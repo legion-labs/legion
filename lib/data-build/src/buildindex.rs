@@ -160,7 +160,7 @@ impl BuildIndex {
 
         // construct_project_path is called to validate the project's path
         #[allow(clippy::let_underscore_drop)]
-        let _ = Self::construct_project_path(&source_index, projectindex_path)?;
+        let _ = Self::construct_project_path(buildindex_dir, projectindex_path)?;
 
         let source_file = OpenOptions::new()
             .read(true)
