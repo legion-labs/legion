@@ -37,7 +37,7 @@ fn exec_create_build_index(
 
 fn exec_data_compile(
     compile_path: &str,
-    buildindex_path: &Path,
+    buildindex_dir: &Path,
     destination: &Path,
 ) -> std::io::Result<std::process::Output> {
     let target = "game";
@@ -52,7 +52,7 @@ fn exec_data_compile(
     command.arg(format!("--locale={}", locale));
     command.arg(format!(
         "--buildindex={}",
-        buildindex_path.to_str().unwrap()
+        buildindex_dir.to_str().unwrap()
     ));
     let output = command.output()?;
     assert!(output.status.success());
@@ -60,8 +60,8 @@ fn exec_data_compile(
 }
 
 /// read the build index and remove non-deterministic data.
-fn read_build_index(buildindex_path: &Path) -> String {
-    let content = std::fs::read_to_string(&buildindex_path).expect("file content");
+fn read_build_output(buildindex_dir: &Path) -> String {
+    let content = std::fs::read_to_string(&buildindex_dir.join("output.index")).expect("file content");
     let mut content = json::parse(&content).expect("valid json");
     content.remove("project_index");
     content.pretty(2)
@@ -72,12 +72,12 @@ fn incremental_build() {
     let work_dir = tempfile::tempdir().unwrap();
     let sampledata_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let project = sampledata_dir.join("project.index");
-    let buildindex = work_dir.as_ref().join("build.index");
+    let buildindex = work_dir.as_ref().to_owned();
 
     // create build index and do a source pull
     exec_create_build_index(&buildindex, project).expect("new build index");
 
-    insta::assert_snapshot!("initial_index", read_build_index(&buildindex));
+    insta::assert_snapshot!("initial_index", read_build_output(&buildindex));
 
     // default root object in sample data
     // /world/sample_1.ent (offline_entity) => runtime_entity
@@ -92,7 +92,7 @@ fn incremental_build() {
     let manifest: Manifest = serde_json::from_slice(&out.stdout).expect("valid manifest");
     insta::assert_json_snapshot!("first_manifest", manifest);
 
-    let first_buildindex = read_build_index(&buildindex);
+    let first_buildindex = read_build_output(&buildindex);
     insta::assert_snapshot!("first_index", first_buildindex);
 
     //
@@ -106,7 +106,7 @@ fn incremental_build() {
 
     insta::assert_json_snapshot!("incremental_manifest", incremental_manifest);
 
-    let incremental_buildindex = read_build_index(&buildindex);
+    let incremental_buildindex = read_build_output(&buildindex);
     insta::assert_snapshot!("incremental_index", incremental_buildindex);
 
     // incremental build with no changes should not affect the build index
