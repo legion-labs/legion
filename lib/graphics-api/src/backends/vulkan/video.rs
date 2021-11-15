@@ -2,11 +2,11 @@ use std::ffi::CStr;
 
 use ash::vk;
 
-use crate::{DeviceContextDrc, GfxResult};
+use crate::{DeviceContext, GfxResult};
 
 #[derive(Clone)]
 pub struct VideoQueue {
-    device_ctx: DeviceContextDrc,
+    device_ctx: DeviceContext,
     video_queue_fn: vk::KhrVideoQueueFn,
 }
 
@@ -19,7 +19,7 @@ pub struct VideoQueue {
 //} StdVideoH264ProfileIdc;
 
 impl VideoQueue {
-    pub fn new(device_ctx: DeviceContextDrc) -> Self {
+    pub fn new(device_ctx: DeviceContext) -> Self {
         let mut video_queue_fn = vk::KhrVideoQueueFn::load(|name| unsafe {
             std::mem::transmute(
                 device_ctx

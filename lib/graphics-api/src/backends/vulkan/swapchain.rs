@@ -9,10 +9,10 @@ use raw_window_handle::HasRawWindowHandle;
 use super::{VulkanDeviceContext, VulkanRawImage};
 
 use crate::{
-    deferred_drop::Drc, CommandBufferDef, CommandPoolDef, DeviceContextDrc, Extents3D, Fence,
-    Format, GfxError, GfxResult, MemoryUsage, QueueType, ResourceFlags, ResourceState,
-    ResourceUsage, Semaphore, SwapchainDef, SwapchainImage, TextureBarrier, TextureDef, TextureDrc,
-    TextureTiling, TextureViewDef,
+    deferred_drop::Drc, CommandBufferDef, CommandPoolDef, DeviceContext, Extents3D, Fence, Format,
+    GfxError, GfxResult, MemoryUsage, QueueType, ResourceFlags, ResourceState, ResourceUsage,
+    Semaphore, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureTiling,
+    TextureViewDef,
 };
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
@@ -97,7 +97,7 @@ pub(crate) struct VulkanSwapchain {
 
 impl VulkanSwapchain {
     pub fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &SwapchainDef,
     ) -> GfxResult<Self> {
@@ -167,7 +167,7 @@ impl VulkanSwapchain {
     }
 
     pub fn setup_swapchain_images(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         swapchain: &SwapchainVulkanInstance,
     ) -> GfxResult<Vec<SwapchainImage>> {
         let queue = device_context.create_queue(QueueType::Graphics)?;
@@ -264,7 +264,7 @@ impl VulkanSwapchain {
 
     pub fn rebuild(
         &mut self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         swapchain_def: &SwapchainDef,
     ) -> GfxResult<()> {
         let present_mode_priority = present_mode_priority(swapchain_def);
@@ -301,7 +301,7 @@ struct CreateSwapchainResult {
 /// Handles setting up the swapchain resources required to present. This is discarded and recreated
 /// whenever the swapchain is rebuilt
 pub(crate) struct SwapchainVulkanInstance {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     swapchain_info: SwapchainInfo,
     swapchain_loader: Drc<khr::Swapchain>,
     swapchain: vk::SwapchainKHR,
@@ -311,7 +311,7 @@ pub(crate) struct SwapchainVulkanInstance {
 
 impl SwapchainVulkanInstance {
     fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         surface: vk::SurfaceKHR,
         surface_loader: &Drc<khr::Surface>,
         old_swapchain: Option<vk::SwapchainKHR>,
@@ -397,7 +397,7 @@ impl SwapchainVulkanInstance {
             };
 
             let format: Format = self.swapchain_info.surface_format.format.into();
-            let texture = TextureDrc::from_existing(
+            let texture = Texture::from_existing(
                 &self.device_context,
                 Some(raw_image),
                 &TextureDef {

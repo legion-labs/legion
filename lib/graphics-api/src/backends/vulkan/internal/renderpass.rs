@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ash::vk;
 
-use crate::{DeviceContextDrc, Format, GfxResult, LoadOp, StoreOp};
+use crate::{DeviceContext, Format, GfxResult, LoadOp, StoreOp};
 
 #[derive(Clone, Debug)]
 pub(crate) struct VulkanRenderpassColorAttachment {
@@ -32,7 +32,7 @@ pub(crate) struct VulkanRenderpassDef {
 }
 
 pub(crate) struct RenderpassVulkanInner {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     renderpass: vk::RenderPass,
 }
 
@@ -59,7 +59,7 @@ impl VulkanRenderpass {
     }
 
     pub fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         renderpass_def: &VulkanRenderpassDef,
     ) -> GfxResult<Self> {
         let mut attachments = Vec::with_capacity(renderpass_def.color_attachments.len() + 1);

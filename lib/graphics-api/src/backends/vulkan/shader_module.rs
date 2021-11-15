@@ -1,7 +1,7 @@
 use ash::vk;
 
 use super::VulkanDeviceContext;
-use crate::{DeviceContextDrc, GfxResult, ShaderModuleDef};
+use crate::{DeviceContext, GfxResult, ShaderModuleDef};
 
 #[derive(Debug)]
 pub(crate) struct VulkanShaderModule {
@@ -9,7 +9,7 @@ pub(crate) struct VulkanShaderModule {
 }
 
 impl VulkanShaderModule {
-    pub fn new(device_context: &DeviceContextDrc, data: ShaderModuleDef<'_>) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, data: ShaderModuleDef<'_>) -> GfxResult<Self> {
         match data {
             ShaderModuleDef::SpirVBytes(bytes) => {
                 Self::new_from_bytes(device_context.platform_device_context(), bytes)
@@ -21,7 +21,7 @@ impl VulkanShaderModule {
         }
     }
 
-    pub fn destroy(&self, device_context: &DeviceContextDrc) {
+    pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
                 .platform_device()

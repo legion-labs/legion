@@ -2,12 +2,12 @@ use raw_window_handle::HasRawWindowHandle;
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanSwapchain;
-use crate::{DeviceContextDrc, Fence, Format, GfxResult, Semaphore, SwapchainDef, SwapchainImage};
+use crate::{DeviceContext, Fence, Format, GfxResult, Semaphore, SwapchainDef, SwapchainImage};
 
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 
 pub struct Swapchain {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     swapchain_def: SwapchainDef,
 
     #[cfg(feature = "vulkan")]
@@ -23,7 +23,7 @@ impl Drop for Swapchain {
 
 impl Swapchain {
     pub fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &SwapchainDef,
     ) -> GfxResult<Self> {

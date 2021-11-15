@@ -1,7 +1,7 @@
 use ash::vk;
 
 use crate::backends::vulkan::VulkanDeviceContext;
-use crate::{GfxResult, TextureDrc, TextureViewDef};
+use crate::{GfxResult, Texture, TextureViewDef};
 
 #[derive(Clone, Debug)]
 pub(crate) struct VulkanTextureView {
@@ -9,7 +9,7 @@ pub(crate) struct VulkanTextureView {
 }
 
 impl VulkanTextureView {
-    pub(crate) fn new(texture: &TextureDrc, view_def: &TextureViewDef) -> GfxResult<Self> {
+    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> GfxResult<Self> {
         view_def.verify(texture.definition());
 
         let device_context = texture.platform_device_context();

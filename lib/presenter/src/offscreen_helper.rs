@@ -39,14 +39,14 @@ impl Resolution {
 
 struct ResolutionDependentResources {
     resolution: Resolution,
-    render_images: Vec<TextureDrc>,
-    render_image_rtvs: Vec<TextureViewDrc>,
-    copy_images: Vec<TextureDrc>,
+    render_images: Vec<Texture>,
+    render_image_rtvs: Vec<TextureView>,
+    copy_images: Vec<Texture>,
 }
 
 impl ResolutionDependentResources {
     fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         render_frame_count: u32,
         resolution: Resolution,
     ) -> Result<Self, anyhow::Error> {
@@ -107,14 +107,14 @@ pub struct OffscreenHelper {
     resolution_dependent_resources: ResolutionDependentResources,
     cmd_pools: Vec<CommandPool>,
     cmd_buffers: Vec<CommandBuffer>,
-    root_signature: RootSignatureDrc,
-    pipeline: PipelineDrc,
-    bilinear_sampler: SamplerDrc,
+    root_signature: RootSignature,
+    pipeline: Pipeline,
+    bilinear_sampler: Sampler,
 }
 
 impl OffscreenHelper {
     pub fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         graphics_queue: &Queue,
         resolution: Resolution,
     ) -> anyhow::Result<Self> {
@@ -272,7 +272,7 @@ impl OffscreenHelper {
 
     pub fn resize(
         &mut self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         resolution: Resolution,
     ) -> anyhow::Result<bool> {
         if resolution != self.resolution_dependent_resources.resolution {
@@ -290,7 +290,7 @@ impl OffscreenHelper {
     pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
         graphics_queue: &Queue,
-        transient_descriptor_heap: &DescriptorHeapDrc,
+        transient_descriptor_heap: &DescriptorHeap,
         wait_sem: &Semaphore,
         render_surface: &mut RenderSurface,
         copy_fn: F,

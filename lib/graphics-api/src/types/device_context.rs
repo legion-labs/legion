@@ -4,12 +4,11 @@ use std::sync::Arc;
 
 use super::deferred_drop::DeferredDropper;
 use crate::{
-    ApiDef, BufferDef, BufferDrc, ComputePipelineDef, DescriptorHeapDef, DescriptorHeapDrc,
-    DescriptorSetLayoutDef, DescriptorSetLayoutDrc, ExtensionMode, Fence, GfxResult,
-    GraphicsPipelineDef, Instance, PipelineDrc, PipelineReflection, Queue, QueueType,
-    RootSignatureDef, RootSignatureDrc, SamplerDef, SamplerDrc, Semaphore, ShaderDrc,
-    ShaderModuleDef, ShaderModuleDrc, ShaderStageDef, Swapchain, SwapchainDef, TextureDef,
-    TextureDrc,
+    ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
+    DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence, GfxResult,
+    GraphicsPipelineDef, Instance, Pipeline, PipelineReflection, Queue, QueueType, RootSignature,
+    RootSignatureDef, Sampler, SamplerDef, Semaphore, Shader, ShaderModule, ShaderModuleDef,
+    ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
 };
 
 #[cfg(any(feature = "vulkan"))]
@@ -40,7 +39,7 @@ pub enum PhysicalDeviceType {
     Cpu = 4,
 }
 
-pub struct DeviceContext {
+pub struct DeviceContextInner {
     #[cfg(any(feature = "vulkan"))]
     device_info: DeviceInfo,
     pub(crate) deferred_dropper: DeferredDropper,
@@ -58,7 +57,7 @@ pub struct DeviceContext {
     pub(crate) platform_device_context: VulkanDeviceContext,
 }
 
-impl std::fmt::Debug for DeviceContext {
+impl std::fmt::Debug for DeviceContextInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("VulkanDeviceContext")
             .field(
@@ -72,7 +71,7 @@ impl std::fmt::Debug for DeviceContext {
     }
 }
 
-impl Drop for DeviceContext {
+impl Drop for DeviceContextInner {
     fn drop(&mut self) {
         if !self.destroyed.swap(true, Ordering::AcqRel) {
             log::trace!("destroying device");
@@ -87,7 +86,7 @@ impl Drop for DeviceContext {
     }
 }
 
-impl DeviceContext {
+impl DeviceContextInner {
     pub fn new(
         #[cfg(not(any(feature = "vulkan")))] instance: &Instance,
         #[cfg(any(feature = "vulkan"))] instance: &Instance<'_>,
@@ -132,14 +131,14 @@ impl DeviceContext {
 }
 
 #[derive(Debug)]
-pub struct DeviceContextDrc {
-    pub(crate) inner: Arc<DeviceContext>,
+pub struct DeviceContext {
+    pub(crate) inner: Arc<DeviceContextInner>,
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
     pub(super) create_index: u64,
 }
 
-impl Clone for DeviceContextDrc {
+impl Clone for DeviceContext {
     fn clone(&self) -> Self {
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
@@ -169,7 +168,7 @@ impl Clone for DeviceContextDrc {
     }
 }
 
-impl Drop for DeviceContextDrc {
+impl Drop for DeviceContext {
     fn drop(&mut self) {
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
@@ -183,13 +182,13 @@ impl Drop for DeviceContextDrc {
     }
 }
 
-impl DeviceContextDrc {
+impl DeviceContext {
     pub fn new(
         #[cfg(not(any(feature = "vulkan")))] instance: &Instance,
         #[cfg(any(feature = "vulkan"))] instance: &Instance<'_>,
         api_def: &ApiDef,
     ) -> GfxResult<Self> {
-        let inner = Arc::new(DeviceContext::new(
+        let inner = Arc::new(DeviceContextInner::new(
             instance,
             api_def.windowing_mode,
             api_def.video_mode,
@@ -246,63 +245,63 @@ impl DeviceContextDrc {
         Fence::wait_for_fences(self, fences)
     }
 
-    pub fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<SamplerDrc> {
-        SamplerDrc::new(self, sampler_def)
+    pub fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<Sampler> {
+        Sampler::new(self, sampler_def)
     }
 
-    pub fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<TextureDrc> {
-        TextureDrc::new(self, texture_def)
+    pub fn create_texture(&self, texture_def: &TextureDef) -> GfxResult<Texture> {
+        Texture::new(self, texture_def)
     }
 
-    pub fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<BufferDrc> {
-        BufferDrc::new(self, buffer_def)
+    pub fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<Buffer> {
+        Buffer::new(self, buffer_def)
     }
 
     pub fn create_shader(
         &self,
         stages: Vec<ShaderStageDef>,
         pipeline_reflection: &PipelineReflection,
-    ) -> GfxResult<ShaderDrc> {
-        ShaderDrc::new(self, stages, pipeline_reflection)
+    ) -> GfxResult<Shader> {
+        Shader::new(self, stages, pipeline_reflection)
     }
 
     pub fn create_descriptorset_layout(
         &self,
         descriptorset_layout_def: &DescriptorSetLayoutDef,
-    ) -> GfxResult<DescriptorSetLayoutDrc> {
-        DescriptorSetLayoutDrc::new(self, descriptorset_layout_def)
+    ) -> GfxResult<DescriptorSetLayout> {
+        DescriptorSetLayout::new(self, descriptorset_layout_def)
     }
 
     pub fn create_root_signature(
         &self,
         root_signature_def: &RootSignatureDef,
-    ) -> GfxResult<RootSignatureDrc> {
-        RootSignatureDrc::new(self, root_signature_def)
+    ) -> GfxResult<RootSignature> {
+        RootSignature::new(self, root_signature_def)
     }
 
     pub fn create_descriptor_heap(
         &self,
         descriptor_heap_def: &DescriptorHeapDef,
-    ) -> GfxResult<DescriptorHeapDrc> {
-        DescriptorHeapDrc::new(self, descriptor_heap_def)
+    ) -> GfxResult<DescriptorHeap> {
+        DescriptorHeap::new(self, descriptor_heap_def)
     }
 
     pub fn create_graphics_pipeline(
         &self,
         graphics_pipeline_def: &GraphicsPipelineDef<'_>,
-    ) -> GfxResult<PipelineDrc> {
-        PipelineDrc::new_graphics_pipeline(self, graphics_pipeline_def)
+    ) -> GfxResult<Pipeline> {
+        Pipeline::new_graphics_pipeline(self, graphics_pipeline_def)
     }
 
     pub fn create_compute_pipeline(
         &self,
         compute_pipeline_def: &ComputePipelineDef<'_>,
-    ) -> GfxResult<PipelineDrc> {
-        PipelineDrc::new_compute_pipeline(self, compute_pipeline_def)
+    ) -> GfxResult<Pipeline> {
+        Pipeline::new_compute_pipeline(self, compute_pipeline_def)
     }
 
-    pub fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<ShaderModuleDrc> {
-        ShaderModuleDrc::new(self, data)
+    pub fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<ShaderModule> {
+        ShaderModule::new(self, data)
     }
 
     pub fn free_gpu_memory(&self) -> GfxResult<()> {

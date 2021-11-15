@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex};
 
 use crossbeam_channel::{Receiver, Sender};
 use legion_graphics_api::{
-    CommandBuffer, DeviceContextDrc, Fence, Format, GfxError, GfxResult, PresentSuccessResult,
-    Queue, Semaphore, Swapchain, SwapchainDef, SwapchainImage, TextureDrc, TextureViewDrc,
+    CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult, Queue,
+    Semaphore, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureView,
 };
 
 /// May be implemented to get callbacks related to the swapchain being created/destroyed. This is
@@ -15,7 +15,7 @@ pub trait SwapchainEventListener {
     /// swapchain needs to be recreated)
     fn swapchain_created(
         &mut self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         swapchain: &Swapchain,
     ) -> GfxResult<()>;
 
@@ -23,7 +23,7 @@ pub trait SwapchainEventListener {
     /// where the swapchain needs to be recreated)
     fn swapchain_destroyed(
         &mut self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         swapchain: &Swapchain,
     ) -> GfxResult<()>;
 }
@@ -43,7 +43,7 @@ struct SwapchainHelperSharedState {
 }
 
 impl SwapchainHelperSharedState {
-    fn new(device_context: &DeviceContextDrc, swapchain: Arc<Mutex<Swapchain>>) -> GfxResult<Self> {
+    fn new(device_context: &DeviceContext, swapchain: Arc<Mutex<Swapchain>>) -> GfxResult<Self> {
         let image_count = swapchain.lock().unwrap().image_count();
         let mut image_available_semaphores = Vec::with_capacity(image_count);
         let mut render_finished_semaphores = Vec::with_capacity(image_count);
@@ -93,13 +93,13 @@ impl PresentableFrame {
     }
 
     /// Returns the acquired swapchain image
-    pub fn swapchain_texture(&self) -> &TextureDrc {
+    pub fn swapchain_texture(&self) -> &Texture {
         &self.swapchain_image.texture
     }
 
     /// Returns the acquired swapchain image    
     #[allow(dead_code)]
-    pub fn swapchain_rtv(&self) -> &TextureViewDrc {
+    pub fn swapchain_rtv(&self) -> &TextureView {
         &self.swapchain_image.render_target_view
     }
 
@@ -189,7 +189,7 @@ pub enum TryAcquireNextImageResult {
 
 /// Swap chain helper
 pub struct SwapchainHelper {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     shared_state: Option<Arc<SwapchainHelperSharedState>>,
     format: Format,
     swapchain_def: SwapchainDef,
@@ -203,7 +203,7 @@ pub struct SwapchainHelper {
 impl SwapchainHelper {
     /// New swapchain helper
     pub fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         swapchain: Swapchain,
         mut event_listener: Option<&mut dyn SwapchainEventListener>,
     ) -> GfxResult<Self> {

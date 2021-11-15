@@ -1,13 +1,11 @@
-use crate::{
-    DescriptorRef, DescriptorSetHandle, DescriptorSetLayoutDrc, DeviceContextDrc, GfxResult,
-};
+use crate::{DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxResult};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetBufWriter;
 
 pub struct DescriptorSetBufWriter {
     descriptor_set: DescriptorSetHandle,
-    descriptor_set_layout: DescriptorSetLayoutDrc,
+    descriptor_set_layout: DescriptorSetLayout,
 
     #[cfg(feature = "vulkan")]
     platform_write: VulkanDescriptorSetBufWriter,
@@ -16,7 +14,7 @@ pub struct DescriptorSetBufWriter {
 impl DescriptorSetBufWriter {
     pub fn new(
         descriptor_set: DescriptorSetHandle,
-        descriptor_set_layout: &DescriptorSetLayoutDrc,
+        descriptor_set_layout: &DescriptorSetLayout,
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_write = VulkanDescriptorSetBufWriter::new(descriptor_set_layout)?;
@@ -49,7 +47,7 @@ impl DescriptorSetBufWriter {
         )
     }
 
-    pub fn flush(&mut self, vulkan_device_context: &DeviceContextDrc) -> DescriptorSetHandle {
+    pub fn flush(&mut self, vulkan_device_context: &DeviceContext) -> DescriptorSetHandle {
         #[cfg(any(feature = "vulkan"))]
         self.platform_write.flush(vulkan_device_context);
 

@@ -1,13 +1,13 @@
 use ash::vk;
 
-use crate::{DeviceContextDrc, GfxResult};
+use crate::{DeviceContext, GfxResult};
 
 pub(crate) struct VulkanSemaphore {
     vk_semaphore: vk::Semaphore,
 }
 
 impl VulkanSemaphore {
-    pub fn new(device_context: &DeviceContextDrc) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext) -> GfxResult<Self> {
         let create_info =
             vk::SemaphoreCreateInfo::builder().flags(vk::SemaphoreCreateFlags::empty());
 
@@ -20,7 +20,7 @@ impl VulkanSemaphore {
         Ok(Self { vk_semaphore })
     }
 
-    pub fn destroy(&self, device_context: &DeviceContextDrc) {
+    pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
                 .platform_device()

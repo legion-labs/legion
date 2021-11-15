@@ -2,10 +2,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanSemaphore;
-use crate::{DeviceContextDrc, GfxResult};
+use crate::{DeviceContext, GfxResult};
 
 pub struct Semaphore {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
 
     // Set to true when an operation is scheduled to signal this semaphore
     // Cleared when an operation is scheduled to consume this semaphore
@@ -23,7 +23,7 @@ impl Drop for Semaphore {
 }
 
 impl Semaphore {
-    pub fn new(device_context: &DeviceContextDrc) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_semaphore = VulkanSemaphore::new(device_context).map_err(|e| {
             log::error!("Error creating semaphore {:?}", e);

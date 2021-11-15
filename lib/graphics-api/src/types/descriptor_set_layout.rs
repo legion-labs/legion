@@ -2,11 +2,11 @@
 use crate::backends::vulkan::VulkanDescriptorSetLayout;
 #[cfg(any(feature = "vulkan"))]
 use crate::GfxError;
-use crate::{deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContextDrc, GfxResult};
+use crate::{deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult};
 
 #[derive(Clone)]
-pub struct DescriptorSetLayout {
-    device_context: DeviceContextDrc,
+pub struct DescriptorSetLayoutInner {
+    device_context: DeviceContext,
     definition: DescriptorSetLayoutDef,
     set_index: u32,
     update_data_count: u32,
@@ -18,7 +18,7 @@ pub struct DescriptorSetLayout {
     platform_layout: VulkanDescriptorSetLayout,
 }
 
-impl Drop for DescriptorSetLayout {
+impl Drop for DescriptorSetLayoutInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_layout
@@ -27,12 +27,12 @@ impl Drop for DescriptorSetLayout {
 }
 
 #[derive(Clone)]
-pub struct DescriptorSetLayoutDrc {
-    inner: Drc<DescriptorSetLayout>,
+pub struct DescriptorSetLayout {
+    inner: Drc<DescriptorSetLayoutInner>,
 }
 
-impl DescriptorSetLayoutDrc {
-    pub fn device_context(&self) -> &DeviceContextDrc {
+impl DescriptorSetLayout {
+    pub fn device_context(&self) -> &DeviceContext {
         &self.inner.device_context
     }
 
@@ -77,7 +77,7 @@ impl DescriptorSetLayoutDrc {
     }
 
     pub fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         definition: &DescriptorSetLayoutDef,
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
@@ -93,7 +93,7 @@ impl DescriptorSetLayoutDrc {
         let result = Self {
             inner: device_context
                 .deferred_dropper()
-                .new_drc(DescriptorSetLayout {
+                .new_drc(DescriptorSetLayoutInner {
                     device_context: device_context.clone(),
                     definition: definition.clone(),
                     set_index: definition.frequency,

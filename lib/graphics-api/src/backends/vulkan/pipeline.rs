@@ -8,7 +8,7 @@ use super::{
     VulkanRenderpassDepthAttachment,
 };
 use crate::{
-    ComputePipelineDef, DeviceContextDrc, Format, GfxResult, GraphicsPipelineDef, LoadOp,
+    ComputePipelineDef, DeviceContext, Format, GfxResult, GraphicsPipelineDef, LoadOp,
     ShaderStageFlags, StoreOp,
 };
 
@@ -30,7 +30,7 @@ impl VulkanPipeline {
     }
 
     pub fn new_graphics_pipeline(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         pipeline_def: &GraphicsPipelineDef<'_>,
     ) -> GfxResult<Self> {
         //log::trace!("Create pipeline\n{:#?}", pipeline_def);

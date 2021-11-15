@@ -1,8 +1,8 @@
 use ash::vk;
 
 use crate::{
-    DescriptorRef, DescriptorSetHandle, DescriptorSetLayoutDrc, DeviceContextDrc, GfxError,
-    GfxResult, ShaderResourceType,
+    DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxError, GfxResult,
+    ShaderResourceType,
 };
 
 struct VkDescriptors {
@@ -26,7 +26,7 @@ pub struct VulkanDescriptorSetBufWriter {
 }
 
 impl VulkanDescriptorSetBufWriter {
-    pub fn new(descriptor_set_layout: &DescriptorSetLayoutDrc) -> GfxResult<Self> {
+    pub fn new(descriptor_set_layout: &DescriptorSetLayout) -> GfxResult<Self> {
         if descriptor_set_layout.platform_layout().vk_layout() == vk::DescriptorSetLayout::null() {
             return Err("Descriptor set layout does not exist in this root signature".into());
         }
@@ -48,7 +48,7 @@ impl VulkanDescriptorSetBufWriter {
         descriptor_offset: u32,
         update_datas: &[DescriptorRef<'a>],
         descriptor_set: &DescriptorSetHandle,
-        descriptor_set_layout: &DescriptorSetLayoutDrc,
+        descriptor_set_layout: &DescriptorSetLayout,
     ) -> GfxResult<()> {
         let layout = &descriptor_set_layout;
         let descriptor_index = layout
@@ -162,7 +162,7 @@ impl VulkanDescriptorSetBufWriter {
         Ok(())
     }
 
-    pub fn flush(&mut self, vulkan_device_context: &DeviceContextDrc) {
+    pub fn flush(&mut self, vulkan_device_context: &DeviceContext) {
         if !self.pending_writes.is_empty() {
             let device = vulkan_device_context.platform_device();
             unsafe {

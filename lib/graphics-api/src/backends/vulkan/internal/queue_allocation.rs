@@ -6,7 +6,7 @@ use fnv::FnvHashMap;
 
 use crate::{
     backends::vulkan::{VkQueueFamilyIndices, VulkanDeviceContext},
-    DeviceContextDrc,
+    DeviceContext,
 };
 
 /// Has the indexes for all the queue families we will need. It's possible that a single queue
@@ -22,7 +22,7 @@ use crate::{
 /// on `DeviceContext`.
 
 pub struct VkQueueInner {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     unallocated_queue: VkUnallocatedQueue,
     drop_tx: Sender<VkUnallocatedQueue>,
 }
@@ -137,7 +137,7 @@ impl VkQueueAllocator {
 
     fn create_queue(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         unallocated_queue: VkUnallocatedQueue,
     ) -> VkQueue {
         let inner = VkQueueInner {
@@ -151,7 +151,7 @@ impl VkQueueAllocator {
         }
     }
 
-    pub fn allocate_queue(&mut self, device_context: &DeviceContextDrc) -> Option<VkQueue> {
+    pub fn allocate_queue(&mut self, device_context: &DeviceContext) -> Option<VkQueue> {
         if self.allocator_config.allocation_strategy
             == VkQueueAllocationStrategy::ShareFirstQueueInFamily
         {
@@ -402,28 +402,28 @@ impl VkQueueAllocatorSet {
         }
     }
 
-    pub fn allocate_graphics_queue(&self, device_context: &DeviceContextDrc) -> Option<VkQueue> {
+    pub fn allocate_graphics_queue(&self, device_context: &DeviceContext) -> Option<VkQueue> {
         self.graphics_queue_allocator
             .lock()
             .unwrap()
             .allocate_queue(device_context)
     }
 
-    pub fn allocate_compute_queue(&self, device_context: &DeviceContextDrc) -> Option<VkQueue> {
+    pub fn allocate_compute_queue(&self, device_context: &DeviceContext) -> Option<VkQueue> {
         self.compute_queue_allocator
             .lock()
             .unwrap()
             .allocate_queue(device_context)
     }
 
-    pub fn allocate_transfer_queue(&self, device_context: &DeviceContextDrc) -> Option<VkQueue> {
+    pub fn allocate_transfer_queue(&self, device_context: &DeviceContext) -> Option<VkQueue> {
         self.transfer_queue_allocator
             .lock()
             .unwrap()
             .allocate_queue(device_context)
     }
 
-    pub fn allocate_decode_queue(&self, device_context: &DeviceContextDrc) -> Option<VkQueue> {
+    pub fn allocate_decode_queue(&self, device_context: &DeviceContext) -> Option<VkQueue> {
         self.decode_queue_allocator
             .as_ref()
             .unwrap()
@@ -432,7 +432,7 @@ impl VkQueueAllocatorSet {
             .allocate_queue(device_context)
     }
 
-    pub fn allocate_encode_queue(&self, device_context: &DeviceContextDrc) -> Option<VkQueue> {
+    pub fn allocate_encode_queue(&self, device_context: &DeviceContext) -> Option<VkQueue> {
         self.encode_queue_allocator
             .as_ref()
             .unwrap()

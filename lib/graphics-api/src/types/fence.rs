@@ -2,12 +2,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanFence;
-use crate::{DeviceContextDrc, FenceStatus, GfxResult};
+use crate::{DeviceContext, FenceStatus, GfxResult};
 #[cfg(feature = "vulkan")]
 use ash::vk;
 
 pub struct Fence {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     // Set to true when an operation is scheduled to signal this fence
     // Cleared when an operation is scheduled to consume this fence
     submitted: AtomicBool,
@@ -24,7 +24,7 @@ impl Drop for Fence {
 }
 
 impl Fence {
-    pub fn new(device_context: &DeviceContextDrc) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_fence = VulkanFence::new(device_context).map_err(|e| {
             log::error!("Error creating platform fence {:?}", e);
@@ -51,7 +51,7 @@ impl Fence {
         Self::wait_for_fences(&self.device_context, &[self])
     }
 
-    pub fn wait_for_fences(device_context: &DeviceContextDrc, fences: &[&Self]) -> GfxResult<()> {
+    pub fn wait_for_fences(device_context: &DeviceContext, fences: &[&Self]) -> GfxResult<()> {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 

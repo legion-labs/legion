@@ -80,7 +80,7 @@ impl VideoStream {
     pub(crate) fn present(
         &mut self,
         graphics_queue: &Queue,
-        transient_descriptor_heap: &DescriptorHeapDrc,
+        transient_descriptor_heap: &DescriptorHeap,
         wait_sem: &Semaphore,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {

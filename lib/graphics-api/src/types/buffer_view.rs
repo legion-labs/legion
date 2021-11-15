@@ -1,8 +1,6 @@
 use crate::GfxResult;
 
-use super::{
-    deferred_drop::Drc, BufferDef, BufferDrc, BufferViewFlags, GPUViewType, ResourceUsage,
-};
+use super::{deferred_drop::Drc, Buffer, BufferDef, BufferViewFlags, GPUViewType, ResourceUsage};
 #[cfg(any(feature = "vulkan"))]
 use super::{Descriptor, ShaderResourceType};
 
@@ -96,20 +94,20 @@ impl BufferViewDef {
 }
 
 #[derive(Clone)]
-pub struct BufferView {
+pub struct BufferViewInner {
     definition: BufferViewDef,
-    buffer: BufferDrc,
+    buffer: Buffer,
     offset: u64,
     size: u64,
 }
 
 #[derive(Clone)]
-pub struct BufferViewDrc {
-    inner: Drc<BufferView>,
+pub struct BufferView {
+    inner: Drc<BufferViewInner>,
 }
 
-impl BufferViewDrc {
-    pub fn from_buffer(buffer: &BufferDrc, view_def: &BufferViewDef) -> GfxResult<Self> {
+impl BufferView {
+    pub fn from_buffer(buffer: &Buffer, view_def: &BufferViewDef) -> GfxResult<Self> {
         view_def.verify(buffer.definition());
 
         let device_context = buffer.device_context();
@@ -117,7 +115,7 @@ impl BufferViewDrc {
         let size = view_def.element_size * view_def.element_count;
 
         Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(BufferView {
+            inner: device_context.deferred_dropper().new_drc(BufferViewInner {
                 definition: *view_def,
                 buffer: buffer.clone(),
                 offset,
@@ -127,7 +125,7 @@ impl BufferViewDrc {
     }
 
     #[cfg(any(feature = "vulkan"))]
-    pub(crate) fn buffer(&self) -> &BufferDrc {
+    pub(crate) fn buffer(&self) -> &Buffer {
         &self.inner.buffer
     }
 

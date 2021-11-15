@@ -4,7 +4,7 @@ use legion_utils::decimal::DecimalF32;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-use crate::{BufferDrc, BufferViewDrc, SamplerDrc, TextureDrc, TextureViewDrc};
+use crate::{Buffer, BufferView, Sampler, Texture, TextureView};
 
 /// Information about the device, mostly limits, requirements (like memory alignment), and flags to
 /// indicate whether certain features are supported
@@ -587,7 +587,7 @@ impl Default for BarrierQueueTransition {
 /// A memory barrier for buffers. This is used to transition buffers between resource states and
 /// possibly from one queue to another
 pub struct BufferBarrier<'a> {
-    pub buffer: &'a BufferDrc,
+    pub buffer: &'a Buffer,
     pub src_state: ResourceState,
     pub dst_state: ResourceState,
     pub queue_transition: BarrierQueueTransition,
@@ -596,7 +596,7 @@ pub struct BufferBarrier<'a> {
 /// A memory barrier for textures. This is used to transition textures between resource states and
 /// possibly from one queue to another.
 pub struct TextureBarrier<'a> {
-    pub texture: &'a TextureDrc,
+    pub texture: &'a Texture,
     pub src_state: ResourceState,
     pub dst_state: ResourceState,
     pub queue_transition: BarrierQueueTransition,
@@ -609,7 +609,7 @@ pub struct TextureBarrier<'a> {
 impl<'a> TextureBarrier<'a> {
     /// Creates a simple state transition
     pub fn state_transition(
-        texture: &'a TextureDrc,
+        texture: &'a Texture,
         src_state: ResourceState,
         dst_state: ResourceState,
     ) -> Self {
@@ -626,8 +626,8 @@ impl<'a> TextureBarrier<'a> {
 
 /// Represents an image owned by the swapchain
 pub struct SwapchainImage {
-    pub texture: TextureDrc,
-    pub render_target_view: TextureViewDrc,
+    pub texture: Texture,
+    pub render_target_view: TextureView,
     pub swapchain_image_index: u32,
 }
 
@@ -644,7 +644,7 @@ impl Clone for SwapchainImage {
 /// A color render target bound during a renderpass
 #[derive(Debug)]
 pub struct ColorRenderTargetBinding<'a> {
-    pub texture_view: &'a TextureViewDrc,
+    pub texture_view: &'a TextureView,
     pub load_op: LoadOp,
     pub store_op: StoreOp,
     pub clear_value: ColorClearValue,
@@ -653,7 +653,7 @@ pub struct ColorRenderTargetBinding<'a> {
 /// A depth/stencil render target to be bound during a renderpass
 #[derive(Debug)]
 pub struct DepthStencilRenderTargetBinding<'a> {
-    pub texture_view: &'a TextureViewDrc,
+    pub texture_view: &'a TextureView,
     pub depth_load_op: LoadOp,
     pub stencil_load_op: LoadOp,
     pub depth_store_op: StoreOp,
@@ -663,13 +663,13 @@ pub struct DepthStencilRenderTargetBinding<'a> {
 
 /// A vertex buffer to be bound during a renderpass
 pub struct VertexBufferBinding<'a> {
-    pub buffer: &'a BufferDrc,
+    pub buffer: &'a Buffer,
     pub byte_offset: u64,
 }
 
 /// An index buffer to be bound during a renderpass
 pub struct IndexBufferBinding<'a> {
-    pub buffer: &'a BufferDrc,
+    pub buffer: &'a Buffer,
     pub byte_offset: u64,
     pub index_type: IndexType,
 }
@@ -709,9 +709,9 @@ pub struct CmdCopyTextureParams {
 
 /// Wraps all the possible types used to fill a `DescriptorSet`
 pub enum DescriptorRef<'a> {
-    Sampler(&'a SamplerDrc),
-    BufferView(&'a BufferViewDrc),
-    TextureView(&'a TextureViewDrc),
+    Sampler(&'a Sampler),
+    BufferView(&'a BufferView),
+    TextureView(&'a TextureView),
 }
 
 /// Set the texture tiling (internally swizzled, linear)

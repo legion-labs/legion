@@ -5,7 +5,7 @@ use fnv::FnvHasher;
 use super::{FramebufferVulkan, FramebufferVulkanAttachment, FramebufferVulkanDef, LruCache};
 use crate::backends::vulkan::VulkanRenderpass;
 use crate::{
-    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContextDrc, GfxResult,
+    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult,
 };
 
 pub(crate) struct VulkanFramebufferCache {
@@ -67,7 +67,7 @@ impl VulkanFramebufferCache {
     }
 
     pub(crate) fn create_framebuffer(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         renderpass: &VulkanRenderpass,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,
@@ -96,7 +96,7 @@ impl VulkanFramebufferCache {
 
     pub(crate) fn get_or_create_framebuffer(
         &mut self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         renderpass: &VulkanRenderpass,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,

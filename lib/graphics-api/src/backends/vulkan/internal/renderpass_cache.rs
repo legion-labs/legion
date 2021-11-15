@@ -8,7 +8,7 @@ use super::{
 };
 use crate::backends::vulkan::VulkanRenderpass;
 use crate::{
-    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContextDrc, GfxResult,
+    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult,
 };
 
 pub(crate) struct VulkanRenderpassCache {
@@ -49,7 +49,7 @@ impl VulkanRenderpassCache {
     }
 
     pub(crate) fn create_renderpass(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<VulkanRenderpass> {
@@ -83,7 +83,7 @@ impl VulkanRenderpassCache {
 
     pub(crate) fn get_or_create_renderpass(
         &mut self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: Option<&DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<VulkanRenderpass> {

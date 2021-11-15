@@ -11,7 +11,7 @@ use super::{
 };
 
 use crate::backends::vulkan::check_extensions_availability;
-use crate::{DeviceContextDrc, DeviceInfo, ExtensionMode, GfxResult, PhysicalDeviceType};
+use crate::{DeviceContext, DeviceInfo, ExtensionMode, GfxResult, PhysicalDeviceType};
 
 impl PhysicalDeviceType {
     /// Convert to `vk::PhysicalDeviceType`
@@ -47,7 +47,7 @@ pub struct VkQueueFamilyIndices {
 }
 
 pub(crate) struct VulkanDeviceContext {
-    pub(super) resource_cache: DeviceVulkanResourceCache,
+    pub(crate) resource_cache: DeviceVulkanResourceCache,
     // pub(crate) descriptor_heap: VulkanDescriptorHeap,
     queue_allocator: VkQueueAllocatorSet,
 
@@ -230,7 +230,7 @@ impl VulkanDeviceContext {
     }
 
     pub(crate) fn create_renderpass(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         renderpass_def: &VulkanRenderpassDef,
     ) -> GfxResult<VulkanRenderpass> {
         VulkanRenderpass::new(device_context, renderpass_def)

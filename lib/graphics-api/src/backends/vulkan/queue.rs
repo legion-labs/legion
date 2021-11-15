@@ -3,7 +3,7 @@ use ash::vk;
 use super::internal::VkQueue;
 use super::{VulkanDeviceContext, VulkanSwapchain};
 use crate::{
-    CommandBuffer, DeviceContextDrc, Fence, GfxResult, PresentSuccessResult, QueueType, Semaphore,
+    CommandBuffer, DeviceContext, Fence, GfxResult, PresentSuccessResult, QueueType, Semaphore,
     Swapchain,
 };
 
@@ -17,7 +17,7 @@ impl VulkanQueue {
         &self.queue
     }
 
-    pub fn new(device_context: &DeviceContextDrc, queue_type: QueueType) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> GfxResult<Self> {
         let queue = match queue_type {
             QueueType::Graphics => device_context
                 .platform_device_context()
@@ -151,7 +151,7 @@ impl VulkanQueue {
 
     pub fn present(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         swapchain: &Swapchain,
         wait_semaphores: &[&Semaphore],
         image_index: u32,

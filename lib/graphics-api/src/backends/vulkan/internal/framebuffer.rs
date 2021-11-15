@@ -3,10 +3,10 @@ use std::sync::Arc;
 use ash::vk;
 
 use super::super::VulkanRenderpass;
-use crate::{DeviceContextDrc, GfxError, GfxResult, TextureViewDrc};
+use crate::{DeviceContext, GfxError, GfxResult, TextureView};
 
 pub(crate) struct FramebufferVulkanAttachment {
-    pub(crate) texture_view: TextureViewDrc,
+    pub(crate) texture_view: TextureView,
 }
 
 pub(crate) struct FramebufferVulkanDef {
@@ -16,7 +16,7 @@ pub(crate) struct FramebufferVulkanDef {
 }
 
 pub(crate) struct FramebufferVulkanInner {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     framebuffer: vk::Framebuffer,
     width: u32,
     height: u32,
@@ -53,7 +53,7 @@ impl FramebufferVulkan {
     }
 
     pub fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         framebuffer_def: &FramebufferVulkanDef,
     ) -> GfxResult<Self> {
         let (extents, array_length) =

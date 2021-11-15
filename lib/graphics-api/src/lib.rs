@@ -282,14 +282,11 @@ pub mod prelude {
     };
 }
 
-#[cfg(feature = "vulkan")]
-use backends::vulkan::VulkanApi;
-
 pub use error::*;
 pub use types::*;
 
 #[cfg(feature = "vulkan")]
-pub type DefaultApi = VulkanApi;
+pub type DefaultApi = GfxApi;
 
 //
 // Constants

@@ -2,8 +2,7 @@ use std::cmp::max;
 
 use graphics_api::{
     CommandBuffer, Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState,
-    ResourceUsage, TextureBarrier, TextureDef, TextureDrc, TextureTiling, TextureViewDef,
-    TextureViewDrc,
+    ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 use legion_ecs::prelude::Component;
 use legion_utils::Uuid;
@@ -47,9 +46,9 @@ impl RenderSurfaceExtents {
 pub struct RenderSurface {
     id: RenderSurfaceId,
     extents: RenderSurfaceExtents,
-    texture: TextureDrc,
-    texture_srv: TextureViewDrc,
-    texture_rtv: TextureViewDrc,
+    texture: Texture,
+    texture_srv: TextureView,
+    texture_rtv: TextureView,
     texture_state: ResourceState,
 
     // tmp
@@ -71,15 +70,15 @@ impl RenderSurface {
         self.id
     }
 
-    pub fn texture(&self) -> &TextureDrc {
+    pub fn texture(&self) -> &Texture {
         &self.texture
     }
 
-    pub fn render_target_view(&self) -> &TextureViewDrc {
+    pub fn render_target_view(&self) -> &TextureView {
         &self.texture_rtv
     }
 
-    pub fn shader_resource_view(&self) -> &TextureViewDrc {
+    pub fn shader_resource_view(&self) -> &TextureView {
         &self.texture_srv
     }
 

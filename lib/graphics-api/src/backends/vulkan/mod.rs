@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
 mod api;
-pub use api::*;
+pub(crate) use api::*;
 
 mod device_context;
 pub use device_context::*;

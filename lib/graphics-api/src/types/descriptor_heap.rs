@@ -1,18 +1,18 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorHeap;
 use crate::{
-    deferred_drop::Drc, DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayoutDrc,
-    DeviceContextDrc, GfxResult,
+    deferred_drop::Drc, DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout,
+    DeviceContext, GfxResult,
 };
 
-struct DescriptorHeap {
-    device_context: DeviceContextDrc,
+struct DescriptorHeapInner {
+    device_context: DeviceContext,
 
     #[cfg(feature = "vulkan")]
     platform_descriptor_heap: VulkanDescriptorHeap,
 }
 
-impl Drop for DescriptorHeap {
+impl Drop for DescriptorHeapInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_descriptor_heap.destroy(&self.device_context);
@@ -20,13 +20,13 @@ impl Drop for DescriptorHeap {
 }
 
 #[derive(Clone)]
-pub struct DescriptorHeapDrc {
-    inner: Drc<DescriptorHeap>,
+pub struct DescriptorHeap {
+    inner: Drc<DescriptorHeapInner>,
 }
 
-impl DescriptorHeapDrc {
+impl DescriptorHeap {
     pub(crate) fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         definition: &DescriptorHeapDef,
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
@@ -37,11 +37,13 @@ impl DescriptorHeapDrc {
             })?;
 
         Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(DescriptorHeap {
-                device_context: device_context.clone(),
-                #[cfg(any(feature = "vulkan"))]
-                platform_descriptor_heap,
-            }),
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(DescriptorHeapInner {
+                    device_context: device_context.clone(),
+                    #[cfg(any(feature = "vulkan"))]
+                    platform_descriptor_heap,
+                }),
         })
     }
 
@@ -57,7 +59,7 @@ impl DescriptorHeapDrc {
 
     pub fn allocate_descriptor_set(
         &self,
-        descriptor_set_layout: &DescriptorSetLayoutDrc,
+        descriptor_set_layout: &DescriptorSetLayout,
     ) -> GfxResult<DescriptorSetBufWriter> {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();

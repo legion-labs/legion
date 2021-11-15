@@ -1,7 +1,7 @@
 use ash::vk;
 
 use super::VulkanQueue;
-use crate::{CommandPoolDef, DeviceContextDrc, GfxResult};
+use crate::{CommandPoolDef, DeviceContext, GfxResult};
 
 pub(crate) struct VulkanCommandPool {
     vk_command_pool: vk::CommandPool,
@@ -9,7 +9,7 @@ pub(crate) struct VulkanCommandPool {
 
 impl VulkanCommandPool {
     pub(crate) fn new(
-        devie_context: &DeviceContextDrc,
+        devie_context: &DeviceContext,
         queue: &VulkanQueue,
         command_pool_def: &CommandPoolDef,
     ) -> GfxResult<Self> {
@@ -37,7 +37,7 @@ impl VulkanCommandPool {
         Ok(Self { vk_command_pool })
     }
 
-    pub fn destroy(&self, device_context: &DeviceContextDrc) {
+    pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
                 .platform_device()
@@ -45,7 +45,7 @@ impl VulkanCommandPool {
         }
     }
 
-    pub fn reset_command_pool(&self, device_context: &DeviceContextDrc) -> GfxResult<()> {
+    pub fn reset_command_pool(&self, device_context: &DeviceContext) -> GfxResult<()> {
         unsafe {
             device_context
                 .platform_device()

@@ -1,9 +1,9 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanBuffer, VulkanDeviceContext};
-use crate::{BufferViewDrc, GfxResult};
+use crate::{BufferView, GfxResult};
 
 use super::{
-    deferred_drop::Drc, BufferViewDef, DeviceContextDrc, MemoryUsage, QueueType, ResourceUsage,
+    deferred_drop::Drc, BufferViewDef, DeviceContext, MemoryUsage, QueueType, ResourceUsage,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -83,15 +83,15 @@ impl BufferDef {
     }
 }
 
-pub struct Buffer {
+pub struct BufferInner {
     buffer_def: BufferDef,
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
 
     #[cfg(feature = "vulkan")]
     pub(super) platform_buffer: VulkanBuffer,
 }
 
-impl Drop for Buffer {
+impl Drop for BufferInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_buffer.destroy(
@@ -102,12 +102,12 @@ impl Drop for Buffer {
 }
 
 #[derive(Clone)]
-pub struct BufferDrc {
-    inner: Drc<Buffer>,
+pub struct Buffer {
+    inner: Drc<BufferInner>,
 }
 
-impl BufferDrc {
-    pub fn new(device_context: &DeviceContextDrc, buffer_def: &BufferDef) -> GfxResult<Self> {
+impl Buffer {
+    pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_buffer =
             VulkanBuffer::new(&device_context.inner.platform_device_context, buffer_def).map_err(
@@ -118,7 +118,7 @@ impl BufferDrc {
             )?;
 
         Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(Buffer {
+            inner: device_context.deferred_dropper().new_drc(BufferInner {
                 device_context: device_context.clone(),
                 buffer_def: *buffer_def,
                 #[cfg(any(feature = "vulkan"))]
@@ -131,7 +131,7 @@ impl BufferDrc {
         &self.inner.buffer_def
     }
 
-    pub fn device_context(&self) -> &DeviceContextDrc {
+    pub fn device_context(&self) -> &DeviceContext {
         &self.inner.device_context
     }
 
@@ -199,13 +199,13 @@ impl BufferDrc {
         Ok(())
     }
 
-    pub fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<BufferViewDrc> {
-        BufferViewDrc::from_buffer(self, view_def)
+    pub fn create_view(&self, view_def: &BufferViewDef) -> GfxResult<BufferView> {
+        BufferView::from_buffer(self, view_def)
     }
 }
 
 pub struct BufferMappingInfo {
-    buffer: BufferDrc,
+    buffer: Buffer,
     data_ptr: *mut u8,
 }
 

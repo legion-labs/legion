@@ -1,6 +1,6 @@
 use ash::vk;
 
-use crate::{DeviceContextDrc, FenceStatus, GfxResult};
+use crate::{DeviceContext, FenceStatus, GfxResult};
 
 pub(crate) struct VulkanFence {
     vk_fence: vk::Fence,
@@ -11,7 +11,7 @@ impl Drop for VulkanFence {
 }
 
 impl VulkanFence {
-    pub fn new(device_context: &DeviceContextDrc) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext) -> GfxResult<Self> {
         let create_info = vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::empty());
 
         let vk_fence = unsafe {
@@ -25,7 +25,7 @@ impl VulkanFence {
         Ok(Self { vk_fence })
     }
 
-    pub fn destroy(&self, device_context: &DeviceContextDrc) {
+    pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
                 .inner
@@ -40,7 +40,7 @@ impl VulkanFence {
     }
 
     pub fn wait_for_fences(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         fence_list: &[vk::Fence],
     ) -> GfxResult<()> {
         if !fence_list.is_empty() {
@@ -54,7 +54,7 @@ impl VulkanFence {
         Ok(())
     }
 
-    pub fn get_fence_status(&self, device_context: &DeviceContextDrc) -> GfxResult<FenceStatus> {
+    pub fn get_fence_status(&self, device_context: &DeviceContext) -> GfxResult<FenceStatus> {
         let device = device_context.platform_device();
         unsafe {
             let is_ready = device.get_fence_status(self.vk_fence)?;

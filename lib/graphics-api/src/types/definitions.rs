@@ -13,7 +13,7 @@ use super::{
     PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
     VertexAttributeRate,
 };
-use crate::{DescriptorSetLayoutDrc, ResourceFlags, RootSignatureDrc, ShaderDrc, ShaderModuleDrc};
+use crate::{DescriptorSetLayout, ResourceFlags, RootSignature, Shader, ShaderModule};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VkInstance;
@@ -405,7 +405,7 @@ pub struct SwapchainDef {
 pub struct ShaderStageDef {
     pub entry_point: String,
     pub shader_stage: ShaderStageFlags,
-    pub shader_module: ShaderModuleDrc,
+    pub shader_module: ShaderModule,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -469,7 +469,7 @@ pub struct PushConstantDef {
 
 pub struct RootSignatureDef {
     pub pipeline_type: PipelineType,
-    pub descriptor_set_layouts: Vec<DescriptorSetLayoutDrc>,
+    pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
 }
 
@@ -795,8 +795,8 @@ impl BlendState {
 
 /// Used to create a `Pipeline` for graphics operations
 pub struct GraphicsPipelineDef<'a> {
-    pub shader: &'a ShaderDrc,
-    pub root_signature: &'a RootSignatureDrc,
+    pub shader: &'a Shader,
+    pub root_signature: &'a RootSignature,
     pub vertex_layout: &'a VertexLayout,
     pub blend_state: &'a BlendState,
     pub depth_state: &'a DepthState,
@@ -809,8 +809,8 @@ pub struct GraphicsPipelineDef<'a> {
 
 /// Used to create a `Pipeline` for compute operations
 pub struct ComputePipelineDef<'a> {
-    pub shader: &'a ShaderDrc,
-    pub root_signature: &'a RootSignatureDrc,
+    pub shader: &'a Shader,
+    pub root_signature: &'a RootSignature,
 }
 
 /// Used to create a `DescriptorHeap`

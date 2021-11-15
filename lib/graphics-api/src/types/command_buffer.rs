@@ -3,16 +3,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanCommandBuffer;
+use crate::{Buffer, CommandPool, DescriptorSetHandle, Pipeline, Texture};
 use crate::{
     BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams,
-    ColorRenderTargetBinding, CommandBufferDef, DepthStencilRenderTargetBinding, DeviceContextDrc,
-    GfxResult, IndexBufferBinding, QueueType, RootSignatureDrc, TextureBarrier,
-    VertexBufferBinding,
+    ColorRenderTargetBinding, CommandBufferDef, DepthStencilRenderTargetBinding, DeviceContext,
+    GfxResult, IndexBufferBinding, QueueType, RootSignature, TextureBarrier, VertexBufferBinding,
 };
-use crate::{BufferDrc, CommandPool, DescriptorSetHandle, PipelineDrc, TextureDrc};
 
 pub struct CommandBuffer {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     queue_type: QueueType,
     queue_family_index: u32,
     has_active_renderpass: AtomicBool,
@@ -23,7 +22,7 @@ pub struct CommandBuffer {
 
 impl CommandBuffer {
     pub fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         command_pool: &CommandPool,
         command_buffer_def: &CommandBufferDef,
     ) -> GfxResult<Self> {
@@ -150,7 +149,7 @@ impl CommandBuffer {
         Ok(())
     }
 
-    pub fn cmd_bind_pipeline(&self, pipeline: &PipelineDrc) -> GfxResult<()> {
+    pub fn cmd_bind_pipeline(&self, pipeline: &Pipeline) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
         self.platform_command_buffer
             .cmd_bind_pipeline(&self.device_context, pipeline);
@@ -180,7 +179,7 @@ impl CommandBuffer {
 
     pub fn cmd_bind_descriptor_set_handle(
         &self,
-        root_signature: &RootSignatureDrc,
+        root_signature: &RootSignature,
         set_index: u32,
         descriptor_set_handle: DescriptorSetHandle,
     ) -> GfxResult<()> {
@@ -196,7 +195,7 @@ impl CommandBuffer {
 
     pub fn cmd_push_constants<T: Sized>(
         &self,
-        root_signature: &RootSignatureDrc,
+        root_signature: &RootSignature,
         constants: &T,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
@@ -307,8 +306,8 @@ impl CommandBuffer {
 
     pub fn cmd_copy_buffer_to_buffer(
         &self,
-        src_buffer: &BufferDrc,
-        dst_buffer: &BufferDrc,
+        src_buffer: &Buffer,
+        dst_buffer: &Buffer,
         src_offset: u64,
         dst_offset: u64,
         size: u64,
@@ -327,8 +326,8 @@ impl CommandBuffer {
 
     pub fn cmd_copy_buffer_to_texture(
         &self,
-        src_buffer: &BufferDrc,
-        dst_texture: &TextureDrc,
+        src_buffer: &Buffer,
+        dst_texture: &Texture,
         params: &CmdCopyBufferToTextureParams,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
@@ -343,8 +342,8 @@ impl CommandBuffer {
 
     pub fn cmd_blit_texture(
         &self,
-        src_texture: &TextureDrc,
-        dst_texture: &TextureDrc,
+        src_texture: &Texture,
+        dst_texture: &Texture,
         params: &CmdBlitParams,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
@@ -359,8 +358,8 @@ impl CommandBuffer {
 
     pub fn cmd_copy_image(
         &self,
-        src_texture: &TextureDrc,
-        dst_texture: &TextureDrc,
+        src_texture: &Texture,
+        dst_texture: &Texture,
         params: &CmdCopyTextureParams,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]

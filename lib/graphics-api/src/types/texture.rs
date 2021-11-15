@@ -5,16 +5,16 @@ use std::sync::atomic::Ordering;
 
 use crate::deferred_drop::Drc;
 use crate::{
-    DeviceContextDrc, Extents3D, GfxResult, TextureDef, TextureSubResource, TextureViewDef,
-    TextureViewDrc,
+    DeviceContext, Extents3D, GfxResult, TextureDef, TextureSubResource, TextureView,
+    TextureViewDef,
 };
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::{VulkanDeviceContext, VulkanRawImage, VulkanTexture};
 
 #[derive(Debug)]
-pub struct Texture {
-    device_context: DeviceContextDrc,
+pub struct TextureInner {
+    device_context: DeviceContext,
     texture_def: TextureDef,
     is_undefined_layout: AtomicBool,
     texture_id: u32,
@@ -23,7 +23,7 @@ pub struct Texture {
     platform_texture: VulkanTexture,
 }
 
-impl Drop for Texture {
+impl Drop for TextureInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_texture
@@ -34,25 +34,25 @@ impl Drop for Texture {
 /// Holds the `vk::Image` and allocation as well as a few `vk::ImageViews` depending on the
 /// provided `ResourceType` in the `texture_def`.
 #[derive(Clone, Debug)]
-pub struct TextureDrc {
-    inner: Drc<Texture>,
+pub struct Texture {
+    inner: Drc<TextureInner>,
 }
 
-impl PartialEq for TextureDrc {
+impl PartialEq for Texture {
     fn eq(&self, other: &Self) -> bool {
         self.inner.texture_id == other.inner.texture_id
     }
 }
 
-impl Eq for TextureDrc {}
+impl Eq for Texture {}
 
-impl Hash for TextureDrc {
+impl Hash for Texture {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.inner.texture_id.hash(state);
     }
 }
 
-impl TextureDrc {
+impl Texture {
     pub fn extents(&self) -> &Extents3D {
         &self.inner.texture_def.extents
     }
@@ -61,7 +61,7 @@ impl TextureDrc {
         self.inner.texture_def.array_length
     }
 
-    pub fn device_context(&self) -> &DeviceContextDrc {
+    pub fn device_context(&self) -> &DeviceContext {
         &self.inner.device_context
     }
 
@@ -89,7 +89,7 @@ impl TextureDrc {
             .swap(false, Ordering::Relaxed)
     }
 
-    pub fn new(device_context: &DeviceContextDrc, texture_def: &TextureDef) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, texture_def: &TextureDef) -> GfxResult<Self> {
         Self::from_existing(
             device_context,
             #[cfg(feature = "vulkan")]
@@ -99,7 +99,7 @@ impl TextureDrc {
     }
 
     pub(crate) fn from_existing(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         #[cfg(feature = "vulkan")] existing_image: Option<VulkanRawImage>,
         texture_def: &TextureDef,
     ) -> GfxResult<Self> {
@@ -114,7 +114,7 @@ impl TextureDrc {
         let texture_id = 0;
 
         Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(Texture {
+            inner: device_context.deferred_dropper().new_drc(TextureInner {
                 device_context: device_context.clone(),
                 texture_def: *texture_def,
                 is_undefined_layout: AtomicBool::new(true),
@@ -149,7 +149,7 @@ impl TextureDrc {
             .unmap_texture(&self.inner.device_context.inner.platform_device_context);
     }
 
-    pub fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<TextureViewDrc> {
-        TextureViewDrc::new(self, view_def)
+    pub fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<TextureView> {
+        TextureView::new(self, view_def)
     }
 }

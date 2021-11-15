@@ -1,5 +1,5 @@
 use crate::{
-    CommandBuffer, CommandPool, CommandPoolDef, DeviceContextDrc, Fence, GfxResult,
+    CommandBuffer, CommandPool, CommandPoolDef, DeviceContext, Fence, GfxResult,
     PresentSuccessResult, QueueType, Semaphore, Swapchain,
 };
 
@@ -8,7 +8,7 @@ use crate::backends::vulkan::VulkanQueue;
 
 #[derive(Clone)]
 pub struct Queue {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     queue_type: QueueType,
 
     #[cfg(feature = "vulkan")]
@@ -16,7 +16,7 @@ pub struct Queue {
 }
 
 impl Queue {
-    pub fn new(device_context: &DeviceContextDrc, queue_type: QueueType) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_queue = VulkanQueue::new(device_context, queue_type).map_err(|e| {
             log::error!("Error creating buffer {:?}", e);
@@ -31,7 +31,7 @@ impl Queue {
         })
     }
 
-    pub fn device_context(&self) -> &DeviceContextDrc {
+    pub fn device_context(&self) -> &DeviceContext {
         &self.device_context
     }
 

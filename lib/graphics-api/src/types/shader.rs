@@ -4,7 +4,7 @@ use std::{hash::Hash, marker::PhantomData};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    deferred_drop::Drc, DeviceContextDrc, GfxResult, PipelineReflection, ShaderStageDef,
+    deferred_drop::Drc, DeviceContext, GfxResult, PipelineReflection, ShaderStageDef,
     ShaderStageFlags,
 };
 
@@ -39,20 +39,20 @@ pub enum ShaderModuleDef<'a> {
     Null(std::marker::PhantomData<&'a u8>),
 }
 
-pub struct Shader {
+pub struct ShaderInner {
     stage_flags: ShaderStageFlags,
     stages: Vec<ShaderStageDef>,
     pipeline_reflection: PipelineReflection,
 }
 
 #[derive(Clone)]
-pub struct ShaderDrc {
-    inner: Drc<Shader>,
+pub struct Shader {
+    inner: Drc<ShaderInner>,
 }
 
-impl ShaderDrc {
+impl Shader {
     pub fn new(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         stages: Vec<ShaderStageDef>,
         pipeline_reflection: &PipelineReflection,
     ) -> GfxResult<Self> {
@@ -62,7 +62,7 @@ impl ShaderDrc {
             stage_flags |= stage.shader_stage;
         }
 
-        let inner = Shader {
+        let inner = ShaderInner {
             stage_flags,
             stages,
             pipeline_reflection: pipeline_reflection.clone(),

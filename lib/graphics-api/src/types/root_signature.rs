@@ -1,7 +1,7 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanRootSignature;
 use crate::deferred_drop::Drc;
-use crate::{DeviceContextDrc, GfxResult, PipelineType, RootSignatureDef};
+use crate::{DeviceContext, GfxResult, PipelineType, RootSignatureDef};
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -9,15 +9,15 @@ pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct PushConstantIndex(pub(crate) u32);
 
-pub struct RootSignature {
-    device_context: DeviceContextDrc,
+pub struct RootSignatureInner {
+    device_context: DeviceContext,
     definition: RootSignatureDef,
 
     #[cfg(feature = "vulkan")]
     pub(super) platform_root_signature: VulkanRootSignature,
 }
 
-impl Drop for RootSignature {
+impl Drop for RootSignatureInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_root_signature
@@ -26,15 +26,12 @@ impl Drop for RootSignature {
 }
 
 #[derive(Clone)]
-pub struct RootSignatureDrc {
-    pub(super) inner: Drc<RootSignature>,
+pub struct RootSignature {
+    pub(super) inner: Drc<RootSignatureInner>,
 }
 
-impl RootSignatureDrc {
-    pub fn new(
-        device_context: &DeviceContextDrc,
-        definition: &RootSignatureDef,
-    ) -> GfxResult<Self> {
+impl RootSignature {
+    pub fn new(device_context: &DeviceContext, definition: &RootSignatureDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let platform_root_signature =
             VulkanRootSignature::new(device_context.platform_device_context(), definition)
@@ -43,7 +40,7 @@ impl RootSignatureDrc {
                     ash::vk::Result::ERROR_UNKNOWN
                 })?;
 
-        let inner = RootSignature {
+        let inner = RootSignatureInner {
             device_context: device_context.clone(),
             definition: definition.clone(),
             #[cfg(any(feature = "vulkan"))]
@@ -55,7 +52,7 @@ impl RootSignatureDrc {
         })
     }
 
-    pub fn device_context(&self) -> &DeviceContextDrc {
+    pub fn device_context(&self) -> &DeviceContext {
         &self.inner.device_context
     }
 

@@ -1,6 +1,6 @@
 use ash::vk;
 
-use crate::{CompareOp, DeviceContextDrc, GfxResult, MipMapMode, SamplerDef};
+use crate::{CompareOp, DeviceContext, GfxResult, MipMapMode, SamplerDef};
 
 pub(crate) struct VulkanSampler {
     sampler: vk::Sampler,
@@ -15,7 +15,7 @@ impl std::fmt::Debug for VulkanSampler {
 }
 
 impl VulkanSampler {
-    pub fn new(device_context: &DeviceContextDrc, sampler_def: &SamplerDef) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, sampler_def: &SamplerDef) -> GfxResult<Self> {
         let max_lod = if sampler_def.mip_map_mode == MipMapMode::Linear {
             f32::MAX
         } else {
@@ -48,7 +48,7 @@ impl VulkanSampler {
         Ok(Self { sampler })
     }
 
-    pub fn destroy(&self, device_context: &DeviceContextDrc) {
+    pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
                 .platform_device()

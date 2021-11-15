@@ -2,21 +2,21 @@
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanPipeline;
-use crate::DeviceContextDrc;
+use crate::DeviceContext;
 use crate::{
     deferred_drop::Drc, ComputePipelineDef, GfxResult, GraphicsPipelineDef, PipelineType,
-    RootSignatureDrc,
+    RootSignature,
 };
 
-struct Pipeline {
-    root_signature: RootSignatureDrc,
+struct PipelineInner {
+    root_signature: RootSignature,
     pipeline_type: PipelineType,
 
     #[cfg(feature = "vulkan")]
     pub(super) platform_pipeline: VulkanPipeline,
 }
 
-impl Drop for Pipeline {
+impl Drop for PipelineInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_pipeline.destroy(
@@ -29,13 +29,13 @@ impl Drop for Pipeline {
     }
 }
 
-pub struct PipelineDrc {
-    inner: Drc<Pipeline>,
+pub struct Pipeline {
+    inner: Drc<PipelineInner>,
 }
 
-impl PipelineDrc {
+impl Pipeline {
     pub fn new_graphics_pipeline(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         pipeline_def: &GraphicsPipelineDef<'_>,
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
@@ -46,7 +46,7 @@ impl PipelineDrc {
             })?;
 
         Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(Pipeline {
+            inner: device_context.deferred_dropper().new_drc(PipelineInner {
                 pipeline_type: PipelineType::Graphics,
                 root_signature: pipeline_def.root_signature.clone(),
                 #[cfg(any(feature = "vulkan"))]
@@ -56,7 +56,7 @@ impl PipelineDrc {
     }
 
     pub fn new_compute_pipeline(
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         pipeline_def: &ComputePipelineDef<'_>,
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
@@ -70,7 +70,7 @@ impl PipelineDrc {
         })?;
 
         Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(Pipeline {
+            inner: device_context.deferred_dropper().new_drc(PipelineInner {
                 pipeline_type: PipelineType::Compute,
                 root_signature: pipeline_def.root_signature.clone(),
                 #[cfg(any(feature = "vulkan"))]
@@ -83,7 +83,7 @@ impl PipelineDrc {
         self.inner.pipeline_type
     }
 
-    pub fn root_signature(&self) -> &RootSignatureDrc {
+    pub fn root_signature(&self) -> &RootSignature {
         &self.inner.root_signature
     }
 

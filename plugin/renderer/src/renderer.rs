@@ -2,9 +2,7 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
-use graphics_api::{
-    backends::vulkan::VulkanApi, prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS,
-};
+use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 
@@ -18,17 +16,17 @@ pub struct Renderer {
     graphics_queue: Queue,
     command_pools: Vec<CommandPool>,
     command_buffers: Vec<CommandBuffer>,
-    transient_descriptor_heaps: Vec<DescriptorHeapDrc>,
+    transient_descriptor_heaps: Vec<DescriptorHeap>,
 
     // This should be last, as it must be destroyed last.
-    api: VulkanApi,
+    api: GfxApi,
 }
 
 impl Renderer {
     pub fn new() -> Result<Self> {
         #![allow(unsafe_code)]
         let num_render_frames = 2u32;
-        let api = unsafe { VulkanApi::new(&ApiDef::default()).unwrap() };
+        let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
         let graphics_queue = device_context.create_queue(QueueType::Graphics).unwrap();
         let mut command_pools = Vec::with_capacity(num_render_frames as usize);
@@ -87,7 +85,7 @@ impl Renderer {
         &self.api
     }
 
-    pub fn device_context(&self) -> &DeviceContextDrc {
+    pub fn device_context(&self) -> &DeviceContext {
         self.api.device_context()
     }
 
@@ -105,7 +103,7 @@ impl Renderer {
         &self.frame_signal_sems[render_frame_index as usize]
     }
 
-    pub fn transient_descriptor_heap(&self) -> &DescriptorHeapDrc {
+    pub fn transient_descriptor_heap(&self) -> &DescriptorHeap {
         let render_frame_index = self.render_frame_idx;
         &self.transient_descriptor_heaps[render_frame_index as usize]
     }
@@ -182,11 +180,11 @@ impl Drop for Renderer {
 }
 
 pub struct TmpRenderPass {
-    vertex_buffers: Vec<BufferDrc>,
-    uniform_buffers: Vec<BufferDrc>,
-    uniform_buffer_cbvs: Vec<BufferViewDrc>,
-    root_signature: RootSignatureDrc,
-    pipeline: PipelineDrc,
+    vertex_buffers: Vec<Buffer>,
+    uniform_buffers: Vec<Buffer>,
+    uniform_buffer_cbvs: Vec<BufferView>,
+    root_signature: RootSignature,
+    pipeline: Pipeline,
     pub color: [f32; 4],
     pub speed: f32,
 }

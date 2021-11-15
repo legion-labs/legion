@@ -5,11 +5,11 @@ use ash::vk;
 
 use super::{internal, VulkanDeviceContext, VulkanRootSignature};
 use crate::{
-    BarrierQueueTransition, BufferBarrier, BufferDrc, CmdBlitParams, CmdCopyBufferToTextureParams,
+    BarrierQueueTransition, Buffer, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
     CmdCopyTextureParams, ColorRenderTargetBinding, CommandBufferDef, CommandPool,
-    DepthStencilRenderTargetBinding, DescriptorSetHandle, DeviceContextDrc, GfxResult,
-    IndexBufferBinding, PipelineDrc, QueueType, ResourceState, ResourceUsage, RootSignatureDrc,
-    TextureBarrier, TextureDrc, VertexBufferBinding,
+    DepthStencilRenderTargetBinding, DescriptorSetHandle, DeviceContext, GfxResult,
+    IndexBufferBinding, Pipeline, QueueType, ResourceState, ResourceUsage, RootSignature, Texture,
+    TextureBarrier, VertexBufferBinding,
 };
 
 pub(crate) struct VulkanCommandBuffer {
@@ -52,7 +52,7 @@ impl VulkanCommandBuffer {
         self.vk_command_buffer
     }
 
-    pub fn begin(&self, device_context: &DeviceContextDrc) -> GfxResult<()> {
+    pub fn begin(&self, device_context: &DeviceContext) -> GfxResult<()> {
         //TODO: Use one-time-submit?
         let command_buffer_usage_flags = vk::CommandBufferUsageFlags::empty();
 
@@ -68,7 +68,7 @@ impl VulkanCommandBuffer {
         Ok(())
     }
 
-    pub fn end_command_buffer(&self, device_context: &DeviceContextDrc) -> GfxResult<()> {
+    pub fn end_command_buffer(&self, device_context: &DeviceContext) -> GfxResult<()> {
         unsafe {
             device_context
                 .platform_device_context()
@@ -78,7 +78,7 @@ impl VulkanCommandBuffer {
         Ok(())
     }
 
-    pub fn return_to_pool(&self, device_context: &DeviceContextDrc) {
+    pub fn return_to_pool(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
                 .platform_device_context()
@@ -89,7 +89,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_begin_render_pass(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         queue_type: QueueType,
         queue_family_index: u32,
         color_targets: &[ColorRenderTargetBinding<'_>],
@@ -221,7 +221,7 @@ impl VulkanCommandBuffer {
         Ok(())
     }
 
-    pub fn cmd_end_render_pass(&self, device_context: &DeviceContextDrc) {
+    pub fn cmd_end_render_pass(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
                 .platform_device()
@@ -232,7 +232,7 @@ impl VulkanCommandBuffer {
     #[allow(clippy::too_many_arguments)]
     pub fn cmd_set_viewport(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         x: f32,
         y: f32,
         width: f32,
@@ -260,7 +260,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_set_scissor(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         x: u32,
         y: u32,
         width: u32,
@@ -281,7 +281,7 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_set_stencil_reference_value(&self, device_context: &DeviceContextDrc, value: u32) {
+    pub fn cmd_set_stencil_reference_value(&self, device_context: &DeviceContext, value: u32) {
         unsafe {
             device_context.platform_device().cmd_set_stencil_reference(
                 self.vk_command_buffer,
@@ -291,7 +291,7 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_bind_pipeline(&self, device_context: &DeviceContextDrc, pipeline: &PipelineDrc) {
+    pub fn cmd_bind_pipeline(&self, device_context: &DeviceContext, pipeline: &Pipeline) {
         //TODO: Add verification that the pipeline is compatible with the renderpass created by the targets
         let pipeline_bind_point =
             super::internal::pipeline_type_pipeline_bind_point(pipeline.pipeline_type());
@@ -307,7 +307,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_bind_vertex_buffers(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         first_binding: u32,
         bindings: &[VertexBufferBinding<'_>],
     ) {
@@ -330,7 +330,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_bind_index_buffer(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         binding: &IndexBufferBinding<'_>,
     ) {
         unsafe {
@@ -345,8 +345,8 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_bind_descriptor_set_handle(
         &self,
-        device_context: &DeviceContextDrc,
-        root_signature: &RootSignatureDrc,
+        device_context: &DeviceContext,
+        root_signature: &RootSignature,
         set_index: u32,
         descriptor_set_handle: DescriptorSetHandle,
     ) {
@@ -368,7 +368,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_push_constants<T: Sized>(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         root_signature: &VulkanRootSignature,
         constants: &T,
     ) {
@@ -386,12 +386,7 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_draw(
-        &self,
-        device_context: &DeviceContextDrc,
-        vertex_count: u32,
-        first_vertex: u32,
-    ) {
+    pub fn cmd_draw(&self, device_context: &DeviceContext, vertex_count: u32, first_vertex: u32) {
         unsafe {
             device_context.platform_device().cmd_draw(
                 self.vk_command_buffer,
@@ -405,7 +400,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_draw_instanced(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         vertex_count: u32,
         first_vertex: u32,
         instance_count: u32,
@@ -424,7 +419,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_draw_indexed(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         index_count: u32,
         first_index: u32,
         vertex_offset: i32,
@@ -443,7 +438,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_draw_indexed_instanced(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         index_count: u32,
         first_index: u32,
         instance_count: u32,
@@ -464,7 +459,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_dispatch(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         group_count_x: u32,
         group_count_y: u32,
         group_count_z: u32,
@@ -481,7 +476,7 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_resource_barrier(
         &self,
-        device_context: &DeviceContextDrc,
+        device_context: &DeviceContext,
         queue_type: QueueType,
         queue_family_index: u32,
         buffer_barriers: &[BufferBarrier<'_>],
@@ -536,7 +531,7 @@ impl VulkanCommandBuffer {
         }
 
         fn image_subresource_range(
-            texture: &TextureDrc,
+            texture: &Texture,
             array_slice: Option<u16>,
             mip_slice: Option<u8>,
         ) -> vk::ImageSubresourceRange {
@@ -663,9 +658,9 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_copy_buffer_to_buffer(
         &self,
-        device_context: &DeviceContextDrc,
-        src_buffer: &BufferDrc,
-        dst_buffer: &BufferDrc,
+        device_context: &DeviceContext,
+        src_buffer: &Buffer,
+        dst_buffer: &Buffer,
         src_offset: u64,
         dst_offset: u64,
         size: u64,
@@ -686,9 +681,9 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_copy_buffer_to_texture(
         &self,
-        device_context: &DeviceContextDrc,
-        src_buffer: &BufferDrc,
-        dst_texture: &TextureDrc,
+        device_context: &DeviceContext,
+        src_buffer: &Buffer,
+        dst_texture: &Texture,
         params: &CmdCopyBufferToTextureParams,
     ) {
         let texture_def = dst_texture.definition();
@@ -726,9 +721,9 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_blit_texture(
         &self,
-        device_context: &DeviceContextDrc,
-        src_texture: &TextureDrc,
-        dst_texture: &TextureDrc,
+        device_context: &DeviceContext,
+        src_texture: &Texture,
+        dst_texture: &Texture,
         params: &CmdBlitParams,
     ) {
         assert!(src_texture
@@ -813,9 +808,9 @@ impl VulkanCommandBuffer {
 
     pub fn cmd_copy_image(
         &self,
-        device_context: &DeviceContextDrc,
-        src_texture: &TextureDrc,
-        dst_texture: &TextureDrc,
+        device_context: &DeviceContext,
+        src_texture: &Texture,
+        dst_texture: &Texture,
         params: &CmdCopyTextureParams,
     ) {
         assert!(src_texture

@@ -1,20 +1,20 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanTextureView;
 
-use crate::{deferred_drop::Drc, GfxResult, TextureDrc, TextureViewDef};
+use crate::{deferred_drop::Drc, GfxResult, Texture, TextureViewDef};
 #[cfg(any(feature = "vulkan"))]
 use crate::{Descriptor, GPUViewType, ShaderResourceType};
 
 #[derive(Clone, Debug)]
-struct TextureView {
+struct TextureViewInner {
     definition: TextureViewDef,
-    texture: TextureDrc,
+    texture: Texture,
 
     #[cfg(feature = "vulkan")]
     platform_texture_view: VulkanTextureView,
 }
 
-impl Drop for TextureView {
+impl Drop for TextureViewInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_texture_view
@@ -23,12 +23,12 @@ impl Drop for TextureView {
 }
 
 #[derive(Clone, Debug)]
-pub struct TextureViewDrc {
-    inner: Drc<TextureView>,
+pub struct TextureView {
+    inner: Drc<TextureViewInner>,
 }
 
-impl TextureViewDrc {
-    pub(crate) fn new(texture: &TextureDrc, view_def: &TextureViewDef) -> GfxResult<Self> {
+impl TextureView {
+    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> GfxResult<Self> {
         let device_context = texture.device_context();
 
         #[cfg(feature = "vulkan")]
@@ -38,7 +38,7 @@ impl TextureViewDrc {
         })?;
 
         Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(TextureView {
+            inner: device_context.deferred_dropper().new_drc(TextureViewInner {
                 definition: *view_def,
                 texture: texture.clone(),
                 #[cfg(any(feature = "vulkan"))]
@@ -53,7 +53,7 @@ impl TextureViewDrc {
     }
 
     #[cfg(any(feature = "vulkan"))]
-    pub(crate) fn texture(&self) -> &TextureDrc {
+    pub(crate) fn texture(&self) -> &Texture {
         &self.inner.texture
     }
 

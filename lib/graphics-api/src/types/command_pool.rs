@@ -1,11 +1,11 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanCommandPool;
 use crate::{
-    CommandBuffer, CommandBufferDef, CommandPoolDef, DeviceContextDrc, GfxResult, Queue, QueueType,
+    CommandBuffer, CommandBufferDef, CommandPoolDef, DeviceContext, GfxResult, Queue, QueueType,
 };
 
 pub struct CommandPool {
-    device_context: DeviceContextDrc,
+    device_context: DeviceContext,
     queue_type: QueueType,
     queue_family_index: u32,
 
@@ -56,7 +56,7 @@ impl CommandPool {
             .reset_command_pool(&self.device_context)
     }
 
-    pub fn device_context(&self) -> &DeviceContextDrc {
+    pub fn device_context(&self) -> &DeviceContext {
         &self.device_context
     }
 
