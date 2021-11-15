@@ -1,80 +1,22 @@
 use ash::vk;
 
-use super::{VulkanApi, VulkanDeviceContext};
-use crate::backends::deferred_drop::Drc;
-use crate::{DescriptorSetLayout, DescriptorSetLayoutDef, GfxError, GfxResult, ShaderResourceType};
+use super::VulkanDeviceContext;
+use crate::{Descriptor, DescriptorSetLayoutDef, GfxResult};
 
 #[derive(Clone, Debug)]
-pub(super) struct VulkanDescriptor {
-    pub(super) name: String,
-    pub(super) binding: u32,
-    pub(super) shader_resource_type: ShaderResourceType,
-    pub(super) vk_type: vk::DescriptorType,
-    pub(super) element_count: u32,
-    pub(super) update_data_offset: u32,
-}
-
-#[derive(Clone, Debug)]
-pub struct VulkanDescriptorSetLayoutInner {
-    device_context: VulkanDeviceContext,
-    definition: DescriptorSetLayoutDef,
-    set_index: u32,
-    update_data_count: u32,
-    descriptors: Vec<VulkanDescriptor>,
+pub(crate) struct VulkanDescriptorSetLayout {
     vk_layout: vk::DescriptorSetLayout,
 }
 
-impl Drop for VulkanDescriptorSetLayoutInner {
-    fn drop(&mut self) {
-        unsafe {
-            self.device_context
-                .device()
-                .destroy_descriptor_set_layout(self.vk_layout, None);
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct VulkanDescriptorSetLayout {
-    inner: Drc<VulkanDescriptorSetLayoutInner>,
-}
-
 impl VulkanDescriptorSetLayout {
-    pub(super) fn device_context(&self) -> &VulkanDeviceContext {
-        &self.inner.device_context
+    pub fn vk_layout(&self) -> vk::DescriptorSetLayout {
+        self.vk_layout
     }
 
-    pub(super) fn set_index(&self) -> u32 {
-        self.inner.set_index
-    }
-
-    pub(super) fn update_data_count(&self) -> u32 {
-        self.inner.update_data_count
-    }
-
-    pub(super) fn vk_layout(&self) -> vk::DescriptorSetLayout {
-        self.inner.vk_layout
-    }
-
-    pub(super) fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
-        self.inner
-            .descriptors
-            .iter()
-            .position(|descriptor| name == descriptor.name)
-            .map(|opt| opt as u32)
-    }
-
-    pub(super) fn descriptor(&self, index: u32) -> GfxResult<&VulkanDescriptor> {
-        self.inner
-            .descriptors
-            .get(index as usize)
-            .ok_or_else(|| GfxError::from("Invalid descriptor index"))
-    }
-
-    pub(super) fn new(
+    pub fn new(
         device_context: &VulkanDeviceContext,
         definition: &DescriptorSetLayoutDef,
-    ) -> GfxResult<Self> {
+    ) -> GfxResult<(Self, Vec<Descriptor>, u32)> {
         let mut descriptors = Vec::new();
         let mut vk_bindings = Vec::<vk::DescriptorSetLayoutBinding>::new();
         let mut update_data_count = 0;
@@ -91,7 +33,7 @@ impl VulkanDescriptorSetLayout {
                 .stage_flags(vk::ShaderStageFlags::ALL)
                 .build();
 
-            let descriptor = VulkanDescriptor {
+            let descriptor = Descriptor {
                 name: descriptor_def.name.clone(),
                 binding: descriptor_def.binding,
                 shader_resource_type: descriptor_def.shader_resource_type,
@@ -112,25 +54,14 @@ impl VulkanDescriptorSetLayout {
             )?
         };
 
-        let result = Self {
-            inner: device_context
-                .deferred_dropper()
-                .new_drc(VulkanDescriptorSetLayoutInner {
-                    device_context: device_context.clone(),
-                    definition: definition.clone(),
-                    set_index: definition.frequency,
-                    update_data_count,
-                    descriptors,
-                    vk_layout,
-                }),
-        };
-
-        Ok(result)
+        Ok((Self { vk_layout }, descriptors, update_data_count))
     }
-}
 
-impl DescriptorSetLayout<VulkanApi> for VulkanDescriptorSetLayout {
-    fn definition(&self) -> &DescriptorSetLayoutDef {
-        &self.inner.definition
+    pub fn destroy(&self, device_context: &VulkanDeviceContext) {
+        unsafe {
+            device_context
+                .device()
+                .destroy_descriptor_set_layout(self.vk_layout, None);
+        }
     }
 }

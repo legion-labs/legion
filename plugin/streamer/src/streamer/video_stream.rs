@@ -79,9 +79,9 @@ impl VideoStream {
 
     pub(crate) fn present(
         &mut self,
-        graphics_queue: &<DefaultApi as GfxApi>::Queue,
-        transient_descriptor_heap: &<DefaultApi as GfxApi>::DescriptorHeap,
-        wait_sem: &<DefaultApi as GfxApi>::Semaphore,
+        graphics_queue: &Queue,
+        transient_descriptor_heap: &DescriptorHeapDrc,
+        wait_sem: &Semaphore,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();

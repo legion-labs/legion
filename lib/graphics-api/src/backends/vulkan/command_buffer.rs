@@ -1,42 +1,29 @@
 #![allow(clippy::too_many_lines)]
-use std::{
-    mem, ptr,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::{mem, ptr};
 
 use ash::vk;
 
-use super::{
-    internal, VulkanApi, VulkanBuffer, VulkanCommandPool, VulkanDescriptorSetHandle,
-    VulkanDeviceContext, VulkanPipeline, VulkanRootSignature, VulkanTexture,
-};
+use super::{internal, VulkanDeviceContext, VulkanRootSignature};
 use crate::{
-    BarrierQueueTransition, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
-    CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
-    DepthStencilRenderTargetBinding, GfxResult, IndexBufferBinding, Pipeline, QueueType,
-    ResourceState, ResourceUsage, RootSignature, Texture, TextureBarrier, TextureView,
-    VertexBufferBinding,
+    BarrierQueueTransition, BufferBarrier, BufferDrc, CmdBlitParams, CmdCopyBufferToTextureParams,
+    CmdCopyTextureParams, ColorRenderTargetBinding, CommandBufferDef, CommandPool,
+    DepthStencilRenderTargetBinding, DescriptorSetHandle, DeviceContextDrc, GfxResult,
+    IndexBufferBinding, PipelineDrc, QueueType, ResourceState, ResourceUsage, RootSignatureDrc,
+    TextureBarrier, TextureDrc, VertexBufferBinding,
 };
 
-#[derive(Debug)]
-pub struct VulkanCommandBuffer {
-    device_context: VulkanDeviceContext,
+pub(crate) struct VulkanCommandBuffer {
     vk_command_pool: vk::CommandPool,
     vk_command_buffer: vk::CommandBuffer,
-    queue_type: QueueType,
-    queue_family_index: u32,
-    has_active_renderpass: AtomicBool,
 }
 
 impl VulkanCommandBuffer {
     pub fn new(
-        command_pool: &VulkanCommandPool,
+        command_pool: &CommandPool,
         command_buffer_def: &CommandBufferDef,
     ) -> GfxResult<Self> {
-        log::trace!(
-            "Creating command buffers from pool {:?}",
-            command_pool.vk_command_pool()
-        );
+        let vk_command_pool = command_pool.platform_command_pool().vk_command_pool();
+        log::trace!("Creating command buffers from pool {:?}", vk_command_pool);
         let command_buffer_level = if command_buffer_def.is_secondary {
             vk::CommandBufferLevel::SECONDARY
         } else {
@@ -44,41 +31,36 @@ impl VulkanCommandBuffer {
         };
 
         let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
-            .command_pool(command_pool.vk_command_pool())
+            .command_pool(vk_command_pool)
             .level(command_buffer_level)
             .command_buffer_count(1);
 
         let vk_command_buffer = unsafe {
             command_pool
                 .device_context()
-                .device()
+                .platform_device()
                 .allocate_command_buffers(&command_buffer_allocate_info)
         }?[0];
 
         Ok(Self {
-            device_context: command_pool.device_context().clone(),
-            vk_command_pool: command_pool.vk_command_pool(),
+            vk_command_pool,
             vk_command_buffer,
-            queue_type: command_pool.queue_type(),
-            queue_family_index: command_pool.queue_family_index(),
-            has_active_renderpass: AtomicBool::new(false),
         })
     }
 
     pub fn vk_command_buffer(&self) -> vk::CommandBuffer {
         self.vk_command_buffer
     }
-}
 
-impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
-    fn begin(&self) -> GfxResult<()> {
+    pub fn begin(&self, device_context: &DeviceContextDrc) -> GfxResult<()> {
         //TODO: Use one-time-submit?
         let command_buffer_usage_flags = vk::CommandBufferUsageFlags::empty();
 
         let begin_info = vk::CommandBufferBeginInfo::builder().flags(command_buffer_usage_flags);
 
         unsafe {
-            self.device_context
+            device_context
+                .platform_device_context()
                 .device()
                 .begin_command_buffer(self.vk_command_buffer, &*begin_info)?;
         }
@@ -86,60 +68,44 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         Ok(())
     }
 
-    fn end(&self) -> GfxResult<()> {
-        if self.has_active_renderpass.load(Ordering::Relaxed) {
-            unsafe {
-                self.device_context
-                    .device()
-                    .cmd_end_render_pass(self.vk_command_buffer);
-            }
-
-            self.has_active_renderpass.store(false, Ordering::Relaxed);
-        }
-
+    pub fn end_command_buffer(&self, device_context: &DeviceContextDrc) -> GfxResult<()> {
         unsafe {
-            self.device_context
+            device_context
+                .platform_device_context()
                 .device()
                 .end_command_buffer(self.vk_command_buffer)?;
         }
-
         Ok(())
     }
 
-    fn return_to_pool(&self) -> GfxResult<()> {
+    pub fn return_to_pool(&self, device_context: &DeviceContextDrc) {
         unsafe {
-            self.device_context
+            device_context
+                .platform_device_context()
                 .device()
                 .free_command_buffers(self.vk_command_pool, &[self.vk_command_buffer]);
         }
-
-        Ok(())
     }
 
-    fn cmd_begin_render_pass(
+    pub fn cmd_begin_render_pass(
         &self,
-        color_targets: &[ColorRenderTargetBinding<'_, VulkanApi>],
-        depth_target: Option<DepthStencilRenderTargetBinding<'_, VulkanApi>>,
+        device_context: &DeviceContextDrc,
+        queue_type: QueueType,
+        queue_family_index: u32,
+        color_targets: &[ColorRenderTargetBinding<'_>],
+        depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<()> {
-        if self.has_active_renderpass.load(Ordering::Relaxed) {
-            self.cmd_end_render_pass()?;
-        }
-
-        if color_targets.is_empty() && depth_target.is_none() {
-            return Err("No color or depth target supplied to cmd_begin_render_pass".into());
-        }
-
         let (renderpass, framebuffer) = {
-            let resource_cache = self.device_context.resource_cache();
+            let resource_cache = device_context.platform_device_context().resource_cache();
             let mut resource_cache = resource_cache.inner.lock().unwrap();
 
             let renderpass = resource_cache.renderpass_cache.get_or_create_renderpass(
-                &self.device_context,
+                device_context,
                 color_targets,
                 depth_target.as_ref(),
             )?;
             let framebuffer = resource_cache.framebuffer_cache.get_or_create_framebuffer(
-                &self.device_context,
+                device_context,
                 &renderpass,
                 color_targets,
                 depth_target.as_ref(),
@@ -211,7 +177,13 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         }
 
         if !barriers.is_empty() {
-            self.cmd_resource_barrier(&[], &barriers)?;
+            self.cmd_resource_barrier(
+                device_context,
+                queue_type,
+                queue_family_index,
+                &[],
+                &barriers,
+            );
         }
 
         let begin_renderpass_create_info = vk::RenderPassBeginInfo::builder()
@@ -221,55 +193,57 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             .clear_values(&clear_values);
 
         unsafe {
-            self.device_context.device().cmd_begin_render_pass(
+            device_context.platform_device().cmd_begin_render_pass(
                 self.vk_command_buffer,
                 &*begin_renderpass_create_info,
                 vk::SubpassContents::INLINE,
             );
         }
 
-        self.has_active_renderpass.store(true, Ordering::Relaxed);
-
         #[allow(clippy::cast_precision_loss)]
         self.cmd_set_viewport(
+            device_context,
             0.0,
             0.0,
             framebuffer.width() as f32,
             framebuffer.height() as f32,
             0.0,
             1.0,
-        )
-        .unwrap();
-        self.cmd_set_scissor(0, 0, framebuffer.width(), framebuffer.height())
-            .unwrap();
+        );
+        self.cmd_set_scissor(
+            device_context,
+            0,
+            0,
+            framebuffer.width(),
+            framebuffer.height(),
+        );
 
         Ok(())
     }
 
-    fn cmd_end_render_pass(&self) -> GfxResult<()> {
+    pub fn cmd_end_render_pass(&self, device_context: &DeviceContextDrc) {
         unsafe {
-            self.device_context
-                .device()
+            device_context
+                .platform_device()
                 .cmd_end_render_pass(self.vk_command_buffer);
-            self.has_active_renderpass.store(false, Ordering::Relaxed);
         }
-
-        Ok(())
     }
 
-    fn cmd_set_viewport(
+    #[allow(clippy::too_many_arguments)]
+    pub fn cmd_set_viewport(
         &self,
+        device_context: &DeviceContextDrc,
         x: f32,
         y: f32,
         width: f32,
         height: f32,
         depth_min: f32,
         depth_max: f32,
-    ) -> GfxResult<()> {
+    ) {
         unsafe {
             // We invert the viewport by using negative height and setting y = y + height
             // This is supported in vulkan 1.1 or 1.0 with an extension
-            self.device_context.device().cmd_set_viewport(
+            device_context.platform_device().cmd_set_viewport(
                 self.vk_command_buffer,
                 0,
                 &[vk::Viewport {
@@ -282,12 +256,18 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 }],
             );
         }
-        Ok(())
     }
 
-    fn cmd_set_scissor(&self, x: u32, y: u32, width: u32, height: u32) -> GfxResult<()> {
+    pub fn cmd_set_scissor(
+        &self,
+        device_context: &DeviceContextDrc,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+    ) {
         unsafe {
-            self.device_context.device().cmd_set_scissor(
+            device_context.platform_device().cmd_set_scissor(
                 self.vk_command_buffer,
                 0,
                 &[vk::Rect2D {
@@ -299,104 +279,104 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 }],
             );
         }
-        Ok(())
     }
 
-    fn cmd_set_stencil_reference_value(&self, value: u32) -> GfxResult<()> {
+    pub fn cmd_set_stencil_reference_value(&self, device_context: &DeviceContextDrc, value: u32) {
         unsafe {
-            self.device_context.device().cmd_set_stencil_reference(
+            device_context.platform_device().cmd_set_stencil_reference(
                 self.vk_command_buffer,
                 vk::StencilFaceFlags::FRONT_AND_BACK,
                 value,
             );
         }
-        Ok(())
     }
 
-    fn cmd_bind_pipeline(&self, pipeline: &VulkanPipeline) -> GfxResult<()> {
+    pub fn cmd_bind_pipeline(&self, device_context: &DeviceContextDrc, pipeline: &PipelineDrc) {
         //TODO: Add verification that the pipeline is compatible with the renderpass created by the targets
         let pipeline_bind_point =
             super::internal::pipeline_type_pipeline_bind_point(pipeline.pipeline_type());
 
         unsafe {
-            self.device_context.device().cmd_bind_pipeline(
+            device_context.platform_device().cmd_bind_pipeline(
                 self.vk_command_buffer,
                 pipeline_bind_point,
-                pipeline.vk_pipeline(),
+                pipeline.platform_pipeline().vk_pipeline(),
             );
         }
-        Ok(())
     }
 
-    fn cmd_bind_vertex_buffers(
+    pub fn cmd_bind_vertex_buffers(
         &self,
+        device_context: &DeviceContextDrc,
         first_binding: u32,
-        bindings: &[VertexBufferBinding<'_, VulkanApi>],
-    ) -> GfxResult<()> {
+        bindings: &[VertexBufferBinding<'_>],
+    ) {
         let mut buffers = Vec::with_capacity(bindings.len());
         let mut offsets = Vec::with_capacity(bindings.len());
         for binding in bindings {
-            buffers.push(binding.buffer.vk_buffer());
+            buffers.push(binding.buffer.platform_buffer().vk_buffer());
             offsets.push(binding.byte_offset);
         }
 
         unsafe {
-            self.device_context.device().cmd_bind_vertex_buffers(
+            device_context.platform_device().cmd_bind_vertex_buffers(
                 self.vk_command_buffer,
                 first_binding,
                 &buffers,
                 &offsets,
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_, VulkanApi>) -> GfxResult<()> {
+    pub fn cmd_bind_index_buffer(
+        &self,
+        device_context: &DeviceContextDrc,
+        binding: &IndexBufferBinding<'_>,
+    ) {
         unsafe {
-            self.device_context.device().cmd_bind_index_buffer(
+            device_context.platform_device().cmd_bind_index_buffer(
                 self.vk_command_buffer,
-                binding.buffer.vk_buffer(),
+                binding.buffer.platform_buffer().vk_buffer(),
                 binding.byte_offset,
                 binding.index_type.into(),
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_bind_descriptor_set_handle(
+    pub fn cmd_bind_descriptor_set_handle(
         &self,
-        root_signature: &VulkanRootSignature,
+        device_context: &DeviceContextDrc,
+        root_signature: &RootSignatureDrc,
         set_index: u32,
-        descriptor_set_handle: VulkanDescriptorSetHandle,
-    ) -> GfxResult<()> {
+        descriptor_set_handle: DescriptorSetHandle,
+    ) {
         let bind_point = root_signature.pipeline_type();
 
         unsafe {
-            self.device_context.device().cmd_bind_descriptor_sets(
+            device_context.platform_device().cmd_bind_descriptor_sets(
                 self.vk_command_buffer,
                 super::internal::pipeline_type_pipeline_bind_point(bind_point),
-                root_signature.vk_pipeline_layout(),
+                root_signature
+                    .platform_root_signature()
+                    .vk_pipeline_layout(),
                 set_index,
-                &[descriptor_set_handle.0],
+                &[descriptor_set_handle.vk_type],
                 &[],
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_push_constants<T: Sized>(
+    pub fn cmd_push_constants<T: Sized>(
         &self,
+        device_context: &DeviceContextDrc,
         root_signature: &VulkanRootSignature,
         constants: &T,
-    ) -> GfxResult<()> {
+    ) {
         let constants_size = mem::size_of::<T>();
         let constants_ptr = (constants as *const T).cast::<u8>();
         unsafe {
             let data_slice = &*ptr::slice_from_raw_parts(constants_ptr, constants_size);
-            self.device_context.device().cmd_push_constants(
+            device_context.platform_device().cmd_push_constants(
                 self.vk_command_buffer,
                 root_signature.vk_pipeline_layout(),
                 vk::ShaderStageFlags::ALL,
@@ -404,12 +384,16 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 data_slice,
             );
         }
-        Ok(())
     }
 
-    fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) -> GfxResult<()> {
+    pub fn cmd_draw(
+        &self,
+        device_context: &DeviceContextDrc,
+        vertex_count: u32,
+        first_vertex: u32,
+    ) {
         unsafe {
-            self.device_context.device().cmd_draw(
+            device_context.platform_device().cmd_draw(
                 self.vk_command_buffer,
                 vertex_count,
                 1,
@@ -417,19 +401,18 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 0,
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_draw_instanced(
+    pub fn cmd_draw_instanced(
         &self,
+        device_context: &DeviceContextDrc,
         vertex_count: u32,
         first_vertex: u32,
         instance_count: u32,
         first_instance: u32,
-    ) -> GfxResult<()> {
+    ) {
         unsafe {
-            self.device_context.device().cmd_draw(
+            device_context.platform_device().cmd_draw(
                 self.vk_command_buffer,
                 vertex_count,
                 instance_count,
@@ -437,18 +420,17 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 first_instance,
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_draw_indexed(
+    pub fn cmd_draw_indexed(
         &self,
+        device_context: &DeviceContextDrc,
         index_count: u32,
         first_index: u32,
         vertex_offset: i32,
-    ) -> GfxResult<()> {
+    ) {
         unsafe {
-            self.device_context.device().cmd_draw_indexed(
+            device_context.platform_device().cmd_draw_indexed(
                 self.vk_command_buffer,
                 index_count,
                 1,
@@ -457,20 +439,19 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 0,
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_draw_indexed_instanced(
+    pub fn cmd_draw_indexed_instanced(
         &self,
+        device_context: &DeviceContextDrc,
         index_count: u32,
         first_index: u32,
         instance_count: u32,
         first_instance: u32,
         vertex_offset: i32,
-    ) -> GfxResult<()> {
+    ) {
         unsafe {
-            self.device_context.device().cmd_draw_indexed(
+            device_context.platform_device().cmd_draw_indexed(
                 self.vk_command_buffer,
                 index_count,
                 instance_count,
@@ -479,38 +460,33 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 first_instance,
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_dispatch(
+    pub fn cmd_dispatch(
         &self,
+        device_context: &DeviceContextDrc,
         group_count_x: u32,
         group_count_y: u32,
         group_count_z: u32,
-    ) -> GfxResult<()> {
+    ) {
         unsafe {
-            self.device_context.device().cmd_dispatch(
+            device_context.platform_device().cmd_dispatch(
                 self.vk_command_buffer,
                 group_count_x,
                 group_count_y,
                 group_count_z,
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_resource_barrier(
+    pub fn cmd_resource_barrier(
         &self,
-        buffer_barriers: &[BufferBarrier<'_, VulkanApi>],
-        texture_barriers: &[TextureBarrier<'_, VulkanApi>],
-    ) -> GfxResult<()> {
-        assert!(
-            !self.has_active_renderpass.load(Ordering::Relaxed),
-            "cmd_resource_barrier may not be called if inside render pass"
-        );
-
+        device_context: &DeviceContextDrc,
+        queue_type: QueueType,
+        queue_family_index: u32,
+        buffer_barriers: &[BufferBarrier<'_>],
+        texture_barriers: &[TextureBarrier<'_>],
+    ) {
         let mut vk_image_barriers = Vec::with_capacity(texture_barriers.len());
         let mut vk_buffer_barriers = Vec::with_capacity(buffer_barriers.len());
 
@@ -525,27 +501,27 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 .dst_access_mask(super::internal::resource_state_to_access_flags(
                     barrier.dst_state,
                 ))
-                .buffer(barrier.buffer.vk_buffer())
+                .buffer(barrier.buffer.platform_buffer().vk_buffer())
                 .size(vk::WHOLE_SIZE)
                 .offset(0)
                 .build();
 
             match &barrier.queue_transition {
                 BarrierQueueTransition::ReleaseTo(dst_queue_type) => {
-                    vk_buffer_barrier.src_queue_family_index = self.queue_family_index;
+                    vk_buffer_barrier.src_queue_family_index = queue_family_index;
                     vk_buffer_barrier.dst_queue_family_index =
                         super::internal::queue_type_to_family_index(
-                            &self.device_context,
+                            device_context.platform_device_context(),
                             *dst_queue_type,
                         );
                 }
                 BarrierQueueTransition::AcquireFrom(src_queue_type) => {
                     vk_buffer_barrier.src_queue_family_index =
                         super::internal::queue_type_to_family_index(
-                            &self.device_context,
+                            device_context.platform_device_context(),
                             *src_queue_type,
                         );
-                    vk_buffer_barrier.dst_queue_family_index = self.queue_family_index;
+                    vk_buffer_barrier.dst_queue_family_index = queue_family_index;
                 }
                 BarrierQueueTransition::None => {
                     vk_buffer_barrier.src_queue_family_index = vk::QUEUE_FAMILY_IGNORED;
@@ -560,12 +536,12 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         }
 
         fn image_subresource_range(
-            texture: &VulkanTexture,
+            texture: &TextureDrc,
             array_slice: Option<u16>,
             mip_slice: Option<u8>,
         ) -> vk::ImageSubresourceRange {
             let mut subresource_range = vk::ImageSubresourceRange::builder()
-                .aspect_mask(texture.vk_aspect_mask())
+                .aspect_mask(texture.platform_texture().vk_aspect_mask())
                 .build();
 
             if let Some(array_slice) = array_slice {
@@ -648,14 +624,14 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 ))
                 .old_layout(old_layout)
                 .new_layout(new_layout)
-                .image(barrier.texture.vk_image())
+                .image(barrier.texture.platform_texture().vk_image())
                 .subresource_range(subresource_range)
                 .build();
 
             set_queue_family_indices(
                 &mut vk_image_barrier,
-                &self.device_context,
-                self.queue_family_index,
+                device_context.platform_device_context(),
+                queue_family_index,
                 &barrier.queue_transition,
             );
 
@@ -666,13 +642,13 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         }
 
         let src_stage_mask =
-            super::internal::determine_pipeline_stage_flags(self.queue_type, src_access_flags);
+            super::internal::determine_pipeline_stage_flags(queue_type, src_access_flags);
         let dst_stage_mask =
-            super::internal::determine_pipeline_stage_flags(self.queue_type, dst_access_flags);
+            super::internal::determine_pipeline_stage_flags(queue_type, dst_access_flags);
 
         if !vk_buffer_barriers.is_empty() || !vk_image_barriers.is_empty() {
             unsafe {
-                self.device_context.device().cmd_pipeline_barrier(
+                device_context.platform_device().cmd_pipeline_barrier(
                     self.vk_command_buffer,
                     src_stage_mask,
                     dst_stage_mask,
@@ -683,23 +659,22 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 );
             }
         }
-
-        Ok(())
     }
 
-    fn cmd_copy_buffer_to_buffer(
+    pub fn cmd_copy_buffer_to_buffer(
         &self,
-        src_buffer: &VulkanBuffer,
-        dst_buffer: &VulkanBuffer,
+        device_context: &DeviceContextDrc,
+        src_buffer: &BufferDrc,
+        dst_buffer: &BufferDrc,
         src_offset: u64,
         dst_offset: u64,
         size: u64,
-    ) -> GfxResult<()> {
+    ) {
         unsafe {
-            self.device_context.device().cmd_copy_buffer(
+            device_context.platform_device().cmd_copy_buffer(
                 self.vk_command_buffer,
-                src_buffer.vk_buffer(),
-                dst_buffer.vk_buffer(),
+                src_buffer.platform_buffer().vk_buffer(),
+                dst_buffer.platform_buffer().vk_buffer(),
                 &[vk::BufferCopy {
                     src_offset,
                     dst_offset,
@@ -707,16 +682,15 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 }],
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_copy_buffer_to_texture(
+    pub fn cmd_copy_buffer_to_texture(
         &self,
-        src_buffer: &VulkanBuffer,
-        dst_texture: &VulkanTexture,
+        device_context: &DeviceContextDrc,
+        src_buffer: &BufferDrc,
+        dst_texture: &TextureDrc,
         params: &CmdCopyBufferToTextureParams,
-    ) -> GfxResult<()> {
+    ) {
         let texture_def = dst_texture.definition();
 
         let width = 1.max(texture_def.extents.width >> params.mip_level);
@@ -724,10 +698,10 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
         let depth = 1.max(texture_def.extents.depth >> params.mip_level);
 
         unsafe {
-            self.device_context.device().cmd_copy_buffer_to_image(
+            device_context.platform_device().cmd_copy_buffer_to_image(
                 self.vk_command_buffer,
-                src_buffer.vk_buffer(),
-                dst_texture.vk_image(),
+                src_buffer.platform_buffer().vk_buffer(),
+                dst_texture.platform_texture().vk_image(),
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                 &[vk::BufferImageCopy {
                     image_extent: vk::Extent3D {
@@ -737,7 +711,7 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                     },
                     image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
                     image_subresource: vk::ImageSubresourceLayers {
-                        aspect_mask: dst_texture.vk_aspect_mask(),
+                        aspect_mask: dst_texture.platform_texture().vk_aspect_mask(),
                         mip_level: u32::from(params.mip_level),
                         base_array_layer: u32::from(params.array_layer),
                         layer_count: 1,
@@ -748,16 +722,15 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
                 }],
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_blit_texture(
+    pub fn cmd_blit_texture(
         &self,
-        src_texture: &VulkanTexture,
-        dst_texture: &VulkanTexture,
+        device_context: &DeviceContextDrc,
+        src_texture: &TextureDrc,
+        dst_texture: &TextureDrc,
         params: &CmdBlitParams,
-    ) -> GfxResult<()> {
+    ) {
         assert!(src_texture
             .definition()
             .usage_flags
@@ -826,26 +799,25 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             .dst_subresource(dst_subresource);
 
         unsafe {
-            self.device_context.device().cmd_blit_image(
+            device_context.platform_device().cmd_blit_image(
                 self.vk_command_buffer,
-                src_texture.vk_image(),
+                src_texture.platform_texture().vk_image(),
                 super::internal::resource_state_to_image_layout(params.src_state).unwrap(),
-                dst_texture.vk_image(),
+                dst_texture.platform_texture().vk_image(),
                 super::internal::resource_state_to_image_layout(params.dst_state).unwrap(),
                 &[*image_blit],
                 params.filtering.into(),
             );
         }
-
-        Ok(())
     }
 
-    fn cmd_copy_image(
+    pub fn cmd_copy_image(
         &self,
-        src_texture: &VulkanTexture,
-        dst_texture: &VulkanTexture,
+        device_context: &DeviceContextDrc,
+        src_texture: &TextureDrc,
+        dst_texture: &TextureDrc,
         params: &CmdCopyTextureParams,
-    ) -> GfxResult<()> {
+    ) {
         assert!(src_texture
             .definition()
             .usage_flags
@@ -898,16 +870,14 @@ impl CommandBuffer<VulkanApi> for VulkanCommandBuffer {
             });
 
         unsafe {
-            self.device_context.device().cmd_copy_image(
+            device_context.platform_device().cmd_copy_image(
                 self.vk_command_buffer,
-                src_texture.vk_image(),
+                src_texture.platform_texture().vk_image(),
                 super::internal::resource_state_to_image_layout(params.src_state).unwrap(),
-                dst_texture.vk_image(),
+                dst_texture.platform_texture().vk_image(),
                 super::internal::resource_state_to_image_layout(params.dst_state).unwrap(),
                 &[*image_copy],
             );
         }
-
-        Ok(())
     }
 }

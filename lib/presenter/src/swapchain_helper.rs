@@ -4,49 +4,46 @@ use std::sync::{Arc, Mutex};
 
 use crossbeam_channel::{Receiver, Sender};
 use legion_graphics_api::{
-    DeviceContext, Fence, Format, GfxApi, GfxError, GfxResult, PresentSuccessResult, Queue,
-    Swapchain, SwapchainDef, SwapchainImage,
+    CommandBuffer, DeviceContextDrc, Fence, Format, GfxError, GfxResult, PresentSuccessResult,
+    Queue, Semaphore, Swapchain, SwapchainDef, SwapchainImage, TextureDrc, TextureViewDrc,
 };
 
 /// May be implemented to get callbacks related to the swapchain being created/destroyed. This is
 /// optional.
-pub trait SwapchainEventListener<A: GfxApi> {
+pub trait SwapchainEventListener {
     /// Called whenever the swapchain needs to be created (the first time, and in cases where the
     /// swapchain needs to be recreated)
     fn swapchain_created(
         &mut self,
-        device_context: &A::DeviceContext,
-        swapchain: &A::Swapchain,
+        device_context: &DeviceContextDrc,
+        swapchain: &Swapchain,
     ) -> GfxResult<()>;
 
     /// Called whenever the swapchain will be destroyed (when `VkSurface` is dropped, and also in cases
     /// where the swapchain needs to be recreated)
     fn swapchain_destroyed(
         &mut self,
-        device_context: &A::DeviceContext,
-        swapchain: &A::Swapchain,
+        device_context: &DeviceContextDrc,
+        swapchain: &Swapchain,
     ) -> GfxResult<()>;
 }
 
 // This is shared state held within an Arc between the SwapchainHelper and the PresentableFrame.
 // It contains the swapchain, sync primitives required to wait for the GPU to complete work, and
 // sync primitives to allow the helper/presentable frame to communicate.
-struct SwapchainHelperSharedState<A: GfxApi> {
+struct SwapchainHelperSharedState {
     sync_frame_index: AtomicUsize,
-    image_available_semaphores: Vec<A::Semaphore>,
-    render_finished_semaphores: Vec<A::Semaphore>,
-    in_flight_fences: Vec<A::Fence>,
+    image_available_semaphores: Vec<Semaphore>,
+    render_finished_semaphores: Vec<Semaphore>,
+    in_flight_fences: Vec<Fence>,
     result_tx: Sender<GfxResult<PresentSuccessResult>>,
     result_rx: Receiver<GfxResult<PresentSuccessResult>>,
     // Arc so that we can move the swapchain to a new SwapchainHelperSharedState
-    swapchain: Arc<Mutex<A::Swapchain>>,
+    swapchain: Arc<Mutex<Swapchain>>,
 }
 
-impl<A: GfxApi> SwapchainHelperSharedState<A> {
-    fn new(
-        device_context: &A::DeviceContext,
-        swapchain: Arc<Mutex<A::Swapchain>>,
-    ) -> GfxResult<Self> {
+impl SwapchainHelperSharedState {
+    fn new(device_context: &DeviceContextDrc, swapchain: Arc<Mutex<Swapchain>>) -> GfxResult<Self> {
         let image_count = swapchain.lock().unwrap().image_count();
         let mut image_available_semaphores = Vec::with_capacity(image_count);
         let mut render_finished_semaphores = Vec::with_capacity(image_count);
@@ -77,15 +74,15 @@ impl<A: GfxApi> SwapchainHelperSharedState<A> {
 ///
 /// To ease error handling, the swapchain may be submitted with an error. This error will be
 /// returned on the next attempt to acquire a swapchain image (i.e. the main thread).
-pub struct PresentableFrame<A: GfxApi> {
+pub struct PresentableFrame {
     // State that's shared among the swapchain helper and the presentable frame. Mostly immutable,
     // but the swapchain itself is stored in it, wrapped by a mutex
-    shared_state: Option<Arc<SwapchainHelperSharedState<A>>>,
-    swapchain_image: SwapchainImage<A>,
+    shared_state: Option<Arc<SwapchainHelperSharedState>>,
+    swapchain_image: SwapchainImage,
     sync_frame_index: usize,
 }
 
-impl<A: GfxApi> PresentableFrame<A> {
+impl PresentableFrame {
     /// An index that starts at 0 on the first present and increments every frame, wrapping back to
     /// 0 after each swapchain image has been presented once. (See `image_count` on
     /// `SwapchainHelper`). WARNING: This is not always the returned swapchain image. Swapchain
@@ -96,13 +93,13 @@ impl<A: GfxApi> PresentableFrame<A> {
     }
 
     /// Returns the acquired swapchain image
-    pub fn swapchain_texture(&self) -> &A::Texture {
+    pub fn swapchain_texture(&self) -> &TextureDrc {
         &self.swapchain_image.texture
     }
 
     /// Returns the acquired swapchain image    
     #[allow(dead_code)]
-    pub fn swapchain_rtv(&self) -> &A::TextureView {
+    pub fn swapchain_rtv(&self) -> &TextureViewDrc {
         &self.swapchain_image.render_target_view
     }
 
@@ -110,9 +107,9 @@ impl<A: GfxApi> PresentableFrame<A> {
     /// their completion
     pub fn present(
         mut self,
-        queue: &A::Queue,
-        wait_sem: &A::Semaphore,
-        command_buffers: &[&A::CommandBuffer],
+        queue: &Queue,
+        wait_sem: &Semaphore,
+        command_buffers: &[&CommandBuffer],
     ) -> GfxResult<PresentSuccessResult> {
         log::trace!(
             "Calling PresentableFrame::present with {} command buffers",
@@ -130,9 +127,9 @@ impl<A: GfxApi> PresentableFrame<A> {
     /// Present the current swapchain
     pub fn do_present(
         &mut self,
-        queue: &A::Queue,
-        wait_sem: &A::Semaphore,
-        command_buffers: &[&A::CommandBuffer],
+        queue: &Queue,
+        wait_sem: &Semaphore,
+        command_buffers: &[&CommandBuffer],
     ) -> GfxResult<PresentSuccessResult> {
         // A present can only occur using the result from the previous acquire_next_image call
         let shared_state = self.shared_state.as_ref().unwrap();
@@ -170,7 +167,7 @@ impl<A: GfxApi> PresentableFrame<A> {
     }
 }
 
-impl<A: GfxApi> Drop for PresentableFrame<A> {
+impl Drop for PresentableFrame {
     fn drop(&mut self) {
         if self.shared_state.is_some() {
             self.shared_state.take().unwrap().result_tx.send(Err(GfxError::StringError("SwapchainHelperPresentableFrame was dropped without calling present or present_with_error".to_string()))).unwrap();
@@ -179,9 +176,9 @@ impl<A: GfxApi> Drop for PresentableFrame<A> {
 }
 
 /// Result of image acquisition
-pub enum TryAcquireNextImageResult<A: GfxApi> {
+pub enum TryAcquireNextImageResult {
     /// Successfully retrieves a presentable frame
-    Success(PresentableFrame<A>),
+    Success(PresentableFrame),
 
     /// While this is an "error" being returned as success, it is expected and recoverable while
     /// other errors usually aren't. This way the ? operator can still be used to bail out the
@@ -191,9 +188,9 @@ pub enum TryAcquireNextImageResult<A: GfxApi> {
 }
 
 /// Swap chain helper
-pub struct SwapchainHelper<A: GfxApi> {
-    device_context: A::DeviceContext,
-    shared_state: Option<Arc<SwapchainHelperSharedState<A>>>,
+pub struct SwapchainHelper {
+    device_context: DeviceContextDrc,
+    shared_state: Option<Arc<SwapchainHelperSharedState>>,
     format: Format,
     swapchain_def: SwapchainDef,
     image_count: usize,
@@ -203,12 +200,12 @@ pub struct SwapchainHelper<A: GfxApi> {
     expect_result_from_previous_frame: bool,
 }
 
-impl<A: GfxApi> SwapchainHelper<A> {
+impl SwapchainHelper {
     /// New swapchain helper
     pub fn new(
-        device_context: &A::DeviceContext,
-        swapchain: A::Swapchain,
-        mut event_listener: Option<&mut dyn SwapchainEventListener<A>>,
+        device_context: &DeviceContextDrc,
+        swapchain: Swapchain,
+        mut event_listener: Option<&mut dyn SwapchainEventListener>,
     ) -> GfxResult<Self> {
         let format = swapchain.format();
         let image_count = swapchain.image_count();
@@ -237,7 +234,7 @@ impl<A: GfxApi> SwapchainHelper<A> {
     /// destroy swapchain helper
     pub fn destroy(
         &mut self,
-        mut event_listener: Option<&mut dyn SwapchainEventListener<A>>,
+        mut event_listener: Option<&mut dyn SwapchainEventListener>,
     ) -> GfxResult<()> {
         log::debug!("Destroying swapchain helper");
 
@@ -328,8 +325,8 @@ impl<A: GfxApi> SwapchainHelper<A> {
         &mut self,
         window_width: u32,
         window_height: u32,
-        event_listener: Option<&mut dyn SwapchainEventListener<A>>,
-    ) -> GfxResult<PresentableFrame<A>> {
+        event_listener: Option<&mut dyn SwapchainEventListener>,
+    ) -> GfxResult<PresentableFrame> {
         //
         // Block until the previous frame completes being submitted to GPU
         //
@@ -418,7 +415,7 @@ impl<A: GfxApi> SwapchainHelper<A> {
         &mut self,
         window_width: u32,
         window_height: u32,
-    ) -> GfxResult<TryAcquireNextImageResult<A>> {
+    ) -> GfxResult<TryAcquireNextImageResult> {
         match self.do_try_acquire_next_image(window_width, window_height) {
             #[cfg(feature = "vulkan")]
             Err(GfxError::VkError(ash::vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
@@ -432,7 +429,7 @@ impl<A: GfxApi> SwapchainHelper<A> {
         &mut self,
         window_width: u32,
         window_height: u32,
-    ) -> GfxResult<TryAcquireNextImageResult<A>> {
+    ) -> GfxResult<TryAcquireNextImageResult> {
         // If a frame is still outstanding from a previous acquire_next_swapchain_image call, wait
         // to receive the result of that frame. If the result was an error, return that error now.
         // This allows us to handle errors from the render thread in the main thread. This wait is
@@ -475,7 +472,7 @@ impl<A: GfxApi> SwapchainHelper<A> {
         &mut self,
         window_width: u32,
         window_height: u32,
-        mut event_listener: Option<&mut dyn SwapchainEventListener<A>>,
+        mut event_listener: Option<&mut dyn SwapchainEventListener>,
     ) -> GfxResult<()> {
         log::info!("Rebuild Swapchain");
 
@@ -509,7 +506,7 @@ impl<A: GfxApi> SwapchainHelper<A> {
     }
 }
 
-impl<A: GfxApi> Drop for SwapchainHelper<A> {
+impl Drop for SwapchainHelper {
     fn drop(&mut self) {
         // This will be a no-op if destroy() was already called
         self.destroy(None).unwrap();

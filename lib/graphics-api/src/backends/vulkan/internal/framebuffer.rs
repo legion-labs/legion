@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use ash::vk;
 
-use super::super::{VulkanDeviceContext, VulkanRenderpass, VulkanTextureView};
-use crate::{GfxError, GfxResult, Texture};
+use super::super::VulkanRenderpass;
+use crate::{DeviceContextDrc, GfxError, GfxResult, TextureViewDrc};
 
 pub(crate) struct FramebufferVulkanAttachment {
-    pub(crate) texture_view: VulkanTextureView,
+    pub(crate) texture_view: TextureViewDrc,
 }
 
 pub(crate) struct FramebufferVulkanDef {
@@ -16,7 +16,7 @@ pub(crate) struct FramebufferVulkanDef {
 }
 
 pub(crate) struct FramebufferVulkanInner {
-    device_context: VulkanDeviceContext,
+    device_context: DeviceContextDrc,
     framebuffer: vk::Framebuffer,
     width: u32,
     height: u32,
@@ -26,6 +26,8 @@ impl Drop for FramebufferVulkanInner {
     fn drop(&mut self) {
         unsafe {
             self.device_context
+                .inner
+                .platform_device_context
                 .device()
                 .destroy_framebuffer(self.framebuffer, None);
         }
@@ -51,18 +53,18 @@ impl FramebufferVulkan {
     }
 
     pub fn new(
-        device_context: &VulkanDeviceContext,
+        device_context: &DeviceContextDrc,
         framebuffer_def: &FramebufferVulkanDef,
     ) -> GfxResult<Self> {
         let (extents, array_length) =
             if let Some(first_color_rt) = framebuffer_def.color_attachments.first() {
-                let texture_def = first_color_rt.texture_view.vulkan_texture().definition();
-                let view_def = first_color_rt.texture_view.view_def();
+                let texture_def = first_color_rt.texture_view.texture().definition();
+                let view_def = first_color_rt.texture_view.definition();
                 let extents = texture_def.extents;
                 (extents, view_def.array_size)
             } else if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {
-                let texture_def = depth_rt.texture_view.vulkan_texture().definition();
-                let view_def = depth_rt.texture_view.view_def();
+                let texture_def = depth_rt.texture_view.texture().definition();
+                let view_def = depth_rt.texture_view.definition();
                 let extents = texture_def.extents;
                 (extents, view_def.array_size)
             } else {
@@ -74,12 +76,18 @@ impl FramebufferVulkan {
         let mut image_views = Vec::with_capacity(framebuffer_def.color_attachments.len() + 1);
 
         for color_rt in &framebuffer_def.color_attachments {
-            let image_view = color_rt.texture_view.vk_image_view();
+            let image_view = color_rt
+                .texture_view
+                .platform_texture_view()
+                .vk_image_view();
             image_views.push(image_view);
         }
 
         if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {
-            let image_view = depth_rt.texture_view.vk_image_view();
+            let image_view = depth_rt
+                .texture_view
+                .platform_texture_view()
+                .vk_image_view();
             image_views.push(image_view);
         };
 
@@ -92,6 +100,8 @@ impl FramebufferVulkan {
 
         let framebuffer = unsafe {
             device_context
+                .inner
+                .platform_device_context
                 .device()
                 .create_framebuffer(&*framebuffer_create_info, None)?
         };

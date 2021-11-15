@@ -10,10 +10,13 @@ use serde::{Deserialize, Serialize};
 use super::{
     AddressMode, BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode,
     Extents3D, FillMode, FilterType, Format, FrontFace, MemoryUsage, MipMapMode, PipelineType,
-    PrimitiveTopology, QueueType, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
+    PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
     VertexAttributeRate,
 };
-use crate::{GfxApi, ResourceFlags};
+use crate::{DescriptorSetLayoutDrc, ResourceFlags, RootSignatureDrc, ShaderDrc, ShaderModuleDrc};
+
+#[cfg(feature = "vulkan")]
+use crate::backends::vulkan::VkInstance;
 
 /// Controls if an extension is enabled or not. The requirements/behaviors of validation is
 /// API-specific.
@@ -95,81 +98,13 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct BufferElementData {
-    // For storage buffers
-    pub element_begin_index: u64,
-    pub element_count: u64,
-    pub element_stride: u64,
-}
+#[cfg(not(any(feature = "vulkan")))]
+pub struct Instance {}
 
-/// Used to create a `Buffer`
-#[derive(Clone, Copy, Debug)]
-pub struct BufferDef {
-    pub size: u64,
-    pub memory_usage: MemoryUsage,
-    pub queue_type: QueueType,
-    pub always_mapped: bool,
-    pub usage_flags: ResourceUsage,
-}
-
-impl Default for BufferDef {
-    fn default() -> Self {
-        Self {
-            size: 0,
-            memory_usage: MemoryUsage::Unknown,
-            queue_type: QueueType::Graphics,
-            always_mapped: false,
-            usage_flags: ResourceUsage::empty(),
-        }
-    }
-}
-
-impl BufferDef {
-    pub fn verify(&self) {
-        assert_ne!(self.size, 0);
-        assert!(!self
-            .usage_flags
-            .intersects(ResourceUsage::TEXTURE_ONLY_USAGE_FLAGS));
-    }
-
-    pub fn for_staging_buffer(size: usize, usage_flags: ResourceUsage) -> Self {
-        Self {
-            size: size as u64,
-            memory_usage: MemoryUsage::CpuToGpu,
-            queue_type: QueueType::Graphics,
-            always_mapped: false,
-            usage_flags,
-        }
-    }
-
-    pub fn for_staging_buffer_data<T: Copy>(data: &[T], usage_flags: ResourceUsage) -> Self {
-        Self::for_staging_buffer(legion_utils::memory::slice_size_in_bytes(data), usage_flags)
-    }
-
-    pub fn for_staging_vertex_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size, ResourceUsage::AS_VERTEX_BUFFER)
-    }
-
-    pub fn for_staging_vertex_buffer_data<T: Copy>(data: &[T]) -> Self {
-        Self::for_staging_buffer_data(data, ResourceUsage::AS_VERTEX_BUFFER)
-    }
-
-    pub fn for_staging_index_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size, ResourceUsage::AS_INDEX_BUFFER)
-    }
-
-    pub fn for_staging_index_buffer_data<T: Copy>(data: &[T]) -> Self {
-        Self::for_staging_buffer_data(data, ResourceUsage::AS_INDEX_BUFFER)
-    }
-
-    pub fn for_staging_uniform_buffer(size: usize) -> Self {
-        Self::for_staging_buffer(size, ResourceUsage::AS_CONST_BUFFER)
-    }
-
-    pub fn for_staging_uniform_buffer_data<T: Copy>(data: &[T]) -> Self {
-        Self::for_staging_buffer_data(data, ResourceUsage::AS_CONST_BUFFER)
-    }
+#[cfg(feature = "vulkan")]
+pub struct Instance<'a> {
+    #[cfg(feature = "vulkan")]
+    pub(crate) platform_instance: &'a VkInstance,
 }
 
 /// Used to create a `Texture`
@@ -258,93 +193,21 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct BufferViewDef {
-    pub gpu_view_type: GPUViewType,
-    pub byte_offset: u64,
-    pub element_count: u64,
-    pub element_size: u64,
-    pub buffer_view_flags: BufferViewFlags,
+#[derive(Clone, Debug)]
+pub struct Descriptor {
+    pub(crate) name: String,
+    pub(crate) binding: u32,
+    pub(crate) shader_resource_type: ShaderResourceType,
+    #[cfg(feature = "vulkan")]
+    pub(crate) vk_type: ash::vk::DescriptorType,
+    pub(crate) element_count: u32,
+    pub(crate) update_data_offset: u32,
 }
 
-// const buffer : offset, size
-// structbuffer
-
-impl BufferViewDef {
-    pub fn as_const_buffer(buffer_def: &BufferDef) -> Self {
-        Self {
-            gpu_view_type: GPUViewType::ConstantBufferView,
-            byte_offset: 0,
-            element_count: 1,
-            element_size: buffer_def.size,
-            buffer_view_flags: BufferViewFlags::empty(),
-        }
-    }
-
-    pub fn as_structured_buffer(buffer_def: &BufferDef, struct_size: u64, read_only: bool) -> Self {
-        assert!(buffer_def.size % struct_size == 0);
-        Self {
-            gpu_view_type: if read_only {
-                GPUViewType::ShaderResourceView
-            } else {
-                GPUViewType::UnorderedAccessView
-            },
-            byte_offset: 0,
-            element_count: buffer_def.size / struct_size,
-            element_size: struct_size,
-            buffer_view_flags: BufferViewFlags::empty(),
-        }
-    }
-
-    pub fn as_byte_address_buffer(buffer_def: &BufferDef, read_only: bool) -> Self {
-        assert!(buffer_def.size % 4 == 0);
-        Self {
-            gpu_view_type: if read_only {
-                GPUViewType::ShaderResourceView
-            } else {
-                GPUViewType::UnorderedAccessView
-            },
-            byte_offset: 0,
-            element_count: buffer_def.size / 4,
-            element_size: 0,
-            buffer_view_flags: BufferViewFlags::RAW_BUFFER,
-        }
-    }
-
-    pub fn verify(&self, buffer_def: &BufferDef) {
-        match self.gpu_view_type {
-            GPUViewType::ConstantBufferView => {
-                assert!(buffer_def
-                    .usage_flags
-                    .intersects(ResourceUsage::AS_CONST_BUFFER));
-                assert!(self.element_size > 0);
-                assert!(self.byte_offset == 0);
-                assert!(self.element_count == 1);
-                assert!(self.buffer_view_flags.is_empty());
-            }
-            GPUViewType::ShaderResourceView | GPUViewType::UnorderedAccessView => {
-                assert!(buffer_def
-                    .usage_flags
-                    .intersects(ResourceUsage::AS_SHADER_RESOURCE));
-                if self
-                    .buffer_view_flags
-                    .intersects(BufferViewFlags::RAW_BUFFER)
-                {
-                    assert!(self.element_size == 4);
-                } else {
-                    assert!(self.element_size > 0);
-                };
-                assert!(self.byte_offset % self.element_size == 0);
-                assert!(self.element_count >= 1);
-            }
-            GPUViewType::RenderTargetView | GPUViewType::DepthStencilView => {
-                panic!();
-            }
-        }
-
-        let upper_bound = self.byte_offset + self.element_count * self.element_size;
-        assert!(upper_bound <= buffer_def.size);
-    }
+#[derive(Clone, Copy)]
+pub struct DescriptorSetHandle {
+    #[cfg(feature = "vulkan")]
+    pub vk_type: ash::vk::DescriptorSet,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -538,11 +401,11 @@ pub struct SwapchainDef {
 }
 
 /// Describes a single stage within a shader
-#[derive(Clone, Debug)]
-pub struct ShaderStageDef<A: GfxApi> {
+#[derive(Clone)]
+pub struct ShaderStageDef {
     pub entry_point: String,
     pub shader_stage: ShaderStageFlags,
-    pub shader_module: A::ShaderModule,
+    pub shader_module: ShaderModuleDrc,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -604,14 +467,13 @@ pub struct PushConstantDef {
     pub size: NonZeroU32,
 }
 
-#[derive(Debug)]
-pub struct RootSignatureDef<A: GfxApi> {
+pub struct RootSignatureDef {
     pub pipeline_type: PipelineType,
-    pub descriptor_set_layouts: Vec<A::DescriptorSetLayout>,
+    pub descriptor_set_layouts: Vec<DescriptorSetLayoutDrc>,
     pub push_constant_def: Option<PushConstantDef>,
 }
 
-impl<A: GfxApi> Clone for RootSignatureDef<A> {
+impl Clone for RootSignatureDef {
     fn clone(&self) -> Self {
         Self {
             pipeline_type: self.pipeline_type,
@@ -621,7 +483,7 @@ impl<A: GfxApi> Clone for RootSignatureDef<A> {
     }
 }
 
-impl<A: GfxApi> Default for RootSignatureDef<A> {
+impl Default for RootSignatureDef {
     fn default() -> Self {
         Self {
             pipeline_type: PipelineType::Graphics,
@@ -932,10 +794,9 @@ impl BlendState {
 }
 
 /// Used to create a `Pipeline` for graphics operations
-#[derive(Debug)]
-pub struct GraphicsPipelineDef<'a, A: GfxApi> {
-    pub shader: &'a A::Shader,
-    pub root_signature: &'a A::RootSignature,
+pub struct GraphicsPipelineDef<'a> {
+    pub shader: &'a ShaderDrc,
+    pub root_signature: &'a RootSignatureDrc,
     pub vertex_layout: &'a VertexLayout,
     pub blend_state: &'a BlendState,
     pub depth_state: &'a DepthState,
@@ -947,10 +808,9 @@ pub struct GraphicsPipelineDef<'a, A: GfxApi> {
 }
 
 /// Used to create a `Pipeline` for compute operations
-#[derive(Debug)]
-pub struct ComputePipelineDef<'a, A: GfxApi> {
-    pub shader: &'a A::Shader,
-    pub root_signature: &'a A::RootSignature,
+pub struct ComputePipelineDef<'a> {
+    pub shader: &'a ShaderDrc,
+    pub root_signature: &'a RootSignatureDrc,
 }
 
 /// Used to create a `DescriptorHeap`

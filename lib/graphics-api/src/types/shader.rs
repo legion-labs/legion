@@ -3,6 +3,11 @@ use std::{hash::Hash, marker::PhantomData};
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
+use crate::{
+    deferred_drop::Drc, DeviceContextDrc, GfxResult, PipelineReflection, ShaderStageDef,
+    ShaderStageFlags,
+};
+
 /// Owns data necessary to create a shader module in (optionally) multiple APIs.
 ///
 /// This struct can be serialized/deserialized and is intended to allow asset pipeline to store
@@ -32,4 +37,51 @@ pub enum ShaderModuleDef<'a> {
     /// Raw SPV bytes, no alignment or endianness requirements.
     SpirVBytes(&'a [u8]),
     Null(std::marker::PhantomData<&'a u8>),
+}
+
+pub struct Shader {
+    stage_flags: ShaderStageFlags,
+    stages: Vec<ShaderStageDef>,
+    pipeline_reflection: PipelineReflection,
+}
+
+#[derive(Clone)]
+pub struct ShaderDrc {
+    inner: Drc<Shader>,
+}
+
+impl ShaderDrc {
+    pub fn new(
+        device_context: &DeviceContextDrc,
+        stages: Vec<ShaderStageDef>,
+        pipeline_reflection: &PipelineReflection,
+    ) -> GfxResult<Self> {
+        // let pipeline_reflection = PipelineReflection::from_stages(&stages)?;
+        let mut stage_flags = ShaderStageFlags::empty();
+        for stage in &stages {
+            stage_flags |= stage.shader_stage;
+        }
+
+        let inner = Shader {
+            stage_flags,
+            stages,
+            pipeline_reflection: pipeline_reflection.clone(),
+        };
+
+        Ok(Self {
+            inner: device_context.deferred_dropper().new_drc(inner),
+        })
+    }
+
+    pub fn stages(&self) -> &[ShaderStageDef] {
+        &self.inner.stages
+    }
+
+    pub fn stage_flags(&self) -> ShaderStageFlags {
+        self.inner.stage_flags
+    }
+
+    pub fn pipeline_reflection(&self) -> &PipelineReflection {
+        &self.inner.pipeline_reflection
+    }
 }

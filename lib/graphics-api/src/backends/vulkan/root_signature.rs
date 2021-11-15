@@ -2,9 +2,8 @@ use std::cmp;
 
 use ash::vk;
 
-use super::{VulkanApi, VulkanDeviceContext};
-use crate::backends::deferred_drop::Drc;
-use crate::{GfxResult, PipelineType, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
+use super::VulkanDeviceContext;
+use crate::{GfxResult, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -13,39 +12,14 @@ pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
 pub(crate) struct PushConstantIndex(pub(crate) u32);
 
 #[derive(Debug)]
-struct RootSignatureVulkanInner {
-    device_context: VulkanDeviceContext,
-    definition: RootSignatureDef<VulkanApi>,
+pub(crate) struct VulkanRootSignature {
     pipeline_layout: vk::PipelineLayout,
 }
 
-impl Drop for RootSignatureVulkanInner {
-    fn drop(&mut self) {
-        let device = self.device_context.device();
-
-        unsafe {
-            device.destroy_pipeline_layout(self.pipeline_layout, None);
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct VulkanRootSignature {
-    inner: Drc<RootSignatureVulkanInner>,
-}
-
 impl VulkanRootSignature {
-    pub fn device_context(&self) -> &VulkanDeviceContext {
-        &self.inner.device_context
-    }
-
-    pub fn vk_pipeline_layout(&self) -> vk::PipelineLayout {
-        self.inner.pipeline_layout
-    }
-
-    pub fn new(
+    pub(crate) fn new(
         device_context: &VulkanDeviceContext,
-        definition: &RootSignatureDef<VulkanApi>,
+        definition: &RootSignatureDef,
     ) -> GfxResult<Self> {
         log::trace!("Create VulkanRootSignature");
 
@@ -58,7 +32,7 @@ impl VulkanRootSignature {
         let mut descriptor_set_layout_count = 0;
         for layout in &definition.descriptor_set_layouts {
             let set_index = layout.set_index() as usize;
-            vk_descriptor_set_layouts[set_index] = layout.vk_layout();
+            vk_descriptor_set_layouts[set_index] = layout.platform_layout().vk_layout();
             descriptor_set_layout_count = cmp::max(descriptor_set_layout_count, set_index + 1);
         }
 
@@ -82,23 +56,18 @@ impl VulkanRootSignature {
                 .create_pipeline_layout(&pipeline_layout_create_info, None)?
         };
 
-        let inner = RootSignatureVulkanInner {
-            device_context: device_context.clone(),
-            definition: definition.clone(),
-            pipeline_layout,
-        };
-
-        Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(inner),
-        })
+        Ok(Self { pipeline_layout })
     }
-}
 
-impl RootSignature<VulkanApi> for VulkanRootSignature {
-    fn pipeline_type(&self) -> PipelineType {
-        self.inner.definition.pipeline_type
+    pub fn destroy(&self, device_context: &VulkanDeviceContext) {
+        let device = device_context.device();
+
+        unsafe {
+            device.destroy_pipeline_layout(self.pipeline_layout, None);
+        }
     }
-    fn definition(&self) -> &RootSignatureDef<VulkanApi> {
-        &self.inner.definition
+
+    pub fn vk_pipeline_layout(&self) -> vk::PipelineLayout {
+        self.pipeline_layout
     }
 }

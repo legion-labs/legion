@@ -2,18 +2,11 @@ use std::ffi::CString;
 use std::{fmt, sync::Arc};
 
 use super::internal::VkInstance;
-use super::{
-    VulkanBuffer, VulkanBufferMappingInfo, VulkanBufferView, VulkanCommandBuffer,
-    VulkanCommandPool, VulkanDescriptorHeap, VulkanDescriptorSetBufWriter,
-    VulkanDescriptorSetHandle, VulkanDescriptorSetLayout, VulkanDeviceContext, VulkanFence,
-    VulkanPipeline, VulkanQueue, VulkanRootSignature, VulkanSampler, VulkanSemaphore, VulkanShader,
-    VulkanShaderModule, VulkanSwapchain, VulkanTexture, VulkanTextureView,
-};
-use crate::{ApiDef, GfxApi, GfxResult};
+use crate::{ApiDef, DeviceContextDrc, GfxResult, Instance};
 
 pub struct VulkanApi {
     instance: VkInstance,
-    device_context: Option<VulkanDeviceContext>,
+    device_context: Option<DeviceContextDrc>,
 }
 
 impl Drop for VulkanApi {
@@ -30,16 +23,41 @@ impl fmt::Debug for VulkanApi {
     }
 }
 
-impl GfxApi for VulkanApi {
-    fn device_context(&self) -> &VulkanDeviceContext {
-        self.device_context.as_ref().unwrap()
+impl VulkanApi {
+    /// # Safety
+    ///
+    /// GPU programming is fundamentally unsafe, so all  APIs that interact with the GPU should
+    /// be considered unsafe. However,  APIs are only gated by unsafe if they can cause undefined
+    /// behavior on the CPU for reasons other than interacting with the GPU.
+    pub unsafe fn new(api_def: &ApiDef) -> GfxResult<Self> {
+        let app_name = CString::new(api_def.app_name.clone())
+            .expect("app name should not contain a byte set to 0");
+        let entry = ash::Entry::new()?;
+        let vk_instance = VkInstance::new(
+            entry,
+            &app_name,
+            api_def.validation_mode,
+            api_def.windowing_mode,
+        )?;
+
+        let device_context = Some(DeviceContextDrc::new(
+            &Instance {
+                platform_instance: &vk_instance,
+            },
+            api_def,
+        )?);
+
+        Ok(Self {
+            instance: vk_instance,
+            device_context,
+        })
     }
 
     fn destroy(&mut self) -> GfxResult<()> {
         if let Some(device_context) = self.device_context.take() {
             // Clear any internal caches that may hold references to the device
             let inner = device_context.inner.clone();
-            inner.resource_cache.clear_caches();
+            inner.platform_device_context.resource_cache.clear_caches();
             inner.deferred_dropper.destroy();
 
             #[cfg(debug_assertions)]
@@ -76,50 +94,7 @@ impl GfxApi for VulkanApi {
         Ok(())
     }
 
-    type DeviceContext = VulkanDeviceContext;
-    type Buffer = VulkanBuffer;
-    type Texture = VulkanTexture;
-    type Sampler = VulkanSampler;
-    type BufferMappingInfo = VulkanBufferMappingInfo;
-    type BufferView = VulkanBufferView;
-    type TextureView = VulkanTextureView;
-    type ShaderModule = VulkanShaderModule;
-    type Shader = VulkanShader;
-    type DescriptorSetLayout = VulkanDescriptorSetLayout;
-    type RootSignature = VulkanRootSignature;
-    type Pipeline = VulkanPipeline;
-    type DescriptorSetHandle = VulkanDescriptorSetHandle;
-    type DescriptorSetBufWriter = VulkanDescriptorSetBufWriter;
-    type DescriptorHeap = VulkanDescriptorHeap;
-    type Queue = VulkanQueue;
-    type CommandPool = VulkanCommandPool;
-    type CommandBuffer = VulkanCommandBuffer;
-    type Fence = VulkanFence;
-    type Semaphore = VulkanSemaphore;
-    type Swapchain = VulkanSwapchain;
-}
-
-impl VulkanApi {
-    /// # Safety
-    ///
-    /// GPU programming is fundamentally unsafe, so all  APIs that interact with the GPU should
-    /// be considered unsafe. However,  APIs are only gated by unsafe if they can cause undefined
-    /// behavior on the CPU for reasons other than interacting with the GPU.
-    pub unsafe fn new(api_def: &ApiDef) -> GfxResult<Self> {
-        let app_name = CString::new(api_def.app_name.clone())
-            .expect("app name should not contain a byte set to 0");
-        let entry = ash::Entry::new()?;
-        let instance = VkInstance::new(
-            entry,
-            &app_name,
-            api_def.validation_mode,
-            api_def.windowing_mode,
-        )?;
-        let device_context = Some(VulkanDeviceContext::new(&instance, api_def)?);
-
-        Ok(Self {
-            instance,
-            device_context,
-        })
+    pub fn device_context(&self) -> &DeviceContextDrc {
+        self.device_context.as_ref().unwrap()
     }
 }

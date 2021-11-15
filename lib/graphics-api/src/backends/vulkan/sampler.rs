@@ -1,43 +1,21 @@
 use ash::vk;
 
-use super::{VulkanApi, VulkanDeviceContext};
-use crate::backends::deferred_drop::Drc;
-use crate::{CompareOp, GfxResult, MipMapMode, Sampler, SamplerDef};
+use crate::{CompareOp, DeviceContextDrc, GfxResult, MipMapMode, SamplerDef};
 
-pub struct VulkanSamplerInner {
-    device_context: VulkanDeviceContext,
+pub(crate) struct VulkanSampler {
     sampler: vk::Sampler,
-}
-
-impl Drop for VulkanSamplerInner {
-    fn drop(&mut self) {
-        unsafe {
-            self.device_context
-                .device()
-                .destroy_sampler(self.sampler, None);
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct VulkanSampler {
-    pub(super) inner: Drc<VulkanSamplerInner>,
 }
 
 impl std::fmt::Debug for VulkanSampler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("VulkanSampler")
-            .field("sampler", &self.inner.sampler)
+            .field("sampler", &self.sampler)
             .finish()
     }
 }
 
 impl VulkanSampler {
-    pub fn vk_sampler(&self) -> vk::Sampler {
-        self.inner.sampler
-    }
-
-    pub fn new(device_context: &VulkanDeviceContext, sampler_def: &SamplerDef) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContextDrc, sampler_def: &SamplerDef) -> GfxResult<Self> {
         let max_lod = if sampler_def.mip_map_mode == MipMapMode::Linear {
             f32::MAX
         } else {
@@ -63,19 +41,22 @@ impl VulkanSampler {
 
         let sampler = unsafe {
             device_context
-                .device()
+                .platform_device()
                 .create_sampler(&*sampler_create_info, None)?
         };
 
-        let inner = VulkanSamplerInner {
-            device_context: device_context.clone(),
-            sampler,
-        };
+        Ok(Self { sampler })
+    }
 
-        Ok(Self {
-            inner: device_context.deferred_dropper().new_drc(inner),
-        })
+    pub fn destroy(&self, device_context: &DeviceContextDrc) {
+        unsafe {
+            device_context
+                .platform_device()
+                .destroy_sampler(self.sampler, None);
+        }
+    }
+
+    pub fn vk_sampler(&self) -> vk::Sampler {
+        self.sampler
     }
 }
-
-impl Sampler<VulkanApi> for VulkanSampler {}

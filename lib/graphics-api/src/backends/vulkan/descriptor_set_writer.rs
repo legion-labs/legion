@@ -1,16 +1,9 @@
 use ash::vk;
 
 use crate::{
-    BufferView, DescriptorRef, DescriptorSetBufWriter, DescriptorSetHandle, GfxError, GfxResult,
-    ShaderResourceType, VulkanApi,
+    DescriptorRef, DescriptorSetHandle, DescriptorSetLayoutDrc, DeviceContextDrc, GfxError,
+    GfxResult, ShaderResourceType,
 };
-
-use super::VulkanDescriptorSetLayout;
-
-#[derive(Clone, Copy)]
-pub struct VulkanDescriptorSetHandle(pub vk::DescriptorSet);
-
-impl DescriptorSetHandle<VulkanApi> for VulkanDescriptorSetHandle {}
 
 struct VkDescriptors {
     // one per set * elements in each descriptor
@@ -28,18 +21,13 @@ impl VkDescriptors {
 }
 
 pub struct VulkanDescriptorSetBufWriter {
-    descriptor_set: VulkanDescriptorSetHandle,
-    descriptor_set_layout: VulkanDescriptorSetLayout,
     vk_descriptors: VkDescriptors,
     pending_writes: Vec<vk::WriteDescriptorSet>,
 }
 
 impl VulkanDescriptorSetBufWriter {
-    pub fn new(
-        descriptor_set: VulkanDescriptorSetHandle,
-        descriptor_set_layout: &VulkanDescriptorSetLayout,
-    ) -> GfxResult<Self> {
-        if descriptor_set_layout.vk_layout() == vk::DescriptorSetLayout::null() {
+    pub fn new(descriptor_set_layout: &DescriptorSetLayoutDrc) -> GfxResult<Self> {
+        if descriptor_set_layout.platform_layout().vk_layout() == vk::DescriptorSetLayout::null() {
             return Err("Descriptor set layout does not exist in this root signature".into());
         }
 
@@ -48,23 +36,21 @@ impl VulkanDescriptorSetBufWriter {
         let pending_writes = Vec::with_capacity(update_data_count as usize);
 
         Ok(Self {
-            descriptor_set,
-            descriptor_set_layout: descriptor_set_layout.clone(),
             vk_descriptors,
             pending_writes,
         })
     }
-}
 
-impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
     #[allow(clippy::todo)]
-    fn set_descriptors<'a>(
+    pub fn set_descriptors<'a>(
         &mut self,
         name: &str,
         descriptor_offset: u32,
-        update_datas: &[DescriptorRef<'a, VulkanApi>],
+        update_datas: &[DescriptorRef<'a>],
+        descriptor_set: &DescriptorSetHandle,
+        descriptor_set_layout: &DescriptorSetLayoutDrc,
     ) -> GfxResult<()> {
-        let layout = &self.descriptor_set_layout;
+        let layout = &descriptor_set_layout;
         let descriptor_index = layout
             .find_descriptor_index_by_name(name)
             .ok_or_else(|| GfxError::from("Invalid descriptor name"))?;
@@ -73,9 +59,9 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
             descriptor_offset as usize + update_datas.len() <= descriptor.element_count as usize
         );
         let descriptor_first_update_data = descriptor.update_data_offset;
-        let descriptor_set = &self.descriptor_set;
+        let descriptor_set = &descriptor_set;
         let write_descriptor_builder = vk::WriteDescriptorSet::builder()
-            .dst_set(descriptor_set.0)
+            .dst_set(descriptor_set.vk_type)
             .dst_binding(descriptor.binding)
             .dst_array_element(descriptor_offset)
             .descriptor_type(descriptor.vk_type);
@@ -89,7 +75,7 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
                 for update_data in update_datas {
                     if let DescriptorRef::Sampler(sampler) = update_data {
                         let image_info = &mut self.vk_descriptors.image_infos[next_index as usize];
-                        image_info.sampler = sampler.vk_sampler();
+                        image_info.sampler = sampler.platform_sampler().vk_sampler();
                         image_info.image_view = vk::ImageView::null();
                         image_info.image_layout = vk::ImageLayout::UNDEFINED;
                     } else {
@@ -119,9 +105,9 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
                         assert!(buffer_view.is_compatible_with_descriptor(descriptor));
                         let buffer_info =
                             &mut self.vk_descriptors.buffer_infos[next_index as usize];
-                        buffer_info.buffer = buffer_view.buffer().vk_buffer();
-                        buffer_info.offset = buffer_view.vk_offset();
-                        buffer_info.range = buffer_view.vk_size();
+                        buffer_info.buffer = buffer_view.buffer().platform_buffer().vk_buffer();
+                        buffer_info.offset = buffer_view.offset();
+                        buffer_info.range = buffer_view.size();
                     } else {
                         todo!();
                     }
@@ -148,7 +134,8 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
                         let image_info = &mut self.vk_descriptors.image_infos[next_index as usize];
 
                         image_info.sampler = vk::Sampler::null();
-                        image_info.image_view = texture_view.vk_image_view();
+                        image_info.image_view =
+                            texture_view.platform_texture_view().vk_image_view();
                         image_info.image_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
                     } else {
                         todo!();
@@ -175,16 +162,14 @@ impl DescriptorSetBufWriter<VulkanApi> for VulkanDescriptorSetBufWriter {
         Ok(())
     }
 
-    fn flush(&mut self) -> GfxResult<VulkanDescriptorSetHandle> {
+    pub fn flush(&mut self, vulkan_device_context: &DeviceContextDrc) {
         if !self.pending_writes.is_empty() {
-            let device = self.descriptor_set_layout.device_context().device();
+            let device = vulkan_device_context.platform_device();
             unsafe {
                 device.update_descriptor_sets(&self.pending_writes, &[]);
             }
 
             self.pending_writes.clear();
         }
-
-        Ok(self.descriptor_set)
     }
 }

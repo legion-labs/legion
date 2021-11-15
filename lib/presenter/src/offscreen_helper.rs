@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_lines)]
 
-use legion_graphics_api::{prelude::*, DescriptorSetBufWriter, MAX_DESCRIPTOR_SET_LAYOUTS};
+use legion_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_renderer::components::RenderSurface;
 
@@ -39,14 +39,14 @@ impl Resolution {
 
 struct ResolutionDependentResources {
     resolution: Resolution,
-    render_images: Vec<<DefaultApi as GfxApi>::Texture>,
-    render_image_rtvs: Vec<<DefaultApi as GfxApi>::TextureView>,
-    copy_images: Vec<<DefaultApi as GfxApi>::Texture>,
+    render_images: Vec<TextureDrc>,
+    render_image_rtvs: Vec<TextureViewDrc>,
+    copy_images: Vec<TextureDrc>,
 }
 
 impl ResolutionDependentResources {
     fn new(
-        device_context: &<DefaultApi as GfxApi>::DeviceContext,
+        device_context: &DeviceContextDrc,
         render_frame_count: u32,
         resolution: Resolution,
     ) -> Result<Self, anyhow::Error> {
@@ -105,17 +105,17 @@ impl ResolutionDependentResources {
 pub struct OffscreenHelper {
     render_frame_count: u32,
     resolution_dependent_resources: ResolutionDependentResources,
-    cmd_pools: Vec<<DefaultApi as GfxApi>::CommandPool>,
-    cmd_buffers: Vec<<DefaultApi as GfxApi>::CommandBuffer>,
-    root_signature: <DefaultApi as GfxApi>::RootSignature,
-    pipeline: <DefaultApi as GfxApi>::Pipeline,
-    bilinear_sampler: <DefaultApi as GfxApi>::Sampler,
+    cmd_pools: Vec<CommandPool>,
+    cmd_buffers: Vec<CommandBuffer>,
+    root_signature: RootSignatureDrc,
+    pipeline: PipelineDrc,
+    bilinear_sampler: SamplerDrc,
 }
 
 impl OffscreenHelper {
     pub fn new(
-        device_context: &<DefaultApi as GfxApi>::DeviceContext,
-        graphics_queue: &<DefaultApi as GfxApi>::Queue,
+        device_context: &DeviceContextDrc,
+        graphics_queue: &Queue,
         resolution: Resolution,
     ) -> anyhow::Result<Self> {
         //
@@ -272,7 +272,7 @@ impl OffscreenHelper {
 
     pub fn resize(
         &mut self,
-        device_context: &<DefaultApi as GfxApi>::DeviceContext,
+        device_context: &DeviceContextDrc,
         resolution: Resolution,
     ) -> anyhow::Result<bool> {
         if resolution != self.resolution_dependent_resources.resolution {
@@ -289,9 +289,9 @@ impl OffscreenHelper {
 
     pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
-        graphics_queue: &<DefaultApi as GfxApi>::Queue,
-        transient_descriptor_heap: &<DefaultApi as GfxApi>::DescriptorHeap,
-        wait_sem: &<DefaultApi as GfxApi>::Semaphore,
+        graphics_queue: &Queue,
+        transient_descriptor_heap: &DescriptorHeapDrc,
+        wait_sem: &Semaphore,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
@@ -317,7 +317,7 @@ impl OffscreenHelper {
         cmd_buffer
             .cmd_resource_barrier(
                 &[],
-                &[TextureBarrier::<DefaultApi>::state_transition(
+                &[TextureBarrier::state_transition(
                     render_texture,
                     ResourceState::COPY_SRC,
                     ResourceState::RENDER_TARGET,
@@ -333,7 +333,7 @@ impl OffscreenHelper {
                     store_op: StoreOp::Store,
                     clear_value: ColorClearValue::default(),
                 }],
-                None,
+                &None,
             )
             .unwrap();
 
@@ -363,7 +363,7 @@ impl OffscreenHelper {
                 &[DescriptorRef::Sampler(&self.bilinear_sampler)],
             )
             .unwrap();
-        let descriptor_set_handle = descriptor_set_writer.flush().unwrap();
+        let descriptor_set_handle = descriptor_set_writer.flush(graphics_queue.device_context());
 
         cmd_buffer
             .cmd_bind_descriptor_set_handle(
@@ -380,7 +380,7 @@ impl OffscreenHelper {
         cmd_buffer
             .cmd_resource_barrier(
                 &[],
-                &[TextureBarrier::<DefaultApi>::state_transition(
+                &[TextureBarrier::state_transition(
                     render_texture,
                     ResourceState::RENDER_TARGET,
                     ResourceState::COPY_SRC,
@@ -395,7 +395,7 @@ impl OffscreenHelper {
         cmd_buffer
             .cmd_resource_barrier(
                 &[],
-                &[TextureBarrier::<DefaultApi>::state_transition(
+                &[TextureBarrier::state_transition(
                     copy_texture,
                     ResourceState::COMMON,
                     ResourceState::COPY_DST,
@@ -427,7 +427,7 @@ impl OffscreenHelper {
         cmd_buffer
             .cmd_resource_barrier(
                 &[],
-                &[TextureBarrier::<DefaultApi>::state_transition(
+                &[TextureBarrier::state_transition(
                     copy_texture,
                     ResourceState::COPY_DST,
                     ResourceState::COMMON,
@@ -448,7 +448,7 @@ impl OffscreenHelper {
 
         let sub_resource = copy_texture.map_texture().unwrap();
         copy_fn(sub_resource.data, sub_resource.row_pitch as usize);
-        copy_texture.unmap_texture().unwrap();
+        copy_texture.unmap_texture();
         Ok(())
     }
 }
