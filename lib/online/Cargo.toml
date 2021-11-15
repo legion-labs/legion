@@ -33,6 +33,8 @@ http-body = "0.4"
 pin-project = "1"
 dyn-clone = "1"
 backoff = { version = "0.3.0", features = ["tokio"] }
+lambda_runtime = "0.4"
+lambda_http = "0.4"
 
 [build-dependencies]
 tonic-build = "0.6"

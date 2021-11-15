@@ -1,50 +1,10 @@
-use bytes::Bytes;
-use lambda_http::{IntoResponse, Request as LambdaRequest, Response as LambdaResponse};
-use lambda_runtime::{Context, Error};
-
 use legion_streaming_proto::{
-    streamer_server::{Streamer, StreamerServer},
-    InitializeStreamRequest, InitializeStreamResponse,
+    streamer_server::Streamer, InitializeStreamRequest, InitializeStreamResponse,
 };
 use log::info;
-use tonic::{codegen::Service, Request, Response, Status};
+use tonic::{Request, Response, Status};
 
-struct MyStreamer;
-
-pub async fn endpoint(
-    request: LambdaRequest,
-    _context: Context,
-) -> Result<impl IntoResponse, Error> {
-    // TODO: This should be done only once at the very beginning of the application.
-    let server = StreamerServer::new(MyStreamer);
-    let mut server = tonic_web::enable(server);
-
-    // Take a lambda request and convert it to an HttpRequest that we can the feed to the `gRPC`
-    // server.
-    let tonic_request = into_tonic_request(request);
-    let tonic_response = server.call(tonic_request).await?;
-    from_tonic_response(tonic_response).await
-}
-
-fn into_tonic_request(request: LambdaRequest) -> http::Request<tonic::transport::Body> {
-    request.map(|b| Bytes::from(b.to_vec()).into())
-
-    //*result.version_mut() = http::Version::HTTP_2;
-    //*result.method_mut() = http::Method::POST;
-    //*result.uri_mut() = request.uri().to_owned();
-    //*result.headers_mut() = *request.headers();
-    //*request.extensions_mut() = self.extensions.into_http();
-}
-
-async fn from_tonic_response(
-    response: lambda_http::Response<
-        http_body::combinators::UnsyncBoxBody<bytes::Bytes, tonic::Status>,
-    >,
-) -> Result<impl IntoResponse, Error> {
-    let (parts, body) = response.into_parts();
-    let body = hyper::body::to_bytes(body).await?.to_vec();
-    Ok(LambdaResponse::from_parts(parts, body))
-}
+pub struct MyStreamer;
 
 #[tonic::async_trait]
 impl Streamer for MyStreamer {
