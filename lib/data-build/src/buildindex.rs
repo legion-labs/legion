@@ -224,7 +224,7 @@ impl BuildIndex {
             serde_json::from_reader(&output_file).map_err(|_e| Error::IOError)?;
 
         let project_path =
-            Self::construct_project_path(&source_index, &source_content.project_index)?;
+            Self::construct_project_path(buildindex_dir, &source_content.project_index)?;
 
         if !project_path.exists() {
             return Err(Error::InvalidProject);
