@@ -7,9 +7,7 @@ use super::{
     VulkanRenderpassColorAttachment, VulkanRenderpassDef, VulkanRenderpassDepthAttachment,
 };
 use crate::backends::vulkan::VulkanRenderpass;
-use crate::{
-    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult,
-};
+use crate::{ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult};
 
 pub(crate) struct VulkanRenderpassCache {
     cache: LruCache<VulkanRenderpass>,

@@ -4,9 +4,7 @@ use fnv::FnvHasher;
 
 use super::{FramebufferVulkan, FramebufferVulkanAttachment, FramebufferVulkanDef, LruCache};
 use crate::backends::vulkan::VulkanRenderpass;
-use crate::{
-    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult,
-};
+use crate::{ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult};
 
 pub(crate) struct VulkanFramebufferCache {
     cache: LruCache<FramebufferVulkan>,
