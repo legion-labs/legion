@@ -19,10 +19,10 @@
 //! All the results of data-compilation are stored in a [`ContentStore`](`legion_content_store::ContentStore`) and a manifest
 //! file containing the metadata about the results is returned.
 //!
-//! To support incremental building the data build is persisted in a file on disk. This file is called `build.index`.
-//! It contains:
-//! - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
-//! - Records of derived resources that are stored in a [`ContentStore`](`legion_content_store::ContentStore`).
+//! To support incremental building the data build is persisted on disk in `source.index` and `output.index` files.
+//! Those files contain:
+//! - **source.index** - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
+//! - **output.index** - Records of derived resources that are stored in a [`ContentStore`](`legion_content_store::ContentStore`).
 //!
 //! For other parts of the data pipeline see [`legion_data_offline`], [`legion_data_runtime`] and [`legion_data_compiler`] modules.
 //!
@@ -43,7 +43,8 @@
 //!  | + temp/
 //!  |   |- 561fd98d4d97405a
 //!  |   |- a00438b586a19d4f
-//!  |   |- build.index
+//!  |   |- source.index
+//!  |   |- output.index
 //!  | - project.index
 //! ```
 //!

@@ -103,7 +103,7 @@ fn build_command(
     databuild_path: impl AsRef<Path>,
     resource_id: ResourceId,
     cas: &ContentStoreAddr,
-    buildindex_path: impl AsRef<Path>,
+    buildindex_dir: impl AsRef<Path>,
 ) -> std::process::Command {
     let target = "game";
     let platform = "windows";
@@ -118,7 +118,7 @@ fn build_command(
     command.arg(format!("--locale={}", locale));
     command.arg(format!(
         "--buildindex={}",
-        buildindex_path.as_ref().to_str().unwrap()
+        buildindex_dir.as_ref().to_str().unwrap()
     ));
     command
 }

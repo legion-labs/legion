@@ -149,7 +149,7 @@ fn main() -> Result<(), String> {
             .map_err(|_e| format!("Invalid Platform '{}'", platform))?;
         let locale = Locale::new(locale);
         let content_store_path = ContentStoreAddr::from(cmd_args.value_of(ARG_NAME_CAS).unwrap());
-        let buildindex_path = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
+        let buildindex_dir = PathBuf::from(cmd_args.value_of(ARG_NAME_BUILDINDEX).unwrap());
         let runtime_flag = cmd_args.is_present(ARG_RUNTIME_FLAG);
 
         let manifest_file = {
@@ -162,7 +162,7 @@ fn main() -> Result<(), String> {
             }
         };
 
-        let mut config = DataBuildOptions::new(buildindex_path);
+        let mut config = DataBuildOptions::new(buildindex_dir);
         config.content_store(&content_store_path);
         if let Ok(cwd) = std::env::current_dir() {
             config.compiler_dir(cwd);

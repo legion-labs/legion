@@ -6,8 +6,6 @@ use tempfile::TempDir;
 
 use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};
 
-pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
-
 fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
     let project_dir = work_dir.path();
     let output_dir = project_dir.join("temp");
@@ -25,17 +23,17 @@ fn create() {
         project.indexfile_path()
     };
 
-    let buildindex_path = output_dir.join(TEST_BUILDINDEX_FILENAME);
+    let buildindex_dir = output_dir.clone();
     let cas_addr = ContentStoreAddr::from(output_dir);
 
     {
-        let _build = DataBuildOptions::new(&buildindex_path)
+        let _build = DataBuildOptions::new(&buildindex_dir)
             .content_store(&cas_addr)
             .create(project_dir)
             .expect("valid data build index");
     }
 
-    let index = BuildIndex::open(&buildindex_path, DataBuild::version())
+    let index = BuildIndex::open(&buildindex_dir, DataBuild::version())
         .expect("failed to open build index file");
 
     assert!(index.project_path().is_ok());

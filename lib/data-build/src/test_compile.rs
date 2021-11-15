@@ -19,8 +19,6 @@ use text_resource::{TextResource, TextResourceProc};
 use crate::databuild::CompileOutput;
 use crate::{databuild::DataBuild, DataBuildOptions};
 
-pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
-
 fn setup_registry() -> Arc<Mutex<ResourceRegistry>> {
     ResourceRegistryOptions::new()
         .add_type::<refs_resource::TestResource>()
@@ -118,7 +116,7 @@ fn compile_change_no_deps() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut config = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME));
+    let mut config = DataBuildOptions::new(output_dir);
     config
         .content_store(&contentstore_path)
         .compiler_dir(target_dir());
@@ -287,7 +285,7 @@ fn intermediate_resource() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(output_dir)
         .content_store(&cas_addr)
         .compiler_dir(target_dir())
         .create(project_dir)
@@ -365,7 +363,7 @@ fn unnamed_cache_use() {
     let resource_list = setup_project(&project_dir);
     let root_resource = resource_list[0];
 
-    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(&output_dir)
         .content_store(&ContentStoreAddr::from(output_dir))
         .compiler_dir(target_dir())
         .create(&project_dir)
@@ -497,7 +495,7 @@ fn named_path_cache_use() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(output_dir)
         .content_store(&cas_addr)
         .compiler_dir(target_dir())
         .create(&project_dir)
@@ -778,7 +776,7 @@ fn link() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(output_dir)
         .content_store(&contentstore_path)
         .compiler_dir(target_dir())
         .create(&project_dir)
@@ -864,7 +862,7 @@ fn verify_manifest() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(output_dir)
         .content_store(&contentstore_path)
         .compiler_dir(target_dir())
         .create(project_dir)

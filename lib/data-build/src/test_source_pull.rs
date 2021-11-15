@@ -11,8 +11,6 @@ use tempfile::TempDir;
 
 use crate::DataBuildOptions;
 
-pub const TEST_BUILDINDEX_FILENAME: &str = "build.index";
-
 fn setup_registry() -> Arc<Mutex<ResourceRegistry>> {
     ResourceRegistryOptions::new()
         .add_type::<refs_resource::TestResource>()
@@ -48,7 +46,7 @@ fn no_dependencies() {
         ResourcePathId::from(id)
     };
 
-    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(&output_dir)
         .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("data build");
@@ -114,7 +112,7 @@ fn with_dependency() {
         )
     };
 
-    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(&output_dir)
         .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("data build");
@@ -182,7 +180,7 @@ fn with_derived_dependency() {
             .unwrap();
     }
 
-    let mut build = DataBuildOptions::new(output_dir.join(TEST_BUILDINDEX_FILENAME))
+    let mut build = DataBuildOptions::new(&output_dir)
         .content_store(&ContentStoreAddr::from(output_dir))
         .create(project_dir)
         .expect("to create index");

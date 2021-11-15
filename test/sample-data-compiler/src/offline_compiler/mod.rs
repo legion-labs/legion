@@ -21,13 +21,13 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
         fs::create_dir(&temp_dir).expect("unable to create temp sub-folder");
     }
 
-    let build_index_path = temp_dir.join("build.index");
+    let build_index_dir = temp_dir.clone();
     let asset_store_path = ContentStoreAddr::from(temp_dir.clone());
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
     let project_dir = PathBuf::from("..\\");
 
-    let mut build = DataBuildOptions::new(build_index_path)
+    let mut build = DataBuildOptions::new(build_index_dir)
         .content_store(&asset_store_path)
         .compiler_dir(exe_path)
         .open_or_create(project_dir)

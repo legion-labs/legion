@@ -17,7 +17,7 @@ fn build_device() {
 
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
-    let buildindex_path = work_dir.path().join("build.index");
+    let buildindex_dir = work_dir.path();
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -63,7 +63,7 @@ fn build_device() {
     };
 
     // create build index.
-    let mut build = DataBuildOptions::new(&buildindex_path)
+    let mut build = DataBuildOptions::new(&buildindex_dir)
         .content_store(&ContentStoreAddr::from(cas.clone()))
         .compiler_dir(target_dir)
         .create(project_dir)
@@ -97,7 +97,7 @@ fn build_device() {
             cas_addr,
             manifest,
             DATABUILD_EXE,
-            buildindex_path,
+            buildindex_dir,
             true,
         )
         .create();
@@ -154,7 +154,7 @@ fn no_intermediate_resource() {
 
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
-    let buildindex_path = work_dir.path().join("build.index");
+    let buildindex_dir = work_dir.path();
     let manifest_path = work_dir.path().join("output.manifest");
 
     // create output directory
@@ -182,7 +182,7 @@ fn no_intermediate_resource() {
                 )
                 .expect("adding the resource")
         };
-        let mut build = DataBuildOptions::new(&buildindex_path)
+        let mut build = DataBuildOptions::new(&buildindex_dir)
             .content_store(&ContentStoreAddr::from(cas.clone()))
             .create(project_dir)
             .expect("new build index");
@@ -208,10 +208,7 @@ fn no_intermediate_resource() {
             "--manifest={}",
             manifest_path.to_str().expect("valid path")
         ));
-        command.arg(format!(
-            "--buildindex={}",
-            buildindex_path.to_str().unwrap()
-        ));
+        command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
         command
     };
 
@@ -239,7 +236,7 @@ fn with_intermediate_resource() {
 
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
-    let buildindex_path = work_dir.path().join("build.index");
+    let buildindex_dir = work_dir.path();
     let manifest_path = work_dir.path().join("output.manifest");
 
     // create output directory
@@ -267,7 +264,7 @@ fn with_intermediate_resource() {
                 )
                 .expect("adding the resource")
         };
-        let mut build = DataBuildOptions::new(&buildindex_path)
+        let mut build = DataBuildOptions::new(&buildindex_dir)
             .content_store(&ContentStoreAddr::from(cas.clone()))
             .create(project_dir)
             .expect("new build index");
@@ -295,10 +292,7 @@ fn with_intermediate_resource() {
             "--manifest={}",
             manifest_path.to_str().expect("valid path")
         ));
-        command.arg(format!(
-            "--buildindex={}",
-            buildindex_path.to_str().unwrap()
-        ));
+        command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
         command
     };
 

@@ -66,7 +66,7 @@ fn main() {
             Arg::with_name(ARG_NAME_BUILDINDEX)
                 .long(ARG_NAME_BUILDINDEX)
                 .takes_value(true)
-                .help("Path to the build index"),
+                .help("Path to the build index directory"),
         )
         .arg(
             Arg::with_name(ARG_NAME_DATABUILD_CLI)
@@ -122,7 +122,7 @@ fn main() {
         };
         let buildindex = args
             .value_of(ARG_NAME_BUILDINDEX)
-            .map_or_else(|| content_store_path.join("build.index"), PathBuf::from);
+            .map_or_else(|| content_store_path.clone(), PathBuf::from);
 
         Some(DataBuildSettings::new(build_bin, buildindex))
     };

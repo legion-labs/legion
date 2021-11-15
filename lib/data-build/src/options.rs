@@ -15,24 +15,24 @@ use crate::{DataBuild, Error};
 /// ```
 /// # use legion_data_build::DataBuildOptions;
 /// # use legion_content_store::ContentStoreAddr;
-/// let mut build = DataBuildOptions::new("./build.index")
+/// let mut build = DataBuildOptions::new(".")
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .compiler_dir("./compilers/")
 ///         .create(".");
 /// ```
 #[derive(Clone, Debug)]
 pub struct DataBuildOptions {
-    pub(crate) buildindex_path: PathBuf,
+    pub(crate) buildindex_dir: PathBuf,
     pub(crate) contentstore_path: ContentStoreAddr,
     pub(crate) compiler_search_paths: Vec<PathBuf>,
 }
 
 impl DataBuildOptions {
     /// Creates a new data build options.
-    pub fn new(buildindex_path: impl AsRef<Path>) -> Self {
+    pub fn new(buildindex_dir: impl AsRef<Path>) -> Self {
         Self {
-            buildindex_path: buildindex_path.as_ref().to_owned(),
-            contentstore_path: ContentStoreAddr::from(buildindex_path.as_ref()),
+            buildindex_dir: buildindex_dir.as_ref().to_owned(),
+            contentstore_path: ContentStoreAddr::from(buildindex_dir.as_ref()),
             compiler_search_paths: vec![],
         }
     }
@@ -53,7 +53,7 @@ impl DataBuildOptions {
     ///
     /// If the build index does not exist it creates one if a project is present in the same directory.
     ///
-    /// `project_dir` must be either an absolute path or path relative to `buildindex_path`.
+    /// `project_dir` must be either an absolute path or path relative to `buildindex_dir`.
     pub fn open_or_create(&self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
         DataBuild::open_or_create(self, project_dir.as_ref())
     }
@@ -70,7 +70,7 @@ impl DataBuildOptions {
 
     /// Create new build index for a specified project.
     ///
-    /// `project_dir` must be either an absolute path or path relative to `buildindex_path`.
+    /// `project_dir` must be either an absolute path or path relative to `buildindex_dir`.
     pub fn create(&self, project_dir: impl AsRef<Path>) -> Result<DataBuild, Error> {
         DataBuild::new(self, project_dir.as_ref())
     }

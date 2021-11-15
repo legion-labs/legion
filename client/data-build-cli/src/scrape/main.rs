@@ -169,7 +169,7 @@
 //! Configuration '"D:\\github.com\\legion-labs\\legion\\target\\debug\\scrape-config.json"' created!
 //!     Code Paths: ["D:\\github.com\\legion-labs\\legion\\lib\\", "D:\\github.com\\legion-labs\\legion\\client\\", "D:\\github.com\\legion-labs\\legion\\test\\"].
 //!     Project: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\project.index".
-//!     Build Index: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\temp\\build.index".
+//!     Build Index: "D:\\github.com\\legion-labs\\legion\\test\\sample-data\\temp\\".
 //!     Resource Type Count: 20.
 //! ```
 
@@ -499,7 +499,7 @@ fn main() -> Result<(), String> {
         );
 
         let buildindex = cmd_args.value_of("buildindex").map_or(
-            workspace_dir.join("test\\sample-data\\temp\\build.index"),
+            workspace_dir.join("test\\sample-data\\temp\\"),
             PathBuf::from,
         );
 

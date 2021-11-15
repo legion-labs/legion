@@ -73,7 +73,7 @@ fn compute_context_hash(
 /// # use std::str::FromStr;
 /// # let offline_anim = ResourceId::from_str("invalid").unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
-/// let mut build = DataBuildOptions::new("./build.index")
+/// let mut build = DataBuildOptions::new(".")
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .compiler_dir("./compilers/")
 ///         .create(".").expect("new build index");
@@ -101,12 +101,12 @@ impl DataBuild {
     pub(crate) fn new(config: &DataBuildOptions, project_dir: &Path) -> Result<Self, Error> {
         let projectindex_path = Project::root_to_index_path(project_dir);
         let corrected_path =
-            BuildIndex::construct_project_path(&config.buildindex_path, &projectindex_path)?;
+            BuildIndex::construct_project_path(&config.buildindex_dir, &projectindex_path)?;
 
         let project = Self::open_project(&corrected_path)?;
 
         let build_index = BuildIndex::create_new(
-            &config.buildindex_path,
+            &config.buildindex_dir,
             &Project::root_to_index_path(project_dir),
             Self::version(),
         )
@@ -127,7 +127,7 @@ impl DataBuild {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
-        let build_index = BuildIndex::open(&config.buildindex_path, Self::version())?;
+        let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
         let project = build_index.open_project()?;
         Ok(Self {
             build_index,
@@ -146,7 +146,7 @@ impl DataBuild {
     ) -> Result<Self, Error> {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
-        match BuildIndex::open(&config.buildindex_path, Self::version()) {
+        match BuildIndex::open(&config.buildindex_dir, Self::version()) {
             Ok(build_index) => {
                 let project = build_index.open_project()?;
                 Ok(Self {
