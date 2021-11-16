@@ -38,7 +38,7 @@ pub mod api_gateway;
 ///     let reader = "{\"name\": \"John Doe\"}".as_bytes();
 ///     let mut writer = Vec::<u8>::new();
 ///
-///     legion_aws::lambda::run_lambda_once(handler_fn(handler), reader, &mut writer).await?;
+///     legion_online::aws::lambda::run_lambda_once(handler_fn(handler), reader, &mut writer).await?;
 ///     
 ///     assert_eq!(String::from_utf8_lossy(&writer), "{\"message\":\"Hello, John Doe!\"}");
 ///     

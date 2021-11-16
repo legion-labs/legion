@@ -37,7 +37,7 @@ pub struct APIGatewayBaseMethodArn {
 /// # Example
 ///
 /// ```rust
-/// use legion_aws::lambda::api_gateway::{APIGatewayBaseMethodArn, APIGatewayMethodArn, Method};
+/// use legion_online::aws::lambda::api_gateway::{APIGatewayBaseMethodArn, APIGatewayMethodArn, Method};
 ///
 /// let api_gateway_method_arn_str = "arn:aws:execute-api:us-east-1:123456789012:api-id/dev/GET/users/{userId}/groups/{groupId}";
 /// let api_gateway_method_arn: APIGatewayMethodArn = api_gateway_method_arn_str.parse().unwrap();
@@ -201,7 +201,7 @@ pub struct IAMPolicyStatement {
 /// # Example
 ///
 /// ```rust
-/// use legion_aws::lambda::api_gateway::Method;
+/// use legion_online::aws::lambda::api_gateway::Method;
 ///
 /// let method: Method = "GET".parse().unwrap();
 ///
@@ -246,7 +246,7 @@ pub enum Effect {
 /// # Example
 ///
 /// ```
-/// use legion_aws::lambda::api_gateway::{APIGatewayBaseMethodArn, APIGatewayPolicyBuilder};
+/// use legion_online::aws::lambda::api_gateway::{APIGatewayBaseMethodArn, APIGatewayPolicyBuilder};
 ///
 /// let base_method_arn = APIGatewayBaseMethodArn{
 ///     region: "us-east-1".to_string(),
