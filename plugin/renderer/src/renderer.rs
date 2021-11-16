@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
-use legion_math::{EulerRot, Quat};
+use legion_math::{EulerRot, Mat4, Quat, Vec3};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_transform::components::Transform;
 
@@ -487,10 +487,21 @@ impl TmpRenderPass {
             (0.0f32, 1.0f32, 1.0f32),
         ];
 
+        const fov_y_radians: f32 = 45.0;
+        const aspect_ratio: f32 = 1280.0 / 720.0; //TODO: Query
+        const z_near: f32 = 0.01;
+        const z_far: f32 = 100.0;
+        let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
+
+        let eye = Vec3::new(0.0, 1.0, -2.0);
+        let center = Vec3::new(0.0, 0.0, 0.0);
+        let up = Vec3::new(0.0, 1.0, 0.0);
+        let view_matrix = Mat4::look_at_lh(eye, center, up);
+
         let transforms = vec![
             Transform::from_rotation(Quat::from_euler(
                 EulerRot::XYZ,
-                elapsed_secs.cos() * 180.,
+                elapsed_secs.cos() * std::f32::consts::PI,
                 elapsed_secs.sin() * std::f32::consts::PI,
                 0.0,
             )),
@@ -498,18 +509,17 @@ impl TmpRenderPass {
         ];
 
         for (index, transform) in transforms.iter().enumerate() {
-            let scale_x = transform.scale.x;
-            let scale_y = transform.scale.y;
-            let scale_z = transform.scale.z;
-            let trans_x = transform.translation.x;
-            let trans_y = transform.translation.y;
-            let trans_z = transform.translation.z;
-
             let color = color_table[index % color_table.len()];
-            let push_constant_data = [
-                color.0, color.1, color.2, 1.0, trans_x, trans_y, trans_z, 0.0, scale_x, scale_y,
-                scale_z, 1.0,
-            ];
+
+            let world = transform.compute_matrix();
+            let mut push_constant_data: [f32; 52] = [0.0; 52];
+            push_constant_data[0] = color.0;
+            push_constant_data[1] = color.1;
+            push_constant_data[2] = color.2;
+            push_constant_data[3] = 1.0;
+            world.write_cols_to_slice(&mut push_constant_data[4..]);
+            view_matrix.write_cols_to_slice(&mut push_constant_data[20..]);
+            projection_matrix.write_cols_to_slice(&mut push_constant_data[36..]);
 
             cmd_buffer
                 .cmd_push_constants(&self.root_signature, &push_constant_data)

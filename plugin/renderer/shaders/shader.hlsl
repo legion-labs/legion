@@ -8,8 +8,9 @@ struct VertexOut {
 
 struct ConstData {
     float4 uniform_color;
-    float4 translation;
-    float4 scale;
+    float4x4 world;
+    float4x4 view;
+    float4x4 projection;
 };
 
 ConstantBuffer<ConstData> uniform_data;
@@ -20,7 +21,7 @@ ConstantBuffer<ConstData> push_constant;
 
 VertexOut main_vs(in VertexIn vertex_in) {
     VertexOut vertex_out;
-    vertex_out.hpos = vertex_in.pos * push_constant.scale + push_constant.translation;
+    vertex_out.hpos = mul(push_constant.projection, mul(push_constant.view, mul(push_constant.world, vertex_in.pos)));
     return vertex_out;
 }
 
