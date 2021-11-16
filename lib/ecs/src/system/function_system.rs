@@ -1,6 +1,6 @@
 #![allow(unsafe_code)]
 
-use std::{borrow::Cow, marker::PhantomData};
+use std::{borrow::Cow, future::Future, marker::PhantomData};
 
 use async_trait::async_trait;
 use legion_ecs_macros::all_tuples;
@@ -429,13 +429,15 @@ macro_rules! impl_system_function {
     ($($param: ident),*) => {
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<Out, Func: Send + Sync + 'static, $($param: SystemParam),*>
+        impl<Out, Func: Send + Sync + 'static, AsyncResult, $($param: SystemParam),*>
             SystemParamFunction<(), Out, ($($param,)*), ()>
         for Func
         where
             for <'a> &'a mut Func:
-                FnMut($($param),*) -> Out +
-                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out,
+                FnMut($($param),*) -> AsyncResult +
+                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> AsyncResult,
+            $(for <'w, 's> <<$param as SystemParam>::Fetch as SystemParamFetch<'w, 's>>::Item: Send,)*
+            AsyncResult: Future<Output = Out> + Send,
             Out: Send + 'static
         {
             #[inline]
@@ -443,39 +445,41 @@ macro_rules! impl_system_function {
                 // Yes, this is strange, but rustc fails to compile this impl
                 // without using this function.
                 #[allow(clippy::too_many_arguments)]
-                fn call_inner<Out, $($param,)*>(
-                    mut f: impl FnMut($($param,)*) -> Out,
+                fn call_inner<AsyncResult, $($param,)*>(
+                    mut f: impl FnMut($($param,)*) -> AsyncResult,
                     $($param: $param,)*
-                ) -> Out {
+                ) -> AsyncResult {
                     f($($param,)*)
                 }
                 let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
-                call_inner(self, $($param),*)
+                call_inner(self, $($param),*).await
             }
         }
 
         #[async_trait]
         #[allow(non_snake_case)]
-        impl<Input, Out, Func: Send + Sync + 'static, $($param: SystemParam),*> SystemParamFunction<Input, Out, ($($param,)*), InputMarker> for Func
+        impl<Input, Out, Func: Send + Sync + 'static, AsyncResult, $($param: SystemParam),*> SystemParamFunction<Input, Out, ($($param,)*), InputMarker> for Func
         where
-        for <'a> &'a mut Func:
-                FnMut(In<Input>, $($param),*) -> Out +
-                FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out,
-        Input: Send + 'static,
-        Out: Send + 'static
+            for <'a> &'a mut Func:
+                    FnMut(In<Input>, $($param),*) -> AsyncResult +
+                    FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> AsyncResult,
+            Input: Send + 'static,
+            $(for <'w, 's> <<$param as SystemParam>::Fetch as SystemParamFetch<'w, 's>>::Item: Send,)*
+            AsyncResult: Future<Output = Out> + Send,
+            Out: Send + 'static
         {
             #[inline]
             async unsafe fn run(&mut self, input: Input, state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
                 #[allow(clippy::too_many_arguments)]
-                fn call_inner<Input, Out, $($param,)*>(
-                    mut f: impl FnMut(In<Input>, $($param,)*) -> Out,
+                fn call_inner<Input, AsyncResult, $($param,)*>(
+                    mut f: impl FnMut(In<Input>, $($param,)*) -> AsyncResult,
                     input: In<Input>,
                     $($param: $param,)*
-                ) -> Out {
+                ) -> AsyncResult {
                     f(input, $($param,)*)
                 }
                 let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
-                call_inner(self, In(input), $($param),*)
+                call_inner(self, In(input), $($param),*).await
             }
         }
     };
