@@ -156,7 +156,7 @@ mod tests {
     fn parallel_with_commands_as_exclusive() {
         let mut world = World::new();
 
-        fn removal(
+        async fn removal(
             mut commands: Commands<'_, '_>,
             query: Query<'_, '_, Entity, With<Foo>>,
             mut counter: ResMut<'_, usize>,
@@ -184,11 +184,11 @@ mod tests {
 
     #[test]
     fn update_archetype_for_exclusive_system_coerced() {
-        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
+        async fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo(0.0));
         }
 
-        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+        async fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 

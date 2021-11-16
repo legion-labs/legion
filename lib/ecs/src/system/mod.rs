@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn query_system_gets() {
-        fn query_system(
+        async fn query_system(
             mut ran: ResMut<'_, bool>,
             entity_query: Query<'_, '_, Entity, With<A>>,
             b_query: Query<'_, '_, &B>,
@@ -216,7 +216,7 @@ mod tests {
     fn or_query_set_system() {
         // Regression test for issue #762
         #[allow(clippy::type_complexity)]
-        fn query_system(
+        async fn query_system(
             mut ran: ResMut<'_, bool>,
             mut set: QuerySet<
                 '_,
@@ -249,7 +249,7 @@ mod tests {
     fn changed_resource_system() {
         struct Added(usize);
         struct Changed(usize);
-        fn incr_e_on_flip(
+        async fn incr_e_on_flip(
             value: Res<'_, bool>,
             mut changed: ResMut<'_, Changed>,
             mut added: ResMut<'_, Added>,
@@ -294,7 +294,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_mut_system() {
-        fn sys(_q1: Query<'_, '_, &mut A>, _q2: Query<'_, '_, &mut A>) {}
+        async fn sys(_q1: Query<'_, '_, &mut A>, _q2: Query<'_, '_, &mut A>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn disjoint_query_mut_system() {
-        fn sys(_q1: Query<'_, '_, &mut A, With<B>>, _q2: Query<'_, '_, &mut A, Without<B>>) {}
+        async fn sys(_q1: Query<'_, '_, &mut A, With<B>>, _q2: Query<'_, '_, &mut A, Without<B>>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -310,7 +310,7 @@ mod tests {
 
     #[test]
     fn disjoint_query_mut_read_component_system() {
-        fn sys(_q1: Query<'_, '_, (&mut A, &B)>, _q2: Query<'_, '_, &mut A, Without<B>>) {}
+        async fn sys(_q1: Query<'_, '_, (&mut A, &B)>, _q2: Query<'_, '_, &mut A, Without<B>>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -319,7 +319,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_immut_system() {
-        fn sys(_q1: Query<'_, '_, &A>, _q2: Query<'_, '_, &mut A>) {}
+        async fn sys(_q1: Query<'_, '_, &A>, _q2: Query<'_, '_, &mut A>) {}
 
         let mut world = World::default();
         run_system(&mut world, sys);
@@ -327,7 +327,7 @@ mod tests {
 
     #[test]
     fn query_set_system() {
-        fn sys(mut _set: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&A>)>) {}
+        async fn sys(mut _set: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&A>)>) {}
         let mut world = World::default();
         run_system(&mut world, sys);
     }
@@ -335,7 +335,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_with_query_set_system() {
-        fn sys(
+        async fn sys(
             _query: Query<'_, '_, &mut A>,
             _set: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&B>)>,
         ) {
@@ -348,7 +348,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_query_sets_system() {
-        fn sys(
+        async fn sys(
             _set_1: QuerySet<'_, '_, (QueryState<&mut A>,)>,
             _set_2: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&B>)>,
         ) {
@@ -374,27 +374,27 @@ mod tests {
     #[test]
     #[should_panic]
     fn conflicting_system_resources() {
-        fn sys(_: ResMut<'_, BufferRes>, _: Res<'_, BufferRes>) {}
+        async fn sys(_: ResMut<'_, BufferRes>, _: Res<'_, BufferRes>) {}
         test_for_conflicting_resources(sys);
     }
 
     #[test]
     #[should_panic]
     fn conflicting_system_resources_reverse_order() {
-        fn sys(_: Res<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
+        async fn sys(_: Res<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
         test_for_conflicting_resources(sys);
     }
 
     #[test]
     #[should_panic]
     fn conflicting_system_resources_multiple_mutable() {
-        fn sys(_: ResMut<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
+        async fn sys(_: ResMut<'_, BufferRes>, _: ResMut<'_, BufferRes>) {}
         test_for_conflicting_resources(sys);
     }
 
     #[test]
     fn nonconflicting_system_resources() {
-        fn sys(
+        async fn sys(
             _: Local<'_, BufferRes>,
             _: ResMut<'_, BufferRes>,
             _: Local<'_, A>,
@@ -421,7 +421,7 @@ mod tests {
             }
         }
 
-        fn sys(local: Local<'_, Foo>, mut modified: ResMut<'_, bool>) {
+        async fn sys(local: Local<'_, Foo>, mut modified: ResMut<'_, bool>) {
             assert_eq!(local.value, 2);
             *modified = true;
         }
@@ -441,7 +441,7 @@ mod tests {
         struct NotSend2(std::rc::Rc<i32>);
         world.insert_non_send(NotSend1(std::rc::Rc::new(0)));
 
-        fn sys(
+        async fn sys(
             op: Option<NonSend<'_, NotSend1>>,
             mut _op2: Option<NonSendMut<'_, NotSend2>>,
             mut run: ResMut<'_, bool>,
@@ -466,7 +466,7 @@ mod tests {
         world.insert_non_send(NotSend1(std::rc::Rc::new(1)));
         world.insert_non_send(NotSend2(std::rc::Rc::new(2)));
 
-        fn sys(
+        async fn sys(
             _op: NonSend<'_, NotSend1>,
             mut _op2: NonSendMut<'_, NotSend2>,
             mut run: ResMut<'_, bool>,
@@ -489,7 +489,7 @@ mod tests {
 
         world.entity_mut(a).despawn();
 
-        fn validate_removed(
+        async fn validate_removed(
             removed_i32: RemovedComponents<'_, W<i32>>,
             despawned: Res<'_, Despawned>,
             mut ran: ResMut<'_, bool>,
@@ -511,7 +511,7 @@ mod tests {
     fn configure_system_local() {
         let mut world = World::default();
         world.insert_resource(false);
-        fn sys(local: Local<'_, usize>, mut modified: ResMut<'_, bool>) {
+        async fn sys(local: Local<'_, usize>, mut modified: ResMut<'_, bool>) {
             assert_eq!(*local, 42);
             *modified = true;
         }
@@ -527,7 +527,7 @@ mod tests {
         let mut world = World::default();
         world.insert_resource(false);
         world.spawn().insert_bundle((W(42), W(true)));
-        fn sys(
+        async fn sys(
             archetypes: &Archetypes,
             components: &Components,
             entities: &Entities,
@@ -568,9 +568,9 @@ mod tests {
 
     #[test]
     fn get_system_conflicts() {
-        fn sys_x(_: Res<'_, A>, _: Res<'_, B>, _: Query<'_, '_, (&C, &D)>) {}
+        async fn sys_x(_: Res<'_, A>, _: Res<'_, B>, _: Query<'_, '_, (&C, &D)>) {}
 
-        fn sys_y(_: Res<'_, A>, _: ResMut<'_, B>, _: Query<'_, '_, (&C, &mut D)>) {}
+        async fn sys_y(_: Res<'_, A>, _: ResMut<'_, B>, _: Query<'_, '_, (&C, &mut D)>) {}
 
         let mut world = World::default();
         let mut x = sys_x.system();
@@ -591,12 +591,12 @@ mod tests {
     fn query_is_empty() {
         //TODO: fix me
         /*
-        fn without_filter(not_empty: Query<'_, '_, &A>, empty: Query<'_, '_, &B>) {
+        async fn without_filter(not_empty: Query<'_, '_, &A>, empty: Query<'_, '_, &B>) {
             assert!(!not_empty.is_empty());
             assert!(empty.is_empty());
         }
 
-        fn with_filter(not_empty: Query<'_, '_, &A, With<C>>, empty: Query<'_, '_, &A, With<D>>) {
+        async fn with_filter(not_empty: Query<'_, '_, &A, With<C>>, empty: Query<'_, '_, &A, With<D>>) {
             assert!(!not_empty.is_empty());
             assert!(empty.is_empty());
         }
@@ -618,7 +618,7 @@ mod tests {
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     fn can_have_16_parameters() {
-        fn sys_x(
+        async fn sys_x(
             _: Res<'_, A>,
             _: Res<'_, B>,
             _: Res<'_, C>,
@@ -636,7 +636,7 @@ mod tests {
             _: Query<'_, '_, (&E, &F)>,
         ) {
         }
-        fn sys_y(
+        async fn sys_y(
             _: (
                 Res<'_, A>,
                 Res<'_, B>,

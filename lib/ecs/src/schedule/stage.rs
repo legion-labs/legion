@@ -921,11 +921,11 @@ mod tests {
         world.get_resource_mut::<Vec<usize>>().unwrap().push(TAG);
     }
 
-    fn make_parallel(tag: usize) -> impl FnMut(ResMut<'_, Vec<usize>>) {
-        move |mut resource: ResMut<'_, Vec<usize>>| resource.push(tag)
+    async fn make_parallel<const TAG: usize>(mut resource: ResMut<'_, Vec<usize>>) {
+        resource.push(TAG);
     }
 
-    fn every_other_time(mut has_ran: Local<'_, bool>) -> ShouldRun {
+    async fn every_other_time(mut has_ran: Local<'_, bool>) -> ShouldRun {
         *has_ran = !*has_ran;
         if *has_ran {
             ShouldRun::Yes
@@ -940,7 +940,7 @@ mod tests {
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
             .with_system(make_exclusive::<0>.exclusive_system().at_start())
-            .with_system(make_parallel(1))
+            .with_system(make_parallel::<1>)
             .with_system(make_exclusive::<2>.exclusive_system().before_commands())
             .with_system(make_exclusive::<3>.exclusive_system().at_end());
         stage.run(&mut world);
@@ -959,7 +959,7 @@ mod tests {
         let mut stage = SystemStage::parallel()
             .with_system(make_exclusive::<2>.exclusive_system().before_commands())
             .with_system(make_exclusive::<3>.exclusive_system().at_end())
-            .with_system(make_parallel(1))
+            .with_system(make_parallel::<1>)
             .with_system(make_exclusive::<0>.exclusive_system().at_start());
         stage.run(&mut world);
         assert_eq!(
@@ -975,10 +975,10 @@ mod tests {
 
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(2).exclusive_system().before_commands())
-            .with_system(make_parallel(3).exclusive_system().at_end())
-            .with_system(make_parallel(1))
-            .with_system(make_parallel(0).exclusive_system().at_start());
+            .with_system(make_parallel::<2>.exclusive_system().before_commands())
+            .with_system(make_parallel::<3>.exclusive_system().at_end())
+            .with_system(make_parallel::<1>)
+            .with_system(make_parallel::<0>.exclusive_system().at_start());
         stage.run(&mut world);
         assert_eq!(
             *world.get_resource::<Vec<usize>>().unwrap(),
@@ -1305,9 +1305,9 @@ mod tests {
         let mut world = World::new();
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(1).after("0").label("1"))
-            .with_system(make_parallel(2).after("1"))
-            .with_system(make_parallel(0).label("0"));
+            .with_system(make_parallel::<1>.after("0").label("1"))
+            .with_system(make_parallel::<2>.after("1"))
+            .with_system(make_parallel::<0>.label("0"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
         stage.run(&mut world);
@@ -1322,9 +1322,9 @@ mod tests {
         let mut world = World::new();
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(1).label("1").before("2"))
-            .with_system(make_parallel(2).label("2"))
-            .with_system(make_parallel(0).before("1"));
+            .with_system(make_parallel::<1>.label("1").before("2"))
+            .with_system(make_parallel::<2>.label("2"))
+            .with_system(make_parallel::<0>.before("1"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
         stage.run(&mut world);
@@ -1339,11 +1339,11 @@ mod tests {
         let mut world = World::new();
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(2).label("2"))
-            .with_system(make_parallel(1).after("0").before("2"))
-            .with_system(make_parallel(0).label("0"))
+            .with_system(make_parallel::<2>.label("2"))
+            .with_system(make_parallel::<1>.after("0").before("2"))
+            .with_system(make_parallel::<0>.label("0"))
             .with_system(make_parallel(4).label("4"))
-            .with_system(make_parallel(3).after("2").before("4"));
+            .with_system(make_parallel::<3>.after("2").before("4"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
         stage.run(&mut world);
@@ -1358,9 +1358,9 @@ mod tests {
         let mut world = World::new();
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(1).label("first").after("0"))
-            .with_system(make_parallel(2).after("first"))
-            .with_system(make_parallel(0).label("first").label("0"));
+            .with_system(make_parallel::<1>.label("first").after("0"))
+            .with_system(make_parallel::<2>.after("first"))
+            .with_system(make_parallel::<0>.label("first").label("0"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
         stage.run(&mut world);
@@ -1371,11 +1371,11 @@ mod tests {
 
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(2).after("01").label("2"))
-            .with_system(make_parallel(1).label("01").after("0"))
-            .with_system(make_parallel(0).label("01").label("0"))
+            .with_system(make_parallel::<2>.after("01").label("2"))
+            .with_system(make_parallel::<1>.label("01").after("0"))
+            .with_system(make_parallel::<0>.label("01").label("0"))
             .with_system(make_parallel(4).label("4"))
-            .with_system(make_parallel(3).after("2").before("4"));
+            .with_system(make_parallel::<3>.after("2").before("4"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
         stage.run(&mut world);
@@ -1386,11 +1386,11 @@ mod tests {
 
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(2).label("234").label("2"))
-            .with_system(make_parallel(1).before("234").after("0"))
-            .with_system(make_parallel(0).label("0"))
+            .with_system(make_parallel::<2>.label("234").label("2"))
+            .with_system(make_parallel::<1>.before("234").after("0"))
+            .with_system(make_parallel::<0>.label("0"))
             .with_system(make_parallel(4).label("234").label("4"))
-            .with_system(make_parallel(3).label("234").after("2").before("4"));
+            .with_system(make_parallel::<3>.label("234").after("2").before("4"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
         stage.run(&mut world);
@@ -1406,22 +1406,22 @@ mod tests {
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
             .with_system(
-                make_parallel(2)
+                make_parallel::<2>
                     .label("2")
                     .after("1")
                     .before("3")
                     .before("3"),
             )
             .with_system(
-                make_parallel(1)
+                make_parallel::<1>
                     .label("1")
                     .after("0")
                     .after("0")
                     .before("2"),
             )
-            .with_system(make_parallel(0).label("0").before("1"))
+            .with_system(make_parallel::<0>.label("0").before("1"))
             .with_system(make_parallel(4).label("4").after("3"))
-            .with_system(make_parallel(3).label("3").after("2").before("4"));
+            .with_system(make_parallel::<3>.label("3").after("2").before("4"));
         stage.run(&mut world);
         for container in &stage.parallel {
             assert!(container.dependencies().len() <= 1);
@@ -1439,14 +1439,14 @@ mod tests {
         let mut world = World::new();
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(2).label("2"))
+            .with_system(make_parallel::<2>.label("2"))
             .with_system_set(
                 SystemSet::new()
-                    .with_system(make_parallel(0).label("0"))
+                    .with_system(make_parallel::<0>.label("0"))
                     .with_system(make_parallel(4).label("4"))
-                    .with_system(make_parallel(3).after("2").before("4")),
+                    .with_system(make_parallel::<3>.after("2").before("4")),
             )
-            .with_system(make_parallel(1).after("0").before("2"));
+            .with_system(make_parallel::<1>.after("0").before("2"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
         stage.run(&mut world);
@@ -1464,11 +1464,11 @@ mod tests {
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
             .with_system(
-                make_parallel(0)
+                make_parallel::<0>
                     .label("0")
                     .with_run_criteria(every_other_time),
             )
-            .with_system(make_parallel(1).after("0"));
+            .with_system(make_parallel::<1>.after("0"));
         stage.run(&mut world);
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
@@ -1481,13 +1481,13 @@ mod tests {
 
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(0).before("1"))
+            .with_system(make_parallel::<0>.before("1"))
             .with_system_set(
                 SystemSet::new()
                     .with_run_criteria(every_other_time)
-                    .with_system(make_parallel(1).label("1")),
+                    .with_system(make_parallel::<1>.label("1")),
             )
-            .with_system(make_parallel(2).after("1"));
+            .with_system(make_parallel::<2>.after("1"));
         stage.run(&mut world);
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
@@ -1502,19 +1502,19 @@ mod tests {
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
         let mut stage = SystemStage::parallel()
             .with_system_run_criteria(every_other_time.label("every other time"))
-            .with_system(make_parallel(0).before("1"))
+            .with_system(make_parallel::<0>.before("1"))
             .with_system(
-                make_parallel(1)
+                make_parallel::<1>
                     .label("1")
                     .with_run_criteria("every other time"),
             )
             .with_system(
-                make_parallel(2)
+                make_parallel::<2>
                     .label("2")
                     .after("1")
                     .with_run_criteria("every other time"),
             )
-            .with_system(make_parallel(3).after("2"));
+            .with_system(make_parallel::<3>.after("2"));
         stage.run(&mut world);
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
@@ -1536,21 +1536,21 @@ mod tests {
             }
         }
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(0).label("0"))
+            .with_system(make_parallel::<0>.label("0"))
             .with_system(
-                make_parallel(1)
+                make_parallel::<1>
                     .label("1")
                     .after("0")
                     .with_run_criteria(every_other_time.label("every other time")),
             )
             .with_system(
-                make_parallel(2)
+                make_parallel::<2>
                     .label("2")
                     .after("1")
                     .with_run_criteria(RunCriteria::pipe("every other time", eot_piped.system())),
             )
             .with_system(
-                make_parallel(3)
+                make_parallel::<3>
                     .label("3")
                     .after("2")
                     .with_run_criteria("every other time".pipe(eot_piped.system()).label("piped")),
@@ -1573,14 +1573,14 @@ mod tests {
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
         let mut stage =
             SystemStage::parallel()
-                .with_system(make_parallel(0).before("1"))
-                .with_system(make_parallel(1).label("1").with_run_criteria(
+                .with_system(make_parallel::<0>.before("1"))
+                .with_system(make_parallel::<1>.label("1").with_run_criteria(
                     every_other_time.label_discard_if_duplicate("every other time"),
                 ))
-                .with_system(make_parallel(2).label("2").after("1").with_run_criteria(
+                .with_system(make_parallel::<2>.label("2").after("1").with_run_criteria(
                     every_other_time.label_discard_if_duplicate("every other time"),
                 ))
-                .with_system(make_parallel(3).after("2"));
+                .with_system(make_parallel::<3>.after("2"));
         stage.run(&mut world);
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
@@ -1608,7 +1608,8 @@ mod tests {
     fn parallel_cycle_1() {
         let mut world = World::new();
         world.insert_resource(Vec::<usize>::new());
-        let mut stage = SystemStage::parallel().with_system(make_parallel(0).label("0").after("0"));
+        let mut stage =
+            SystemStage::parallel().with_system(make_parallel::<0>.label("0").after("0"));
         stage.run(&mut world);
     }
 
@@ -1618,8 +1619,8 @@ mod tests {
         let mut world = World::new();
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(0).label("0").after("1"))
-            .with_system(make_parallel(1).label("1").after("0"));
+            .with_system(make_parallel::<0>.label("0").after("1"))
+            .with_system(make_parallel::<1>.label("1").after("0"));
         stage.run(&mut world);
     }
 
@@ -1630,9 +1631,9 @@ mod tests {
 
         world.insert_resource(Vec::<usize>::new());
         let mut stage = SystemStage::parallel()
-            .with_system(make_parallel(0).label("0"))
-            .with_system(make_parallel(1).after("0").before("2"))
-            .with_system(make_parallel(2).label("2").before("0"));
+            .with_system(make_parallel::<0>.label("0"))
+            .with_system(make_parallel::<1>.after("0").before("2"))
+            .with_system(make_parallel::<2>.label("2").before("0"));
         stage.run(&mut world);
     }
 
@@ -1655,9 +1656,9 @@ mod tests {
                 .collect()
         }
 
-        fn empty() {}
-        fn resource(_: ResMut<'_, usize>) {}
-        fn component(_: Query<'_, '_, &mut W<f32>>) {}
+        async fn empty() {}
+        async fn resource(_: ResMut<'_, usize>) {}
+        async fn component(_: Query<'_, '_, &mut W<f32>>) {}
 
         let mut world = World::new();
 
@@ -2026,7 +2027,7 @@ mod tests {
 
     #[test]
     fn archetype_update_single_executor() {
-        fn query_count_system(
+        async fn query_count_system(
             mut entity_count: ResMut<'_, usize>,
             query: Query<'_, '_, crate::entity::Entity>,
         ) {
@@ -2048,7 +2049,7 @@ mod tests {
 
     #[test]
     fn archetype_update_parallel_executor() {
-        fn query_count_system(
+        async fn query_count_system(
             mut entity_count: ResMut<'_, usize>,
             query: Query<'_, '_, crate::entity::Entity>,
         ) {
@@ -2079,7 +2080,7 @@ mod tests {
         *world.change_tick.get_mut() += MAX_DELTA + 1;
 
         let mut stage = SystemStage::parallel();
-        fn work() {}
+        async fn work() {}
         stage.add_system(work);
 
         // Overflow twice
@@ -2145,7 +2146,7 @@ mod tests {
         #[derive(Component)]
         struct Foo;
 
-        fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
+        async fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
             if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
@@ -2153,11 +2154,11 @@ mod tests {
             }
         }
 
-        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
+        async fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo);
         }
 
-        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+        async fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 
@@ -2184,7 +2185,7 @@ mod tests {
         #[derive(Component)]
         struct Foo;
 
-        fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
+        async fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
             if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
@@ -2192,11 +2193,11 @@ mod tests {
             }
         }
 
-        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
+        async fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo);
         }
 
-        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+        async fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 

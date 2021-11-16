@@ -26,9 +26,9 @@ use crate::{
 /// # Example
 /// ```
 /// # use legion_ecs::prelude::*;
-/// # fn do_something() {}
-/// # fn do_the_other_thing() {}
-/// # fn do_something_else() {}
+/// # async fn do_something() {}
+/// # async fn do_the_other_thing() {}
+/// # async fn do_something_else() {}
 /// #[derive(SystemLabel, Debug, Clone, PartialEq, Eq, Hash)]
 /// struct Something;
 ///

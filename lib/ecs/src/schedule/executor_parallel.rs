@@ -345,7 +345,7 @@ mod tests {
     #[test]
     fn trivial() {
         let mut world = World::new();
-        fn wants_for_nothing() {}
+        async fn wants_for_nothing() {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_for_nothing)
             .with_system(wants_for_nothing)
@@ -362,8 +362,8 @@ mod tests {
     fn resources() {
         let mut world = World::new();
         world.insert_resource(0usize);
-        fn wants_mut(_: ResMut<'_, usize>) {}
-        fn wants_ref(_: Res<'_, usize>) {}
+        async fn wants_mut(_: ResMut<'_, usize>) {}
+        async fn wants_ref(_: Res<'_, usize>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut)
             .with_system(wants_mut);
@@ -391,8 +391,8 @@ mod tests {
     fn queries() {
         let mut world = World::new();
         world.spawn().insert(W(0usize));
-        fn wants_mut(_: Query<'_, '_, &mut W<usize>>) {}
-        fn wants_ref(_: Query<'_, '_, &W<usize>>) {}
+        async fn wants_mut(_: Query<'_, '_, &mut W<usize>>) {}
+        async fn wants_ref(_: Query<'_, '_, &W<usize>>) {}
         let mut stage = SystemStage::parallel()
             .with_system(wants_mut)
             .with_system(wants_mut);
@@ -430,10 +430,10 @@ mod tests {
         use std::thread;
         let mut world = World::new();
         world.insert_non_send(thread::current().id());
-        fn non_send(thread_id: NonSend<'_, thread::ThreadId>) {
+        async fn non_send(thread_id: NonSend<'_, thread::ThreadId>) {
             assert_eq!(thread::current().id(), *thread_id);
         }
-        fn empty() {}
+        async fn empty() {}
         let mut stage = SystemStage::parallel()
             .with_system(non_send)
             .with_system(non_send)
