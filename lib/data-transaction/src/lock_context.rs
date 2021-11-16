@@ -43,6 +43,7 @@ impl<'a> LockContext<'a> {
                         &mut self.resource_registry,
                     )?;
 
+                    // TODO HACK. Assume DebugCube until proper mapping is exposed
                     let derived_id = ResourcePathId::from(*resource_id)
                         .push(ResourceType::new(b"runtime_debugcube"))
                         .resource_id();
