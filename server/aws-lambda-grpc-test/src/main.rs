@@ -1,15 +1,20 @@
-use lambda_http::handler;
-use legion_aws::lambda::run_lambda;
-
 mod handler;
 
-use handler::endpoint;
+use anyhow::{Error, Result};
+use handler::MyStreamer;
+
+use legion_online::grpc::Server;
+use legion_streaming_proto::streamer_server::StreamerServer;
 
 #[tokio::main]
-async fn main() -> Result<(), lambda_runtime::Error> {
-    simple_logger::init_with_level(log::Level::Info)?;
+async fn main() -> Result<()> {
+    simple_logger::init_with_level(log::Level::Info).map_err::<Error, _>(Into::into)?;
 
-    let handler = handler(endpoint);
+    let service = StreamerServer::new(MyStreamer);
 
-    run_lambda(handler).await
+    Server::default()
+        .set_listen_address("[::]:5000".parse()?)
+        .run(service)
+        .await
+        .map_err(Into::into)
 }

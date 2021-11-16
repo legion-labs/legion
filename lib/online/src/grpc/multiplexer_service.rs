@@ -4,30 +4,34 @@ use std::{
 };
 
 use dyn_clone::DynClone;
+use http::{Request, Response, StatusCode};
 use log::{debug, info};
-use tonic::transport::NamedService;
+use tonic::{
+    body::BoxBody,
+    codegen::{BoxFuture, StdError},
+    transport::NamedService,
+};
+
+use super::{Error, Result};
 
 pub trait MultiplexableService: DynClone {
-    fn call(
-        &mut self,
-        req: http::Request<hyper::Body>,
-    ) -> BoxFuture<http::Response<tonic::body::BoxBody>, tonic::codegen::Never>;
+    fn call(&mut self, req: Request<hyper::Body>) -> BoxFuture<Response<BoxBody>, Error>;
 }
 
 dyn_clone::clone_trait_object!(MultiplexableService);
 
-// Blanket implementation for all services: makes it possible to use all tonic-generated services
-// in the `Multiplexer` service.
+/// Blanket implementation for all services: makes it possible to use all tonic-generated services
+/// in the `Multiplexer` service.
 impl<S> MultiplexableService for S
 where
-    S: tower::Service<http::Request<hyper::Body>> + Clone,
-    S::Future: Into<BoxFuture<http::Response<tonic::body::BoxBody>, tonic::codegen::Never>>,
+    S: tower::Service<Request<hyper::Body>, Response = Response<BoxBody>> + Clone,
+    S::Error: Into<StdError>,
+    S::Future: Send + 'static,
 {
-    fn call(
-        &mut self,
-        req: http::Request<hyper::Body>,
-    ) -> BoxFuture<http::Response<tonic::body::BoxBody>, tonic::codegen::Never> {
-        S::call(self, req).into()
+    fn call(&mut self, req: Request<hyper::Body>) -> BoxFuture<Response<BoxBody>, Error> {
+        let fut = S::call(self, req);
+
+        Box::pin(async move { fut.await.map_err(Into::into).map_err(Error::Other) })
     }
 }
 
@@ -109,23 +113,32 @@ impl MultiplexerService {
     fn new(services: Services) -> Self {
         Self { services }
     }
+
+    fn not_found() -> BoxFuture<Response<BoxBody>, Error> {
+        Self::failure(http::StatusCode::NOT_FOUND)
+    }
+
+    fn failure(status: StatusCode) -> BoxFuture<Response<BoxBody>, Error> {
+        Box::pin(async move {
+            http::Response::builder()
+                .status(status)
+                .body(tonic::body::empty_body())
+                .map_err(Into::into)
+                .map_err(Error::Other)
+        })
+    }
 }
 
-type BoxFuture<T, E> =
-    std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>> + Send + 'static>>;
-
-impl tower::Service<http::Request<hyper::Body>> for MultiplexerService {
-    type Response = http::Response<tonic::body::BoxBody>;
-
-    type Error = tonic::codegen::Never;
-
+impl tower::Service<Request<hyper::Body>> for MultiplexerService {
+    type Response = Response<BoxBody>;
+    type Error = Error;
     type Future = BoxFuture<Self::Response, Self::Error>;
 
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<()>> {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: http::Request<hyper::Body>) -> Self::Future {
+    fn call(&mut self, req: Request<hyper::Body>) -> Self::Future {
         if let Some(content_type) = req.headers().get("content-type") {
             let content_type = content_type.to_str().unwrap_or_default();
 
@@ -143,14 +156,7 @@ impl tower::Service<http::Request<hyper::Body>> for MultiplexerService {
                                 svc_name
                             );
 
-                            Box::pin(futures_util::future::ok(
-                                http::Response::builder()
-                                    .status(http::StatusCode::OK)
-                                    .header("grpc-status", tonic::Code::Unimplemented.to_string())
-                                    .header("content-type", "application/grpc")
-                                    .body(tonic::body::empty_body())
-                                    .unwrap(),
-                            ))
+                            Self::not_found()
                         }
                     }
                 } else {
@@ -159,12 +165,7 @@ impl tower::Service<http::Request<hyper::Body>> for MultiplexerService {
                         req.uri().path(),
                     );
 
-                    Box::pin(futures_util::future::ok(
-                        http::Response::builder()
-                            .status(http::StatusCode::NOT_FOUND)
-                            .body(tonic::body::empty_body())
-                            .unwrap(),
-                    ))
+                    Self::not_found()
                 }
             } else {
                 debug!(
@@ -172,22 +173,12 @@ impl tower::Service<http::Request<hyper::Body>> for MultiplexerService {
                     content_type,
                 );
 
-                Box::pin(futures_util::future::ok(
-                    http::Response::builder()
-                        .status(http::StatusCode::UNSUPPORTED_MEDIA_TYPE)
-                        .body(tonic::body::empty_body())
-                        .unwrap(),
-                ))
+                Self::failure(StatusCode::UNSUPPORTED_MEDIA_TYPE)
             }
         } else {
             debug!("rejecting HTTP call with no content-type specified");
 
-            Box::pin(futures_util::future::ok(
-                http::Response::builder()
-                    .status(http::StatusCode::BAD_REQUEST)
-                    .body(tonic::body::empty_body())
-                    .unwrap(),
-            ))
+            Self::failure(StatusCode::BAD_REQUEST)
         }
     }
 }

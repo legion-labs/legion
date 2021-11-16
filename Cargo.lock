@@ -465,9 +465,10 @@ dependencies = [
  "bytes",
  "http",
  "http-body",
+ "hyper",
  "lambda_http",
  "lambda_runtime",
- "legion-aws",
+ "legion-online",
  "legion-streaming-proto",
  "log",
  "serde",
@@ -1824,7 +1825,6 @@ dependencies = [
  "legion-async",
  "legion-ecs",
  "legion-editor-proto",
- "legion-grpc",
  "legion-online",
  "legion-streaming-proto",
  "legion-tauri",
@@ -3133,8 +3133,7 @@ dependencies = [
 [[package]]
 name = "lambda_http"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f10599c844cf7584c0dfbf6030df7c174cd5c91f2515412f8875de2a0f2b3fc5"
+source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?branch=handler-lifefime-fix-v0.4.1#0bd6aebb651059d622b04aba66e48fb25f37d846"
 dependencies = [
  "base64",
  "http",
@@ -3147,8 +3146,7 @@ dependencies = [
 [[package]]
 name = "lambda_runtime"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17ed88d8421123f9546cbd0c4235386803859c4a20b80a6eb613a652b486df8e"
+source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?branch=handler-lifefime-fix-v0.4.1#0bd6aebb651059d622b04aba66e48fb25f37d846"
 dependencies = [
  "async-stream",
  "bytes",
@@ -3225,20 +3223,6 @@ dependencies = [
  "legion-ecs",
  "ntest",
  "retain_mut",
- "tokio",
-]
-
-[[package]]
-name = "legion-aws"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "lambda_runtime",
- "log",
- "serde",
- "serde_json",
- "strum 0.22.0",
- "strum_macros 0.22.0",
  "tokio",
 ]
 
@@ -3524,27 +3508,13 @@ name = "legion-grpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "backoff",
- "bytes",
- "dyn-clone",
  "futures-lite",
- "futures-util",
- "http",
- "http-body",
- "hyper",
- "hyper-rustls",
  "legion-app",
  "legion-async",
  "legion-ecs",
+ "legion-online",
  "log",
- "prost",
- "rustls 0.20.1",
- "simple_logger",
- "tokio",
  "tonic",
- "tonic-build",
- "tower",
- "tower-service",
 ]
 
 [[package]]
@@ -3593,18 +3563,37 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "backoff",
  "base64",
+ "bytes",
  "directories",
- "futures-util",
+ "dyn-clone",
+ "http",
+ "http-body",
  "hyper",
- "hyper-tls",
+ "hyper-rustls",
+ "lambda_http",
+ "lambda_runtime",
  "log",
+ "pin-project",
+ "prost",
  "reqwest",
  "ring",
+ "rustls 0.20.1",
  "serde",
  "serde_json",
+ "serial_test",
  "simple_asn1",
+ "simple_logger",
+ "strum 0.22.0",
+ "strum_macros 0.22.0",
+ "thiserror",
  "tokio",
+ "tonic",
+ "tonic-build",
+ "tonic-web",
+ "tower",
+ "tower-service",
  "url",
  "webbrowser",
 ]
@@ -6009,6 +5998,28 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serial_test"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0bccbcf40c8938196944a3da0e133e031a33f4d6b72db3bda3cc556e361905d"
+dependencies = [
+ "lazy_static",
+ "parking_lot 0.11.2",
+ "serial_test_derive",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2acd6defeddb41eb60bb468f8825d0cfd0c2a76bc03bfd235b6a1dc4f6a1ad5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

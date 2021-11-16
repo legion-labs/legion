@@ -12,26 +12,8 @@ keywords = ["ecs", "game", "legion", "grpc"]
 futures-lite = "1.12"
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-online = { path = "../../lib/online", version = "0.1.0" }
 legion-async = { path = "../async", version = "0.1.0" }
-tokio = { version = "1.13", features = ["full"] }
-hyper = "0.14"
-hyper-rustls = "0.22"
-tower = "0.4.8"
-tower-service = "0.3.1"
 tonic = { version = "0.6", features = ["tls-roots"] }
-rustls = "0.20"
-futures-util = "0.3.17"
-http = "0.2.5"
-http-body = "0.4.3"
 log = "0.4"
 anyhow = "1.0"
-bytes = "1.1"
-dyn-clone = "1"
-backoff = { version = "0.3.0", features = ["tokio"] }
-
-[build-dependencies]
-tonic-build = "0.6"
-
-[dev-dependencies]
-prost = "0.9"
-simple_logger = "1.13"

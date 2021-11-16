@@ -38,7 +38,7 @@ pub mod api_gateway;
 ///     let reader = "{\"name\": \"John Doe\"}".as_bytes();
 ///     let mut writer = Vec::<u8>::new();
 ///
-///     legion_aws::lambda::run_lambda_once(handler_fn(handler), reader, &mut writer).await?;
+///     legion_online::aws::lambda::run_lambda_once(handler_fn(handler), reader, &mut writer).await?;
 ///     
 ///     assert_eq!(String::from_utf8_lossy(&writer), "{\"message\":\"Hello, John Doe!\"}");
 ///     
@@ -73,7 +73,7 @@ where
     I: for<'de> serde::Deserialize<'de>,
     O: serde::Serialize,
 {
-    if std::env::var("AWS_LAMBDA_RUNTIME_API").is_err() {
+    if !is_running_as_lambda() {
         log::info!("`AWS_LAMBDA_RUNTIME_API` is not set, running locally and expecting event as JSON on stdin");
         run_lambda_once(handler, std::io::stdin(), &mut std::io::stdout())
             .await
@@ -84,4 +84,8 @@ where
     } else {
         lambda_runtime::run(handler).await
     }
+}
+
+pub fn is_running_as_lambda() -> bool {
+    std::env::var("AWS_LAMBDA_RUNTIME_API").is_ok()
 }

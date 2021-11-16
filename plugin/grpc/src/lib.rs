@@ -62,12 +62,12 @@ use std::net::SocketAddr;
 
 use legion_app::prelude::*;
 use legion_ecs::prelude::*;
-use log::{info, warn};
-use service::multiplexer::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder};
+use legion_online::grpc::{
+    multiplexer_service::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder},
+    Server,
+};
+use log::warn;
 use tonic::transport::NamedService;
-
-pub mod client;
-pub mod service;
 
 pub struct GRPCPluginSettings {
     pub grpc_server_addr: SocketAddr,
@@ -116,13 +116,10 @@ impl GRPCPlugin {
         rt: ResMut<'_, legion_async::TokioAsyncRuntime>,
     ) {
         if let Some(service) = settings.multiplexer_service_builder.build() {
-            let server = tonic::transport::Server::builder().add_service(service);
-            let addr = settings.grpc_server_addr;
+            let server = Server::default().set_listen_address(settings.grpc_server_addr);
 
             rt.start_detached(async move {
-                info!("starting gRPC server on {}", addr);
-
-                match server.serve(addr).await {
+                match server.run(service).await {
                     Ok(_) => Ok(()),
                     Err(e) => {
                         warn!("gRPC server stopped and no longer listening ({})", e);

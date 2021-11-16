@@ -6,12 +6,17 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-anyhow = "1.0"
+anyhow = "1"
+thiserror = "1"
 tokio = { version = "1.13", features = ["full"] }
 hyper = { version = "0.14", features = ["full"] }
+hyper-rustls = "0.22"
+tower = "0.4.8"
+tower-service = "0.3.1"
+tonic = { version = "0.6", features = ["tls-roots"] }
+tonic-web = "0.2"
+rustls = "0.20"
 webbrowser = "0.5"
-hyper-tls = "0.5"
-futures-util = "0.3"
 url = "2.2"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
@@ -22,3 +27,21 @@ reqwest = "0.11"
 ring = "0.16"
 simple_asn1 = "0.5.4"
 async-trait = "0.1"
+bytes = "1.1"
+http = "0.2"
+http-body = "0.4"
+pin-project = "1"
+dyn-clone = "1"
+backoff = { version = "0.3.0", features = ["tokio"] }
+lambda_runtime = { git = "https://github.com/legion-labs/aws-lambda-rust-runtime", branch = "handler-lifefime-fix-v0.4.1" }
+lambda_http = { git = "https://github.com/legion-labs/aws-lambda-rust-runtime", branch = "handler-lifefime-fix-v0.4.1" }
+strum = "0.22"
+strum_macros = "0.22"
+
+[build-dependencies]
+tonic-build = "0.6"
+
+[dev-dependencies]
+prost = "0.9"
+simple_logger = "1.13"
+serial_test = "0.5"
