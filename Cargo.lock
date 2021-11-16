@@ -3683,7 +3683,9 @@ dependencies = [
  "legion-app",
  "legion-ecs",
  "legion-graphics-api",
+ "legion-math",
  "legion-pso-compiler",
+ "legion-transform",
  "legion-utils",
  "log",
 ]

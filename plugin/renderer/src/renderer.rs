@@ -4,7 +4,9 @@ use anyhow::Result;
 
 use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
+use legion_math::{EulerRot, Quat};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use legion_transform::components::Transform;
 
 use crate::components::RenderSurface;
 pub struct Renderer {
@@ -146,15 +148,21 @@ impl Renderer {
         transient_descriptor_heap.reset().unwrap();
     }
 
-    pub(crate) fn update(&mut self, q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>) {
+    pub(crate) fn update(
+        &mut self,
+        q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>,
+        transform: &Query<'_, '_, &Transform>,
+    ) {
         let cmd_buffer = self.get_cmd_buffer();
+
+        let transforms = transform.iter().collect::<Vec<&Transform>>();
 
         for mut render_surface in q_render_surfaces.iter_mut() {
             render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
             {
                 let render_pass = &render_surface.test_renderpass;
-                render_pass.render(self, &render_surface, cmd_buffer);
+                render_pass.render(self, &render_surface, cmd_buffer, transforms.as_slice());
             }
         }
     }
@@ -343,7 +351,7 @@ impl TmpRenderPass {
         // Per frame resources
         //
         for _ in 0..renderer.num_render_frames {
-            let vertex_data = [0f32; 15];
+            let vertex_data = [0f32; 12];
 
             let vertex_buffer = device_context
                 .create_buffer(&BufferDef::for_staging_vertex_buffer_data(&vertex_data))
@@ -352,7 +360,7 @@ impl TmpRenderPass {
                 .copy_to_host_visible_buffer(&vertex_data)
                 .unwrap();
 
-            let uniform_data = [0f32; 4];
+            let uniform_data = [0f32; 12];
 
             let uniform_buffer = device_context
                 .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))
@@ -375,7 +383,7 @@ impl TmpRenderPass {
             uniform_buffer_cbvs,
             root_signature,
             pipeline,
-            color: [0f32, 0f32, 0f32, 1.0f32],
+            color: [0f32, 0f32, 0.2f32, 1.0f32],
             speed: 1.0f32,
         }
     }
@@ -385,6 +393,7 @@ impl TmpRenderPass {
         renderer: &Renderer,
         render_surface: &RenderSurface,
         cmd_buffer: &CommandBuffer,
+        transforms: &[&Transform],
     ) {
         let render_frame_idx = renderer.render_frame_idx;
         let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
@@ -392,14 +401,11 @@ impl TmpRenderPass {
         //
         // Update vertices
         //
+
         let vertex_data = [
-            0.0f32,
-            0.5,
-            0.5 - (elapsed_secs.cos() / 2. + 0.5),
-            -0.5,
-            -0.5 + (elapsed_secs.cos() / 2. + 0.5),
-            -0.5,
+            -0.25f32, -0.25, 0.25, -0.25, 0.25, 0.25, -0.25, -0.25, -0.25, 0.25, 0.25, 0.25,
         ];
+
         let vertex_buffer = &self.vertex_buffers[render_frame_idx as usize];
         vertex_buffer
             .copy_to_host_visible_buffer(&vertex_data)
@@ -409,7 +415,9 @@ impl TmpRenderPass {
         // Update vertex color
         //
 
-        let uniform_data = [1.0f32, 0.0, 0.0, 1.0];
+        let uniform_data = [
+            1.0f32, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+        ];
         let uniform_buffer = &self.uniform_buffers[render_frame_idx as usize];
         let uniform_buffer_cbv = &self.uniform_buffer_cbvs[render_frame_idx as usize];
 
@@ -470,12 +478,45 @@ impl TmpRenderPass {
             )
             .unwrap();
 
-        let push_constant_data = [1.0f32, 1.0, 1.0, 1.0];
-        cmd_buffer
-            .cmd_push_constants(&self.root_signature, &push_constant_data)
-            .unwrap();
+        let color_table = [
+            (1.0f32, 0.0f32, 0.0f32),
+            (1.0f32, 1.0f32, 0.0f32),
+            (1.0f32, 0.0f32, 1.0f32),
+            (0.0f32, 0.0f32, 1.0f32),
+            (0.0f32, 1.0f32, 0.0f32),
+            (0.0f32, 1.0f32, 1.0f32),
+        ];
 
-        cmd_buffer.cmd_draw(3, 0).unwrap();
+        let transforms = vec![
+            Transform::from_rotation(Quat::from_euler(
+                EulerRot::XYZ,
+                elapsed_secs.cos() * 180.,
+                elapsed_secs.sin() * std::f32::consts::PI,
+                0.0,
+            )),
+            //Transform::from_xyz(0.0, 0.0, 0.0),
+        ];
+
+        for (index, transform) in transforms.iter().enumerate() {
+            let scale_x = transform.scale.x;
+            let scale_y = transform.scale.y;
+            let scale_z = transform.scale.z;
+            let trans_x = transform.translation.x;
+            let trans_y = transform.translation.y;
+            let trans_z = transform.translation.z;
+
+            let color = color_table[index % color_table.len()];
+            let push_constant_data = [
+                color.0, color.1, color.2, 1.0, trans_x, trans_y, trans_z, 0.0, scale_x, scale_y,
+                scale_z, 1.0,
+            ];
+
+            cmd_buffer
+                .cmd_push_constants(&self.root_signature, &push_constant_data)
+                .unwrap();
+
+            cmd_buffer.cmd_draw(6, 0).unwrap();
+        }
 
         cmd_buffer.cmd_end_render_pass().unwrap();
     }
