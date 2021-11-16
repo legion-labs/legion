@@ -3,15 +3,12 @@ use std::task::{Context, Poll};
 use http::{HeaderMap, HeaderValue, Method, Request, Response, Version};
 use http_body::{combinators::UnsyncBoxBody, Body};
 use log::{debug, warn};
-use tonic::{
-    body::BoxBody,
-    client::GrpcService,
-    codegen::{BoxFuture, StdError},
-};
+use tonic::codegen::{BoxFuture, StdError};
+use tower::Service;
 
 use super::super::consts::{GRPC, GRPC_WEB, PROTOBUF};
 
-use super::{Error, Result};
+use super::Error;
 
 /// A gRPC-Web client wrapper that causes all outgoing `gRPC` requests to be sent as HTTP 1.1
 /// gRPC-Web requests.
@@ -22,25 +19,26 @@ pub struct GrpcWebClient<C> {
 
 use super::{BoxBuf, GrpcWebResponse};
 
-type RequestTransform = fn(Request<BoxBody>) -> Result<Request<BoxBody>>;
+type RequestTransform<ReqBody> = fn(Request<ReqBody>) -> Result<Request<ReqBody>, Error>;
 type ResponseTransform<F> = fn(F) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>;
 
-impl<C> GrpcWebClient<C>
-where
-    C: GrpcService<BoxBody>,
-    C::Future: Send + 'static,
-    C::ResponseBody: Send + 'static,
-    <C::ResponseBody as Body>::Data: Send,
-    <C::ResponseBody as Body>::Error: Into<StdError>,
-{
+impl<C> GrpcWebClient<C> {
     pub fn new(c: C) -> Self {
         Self { inner: c }
     }
 
-    fn forward_request(
+    fn forward_request<ReqBody, ResBody>(
         &mut self,
-        request: Request<BoxBody>,
-    ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error> {
+        request: Request<ReqBody>,
+    ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>
+    where
+        C: Service<Request<ReqBody>, Response = Response<ResBody>>,
+        C::Error: Into<StdError>,
+        C::Future: Send + 'static,
+        ResBody: http_body::Body + Send + 'static,
+        <ResBody as http_body::Body>::Data: Send + 'static,
+        <ResBody as http_body::Body>::Error: Into<StdError> + Send + 'static,
+    {
         let resp = self.inner.call(request);
 
         Box::pin(async move {
@@ -60,9 +58,16 @@ where
         })
     }
 
-    fn get_transform_functions(
+    fn get_transform_functions<ReqBody, ResBody>(
         proto: &str,
-    ) -> Result<(RequestTransform, ResponseTransform<C::Future>)> {
+    ) -> Result<(RequestTransform<ReqBody>, ResponseTransform<C::Future>), Error>
+    where
+        C: Service<Request<ReqBody>, Response = Response<ResBody>>,
+        C::Error: Into<StdError>,
+        C::Future: Send + 'static,
+        ResBody: http_body::Body + Send + 'static,
+        <ResBody as http_body::Body>::Error: Into<StdError> + Send,
+    {
         match proto {
             PROTOBUF => Ok((
                 Self::coerce_request_into_protobuf,
@@ -72,11 +77,18 @@ where
         }
     }
 
-    fn transform_request(
+    fn transform_request<ReqBody, ResBody>(
         &mut self,
-        request: Request<BoxBody>,
+        request: Request<ReqBody>,
         proto: &str,
-    ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error> {
+    ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>
+    where
+        C: Service<Request<ReqBody>, Response = Response<ResBody>>,
+        C::Error: Into<StdError>,
+        C::Future: Send + 'static,
+        ResBody: http_body::Body + Send + 'static,
+        <ResBody as http_body::Body>::Error: Into<StdError> + Send,
+    {
         debug!("transforming gRPC call with protocol `{}`", proto);
 
         let (coerce_request, coerce_response) = match Self::get_transform_functions(proto) {
@@ -95,7 +107,9 @@ where
     /// Transforms a `gRPC` HTTP 2 request into a `gRPC-Web` HTTP 1.1 request.
     ///
     /// We only support `application/grp-web+proto` as a content type for now.
-    fn coerce_request_into_protobuf(mut req: Request<BoxBody>) -> Result<Request<BoxBody>> {
+    fn coerce_request_into_protobuf<ReqBody>(
+        mut req: Request<ReqBody>,
+    ) -> Result<Request<ReqBody>, Error> {
         let content_type = HeaderValue::from_str(&format!("{}+{}", GRPC_WEB, PROTOBUF))
             .map_err(Into::into)
             .map_err(Error::Other)?;
@@ -118,9 +132,16 @@ where
     ///
     /// This functions assumes that the request that caused the specified response was transformed
     /// with `coerce_request`.
-    fn coerce_response_from_protobuf(
+    fn coerce_response_from_protobuf<ReqBody, ResBody>(
         resp: C::Future,
-    ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error> {
+    ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>
+    where
+        C: Service<Request<ReqBody>, Response = Response<ResBody>>,
+        C::Error: Into<StdError>,
+        C::Future: Send + 'static,
+        ResBody: http_body::Body + Send + 'static,
+        <ResBody as http_body::Body>::Error: Into<StdError> + Send,
+    {
         Box::pin(async move {
             let content_type = HeaderValue::from_str(&format!("{}+{}", GRPC, PROTOBUF))
                 .map_err(Into::into)
@@ -142,43 +163,43 @@ where
     }
 }
 
-impl<C> GrpcService<BoxBody> for GrpcWebClient<C>
+impl<C, ReqBody, ResBody> Service<Request<ReqBody>> for GrpcWebClient<C>
 where
-    C: GrpcService<BoxBody>,
+    C: Service<Request<ReqBody>, Response = Response<ResBody>>,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
-    C::ResponseBody: Send + 'static,
-    <C::ResponseBody as Body>::Data: Send,
-    <C::ResponseBody as Body>::Error: Into<StdError>,
+    ResBody: http_body::Body + Send + 'static,
+    <ResBody as http_body::Body>::Data: Send,
+    <ResBody as http_body::Body>::Error: Into<StdError> + Send,
 {
-    type ResponseBody = UnsyncBoxBody<BoxBuf, Error>;
+    type Response = Response<UnsyncBoxBody<BoxBuf, Error>>;
     type Error = Error;
-    type Future = BoxFuture<Response<Self::ResponseBody>, Self::Error>;
+    type Future = BoxFuture<Self::Response, Self::Error>;
 
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<()>> {
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner
             .poll_ready(cx)
             .map_err(Into::into)
             .map_err(Error::Other)
     }
 
-    fn call(&mut self, request: Request<BoxBody>) -> Self::Future {
+    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         use RequestKind::{Grpc, Other};
 
-        match RequestKind::new(request.headers(), request.method(), request.version()) {
+        match RequestKind::new(req.headers(), req.method(), req.version()) {
             Grpc {
                 method: &Method::POST,
                 proto,
-            } => self.transform_request(request, &proto),
+            } => self.transform_request(req, &proto),
             Grpc { method, proto } => {
                 warn!(
                     "refusing to handle gRPC call with invalid method `{}` and protocol `{}`",
                     method, proto
                 );
 
-                self.forward_request(request)
+                self.forward_request(req)
             }
-            Other(..) => self.forward_request(request),
+            Other(..) => self.forward_request(req),
         }
     }
 }

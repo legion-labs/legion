@@ -2,11 +2,11 @@
 
 use std::task::{Context, Poll};
 
-use http::{Request, Uri};
-use http_body::Body;
+use http::{Request, Response, Uri};
 use hyper::client::HttpConnector;
 use hyper_rustls::HttpsConnector;
-use tonic::{body::BoxBody, client::GrpcService, codegen::StdError};
+use tonic::{body::BoxBody, codegen::StdError};
+use tower::Service;
 
 use super::web::client::GrpcWebClient as GrpcWebClientImpl;
 
@@ -56,16 +56,14 @@ impl GrpcWebClient {
     }
 }
 
-impl<C, ReqBody> GrpcService<ReqBody> for GenericGrpcClient<C>
+impl<C, ReqBody, ResBody> Service<Request<ReqBody>> for GenericGrpcClient<C>
 where
-    C: GrpcService<ReqBody>,
+    C: Service<Request<ReqBody>, Response = Response<ResBody>>,
     C::Error: Into<StdError>,
-    C::Future: Send + 'static,
-    C::ResponseBody: Send + 'static,
-    <C::ResponseBody as Body>::Data: Send,
-    <C::ResponseBody as Body>::Error: Into<StdError>,
+    ResBody: http_body::Body + Send + 'static,
+    <ResBody as http_body::Body>::Error: Into<StdError> + Send,
 {
-    type ResponseBody = C::ResponseBody;
+    type Response = C::Response;
     type Error = C::Error;
     type Future = C::Future;
 
