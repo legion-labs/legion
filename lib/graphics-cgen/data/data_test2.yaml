@@ -46,4 +46,3 @@
     pushconstants : 
       - { name : "a", type : "Float1" }
       - { name : "b", type : "LayoutA" }
-

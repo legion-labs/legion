@@ -4,6 +4,7 @@ use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct YamlInclude {
@@ -13,7 +14,7 @@ struct YamlInclude {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct YamlStructMember {
     #[serde(rename = "type")]
-    pub typ: String,
+    pub ty: String,
     pub name: String,
 }
 
@@ -66,13 +67,13 @@ enum YamlPrimitive {
 struct YamlModel ( Option<Vec<YamlPrimitive>> );
 
 
-pub fn from_yaml(file_path: &Path) -> anyhow::Result<Box<Model>> {
+pub fn from_yaml(file_path: &Path) -> anyhow::Result<Arc<Model>> {
 
-    let mut model = Box::new(Model::new());    
+    let mut model = Model::new();    
 
     process_yaml_model(&mut model, &file_path)?;
 
-    Ok(model)
+    Ok(Arc::new(model))
 }
 
 fn process_yaml_model(model: &mut Model, file_path: &Path) -> anyhow::Result<()> {    
@@ -129,11 +130,11 @@ fn process_yaml_struct(model : &mut Model, yaml_struct : &YamlStruct) -> anyhow:
     let mut builder = StructBuilder::new(model, &yaml_struct.name);
     for mb in &yaml_struct.members {
         builder = builder
-            .add_member(&mb.name, &mb.typ)?;
+            .add_member(&mb.name, &mb.ty)?;
     }
-
     let product = builder.build()?;
-    model.add_struct(product)?;               
+
+    model.add( CGenType::Struct(product))?;
 
     Ok(())
 }
@@ -177,7 +178,7 @@ fn process_yaml_descriptorset(model : &mut Model, yaml_ds : &YamlDescriptorSet) 
     }
 
     let product = builder.build()?;
-    model.add_descriptorset(product)?;
+    model.add( product)?;
 
     Ok(())
 }
@@ -194,7 +195,7 @@ fn process_yaml_pipelinelayout(model : &mut Model, yaml_pl : &YamlPipelineLayout
     }
 
     let product = builder.build()?;
-    model.add_pipelinelayout(product)?;
+    model.add(product)?;
 
     Ok(())
 }
@@ -204,10 +205,8 @@ fn load_yaml_file(file_path: &Path) -> Result<YamlModel> {
     if !file_path.is_file() {
         return Err(anyhow!("Invalid file path {}", file_path.display()));    
     }
-
     let file_content = std::fs::read_to_string(&file_path)
         .context(format!("Failed to load {}", file_path.display()))?;        
     let result: YamlModel = serde_yaml::from_str(&file_content).context(format!("Failed to parse {}", file_path.display()))?;
-
     Ok(result)
 }

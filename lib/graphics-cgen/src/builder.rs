@@ -3,7 +3,7 @@ use anyhow::{anyhow, Context, Result};
 
 pub struct StructBuilder<'mdl> {
     mdl: &'mdl Model,
-    product: Struct,
+    product: StructType,
 }
 
 impl<'mdl> StructBuilder<'mdl> {
@@ -11,7 +11,7 @@ impl<'mdl> StructBuilder<'mdl> {
     pub fn new(mdl: &'mdl Model, name: &str) -> Self {        
         StructBuilder {
             mdl,
-            product: Struct::new(name),
+            product: StructType::new(name),
         }
     }
 
@@ -21,29 +21,29 @@ impl<'mdl> StructBuilder<'mdl> {
             .product
             .members
             .iter()
-            .position(|e| &e.name == name)
+            .find(|e| &e.name == name )
             .is_some()
         {
-            return Err(anyhow!(
+            return Err( anyhow!(
                 "Member '{}' already exists in struct '{}'",
                 name,
                 self.product.name
-            ));
+            ) );
         }
         // get cgen type and check its existence if necessary
-        let cgen_type = self.mdl.try_get_type(typename).context(anyhow!(format!(
+        let type_key = typename.into();
+        self.mdl.get::<CGenType> (type_key).context(anyhow!(
             "Member '{}' in struct '{}' has an unknown type '{}'",
             name, self.product.name, typename
-        )))?;
+        ))?;
         // done
         self.product
             .members
-            .push(StructMember::new(name, &cgen_type));
+            .push(StructMember::new(name, type_key));
         Ok(self)
     }
 
-    pub fn build(self) -> Result<Struct> {
-
+    pub fn build(self) -> Result<StructType> {
         Ok(self.product)
     }
 }
@@ -67,13 +67,14 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     }
 
     pub fn add_constantbuffer(self, name: &str, typename: &str) -> Result<Self> {
+        let type_key = typename.into();
         // get cgen type and check its existence if necessary
-        let inner_type = self.mdl.try_get_type(typename).context(anyhow!(format!(
+        self.mdl.get::<CGenType>(type_key).context(anyhow!(        
             "ConstantBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
             name, self.product.name, typename
-        )))?;
+        ))?;
         let def = ConstantBufferDef {
-            inner_type: inner_type,
+            type_key
         };
         let def = DescriptorDef::ConstantBuffer(def);
         self.add_descriptor(name, def)
@@ -103,13 +104,14 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.add_texture2d_internal(name, format, true)
     }
 
-    fn add_structuredbuffer_internal(self, name: &str, typename: &str, uav: bool) -> Result<Self> {
+    fn add_structuredbuffer_internal(self, name: &str, type_name: &str, uav: bool) -> Result<Self> {
+        let type_key = type_name.into();
         // get cgen type and check its existence if necessary
-        let inner_type = self.mdl.try_get_type(typename).context(anyhow!(format!(
+        self.mdl.get::<CGenType>(type_key).context(anyhow!(        
             "StructuredBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
-            name, self.product.name, typename
-        )))?;
-        let def = StructuredBufferDef { inner_type };
+            name, self.product.name, type_name
+        ))?;
+        let def = StructuredBufferDef { type_key };
         let def = if uav {
             DescriptorDef::RWStructuredBuffer(def)
         } else {
@@ -127,21 +129,38 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.add_descriptor(name.clone(), def)
     }
 
-    pub fn add_texture2d_internal(self, name: &str, typename: &str, uav: bool) -> Result<Self> {
-        let inner_type = self.mdl.try_get_type(typename).context(anyhow!(format!(
+    pub fn add_texture2d_internal(self, name: &str, type_name: &str, uav: bool) -> Result<Self> {
+        let type_key = type_name.into();
+        self.mdl.get::<CGenType>(type_key).context(anyhow!(        
             "Texture '{}' in DescriptorSet '{}' has an unknown type '{}'",
-            name, self.product.name, typename
-        )))?;
-        match inner_type {
-            CGenType::Complex(_) => {
-                return Err(anyhow!(format!(
-                    "Inner type '{}'for Texture '{}' in DescriptorSet '{}' is not valid",
-                    typename, name, self.product.name
-                )))
+            name, self.product.name, type_name
+        ))?;
+
+        let ty = self.mdl.get::<CGenType>(type_key).unwrap();
+
+        let valid_type = {
+            match ty {
+                CGenType::Struct(_) => {
+                    false
+                }
+                CGenType::Native(e) => {
+                    match e {
+                        NativeType::Float1 |
+                        NativeType::Float2 |
+                        NativeType::Float3 |
+                        NativeType::Float4 => true,                        
+                    }
+                }
+                
             }
-            CGenType::Float1 | CGenType::Float2 | CGenType::Float3 | CGenType::Float4 => {}
-        };        
-        let def = TextureDef { inner_type };
+        };
+        if !valid_type {
+            return Err(anyhow!(
+                    "Inner type '{}'for Texture '{}' in DescriptorSet '{}' is not valid",
+                type_name, name, self.product.name
+            ))
+            }
+        let def = TextureDef { type_key };
         let ds = if uav {
             DescriptorDef::RWTexture2D(def)
         } else {
@@ -193,8 +212,10 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     }
 
     pub fn add_descriptorset(mut self, name: &str) -> Result<Self> {
+        let ds_key = name.into();
         // check descriptorset exists
-        let ds = self.mdl.descriptorsets().try_get(name);
+        let ds = self.mdl.get::<DescriptorSet>(ds_key);
+        // let ds = self.mdl.descriptorsets().try_get(name);
         if ds.is_none() {
             return Err(anyhow!(
                 "Unknown DescriptorSet '{}' added to PipelineLayout '{}'",
@@ -208,7 +229,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             .product
             .descriptorsets
             .iter()
-            .position(|e| e == name)
+            .position(|e| self.mdl.get::<DescriptorSet>(*e).unwrap().name == name)
             .is_some()
         {
             return Err(anyhow!(
@@ -222,9 +243,8 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             .product
             .descriptorsets
             .iter()
-            .filter(|e| self.mdl.descriptorsets().get(e).unwrap().frequency == ds.frequency)
-            .count()
-            > 0
+            .filter(|e| self.mdl.get::<DescriptorSet>(**e).unwrap().frequency == ds.frequency)
+            .count() > 0
         {
             return Err(anyhow!(
                 "Frequency conflict for DescriptorSet '{}' in PipelineLayout '{}'",
@@ -233,11 +253,11 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             ));
         }
         // done
-        self.product.descriptorsets.push(name.to_owned());
+        self.product.descriptorsets.push(ds_key);
         Ok(self)
     }
 
-    pub fn add_pushconstant(mut self, name: &str, cgen_type: &str) -> Result<Self> {
+    pub fn add_pushconstant(mut self, name: &str, typename: &str) -> Result<Self> {
         // check member uniqueness
         if self
             .product
@@ -253,38 +273,46 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             ));
         }
         // get cgen type and check its existence if necessary
-        let typ = self.mdl.try_get_type(cgen_type).context(anyhow!(format!(
+        let model_key = typename.into();
+        self.mdl.get::<CGenType>(model_key).context(anyhow!(        
             "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
-            cgen_type, name, self.product.name
-        )))?;
+            typename, name, self.product.name
+        ))?;
         // done
         self.product
             .pushconstants
-            .push(PushConstant::new(name, &typ));
+            .push(PushConstant::new(name, model_key));
         Ok(self)
     }
 
     pub fn build(mut self) -> Result<PipelineLayout> {
         // collect descriptorsets
-        let mut descriptorsets : Vec<_> = 
-            self.product.descriptorsets
-            .iter()
-            .map(|ds_name| self.mdl.descriptorsets().get(ds_name).unwrap() )
-            .collect();
+        // let mut descriptorsets : Vec<_> = 
+        //     self.product.descriptorsets
+        //     .iter()
+        //     .map(|ds_id| self.mdl.get::<DescriptorSet>(*ds_id).unwrap() )
+        //     .collect();
         // check descriptors uniqueness
-        let mut all_descriptor_names: Vec<&str> = Vec::new();
-        for ds in &descriptorsets {
-            for d in &ds.descriptors {                
-                if all_descriptor_names.iter().find(|x| d.name == **x ).is_some() {
-                    return Err( anyhow!(format!("Many Descriptors named '{}' detected in PipelineLayout '{}'", d.name, self.product.name)) );
-                }
-                all_descriptor_names.push(d.name.as_str());
-            }
-        }
+        // let mut all_descriptor_names: Vec<&str> = Vec::new();
+        // let x = descriptorsets
+        // .iter()
+        // .map(|ds| self.mdl.get::<DescriptorSet>(*ds)? ).collect();
+
+        // for ds in &descriptorsets {
+        //     for d in &ds.descriptors {
+        //         if all_descriptor_names.iter().find(|x| d.name == **x ).is_some() {
+        //             return Err( anyhow!(format!("Many Descriptors named '{}' detected in PipelineLayout '{}'", d.name, self.product.name)) );
+        //         }
+        //         all_descriptor_names.push(d.name.as_str());
+        //     }
+        // }
 
         // sort by frequency        
-        descriptorsets.sort_by(|a, b| a.frequency.cmp(&b.frequency) );
-        self.product.descriptorsets = descriptorsets.iter().map( |ds| ds.name.clone() ).collect();
+        self.product.descriptorsets
+        .sort_by(|a, b| 
+            self.mdl.get::<DescriptorSet>(*a).unwrap().frequency.cmp(&self.mdl.get::<DescriptorSet>(*b).unwrap().frequency) );
+        // self.product.descriptorsets = descriptorsets.iter().map( |ds| ds.name.clone() ).collect();
+        // self.product.descriptorsets = descriptorsets;
 
         Ok(self.product)
     }

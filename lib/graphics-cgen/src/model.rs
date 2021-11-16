@@ -1,246 +1,508 @@
+#![allow(unsafe_code)]
+
 use anyhow::{anyhow, Result};
-use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
+use std::alloc::Layout;
+use std::any::TypeId;
+use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
+
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+
+use std::mem::forget;
+use std::ptr::{null, NonNull};
 use strum::*;
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub struct ModelKey(u64);
+
+impl From<&str> for ModelKey {
+    fn from(s: &str) -> Self {
+        let mut hasher = DefaultHasher::default();
+        s.hash(&mut hasher);
+        Self(hasher.finish())
+    }
+}
+
 #[derive(Debug)]
+pub struct ModelVec {
+    item_layout: Layout,
+    capacity: usize,
+    len: usize,
+    data: NonNull<u8>,
+    drop_fn: unsafe fn(*mut u8),
+}
+
+impl ModelVec {
+    fn new(item_layout: Layout, drop_fn: unsafe fn(*mut u8)) -> Self {
+        Self {
+            item_layout,
+            capacity: 0,
+            len: 0,
+            data: NonNull::dangling(),
+            drop_fn,
+        }
+    }    
+
+    fn size(&self) -> usize {
+        self.len
+    }
+
+    fn data(&self) -> NonNull<u8> {
+        self.data
+    }
+
+    fn add(&mut self, value: *const u8) -> usize {
+        self.reserve(1);
+        let index = self.len;
+        let ptr = self.get_unchecked(index);
+        unsafe {
+            std::ptr::copy_nonoverlapping(value, ptr, self.item_layout.size());
+        }
+        self.len += 1;
+        index
+    }
+
+    fn get_object_ref(&self, index: usize) -> *const u8 {
+        assert!(index < self.size());
+        self.get_unchecked(index)
+    }
+
+    fn reserve(&mut self, additionnal: usize) {
+        assert!(additionnal > 0);
+
+        let needed_capacity = self.len + additionnal;
+        if needed_capacity > self.capacity {
+            let additionnal = needed_capacity - self.capacity;
+            let additionnal = (additionnal + 1024 - 1) & !(1024 - 1);
+            self.grow(additionnal);
+    }
+
+        assert!(self.len + additionnal <= self.capacity);
+    }
+
+    fn grow(&mut self, additionnal: usize) {
+        assert!(additionnal > 0);
+
+        let new_capacity = self.capacity + additionnal;
+        let new_layout = array_layout(&self.item_layout, new_capacity);
+        let new_data = unsafe {
+            if self.capacity == 0 {
+                std::alloc::alloc(new_layout)
+            } else {
+                std::alloc::realloc(
+                    self.data.as_ptr(),
+                    array_layout(&self.item_layout, self.capacity),
+                    new_capacity,
+                )
+            }
+        };
+        self.data = NonNull::new(new_data).unwrap();
+        self.capacity = new_capacity;
+    }
+
+    fn get_unchecked(&self, index: usize) -> *mut u8 {
+        assert!(index < self.capacity);
+        let ptr = self.data.as_ptr();
+        unsafe { ptr.add(index * self.item_layout.size()) }
+        }
+}
+
+impl Drop for ModelVec {
+    fn drop(&mut self) {
+        let drop_fn = self.drop_fn;
+        for i in 0..self.size() {
+            unsafe {
+                drop_fn( self.get_unchecked(i));
+            }
+        }        
+    }
+}
+
+fn array_layout(item_layout: &Layout, capacity: usize) -> Layout {
+    let align = item_layout.align();
+    let size = item_layout.size();
+    let aligned_size = (size + align - 1) & !(align - 1);
+    Layout::from_size_align(aligned_size * capacity, item_layout.align()).unwrap()
+}
+
+pub trait ModelObject: 'static + Clone + Sized {
+    fn key(&self) -> ModelKey;
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ModelObjectId {
+    type_index: u32,
+    object_index: u32,
+}
+
+impl ModelObjectId {
+    fn new(type_index: u32, object_index: u32) -> Self {
+        Self {
+            type_index,
+            object_index,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Model {
-    structs: ModelContainer<Struct>,
-    descriptorsets: ModelContainer<DescriptorSet>,
-    pipelinelayouts: ModelContainer<PipelineLayout>,
+    model_vecs: Vec<ModelVec>,
+    type_map: HashMap<TypeId, usize, fxhash::FxBuildHasher>,
+    key_map: HashMap<ModelKey, ModelObjectId, fxhash::FxBuildHasher>,
+}
+
+pub struct ModelVecIter<'a, T: ModelObject> {
+    cur_ptr: *const T,
+    end_ptr: *const T,
+    _marker: PhantomData<&'a ModelVec>,
+}
+
+impl<'a, T: ModelObject> Default for ModelVecIter<'a, T> {
+    fn default() -> Self {
+        Self {
+            cur_ptr: null(),
+            end_ptr: null(),
+            _marker: PhantomData::default(),
+        }
+    }
+}
+
+impl<'a, T: ModelObject> ModelVecIter<'a, T> {
+    fn new(model_vec: &'a ModelVec) -> Self {
+        let cur_ptr = model_vec.data().cast::<T>().as_ptr();
+        let end_ptr = unsafe { cur_ptr.add(model_vec.size()) };
+        Self {
+            cur_ptr,
+            end_ptr,
+            _marker: PhantomData::default(),
+        }
+                }
+}
+
+impl<'a, T: ModelObject> Iterator for ModelVecIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cur_ptr < self.end_ptr {
+            let cur_ptr = self.cur_ptr;
+            let cur_ref = unsafe { &*cur_ptr };
+            self.cur_ptr = unsafe { cur_ptr.add(1) };
+            return Some(cur_ref);
+        }
+        None
+    }
 }
 
 impl Model {
     pub fn new() -> Self {
-        Model {
-            structs: ModelContainer::new(),
-            descriptorsets: ModelContainer::new(),
-            pipelinelayouts: ModelContainer::new(),
-        }
-    }    
+        let mut ret = Self::default();
 
-    pub fn add_struct(&mut self, def: Struct) -> Result<()> {
-        self.structs.add(def.name.clone(), def)?;
-        Ok(())
-    }
+        ret.add(CGenType::Native(NativeType::Float1)).unwrap();
+        ret.add(CGenType::Native(NativeType::Float2)).unwrap();
+        ret.add(CGenType::Native(NativeType::Float3)).unwrap();
+        ret.add(CGenType::Native(NativeType::Float4)).unwrap();
 
-    pub fn structs(&self) -> &ModelContainer<Struct> {
-        &self.structs
-    }
-
-    pub fn add_descriptorset(&mut self, def: DescriptorSet) -> Result<()> {
-        self.descriptorsets.add(def.name.clone(), def)?;
-        Ok(())
-    }
-
-    pub fn descriptorsets(&self) -> &ModelContainer<DescriptorSet> {
-        &self.descriptorsets
-    }
-
-    pub fn add_pipelinelayout(&mut self, def: PipelineLayout) -> Result<()> {
-        self.pipelinelayouts.add(def.name.clone(), def)?;
-        Ok(())
-    }
-
-    pub fn pipelinelayouts(&self) -> &ModelContainer<PipelineLayout> {
-        &self.pipelinelayouts
-    }
-
-    pub fn try_get_type(&self, typename: &str) -> Option<CGenType> {
-        let cgen_type = CGenType::from_str(typename).unwrap();
-
-        if !self.contains_type(&cgen_type) {
-            return None;
-        }
-
-        Some(cgen_type)
-    }
-
-    pub fn contains_type(&self, typ: &CGenType) -> bool {
-        let result = if let CGenType::Complex(c) = typ {
-            self.structs.contains(c)
-        } else {
-            true
-        };
-
-        result
-    }
-
-    pub fn get_struct_type_dependencies(&self, id: &str) -> Result<HashSet<CGenType>> {
-        let s = self.structs.get(id)?;
-
-        let result = s
-            .members
-            .iter()
-            .filter_map(|m| {
-                if let CGenType::Complex(_) = &m.cgen_type {
-                    Some(m.cgen_type.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        Ok(result)
-    }
-
-    pub fn get_descriptorset_type_dependencies(&self, id: &str) -> Result<HashSet<CGenType>> {
-        let mut result = HashSet::<CGenType>::new();
-
-        let ds = self.descriptorsets.get(id)?;
-
-        for d in &ds.descriptors {
-            match &d.def {
-                DescriptorDef::ConstantBuffer(def) => {
-                    result.insert(def.inner_type.clone());
-                    if let CGenType::Complex(t) = &def.inner_type {
-                        result.extend(self.get_struct_type_dependencies(t)?);
-                        // for x in t.drain() {
-                        //     result.insert(x);
-                        // }
+        ret
                     }
+
+    pub fn add<T: ModelObject>(&mut self, value: T) -> Result<ModelObjectId> {
+        let key = value.key();
+        if self.key_map.contains_key(&key) {
+            return Err(anyhow!("Object not unique"));
                 }
-                DescriptorDef::StructuredBuffer(def) | DescriptorDef::RWStructuredBuffer(def) => {
-                    result.insert(def.inner_type.clone());
-                    if let CGenType::Complex(t) = &def.inner_type {
-                        result.extend(self.get_struct_type_dependencies(t)?);
+        let type_index = self.get_or_create_container::<T>();
+        let value_ptr = &value as *const T as *const u8;
+        let object_index = self.get_container_by_index_mut(type_index).add(value_ptr);
+        forget(value);
+        let object_id = ModelObjectId::new(
+            u32::try_from(type_index).unwrap(),
+            u32::try_from(object_index).unwrap(),
+        );
+        self.key_map.insert(key, object_id);
+
+        Ok(object_id)
                     }
+
+    pub fn objects<T: ModelObject>(&self) -> Option<&ModelVec> {
+        let container = self.get_container::<T>()?;
+        Some(container)
                 }
-                DescriptorDef::Sampler
-                | DescriptorDef::ByteAddressBuffer
-                | DescriptorDef::RWByteAddressBuffer
-                | DescriptorDef::Texture2D(_)
-                | DescriptorDef::RWTexture2D(_) => {}
+
+    pub fn object_iter<T: ModelObject>(&self) -> Option<ModelVecIter<'_, T>> {
+        let container = self.get_container::<T>()?;
+        Some(ModelVecIter::new(container))
             }
+
+    pub fn get<T: ModelObject>(&self, key: ModelKey) -> Option<&T> {
+        let id = self.key_map.get(&key).copied()?;
+        let container_index = self.get_container_index::<T>()?;
+        assert!(id.type_index as usize == container_index);
+        let container = self.get_container_by_index(container_index);
+        let ptr = container.get_object_ref(id.object_index as usize) as *const T;
+        unsafe { ptr.as_ref() }
         }
 
-        Ok(result)
+    // pub fn add_struct(&mut self, def: Struct) -> Result<()> {
+    //     self.structs.add(def.name.clone(), def)?;
+    //     Ok(())
+    // }
+
+    // pub fn structs(&self) -> &ModelContainer<Struct> {
+    //     &self.structs
+    // }
+
+    // pub fn add_descriptorset(&mut self, def: DescriptorSet) -> Result<()> {
+    //     self.descriptorsets.add(def.name.clone(), def)?;
+    //     Ok(())
+    // }
+
+    // pub fn descriptorsets(&self) -> &ModelContainer<DescriptorSet> {
+    //     &self.descriptorsets
+    // }
+
+    // pub fn add_pipelinelayout(&mut self, def: PipelineLayout) -> Result<()> {
+    //     self.pipelinelayouts.add(def.name.clone(), def)?;
+    //     Ok(())
+    // }
+
+    // pub fn pipelinelayouts(&self) -> &ModelContainer<PipelineLayout> {
+    //     &self.pipelinelayouts
+    // }
+
+    // pub fn try_get_type(&self, typename: &str) -> Option<CGenType> {
+    //     let cgen_type = CGenType::from_str(typename).unwrap();
+
+    //     if !self.contains_type(&cgen_type) {
+    //         return None;
+    //     }
+
+    //     Some(cgen_type)
+    // }
+
+    // pub fn contains_type(&self, typ: &CGenType) -> bool {
+    //     let result = if let CGenType::Complex(c) = typ {
+    //         self.structs.contains(c)
+    //     } else {
+    //         true
+    //     };
+
+    //     result
+    // }
+
+    // pub fn get_descriptorset_type_dependencies(&self, id: &str) -> Result<HashSet<CGenType>> {
+    //     let mut result = HashSet::<CGenType>::new();
+
+    //     let ds = self.descriptorsets.get(id)?;
+
+    //     for d in &ds.descriptors {
+    //         match &d.def {
+    //             DescriptorDef::ConstantBuffer(def) => {
+    //                 result.insert(def.inner_type.clone());
+    //                 if let CGenType::Complex(t) = &def.inner_type {
+    //                     result.extend(self.get_struct_type_dependencies(t)?);
+    //                     // for x in t.drain() {
+    //                     //     result.insert(x);
+    //                     // }
+    //                 }
+    //             }
+    //             DescriptorDef::StructuredBuffer(def) | DescriptorDef::RWStructuredBuffer(def) => {
+    //                 result.insert(def.inner_type.clone());
+    //                 if let CGenType::Complex(t) = &def.inner_type {
+    //                     result.extend(self.get_struct_type_dependencies(t)?);
+    //                 }
+    //             }
+    //             DescriptorDef::Sampler
+    //             | DescriptorDef::ByteAddressBuffer
+    //             | DescriptorDef::RWByteAddressBuffer
+    //             | DescriptorDef::Texture2D(_)
+    //             | DescriptorDef::RWTexture2D(_) => {}
+    //         }
+    //     }
+
+    //     Ok(result)
+    // }
+
+    // pub fn get_pipelinelayout_type_dependencies(&self, id: &str) -> Result<HashSet<CGenType>> {
+    //     let mut result = HashSet::<CGenType>::new();
+
+    //     let pl = self.pipelinelayouts.get(id)?;
+
+    //     for ds_name in pl.descriptorsets.iter() {
+    //         result.extend(self.get_descriptorset_type_dependencies(&ds_name)?);
+    //     }
+
+    //     Ok(result)
+    // }
+
+    fn get_or_create_container<T: ModelObject>(&mut self) -> usize {
+        unsafe fn drop_ptr<T>(x: *mut u8) {
+            x.cast::<T>().drop_in_place();
+        }
+        let type_id = TypeId::of::<T>();
+        let type_index = self.type_map.entry(type_id).or_insert_with(|| {
+            let index = self.model_vecs.len();
+            self.model_vecs
+                .push(ModelVec::new(Layout::new::<T>(), drop_ptr::<T>));
+            index
+        });
+        let type_index = *type_index;
+        type_index
     }
 
-    pub fn get_pipelinelayout_type_dependencies(&self, id: &str) -> Result<HashSet<CGenType>> {
-        let mut result = HashSet::<CGenType>::new();
+    fn get_container_index<T: ModelObject>(&self) -> Option<usize> {
+        let type_id = TypeId::of::<T>();
+        self.type_map.get(&type_id).copied()
+    }
 
-        let pl = self.pipelinelayouts.get(id)?;
+    fn get_container<T: ModelObject>(&self) -> Option<&ModelVec> {
+        let index = self.get_container_index::<T>()?;
+        Some(self.get_container_by_index(index))
+    }
 
-        for ds_name in pl.descriptorsets.iter() {
-            result.extend(self.get_descriptorset_type_dependencies(&ds_name)?);
+    fn get_container_by_index(&self, index: usize) -> &ModelVec {
+        &self.model_vecs[index]
         }
 
-        Ok(result)
+    fn get_container_by_index_mut(&mut self, index: usize) -> &mut ModelVec {
+        &mut self.model_vecs[index]
     }
 }
 
-#[derive(Debug)]
-struct ModelContainerInner<T> {
+#[derive(Debug, Default)]
+pub struct ModelContainer<T> {
     objects: HashMap<String, T>,
 }
 
-#[derive(Debug)]
-pub struct ModelContainer<T> {
-    inner: Box<ModelContainerInner<T>>,
-}
-
-impl<T> ModelContainer<T> {
+impl<T: Default> ModelContainer<T> {
     pub fn new() -> Self {
-        ModelContainer {
-            inner: Box::new(ModelContainerInner{
-                objects: HashMap::new(),
-            })
-        }
+        Self::default()
     }
 
     pub fn add(&mut self, id: String, entry: T) -> anyhow::Result<()> {
-        if self.inner.objects.contains_key(&id) {
+        if self.objects.contains_key(&id) {
             return Err(anyhow!("Object '{}' already inserted.", id));
         }
-        self.inner.objects.insert(id, entry);
+        self.objects.insert(id, entry);
 
         Ok(())
     }
 
     pub fn contains(&self, id: &str) -> bool {
-        self.inner.objects.contains_key(id)
+        self.objects.contains_key(id)
     }
 
     pub fn get(&self, id: &str) -> Result<&T> {
-        match self.inner.objects.get(id) {
+        match self.objects.get(id) {
             Some(o) => Ok(o),
             None => Err(anyhow!("Unknown object '{}'", id)),
         }
     }
 
     pub fn try_get(&self, id: &str) -> Option<&T> {
-        self.inner.objects.get(id)
+        self.objects.get(id)
     }
 
     pub fn iter(&self) -> std::collections::hash_map::Values<'_, String, T> {
-        self.inner.objects.values()
+        self.objects.values()
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum CGenType {
+#[derive(Debug, Clone, Copy, EnumString, AsStaticStr)]
+pub enum NativeType {
     Float1,
     Float2,
     Float3,
     Float4,
-    Complex(String),
 }
 
-impl FromStr for CGenType {
-    type Err = ();
+// #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+// pub enum CGenType {
+//     Float1,
+//     Float2,
+//     Float3,
+//     Float4,
+//     Complex(String),
+// }
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let result = match s {
-            "Float1" => CGenType::Float1,
-            "Float2" => CGenType::Float2,
-            "Float3" => CGenType::Float3,
-            "Float4" => CGenType::Float4,
-            _ => CGenType::Complex(s.to_owned()),
-        };
+// impl FromStr for CGenType {
+//     type Err = ();
 
-        Ok(result)
-    }
-}
-impl ToString for CGenType {
-    fn to_string(&self) -> String {
-        let type_str = match self {
-            CGenType::Float1 => "Float1",
-            CGenType::Float2 => "Float2",
-            CGenType::Float3 => "Float3",
-            CGenType::Float4 => "Float4",
-            CGenType::Complex(t) => t,
-        };
-        type_str.to_owned()
-    }
-}
+//     fn from_str(s: &str) -> Result<Self, Self::Err> {
+//         let result = match s {
+//             "Float1" => CGenType::Float1,
+//             "Float2" => CGenType::Float2,
+//             "Float3" => CGenType::Float3,
+//             "Float4" => CGenType::Float4,
+//             _ => CGenType::Complex(s.to_owned()),
+//         };
 
-#[derive(Debug)]
+//         Ok(result)
+//     }
+// }
+// impl ToString for CGenType {
+//     fn to_string(&self) -> String {
+//         let type_str = match self {
+//             CGenType::Float1 => "Float1",
+//             CGenType::Float2 => "Float2",
+//             CGenType::Float3 => "Float3",
+//             CGenType::Float4 => "Float4",
+//             CGenType::Complex(t) => t,
+//         };
+//         type_str.to_owned()
+//     }
+// }
+
+#[derive(Debug, Clone)]
 pub struct StructMember {
-    pub cgen_type: CGenType,
     pub name: String,
+    pub type_key: ModelKey,
 }
 
 impl StructMember {
-    pub fn new(name: &str, cgen_type: &CGenType) -> Self {
+    pub fn new(name: &str, type_key: ModelKey) -> Self {
         StructMember {
             name: name.to_owned(),
-            cgen_type: cgen_type.clone(),
+            type_key,
         }
     }
 }
 
-#[derive(Debug)]
-pub struct Struct {
+#[derive(Debug, Clone)]
+pub enum CGenType {
+    Native(NativeType),
+    Struct(StructType),
+}
+
+impl CGenType {
+    pub fn struct_type(&self) -> &StructType {
+        match self {
+            CGenType::Struct(e) => e,
+            _ => panic!("Invalid access"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StructType {
     pub name: String,
     pub members: Vec<StructMember>,
 }
 
-impl Struct {
+impl StructType {
     pub fn new(name: &str) -> Self {
-        Struct {
+        Self {
             name: name.to_owned(),
             members: Vec::new(),
+        }
+    }
+}
+
+impl ModelObject for CGenType {
+    fn key(&self) -> ModelKey {
+        match self {
+            CGenType::Native(e) => ModelKey::from(e.as_static()),
+            CGenType::Struct(e) => ModelKey::from(e.name.as_str()),
         }
     }
 }
@@ -251,9 +513,9 @@ pub enum TextureFormat {
     R8G8B8A8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct TextureDef {
-    pub inner_type: CGenType,
+    pub type_key: ModelKey,
 }
 
 #[derive(Debug)]
@@ -271,17 +533,17 @@ pub enum DescriptorType {
     RWTexture2D,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ConstantBufferDef {
-    pub inner_type: CGenType,
+    pub type_key: ModelKey,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct StructuredBufferDef {
-    pub inner_type: CGenType,
+    pub type_key: ModelKey,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DescriptorDef {
     // Sampler
     Sampler,
@@ -296,13 +558,13 @@ pub enum DescriptorDef {
     RWTexture2D(TextureDef),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Descriptor {
     pub name: String,
     pub def: DescriptorDef,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Default)]
 pub struct DescriptorSet {
     pub name: String,
     pub frequency: u32,
@@ -319,25 +581,31 @@ impl DescriptorSet {
     }
 }
 
-#[derive(Debug)]
+impl ModelObject for DescriptorSet {
+    fn key(&self) -> ModelKey {
+        ModelKey::from(self.name.as_str())
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct PushConstant {
-    pub cgen_type: CGenType,
     pub name: String,
+    pub type_key: ModelKey,
 }
 
 impl PushConstant {
-    pub fn new(name: &str, cgen_type: &CGenType) -> Self {
+    pub fn new(name: &str, type_key: ModelKey) -> Self {
         PushConstant {
             name: name.to_owned(),
-            cgen_type: cgen_type.clone(),
+            type_key,
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone)]
 pub struct PipelineLayout {
     pub name: String,
-    pub descriptorsets: Vec<String>,
+    pub descriptorsets: Vec<ModelKey>,
     pub pushconstants: Vec<PushConstant>,
 }
 
@@ -348,5 +616,11 @@ impl PipelineLayout {
             descriptorsets: Vec::new(),
             pushconstants: Vec::new(),
         }
+    }
+}
+
+impl ModelObject for PipelineLayout {
+    fn key(&self) -> ModelKey {
+        ModelKey::from(self.name.as_str())
     }
 }
