@@ -3135,8 +3135,7 @@ dependencies = [
 [[package]]
 name = "lambda_http"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f10599c844cf7584c0dfbf6030df7c174cd5c91f2515412f8875de2a0f2b3fc5"
+source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?branch=handler-lifefime-fix-v0.4.1#0bd6aebb651059d622b04aba66e48fb25f37d846"
 dependencies = [
  "base64",
  "http",
@@ -3149,8 +3148,7 @@ dependencies = [
 [[package]]
 name = "lambda_runtime"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17ed88d8421123f9546cbd0c4235386803859c4a20b80a6eb613a652b486df8e"
+source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?branch=handler-lifefime-fix-v0.4.1#0bd6aebb651059d622b04aba66e48fb25f37d846"
 dependencies = [
  "async-stream",
  "bytes",
