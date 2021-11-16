@@ -1,4 +1,5 @@
 use crate::{Error, LockContext, TransactionOperation};
+use async_trait::async_trait;
 use legion_data_runtime::ResourceId;
 
 pub(crate) struct UpdatePropertyOperation {
@@ -19,8 +20,9 @@ impl UpdatePropertyOperation {
     }
 }
 
+#[async_trait]
 impl TransactionOperation for UpdatePropertyOperation {
-    fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         let resource_handle = ctx
             .loaded_resource_handles
             .get(self.resource_id)
@@ -40,7 +42,7 @@ impl TransactionOperation for UpdatePropertyOperation {
         Ok(())
     }
 
-    fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
+    async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         if let Some(old_value) = &self.old_value {
             let handle = ctx
                 .loaded_resource_handles
