@@ -2360,7 +2360,6 @@ dependencies = [
  "legion-data-codegen",
  "legion-data-offline",
  "legion-data-runtime",
- "legion-data-transaction",
  "legion-graphics-data",
  "legion-math",
  "legion-utils",
@@ -2372,7 +2371,6 @@ dependencies = [
 name = "generic_data_runtime"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bincode",
  "lazy_static",
  "legion-data-codegen",
@@ -3374,7 +3372,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "thiserror",
  "tokio",
  "uuid",
 ]
