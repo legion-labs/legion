@@ -17,7 +17,8 @@ pub struct GrpcWebClient<C> {
     inner: C,
 }
 
-use super::{BoxBuf, GrpcWebResponse};
+use super::super::buf::BoxBuf;
+use super::GrpcWebResponse;
 
 type RequestTransform<ReqBody> = fn(Request<ReqBody>) -> Result<Request<ReqBody>, Error>;
 type ResponseTransform<F> = fn(F) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>;

@@ -197,6 +197,7 @@ async fn authenticate(
         .authenticator()
         .get_user_info(&access_token)
         .await
+        .map_err(Into::into)
 }
 
 #[legion_tauri_command]
