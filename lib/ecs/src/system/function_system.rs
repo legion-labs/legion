@@ -429,7 +429,7 @@ pub trait SystemParamFunction<In, Out, Param: SystemParam, Marker>: Send + Sync 
 macro_rules! impl_system_function {
     ($($param: ident),*) => {
 
-        paste! {
+        paste! { // Note: the paste! macro is used to combine identifiers using the "[<i1 i2 i3>]" -> "i1i2i3" syntax
             #[allow(non_camel_case_types)]
             pub trait [<AsyncSystemFn $(_$param)*>]<'a, Out, $($param: SystemParam),*> {
                 type AsyncResult: Future<Output = Out> + Send + 'a;
@@ -476,6 +476,26 @@ macro_rules! impl_system_function {
                 }
                 let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
                 call_inner(self, $($param),*).await
+            }
+        }
+
+        paste! { // Note: the paste! macro is used to combine identifiers using the "[<i1 i2 i3>]" -> "i1i2i3" syntax
+            #[allow(non_camel_case_types)]
+            pub trait [<AsyncSystemFn_Input $(_$param)*>]<'a, Input, Out, $($param: SystemParam),*> {
+                type AsyncResult: Future<Output = Out> + Send + 'a;
+                fn call_async(&mut self, input: Input, $($param: $param,)*) -> Self::AsyncResult;
+            }
+
+            impl<'a, Input, Out, Func, AsyncResult, $($param: SystemParam),*> [<AsyncSystemFn_Input $(_$param)*>]<'a, Input, Out, $($param,)*> for Func
+            where
+                Func: FnMut(In<Input>, $($param),*) -> AsyncResult
+                    + FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> AsyncResult,
+                AsyncResult: Future<Output = Out> + Send + 'a,
+            {
+                type AsyncResult = AsyncResult;
+                fn call_async(&mut self, input: Input, $($param: $param,)*) -> Self::AsyncResult {
+                    self(In(input), $($param,)*)
+                }
             }
         }
 
