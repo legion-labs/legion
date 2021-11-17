@@ -5,23 +5,6 @@ authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[[bin]]
-name = "compiler-tex2bin"
-path = "src/compiler-tex2bin.rs"
-doc = false
-
-[[bin]]
-name = "compiler-psd2tex"
-path = "src/compiler-psd2tex.rs"
-doc = false
-
-[[bin]]
-name = "compiler-material"
-path = "src/compiler-material.rs"
-doc = false
-
 [dependencies]
 legion-data-offline = { path = "../data-offline" }
 legion-data-runtime = { path = "../data-runtime" }

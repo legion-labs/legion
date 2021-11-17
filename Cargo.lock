@@ -1141,6 +1141,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiler-material"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "legion-graphics-runtime",
+]
+
+[[package]]
+name = "compiler-psd2tex"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compiler-tex2bin"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "legion-graphics-runtime",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

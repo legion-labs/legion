@@ -1,0 +1,13 @@
+[package]
+name = "compiler-material"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+legion-data-offline = { path = "../../lib/data-offline" }
+legion-data-runtime = { path = "../../lib/data-runtime" }
+legion-graphics-runtime = { path = "../../lib/graphics-runtime" }
+legion-graphics-offline = { path = "../../lib/graphics-offline" }
+legion-data-compiler = { path = "../../lib/data-compiler" }
