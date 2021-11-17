@@ -921,11 +921,11 @@ mod tests {
         world.get_resource_mut::<Vec<usize>>().unwrap().push(TAG);
     }
 
-    async fn make_parallel<const TAG: usize>(mut resource: ResMut<'_, Vec<usize>>) {
+    fn make_parallel<const TAG: usize>(mut resource: ResMut<'_, Vec<usize>>) {
         resource.push(TAG);
     }
 
-    async fn every_other_time(mut has_ran: Local<'_, bool>) -> ShouldRun {
+    fn every_other_time(mut has_ran: Local<'_, bool>) -> ShouldRun {
         *has_ran = !*has_ran;
         if *has_ran {
             ShouldRun::Yes
@@ -1342,7 +1342,7 @@ mod tests {
             .with_system(make_parallel::<2>.label("2"))
             .with_system(make_parallel::<1>.after("0").before("2"))
             .with_system(make_parallel::<0>.label("0"))
-            .with_system(make_parallel(4).label("4"))
+            .with_system(make_parallel::<4>.label("4"))
             .with_system(make_parallel::<3>.after("2").before("4"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
@@ -1374,7 +1374,7 @@ mod tests {
             .with_system(make_parallel::<2>.after("01").label("2"))
             .with_system(make_parallel::<1>.label("01").after("0"))
             .with_system(make_parallel::<0>.label("01").label("0"))
-            .with_system(make_parallel(4).label("4"))
+            .with_system(make_parallel::<4>.label("4"))
             .with_system(make_parallel::<3>.after("2").before("4"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
@@ -1389,7 +1389,7 @@ mod tests {
             .with_system(make_parallel::<2>.label("234").label("2"))
             .with_system(make_parallel::<1>.before("234").after("0"))
             .with_system(make_parallel::<0>.label("0"))
-            .with_system(make_parallel(4).label("234").label("4"))
+            .with_system(make_parallel::<4>.label("234").label("4"))
             .with_system(make_parallel::<3>.label("234").after("2").before("4"));
         stage.run(&mut world);
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
@@ -1420,7 +1420,7 @@ mod tests {
                     .before("2"),
             )
             .with_system(make_parallel::<0>.label("0").before("1"))
-            .with_system(make_parallel(4).label("4").after("3"))
+            .with_system(make_parallel::<4>.label("4").after("3"))
             .with_system(make_parallel::<3>.label("3").after("2").before("4"));
         stage.run(&mut world);
         for container in &stage.parallel {
@@ -1443,7 +1443,7 @@ mod tests {
             .with_system_set(
                 SystemSet::new()
                     .with_system(make_parallel::<0>.label("0"))
-                    .with_system(make_parallel(4).label("4"))
+                    .with_system(make_parallel::<4>.label("4"))
                     .with_system(make_parallel::<3>.after("2").before("4")),
             )
             .with_system(make_parallel::<1>.after("0").before("2"));
@@ -1555,7 +1555,7 @@ mod tests {
                     .after("2")
                     .with_run_criteria("every other time".pipe(eot_piped.system()).label("piped")),
             )
-            .with_system(make_parallel(4).after("3").with_run_criteria("piped"));
+            .with_system(make_parallel::<4>.after("3").with_run_criteria("piped"));
         for _ in 0..4 {
             stage.run(&mut world);
         }
@@ -1656,9 +1656,9 @@ mod tests {
                 .collect()
         }
 
-        async fn empty() {}
-        async fn resource(_: ResMut<'_, usize>) {}
-        async fn component(_: Query<'_, '_, &mut W<f32>>) {}
+        fn empty() {}
+        fn resource(_: ResMut<'_, usize>) {}
+        fn component(_: Query<'_, '_, &mut W<f32>>) {}
 
         let mut world = World::new();
 
@@ -2027,7 +2027,7 @@ mod tests {
 
     #[test]
     fn archetype_update_single_executor() {
-        async fn query_count_system(
+        fn query_count_system(
             mut entity_count: ResMut<'_, usize>,
             query: Query<'_, '_, crate::entity::Entity>,
         ) {
@@ -2049,7 +2049,7 @@ mod tests {
 
     #[test]
     fn archetype_update_parallel_executor() {
-        async fn query_count_system(
+        fn query_count_system(
             mut entity_count: ResMut<'_, usize>,
             query: Query<'_, '_, crate::entity::Entity>,
         ) {
@@ -2080,7 +2080,7 @@ mod tests {
         *world.change_tick.get_mut() += MAX_DELTA + 1;
 
         let mut stage = SystemStage::parallel();
-        async fn work() {}
+        fn work() {}
         stage.add_system(work);
 
         // Overflow twice
@@ -2146,7 +2146,7 @@ mod tests {
         #[derive(Component)]
         struct Foo;
 
-        async fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
+        fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
             if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
@@ -2154,11 +2154,11 @@ mod tests {
             }
         }
 
-        async fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
+        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo);
         }
 
-        async fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 
@@ -2185,7 +2185,7 @@ mod tests {
         #[derive(Component)]
         struct Foo;
 
-        async fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
+        fn even_number_of_entities_critiera(query: Query<'_, '_, &Foo>) -> ShouldRun {
             if query.iter().len() % 2 == 0 {
                 ShouldRun::Yes
             } else {
@@ -2193,11 +2193,11 @@ mod tests {
             }
         }
 
-        async fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
+        fn spawn_entity(mut commands: crate::prelude::Commands<'_, '_>) {
             commands.spawn().insert(Foo);
         }
 
-        async fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
+        fn count_entities(query: Query<'_, '_, &Foo>, mut res: ResMut<'_, Vec<usize>>) {
             res.push(query.iter().len());
         }
 
