@@ -2,13 +2,12 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
+use crate::components::{RenderSurface, StaticMesh};
 use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
 use legion_math::{EulerRot, Mat4, Quat, Vec3};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_transform::components::Transform;
-
-use crate::components::RenderSurface;
 pub struct Renderer {
     frame_idx: usize,
     render_frame_idx: u32,
@@ -388,56 +387,6 @@ impl TmpRenderPass {
         }
     }
 
-    pub fn make_cube_vertex_data(size: f32) -> Vec<f32> {
-        let half_size = size / 2.0;
-        #[rustfmt::skip]
-        let vertex_data = [
-            // +x
-            half_size, -half_size, -half_size,
-            half_size, half_size, -half_size,
-            half_size, half_size, half_size,
-            half_size, -half_size, -half_size,
-            half_size, half_size, half_size,
-            half_size, -half_size, half_size,
-            // -x
-            -half_size, -half_size, -half_size,
-            -half_size, half_size, half_size,
-            -half_size, half_size, -half_size,
-            -half_size, -half_size, -half_size,
-            -half_size, -half_size, half_size,
-            -half_size, half_size, half_size,
-            // +y
-            half_size, half_size, -half_size,
-            -half_size, half_size, -half_size,
-            half_size, half_size, half_size,
-            half_size, half_size, half_size,
-            -half_size, half_size, -half_size,
-            -half_size, half_size, half_size,
-            // -y
-            half_size, -half_size, -half_size,
-            half_size, -half_size, half_size,
-            -half_size, -half_size, -half_size,            
-            half_size, -half_size, half_size,
-            -half_size, -half_size, half_size,
-            -half_size, -half_size, -half_size,
-            // +z
-            half_size, -half_size, half_size,
-            half_size, half_size, half_size,
-            -half_size, -half_size, half_size,
-            -half_size, -half_size, half_size,
-            half_size, half_size, half_size,
-            -half_size, half_size, half_size,
-            // -z
-            half_size, -half_size, -half_size,
-            -half_size, -half_size, -half_size,
-            half_size, half_size, -half_size,
-            -half_size, -half_size, -half_size,
-            -half_size, half_size, -half_size,
-            half_size, half_size, -half_size,
-        ];
-        vertex_data.to_vec()
-    }
-
     pub fn render(
         &self,
         renderer: &Renderer,
@@ -451,11 +400,8 @@ impl TmpRenderPass {
         //
         // Update vertices
         //
-
-        let vertex_data = TmpRenderPass::make_cube_vertex_data(0.5);
-        //[
-        //    -0.25f32, -0.25, 0.25, -0.25, 0.25, 0.25, -0.25, -0.25, -0.25, 0.25, 0.25, 0.25,
-        //];
+        let cube = StaticMesh::new_cube(0.5);
+        let vertex_data = cube.vertices;
 
         let vertex_buffer = &self.vertex_buffers[render_frame_idx as usize];
         vertex_buffer
@@ -554,7 +500,11 @@ impl TmpRenderPass {
                 elapsed_secs.sin() * std::f32::consts::PI,
                 0.0,
             )),
-            //Transform::from_xyz(0.0, 0.0, 0.0),
+            Transform::from_xyz(
+                elapsed_secs.cos() * std::f32::consts::PI * 0.25,
+                elapsed_secs.sin() * std::f32::consts::PI * 0.25,
+                0.0,
+            ),
         ];
 
         for (index, transform) in transforms.iter().enumerate() {
