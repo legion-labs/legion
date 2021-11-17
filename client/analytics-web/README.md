@@ -1,5 +1,12 @@
 # analytics-web
 
+## Starting grpc server (on windows)
+
+```
+> cd ../../server/analytics-srv
+> start-test-server.bat
+```
+
 ## Project setup
 ```
 yarn install
