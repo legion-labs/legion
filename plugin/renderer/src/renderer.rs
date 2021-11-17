@@ -11,7 +11,7 @@ use legion_transform::components::Transform;
 pub struct Renderer {
     frame_idx: usize,
     render_frame_idx: u32,
-    num_render_frames: u32,
+    pub num_render_frames: u32,
     frame_signal_sems: Vec<Semaphore>,
     frame_fences: Vec<Fence>,
     graphics_queue: Queue,
@@ -187,6 +187,7 @@ impl Drop for Renderer {
 }
 
 pub struct TmpRenderPass {
+    static_meshes: Vec<StaticMesh>,
     vertex_buffers: Vec<Buffer>,
     uniform_buffers: Vec<Buffer>,
     uniform_buffer_cbvs: Vec<BufferView>,
@@ -376,7 +377,13 @@ impl TmpRenderPass {
             uniform_buffers.push(uniform_buffer);
         }
 
+        let mut static_meshes = vec![
+            StaticMesh::new_cube(0.5, renderer),
+            StaticMesh::new_pyramid(0.5, 1.0, renderer),
+        ];
+
         Self {
+            static_meshes,
             vertex_buffers,
             uniform_buffers,
             uniform_buffer_cbvs,
@@ -396,17 +403,6 @@ impl TmpRenderPass {
     ) {
         let render_frame_idx = renderer.render_frame_idx;
         let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
-
-        //
-        // Update vertices
-        //
-        let cube = StaticMesh::new_cube(0.5);
-        let vertex_data = cube.vertices;
-
-        let vertex_buffer = &self.vertex_buffers[render_frame_idx as usize];
-        vertex_buffer
-            .copy_to_host_visible_buffer(&vertex_data)
-            .unwrap();
 
         //
         // Update vertex color
@@ -437,16 +433,6 @@ impl TmpRenderPass {
             .unwrap();
 
         cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
-
-        cmd_buffer
-            .cmd_bind_vertex_buffers(
-                0,
-                &[VertexBufferBinding {
-                    buffer: vertex_buffer,
-                    byte_offset: 0,
-                }],
-            )
-            .unwrap();
 
         let heap = renderer.transient_descriptor_heap();
         let descriptor_set_layout = &self
@@ -493,21 +479,45 @@ impl TmpRenderPass {
         let up = Vec3::new(0.0, 1.0, 0.0);
         let view_matrix = Mat4::look_at_lh(eye, center, up);
 
-        let transforms = vec![
-            Transform::from_rotation(Quat::from_euler(
-                EulerRot::XYZ,
-                elapsed_secs.cos() * std::f32::consts::PI,
-                elapsed_secs.sin() * std::f32::consts::PI,
-                0.0,
-            )),
-            Transform::from_xyz(
-                elapsed_secs.cos() * std::f32::consts::PI * 0.25,
-                elapsed_secs.sin() * std::f32::consts::PI * 0.25,
-                0.0,
-            ),
-        ];
+        //let transforms = vec![
+        //    Transform::from_rotation(Quat::from_euler(
+        //        EulerRot::XYZ,
+        //        elapsed_secs.cos() * std::f32::consts::PI,
+        //        elapsed_secs.sin() * std::f32::consts::PI,
+        //        0.0,
+        //    )),
+        //    Transform::from_xyz(
+        //        elapsed_secs.cos() * std::f32::consts::PI * 0.25,
+        //        elapsed_secs.sin() * std::f32::consts::PI * 0.25,
+        //        0.0,
+        //    ),
+        //];
 
         for (index, transform) in transforms.iter().enumerate() {
+            //
+            // Update vertices
+            //
+            let mesh = match index % 2 {
+                0 => &self.static_meshes[0],
+                _ => &self.static_meshes[1],
+            };
+            //let vertex_data = cube.vertices;
+            //
+            //let vertex_buffer = &self.vertex_buffers[render_frame_idx as usize];
+            //vertex_buffer
+            //    .copy_to_host_visible_buffer(&vertex_data)
+            //    .unwrap();
+
+            cmd_buffer
+                .cmd_bind_vertex_buffers(
+                    0,
+                    &[VertexBufferBinding {
+                        buffer: &mesh.vertex_buffers[render_frame_idx as usize],
+                        byte_offset: 0,
+                    }],
+                )
+                .unwrap();
+
             let color = color_table[index % color_table.len()];
 
             let world = transform.compute_matrix();
@@ -525,7 +535,7 @@ impl TmpRenderPass {
                 .unwrap();
 
             cmd_buffer
-                .cmd_draw((vertex_data.len() / 3) as u32, 0)
+                .cmd_draw((mesh.vertices.len() / 3) as u32, 0)
                 .unwrap();
         }
 
