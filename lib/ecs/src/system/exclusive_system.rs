@@ -20,17 +20,17 @@ pub trait ExclusiveSystem: Send + Sync {
 }
 
 pub trait AsyncExclusiveSystemFn<'w>: Send + Sync {
-    type Output: Future + Send + 'w;
-    fn call_mut(&mut self, world: &'w mut World) -> Self::Output;
+    type AsyncResult: Future + Send + 'w;
+    fn call_mut(&mut self, world: &'w mut World) -> Self::AsyncResult;
 }
 
-impl<'w, F, Output> AsyncExclusiveSystemFn<'w> for F
+impl<'w, F, AsyncResult, Out> AsyncExclusiveSystemFn<'w> for F
 where
-    F: FnMut(&'w mut World) -> Output + Send + Sync,
-    Output: Future<Output = ()> + Send + 'w,
+    F: FnMut(&'w mut World) -> AsyncResult + Send + Sync,
+    AsyncResult: Future<Output = Out> + Send + 'w,
 {
-    type Output = Output;
-    fn call_mut(&mut self, world: &'w mut World) -> Output {
+    type AsyncResult = AsyncResult;
+    fn call_mut(&mut self, world: &'w mut World) -> Self::AsyncResult {
         self(world)
     }
 }

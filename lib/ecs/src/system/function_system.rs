@@ -4,6 +4,7 @@ use std::{borrow::Cow, future::Future, marker::PhantomData};
 
 use async_trait::async_trait;
 use legion_ecs_macros::all_tuples;
+use paste::paste;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration, ArchetypeId},
@@ -427,6 +428,28 @@ pub trait SystemParamFunction<In, Out, Param: SystemParam, Marker>: Send + Sync 
 
 macro_rules! impl_system_function {
     ($($param: ident),*) => {
+
+        paste! {
+            #[allow(non_camel_case_types)]
+            pub trait [<AsyncSystemFn $(_$param)*>]<'a, Out, $($param: SystemParam),*> {
+                type AsyncResult: Future<Output = Out> + Send + 'a;
+                fn call_async(&mut self, $($param: $param,)*) -> Self::AsyncResult;
+            }
+
+            impl<'a, Out, Func, AsyncResult, $($param: SystemParam),*> [<AsyncSystemFn $(_$param)*>]<'a, Out, $($param,)*> for Func
+            where
+                Func: FnMut($($param),*) -> AsyncResult
+                    + FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> AsyncResult,
+                AsyncResult: Future<Output = Out> + Send + 'a,
+            {
+                type AsyncResult = AsyncResult;
+                fn call_async(&mut self, $($param: $param,)*) -> Self::AsyncResult {
+                    self($($param,)*)
+                }
+            }
+        }
+//                for <'a, 'f> &'a mut Func: [<AsyncSystemFn $(_$param)*>]<'f, Out, $($param,)*>,
+
         #[async_trait]
         #[allow(non_snake_case)]
         impl<Out, Func: Send + Sync + 'static, AsyncResult, $($param: SystemParam),*>
