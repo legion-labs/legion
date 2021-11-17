@@ -1,6 +1,5 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{convert::Infallible, net::SocketAddr, sync::Arc};
 
-use anyhow::bail;
 use async_trait::async_trait;
 use hyper::{
     client::HttpConnector,
@@ -13,7 +12,7 @@ use log::{debug, info, warn};
 use tokio::sync::Mutex;
 use url::Url;
 
-use super::Authenticator;
+use super::{Authenticator, Error, Result};
 
 pub struct AwsCognitoClientAuthenticator {
     pub domain_name: String,
@@ -50,44 +49,50 @@ impl AwsCognitoClientAuthenticator {
     /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
     /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     /// ```
-    pub fn from_authorization_url(authorization_url: &Url) -> anyhow::Result<Self> {
+    pub fn from_authorization_url(authorization_url: &Url) -> Result<Self> {
         let host_parts = authorization_url
             .host()
-            .ok_or_else(|| anyhow::anyhow!("no host in URL"))?
+            .ok_or_else(|| Error::InvalidAuthorizationUrl("no host in URL".to_string()))?
             .to_string()
             .split('.')
             .map(std::string::ToString::to_string)
             .collect::<Vec<_>>();
 
         if host_parts.len() != 5 {
-            bail!("host must respect the `<domain_name>.auth.<region>.amazoncognito.com` format");
+            return Err(Error::InvalidAuthorizationUrl(
+                "host must respect the `<domain_name>.auth.<region>.amazoncognito.com` format"
+                    .to_string(),
+            ));
         }
 
         let domain_name = host_parts[0].clone();
         let region = host_parts[2].clone();
 
         if authorization_url.path() != "/oauth2/authorize" {
-            bail!("URL must be an AWS Cognito authorization URL");
+            return Err(Error::InvalidAuthorizationUrl(
+                "URL must be an AWS Cognito authorization URL".to_string(),
+            ));
         }
 
         let client_id = authorization_url
             .query_pairs()
             .find(|(k, _)| k == "client_id")
             .map(|(_, v)| v.to_string())
-            .expect("no client_id in URL");
+            .ok_or_else(|| Error::InvalidAuthorizationUrl("no client_id in URL".to_string()))?;
 
         let scopes: Vec<String> = authorization_url
             .query_pairs()
             .find(|(k, _)| k == "scope")
             .map(|(_, v)| v.split('+').map(std::string::ToString::to_string).collect())
-            .expect("no scope in URL");
+            .ok_or_else(|| Error::InvalidAuthorizationUrl("no scope in URL".to_string()))?;
 
         let redirect_uri: Url = authorization_url
             .query_pairs()
             .find(|(k, _)| k == "redirect_uri")
             .map(|(_, v)| v.to_string())
-            .expect("no redirect_uri in URL")
-            .parse()?;
+            .ok_or_else(|| Error::InvalidAuthorizationUrl("no redirect_uri in URL".to_string()))?
+            .parse()
+            .map_err(|e: url::ParseError| Error::InvalidAuthorizationUrl(e.to_string()))?;
 
         let identity_provider: Option<String> = authorization_url
             .query_pairs()
@@ -95,13 +100,23 @@ impl AwsCognitoClientAuthenticator {
             .map(|(_, v)| v.to_string());
 
         if redirect_uri.scheme() != "http" {
-            anyhow::bail!("redirect_uri must use the `http` scheme");
+            return Err(Error::InvalidAuthorizationUrl(
+                "redirect_uri must use the `http` scheme".to_string(),
+            ));
         }
 
         match redirect_uri.host() {
             Some(url::Host::Domain("localhost")) => {}
-            Some(_) => anyhow::bail!("redirect_uri must use the `localhost` host"),
-            None => anyhow::bail!("redirect_uri must have a host"),
+            Some(_) => {
+                return Err(Error::InvalidAuthorizationUrl(
+                    "redirect_uri must use the `localhost` host".to_string(),
+                ))
+            }
+            None => {
+                return Err(Error::InvalidAuthorizationUrl(
+                    "redirect_uri must have a host".to_string(),
+                ))
+            }
         };
 
         // If there is no explicit port, assume the default port for the scheme.
@@ -244,7 +259,7 @@ impl AwsCognitoClientAuthenticator {
         self.get_base_url("oauth2/userInfo").to_string()
     }
 
-    async fn receive_authorization_code(&self) -> anyhow::Result<String> {
+    async fn receive_authorization_code(&self) -> Result<String> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         let tx = Arc::new(Mutex::new(Some(tx)));
 
@@ -253,7 +268,7 @@ impl AwsCognitoClientAuthenticator {
             debug!("new connection from: {}", socket.remote_addr());
 
             async move {
-                Ok::<_, hyper::Error>(service_fn(move |req: Request<Body>| {
+                Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
                     let tx = Arc::clone(&tx);
 
                     async move {
@@ -266,9 +281,12 @@ impl AwsCognitoClientAuthenticator {
                                 req.uri().path()
                             );
 
-                            return Ok(Response::builder()
-                                .status(StatusCode::NOT_FOUND)
-                                .body(Body::empty())?);
+                            return Ok::<_, hyper::Error>(
+                                Response::builder()
+                                    .status(StatusCode::NOT_FOUND)
+                                    .body(Body::empty())
+                                    .unwrap(),
+                            );
                         }
 
                         // Only GETs are valid.
@@ -280,7 +298,8 @@ impl AwsCognitoClientAuthenticator {
 
                             return Ok(Response::builder()
                                 .status(StatusCode::METHOD_NOT_ALLOWED)
-                                .body(Body::empty())?);
+                                .body(Body::empty())
+                                .unwrap());
                         }
 
                         // Find the code parameter.
@@ -302,7 +321,8 @@ impl AwsCognitoClientAuthenticator {
 
                             return Ok(Response::builder()
                                 .status(StatusCode::BAD_REQUEST)
-                                .body(Body::empty())?);
+                                .body(Body::empty())
+                                .unwrap());
                         };
 
                         if let Some(tx) = tx.lock().await.take() {
@@ -310,7 +330,7 @@ impl AwsCognitoClientAuthenticator {
 
                             info!("authentication succeeded");
 
-                            Ok::<_, anyhow::Error>(Response::new(Body::from(include_str!(
+                            Ok(Response::new(Body::from(include_str!(
                                 "static/authentication_succeeded.html"
                             ))))
                         } else {
@@ -318,7 +338,8 @@ impl AwsCognitoClientAuthenticator {
 
                             Ok(Response::builder()
                                 .status(StatusCode::PRECONDITION_FAILED)
-                                .body(Body::empty())?)
+                                .body(Body::empty())
+                                .unwrap())
                         }
                     }
                 }))
@@ -338,13 +359,13 @@ impl AwsCognitoClientAuthenticator {
             });
 
         if let Err(e) = server.await {
-            bail!("failed to serve callback server: {}", e);
+            Err(Error::InternalServerError(e))
+        } else {
+            Ok(code)
         }
-
-        Ok(code)
     }
 
-    async fn receive_logout_confirmation(&self) -> anyhow::Result<()> {
+    async fn receive_logout_confirmation(&self) -> Result<()> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         let tx = Arc::new(Mutex::new(Some(tx)));
 
@@ -353,7 +374,7 @@ impl AwsCognitoClientAuthenticator {
             debug!("new connection from: {}", socket.remote_addr());
 
             async move {
-                Ok::<_, hyper::Error>(service_fn(move |req: Request<Body>| {
+                Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
                     let tx = Arc::clone(&tx);
 
                     async move {
@@ -366,9 +387,12 @@ impl AwsCognitoClientAuthenticator {
                                 req.uri().path()
                             );
 
-                            return Ok(Response::builder()
-                                .status(StatusCode::NOT_FOUND)
-                                .body(Body::empty())?);
+                            return Ok::<_, Infallible>(
+                                Response::builder()
+                                    .status(StatusCode::NOT_FOUND)
+                                    .body(Body::empty())
+                                    .unwrap(),
+                            );
                         }
 
                         // Only GETs are valid.
@@ -380,7 +404,8 @@ impl AwsCognitoClientAuthenticator {
 
                             return Ok(Response::builder()
                                 .status(StatusCode::METHOD_NOT_ALLOWED)
-                                .body(Body::empty())?);
+                                .body(Body::empty())
+                                .unwrap());
                         }
 
                         if let Some(tx) = tx.lock().await.take() {
@@ -388,7 +413,7 @@ impl AwsCognitoClientAuthenticator {
 
                             info!("logout succeeded");
 
-                            Ok::<_, anyhow::Error>(Response::new(Body::from(include_str!(
+                            Ok(Response::new(Body::from(include_str!(
                                 "static/logout_succeeded.html"
                             ))))
                         } else {
@@ -396,7 +421,8 @@ impl AwsCognitoClientAuthenticator {
 
                             Ok(Response::builder()
                                 .status(StatusCode::PRECONDITION_FAILED)
-                                .body(Body::empty())?)
+                                .body(Body::empty())
+                                .unwrap())
                         }
                     }
                 }))
@@ -411,28 +437,25 @@ impl AwsCognitoClientAuthenticator {
             });
 
         if let Err(e) = server.await {
-            bail!("failed to serve callback server: {}", e);
+            Err(Error::InternalServerError(e))
+        } else {
+            Ok(())
         }
-
-        Ok(())
     }
 
     /// Get the authorization code by opening an interactive browser window.
-    async fn get_authorization_code_interactive(&self) -> anyhow::Result<String> {
+    async fn get_authorization_code_interactive(&self) -> Result<String> {
         let authorization_url = self.get_authorization_url();
 
         info!("Opening web-browser at: {}", authorization_url);
 
-        webbrowser::open(authorization_url.as_str())?;
+        webbrowser::open(authorization_url.as_str()).map_err(Error::InteractiveProcessError)?;
 
         self.receive_authorization_code().await
     }
 
     /// Get a token set from an authorization code.
-    async fn get_token_set_from_authorization_code(
-        &self,
-        code: &str,
-    ) -> anyhow::Result<ClientTokenSet> {
+    async fn get_token_set_from_authorization_code(&self, code: &str) -> Result<ClientTokenSet> {
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .uri(self.get_access_token_url().as_str())
@@ -441,20 +464,28 @@ impl AwsCognitoClientAuthenticator {
                 "application/x-www-form-urlencoded",
             );
 
-        let req = req.body(Body::from(format!(
-            "grant_type=authorization_code&client_id={}&code={}&redirect_uri={}",
-            self.client_id,
-            code,
-            self.get_redirect_uri(),
-        )))?;
+        let req = req
+            .body(Body::from(format!(
+                "grant_type=authorization_code&client_id={}&code={}&redirect_uri={}",
+                self.client_id,
+                code,
+                self.get_redirect_uri(),
+            )))
+            .unwrap();
 
-        let resp = self.client.request(req).await?;
-        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
-        serde_json::from_slice(&bytes).map_err(Into::into)
+        let resp =
+            self.client.request(req).await.map_err(|e| {
+                Error::InternalError(format!("failed to execute HTTP request: {}", e))
+            })?;
+        let bytes = hyper::body::to_bytes(resp.into_body())
+            .await
+            .map_err(|e| Error::InternalError(format!("failed to read HTTP response: {}", e)))?;
+        serde_json::from_slice(&bytes)
+            .map_err(|e| Error::InternalError(format!("failed to parse JSON token set: {}", e)))
     }
 
     /// Get user information from an access token.
-    pub async fn get_user_info(&self, access_token: &str) -> anyhow::Result<UserInfo> {
+    pub async fn get_user_info(&self, access_token: &str) -> Result<UserInfo> {
         let req = hyper::Request::builder()
             .method(hyper::Method::GET)
             .uri(self.get_user_info_url().as_str())
@@ -462,18 +493,25 @@ impl AwsCognitoClientAuthenticator {
                 hyper::header::AUTHORIZATION,
                 format!("Bearer {}", access_token),
             )
-            .body(Body::empty())?;
+            .body(Body::empty())
+            .unwrap();
 
-        let resp = self.client.request(req).await?;
-        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
-        serde_json::from_slice(&bytes).map_err(Into::into)
+        let resp =
+            self.client.request(req).await.map_err(|e| {
+                Error::InternalError(format!("failed to execute HTTP request: {}", e))
+            })?;
+        let bytes = hyper::body::to_bytes(resp.into_body())
+            .await
+            .map_err(|e| Error::InternalError(format!("failed to read HTTP response: {}", e)))?;
+        serde_json::from_slice(&bytes)
+            .map_err(|e| Error::InternalError(format!("failed to parse JSON user info: {}", e)))
     }
 }
 
 #[async_trait]
 impl Authenticator for AwsCognitoClientAuthenticator {
     /// Get a token set by opening a possible interactive browser window.
-    async fn login(&self) -> anyhow::Result<ClientTokenSet> {
+    async fn login(&self) -> Result<ClientTokenSet> {
         let code = self.get_authorization_code_interactive().await?;
 
         self.get_token_set_from_authorization_code(&code).await
@@ -483,7 +521,7 @@ impl Authenticator for AwsCognitoClientAuthenticator {
     ///
     /// If the call does not return a new refresh token within the `TokenSet`, the specified
     /// refresh token will be filled in instead.
-    async fn refresh_login(&self, refresh_token: &str) -> anyhow::Result<ClientTokenSet> {
+    async fn refresh_login(&self, refresh_token: &str) -> Result<ClientTokenSet> {
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .uri(self.get_access_token_url().as_str())
@@ -492,15 +530,22 @@ impl Authenticator for AwsCognitoClientAuthenticator {
                 "application/x-www-form-urlencoded",
             );
 
-        let req = req.body(Body::from(format!(
-            "grant_type=refresh_token&client_id={}&refresh_token={}",
-            self.client_id, refresh_token,
-        )))?;
+        let req = req
+            .body(Body::from(format!(
+                "grant_type=refresh_token&client_id={}&refresh_token={}",
+                self.client_id, refresh_token,
+            )))
+            .unwrap();
 
-        let resp = self.client.request(req).await?;
-        let bytes = hyper::body::to_bytes(resp.into_body()).await?;
+        let resp =
+            self.client.request(req).await.map_err(|e| {
+                Error::InternalError(format!("failed to execute HTTP request: {}", e))
+            })?;
+        let bytes = hyper::body::to_bytes(resp.into_body())
+            .await
+            .map_err(|e| Error::InternalError(format!("failed to read HTTP response: {}", e)))?;
         serde_json::from_slice(&bytes)
-            .map_err(Into::into)
+            .map_err(|e| Error::InternalError(format!("failed to parse JSON token set: {}", e)))
             .map(|mut token_set: ClientTokenSet| {
                 if token_set.refresh_token.is_none() {
                     token_set.refresh_token = Some(refresh_token.to_owned());
@@ -511,12 +556,12 @@ impl Authenticator for AwsCognitoClientAuthenticator {
     }
 
     /// Logout by opening an interactive browser window.
-    async fn logout(&self) -> anyhow::Result<()> {
+    async fn logout(&self) -> Result<()> {
         let logout_url = self.get_logout_url();
 
         info!("Opening web-browser at: {}", logout_url);
 
-        webbrowser::open(logout_url.as_str())?;
+        webbrowser::open(logout_url.as_str()).map_err(Error::InteractiveProcessError)?;
 
         self.receive_logout_confirmation().await
     }

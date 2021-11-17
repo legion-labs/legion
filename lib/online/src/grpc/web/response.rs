@@ -6,7 +6,8 @@ use std::{
 };
 use tonic::codegen::StdError;
 
-use super::{BoxBuf, Error, GrpcWebBodyParser, Result};
+use super::super::buf::BoxBuf;
+use super::{Error, GrpcWebBodyParser, Result};
 
 #[pin_project]
 pub(super) struct GrpcWebResponse<T: Body> {

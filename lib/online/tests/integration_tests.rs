@@ -6,13 +6,17 @@ pub mod sum {
     tonic::include_proto!("sum");
 }
 
+use async_trait::async_trait;
 use backoff::ExponentialBackoff;
 use echo::{
     echoer_client::EchoerClient,
     echoer_server::{Echoer, EchoerServer},
     EchoRequest, EchoResponse,
 };
-use legion_online::grpc::{GrpcClient, GrpcWebClient};
+use legion_online::{
+    authentication::{self, Authenticator, ClientTokenSet},
+    grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
+};
 use log::{error, info, LevelFilter};
 use simple_logger::SimpleLogger;
 use sum::{
@@ -61,6 +65,30 @@ fn setup_test_logger() {
     });
 }
 
+#[derive(Default, Clone)]
+struct MockAuthenticator {}
+
+#[async_trait]
+impl Authenticator for MockAuthenticator {
+    async fn login(&self) -> authentication::Result<ClientTokenSet> {
+        Ok(ClientTokenSet {
+            access_token: "access_token".to_string(),
+            refresh_token: None,
+            id_token: "id_token".to_string(),
+            token_type: "token_type".to_string(),
+            expires_in: 123456789,
+        })
+    }
+
+    async fn refresh_login(&self, _refresh_token: &str) -> authentication::Result<ClientTokenSet> {
+        self.login().await
+    }
+
+    async fn logout(&self) -> authentication::Result<()> {
+        Ok(())
+    }
+}
+
 #[tokio::test]
 #[serial_test::serial]
 async fn test_service_multiplexer() -> anyhow::Result<()> {
@@ -82,6 +110,9 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
 
     async fn f() -> anyhow::Result<()> {
         let client = GrpcClient::new("http://127.0.0.1:50051".parse()?);
+
+        let authenticator = MockAuthenticator::default();
+        let client = AuthenticatedClient::new(client, authenticator);
 
         {
             let msg: String = "hello".into();

@@ -64,6 +64,7 @@ mod config;
 mod interop;
 
 use std::error::Error;
+use std::sync::Arc;
 
 use config::Config;
 use interop::js::editor::{
@@ -80,7 +81,7 @@ use legion_editor_proto::{
 use legion_online::authentication::{
     Authenticator, AwsCognitoClientAuthenticator, TokenCache as OnlineTokenCache,
 };
-use legion_online::grpc::GrpcWebClient;
+use legion_online::grpc::{AuthenticatedClient, GrpcWebClient};
 use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
 use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
 use legion_telemetry::prelude::*;
@@ -89,6 +90,7 @@ use simple_logger::SimpleLogger;
 use tauri::async_runtime::Mutex;
 
 type TokenCache = OnlineTokenCache<AwsCognitoClientAuthenticator>;
+type GrpcClient = AuthenticatedClient<GrpcWebClient, Arc<TokenCache>>;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::new_from_environment()?;
@@ -102,14 +104,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         AwsCognitoClientAuthenticator::from_authorization_url(&config.authorization_url)?;
     let projects_dir = directories::ProjectDirs::from("com", "legionlabs", "legion-editor")
         .expect("Failed to get project directory");
-    let token_cache = TokenCache::new(authenticator, projects_dir);
+    let token_cache = Arc::new(TokenCache::new(authenticator, projects_dir));
     let grpc_client = GrpcWebClient::new(config.server_addr.clone());
+    let grpc_client = AuthenticatedClient::new(grpc_client, Arc::clone(&token_cache));
     let streamer_client = Mutex::new(StreamerClient::new(grpc_client.clone()));
     let editor_client = Mutex::new(EditorClient::new(grpc_client));
 
     let builder = tauri::Builder::default()
         .manage(config)
-        .manage(token_cache)
+        .manage(Arc::clone(&token_cache))
         .manage(streamer_client)
         .manage(editor_client)
         .invoke_handler(tauri::generate_handler![
@@ -189,7 +192,7 @@ fn on_video_chunk_received(chunk_header: &str) {
 
 #[legion_tauri_command]
 async fn authenticate(
-    token_cache: tauri::State<'_, TokenCache>,
+    token_cache: tauri::State<'_, Arc<TokenCache>>,
 ) -> anyhow::Result<legion_online::authentication::UserInfo> {
     let access_token = token_cache.login().await?.access_token;
 
@@ -197,11 +200,12 @@ async fn authenticate(
         .authenticator()
         .get_user_info(&access_token)
         .await
+        .map_err(Into::into)
 }
 
 #[legion_tauri_command]
 async fn initialize_stream(
-    streamer_client: tauri::State<'_, Mutex<StreamerClient<GrpcWebClient>>>,
+    streamer_client: tauri::State<'_, Mutex<StreamerClient<GrpcClient>>>,
     rtc_session_description: String,
 ) -> anyhow::Result<String> {
     let rtc_session_description = base64::decode(rtc_session_description)?;
@@ -229,7 +233,7 @@ async fn initialize_stream(
 
 #[legion_tauri_command]
 async fn search_resources(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcWebClient>>>,
+    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
 ) -> anyhow::Result<JSSearchResourcesResponse> {
     let mut editor_client = editor_client.lock().await;
 
@@ -257,7 +261,7 @@ async fn search_resources(
 
 #[legion_tauri_command]
 async fn undo_transaction(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcWebClient>>>,
+    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
 ) -> anyhow::Result<JSUndoTransactionResponse> {
     let mut editor_client = editor_client.lock().await;
 
@@ -271,7 +275,7 @@ async fn undo_transaction(
 
 #[legion_tauri_command]
 async fn redo_transaction(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcWebClient>>>,
+    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
 ) -> anyhow::Result<JSRedoTransactionResponse> {
     let mut editor_client = editor_client.lock().await;
 
@@ -284,7 +288,7 @@ async fn redo_transaction(
 
 #[legion_tauri_command]
 async fn get_resource_properties(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcWebClient>>>,
+    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
     request: JSGetResourcePropertiesRequest,
 ) -> anyhow::Result<JSGetResourcePropertiesResponse> {
     let mut editor_client = editor_client.lock().await;
@@ -301,7 +305,7 @@ async fn get_resource_properties(
 
 #[legion_tauri_command]
 async fn update_resource_properties(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcWebClient>>>,
+    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
     request: JSUpdateResourcePropertiesRequest,
 ) -> anyhow::Result<JSUpdateResourcePropertiesResponse> {
     let mut editor_client = editor_client.lock().await;

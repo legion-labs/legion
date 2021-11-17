@@ -3,13 +3,10 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 
-use anyhow::Context;
 use directories::ProjectDirs;
 use log::{debug, warn};
 
-use super::jwt::UnsecureValidation;
-use super::Authenticator;
-use super::ClientTokenSet;
+use super::{jwt::UnsecureValidation, Authenticator, ClientTokenSet, Error, Result};
 
 /// A `TokenCache` stores authentication tokens and handles their lifetime.
 pub struct TokenCache<A> {
@@ -41,31 +38,46 @@ where
     }
 
     /// Read the token set from the cache.
-    pub fn read_token_set_from_cache(&self) -> anyhow::Result<ClientTokenSet> {
+    pub fn read_token_set_from_cache(&self) -> Result<ClientTokenSet> {
         let path = self.get_tokens_file_path();
 
-        let file = File::open(&path)
-            .with_context(|| format!("reading tokens files from {}", path.display()))?;
+        let file = File::open(&path).map_err(|e| {
+            Error::InternalError(format!(
+                "reading tokens files from {}: {}",
+                path.display(),
+                e
+            ))
+        })?;
         let reader = BufReader::new(file);
 
-        serde_json::from_reader(reader).map_err(Into::into)
+        serde_json::from_reader(reader).map_err(|e| {
+            Error::InternalError(format!("failed to parse JSON token set from cache: {}", e))
+        })
     }
 
     // Write the access token to the cache.
-    pub fn write_token_set_to_cache(&self, token_set: &ClientTokenSet) -> anyhow::Result<()> {
+    pub fn write_token_set_to_cache(&self, token_set: &ClientTokenSet) -> Result<()> {
         let path = self.get_tokens_file_path();
         let parent_path = path.parent().unwrap();
 
-        std::fs::create_dir_all(parent_path)
-            .with_context(|| format!("creating cache directory at {}", parent_path.display()))?;
-        let file = File::create(&path)
-            .with_context(|| format!("creating tokens file at {}", path.display()))?;
+        std::fs::create_dir_all(parent_path).map_err(|e| {
+            Error::InternalError(format!(
+                "creating cache directory at {}: {}",
+                parent_path.display(),
+                e
+            ))
+        })?;
+        let file = File::create(&path).map_err(|e| {
+            Error::InternalError(format!("creating tokens file at {}: {}", path.display(), e))
+        })?;
         let writer = BufWriter::new(file);
-        serde_json::to_writer(writer, &token_set).map_err(Into::into)
+        serde_json::to_writer(writer, &token_set).map_err(|e| {
+            Error::InternalError(format!("failed to write JSON token set to cache: {}", e))
+        })
     }
 
     // Delete the cache.
-    pub fn delete_cache(&self) -> anyhow::Result<()> {
+    pub fn delete_cache(&self) -> Result<()> {
         let path = self.get_tokens_file_path();
         match std::fs::remove_file(&path) {
             Ok(_) => Ok(()),
@@ -73,7 +85,11 @@ where
                 if e.kind() == std::io::ErrorKind::NotFound {
                     Ok(())
                 } else {
-                    Err(e).with_context(|| format!("deleting cache file at {}", path.display()))
+                    Err(Error::InternalError(format!(
+                        "deleting cache file at {}: {}",
+                        path.display(),
+                        e,
+                    )))
                 }
             }
         }
@@ -91,7 +107,7 @@ where
     /// `login` method, which may prompt the user for credentials.
     ///
     /// If the tokens end up being refreshed, they will be stored in the cache.
-    async fn login(&self) -> anyhow::Result<ClientTokenSet> {
+    async fn login(&self) -> Result<ClientTokenSet> {
         let token_set = match self.read_token_set_from_cache() {
             Ok(token_set) => {
                 let access_token = &token_set.access_token[..];
@@ -140,7 +156,7 @@ where
         Ok(token_set)
     }
 
-    async fn refresh_login(&self, refresh_token: &str) -> anyhow::Result<ClientTokenSet> {
+    async fn refresh_login(&self, refresh_token: &str) -> Result<ClientTokenSet> {
         self.authenticator
             .refresh_login(refresh_token)
             .await
@@ -154,7 +170,7 @@ where
     }
 
     /// Perform a logout, delegating its execution to the owned `Authenticator` and clearing the cache.
-    async fn logout(&self) -> anyhow::Result<()> {
+    async fn logout(&self) -> Result<()> {
         self.delete_cache()?;
 
         self.authenticator.logout().await
