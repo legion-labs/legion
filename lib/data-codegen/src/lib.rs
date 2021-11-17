@@ -127,13 +127,12 @@ pub fn generate_data_container_code(
     }
 
     // Generate Loader and Processor Registration code
-    if *gen_type == GenerationType::OfflineFormat {
-        let out_token = resource_codegen::generate_registration_code(&processed_structs);
-        gen_file.write_all(out_token.to_string().as_bytes())?;
+    let out_token = if *gen_type == GenerationType::OfflineFormat {
+        resource_codegen::generate_registration_code(&processed_structs)
     } else {
-        let out_token = runtime_codegen::generate_registration_code(&processed_structs);
-        gen_file.write_all(out_token.to_string().as_bytes())?;
-    }
+        runtime_codegen::generate_registration_code(&processed_structs)
+    };
+    gen_file.write_all(out_token.to_string().as_bytes())?;
 
     gen_file.flush()?;
 
