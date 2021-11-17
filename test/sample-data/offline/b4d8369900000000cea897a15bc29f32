@@ -1,4 +1,3 @@
 {
-	"_class" : "DebugCube",
-	"scale" : [12.0,1.0,1.0]
+	"_class" : "DebugCube"
 }

@@ -1,227 +1,5 @@
 {
   "version": "0.1.0",
-  "project_index": "..\\project.index",
-  "resources": [
-    {
-      "id": "13b5a84e0000000061f6de1be4764697",
-      "dependencies": [],
-      "resource_hash": "f480b17eea122496"
-    },
-    {
-      "id": "13b5a84e0000000061f6de1be4764697|74dc0e53_albedo|f9c9670d",
-      "dependencies": [
-        "13b5a84e0000000061f6de1be4764697|74dc0e53_albedo"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "13b5a84e0000000061f6de1be4764697|74dc0e53_metalness|f9c9670d",
-      "dependencies": [
-        "13b5a84e0000000061f6de1be4764697|74dc0e53_metalness"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "13b5a84e0000000061f6de1be4764697|74dc0e53_normal|f9c9670d",
-      "dependencies": [
-        "13b5a84e0000000061f6de1be4764697|74dc0e53_normal"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "13b5a84e0000000061f6de1be4764697|74dc0e53_roughness|f9c9670d",
-      "dependencies": [
-        "13b5a84e0000000061f6de1be4764697|74dc0e53_roughness"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "2b368fed00000000f8b1bd1dceaf6f33",
-      "dependencies": [
-        "13b5a84e0000000061f6de1be4764697|74dc0e53_albedo|f9c9670d",
-        "13b5a84e0000000061f6de1be4764697|74dc0e53_metalness|f9c9670d",
-        "13b5a84e0000000061f6de1be4764697|74dc0e53_normal|f9c9670d",
-        "13b5a84e0000000061f6de1be4764697|74dc0e53_roughness|f9c9670d"
-      ],
-      "resource_hash": "b69f41dbe609db99"
-    },
-    {
-      "id": "2b368fed00000000f8b1bd1dceaf6f33|669eb7d0",
-      "dependencies": [
-        "2b368fed00000000f8b1bd1dceaf6f33"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "417862e5000000005127bdca42145845",
-      "dependencies": [
-        "d004cd1c0000000062aa07fb54e7a8ee|019c8223"
-      ],
-      "resource_hash": "e7e15e0065e6b19d"
-    },
-    {
-      "id": "417862e5000000005127bdca42145845|0cd05ad8",
-      "dependencies": [
-        "417862e5000000005127bdca42145845"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "417862e5000000007a80bfadcb6549e7",
-      "dependencies": [
-        "d004cd1c0000000091d021d6f4e05efe|019c8223"
-      ],
-      "resource_hash": "8d553443b452074b"
-    },
-    {
-      "id": "417862e5000000007a80bfadcb6549e7|0cd05ad8",
-      "dependencies": [
-        "417862e5000000007a80bfadcb6549e7"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "417862e5000000007df5d0fcdb1eb69b",
-      "dependencies": [
-        "d004cd1c0000000091d021d6f4e05efe|019c8223"
-      ],
-      "resource_hash": "8d553443b452074b"
-    },
-    {
-      "id": "417862e5000000007df5d0fcdb1eb69b|0cd05ad8",
-      "dependencies": [
-        "417862e5000000007df5d0fcdb1eb69b"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "417862e50000000090b1c112655b00e8",
-      "dependencies": [
-        "d004cd1c0000000091d021d6f4e05efe|019c8223"
-      ],
-      "resource_hash": "8d553443b452074b"
-    },
-    {
-      "id": "417862e50000000090b1c112655b00e8|0cd05ad8",
-      "dependencies": [
-        "417862e50000000090b1c112655b00e8"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "417862e500000000ce1185cf2b953536",
-      "dependencies": [
-        "d004cd1c0000000091d021d6f4e05efe|019c8223"
-      ],
-      "resource_hash": "8d553443b452074b"
-    },
-    {
-      "id": "417862e500000000ce1185cf2b953536|0cd05ad8",
-      "dependencies": [
-        "417862e500000000ce1185cf2b953536"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "417862e500000000e578fadce0648bcc",
-      "dependencies": [
-        "d004cd1c0000000091d021d6f4e05efe|019c8223"
-      ],
-      "resource_hash": "8d553443b452074b"
-    },
-    {
-      "id": "417862e500000000e578fadce0648bcc|0cd05ad8",
-      "dependencies": [
-        "417862e500000000e578fadce0648bcc"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "4e1dd441000000007714d9ad404557f7",
-      "dependencies": [
-        "2b368fed00000000f8b1bd1dceaf6f33|669eb7d0"
-      ],
-      "resource_hash": "6c8072661bdeec94"
-    },
-    {
-      "id": "4e1dd441000000007714d9ad404557f7|ea2510e8",
-      "dependencies": [
-        "4e1dd441000000007714d9ad404557f7"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "9f639fe800000000d4b05b1a98368098",
-      "dependencies": [],
-      "resource_hash": "4710a4f11115835a"
-    },
-    {
-      "id": "b4d8369900000000cea897a15bc29f32",
-      "dependencies": [],
-      "resource_hash": "ac268ff01e93b12e"
-    },
-    {
-      "id": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "dependencies": [
-        "b4d8369900000000cea897a15bc29f32"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "d004cd1c00000000519d4a9f47df0ce5",
-      "dependencies": [
-        "4e1dd441000000007714d9ad404557f7|ea2510e8",
-        "4e1dd441000000007714d9ad404557f7|ea2510e8"
-      ],
-      "resource_hash": "389e5bf518b9c948"
-    },
-    {
-      "id": "d004cd1c00000000519d4a9f47df0ce5|019c8223",
-      "dependencies": [
-        "d004cd1c00000000519d4a9f47df0ce5"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "d004cd1c0000000062aa07fb54e7a8ee",
-      "dependencies": [
-        "417862e500000000ce1185cf2b953536|0cd05ad8",
-        "417862e500000000e578fadce0648bcc|0cd05ad8"
-      ],
-      "resource_hash": "22204ddc3bbb42a5"
-    },
-    {
-      "id": "d004cd1c0000000062aa07fb54e7a8ee|019c8223",
-      "dependencies": [
-        "d004cd1c0000000062aa07fb54e7a8ee"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "d004cd1c0000000091d021d6f4e05efe",
-      "dependencies": [],
-      "resource_hash": "a7a94184f11d5ade"
-    },
-    {
-      "id": "d004cd1c0000000091d021d6f4e05efe|019c8223",
-      "dependencies": [
-        "d004cd1c0000000091d021d6f4e05efe"
-      ],
-      "resource_hash": null
-    },
-    {
-      "id": "d004cd1c00000000fcd3242ec9691beb",
-      "dependencies": [
-        "417862e5000000005127bdca42145845|0cd05ad8",
-        "417862e5000000007a80bfadcb6549e7|0cd05ad8",
-        "417862e5000000007df5d0fcdb1eb69b|0cd05ad8",
-        "417862e50000000090b1c112655b00e8|0cd05ad8",
-        "b4d8369900000000cea897a15bc29f32|19abfd3d",
-        "d004cd1c00000000519d4a9f47df0ce5|019c8223"
-      ],
-      "resource_hash": "613c7580910769e3"
-    }
-  ],
   "compiled_resources": [
     {
       "compile_path": "13b5a84e0000000061f6de1be4764697|74dc0e53",
@@ -384,70 +162,6 @@
       "compiled_size": 40
     },
     {
-      "compile_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "context_hash": "0f26bc9ac8dd7042",
-      "source_hash": "c946499b2b1f20d6",
-      "compiled_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "compiled_checksum": "a905f94ad4d90c6a55239f255ceb4f7c",
-      "compiled_size": 40
-    },
-    {
-      "compile_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "context_hash": "0f26bc9ac8dd7042",
-      "source_hash": "53e3b943d151b3ae",
-      "compiled_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "compiled_checksum": "d0173edd2a0d7b59068843e02b7c9b5e",
-      "compiled_size": 40
-    },
-    {
-      "compile_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "context_hash": "0f26bc9ac8dd7042",
-      "source_hash": "5c66b7aae54895c2",
-      "compiled_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "compiled_checksum": "1bc7fbd551de4580b64ff7f1d25d8c00",
-      "compiled_size": 40
-    },
-    {
-      "compile_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "context_hash": "0f26bc9ac8dd7042",
-      "source_hash": "58132301d7dc582a",
-      "compiled_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "compiled_checksum": "55125b3436e50c1045ca447a0e3f7128",
-      "compiled_size": 40
-    },
-    {
-      "compile_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "context_hash": "0f26bc9ac8dd7042",
-      "source_hash": "e1eadb39998397a4",
-      "compiled_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "compiled_checksum": "6646144c4b807726ac35b363f3962ebc",
-      "compiled_size": 40
-    },
-    {
-      "compile_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "context_hash": "0f26bc9ac8dd7042",
-      "source_hash": "4751fe695a643dd8",
-      "compiled_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "compiled_checksum": "188f29ac0b05d277a0e4440dcd1c16e8",
-      "compiled_size": 40
-    },
-    {
-      "compile_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "context_hash": "0f26bc9ac8dd7042",
-      "source_hash": "43ce180832e2b9aa",
-      "compiled_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "compiled_checksum": "3ed05e1c040995bcb4751a30e9a3a490",
-      "compiled_size": 40
-    },
-    {
-      "compile_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "context_hash": "0f26bc9ac8dd7042",
-      "source_hash": "e6a91f398170fdce",
-      "compiled_path": "b4d8369900000000cea897a15bc29f32|19abfd3d",
-      "compiled_checksum": "e5f7e632030a35bc8ce9e0ded5ab7c21",
-      "compiled_size": 40
-    },
-    {
       "compile_path": "d004cd1c00000000519d4a9f47df0ce5|019c8223",
       "context_hash": "c4b24cde92428f90",
       "source_hash": "f140f59289f0b824",
@@ -470,14 +184,6 @@
       "compiled_path": "d004cd1c0000000091d021d6f4e05efe|019c8223",
       "compiled_checksum": "da8a27471f9b01809ec1f9ba9ebf46f9",
       "compiled_size": 150
-    },
-    {
-      "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "context_hash": "c4b24cde92428f90",
-      "source_hash": "13d165d40ae80d9d",
-      "compiled_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "compiled_checksum": "bc549fe641a168b0489db30c7de4c47c",
-      "compiled_size": 244
     },
     {
       "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
@@ -597,23 +303,9 @@
     {
       "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
       "context_hash": "c4b24cde92428f90",
-      "source_hash": "13d165d40ae80d9d",
-      "compiled_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "compiled_reference": "417862e5000000005127bdca42145845|0cd05ad8"
-    },
-    {
-      "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "context_hash": "c4b24cde92428f90",
       "source_hash": "eb84f7ce1672788d",
       "compiled_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
       "compiled_reference": "417862e5000000005127bdca42145845|0cd05ad8"
-    },
-    {
-      "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "context_hash": "c4b24cde92428f90",
-      "source_hash": "13d165d40ae80d9d",
-      "compiled_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "compiled_reference": "417862e5000000007a80bfadcb6549e7|0cd05ad8"
     },
     {
       "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
@@ -625,23 +317,9 @@
     {
       "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
       "context_hash": "c4b24cde92428f90",
-      "source_hash": "13d165d40ae80d9d",
-      "compiled_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "compiled_reference": "417862e5000000007df5d0fcdb1eb69b|0cd05ad8"
-    },
-    {
-      "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "context_hash": "c4b24cde92428f90",
       "source_hash": "eb84f7ce1672788d",
       "compiled_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
       "compiled_reference": "417862e5000000007df5d0fcdb1eb69b|0cd05ad8"
-    },
-    {
-      "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "context_hash": "c4b24cde92428f90",
-      "source_hash": "13d165d40ae80d9d",
-      "compiled_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "compiled_reference": "417862e50000000090b1c112655b00e8|0cd05ad8"
     },
     {
       "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
@@ -656,13 +334,6 @@
       "source_hash": "eb84f7ce1672788d",
       "compiled_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
       "compiled_reference": "b4d8369900000000cea897a15bc29f32|19abfd3d"
-    },
-    {
-      "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "context_hash": "c4b24cde92428f90",
-      "source_hash": "13d165d40ae80d9d",
-      "compiled_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "compiled_reference": "d004cd1c00000000519d4a9f47df0ce5|019c8223"
     },
     {
       "compile_path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
