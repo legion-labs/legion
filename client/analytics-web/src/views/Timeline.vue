@@ -15,7 +15,7 @@
             width="1024px"
             height="768px"
             v-on:wheel.prevent="onZoom"
-            v-on:mousemove="onPan"
+            v-on:mousemove="onMouseMove"
             />
   </div>
 </template>
@@ -221,12 +221,8 @@ function drawCanvas () {
 }
 
 function onPan (evt) {
-  if (evt.buttons !== 1) {
-    this.begin_drag = undefined
-    return
-  }
-  if (!this.begin_drag) {
-    this.begin_drag = {
+  if (!this.begin_pan) {
+    this.begin_pan = {
       beginMouseX: evt.offsetX,
       beginMouseY: evt.offsetY,
       viewRange: this.getViewRange(),
@@ -234,11 +230,38 @@ function onPan (evt) {
     }
   }
   const canvas = document.getElementById('canvas_timeline')
-  const factor = (this.begin_drag.viewRange[1] - this.begin_drag.viewRange[0]) / canvas.width
-  const offsetMs = factor * (this.begin_drag.beginMouseX - evt.offsetX)
-  this.view_range = [this.begin_drag.viewRange[0] + offsetMs, this.begin_drag.viewRange[1] + offsetMs]
-  this.y_offset = this.begin_drag.beginYOffset + evt.offsetY - this.begin_drag.beginMouseY
+  const factor = (this.begin_pan.viewRange[1] - this.begin_pan.viewRange[0]) / canvas.width
+  const offsetMs = factor * (this.begin_pan.beginMouseX - evt.offsetX)
+  this.view_range = [this.begin_pan.viewRange[0] + offsetMs, this.begin_pan.viewRange[1] + offsetMs]
+  this.y_offset = this.begin_pan.beginYOffset + evt.offsetY - this.begin_pan.beginMouseY
   this.drawCanvas()
+}
+
+function onSelectRange (evt) {
+  if (!this.begin_select) {
+    this.begin_select = {
+      beginMouseX: evt.offsetX
+    }
+  }
+  const canvas = document.getElementById('canvas_timeline')
+  const viewRange = this.getViewRange()
+  const factor = (viewRange[1] - viewRange[0]) / canvas.width
+  const beginTime = viewRange[0] + (factor * this.begin_select.beginMouseX)
+  const endTime = viewRange[0] + (factor * evt.offsetX)
+  console.log(beginTime, endTime)
+}
+
+function onMouseMove (evt) {
+  if (evt.buttons !== 1) {
+    this.begin_pan = undefined
+    this.begin_select = undefined
+    return
+  }
+  if (evt.shiftKey) {
+    this.onSelectRange(evt)
+  } else {
+    this.onPan(evt)
+  }
 }
 
 function onZoom (evt) {
@@ -271,7 +294,8 @@ function reset (processId) {
   this.min_ms = Infinity
   this.max_ms = -Infinity
   this.view_range = undefined
-  this.begin_drag = undefined
+  this.begin_pan = undefined
+  this.begin_select = undefined
   this.y_offset = 0
   this.fetchProcessInfo()
 }
@@ -296,7 +320,8 @@ export default {
       min_ms: Infinity,
       max_ms: -Infinity,
       view_range: undefined,
-      begin_drag: undefined,
+      begin_pan: undefined,
+      begin_select: undefined,
       y_offset: 0
     }
   },
@@ -310,7 +335,9 @@ export default {
     fetchStreams: fetchStreams,
     findStreamProcess: findStreamProcess,
     getViewRange: getViewRange,
+    onMouseMove: onMouseMove,
     onPan: onPan,
+    onSelectRange: onSelectRange,
     onZoom: onZoom,
     reset: reset
   }
