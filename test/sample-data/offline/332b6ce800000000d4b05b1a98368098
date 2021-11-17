@@ -1,0 +1,8 @@
+{
+	"_class" : "TestEntity",
+	"test_string" : "Editable String Value",
+	"test_position" : [0.0,120.0,0.0],
+	"test_float32" : 1.0,
+	"test_float64" : 2.0,
+	"test_int" : 1337
+}

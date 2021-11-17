@@ -611,15 +611,12 @@ mod tests {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        let binary_assetfile = [
-            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
-            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
-        ];
-
         let asset_id = {
             let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
-            let checksum = content_store.store(&binary_assetfile).unwrap();
-            manifest.insert(id, checksum, binary_assetfile.len());
+            let checksum = content_store
+                .store(&test_asset::tests::BINARY_ASSETFILE)
+                .unwrap();
+            manifest.insert(id, checksum, test_asset::tests::BINARY_ASSETFILE.len());
             id
         };
 
@@ -685,15 +682,12 @@ mod tests {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        let binary_assetfile = [
-            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
-            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
-        ];
-
         let asset_id = {
             let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
-            let checksum = content_store.store(&binary_assetfile).unwrap();
-            manifest.insert(id, checksum, binary_assetfile.len());
+            let checksum = content_store
+                .store(&test_asset::tests::BINARY_ASSETFILE)
+                .unwrap();
+            manifest.insert(id, checksum, test_asset::tests::BINARY_ASSETFILE.len());
             id
         };
 
@@ -748,17 +742,17 @@ mod tests {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        let binary_parent_assetfile = [
-            97, 115, 102, 116, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112,
-            97, 114, 101, 110, 116,
-        ];
-
         let parent_id = ResourceId::new(test_asset::TestAsset::TYPE, 2);
 
         let asset_id = {
-            let checksum = content_store.store(&binary_parent_assetfile).unwrap();
-            manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
+            let checksum = content_store
+                .store(&test_asset::tests::BINARY_PARENT_ASSETFILE)
+                .unwrap();
+            manifest.insert(
+                parent_id,
+                checksum,
+                test_asset::tests::BINARY_PARENT_ASSETFILE.len(),
+            );
             parent_id
         };
 
@@ -801,15 +795,6 @@ mod tests {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        let binary_parent_assetfile = [
-            97, 115, 102, 116, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            86, 63, 214, 53, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 112,
-            97, 114, 101, 110, 116,
-        ];
-        let binary_child_assetfile = [
-            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
-            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
-        ];
         let parent_content = "parent";
 
         let parent_id = ResourceId::new(test_asset::TestAsset::TYPE, 2);
@@ -818,11 +803,19 @@ mod tests {
         let asset_id = {
             manifest.insert(
                 child_id,
-                content_store.store(&binary_child_assetfile).unwrap(),
-                binary_child_assetfile.len(),
+                content_store
+                    .store(&test_asset::tests::BINARY_ASSETFILE)
+                    .unwrap(),
+                test_asset::tests::BINARY_ASSETFILE.len(),
             );
-            let checksum = content_store.store(&binary_parent_assetfile).unwrap();
-            manifest.insert(parent_id, checksum, binary_parent_assetfile.len());
+            let checksum = content_store
+                .store(&test_asset::tests::BINARY_PARENT_ASSETFILE)
+                .unwrap();
+            manifest.insert(
+                parent_id,
+                checksum,
+                test_asset::tests::BINARY_PARENT_ASSETFILE.len(),
+            );
 
             parent_id
         };
@@ -905,15 +898,12 @@ mod tests {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        let binary_assetfile = [
-            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0,
-            0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
-        ];
-
         let asset_id = {
             let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
-            let checksum = content_store.store(&binary_assetfile).unwrap();
-            manifest.insert(id, checksum, binary_assetfile.len());
+            let checksum = content_store
+                .store(&test_asset::tests::BINARY_ASSETFILE)
+                .unwrap();
+            manifest.insert(id, checksum, test_asset::tests::BINARY_ASSETFILE.len());
             id
         };
 

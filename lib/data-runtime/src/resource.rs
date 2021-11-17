@@ -2,25 +2,33 @@ use std::{fmt, hash::Hash, str::FromStr};
 
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_hex::{SerHex, StrictPfx};
+use std::convert::TryFrom;
+use xxhash_rust::const_xxh3::xxh3_64 as const_xxh3;
 
 /// Type identifier of resource or asset.
 ///
 /// It is currently generated randomly by hashing a byte array. It uses [`Self::num_bits`] number of bits.
 /// In the future, it can be optimized to use less bits to leave more bits for the asset/resource identifier.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Debug)]
-pub struct ResourceType(u32);
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct ResourceType(#[serde(with = "SerHex::<StrictPfx>")] u32);
 
 impl fmt::Display for ResourceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:08x}", self.0))
     }
 }
+impl fmt::Debug for ResourceType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ResourceType")
+            .field(&format_args!("{:#08x}", self.0))
+            .finish()
+    }
+}
 
 impl ResourceType {
-    const CRC32_ALGO: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
-
     const fn crc32(v: &[u8]) -> u32 {
-        Self::CRC32_ALGO.checksum(v)
+        const_xxh3(v) as u32
     }
 
     /// Number of bits used to represent `ContentType`.

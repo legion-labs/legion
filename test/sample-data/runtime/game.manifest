@@ -1,55 +1,62 @@
 [
   {
-    "guid": "019c822300000000264b29e1daf98c75",
-    "checksum": "913a68321dac61ea57cdd08403d1ed8f",
-    "size": 184
+    "guid": "0f6f8b3a000000007b21d6d843b4b7a2",
+    "checksum": "c74edd25bf79cb57af7f4969b9fd322f",
+    "size": 162
   },
   {
-    "guid": "019c82230000000052d85baf2a2c79a4",
-    "checksum": "d42631a3095f58a97bacc3378e8235a9",
-    "size": 199
+    "guid": "30495fed000000000f002d85caa5ad62",
+    "checksum": "384f76305deb81524e0fda7a92db15d0",
+    "size": 67
   },
   {
+<<<<<<< HEAD
     "guid": "019c822300000000b34c39427317a636",
     "checksum": "0211a93e29ac9b87960407537b475872",
     "size": 390
+=======
+    "guid": "30495fed000000001ca4261976e4b3c5",
+    "checksum": "384f76305deb81524e0fda7a92db15d0",
+    "size": 67
+>>>>>>> 0bfd8778 (Use xxHash for ResourceType to reduce collisions in the future.)
   },
   {
-    "guid": "019c822300000000b4e464b9fef217e6",
-    "checksum": "221e2598e158f812202bc60788768051",
+    "guid": "30495fed000000008e21cbbe5c7a6256",
+    "checksum": "384f76305deb81524e0fda7a92db15d0",
+    "size": 67
+  },
+  {
+    "guid": "30495fed00000000cd581e368043ab83",
+    "checksum": "384f76305deb81524e0fda7a92db15d0",
+    "size": 67
+  },
+  {
+    "guid": "30495fed00000000f8e5bce43227fd8d",
+    "checksum": "384f76305deb81524e0fda7a92db15d0",
+    "size": 67
+  },
+  {
+    "guid": "30495fed00000000f9dbba18688917d1",
+    "checksum": "668d023bcb0a2753059fee68cc9e4bc9",
+    "size": 67
+  },
+  {
+    "guid": "84935d1f000000007f3751314a9b2cb0",
+    "checksum": "1f5bbf6bcea968ca9db2df465163f54e",
+    "size": 947
+  },
+  {
+    "guid": "aad890450000000007e9c88e6e870796",
+    "checksum": "7b5e7f0b8f55e149752ffeaf8ac3bda6",
+    "size": 199
+  },
+  {
+    "guid": "aad89045000000004b9a8871d48cd4a1",
+    "checksum": "c52123e42f9705b0b0b4d86cbd64f204",
     "size": 250
   },
   {
-    "guid": "0cd05ad8000000005aa0bf3c69af020f",
-    "checksum": "eba4df0d73ed6bc409674427018bdd79",
-    "size": 67
-  },
-  {
-    "guid": "0cd05ad800000000691906ec63d6d8d8",
-    "checksum": "eba4df0d73ed6bc409674427018bdd79",
-    "size": 67
-  },
-  {
-    "guid": "0cd05ad8000000009ce518e3cf3927a3",
-    "checksum": "eba4df0d73ed6bc409674427018bdd79",
-    "size": 67
-  },
-  {
-    "guid": "0cd05ad800000000a5c01d33d46b3d82",
-    "checksum": "eba4df0d73ed6bc409674427018bdd79",
-    "size": 67
-  },
-  {
-    "guid": "0cd05ad800000000bfb87946adf03803",
-    "checksum": "b2e1d24efb44dbd85028e7d3263dd9b5",
-    "size": 67
-  },
-  {
-    "guid": "0cd05ad800000000f271e52bf0a8c4f1",
-    "checksum": "eba4df0d73ed6bc409674427018bdd79",
-    "size": 67
-  },
-  {
+<<<<<<< HEAD
     "guid": "19abfd3d00000000e02b6bc4835de5c4",
     "checksum": "f30f7a5d9358f46c58bad2de8827244e",
     "size": 74
@@ -58,30 +65,35 @@
     "guid": "669eb7d000000000c9875c015d617949",
     "checksum": "3608434ab8c0fdff6df541aa921ac9c5",
     "size": 162
+=======
+    "guid": "aad8904500000000ab5fe63eda1e1c4f",
+    "checksum": "395472bcdb8ebef62b5aad43cb88b094",
+    "size": 358
+>>>>>>> 0bfd8778 (Use xxHash for ResourceType to reduce collisions in the future.)
   },
   {
-    "guid": "ea2510e8000000007354d8806dd36e41",
-    "checksum": "06b9db3c818c41c96593f747bbb6e1f1",
-    "size": 947
+    "guid": "aad8904500000000e07de9e7a949885e",
+    "checksum": "cbee86fd142e3572795077d5e634590f",
+    "size": 184
   },
   {
-    "guid": "f9c9670d0000000062572ca04da3b129",
-    "checksum": "13955f2e5e320e0002d36bed544d34ee",
+    "guid": "c23b950d000000000c3544b040d370c4",
+    "checksum": "9ef5376a1215cd259fc150756e3d4023",
     "size": 1000034
   },
   {
-    "guid": "f9c9670d00000000b2333bed9c99dec1",
-    "checksum": "13955f2e5e320e0002d36bed544d34ee",
+    "guid": "c23b950d0000000018f62f13833ca491",
+    "checksum": "9ef5376a1215cd259fc150756e3d4023",
     "size": 1000034
   },
   {
-    "guid": "f9c9670d00000000e9672e9a29dbae26",
-    "checksum": "13955f2e5e320e0002d36bed544d34ee",
+    "guid": "c23b950d000000006bbebf2a63fe287c",
+    "checksum": "9ef5376a1215cd259fc150756e3d4023",
     "size": 1000034
   },
   {
-    "guid": "f9c9670d00000000f343b5e9436e3bd5",
-    "checksum": "13955f2e5e320e0002d36bed544d34ee",
+    "guid": "c23b950d00000000c507b5e792c2c22d",
+    "checksum": "9ef5376a1215cd259fc150756e3d4023",
     "size": 1000034
   }
 ]
