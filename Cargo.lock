@@ -175,15 +175,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee10e43ae4a853c0a3591d4e2ada1719e553be18199d9da9d4a83f5927c2f5c7"
 
 [[package]]
-name = "array-init"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23589ecb866b460d3a0f1278834750268c607e8e28a1b982c907219f3178cd72"
-dependencies = [
- "nodrop",
-]
-
-[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -960,7 +951,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b412e83326147c2bb881f8b40edfbf9905b9b8abaebd0e47ca190ba62fda8f0e"
 dependencies = [
- "smallvec 1.7.0",
+ "smallvec",
 ]
 
 [[package]]
@@ -1384,7 +1375,7 @@ dependencies = [
  "phf 0.8.0",
  "proc-macro2",
  "quote",
- "smallvec 1.7.0",
+ "smallvec",
  "syn",
 ]
 
@@ -2546,7 +2537,7 @@ dependencies = [
  "gobject-sys 0.14.0",
  "libc",
  "once_cell",
- "smallvec 1.7.0",
+ "smallvec",
 ]
 
 [[package]]
@@ -3271,7 +3262,7 @@ version = "0.1.0"
 dependencies = [
  "ash",
  "openh264-sys2",
- "smallvec 1.7.0",
+ "smallvec",
 ]
 
 [[package]]
@@ -3403,7 +3394,6 @@ dependencies = [
  "log",
  "rand 0.8.4",
  "serde",
- "serde-hex",
  "serde_json",
  "xxhash-rust",
 ]
@@ -3883,7 +3873,7 @@ dependencies = [
  "legion-ecs",
  "legion-math",
  "legion-utils",
- "smallvec 1.7.0",
+ "smallvec",
 ]
 
 [[package]]
@@ -4534,7 +4524,7 @@ dependencies = [
  "num-iter",
  "num-traits",
  "rand 0.8.4",
- "smallvec 1.7.0",
+ "smallvec",
  "zeroize",
 ]
 
@@ -4831,7 +4821,7 @@ dependencies = [
  "cloudabi",
  "libc",
  "redox_syscall 0.1.57",
- "smallvec 1.7.0",
+ "smallvec",
  "winapi",
 ]
 
@@ -4845,7 +4835,7 @@ dependencies = [
  "instant",
  "libc",
  "redox_syscall 0.2.10",
- "smallvec 1.7.0",
+ "smallvec",
  "winapi",
 ]
 
@@ -5940,7 +5930,7 @@ dependencies = [
  "phf_codegen",
  "precomputed-hash",
  "servo_arc",
- "smallvec 1.7.0",
+ "smallvec",
  "thin-slice",
 ]
 
@@ -5975,17 +5965,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f12d06de37cf59146fbdecab66aa99f9fe4f78722e3607577a5375d66bd0c913"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-hex"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca37e3e4d1b39afd7ff11ee4e947efae85adfddf4841787bfa47c470e96dc26d"
-dependencies = [
- "array-init",
- "serde",
- "smallvec 0.6.14",
 ]
 
 [[package]]
@@ -6180,15 +6159,6 @@ checksum = "9def91fd1e018fe007022791f865d0ccc9b3a0d5001e01aabb8b40e46000afb5"
 
 [[package]]
 name = "smallvec"
-version = "0.6.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b97fcaeba89edba30f044a10c6a3cc39df9c3f17d7cd829dd1446cab35f890e0"
-dependencies = [
- "maybe-uninit",
-]
-
-[[package]]
-name = "smallvec"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
@@ -6344,7 +6314,7 @@ dependencies = [
  "rsa",
  "sha-1",
  "sha2",
- "smallvec 1.7.0",
+ "smallvec",
  "sqlformat",
  "sqlx-rt",
  "stringprep",
@@ -7270,7 +7240,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sharded-slab",
- "smallvec 1.7.0",
+ "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",

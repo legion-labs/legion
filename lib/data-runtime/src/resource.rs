@@ -2,7 +2,6 @@ use std::{fmt, hash::Hash, str::FromStr};
 
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_hex::{SerHex, StrictPfx};
 use std::convert::TryFrom;
 use xxhash_rust::const_xxh3::xxh3_64 as const_xxh3;
 
@@ -10,8 +9,8 @@ use xxhash_rust::const_xxh3::xxh3_64 as const_xxh3;
 ///
 /// It is currently generated randomly by hashing a byte array. It uses [`Self::num_bits`] number of bits.
 /// In the future, it can be optimized to use less bits to leave more bits for the asset/resource identifier.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ResourceType(#[serde(with = "SerHex::<StrictPfx>")] u32);
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResourceType(u32);
 
 impl fmt::Display for ResourceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -58,6 +57,41 @@ impl ResourceType {
     pub fn stamp(&self, id: u128) -> u128 {
         let value_bits = u128::BITS - Self::num_bits();
         (u128::from(self.0) << value_bits) | (id & ((1 << value_bits) - 1))
+    }
+}
+
+impl Serialize for ResourceType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if serializer.is_human_readable() {
+            let bytes = self.0.to_be_bytes();
+            let hex = hex::encode(bytes);
+            serializer.serialize_str(&hex)
+        } else {
+            serializer.serialize_u32(self.0)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ResourceType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let v = {
+            if deserializer.is_human_readable() {
+                let hex = String::deserialize(deserializer)?;
+                let digits = hex::decode(hex).map_err(D::Error::custom)?;
+                u32::from_be_bytes(digits.try_into().unwrap())
+            } else {
+                u32::deserialize(deserializer)?
+            }
+        };
+        Ok(Self::from_raw(v))
     }
 }
 
