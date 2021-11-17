@@ -320,14 +320,14 @@ impl TmpRenderPass {
         //
         let vertex_layout = VertexLayout {
             attributes: vec![VertexLayoutAttribute {
-                format: Format::R32G32_SFLOAT,
+                format: Format::R32G32B32_SFLOAT,
                 buffer_index: 0,
                 location: 0,
                 byte_offset: 0,
                 gl_attribute_name: Some("pos".to_owned()),
             }],
             buffers: vec![VertexLayoutBuffer {
-                stride: 8,
+                stride: 12,
                 rate: VertexAttributeRate::Vertex,
             }],
         };
@@ -351,7 +351,7 @@ impl TmpRenderPass {
         // Per frame resources
         //
         for _ in 0..renderer.num_render_frames {
-            let vertex_data = [0f32; 12];
+            let vertex_data = [0f32; 108];
 
             let vertex_buffer = device_context
                 .create_buffer(&BufferDef::for_staging_vertex_buffer_data(&vertex_data))
@@ -360,7 +360,7 @@ impl TmpRenderPass {
                 .copy_to_host_visible_buffer(&vertex_data)
                 .unwrap();
 
-            let uniform_data = [0f32; 12];
+            let uniform_data = [0f32; 4];
 
             let uniform_buffer = device_context
                 .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))
@@ -388,6 +388,56 @@ impl TmpRenderPass {
         }
     }
 
+    pub fn make_cube_vertex_data(size: f32) -> Vec<f32> {
+        let half_size = size / 2.0;
+        #[rustfmt::skip]
+        let vertex_data = [
+            // +x
+            half_size, -half_size, -half_size,
+            half_size, half_size, -half_size,
+            half_size, half_size, half_size,
+            half_size, -half_size, -half_size,
+            half_size, half_size, half_size,
+            half_size, -half_size, half_size,
+            // -x
+            -half_size, -half_size, -half_size,
+            -half_size, half_size, half_size,
+            -half_size, half_size, -half_size,
+            -half_size, -half_size, -half_size,
+            -half_size, -half_size, half_size,
+            -half_size, half_size, half_size,
+            // +y
+            half_size, half_size, -half_size,
+            -half_size, half_size, -half_size,
+            half_size, half_size, half_size,
+            half_size, half_size, half_size,
+            -half_size, half_size, -half_size,
+            -half_size, half_size, half_size,
+            // -y
+            half_size, -half_size, -half_size,
+            half_size, -half_size, half_size,
+            -half_size, -half_size, -half_size,            
+            half_size, -half_size, half_size,
+            -half_size, -half_size, half_size,
+            -half_size, -half_size, -half_size,
+            // +z
+            half_size, -half_size, half_size,
+            half_size, half_size, half_size,
+            -half_size, -half_size, half_size,
+            -half_size, -half_size, half_size,
+            half_size, half_size, half_size,
+            -half_size, half_size, half_size,
+            // -z
+            half_size, -half_size, -half_size,
+            -half_size, -half_size, -half_size,
+            half_size, half_size, -half_size,
+            -half_size, -half_size, -half_size,
+            -half_size, half_size, -half_size,
+            half_size, half_size, -half_size,
+        ];
+        vertex_data.to_vec()
+    }
+
     pub fn render(
         &self,
         renderer: &Renderer,
@@ -402,9 +452,10 @@ impl TmpRenderPass {
         // Update vertices
         //
 
-        let vertex_data = [
-            -0.25f32, -0.25, 0.25, -0.25, 0.25, 0.25, -0.25, -0.25, -0.25, 0.25, 0.25, 0.25,
-        ];
+        let vertex_data = TmpRenderPass::make_cube_vertex_data(0.5);
+        //[
+        //    -0.25f32, -0.25, 0.25, -0.25, 0.25, 0.25, -0.25, -0.25, -0.25, 0.25, 0.25, 0.25,
+        //];
 
         let vertex_buffer = &self.vertex_buffers[render_frame_idx as usize];
         vertex_buffer
@@ -415,9 +466,7 @@ impl TmpRenderPass {
         // Update vertex color
         //
 
-        let uniform_data = [
-            1.0f32, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,
-        ];
+        let uniform_data = [1.0f32, 1.0, 1.0, 1.0];
         let uniform_buffer = &self.uniform_buffers[render_frame_idx as usize];
         let uniform_buffer_cbv = &self.uniform_buffer_cbvs[render_frame_idx as usize];
 
@@ -487,10 +536,10 @@ impl TmpRenderPass {
             (0.0f32, 1.0f32, 1.0f32),
         ];
 
-        const fov_y_radians: f32 = 45.0;
-        const aspect_ratio: f32 = 1280.0 / 720.0; //TODO: Query
-        const z_near: f32 = 0.01;
-        const z_far: f32 = 100.0;
+        let fov_y_radians: f32 = 45.0;
+        let aspect_ratio: f32 = 1280.0 / 720.0; //TODO: Query resource
+        let z_near: f32 = 0.01;
+        let z_far: f32 = 100.0;
         let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
 
         let eye = Vec3::new(0.0, 1.0, -2.0);
@@ -513,19 +562,21 @@ impl TmpRenderPass {
 
             let world = transform.compute_matrix();
             let mut push_constant_data: [f32; 52] = [0.0; 52];
-            push_constant_data[0] = color.0;
-            push_constant_data[1] = color.1;
-            push_constant_data[2] = color.2;
-            push_constant_data[3] = 1.0;
-            world.write_cols_to_slice(&mut push_constant_data[4..]);
-            view_matrix.write_cols_to_slice(&mut push_constant_data[20..]);
-            projection_matrix.write_cols_to_slice(&mut push_constant_data[36..]);
+            world.write_cols_to_slice(&mut push_constant_data[0..]);
+            view_matrix.write_cols_to_slice(&mut push_constant_data[16..]);
+            projection_matrix.write_cols_to_slice(&mut push_constant_data[32..]);
+            push_constant_data[48] = color.0;
+            push_constant_data[49] = color.1;
+            push_constant_data[50] = color.2;
+            push_constant_data[51] = 1.0;
 
             cmd_buffer
                 .cmd_push_constants(&self.root_signature, &push_constant_data)
                 .unwrap();
 
-            cmd_buffer.cmd_draw(6, 0).unwrap();
+            cmd_buffer
+                .cmd_draw((vertex_data.len() / 3) as u32, 0)
+                .unwrap();
         }
 
         cmd_buffer.cmd_end_render_pass().unwrap();
