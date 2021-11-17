@@ -44,7 +44,6 @@ export default {
       },
     },
   },
-  mounted() {},
   methods: {
     queryResourceProperties(resourceId) {
       this.loading = true;

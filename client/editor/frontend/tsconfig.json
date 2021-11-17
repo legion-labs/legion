@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["ESNext", "dom"],
+    "target": "ESNext",
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "baseUrl": "./",
+    "paths": {
+      "~/modules/*": ["modules/*"]
+    },
+    "types": ["@types/node", "@nuxt/types"]
+  },
+  "include": [
+    "components/**/*.ts",
+    "layouts/**/*.ts",
+    "modules/**/*.ts",
+    "pages/**/*.ts",
+    "plugins/**/*.ts",
+    "store/**/*.ts",
+    "components/**/*.vue",
+    "layouts/**/*.vue",
+    "modules/**/*.vue",
+    "pages/**/*.vue",
+    "plugins/**/*.vue",
+    "store/**/*.vue"
+  ],
+  "exclude": ["node_modules"]
+}

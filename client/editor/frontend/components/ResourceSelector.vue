@@ -48,7 +48,7 @@ export default {
     }
   },
   methods: {
-    async querySelections(v) {
+    async querySelections() {
       this.loading = true;
 
       try {

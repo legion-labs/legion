@@ -72,7 +72,7 @@ export default {
   },
   methods: {
     initialize(videoElement) {
-      const videoPlayer = new VideoPlayer(videoElement, () => {});
+      const videoPlayer = new VideoPlayer(videoElement);
 
       console.log("Initializing WebRTC...");
 
@@ -103,11 +103,11 @@ export default {
         console.log(iceEvent);
 
         if (iceEvent.candidate === null) {
-          retryForever(
-            initializeStream.bind(null, this.pc.localDescription)
-          ).then((remoteDescription) => {
-            this.pc.setRemoteDescription(remoteDescription);
-          });
+          retryForever(() => initializeStream(this.pc.localDescription)).then(
+            (remoteDescription) => {
+              this.pc.setRemoteDescription(remoteDescription);
+            }
+          );
         }
       };
 
@@ -143,6 +143,7 @@ export default {
       });
 
       const observer = new ResizeObserver(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         debounce(() => {
           // Ensure our resolution is a multiple of two.
           const width = videoElement.parentElement.offsetWidth & ~1;

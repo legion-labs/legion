@@ -29,7 +29,7 @@
 </template>
 
 <script>
-import { authenticate } from "~/modules/api/index";
+import { authenticate } from "~/modules/api";
 
 export default {
   name: "AppBar",
@@ -72,22 +72,22 @@ export default {
       e.preventDefault();
     };
 
-    appBar.onmouseup = (e) => {
+    appBar.onmouseup = () => {
       this.downCoordinates = null;
     };
 
-    appBar.onmousemove = (e) => {
+    appBar.onmousemove = (event) => {
       if (this.downCoordinates) {
         if (
-          Math.abs(e.clientX - this.downCoordinates.x) > 2 ||
-          Math.abs(e.clientY - this.downCoordinates.y) > 2
+          Math.abs(event.clientX - this.downCoordinates.x) > 2 ||
+          Math.abs(event.clientY - this.downCoordinates.y) > 2
         ) {
           this.startDragging();
         }
       }
     };
 
-    appBar.ondblclick = (e) => {
+    appBar.ondblclick = () => {
       this.toggle();
     };
   },

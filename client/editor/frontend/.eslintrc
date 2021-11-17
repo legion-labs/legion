@@ -1,4 +1,15 @@
 {
-  "extends": ["eslint:recommended", "@nuxtjs", "prettier"],
-  "rules": { "no-console": "off" }
+  "parser": "vue-eslint-parser",
+  "parserOptions": {
+    "parser": "@typescript-eslint/parser",
+    "sourceType": "module"
+  },
+  "extends": [
+    "plugin:@typescript-eslint/recommended",
+    "eslint:recommended",
+    "@nuxtjs",
+    "prettier"
+  ],
+  "plugins": ["@typescript-eslint"],
+  "rules": { "no-console": "off", "no-undef": "off" }
 }
