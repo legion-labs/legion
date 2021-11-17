@@ -115,8 +115,26 @@ fn generate_property_descriptors(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
         .collect()
 }
 
+/// Generate Code for Resource Registration
+pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStream {
+    let entries: Vec<QuoteRes> = structs
+        .iter()
+        .map(|struct_meta| {
+            let type_name = format_ident!("{}", &struct_meta.name);
+            quote! { .add_type::<#type_name>() }
+        })
+        .collect();
+
+    quote! {
+        pub fn register_resource_types(registry: legion_data_offline::resource::ResourceRegistryOptions) -> legion_data_offline::resource::ResourceRegistryOptions {
+            registry
+            #(#entries)*
+        }
+    }
+}
+
 #[allow(clippy::too_many_lines)]
-pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
+pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> TokenStream {
     let offline_identifier = format_ident!("{}", data_container_info.name);
     let offline_name = format!("offline_{}", data_container_info.name).to_lowercase();
     let offline_identifier_processor = format_ident!("{}Processor", data_container_info.name);
@@ -143,15 +161,24 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
     let offline_fields_json_writes =
         generate_offline_json_writes(&offline_default_instance, &data_container_info.members);
 
+    let use_quotes = if add_uses {
+        quote! {
+            use std::{any::Any, io};
+            use legion_data_offline::{PropertyDescriptor,
+                resource::{OfflineResource, ResourceProcessor, ResourceReflection},
+                ResourcePathId
+            };
+            use legion_data_runtime::{Asset, AssetLoader, Resource};
+            use legion_utils::DefaultHash;
+            use std::collections::HashMap;
+        }
+    } else {
+        quote! {}
+    };
+
     quote! {
 
-        use std::{any::Any, io};
-        use legion_data_runtime::{Asset, AssetLoader, Resource};
-        use legion_data_offline::{ PropertyDescriptor,
-            resource::{OfflineResource, ResourceProcessor,ResourceReflection},
-        };
-        use legion_utils::DefaultHash;
-        use std::collections::HashMap;
+        #use_quotes
 
         lazy_static::lazy_static! {
             static ref #offline_default_descriptor : HashMap<u64, PropertyDescriptor> = {

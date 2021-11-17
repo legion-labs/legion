@@ -1,7 +1,9 @@
 use crate::DataManager;
 use legion_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
-use legion_data_runtime::ResourceId;
+use legion_data_offline::ResourcePathId;
+use legion_data_runtime::{AssetRegistry, ResourceId, ResourceType};
 use std::collections::HashSet;
+use std::sync::Arc;
 use tokio::sync::MutexGuard;
 
 /// Describe a Lock on the Database (Project/ResourceRegistry/LoadedResources)
@@ -12,6 +14,8 @@ pub struct LockContext<'a> {
     pub resource_registry: MutexGuard<'a, ResourceRegistry>,
     /// Lock on the LoadedResources
     pub loaded_resource_handles: MutexGuard<'a, ResourceHandles>,
+    /// Reference to the Asset Registry
+    pub asset_registry: Arc<AssetRegistry>,
     // List of Resouce changed during the lock (that need saving)
     pub(crate) changed_resources: HashSet<ResourceId>,
 }
@@ -22,6 +26,7 @@ impl<'a> LockContext<'a> {
         Self {
             project: data_manager.project.lock().await,
             resource_registry: data_manager.resource_registry.lock().await,
+            asset_registry: data_manager.asset_registry.clone(),
             loaded_resource_handles: data_manager.loaded_resource_handles.lock().await,
             changed_resources: HashSet::new(),
         }
@@ -37,6 +42,13 @@ impl<'a> LockContext<'a> {
                         &handle,
                         &mut self.resource_registry,
                     )?;
+
+                    // TODO HACK. Assume DebugCube until proper mapping is exposed
+                    let derived_id = ResourcePathId::from(*resource_id)
+                        .push(ResourceType::new(b"runtime_debugcube"))
+                        .resource_id();
+
+                    self.asset_registry.reload(derived_id);
                 }
                 Ok(())
             })?;

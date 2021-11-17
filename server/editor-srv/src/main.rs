@@ -135,6 +135,13 @@ fn main() {
         )))
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(AsyncPlugin::default())
+        .insert_resource(AssetRegistrySettings::new(
+            content_store_path,
+            game_manifest_path,
+            assets_to_load,
+            databuild_settings,
+        ))
+        .add_plugin(AssetRegistryPlugin::default())
         .insert_resource(ResourceRegistrySettings::new(project_folder))
         .add_plugin(ResourceRegistryPlugin::default())
         .insert_resource(GRPCPluginSettings::new(server_addr))
@@ -143,12 +150,5 @@ fn main() {
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
         .add_plugin(TransformPlugin::default())
-        .insert_resource(AssetRegistrySettings::new(
-            content_store_path,
-            game_manifest_path,
-            assets_to_load,
-            databuild_settings,
-        ))
-        .add_plugin(AssetRegistryPlugin::default())
         .run();
 }

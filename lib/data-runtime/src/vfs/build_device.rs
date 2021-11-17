@@ -4,10 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_content_store::{ContentStore, ContentStoreAddr};
-
 use super::Device;
 use crate::{manifest::Manifest, ResourceId};
+use legion_content_store::{ContentStore, ContentStoreAddr};
+use std::time::Instant;
 
 /// Storage device that builds resources on demand. Resources are accessed through a manifest access table.
 pub(crate) struct BuildDevice {
@@ -70,7 +70,21 @@ impl BuildDevice {
             &self.cas_addr,
             &self.buildindex,
         );
+
+        log::info!("Running DataBuild for ResourceId: {}", resource_id);
+        let start = Instant::now();
         let output = command.output()?;
+
+        log::info!(
+            "{} DataBuild for Resource: {} processed in {:?}",
+            if output.status.success() {
+                "Succeeded"
+            } else {
+                "Failed"
+            },
+            resource_id,
+            start.elapsed(),
+        );
 
         if !output.status.success() {
             eprintln!(

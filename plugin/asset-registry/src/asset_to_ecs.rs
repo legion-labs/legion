@@ -22,14 +22,18 @@ where
             let entity = T::create_in_ecs(commands, &asset, asset_to_entity_map);
 
             if let Some(entity_id) = entity {
-                asset_to_entity_map.insert(*asset_id, entity_id);
+                if let Some(old_entity) = asset_to_entity_map.insert(*asset_id, entity_id) {
+                    commands.entity(old_entity).despawn();
+                }
 
                 println!(
-                    "Loaded runtime asset: {} -> ECS id: {:?}",
-                    asset_id, entity_id
+                    "Loaded {}: {} -> ECS id: {:?}",
+                    T::TYPENAME,
+                    asset_id,
+                    entity_id,
                 );
             } else {
-                println!("Loaded runtime asset: {}", asset_id);
+                println!("Loaded {}: {}", T::TYPENAME, asset_id);
             }
         }
 
@@ -117,3 +121,20 @@ impl AssetToECS for legion_graphics_runtime::Material {}
 impl AssetToECS for runtime_data::Mesh {}
 
 impl AssetToECS for legion_graphics_runtime::Texture {}
+
+impl AssetToECS for generic_data_runtime::DebugCube {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        instance: &Self,
+        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+    ) -> Option<Entity> {
+        let mut entity = commands.spawn();
+
+        entity.insert(Transform {
+            translation: instance.position,
+            rotation: instance.rotation,
+            scale: instance.scale,
+        });
+        Some(entity.id())
+    }
+}
