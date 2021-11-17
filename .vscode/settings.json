@@ -6,5 +6,12 @@
     "rust-analyzer.diagnostics.disabled": [
         "unresolved-macro-call"
     ],
-    "files.eol": "\n"
+    "files.eol": "\n",
+    "css.lint.unknownAtRules": "ignore",
+    "[vue]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
 }
