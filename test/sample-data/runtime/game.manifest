@@ -10,15 +10,9 @@
     "size": 67
   },
   {
-<<<<<<< HEAD
-    "guid": "019c822300000000b34c39427317a636",
-    "checksum": "0211a93e29ac9b87960407537b475872",
-    "size": 390
-=======
     "guid": "30495fed000000001ca4261976e4b3c5",
     "checksum": "384f76305deb81524e0fda7a92db15d0",
     "size": 67
->>>>>>> 0bfd8778 (Use xxHash for ResourceType to reduce collisions in the future.)
   },
   {
     "guid": "30495fed000000008e21cbbe5c7a6256",
@@ -41,6 +35,11 @@
     "size": 67
   },
   {
+    "guid": "35b5717e0000000084a0d1047b638b96",
+    "checksum": "30f1e0310edf33d74650635a1ba7bd02",
+    "size": 74
+  },
+  {
     "guid": "84935d1f000000007f3751314a9b2cb0",
     "checksum": "1f5bbf6bcea968ca9db2df465163f54e",
     "size": 947
@@ -56,20 +55,9 @@
     "size": 250
   },
   {
-<<<<<<< HEAD
-    "guid": "19abfd3d00000000e02b6bc4835de5c4",
-    "checksum": "f30f7a5d9358f46c58bad2de8827244e",
-    "size": 74
-  },
-  {
-    "guid": "669eb7d000000000c9875c015d617949",
-    "checksum": "3608434ab8c0fdff6df541aa921ac9c5",
-    "size": 162
-=======
     "guid": "aad8904500000000ab5fe63eda1e1c4f",
-    "checksum": "395472bcdb8ebef62b5aad43cb88b094",
-    "size": 358
->>>>>>> 0bfd8778 (Use xxHash for ResourceType to reduce collisions in the future.)
+    "checksum": "3aba5061a97aa89bb522050b16081f67",
+    "size": 390
   },
   {
     "guid": "aad8904500000000e07de9e7a949885e",
