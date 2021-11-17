@@ -1,3 +1,42 @@
+<script>
+import { u32ToHexcolor, hexcolorToU32 } from "~/modules/conversion";
+
+export default {
+  name: "ColorViewer",
+  // eslint-disable-next-line vue/require-prop-types
+  props: ["value"],
+  computed: {
+    localValue: {
+      get() {
+        return u32ToHexcolor(this.value);
+      },
+      set(val) {
+        this.$emit("input", hexcolorToU32(val));
+      },
+    },
+    bgColor() {
+      return {
+        "--bg-color": this.localValue,
+      };
+    },
+  },
+  mounted() {
+    document.querySelector("#color > code").onclick = function (e) {
+      e.stopPropagation();
+    };
+
+    document.querySelector("#color > code").ondblclick = function (e) {
+      e.stopPropagation();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(this);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    };
+  },
+};
+</script>
+
 <template>
   <span id="color">
     <span :style="bgColor" :tile="localValue"></span
@@ -30,43 +69,3 @@
   border-radius: 0;
 }
 </style>
-
-<script>
-import { u32_to_hexcolor, hexcolor_to_u32 } from "~/modules/conversion";
-
-export default {
-  name: "ColorViewer",
-  props: ["value"],
-  computed: {
-    localValue: {
-      get() {
-        return u32_to_hexcolor(this.value);
-      },
-      set(val) {
-        this.$emit("input", hexcolor_to_u32(val));
-      },
-    },
-    bgColor() {
-      return {
-        "--bg-color": this.localValue,
-      };
-    },
-  },
-  mounted() {
-    var self = this;
-
-    document.querySelector("#color > code").onclick = function (e) {
-      e.stopPropagation();
-    };
-
-    document.querySelector("#color > code").ondblclick = function (e) {
-      e.stopPropagation();
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(this);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    };
-  },
-};
-</script>

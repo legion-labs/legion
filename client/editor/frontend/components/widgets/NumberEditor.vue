@@ -1,12 +1,12 @@
 <template>
   <v-text-field
+    v-model="localValue"
     type="number"
     dense
     filled
     hide-details
     single-line
     outlined
-    v-model="localValue"
   ></v-text-field>
 </template>
 
@@ -14,6 +14,7 @@
 export default {
   name: "NumberEditor",
   props: {
+    // eslint-disable-next-line vue/require-default-prop
     value: Number,
   },
   computed: {
@@ -22,8 +23,8 @@ export default {
         return this.value;
       },
       set(val) {
-        var numVal = parseFloat(val);
-        if (numVal != NaN) {
+        const numVal = parseFloat(val);
+        if (!isNaN(numVal)) {
           this.$emit("input", numVal);
         }
       },

@@ -1,12 +1,12 @@
 <template>
-  <ColorViewer v-model="localValue" readonly v-if="readonly"></ColorViewer>
+  <ColorViewer v-if="readonly" v-model="localValue" readonly></ColorViewer>
   <v-edit-dialog
+    v-else
     large
     persistent
     dark
     save-text="Apply"
     :return-value.sync="localValue"
-    v-else
   >
     <ColorViewer v-model="localValue"></ColorViewer>
     <template #input>
@@ -19,6 +19,7 @@
 export default {
   name: "ColorWidget",
   props: {
+    // eslint-disable-next-line vue/require-default-prop
     value: Number,
     readonly: {
       type: Boolean,

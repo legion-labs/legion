@@ -2,12 +2,12 @@
   <VecViewer v-if="readonly" v-model="localValue"></VecViewer>
   <VecEditor v-else-if="direct" v-model="localValue"></VecEditor>
   <v-edit-dialog
+    v-else
     large
     persistent
     dark
     save-text="Apply"
     :return-value.sync="localValue"
-    v-else
   >
     <VecViewer v-model="localValue"></VecViewer>
     <template #input>
@@ -20,6 +20,7 @@
 export default {
   name: "VecWidget",
   props: {
+    // eslint-disable-next-line vue/require-default-prop
     value: Array,
     readonly: {
       type: Boolean,
@@ -36,10 +37,12 @@ export default {
         return this.value;
       },
       set(valarray) {
-        var valNums = [];
-        for (var val of valarray) {
-          var valNum = parseFloat(val);
-          if (valNum == NaN) return;
+        const valNums = [];
+        for (const val of valarray) {
+          const valNum = parseFloat(val);
+          if (isNaN(valNum)) {
+            return;
+          }
           valNums.push(valNum);
         }
         this.$emit("input", valNums);

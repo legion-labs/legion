@@ -1,6 +1,6 @@
 <template>
-  <v-slider class="speed-selector" min="-10" max="10" v-model="localValue">
-    <template v-slot:append>
+  <v-slider v-model="localValue" class="speed-selector" min="-10" max="10">
+    <template #append>
       <v-text-field
         v-model="localValue"
         class="mt-0 pt-0"
@@ -16,6 +16,7 @@
 <script>
 export default {
   name: "SpeedEditor",
+  // eslint-disable-next-line vue/require-prop-types
   props: ["value"],
   computed: {
     localValue: {

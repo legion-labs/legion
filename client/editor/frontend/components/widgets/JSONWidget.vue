@@ -1,6 +1,6 @@
 <template>
-  <json-viewer :data="localValue" v-if="readonly"></json-viewer>
-  <v-edit-dialog large persistent :return-value.sync="localValue" v-else>
+  <json-viewer v-if="readonly" :data="localValue"></json-viewer>
+  <v-edit-dialog v-else large persistent :return-value.sync="localValue">
     <json-viewer :data="localValue"></json-viewer>
     <template #input>
       <json-editor
@@ -15,6 +15,7 @@
 export default {
   name: "JSONWidget",
   props: {
+    // eslint-disable-next-line vue/require-default-prop, vue/require-prop-types
     value: {},
     readonly: {
       type: Boolean,

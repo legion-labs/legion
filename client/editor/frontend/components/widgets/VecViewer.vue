@@ -6,6 +6,7 @@
 export default {
   name: "Vec3Viewer",
   props: {
+    // eslint-disable-next-line vue/require-default-prop
     value: Array,
   },
   computed: {

@@ -37,11 +37,13 @@
 export default {
   name: "ResourcePropertyEditor",
   props: {
+    // eslint-disable-next-line vue/require-default-prop, vue/require-prop-types
     value: {},
     readonly: {
       type: Boolean,
       default: false,
     },
+    // eslint-disable-next-line vue/require-default-prop
     ptype: String,
   },
   computed: {

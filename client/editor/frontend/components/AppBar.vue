@@ -34,6 +34,7 @@ import { authenticate } from "~/modules/api/index";
 export default {
   name: "AppBar",
   props: {
+    // eslint-disable-next-line vue/require-default-prop, vue/require-prop-type-constructor
     drawer: false,
   },
   data() {

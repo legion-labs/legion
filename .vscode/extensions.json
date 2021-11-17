@@ -12,6 +12,10 @@
         // Inspect Hex file
         "ms-vscode.hexeditor",
         // Protobuf file linting
-        "zxh404.vscode-proto3"
+        "zxh404.vscode-proto3",
+        // Code linter for frontend projects
+        "dbaeumer.vscode-eslint",
+        // Code beautifier for frontend projects
+        "esbenp.prettier-vscode"
     ]
 }

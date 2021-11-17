@@ -2,12 +2,12 @@
   <pre v-if="readonly">{{ localValue }}</pre>
   <NumberEditor v-else-if="direct" v-model="localValue"></NumberEditor>
   <v-edit-dialog
+    v-else
     large
     persistent
     dark
     save-text="Apply"
     :return-value.sync="localValue"
-    v-else
   >
     <pre>{{ localValue }}</pre>
     <template #input>
@@ -20,6 +20,7 @@
 export default {
   name: "NumberWidget",
   props: {
+    // eslint-disable-next-line vue/require-default-prop
     value: Number,
     readonly: {
       type: Boolean,

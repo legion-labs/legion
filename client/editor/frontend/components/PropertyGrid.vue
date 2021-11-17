@@ -1,3 +1,20 @@
+<script>
+export default {
+  data() {
+    return {
+      resourceDescription: null,
+    };
+  },
+  computed: {
+    minWidth() {
+      return {
+        "--min-width": Math.min(this.$vuetify.breakpoint.width / 5, 350) + "px",
+      };
+    },
+  },
+};
+</script>
+
 <template>
   <div id="property-grid" :style="minWidth" class="d-flex flex-column">
     <v-subheader>Properties</v-subheader>
@@ -18,20 +35,3 @@
   min-width: var(--min-width);
 }
 </style>
-
-<script>
-export default {
-  data() {
-    return {
-      resourceDescription: null,
-    };
-  },
-  computed: {
-    minWidth() {
-      return {
-        "--min-width": Math.min(this.$vuetify.breakpoint.width / 5, 350) + "px",
-      };
-    },
-  },
-};
-</script>

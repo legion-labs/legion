@@ -16,7 +16,7 @@
 </template>
 
 <script>
-import { search_resources } from "~/modules/api";
+import { searchResources } from "~/modules/api";
 
 export default {
   name: "ResourceSelector",
@@ -36,29 +36,29 @@ export default {
       val && this.querySelections(val);
     },
   },
+  async mounted() {
+    try {
+      await this.querySelections("");
+    } catch (e) {
+      console.error("Failed to query initial resources: ", e);
+    }
+
+    if (this.resourceDescriptions.length > 0) {
+      this.resource = this.resourceDescriptions[0];
+    }
+  },
   methods: {
     async querySelections(v) {
       this.loading = true;
 
       try {
-        const resp = await search_resources();
+        const resp = await searchResources();
 
         this.resourceDescriptions = resp.resource_descriptions;
       } finally {
         this.loading = false;
       }
     },
-  },
-  async mounted() {
-    try {
-      await this.querySelections("");
-    } catch (e) {
-      console.log("Failed to query initial resources: ", e);
-    }
-
-    if (this.resourceDescriptions.length > 0) {
-      this.resource = this.resourceDescriptions[0];
-    }
   },
 };
 </script>

@@ -1,3 +1,25 @@
+<script>
+export default {
+  data() {
+    return {
+      drawer: true,
+      items: [
+        {
+          icon: "mdi-apps",
+          title: "Editor",
+          to: "/",
+        },
+        {
+          icon: "mdi-chart-bubble",
+          title: "About",
+          to: "/about",
+        },
+      ],
+    };
+  },
+};
+</script>
+
 <template>
   <v-app>
     <AppBar :drawer="drawer" @drawer-change="drawer = $event"></AppBar>
@@ -52,25 +74,3 @@ main {
   border-bottom: 1px solid #333;
 }
 </style>
-
-<script>
-export default {
-  data() {
-    return {
-      drawer: true,
-      items: [
-        {
-          icon: "mdi-apps",
-          title: "Editor",
-          to: "/",
-        },
-        {
-          icon: "mdi-chart-bubble",
-          title: "About",
-          to: "/about",
-        },
-      ],
-    };
-  },
-};
-</script>

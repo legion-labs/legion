@@ -6,7 +6,11 @@
     "dev": "nuxt",
     "build": "nuxt build",
     "start": "nuxt start",
-    "generate": "nuxt generate"
+    "generate": "nuxt generate",
+    "eslint:check": "eslint --ext .js,.vue .",
+    "eslint:fix": "eslint --ext .js,.vue --fix .",
+    "prettier:check": "prettier --check .",
+    "prettier:fix": "prettier --write ."
   },
   "dependencies": {
     "@kassaila/vue-json-editor": "^0.4.0",
@@ -20,6 +24,11 @@
     "webpack": "^5.54.0"
   },
   "devDependencies": {
-    "@nuxtjs/vuetify": "^1.12.1"
+    "@nuxtjs/eslint-config": "^7.0.0",
+    "@nuxtjs/vuetify": "^1.12.1",
+    "eslint": "^8.2.0",
+    "eslint-config-prettier": "^8.3.0",
+    "prettier": "2.4.1",
+    "yarn": "^1.22.17"
   }
 }

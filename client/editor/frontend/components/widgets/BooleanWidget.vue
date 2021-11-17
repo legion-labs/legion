@@ -1,16 +1,3 @@
-<template>
-  <span>
-    <v-switch dense :disabled="readonly" v-model="localValue"></v-switch>
-  </span>
-</template>
-
-<style scoped>
-span {
-  display: inline-block;
-  margin: auto;
-}
-</style>
-
 <script>
 export default {
   name: "BooleanWidget",
@@ -33,3 +20,16 @@ export default {
   },
 };
 </script>
+
+<template>
+  <span>
+    <v-switch v-model="localValue" dense :disabled="readonly"></v-switch>
+  </span>
+</template>
+
+<style scoped>
+span {
+  display: inline-block;
+  margin: auto;
+}
+</style>
