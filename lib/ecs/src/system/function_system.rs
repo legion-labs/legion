@@ -431,96 +431,83 @@ macro_rules! impl_system_function {
 
         paste! { // Note: the paste! macro is used to combine identifiers using the "[<i1 i2 i3>]" -> "i1i2i3" syntax
             #[allow(non_camel_case_types)]
-            pub trait [<AsyncSystemFn $(_$param)*>]<'a, Out, $($param: SystemParam),*> {
-                type AsyncResult: Future<Output = Out> + Send + 'a;
+            pub trait [<AsyncSystemFn $(_$param)*>]<'f, Out, $($param: SystemParam),*> {
+                type AsyncResult: Future<Output = Out> + Send + 'f;
                 fn call_async(&mut self, $($param: $param,)*) -> Self::AsyncResult;
             }
 
-            impl<'a, Out, Func, AsyncResult, $($param: SystemParam),*> [<AsyncSystemFn $(_$param)*>]<'a, Out, $($param,)*> for Func
+            impl<'f, Out, Func, AsyncResult, $($param: SystemParam),*> [<AsyncSystemFn $(_$param)*>]<'f, Out, $($param,)*> for Func
             where
                 Func: FnMut($($param),*) -> AsyncResult
                     + FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> AsyncResult,
-                AsyncResult: Future<Output = Out> + Send + 'a,
+                AsyncResult: Future<Output = Out> + Send + 'f,
             {
                 type AsyncResult = AsyncResult;
                 fn call_async(&mut self, $($param: $param,)*) -> Self::AsyncResult {
                     self($($param,)*)
                 }
             }
-        }
-//                for <'a, 'f> &'a mut Func: [<AsyncSystemFn $(_$param)*>]<'f, Out, $($param,)*>,
 
-        #[async_trait]
-        #[allow(non_snake_case)]
-        impl<Out, Func: Send + Sync + 'static, $($param: SystemParam),*>
-            SystemParamFunction<(), Out, ($($param,)*), ()>
-        for Func
-        where
-            for <'a> &'a mut Func:
-                FnMut($($param),*) -> Out +
-                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out,
-            Out: Send + 'static
-        {
-            #[inline]
-            async unsafe fn run(&mut self, _input: (), state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
-                // Yes, this is strange, but rustc fails to compile this impl
-                // without using this function.
-                #[allow(clippy::too_many_arguments)]
-                fn call_inner<Out, $($param,)*>(
-                    mut f: impl FnMut($($param,)*) -> Out,
-                    $($param: $param,)*
-                ) -> Out {
-                    f($($param,)*)
+            #[async_trait]
+            #[allow(non_snake_case)]
+            impl<Out, Func: Send + Sync + 'static, $($param: SystemParam),*>
+                SystemParamFunction<(), Out, ($($param,)*), ()>
+            for Func
+            where
+                for <'a> &'a mut Func:
+                    FnMut($($param),*) -> Out +
+                    FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> Out,
+                Out: Send + 'static
+            {
+                #[inline]
+                async unsafe fn run(&mut self, _input: (), state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
+                    // Yes, this is strange, but rustc fails to compile this impl
+                    // without using this function.
+                    #[allow(clippy::too_many_arguments)]
+                    fn call_inner<Out, $($param,)*>(
+                        mut f: impl FnMut($($param,)*) -> Out,
+                        $($param: $param,)*
+                    ) -> Out {
+                        f($($param,)*)
+                    }
+                    let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
+                    call_inner(self, $($param),*)
                 }
-                let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
-                call_inner(self, $($param),*)
             }
-        }
 
-        paste! { // Note: the paste! macro is used to combine identifiers using the "[<i1 i2 i3>]" -> "i1i2i3" syntax
             #[allow(non_camel_case_types)]
-            pub trait [<AsyncSystemFn_Input $(_$param)*>]<'a, Input, Out, $($param: SystemParam),*> {
-                type AsyncResult: Future<Output = Out> + Send + 'a;
-                fn call_async(&mut self, input: Input, $($param: $param,)*) -> Self::AsyncResult;
+            pub trait [<AsyncSystemFn_Input $(_$param)*>]<'f, Input, Out, $($param: SystemParam),*> {
+                type AsyncResult: Future<Output = Out> + Send + 'f;
+                fn call_async(&mut self, input: Input, $($param: <<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item,)*) -> Self::AsyncResult;
             }
 
-            impl<'a, Input, Out, Func, AsyncResult, $($param: SystemParam),*> [<AsyncSystemFn_Input $(_$param)*>]<'a, Input, Out, $($param,)*> for Func
+            impl<'f, Input, Out, Func, AsyncResult, $($param: SystemParam),*> [<AsyncSystemFn_Input $(_$param)*>]<'f, Input, Out, $($param,)*> for Func
             where
                 Func: FnMut(In<Input>, $($param),*) -> AsyncResult
                     + FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> AsyncResult,
-                AsyncResult: Future<Output = Out> + Send + 'a,
+                AsyncResult: Future<Output = Out> + Send + 'f,
             {
                 type AsyncResult = AsyncResult;
-                fn call_async(&mut self, input: Input, $($param: $param,)*) -> Self::AsyncResult {
+                fn call_async(&mut self, input: Input, $($param: <<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item,)*) -> Self::AsyncResult {
                     self(In(input), $($param,)*)
                 }
             }
-        }
 
-        #[async_trait]
-        #[allow(non_snake_case)]
-        impl<Input, Out, Func: Send + Sync + 'static, AsyncResult, $($param: SystemParam),*> SystemParamFunction<Input, Out, ($($param,)*), InputMarker> for Func
-        where
-            for <'a> &'a mut Func:
-                    FnMut(In<Input>, $($param),*) -> AsyncResult +
-                    FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch<'_, '_>>::Item),*) -> AsyncResult,
-            Input: Send + 'static,
-            $(for <'w, 's> <<$param as SystemParam>::Fetch as SystemParamFetch<'w, 's>>::Item: Send,)*
-            AsyncResult: Future<Output = Out> + Send,
-            Out: Send + 'static
-        {
-            #[inline]
-            async unsafe fn run(&mut self, input: Input, state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
-                #[allow(clippy::too_many_arguments)]
-                fn call_inner<Input, AsyncResult, $($param,)*>(
-                    mut f: impl FnMut(In<Input>, $($param,)*) -> AsyncResult,
-                    input: In<Input>,
-                    $($param: $param,)*
-                ) -> AsyncResult {
-                    f(input, $($param,)*)
+            #[async_trait]
+            #[allow(non_snake_case)]
+            impl<Input, Out, Func: Send + Sync + 'static, $($param: SystemParam),*> SystemParamFunction<Input, Out, ($($param,)*), InputMarker> for Func
+            where
+                for <'a, 'f> &'a mut Func: [<AsyncSystemFn_Input $(_$param)*>]<'f, Input, Out, $($param),*>,
+                Input: Send + 'static,
+                $(for <'w, 's> <<$param as SystemParam>::Fetch as SystemParamFetch<'w, 's>>::Item: Send,)*
+                Out: Send + 'static
+            {
+                #[inline]
+                async unsafe fn run(&mut self, input: Input, state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
+                    #[allow(clippy::too_many_arguments)]
+                    let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
+                    self.call_async(input, $($param),*).await
                 }
-                let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
-                call_inner(self, In(input), $($param),*).await
             }
         }
     };
