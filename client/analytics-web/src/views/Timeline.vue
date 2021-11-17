@@ -23,10 +23,16 @@
 <script>
 import { ListProcessChildrenRequest, BlockSpansRequest, ListStreamBlocksRequest, ListProcessStreamsRequest, FindProcessRequest, PerformanceAnalyticsClient } from '../proto/analytics_grpc_web_pb'
 
+function findStreamProcess (streamId) {
+  const stream = this.threads[streamId].streamInfo
+  const process = this.process_list.find(process => process.getProcessId() === stream.getProcessId())
+  return process
+}
+
 function fetchBlockSpans (block) {
   const streamId = block.getStreamId()
   const stream = this.threads[streamId].streamInfo
-  const process = this.process_list.find(process => process.getProcessId() === stream.getProcessId())
+  const process = this.findStreamProcess(streamId)
   const request = new BlockSpansRequest()
   request.setProcess(process)
   request.setStream(stream)
@@ -90,6 +96,21 @@ function fetchStreams (process) {
   }
 }
 
+function fetchChildren () {
+  var listChildrenRequest = new ListProcessChildrenRequest()
+  listChildrenRequest.setProcessId(this.process_id)
+  this.client.list_process_children(listChildrenRequest, null, (err, response) => {
+    if (err) {
+      console.error('error in list_process_children', err)
+    } else {
+      response.getProcessesList().forEach(process => {
+        this.process_list.push(process)
+        this.fetchStreams(process)
+      })
+    }
+  })
+}
+
 function fetchProcessInfo () {
   try {
     var findProcessRequest = new FindProcessRequest()
@@ -102,19 +123,7 @@ function fetchProcessInfo () {
         this.process_list.push(process)
         this.fetchStreams(process)
         this.current_process = process
-      }
-    })
-
-    var listChildrenRequest = new ListProcessChildrenRequest()
-    listChildrenRequest.setProcessId(this.process_id)
-    this.client.list_process_children(listChildrenRequest, null, (err, response) => {
-      if (err) {
-        console.error('error in list_process_children', err)
-      } else {
-        response.getProcessesList().forEach(process => {
-          this.process_list.push(process)
-          this.fetchStreams(process)
-        })
+        this.fetchChildren()
       }
     })
   } catch (err) {
@@ -153,7 +162,7 @@ function formatExecutionTime (time) {
   return time.toFixed(3) + ' ' + unit
 }
 
-function drawThread (thread, threadVerticalOffset) {
+function drawThread (thread, threadVerticalOffset, offsetMs) {
   const viewRange = this.getViewRange()
   const begin = viewRange[0]
   const end = viewRange[1]
@@ -170,8 +179,10 @@ function drawThread (thread, threadVerticalOffset) {
   thread.spanBlocks.forEach(blockSpans => {
     maxDepth = Math.max(maxDepth, blockSpans.getMaxDepth())
     blockSpans.getSpansList().forEach(span => {
-      const beginPixels = (span.getBeginMs() - begin) * msToPixelsFactor
-      const endPixels = (span.getEndMs() - begin) * msToPixelsFactor
+      const beginSpan = span.getBeginMs() + offsetMs
+      const endSpan = span.getEndMs() + offsetMs
+      const beginPixels = (beginSpan - begin) * msToPixelsFactor
+      const endPixels = (endSpan - begin) * msToPixelsFactor
       const callWidth = endPixels - beginPixels
       const depth = span.getDepth()
       const offsetY = threadVerticalOffset + (depth * 20)
@@ -187,7 +198,7 @@ function drawThread (thread, threadVerticalOffset) {
         this.renderingContext.fillStyle = '#000000'
         const extraHeight = 0.5 * (20 - characterHeight)
         const name = scope.getName()
-        const caption = name + ' ' + formatExecutionTime(span.getEndMs() - span.getBeginMs())
+        const caption = name + ' ' + formatExecutionTime(endSpan - beginSpan)
         this.renderingContext.fillText(caption.slice(0, nbChars), beginPixels + 5, offsetY + characterHeight + extraHeight, callWidth)
       }
     })
@@ -200,8 +211,11 @@ function drawCanvas () {
   canvas.height = window.innerHeight - canvas.getBoundingClientRect().top - 20
   this.renderingContext.clearRect(0, 0, canvas.width, canvas.height)
   let threadVerticalOffset = this.y_offset
+  const parentStartTime = Date.parse(this.current_process.getStartTime())
   for (const streamId in this.threads) {
-    const maxDepth = this.drawThread(this.threads[streamId], threadVerticalOffset)
+    const childProcess = this.findStreamProcess(streamId)
+    const childStartTime = Date.parse(childProcess.getStartTime())
+    const maxDepth = this.drawThread(this.threads[streamId], threadVerticalOffset, childStartTime - parentStartTime)
     threadVerticalOffset += (maxDepth + 2) * 20
   }
 }
@@ -291,8 +305,10 @@ export default {
     drawThread: drawThread,
     fetchBlockSpans: fetchBlockSpans,
     fetchBlocks: fetchBlocks,
+    fetchChildren: fetchChildren,
     fetchProcessInfo: fetchProcessInfo,
     fetchStreams: fetchStreams,
+    findStreamProcess: findStreamProcess,
     getViewRange: getViewRange,
     onPan: onPan,
     onZoom: onZoom,
