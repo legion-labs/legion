@@ -1,3 +1,5 @@
+use std::{ops::Deref, sync::Arc};
+
 use async_trait::async_trait;
 
 mod aws_cognito_client_authenticator;
@@ -24,4 +26,22 @@ pub trait Authenticator {
 
     /// Perform a logout, possibly using an interactive prompt.
     async fn logout(&self) -> Result<()>;
+}
+
+#[async_trait]
+impl<T> Authenticator for Arc<T>
+where
+    T: Authenticator + Send + Sync,
+{
+    async fn login(&self) -> Result<ClientTokenSet> {
+        self.deref().login().await
+    }
+
+    async fn refresh_login(&self, refresh_token: &str) -> Result<ClientTokenSet> {
+        self.deref().refresh_login(refresh_token).await
+    }
+
+    async fn logout(&self) -> Result<()> {
+        self.deref().logout().await
+    }
 }
