@@ -2,7 +2,11 @@ use legion_app::{CoreStage, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
 use legion_transform::components::Transform;
 
-use crate::{components::RenderSurface, labels::RendererSystemLabel, Renderer};
+use crate::{
+    components::{RenderSurface, StaticMeshComponent},
+    labels::RendererSystemLabel,
+    Renderer,
+};
 
 #[derive(Default)]
 pub struct RendererPlugin;
@@ -41,9 +45,9 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
 fn render_update(
     mut renderer: ResMut<'_, Renderer>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    transforms: Query<'_, '_, &Transform>,
+    query: Query<'_, '_, (&Transform, &StaticMeshComponent)>,
 ) {
-    renderer.update(&mut q_render_surfaces, &transforms);
+    renderer.update(&mut q_render_surfaces, &query);
 }
 
 fn render_post_update(mut renderer: ResMut<'_, Renderer>) {

@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
-use crate::components::{RenderSurface, StaticMesh};
+use crate::components::{RenderSurface, StaticMesh, StaticMeshComponent};
 use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
 use legion_math::{EulerRot, Mat4, Quat, Vec3};
@@ -150,18 +150,20 @@ impl Renderer {
     pub(crate) fn update(
         &mut self,
         q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>,
-        transform: &Query<'_, '_, &Transform>,
+        query: &Query<'_, '_, (&Transform, &StaticMeshComponent)>,
     ) {
         let cmd_buffer = self.get_cmd_buffer();
 
-        let transforms = transform.iter().collect::<Vec<&Transform>>();
+        let query = query
+            .iter()
+            .collect::<Vec<(&Transform, &StaticMeshComponent)>>();
 
         for mut render_surface in q_render_surfaces.iter_mut() {
             render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
             {
                 let render_pass = &render_surface.test_renderpass;
-                render_pass.render(self, &render_surface, cmd_buffer, transforms.as_slice());
+                render_pass.render(self, &render_surface, cmd_buffer, query.as_slice());
             }
         }
     }
@@ -399,7 +401,7 @@ impl TmpRenderPass {
         renderer: &Renderer,
         render_surface: &RenderSurface,
         cmd_buffer: &CommandBuffer,
-        transforms: &[&Transform],
+        static_meshes: &[(&Transform, &StaticMeshComponent)],
     ) {
         let render_frame_idx = renderer.render_frame_idx;
         let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
@@ -493,20 +495,13 @@ impl TmpRenderPass {
         //    ),
         //];
 
-        for (index, transform) in transforms.iter().enumerate() {
-            //
-            // Update vertices
-            //
-            let mesh = match index % 2 {
-                0 => &self.static_meshes[0],
-                _ => &self.static_meshes[1],
-            };
-            //let vertex_data = cube.vertices;
-            //
-            //let vertex_buffer = &self.vertex_buffers[render_frame_idx as usize];
-            //vertex_buffer
-            //    .copy_to_host_visible_buffer(&vertex_data)
-            //    .unwrap();
+        for (index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
+            let mesh_id = static_mesh_component.mesh_id;
+            if mesh_id >= self.static_meshes.len() {
+                continue;
+            }
+
+            let mesh = &self.static_meshes[static_mesh_component.mesh_id];
 
             cmd_buffer
                 .cmd_bind_vertex_buffers(

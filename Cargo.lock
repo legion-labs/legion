@@ -3228,6 +3228,7 @@ dependencies = [
  "legion-data-runtime",
  "legion-ecs",
  "legion-graphics-runtime",
+ "legion-renderer",
  "legion-transform",
  "sample-data-runtime",
  "serde_json",
