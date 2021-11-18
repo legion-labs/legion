@@ -68,3 +68,4 @@ mod renderer;
 pub use renderer::*;
 
 pub mod components;
+pub mod static_mesh_render_data;

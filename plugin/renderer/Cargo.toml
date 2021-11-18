@@ -12,6 +12,8 @@ legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+legion-transform = { path = "../transform", version = "0.1.0" }
+legion-math = { path = "../../lib/math", version = "0.1.0" }
 log = "0.4"
 
 [features]

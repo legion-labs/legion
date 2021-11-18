@@ -133,6 +133,9 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                 raw_data::Component::Physics(raw) => {
                     components.push(Box::new(offline_data::Physics::from_raw(raw, references)));
                 }
+                raw_data::Component::StaticMesh(raw) => {
+                    components.push(Box::new(Into::<offline_data::StaticMesh>::into(raw)));
+                }
             }
         }
         Self {
@@ -242,6 +245,14 @@ impl FromRaw<raw_data::Physics> for offline_data::Physics {
         Self {
             dynamic: raw.dynamic,
             collision_geometry: lookup_asset_path(references, &raw.collision_geometry),
+        }
+    }
+}
+
+impl From<raw_data::StaticMesh> for offline_data::StaticMesh {
+    fn from(raw: raw_data::StaticMesh) -> Self {
+        Self {
+            mesh_id: raw.mesh_id,
         }
     }
 }

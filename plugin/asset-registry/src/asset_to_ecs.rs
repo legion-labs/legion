@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use legion_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceId};
 use legion_ecs::prelude::*;
+use legion_renderer::components::StaticMesh;
 use legion_transform::prelude::*;
 use sample_data_runtime as runtime_data;
 
@@ -70,6 +71,10 @@ impl AssetToECS for runtime_data::Entity {
                     scale: transform.scale,
                 });
                 transform_inserted = true;
+            } else if let Some(static_mesh) = component.downcast_ref::<runtime_data::StaticMesh>() {
+                entity.insert(StaticMesh {
+                    mesh_id: static_mesh.mesh_id,
+                });
             }
             //} else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
             // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
@@ -135,6 +140,7 @@ impl AssetToECS for generic_data_runtime::DebugCube {
             rotation: instance.rotation,
             scale: instance.scale,
         });
+        entity.insert(StaticMesh { mesh_id: 1 });
         Some(entity.id())
     }
 }

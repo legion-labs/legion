@@ -16,6 +16,10 @@
             shadow_caster_local: true,
             gi_contribution: Default,
         )),
+        StaticMesh((
+            mesh_id: 0,
+
+        )),
         Physics((
             dynamic: false,
             collision_geometry: "runtime_mesh(world/sample_1/ground.mesh)",

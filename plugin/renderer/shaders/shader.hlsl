@@ -1,16 +1,17 @@
 struct VertexIn {
-    float4 pos : POSITION;    
+    float3 pos : POSITION;    
 };
 
 struct VertexOut {  
     float4 hpos : SV_POSITION;
 };
 
-VertexOut main_vs(in VertexIn vertex_in) {
-    VertexOut vertex_out;
-    vertex_out.hpos = vertex_in.pos;    
-    return vertex_out;
-}
+struct PushConstData {
+    float4x4 world;
+    float4x4 view;
+    float4x4 projection;
+    float4 color;
+};
 
 struct ConstData {
     float4 uniform_color;
@@ -19,8 +20,18 @@ struct ConstData {
 ConstantBuffer<ConstData> uniform_data;
 
 [[vk::push_constant]]
-ConstantBuffer<ConstData> push_constant;
+ConstantBuffer<PushConstData> push_constant;
+
+
+VertexOut main_vs(in VertexIn vertex_in) {
+    VertexOut vertex_out;
+    vertex_out.hpos = mul(push_constant.projection, mul(push_constant.view, mul(push_constant.world, float4(vertex_in.pos, 1.0))));
+    return vertex_out;
+}
+
+
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    return uniform_data.uniform_color * push_constant.uniform_color;
+    float4 color = uniform_data.uniform_color;
+    return push_constant.color;
 }

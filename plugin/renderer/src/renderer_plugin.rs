@@ -1,7 +1,12 @@
 use legion_app::{CoreStage, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
+use legion_transform::components::Transform;
 
-use crate::{components::RenderSurface, labels::RendererSystemLabel, Renderer};
+use crate::{
+    components::{RenderSurface, StaticMesh},
+    labels::RendererSystemLabel,
+    Renderer,
+};
 
 #[derive(Default)]
 pub struct RendererPlugin;
@@ -36,11 +41,13 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn render_update(
     mut renderer: ResMut<'_, Renderer>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    query: Query<'_, '_, (&Transform, &StaticMesh)>,
 ) {
-    renderer.update(&mut q_render_surfaces);
+    renderer.update(&mut q_render_surfaces, &query);
 }
 
 fn render_post_update(mut renderer: ResMut<'_, Renderer>) {

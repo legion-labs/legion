@@ -32,6 +32,10 @@ impl FromOffline<offline_data::Entity> for runtime_data::Entity {
                 components.push(Box::new(runtime_data::Light::from_offline(light)));
             } else if let Some(physics) = component.downcast_ref::<offline_data::Physics>() {
                 components.push(Box::new(runtime_data::Physics::from_offline(physics)));
+            } else if let Some(static_mesh) = component.downcast_ref::<offline_data::StaticMesh>() {
+                components.push(Box::new(runtime_data::StaticMesh::from_offline(
+                    static_mesh,
+                )));
             }
         }
         Self {
@@ -140,6 +144,14 @@ impl FromOffline<offline_data::Physics> for runtime_data::Physics {
         Self {
             dynamic: offline.dynamic,
             collision_geometry: to_reference(&offline.collision_geometry),
+        }
+    }
+}
+
+impl FromOffline<offline_data::StaticMesh> for runtime_data::StaticMesh {
+    fn from_offline(offline: &offline_data::StaticMesh) -> Self {
+        Self {
+            mesh_id: offline.mesh_id,
         }
     }
 }

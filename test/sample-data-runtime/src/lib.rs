@@ -274,6 +274,14 @@ impl Component for Physics {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct StaticMesh {
+    pub mesh_id: usize,
+}
+
+#[typetag::serde]
+impl Component for StaticMesh {}
+
 // ------------------ Instance  -----------------------------------
 
 #[resource("runtime_instance")]
