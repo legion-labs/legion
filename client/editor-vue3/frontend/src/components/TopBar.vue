@@ -4,7 +4,7 @@ type Props = {
 };
 
 const menuItems = [
-  { id: 1, title: "File!" },
+  { id: 1, title: "File" },
   { id: 2, title: "Edit" },
   { id: 3, title: "Layer" },
   { id: 4, title: "Document" },
