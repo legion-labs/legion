@@ -468,20 +468,6 @@ impl TmpRenderPass {
         let up = Vec3::new(0.0, 1.0, 0.0);
         let view_matrix = Mat4::look_at_lh(eye, center, up);
 
-        //let transforms = vec![
-        //    Transform::from_rotation(Quat::from_euler(
-        //        EulerRot::XYZ,
-        //        elapsed_secs.cos() * std::f32::consts::PI,
-        //        elapsed_secs.sin() * std::f32::consts::PI,
-        //        0.0,
-        //    )),
-        //    Transform::from_xyz(
-        //        elapsed_secs.cos() * std::f32::consts::PI * 0.25,
-        //        elapsed_secs.sin() * std::f32::consts::PI * 0.25,
-        //        0.0,
-        //    ),
-        //];
-
         for (index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
             let mesh_id = static_mesh_component.mesh_id;
             if mesh_id >= self.static_meshes.len() {
