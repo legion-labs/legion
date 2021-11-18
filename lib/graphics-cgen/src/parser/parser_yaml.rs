@@ -1,14 +1,13 @@
-use crate::model::*;
 use crate::builder::*;
+use crate::model::*;
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct YamlInclude {
-    path : String
+    path: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -64,45 +63,55 @@ enum YamlPrimitive {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct YamlModel ( Option<Vec<YamlPrimitive>> );
+struct YamlModel(Option<Vec<YamlPrimitive>>);
 
-
-pub fn from_yaml(file_path: &Path) -> anyhow::Result<Arc<Model>> {
-
+pub fn from_yaml(file_path: &Path) -> anyhow::Result<Model> {
     let mut model = Model::new();    
 
     process_yaml_model(&mut model, &file_path)?;
 
-    Ok(Arc::new(model))
+    Ok(model)
 }
 
 fn process_yaml_model(model: &mut Model, file_path: &Path) -> anyhow::Result<()> {    
-
     assert!(file_path.is_absolute());
     
     let file_folder = file_path.parent().unwrap();    
     let yaml_model = load_yaml_file(file_path)?;    
     
     if let Some(p) = &yaml_model.0 {
-
         for prim in p {
-    
             match prim {            
-    
                 YamlPrimitive::Include(yaml_inc) => {
-                    process_yaml_include(model, file_folder, yaml_inc).context(format!( "Cannot include file '{}' from {}", yaml_inc.path, file_path.display()))?;
+                    process_yaml_include(model, file_folder, yaml_inc).context(format!(
+                        "Cannot include file '{}' from {}",
+                        yaml_inc.path,
+                        file_path.display()
+                    ))?;
                 }
     
                 YamlPrimitive::Struct(yaml_struct) => {
-                    process_yaml_struct(model, yaml_struct).context(format!( "Cannot add Struct '{}' from '{}'", &yaml_struct.name, file_path.display()))?;
+                    process_yaml_struct(model, yaml_struct).context(format!(
+                        "Cannot add Struct '{}' from '{}'",
+                        &yaml_struct.name,
+                        file_path.display()
+                    ))?;
                 }
     
                 YamlPrimitive::DescriptorSet(yaml_ds) => {
-                    process_yaml_descriptorset(model, yaml_ds).context(format!( "Cannot add DescriptorSet '{}' from '{}'", &yaml_ds.name, file_path.display()))?;
+                    process_yaml_descriptorset(model, yaml_ds).context(format!(
+                        "Cannot add DescriptorSet '{}' from '{}'",
+                        &yaml_ds.name,
+                        file_path.display()
+                    ))?;
                 }
     
                 YamlPrimitive::PipelineLayout(yaml_pl) => {
-                    process_yaml_pipelinelayout(model, yaml_pl).context(format!( "Cannot add PipelineLayout '{}' from '{}'", &yaml_pl.name, file_path.display()))?;
+                    process_yaml_pipelinelayout(model, yaml_pl).context(format!(
+                        "Cannot add PipelineLayout '{}' from '{}'",
+                        &yaml_pl.name,
+                        file_path.display()
+                    ))?;
                 }            
             }
         }
@@ -111,8 +120,11 @@ fn process_yaml_model(model: &mut Model, file_path: &Path) -> anyhow::Result<()>
     Ok(())
 }
 
-fn process_yaml_include(model : &mut Model, file_folder :&Path, yaml_inc : &YamlInclude) -> anyhow::Result<()> {    
-
+fn process_yaml_include(
+    model: &mut Model,
+    file_folder: &Path,
+    yaml_inc: &YamlInclude,
+) -> anyhow::Result<()> {
     let mut inc_path = PathBuf::from_str(&yaml_inc.path)?;        
     if inc_path.is_relative() {
         let mut abs_path = PathBuf::from(file_folder);
@@ -120,39 +132,33 @@ fn process_yaml_include(model : &mut Model, file_folder :&Path, yaml_inc : &Yaml
         inc_path = abs_path;        
     }    
 
-    process_yaml_model(model, &inc_path )?;
+    process_yaml_model(model, &inc_path)?;
 
     Ok(())
 }
 
-fn process_yaml_struct(model : &mut Model, yaml_struct : &YamlStruct) -> anyhow::Result<()> {    
-    
+fn process_yaml_struct(model: &mut Model, yaml_struct: &YamlStruct) -> anyhow::Result<()> {
     let mut builder = StructBuilder::new(model, &yaml_struct.name);
     for mb in &yaml_struct.members {
-        builder = builder
-            .add_member(&mb.name, &mb.ty)?;
+        builder = builder.add_member(&mb.name, &mb.ty)?;
     }
     let product = builder.build()?;
 
-    model.add( CGenType::Struct(product))?;
+    model.add(CGenType::Struct(product))?;
 
     Ok(())
 }
 
-fn process_yaml_descriptorset(model : &mut Model, yaml_ds : &YamlDescriptorSet) -> anyhow::Result<()> {    
-
-    let mut builder = DescriptorSetBuilder::new(
-        model,
-        &yaml_ds.name,
-        yaml_ds.frequency,
-    );
+fn process_yaml_descriptorset(
+    model: &mut Model,
+    yaml_ds: &YamlDescriptorSet,
+) -> anyhow::Result<()> {
+    let mut builder = DescriptorSetBuilder::new(model, &yaml_ds.name, yaml_ds.frequency);
     for ds in &yaml_ds.descriptors {
-        let descriptor_type =
-            DescriptorType::from_str(&ds.descriptor_type).context( format!("Unknown descriptor type '{}'", ds.descriptor_type))?;
+        let descriptor_type = DescriptorType::from_str(&ds.descriptor_type)
+            .context(format!("Unknown descriptor type '{}'", ds.descriptor_type))?;
         match descriptor_type {
-            DescriptorType::Sampler => {
-                builder = builder.add_sampler(&ds.name)?
-            }
+            DescriptorType::Sampler => builder = builder.add_sampler(&ds.name)?,
             DescriptorType::ConstantBuffer => {
                 builder = builder.add_constantbuffer(&ds.name, &ds.cgen_type)?
             }
@@ -160,7 +166,7 @@ fn process_yaml_descriptorset(model : &mut Model, yaml_ds : &YamlDescriptorSet) 
                 builder = builder.add_structuredbuffer(&ds.name, &ds.cgen_type)?
             }
             DescriptorType::RWStructuredBuffer => {
-                builder = builder.add_rwstructuredbuffer(&ds.name,&ds.cgen_type)?
+                builder = builder.add_rwstructuredbuffer(&ds.name, &ds.cgen_type)?
             }
             DescriptorType::ByteAddressBuffer => {
                 builder = builder.add_byteaddressbuffer(&ds.name)?
@@ -177,36 +183,37 @@ fn process_yaml_descriptorset(model : &mut Model, yaml_ds : &YamlDescriptorSet) 
         };
     }
 
-    let product = builder.build()?;
-    model.add( product)?;
+    let product = builder.build()?;        
+    model.add(product)?;
 
     Ok(())
 }
 
-fn process_yaml_pipelinelayout(model : &mut Model, yaml_pl : &YamlPipelineLayout) -> anyhow::Result<()> {    
-    
+fn process_yaml_pipelinelayout(
+    model: &mut Model,
+    yaml_pl: &YamlPipelineLayout,
+) -> anyhow::Result<()> {
     let mut builder = PipelineLayoutBuilder::new(model, &yaml_pl.name);
     for ds in &yaml_pl.descriptorssets {
         builder = builder.add_descriptorset(ds)?;
     }
     for pc in &yaml_pl.pushconstants {
-        builder =
-            builder.add_pushconstant(&pc.name, &pc.cgen_type)?;
+        builder = builder.add_pushconstant(&pc.name, &pc.cgen_type)?;
     }
 
-    let product = builder.build()?;
+    let product = builder.build()?;    
     model.add(product)?;
 
     Ok(())
 }
 
 fn load_yaml_file(file_path: &Path) -> Result<YamlModel> {
-
     if !file_path.is_file() {
         return Err(anyhow!("Invalid file path {}", file_path.display()));    
     }
     let file_content = std::fs::read_to_string(&file_path)
         .context(format!("Failed to load {}", file_path.display()))?;        
-    let result: YamlModel = serde_yaml::from_str(&file_content).context(format!("Failed to parse {}", file_path.display()))?;
+    let result: YamlModel = serde_yaml::from_str(&file_content)
+        .context(format!("Failed to parse {}", file_path.display()))?;
     Ok(result)
 }

@@ -9,8 +9,9 @@ edition = "2021"
 anyhow = "1.0"
 clap = "2.33"
 fxhash = "0.2"
+heck = "0.3"
 log = "0.4"
-path-clean = "0.1"
+relative-path = "1.5"
 strum = { version = "0.21", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"

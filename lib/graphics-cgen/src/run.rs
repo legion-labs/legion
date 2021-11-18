@@ -1,46 +1,33 @@
-use std::{env, path::{PathBuf}};
+use std::{
+    env::{self},
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::{anyhow, Result};
 use log::info;
-use path_clean::PathClean;
+use relative_path::RelativePath;
 
 use crate::{
-    generators::{self, Generator, GeneratorContext, Product},
+    generators::{self, product::Product, GeneratorContext},
     parser::{from_syn, from_yaml},
 };
 
 pub struct CGenContext {
-    root_file: PathBuf,
-    output_folder: PathBuf,
+    pub(super) root_file: PathBuf,
+    pub(super) outdir_hlsl: PathBuf,
+    pub(super) outdir_rust: PathBuf,
 }
 
 impl Default for CGenContext {
     fn default() -> Self {
+        let cur_dir = env::current_dir().unwrap();
         Self {
-            root_file: PathBuf::default(),
-            output_folder: PathBuf::default(),
+            root_file: RelativePath::new("root.cgen").to_path(&cur_dir),
+            outdir_hlsl: RelativePath::new("generated_hlsl").to_path(&cur_dir),
+            outdir_rust: RelativePath::new("generated_rust").to_path(&cur_dir),
         }
     }
-}
-
-
-fn str_to_abspath(path: &str) -> PathBuf {    
-    let path =
-    { 
-        if std::path::MAIN_SEPARATOR == '\\' {
-            path.replace("/", "\\")
-        }
-        else {
-            path.replace("\\", "/")
-        }
-    };
-    let mut path = PathBuf::from(path);
-    if path.is_relative() {
-        let mut curpath = env::current_dir().unwrap();
-        curpath.push(path);            
-        path = curpath;
-    } 
-    path.clean()
 }
 
 pub struct CGenContextBuilder {
@@ -55,21 +42,24 @@ impl CGenContextBuilder {
     }
 
     pub fn set_root_file(&mut self, root_file: &str) -> Result<&mut Self> {
-        
-        let path = str_to_abspath(root_file);
-
-        if !path.exists() || !path.is_file() {
-            return Err( anyhow!("The file {} does not exist ", root_file  ) );
+        let abs_path = to_abs_path(root_file)?;
+        if !abs_path.exists() || !abs_path.is_file() {
+            return Err(anyhow!("File {} does not exist ", root_file));
         }
-
-        self.context.root_file = path;
+        self.context.root_file = abs_path;
 
         Ok(self)
     }
 
-    pub fn set_output_folder(&mut self, output_folder: &str) -> Result<&mut Self> {
-        let output_folder = str_to_abspath(output_folder);
-        self.context.output_folder = output_folder;
+    pub fn set_outdir_hlsl(&mut self, outdir: &str) -> Result<&mut Self> {
+        self.context.outdir_hlsl = to_abs_path(outdir)?;
+
+        Ok(self)
+    }
+
+    pub fn set_outdir_rust(&mut self, outdir: &str) -> Result<&mut Self> {
+        self.context.outdir_rust = to_abs_path(outdir)?;
+
         Ok(self)
     }
 
@@ -83,47 +73,52 @@ pub fn run(context: &CGenContext) -> Result<()> {
     run_internal(context)
 }
 
+fn to_abs_path(path: &str) -> Result<PathBuf> {
+    let outdir_path = Path::new(path);
+
+    Ok(if outdir_path.is_relative() {
+        let cur_dir = env::current_dir()?;
+        RelativePath::new(path).to_logical_path(cur_dir)
+    } else {
+        outdir_path.to_path_buf()
+    })
+}
+
 fn run_internal(context: &CGenContext) -> Result<()> {
     //
     // Load model
     //
     info!("Load model from {}", context.root_file.display());
 
-    let root_file_ext = context
-        .root_file
-        .extension()
-        .ok_or(anyhow!("No extension"))?;
+    let root_file_ext = context.root_file.extension().ok_or(anyhow!(
+        "No extension on root file {}",
+        context.root_file.display()
+    ))?;
 
     let model = match root_file_ext.to_str().unwrap() {
-        "yaml" => from_yaml(&context.root_file)?,
-        "rs" => from_syn(&context.root_file)?,
+        "yaml" => Arc::new(from_yaml(&context.root_file)?),
+        "cgen" => Arc::new(from_syn(&context.root_file)?),
         _ => return Err(anyhow!("Unknown extension")),
     };
 
     //
     // Prepare generation context
     //
-    let mut hlsl_folder = context.output_folder.clone();
-    let mut rust_folder = context.output_folder.clone();
-    hlsl_folder.push("hlsl");
-    rust_folder.push("rust");
 
-    let gen_context = GeneratorContext::new(&model, hlsl_folder, rust_folder);
-
-    info!("{}", gen_context);
+    let gen_context = GeneratorContext::new(&model, context);
 
     //
     // generation step
     //
-    let mut generators: Vec<Box<&dyn Generator>> = Vec::new();
-    let generator = generators::hlsl::type_generator::TypeGenerator::default();
-    generators.push(Box::new(&generator));
-    let generator = generators::hlsl::pipelinelayout_generator::PipelineLayoutGenerator::default();
-    generators.push(Box::new(&generator));
+    let mut generators = Vec::<generators::GeneratorFunc>::new();
+    generators.push(generators::hlsl::type_generator::run);
+    generators.push(generators::hlsl::pipelinelayout_generator::run);
+    generators.push(generators::rust::base_mod_generator::run);
+    generators.push(generators::rust::type_generator::run);
 
     let mut products = Vec::<Product>::new();
-    for generator in generators {                
-        let mut pr = generator.run(&gen_context);
+    for generator in generators {
+        let mut pr = generator(&gen_context);
         products.append(&mut pr);
     }
 
@@ -131,7 +126,7 @@ fn run_internal(context: &CGenContext) -> Result<()> {
     // write to disk
     //
     for product in &products {
-        product.write_to_disk()?;
+        product.write_to_disk(&gen_context)?;
     }
 
     Ok(())

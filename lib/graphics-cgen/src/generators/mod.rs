@@ -1,76 +1,84 @@
 mod file_writer;
 pub mod hlsl;
+pub mod product;
 pub mod rust;
 
-use std::{collections::HashSet, fmt::Display, io::Write, path::PathBuf};
+use std::{collections::HashSet, ops::Add, path::{Path, PathBuf}};
 
 use anyhow::Result;
+use heck::{CamelCase, SnakeCase};
+use relative_path::{RelativePath, RelativePathBuf};
+use syn::__private::TokenStreamExt;
 
-use crate::model::{CGenType, Model, ModelKey, PipelineLayout};
+use crate::{
+    model::{CGenType, Model, ModelKey, PipelineLayout},
+    run::CGenContext,
+};
 
+use self::product::Product;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CGenVariant {
     Hlsl,
     Rust,
 }
 
+pub type GeneratorFunc = for<'r, 's> fn(&'r GeneratorContext<'s>) -> Vec<Product>;
 pub struct GeneratorContext<'a> {
     model: &'a Model,
-    hlsl_folder: PathBuf,
-    rust_folder: PathBuf,
-}
-
-impl<'a> Display for GeneratorContext<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("GeneratorContext:\n")?;
-        f.write_str("Output folders:\n")?;
-        f.write_str(&format!("* HLSL folder: {}\n", self.hlsl_folder.display()))?;
-        f.write_str(&format!("* Rust folder: {}\n", self.rust_folder.display()))?;
-
-        Ok(())
-    }
+    cgen_context: &'a CGenContext,
 }
 
 impl<'a> GeneratorContext<'a> {
-    pub fn new(model: &'a Model, hlsl_folder: PathBuf, rust_folder: PathBuf) -> Self {
+    pub fn new(model: &'a Model, cgen_context: &'a CGenContext) -> Self {
         Self {
             model,
-            hlsl_folder,
-            rust_folder,
+            cgen_context,
         }
     }
 
-    fn get_base_folder(&self, cgen_variant: CGenVariant) -> PathBuf {
+    fn get_base_folder(&self, cgen_variant: CGenVariant) -> &Path {
         match cgen_variant {
-            CGenVariant::Hlsl => self.hlsl_folder.clone(),
-            CGenVariant::Rust => self.rust_folder.clone(),
+            CGenVariant::Hlsl => &self.cgen_context.outdir_hlsl,
+            CGenVariant::Rust => &self.cgen_context.outdir_rust,
         }
     }
 
-    fn get_type_abspath(&self, ty: &CGenType, cgen_variant: CGenVariant) -> PathBuf {
-        let mut path = self.get_base_folder(cgen_variant);
-        path.push("types");
+    fn get_file_ext(cgen_variant: CGenVariant) -> &'static str {
+        match cgen_variant {
+            CGenVariant::Hlsl => "hlsl",
+            CGenVariant::Rust => "rs",
+        }
+    }
+
+    fn get_type_folder(&self) -> &RelativePath {
+        RelativePath::new("types")
+    }
+
+    fn get_rel_type_path(&self, ty: &CGenType, cgen_variant: CGenVariant) -> RelativePathBuf {
+        
+        let mut rel_path = self.get_type_folder().to_relative_path_buf();
         match ty {
-            CGenType::Struct(s) => {
-                path.push(&s.name);
+            CGenType::Struct(s) => {         
+                rel_path.push(Self::get_type_filename(ty, cgen_variant)  );
             }
-            CGenType::Native(_) => panic!()
-        }
-        path.set_extension("hlsl");
-
-        path
+            CGenType::Native(_) => panic!(),
+        }        
+        rel_path
     }
 
-    fn get_pipelinelayout_abspath(
-        &self,
-        pipeline_layout: &PipelineLayout,
-        cgen_variant: CGenVariant,
-    ) -> PathBuf {
-        let mut path = self.get_base_folder(cgen_variant);
-        path.push("pipelinelayout");
-        path.push(&pipeline_layout.name);
-        path.set_extension("rs");
-
-        path
+    fn get_type_filename(ty: &CGenType, cgen_variant: CGenVariant) -> String {
+        let result = match ty {
+            CGenType::Native(_) => panic!("Not possible"),
+            CGenType::Struct(st) => {
+                st
+                    .name
+                    .to_snake_case()
+                    .add(".")
+                    .add(Self::get_file_ext(cgen_variant))                
+            }
+        };
+        result
     }
 
     pub fn get_type_dependencies(&self, ty: &CGenType) -> Result<HashSet<ModelKey>> {
@@ -92,30 +100,5 @@ impl<'a> GeneratorContext<'a> {
         }
 
         Ok(set)
-    }
-}
-
-pub trait Generator {
-    fn run(&self, ctx: &GeneratorContext<'_>) -> Vec<Product>;
-}
-
-#[derive(Debug)]
-pub struct Product {
-    path: PathBuf,
-    content: String,
-}
-
-impl Product {
-    pub fn write_to_disk(&self) -> Result<()> {
-        let mut dir_builder = std::fs::DirBuilder::new();
-        dir_builder.recursive(true);
-        dir_builder.create(&self.path.parent().unwrap())?;
-
-        let file_content = self.content.to_string();
-
-        let mut output = std::fs::File::create(&self.path)?;
-        output.write(&file_content.as_bytes())?;
-
-        Ok(())
     }
 }

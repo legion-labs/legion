@@ -55,8 +55,8 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 
-pub mod run;
 pub mod builder;
+pub mod generators;
 pub mod model;
 pub mod parser;
-pub mod generators;
+pub mod run;

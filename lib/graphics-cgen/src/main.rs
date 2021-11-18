@@ -55,15 +55,14 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 
-use anyhow::{Result};
-use graphics_cgen::{        
-    run::{run, CGenContextBuilder},
-};
-use log::{LevelFilter};
+use anyhow::Result;
+use graphics_cgen::run::{run, CGenContextBuilder};
+use log::LevelFilter;
 use simple_logger::SimpleLogger;
 
-fn main() {
-    match main_internal() {
+fn main() -> Result<()> {
+    let res = main_internal();
+    match &res {
         Ok(_) => {}
         Err(e) => {
             for i in e.chain() {
@@ -71,6 +70,7 @@ fn main() {
             }
         }
     }
+    res
 }
 
 fn main_internal() -> Result<()> {
@@ -94,10 +94,16 @@ fn main_internal() -> Result<()> {
                 .takes_value(true),
         )
         .arg(
-            clap::Arg::with_name("output")
-                .help("Sets the output folder to use")
-                .short("o")
-                .long("output")
+            clap::Arg::with_name("outdir_hlsl")
+                .help("Sets the output folder to use for hlsl files")
+                .long("Oh")
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("outdir_rust")
+                .help("Sets the output folder to use for rust files")
+                .long("Or")
                 .required(true)
                 .takes_value(true),
         )
@@ -113,10 +119,12 @@ fn main_internal() -> Result<()> {
 
     // initialize context
     let root_file = matches.value_of("input").unwrap();
-    let output_folder = matches.value_of("output").unwrap();
+    let outdir_hlsl = matches.value_of("outdir_hlsl").unwrap();
+    let outdir_rust = matches.value_of("outdir_rust").unwrap();
     let mut ctx_builder = CGenContextBuilder::new();
     ctx_builder.set_root_file(&root_file)?;
-    ctx_builder.set_output_folder(&output_folder)?;
+    ctx_builder.set_outdir_hlsl(&outdir_hlsl)?;
+    ctx_builder.set_outdir_rust(&outdir_rust)?;
 
     // run the generation
     let ctx = ctx_builder.build();

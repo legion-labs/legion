@@ -1,28 +1,24 @@
 use crate::{
     generators::{
-        hlsl::utils::get_hlsl_typestring, file_writer::FileWriter, CGenVariant, Generator,
-        GeneratorContext, Product,
+        file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product, CGenVariant,
+        GeneratorContext,
     },
     model::{Descriptor, DescriptorDef, DescriptorSet, Model, PipelineLayout},
 };
 
-#[derive(Default)]
-pub struct PipelineLayoutGenerator;
-
-impl Generator for PipelineLayoutGenerator {
-    fn run(&self, ctx: &GeneratorContext<'_>) -> Vec<Product> {
-        let mut products = Vec::new();
-        let model = ctx.model;
-        let pipeline_layouts = model.object_iter::<PipelineLayout>().unwrap_or_default();    
-        for pipeline_layout in pipeline_layouts {
-            let content = generate_hlsl_pipelinelayout(ctx, pipeline_layout);
-            products.push(Product {
-                path: ctx.get_pipelinelayout_abspath(pipeline_layout, CGenVariant::Hlsl),
-                content,
-            });
-        }        
-        products
+pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
+    let mut products = Vec::new();
+    let model = ctx.model;
+    let pipeline_layouts = model.object_iter::<PipelineLayout>().unwrap_or_default();
+    for pipeline_layout in pipeline_layouts {
+        let content = generate_hlsl_pipelinelayout(ctx, pipeline_layout);
+        todo!();
+        // products.push(Product::new(
+        //     ctx.get_pipelinelayout_abspath(pipeline_layout, CGenVariant::Hlsl),
+        //     content,
+        // ));
     }
+    products
 }
 
 fn get_descriptor_declaration(model: &Model, descriptor: &Descriptor) -> String {

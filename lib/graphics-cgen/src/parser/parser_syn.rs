@@ -1,10 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use log::trace;
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Arc,
-};
+use relative_path::RelativePath;
+
+use std::path::{Path, PathBuf};
 use syn::{File, Item, ItemMod, ItemStruct};
 
 use crate::{
@@ -12,47 +10,36 @@ use crate::{
     model::{CGenType, Model},
 };
 
-struct SynMod {
-    file_name: String,
-}
-
-impl SynMod {
-    fn new(item: &ItemMod) -> Self {
-        let file_name = item.ident.to_string();
-        Self { file_name }
-    }
-}
-
-pub fn from_syn(file_path: &Path) -> anyhow::Result<Arc<Model>> {
-    let mut model = Model::new();
-
-    process_syn_model(&mut model, &file_path)?;
-
-    Ok(Arc::new(model))
-}
-
-fn process_syn_model(model: &mut Model, file_path: &Path) -> Result<()> {
+pub fn from_syn(file_path: &Path) -> anyhow::Result<Model> {
     assert!(file_path.is_absolute());
 
-    let file_folder = file_path.parent().unwrap();
+    let mut model = Model::new();
+
+    // let cur_dir = file_path.parent()?;
+
+    process_syn_model(&mut model, &file_path, true)?;
+
+    Ok(model)
+}
+
+fn process_syn_model(model: &mut Model, file_path: &Path, is_root: bool) -> Result<()> {
+    assert!(file_path.is_absolute());
+
+    trace!("Parsing model in {}", file_path.display());
+
     let ast = load_syn_file(file_path)?;
 
     for item in &ast.items {
         match item {
-            Item::Mod(e) => {                
-                let syn_mod = SynMod::new(e);
-                process_syn_mod(model, file_folder, &syn_mod).context(format!(
-                    "Cannot include file '{}' from {}",
-                    syn_mod.file_name,
-                    file_path.display()
-                ))?;                
+            Item::Mod(e) => {
+                process_syn_mod(model, file_path, e, is_root)
+                    .context(format!("Cannot parse mod from {}", file_path.display()))?;
             }
             Item::Struct(e) => {
                 assert!(e.attrs.len() == 0);
 
                 process_syn_struct(model, e).context(format!(
-                    "Cannot add Struct '{}' from '{}'",
-                    "todo",
+                    "Cannot parse struct from '{}'",
                     file_path.display()
                 ))?;
             }
@@ -65,25 +52,52 @@ fn process_syn_model(model: &mut Model, file_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn process_syn_mod(model: &mut Model, file_folder: &Path, syn_mod: &SynMod) -> anyhow::Result<()> {
-    let mut inc_path = PathBuf::from_str(&syn_mod.file_name)?;
-    if inc_path.is_relative() {
-        let mut abs_path = PathBuf::from(file_folder);
-        abs_path.push(inc_path);
-        inc_path = abs_path;
+fn process_syn_mod(
+    model: &mut Model,
+    file_path: &Path,
+    item_mod: &ItemMod,
+    is_root: bool,
+) -> anyhow::Result<()> {
+    let mod_name = item_mod.ident.to_string();
+    let file_folder = file_path.parent().unwrap();
+    trace!("Parsing mod {}", &mod_name);
+    let mut final_path = PathBuf::new();
+    let is_mod = file_path.file_name().unwrap().eq("mod.cgen");
+
+    if is_root || is_mod {
+        let rel_path = RelativePath::new(&mod_name);
+        let mut rel_path_with_ext = rel_path.to_relative_path_buf();
+        rel_path_with_ext.set_extension("cgen");
+        let abs_path = rel_path_with_ext.to_logical_path(file_folder);
+        if abs_path.exists() {
+            final_path = abs_path;
+        }
     }
 
-    process_syn_model(model, &inc_path)?;
+    if !final_path.has_root() {
+        let rel_path = RelativePath::new(&mod_name);
+        let mut rel_path_with_ext = rel_path.to_relative_path_buf();
+        rel_path_with_ext.push("mod.cgen");
+        let abs_path = rel_path_with_ext.to_logical_path(file_folder);
+        if abs_path.exists() {
+            final_path = abs_path;
+        }
+    }
 
-    Ok(())
+    if !final_path.has_root() {
+        return Err(anyhow!(
+            "Cannot resolve mod {} in file {}",
+            mod_name,
+            file_path.display()
+        ));
+    }
+
+    process_syn_model(model, &final_path, false)
 }
 
 fn process_syn_struct(model: &mut Model, syn_struct: &ItemStruct) -> anyhow::Result<()> {
-
     let struct_name = syn_struct.ident.to_string();
-
-    trace!("START: process_syn_struct {}", &struct_name );
-
+    trace!("Parsing struct {}", &struct_name);
     let mut builder = StructBuilder::new(model, &struct_name);
 
     for mb in &syn_struct.fields {
@@ -98,23 +112,13 @@ fn process_syn_struct(model: &mut Model, syn_struct: &ItemStruct) -> anyhow::Res
                     panic!("Unmanged type");
                 }
             }
-        };       
-
-        trace!( "add member {} : {}", &membername, &typename );
+        };
 
         builder = builder.add_member(&membername, &typename)?;
     }
     let product = builder.build()?;
 
     model.add(CGenType::Struct(product))?;
-
-    let x = model.object_iter::<CGenType>().unwrap();
-    for i in x {
-        dbg!(&i );
-    }
-
-
-    trace!("END" );
 
     Ok(())
 }

@@ -26,6 +26,9 @@ lgn-window = { path = "../window", version = "0.1.0" }
 egui = "0.15.0"
 epaint = "0.15.0"
 
+[build-dependencies]
+graphics-cgen = { path = "../../lib/graphics-cgen" }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 uuid = { version = "0.8", features = ["v4", "serde"] }
 

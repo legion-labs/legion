@@ -42,7 +42,7 @@ impl ModelVec {
             data: NonNull::dangling(),
             drop_fn,
         }
-    }    
+    }
 
     fn size(&self) -> usize {
         self.len
@@ -76,7 +76,7 @@ impl ModelVec {
             let additionnal = needed_capacity - self.capacity;
             let additionnal = (additionnal + 1024 - 1) & !(1024 - 1);
             self.grow(additionnal);
-    }
+        }
 
         assert!(self.len + additionnal <= self.capacity);
     }
@@ -105,7 +105,7 @@ impl ModelVec {
         assert!(index < self.capacity);
         let ptr = self.data.as_ptr();
         unsafe { ptr.add(index * self.item_layout.size()) }
-        }
+    }
 }
 
 impl Drop for ModelVec {
@@ -113,7 +113,7 @@ impl Drop for ModelVec {
         let drop_fn = self.drop_fn;
         for i in 0..self.size() {
             unsafe {
-                drop_fn( self.get_unchecked(i));
+                drop_fn(self.get_unchecked(i));
             }
         }        
     }
@@ -177,7 +177,7 @@ impl<'a, T: ModelObject> ModelVecIter<'a, T> {
             end_ptr,
             _marker: PhantomData::default(),
         }
-                }
+    }
 }
 
 impl<'a, T: ModelObject> Iterator for ModelVecIter<'a, T> {
@@ -204,13 +204,20 @@ impl Model {
         ret.add(CGenType::Native(NativeType::Float4)).unwrap();
 
         ret
-                    }
+    }
+
+    pub fn size<T: ModelObject>(&self) -> usize {
+        match self.get_container::<T>() {
+            Some(e) => e.size(),
+            None => 0
+        }
+    }
 
     pub fn add<T: ModelObject>(&mut self, value: T) -> Result<ModelObjectId> {
         let key = value.key();
         if self.key_map.contains_key(&key) {
             return Err(anyhow!("Object not unique"));
-                }
+        }
         let type_index = self.get_or_create_container::<T>();
         let value_ptr = &value as *const T as *const u8;
         let object_index = self.get_container_by_index_mut(type_index).add(value_ptr);
@@ -222,17 +229,17 @@ impl Model {
         self.key_map.insert(key, object_id);
 
         Ok(object_id)
-                    }
+    }
 
-    pub fn objects<T: ModelObject>(&self) -> Option<&ModelVec> {
-        let container = self.get_container::<T>()?;
-        Some(container)
-                }
+    // pub fn objects<T: ModelObject>(&self) -> Option<&ModelVec> {
+    //     let container = self.get_container::<T>()?;
+    //     Some(container)
+    // }
 
     pub fn object_iter<T: ModelObject>(&self) -> Option<ModelVecIter<'_, T>> {
         let container = self.get_container::<T>()?;
         Some(ModelVecIter::new(container))
-            }
+    }
 
     pub fn get<T: ModelObject>(&self, key: ModelKey) -> Option<&T> {
         let id = self.key_map.get(&key).copied()?;
@@ -241,54 +248,7 @@ impl Model {
         let container = self.get_container_by_index(container_index);
         let ptr = container.get_object_ref(id.object_index as usize) as *const T;
         unsafe { ptr.as_ref() }
-        }
-
-    // pub fn add_struct(&mut self, def: Struct) -> Result<()> {
-    //     self.structs.add(def.name.clone(), def)?;
-    //     Ok(())
-    // }
-
-    // pub fn structs(&self) -> &ModelContainer<Struct> {
-    //     &self.structs
-    // }
-
-    // pub fn add_descriptorset(&mut self, def: DescriptorSet) -> Result<()> {
-    //     self.descriptorsets.add(def.name.clone(), def)?;
-    //     Ok(())
-    // }
-
-    // pub fn descriptorsets(&self) -> &ModelContainer<DescriptorSet> {
-    //     &self.descriptorsets
-    // }
-
-    // pub fn add_pipelinelayout(&mut self, def: PipelineLayout) -> Result<()> {
-    //     self.pipelinelayouts.add(def.name.clone(), def)?;
-    //     Ok(())
-    // }
-
-    // pub fn pipelinelayouts(&self) -> &ModelContainer<PipelineLayout> {
-    //     &self.pipelinelayouts
-    // }
-
-    // pub fn try_get_type(&self, typename: &str) -> Option<CGenType> {
-    //     let cgen_type = CGenType::from_str(typename).unwrap();
-
-    //     if !self.contains_type(&cgen_type) {
-    //         return None;
-    //     }
-
-    //     Some(cgen_type)
-    // }
-
-    // pub fn contains_type(&self, typ: &CGenType) -> bool {
-    //     let result = if let CGenType::Complex(c) = typ {
-    //         self.structs.contains(c)
-    //     } else {
-    //         true
-    //     };
-
-    //     result
-    // }
+    }
 
     // pub fn get_descriptorset_type_dependencies(&self, id: &str) -> Result<HashSet<CGenType>> {
     //     let mut result = HashSet::<CGenType>::new();
@@ -362,7 +322,7 @@ impl Model {
 
     fn get_container_by_index(&self, index: usize) -> &ModelVec {
         &self.model_vecs[index]
-        }
+    }
 
     fn get_container_by_index_mut(&mut self, index: usize) -> &mut ModelVec {
         &mut self.model_vecs[index]

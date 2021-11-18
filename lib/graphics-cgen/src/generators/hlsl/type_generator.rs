@@ -1,29 +1,32 @@
-use crate::{generators::{CGenVariant, Generator, GeneratorContext, Product, file_writer::FileWriter, hlsl::utils::get_hlsl_typestring}, model::{CGenType, Model, StructMember}};
+use heck::{CamelCase, SnakeCase};
+use relative_path::RelativePath;
 
-#[derive(Default)]
-pub struct TypeGenerator {}
+use crate::{
+    generators::{
+        file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product, CGenVariant,
+        GeneratorContext,
+    },
+    model::{CGenType, Model, StructMember},
+};
 
-impl Generator for TypeGenerator {
-    fn run(&self, ctx: &GeneratorContext<'_>) -> Vec<Product> {
-        let mut products = Vec::new();
-        let model = ctx.model;
-        let cgen_types = model.object_iter::<CGenType>().unwrap_or_default();
-        for cgen_type in cgen_types {
-            dbg!(&cgen_type);
-            match cgen_type {
-                CGenType::Native(_) => None,
-                CGenType::Struct(_) => Some(generate_hlsl_struct(&ctx, cgen_type)),
-            }
-            .map(|content| {
-                products.push(Product {
-                    path: ctx.get_type_abspath(cgen_type, CGenVariant::Hlsl),
-                    content,
-                })
-            });
+pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
+    let mut products = Vec::new();
+    let model = ctx.model;
+    let cgen_types = model.object_iter::<CGenType>().unwrap_or_default();
+    for cgen_type in cgen_types {
+        match cgen_type {
+            CGenType::Native(_) => None,
+            CGenType::Struct(_) => Some(generate_hlsl_struct(&ctx, cgen_type)),
         }
-        dbg!(&products);
-        products
+        .map(|content| {
+            products.push(Product::new(
+                CGenVariant::Hlsl,
+                ctx.get_rel_type_path(cgen_type, CGenVariant::Hlsl),
+                content,
+            ))
+        });
     }
+    products
 }
 
 fn get_member_declaration(model: &Model, member: &StructMember) -> String {
@@ -37,8 +40,14 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     let mut writer = FileWriter::new();
 
     // header
-    writer.add_line(format!("#ifndef TYPE_{}", struct_def.name.to_uppercase()));
-    writer.add_line(format!("#define TYPE_{}", struct_def.name.to_uppercase()));
+    writer.add_line(format!(
+        "#ifndef TYPE_{}",
+        struct_def.name.to_snake_case().to_uppercase()
+    ));
+    writer.add_line(format!(
+        "#define TYPE_{}",
+        struct_def.name.to_snake_case().to_uppercase()
+    ));
     writer.new_line();
 
     writer.indent();
@@ -49,11 +58,8 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     if !deps.is_empty() {
         for key in &deps {
             let dep_ty = ctx.model.get::<CGenType>(*key).unwrap();
-            let dep_path = ctx.get_type_abspath(dep_ty, CGenVariant::Hlsl);            
-            writer.add_line(format!(
-                "#include \"{}\"",
-                dep_path.as_os_str().to_str().unwrap()
-            ));
+            let dep_filename = GeneratorContext::get_type_filename(dep_ty, CGenVariant::Hlsl);
+            writer.add_line(format!("#include \"{}\"", dep_filename.as_str()));
         }
         writer.new_line();
     }
