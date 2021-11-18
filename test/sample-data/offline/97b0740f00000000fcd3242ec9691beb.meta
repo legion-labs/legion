@@ -1,0 +1,12 @@
+{
+  "name": "/world/sample_1.ent",
+  "dependencies": [
+    "97b0740f00000000519d4a9f47df0ce5|aad89045",
+    "0cba171e0000000090b1c112655b00e8|30495fed",
+    "0cba171e000000007a80bfadcb6549e7|30495fed",
+    "0cba171e000000007df5d0fcdb1eb69b|30495fed",
+    "0cba171e000000005127bdca42145845|30495fed",
+    "0abe069400000000cea897a15bc29f32|35b5717e"
+  ],
+  "content_checksum": "ae0a8e111d7b30ef5bb84fbf02bf2014"
+}

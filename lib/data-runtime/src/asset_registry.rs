@@ -497,16 +497,26 @@ mod tests {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        let binary_parent_assetfile = [
-            97, 115, 102, 116, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            131, 200, 172, 79, 131, 200, 172, 79, 1, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0,
+        const BINARY_PARENT_ASSETFILE: [u8; 80] = [
+            97, 115, 102, 116, // header (asft)
+            1, 0, // version
+            1, 0, 0, 0, 0, 0, 0, 0, // references count
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 156, 68, 217, 83, // reference ID
+            156, 68, 217, 83, // first asset type (RessourceType)
+            1, 0, 0, 0, 0, 0, 0, 0, // assets count following in stream
+            30, 0, 0, 0, 0, 0, 0, 0, // bytes for next asset data
             6, 0, 0, 0, 0, 0, 0, 0, 112, 97, 114, 101, 110, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 131, 200, 172, 79,
+            0, 156, 68, 217, 83, // asset data
         ];
-        let binary_child_assetfile = [
-            97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 131, 200, 172, 79, 1, 0, 0, 0, 0, 0,
-            0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        const BINARY_CHILD_ASSETFILE: [u8; 63] = [
+            97, 115, 102, 116, // header (asft)
+            1, 0, // version
+            0, 0, 0, 0, 0, 0, 0, 0, // references count (none here)
+            156, 68, 217, 83, // first asset type (RessourceType)
+            1, 0, 0, 0, 0, 0, 0, 0, // assets count following in stream
+            29, 0, 0, 0, 0, 0, 0, 0, // bytes for next asset data
+            5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, // asset data
         ];
 
         let child_id = ResourceId::new(refs_asset::RefsAsset::TYPE, 1);
@@ -514,12 +524,12 @@ mod tests {
         let parent_id = {
             manifest.insert(
                 child_id,
-                content_store.store(&binary_child_assetfile).unwrap(),
-                binary_child_assetfile.len(),
+                content_store.store(&BINARY_CHILD_ASSETFILE).unwrap(),
+                BINARY_CHILD_ASSETFILE.len(),
             );
-            let checksum = content_store.store(&binary_parent_assetfile).unwrap();
+            let checksum = content_store.store(&BINARY_PARENT_ASSETFILE).unwrap();
             let id = ResourceId::new(refs_asset::RefsAsset::TYPE, 2);
-            manifest.insert(id, checksum, binary_parent_assetfile.len());
+            manifest.insert(id, checksum, BINARY_PARENT_ASSETFILE.len());
             id
         };
 
@@ -531,16 +541,12 @@ mod tests {
         (parent_id, child_id, reg)
     }
 
-    const BINARY_ASSETFILE: [u8; 39] = [
-        97, 115, 102, 116, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 63, 214, 53, 1, 0, 0, 0, 0, 0, 0, 0,
-        5, 0, 0, 0, 0, 0, 0, 0, 99, 104, 105, 108, 100,
-    ];
-
     const BINARY_RAWFILE: [u8; 5] = [99, 104, 105, 108, 100];
 
     #[test]
     fn load_assetfile() {
-        let (asset_id, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let (asset_id, reg) =
+            setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
 
         let internal_id;
         {
@@ -608,7 +614,7 @@ mod tests {
 
     #[test]
     fn load_error() {
-        let (_, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let (_, reg) = setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
 
         let internal_id;
         {
@@ -633,7 +639,7 @@ mod tests {
 
     #[test]
     fn load_error_sync() {
-        let (_, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let (_, reg) = setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
 
         let internal_id;
         {
@@ -678,7 +684,8 @@ mod tests {
 
     #[test]
     fn loaded_notification() {
-        let (asset_id, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let (asset_id, reg) =
+            setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
 
         let notif = reg.subscribe_to_load_events();
         {
@@ -702,7 +709,8 @@ mod tests {
 
     #[test]
     fn reload_no_change() {
-        let (asset_id, reg) = setup_singular_asset_test(&BINARY_ASSETFILE);
+        let (asset_id, reg) =
+            setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
 
         let internal_id;
         {
