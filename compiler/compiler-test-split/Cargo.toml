@@ -1,0 +1,13 @@
+[package]
+name = "compiler-test-split"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+legion-data-compiler = { path = "../../lib/data-compiler" }
+legion-data-runtime = { path = "../../lib/data-runtime" }
+legion-data-offline = { path = "../../lib/data-offline" }
+multitext-resource = { path = "../../lib/data-offline/test-multitext-resource" }
+text-resource = { path = "../../lib/data-offline/test-text-resource" }

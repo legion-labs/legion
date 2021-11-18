@@ -1,0 +1,12 @@
+[package]
+name = "compiler-test-atoi"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+legion-data-compiler = { path = "../../lib/data-compiler" }
+legion-data-runtime = { path = "../../lib/data-runtime" }
+text-resource = { path = "../../lib/data-offline/test-text-resource" }
+integer-asset = { path = "../../lib/data-runtime/test-integer-asset" }

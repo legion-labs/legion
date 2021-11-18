@@ -1164,6 +1164,97 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiler-runtime-entity"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "compiler-runtime-instance"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "compiler-runtime-mesh"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "compiler-test-atoi"
+version = "0.1.0"
+dependencies = [
+ "integer-asset",
+ "legion-data-compiler",
+ "legion-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "compiler-test-base64"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "binary-resource",
+ "legion-data-compiler",
+ "legion-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "compiler-test-refs"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-runtime",
+ "refs-asset",
+ "refs-resource",
+]
+
+[[package]]
+name = "compiler-test-reverse"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "compiler-test-split"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "multitext-resource",
+ "text-resource",
+]
+
+[[package]]
 name = "compiler-tex2bin"
 version = "0.1.0"
 dependencies = [
@@ -3405,7 +3496,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "test-compilers",
  "text-resource",
 ]
 
@@ -3606,10 +3696,8 @@ dependencies = [
 name = "legion-graphics-offline"
 version = "0.1.0"
 dependencies = [
- "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
- "legion-graphics-runtime",
  "psd",
  "serde",
  "serde_json",
@@ -6951,23 +7039,6 @@ dependencies = [
  "futf",
  "mac",
  "utf-8",
-]
-
-[[package]]
-name = "test-compilers"
-version = "0.1.0"
-dependencies = [
- "base64",
- "binary-resource",
- "integer-asset",
- "legion-content-store",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "multitext-resource",
- "refs-asset",
- "refs-resource",
- "text-resource",
 ]
 
 [[package]]
