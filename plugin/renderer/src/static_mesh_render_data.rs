@@ -1,5 +1,5 @@
 use crate::renderer::Renderer;
-use graphics_api::{prelude::*};
+use graphics_api::prelude::*;
 
 pub struct StaticMeshRenderData {
     pub vertices: Vec<f32>,
@@ -10,7 +10,8 @@ impl StaticMeshRenderData {
     fn from_vertex_data(vertex_data: Vec<f32>, renderer: &Renderer) -> StaticMeshRenderData {
         let mut vertex_buffers = Vec::with_capacity(renderer.num_render_frames as usize);
         for _ in 0..renderer.num_render_frames {
-            let vertex_buffer = renderer.device_context()
+            let vertex_buffer = renderer
+                .device_context()
                 .create_buffer(&BufferDef::for_staging_vertex_buffer_data(&vertex_data))
                 .unwrap();
             vertex_buffer
@@ -18,10 +19,10 @@ impl StaticMeshRenderData {
                 .unwrap();
             vertex_buffers.push(vertex_buffer);
         }
-        
+
         StaticMeshRenderData {
             vertices: vertex_data.to_vec(),
-            vertex_buffers
+            vertex_buffers,
         }
     }
 
@@ -53,7 +54,7 @@ impl StaticMeshRenderData {
             // -y
             half_size, -half_size, -half_size,
             half_size, -half_size, half_size,
-            -half_size, -half_size, -half_size,            
+            -half_size, -half_size, -half_size,
             half_size, -half_size, half_size,
             -half_size, -half_size, half_size,
             -half_size, -half_size, -half_size,
@@ -83,7 +84,7 @@ impl StaticMeshRenderData {
             // base
             half_size, -half_size, -half_size,
             half_size, -half_size, half_size,
-            -half_size, -half_size, -half_size,            
+            -half_size, -half_size, -half_size,
             half_size, -half_size, half_size,
             -half_size, -half_size, half_size,
             -half_size, -half_size, -half_size,
