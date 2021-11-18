@@ -20,7 +20,7 @@
       </div>
     </div>
     <div class="bg-gray-700 h-full rounded-b-lg">
-      <slot name="content"> No content</slot>
+      <slot name="content" />
     </div>
   </div>
 </template>

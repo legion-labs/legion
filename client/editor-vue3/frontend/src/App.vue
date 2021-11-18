@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import "./assets/index.css";
+import Home from "@/pages/Home.vue";
 </script>
 
 <template>
-  <NuxtPage />
+  <Home />
 </template>

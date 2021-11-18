@@ -1,11 +1,6 @@
 module.exports = {
   mode: "jit",
-  purge: [
-    "./app.vue",
-    "./components/**/*.vue",
-    "./layouts/**/*.vue",
-    "./pages/**/*.vue",
-  ],
+  purge: ["index.html", "./src/**/*.{vue,ts}"],
   darkMode: false,
   theme: {
     fontFamily: {
