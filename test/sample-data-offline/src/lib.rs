@@ -288,6 +288,18 @@ impl Component for Physics {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct StaticMesh {
+    pub mesh_id: usize,
+}
+
+#[typetag::serde]
+impl Component for StaticMesh {
+    fn extract_build_deps(&self) -> Vec<ResourcePathId> {
+        vec![]
+    }
+}
+
 // ------------------ Instance  -----------------------------------
 
 #[resource("offline_instance")]

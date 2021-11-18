@@ -61,6 +61,11 @@ pub struct View {
 pub struct Light {}
 
 #[derive(Serialize, Deserialize)]
+pub struct StaticMesh {
+    pub mesh_id: usize,
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum Component {
     Transform(Transform),
     Visual(Visual),
@@ -69,6 +74,7 @@ pub enum Component {
     View(View),
     Light(Light),
     Physics(Physics),
+    StaticMesh(StaticMesh),
 }
 
 #[derive(Serialize, Deserialize)]

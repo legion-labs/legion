@@ -6,7 +6,7 @@ use crate::components::{RenderSurface, StaticMesh};
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
-use legion_math::{EulerRot, Mat4, Quat, Vec3};
+use legion_math::{Mat4, Vec3};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_transform::components::Transform;
 pub struct Renderer {
@@ -391,7 +391,7 @@ impl TmpRenderPass {
         static_meshes: &[(&Transform, &StaticMesh)],
     ) {
         let render_frame_idx = renderer.render_frame_idx;
-        let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
+        //let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
 
         //
         // Update vertex color

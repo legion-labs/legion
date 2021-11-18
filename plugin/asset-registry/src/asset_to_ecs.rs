@@ -70,7 +70,6 @@ impl AssetToECS for runtime_data::Entity {
                     rotation: transform.rotation,
                     scale: transform.scale,
                 });
-                entity.insert(StaticMesh { mesh_id: 1 });
                 transform_inserted = true;
             }
             //} else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
@@ -137,7 +136,7 @@ impl AssetToECS for generic_data_runtime::DebugCube {
             rotation: instance.rotation,
             scale: instance.scale,
         });
-        entity.insert(StaticMesh { mesh_id: 0 });
+        entity.insert(StaticMesh { mesh_id: 1 });
         Some(entity.id())
     }
 }
