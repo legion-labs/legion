@@ -3,7 +3,7 @@ use legion_ecs::{prelude::*, system::IntoSystem};
 use legion_transform::components::Transform;
 
 use crate::{
-    components::{RenderSurface, StaticMeshComponent},
+    components::{RenderSurface, StaticMesh},
     labels::RendererSystemLabel,
     Renderer,
 };
@@ -45,7 +45,7 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
 fn render_update(
     mut renderer: ResMut<'_, Renderer>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    query: Query<'_, '_, (&Transform, &StaticMeshComponent)>,
+    query: Query<'_, '_, (&Transform, &StaticMesh)>,
 ) {
     renderer.update(&mut q_render_surfaces, &query);
 }

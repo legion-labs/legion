@@ -2,7 +2,8 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
-use crate::components::{RenderSurface, StaticMesh, StaticMeshComponent};
+use crate::components::{RenderSurface, StaticMesh};
+use crate::static_mesh_render_data::StaticMeshRenderData;
 use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_ecs::prelude::Query;
 use legion_math::{EulerRot, Mat4, Quat, Vec3};
@@ -150,13 +151,11 @@ impl Renderer {
     pub(crate) fn update(
         &mut self,
         q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>,
-        query: &Query<'_, '_, (&Transform, &StaticMeshComponent)>,
+        query: &Query<'_, '_, (&Transform, &StaticMesh)>,
     ) {
         let cmd_buffer = self.get_cmd_buffer();
 
-        let query = query
-            .iter()
-            .collect::<Vec<(&Transform, &StaticMeshComponent)>>();
+        let query = query.iter().collect::<Vec<(&Transform, &StaticMesh)>>();
 
         for mut render_surface in q_render_surfaces.iter_mut() {
             render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
@@ -189,8 +188,7 @@ impl Drop for Renderer {
 }
 
 pub struct TmpRenderPass {
-    static_meshes: Vec<StaticMesh>,
-    vertex_buffers: Vec<Buffer>,
+    static_meshes: Vec<StaticMeshRenderData>,
     uniform_buffers: Vec<Buffer>,
     uniform_buffer_cbvs: Vec<BufferView>,
     root_signature: RootSignature,
@@ -204,7 +202,6 @@ impl TmpRenderPass {
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
         let num_render_frames = renderer.num_render_frames;
-        let mut vertex_buffers = Vec::with_capacity(num_render_frames as usize);
         let mut uniform_buffers = Vec::with_capacity(num_render_frames as usize);
         let mut uniform_buffer_cbvs = Vec::with_capacity(num_render_frames as usize);
 
@@ -353,15 +350,6 @@ impl TmpRenderPass {
         // Per frame resources
         //
         for _ in 0..renderer.num_render_frames {
-            let vertex_data = [0f32; 108];
-
-            let vertex_buffer = device_context
-                .create_buffer(&BufferDef::for_staging_vertex_buffer_data(&vertex_data))
-                .unwrap();
-            vertex_buffer
-                .copy_to_host_visible_buffer(&vertex_data)
-                .unwrap();
-
             let uniform_data = [0f32; 4];
 
             let uniform_buffer = device_context
@@ -374,19 +362,18 @@ impl TmpRenderPass {
             let view_def = BufferViewDef::as_const_buffer(uniform_buffer.definition());
             let uniform_buffer_cbv = uniform_buffer.create_view(&view_def).unwrap();
 
-            vertex_buffers.push(vertex_buffer);
             uniform_buffer_cbvs.push(uniform_buffer_cbv);
             uniform_buffers.push(uniform_buffer);
         }
 
-        let mut static_meshes = vec![
-            StaticMesh::new_cube(0.5, renderer),
-            StaticMesh::new_pyramid(0.5, 1.0, renderer),
+        let static_meshes = vec![
+            StaticMeshRenderData::new_plane(1.0, renderer),
+            StaticMeshRenderData::new_cube(0.5, renderer),
+            StaticMeshRenderData::new_pyramid(0.5, 1.0, renderer),
         ];
 
         Self {
             static_meshes,
-            vertex_buffers,
             uniform_buffers,
             uniform_buffer_cbvs,
             root_signature,
@@ -401,7 +388,7 @@ impl TmpRenderPass {
         renderer: &Renderer,
         render_surface: &RenderSurface,
         cmd_buffer: &CommandBuffer,
-        static_meshes: &[(&Transform, &StaticMeshComponent)],
+        static_meshes: &[(&Transform, &StaticMesh)],
     ) {
         let render_frame_idx = renderer.render_frame_idx;
         let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
