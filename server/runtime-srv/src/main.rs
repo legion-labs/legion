@@ -106,13 +106,13 @@ fn main() {
 
     // default root object is in sample data
     // /world/sample_1.ent
-    // resource-id: d004cd1c00000000fcd3242ec9691beb
-    // asset-id: 019c822300000000b34c39427317a636
-    // checksum: 545b6531fddfd77cc39f501e7624d17d
+    // resource-id: 97b0740f00000000fcd3242ec9691beb
+    // asset-id: aad8904500000000ab5fe63eda1e1c4f
+    // checksum: 3aba5061a97aa89bb522050b16081f67
 
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
-        .unwrap_or("019c822300000000b34c39427317a636");
+        .unwrap_or("aad8904500000000ab5fe63eda1e1c4f");
     if let Ok(asset_id) = ResourceId::from_str(root_asset) {
         assets_to_load.push(asset_id);
     }
