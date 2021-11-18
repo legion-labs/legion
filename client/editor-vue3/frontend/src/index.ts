@@ -3,4 +3,8 @@ import { createApp } from "vue";
 import "./assets/index.css";
 import App from "./App.vue";
 
-createApp(App).mount("#root");
+const app = createApp(App);
+
+// Add directives and the likes
+
+app.mount("#root");
