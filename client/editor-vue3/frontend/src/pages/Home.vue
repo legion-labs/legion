@@ -8,7 +8,7 @@ import TopBar from "@/components/TopBar.vue";
     <TopBar />
     <div class="h-[calc(100vh-1.75rem)] w-full">
       <div class="flex flex-row h-full w-full">
-        <div class="flex flex-col flex-shrink-0 w-[1200px]">
+        <div class="flex flex-col flex-shrink-0 w-3/4">
           <Panel>
             <template #header> Untitled Document </template>
           </Panel>
