@@ -2360,7 +2360,6 @@ dependencies = [
  "generic_data_runtime",
  "lazy_static",
  "legion-content-store",
- "legion-data-build",
  "legion-data-codegen",
  "legion-data-compiler",
  "legion-data-offline",
@@ -5793,7 +5792,6 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "clap",
- "generic_data_compiler",
  "generic_data_offline",
  "generic_data_runtime",
  "legion-content-store",

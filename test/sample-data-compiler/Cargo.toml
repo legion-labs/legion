@@ -18,7 +18,6 @@ legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 generic_data_offline = { path = "../generic_data_offline" }
 generic_data_runtime = { path = "../generic_data_runtime" }
-generic_data_compiler = { path = "../generic_data_compiler" }
 
 # Sample data test
 sample-data-offline = { path = "../sample-data-offline", version = "0.1.0" }

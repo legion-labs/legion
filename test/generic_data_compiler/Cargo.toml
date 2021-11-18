@@ -12,7 +12,6 @@ doc = false
 legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 legion-content-store = { path = "../../lib/content-store", version = "0.1.0" }
-legion-data-build = { path = "../../lib/data-build", version = "0.1.0" }
 legion-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
 
