@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use legion_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
 use legion_ecs::prelude::*;
@@ -130,7 +131,9 @@ fn main() {
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
             .add_system(on_window_close_requested.exclusive_system())
-            .insert_resource(RenderSurfaces::new());
+            .insert_resource(RenderSurfaces::new())
+            .insert_resource(AssetRegistrySettings::default())
+            .add_plugin(AssetRegistryPlugin::default());
     }
     app.run();
 }

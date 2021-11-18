@@ -13,6 +13,7 @@ keywords = ["legion"]
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-content-store = { path = "../../lib/content-store" }
 legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-graphics-runtime = { path = "../../lib/graphics-runtime", version = "0.1.0" }
 legion-transform = { path = "../transform", version = "0.1.0" }

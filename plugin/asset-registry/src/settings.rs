@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use legion_data_runtime::ResourceId;
+use legion_utils::Settings;
 
 pub struct DataBuildSettings {
     pub(crate) build_bin: PathBuf,
@@ -34,6 +35,37 @@ impl AssetRegistrySettings {
             content_store_addr: content_store_addr.as_ref().to_owned(),
             game_manifest: game_manifest.as_ref().to_owned(),
             assets_to_load,
+            databuild_settings,
+        }
+    }
+}
+
+impl Default for AssetRegistrySettings {
+    fn default() -> Self {
+        let settings = Settings::new();
+        let project_folder = settings
+            .get_absolute_path("editor_srv.project_dir")
+            .unwrap_or_else(|| PathBuf::from("test/sample-data"));
+
+        let content_store_path = project_folder.join("temp");
+        let databuild_settings = {
+            let build_bin = {
+                std::env::current_exe().ok().map_or_else(
+                    || panic!("cannot find test directory"),
+                    |mut path| {
+                        path.pop();
+                        path.as_path().join("data-build.exe")
+                    },
+                )
+            };
+            let buildindex = content_store_path.clone();
+
+            Some(DataBuildSettings::new(build_bin, buildindex))
+        };
+        Self {
+            content_store_addr: content_store_path,
+            game_manifest: project_folder.join("runtime").join("game.manifest"),
+            assets_to_load: vec![],
             databuild_settings,
         }
     }
