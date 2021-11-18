@@ -16,6 +16,9 @@
             shadow_caster_local: true,
             gi_contribution: Default,
         )),
+        StaticMesh((
+            mesh_id: 1,
+        )),
         Physics((
             dynamic: false,
             collision_geometry: "offline_mesh(source/prefab/props/cube.obj)",

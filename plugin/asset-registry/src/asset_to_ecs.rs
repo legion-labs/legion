@@ -71,6 +71,10 @@ impl AssetToECS for runtime_data::Entity {
                     scale: transform.scale,
                 });
                 transform_inserted = true;
+            } else if let Some(static_mesh) = component.downcast_ref::<runtime_data::StaticMesh>() {
+                entity.insert(StaticMesh {
+                    mesh_id: static_mesh.mesh_id,
+                });
             }
             //} else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
             // } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
