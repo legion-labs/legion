@@ -3,7 +3,8 @@
         "clippy::[a-z_]+"
     ],
     "words": [
-        "thiserror",
-        "bincode"
+        "bincode",
+        "Graphviz",
+        "thiserror"
     ]
 }

@@ -43,9 +43,9 @@
 //! Show a human readable name of a given resource hash (in code under a specified directory).
 //!
 //! ```text
-//! $ data-scrape rty lib\ decode runtime_texture
+//! $ data-scrape rty lib\ decode 13b5a84e
 //!
-//! runtime_texture = f9c9670d
+//! psd = 13b5a84e
 //! ```
 //!
 //! # `source` - Resource Name Tool
