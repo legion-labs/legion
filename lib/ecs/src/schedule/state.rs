@@ -389,7 +389,7 @@ pub enum StateError {
     StackEmpty,
 }
 
-fn should_run_adapter<T: StateData>(
+async fn should_run_adapter<T: StateData>(
     In(cmp_result): In<bool>,
     state: Res<'_, State<T>>,
 ) -> ShouldRun {

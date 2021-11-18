@@ -1528,7 +1528,7 @@ mod tests {
 
         // Piping criteria.
         world.get_resource_mut::<Vec<usize>>().unwrap().clear();
-        fn eot_piped(input: In<ShouldRun>, has_ran: Local<'_, bool>) -> ShouldRun {
+        async fn eot_piped(input: In<ShouldRun>, has_ran: Local<'_, bool>) -> ShouldRun {
             if let ShouldRun::Yes | ShouldRun::YesAndCheckAgain = input.0 {
                 every_other_time(has_ran)
             } else {
