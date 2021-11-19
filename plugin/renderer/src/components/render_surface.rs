@@ -51,6 +51,9 @@ pub struct RenderSurface {
     texture_rtv: TextureView,
     texture_state: ResourceState,
 
+    depth_texture: Texture,
+    depth_texture_view: TextureView,
+
     // tmp
     pub test_renderpass: TmpRenderPass,
 }
@@ -80,6 +83,10 @@ impl RenderSurface {
 
     pub fn shader_resource_view(&self) -> &TextureView {
         &self.texture_srv
+    }
+
+    pub fn depth_texture_view(&self) -> &TextureView {
+        &self.depth_texture_view
     }
 
     pub fn transition_to(&mut self, cmd_buffer: &CommandBuffer, dst_state: ResourceState) {
@@ -131,6 +138,25 @@ impl RenderSurface {
         let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
         let texture_rtv = texture.create_view(&rtv_def).unwrap();
 
+        let depth_def = TextureDef {
+            extents: Extents3D {
+                width: extents.width(),
+                height: extents.height(),
+                depth: 1,
+            },
+            array_length: 1,
+            mip_count: 1,
+            format: Format::D32_SFLOAT,
+            usage_flags: ResourceUsage::AS_DEPTH_STENCIL,
+            resource_flags: ResourceFlags::empty(),
+            mem_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Optimal,
+        };
+
+        let depth_texture = device_context.create_texture(&depth_def).unwrap();
+        let depth_texture_view_def = TextureViewDef::as_depth_stencil_view(&depth_def);
+        let depth_texture_view = depth_texture.create_view(&depth_texture_view_def).unwrap();
+
         Self {
             id,
             extents,
@@ -138,6 +164,8 @@ impl RenderSurface {
             texture_srv,
             texture_rtv,
             texture_state: ResourceState::UNDEFINED,
+            depth_texture,
+            depth_texture_view,
             test_renderpass: TmpRenderPass::new(renderer),
         }
     }

@@ -10,7 +10,7 @@ use legion_math::{Mat4, Vec3};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_transform::components::Transform;
 pub struct Renderer {
-    frame_idx: usize,
+    pub frame_idx: usize,
     render_frame_idx: u32,
     pub num_render_frames: u32,
     frame_signal_sems: Vec<Semaphore>,
@@ -331,17 +331,34 @@ impl TmpRenderPass {
             }],
         };
 
+        let depth_state = DepthState {
+            depth_test_enable: true,
+            depth_write_enable: true,
+            depth_compare_op: CompareOp::Less,
+            stencil_test_enable: false,
+            stencil_read_mask: 0xFF,
+            stencil_write_mask: 0xFF,
+            front_depth_fail_op: StencilOp::default(),
+            front_stencil_compare_op: CompareOp::Always,
+            front_stencil_fail_op: StencilOp::default(),
+            front_stencil_pass_op: StencilOp::default(),
+            back_depth_fail_op: StencilOp::default(),
+            back_stencil_compare_op: CompareOp::Always,
+            back_stencil_fail_op: StencilOp::default(),
+            back_stencil_pass_op: StencilOp::default(),
+        };
+
         let pipeline = device_context
             .create_graphics_pipeline(&GraphicsPipelineDef {
                 shader: &shader,
                 root_signature: &root_signature,
                 vertex_layout: &vertex_layout,
                 blend_state: &BlendState::default(),
-                depth_state: &DepthState::default(),
+                depth_state: &depth_state,
                 rasterizer_state: &RasterizerState::default(),
                 color_formats: &[Format::R16G16B16A16_SFLOAT],
                 sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: None,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
                 primitive_topology: PrimitiveTopology::TriangleList,
             })
             .unwrap();
@@ -417,7 +434,14 @@ impl TmpRenderPass {
                     store_op: StoreOp::Store,
                     clear_value: ColorClearValue(self.color),
                 }],
-                &None,
+                &Some(DepthStencilRenderTargetBinding {
+                    texture_view: render_surface.depth_texture_view(),
+                    depth_load_op: LoadOp::Clear,
+                    stencil_load_op: LoadOp::DontCare,
+                    depth_store_op: StoreOp::DontCare,
+                    stencil_store_op: StoreOp::DontCare,
+                    clear_value: DepthStencilClearValue::default(),
+                }),
             )
             .unwrap();
 

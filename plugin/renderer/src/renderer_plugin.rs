@@ -1,5 +1,6 @@
 use legion_app::{CoreStage, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
+use legion_math::{EulerRot, Quat};
 use legion_transform::components::Transform;
 
 use crate::{
@@ -19,6 +20,7 @@ impl Plugin for RendererPlugin {
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update.system());
+        app.add_system_to_stage(CoreStage::PreUpdate, update_rotation.system());
 
         // Update
         app.add_system_set(
@@ -39,6 +41,19 @@ impl Plugin for RendererPlugin {
 
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn update_rotation(renderer: Res<'_, Renderer>, mut query: Query<'_, '_, &mut Transform>) {
+    let elapsed_secs = renderer.frame_idx as f32 / 60.0;
+    for mut transform in query.iter_mut() {
+        transform.rotate(Quat::from_euler(
+            EulerRot::XYZ,
+            0.0,
+            elapsed_secs.sin() * std::f32::consts::PI,
+            0.0,
+        ));
+    }
 }
 
 #[allow(clippy::needless_pass_by_value)]
