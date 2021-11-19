@@ -1,48 +1,39 @@
 <script lang="ts">
   import clickOutside from "@/directives/clickOutside";
+  import {
+    set as setMenuId,
+    openedMenuId,
+    close as closeTopBarMenu,
+    menus,
+    Id as MenuId,
+  } from "@/stores/topBarMenu";
 
   // Props
+
   export let documentTitle: string | null = null;
-
-  // Types
-
-  // Obviously not meant to be used as is in production
-  // as the menu might become dynamic at one point
-  type Id = typeof menus[number]["id"];
-
-  // Values
-  let openedMenu: Id | null = null;
-
-  const menus = [
-    { id: 1, title: "File" },
-    { id: 2, title: "Edit" },
-    { id: 3, title: "Layer" },
-    { id: 4, title: "Document" },
-    { id: 5, title: "View" },
-    { id: 6, title: "Help" },
-  ] as const;
 
   // Callbacks
 
-  const onMenuMouseEnter = (id: Id) =>
+  const onMenuMouseEnter = (id: MenuId) => {
     // We set the openedMenu value (and therefore open said menu dropdown)
     // only when a menu is open
-    openedMenu && (openedMenu = id);
+    $openedMenuId && setMenuId(id);
+  };
 
-  const onMenuClick = (id: Id) => {
+  const onMenuClick = (id: MenuId) => {
     // Simple menu dropdown display toggle
-    openedMenu = openedMenu ? null : id;
+    $openedMenuId ? closeTopBarMenu() : setMenuId(id);
   };
 
   const onMenuItemClick = () => {
     // When a user clicks on a menu dropdown item, we just close the menu
-    openedMenu = null;
+    closeTopBarMenu();
     console.log("Executed");
   };
 
   const closeMenu = () => {
-    if (openedMenu) {
-      openedMenu = null;
+    if ($openedMenuId) {
+      closeTopBarMenu();
     }
   };
 </script>
@@ -57,14 +48,14 @@
     {#each menus as menu}
       <div
         class="flex items-center hover:bg-gray-400 cursor-pointer"
-        class:bg-gray-400={openedMenu === menu.id}
+        class:bg-gray-400={$openedMenuId === menu.id}
         on:mouseenter={() => onMenuMouseEnter(menu.id)}
         on:click|capture={() => onMenuClick(menu.id)}
       >
         <div class="px-2">
           {menu.title}
         </div>
-        <div class="absolute top-7" class:hidden={openedMenu !== menu.id}>
+        <div class="absolute top-7" class:hidden={$openedMenuId !== menu.id}>
           <div class="bg-gray-800 py-1 bg-opacity-90">
             {#each [`Foo ${menu.title}`, `Bar ${menu.title}`, `Baz ${menu.title}`] as menuItemTitle}
               <div

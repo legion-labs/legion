@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { Ref, ref } from "@vue/reactivity";
 import useClickOutside from "@/composables/useClickOutside";
+import { Id as MenuId, menus, useTopBarMenu } from "@/stores/topBarMenu";
 
 // Props and events
 type Props = {
@@ -9,46 +9,31 @@ type Props = {
 
 defineProps<Props>();
 
-// Types
+// Reactive values
 
-// Obviously not meant to be used as is in production
-// as the menu might become dynamic at one point
-type Id = typeof menus[number]["id"];
-
-// Values
-
-const openedMenu: Ref<Id | null> = ref(null);
-
-const menus = [
-  { id: 1, title: "File" },
-  { id: 2, title: "Edit" },
-  { id: 3, title: "Layer" },
-  { id: 4, title: "Document" },
-  { id: 5, title: "View" },
-  { id: 6, title: "Help" },
-] as const;
+const topBarMenu = useTopBarMenu();
 
 const { ref: menuSectionRef } = useClickOutside(() => {
-  if (openedMenu.value) {
-    openedMenu.value = null;
+  if (topBarMenu.openedMenuId) {
+    topBarMenu.close();
   }
 });
 
 // Callbacks
 
-const onMenuMouseEnter = (id: Id) =>
+const onMenuMouseEnter = (id: MenuId) =>
   // We set the openedMenu value (and therefore open said menu dropdown)
   // only when a menu is open
-  openedMenu.value && (openedMenu.value = id);
+  topBarMenu.isOpen && topBarMenu.set(id);
 
-const onMenuClick = (id: Id) => {
+const onMenuClick = (id: MenuId) => {
   // Simple menu dropdown display toggle
-  openedMenu.value = openedMenu.value ? null : id;
+  topBarMenu.isOpen ? topBarMenu.close() : topBarMenu.set(id);
 };
 
 const onMenuItemClick = () => {
   // When a user clicks on a menu dropdown item, we just close the menu
-  openedMenu.value = null;
+  topBarMenu.close();
   console.log("Executed");
 };
 </script>
@@ -64,14 +49,17 @@ const onMenuItemClick = () => {
         v-for="menu in menus"
         :key="menu.id"
         class="flex items-center hover:bg-gray-400 cursor-pointer"
-        :class="{ 'bg-gray-400': openedMenu === menu.id }"
+        :class="{ 'bg-gray-400': topBarMenu.openedMenuId === menu.id }"
         @mouseenter="onMenuMouseEnter(menu.id)"
         @click="onMenuClick(menu.id)"
       >
         <div class="px-2">
           {{ menu.title }}
         </div>
-        <div class="absolute top-7" :class="{ hidden: openedMenu !== menu.id }">
+        <div
+          class="absolute top-7"
+          :class="{ hidden: topBarMenu.openedMenuId !== menu.id }"
+        >
           <div class="bg-gray-800 py-1 bg-opacity-90">
             <div
               v-for="menuItemTitle in [
@@ -81,7 +69,7 @@ const onMenuItemClick = () => {
               ]"
               :key="menuItemTitle"
               class="cursor-pointer hover:bg-gray-400 px-6 py-0.5"
-              @click="onMenuItemClick"
+              @click.stop="onMenuItemClick"
             >
               {{ menuItemTitle }}
             </div>

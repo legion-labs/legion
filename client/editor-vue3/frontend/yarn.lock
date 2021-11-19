@@ -110,6 +110,11 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@tauri-apps/api@^1.0.0-beta.8":
+  version "1.0.0-beta.8"
+  resolved "https://registry.yarnpkg.com/@tauri-apps/api/-/api-1.0.0-beta.8.tgz#a43dc4a4515148f29bfb616db85445b771e84f78"
+  integrity sha512-a56lXB7XvQ4+fKtT0pxpkjTSKhyrQ1Vmjyvt2ox3mT9xw3l7s8IOKHJ1WuqW6TA6xdoy3Cyja3Z3prw8hflS7g==
+
 "@types/json-schema@^7.0.9":
   version "7.0.9"
   resolved "https://registry.yarnpkg.com/@types/json-schema/-/json-schema-7.0.9.tgz#97edc9037ea0c38585320b28964dde3b39e4660d"
@@ -308,6 +313,11 @@
   dependencies:
     "@vue/compiler-dom" "3.2.22"
     "@vue/shared" "3.2.22"
+
+"@vue/devtools-api@^6.0.0-beta.20.1":
+  version "6.0.0-beta.20.1"
+  resolved "https://registry.yarnpkg.com/@vue/devtools-api/-/devtools-api-6.0.0-beta.20.1.tgz#5b499647e929c35baf2a66a399578f9aa4601142"
+  integrity sha512-R2rfiRY+kZugzWh9ZyITaovx+jpU4vgivAEAiz80kvh3yviiTU3CBuGuyWpSwGz9/C7TkSWVM/FtQRGlZ16n8Q==
 
 "@vue/reactivity@3.2.22", "@vue/reactivity@^3.2.21":
   version "3.2.22"
@@ -1660,6 +1670,14 @@ picomatch@^2.0.4, picomatch@^2.2.1, picomatch@^2.2.3:
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-2.3.0.tgz#f1f061de8f6a4bf022892e2d128234fb98302972"
   integrity sha512-lY1Q/PiJGC2zOv/z391WOTD+Z02bCgsFfvxoXXf6h7kv9o+WmsmzYqrAwY63sNgOxE4xEdq0WyUnXfKeBrSvYw==
 
+pinia@^2.0.4:
+  version "2.0.4"
+  resolved "https://registry.yarnpkg.com/pinia/-/pinia-2.0.4.tgz#06f6a03f6f19e6ec8b63cc06459011d96948e53d"
+  integrity sha512-nAc2f9HmOcBbWRlnGDuBGedM1G6uFAR10FnJWP1/dgm1I2tM5jbgKL/3IgynP4mBnPCy//ky7g0WpCZl5Mmxsg==
+  dependencies:
+    "@vue/devtools-api" "^6.0.0-beta.20.1"
+    vue-demi "*"
+
 postcss-js@^3.0.3:
   version "3.0.3"
   resolved "https://registry.yarnpkg.com/postcss-js/-/postcss-js-3.0.3.tgz#2f0bd370a2e8599d45439f6970403b5873abda33"
@@ -2320,6 +2338,11 @@ vscode-vue-languageservice@0.29.5:
     vscode-languageserver-textdocument "^1.0.1"
     vscode-pug-languageservice "0.29.5"
     vscode-typescript-languageservice "0.29.5"
+
+vue-demi@*:
+  version "0.12.1"
+  resolved "https://registry.yarnpkg.com/vue-demi/-/vue-demi-0.12.1.tgz#f7e18efbecffd11ab069d1472d7a06e319b4174c"
+  integrity sha512-QL3ny+wX8c6Xm1/EZylbgzdoDolye+VpCXRhI2hug9dJTP3OUJ3lmiKN3CsVV3mOJKwFi0nsstbgob0vG7aoIw==
 
 vue-eslint-parser@^8.0.1:
   version "8.0.1"
