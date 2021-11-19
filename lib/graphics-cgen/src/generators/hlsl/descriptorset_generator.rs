@@ -16,7 +16,6 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         products.push(Product::new(
             CGenVariant::Hlsl,
             GeneratorContext::get_object_rel_path(descriptorset, CGenVariant::Hlsl),
-            // ctx.get_rel_type_path(descriptorset, CGenVariant::Hlsl),
             content,
         ))
     }
@@ -107,8 +106,7 @@ fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -
         for dep in deps.iter() {
             let ty = ctx.model.get::<CGenType>(*dep).unwrap();
             let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
-            let rel_path = cur_folder.relative(ty_path);
-            dbg!(&rel_path);
+            let rel_path = cur_folder.relative(ty_path);            
             writer.add_line(format!("#include \"{}\"", rel_path));
         }
         writer.new_line();
@@ -119,6 +117,7 @@ fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -
         writer.add_line(get_descriptor_declaration(ctx.model, d));
     }
 
+    writer.new_line();
     writer.unindent();
 
     // footer

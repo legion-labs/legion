@@ -37,4 +37,5 @@
 	TextureCube<float4> rw_texcube;
 	[[vk::binding(16, 1)]]
 	TextureCubeArray<float4> rw_texcubearr;
+	
 #endif

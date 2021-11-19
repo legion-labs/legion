@@ -3,7 +3,8 @@ use crate::{
         file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product,
         GeneratorContext,
     },
-    model::{Descriptor, DescriptorDef, Model, PipelineLayout},
+    model::{Descriptor, DescriptorDef, DescriptorSet, Model, PipelineLayout},
+    run::CGenVariant,
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
@@ -12,78 +13,13 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let pipeline_layouts = model.object_iter::<PipelineLayout>().unwrap_or_default();
     for pipeline_layout in pipeline_layouts {
         let content = generate_hlsl_pipelinelayout(ctx, pipeline_layout);
-        
-        // products.push(Product::new(
-        //     ctx.get_pipelinelayout_abspath(pipeline_layout, CGenVariant::Hlsl),
-        //     content,
-        // ));
+        products.push(Product::new(
+            CGenVariant::Hlsl,
+            GeneratorContext::get_object_rel_path(pipeline_layout, CGenVariant::Hlsl),
+            content,
+        ))
     }
     products
-}
-
-fn get_descriptor_declaration(model: &Model, descriptor: &Descriptor) -> String {
-    let type_name: String = match &descriptor.def {
-        DescriptorDef::Sampler => "SamplerState ".to_owned(),
-        DescriptorDef::ConstantBuffer(def) => {
-            format!(
-                "ConstantBuffer<{}>",
-                get_hlsl_typestring(model, def.type_key)
-            )
-        }
-        DescriptorDef::StructuredBuffer(def) => {
-            format!(
-                "StructuredBuffer<{}>",
-                get_hlsl_typestring(model, def.type_key)
-            )
-        }
-        DescriptorDef::RWStructuredBuffer(def) => {
-            format!(
-                "RWStructuredBuffer<{}>",
-                get_hlsl_typestring(model, def.type_key)
-            )
-        }
-        DescriptorDef::ByteAddressBuffer => "ByteAddressBuffer".to_owned(),
-        DescriptorDef::RWByteAddressBuffer => "RWByteAddressBuffer".to_owned(),
-        DescriptorDef::Texture2D(def) => {
-            format!("Texture2D<{}>", get_hlsl_typestring(model, def.type_key))
-        }
-        DescriptorDef::RWTexture2D(def) => {
-            format!("RWTexture2D<{}>", get_hlsl_typestring(model, def.type_key))
-        }
-        DescriptorDef::Texture3D(def) => {
-            format!("Texture3D<{}>", get_hlsl_typestring(model, def.type_key))
-        }
-        DescriptorDef::RWTexture3D(def) => {
-            format!("RWTexture3D<{}>", get_hlsl_typestring(model, def.type_key))
-        }
-        DescriptorDef::Texture2DArray(def) => {
-            format!(
-                "Texture2DArray<{}>",
-                get_hlsl_typestring(model, def.type_key)
-            )
-        }
-        DescriptorDef::RWTexture2DArray(def) => {
-            format!(
-                "RWTexture2DArray<{}>",
-                get_hlsl_typestring(model, def.type_key)
-            )
-        }
-        DescriptorDef::TextureCube(def) => {
-            format!("TextureCube<{}>", get_hlsl_typestring(model, def.type_key))
-        }
-        DescriptorDef::TextureCubeArray(def) => {
-            format!(
-                "TextureCubeArray<{}>",
-                get_hlsl_typestring(model, def.type_key)
-            )
-        }
-    };
-
-    if let Some(array_len) = descriptor.array_len {
-        format!("{} {}[{}];", type_name, descriptor.name, array_len)
-    } else {
-        format!("{} {};", type_name, descriptor.name)
-    }
 }
 
 fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout) -> String {
@@ -97,35 +33,25 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     writer.indent();
 
     // include all type dependencies
-    // let deps = context
-    //    .model
-    //     .get_pipelinelayout_type_dependencies(pl_name)
-    //     .unwrap();
+    writer.add_line(format!("// DescriptorSets"));
+    let mut pl_folder = GeneratorContext::get_object_rel_path(pl, CGenVariant::Hlsl);
+    pl_folder.pop();
+    for (name, ty) in &pl.members {
+        match ty {
+            crate::model::PipelineLayoutContent::DescriptorSet(def) => {
+                let ds = ctx.model.get::<DescriptorSet>(*def).unwrap();
+                let ds_path = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
+                let rel_path = pl_folder.relative(ds_path);
+                writer.add_line(format!("// - name: {}", name));
+                writer.add_line(format!("// - freq: {}", ds.frequency));
+                writer.add_line(format!("#include \"{}\"", rel_path));
+                writer.new_line();
+            }
+            crate::model::PipelineLayoutContent::Pushconstant(_) => (),
+        }
+    }
 
-    // if !deps.is_empty() {
-    //     for dep in deps.iter() {
-    //         writer.add_line(format!("#include \"../structs/{}.hlsl\"", dep.to_string()));
-    //     }
-    //     writer.new_line();
-    // }
-
-    // write all descriptorsets
-    // if !pl.descriptorsets.is_empty() {
-    //     for ds_id in pl.descriptorsets.iter() {
-    //         let ds = ctx.model.get::<DescriptorSet>(*ds_id).unwrap();
-    //         writer.add_line(format!(
-    //             "// DescriptorSet '{}' : freq '{}'",
-    //             ds.name, ds.frequency
-    //         ));
-
-    //         for (idx, d) in ds.descriptors.iter().enumerate() {
-    //             writer.add_line(format!("[[vk::binding({}, {})]]", idx, ds.frequency));
-    //             writer.add_line(get_descriptor_declaration(ctx.model, d));
-    //         }
-    //     }
-    //     writer.new_line();
-    // }
-
+    writer.new_line();
     writer.unindent();
 
     // footer
