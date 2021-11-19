@@ -3,15 +3,14 @@ pub mod hlsl;
 pub mod product;
 pub mod rust;
 
-use std::{collections::HashSet, ops::Add, path::{Path, PathBuf}};
+use std::{collections::HashSet, ops::Add, path::Path};
 
 use anyhow::Result;
-use heck::{CamelCase, SnakeCase};
+use heck::SnakeCase;
 use relative_path::{RelativePath, RelativePathBuf};
-use syn::__private::TokenStreamExt;
 
 use crate::{
-    model::{CGenType, Model, ModelKey, PipelineLayout},
+    model::{CGenType, Model, ModelKey},
     run::CGenContext,
 };
 
@@ -56,27 +55,24 @@ impl<'a> GeneratorContext<'a> {
     }
 
     fn get_rel_type_path(&self, ty: &CGenType, cgen_variant: CGenVariant) -> RelativePathBuf {
-        
         let mut rel_path = self.get_type_folder().to_relative_path_buf();
         match ty {
-            CGenType::Struct(s) => {         
-                rel_path.push(Self::get_type_filename(ty, cgen_variant)  );
+            CGenType::Struct(_) => {
+                rel_path.push(Self::get_type_filename(ty, cgen_variant));
             }
             CGenType::Native(_) => panic!(),
-        }        
+        }
         rel_path
     }
 
     fn get_type_filename(ty: &CGenType, cgen_variant: CGenVariant) -> String {
         let result = match ty {
             CGenType::Native(_) => panic!("Not possible"),
-            CGenType::Struct(st) => {
-                st
-                    .name
-                    .to_snake_case()
-                    .add(".")
-                    .add(Self::get_file_ext(cgen_variant))                
-            }
+            CGenType::Struct(st) => st
+                .name
+                .to_snake_case()
+                .add(".")
+                .add(Self::get_file_ext(cgen_variant)),
         };
         result
     }

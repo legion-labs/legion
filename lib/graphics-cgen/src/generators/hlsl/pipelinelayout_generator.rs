@@ -1,6 +1,6 @@
 use crate::{
     generators::{
-        file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product, CGenVariant,
+        file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product,
         GeneratorContext,
     },
     model::{Descriptor, DescriptorDef, DescriptorSet, Model, PipelineLayout},
@@ -22,40 +22,68 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 }
 
 fn get_descriptor_declaration(model: &Model, descriptor: &Descriptor) -> String {
-    let typestring: String = match &descriptor.def {
+    let type_name: String = match &descriptor.def {
         DescriptorDef::Sampler => "SamplerState ".to_owned(),
-        DescriptorDef::ConstantBuffer(cb_def) => {
+        DescriptorDef::ConstantBuffer(def) => {
             format!(
                 "ConstantBuffer<{}>",
-                get_hlsl_typestring(model, cb_def.type_key)
+                get_hlsl_typestring(model, def.type_key)
             )
         }
-        DescriptorDef::StructuredBuffer(sb_def) => {
+        DescriptorDef::StructuredBuffer(def) => {
             format!(
                 "StructuredBuffer<{}>",
-                get_hlsl_typestring(model, sb_def.type_key)
+                get_hlsl_typestring(model, def.type_key)
             )
         }
-        DescriptorDef::RWStructuredBuffer(sb_def) => {
+        DescriptorDef::RWStructuredBuffer(def) => {
             format!(
                 "RWStructuredBuffer<{}>",
-                get_hlsl_typestring(model, sb_def.type_key)
+                get_hlsl_typestring(model, def.type_key)
             )
         }
         DescriptorDef::ByteAddressBuffer => "ByteAddressBuffer".to_owned(),
         DescriptorDef::RWByteAddressBuffer => "RWByteAddressBuffer".to_owned(),
-        DescriptorDef::Texture2D(t_def) => {
-            format!("Texture2D<{}>", get_hlsl_typestring(model, t_def.type_key))
+        DescriptorDef::Texture2D(def) => {
+            format!("Texture2D<{}>", get_hlsl_typestring(model, def.type_key))
         }
-        DescriptorDef::RWTexture2D(t_def) => {
+        DescriptorDef::RWTexture2D(def) => {
+            format!("RWTexture2D<{}>", get_hlsl_typestring(model, def.type_key))
+        }
+        DescriptorDef::Texture3D(def) => {
+            format!("Texture3D<{}>", get_hlsl_typestring(model, def.type_key))
+        }
+        DescriptorDef::RWTexture3D(def) => {
+            format!("RWTexture3D<{}>", get_hlsl_typestring(model, def.type_key))
+        }
+        DescriptorDef::Texture2DArray(def) => {
             format!(
-                "RWTexture2D<{}>",
-                get_hlsl_typestring(model, t_def.type_key)
+                "Texture2DArray<{}>",
+                get_hlsl_typestring(model, def.type_key)
+            )
+        }
+        DescriptorDef::RWTexture2DArray(def) => {
+            format!(
+                "RWTexture2DArray<{}>",
+                get_hlsl_typestring(model, def.type_key)
+            )
+        }
+        DescriptorDef::TextureCube(def) => {
+            format!("TextureCube<{}>", get_hlsl_typestring(model, def.type_key))
+        }
+        DescriptorDef::TextureCubeArray(def) => {
+            format!(
+                "TextureCubeArray<{}>",
+                get_hlsl_typestring(model, def.type_key)
             )
         }
     };
 
-    format!("{} {};", typestring, descriptor.name)
+    if let Some(array_len) = descriptor.array_len {
+        format!("{} {}[{}];", type_name, descriptor.name, array_len)
+    } else {
+        format!("{} {};", type_name, descriptor.name)
+    }
 }
 
 fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout) -> String {
@@ -82,21 +110,21 @@ fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout)
     // }
 
     // write all descriptorsets
-    if !pl.descriptorsets.is_empty() {
-        for ds_id in pl.descriptorsets.iter() {
-            let ds = ctx.model.get::<DescriptorSet>(*ds_id).unwrap();
-            writer.add_line(format!(
-                "// DescriptorSet '{}' : freq '{}'",
-                ds.name, ds.frequency
-            ));
+    // if !pl.descriptorsets.is_empty() {
+    //     for ds_id in pl.descriptorsets.iter() {
+    //         let ds = ctx.model.get::<DescriptorSet>(*ds_id).unwrap();
+    //         writer.add_line(format!(
+    //             "// DescriptorSet '{}' : freq '{}'",
+    //             ds.name, ds.frequency
+    //         ));
 
-            for (idx, d) in ds.descriptors.iter().enumerate() {
-                writer.add_line(format!("[[vk::binding({}, {})]]", idx, ds.frequency));
-                writer.add_line(get_descriptor_declaration(ctx.model, d));
-            }
-        }
-        writer.new_line();
-    }
+    //         for (idx, d) in ds.descriptors.iter().enumerate() {
+    //             writer.add_line(format!("[[vk::binding({}, {})]]", idx, ds.frequency));
+    //             writer.add_line(get_descriptor_declaration(ctx.model, d));
+    //         }
+    //     }
+    //     writer.new_line();
+    // }
 
     writer.unindent();
 

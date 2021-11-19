@@ -10,7 +10,7 @@ use relative_path::RelativePath;
 
 use crate::{
     generators::{self, product::Product, GeneratorContext},
-    parser::{from_syn, from_yaml},
+    parser::{from_syn},
 };
 
 pub struct CGenContext {
@@ -96,7 +96,7 @@ fn run_internal(context: &CGenContext) -> Result<()> {
     ))?;
 
     let model = match root_file_ext.to_str().unwrap() {
-        "yaml" => Arc::new(from_yaml(&context.root_file)?),
+        // "yaml" => Arc::new(from_yaml(&context.root_file)?),
         "cgen" => Arc::new(from_syn(&context.root_file)?),
         _ => return Err(anyhow!("Unknown extension")),
     };

@@ -1,7 +1,8 @@
 mod level_0;
+// include!("level_0");
 
 struct LayoutA {
-    a: Float1,
+    a: [Float1; 3],
     b: Float2,
 }
 
@@ -11,50 +12,31 @@ struct LayoutB {
     c: LayoutA,
 }
 
-// 1) sur chaque run:
-//     build.info (src/dst/hash) -> clean
+#[DescriptorSet(frequency = 1, transient)]
+struct FrameDescriptorSet {
+    smp: Sampler,
+    smp_arr: [Sampler; 10],
+    cb: ConstantBuffer<LayoutA>,
+    #[Field(transient)]
+    cb_tr: ConstantBuffer<LayoutA>,
+    sb: StructuredBuffer<LayoutA>,
+    sb_arr: [StructuredBuffer<LayoutA>; 10],
+    rw_sb: RWStructuredBuffer<LayoutA>,
+    bab: ByteAddressBuffer,
+    rw_bab: RWByteAddressBuffer,
+    tex2d: Texture2D<Float4>,
+    rw_tex2d: RWTexture2D<Float4>,
+    tex3d: Texture3D<Float4>,
+    rw_tex3d: RWTexture3D<Float4>,
+    tex2darr: Texture2DArray<Float4>,
+    rw_tex2darr: RWTexture2DArray<Float4>,
+    rw_texcube: TextureCube<Float4>,
+    rw_texcubearr: TextureCubeArray<Float4>,
+}
 
-// 1+) rerun if changed: (src*) -> clean
-//     build.info (src/dst/hash)
-
-// ----------------------------------------
-
-// - Struct:
-//     name : LayoutB
-//     members :
-//       - { type : "Float3", name : "a" }
-//       - { type : "Float4", name : "b" }
-//       - { name : "c", type : "LayoutA" }
-
-// - DescriptorSet:
-//     name : "Shared"
-//     frequency : 0
-//     descriptors:
-//       - { name : "smp", type: "Sampler" }
-//       - { name : "a", type: "ConstantBuffer", inner_type : "LayoutA"  }
-//       - { name : "b", type: "StructuredBuffer", inner_type : "LayoutB"  }
-//       - { name : "brw", type: "RWStructuredBuffer",  inner_type : "LayoutA"  }
-//       - { name : "c", type: "ByteAddressBuffer" }
-//       - { name : "crw", type: "RWByteAddressBuffer"  }
-//       - { name : "d", type: "Texture2D", inner_type : "Float4" }
-//       - { name : "drw", type: "RWTexture2D", inner_type : "Float2" }
-
-// - DescriptorSet:
-//     name : "Local"
-//     frequency : 1
-//     descriptors:
-//       - { name : "smp2", type: "Sampler" }
-//       - { name : "a2", type: "ConstantBuffer", inner_type : "LayoutA"  }
-//       - { name : "b2", type: "StructuredBuffer", inner_type : "LayoutA"  }
-//       - { name : "brw2", type: "RWStructuredBuffer",  inner_type : "LayoutB"  }
-//       - { name : "c2", type: "ByteAddressBuffer" }
-//       - { name : "crw2", type: "RWByteAddressBuffer"  }
-//       - { name : "d2", type: "Texture2D", inner_type : "Float4" }
-//       - { name : "drw2", type: "RWTexture2D", inner_type : "Float1" }
-
-// - PipelineLayout:
-//     name : "PL"
-//     descriptorssets : [ "Local", "Shared" ]
-//     pushconstants :
-//       - { name : "a", type : "Float1" }
-//       - { name : "b", type : "LayoutA" }
+#[PipelineLayout]
+struct DefaultPL {
+    frame_set: DescriptorSet<FrameDescriptorSet>,
+    a: PushConstant<Float1>,
+    b: PushConstant<LayoutA>,
+}

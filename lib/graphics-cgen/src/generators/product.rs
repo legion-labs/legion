@@ -1,6 +1,6 @@
 use anyhow::Result;
 use relative_path::{RelativePath, RelativePathBuf};
-use std::{io::Write, path::PathBuf};
+use std::{io::Write};
 
 use super::{CGenVariant, GeneratorContext};
 
@@ -28,7 +28,7 @@ impl Product {
         &self.content
     }
 
-    pub fn write_to_disk(&self, context: &GeneratorContext) -> Result<()> {
+    pub fn write_to_disk(&self, context: &GeneratorContext<'_>) -> Result<()> {
         let final_path = self.path.to_path(context.get_base_folder(self.variant));
         let mut dir_builder = std::fs::DirBuilder::new();
         dir_builder.recursive(true);

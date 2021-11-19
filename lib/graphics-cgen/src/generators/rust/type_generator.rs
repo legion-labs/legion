@@ -61,9 +61,13 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
         for key in &deps {
             let dep_ty = ctx.model.get::<CGenType>(*key).unwrap();
             match dep_ty {
-                CGenType::Native(e) => {}
+                CGenType::Native(_) => {}
                 CGenType::Struct(e) => {
-                    writer.add_line(format!("use super::{}::{};", e.name.to_snake_case(), e.name));
+                    writer.add_line(format!(
+                        "use super::{}::{};",
+                        e.name.to_snake_case(),
+                        e.name
+                    ));
                 }
             }
         }

@@ -115,7 +115,7 @@ impl Drop for ModelVec {
             unsafe {
                 drop_fn(self.get_unchecked(i));
             }
-        }        
+        }
     }
 }
 
@@ -209,7 +209,7 @@ impl Model {
     pub fn size<T: ModelObject>(&self) -> usize {
         match self.get_container::<T>() {
             Some(e) => e.size(),
-            None => 0
+            None => 0,
         }
     }
 
@@ -376,54 +376,19 @@ pub enum NativeType {
     Float4,
 }
 
-// #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-// pub enum CGenType {
-//     Float1,
-//     Float2,
-//     Float3,
-//     Float4,
-//     Complex(String),
-// }
-
-// impl FromStr for CGenType {
-//     type Err = ();
-
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         let result = match s {
-//             "Float1" => CGenType::Float1,
-//             "Float2" => CGenType::Float2,
-//             "Float3" => CGenType::Float3,
-//             "Float4" => CGenType::Float4,
-//             _ => CGenType::Complex(s.to_owned()),
-//         };
-
-//         Ok(result)
-//     }
-// }
-// impl ToString for CGenType {
-//     fn to_string(&self) -> String {
-//         let type_str = match self {
-//             CGenType::Float1 => "Float1",
-//             CGenType::Float2 => "Float2",
-//             CGenType::Float3 => "Float3",
-//             CGenType::Float4 => "Float4",
-//             CGenType::Complex(t) => t,
-//         };
-//         type_str.to_owned()
-//     }
-// }
-
 #[derive(Debug, Clone)]
 pub struct StructMember {
     pub name: String,
     pub type_key: ModelKey,
+    pub array_len: Option<u32>,
 }
 
 impl StructMember {
-    pub fn new(name: &str, type_key: ModelKey) -> Self {
+    pub fn new(name: &str, type_key: ModelKey, array_len: Option<u32>) -> Self {
         StructMember {
             name: name.to_owned(),
             type_key,
+            array_len,
         }
     }
 }
@@ -479,7 +444,7 @@ pub struct TextureDef {
 }
 
 #[derive(Debug)]
-pub struct SamplerDef {}
+pub struct SamplerDescriptorDef;
 
 #[derive(Debug, EnumString)]
 pub enum DescriptorType {
@@ -516,11 +481,18 @@ pub enum DescriptorDef {
     // Textures
     Texture2D(TextureDef),
     RWTexture2D(TextureDef),
+    Texture3D(TextureDef),
+    RWTexture3D(TextureDef),
+    Texture2DArray(TextureDef),
+    RWTexture2DArray(TextureDef),
+    TextureCube(TextureDef),
+    TextureCubeArray(TextureDef),
 }
 
 #[derive(Debug, Clone)]
 pub struct Descriptor {
     pub name: String,
+    pub array_len: Option<u32>,
     pub def: DescriptorDef,
 }
 
@@ -562,19 +534,25 @@ impl PushConstant {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum PipelineLayoutContent {
+    DescriptorSet(ModelKey),
+    Pushconstant(ModelKey),
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct PipelineLayout {
     pub name: String,
-    pub descriptorsets: Vec<ModelKey>,
-    pub pushconstants: Vec<PushConstant>,
+    pub members: Vec<(String, PipelineLayoutContent)>,
+    // pub pushconstants: Vec<PushConstant>,
 }
 
 impl PipelineLayout {
     pub fn new(name: &str) -> PipelineLayout {
         PipelineLayout {
             name: name.to_owned(),
-            descriptorsets: Vec::new(),
-            pushconstants: Vec::new(),
+            members: Vec::new(),
+            // pushconstants: Vec::new(),
         }
     }
 }

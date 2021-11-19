@@ -1,5 +1,4 @@
-use heck::{CamelCase, SnakeCase};
-use relative_path::RelativePath;
+use heck::SnakeCase;
 
 use crate::{
     generators::{
