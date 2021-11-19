@@ -9,5 +9,12 @@
     "files.eol": "\n",
     "cSpell.words": [
         "asft"
-    ]
+    ],
+    "css.lint.unknownAtRules": "ignore",
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
 }
