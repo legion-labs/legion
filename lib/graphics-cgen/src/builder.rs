@@ -1,4 +1,4 @@
-use std::{collections::HashSet};
+use std::collections::HashSet;
 
 use crate::model::*;
 use anyhow::{anyhow, Context, Result};
@@ -250,6 +250,7 @@ pub struct PipelineLayoutBuilder<'mdl> {
     product: PipelineLayout,
     names: HashSet<String>,
     freqs: HashSet<u32>,
+    has_pushconstant: bool,
 }
 
 impl<'mdl> PipelineLayoutBuilder<'mdl> {
@@ -259,6 +260,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             product: PipelineLayout::new(name),
             names: HashSet::new(),
             freqs: HashSet::new(),
+            has_pushconstant: false,
         }
     }
 
@@ -289,14 +291,29 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     }
 
     pub fn add_pushconstant(mut self, name: &str, typename: &str) -> Result<Self> {
+        // only one pushconstant is allowed
+        if self.has_pushconstant {
+            return Err(anyhow!(
+                "Only one PushConstant allowed in PipelineLayout '{}'",
+                self.product.name
+            ));
+        }
+        self.has_pushconstant = true;
         // get cgen type and check its existence if necessary
         let model_key = typename.into();
-        self.mdl.get::<CGenType>(model_key).context(anyhow!(
+        let ty = self.mdl.get::<CGenType>(model_key).context(anyhow!(
             "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
             typename,
             name,
             self.product.name
         ))?;
+        // Only struct types allowed for now
+        if let CGenType::Struct(def) = ty {           
+        } else {
+            return Err(anyhow!(
+                "PushConstant must be Struct types "
+            ));
+        }
         // done
         self.add_member(name, PipelineLayoutContent::Pushconstant(model_key))
     }

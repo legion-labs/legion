@@ -1,5 +1,4 @@
 mod level_0;
-// include!("level_0");
 
 struct LayoutA {
     a: [Float1; 3],
@@ -37,6 +36,5 @@ struct FrameDescriptorSet {
 #[PipelineLayout]
 struct DefaultPL {
     frame_set: DescriptorSet<FrameDescriptorSet>,
-    a: PushConstant<Float1>,
     b: PushConstant<LayoutA>,
 }
