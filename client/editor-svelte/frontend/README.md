@@ -40,6 +40,14 @@ yarn prettier:check # yarn prettier:fix to format the code
 yarn svelte:check # TypeScript and Svelte code checkers
 ```
 
+## Tests
+
+You can run the tests by simply typing:
+
+```
+yarn test
+```
+
 ## Production
 
 You can build the application for production using this command:
