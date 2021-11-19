@@ -8,7 +8,9 @@
     "prettier:check": "prettier --check .",
     "prettier:fix": "prettier --write .",
     "svelte:check": "tsc --noEmit && svelte-check",
-    "test": "jest"
+    "test": "jest",
+    "proto:generate": "mkdirp proto && protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto.cmd --ts_proto_out=.\\proto --proto_path=..\\..\\..\\proto\\editor ..\\..\\..\\proto\\editor\\editor.proto --ts_proto_opt=esModuleInterop=true --ts_proto_opt=outputServices=grpc-js --ts_proto_opt=env=browser",
+    "bootstrap": "yarn proto:generate"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.30",
@@ -22,6 +24,8 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-svelte3": "^3.2.1",
     "jest": "^27.3.1",
+    "long": "^5.1.0",
+    "mkdirp": "^1.0.4",
     "postcss": "^8.3.11",
     "prettier": "2.4.1",
     "prettier-plugin-svelte": "^2.5.0",
@@ -31,9 +35,14 @@
     "svelte-preprocess": "^4.9.8",
     "tailwindcss": "^2.2.19",
     "ts-jest": "^27.0.7",
+    "ts-proto": "^1.87.0",
     "typescript": "^4.5.2",
     "vite": "^2.6.14",
     "vite-tsconfig-paths": "^3.3.17",
     "yarn": "^1.22.17"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.4.4",
+    "protobufjs": "^6.11.2"
   }
 }
