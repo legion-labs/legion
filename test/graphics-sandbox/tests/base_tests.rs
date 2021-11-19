@@ -59,6 +59,7 @@ fn load_image(path: &Path) -> io::Result<SnapshotData> {
 }
 
 #[test]
+#[ignore]
 fn gpu_triangle_render() {
     let test_name = "triangle_render";
     let setup_name = "triangle_render";
