@@ -435,12 +435,15 @@ impl TmpRenderPass {
                     clear_value: ColorClearValue(self.color),
                 }],
                 &Some(DepthStencilRenderTargetBinding {
-                    texture_view: render_surface.depth_texture_view(),
+                    texture_view: render_surface.depth_stencil_texture_view(),
                     depth_load_op: LoadOp::Clear,
                     stencil_load_op: LoadOp::DontCare,
                     depth_store_op: StoreOp::DontCare,
                     stencil_store_op: StoreOp::DontCare,
-                    clear_value: DepthStencilClearValue::default(),
+                    clear_value: DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
                 }),
             )
             .unwrap();

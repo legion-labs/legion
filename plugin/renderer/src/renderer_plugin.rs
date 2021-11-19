@@ -43,14 +43,12 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
-#[allow(clippy::needless_pass_by_value)]
-fn update_rotation(renderer: Res<'_, Renderer>, mut query: Query<'_, '_, &mut Transform>) {
-    let elapsed_secs = renderer.frame_idx as f32 / 60.0;
-    for mut transform in query.iter_mut() {
+fn update_rotation(mut query: Query<'_, '_, &mut Transform>) {
+    for (i, mut transform) in query.iter_mut().enumerate() {
         transform.rotate(Quat::from_euler(
             EulerRot::XYZ,
             0.0,
-            elapsed_secs.sin() * std::f32::consts::PI,
+            (1.0 + 0.2 * (i as f32)) / 60.0 * std::f32::consts::PI,
             0.0,
         ));
     }

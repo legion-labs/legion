@@ -42,6 +42,7 @@ impl RenderSurfaceExtents {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Component)]
 pub struct RenderSurface {
     id: RenderSurfaceId,
@@ -51,8 +52,8 @@ pub struct RenderSurface {
     texture_rtv: TextureView,
     texture_state: ResourceState,
 
-    depth_texture: Texture,
-    depth_texture_view: TextureView,
+    depth_stencil_texture: Texture,
+    depth_stencil_texture_view: TextureView,
 
     // tmp
     pub test_renderpass: TmpRenderPass,
@@ -85,8 +86,8 @@ impl RenderSurface {
         &self.texture_srv
     }
 
-    pub fn depth_texture_view(&self) -> &TextureView {
-        &self.depth_texture_view
+    pub fn depth_stencil_texture_view(&self) -> &TextureView {
+        &self.depth_stencil_texture_view
     }
 
     pub fn transition_to(&mut self, cmd_buffer: &CommandBuffer, dst_state: ResourceState) {
@@ -138,7 +139,7 @@ impl RenderSurface {
         let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
         let texture_rtv = texture.create_view(&rtv_def).unwrap();
 
-        let depth_def = TextureDef {
+        let depth_stencil_def = TextureDef {
             extents: Extents3D {
                 width: extents.width(),
                 height: extents.height(),
@@ -153,9 +154,12 @@ impl RenderSurface {
             tiling: TextureTiling::Optimal,
         };
 
-        let depth_texture = device_context.create_texture(&depth_def).unwrap();
-        let depth_texture_view_def = TextureViewDef::as_depth_stencil_view(&depth_def);
-        let depth_texture_view = depth_texture.create_view(&depth_texture_view_def).unwrap();
+        let depth_stencil_texture = device_context.create_texture(&depth_stencil_def).unwrap();
+        let depth_stencil_texture_view_def =
+            TextureViewDef::as_depth_stencil_view(&depth_stencil_def);
+        let depth_stencil_texture_view = depth_stencil_texture
+            .create_view(&depth_stencil_texture_view_def)
+            .unwrap();
 
         Self {
             id,
@@ -164,8 +168,8 @@ impl RenderSurface {
             texture_srv,
             texture_rtv,
             texture_state: ResourceState::UNDEFINED,
-            depth_texture,
-            depth_texture_view,
+            depth_stencil_texture,
+            depth_stencil_texture_view,
             test_renderpass: TmpRenderPass::new(renderer),
         }
     }
