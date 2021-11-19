@@ -3,20 +3,22 @@ use crate::{
         file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product,
         GeneratorContext,
     },
-    model::{Descriptor, DescriptorDef, Model, PipelineLayout},
+    model::{CGenType, Descriptor, DescriptorDef, DescriptorSet, Model},
+    run::CGenVariant,
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
     let model = ctx.model;
-    let pipeline_layouts = model.object_iter::<PipelineLayout>().unwrap_or_default();
-    for pipeline_layout in pipeline_layouts {
-        let content = generate_hlsl_pipelinelayout(ctx, pipeline_layout);
-        
-        // products.push(Product::new(
-        //     ctx.get_pipelinelayout_abspath(pipeline_layout, CGenVariant::Hlsl),
-        //     content,
-        // ));
+    let descriptorsets = model.object_iter::<DescriptorSet>().unwrap_or_default();
+    for descriptorset in descriptorsets {
+        let content = generate_hlsl_descritporset(ctx, descriptorset);
+        products.push(Product::new(
+            CGenVariant::Hlsl,
+            GeneratorContext::get_object_rel_path(descriptorset, CGenVariant::Hlsl),
+            // ctx.get_rel_type_path(descriptorset, CGenVariant::Hlsl),
+            content,
+        ))
     }
     products
 }
@@ -86,45 +88,36 @@ fn get_descriptor_declaration(model: &Model, descriptor: &Descriptor) -> String 
     }
 }
 
-fn generate_hlsl_pipelinelayout(ctx: &GeneratorContext<'_>, pl: &PipelineLayout) -> String {
+fn generate_hlsl_descritporset(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) -> String {
     let mut writer = FileWriter::new();
 
     // header
-    writer.add_line(format!("#ifndef PIPELINELAYOUT_{}", pl.name.to_uppercase()));
-    writer.add_line(format!("#define PIPELINELAYOUT_{}", pl.name.to_uppercase()));
+    writer.add_line(format!("#ifndef DESCRIPTORSET_{}", ds.name.to_uppercase()));
+    writer.add_line(format!("#define DESCRIPTORSET_{}", ds.name.to_uppercase()));
     writer.new_line();
 
     writer.indent();
 
     // include all type dependencies
-    // let deps = context
-    //    .model
-    //     .get_pipelinelayout_type_dependencies(pl_name)
-    //     .unwrap();
+    let deps = GeneratorContext::get_descriptorset_dependencies(ds);
 
-    // if !deps.is_empty() {
-    //     for dep in deps.iter() {
-    //         writer.add_line(format!("#include \"../structs/{}.hlsl\"", dep.to_string()));
-    //     }
-    //     writer.new_line();
-    // }
+    if !deps.is_empty() {
+        let mut cur_folder = GeneratorContext::get_object_rel_path(ds, CGenVariant::Hlsl);
+        cur_folder.pop();
+        for dep in deps.iter() {
+            let ty = ctx.model.get::<CGenType>(*dep).unwrap();
+            let ty_path = GeneratorContext::get_object_rel_path(ty, CGenVariant::Hlsl);
+            let rel_path = cur_folder.relative(ty_path);
+            dbg!(&rel_path);
+            writer.add_line(format!("#include \"{}\"", rel_path));
+        }
+        writer.new_line();
+    }
 
-    // write all descriptorsets
-    // if !pl.descriptorsets.is_empty() {
-    //     for ds_id in pl.descriptorsets.iter() {
-    //         let ds = ctx.model.get::<DescriptorSet>(*ds_id).unwrap();
-    //         writer.add_line(format!(
-    //             "// DescriptorSet '{}' : freq '{}'",
-    //             ds.name, ds.frequency
-    //         ));
-
-    //         for (idx, d) in ds.descriptors.iter().enumerate() {
-    //             writer.add_line(format!("[[vk::binding({}, {})]]", idx, ds.frequency));
-    //             writer.add_line(get_descriptor_declaration(ctx.model, d));
-    //         }
-    //     }
-    //     writer.new_line();
-    // }
+    for (idx, d) in ds.descriptors.iter().enumerate() {
+        writer.add_line(format!("[[vk::binding({}, {})]]", idx, ds.frequency));
+        writer.add_line(get_descriptor_declaration(ctx.model, d));
+    }
 
     writer.unindent();
 

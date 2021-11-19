@@ -21,14 +21,17 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         .map(|content| {
             products.push(Product::new(
                 CGenVariant::Rust,
-                ctx.get_rel_type_path(cgen_type, CGenVariant::Rust),
+                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),
+                // ctx.get_rel_type_path(cgen_type, CGenVariant::Rust),
                 content,
             ))
         });
     }
 
     if !products.is_empty() {
-        let mut mod_path = RelativePath::new("types/mod.rs");
+        let mut mod_path = GeneratorContext::get_object_folder::<CGenType>();
+        mod_path.push("mod.rs");        
+
         let mut writer = FileWriter::new();
         for product in &products {
             let filename = product.path().file_stem().unwrap();
@@ -36,7 +39,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         }
         products.push(Product::new(
             CGenVariant::Rust,
-            mod_path.to_relative_path_buf(),
+            mod_path,
             writer.to_string(),
         ));
     }
@@ -55,7 +58,7 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     let mut writer = FileWriter::new();
 
     // dependencies
-    let deps = ctx.get_type_dependencies(ty).unwrap();
+    let deps = GeneratorContext::get_type_dependencies(ty);
 
     if !deps.is_empty() {
         for key in &deps {

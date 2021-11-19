@@ -2,7 +2,7 @@ use relative_path::RelativePath;
 
 use crate::{
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
-    model::{CGenType, DescriptorSet, PipelineLayout},
+    model::{CGenType, DescriptorSet, Model, ModelObject, PipelineLayout},
 };
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
@@ -10,15 +10,9 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut writer = FileWriter::new();
 
     let model = ctx.model;
-    if model.size::<CGenType>() > 0 {
-        writer.add_line("pub(crate) mod types;".to_string());
-    }
-    if model.size::<DescriptorSet>() > 0 {
-        writer.add_line("pub(crate) mod descriptorsets;".to_string());
-    }
-    if model.size::<PipelineLayout>() > 0 {
-        writer.add_line("pub(crate) mod pipelinelayouts;".to_string());
-    }
+    write_mod::<CGenType>(model, &mut writer);
+    write_mod::<DescriptorSet>(model, &mut writer);
+    write_mod::<PipelineLayout>(model, &mut writer);
 
     products.push(Product::new(
         CGenVariant::Rust,
@@ -27,4 +21,14 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     ));
 
     products
+}
+
+fn write_mod<T>(model: &Model, writer: &mut FileWriter)
+where
+    T: ModelObject,
+{
+    if model.size::<T>() > 0 {
+        let folder = GeneratorContext::get_object_folder::<T>();
+        writer.add_line(format!("pub(crate) mod {};", folder.to_string()));
+    }
 }

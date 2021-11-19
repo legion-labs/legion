@@ -127,7 +127,11 @@ fn array_layout(item_layout: &Layout, capacity: usize) -> Layout {
 }
 
 pub trait ModelObject: 'static + Clone + Sized {
-    fn key(&self) -> ModelKey;
+    fn typename() -> &'static str;
+    fn name(&self) -> &str;
+    fn key(&self) -> ModelKey {
+        ModelKey::from(self.name())
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -424,10 +428,13 @@ impl StructType {
 }
 
 impl ModelObject for CGenType {
-    fn key(&self) -> ModelKey {
+    fn typename() -> &'static str {
+        "CGenType"
+    }
+    fn name(&self) -> &str {
         match self {
-            CGenType::Native(e) => ModelKey::from(e.as_static()),
-            CGenType::Struct(e) => ModelKey::from(e.name.as_str()),
+            CGenType::Native(e) => e.as_static(),
+            CGenType::Struct(e) => e.name.as_str(),
         }
     }
 }
@@ -514,8 +521,11 @@ impl DescriptorSet {
 }
 
 impl ModelObject for DescriptorSet {
-    fn key(&self) -> ModelKey {
-        ModelKey::from(self.name.as_str())
+    fn typename() -> &'static str {
+        "DescriptorSet"
+    }
+    fn name(&self) -> &str {
+        self.name.as_str()
     }
 }
 
@@ -558,7 +568,10 @@ impl PipelineLayout {
 }
 
 impl ModelObject for PipelineLayout {
-    fn key(&self) -> ModelKey {
-        ModelKey::from(self.name.as_str())
+    fn typename() -> &'static str {
+        "PipelineLayout"
+    }
+    fn name(&self) -> &str {
+        self.name.as_str()
     }
 }

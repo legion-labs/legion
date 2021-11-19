@@ -10,8 +10,14 @@ use relative_path::RelativePath;
 
 use crate::{
     generators::{self, product::Product, GeneratorContext},
-    parser::{from_syn},
+    parser::from_syn,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CGenVariant {
+    Hlsl,
+    Rust,
+}
 
 pub struct CGenContext {
     pub(super) root_file: PathBuf,
@@ -26,6 +32,15 @@ impl Default for CGenContext {
             root_file: RelativePath::new("root.cgen").to_path(&cur_dir),
             outdir_hlsl: RelativePath::new("generated_hlsl").to_path(&cur_dir),
             outdir_rust: RelativePath::new("generated_rust").to_path(&cur_dir),
+        }
+    }
+}
+
+impl CGenContext {
+    pub fn out_dir(&self, variant: CGenVariant) -> &Path {
+        match variant {
+            CGenVariant::Hlsl => &self.outdir_hlsl,
+            CGenVariant::Rust => &self.outdir_rust,
         }
     }
 }
@@ -102,16 +117,12 @@ fn run_internal(context: &CGenContext) -> Result<()> {
     };
 
     //
-    // Prepare generation context
-    //
-
-    let gen_context = GeneratorContext::new(&model, context);
-
-    //
     // generation step
     //
+    let gen_context = GeneratorContext::new(&model, context);
     let mut generators = Vec::<generators::GeneratorFunc>::new();
     generators.push(generators::hlsl::type_generator::run);
+    generators.push(generators::hlsl::descriptorset_generator::run);
     generators.push(generators::hlsl::pipelinelayout_generator::run);
     generators.push(generators::rust::base_mod_generator::run);
     generators.push(generators::rust::type_generator::run);
@@ -126,7 +137,7 @@ fn run_internal(context: &CGenContext) -> Result<()> {
     // write to disk
     //
     for product in &products {
-        product.write_to_disk(&gen_context)?;
+        product.write_to_disk(context)?;
     }
 
     Ok(())

@@ -3,44 +3,27 @@ pub mod hlsl;
 pub mod product;
 pub mod rust;
 
-use std::{collections::HashSet, ops::Add, path::Path};
+use std::{collections::HashSet, ops::Add};
 
 use anyhow::Result;
 use heck::SnakeCase;
 use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{
-    model::{CGenType, Model, ModelKey},
-    run::CGenContext,
+    model::{CGenType, DescriptorSet, Model, ModelKey, ModelObject},
+    run::{CGenContext, CGenVariant},
 };
 
 use self::product::Product;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CGenVariant {
-    Hlsl,
-    Rust,
-}
-
 pub type GeneratorFunc = for<'r, 's> fn(&'r GeneratorContext<'s>) -> Vec<Product>;
 pub struct GeneratorContext<'a> {
     model: &'a Model,
-    cgen_context: &'a CGenContext,
 }
 
 impl<'a> GeneratorContext<'a> {
     pub fn new(model: &'a Model, cgen_context: &'a CGenContext) -> Self {
-        Self {
-            model,
-            cgen_context,
-        }
-    }
-
-    fn get_base_folder(&self, cgen_variant: CGenVariant) -> &Path {
-        match cgen_variant {
-            CGenVariant::Hlsl => &self.cgen_context.outdir_hlsl,
-            CGenVariant::Rust => &self.cgen_context.outdir_rust,
-        }
+        Self { model }
     }
 
     fn get_file_ext(cgen_variant: CGenVariant) -> &'static str {
@@ -50,51 +33,73 @@ impl<'a> GeneratorContext<'a> {
         }
     }
 
-    fn get_type_folder(&self) -> &RelativePath {
-        RelativePath::new("types")
+    fn get_object_folder<T>() -> RelativePathBuf
+    where
+        T: ModelObject,
+    {
+        RelativePath::new(&T::typename().to_snake_case()).to_owned()
     }
 
-    fn get_rel_type_path(&self, ty: &CGenType, cgen_variant: CGenVariant) -> RelativePathBuf {
-        let mut rel_path = self.get_type_folder().to_relative_path_buf();
-        match ty {
-            CGenType::Struct(_) => {
-                rel_path.push(Self::get_type_filename(ty, cgen_variant));
-            }
-            CGenType::Native(_) => panic!(),
-        }
-        rel_path
+    fn get_object_rel_path<T>(ty: &T, cgen_variant: CGenVariant) -> RelativePathBuf
+    where
+        T: ModelObject,
+    {
+        let filename = Self::get_object_filename(ty, cgen_variant);
+        Self::get_object_folder::<T>().join(filename)
     }
 
-    fn get_type_filename(ty: &CGenType, cgen_variant: CGenVariant) -> String {
-        let result = match ty {
-            CGenType::Native(_) => panic!("Not possible"),
-            CGenType::Struct(st) => st
-                .name
-                .to_snake_case()
-                .add(".")
-                .add(Self::get_file_ext(cgen_variant)),
-        };
-        result
+    fn get_object_filename<T>(obj: &T, cgen_variant: CGenVariant) -> RelativePathBuf
+    where
+        T: ModelObject,
+    {
+        let mut file_name = RelativePath::new(&obj.name().to_snake_case()).to_relative_path_buf();
+        file_name.set_extension(Self::get_file_ext(cgen_variant));
+        file_name
     }
 
-    pub fn get_type_dependencies(&self, ty: &CGenType) -> Result<HashSet<ModelKey>> {
+    pub fn get_type_dependencies(ty: &CGenType) -> HashSet<ModelKey> {
         let mut set = HashSet::new();
 
         match ty {
-            CGenType::Native(_) => (),
-            CGenType::Struct(st) => {
-                for mb in st.members.iter() {
-                    let mb_type = self.model.get::<CGenType>(mb.type_key).unwrap();
-                    match mb_type {
-                        CGenType::Native(_) => (),
-                        CGenType::Struct(_) => {
-                            set.insert(mb.type_key);
-                        }
-                    }
+            CGenType::Native(inner_ty) => {}
+            CGenType::Struct(inner_ty) => {
+                for mb in inner_ty.members.iter() {
+                    set.insert(mb.type_key);
                 }
             }
         }
 
-        Ok(set)
+        set
+    }
+
+    pub fn get_descriptorset_dependencies(ty: &DescriptorSet) -> HashSet<ModelKey> {
+        let mut set = HashSet::new();
+
+        for descriptor in &ty.descriptors {
+            match descriptor.def {
+                crate::model::DescriptorDef::Sampler => (),
+                crate::model::DescriptorDef::ConstantBuffer(def) => {
+                    set.insert(def.type_key);
+                }
+                crate::model::DescriptorDef::StructuredBuffer(def) => {
+                    set.insert(def.type_key);
+                }
+                crate::model::DescriptorDef::RWStructuredBuffer(def) => {
+                    set.insert(def.type_key);
+                }
+                crate::model::DescriptorDef::ByteAddressBuffer => (),
+                crate::model::DescriptorDef::RWByteAddressBuffer => (),
+                crate::model::DescriptorDef::Texture2D(_) => (),
+                crate::model::DescriptorDef::RWTexture2D(_) => (),
+                crate::model::DescriptorDef::Texture3D(_) => (),
+                crate::model::DescriptorDef::RWTexture3D(_) => (),
+                crate::model::DescriptorDef::Texture2DArray(_) => (),
+                crate::model::DescriptorDef::RWTexture2DArray(_) => (),
+                crate::model::DescriptorDef::TextureCube(_) => (),
+                crate::model::DescriptorDef::TextureCubeArray(_) => (),
+            }
+        }
+
+        set
     }
 }

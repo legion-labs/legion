@@ -1,4 +1,4 @@
-use std::{collections::HashSet, hash::Hash};
+use std::{collections::HashSet};
 
 use crate::model::*;
 use anyhow::{anyhow, Context, Result};
@@ -10,7 +10,7 @@ pub struct StructBuilder<'mdl> {
 }
 
 impl<'mdl> StructBuilder<'mdl> {
-    pub fn new(mdl: &'mdl Model, name: &str) -> Self {        
+    pub fn new(mdl: &'mdl Model, name: &str) -> Self {
         StructBuilder {
             mdl,
             product: StructType::new(name),
@@ -29,7 +29,7 @@ impl<'mdl> StructBuilder<'mdl> {
         }
         self.names.insert(name.to_string());
 
-        // get cgen type and check its existence if necessary        
+        // get cgen type and check its existence if necessary
         let type_key = typ.into();
         self.mdl.get::<CGenType>(type_key).context(anyhow!(
             "Member '{}' in struct '{}' has an unknown type '{}'",
@@ -70,8 +70,8 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
 
     pub fn add_constantbuffer(self, name: &str, inner_type: &str) -> Result<Self> {
         let type_key = inner_type.into();
-        // get cgen type and check its existence if necessary        
-        self.mdl.get::<CGenType>(type_key).context(anyhow!(        
+        // get cgen type and check its existence if necessary
+        self.mdl.get::<CGenType>(type_key).context(anyhow!(
             "ConstantBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
             name,
             self.product.name,
@@ -90,7 +90,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ) -> Result<Self> {
         let type_key = inner_ty.into();
         // get cgen type and check its existence if necessary
-        self.mdl.get::<CGenType>(type_key).context(anyhow!(        
+        self.mdl.get::<CGenType>(type_key).context(anyhow!(
             "StructuredBuffer '{}' in DescriptorSet '{}' has an unknown type '{}'",
             name,
             self.product.name,
@@ -147,7 +147,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
                     | NativeType::Float3
                     | NativeType::Float4 => true,
                 },
-                }
+            }
         };
         if !valid_type {
             return Err(anyhow!(
@@ -163,9 +163,9 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         let ds = match tex_type {
             "2D" => {
                 if read_write {
-            DescriptorDef::RWTexture2D(def)
-        } else {
-            DescriptorDef::Texture2D(def)
+                    DescriptorDef::RWTexture2D(def)
+                } else {
+                    DescriptorDef::Texture2D(def)
                 }
             }
             "3D" => {
@@ -273,7 +273,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
                 self.product.name
             ));
         }
-        let ds = ds.unwrap();        
+        let ds = ds.unwrap();
 
         // check for frequency conflict
         if self.freqs.contains(&ds.frequency) {
@@ -291,7 +291,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
     pub fn add_pushconstant(mut self, name: &str, typename: &str) -> Result<Self> {
         // get cgen type and check its existence if necessary
         let model_key = typename.into();
-        self.mdl.get::<CGenType>(model_key).context(anyhow!(        
+        self.mdl.get::<CGenType>(model_key).context(anyhow!(
             "Unknown type '{}' for PushConstant '{}' in PipelineLayout '{}'",
             typename,
             name,

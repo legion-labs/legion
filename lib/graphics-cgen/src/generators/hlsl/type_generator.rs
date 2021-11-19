@@ -20,7 +20,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         .map(|content| {
             products.push(Product::new(
                 CGenVariant::Hlsl,
-                ctx.get_rel_type_path(cgen_type, CGenVariant::Hlsl),
+                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Hlsl),
                 content,
             ))
         });
@@ -52,13 +52,18 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     writer.indent();
 
     // dependencies
-    let deps = ctx.get_type_dependencies(ty).unwrap();
-
+    let deps = GeneratorContext::get_type_dependencies(ty);
     if !deps.is_empty() {
         for key in &deps {
             let dep_ty = ctx.model.get::<CGenType>(*key).unwrap();
-            let dep_filename = GeneratorContext::get_type_filename(dep_ty, CGenVariant::Hlsl);
-            writer.add_line(format!("#include \"{}\"", dep_filename.as_str()));
+            match dep_ty {
+                CGenType::Native(_) => (),
+                CGenType::Struct(_) => {
+                    let dep_filename =
+                        GeneratorContext::get_object_filename(dep_ty, CGenVariant::Hlsl);
+                    writer.add_line(format!("#include \"{}\"", dep_filename.as_str()));
+                }
+            }
         }
         writer.new_line();
     }
