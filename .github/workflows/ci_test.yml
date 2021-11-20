@@ -82,6 +82,7 @@ jobs:
             [self-hosted, windows, gpu, build],
             [self-hosted, linux, gpu, build],
           ]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
         with:
