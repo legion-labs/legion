@@ -54,7 +54,7 @@ jobs:
     name: Check if graphics libs changed
     runs-on: ubuntu-latest
     outputs:
-      files_changed: ${{  steps.changed-files.outputs.any_changed }}
+      files_changed: ${{ steps.changed-files.outputs.any_changed }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -73,7 +73,7 @@ jobs:
   test_gpu:
     name: Running gpu tests
     needs: [lint, check_needs_gpu_tests]
-    if: ${{ needs.check_needs_gpu_tests.outputs.files_changed }}
+    if: needs.check_needs_gpu_tests.outputs.files_changed == 'true'
     strategy:
       matrix:
         os:
@@ -86,7 +86,6 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run tests
-        if: steps.changed-files.outputs.any_changed == 'true'
         continue-on-error: true # experimental test
         run: cargo test --test base_tests -- gpu_
 
