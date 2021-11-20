@@ -18,3 +18,4 @@ tonic-build = "0.6"
 
 [features]
 run_cgen = []
+run_cgen_validate = ["run_cgen"]
