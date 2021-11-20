@@ -50,10 +50,38 @@ jobs:
       - name: Run tests
         run: make test-run
 
+  check_needs_gpu_tests:
+    name: Check if graphics libs changed
+    needs: lint
+    runs-on: ubuntu-latest
+    outputs:
+      files_changed: ${{  steps.changed-files.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Get specific changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v11
+        with:
+          files: |
+            ^lib/graphics-*
+            ^plugin/renderer
+            ^plugin/presenter-*
+            ^test/graphics-*
+
   test_gpu:
     name: Running gpu tests
-    needs: lint
-    runs-on: [self-hosted, linux, gpu, build]
+    needs: check_needs_gpu_tests
+    if: ${{ needs.check_needs_gpu_tests.outputs.files_changed }}
+    strategy:
+      matrix:
+        os:
+          [
+            [self-hosted, windows, gpu, build],
+            [self-hosted, linux, gpu, build],
+          ]
     steps:
       - uses: actions/checkout@v2
         with:
