@@ -12,10 +12,11 @@
       "processor": "svelte3/svelte3"
     }
   ],
-  "rules": {
-    "no-console": "off"
-  },
   "settings": {
     "svelte3/typescript": true
+  },
+  "rules": {
+    "no-console": "off",
+    "@typescript-eslint/no-unused-vars": "off"
   }
 }

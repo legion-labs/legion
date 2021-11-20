@@ -1,6 +1,7 @@
 <script lang="ts">
   import Panel from "@/components/Panel.svelte";
   import TopBar from "@/components/TopBar.svelte";
+  import Video from "@/components/Video.svelte";
 </script>
 
 <div class="h-screen w-full">
@@ -10,6 +11,9 @@
       <div class="flex flex-col flex-shrink-0 w-3/4">
         <Panel>
           <span slot="header"> Untitled Document </span>
+          <div class="h-full w-full" slot="content">
+            <Video resource={null} />
+          </div>
         </Panel>
       </div>
       <div class="flex-shrink-0 w-1" />
