@@ -6,119 +6,124 @@ expression: incremental_manifest
 {
   "compiled_resources": [
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53",
-      "checksum": "fecb9ee0113ef7016116f0ce9f520779",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee",
+      "checksum": "4d70dfa77db88377b8e0b6b3084d1d04",
       "size": 2719557
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_Black Background",
-      "checksum": "cb8b91003cf7027057f8627598d86016",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_Black Background",
+      "checksum": "637bab25efdca633499b12f9521ef8b9",
       "size": 2500082
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_Ferris",
-      "checksum": "16c30cd5c1e637e4b93a6a726db93f86",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_Ferris",
+      "checksum": "67de78e36e31e35a85e85321288736dc",
       "size": 2500668
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_albedo",
-      "checksum": "12fb356494c92be198a504ba2e915978",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_albedo",
+      "checksum": "b4ab2a245011cc6dfb4715ab3170bed4",
       "size": 2500668
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_metalness",
-      "checksum": "12fb356494c92be198a504ba2e915978",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_metalness",
+      "checksum": "b4ab2a245011cc6dfb4715ab3170bed4",
       "size": 2500668
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_normal",
-      "checksum": "12fb356494c92be198a504ba2e915978",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_normal",
+      "checksum": "b4ab2a245011cc6dfb4715ab3170bed4",
       "size": 2500668
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_roughness",
-      "checksum": "12fb356494c92be198a504ba2e915978",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_roughness",
+      "checksum": "b4ab2a245011cc6dfb4715ab3170bed4",
       "size": 2500668
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_roughness|f9c9670d",
-      "checksum": "13955f2e5e320e0002d36bed544d34ee",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_roughness|c23b950d",
+      "checksum": "9ef5376a1215cd259fc150756e3d4023",
       "size": 1000034
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_normal|f9c9670d",
-      "checksum": "13955f2e5e320e0002d36bed544d34ee",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_normal|c23b950d",
+      "checksum": "9ef5376a1215cd259fc150756e3d4023",
       "size": 1000034
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_metalness|f9c9670d",
-      "checksum": "13955f2e5e320e0002d36bed544d34ee",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_metalness|c23b950d",
+      "checksum": "9ef5376a1215cd259fc150756e3d4023",
       "size": 1000034
     },
     {
-      "path": "13b5a84e0000000061f6de1be4764697|74dc0e53_albedo|f9c9670d",
-      "checksum": "13955f2e5e320e0002d36bed544d34ee",
+      "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee_albedo|c23b950d",
+      "checksum": "9ef5376a1215cd259fc150756e3d4023",
       "size": 1000034
     },
     {
-      "path": "2b368fed00000000f8b1bd1dceaf6f33|669eb7d0",
-      "checksum": "3608434ab8c0fdff6df541aa921ac9c5",
+      "path": "1793ed6400000000f8b1bd1dceaf6f33|0f6f8b3a",
+      "checksum": "c74edd25bf79cb57af7f4969b9fd322f",
       "size": 162
     },
     {
-      "path": "4e1dd441000000007714d9ad404557f7|ea2510e8",
-      "checksum": "06b9db3c818c41c96593f747bbb6e1f1",
+      "path": "e2e9edca000000007714d9ad404557f7|84935d1f",
+      "checksum": "1f5bbf6bcea968ca9db2df465163f54e",
       "size": 947
     },
     {
-      "path": "d004cd1c0000000091d021d6f4e05efe|019c8223",
-      "checksum": "913a68321dac61ea57cdd08403d1ed8f",
+      "path": "97b0740f0000000091d021d6f4e05efe|aad89045",
+      "checksum": "cbee86fd142e3572795077d5e634590f",
       "size": 184
     },
     {
-      "path": "417862e500000000e578fadce0648bcc|0cd05ad8",
-      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "path": "0cba171e00000000e578fadce0648bcc|30495fed",
+      "checksum": "384f76305deb81524e0fda7a92db15d0",
       "size": 67
     },
     {
-      "path": "417862e500000000ce1185cf2b953536|0cd05ad8",
-      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "path": "0cba171e00000000ce1185cf2b953536|30495fed",
+      "checksum": "384f76305deb81524e0fda7a92db15d0",
       "size": 67
     },
     {
-      "path": "d004cd1c0000000062aa07fb54e7a8ee|019c8223",
-      "checksum": "d42631a3095f58a97bacc3378e8235a9",
+      "path": "97b0740f0000000062aa07fb54e7a8ee|aad89045",
+      "checksum": "7b5e7f0b8f55e149752ffeaf8ac3bda6",
       "size": 199
     },
     {
-      "path": "d004cd1c00000000519d4a9f47df0ce5|019c8223",
-      "checksum": "221e2598e158f812202bc60788768051",
+      "path": "97b0740f00000000519d4a9f47df0ce5|aad89045",
+      "checksum": "c52123e42f9705b0b0b4d86cbd64f204",
       "size": 250
     },
     {
-      "path": "417862e50000000090b1c112655b00e8|0cd05ad8",
-      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "path": "0cba171e0000000090b1c112655b00e8|30495fed",
+      "checksum": "384f76305deb81524e0fda7a92db15d0",
       "size": 67
     },
     {
-      "path": "417862e5000000007df5d0fcdb1eb69b|0cd05ad8",
-      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "path": "0cba171e000000007df5d0fcdb1eb69b|30495fed",
+      "checksum": "384f76305deb81524e0fda7a92db15d0",
       "size": 67
     },
     {
-      "path": "417862e5000000007a80bfadcb6549e7|0cd05ad8",
-      "checksum": "eba4df0d73ed6bc409674427018bdd79",
+      "path": "0cba171e000000007a80bfadcb6549e7|30495fed",
+      "checksum": "384f76305deb81524e0fda7a92db15d0",
       "size": 67
     },
     {
-      "path": "417862e5000000005127bdca42145845|0cd05ad8",
-      "checksum": "b2e1d24efb44dbd85028e7d3263dd9b5",
+      "path": "0cba171e000000005127bdca42145845|30495fed",
+      "checksum": "668d023bcb0a2753059fee68cc9e4bc9",
       "size": 67
     },
     {
-      "path": "d004cd1c00000000fcd3242ec9691beb|019c8223",
-      "checksum": "41e4c35abb3a3c12f742e1cfca1a49cc",
-      "size": 358
+      "path": "0abe069400000000cea897a15bc29f32|35b5717e",
+      "checksum": "30f1e0310edf33d74650635a1ba7bd02",
+      "size": 74
+    },
+    {
+      "path": "97b0740f00000000fcd3242ec9691beb|aad89045",
+      "checksum": "3aba5061a97aa89bb522050b16081f67",
+      "size": 390
     }
   ]
 }

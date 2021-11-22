@@ -50,18 +50,20 @@ fn exec_data_compile(
     command.arg(format!("--target={}", target));
     command.arg(format!("--platform={}", platform));
     command.arg(format!("--locale={}", locale));
-    command.arg(format!(
-        "--buildindex={}",
-        buildindex_dir.to_str().unwrap()
-    ));
+    command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
     let output = command.output()?;
+    if !output.status.success() {
+        println!("'{}'", std::str::from_utf8(&output.stdout).unwrap());
+        println!("'{}'", std::str::from_utf8(&output.stderr).unwrap());
+    }
     assert!(output.status.success());
     Ok(output)
 }
 
 /// read the build index and remove non-deterministic data.
 fn read_build_output(buildindex_dir: &Path) -> String {
-    let content = std::fs::read_to_string(&buildindex_dir.join("output.index")).expect("file content");
+    let content =
+        std::fs::read_to_string(&buildindex_dir.join("output.index")).expect("file content");
     let mut content = json::parse(&content).expect("valid json");
     content.remove("project_index");
     content.pretty(2)
@@ -81,7 +83,7 @@ fn incremental_build() {
 
     // default root object in sample data
     // /world/sample_1.ent (offline_entity) => runtime_entity
-    let root_entity = "d004cd1c00000000fcd3242ec9691beb|019c8223";
+    let root_entity = "97b0740f00000000fcd3242ec9691beb|aad89045";
 
     //
     // first data build
