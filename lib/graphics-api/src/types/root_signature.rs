@@ -9,7 +9,7 @@ pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct PushConstantIndex(pub(crate) u32);
 
-pub struct RootSignatureInner {
+pub(crate) struct RootSignatureInner {
     device_context: DeviceContext,
     definition: RootSignatureDef,
 

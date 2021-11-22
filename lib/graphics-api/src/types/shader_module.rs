@@ -2,7 +2,7 @@
 use crate::backends::vulkan::VulkanShaderModule;
 use crate::{deferred_drop::Drc, DeviceContext, GfxResult, ShaderModuleDef};
 
-pub struct ShaderModuleInner {
+pub(crate) struct ShaderModuleInner {
     device_context: DeviceContext,
 
     #[cfg(feature = "vulkan")]

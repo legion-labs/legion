@@ -5,6 +5,7 @@ use anyhow::Result;
 use crate::components::{RenderSurface, StaticMesh};
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
+use graphics_utils::{TransientBufferAllocator, TransientPagedBuffer};
 use legion_ecs::prelude::Query;
 use legion_math::{Mat4, Vec3};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
@@ -19,6 +20,7 @@ pub struct Renderer {
     command_pools: Vec<CommandPool>,
     command_buffers: Vec<CommandBuffer>,
     transient_descriptor_heaps: Vec<DescriptorHeap>,
+    transient_buffer: TransientPagedBuffer,
 
     // This should be last, as it must be destroyed last.
     api: GfxApi,
@@ -69,6 +71,8 @@ impl Renderer {
             transient_descriptor_heaps.push(transient_descriptor_heap);
         }
 
+        let transient_buffer = TransientPagedBuffer::new(device_context, 16);
+
         Ok(Self {
             frame_idx: 0,
             render_frame_idx: 0,
@@ -79,6 +83,7 @@ impl Renderer {
             command_pools,
             command_buffers,
             transient_descriptor_heaps,
+            transient_buffer,
             api,
         })
     }
@@ -108,6 +113,10 @@ impl Renderer {
     pub fn transient_descriptor_heap(&self) -> &DescriptorHeap {
         let render_frame_index = self.render_frame_idx;
         &self.transient_descriptor_heaps[render_frame_index as usize]
+    }
+
+    pub fn transient_buffer(&self) -> &TransientPagedBuffer {
+        &self.transient_buffer
     }
 
     pub(crate) fn begin_frame(&mut self) {
@@ -146,6 +155,8 @@ impl Renderer {
         cmd_pool.reset_command_pool().unwrap();
         cmd_buffer.begin().unwrap();
         transient_descriptor_heap.reset().unwrap();
+
+        self.transient_buffer.begin_frame(self.device_context());
     }
 
     pub(crate) fn update(
@@ -175,6 +186,8 @@ impl Renderer {
 
         cmd_buffer.end().unwrap();
 
+        self.transient_buffer.end_frame(&self.graphics_queue);
+
         self.graphics_queue
             .submit(&[cmd_buffer], &[], &[signal_semaphore], Some(signal_fence))
             .unwrap();
@@ -189,8 +202,6 @@ impl Drop for Renderer {
 
 pub struct TmpRenderPass {
     static_meshes: Vec<StaticMeshRenderData>,
-    uniform_buffers: Vec<Buffer>,
-    uniform_buffer_cbvs: Vec<BufferView>,
     root_signature: RootSignature,
     pipeline: Pipeline,
     pub color: [f32; 4],
@@ -201,9 +212,6 @@ impl TmpRenderPass {
     #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
-        let num_render_frames = renderer.num_render_frames;
-        let mut uniform_buffers = Vec::with_capacity(num_render_frames as usize);
-        let mut uniform_buffer_cbvs = Vec::with_capacity(num_render_frames as usize);
 
         //
         // Shaders
@@ -372,26 +380,6 @@ impl TmpRenderPass {
             })
             .unwrap();
 
-        //
-        // Per frame resources
-        //
-        for _ in 0..renderer.num_render_frames {
-            let uniform_data = [0f32; 4];
-
-            let uniform_buffer = device_context
-                .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))
-                .unwrap();
-            uniform_buffer
-                .copy_to_host_visible_buffer(&uniform_data)
-                .unwrap();
-
-            let view_def = BufferViewDef::as_const_buffer(uniform_buffer.definition());
-            let uniform_buffer_cbv = uniform_buffer.create_view(&view_def).unwrap();
-
-            uniform_buffer_cbvs.push(uniform_buffer_cbv);
-            uniform_buffers.push(uniform_buffer);
-        }
-
         let static_meshes = vec![
             StaticMeshRenderData::new_plane(1.0, renderer),
             StaticMeshRenderData::new_cube(0.5, renderer),
@@ -400,8 +388,6 @@ impl TmpRenderPass {
 
         Self {
             static_meshes,
-            uniform_buffers,
-            uniform_buffer_cbvs,
             root_signature,
             pipeline,
             color: [0f32, 0f32, 0.2f32, 1.0f32],
@@ -418,18 +404,6 @@ impl TmpRenderPass {
     ) {
         let render_frame_idx = renderer.render_frame_idx;
         //let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
-
-        //
-        // Update vertex color
-        //
-
-        let uniform_data = [1.0f32, 1.0, 1.0, 1.0];
-        let uniform_buffer = &self.uniform_buffers[render_frame_idx as usize];
-        let uniform_buffer_cbv = &self.uniform_buffer_cbvs[render_frame_idx as usize];
-
-        uniform_buffer
-            .copy_to_host_visible_buffer(&uniform_data)
-            .unwrap();
 
         //
         // Fill command buffer
@@ -471,7 +445,9 @@ impl TmpRenderPass {
             .set_descriptors(
                 "uniform_data",
                 0,
-                &[DescriptorRef::BufferView(uniform_buffer_cbv)],
+                &[DescriptorRef::BufferView(
+                    &renderer.transient_buffer().buffer_view(),
+                )],
             )
             .unwrap();
         let descriptor_set_handle = descriptor_set_writer.flush(renderer.device_context());
@@ -536,8 +512,12 @@ impl TmpRenderPass {
             push_constant_data[50] = color.2;
             push_constant_data[51] = 1.0;
 
+            let mut transient_allocator =
+                TransientBufferAllocator::new(renderer.transient_buffer(), 1000);
+            let transient_offset = transient_allocator.copy_data(&push_constant_data);
+
             cmd_buffer
-                .cmd_push_constants(&self.root_signature, &push_constant_data)
+                .cmd_push_constants(&self.root_signature, &transient_offset)
                 .unwrap();
 
             cmd_buffer

@@ -52,7 +52,7 @@ impl BufferViewDef {
             },
             byte_offset: 0,
             element_count: buffer_def.size / 4,
-            element_size: 0,
+            element_size: 4,
             buffer_view_flags: BufferViewFlags::RAW_BUFFER,
         }
     }
@@ -94,7 +94,7 @@ impl BufferViewDef {
 }
 
 #[derive(Clone)]
-pub struct BufferViewInner {
+pub(crate) struct BufferViewInner {
     definition: BufferViewDef,
     buffer: Buffer,
     offset: u64,

@@ -39,7 +39,7 @@ pub enum PhysicalDeviceType {
     Cpu = 4,
 }
 
-pub struct DeviceContextInner {
+pub(crate) struct DeviceContextInner {
     #[cfg(any(feature = "vulkan"))]
     device_info: DeviceInfo,
     pub(crate) deferred_dropper: DeferredDropper,

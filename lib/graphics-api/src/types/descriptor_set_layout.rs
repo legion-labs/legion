@@ -5,7 +5,7 @@ use crate::GfxError;
 use crate::{deferred_drop::Drc, Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult};
 
 #[derive(Clone)]
-pub struct DescriptorSetLayoutInner {
+pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,
     definition: DescriptorSetLayoutDef,
     set_index: u32,
