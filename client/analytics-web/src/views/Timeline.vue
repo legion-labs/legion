@@ -206,6 +206,26 @@ function drawThread (thread, threadVerticalOffset, offsetMs) {
   return maxDepth
 }
 
+function drawSelectedRange () {
+  if (this.selected_range === undefined) {
+    return
+  }
+  const viewRange = this.getViewRange()
+  const begin = viewRange[0]
+  const end = viewRange[1]
+  const invTimeSpan = 1.0 / (end - begin)
+  const canvas = document.getElementById('canvas_timeline')
+  const canvasWidth = canvas.clientWidth
+  const canvasHeight = canvas.clientHeight
+  const msToPixelsFactor = invTimeSpan * canvasWidth
+  const beginSelection = this.selected_range[0]
+  const endSelection = this.selected_range[1]
+  const beginPixels = (beginSelection - begin) * msToPixelsFactor
+  const endPixels = (endSelection - begin) * msToPixelsFactor
+  this.renderingContext.fillStyle = 'rgba(64, 64, 200, 0.2)'
+  this.renderingContext.fillRect(beginPixels, 0, endPixels - beginPixels, canvasHeight)
+}
+
 function drawCanvas () {
   const canvas = document.getElementById('canvas_timeline')
   canvas.height = window.innerHeight - canvas.getBoundingClientRect().top - 20
@@ -218,6 +238,7 @@ function drawCanvas () {
     const maxDepth = this.drawThread(this.threads[streamId], threadVerticalOffset, childStartTime - parentStartTime)
     threadVerticalOffset += (maxDepth + 2) * 20
   }
+  this.drawSelectedRange()
 }
 
 function onPan (evt) {
@@ -248,7 +269,8 @@ function onSelectRange (evt) {
   const factor = (viewRange[1] - viewRange[0]) / canvas.width
   const beginTime = viewRange[0] + (factor * this.begin_select.beginMouseX)
   const endTime = viewRange[0] + (factor * evt.offsetX)
-  console.log(beginTime, endTime)
+  this.selected_range = [beginTime, endTime]
+  this.drawCanvas()
 }
 
 function onMouseMove (evt) {
@@ -297,6 +319,7 @@ function reset (processId) {
   this.begin_pan = undefined
   this.begin_select = undefined
   this.y_offset = 0
+  this.selected_range = undefined
   this.fetchProcessInfo()
 }
 
@@ -322,11 +345,13 @@ export default {
       view_range: undefined,
       begin_pan: undefined,
       begin_select: undefined,
-      y_offset: 0
+      y_offset: 0,
+      selected_range: undefined
     }
   },
   methods: {
     drawCanvas: drawCanvas,
+    drawSelectedRange: drawSelectedRange,
     drawThread: drawThread,
     fetchBlockSpans: fetchBlockSpans,
     fetchBlocks: fetchBlocks,
