@@ -47,6 +47,7 @@
     <div class="flex items-center italic px-2">Legion</div>
     {#each menus as menu}
       <div
+        data-testid="menu-{menu.id}"
         class="flex items-center hover:bg-gray-400 cursor-pointer"
         class:bg-gray-400={$openedMenuId === menu.id}
         on:mouseenter={() => onMenuMouseEnter(menu.id)}
@@ -55,7 +56,11 @@
         <div class="px-2">
           {menu.title}
         </div>
-        <div class="absolute top-7" class:hidden={$openedMenuId !== menu.id}>
+        <div
+          data-testid="dropdown-{menu.id}"
+          class="absolute top-7"
+          class:hidden={$openedMenuId !== menu.id}
+        >
           <div class="bg-gray-800 py-1 bg-opacity-90">
             {#each [`Foo ${menu.title}`, `Bar ${menu.title}`, `Baz ${menu.title}`] as menuItemTitle}
               <div
