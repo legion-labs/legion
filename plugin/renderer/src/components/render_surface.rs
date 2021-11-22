@@ -63,6 +63,10 @@ struct SizeDependentResources {
     texture_state: ResourceState,
     depth_stencil_texture: Texture,
     depth_stencil_texture_view: TextureView,
+    }
+
+    pub fn extents(&self) -> &RenderSurfaceExtents {
+        &self.extents
 }
 
 impl SizeDependentResources {
