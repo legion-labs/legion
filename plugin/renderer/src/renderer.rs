@@ -318,15 +318,24 @@ impl TmpRenderPass {
         // Pipeline state
         //
         let vertex_layout = VertexLayout {
-            attributes: vec![VertexLayoutAttribute {
-                format: Format::R32G32B32_SFLOAT,
-                buffer_index: 0,
-                location: 0,
-                byte_offset: 0,
-                gl_attribute_name: Some("pos".to_owned()),
-            }],
+            attributes: vec![
+                VertexLayoutAttribute {
+                    format: Format::R32G32B32_SFLOAT,
+                    buffer_index: 0,
+                    location: 0,
+                    byte_offset: 0,
+                    gl_attribute_name: Some("pos".to_owned()),
+                },
+                VertexLayoutAttribute {
+                    format: Format::R32G32B32_SFLOAT,
+                    buffer_index: 0,
+                    location: 1,
+                    byte_offset: 12,
+                    gl_attribute_name: Some("normal".to_owned()),
+                },
+            ],
             buffers: vec![VertexLayoutBuffer {
-                stride: 12,
+                stride: 24,
                 rate: VertexAttributeRate::Vertex,
             }],
         };
@@ -485,7 +494,9 @@ impl TmpRenderPass {
         ];
 
         let fov_y_radians: f32 = 45.0;
-        let aspect_ratio: f32 = 1280.0 / 720.0; //TODO: Query resource
+        let width = render_surface.extents.extents_2d.width as f32;
+        let height = render_surface.extents.extents_2d.height as f32;
+        let aspect_ratio: f32 = width / height;
         let z_near: f32 = 0.01;
         let z_far: f32 = 100.0;
         let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
@@ -530,7 +541,7 @@ impl TmpRenderPass {
                 .unwrap();
 
             cmd_buffer
-                .cmd_draw((mesh.vertices.len() / 3) as u32, 0)
+                .cmd_draw((mesh.num_vertices()) as u32, 0)
                 .unwrap();
         }
 

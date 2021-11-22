@@ -4,7 +4,7 @@ use legion_math::{EulerRot, Quat};
 use legion_transform::components::Transform;
 
 use crate::{
-    components::{RenderSurface, StaticMesh},
+    components::{RenderSurface, RotationComponent, StaticMesh},
     labels::RendererSystemLabel,
     Renderer,
 };
@@ -43,13 +43,13 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
-fn update_rotation(mut query: Query<'_, '_, &mut Transform>) {
-    for (i, mut transform) in query.iter_mut().enumerate() {
+fn update_rotation(mut query: Query<'_, '_, (&mut Transform, &RotationComponent)>) {
+    for (mut transform, rotation) in query.iter_mut() {
         transform.rotate(Quat::from_euler(
             EulerRot::XYZ,
-            0.0,
-            (1.0 + 0.2 * (i as f32)) / 60.0 * std::f32::consts::PI,
-            0.0,
+            rotation.rotation_speed.0 / 60.0 * std::f32::consts::PI,
+            rotation.rotation_speed.1 / 60.0 * std::f32::consts::PI,
+            rotation.rotation_speed.2 / 60.0 * std::f32::consts::PI,
         ));
     }
 }

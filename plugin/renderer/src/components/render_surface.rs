@@ -20,7 +20,7 @@ impl RenderSurfaceId {
 
 #[derive(Debug, PartialEq)]
 pub struct RenderSurfaceExtents {
-    extents_2d: Extents2D,
+    pub extents_2d: Extents2D,
 }
 
 impl RenderSurfaceExtents {
@@ -46,7 +46,7 @@ impl RenderSurfaceExtents {
 #[derive(Component)]
 pub struct RenderSurface {
     id: RenderSurfaceId,
-    extents: RenderSurfaceExtents,
+    pub extents: RenderSurfaceExtents,
     texture: Texture,
     texture_srv: TextureView,
     texture_rtv: TextureView,

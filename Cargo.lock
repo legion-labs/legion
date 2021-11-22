@@ -2632,6 +2632,7 @@ dependencies = [
  "legion-renderer",
  "legion-tao",
  "legion-test-utils",
+ "legion-transform",
  "legion-window",
  "log",
  "png 0.17.2",
