@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use legion_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
 use legion_ecs::prelude::*;
@@ -10,8 +11,10 @@ use legion_presenter_snapshot::{PresenterSnapshotPlugin, Resolution};
 use legion_presenter_window::component::PresenterWindow;
 use legion_presenter_window::PresenterWindowPlugin;
 use legion_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
+use legion_renderer::components::{RotationComponent, StaticMesh};
 use legion_renderer::{Renderer, RendererPlugin};
 use legion_tao::{TaoPlugin, TaoWindows};
+use legion_transform::components::Transform;
 use legion_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
     Windows,
@@ -80,9 +83,13 @@ fn main() {
         .arg(
             clap::Arg::with_name("setup-name")
                 .long("setup-name")
-                .takes_value(true)
                 .help("Name of the setup to launch")
                 .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("use-asset-registry")
+                .takes_value(false)
+                .help(""),
         )
         .get_matches();
 
@@ -131,6 +138,12 @@ fn main() {
             .add_system(on_window_resized.exclusive_system())
             .add_system(on_window_close_requested.exclusive_system())
             .insert_resource(RenderSurfaces::new());
+    }
+    if matches.is_present("use-asset-registry") {
+        app.insert_resource(AssetRegistrySettings::default())
+            .add_plugin(AssetRegistryPlugin::default());
+    } else {
+        app.add_startup_system(init_scene.system());
     }
     app.run();
 }
@@ -244,6 +257,35 @@ fn add_presenter_snapshot_system(
         )
         .unwrap(),
     );
+}
+
+fn init_scene(mut commands: Commands) {
+    // plane
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
+        .insert(StaticMesh { mesh_id: 0 })
+        .insert(RotationComponent {
+            rotation_speed: (0.4, 0.0, 0.0),
+        });
+
+    // cube
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
+        .insert(StaticMesh { mesh_id: 1 })
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.4, 0.0),
+        });
+
+    // pyramid
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.5, 0.0, 0.0))
+        .insert(StaticMesh { mesh_id: 2 })
+        .insert(RotationComponent {
+            rotation_speed: (0.0, 0.0, 0.4),
+        });
 }
 
 fn on_snapshot_app_exit(

@@ -262,6 +262,18 @@ impl TextureViewDef {
         }
     }
 
+    pub fn as_depth_stencil_view(_texture: &TextureDef) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::DepthStencilView,
+            view_dimension: ViewDimension::_2D,
+            first_mip: 0,
+            mip_count: 1,
+            plane_slice: PlaneSlice::DefaultPlane,
+            first_array_slice: 0,
+            array_size: 1,
+        }
+    }
+
     pub fn verify(&self, texture_def: &TextureDef) {
         match self.view_dimension {
             ViewDimension::_2D | ViewDimension::_2DArray => {

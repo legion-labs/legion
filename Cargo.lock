@@ -2621,6 +2621,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "legion-app",
+ "legion-asset-registry",
  "legion-async",
  "legion-core",
  "legion-ecs",
@@ -2631,6 +2632,7 @@ dependencies = [
  "legion-renderer",
  "legion-tao",
  "legion-test-utils",
+ "legion-transform",
  "legion-window",
  "log",
  "png 0.17.2",
@@ -3229,6 +3231,7 @@ dependencies = [
  "legion-graphics-runtime",
  "legion-renderer",
  "legion-transform",
+ "legion-utils",
  "sample-data-runtime",
  "serde_json",
 ]

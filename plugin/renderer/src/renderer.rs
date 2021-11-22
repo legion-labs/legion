@@ -10,7 +10,7 @@ use legion_math::{Mat4, Vec3};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_transform::components::Transform;
 pub struct Renderer {
-    frame_idx: usize,
+    pub frame_idx: usize,
     render_frame_idx: u32,
     pub num_render_frames: u32,
     frame_signal_sems: Vec<Semaphore>,
@@ -318,17 +318,43 @@ impl TmpRenderPass {
         // Pipeline state
         //
         let vertex_layout = VertexLayout {
-            attributes: vec![VertexLayoutAttribute {
-                format: Format::R32G32B32_SFLOAT,
-                buffer_index: 0,
-                location: 0,
-                byte_offset: 0,
-                gl_attribute_name: Some("pos".to_owned()),
-            }],
+            attributes: vec![
+                VertexLayoutAttribute {
+                    format: Format::R32G32B32_SFLOAT,
+                    buffer_index: 0,
+                    location: 0,
+                    byte_offset: 0,
+                    gl_attribute_name: Some("pos".to_owned()),
+                },
+                VertexLayoutAttribute {
+                    format: Format::R32G32B32_SFLOAT,
+                    buffer_index: 0,
+                    location: 1,
+                    byte_offset: 12,
+                    gl_attribute_name: Some("normal".to_owned()),
+                },
+            ],
             buffers: vec![VertexLayoutBuffer {
-                stride: 12,
+                stride: 24,
                 rate: VertexAttributeRate::Vertex,
             }],
+        };
+
+        let depth_state = DepthState {
+            depth_test_enable: true,
+            depth_write_enable: true,
+            depth_compare_op: CompareOp::Less,
+            stencil_test_enable: false,
+            stencil_read_mask: 0xFF,
+            stencil_write_mask: 0xFF,
+            front_depth_fail_op: StencilOp::default(),
+            front_stencil_compare_op: CompareOp::Always,
+            front_stencil_fail_op: StencilOp::default(),
+            front_stencil_pass_op: StencilOp::default(),
+            back_depth_fail_op: StencilOp::default(),
+            back_stencil_compare_op: CompareOp::Always,
+            back_stencil_fail_op: StencilOp::default(),
+            back_stencil_pass_op: StencilOp::default(),
         };
 
         let pipeline = device_context
@@ -337,11 +363,11 @@ impl TmpRenderPass {
                 root_signature: &root_signature,
                 vertex_layout: &vertex_layout,
                 blend_state: &BlendState::default(),
-                depth_state: &DepthState::default(),
+                depth_state: &depth_state,
                 rasterizer_state: &RasterizerState::default(),
                 color_formats: &[Format::R16G16B16A16_SFLOAT],
                 sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: None,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
                 primitive_topology: PrimitiveTopology::TriangleList,
             })
             .unwrap();
@@ -417,7 +443,17 @@ impl TmpRenderPass {
                     store_op: StoreOp::Store,
                     clear_value: ColorClearValue(self.color),
                 }],
-                &None,
+                &Some(DepthStencilRenderTargetBinding {
+                    texture_view: render_surface.depth_stencil_texture_view(),
+                    depth_load_op: LoadOp::Clear,
+                    stencil_load_op: LoadOp::DontCare,
+                    depth_store_op: StoreOp::DontCare,
+                    stencil_store_op: StoreOp::DontCare,
+                    clear_value: DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
+                }),
             )
             .unwrap();
 
@@ -458,7 +494,9 @@ impl TmpRenderPass {
         ];
 
         let fov_y_radians: f32 = 45.0;
-        let aspect_ratio: f32 = 1280.0 / 720.0; //TODO: Query resource
+        let width = render_surface.extents.extents_2d.width as f32;
+        let height = render_surface.extents.extents_2d.height as f32;
+        let aspect_ratio: f32 = width / height;
         let z_near: f32 = 0.01;
         let z_far: f32 = 100.0;
         let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
@@ -503,7 +541,7 @@ impl TmpRenderPass {
                 .unwrap();
 
             cmd_buffer
-                .cmd_draw((mesh.vertices.len() / 3) as u32, 0)
+                .cmd_draw((mesh.num_vertices()) as u32, 0)
                 .unwrap();
         }
 

@@ -1,9 +1,10 @@
 use legion_app::{CoreStage, Plugin};
 use legion_ecs::{prelude::*, system::IntoSystem};
+use legion_math::{EulerRot, Quat};
 use legion_transform::components::Transform;
 
 use crate::{
-    components::{RenderSurface, StaticMesh},
+    components::{RenderSurface, RotationComponent, StaticMesh},
     labels::RendererSystemLabel,
     Renderer,
 };
@@ -19,6 +20,7 @@ impl Plugin for RendererPlugin {
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update.system());
+        app.add_system_to_stage(CoreStage::PreUpdate, update_rotation.system());
 
         // Update
         app.add_system_set(
@@ -39,6 +41,17 @@ impl Plugin for RendererPlugin {
 
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
+}
+
+fn update_rotation(mut query: Query<'_, '_, (&mut Transform, &RotationComponent)>) {
+    for (mut transform, rotation) in query.iter_mut() {
+        transform.rotate(Quat::from_euler(
+            EulerRot::XYZ,
+            rotation.rotation_speed.0 / 60.0 * std::f32::consts::PI,
+            rotation.rotation_speed.1 / 60.0 * std::f32::consts::PI,
+            rotation.rotation_speed.2 / 60.0 * std::f32::consts::PI,
+        ));
+    }
 }
 
 #[allow(clippy::needless_pass_by_value)]
