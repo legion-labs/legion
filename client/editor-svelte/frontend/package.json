@@ -1,0 +1,32 @@
+{
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "eslint:check": "eslint --ext .js,.svelte .",
+    "eslint:fix": "eslint --ext .js,.svelte --fix .",
+    "prettier:check": "prettier --check .",
+    "prettier:fix": "prettier --write .",
+    "svelte:check": "tsc --noEmit && svelte-check"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^1.0.0-next.30",
+    "@typescript-eslint/eslint-plugin": "^5.4.0",
+    "@typescript-eslint/parser": "^5.4.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^8.2.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-svelte3": "^3.2.1",
+    "postcss": "^8.3.11",
+    "prettier": "2.4.1",
+    "prettier-plugin-svelte": "^2.5.0",
+    "svelte": "^3.44.2",
+    "svelte-check": "^2.2.10",
+    "svelte-preprocess": "^4.9.8",
+    "tailwindcss": "^2.2.19",
+    "typescript": "^4.5.2",
+    "vite": "^2.6.14",
+    "vite-tsconfig-paths": "^3.3.17",
+    "yarn": "^1.22.17"
+  }
+}
