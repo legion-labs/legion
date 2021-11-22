@@ -50,7 +50,7 @@ impl StaticMeshRenderData {
             -half_size, -half_size, half_size, -1.0, 0.0, 0.0,
             -half_size, half_size, half_size, -1.0, 0.0, 0.0,
             // +y
-            half_size, half_size, -half_size,   0.0, 1.0, 0.0,  
+            half_size, half_size, -half_size,   0.0, 1.0, 0.0,
             -half_size, half_size, -half_size,  0.0, 1.0, 0.0,
             half_size, half_size, half_size,  0.0, 1.0, 0.0,
             half_size, half_size, half_size,  0.0, 1.0, 0.0,
