@@ -1,3 +1,4 @@
+// TODO: Turn this into a store and add a batch command for proto
 import { onVideoChunkReceived, onVideoClose } from "@/api";
 
 type Source = MediaSource | SourceBuffer | HTMLVideoElement;

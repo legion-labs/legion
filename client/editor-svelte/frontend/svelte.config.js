@@ -2,5 +2,8 @@
 const preprocess = require("svelte-preprocess");
 
 module.exports = {
-  preprocess: preprocess({ typescript: true }),
+  preprocess: preprocess({
+    postcss: true,
+    typescript: true,
+  }),
 };

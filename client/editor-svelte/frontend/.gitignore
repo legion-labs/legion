@@ -1,5 +1,5 @@
 dist/**
 !dist/.gitkeep
 node_modules/
-proto/
+src/proto/
 *.log
