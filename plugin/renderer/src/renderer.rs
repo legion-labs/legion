@@ -490,12 +490,18 @@ impl TmpRenderPass {
 
             let mesh = &self.static_meshes[static_mesh_component.mesh_id];
 
+            let transient_allocator =
+                TransientBufferAllocator::new(renderer.transient_buffer(), 1000);
+
+            let mut mapped_pages = renderer.transient_buffer().allocate_pages(1000);
+            mapped_pages = transient_allocator.copy_data(mapped_pages, &mesh.vertices);
+
             cmd_buffer
                 .cmd_bind_vertex_buffers(
                     0,
                     &[VertexBufferBinding {
-                        buffer: &mesh.vertex_buffers[render_frame_idx as usize],
-                        byte_offset: 0,
+                        buffer: &renderer.transient_buffer().buffer(),
+                        byte_offset: mapped_pages.offset_of_page + mapped_pages.last_alloc_offset,
                     }],
                 )
                 .unwrap();
@@ -512,12 +518,13 @@ impl TmpRenderPass {
             push_constant_data[50] = color.2;
             push_constant_data[51] = 1.0;
 
-            let mut transient_allocator =
-                TransientBufferAllocator::new(renderer.transient_buffer(), 1000);
-            let transient_offset = transient_allocator.copy_data(&push_constant_data);
+            mapped_pages = transient_allocator.copy_data(mapped_pages, &push_constant_data);
 
             cmd_buffer
-                .cmd_push_constants(&self.root_signature, &transient_offset)
+                .cmd_push_constants(
+                    &self.root_signature,
+                    &(mapped_pages.offset_of_page + mapped_pages.last_alloc_offset),
+                )
                 .unwrap();
 
             cmd_buffer

@@ -12,7 +12,9 @@ const TRANSIENT_BUFFER_PAGE_SIZE: u64 = 1024 * 1024;
 
 pub struct MappedTransientPages<'a> {
     pub data: &'a [u8],
-    pub offset: u64,
+    pub offset_of_page: u64,
+    pub last_alloc_offset: u64,
+    pub next_alloc_offset: u64,
 }
 
 pub(crate) struct TransientPagedBufferInner {
@@ -35,7 +37,7 @@ impl TransientPagedBuffer {
             memory_usage: MemoryUsage::CpuToGpu,
             queue_type: QueueType::Graphics,
             always_mapped: true,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
+            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_VERTEX_BUFFER,
         };
 
         let ring_buffer = device_context.create_buffer(&buffer_def).unwrap();
@@ -95,7 +97,9 @@ impl TransientPagedBuffer {
                     mapped_ptr.wrapping_offset((old_offset).try_into().unwrap()),
                     alloc_size as usize,
                 ),
-                offset: old_offset,
+                offset_of_page: old_offset,
+                last_alloc_offset: 0,
+                next_alloc_offset: size,
             }
         }
     }
@@ -127,49 +131,49 @@ impl TransientPagedBuffer {
             .unwrap();
     }
 
+    pub fn buffer(&self) -> Buffer {
+        self.inner.lock().unwrap().ring_buffer.clone()
+    }
+
     pub fn buffer_view(&self) -> BufferView {
         self.inner.lock().unwrap().ring_buffer_view.clone()
     }
 }
 
-pub struct TransientBufferAllocator<'a> {
+pub struct TransientBufferAllocator {
     paged_buffer: TransientPagedBuffer,
-
     page_size: u64,
-    current_page: MappedTransientPages<'a>,
-    offset_in_page: u64,
 }
 
-impl<'a> TransientBufferAllocator<'a> {
-    pub fn new(paged_buffer: &'a TransientPagedBuffer, initial_size: u64) -> Self {
+impl TransientBufferAllocator {
+    pub fn new(paged_buffer: &TransientPagedBuffer, initial_size: u64) -> Self {
         Self {
             paged_buffer: paged_buffer.clone(),
             page_size: initial_size,
-            current_page: paged_buffer.allocate_pages(initial_size),
-            offset_in_page: 0,
         }
     }
 
-    pub fn copy_data<T: Copy>(&'a mut self, data: &[T]) -> u64 {
+    pub fn copy_data<'a, T: Copy>(
+        &'a self,
+        mut mapped_pages: MappedTransientPages<'a>,
+        data: &[T],
+    ) -> MappedTransientPages<'a> {
         let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
 
-        let mut old_offset = self.offset_in_page;
-        let mut new_offset = self.offset_in_page + data_size_in_bytes;
+        mapped_pages.last_alloc_offset = mapped_pages.next_alloc_offset;
+        mapped_pages.next_alloc_offset += data_size_in_bytes;
 
-        if new_offset > self.page_size {
-            self.current_page = self.paged_buffer.allocate_pages(data_size_in_bytes);
-
-            old_offset = 0;
-            new_offset = old_offset + data_size_in_bytes;
+        if mapped_pages.next_alloc_offset > self.page_size {
+            mapped_pages = self.paged_buffer.allocate_pages(data_size_in_bytes);
         }
-        self.offset_in_page = new_offset;
 
         let src = data.as_ptr().cast::<u8>();
 
         let required_alignment = std::mem::align_of::<T>();
 
         let dst: *mut u8 =
-            std::ptr::addr_of!(self.current_page.data[old_offset as usize]) as *mut u8;
+            std::ptr::addr_of!(mapped_pages.data[mapped_pages.last_alloc_offset as usize])
+                as *mut u8;
         assert_eq!(((dst as usize) % required_alignment), 0);
 
         #[allow(unsafe_code)]
@@ -177,6 +181,6 @@ impl<'a> TransientBufferAllocator<'a> {
             std::ptr::copy_nonoverlapping(src, dst, data_size_in_bytes as usize);
         }
 
-        self.current_page.offset + old_offset
+        mapped_pages
     }
 }
