@@ -19,7 +19,7 @@ impl FileWriter {
 
     pub fn new_line(&mut self) {
         self.add_line("".to_owned());
-    }
+    }   
 
     pub fn add_line(&mut self, line: String) {
         self.lines.push(Line {

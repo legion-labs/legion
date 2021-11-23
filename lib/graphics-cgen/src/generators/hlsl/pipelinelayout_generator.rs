@@ -1,10 +1,10 @@
 use crate::{
     generators::{
-        file_writer::FileWriter, hlsl::utils::get_hlsl_typestring, product::Product,
+        file_writer::FileWriter, product::Product,
         GeneratorContext,
     },
     model::{
-        CGenType, Descriptor, DescriptorDef, DescriptorSet, Model, ModelObject, PipelineLayout,
+        CGenType, DescriptorSet, ModelObject, PipelineLayout,
     },
     run::CGenVariant,
 };

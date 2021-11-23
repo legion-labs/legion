@@ -308,7 +308,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
             self.product.name
         ))?;
         // Only struct types allowed for now
-        if let CGenType::Struct(def) = ty {           
+        if let CGenType::Struct(_def) = ty {           
         } else {
             return Err(anyhow!(
                 "PushConstant must be Struct types "
@@ -332,7 +332,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         Ok(self)
     }
 
-    pub fn build(mut self) -> Result<PipelineLayout> {
+    pub fn build(self) -> Result<PipelineLayout> {
         Ok(self.product)
     }
 }

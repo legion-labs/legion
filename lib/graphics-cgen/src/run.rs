@@ -119,7 +119,7 @@ fn run_internal(context: &CGenContext) -> Result<()> {
     //
     // generation step
     //
-    let gen_context = GeneratorContext::new(&model, context);
+    let gen_context = GeneratorContext::new(&model);
     let mut generators = Vec::<generators::GeneratorFunc>::new();
     generators.push(generators::hlsl::type_generator::run);
     generators.push(generators::hlsl::descriptorset_generator::run);

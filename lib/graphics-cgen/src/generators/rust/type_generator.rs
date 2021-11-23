@@ -1,5 +1,5 @@
 use heck::SnakeCase;
-use relative_path::RelativePath;
+
 
 use crate::{
     generators::{
@@ -21,8 +21,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         .map(|content| {
             products.push(Product::new(
                 CGenVariant::Rust,
-                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),
-                // ctx.get_rel_type_path(cgen_type, CGenVariant::Rust),
+                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),                
                 content,
             ))
         });
@@ -36,6 +35,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         for product in &products {
             let filename = product.path().file_stem().unwrap();
             writer.add_line(format!("pub(crate) mod {};", &filename));
+            writer.add_line(format!("pub(crate) use {}::*;", &filename));
         }
         products.push(Product::new(
             CGenVariant::Rust,

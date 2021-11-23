@@ -3,15 +3,14 @@ pub mod hlsl;
 pub mod product;
 pub mod rust;
 
-use std::{collections::HashSet, ops::Add};
+use std::collections::HashSet;
 
-use anyhow::Result;
 use heck::SnakeCase;
 use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{
     model::{CGenType, DescriptorSet, Model, ModelKey, ModelObject},
-    run::{CGenContext, CGenVariant},
+    run::{CGenVariant},
 };
 
 use self::product::Product;
@@ -22,7 +21,7 @@ pub struct GeneratorContext<'a> {
 }
 
 impl<'a> GeneratorContext<'a> {
-    pub fn new(model: &'a Model, cgen_context: &'a CGenContext) -> Self {
+    pub fn new(model: &'a Model) -> Self {
         Self { model }
     }
 
@@ -61,7 +60,7 @@ impl<'a> GeneratorContext<'a> {
         let mut set = HashSet::new();
 
         match ty {
-            CGenType::Native(inner_ty) => {}
+            CGenType::Native(_) => {}
             CGenType::Struct(inner_ty) => {
                 for mb in inner_ty.members.iter() {
                     set.insert(mb.type_key);

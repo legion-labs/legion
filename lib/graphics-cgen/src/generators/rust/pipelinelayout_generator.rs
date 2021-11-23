@@ -1,10 +1,8 @@
-use heck::SnakeCase;
-use relative_path::RelativePath;
 
 use crate::{generators::{
-        file_writer::FileWriter, product::Product, rust::utils::get_rust_typestring, CGenVariant,
+        file_writer::FileWriter, product::Product, CGenVariant,
         GeneratorContext,
-    }, model::{CGenType, Descriptor, DescriptorSet, Model, PipelineLayout, StructMember}};
+    }, model::{PipelineLayout}};
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
@@ -27,6 +25,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         for product in &products {
             let filename = product.path().file_stem().unwrap();
             writer.add_line(format!("pub(crate) mod {};", &filename));
+            writer.add_line(format!("pub(crate) use {}::*;", &filename));
         }
         products.push(Product::new(
             CGenVariant::Rust,
@@ -38,6 +37,6 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
-fn generate_rust_pipeline_layout(ctx: &GeneratorContext<'_>, pipeline_layout: &PipelineLayout) -> String{
+fn generate_rust_pipeline_layout(_ctx: &GeneratorContext<'_>, _pipeline_layout: &PipelineLayout) -> String{
     String::new()
 }
