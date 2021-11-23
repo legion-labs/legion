@@ -2,12 +2,17 @@
 members = ["client/*", "server/*", "lib/*", "plugin/*", "proto/*", "test/*"]
 exclude = ["client/analytics-web", "test/sample-data", "test/test_data"]
 
+[profile.dev]
+panic = 'abort'
+
 [profile.release]
 opt-level = 3
 debug = true
 debug-assertions = false
+panic = 'abort'
 
 [profile.bench]
 opt-level = 3
 debug = true
 debug-assertions = false
+panic = 'abort'
