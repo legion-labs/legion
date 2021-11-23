@@ -11,3 +11,6 @@ debug-assertions = false
 opt-level = 3
 debug = true
 debug-assertions = false
+
+[profile.dev]
+panic = 'abort'

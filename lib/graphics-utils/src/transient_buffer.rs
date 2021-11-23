@@ -4,13 +4,14 @@ use std::{
 };
 
 use legion_graphics_api::{
-    Buffer, BufferDef, BufferView, BufferViewDef, DeviceContext, Fence, FenceStatus, MemoryUsage,
-    Queue, QueueType, ResourceUsage,
+    Buffer, BufferDef, BufferView, BufferViewDef, CommandBuffer, DeviceContext, Fence, FenceStatus,
+    IndexBufferBinding, IndexType, MemoryUsage, Queue, QueueType, ResourceUsage,
+    VertexBufferBinding,
 };
 
 const TRANSIENT_BUFFER_PAGE_SIZE: u64 = 1024 * 1024;
 
-pub struct MappedTransientPages<'a> {
+pub struct TransientSubAllocation<'a> {
     pub data: &'a [u8],
     pub offset_of_page: u64,
     pub last_alloc_offset: u64,
@@ -32,17 +33,20 @@ pub struct TransientPagedBuffer {
 
 impl TransientPagedBuffer {
     pub fn new(device_context: &DeviceContext, num_pages: u64) -> Self {
-        let buffer_def = BufferDef {
+        let ring_buffer_def = BufferDef {
             size: TRANSIENT_BUFFER_PAGE_SIZE * num_pages,
             memory_usage: MemoryUsage::CpuToGpu,
             queue_type: QueueType::Graphics,
             always_mapped: true,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_VERTEX_BUFFER,
+            usage_flags: ResourceUsage::AS_SHADER_RESOURCE
+                | ResourceUsage::AS_CONST_BUFFER
+                | ResourceUsage::AS_VERTEX_BUFFER
+                | ResourceUsage::AS_INDEX_BUFFER,
         };
 
-        let ring_buffer = device_context.create_buffer(&buffer_def).unwrap();
+        let ring_buffer = device_context.create_buffer(&ring_buffer_def).unwrap();
 
-        let buffer_view_def = BufferViewDef::as_byte_address_buffer(&buffer_def, true);
+        let buffer_view_def = BufferViewDef::as_byte_address_buffer(&ring_buffer_def, true);
 
         let ring_buffer_view = BufferView::from_buffer(&ring_buffer, &buffer_view_def).unwrap();
 
@@ -57,7 +61,7 @@ impl TransientPagedBuffer {
         }
     }
 
-    pub fn allocate_pages(&self, size: u64) -> MappedTransientPages<'_> {
+    pub fn allocate_page(&self, size: u64) -> TransientSubAllocation<'_> {
         let mut buffer_inner = self.inner.lock().unwrap();
 
         let buffer_size = buffer_inner.ring_buffer.definition().size;
@@ -92,7 +96,7 @@ impl TransientPagedBuffer {
 
         #[allow(unsafe_code)]
         unsafe {
-            MappedTransientPages {
+            TransientSubAllocation {
                 data: &*slice_from_raw_parts(
                     mapped_ptr.wrapping_offset((old_offset).try_into().unwrap()),
                     alloc_size as usize,
@@ -131,12 +135,57 @@ impl TransientPagedBuffer {
             .unwrap();
     }
 
-    pub fn buffer(&self) -> Buffer {
-        self.inner.lock().unwrap().ring_buffer.clone()
-    }
-
     pub fn buffer_view(&self) -> BufferView {
         self.inner.lock().unwrap().ring_buffer_view.clone()
+    }
+
+    pub fn bind_allocation_as_vertex_buffer(
+        &self,
+        cmd_buffer: &CommandBuffer,
+        allocation: &TransientSubAllocation<'_>,
+    ) {
+        let buffer_inner = self.inner.lock().unwrap();
+
+        cmd_buffer
+            .cmd_bind_vertex_buffers(
+                0,
+                &[VertexBufferBinding {
+                    buffer: &buffer_inner.ring_buffer,
+                    byte_offset: allocation.offset_of_page + allocation.last_alloc_offset,
+                }],
+            )
+            .unwrap();
+    }
+
+    pub fn bind_allocation_as_index_buffer(
+        &self,
+        cmd_buffer: &CommandBuffer,
+        allocation: &TransientSubAllocation<'_>,
+        index_type: IndexType,
+    ) {
+        let buffer_inner = self.inner.lock().unwrap();
+
+        cmd_buffer
+            .cmd_bind_index_buffer(&IndexBufferBinding {
+                buffer: &buffer_inner.ring_buffer,
+                byte_offset: allocation.offset_of_page + allocation.last_alloc_offset,
+                index_type,
+            })
+            .unwrap();
+    }
+
+    pub fn const_buffer_view_for_allocation(
+        &self,
+        allocation: &TransientSubAllocation<'_>,
+    ) -> BufferView {
+        let buffer_inner = self.inner.lock().unwrap();
+
+        let buffer_view_def = BufferViewDef::as_const_buffer_with_offset(
+            allocation.next_alloc_offset - allocation.last_alloc_offset,
+            allocation.offset_of_page + allocation.last_alloc_offset,
+        );
+
+        BufferView::from_buffer(&buffer_inner.ring_buffer, &buffer_view_def).unwrap()
     }
 }
 
@@ -146,35 +195,57 @@ pub struct TransientBufferAllocator {
 }
 
 impl TransientBufferAllocator {
-    pub fn new(paged_buffer: &TransientPagedBuffer, initial_size: u64) -> Self {
+    pub fn new(paged_buffer: &TransientPagedBuffer, min_alloc_size: u64) -> Self {
         Self {
             paged_buffer: paged_buffer.clone(),
-            page_size: initial_size,
+            page_size: min_alloc_size,
         }
     }
 
-    pub fn copy_data<'a, T: Copy>(
+    pub fn allocate<'a>(
         &'a self,
-        mut mapped_pages: MappedTransientPages<'a>,
-        data: &[T],
-    ) -> MappedTransientPages<'a> {
-        let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
-
+        mut mapped_pages: TransientSubAllocation<'a>,
+        data_size_in_bytes: u64,
+    ) -> TransientSubAllocation<'a> {
         mapped_pages.last_alloc_offset = mapped_pages.next_alloc_offset;
         mapped_pages.next_alloc_offset += data_size_in_bytes;
 
         if mapped_pages.next_alloc_offset > self.page_size {
-            mapped_pages = self.paged_buffer.allocate_pages(data_size_in_bytes);
+            mapped_pages = self.paged_buffer.allocate_page(data_size_in_bytes);
+        }
+
+        mapped_pages
+    }
+
+    pub fn copy_data<'a, T: Copy>(
+        &'a self,
+        optional_mapped_pages: Option<TransientSubAllocation<'a>>,
+        data: &[T],
+        alignment: usize,
+    ) -> TransientSubAllocation<'a> {
+        let required_alignment = std::cmp::max(std::mem::align_of::<T>(), alignment) as u64;
+        let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
+
+        let mut mapped_pages = match optional_mapped_pages {
+            Some(value) => value,
+            None => self.paged_buffer.allocate_page(data_size_in_bytes),
+        };
+
+        mapped_pages.last_alloc_offset = (mapped_pages.next_alloc_offset + required_alignment - 1)
+            / required_alignment
+            * required_alignment;
+        mapped_pages.next_alloc_offset = mapped_pages.last_alloc_offset + data_size_in_bytes;
+
+        if mapped_pages.next_alloc_offset > self.page_size {
+            mapped_pages = self.paged_buffer.allocate_page(data_size_in_bytes);
         }
 
         let src = data.as_ptr().cast::<u8>();
 
-        let required_alignment = std::mem::align_of::<T>();
-
         let dst: *mut u8 =
             std::ptr::addr_of!(mapped_pages.data[mapped_pages.last_alloc_offset as usize])
                 as *mut u8;
-        assert_eq!(((dst as usize) % required_alignment), 0);
+        assert_eq!(((dst as u64) % required_alignment), 0);
 
         #[allow(unsafe_code)]
         unsafe {

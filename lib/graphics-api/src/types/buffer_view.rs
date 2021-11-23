@@ -27,6 +27,16 @@ impl BufferViewDef {
         }
     }
 
+    pub fn as_const_buffer_with_offset(buffer_size: u64, byte_offset: u64) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::ConstantBufferView,
+            byte_offset,
+            element_count: 1,
+            element_size: buffer_size,
+            buffer_view_flags: BufferViewFlags::empty(),
+        }
+    }
+
     pub fn as_structured_buffer(buffer_def: &BufferDef, struct_size: u64, read_only: bool) -> Self {
         assert!(buffer_def.size % struct_size == 0);
         Self {
@@ -64,7 +74,6 @@ impl BufferViewDef {
                     .usage_flags
                     .intersects(ResourceUsage::AS_CONST_BUFFER));
                 assert!(self.element_size > 0);
-                assert!(self.byte_offset == 0);
                 assert!(self.element_count == 1);
                 assert!(self.buffer_view_flags.is_empty());
             }

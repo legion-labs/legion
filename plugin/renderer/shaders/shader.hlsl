@@ -20,23 +20,18 @@ struct PushConstData {
     uint offset;
 };
 
-ByteAddressBuffer uniform_data;
+ConstantBuffer<ConstData> uniform_data;
 
-[[vk::push_constant]]
-ConstantBuffer<PushConstData> push_constant;
+//[[vk::push_constant]]
+//ConstantBuffer<PushConstData> push_constant;
 
 VertexOut main_vs(in VertexIn vertex_in) {
     VertexOut vertex_out;
 
-    ConstData const_data = uniform_data.Load<ConstData>(push_constant.offset);
-    float4x4 world = transpose(const_data.world);
-    float4x4 view = transpose(const_data.view);
-    float4x4 projection = transpose(const_data.projection);
-
-    float4 pos_view_relative = mul(view, mul(world, float4(vertex_in.pos, 1.0)));
-    vertex_out.hpos = mul(projection, pos_view_relative);
+    float4 pos_view_relative = mul(uniform_data.view, mul(uniform_data.world, float4(vertex_in.pos, 1.0)));
+    vertex_out.hpos = mul(uniform_data.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
-    vertex_out.normal = mul(view, mul(world, float4(vertex_in.normal, 0.0))).xyz;
+    vertex_out.normal = mul(uniform_data.view, mul(uniform_data.world, float4(vertex_in.normal, 0.0))).xyz;
     return vertex_out;
 }
 
@@ -50,7 +45,8 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
     distance = distance * distance;
     light_dir = normalize(light_dir);
 
-    float4 uniform_color = uniform_data.Load4(push_constant.offset + 192);
+    //float4 uniform_color = uniform_data.Load4(push_constant.offset + 192);
+    float4 uniform_color = uniform_data.color; 
 
     float3 ambient_color = uniform_color.xyz / 5.0;
     float3 diffuse_color = uniform_color.xyz;

@@ -402,13 +402,9 @@ impl TmpRenderPass {
         cmd_buffer: &CommandBuffer,
         static_meshes: &[(&Transform, &StaticMesh)],
     ) {
-        let render_frame_idx = renderer.render_frame_idx;
-        //let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
-
         //
         // Fill command buffer
         //
-
         cmd_buffer
             .cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
@@ -439,26 +435,6 @@ impl TmpRenderPass {
             .root_signature()
             .definition()
             .descriptor_set_layouts[0];
-        let mut descriptor_set_writer =
-            heap.allocate_descriptor_set(descriptor_set_layout).unwrap();
-        descriptor_set_writer
-            .set_descriptors(
-                "uniform_data",
-                0,
-                &[DescriptorRef::BufferView(
-                    &renderer.transient_buffer().buffer_view(),
-                )],
-            )
-            .unwrap();
-        let descriptor_set_handle = descriptor_set_writer.flush(renderer.device_context());
-
-        cmd_buffer
-            .cmd_bind_descriptor_set_handle(
-                &self.root_signature,
-                descriptor_set_layout.definition().frequency,
-                descriptor_set_handle,
-            )
-            .unwrap();
 
         let color_table = [
             (1.0f32, 0.0f32, 0.0f32),
@@ -493,18 +469,11 @@ impl TmpRenderPass {
             let transient_allocator =
                 TransientBufferAllocator::new(renderer.transient_buffer(), 1000);
 
-            let mut mapped_pages = renderer.transient_buffer().allocate_pages(1000);
-            mapped_pages = transient_allocator.copy_data(mapped_pages, &mesh.vertices);
+            let mut sub_allocation = transient_allocator.copy_data(None, &mesh.vertices, 0);
 
-            cmd_buffer
-                .cmd_bind_vertex_buffers(
-                    0,
-                    &[VertexBufferBinding {
-                        buffer: &renderer.transient_buffer().buffer(),
-                        byte_offset: mapped_pages.offset_of_page + mapped_pages.last_alloc_offset,
-                    }],
-                )
-                .unwrap();
+            renderer
+                .transient_buffer()
+                .bind_allocation_as_vertex_buffer(cmd_buffer, &sub_allocation);
 
             let color = color_table[index % color_table.len()];
 
@@ -518,14 +487,38 @@ impl TmpRenderPass {
             push_constant_data[50] = color.2;
             push_constant_data[51] = 1.0;
 
-            mapped_pages = transient_allocator.copy_data(mapped_pages, &push_constant_data);
+            sub_allocation =
+                transient_allocator.copy_data(Some(sub_allocation), &push_constant_data, 64);
 
-            cmd_buffer
-                .cmd_push_constants(
-                    &self.root_signature,
-                    &(mapped_pages.offset_of_page + mapped_pages.last_alloc_offset),
+            let const_buffer_view = renderer
+                .transient_buffer()
+                .const_buffer_view_for_allocation(&sub_allocation);
+
+            let mut descriptor_set_writer =
+                heap.allocate_descriptor_set(descriptor_set_layout).unwrap();
+            descriptor_set_writer
+                .set_descriptors(
+                    "uniform_data",
+                    0,
+                    &[DescriptorRef::BufferView(&const_buffer_view)],
                 )
                 .unwrap();
+            let descriptor_set_handle = descriptor_set_writer.flush(renderer.device_context());
+
+            cmd_buffer
+                .cmd_bind_descriptor_set_handle(
+                    &self.root_signature,
+                    descriptor_set_layout.definition().frequency,
+                    descriptor_set_handle,
+                )
+                .unwrap();
+
+            // cmd_buffer
+            //     .cmd_push_constants(
+            //         &self.root_signature,
+            //         &(sub_allocation.offset_of_page + sub_allocation.last_alloc_offset),
+            //     )
+            //     .unwrap();
 
             cmd_buffer
                 .cmd_draw((mesh.num_vertices()) as u32, 0)
