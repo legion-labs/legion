@@ -13,7 +13,7 @@ legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-presenter = { path = "../../lib/presenter", version = "0.1.0" }
 legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
 legion-window = { path = "../../plugin/window", version = "0.1.0" }
-raw-window-handle = "0.3"
+raw-window-handle = "0.4"
 
 [features]
 default = []

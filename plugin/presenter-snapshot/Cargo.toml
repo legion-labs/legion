@@ -13,7 +13,7 @@ legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-presenter = { path = "../../lib/presenter", version = "0.1.0" }
 legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
 log = "0.4"
-raw-window-handle = "0.3"
+raw-window-handle = "0.4"
 crossbeam-channel = "0.5"
 instant = "0.1"
 anyhow = "1.0"
