@@ -1,6 +1,6 @@
 use std::{borrow::Cow, future::Future};
 
-use async_trait::async_trait;
+use legion_tasks::future;
 
 use crate::{
     archetype::ArchetypeGeneration,
@@ -8,11 +8,10 @@ use crate::{
     world::World,
 };
 
-#[async_trait]
 pub trait ExclusiveSystem: Send + Sync {
     fn name(&self) -> Cow<'static, str>;
 
-    async fn run(&mut self, world: &mut World);
+    fn run<'w>(&mut self, world: &'w mut World);
 
     fn initialize(&mut self, world: &mut World);
 
@@ -41,7 +40,6 @@ pub struct ExclusiveSystemFn<F> {
     last_change_tick: u32,
 }
 
-#[async_trait]
 impl<F> ExclusiveSystem for ExclusiveSystemFn<F>
 where
     F: for<'w> AsyncExclusiveSystemFn<'w>,
@@ -50,13 +48,13 @@ where
         self.name.clone()
     }
 
-    async fn run(&mut self, world: &mut World) {
+    fn run<'w>(&mut self, world: &'w mut World) {
         // The previous value is saved in case this exclusive system is run by another exclusive
         // system
         let saved_last_tick = world.last_change_tick;
         world.last_change_tick = self.last_change_tick;
 
-        self.func.call_mut(world).await;
+        future::block_on(self.func.call_mut(world));
 
         let change_tick = world.change_tick.get_mut();
         self.last_change_tick = *change_tick;
@@ -94,25 +92,22 @@ pub struct ExclusiveSystemCoerced {
     archetype_generation: ArchetypeGeneration,
 }
 
-#[async_trait]
 impl ExclusiveSystem for ExclusiveSystemCoerced {
     fn name(&self) -> Cow<'static, str> {
         self.system.name()
     }
 
-    async fn run(&mut self, world: &mut World) {
-        {
-            let archetypes = world.archetypes();
-            let new_generation = archetypes.generation();
-            let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);
-            let archetype_index_range = old_generation.value()..new_generation.value();
+    fn run<'w>(&mut self, world: &'w mut World) {
+        let archetypes = world.archetypes();
+        let new_generation = archetypes.generation();
+        let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);
+        let archetype_index_range = old_generation.value()..new_generation.value();
 
-            for archetype in archetypes.archetypes[archetype_index_range].iter() {
-                self.system.new_archetype(archetype);
-            }
+        for archetype in archetypes.archetypes[archetype_index_range].iter() {
+            self.system.new_archetype(archetype);
         }
 
-        self.system.run((), world).await;
+        future::block_on(self.system.run((), world));
         self.system.apply_buffers(world);
     }
 
