@@ -1,5 +1,4 @@
 use async_channel::{Receiver, Sender};
-use async_trait::async_trait;
 use fixedbitset::FixedBitSet;
 use legion_tasks::{ComputeTaskPool, Scope, TaskPool};
 #[cfg(test)]
@@ -75,7 +74,6 @@ impl Default for ParallelExecutor {
     }
 }
 
-#[async_trait]
 impl ParallelSystemExecutor for ParallelExecutor {
     fn rebuild_cached_data(&mut self, systems: &[ParallelSystemContainer]) {
         self.system_metadata.clear();
