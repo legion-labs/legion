@@ -31,7 +31,7 @@
 <div class="root">
   <div use:clickOutside={closeMenu} class="menus">
     <div class="brand">Legion</div>
-    {#each menus as menu}
+    {#each menus as menu (menu.id)}
       <div
         data-testid="menu-{menu.id}"
         class="menu"

@@ -63,7 +63,7 @@
               {#await fetchAllResources}
                 <div class="resources-loading">loading...</div>
               {:then data}
-                {#each data as resource}
+                {#each data as resource (resource.id)}
                   <div
                     class="resource-item"
                     class:active-resource-item={selectedResourceId ===
