@@ -20,6 +20,7 @@
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.svelte",
-    "tests/**/*.ts"
+    "tests/**/*.ts",
+    "proto/**/*.ts"
   ]
 }

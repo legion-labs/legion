@@ -1,0 +1,270 @@
+<script context="module" lang="ts">
+  export type ResourceWithProperties = {
+    description: ResourceDescription;
+    properties: ResourceProperty[];
+  };
+
+  export type Resolution = { width: number; height: number };
+</script>
+
+<script lang="ts">
+  import { onMount } from "svelte";
+  import resize from "@/actions/resize";
+  import { VideoPlayer } from "@/lib";
+  import { debounce, retry } from "@/lib/promises";
+  import { initializeStream, onReceiveControlMessage } from "@/api";
+  import { ResourceDescription, ResourceProperty } from "@/proto/editor/editor";
+
+  const reconnectionTimeout = 600;
+
+  const resizeVideoTimeout = 300;
+
+  export let resource: ResourceWithProperties | null;
+
+  let resolution: Resolution | undefined;
+
+  export let desiredResolution: Resolution | undefined;
+
+  let videoElement: HTMLVideoElement;
+
+  let videoChannel: RTCDataChannel | null;
+
+  let controlChannel: RTCDataChannel | null;
+
+  let statusMessage: string | null = "Connecting...";
+
+  let peerConnection: RTCPeerConnection | null;
+
+  let videoAlreadyRendered = false;
+
+  let loading = false;
+
+  onMount(async () => {
+    initialize();
+  });
+
+  // Destroys all peer connection related resources when possible
+  const destroyResources = () => {
+    if (videoChannel !== null) {
+      videoChannel.close();
+      videoChannel = null;
+    }
+
+    if (controlChannel !== null) {
+      controlChannel.close();
+      controlChannel = null;
+    }
+
+    if (peerConnection !== null) {
+      peerConnection.close();
+      peerConnection = null;
+    }
+  };
+
+  const initialize = () => {
+    if (!videoElement) {
+      console.error("Video element couldn't be found");
+      return;
+    }
+
+    const videoPlayer = new VideoPlayer(videoElement);
+
+    console.log("Initializing WebRTC...");
+
+    peerConnection = new RTCPeerConnection({
+      iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
+    });
+
+    peerConnection.onnegotiationneeded = async () => {
+      if (peerConnection) {
+        peerConnection.setLocalDescription(await peerConnection.createOffer());
+      }
+    };
+
+    peerConnection.onicecandidate = async (iceEvent) => {
+      console.log(iceEvent);
+
+      if (peerConnection && iceEvent.candidate === null) {
+        const remoteDescription = await retry(() => {
+          if (peerConnection && peerConnection.localDescription) {
+            return initializeStream(peerConnection.localDescription);
+          }
+
+          return Promise.resolve(null);
+        });
+
+        if (remoteDescription) {
+          peerConnection.setRemoteDescription(remoteDescription);
+        }
+      }
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+      if (
+        peerConnection &&
+        peerConnection.iceConnectionState === "disconnected"
+      ) {
+        console.log("Disconnected");
+
+        window.setTimeout(() => {
+          if (videoElement) {
+            videoElement.pause();
+            videoElement.removeAttribute("src");
+            videoElement.load();
+          }
+
+          statusMessage = "Reconnecting...";
+
+          destroyResources();
+
+          initialize();
+        }, reconnectionTimeout);
+      }
+    };
+
+    videoChannel = peerConnection.createDataChannel("video");
+
+    controlChannel = peerConnection.createDataChannel("control");
+
+    videoElement.addEventListener("loadedmetadata", (event) => {
+      if (videoElement && event.target instanceof HTMLVideoElement) {
+        if (!videoAlreadyRendered) {
+          videoAlreadyRendered = true;
+        }
+        const { videoWidth, videoHeight } = event.target;
+
+        console.log(`Video resolution is now: ${videoWidth}x${videoHeight}.`);
+
+        loading = false;
+        statusMessage = null;
+        resolution = desiredResolution;
+      }
+    });
+
+    videoChannel.onerror = (error: unknown) => {
+      console.log(error);
+    };
+
+    videoChannel.onopen = () => {
+      console.log("Video channel is now open.");
+    };
+
+    videoChannel.onclose = () => {
+      console.log("Video channel is now closed.");
+    };
+
+    videoChannel.onmessage = async (message) => {
+      videoPlayer.push(
+        // In Tauri message.data is an ArrayBuffer
+        // while it's a Blob in browser
+        message.data instanceof ArrayBuffer
+          ? message.data
+          : await message.data.arrayBuffer()
+      );
+    };
+
+    controlChannel.onopen = (event) => {
+      console.log("Control channel is now open: ", event);
+    };
+
+    controlChannel.onclose = (event) => {
+      console.log("Control channel is now closed: ", event);
+    };
+
+    controlChannel.onmessage = async (
+      message: MessageEvent<ArrayBuffer | Blob>
+    ) => {
+      const jsonMsg = new TextDecoder().decode(
+        // In Tauri message.data is an ArrayBuffer
+        // while it's a Blob in browser
+        message.data instanceof ArrayBuffer
+          ? message.data
+          : await message.data.arrayBuffer()
+      );
+
+      onReceiveControlMessage(jsonMsg);
+    };
+  };
+
+  const resizeVideo = debounce((desiredResolution: Resolution) => {
+    if (!videoAlreadyRendered) {
+      return;
+    }
+
+    // Ensure our resolution is a multiple of two.
+    const height = desiredResolution.height & ~1;
+    const width = desiredResolution.width & ~1;
+
+    if (width == 0 || height == 0) {
+      return;
+    }
+
+    console.log(`Desired resolution is now: ${width}x${height}`);
+
+    if (videoChannel && videoChannel.readyState === "open") {
+      videoChannel.send(JSON.stringify({ event: "resize", width, height }));
+    }
+  }, resizeVideoTimeout);
+
+  const onVideoResize = ({ width, height }: DOMRectReadOnly) => {
+    desiredResolution = {
+      width: Math.round(width),
+      height: Math.round(height),
+    };
+  };
+
+  // TODO: Drop?
+  $: console.log(`New resource requested ${resource}`);
+
+  $: if (
+    resolution &&
+    desiredResolution &&
+    (resolution.height !== desiredResolution.height ||
+      resolution.width !== desiredResolution.width)
+  ) {
+    resizeVideo(desiredResolution);
+    statusMessage = "Resizing...";
+    loading = true;
+  }
+</script>
+
+<div class="video-container" use:resize={onVideoResize}>
+  <video
+    class="video"
+    class:opacity-0={loading}
+    class:opacity-100={!loading}
+    bind:this={videoElement}
+  >
+    <track kind="captions" />
+  </video>
+  {#if statusMessage}
+    <h3 class="status">
+      <span>{statusMessage}</span>
+    </h3>
+  {/if}
+</div>
+
+<style lang="postcss">
+  .video-container {
+    @apply h-full w-full overflow-hidden relative text-white;
+  }
+
+  .video {
+    @apply absolute object-cover inset-0 w-full h-full m-auto transition duration-200;
+  }
+
+  .status {
+    @apply absolute left-0 right-0 top-1/2 text-center;
+    animation: glow 1s infinite alternate;
+  }
+
+  @keyframes glow {
+    from {
+      opacity: 0.2;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+</style>

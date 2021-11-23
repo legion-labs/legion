@@ -2,6 +2,4 @@
   import Home from "@/pages/Home.svelte";
 </script>
 
-<template>
-  <Home />
-</template>
+<Home />
