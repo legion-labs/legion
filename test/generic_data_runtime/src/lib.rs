@@ -56,4 +56,29 @@
 // crate-specific exceptions:
 #![allow()]
 
-include!(concat!(env!("OUT_DIR"), "/data.rs"));
+mod debug_cube {
+    include!(concat!(env!("OUT_DIR"), "/debug_cube.rs"));
+}
+mod entity_dc {
+    include!(concat!(env!("OUT_DIR"), "/entity_dc.rs"));
+}
+mod instance_dc {
+    include!(concat!(env!("OUT_DIR"), "/instance_dc.rs"));
+}
+mod test_entity {
+    include!(concat!(env!("OUT_DIR"), "/test_entity.rs"));
+}
+
+pub use debug_cube::*;
+pub use entity_dc::*;
+pub use instance_dc::*;
+pub use test_entity::*;
+
+pub fn add_loaders(
+    registry: legion_data_runtime::AssetRegistryOptions,
+) -> legion_data_runtime::AssetRegistryOptions {
+    let registry = debug_cube::add_loaders(registry);
+    let registry = entity_dc::add_loaders(registry);
+    let registry = instance_dc::add_loaders(registry);
+    test_entity::add_loaders(registry)
+}

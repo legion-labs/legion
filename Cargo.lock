@@ -1141,6 +1141,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiler-debugcube"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "legion-data-codegen",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "legion-graphics-runtime",
+]
+
+[[package]]
+name = "compiler-entitydc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "legion-data-codegen",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "legion-graphics-runtime",
+]
+
+[[package]]
+name = "compiler-instancedc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "legion-data-codegen",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "legion-graphics-runtime",
+]
+
+[[package]]
 name = "compiler-material"
 version = "0.1.0"
 dependencies = [
@@ -1252,6 +1297,21 @@ dependencies = [
  "legion-data-runtime",
  "multitext-resource",
  "text-resource",
+]
+
+[[package]]
+name = "compiler-testentity"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "legion-data-codegen",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "legion-graphics-runtime",
 ]
 
 [[package]]
@@ -2536,23 +2596,6 @@ checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
 dependencies = [
  "typenum",
  "version_check",
-]
-
-[[package]]
-name = "generic_data_compiler"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "lazy_static",
- "legion-content-store",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-math",
- "serde",
 ]
 
 [[package]]

@@ -56,4 +56,29 @@
 // crate-specific exceptions:
 #![allow()]
 
-include!(concat!(env!("OUT_DIR"), "/data.rs"));
+mod debug_cube {
+    include!(concat!(env!("OUT_DIR"), "/debug_cube.rs"));
+}
+mod entity_dc {
+    include!(concat!(env!("OUT_DIR"), "/entity_dc.rs"));
+}
+mod instance_dc {
+    include!(concat!(env!("OUT_DIR"), "/instance_dc.rs"));
+}
+mod test_entity {
+    include!(concat!(env!("OUT_DIR"), "/test_entity.rs"));
+}
+
+pub use debug_cube::*;
+pub use entity_dc::*;
+pub use instance_dc::*;
+pub use test_entity::*;
+
+pub fn register_resource_types(
+    registry: legion_data_offline::resource::ResourceRegistryOptions,
+) -> legion_data_offline::resource::ResourceRegistryOptions {
+    let registry = debug_cube::register_resource_types(registry);
+    let registry = entity_dc::register_resource_types(registry);
+    let registry = instance_dc::register_resource_types(registry);
+    test_entity::register_resource_types(registry)
+}
