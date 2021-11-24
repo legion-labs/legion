@@ -51,28 +51,6 @@ export interface ListStreamBlocksReply {
 }
 
 /**
- * block_call_tree
- * ScopeInstance: tree data structure to store function calls
- */
-export interface CallTreeNode {
-  /** factor out scope_desc */
-  name: string;
-  beginMs: number;
-  endMs: number;
-  scopes: CallTreeNode[];
-}
-
-export interface BlockCallTreeRequest {
-  process: Process | undefined;
-  stream: Stream | undefined;
-  blockId: string;
-}
-
-export interface BlockCallTreeReply {
-  nodes: CallTreeNode[];
-}
-
-/**
  * block_spans
  * Span: represents a function call instance
  */
@@ -104,6 +82,33 @@ export interface BlockSpansReply {
   beginMs: number;
   endMs: number;
   maxDepth: number;
+}
+
+/** process_cumulative_call_graph */
+export interface ProcessCumulativeCallGraphRequest {
+  process: Process | undefined;
+  beginMs: number;
+  endMs: number;
+}
+
+export interface NodeStats {
+  sum: number;
+  min: number;
+  max: number;
+  avg: number;
+  median: number;
+}
+
+export interface CumulativeCallGraphNode {
+  hash: number;
+  stats: NodeStats | undefined;
+  callers: number[];
+  callees: number[];
+}
+
+export interface CumulativeCallGraphReply {
+  scopes: ScopeDesc[];
+  nodes: CumulativeCallGraphNode[];
 }
 
 /** list_process_log_entries */
@@ -697,254 +702,6 @@ export const ListStreamBlocksReply = {
   },
 };
 
-const baseCallTreeNode: object = { name: "", beginMs: 0, endMs: 0 };
-
-export const CallTreeNode = {
-  encode(
-    message: CallTreeNode,
-    writer: _m0.Writer = _m0.Writer.create()
-  ): _m0.Writer {
-    if (message.name !== "") {
-      writer.uint32(10).string(message.name);
-    }
-    if (message.beginMs !== 0) {
-      writer.uint32(17).double(message.beginMs);
-    }
-    if (message.endMs !== 0) {
-      writer.uint32(25).double(message.endMs);
-    }
-    for (const v of message.scopes) {
-      CallTreeNode.encode(v!, writer.uint32(34).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): CallTreeNode {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseCallTreeNode } as CallTreeNode;
-    message.scopes = [];
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.name = reader.string();
-          break;
-        case 2:
-          message.beginMs = reader.double();
-          break;
-        case 3:
-          message.endMs = reader.double();
-          break;
-        case 4:
-          message.scopes.push(CallTreeNode.decode(reader, reader.uint32()));
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): CallTreeNode {
-    const message = { ...baseCallTreeNode } as CallTreeNode;
-    message.name =
-      object.name !== undefined && object.name !== null
-        ? String(object.name)
-        : "";
-    message.beginMs =
-      object.beginMs !== undefined && object.beginMs !== null
-        ? Number(object.beginMs)
-        : 0;
-    message.endMs =
-      object.endMs !== undefined && object.endMs !== null
-        ? Number(object.endMs)
-        : 0;
-    message.scopes = (object.scopes ?? []).map((e: any) =>
-      CallTreeNode.fromJSON(e)
-    );
-    return message;
-  },
-
-  toJSON(message: CallTreeNode): unknown {
-    const obj: any = {};
-    message.name !== undefined && (obj.name = message.name);
-    message.beginMs !== undefined && (obj.beginMs = message.beginMs);
-    message.endMs !== undefined && (obj.endMs = message.endMs);
-    if (message.scopes) {
-      obj.scopes = message.scopes.map((e) =>
-        e ? CallTreeNode.toJSON(e) : undefined
-      );
-    } else {
-      obj.scopes = [];
-    }
-    return obj;
-  },
-
-  fromPartial(object: DeepPartial<CallTreeNode>): CallTreeNode {
-    const message = { ...baseCallTreeNode } as CallTreeNode;
-    message.name = object.name ?? "";
-    message.beginMs = object.beginMs ?? 0;
-    message.endMs = object.endMs ?? 0;
-    message.scopes = (object.scopes ?? []).map((e) =>
-      CallTreeNode.fromPartial(e)
-    );
-    return message;
-  },
-};
-
-const baseBlockCallTreeRequest: object = { blockId: "" };
-
-export const BlockCallTreeRequest = {
-  encode(
-    message: BlockCallTreeRequest,
-    writer: _m0.Writer = _m0.Writer.create()
-  ): _m0.Writer {
-    if (message.process !== undefined) {
-      Process.encode(message.process, writer.uint32(10).fork()).ldelim();
-    }
-    if (message.stream !== undefined) {
-      Stream.encode(message.stream, writer.uint32(18).fork()).ldelim();
-    }
-    if (message.blockId !== "") {
-      writer.uint32(26).string(message.blockId);
-    }
-    return writer;
-  },
-
-  decode(
-    input: _m0.Reader | Uint8Array,
-    length?: number
-  ): BlockCallTreeRequest {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseBlockCallTreeRequest } as BlockCallTreeRequest;
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.process = Process.decode(reader, reader.uint32());
-          break;
-        case 2:
-          message.stream = Stream.decode(reader, reader.uint32());
-          break;
-        case 3:
-          message.blockId = reader.string();
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): BlockCallTreeRequest {
-    const message = { ...baseBlockCallTreeRequest } as BlockCallTreeRequest;
-    message.process =
-      object.process !== undefined && object.process !== null
-        ? Process.fromJSON(object.process)
-        : undefined;
-    message.stream =
-      object.stream !== undefined && object.stream !== null
-        ? Stream.fromJSON(object.stream)
-        : undefined;
-    message.blockId =
-      object.blockId !== undefined && object.blockId !== null
-        ? String(object.blockId)
-        : "";
-    return message;
-  },
-
-  toJSON(message: BlockCallTreeRequest): unknown {
-    const obj: any = {};
-    message.process !== undefined &&
-      (obj.process = message.process
-        ? Process.toJSON(message.process)
-        : undefined);
-    message.stream !== undefined &&
-      (obj.stream = message.stream ? Stream.toJSON(message.stream) : undefined);
-    message.blockId !== undefined && (obj.blockId = message.blockId);
-    return obj;
-  },
-
-  fromPartial(object: DeepPartial<BlockCallTreeRequest>): BlockCallTreeRequest {
-    const message = { ...baseBlockCallTreeRequest } as BlockCallTreeRequest;
-    message.process =
-      object.process !== undefined && object.process !== null
-        ? Process.fromPartial(object.process)
-        : undefined;
-    message.stream =
-      object.stream !== undefined && object.stream !== null
-        ? Stream.fromPartial(object.stream)
-        : undefined;
-    message.blockId = object.blockId ?? "";
-    return message;
-  },
-};
-
-const baseBlockCallTreeReply: object = {};
-
-export const BlockCallTreeReply = {
-  encode(
-    message: BlockCallTreeReply,
-    writer: _m0.Writer = _m0.Writer.create()
-  ): _m0.Writer {
-    for (const v of message.nodes) {
-      CallTreeNode.encode(v!, writer.uint32(10).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): BlockCallTreeReply {
-    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = { ...baseBlockCallTreeReply } as BlockCallTreeReply;
-    message.nodes = [];
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          message.nodes.push(CallTreeNode.decode(reader, reader.uint32()));
-          break;
-        default:
-          reader.skipType(tag & 7);
-          break;
-      }
-    }
-    return message;
-  },
-
-  fromJSON(object: any): BlockCallTreeReply {
-    const message = { ...baseBlockCallTreeReply } as BlockCallTreeReply;
-    message.nodes = (object.nodes ?? []).map((e: any) =>
-      CallTreeNode.fromJSON(e)
-    );
-    return message;
-  },
-
-  toJSON(message: BlockCallTreeReply): unknown {
-    const obj: any = {};
-    if (message.nodes) {
-      obj.nodes = message.nodes.map((e) =>
-        e ? CallTreeNode.toJSON(e) : undefined
-      );
-    } else {
-      obj.nodes = [];
-    }
-    return obj;
-  },
-
-  fromPartial(object: DeepPartial<BlockCallTreeReply>): BlockCallTreeReply {
-    const message = { ...baseBlockCallTreeReply } as BlockCallTreeReply;
-    message.nodes = (object.nodes ?? []).map((e) =>
-      CallTreeNode.fromPartial(e)
-    );
-    return message;
-  },
-};
-
 const baseSpan: object = { scopeHash: 0, depth: 0, beginMs: 0, endMs: 0 };
 
 export const Span = {
@@ -1333,6 +1090,411 @@ export const BlockSpansReply = {
   },
 };
 
+const baseProcessCumulativeCallGraphRequest: object = { beginMs: 0, endMs: 0 };
+
+export const ProcessCumulativeCallGraphRequest = {
+  encode(
+    message: ProcessCumulativeCallGraphRequest,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.process !== undefined) {
+      Process.encode(message.process, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.beginMs !== 0) {
+      writer.uint32(17).double(message.beginMs);
+    }
+    if (message.endMs !== 0) {
+      writer.uint32(25).double(message.endMs);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ProcessCumulativeCallGraphRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseProcessCumulativeCallGraphRequest,
+    } as ProcessCumulativeCallGraphRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.process = Process.decode(reader, reader.uint32());
+          break;
+        case 2:
+          message.beginMs = reader.double();
+          break;
+        case 3:
+          message.endMs = reader.double();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProcessCumulativeCallGraphRequest {
+    const message = {
+      ...baseProcessCumulativeCallGraphRequest,
+    } as ProcessCumulativeCallGraphRequest;
+    message.process =
+      object.process !== undefined && object.process !== null
+        ? Process.fromJSON(object.process)
+        : undefined;
+    message.beginMs =
+      object.beginMs !== undefined && object.beginMs !== null
+        ? Number(object.beginMs)
+        : 0;
+    message.endMs =
+      object.endMs !== undefined && object.endMs !== null
+        ? Number(object.endMs)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: ProcessCumulativeCallGraphRequest): unknown {
+    const obj: any = {};
+    message.process !== undefined &&
+      (obj.process = message.process
+        ? Process.toJSON(message.process)
+        : undefined);
+    message.beginMs !== undefined && (obj.beginMs = message.beginMs);
+    message.endMs !== undefined && (obj.endMs = message.endMs);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<ProcessCumulativeCallGraphRequest>
+  ): ProcessCumulativeCallGraphRequest {
+    const message = {
+      ...baseProcessCumulativeCallGraphRequest,
+    } as ProcessCumulativeCallGraphRequest;
+    message.process =
+      object.process !== undefined && object.process !== null
+        ? Process.fromPartial(object.process)
+        : undefined;
+    message.beginMs = object.beginMs ?? 0;
+    message.endMs = object.endMs ?? 0;
+    return message;
+  },
+};
+
+const baseNodeStats: object = { sum: 0, min: 0, max: 0, avg: 0, median: 0 };
+
+export const NodeStats = {
+  encode(
+    message: NodeStats,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.sum !== 0) {
+      writer.uint32(9).double(message.sum);
+    }
+    if (message.min !== 0) {
+      writer.uint32(17).double(message.min);
+    }
+    if (message.max !== 0) {
+      writer.uint32(25).double(message.max);
+    }
+    if (message.avg !== 0) {
+      writer.uint32(33).double(message.avg);
+    }
+    if (message.median !== 0) {
+      writer.uint32(41).double(message.median);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): NodeStats {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseNodeStats } as NodeStats;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.sum = reader.double();
+          break;
+        case 2:
+          message.min = reader.double();
+          break;
+        case 3:
+          message.max = reader.double();
+          break;
+        case 4:
+          message.avg = reader.double();
+          break;
+        case 5:
+          message.median = reader.double();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): NodeStats {
+    const message = { ...baseNodeStats } as NodeStats;
+    message.sum =
+      object.sum !== undefined && object.sum !== null ? Number(object.sum) : 0;
+    message.min =
+      object.min !== undefined && object.min !== null ? Number(object.min) : 0;
+    message.max =
+      object.max !== undefined && object.max !== null ? Number(object.max) : 0;
+    message.avg =
+      object.avg !== undefined && object.avg !== null ? Number(object.avg) : 0;
+    message.median =
+      object.median !== undefined && object.median !== null
+        ? Number(object.median)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: NodeStats): unknown {
+    const obj: any = {};
+    message.sum !== undefined && (obj.sum = message.sum);
+    message.min !== undefined && (obj.min = message.min);
+    message.max !== undefined && (obj.max = message.max);
+    message.avg !== undefined && (obj.avg = message.avg);
+    message.median !== undefined && (obj.median = message.median);
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<NodeStats>): NodeStats {
+    const message = { ...baseNodeStats } as NodeStats;
+    message.sum = object.sum ?? 0;
+    message.min = object.min ?? 0;
+    message.max = object.max ?? 0;
+    message.avg = object.avg ?? 0;
+    message.median = object.median ?? 0;
+    return message;
+  },
+};
+
+const baseCumulativeCallGraphNode: object = { hash: 0, callers: 0, callees: 0 };
+
+export const CumulativeCallGraphNode = {
+  encode(
+    message: CumulativeCallGraphNode,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.hash !== 0) {
+      writer.uint32(8).uint32(message.hash);
+    }
+    if (message.stats !== undefined) {
+      NodeStats.encode(message.stats, writer.uint32(18).fork()).ldelim();
+    }
+    writer.uint32(26).fork();
+    for (const v of message.callers) {
+      writer.uint32(v);
+    }
+    writer.ldelim();
+    writer.uint32(34).fork();
+    for (const v of message.callees) {
+      writer.uint32(v);
+    }
+    writer.ldelim();
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): CumulativeCallGraphNode {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseCumulativeCallGraphNode,
+    } as CumulativeCallGraphNode;
+    message.callers = [];
+    message.callees = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.hash = reader.uint32();
+          break;
+        case 2:
+          message.stats = NodeStats.decode(reader, reader.uint32());
+          break;
+        case 3:
+          if ((tag & 7) === 2) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.callers.push(reader.uint32());
+            }
+          } else {
+            message.callers.push(reader.uint32());
+          }
+          break;
+        case 4:
+          if ((tag & 7) === 2) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.callees.push(reader.uint32());
+            }
+          } else {
+            message.callees.push(reader.uint32());
+          }
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CumulativeCallGraphNode {
+    const message = {
+      ...baseCumulativeCallGraphNode,
+    } as CumulativeCallGraphNode;
+    message.hash =
+      object.hash !== undefined && object.hash !== null
+        ? Number(object.hash)
+        : 0;
+    message.stats =
+      object.stats !== undefined && object.stats !== null
+        ? NodeStats.fromJSON(object.stats)
+        : undefined;
+    message.callers = (object.callers ?? []).map((e: any) => Number(e));
+    message.callees = (object.callees ?? []).map((e: any) => Number(e));
+    return message;
+  },
+
+  toJSON(message: CumulativeCallGraphNode): unknown {
+    const obj: any = {};
+    message.hash !== undefined && (obj.hash = message.hash);
+    message.stats !== undefined &&
+      (obj.stats = message.stats ? NodeStats.toJSON(message.stats) : undefined);
+    if (message.callers) {
+      obj.callers = message.callers.map((e) => e);
+    } else {
+      obj.callers = [];
+    }
+    if (message.callees) {
+      obj.callees = message.callees.map((e) => e);
+    } else {
+      obj.callees = [];
+    }
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<CumulativeCallGraphNode>
+  ): CumulativeCallGraphNode {
+    const message = {
+      ...baseCumulativeCallGraphNode,
+    } as CumulativeCallGraphNode;
+    message.hash = object.hash ?? 0;
+    message.stats =
+      object.stats !== undefined && object.stats !== null
+        ? NodeStats.fromPartial(object.stats)
+        : undefined;
+    message.callers = (object.callers ?? []).map((e) => e);
+    message.callees = (object.callees ?? []).map((e) => e);
+    return message;
+  },
+};
+
+const baseCumulativeCallGraphReply: object = {};
+
+export const CumulativeCallGraphReply = {
+  encode(
+    message: CumulativeCallGraphReply,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    for (const v of message.scopes) {
+      ScopeDesc.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    for (const v of message.nodes) {
+      CumulativeCallGraphNode.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): CumulativeCallGraphReply {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseCumulativeCallGraphReply,
+    } as CumulativeCallGraphReply;
+    message.scopes = [];
+    message.nodes = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.scopes.push(ScopeDesc.decode(reader, reader.uint32()));
+          break;
+        case 2:
+          message.nodes.push(
+            CumulativeCallGraphNode.decode(reader, reader.uint32())
+          );
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CumulativeCallGraphReply {
+    const message = {
+      ...baseCumulativeCallGraphReply,
+    } as CumulativeCallGraphReply;
+    message.scopes = (object.scopes ?? []).map((e: any) =>
+      ScopeDesc.fromJSON(e)
+    );
+    message.nodes = (object.nodes ?? []).map((e: any) =>
+      CumulativeCallGraphNode.fromJSON(e)
+    );
+    return message;
+  },
+
+  toJSON(message: CumulativeCallGraphReply): unknown {
+    const obj: any = {};
+    if (message.scopes) {
+      obj.scopes = message.scopes.map((e) =>
+        e ? ScopeDesc.toJSON(e) : undefined
+      );
+    } else {
+      obj.scopes = [];
+    }
+    if (message.nodes) {
+      obj.nodes = message.nodes.map((e) =>
+        e ? CumulativeCallGraphNode.toJSON(e) : undefined
+      );
+    } else {
+      obj.nodes = [];
+    }
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<CumulativeCallGraphReply>
+  ): CumulativeCallGraphReply {
+    const message = {
+      ...baseCumulativeCallGraphReply,
+    } as CumulativeCallGraphReply;
+    message.scopes = (object.scopes ?? []).map((e) => ScopeDesc.fromPartial(e));
+    message.nodes = (object.nodes ?? []).map((e) =>
+      CumulativeCallGraphNode.fromPartial(e)
+    );
+    return message;
+  },
+};
+
 const baseProcessLogRequest: object = {};
 
 export const ProcessLogRequest = {
@@ -1645,14 +1807,14 @@ export const ProcessChildrenReply = {
 };
 
 export interface PerformanceAnalytics {
-  block_call_tree(
-    request: DeepPartial<BlockCallTreeRequest>,
-    metadata?: grpc.Metadata
-  ): Promise<BlockCallTreeReply>;
   block_spans(
     request: DeepPartial<BlockSpansRequest>,
     metadata?: grpc.Metadata
   ): Promise<BlockSpansReply>;
+  process_cumulative_call_graph(
+    request: DeepPartial<ProcessCumulativeCallGraphRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<CumulativeCallGraphReply>;
   find_process(
     request: DeepPartial<FindProcessRequest>,
     metadata?: grpc.Metadata
@@ -1684,25 +1846,15 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
 
   constructor(rpc: Rpc) {
     this.rpc = rpc;
-    this.block_call_tree = this.block_call_tree.bind(this);
     this.block_spans = this.block_spans.bind(this);
+    this.process_cumulative_call_graph =
+      this.process_cumulative_call_graph.bind(this);
     this.find_process = this.find_process.bind(this);
     this.list_process_children = this.list_process_children.bind(this);
     this.list_process_log_entries = this.list_process_log_entries.bind(this);
     this.list_process_streams = this.list_process_streams.bind(this);
     this.list_recent_processes = this.list_recent_processes.bind(this);
     this.list_stream_blocks = this.list_stream_blocks.bind(this);
-  }
-
-  block_call_tree(
-    request: DeepPartial<BlockCallTreeRequest>,
-    metadata?: grpc.Metadata
-  ): Promise<BlockCallTreeReply> {
-    return this.rpc.unary(
-      PerformanceAnalyticsblock_call_treeDesc,
-      BlockCallTreeRequest.fromPartial(request),
-      metadata
-    );
   }
 
   block_spans(
@@ -1712,6 +1864,17 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     return this.rpc.unary(
       PerformanceAnalyticsblock_spansDesc,
       BlockSpansRequest.fromPartial(request),
+      metadata
+    );
+  }
+
+  process_cumulative_call_graph(
+    request: DeepPartial<ProcessCumulativeCallGraphRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<CumulativeCallGraphReply> {
+    return this.rpc.unary(
+      PerformanceAnalyticsprocess_cumulative_call_graphDesc,
+      ProcessCumulativeCallGraphRequest.fromPartial(request),
       metadata
     );
   }
@@ -1787,29 +1950,6 @@ export const PerformanceAnalyticsDesc = {
   serviceName: "analytics.PerformanceAnalytics",
 };
 
-export const PerformanceAnalyticsblock_call_treeDesc: UnaryMethodDefinitionish =
-  {
-    methodName: "block_call_tree",
-    service: PerformanceAnalyticsDesc,
-    requestStream: false,
-    responseStream: false,
-    requestType: {
-      serializeBinary() {
-        return BlockCallTreeRequest.encode(this).finish();
-      },
-    } as any,
-    responseType: {
-      deserializeBinary(data: Uint8Array) {
-        return {
-          ...BlockCallTreeReply.decode(data),
-          toObject() {
-            return this;
-          },
-        };
-      },
-    } as any,
-  };
-
 export const PerformanceAnalyticsblock_spansDesc: UnaryMethodDefinitionish = {
   methodName: "block_spans",
   service: PerformanceAnalyticsDesc,
@@ -1831,6 +1971,29 @@ export const PerformanceAnalyticsblock_spansDesc: UnaryMethodDefinitionish = {
     },
   } as any,
 };
+
+export const PerformanceAnalyticsprocess_cumulative_call_graphDesc: UnaryMethodDefinitionish =
+  {
+    methodName: "process_cumulative_call_graph",
+    service: PerformanceAnalyticsDesc,
+    requestStream: false,
+    responseStream: false,
+    requestType: {
+      serializeBinary() {
+        return ProcessCumulativeCallGraphRequest.encode(this).finish();
+      },
+    } as any,
+    responseType: {
+      deserializeBinary(data: Uint8Array) {
+        return {
+          ...CumulativeCallGraphReply.decode(data),
+          toObject() {
+            return this;
+          },
+        };
+      },
+    } as any,
+  };
 
 export const PerformanceAnalyticsfind_processDesc: UnaryMethodDefinitionish = {
   methodName: "find_process",

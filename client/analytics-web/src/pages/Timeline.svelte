@@ -392,7 +392,7 @@
       throw new Error("Canvas can't be found");
     }
 
-    const speed = 1.25;
+    const speed = 0.75;
     const factor = event.deltaY > 0 ? 1.0 / speed : speed;
     const oldRange = getViewRange();
     const length = oldRange[1] - oldRange[0];
@@ -439,18 +439,21 @@
       {/if}
     </div>
   {/if}
-  <canvas
-    bind:this={canvas}
-    id="canvas_timeline"
-    width="1024px"
-    height="768px"
-    on:wheel|preventDefault={onZoom}
-    on:mousemove={onMouseMove}
-  />
+  <canvas class="timeline-canvas"
+          bind:this={canvas}
+          id="canvas_timeline"
+          width="1024px"
+          on:wheel|preventDefault={onZoom}
+          on:mousemove={onMouseMove}
+          />
 </div>
 
 <style lang="postcss">
   .parent-process {
     @apply text-[#42b983] underline;
+  }
+
+  .timeline-canvas {
+    margin: auto;
   }
 </style>
