@@ -1151,8 +1151,6 @@ dependencies = [
  "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
 ]
 
 [[package]]
@@ -1166,8 +1164,6 @@ dependencies = [
  "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
 ]
 
 [[package]]
@@ -1181,8 +1177,6 @@ dependencies = [
  "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
 ]
 
 [[package]]
@@ -1310,8 +1304,6 @@ dependencies = [
  "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
 ]
 
 [[package]]
