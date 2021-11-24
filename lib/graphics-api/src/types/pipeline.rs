@@ -8,7 +8,7 @@ use crate::{
     RootSignature,
 };
 
-struct PipelineInner {
+pub(crate) struct PipelineInner {
     root_signature: RootSignature,
     pipeline_type: PipelineType,
 

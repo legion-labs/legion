@@ -3,7 +3,7 @@ use crate::backends::vulkan::VulkanSampler;
 use crate::deferred_drop::Drc;
 use crate::{DeviceContext, GfxResult, SamplerDef};
 
-pub struct SamplerInner {
+pub(crate) struct SamplerInner {
     device_context: DeviceContext,
 
     #[cfg(feature = "vulkan")]
