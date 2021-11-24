@@ -10,7 +10,7 @@ pub fn compile_protos(proto: impl AsRef<Path>) -> std::io::Result<()> {
 
     println!("cargo:rerun-if-changed={}", proto_path.display());
 
-    let out_dir = if cfg!(feautre = "run_cgen_validate") {
+    let out_dir = if cfg!(feature = "run_cgen_validate") {
         PathBuf::from(std::env::var("OUT_DIR").unwrap())
     } else {
         PathBuf::from("cgen").join("proto")
@@ -21,7 +21,7 @@ pub fn compile_protos(proto: impl AsRef<Path>) -> std::io::Result<()> {
         .out_dir(&out_dir)
         .compile(&[&proto_path], &[proto_dir])?;
 
-    if cfg!(feautre = "run_cgen_validate") {
+    if cfg!(feature = "run_cgen_validate") {
         // compare and error out
         // we can also always gen in OUT_DIR and copy or compare, probably better
     }
