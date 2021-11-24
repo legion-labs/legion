@@ -1,6 +1,11 @@
 [workspace]
 members = ["client/*", "server/*", "lib/*", "plugin/*", "proto/*", "test/*"]
-exclude = ["client/analytics-web", "test/sample-data", "test/test_data"]
+exclude = [
+    "client/analytics-web",
+    "client/analytics-web-svelte",
+    "test/sample-data",
+    "test/test_data",
+]
 
 [profile.dev]
 panic = 'abort'
