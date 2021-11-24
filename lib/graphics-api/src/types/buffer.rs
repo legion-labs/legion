@@ -18,7 +18,6 @@ pub struct BufferElementData {
 #[derive(Clone, Copy, Debug)]
 pub struct BufferDef {
     pub size: u64,
-    pub memory_usage: MemoryUsage,
     pub queue_type: QueueType,
     pub always_mapped: bool,
     pub usage_flags: ResourceUsage,

@@ -1,17 +1,16 @@
 use ash::vk;
 
 use super::VulkanDeviceContext;
-use crate::{BufferDef, GfxResult, MemoryUsage, ResourceUsage};
+use crate::{BufferDef, ResourceUsage};
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
-    allocation_info: vk_mem::AllocationInfo,
-    allocation: vk_mem::Allocation,
     buffer: vk::Buffer,
+    buffer_info: vk::BufferCreateInfo,
 }
 
 impl VulkanBuffer {
-    pub fn new(device_context: &VulkanDeviceContext, buffer_def: &BufferDef) -> GfxResult<Self> {
+    pub fn new(device_context: &VulkanDeviceContext, buffer_def: &BufferDef) -> Self {
         buffer_def.verify();
         let mut allocation_size = buffer_def.size;
 
@@ -28,26 +27,12 @@ impl VulkanBuffer {
         let mut usage_flags =
             super::internal::resource_type_buffer_usage_flags(buffer_def.usage_flags);
 
-        if buffer_def.memory_usage == MemoryUsage::GpuOnly
-            || buffer_def.memory_usage == MemoryUsage::CpuToGpu
+        if buffer_def
+            .usage_flags
+            .intersects(ResourceUsage::AS_TRANSFERABLE)
         {
             usage_flags |= vk::BufferUsageFlags::TRANSFER_DST;
         }
-
-        let mut flags = vk_mem::AllocationCreateFlags::NONE;
-        if buffer_def.always_mapped {
-            flags |= vk_mem::AllocationCreateFlags::MAPPED;
-        }
-
-        let allocation_create_info = vk_mem::AllocationCreateInfo {
-            usage: buffer_def.memory_usage.into(),
-            flags,
-            required_flags: vk::MemoryPropertyFlags::empty(),
-            preferred_flags: vk::MemoryPropertyFlags::empty(),
-            memory_type_bits: 0, // Do not exclude any memory types
-            pool: None,
-            user_data: None,
-        };
 
         assert_ne!(allocation_size, 0);
 
@@ -56,14 +41,12 @@ impl VulkanBuffer {
             .usage(usage_flags)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
-        //TODO: Better way of handling allocator errors
-        let (buffer, allocation, allocation_info) = device_context
-            .allocator()
-            .create_buffer(&buffer_info, &allocation_create_info)
-            .map_err(|e| {
-                log::error!("Error creating buffer {:?}", e);
-                vk::Result::ERROR_UNKNOWN
-            })?;
+        let buffer = unsafe {
+            device_context
+                .device()
+                .create_buffer(&buffer_info, None)
+                .unwrap()
+        };
 
         log::trace!(
             "Buffer {:?} crated with size {} (always mapped: {:?})",
@@ -72,46 +55,31 @@ impl VulkanBuffer {
             buffer_def.always_mapped
         );
 
-        Ok(Self {
-            allocation_info,
-            allocation,
+        Self {
             buffer,
-        })
+            buffer_info: *buffer_info,
+        }
     }
 
     pub fn destroy(&self, device_context: &VulkanDeviceContext, buffer_def: &BufferDef) {
         log::trace!("destroying BufferVulkanInner");
 
         log::trace!(
-            "Buffer {:?} destroying with size {} (always mapped: {:?})",
+            "Buffer {:?} destroying with size {}",
             self.buffer,
             buffer_def.size,
-            buffer_def.always_mapped
         );
 
-        device_context
-            .allocator()
-            .destroy_buffer(self.buffer, &self.allocation);
+        unsafe { device_context.device().destroy_buffer(self.buffer, None) };
 
         log::trace!("destroyed BufferVulkanInner");
     }
 
-    pub fn map_buffer(&self, device_context: &VulkanDeviceContext) -> GfxResult<*mut u8> {
-        let ptr = device_context
-            .allocator()
-            .map_memory(&self.allocation)
-            .map_err(|e| {
-                log::error!("Error mapping buffer {:?}", e);
-                vk::Result::ERROR_UNKNOWN
-            })?;
-        Ok(ptr)
-    }
-
-    pub fn unmap_buffer(&self, device_context: &VulkanDeviceContext) {
-        device_context.allocator().unmap_memory(&self.allocation);
-    }
-
     pub fn vk_buffer(&self) -> vk::Buffer {
         self.buffer
+    }
+
+    pub fn vk_buffer_info(&self) -> vk::BufferCreateInfo {
+        self.buffer_info
     }
 }

@@ -602,7 +602,9 @@ fn create_logical_device(
         .sampler_anisotropy(true)
         .sample_rate_shading(true)
         // Used for debug drawing lines/points
-        .fill_mode_non_solid(true);
+        .fill_mode_non_solid(true)
+        .sparse_binding(true)
+        .sparse_residency_buffer(true);
 
     let mut queue_families_to_create = FnvHashMap::default();
     for (&queue_family_index, &count) in &queue_requirements.queue_counts {
