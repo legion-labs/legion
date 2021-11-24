@@ -27,6 +27,7 @@ pub struct MemberMetaInfo {
     pub type_id: syn::Type,
     pub type_name: String,
     pub resource_type: Option<syn::Path>,
+    pub imports: Vec<syn::Path>,
     pub offline: bool,
     pub category: String,
     pub hidden: bool,
@@ -42,6 +43,18 @@ impl DataContainerMetaInfo {
         false
         // TODO: Add proper support for life_time with inplace deserialization
         //self.members.iter().any(|a| a.type_name == "String")
+    }
+
+    pub fn imports(&self) -> Vec<syn::Path> {
+        let mut output = vec![];
+        for member in &self.members {
+            for import in &member.imports {
+                if !output.contains(import) {
+                    output.push(import.clone());
+                }
+            }
+        }
+        output
     }
 
     pub fn calculate_hash(&self) -> u64 {
@@ -275,6 +288,7 @@ pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
         type_id: field.ty.clone(),
         type_name: format!("{}", field_type),
         resource_type: None,
+        imports: vec![],
         category: String::default(),
         offline: false,
         hidden: false,
@@ -306,6 +320,9 @@ pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
                         TRANSIENT_ATTR => member_info.transient = true,
                         RESOURCE_TYPE_ATTR => {
                             member_info.resource_type = get_resource_type(&mut group_iter);
+                            member_info.imports.push(
+                                syn::parse_str("legion_data_offline::ResourcePathId").unwrap(),
+                            );
                         }
                         TOOLTIP_ATTR => {
                             member_info.tooltip = get_attribute_literal(&mut group_iter);
