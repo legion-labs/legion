@@ -78,3 +78,5 @@ impl<'de> Deserialize<'de> for Color {
         })
     }
 }
+
+lgn_data_model::implement_primitive_type_def!(Color);

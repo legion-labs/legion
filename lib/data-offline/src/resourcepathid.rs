@@ -1,5 +1,6 @@
 use std::{fmt, hash::Hash, str::FromStr};
 
+use lgn_data_model::implement_primitive_type_def;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use serde::{Deserialize, Serialize};
 
@@ -59,6 +60,8 @@ pub struct ResourcePathId {
     source: ResourceTypeAndId,
     transforms: Vec<(ResourceType, Option<String>)>,
 }
+
+implement_primitive_type_def!(ResourcePathId);
 
 impl From<ResourceTypeAndId> for ResourcePathId {
     fn from(type_id: ResourceTypeAndId) -> Self {

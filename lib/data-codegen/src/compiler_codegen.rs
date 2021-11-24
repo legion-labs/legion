@@ -10,12 +10,15 @@ fn generate_compile_resource(data_container_info: &DataContainerMetaInfo) -> Tok
         .filter(|m| !m.offline)
         .map(|m| {
             let member_ident = format_ident!("{}", &m.name);
-            match m.type_name.as_str() {
+            match m.get_type_name().as_str() {
                 "Option < ResourcePathId >" => quote! {
                     #member_ident :  offline.#member_ident.as_ref().map(|path| lgn_data_runtime::Reference::Passive(path.resource_id())),
                 },
                 "Vec < ResourcePathId >" => quote! {
                     #member_ident : offline.#member_ident.iter().map(|path| lgn_data_runtime::Reference::Passive(path.resource_id())).collect(),
+                },
+                "Vec < Box < dyn Component > >" => quote! {
+                    #member_ident : Vec::new(),
                 },
                 _ => quote! {
                     #member_ident : offline.#member_ident.clone(),
@@ -38,23 +41,24 @@ fn generate_extract_dependencies(data_container_info: &DataContainerMetaInfo) ->
     let extract_dependencies: Vec<TokenStream> = data_container_info
         .members
         .iter()
-        .map(|m| {
+        .filter_map(|m| {
             let member_ident = format_ident!("{}", &m.name);
-            match m.type_name.as_str() {
-                "Option < ResourcePathId >" => quote! {
+            match m.get_type_name().as_str() {
+                "Option < ResourcePathId >" => Some(quote! {
                     if let Some(value) = offline.#member_ident.as_ref() {
                         results.push(value.clone())
                     }
-                },
-                "Vec < ResourcePathId >" => quote! {
+                }),
+                "Vec < ResourcePathId >" => Some(quote! {
                     results.append(&offline.#member_ident);
-                },
-                _ => quote! {},
+                }),
+                //"Vec < Box < dyn Component > >" => quote! {},
+                _ => None,
             }
         })
         .collect();
 
-    if !extract_dependencies.is_empty() {
+    if extract_dependencies.is_empty() {
         quote! {
             fn extract_resource_dependencies(_offline: &OfflineType) -> Option<Vec<ResourcePathId>> {
                 None
@@ -65,7 +69,7 @@ fn generate_extract_dependencies(data_container_info: &DataContainerMetaInfo) ->
             fn extract_resource_dependencies(offline: &OfflineType) -> Option<Vec<ResourcePathId>> {
                 let mut results = Vec::new();
                 #(#extract_dependencies)*
-                results
+                Some(results)
             }
         }
     }

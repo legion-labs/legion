@@ -3,11 +3,9 @@ use std::{any::Any, collections::HashMap, io};
 
 use lgn_data_runtime::ResourceType;
 
-use super::{
-    OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor,
-    ResourceReflection,
-};
+use super::{OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor};
 use crate::ResourcePathId;
+use lgn_data_model::TypeReflection;
 
 /// Options which can be used to configure [`ResourceRegistry`] creation.
 pub struct ResourceRegistryOptions {
@@ -211,7 +209,7 @@ impl ResourceRegistry {
         &'a self,
         kind: ResourceType,
         handle: &ResourceHandleUntyped,
-    ) -> Option<&'a dyn ResourceReflection> {
+    ) -> Option<&'a dyn TypeReflection> {
         if let Some(Some(resource)) = self.resources.get(&handle.id) {
             if let Some(processor) = self.processors.get(&kind) {
                 return processor.get_resource_reflection(resource.as_ref());
@@ -225,7 +223,7 @@ impl ResourceRegistry {
         &'a mut self,
         kind: ResourceType,
         handle: &ResourceHandleUntyped,
-    ) -> Option<&'a mut dyn ResourceReflection> {
+    ) -> Option<&'a mut dyn TypeReflection> {
         if let Some(Some(resource)) = self.resources.get_mut(&handle.id) {
             if let Some(processor) = self.processors.get(&kind) {
                 return processor.get_resource_reflection_mut(resource.as_mut());
