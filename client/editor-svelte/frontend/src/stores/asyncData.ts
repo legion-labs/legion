@@ -11,7 +11,7 @@ import { writable } from "svelte/store";
  * @param promise The promise to run and resolve
  * @returns An object containing several states, including the resolved data, errors if any, and a loading state
  */
-export function asyncData<T>(promise: () => Promise<T>) {
+export default function asyncData<T>(promise: () => Promise<T>) {
   const loading = writable(false);
   const error = writable<unknown | null>(null);
   const data = writable<T | null>(null);
