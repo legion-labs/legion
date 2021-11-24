@@ -7,16 +7,22 @@ use crate::reflection::DataContainerMetaInfo;
 pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStream {
     let entries: Vec<TokenStream> = structs
         .iter()
+        .filter(|struct_meta| struct_meta.is_resource)
         .map(|struct_meta| {
             let type_name = format_ident!("{}", &struct_meta.name);
             quote! { .add_loader::<#type_name>() }
         })
         .collect();
-    quote! {
-        pub fn add_loaders(registry: lgn_data_runtime::AssetRegistryOptions) -> lgn_data_runtime::AssetRegistryOptions {
-            registry
-            #(#entries)*
+
+    if !entries.is_empty() {
+        quote! {
+            pub fn add_loaders(registry: lgn_data_runtime::AssetRegistryOptions) -> lgn_data_runtime::AssetRegistryOptions {
+                registry
+                #(#entries)*
+            }
         }
+    } else {
+        quote! {}
     }
 }
 

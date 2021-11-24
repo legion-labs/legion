@@ -7,17 +7,22 @@ use crate::reflection::DataContainerMetaInfo;
 pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStream {
     let entries: Vec<TokenStream> = structs
         .iter()
+        .filter(|struct_meta| struct_meta.is_resource)
         .map(|struct_meta| {
             let type_name = format_ident!("{}", &struct_meta.name);
             quote! { .add_type::<#type_name>() }
         })
         .collect();
 
-    quote! {
-        pub fn register_resource_types(registry: lgn_data_offline::resource::ResourceRegistryOptions) -> lgn_data_offline::resource::ResourceRegistryOptions {
-            registry
-            #(#entries)*
+    if !entries.is_empty() {
+        quote! {
+            pub fn register_resource_types(registry: lgn_data_offline::resource::ResourceRegistryOptions) -> lgn_data_offline::resource::ResourceRegistryOptions {
+                registry
+                #(#entries)*
+            }
         }
+    } else {
+        quote! {}
     }
 }
 
@@ -62,7 +67,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
 
         impl AssetLoader for #offline_identifier_processor {
             fn load(&mut self, reader: &mut dyn io::Read) -> io::Result<Box<dyn Any + Send + Sync>> {
-                let mut instance = #offline_identifier { ..#offline_identifier::default()};
+                let mut instance = #offline_identifier::default();
                 let values : serde_json::Value = serde_json::from_reader(reader)
                     .map_err(|_err| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid json"))?;
                 lgn_data_model::json_utils::reflection_apply_json_edit::<#offline_identifier>(&mut instance, &values)
@@ -76,14 +81,13 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
 
         impl ResourceProcessor for #offline_identifier_processor {
             fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
-                Box::new(#offline_identifier { ..#offline_identifier::default() })
+                Box::new(#offline_identifier::default())
             }
 
             fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<lgn_data_offline::ResourcePathId> {
                 vec![]
             }
 
-            #[allow(clippy::float_cmp,clippy::too_many_lines)]
             fn write_resource(&mut self, resource: &dyn Any, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
                 let values = lgn_data_model::json_utils::reflection_save_relative_json(instance, #offline_identifier::get_default_instance()).

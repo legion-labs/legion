@@ -118,6 +118,7 @@ pub fn generate_reflection(
         impl #type_identifier {
             #[allow(dead_code)]
             const SIGNATURE_HASH: u64 = #signature_hash;
+            #[allow(dead_code)]
             pub fn get_default_instance() -> &'static Self {
                 &#default_instance
             }
@@ -155,9 +156,8 @@ pub fn generate_reflection(
         }
 
         lazy_static::lazy_static! {
-            static ref #default_instance: #type_identifier = #type_identifier {
-                ..#type_identifier::default()
-            };
+            #[allow(clippy::needless_update)]
+            static ref #default_instance: #type_identifier = #type_identifier::default();
         }
     }
 }
