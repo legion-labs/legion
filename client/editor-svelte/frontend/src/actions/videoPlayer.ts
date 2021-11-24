@@ -9,7 +9,7 @@ type Listener = {
 };
 
 /**
- * An augmented HTMLVideoElement node.
+ * An augmented HTMLVideoElement videoElement.
  * Data received through the `push` method are displayed in the player.
  */
 export type PushableHTMLVideoElement = HTMLVideoElement & {
@@ -17,15 +17,9 @@ export type PushableHTMLVideoElement = HTMLVideoElement & {
 };
 
 export default function videoPlayer(
-  node: HTMLVideoElement,
+  videoElement: HTMLVideoElement,
   options?: { onFatal?: () => void }
 ) {
-  if (!(node instanceof HTMLVideoElement)) {
-    throw new Error(
-      "Target node for `videoPlayer` should be an instance of `HTMLVideoElement`"
-    );
-  }
-
   let videoSource: SourceBuffer | null = null;
   let mediaSource: MediaSource | null = null;
   let waitingForKeyFrame = true;
@@ -40,11 +34,11 @@ export default function videoPlayer(
 
   const initialize = () => {
     mediaSource = new MediaSource();
-    node.src = URL.createObjectURL(mediaSource);
-    node.load();
+    videoElement.src = URL.createObjectURL(mediaSource);
+    videoElement.load();
 
-    addListener(node, "error", () => {
-      console.error(node.error?.message);
+    addListener(videoElement, "error", () => {
+      console.error(videoElement.error?.message);
     });
 
     addListener(mediaSource, "sourceopen", () => {
@@ -56,7 +50,7 @@ export default function videoPlayer(
         addListener(videoSource, "update", submit);
       }
 
-      node.play();
+      videoElement.play();
     });
   };
 
@@ -80,7 +74,7 @@ export default function videoPlayer(
     onVideoClose();
 
     waitingForKeyFrame = true;
-    node.pause();
+    videoElement.pause();
 
     for (const { source, name, f } of listeners) {
       source.removeEventListener(name, f);
@@ -95,12 +89,12 @@ export default function videoPlayer(
       }
 
       mediaSource.endOfStream();
-      URL.revokeObjectURL(node.src);
+      URL.revokeObjectURL(videoElement.src);
       mediaSource = null;
     }
   };
 
-  (node as PushableHTMLVideoElement).push = (data) => {
+  (videoElement as PushableHTMLVideoElement).push = (data) => {
     const chunk = new Uint8Array(data);
     const headerPayloadLength = chunk[1] * 256 + chunk[0];
     const binHeader = chunk.slice(2, 2 + headerPayloadLength);
