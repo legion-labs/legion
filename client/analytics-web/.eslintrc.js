@@ -1,17 +1,24 @@
 module.exports = {
-  root: true,
   env: {
-    node: true
+    browser: true,
+    es2021: true,
   },
-  extends: [
-    'plugin:vue/essential',
-    '@vue/standard'
+  parser: "@typescript-eslint/parser",
+  plugins: ["svelte3"],
+  extends: ["plugin:@typescript-eslint/recommended"],
+  overrides: [
+    {
+      files: ["*.svelte"],
+      processor: "svelte3/svelte3",
+    },
   ],
-  parserOptions: {
-    ecmaVersion: 2020
+  settings: {
+    "svelte3/typescript": true,
+    "svelte3/ignore-styles": () => true,
   },
   rules: {
-    'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-    'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off'
-  }
-}
+    "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
+    "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
+    "@typescript-eslint/no-unused-vars": "off",
+  },
+};

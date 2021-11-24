@@ -16,7 +16,7 @@
   }
 </script>
 
-<div class="ProcessList">
+<div>
   <h1>Legion Performance Analytics</h1>
   <h2>Process List</h2>
   <center>
