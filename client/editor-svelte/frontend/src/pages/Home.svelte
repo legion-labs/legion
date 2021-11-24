@@ -102,7 +102,7 @@
   }
 
   .content-wrapper {
-    @apply h-[calc(100vh-1.75rem)] w-full;
+    @apply h-[calc(100vh-1.75rem)] w-full overflow-auto;
   }
 
   .content {
@@ -146,11 +146,11 @@
   }
 
   .resource-content {
-    @apply pb-2;
+    @apply pb-2 break-all;
   }
 
   .resource-item {
-    @apply cursor-pointer hover:bg-gray-400 py-1 px-2;
+    @apply cursor-pointer hover:bg-gray-500 py-1 px-2;
   }
 
   .active-resource-item {

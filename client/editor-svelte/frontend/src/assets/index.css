@@ -5,5 +5,17 @@
 @tailwind utilities;
 
 body {
-  @apply select-none bg-gray-800 text-white font-default;
+  @apply select-none bg-gray-800 text-white font-default ;
+}
+
+*::-webkit-scrollbar {
+  @apply w-3;
+}
+
+*::-webkit-scrollbar-track {
+  @apply bg-gray-700;
+}
+
+*::-webkit-scrollbar-thumb {
+  @apply bg-gray-500 hover:bg-gray-400 transition-all;
 }

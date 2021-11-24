@@ -74,19 +74,19 @@
 
 <style lang="postcss">
   .root {
-    @apply flex flex-row justify-between space-x-2;
+    @apply h-7 flex flex-row justify-between items-center flex-1 whitespace-nowrap;
+  }
+
+  .menus {
+    @apply flex flex-row flex-1 space-x-1 text-sm justify-center md:justify-start;
   }
 
   .brand {
     @apply flex items-center italic px-2;
   }
 
-  .menus {
-    @apply flex flex-row flex-1 h-7 space-x-1 text-sm;
-  }
-
   .menu {
-    @apply flex items-center cursor-pointer z-10 hover:bg-gray-400;
+    @apply hidden sm:flex items-center cursor-pointer z-10 hover:bg-gray-500;
   }
 
   .menu-title {
@@ -102,14 +102,14 @@
   }
 
   .menu-dropdown-item {
-    @apply hover:bg-gray-400 cursor-pointer px-6 py-0.5;
+    @apply hover:bg-gray-500 cursor-pointer px-6 py-0.5;
   }
 
-  .root {
-    @apply flex flex-row justify-center items-center flex-1 whitespace-nowrap;
+  .document-title {
+    @apply hidden sm:flex;
   }
 
   .filler {
-    @apply flex-1;
+    @apply hidden sm:flex flex-1;
   }
 </style>
