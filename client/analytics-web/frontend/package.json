@@ -9,7 +9,8 @@
     "prettier:fix": "prettier --write .",
     "svelte:check": "tsc --noEmit && svelte-check",
     "test": "jest",
-    "proto:generate": "mkdirp .\\src\\proto && protoc --plugin=\".\\node_modules\\.bin\\protoc-gen-ts_proto.cmd\" --ts_proto_out=.\\src\\proto --ts_proto_opt=esModuleInterop=true --ts_proto_opt=outputClientImpl=grpc-web --ts_proto_opt=env=browser --ts_proto_opt=lowerCaseServiceMethods=true --proto_path=..\\..\\proto\\telemetry analytics.proto block.proto stream.proto process.proto"
+    "proto:generate": "mkdirp .\\src\\proto && protoc --plugin=\".\\node_modules\\.bin\\protoc-gen-ts_proto.cmd\" --ts_proto_out=.\\src\\proto --ts_proto_opt=esModuleInterop=true --ts_proto_opt=outputClientImpl=grpc-web --ts_proto_opt=env=browser --ts_proto_opt=lowerCaseServiceMethods=true --proto_path=..\\..\\..\\proto\\telemetry analytics.proto block.proto stream.proto process.proto",
+    "setup": "yarn proto:generate"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.30",

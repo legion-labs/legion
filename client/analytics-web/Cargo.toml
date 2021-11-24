@@ -1,0 +1,19 @@
+[package]
+name = "analytics-web"
+version = "0.1.0"
+edition = "2021"
+description = "The Analytics client"
+authors = ["devs@legionlabs.com"]
+repository = ""
+default-run = "analytics-web"
+license = "MIT OR Apache-2.0"
+keywords = ["game", "legion", "analytics"]
+
+[build-dependencies]
+which = "4.2.2"
+
+[dependencies]
+axum = "0.3.4"
+tokio = { version = "1.14.0", features = ["full"] }
+tower = "0.4.11"
+tower-http = { version = "0.1.2", features = ["fs"] }

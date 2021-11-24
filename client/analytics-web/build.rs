@@ -15,7 +15,6 @@ fn run<S: AsRef<OsStr>>(command_path: S, arg: &str, dir: &str) {
     }
 }
 
-#[cfg(feature = "custom-protocol")]
 fn build_web_app() {
     if let Ok(yarn_path) = which::which("yarn") {
         let frontend_dir = "frontend";
@@ -33,31 +32,26 @@ fn build_web_app() {
 }
 
 fn main() {
-    #[cfg(feature = "custom-protocol")]
-    {
-        // JS ecosystem forces us to have output files in our sources hiearchy
-        // we are filtering files
-        std::fs::read_dir("frontend")
-            .unwrap()
-            .map(|res| res.map(|entry| entry.path()))
-            .filter_map(|path| {
-                if let Ok(path) = path {
-                    if let Some(file_name) = path.file_name() {
-                        if file_name != "dist" && file_name != "node_modules" {
-                            return Some(path);
-                        }
+    // JS ecosystem forces us to have output files in our sources hiearchy
+    // we are filtering files
+    std::fs::read_dir("frontend")
+        .unwrap()
+        .map(|res| res.map(|entry| entry.path()))
+        .filter_map(|path| {
+            if let Ok(path) = path {
+                if let Some(file_name) = path.file_name() {
+                    if file_name != "dist" && file_name != "node_modules" {
+                        return Some(path);
                     }
                 }
+            }
 
-                None
-            })
-            .for_each(|path| {
-                // to_string_lossy should be fine here, our first level folder names are clean
-                println!("cargo:rerun-if-changed={}", path.to_string_lossy())
-            });
+            None
+        })
+        .for_each(|path| {
+            // to_string_lossy should be fine here, our first level folder names are clean
+            println!("cargo:rerun-if-changed={}", path.to_string_lossy())
+        });
 
-        build_web_app();
-    }
-
-    tauri_build::build()
+    build_web_app();
 }
