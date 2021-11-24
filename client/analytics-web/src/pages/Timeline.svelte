@@ -44,7 +44,7 @@
   let selectedRange: [number, number] | undefined;
   let viewRange: [number, number] | undefined;
   let beginPan: BeginPan | undefined;
-  let beginDelect: BeginDetect | undefined;
+  let beginSelect: BeginDetect | undefined;
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
@@ -356,15 +356,15 @@
       throw new Error("Canvas can't be found");
     }
 
-    if (!beginDelect) {
-      beginDelect = {
+    if (!beginSelect) {
+      beginSelect = {
         beginMouseX: event.offsetX,
       };
     }
 
     const viewRange = getViewRange();
     const factor = (viewRange[1] - viewRange[0]) / canvas.width;
-    const beginTime = viewRange[0] + factor * beginDelect.beginMouseX;
+    const beginTime = viewRange[0] + factor * beginSelect.beginMouseX;
     const endTime = viewRange[0] + factor * event.offsetX;
 
     selectedRange = [beginTime, endTime];
@@ -372,10 +372,18 @@
     drawCanvas();
   }
 
+  function onMouseDown(event: MouseEvent) {
+    if (event.shiftKey) {
+      beginSelect = undefined;
+      selectedRange = undefined;
+      drawCanvas();
+    }
+  }
+
   function onMouseMove(event: MouseEvent) {
     if (event.buttons !== 1) {
       beginPan = undefined;
-      beginDelect = undefined;
+      beginSelect = undefined;
 
       return;
     }
@@ -445,6 +453,7 @@
           width="1024px"
           on:wheel|preventDefault={onZoom}
           on:mousemove={onMouseMove}
+          on:mousedown={onMouseDown}
           />
 </div>
 
