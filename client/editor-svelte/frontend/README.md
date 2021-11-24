@@ -22,7 +22,13 @@ Make sure to install the dependencies
 yarn install
 ```
 
-And run the application:
+And to setup the application:
+
+```bash
+yarn setup
+```
+
+You can now run the application:
 
 ```
 yarn dev
