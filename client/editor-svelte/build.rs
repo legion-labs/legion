@@ -1,17 +1,17 @@
-macro_rules! run {
-    ($command_path:expr, $arg:expr, $dir:expr) => {
-        let mut process = std::process::Command::new($command_path.as_os_str())
-            .arg($arg)
-            .current_dir($dir)
-            .spawn()
-            .unwrap();
+use std::ffi::OsStr;
 
-        let exit_code = process.wait().unwrap().code().unwrap();
+fn run<S: AsRef<OsStr>>(command_path: S, arg: &str, dir: &str) {
+    let mut process = std::process::Command::new(command_path.as_ref())
+        .arg(arg)
+        .current_dir(dir)
+        .spawn()
+        .unwrap();
 
-        if exit_code != 0 {
-            std::process::exit(exit_code);
-        }
-    };
+    let exit_code = process.wait().unwrap().code().unwrap();
+
+    if exit_code != 0 {
+        std::process::exit(exit_code);
+    }
 }
 
 #[cfg(feature = "custom-protocol")]
@@ -19,9 +19,9 @@ fn build_web_app() {
     if let Ok(yarn_path) = which::which("yarn") {
         let frontend_dir = "frontend";
 
-        run!(yarn_path, "install", frontend_dir);
-        run!(yarn_path, "setup", frontend_dir);
-        run!(yarn_path, "build", frontend_dir);
+        run(&yarn_path, "install", frontend_dir);
+        run(&yarn_path, "setup", frontend_dir);
+        run(yarn_path, "build", frontend_dir);
 
         std::process::exit(0);
     } else {
