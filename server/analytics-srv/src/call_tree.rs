@@ -3,7 +3,6 @@ use std::path::Path;
 use anyhow::Result;
 use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::BlockSpansReply;
-use legion_telemetry_proto::analytics::CallTreeNode;
 use legion_telemetry_proto::analytics::ScopeDesc;
 use legion_telemetry_proto::analytics::Span;
 use legion_transit::prelude::*;
@@ -35,6 +34,13 @@ async fn parse_thread_bock<Proc: ThreadBlockProcessor>(
         true //continue
     })?;
     Ok(())
+}
+
+pub(crate) struct CallTreeNode {
+    name: String,
+    scopes: Vec<CallTreeNode>,
+    begin_ms: f64,
+    end_ms: f64,
 }
 
 struct CallTreeBuilder {

@@ -6,8 +6,8 @@ import public "block.proto";
 package analytics;
 
 service PerformanceAnalytics {
-    rpc block_call_tree(BlockCallTreeRequest) returns (BlockCallTreeReply);
     rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
+    rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest) returns (CumulativeCallGraphReply);
     rpc find_process(FindProcessRequest) returns (FindProcessReply);
     rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
     rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
@@ -58,25 +58,6 @@ message ListStreamBlocksReply{
     repeated telemetry.Block blocks = 1;
 }
 
-// block_call_tree
-// ScopeInstance: tree data structure to store function calls
-message CallTreeNode{
-    string name = 1; // factor out scope_desc
-    double begin_ms = 2;
-    double end_ms = 3;
-    repeated CallTreeNode scopes = 4;
-}
-
-message BlockCallTreeRequest{
-    telemetry.Process process = 1;
-    telemetry.Stream stream = 2;
-    string block_id = 3;
-}
-
-message BlockCallTreeReply{
-    repeated CallTreeNode nodes = 1;
-}
-
 // block_spans
 // Span: represents a function call instance
 message Span{
@@ -106,6 +87,33 @@ message BlockSpansReply{
     double begin_ms = 4;
     double end_ms = 5;
     uint32 max_depth = 6;
+}
+
+// process_cumulative_call_graph
+message ProcessCumulativeCallGraphRequest{
+    telemetry.Process process = 1;
+    double begin_ms = 2;
+    double end_ms = 3;
+}
+
+message NodeStats{
+    double sum = 1;
+    double min = 2;
+    double max = 3;
+    double avg = 4;
+    double median = 5;
+}
+
+message CumulativeCallGraphNode{
+    uint32 hash = 1;
+    NodeStats stats = 2;
+    repeated uint32 callers = 3;
+    repeated uint32 callees = 4;
+}
+
+message CumulativeCallGraphReply{
+    repeated ScopeDesc scopes = 1;
+    repeated CumulativeCallGraphNode nodes = 2;
 }
 
 // list_process_log_entries

@@ -1,14 +1,13 @@
 use std::path::PathBuf;
 
-use crate::call_tree::{compute_block_call_tree, compute_block_spans};
+use crate::call_tree::compute_block_spans;
+use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use anyhow::Result;
 use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
-use legion_telemetry_proto::analytics::BlockCallTreeReply;
-use legion_telemetry_proto::analytics::BlockCallTreeRequest;
 use legion_telemetry_proto::analytics::BlockSpansReply;
 use legion_telemetry_proto::analytics::BlockSpansRequest;
-use legion_telemetry_proto::analytics::CallTreeNode;
+use legion_telemetry_proto::analytics::CumulativeCallGraphReply;
 use legion_telemetry_proto::analytics::FindProcessReply;
 use legion_telemetry_proto::analytics::FindProcessRequest;
 use legion_telemetry_proto::analytics::ListProcessChildrenRequest;
@@ -18,6 +17,7 @@ use legion_telemetry_proto::analytics::ListStreamBlocksRequest;
 use legion_telemetry_proto::analytics::ListStreamsReply;
 use legion_telemetry_proto::analytics::LogEntry;
 use legion_telemetry_proto::analytics::ProcessChildrenReply;
+use legion_telemetry_proto::analytics::ProcessCumulativeCallGraphRequest;
 use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::ProcessLogReply;
 use legion_telemetry_proto::analytics::ProcessLogRequest;
@@ -62,23 +62,6 @@ impl AnalyticsService {
         find_stream_blocks(&mut connection, stream_id).await
     }
 
-    async fn block_call_tree_impl(
-        &self,
-        process: &legion_telemetry::ProcessInfo,
-        stream: &legion_telemetry::StreamInfo,
-        block_id: &str,
-    ) -> Result<Vec<CallTreeNode>> {
-        let mut connection = self.pool.acquire().await?;
-        let scope =
-            compute_block_call_tree(&mut connection, &self.data_dir, process, stream, block_id)
-                .await?;
-        if !scope.name.is_empty() {
-            Ok(vec![scope])
-        } else {
-            Ok(scope.scopes)
-        }
-    }
-
     async fn block_spans_impl(
         &self,
         process: &legion_telemetry::ProcessInfo,
@@ -87,6 +70,14 @@ impl AnalyticsService {
     ) -> Result<BlockSpansReply> {
         let mut connection = self.pool.acquire().await?;
         compute_block_spans(&mut connection, &self.data_dir, process, stream, block_id).await
+    }
+
+    async fn process_cumulative_call_graph_impl(
+        &self,
+        process: &legion_telemetry::ProcessInfo,
+    ) -> Result<CumulativeCallGraphReply> {
+        let mut connection = self.pool.acquire().await?;
+        compute_cumulative_call_graph(&mut connection, process).await
     }
 
     #[allow(clippy::cast_precision_loss)]
@@ -207,41 +198,6 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    async fn block_call_tree(
-        &self,
-        request: Request<BlockCallTreeRequest>,
-    ) -> Result<Response<BlockCallTreeReply>, Status> {
-        let inner_request = request.into_inner();
-
-        if inner_request.process.is_none() {
-            return Err(Status::internal(String::from(
-                "Missing process in block_call_tree",
-            )));
-        }
-        if inner_request.stream.is_none() {
-            return Err(Status::internal(String::from(
-                "Missing stream in block_call_tree",
-            )));
-        }
-
-        match self
-            .block_call_tree_impl(
-                &inner_request.process.unwrap(),
-                &inner_request.stream.unwrap(),
-                &inner_request.block_id,
-            )
-            .await
-        {
-            Ok(nodes) => {
-                let reply = BlockCallTreeReply { nodes };
-                Ok(Response::new(reply))
-            }
-            Err(e) => {
-                return Err(Status::internal(format!("Error in block_call_tree: {}", e)));
-            }
-        }
-    }
-
     async fn block_spans(
         &self,
         request: Request<BlockSpansRequest>,
@@ -271,6 +227,28 @@ impl PerformanceAnalytics for AnalyticsService {
             Err(e) => {
                 return Err(Status::internal(format!("Error in block_call_tree: {}", e)));
             }
+        }
+    }
+
+    async fn process_cumulative_call_graph(
+        &self,
+        request: Request<ProcessCumulativeCallGraphRequest>,
+    ) -> Result<Response<CumulativeCallGraphReply>, Status> {
+        let inner_request = request.into_inner();
+        if inner_request.process.is_none() {
+            return Err(Status::internal(String::from(
+                "Missing process in process_cumulative_call_graph",
+            )));
+        }
+        match self
+            .process_cumulative_call_graph_impl(&inner_request.process.unwrap())
+            .await
+        {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => Err(Status::internal(format!(
+                "Error in process_cumulative_call_graph: {}",
+                e
+            ))),
         }
     }
 
