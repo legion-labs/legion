@@ -6,7 +6,7 @@
     Resolution,
     ResourceWithProperties,
   } from "@/components/Video.svelte";
-  import { asyncData } from "@/stores/asyncData";
+  import asyncData from "@/stores/asyncData";
 
   let selectedResourceId: string | null = null;
   let selectedResource: ResourceWithProperties | null = null;

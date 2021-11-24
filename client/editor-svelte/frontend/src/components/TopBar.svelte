@@ -1,29 +1,33 @@
 <script lang="ts">
   import clickOutside from "@/actions/clickOutside";
-  import { openedMenu, menus, Id as MenuId } from "@/stores/topBarMenu";
+  import {
+    default as topBarMenu,
+    Id as TopBarMenuId,
+    menus as topBarMenus,
+  } from "@/stores/topBarMenu";
 
   export let documentTitle: string | null = null;
 
-  const onMenuMouseEnter = (id: MenuId) => {
-    // We set the openedMenu value (and therefore open said menu dropdown)
+  const onMenuMouseEnter = (id: TopBarMenuId) => {
+    // We set the topBarMenu value (and therefore open said menu dropdown)
     // only when a menu is open
-    $openedMenu && openedMenu.set(id);
+    $topBarMenu && topBarMenu.set(id);
   };
 
-  const onMenuClick = (id: MenuId) => {
+  const onMenuClick = (id: TopBarMenuId) => {
     // Simple menu dropdown display toggle
-    $openedMenu ? openedMenu.close() : openedMenu.set(id);
+    $topBarMenu ? topBarMenu.close() : topBarMenu.set(id);
   };
 
   const onMenuItemClick = () => {
     // When a user clicks on a menu dropdown item, we just close the menu
-    openedMenu.close();
+    topBarMenu.close();
     console.log("Executed");
   };
 
   const closeMenu = () => {
-    if ($openedMenu) {
-      openedMenu.close();
+    if ($topBarMenu) {
+      topBarMenu.close();
     }
   };
 </script>
@@ -31,11 +35,11 @@
 <div class="root">
   <div use:clickOutside={closeMenu} class="menus">
     <div class="brand">Legion</div>
-    {#each menus as menu (menu.id)}
+    {#each topBarMenus as menu (menu.id)}
       <div
         data-testid="menu-{menu.id}"
         class="menu"
-        class:bg-gray-400={$openedMenu === menu.id}
+        class:bg-gray-400={$topBarMenu === menu.id}
         on:mouseenter={() => onMenuMouseEnter(menu.id)}
         on:click|capture={() => onMenuClick(menu.id)}
       >
@@ -45,7 +49,7 @@
         <div
           data-testid="dropdown-{menu.id}"
           class="menu-dropdown"
-          class:hidden={$openedMenu !== menu.id}
+          class:hidden={$topBarMenu !== menu.id}
         >
           <div class="menu-dropdown-items">
             {#each [`Foo ${menu.title}`, `Bar ${menu.title}`, `Baz ${menu.title}`] as menuItemTitle}
