@@ -1,7 +1,9 @@
 use std::io::Cursor;
 
-use generic_data_offline::{TestEntity, TestEntityProcessor};
-use lgn_data_offline::resource::ResourceReflection;
+use generic_data_offline::{TestComponent, TestEntity, TestEntityProcessor, TestSubType2};
+use lgn_data_reflection::collector::{collect_properties, PropertyCollector};
+use lgn_data_reflection::json_utils::{get_property_as_json_string, set_property_from_json_string};
+use lgn_data_reflection::{TypeDefinition, TypeReflection};
 use lgn_data_runtime::AssetLoader;
 use lgn_math::prelude::*;
 
@@ -94,41 +96,142 @@ fn test_write_field_by_name() {
     let mut entity = TestEntity {
         ..Default::default()
     };
-
     entity
-        .write_property("test_string", "\"New Value\"")
-        .unwrap();
+        .test_sub_type
+        .test_components
+        .push(Box::new(TestComponent { test_i32: 1337 }));
+
+    entity.test_option_set = Some(TestSubType2 {
+        test_vec: (1.0, 2.0, 3.0).into(),
+    });
+
+    set_property_from_json_string(&mut entity, "test_string", "\"New Value\"").unwrap();
     assert_eq!(entity.test_string, "New Value");
 
-    entity
-        .write_property("test_position", "[1.1, -2.2, 3.3]")
-        .unwrap();
+    set_property_from_json_string(&mut entity, "test_position", "[1.1, -2.2, 3.3]").unwrap();
     assert_eq!(entity.test_position, Vec3::new(1.1, -2.2, 3.3));
 
-    entity.write_property("test_rotation", "[0,1,0,0]").unwrap();
+    set_property_from_json_string(&mut entity, "test_rotation", "[0,1,0,0]").unwrap();
     assert_eq!(entity.test_rotation, Quat::from_xyzw(0.0, 1.0, 0.0, 0.0));
 
-    entity.write_property("test_bool", " true").unwrap();
+    set_property_from_json_string(&mut entity, "test_bool", " true").unwrap();
     assert!(entity.test_bool);
 
-    entity.write_property("test_float32", " 1.23 ").unwrap();
+    set_property_from_json_string(&mut entity, "test_float32", " 1.23 ").unwrap();
     assert!((entity.test_float32 - 1.23).abs() < f32::EPSILON);
 
-    entity.write_property("test_float64", "  2.45 ").unwrap();
+    set_property_from_json_string(&mut entity, "test_float64", "  2.45 ").unwrap();
     assert!((entity.test_float64 - 2.45).abs() < f64::EPSILON);
 
-    entity.write_property("test_int", " -10").unwrap();
+    set_property_from_json_string(&mut entity, "test_int", " -10").unwrap();
     assert_eq!(entity.test_int, -10);
 
-    entity.write_property("test_blob", "[4,5,6,7]").unwrap();
+    set_property_from_json_string(&mut entity, "test_blob", "[4,5,6,7]").unwrap();
     assert_eq!(entity.test_blob, vec![4, 5, 6, 7]);
+
+    set_property_from_json_string(&mut entity, "test_sub_type.test_string", "\"NewValue\"")
+        .unwrap();
+    assert_eq!(entity.test_sub_type.test_string, "NewValue");
+
+    // Test Parsing sub properties
+    set_property_from_json_string(
+        &mut entity,
+        "test_sub_type.test_components[0].test_i32",
+        "1338",
+    )
+    .unwrap();
+
+    let value = get_property_as_json_string(&entity, "test_option_set.test_vec").unwrap();
+    assert_eq!(value, "[1.0,2.0,3.0]");
+
+    // Test trying to get an empty option (should fail)
+    let result = get_property_as_json_string(&entity, "test_option_none.test_vec");
+    assert!(!result.is_ok());
+
+    let serde_json = serde_json::to_string(&entity).unwrap();
+    let dynamic_serde_json = get_property_as_json_string(&entity, "").unwrap();
+    assert_eq!(serde_json, dynamic_serde_json);
 }
 
 #[test]
 fn test_editor_descriptors() {
+    // Test Static type info (codegen)
+    u32::get_type_def();
+    f32::get_type_def();
+    Option::<u32>::get_type_def();
+    Vec::<u32>::get_type_def();
+
+    // Test Dynamic type info
     let entity = TestEntity {
         ..Default::default()
     };
 
-    entity.get_property_descriptors().unwrap();
+    entity.get_type();
+}
+
+#[test]
+fn test_collector() {
+    enum PropertyBagValue {
+        JsonString(String),
+        SubProperties(Vec<PropertyBag>),
+    }
+    struct PropertyBag {
+        name: String,
+        ptype: String,
+        value: PropertyBagValue,
+    }
+
+    impl PropertyCollector for PropertyBag {
+        type Item = PropertyBag;
+        fn new_item(
+            base: *const (),
+            type_def: TypeDefinition,
+            name: &str,
+        ) -> anyhow::Result<Self::Item> {
+            if let TypeDefinition::Primitive(primitive_descriptor) = type_def {
+                let mut output = Vec::new();
+                let mut json = serde_json::Serializer::new(&mut output);
+                let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
+                unsafe {
+                    (primitive_descriptor.base_descriptor.dynamic_serialize)(
+                        base,
+                        &mut serializer,
+                    )?;
+                }
+
+                Ok(PropertyBag {
+                    name: name.into(),
+                    ptype: primitive_descriptor.base_descriptor.type_name.clone(),
+                    value: PropertyBagValue::JsonString(String::from_utf8(output)?),
+                })
+            } else {
+                Ok(PropertyBag {
+                    name: name.into(),
+                    ptype: type_def.get_type_name().into(),
+                    value: PropertyBagValue::SubProperties(Vec::new()),
+                })
+            }
+        }
+        fn add_child(parent: &mut Self::Item, child: Self::Item) {
+            if let PropertyBagValue::SubProperties(prop) = &mut parent.value {
+                prop.push(child);
+            }
+        }
+    }
+
+    // Test Dynamic type info
+    let entity = TestEntity {
+        ..Default::default()
+    };
+
+    let output = collect_properties::<PropertyBag>(&entity).unwrap();
+    assert_eq!(output.name, "TestEntity");
+    assert_eq!(output.ptype, "TestEntity");
+    if let PropertyBagValue::SubProperties(sub) = output.value {
+        assert_eq!(sub.len(), 12);
+        assert_eq!(sub[0].name, "test_string");
+        assert_eq!(sub[0].ptype, "String");
+    } else {
+        panic!("TestEntity doesn't have subproperty");
+    }
 }

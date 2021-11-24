@@ -23,6 +23,8 @@
 *~
 legion_local.toml
 
+local-playground/
+
 # Yarn/NodeJs files
 node_modules/
 dist/

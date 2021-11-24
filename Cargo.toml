@@ -8,7 +8,7 @@ members = [
     "test/*",
     "compiler/*",
 ]
-exclude = []
+exclude = ["local-playground"]
 
 [profile.dev]
 panic = 'abort'

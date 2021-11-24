@@ -1,3 +1,7 @@
+use lgn_data_reflection::{
+    json_utils::{self, get_property_as_json_string},
+    TypeDefinition,
+};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_data_transaction::{DataManager, LockContext, Transaction};
 use lgn_editor_proto::{
@@ -125,32 +129,35 @@ impl Editor for GRPCServer {
             .resource_registry
             .get_resource_reflection(resource_id.t, handle)
         {
-            let descriptors = reflection.get_property_descriptors().ok_or_else(|| {
-                Status::internal(format!(
-                    "Invalid Property Descriptor for ResourceId: {}",
-                    resource_id
-                ))
-            })?;
+            if let TypeDefinition::Struct(struct_def) = reflection.get_type() {
+                let properties: anyhow::Result<Vec<ResourceProperty>> = struct_def
+                    .fields
+                    .iter()
+                    .map(|descriptor| -> anyhow::Result<ResourceProperty> {
+                        let value = json_utils::get_property_as_json_string(
+                            reflection,
+                            descriptor.field_name.as_str(),
+                        )?;
 
-            let properties: anyhow::Result<Vec<ResourceProperty>> = descriptors
-                .iter()
-                .map(|(_key, descriptor)| -> anyhow::Result<ResourceProperty> {
-                    let value = reflection.read_property(descriptor.name)?;
+                        // TODO: find default values from property property base
+                        let default_value = json_utils::get_property_as_json_string(
+                            reflection,
+                            descriptor.field_name.as_str(),
+                        )?;
 
-                    let default_value = reflection.read_property_default(descriptor.name)?;
+                        return Ok(ResourceProperty {
+                            name: descriptor.field_name.clone(),
+                            ptype: descriptor.field_type.get_type_name().to_lowercase(),
+                            group: descriptor.group.clone(),
+                            default_value: default_value.as_bytes().to_vec(),
+                            value: value.as_bytes().to_vec(),
+                        });
+                    })
+                    .collect();
 
-                    return Ok(ResourceProperty {
-                        name: descriptor.name.into(),
-                        ptype: descriptor.type_name.to_lowercase(),
-                        group: descriptor.group.to_string(),
-                        default_value: default_value.as_bytes().to_vec(),
-                        value: value.as_bytes().to_vec(),
-                    });
-                })
-                .collect();
-
-            if let Ok(properties) = properties {
-                response.properties = properties;
+                if let Ok(properties) = properties {
+                    response.properties = properties;
+                }
             }
         }
 
@@ -207,8 +214,7 @@ impl Editor for GRPCServer {
             .map(|update| -> anyhow::Result<ResourcePropertyUpdate> {
                 Ok(ResourcePropertyUpdate {
                     name: update.name.clone(),
-                    value: reflection
-                        .read_property(update.name.as_str())?
+                    value: get_property_as_json_string(reflection, update.name.as_str())?
                         .as_bytes()
                         .to_vec(),
                 })

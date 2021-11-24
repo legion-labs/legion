@@ -17,6 +17,7 @@ doc = false
 lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
+lgn-data-reflection = { path = "../../lib/data-reflection", version = "0.1.0" }
 generic_data_offline = { path = "../../test/generic_data_offline", version = "0.1.0" }
 generic_data_runtime = { path = "../../test/generic_data_runtime", version = "0.1.0" }
 bincode = "1.3.3"

@@ -2038,6 +2038,7 @@ dependencies = [
  "lgn-codec-api",
  "lgn-core",
  "lgn-data-offline",
+ "lgn-data-reflection",
  "lgn-data-runtime",
  "lgn-data-transaction",
  "lgn-editor-proto",
@@ -2606,28 +2607,40 @@ name = "generic_data_offline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "erased-serde",
  "lazy_static",
  "lgn-data-codegen",
  "lgn-data-offline",
+ "lgn-data-reflection",
  "lgn-data-runtime",
+ "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
  "lgn-utils",
+ "memoffset 0.6.5",
  "serde",
  "serde_json",
+ "typetag",
 ]
 
 [[package]]
 name = "generic_data_runtime"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bincode",
+ "erased-serde",
  "lazy_static",
  "lgn-data-codegen",
+ "lgn-data-reflection",
  "lgn-data-runtime",
+ "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
+ "memoffset 0.6.5",
  "serde",
+ "serde_json",
+ "typetag",
 ]
 
 [[package]]
@@ -3752,6 +3765,7 @@ dependencies = [
  "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
+ "lgn-data-reflection",
  "lgn-data-runtime",
 ]
 
@@ -3876,8 +3890,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel 0.5.1",
+ "erased-serde",
  "hex",
+ "lazy_static",
  "lgn-content-store",
+ "lgn-data-reflection",
  "lgn-data-runtime",
  "lgn-utils",
  "rand 0.8.4",
@@ -3888,20 +3905,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-data-reflection"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "erased-serde",
+ "itertools",
+ "lazy_static",
+ "lgn-math",
+ "lgn-utils",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "lgn-data-runtime"
 version = "0.1.0"
 dependencies = [
  "byteorder",
  "crossbeam-channel 0.5.1",
+ "erased-serde",
  "flurry",
  "hex",
+ "lazy_static",
  "lgn-content-store",
+ "lgn-data-reflection",
  "lgn-data-runtime-macros",
  "lgn-utils",
  "log",
  "rand 0.8.4",
  "serde",
  "serde_json",
+ "typetag",
  "uuid",
  "xxhash-rust",
 ]
@@ -3922,6 +3959,7 @@ dependencies = [
  "async-trait",
  "generic_data_offline",
  "lgn-data-offline",
+ "lgn-data-reflection",
  "lgn-data-runtime",
  "lgn-utils",
  "log",
@@ -4019,7 +4057,11 @@ dependencies = [
 name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
+ "erased-serde",
+ "lazy_static",
+ "lgn-data-reflection",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

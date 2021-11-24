@@ -67,6 +67,13 @@ codegen:
 build-release:
 	cargo build --release
 
+regen-sampledata:
+	del "test\sample-data\offline\*.*" /q
+	del "test\sample-data\temp\*.*" /q
+	del "test\sample-data\project.index" /q
+	cargo run --bin sample-data-compiler
+	cargo insta review
+
 cov:
 	cargo clean
 	cargo build

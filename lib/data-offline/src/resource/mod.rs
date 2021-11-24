@@ -5,50 +5,17 @@
 //! [`ResourceRegistry`] takes responsibility of managing the in-memory representation of resources.
 
 use std::any::Any;
-use std::collections::HashMap;
 use std::io;
 
 use lgn_data_runtime::Asset;
-use lgn_utils::DefaultHash;
+use lgn_data_reflection::TypeReflection;
 
-use crate::PropertyDescriptor;
 use crate::ResourcePathId;
 
 /// The trait defines a resource that can be stored in a [`Project`].
 pub trait OfflineResource: Asset {
     /// Offline resource processor bound to the resource.
     type Processor: ResourceProcessor + Send + Sync + Default + 'static;
-}
-
-/// The trait defines the reflection interface
-pub trait ResourceReflection {
-    /// Interface defining field serialization by name
-    fn write_property(&mut self, _field_name: &str, _field_value: &str) -> anyhow::Result<()> {
-        Err(anyhow::anyhow!("write_property not implemented"))
-    }
-
-    /// Interface defining field serialization by name
-    fn read_property(&self, _field_name: &str) -> anyhow::Result<String> {
-        Err(anyhow::anyhow!("read_property not implemented"))
-    }
-
-    /// Interface defining field serialization by name
-    fn read_property_default(&self, _field_name: &str) -> anyhow::Result<String> {
-        Err(anyhow::anyhow!("read_property_default not implemented"))
-    }
-
-    /// Retrieve the Property Descriptors for a Resource
-    fn get_property_descriptors(&self) -> Option<&HashMap<u64, PropertyDescriptor>> {
-        None
-    }
-
-    /// Retrieve a Property Descriptor for a field
-    fn get_property_descriptor(&self, field_name: &str) -> Option<&PropertyDescriptor> {
-        if let Some(descriptors) = self.get_property_descriptors() {
-            return descriptors.get(&field_name.default_hash());
-        }
-        None
-    }
 }
 
 /// The `ResourceProcessor` trait allows to process an offline resource.
@@ -76,7 +43,7 @@ pub trait ResourceProcessor {
     fn get_resource_reflection<'a>(
         &self,
         _resource: &'a dyn Any,
-    ) -> Option<&'a dyn ResourceReflection> {
+    ) -> Option<&'a dyn TypeReflection> {
         None
     }
 
@@ -84,7 +51,7 @@ pub trait ResourceProcessor {
     fn get_resource_reflection_mut<'a>(
         &self,
         _resource: &'a mut dyn Any,
-    ) -> Option<&'a mut dyn ResourceReflection> {
+    ) -> Option<&'a mut dyn TypeReflection> {
         None
     }
 }

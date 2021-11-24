@@ -54,4 +54,63 @@
 // crate-specific exceptions:
 #![allow()]
 
-include!(concat!(env!("OUT_DIR"), "/compiler_testentity.rs"));
+// TODO: Replace by using Reflection conversion
+//include!(concat!(env!("OUT_DIR"), "/compiler_testentity.rs"));
+
+use lgn_data_compiler::{
+    compiler_api::{
+        CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
+    },
+    compiler_utils::hash_code_and_data,
+};
+use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_runtime::Resource;
+use std::env;
+type OfflineType = generic_data_offline::TestEntity;
+type RuntimeType = generic_data_runtime::TestEntity;
+pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
+    name: env!("CARGO_CRATE_NAME"),
+    build_version: DATA_BUILD_VERSION,
+    code_version: "1",
+    data_version: "5274493235039250438",
+    transform: &Transform::new(OfflineType::TYPE, RuntimeType::TYPE),
+    compiler_hash_func: hash_code_and_data,
+    compile_func: compile,
+};
+fn extract_resource_dependencies(_offline: &OfflineType) -> Option<Vec<ResourcePathId>> {
+    None
+}
+
+fn compile_resource(offline: &OfflineType) -> RuntimeType {
+    RuntimeType {
+        test_string: offline.test_string.clone(),
+        test_color: offline.test_color,
+        test_position: offline.test_position,
+        test_rotation: offline.test_rotation,
+        test_bool: offline.test_bool,
+        test_float32: offline.test_float32,
+        test_int: offline.test_int,
+        test_blob: offline.test_blob.clone(),
+        test_sub_type: generic_data_runtime::TestSubType1::default(),
+        test_option_set: None,
+        test_option_none: None,
+    }
+}
+fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
+    let resources = context.take_registry().add_loader::<OfflineType>().create();
+    let offline_resource = resources.load_sync::<OfflineType>(context.source.resource_id());
+    let offline_resource = offline_resource.get(&resources).unwrap();
+    let runtime_resource = compile_resource(&offline_resource);
+    let compiled_asset = bincode::serialize(&runtime_resource).unwrap();
+    let resource_references = extract_resource_dependencies(&offline_resource);
+    let resource_references: Vec<(ResourcePathId, ResourcePathId)> = resource_references
+        .unwrap_or_default()
+        .into_iter()
+        .map(|res| (context.target_unnamed.clone(), res))
+        .collect();
+    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
+    Ok(CompilationOutput {
+        compiled_resources: vec![asset],
+        resource_references,
+    })
+}
