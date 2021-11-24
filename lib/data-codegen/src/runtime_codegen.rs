@@ -5,17 +5,24 @@ use crate::reflection::{DataContainerMetaInfo, MemberMetaInfo};
 type QuoteRes = quote::__private::TokenStream;
 
 /// Generate Runtime members definition
-fn generate_runtime_fields(members: &[MemberMetaInfo]) -> Vec<QuoteRes> {
-    members
+fn generate_runtime_fields(members: &[MemberMetaInfo]) -> (Vec<QuoteRes>, Vec<syn::Path>) {
+    let mut imports = vec![];
+    let fields = members
         .iter()
         .filter(|m| !m.offline)
         .map(|m| {
             let member_ident = format_ident!("{}", &m.name);
-            let runtime_type = m.get_runtime_type();
-
+            let (runtime_type, import_path) = m.get_runtime_type();
+            if let Some(import_path) = import_path {
+                if !imports.contains(&import_path) {
+                    imports.push(import_path);
+                }
+            }
             quote! { pub #member_ident : #runtime_type, }
         })
-        .collect()
+        .collect();
+
+    (fields, imports)
 }
 
 /// Generate 'Default' implementation for runtime members
@@ -65,7 +72,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
     let runtime_identifier = format_ident!("{}", data_container_info.name);
     let runtime_name = format!("runtime_{}", data_container_info.name).to_lowercase();
     let runtime_loader = format_ident!("{}Loader", data_container_info.name);
-    let runtime_fields = generate_runtime_fields(&data_container_info.members);
+    let (runtime_fields, import_types) = generate_runtime_fields(&data_container_info.members);
     let runtime_fields_defaults = generate_runtime_defaults(&data_container_info.members);
 
     let life_time = if data_container_info.need_life_time() {
@@ -78,7 +85,8 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
         quote! {
         use std::{any::Any, io};
         use serde::{Deserialize, Serialize};
-        use legion_data_runtime::{Asset, AssetLoader,Resource,Reference};
+        use legion_data_runtime::{Asset, AssetLoader,Resource};
+        #(use #import_types;)*
         }
     } else {
         quote! {}

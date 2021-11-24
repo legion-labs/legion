@@ -108,30 +108,38 @@ impl MemberMetaInfo {
         }
     }
 
-    pub fn get_runtime_type(&self) -> TokenStream {
+    pub fn get_runtime_type(&self) -> (TokenStream, Option<syn::Path>) {
         let member_type = &self.type_id;
         match self.type_name.as_str() {
             "String" => {
-                quote! { #member_type }
+                (quote! { #member_type }, None)
                 // TODO: Add support for String to &str conversion
                 //quote! {&'r str },
             }
             "Option < ResourcePathId >" => {
-                if let Some(resource_type) = &self.resource_type {
+                let ty = if let Some(resource_type) = &self.resource_type {
                     quote! { Option<Reference<#resource_type>> }
                 } else {
                     quote! { Option<Reference<Resource>> }
-                }
+                };
+                (
+                    ty,
+                    Some(syn::parse_str("legion_data_runtime::Reference").unwrap()),
+                )
             }
             "Vec < ResourcePathId >" => {
-                if let Some(resource_type) = &self.resource_type {
+                let ty = if let Some(resource_type) = &self.resource_type {
                     quote! { Vec<Reference<#resource_type>> }
                 } else {
                     quote! { Vec<Reference<Resource>> }
-                }
+                };
+                (
+                    ty,
+                    Some(syn::parse_str("legion_data_runtime::Reference").unwrap()),
+                )
             }
 
-            _ => quote! { #member_type },
+            _ => (quote! { #member_type }, None),
         }
     }
 
