@@ -14,6 +14,7 @@
   import { debounce, retry } from "@/lib/promises";
   import { initializeStream, onReceiveControlMessage } from "@/api";
   import { ResourceDescription, ResourceProperty } from "@/proto/editor/editor";
+  import { statusStore } from "@/stores/statusBarData";
 
   const reconnectionTimeout = 600;
 
@@ -31,13 +32,13 @@
 
   let controlChannel: RTCDataChannel | null;
 
-  let statusMessage: string | null = "Connecting...";
-
   let peerConnection: RTCPeerConnection | null;
 
   let videoAlreadyRendered = false;
 
   let loading = false;
+
+  statusStore.set("Connecting...");
 
   onMount(async () => {
     initialize();
@@ -113,7 +114,7 @@
             videoElement.load();
           }
 
-          statusMessage = "Reconnecting...";
+          statusStore.set("Reconnecting...");
 
           destroyResources();
 
@@ -136,7 +137,7 @@
         console.log(`Video resolution is now: ${videoWidth}x${videoHeight}.`);
 
         loading = false;
-        statusMessage = null;
+        statusStore.set(null);
         resolution = desiredResolution;
       }
     });
@@ -223,7 +224,7 @@
       resolution.width !== desiredResolution.width)
   ) {
     resizeVideo(desiredResolution);
-    statusMessage = "Resizing...";
+    statusStore.set("Resizing...");
     loading = true;
   }
 </script>
@@ -237,9 +238,9 @@
   >
     <track kind="captions" />
   </video>
-  {#if statusMessage}
+  {#if $statusStore}
     <h3 class="status">
-      <span>{statusMessage}</span>
+      <span>{$statusStore}</span>
     </h3>
   {/if}
 </div>
