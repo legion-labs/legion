@@ -1,7 +1,8 @@
 use std::ffi::OsStr;
+use std::process::Command;
 
 fn run<S: AsRef<OsStr>>(command_path: S, arg: &str, dir: &str) {
-    let mut process = std::process::Command::new(command_path.as_ref())
+    let mut process = Command::new(command_path.as_ref())
         .arg(arg)
         .current_dir(dir)
         .spawn()
