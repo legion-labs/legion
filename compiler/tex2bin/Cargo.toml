@@ -5,6 +5,9 @@ authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+[[bin]]
+name = "compiler-tex2bin"
+
 [dependencies]
 legion-data-runtime = { path = "../../lib/data-runtime" }
 legion-graphics-runtime = { path = "../../lib/graphics-runtime" }

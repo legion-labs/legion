@@ -5,6 +5,10 @@ authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+[[bin]]
+name = "compiler-test-base64"
+doc = false
+
 [dependencies]
 base64 = "0.13.0"
 legion-data-compiler = { path = "../../lib/data-compiler" }

@@ -5,6 +5,10 @@ authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+[[bin]]
+name = "compiler-material"
+doc = false
+
 [dependencies]
 legion-data-offline = { path = "../../lib/data-offline" }
 legion-data-runtime = { path = "../../lib/data-runtime" }

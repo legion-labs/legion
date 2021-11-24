@@ -5,6 +5,9 @@ authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+[[bin]]
+name = "compiler-test-split"
+
 [dependencies]
 legion-data-compiler = { path = "../../lib/data-compiler" }
 legion-data-runtime = { path = "../../lib/data-runtime" }
