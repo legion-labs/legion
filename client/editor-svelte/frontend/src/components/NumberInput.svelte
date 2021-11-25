@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+
   export let value: number;
 
   export let min: number | undefined = undefined;
@@ -10,6 +12,16 @@
   export let fullWidth = false;
 
   export let noArrow = false;
+
+  export let autoSelect = false;
+
+  let input: HTMLInputElement | undefined;
+
+  const onFocus = (_event: FocusEvent) => {
+    if (autoSelect && input) {
+      input.select();
+    }
+  };
 </script>
 
 <input
@@ -18,10 +30,12 @@
   class:default={size === "default"}
   class:w-full={fullWidth}
   class:no-arrow={noArrow}
+  on:focus={onFocus}
   type="number"
   {min}
   {max}
   bind:value
+  bind:this={input}
 />
 
 <style lang="postcss">
