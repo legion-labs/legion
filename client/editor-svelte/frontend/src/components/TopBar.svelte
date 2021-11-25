@@ -78,7 +78,7 @@
   }
 
   .menus {
-    @apply flex flex-row flex-1 space-x-1 text-sm justify-center md:justify-start;
+    @apply flex flex-row h-full flex-1 space-x-1 text-sm justify-center md:justify-start;
   }
 
   .brand {

@@ -78,10 +78,57 @@ export async function getAllResources() {
   return getMoreResources("");
 }
 
-export function getResourceProperties(
-  resourceId: string
-): Promise<GetResourcePropertiesResponse> {
-  return editorClient.getResourceProperties({ id: resourceId });
+// TODO: Improve type safety for properties
+export type ResourceWithProperties = Awaited<
+  ReturnType<typeof getResourceProperties>
+>;
+
+/**
+ * Fetch a resource's properties from an ID
+ * @param resourceId The resource ID
+ * @returns The properties of the resource and possibly its description
+ */
+export async function getResourceProperties(resourceId: string) {
+  const { description, properties } = await editorClient.getResourceProperties({
+    id: resourceId,
+  });
+
+  if (!description) {
+    throw new Error("Fetched resource didn't return any description");
+  }
+
+  properties
+    .filter((p) => p.ptype === "color")
+    .forEach((p) =>
+      console.log(
+        `COLOR: ${p.value}/${new TextDecoder().decode(p.value)} - ${
+          p.defaultValue
+        }/${new TextDecoder().decode(p.defaultValue)}`
+      )
+    );
+
+  return {
+    description,
+    properties: properties.map((property) => {
+      const value = JSON.parse(new TextDecoder().decode(property.value));
+      const defaultValue = JSON.parse(
+        new TextDecoder().decode(property.defaultValue)
+      );
+
+      return {
+        ...property,
+        defaultValue:
+          // TODO: Support color alpha
+          property.ptype === "color"
+            ? `#${defaultValue.toString(16).padStart(8, "0").slice(0, 6)}`
+            : defaultValue,
+        value:
+          property.ptype === "color"
+            ? `#${value.toString(16).padStart(8, "0").slice(0, 6)}`
+            : value,
+      };
+    }),
+  };
 }
 
 // TODO: Implement logging
