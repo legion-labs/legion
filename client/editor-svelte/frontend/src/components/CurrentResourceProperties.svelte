@@ -3,13 +3,14 @@
   import BooleanProperty from "./properties/BooleanProperty.svelte";
   import ColorProperty from "./properties/ColorProperty.svelte";
   import NumberProperty from "./properties/NumberProperty.svelte";
+  import SpeedProperty from "./properties/SpeedProperty.svelte";
   import StringProperty from "./properties/StringProperty.svelte";
 
   const ptypeIsBoolean = (ptype: string) =>
     ["bool"].includes(ptype.toLowerCase());
 
   const ptypeIsSpeed = (ptype: string) =>
-    ["speep"].includes(ptype.toLowerCase());
+    ["speed"].includes(ptype.toLowerCase());
 
   const ptypeIsColor = (ptype: string) =>
     ["color"].includes(ptype.toLowerCase());
@@ -47,7 +48,7 @@
             {:else if ptypeIsColor(property.ptype)}
               <ColorProperty bind:value={property.value} />
             {:else if ptypeIsSpeed(property.ptype)}
-              Speed
+              <SpeedProperty bind:value={property.value} />
             {:else if ptypeIsVector(property.ptype)}
               Vector
             {:else}
