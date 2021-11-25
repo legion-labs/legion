@@ -17,7 +17,7 @@ check: check-format check-build check-clippy check-deps check-dockerize
 
 check-env:
 	rustup --version
-	cargo deny --version
+	cargo --version
 	mdbook --version
 	cmake --version
 	python3 --version
