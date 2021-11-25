@@ -135,10 +135,7 @@ impl MemberMetaInfo {
                 } else {
                     quote! { Option<Reference<Resource>> }
                 };
-                (
-                    ty,
-                    Some(syn::parse_str("legion_data_runtime::Reference").unwrap()),
-                )
+                (ty, syn::parse_str("legion_data_runtime::Reference").ok())
             }
             "Vec < ResourcePathId >" => {
                 let ty = if let Some(resource_type) = &self.resource_type {
@@ -146,10 +143,7 @@ impl MemberMetaInfo {
                 } else {
                     quote! { Vec<Reference<Resource>> }
                 };
-                (
-                    ty,
-                    Some(syn::parse_str("legion_data_runtime::Reference").unwrap()),
-                )
+                (ty, syn::parse_str("legion_data_runtime::Reference").ok())
             }
 
             _ => (quote! { #member_type }, None),
@@ -267,8 +261,7 @@ fn get_resource_type(
         return None;
     }
 
-    let path: syn::Path = syn::parse_str(&attrib_str).unwrap();
-    Some(path)
+    syn::parse_str(&attrib_str).ok()
 }
 
 fn metadata_from_type(t: &syn::Type) -> Option<TokenStream> {
