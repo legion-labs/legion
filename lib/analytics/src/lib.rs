@@ -409,6 +409,44 @@ pub async fn find_stream_blocks(
     Ok(blocks)
 }
 
+pub async fn find_stream_blocks_in_range(
+    connection: &mut sqlx::AnyConnection,
+    stream_id: &str,
+    begin_time: &str,
+    end_time: &str,
+) -> Result<Vec<legion_telemetry::EncodedBlock>> {
+    let blocks = sqlx::query(
+        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
+         FROM blocks
+         WHERE stream_id = ?
+         AND begin_time <= ?
+         AND end_time >= ?
+         ORDER BY begin_time;",
+    )
+    .bind(stream_id)
+    .bind(end_time)
+    .bind(begin_time)
+    .fetch_all(connection)
+    .await
+    .with_context(|| "find_stream_blocks")?
+    .iter()
+    .map(|r| {
+        let begin_ticks: i64 = r.get("begin_ticks");
+        let end_ticks: i64 = r.get("end_ticks");
+        legion_telemetry::EncodedBlock {
+            block_id: r.get("block_id"),
+            stream_id: String::from(stream_id),
+            begin_time: r.get("begin_time"),
+            begin_ticks: begin_ticks as u64,
+            end_time: r.get("end_time"),
+            end_ticks: end_ticks as u64,
+            payload: None,
+        }
+    })
+    .collect();
+    Ok(blocks)
+}
+
 pub async fn fetch_block_payload(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
@@ -601,6 +639,7 @@ pub mod prelude {
     pub use crate::find_process_streams;
     pub use crate::find_process_thread_streams;
     pub use crate::find_stream_blocks;
+    pub use crate::find_stream_blocks_in_range;
     pub use crate::for_each_process_in_tree;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;

@@ -75,9 +75,12 @@ impl AnalyticsService {
     async fn process_cumulative_call_graph_impl(
         &self,
         process: &legion_telemetry::ProcessInfo,
+        begin_ms: f64,
+        end_ms: f64,
     ) -> Result<CumulativeCallGraphReply> {
         let mut connection = self.pool.acquire().await?;
-        compute_cumulative_call_graph(&mut connection, process).await
+        compute_cumulative_call_graph(&mut connection, &self.data_dir, process, begin_ms, end_ms)
+            .await
     }
 
     #[allow(clippy::cast_precision_loss)]
@@ -241,7 +244,11 @@ impl PerformanceAnalytics for AnalyticsService {
             )));
         }
         match self
-            .process_cumulative_call_graph_impl(&inner_request.process.unwrap())
+            .process_cumulative_call_graph_impl(
+                &inner_request.process.unwrap(),
+                inner_request.begin_ms,
+                inner_request.end_ms,
+            )
             .await
         {
             Ok(reply) => Ok(Response::new(reply)),

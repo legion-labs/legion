@@ -447,7 +447,7 @@
       {/if}
       {#if selectedRange}
         <button class="call-graph-button">
-          <a href={`/cumulative-call-graph?process=${currentProcess.processId}&start=${selectedRange[0]}&end=${selectedRange[1]}`} use:link>
+          <a href={`/cumulative-call-graph?process=${currentProcess.processId}&begin=${selectedRange[0]}&end=${selectedRange[1]}`} use:link>
             Cumulative Call Graph
           </a>
         </button>
