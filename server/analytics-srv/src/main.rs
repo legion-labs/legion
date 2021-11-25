@@ -63,7 +63,8 @@
 #![allow()]
 
 mod analytics_service;
-pub mod call_tree;
+mod call_tree;
+mod cumulative_call_graph;
 
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};

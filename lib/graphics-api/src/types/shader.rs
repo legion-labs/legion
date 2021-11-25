@@ -39,7 +39,7 @@ pub enum ShaderModuleDef<'a> {
     Null(std::marker::PhantomData<&'a u8>),
 }
 
-pub struct ShaderInner {
+pub(crate) struct ShaderInner {
     stage_flags: ShaderStageFlags,
     stages: Vec<ShaderStageDef>,
     pipeline_reflection: PipelineReflection,

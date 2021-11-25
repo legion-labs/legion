@@ -83,7 +83,7 @@ impl BufferDef {
     }
 }
 
-pub struct BufferInner {
+pub(crate) struct BufferInner {
     buffer_def: BufferDef,
     device_context: DeviceContext,
 
@@ -210,7 +210,7 @@ pub struct BufferMappingInfo {
 }
 
 impl BufferMappingInfo {
-    fn data_ptr(&self) -> *mut u8 {
+    pub fn data_ptr(&self) -> *mut u8 {
         self.data_ptr
     }
 }

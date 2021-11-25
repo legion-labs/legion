@@ -13,7 +13,7 @@ pub struct CommandPool {
     platform_command_pool: VulkanCommandPool,
 }
 
-impl<'a> Drop for CommandPool {
+impl Drop for CommandPool {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_command_pool.destroy(&self.device_context);

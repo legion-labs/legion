@@ -5,7 +5,7 @@ use crate::{
     DeviceContext, GfxResult,
 };
 
-struct DescriptorHeapInner {
+pub(crate) struct DescriptorHeapInner {
     device_context: DeviceContext,
 
     #[cfg(feature = "vulkan")]

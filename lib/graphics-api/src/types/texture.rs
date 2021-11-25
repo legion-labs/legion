@@ -13,7 +13,7 @@ use crate::{
 use crate::backends::vulkan::{VulkanDeviceContext, VulkanRawImage, VulkanTexture};
 
 #[derive(Debug)]
-pub struct TextureInner {
+pub(crate) struct TextureInner {
     device_context: DeviceContext,
     texture_def: TextureDef,
     is_undefined_layout: AtomicBool,

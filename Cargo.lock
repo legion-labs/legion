@@ -3549,6 +3549,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-graphics-utils"
+version = "0.1.0"
+dependencies = [
+ "legion-graphics-api",
+ "legion-utils",
+]
+
+[[package]]
 name = "legion-grpc"
 version = "0.1.0"
 dependencies = [
@@ -3707,6 +3715,7 @@ dependencies = [
  "legion-app",
  "legion-ecs",
  "legion-graphics-api",
+ "legion-graphics-utils",
  "legion-math",
  "legion-pso-compiler",
  "legion-transform",

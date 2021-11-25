@@ -6,7 +6,7 @@ use crate::{deferred_drop::Drc, GfxResult, Texture, TextureViewDef};
 use crate::{Descriptor, GPUViewType, ShaderResourceType};
 
 #[derive(Clone, Debug)]
-struct TextureViewInner {
+pub(crate) struct TextureViewInner {
     definition: TextureViewDef,
     texture: Texture,
 

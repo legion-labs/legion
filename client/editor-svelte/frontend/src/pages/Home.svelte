@@ -7,7 +7,7 @@
     Resolution,
     ResourceWithProperties,
   } from "@/components/Video.svelte";
-  import { asyncData } from "@/stores/asyncData";
+  import asyncData from "@/stores/asyncData";
 
   let selectedResourceId: string | null = null;
   let selectedResource: ResourceWithProperties | null = null;
@@ -64,7 +64,7 @@
               {#await fetchAllResources}
                 <div class="resources-loading">loading...</div>
               {:then data}
-                {#each data as resource}
+                {#each data as resource (resource.id)}
                   <div
                     class="resource-item"
                     class:active-resource-item={selectedResourceId ===
@@ -104,7 +104,7 @@
   }
 
   .content-wrapper {
-    @apply h-[calc(100vh-3.5rem)] w-full;
+    @apply h-[calc(100vh-3.5rem)] w-full overflow-auto;
   }
 
   .content {
@@ -148,11 +148,11 @@
   }
 
   .resource-content {
-    @apply pb-2;
+    @apply pb-2 break-all;
   }
 
   .resource-item {
-    @apply cursor-pointer hover:bg-gray-400 py-1 px-2;
+    @apply cursor-pointer hover:bg-gray-500 py-1 px-2;
   }
 
   .active-resource-item {

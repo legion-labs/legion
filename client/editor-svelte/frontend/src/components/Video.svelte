@@ -10,7 +10,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import resize from "@/actions/resize";
-  import { VideoPlayer } from "@/lib";
+  import videoPlayer, { PushableHTMLVideoElement } from "@/actions/videoPlayer";
   import { debounce, retry } from "@/lib/promises";
   import { initializeStream, onReceiveControlMessage } from "@/api";
   import { ResourceDescription, ResourceProperty } from "@/proto/editor/editor";
@@ -67,8 +67,6 @@
       console.error("Video element couldn't be found");
       return;
     }
-
-    const videoPlayer = new VideoPlayer(videoElement);
 
     console.log("Initializing WebRTC...");
 
@@ -155,7 +153,9 @@
     };
 
     videoChannel.onmessage = async (message) => {
-      videoPlayer.push(
+      // videoElement is augmented with the `videoPlayer` action and will
+      // provide a `push` function.
+      (videoElement as PushableHTMLVideoElement).push(
         // In Tauri message.data is an ArrayBuffer
         // while it's a Blob in browser
         message.data instanceof ArrayBuffer
@@ -234,6 +234,7 @@
     class="video"
     class:opacity-0={loading}
     class:opacity-100={!loading}
+    use:videoPlayer
     bind:this={videoElement}
   >
     <track kind="captions" />
