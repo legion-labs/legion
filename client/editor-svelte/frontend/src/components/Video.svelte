@@ -38,7 +38,7 @@
 
   let loading = false;
 
-  statusStore.set("Connecting...");
+  $statusStore = "Connecting...";
 
   onMount(async () => {
     initialize();
@@ -112,7 +112,7 @@
             videoElement.load();
           }
 
-          statusStore.set("Reconnecting...");
+          $statusStore = "Reconnecting...";
 
           destroyResources();
 
@@ -135,7 +135,7 @@
         console.log(`Video resolution is now: ${videoWidth}x${videoHeight}.`);
 
         loading = false;
-        statusStore.set(null);
+        $statusStore = null;
         resolution = desiredResolution;
       }
     });
@@ -224,7 +224,7 @@
       resolution.width !== desiredResolution.width)
   ) {
     resizeVideo(desiredResolution);
-    statusStore.set("Resizing...");
+    $statusStore = "Resizing...";
     loading = true;
   }
 </script>
