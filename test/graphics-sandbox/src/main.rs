@@ -5,6 +5,7 @@ use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
 use lgn_input::InputPlugin;
+use lgn_egui::Egui;
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
@@ -156,6 +157,7 @@ fn on_window_created(
     winit_wnd_list: Res<WinitWindows>,
     renderer: Res<Renderer>,
     mut render_surfaces: ResMut<RenderSurfaces>,
+    egui: Res<Egui>,
 ) {
     for ev in ev_wnd_created.iter() {
         let wnd = wnd_list.get(ev.id).unwrap();
@@ -175,6 +177,7 @@ fn on_window_resized(
     renderer: Res<Renderer>,
     mut q_render_surfaces: Query<&mut RenderSurface>,
     render_surfaces: Res<RenderSurfaces>,
+    egui: Res<Egui>,
 ) {
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
@@ -187,6 +190,7 @@ fn on_window_resized(
                 render_surface.resize(
                     &renderer,
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
+                    &egui.ctx,
                 );
             }
         }
@@ -218,6 +222,7 @@ fn presenter_snapshot_system(
     snapshot_descriptor: Res<SnapshotDescriptor>,
     renderer: Res<Renderer>,
     mut app_exit_events: EventWriter<'_, '_, AppExit>,
+    egui: Res<Egui>,
     mut frame_counter: Local<SnapshotFrameCounter>,
 ) {
     if frame_counter.frame_count == 0 {
@@ -227,6 +232,7 @@ fn presenter_snapshot_system(
                 snapshot_descriptor.width as u32,
                 snapshot_descriptor.height as u32,
             ),
+        &egui.ctx,
         );
         let render_surface_id = render_surface.id();
 

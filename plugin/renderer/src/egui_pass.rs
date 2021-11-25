@@ -6,7 +6,6 @@ use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource}
 use std::num::NonZeroU32;
 
 pub struct EguiPass {
-    egui_ctx: egui::CtxRef,
     vertex_buffers: Vec<Buffer>,
     index_buffers: Vec<Buffer>,
     root_signature: RootSignature,
@@ -17,7 +16,7 @@ pub struct EguiPass {
 
 impl EguiPass {
     #![allow(clippy::too_many_lines)]
-    pub fn new(renderer: &Renderer) -> Self {
+    pub fn new(renderer: &Renderer, egui_ctx: &egui::CtxRef) -> Self {
         let device_context = renderer.device_context();
         const BUFFER_SIZE: usize = 1024;
         let mut vertex_buffers = Vec::with_capacity(renderer.num_render_frames as usize);
@@ -194,11 +193,7 @@ impl EguiPass {
 
         // Texture data retrieved from egui context is only valid after the call to CtrRef::run()
 
-        let mut ctx = egui::CtxRef::default();
-        ctx.begin_frame(egui::RawInput::default());
-        ctx.end_frame();
-
-        let egui_texture = ctx.texture();
+        let egui_texture = egui_ctx.texture();
         let staging_buffer = renderer
             .device_context()
             .create_buffer(&BufferDef::for_staging_buffer_data(
@@ -290,7 +285,6 @@ impl EguiPass {
         let descriptor_set_handle = descriptor_set_writer.flush(renderer.device_context());
 
         Self {
-            egui_ctx: ctx,
             vertex_buffers,
             index_buffers,
             root_signature,
@@ -305,6 +299,7 @@ impl EguiPass {
         renderer: &Renderer,
         render_surface: &RenderSurface,
         cmd_buffer: &CommandBuffer,
+        egui_ctx: &mut egui::CtxRef,
     ) {
         cmd_buffer
             .cmd_bind_descriptor_set_handle(
@@ -314,12 +309,11 @@ impl EguiPass {
             )
             .unwrap();
         let raw_input = egui::RawInput::default();
-        self.egui_ctx.begin_frame(raw_input);
-        egui::Window::new("Test window").show(&self.egui_ctx, |ui| {
+        egui::Window::new("Test window").show(&egui_ctx, |ui| {
             ui.label("Hello, world!");
         });
-        let (output, shapes) = self.egui_ctx.end_frame();
-        let clipped_meshes = self.egui_ctx.tessellate(shapes);
+        let (output, shapes) = egui_ctx.end_frame();
+        let clipped_meshes = egui_ctx.tessellate(shapes);
         for egui::ClippedMesh(clip_rect, mesh) in clipped_meshes {
             let vertex_data: Vec<f32> = mesh
                 .vertices

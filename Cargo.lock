@@ -4174,6 +4174,7 @@ dependencies = [
  "lgn-core",
  "lgn-ecs",
  "lgn-graphics-api",
+ "lgn-egui",
  "lgn-grpc",
  "lgn-mp4",
  "lgn-presenter",

@@ -66,12 +66,12 @@ struct SizeDependentResources {
     pub egui_pass: EguiPass,
     }
 
-    pub fn extents(&self) -> &RenderSurfaceExtents {
-        &self.extents
-}
+
+
 
 impl SizeDependentResources {
     fn new(renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
+        egui_ctx: &egui::CtxRef,
         let device_context = renderer.device_context();
         let texture_def = TextureDef {
             extents: Extents3D {
@@ -126,6 +126,7 @@ impl SizeDependentResources {
             texture_state: ResourceState::UNDEFINED,
             depth_stencil_texture,
             depth_stencil_texture_view,
+            egui_pass: EguiPass::new(renderer, egui_ctx),
         }
     }
 }
