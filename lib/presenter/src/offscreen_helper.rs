@@ -83,7 +83,7 @@ impl ResolutionDependentResources {
                 mip_count: 1,
                 format: Format::R8G8B8A8_UNORM,
                 mem_usage: MemoryUsage::GpuToCpu,
-                usage_flags: ResourceUsage::AS_TRANSFERABLE,
+                usage_flags: ResourceUsage::AS_TRANSFERABLE | ResourceUsage::AS_SHADER_RESOURCE,
                 resource_flags: ResourceFlags::empty(),
                 tiling: TextureTiling::Linear,
             })?;

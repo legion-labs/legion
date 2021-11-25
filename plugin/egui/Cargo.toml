@@ -1,10 +1,11 @@
 [package]
-name = "legion-imgui"
+name = "legion-egui"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
-keywords = ["legion"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 legion-app = { path = "../../lib/app", version = "0.1.0" }
-#legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-imgui = "0.8.0"
+legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+egui = "0.15.0"

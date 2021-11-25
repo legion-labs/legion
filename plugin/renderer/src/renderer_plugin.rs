@@ -1,8 +1,10 @@
 use lgn_app::{CoreStage, Plugin};
+use anyhow::Context;
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::QueueType;
 use lgn_math::{EulerRot, Quat};
 use lgn_transform::components::Transform;
+use lgn_egui::{Egui, EguiPlugin};
 
 use crate::{
     components::{RenderSurface, RotationComponent, StaticMesh},
@@ -16,11 +18,12 @@ pub struct RendererPlugin;
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut lgn_app::App) {
         let renderer = Renderer::new().unwrap();
-
+        app.add_plugin(EguiPlugin::default());
         app.insert_resource(renderer);
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
+        app.add_system_to_stage(CoreStage::PreUpdate, update_ui.system());
         // Update
         app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
 
@@ -36,6 +39,12 @@ impl Plugin for RendererPlugin {
             render_post_update, // .label(RendererSystemLabel::FrameDone),
         );
     }
+}
+
+fn update_ui(mut egui_ctx: ResMut<Egui>) {
+    egui::Window::new("Test window").show(&egui_ctx.ctx, |ui| {
+        ui.label("Hello, world!");
+    });
 }
 
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {

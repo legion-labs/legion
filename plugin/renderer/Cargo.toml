@@ -17,10 +17,12 @@ lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 lgn-transform = { path = "../transform", version = "0.1.0" }
 
+legion-egui = { path = "../egui", version = "0.1.0" }
 anyhow = "1.0"
 bumpalo= "3.8"
 log = "0.4"
 parking_lot = "0.11"
+egui = "0.15.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 uuid = { version = "0.8", features = ["v4", "serde"] }

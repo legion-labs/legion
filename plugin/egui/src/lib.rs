@@ -1,4 +1,4 @@
-//! Imgui wrapper for use as a plugin
+//! egui wrapper plugin
 
 // BEGIN - Legion Labs lints v0.6
 // do not change or add/remove here, but one can add exceptions after this section
@@ -55,37 +55,31 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 
-use imgui::{Context, FontConfig, FontGlyphRanges, FontSource};
-use legion_app::Plugin;
+use egui::{CtxRef, RawInput};
+use legion_app::prelude::*;
+use legion_ecs::prelude::*;
+
+pub struct Egui {
+    pub ctx: egui::CtxRef,
+}
 
 #[derive(Default)]
-struct ImguiPlugin {}
+pub struct EguiPlugin {}
 
-impl Plugin for ImguiPlugin {
-    fn build(&self, app: &mut legion_app::App) {
-        let mut imgui = Context::create();
-        imgui.set_ini_filename("imgui.ini");
+impl Plugin for EguiPlugin {
+    fn build(&self, app: &mut App) {
+        let mut ctx = egui::CtxRef::default();
+        // Empty run to initialize the font texture
+        ctx.begin_frame(RawInput::default());
+        ctx.end_frame();
 
-        let hidpi_factor = 1.0; //TODO: platform.hidpi_factor();
-        let font_size = (13.0 * hidpi_factor) as f32;
-        imgui.fonts().add_font(&[
-            FontSource::DefaultFontData {
-                config: Some(FontConfig {
-                    size_pixels: font_size,
-                    ..FontConfig::default()
-                }),
-            },
-            FontSource::TtfData {
-                data: include_bytes!("../resources/mplus-1p-regular.ttf"),
-                size_pixels: font_size,
-                config: Some(FontConfig {
-                    rasterizer_multiply: 1.75,
-                    glyph_ranges: FontGlyphRanges::japanese(),
-                    ..FontConfig::default()
-                }),
-            },
-        ]);
-
-        imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+        app.insert_resource(Egui { ctx })
+            .add_system_to_stage(CoreStage::PreUpdate, begin_frame.system());
     }
+}
+
+fn begin_frame(mut egui: ResMut<'_, Egui>) {
+    // TODO: proper input
+    let input = RawInput::default();
+    egui.ctx.begin_frame(input);
 }

@@ -10,7 +10,7 @@ use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
 use uuid::Uuid;
 
-use crate::{RenderContext, Renderer, TmpRenderPass};
+use crate::{RenderContext, EguiPass, Renderer, TmpRenderPass};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
@@ -63,6 +63,7 @@ struct SizeDependentResources {
     texture_state: ResourceState,
     depth_stencil_texture: Texture,
     depth_stencil_texture_view: TextureView,
+    pub egui_pass: EguiPass,
     }
 
     pub fn extents(&self) -> &RenderSurfaceExtents {

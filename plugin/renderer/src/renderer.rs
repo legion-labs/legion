@@ -18,6 +18,8 @@ use crate::resources::{
 };
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
+use crate::EguiPass;
+use legion_egui::Egui;
 
 pub struct Renderer {
     frame_idx: usize,
@@ -390,6 +392,7 @@ impl TmpRenderPass {
             pipeline,
             color: [0f32, 0f32, 0.2f32, 1.0f32],
             speed: 1.0f32,
+            egui_pass: EguiPass::new(renderer),
         }
     }
 
@@ -530,6 +533,6 @@ impl TmpRenderPass {
 
         render_context.release_transient_buffer_allocator(transient_allocator);
 
-        cmd_buffer.cmd_end_render_pass().unwrap();
+        self.egui_pass.render(renderer, render_surface, cmd_buffer);
     }
 }
