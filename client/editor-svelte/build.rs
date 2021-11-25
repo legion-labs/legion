@@ -1,29 +1,30 @@
+use std::ffi::OsStr;
+use std::process::Command;
+
+fn run<S: AsRef<OsStr>>(command_path: S, arg: &str, dir: &str) {
+    let mut process = Command::new(command_path.as_ref())
+        .arg(arg)
+        .current_dir(dir)
+        .spawn()
+        .unwrap();
+
+    let exit_code = process.wait().unwrap().code().unwrap();
+
+    if exit_code != 0 {
+        std::process::exit(exit_code);
+    }
+}
+
 #[cfg(feature = "custom-protocol")]
 fn build_web_app() {
-    use std::process::Command;
+    if let Ok(yarn_path) = which::which("yarn") {
+        let frontend_dir = "frontend";
 
-    use which::which;
+        run(&yarn_path, "install", frontend_dir);
+        run(&yarn_path, "setup", frontend_dir);
+        run(yarn_path, "build", frontend_dir);
 
-    if let Ok(yarn_path) = which("yarn") {
-        let mut process = Command::new(&yarn_path)
-            .arg("install")
-            .current_dir("frontend")
-            .spawn()
-            .unwrap();
-
-        let exit_code = process.wait().unwrap().code().unwrap();
-
-        if exit_code != 0 {
-            std::process::exit(exit_code);
-        }
-
-        let mut process = Command::new(yarn_path)
-            .arg("build")
-            .current_dir("frontend")
-            .spawn()
-            .unwrap();
-
-        std::process::exit(process.wait().unwrap().code().unwrap());
+        std::process::exit(0);
     } else {
         std::fs::create_dir_all("frontend/dist").unwrap();
         std::fs::write("frontend/dist/index.html", "Yarn missing from path").unwrap();
@@ -39,19 +40,20 @@ fn main() {
         std::fs::read_dir("frontend")
             .unwrap()
             .map(|res| res.map(|entry| entry.path()))
-            .filter(|path| {
+            .filter_map(|path| {
                 if let Ok(path) = path {
                     if let Some(file_name) = path.file_name() {
-                        return file_name != "dist"
-                            && file_name != "node_modules"
-                            && file_name != ".nuxt";
+                        if file_name != "dist" && file_name != "node_modules" {
+                            return Some(path);
+                        }
                     }
                 }
-                false
+
+                None
             })
             .for_each(|path| {
                 // to_string_lossy should be fine here, our first level folder names are clean
-                println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy())
+                println!("cargo:rerun-if-changed={}", path.to_string_lossy())
             });
 
         build_web_app();
