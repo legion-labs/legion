@@ -1,9 +1,4 @@
 <script context="module" lang="ts">
-  export type ResourceWithProperties = {
-    description: ResourceDescription;
-    properties: ResourceProperty[];
-  };
-
   export type Resolution = { width: number; height: number };
 </script>
 
@@ -13,18 +8,15 @@
   import videoPlayer, { PushableHTMLVideoElement } from "@/actions/videoPlayer";
   import { debounce, retry } from "@/lib/promises";
   import { initializeStream, onReceiveControlMessage } from "@/api";
-  import { ResourceDescription, ResourceProperty } from "@/proto/editor/editor";
   import { statusStore } from "@/stores/statusBarData";
 
   const reconnectionTimeout = 600;
 
   const resizeVideoTimeout = 300;
 
-  export let resource: ResourceWithProperties | null;
+  export let desiredResolution: Resolution | undefined;
 
   let resolution: Resolution | undefined;
-
-  export let desiredResolution: Resolution | undefined;
 
   let videoElement: HTMLVideoElement;
 
@@ -213,9 +205,6 @@
       height: Math.round(height),
     };
   };
-
-  // TODO: Drop?
-  $: console.log(`New resource requested ${resource}`);
 
   $: if (
     resolution &&

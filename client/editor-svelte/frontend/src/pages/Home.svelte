@@ -1,35 +1,29 @@
 <script lang="ts">
   import { getAllResources, getResourceProperties } from "@/api";
+  import CurrentResourceProperties from "@/components/CurrentResourceProperties.svelte";
   import Panel from "@/components/Panel.svelte";
   import TopBar from "@/components/TopBar.svelte";
   import StatusBar from "@/components/StatusBar.svelte";
-  import Video, {
-    Resolution,
-    ResourceWithProperties,
-  } from "@/components/Video.svelte";
+  import Video, { Resolution } from "@/components/Video.svelte";
   import asyncData from "@/stores/asyncData";
-
-  let selectedResourceId: string | null = null;
-  let selectedResource: ResourceWithProperties | null = null;
+  import currentResource from "@/stores/currentResource";
 
   const { run } = asyncData(getAllResources);
 
+  let currentResourceId: string | null = null;
   let fetchAllResources = run();
-
   let desiredVideoResolution: Resolution | undefined;
 
   const tryAgain = () => {
+    $currentResource = null;
+    currentResourceId = null;
     fetchAllResources = run();
   };
 
-  $: if (selectedResourceId) {
-    getResourceProperties(selectedResourceId).then(
-      ({ description, properties }) => {
-        if (description) {
-          selectedResource = { description, properties };
-        }
-      }
-    );
+  $: if (currentResourceId) {
+    getResourceProperties(currentResourceId).then((resource) => {
+      $currentResource = resource;
+    });
   }
 </script>
 
@@ -48,10 +42,7 @@
             {/if}
           </span>
           <div class="video-container" slot="content">
-            <Video
-              bind:desiredResolution={desiredVideoResolution}
-              resource={selectedResource}
-            />
+            <Video bind:desiredResolution={desiredVideoResolution} />
           </div>
         </Panel>
       </div>
@@ -59,17 +50,17 @@
       <div class="secondary-contents">
         <div class="resources">
           <Panel>
-            <span slot="header"> Resources </span>
+            <span slot="header">Resources</span>
             <div class="resource-content" slot="content">
               {#await fetchAllResources}
-                <div class="resources-loading">loading...</div>
+                <div class="resources-loading">Loading...</div>
               {:then data}
                 {#each data as resource (resource.id)}
                   <div
                     class="resource-item"
-                    class:active-resource-item={selectedResourceId ===
+                    class:active-resource-item={currentResourceId ===
                       resource.id}
-                    on:click={() => (selectedResourceId = resource.id)}
+                    on:click={() => (currentResourceId = resource.id)}
                   >
                     {resource.path}
                   </div>
@@ -88,10 +79,14 @@
           </Panel>
         </div>
         <div class="h-separator" />
-        <Panel>
-          <span slot="header"> Properties </span>
-          <span slot="content"> <div /> </span>
-        </Panel>
+        <div class="properties">
+          <Panel>
+            <div slot="header">Properties</div>
+            <div slot="content">
+              <CurrentResourceProperties />
+            </div>
+          </Panel>
+        </div>
       </div>
     </div>
   </div>
@@ -156,6 +151,10 @@
   }
 
   .active-resource-item {
-    @apply bg-gray-400 italic;
+    @apply bg-gray-500 italic;
+  }
+
+  .properties {
+    @apply h-full overflow-hidden;
   }
 </style>
