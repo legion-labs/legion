@@ -1,5 +1,13 @@
 [workspace]
-members = ["client/*", "server/*", "lib/*", "plugin/*", "proto/*", "test/*"]
+members = [
+    "client/*",
+    "server/*",
+    "lib/*",
+    "plugin/*",
+    "proto/*",
+    "test/*",
+    "compiler/*",
+]
 exclude = ["test/sample-data", "test/test_data"]
 
 [profile.dev]

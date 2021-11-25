@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 //type QuoteRes = quote::__private::TokenStream;
 use legion_utils::DefaultHasher;
 use proc_macro2::{TokenStream, TokenTree};
-use quote::{format_ident, quote, ToTokens};
+use quote::{quote, ToTokens};
 
 const LEGION_TAG: &str = "legion";
 const DEFAULT_ATTR: &str = "default";
@@ -26,7 +26,8 @@ pub struct MemberMetaInfo {
     pub name: String,
     pub type_id: syn::Type,
     pub type_name: String,
-    pub resource_type: Option<String>,
+    pub resource_type: Option<syn::Path>,
+    pub imports: Vec<syn::Path>,
     pub offline: bool,
     pub category: String,
     pub hidden: bool,
@@ -42,6 +43,18 @@ impl DataContainerMetaInfo {
         false
         // TODO: Add proper support for life_time with inplace deserialization
         //self.members.iter().any(|a| a.type_name == "String")
+    }
+
+    pub fn imports(&self) -> Vec<syn::Path> {
+        let mut output = vec![];
+        for member in &self.members {
+            for import in &member.imports {
+                if !output.contains(import) {
+                    output.push(import.clone());
+                }
+            }
+        }
+        output
     }
 
     pub fn calculate_hash(&self) -> u64 {
@@ -108,32 +121,32 @@ impl MemberMetaInfo {
         }
     }
 
-    pub fn get_runtime_type(&self) -> TokenStream {
+    pub fn get_runtime_type(&self) -> (TokenStream, Option<syn::Path>) {
         let member_type = &self.type_id;
         match self.type_name.as_str() {
             "String" => {
-                quote! { #member_type }
+                (quote! { #member_type }, None)
                 // TODO: Add support for String to &str conversion
                 //quote! {&'r str },
             }
             "Option < ResourcePathId >" => {
-                if let Some(resource_type) = &self.resource_type {
-                    let ident = format_ident!("{}", resource_type);
-                    quote! { Option<Reference<#ident>> }
+                let ty = if let Some(resource_type) = &self.resource_type {
+                    quote! { Option<Reference<#resource_type>> }
                 } else {
                     quote! { Option<Reference<Resource>> }
-                }
+                };
+                (ty, syn::parse_str("legion_data_runtime::Reference").ok())
             }
             "Vec < ResourcePathId >" => {
-                if let Some(resource_type) = &self.resource_type {
-                    let ident = format_ident!("{}", resource_type);
-                    quote! { Vec<Reference<#ident>> }
+                let ty = if let Some(resource_type) = &self.resource_type {
+                    quote! { Vec<Reference<#resource_type>> }
                 } else {
                     quote! { Vec<Reference<Resource>> }
-                }
+                };
+                (ty, syn::parse_str("legion_data_runtime::Reference").ok())
             }
 
-            _ => quote! { #member_type },
+            _ => (quote! { #member_type }, None),
         }
     }
 
@@ -218,17 +231,37 @@ fn get_default_token_stream(
     panic!("Legion proc-macro: invalid syntax for attribute 'default'");
 }
 
-fn get_next_identifier(
+fn get_resource_type(
     group_iter: &mut std::iter::Peekable<proc_macro2::token_stream::IntoIter>,
-) -> syn::Ident {
-    if let Some(TokenTree::Punct(punct)) = group_iter.next() {
+) -> Option<syn::Path> {
+    let mut attrib_str = String::new();
+
+    if let Some(TokenTree::Punct(punct)) = group_iter.peek() {
         if punct.as_char() == '=' {
-            if let Some(TokenTree::Ident(ident)) = group_iter.next() {
-                return ident;
-            }
+            group_iter.next();
+        } else {
+            return None;
         }
     }
-    panic!("Legion proc-macro: expecting identifier");
+
+    loop {
+        match group_iter.peek() {
+            Some(TokenTree::Punct(punct)) => {
+                if punct.as_char() == ',' {
+                    break;
+                }
+                attrib_str.push_str(&group_iter.next().unwrap().to_string());
+            }
+            None => break,
+            Some(_) => attrib_str.push_str(&group_iter.next().unwrap().to_string()),
+        }
+    }
+
+    if attrib_str.is_empty() {
+        return None;
+    }
+
+    syn::parse_str(&attrib_str).ok()
 }
 
 fn metadata_from_type(t: &syn::Type) -> Option<TokenStream> {
@@ -248,6 +281,7 @@ pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
         type_id: field.ty.clone(),
         type_name: format!("{}", field_type),
         resource_type: None,
+        imports: vec![],
         category: String::default(),
         offline: false,
         hidden: false,
@@ -278,8 +312,10 @@ pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
                         OFFLINE_ATTR => member_info.offline = true,
                         TRANSIENT_ATTR => member_info.transient = true,
                         RESOURCE_TYPE_ATTR => {
-                            member_info.resource_type =
-                                Some(get_next_identifier(&mut group_iter).to_string());
+                            member_info.resource_type = get_resource_type(&mut group_iter);
+                            member_info.imports.push(
+                                syn::parse_str("legion_data_offline::ResourcePathId").unwrap(),
+                            );
                         }
                         TOOLTIP_ATTR => {
                             member_info.tooltip = get_attribute_literal(&mut group_iter);

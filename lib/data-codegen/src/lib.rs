@@ -63,9 +63,9 @@ mod reflection;
 mod resource_codegen;
 mod runtime_codegen;
 
-use std::io::Write;
 use std::path::Path;
 use std::process::Command;
+use std::{io::Write, path::PathBuf};
 
 use quote::{format_ident, ToTokens};
 use reflection::DataContainerMetaInfo;
@@ -159,6 +159,12 @@ fn extract_crate_name(path: &Path) -> syn::Ident {
         .unwrap_or_else(|| panic!("Cannot find inside Cargo.toml {:?}", &path));
 
     format_ident!("{}", crate_name)
+}
+
+/// Creates a path to a definition file relative to current crate's directory.
+pub fn definition_path(path: impl AsRef<Path>) -> PathBuf {
+    let package_path = env!("CARGO_MANIFEST_DIR").to_lowercase();
+    std::path::Path::new(&package_path).join(path)
 }
 
 /// Default Code Generator (called from Build Scripts)

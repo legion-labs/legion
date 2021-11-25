@@ -1141,6 +1141,184 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiler-debugcube"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "legion-data-codegen",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+]
+
+[[package]]
+name = "compiler-entitydc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "legion-data-codegen",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+]
+
+[[package]]
+name = "compiler-instancedc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "legion-data-codegen",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+]
+
+[[package]]
+name = "compiler-material"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "legion-graphics-runtime",
+]
+
+[[package]]
+name = "compiler-psd2tex"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compiler-runtime-entity"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "compiler-runtime-instance"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "compiler-runtime-mesh"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "compiler-test-atoi"
+version = "0.1.0"
+dependencies = [
+ "integer-asset",
+ "legion-data-compiler",
+ "legion-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "compiler-test-base64"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "binary-resource",
+ "legion-data-compiler",
+ "legion-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "compiler-test-refs"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-runtime",
+ "refs-asset",
+ "refs-resource",
+]
+
+[[package]]
+name = "compiler-test-reverse"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "compiler-test-split"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+ "multitext-resource",
+ "text-resource",
+]
+
+[[package]]
+name = "compiler-testentity"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "legion-data-codegen",
+ "legion-data-compiler",
+ "legion-data-offline",
+ "legion-data-runtime",
+]
+
+[[package]]
+name = "compiler-tex2bin"
+version = "0.1.0"
+dependencies = [
+ "legion-data-compiler",
+ "legion-data-runtime",
+ "legion-graphics-offline",
+ "legion-graphics-runtime",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2413,23 +2591,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "generic_data_compiler"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "lazy_static",
- "legion-content-store",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-math",
- "serde",
-]
-
-[[package]]
 name = "generic_data_offline"
 version = "0.1.0"
 dependencies = [
@@ -3370,7 +3531,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "test-compilers",
  "text-resource",
 ]
 
@@ -3571,10 +3731,8 @@ dependencies = [
 name = "legion-graphics-offline"
 version = "0.1.0"
 dependencies = [
- "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
- "legion-graphics-runtime",
  "psd",
  "serde",
  "serde_json",
@@ -6916,23 +7074,6 @@ dependencies = [
  "futf",
  "mac",
  "utf-8",
-]
-
-[[package]]
-name = "test-compilers"
-version = "0.1.0"
-dependencies = [
- "base64",
- "binary-resource",
- "integer-asset",
- "legion-content-store",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "multitext-resource",
- "refs-asset",
- "refs-resource",
- "text-resource",
 ]
 
 [[package]]

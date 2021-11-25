@@ -35,18 +35,3 @@ typetag = "0.1.8"
 name = "sample-data-compiler"
 path = "src/main/main.rs"
 doc = true
-
-[[bin]]
-name = "compiler-runtime-entity"
-path = "src/runtime_compilers/entity.rs"
-doc = false
-
-[[bin]]
-name = "compiler-runtime-instance"
-path = "src/runtime_compilers/instance.rs"
-doc = false
-
-[[bin]]
-name = "compiler-runtime-mesh"
-path = "src/runtime_compilers/mesh.rs"
-doc = false

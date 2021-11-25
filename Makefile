@@ -43,6 +43,7 @@ test: test-build test-run
 
 test-build:
 	cargo test --no-run
+	cargo build -p compiler-*
 
 test-run:
 	cargo test -- --skip gpu_
