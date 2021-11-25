@@ -1,6 +1,10 @@
 <script lang="ts">
   export let value: number;
 
+  export let min: number | undefined = undefined;
+
+  export let max: number | undefined = undefined;
+
   export let size: "sm" | "default" = "default";
 
   export let fullWidth = false;
@@ -15,6 +19,8 @@
   class:w-full={fullWidth}
   class:no-arrow={noArrow}
   type="number"
+  {min}
+  {max}
   bind:value
 />
 
