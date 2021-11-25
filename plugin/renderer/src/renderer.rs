@@ -152,7 +152,7 @@ impl Renderer {
             let mut pool = self.command_buffer_pools.write();
             pool.begin_frame();
                 let egui_pass = &render_surface.egui_pass;
-                egui_pass.render(self, &render_surface, cmd_buffer, egui_ctx);
+                //egui_pass.render(self, &render_surface, cmd_buffer, egui_ctx);
         }
         {
             let mut pool = self.descriptor_pools.write();
@@ -533,6 +533,7 @@ impl TmpRenderPass {
                 .unwrap();
         }
 
+        cmd_buffer.cmd_end_render_pass().unwrap();
         render_context.release_transient_buffer_allocator(transient_allocator);
     }
 }

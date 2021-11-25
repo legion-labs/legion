@@ -32,5 +32,5 @@ Texture2D font_texture : register(t0);
 SamplerState font_sampler : register(s0);
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    return font_texture.Sample(font_sampler, vertex_out.uv);
+    return font_texture.Sample(font_sampler, vertex_out.uv).rrrr;
 }

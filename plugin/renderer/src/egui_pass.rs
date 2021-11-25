@@ -4,6 +4,7 @@ use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_egui::Egui;
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use std::num::NonZeroU32;
+use std::sync::Arc;
 
 pub struct EguiPass {
     vertex_buffers: Vec<Buffer>,
@@ -193,11 +194,17 @@ impl EguiPass {
 
         // Texture data retrieved from egui context is only valid after the call to CtrRef::run()
 
-        let egui_texture = egui_ctx.texture();
+        let egui_texture = Arc::clone(&egui_ctx.texture());
+        let pixels = egui_texture
+            .pixels
+            .clone()
+            .into_iter()
+            .map(|i| f32::from(i) / 255.0)
+            .collect::<Vec<f32>>();
         let staging_buffer = renderer
             .device_context()
             .create_buffer(&BufferDef::for_staging_buffer_data(
-                &egui_texture.pixels,
+                &pixels,
                 ResourceUsage::AS_SHADER_RESOURCE,
             ))
             .unwrap();
@@ -211,7 +218,7 @@ impl EguiPass {
             },
             array_length: 1,
             mip_count: 1,
-            format: Format::R8_UINT,
+            format: Format::R32_SFLOAT,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
@@ -227,17 +234,17 @@ impl EguiPass {
             )
             .unwrap();
 
-        //renderer
-        //    .get_cmd_buffer()
-        //    .cmd_resource_barrier(
-        //        &[],
-        //        &[TextureBarrier::state_transition(
-        //            &texture,
-        //            ResourceState::COPY_DST,
-        //            ResourceState::SHADER_RESOURCE,
-        //        )],
-        //    )
-        //    .unwrap();
+        renderer
+            .get_cmd_buffer()
+            .cmd_resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    &texture,
+                    ResourceState::COPY_DST,
+                    ResourceState::SHADER_RESOURCE,
+                )],
+            )
+            .unwrap();
 
         let texture_view = texture
             .create_view(&TextureViewDef::as_shader_resource_view(&texture_def))
@@ -302,6 +309,20 @@ impl EguiPass {
         egui_ctx: &mut egui::CtxRef,
     ) {
         cmd_buffer
+            .cmd_begin_render_pass(
+                &[ColorRenderTargetBinding {
+                    texture_view: render_surface.render_target_view(),
+                    load_op: LoadOp::Load,
+                    store_op: StoreOp::Store,
+                    clear_value: ColorClearValue([0.0; 4]),
+                }],
+                &None,
+            )
+            .unwrap();
+
+        cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
+
+        cmd_buffer
             .cmd_bind_descriptor_set_handle(
                 &self.root_signature,
                 self.frequency,
@@ -360,21 +381,25 @@ impl EguiPass {
                 )
                 .unwrap();
 
-            cmd_buffer.cmd_bind_index_buffer(&IndexBufferBinding {
-                buffer: &index_buffer,
-                byte_offset: 0,
-                index_type: IndexType::Uint32,
-            });
+            cmd_buffer
+                .cmd_bind_index_buffer(&IndexBufferBinding {
+                    buffer: &index_buffer,
+                    byte_offset: 0,
+                    index_type: IndexType::Uint32,
+                })
+                .unwrap();
 
-            let mut push_constant_data: [f32; 4] = [1.0, 1.0, 0.0, 0.0];
+            let push_constant_data: [f32; 4] = [1.0, 1.0, 0.0, 0.0];
 
             cmd_buffer
                 .cmd_push_constants(&self.root_signature, &push_constant_data)
                 .unwrap();
 
             cmd_buffer
-                .cmd_draw((vertex_data.len() / 8) as u32, 0)
+                .cmd_draw_indexed(index_data.len() as u32, 0, 0)
                 .unwrap();
         }
+
+        cmd_buffer.cmd_end_render_pass().unwrap();
     }
 }
