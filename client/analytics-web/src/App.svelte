@@ -4,6 +4,7 @@
   import About from "@/pages/About.svelte";
   import Log from "@/pages/Log.svelte";
   import Timeline from "@/pages/Timeline.svelte";
+  import Graph from "@/pages/Graph.svelte";
 
   const historyStore = { subscribe: globalHistory.listen };
 </script>
@@ -34,6 +35,7 @@
         <Timeline id={params.id} />
       {/key}
     </Route>
+    <Route path="/cumulative-call-graph"><Graph /></Route>
   </div>
 </Router>
 
