@@ -97,16 +97,6 @@ export async function getResourceProperties(resourceId: string) {
     throw new Error("Fetched resource didn't return any description");
   }
 
-  properties
-    .filter((p) => p.ptype === "color")
-    .forEach((p) =>
-      console.log(
-        `COLOR: ${p.value}/${new TextDecoder().decode(p.value)} - ${
-          p.defaultValue
-        }/${new TextDecoder().decode(p.defaultValue)}`
-      )
-    );
-
   return {
     description,
     properties: properties.map((property) => {

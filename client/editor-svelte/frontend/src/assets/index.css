@@ -14,7 +14,7 @@ body {
 }
 
 *::-webkit-scrollbar-track {
-  @apply bg-gray-800 opacity-60;
+  @apply bg-gray-800;
 }
 
 *::-webkit-scrollbar-thumb {

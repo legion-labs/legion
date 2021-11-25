@@ -53,7 +53,7 @@
             <span slot="header">Resources</span>
             <div class="resource-content" slot="content">
               {#await fetchAllResources}
-                <div class="resources-loading">loading...</div>
+                <div class="resources-loading">Loading...</div>
               {:then data}
                 {#each data as resource (resource.id)}
                   <div

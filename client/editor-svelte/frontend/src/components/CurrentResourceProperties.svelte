@@ -30,7 +30,7 @@
   {:else if !$currentResource.properties.length}
     <div class="italic">Resource has no properties</div>
   {:else}
-    <div class="properties">
+    <div>
       <!-- TODO: Make sure the name is unique -->
       {#each $currentResource.properties as property (property.name)}
         <div class="property">
@@ -63,9 +63,6 @@
 <style lang="postcss">
   .root {
     @apply px-2;
-  }
-
-  .properties {
   }
 
   .property {
