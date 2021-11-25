@@ -2,6 +2,7 @@
   import { getAllResources, getResourceProperties } from "@/api";
   import Panel from "@/components/Panel.svelte";
   import TopBar from "@/components/TopBar.svelte";
+  import StatusBar from "@/components/StatusBar.svelte";
   import Video, {
     Resolution,
     ResourceWithProperties,
@@ -94,6 +95,7 @@
       </div>
     </div>
   </div>
+  <StatusBar />
 </div>
 
 <style lang="postcss">
@@ -102,7 +104,7 @@
   }
 
   .content-wrapper {
-    @apply h-[calc(100vh-1.75rem)] w-full overflow-auto;
+    @apply h-[calc(100vh-3.5rem)] w-full overflow-auto;
   }
 
   .content {
