@@ -55,9 +55,10 @@
 // END - Legion Labs lints v0.6
 // crate-specific exceptions:
 
-use egui::{CtxRef, RawInput};
+use egui::{CtxRef, Event, RawInput};
 use legion_app::prelude::*;
 use legion_ecs::prelude::*;
+use legion_input::mouse::MouseMotion;
 
 pub struct Egui {
     pub ctx: egui::CtxRef,
@@ -78,8 +79,18 @@ impl Plugin for EguiPlugin {
     }
 }
 
-fn begin_frame(mut egui: ResMut<'_, Egui>) {
+fn begin_frame(mut egui: ResMut<'_, Egui>, mut mouse_movements: EventReader<'_, '_, MouseMotion>) {
     // TODO: proper input
-    let input = RawInput::default();
+    let mut events: Vec<Event> = Vec::new();
+    for mouse_movement in mouse_movements.iter() {
+        events.push(Event::PointerMoved(egui::pos2(
+            mouse_movement.delta.x,
+            mouse_movement.delta.y,
+        )));
+    }
+    let input = RawInput {
+        events,
+        ..RawInput::default()
+    };
     egui.ctx.begin_frame(input);
 }

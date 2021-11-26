@@ -3887,6 +3887,7 @@ dependencies = [
  "egui",
  "legion-app",
  "legion-ecs",
+ "legion-input",
 ]
 
 [[package]]

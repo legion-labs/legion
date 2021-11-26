@@ -11,8 +11,9 @@ pub struct EguiPass {
     index_buffers: Vec<Buffer>,
     root_signature: RootSignature,
     pipeline: Pipeline,
-    descriptor_set_handle: DescriptorSetHandle,
-    frequency: u32,
+    texture: Texture,
+    texture_view: TextureView,
+    sampler: Sampler,
 }
 
 impl EguiPass {
@@ -182,7 +183,7 @@ impl EguiPass {
                 shader: &shader,
                 root_signature: &root_signature,
                 vertex_layout: &vertex_layout,
-                blend_state: &BlendState::default(),
+                blend_state: &BlendState::default_alpha_enabled(),
                 depth_state: &DepthState::default(),
                 rasterizer_state: &RasterizerState::default(),
                 color_formats: &[Format::R16G16B16A16_SFLOAT],
@@ -199,13 +200,13 @@ impl EguiPass {
             .pixels
             .clone()
             .into_iter()
-            .map(|i| f32::from(i) / 255.0)
-            .collect::<Vec<f32>>();
+            .flat_map(|i| [255; 4])
+            .collect::<Vec<u8>>();
         let staging_buffer = renderer
             .device_context()
             .create_buffer(&BufferDef::for_staging_buffer_data(
                 &pixels,
-                ResourceUsage::AS_SHADER_RESOURCE,
+                ResourceUsage::empty(),
             ))
             .unwrap();
 
@@ -225,6 +226,36 @@ impl EguiPass {
             tiling: TextureTiling::Optimal,
         };
         let texture = device_context.create_texture(&texture_def).unwrap();
+
+        let egui_texture = Arc::clone(&egui_ctx.texture());
+        let pixels = egui_texture
+            .pixels
+            .clone()
+            .into_iter()
+            .map(|i| f32::from(i) / 255.0)
+            .collect::<Vec<f32>>();
+        let staging_buffer = renderer
+            .device_context()
+            .create_buffer(&BufferDef::for_staging_buffer_data(
+                &pixels,
+                ResourceUsage::empty(),
+            ))
+            .unwrap();
+
+        staging_buffer.copy_to_host_visible_buffer(&pixels).unwrap();
+
+        renderer
+            .get_cmd_buffer()
+            .cmd_resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    &texture,
+                    ResourceState::UNDEFINED,
+                    ResourceState::COPY_DST,
+                )],
+            )
+            .unwrap();
+
         renderer
             .get_cmd_buffer()
             .cmd_copy_buffer_to_texture(
@@ -264,40 +295,14 @@ impl EguiPass {
         };
         let sampler = device_context.create_sampler(&sampler_def).unwrap();
 
-        let heap = renderer.transient_descriptor_heap();
-        let frequency = pipeline
-            .root_signature()
-            .definition()
-            .descriptor_set_layouts[0]
-            .definition()
-            .frequency;
-        let mut descriptor_set_writer = heap
-            .allocate_descriptor_set(
-                &pipeline
-                    .root_signature()
-                    .definition()
-                    .descriptor_set_layouts[0],
-            )
-            .unwrap();
-        descriptor_set_writer
-            .set_descriptors(
-                "font_texture",
-                0,
-                &[DescriptorRef::TextureView(&texture_view)],
-            )
-            .unwrap();
-        descriptor_set_writer
-            .set_descriptors("font_sampler", 0, &[DescriptorRef::Sampler(&sampler)])
-            .unwrap();
-        let descriptor_set_handle = descriptor_set_writer.flush(renderer.device_context());
-
         Self {
             vertex_buffers,
             index_buffers,
             root_signature,
             pipeline,
-            descriptor_set_handle,
-            frequency,
+            texture,
+            texture_view,
+            sampler,
         }
     }
 
@@ -322,17 +327,33 @@ impl EguiPass {
 
         cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
 
+        let heap = renderer.transient_descriptor_heap();
+        let descriptor_set_layout = &self
+            .pipeline
+            .root_signature()
+            .definition()
+            .descriptor_set_layouts[0];
+        let mut descriptor_set_writer =
+            heap.allocate_descriptor_set(descriptor_set_layout).unwrap();
+        descriptor_set_writer
+            .set_descriptors(
+                "font_texture",
+                0,
+                &[DescriptorRef::TextureView(&self.texture_view)],
+            )
+            .unwrap();
+        descriptor_set_writer
+            .set_descriptors("font_sampler", 0, &[DescriptorRef::Sampler(&self.sampler)])
+            .unwrap();
+        let descriptor_set_handle = descriptor_set_writer.flush(renderer.device_context());
+
         cmd_buffer
             .cmd_bind_descriptor_set_handle(
                 &self.root_signature,
-                self.frequency,
-                self.descriptor_set_handle,
+                descriptor_set_layout.definition().frequency,
+                descriptor_set_handle,
             )
             .unwrap();
-        let raw_input = egui::RawInput::default();
-        egui::Window::new("Test window").show(&egui_ctx, |ui| {
-            ui.label("Hello, world!");
-        });
         let (output, shapes) = egui_ctx.end_frame();
         let clipped_meshes = egui_ctx.tessellate(shapes);
         for egui::ClippedMesh(clip_rect, mesh) in clipped_meshes {
@@ -389,7 +410,15 @@ impl EguiPass {
                 })
                 .unwrap();
 
-            let push_constant_data: [f32; 4] = [1.0, 1.0, 0.0, 0.0];
+            let scale = 1.0;
+            let push_constant_data: [f32; 6] = [
+                scale,
+                scale,
+                0.0,
+                0.0,
+                render_surface.extents().width() as f32,
+                render_surface.extents().height() as f32,
+            ];
 
             cmd_buffer
                 .cmd_push_constants(&self.root_signature, &push_constant_data)

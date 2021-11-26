@@ -152,7 +152,7 @@ impl Renderer {
             let mut pool = self.command_buffer_pools.write();
             pool.begin_frame();
                 let egui_pass = &render_surface.egui_pass;
-                //egui_pass.render(self, &render_surface, cmd_buffer, egui_ctx);
+                egui_pass.render(self, &render_surface, cmd_buffer, egui_ctx);
         }
         {
             let mut pool = self.descriptor_pools.write();
@@ -370,7 +370,7 @@ impl TmpRenderPass {
                 shader: &shader,
                 root_signature: &root_signature,
                 vertex_layout: &vertex_layout,
-                blend_state: &BlendState::default(),
+                blend_state: &BlendState::default_alpha_enabled(),
                 depth_state: &depth_state,
                 rasterizer_state: &RasterizerState::default(),
                 color_formats: &[Format::R16G16B16A16_SFLOAT],
