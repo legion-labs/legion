@@ -42,8 +42,16 @@
       <!-- TODO: Make sure the name is unique -->
       {#each $currentResource.properties as property (property.name)}
         <div class="property">
-          <div class="property-name">
-            {property.name}
+          <div class="property-description">
+            <div class="property-name">
+              {property.name}
+            </div>
+            <div
+              class="property-actions"
+              on:click={() => (property.value = property.defaultValue)}
+            >
+              <div class="property-action-default">default</div>
+            </div>
           </div>
           <div class="property-input">
             {#if ptypeIsBoolean(property.ptype)}
@@ -81,8 +89,20 @@
     @apply flex flex-col border-b py-2 border-gray-400 last:border-none space-y-0.5;
   }
 
+  .property-description {
+    @apply flex flex-row items-center justify-between;
+  }
+
   .property-name {
     @apply font-bold text-sm;
+  }
+
+  .property-actions {
+    @apply flex flex-row space-x-1;
+  }
+
+  .property-action-default {
+    @apply italic cursor-pointer underline;
   }
 
   .property-input {
