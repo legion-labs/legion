@@ -3,6 +3,7 @@
   import BooleanProperty from "./properties/BooleanProperty.svelte";
   import ColorProperty from "./properties/ColorProperty.svelte";
   import NumberProperty from "./properties/NumberProperty.svelte";
+  import QuatProperty from "./properties/QuatProperty.svelte";
   import SpeedProperty from "./properties/SpeedProperty.svelte";
   import StringProperty from "./properties/StringProperty.svelte";
   import Vector3Property from "./properties/Vector3Property.svelte";
@@ -24,6 +25,11 @@
 
   const ptypeIsVector3 = (ptype: string) =>
     ["vec3"].includes(ptype.toLowerCase());
+
+  const ptypeIsQuat = (ptype: string) => ["quat"].includes(ptype.toLowerCase());
+
+  const ptypeIsVecU8 = (ptype: string) =>
+    ["vec < u8 >"].includes(ptype.toLowerCase());
 </script>
 
 <div class="root">
@@ -52,6 +58,10 @@
               <SpeedProperty bind:value={property.value} />
             {:else if ptypeIsVector3(property.ptype)}
               <Vector3Property bind:value={property.value} />
+            {:else if ptypeIsQuat(property.ptype)}
+              <QuatProperty bind:value={property.value} />
+            {:else if ptypeIsVecU8(property.ptype)}
+              Vec: {property.value}
             {:else}
               Unknown property type: {property.ptype}
             {/if}
