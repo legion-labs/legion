@@ -71,7 +71,7 @@ impl Renderer {
             transient_descriptor_heaps.push(transient_descriptor_heap);
         }
 
-        let transient_buffer = TransientPagedBuffer::new(device_context, 16);
+        let transient_buffer = TransientPagedBuffer::new(device_context, 64, 64 * 1024);
 
         Ok(Self {
             frame_idx: 0,
@@ -156,7 +156,7 @@ impl Renderer {
         cmd_buffer.begin().unwrap();
         transient_descriptor_heap.reset().unwrap();
 
-        self.transient_buffer.begin_frame(self.device_context());
+        self.transient_buffer.begin_frame();
     }
 
     pub(crate) fn update(
@@ -185,8 +185,6 @@ impl Renderer {
         let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
 
         cmd_buffer.end().unwrap();
-
-        self.transient_buffer.end_frame(&self.graphics_queue);
 
         self.graphics_queue
             .submit(&[cmd_buffer], &[], &[signal_semaphore], Some(signal_fence))
@@ -381,9 +379,9 @@ impl TmpRenderPass {
             .unwrap();
 
         let static_meshes = vec![
-            StaticMeshRenderData::new_plane(1.0, renderer),
-            StaticMeshRenderData::new_cube(0.5, renderer),
-            StaticMeshRenderData::new_pyramid(0.5, 1.0, renderer),
+            StaticMeshRenderData::new_plane(1.0),
+            StaticMeshRenderData::new_cube(0.5),
+            StaticMeshRenderData::new_pyramid(0.5, 1.0),
         ];
 
         Self {
@@ -466,14 +464,16 @@ impl TmpRenderPass {
 
             let mesh = &self.static_meshes[static_mesh_component.mesh_id];
 
-            let transient_allocator =
-                TransientBufferAllocator::new(renderer.transient_buffer(), 1000);
+            let mut transient_allocator = TransientBufferAllocator::new(
+                renderer.device_context(),
+                renderer.transient_buffer(),
+                64 * 1024,
+            );
 
-            let mut sub_allocation = transient_allocator.copy_data(None, &mesh.vertices, 0);
+            let mut sub_allocation =
+                transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
 
-            renderer
-                .transient_buffer()
-                .bind_allocation_as_vertex_buffer(cmd_buffer, &sub_allocation);
+            sub_allocation.bind_allocation_as_vertex_buffer(cmd_buffer);
 
             let color = color_table[index % color_table.len()];
 
@@ -488,11 +488,9 @@ impl TmpRenderPass {
             push_constant_data[51] = 1.0;
 
             sub_allocation =
-                transient_allocator.copy_data(Some(sub_allocation), &push_constant_data, 64);
+                transient_allocator.copy_data(&push_constant_data, ResourceUsage::AS_CONST_BUFFER);
 
-            let const_buffer_view = renderer
-                .transient_buffer()
-                .const_buffer_view_for_allocation(&sub_allocation);
+            let const_buffer_view = sub_allocation.const_buffer_view_for_allocation();
 
             let mut descriptor_set_writer =
                 heap.allocate_descriptor_set(descriptor_set_layout).unwrap();
@@ -512,13 +510,6 @@ impl TmpRenderPass {
                     descriptor_set_handle,
                 )
                 .unwrap();
-
-            // cmd_buffer
-            //     .cmd_push_constants(
-            //         &self.root_signature,
-            //         &(sub_allocation.offset_of_page + sub_allocation.last_alloc_offset),
-            //     )
-            //     .unwrap();
 
             cmd_buffer
                 .cmd_draw((mesh.num_vertices()) as u32, 0)

@@ -84,7 +84,7 @@ bitflags::bitflags! {
         const AS_INDEX_BUFFER = 0x0040;
         // buffer
         const AS_INDIRECT_BUFFER  = 0x0080;
-        // texture
+        // buffer/texture
         const AS_TRANSFERABLE = 0x0100;
         // meta
         const BUFFER_ONLY_USAGE_FLAGS =

@@ -6,7 +6,6 @@ use crate::{BufferDef, ResourceUsage};
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
     buffer: vk::Buffer,
-    buffer_info: vk::BufferCreateInfo,
 }
 
 impl VulkanBuffer {
@@ -34,9 +33,13 @@ impl VulkanBuffer {
             usage_flags |= vk::BufferUsageFlags::TRANSFER_DST;
         }
 
+        let creation_flags =
+            super::internal::resource_type_buffer_creation_flags(buffer_def.creation_flags);
+
         assert_ne!(allocation_size, 0);
 
         let buffer_info = vk::BufferCreateInfo::builder()
+            .flags(creation_flags)
             .size(allocation_size)
             .usage(usage_flags)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
@@ -48,17 +51,9 @@ impl VulkanBuffer {
                 .unwrap()
         };
 
-        log::trace!(
-            "Buffer {:?} crated with size {} (always mapped: {:?})",
-            buffer,
-            buffer_info.size,
-            buffer_def.always_mapped
-        );
+        log::trace!("Buffer {:?} crated with size {}", buffer, buffer_info.size,);
 
-        Self {
-            buffer,
-            buffer_info: *buffer_info,
-        }
+        Self { buffer }
     }
 
     pub fn destroy(&self, device_context: &VulkanDeviceContext, buffer_def: &BufferDef) {
@@ -77,9 +72,5 @@ impl VulkanBuffer {
 
     pub fn vk_buffer(&self) -> vk::Buffer {
         self.buffer
-    }
-
-    pub fn vk_buffer_info(&self) -> vk::BufferCreateInfo {
-        self.buffer_info
     }
 }

@@ -3,7 +3,8 @@ use ash::vk;
 use crate::backends::vulkan::VulkanDeviceContext;
 use crate::{
     BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format,
-    PipelineType, QueueType, RasterizerState, ResourceState, ResourceUsage, ShaderResourceType,
+    PipelineType, QueueType, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
+    ShaderResourceType,
 };
 
 pub(crate) fn pipeline_type_pipeline_bind_point(
@@ -43,6 +44,26 @@ pub(crate) fn resource_type_buffer_usage_flags(
     }
 
     usage_flags
+}
+
+pub(crate) fn resource_type_buffer_creation_flags(
+    resource_creation: ResourceCreation,
+) -> vk::BufferCreateFlags {
+    let mut creation_flags = vk::BufferCreateFlags::empty();
+
+    if resource_creation.intersects(ResourceCreation::SPARSE_BINDING) {
+        creation_flags |= vk::BufferCreateFlags::SPARSE_BINDING;
+    }
+
+    if resource_creation.intersects(ResourceCreation::SPARSE_RESIDENCY) {
+        creation_flags |= vk::BufferCreateFlags::SPARSE_RESIDENCY;
+    }
+
+    if resource_creation.intersects(ResourceCreation::SPARSE_ALIASED) {
+        creation_flags |= vk::BufferCreateFlags::SPARSE_ALIASED;
+    }
+
+    creation_flags
 }
 
 pub(crate) fn image_format_to_aspect_mask(

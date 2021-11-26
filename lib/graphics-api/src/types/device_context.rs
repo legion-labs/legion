@@ -253,7 +253,7 @@ impl DeviceContext {
         Texture::new(self, texture_def)
     }
 
-    pub fn create_buffer(&self, buffer_def: &BufferDef) -> GfxResult<Buffer> {
+    pub fn create_buffer(&self, buffer_def: &BufferDef) -> Buffer {
         Buffer::new(self, buffer_def)
     }
 

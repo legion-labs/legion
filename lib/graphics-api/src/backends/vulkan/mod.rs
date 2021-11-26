@@ -31,6 +31,7 @@ mod internal;
 pub(crate) use internal::*;
 
 mod memory_allocation;
+pub(crate) use memory_allocation::*;
 
 mod pipeline;
 pub(crate) use pipeline::*;

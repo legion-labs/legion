@@ -28,7 +28,6 @@ impl VulkanMemoryAllocation {
             user_data: None,
         };
 
-        //TODO: Better way of handling allocator errors
         let (allocation, allocation_info) = device_context
             .platform_device_context()
             .allocator()
@@ -36,10 +35,13 @@ impl VulkanMemoryAllocation {
                 buffer.platform_buffer().vk_buffer(),
                 &allocation_create_info,
             )
-            .map_err(|e| {
-                log::error!("Error creating buffer {:?}", e);
-                vk::Result::ERROR_UNKNOWN
-            })?;
+            .unwrap();
+
+        device_context
+            .platform_device_context()
+            .allocator()
+            .bind_buffer_memory(buffer.platform_buffer().vk_buffer(), &allocation)
+            .unwrap();
 
         Self {
             allocation_info,
@@ -47,18 +49,33 @@ impl VulkanMemoryAllocation {
         }
     }
 
-    pub fn map_buffer(&self, device_context: &VulkanDeviceContext) -> GfxResult<*mut u8> {
-        let ptr = device_context
+    pub fn destroy(&self, device_context: &DeviceContext) {
+        device_context
+            .platform_device_context()
             .allocator()
-            .map_memory(&self.allocation)
-            .map_err(|e| {
-                log::error!("Error mapping buffer {:?}", e);
-                vk::Result::ERROR_UNKNOWN
-            })?;
-        Ok(ptr)
+            .free_memory(&self.allocation);
     }
 
-    pub fn unmap_buffer(&self, device_context: &VulkanDeviceContext) {
-        device_context.allocator().unmap_memory(&self.allocation);
+    pub fn map_buffer(&self, device_context: &DeviceContext) -> *mut u8 {
+        device_context
+            .platform_device_context()
+            .allocator()
+            .map_memory(&self.allocation)
+            .unwrap()
+    }
+
+    pub fn unmap_buffer(&self, device_context: &DeviceContext) {
+        device_context
+            .platform_device_context()
+            .allocator()
+            .unmap_memory(&self.allocation);
+    }
+
+    pub fn mapped_ptr(&self) -> *mut u8 {
+        self.allocation_info.get_mapped_data()
+    }
+
+    pub fn size(&self) -> usize {
+        self.allocation_info.get_size()
     }
 }
