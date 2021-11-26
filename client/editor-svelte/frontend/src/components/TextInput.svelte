@@ -26,8 +26,9 @@
     class="input"
     class:input-with-extension={$$slots.extension}
     type="text"
+    on:input
     on:focus={onFocus}
-    bind:value
+    {value}
     bind:this={input}
   />
   {#if $$slots.extension}
