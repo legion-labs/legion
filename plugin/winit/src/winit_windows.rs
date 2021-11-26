@@ -1,59 +1,62 @@
 use legion_math::IVec2;
 use legion_utils::HashMap;
 use legion_window::{Window, WindowDescriptor, WindowId, WindowMode};
-use tao::dpi::LogicalSize;
+use winit::dpi::LogicalSize;
 
 #[derive(Debug, Default)]
-pub struct TaoWindows {
-    pub windows: HashMap<tao::window::WindowId, tao::window::Window>,
-    pub window_id_to_tao: HashMap<WindowId, tao::window::WindowId>,
-    pub tao_to_window_id: HashMap<tao::window::WindowId, WindowId>,
+pub struct WinitWindows {
+    pub windows: HashMap<winit::window::WindowId, winit::window::Window>,
+    pub window_id_to_winit: HashMap<WindowId, winit::window::WindowId>,
+    pub winit_to_window_id: HashMap<winit::window::WindowId, WindowId>,
 }
 
-impl TaoWindows {
+impl WinitWindows {
     pub fn create_window(
         &mut self,
-        event_loop: &tao::event_loop::EventLoopWindowTarget<()>,
+        event_loop: &winit::event_loop::EventLoopWindowTarget<()>,
         window_id: WindowId,
         window_descriptor: &WindowDescriptor,
     ) -> Window {
         #[cfg(target_os = "windows")]
-        let mut tao_window_builder = {
-            use tao::platform::windows::WindowBuilderExtWindows;
-            tao::window::WindowBuilder::new().with_drag_and_drop(false)
+        let mut winit_window_builder = {
+            use winit::platform::windows::WindowBuilderExtWindows;
+            winit::window::WindowBuilder::new().with_drag_and_drop(false)
         };
 
         #[cfg(not(target_os = "windows"))]
-        let mut tao_window_builder = tao::window::WindowBuilder::new();
+        let mut winit_window_builder = winit::window::WindowBuilder::new();
 
-        tao_window_builder = match window_descriptor.mode {
-            WindowMode::BorderlessFullscreen => tao_window_builder.with_fullscreen(Some(
-                tao::window::Fullscreen::Borderless(event_loop.primary_monitor()),
+        winit_window_builder = match window_descriptor.mode {
+            WindowMode::BorderlessFullscreen => winit_window_builder.with_fullscreen(Some(
+                winit::window::Fullscreen::Borderless(event_loop.primary_monitor()),
             )),
-            WindowMode::Fullscreen { use_size } => tao_window_builder.with_fullscreen(Some(
-                tao::window::Fullscreen::Exclusive(match use_size {
-                    true => get_fitting_videomode(
+            WindowMode::Fullscreen { use_size } => winit_window_builder.with_fullscreen(Some(
+                winit::window::Fullscreen::Exclusive(if use_size {
+                    get_fitting_videomode(
                         &event_loop.primary_monitor().unwrap(),
                         window_descriptor.width as u32,
                         window_descriptor.height as u32,
-                    ),
-                    false => get_best_videomode(&event_loop.primary_monitor().unwrap()),
+                    )
+                } else {
+                    get_best_videomode(&event_loop.primary_monitor().unwrap())
                 }),
             )),
-            _ => {
+            WindowMode::Windowed => {
                 let WindowDescriptor {
                     width,
                     height,
                     scale_factor_override,
                     ..
                 } = window_descriptor;
-                if let Some(sf) = scale_factor_override {
-                    tao_window_builder.with_inner_size(
-                        tao::dpi::LogicalSize::new(*width, *height).to_physical::<f64>(*sf),
-                    )
-                } else {
-                    tao_window_builder.with_inner_size(tao::dpi::LogicalSize::new(*width, *height))
-                }
+                let size = scale_factor_override.map_or_else(
+                    || winit::dpi::Size::from(winit::dpi::LogicalSize::new(*width, *height)),
+                    |sf| {
+                        winit::dpi::Size::from(
+                            winit::dpi::LogicalSize::new(*width, *height).to_physical::<f64>(sf),
+                        )
+                    },
+                );
+                winit_window_builder.with_inner_size(size)
             }
             .with_resizable(window_descriptor.resizable)
             .with_decorations(window_descriptor.decorations),
@@ -69,22 +72,22 @@ impl TaoWindows {
             height: constraints.max_height,
         };
 
-        let tao_window_builder =
+        let winit_window_builder =
             if constraints.max_width.is_finite() && constraints.max_height.is_finite() {
-                tao_window_builder
+                winit_window_builder
                     .with_min_inner_size(min_inner_size)
                     .with_max_inner_size(max_inner_size)
             } else {
-                tao_window_builder.with_min_inner_size(min_inner_size)
+                winit_window_builder.with_min_inner_size(min_inner_size)
             };
 
         #[allow(unused_mut)]
-        let mut tao_window_builder = tao_window_builder.with_title(&window_descriptor.title);
+        let mut winit_window_builder = winit_window_builder.with_title(&window_descriptor.title);
 
         #[cfg(target_arch = "wasm32")]
         {
-            use tao::platform::web::WindowBuilderExtWebSys;
             use wasm_bindgen::JsCast;
+            use winit::platform::web::WindowBuilderExtWebSys;
 
             if let Some(selector) = &window_descriptor.canvas {
                 let window = web_sys::window().unwrap();
@@ -94,32 +97,31 @@ impl TaoWindows {
                     .expect("Cannot query for canvas element.");
                 if let Some(canvas) = canvas {
                     let canvas = canvas.dyn_into::<web_sys::HtmlCanvasElement>().ok();
-                    tao_window_builder = tao_window_builder.with_canvas(canvas);
+                    winit_window_builder = winit_window_builder.with_canvas(canvas);
                 } else {
                     panic!("Cannot find element: {}.", selector);
                 }
             }
         }
 
-        let tao_window = tao_window_builder.build(event_loop).unwrap();
+        let winit_window = winit_window_builder.build(event_loop).unwrap();
 
-        match tao_window.set_cursor_grab(window_descriptor.cursor_locked) {
-            Ok(_) => {}
-            Err(tao::error::ExternalError::NotSupported(_)) => {}
+        match winit_window.set_cursor_grab(window_descriptor.cursor_locked) {
+            Ok(_) | Err(winit::error::ExternalError::NotSupported(_)) => {}
             Err(err) => Err(err).unwrap(),
         }
 
-        tao_window.set_cursor_visible(window_descriptor.cursor_visible);
+        winit_window.set_cursor_visible(window_descriptor.cursor_visible);
 
-        self.window_id_to_tao.insert(window_id, tao_window.id());
-        self.tao_to_window_id.insert(tao_window.id(), window_id);
+        self.window_id_to_winit.insert(window_id, winit_window.id());
+        self.winit_to_window_id.insert(winit_window.id(), window_id);
 
         #[cfg(target_arch = "wasm32")]
         {
-            use tao::platform::web::WindowExtWebSys;
+            use winit::platform::web::WindowExtWebSys;
 
             if window_descriptor.canvas.is_none() {
-                let canvas = tao_window.canvas();
+                let canvas = winit_window.canvas();
 
                 let window = web_sys::window().unwrap();
                 let document = window.document().unwrap();
@@ -130,13 +132,13 @@ impl TaoWindows {
             }
         }
 
-        let position = tao_window
+        let position = winit_window
             .outer_position()
             .ok()
             .map(|position| IVec2::new(position.x, position.y));
-        let inner_size = tao_window.inner_size();
-        let scale_factor = tao_window.scale_factor();
-        self.windows.insert(tao_window.id(), tao_window);
+        let inner_size = winit_window.inner_size();
+        let scale_factor = winit_window.scale_factor();
+        self.windows.insert(winit_window.id(), winit_window);
         Window::new(
             window_id,
             window_descriptor,
@@ -147,21 +149,21 @@ impl TaoWindows {
         )
     }
 
-    pub fn get_window(&self, id: WindowId) -> Option<&tao::window::Window> {
-        self.window_id_to_tao
+    pub fn get_window(&self, id: WindowId) -> Option<&winit::window::Window> {
+        self.window_id_to_winit
             .get(&id)
             .and_then(|id| self.windows.get(id))
     }
 
-    pub fn get_window_id(&self, id: tao::window::WindowId) -> Option<WindowId> {
-        self.tao_to_window_id.get(&id).cloned()
+    pub fn get_window_id(&self, id: winit::window::WindowId) -> Option<WindowId> {
+        self.winit_to_window_id.get(&id).copied()
     }
 }
 pub fn get_fitting_videomode(
-    monitor: &tao::monitor::MonitorHandle,
+    monitor: &winit::monitor::MonitorHandle,
     width: u32,
     height: u32,
-) -> tao::monitor::VideoMode {
+) -> winit::monitor::VideoMode {
     let mut modes = monitor.video_modes().collect::<Vec<_>>();
 
     fn abs_diff(a: u32, b: u32) -> u32 {
@@ -172,7 +174,7 @@ pub fn get_fitting_videomode(
     }
 
     modes.sort_by(|a, b| {
-        use std::cmp::Ordering::*;
+        use std::cmp::Ordering::Equal;
         match abs_diff(a.size().width, width).cmp(&abs_diff(b.size().width, width)) {
             Equal => {
                 match abs_diff(a.size().height, height).cmp(&abs_diff(b.size().height, height)) {
@@ -187,10 +189,10 @@ pub fn get_fitting_videomode(
     modes.first().unwrap().clone()
 }
 
-pub fn get_best_videomode(monitor: &tao::monitor::MonitorHandle) -> tao::monitor::VideoMode {
+pub fn get_best_videomode(monitor: &winit::monitor::MonitorHandle) -> winit::monitor::VideoMode {
     let mut modes = monitor.video_modes().collect::<Vec<_>>();
     modes.sort_by(|a, b| {
-        use std::cmp::Ordering::*;
+        use std::cmp::Ordering::Equal;
         match b.size().width.cmp(&a.size().width) {
             Equal => match b.size().height.cmp(&a.size().height) {
                 Equal => b.refresh_rate().cmp(&a.refresh_rate()),
@@ -205,6 +207,6 @@ pub fn get_best_videomode(monitor: &tao::monitor::MonitorHandle) -> tao::monitor
 
 // WARNING: this only works under the assumption that wasm runtime is single threaded
 #[cfg(target_arch = "wasm32")]
-unsafe impl Send for TaoWindows {}
+unsafe impl Send for WinitWindows {}
 #[cfg(target_arch = "wasm32")]
-unsafe impl Sync for TaoWindows {}
+unsafe impl Sync for WinitWindows {}

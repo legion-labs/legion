@@ -13,12 +13,12 @@ use legion_presenter_window::PresenterWindowPlugin;
 use legion_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
 use legion_renderer::components::{RotationComponent, StaticMesh};
 use legion_renderer::{Renderer, RendererPlugin};
-use legion_tao::{TaoPlugin, TaoWindows};
 use legion_transform::components::Transform;
 use legion_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
     Windows,
 };
+use legion_winit::{WinitPlugin, WinitWindows};
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 
@@ -132,7 +132,7 @@ fn main() {
         });
         app.add_plugin(WindowPlugin::default())
             .add_plugin(InputPlugin::default())
-            .add_plugin(TaoPlugin::default())
+            .add_plugin(WinitPlugin::default())
             .add_plugin(PresenterWindowPlugin::default())
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
@@ -152,7 +152,7 @@ fn on_window_created(
     mut commands: Commands,
     mut ev_wnd_created: EventReader<WindowCreated>,
     wnd_list: Res<Windows>,
-    tao_wnd_list: Res<TaoWindows>,
+    tao_wnd_list: Res<WinitWindows>,
     renderer: Res<Renderer>,
     mut render_surfaces: ResMut<RenderSurfaces>,
 ) {

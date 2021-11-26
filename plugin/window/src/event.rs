@@ -60,7 +60,7 @@ pub struct CursorLeft {
 #[derive(Debug, Clone)]
 pub struct ReceivedCharacter {
     pub id: WindowId,
-    pub text: &'static str,
+    pub char: char,
 }
 
 /// An event that indicates a window has received or lost focus.
