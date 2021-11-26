@@ -5,4 +5,4 @@
 </script>
 
 <!-- For now the string property is only a TextInput but it might change -->
-<TextInput bind:value size="sm" fullWidth />
+<TextInput bind:value size="sm" fullWidth autoSelect />

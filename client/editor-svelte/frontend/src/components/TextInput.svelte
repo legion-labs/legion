@@ -4,6 +4,16 @@
   export let size: "sm" | "default" = "default";
 
   export let fullWidth = false;
+
+  export let autoSelect = false;
+
+  let input: HTMLInputElement | undefined;
+
+  const onFocus = (_event: FocusEvent) => {
+    if (autoSelect && input) {
+      input.select();
+    }
+  };
 </script>
 
 <div
@@ -16,7 +26,9 @@
     class="input"
     class:input-with-extension={$$slots.extension}
     type="text"
+    on:focus={onFocus}
     bind:value
+    bind:this={input}
   />
   {#if $$slots.extension}
     <div

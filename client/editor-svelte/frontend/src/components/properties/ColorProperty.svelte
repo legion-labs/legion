@@ -5,7 +5,7 @@
 </script>
 
 <div class="root">
-  <TextInput bind:value fullWidth>
+  <TextInput size="sm" bind:value fullWidth autoSelect>
     <input slot="extension" class="color-picker" type="color" bind:value />
   </TextInput>
 </div>
