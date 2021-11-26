@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [[bin]]
 name = "compiler-testentity"
+doc = false
 
 [dependencies]
 legion-data-offline = { path = "../../lib/data-offline" }
