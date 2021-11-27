@@ -20,10 +20,30 @@ fn build_web_app() {
         let frontend_dir = "frontend";
 
         run(&yarn_path, "install", frontend_dir);
-        run(&yarn_path, "setup", frontend_dir);
+        // protobuf generation should be tracked outside
+        // run(&yarn_path, "setup", frontend_dir);
         run(yarn_path, "build", frontend_dir);
 
-        std::process::exit(0);
+        // JS ecosystem forces us to have output files in our sources hiearchy
+        // we are filtering files
+        std::fs::read_dir(frontend_dir)
+            .unwrap()
+            .map(|res| res.map(|entry| entry.path()))
+            .filter_map(|path| {
+                if let Ok(path) = path {
+                    if let Some(file_name) = path.file_name() {
+                        if file_name != "dist" && file_name != "node_modules" {
+                            return Some(path);
+                        }
+                    }
+                }
+
+                None
+            })
+            .for_each(|path| {
+                // to_string_lossy should be fine here, our first level folder names are clean
+                println!("cargo:rerun-if-changed={}", path.to_string_lossy())
+            });
     } else {
         std::fs::create_dir_all("frontend/dist").unwrap();
         std::fs::write("frontend/dist/index.html", "Yarn missing from path").unwrap();
@@ -32,26 +52,5 @@ fn build_web_app() {
 }
 
 fn main() {
-    // JS ecosystem forces us to have output files in our sources hiearchy
-    // we are filtering files
-    std::fs::read_dir("frontend")
-        .unwrap()
-        .map(|res| res.map(|entry| entry.path()))
-        .filter_map(|path| {
-            if let Ok(path) = path {
-                if let Some(file_name) = path.file_name() {
-                    if file_name != "dist" && file_name != "node_modules" {
-                        return Some(path);
-                    }
-                }
-            }
-
-            None
-        })
-        .for_each(|path| {
-            // to_string_lossy should be fine here, our first level folder names are clean
-            println!("cargo:rerun-if-changed={}", path.to_string_lossy())
-        });
-
     build_web_app();
 }
