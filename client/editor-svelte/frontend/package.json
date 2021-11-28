@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "check:all": "yarn eslint:check && yarn prettier:check && yarn svelte:check",
     "eslint:check": "eslint --ext .ts,.svelte .",
     "eslint:fix": "eslint --ext .ts,.svelte --fix .",
     "prettier:check": "prettier --check .",
@@ -16,8 +17,7 @@
     "svelte:check": "tsc --noEmit && svelte-check",
     "test": "jest",
     "proto:generate": "mkdirp .\\src\\proto && protoc --plugin=\".\\node_modules\\.bin\\protoc-gen-ts_proto.cmd\" --ts_proto_out=.\\src\\proto --ts_proto_opt=esModuleInterop=true --ts_proto_opt=outputClientImpl=grpc-web --ts_proto_opt=env=browser --ts_proto_opt=lowerCaseServiceMethods=true --proto_path=..\\..\\..\\proto ..\\..\\..\\proto\\editor\\editor.proto ..\\..\\..\\proto\\streaming\\streaming.proto",
-    "setup": "yarn proto:generate",
-    "check:all": "yarn svelte:check && yarn eslint:check && yarn prettier:check"
+    "setup": "yarn proto:generate"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.30",

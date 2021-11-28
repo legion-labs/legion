@@ -3,5 +3,10 @@
   "workspaces": [
     "client/editor-svelte/frontend",
     "client/analytics-web/frontend"
-  ]
+  ],
+  "scripts": {
+    "build": "yarn workspaces run build",
+    "check:all": "yarn workspaces run check:all",
+    "test": "yarn workspaces run test"
+  }
 }
