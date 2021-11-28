@@ -3,7 +3,7 @@ import {
   EditorClientImpl,
   ResourceDescription,
   GetResourcePropertiesResponse,
-} from "@/proto/editor/editor";
+} from "@lgn/protos-editor/codegen/editor";
 import {
   GrpcWebImpl as StreamingGrpcWebImpl,
   StreamerClientImpl,

@@ -1,0 +1,28 @@
+{
+  "name": "@lgn/protos-editor",
+  "version": "0.1.0",
+  "description": "Legion's monorepo",
+  "repository": "https://github.com/legion-labs/legion",
+  "author": "devs@legionlabs.com",
+  "license": "MIT OR Apache-2.0",
+  "private": true,
+  "main": "dist",
+  "scripts": {
+    "build": "tsc -b",
+    "check:all": "tslint --project tsconfig.json",
+    "test": "yarn check:all"
+  },
+  "devDependencies": {
+    "jest": "^27.3.1",
+    "ts-jest": "^27.0.7",
+    "typescript": "^4.5.2",
+    "yarn": "^1.22.17",
+    "tslint": "^6.1.3"
+  },
+  "dependencies": {
+    "@improbable-eng/grpc-web": "^0.15.0",
+    "browser-headers": "^0.4.1",
+    "long": "^5.1.0",
+    "protobufjs": "^6.11.2"
+  }
+}

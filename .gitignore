@@ -23,4 +23,7 @@
 *~
 legion_local.toml
 
-/node_modules
+# Yarn/NodeJs files
+node_modules/
+dist/
+yarn-*.log

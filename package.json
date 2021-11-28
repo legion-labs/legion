@@ -2,7 +2,8 @@
   "private": true,
   "workspaces": [
     "client/editor-svelte/frontend",
-    "client/analytics-web/frontend"
+    "client/analytics-web/frontend",
+    "proto/editor"
   ],
   "scripts": {
     "build": "yarn workspaces run build",
