@@ -9,4 +9,5 @@ license = "MIT OR Apache-2.0"
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-input = { path = "../input", version = "0.1.0" }
+legion-window = { path = "../window", version = "0.1.0" }
 egui = "0.15.0"

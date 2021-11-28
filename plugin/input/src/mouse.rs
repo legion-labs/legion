@@ -8,6 +8,7 @@ use crate::{ElementState, Input};
 pub struct MouseButtonInput {
     pub button: MouseButton,
     pub state: ElementState,
+    pub pos: Vec2,
 }
 
 /// A button on a mouse device

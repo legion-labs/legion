@@ -313,6 +313,56 @@ impl EguiPass {
         cmd_buffer: &CommandBuffer,
         egui_ctx: &mut egui::CtxRef,
     ) {
+        let egui_texture = Arc::clone(&egui_ctx.texture());
+        let pixels = egui_texture
+            .pixels
+            .clone()
+            .into_iter()
+            .map(|i| f32::from(i) / 255.0)
+            .collect::<Vec<f32>>();
+        let staging_buffer = renderer
+            .device_context()
+            .create_buffer(&BufferDef::for_staging_buffer_data(
+                &pixels,
+                ResourceUsage::empty(),
+            ))
+            .unwrap();
+
+        staging_buffer.copy_to_host_visible_buffer(&pixels).unwrap();
+
+        renderer
+            .get_cmd_buffer()
+            .cmd_resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    &self.texture,
+                    ResourceState::UNDEFINED,
+                    ResourceState::COPY_DST,
+                )],
+            )
+            .unwrap();
+
+        renderer
+            .get_cmd_buffer()
+            .cmd_copy_buffer_to_texture(
+                &staging_buffer,
+                &self.texture,
+                &CmdCopyBufferToTextureParams::default(),
+            )
+            .unwrap();
+
+        renderer
+            .get_cmd_buffer()
+            .cmd_resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    &self.texture,
+                    ResourceState::COPY_DST,
+                    ResourceState::SHADER_RESOURCE,
+                )],
+            )
+            .unwrap();
+
         cmd_buffer
             .cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
@@ -357,6 +407,9 @@ impl EguiPass {
         let (output, shapes) = egui_ctx.end_frame();
         let clipped_meshes = egui_ctx.tessellate(shapes);
         for egui::ClippedMesh(clip_rect, mesh) in clipped_meshes {
+            if mesh.is_empty() {
+                continue;
+            }
             let vertex_data: Vec<f32> = mesh
                 .vertices
                 .iter()

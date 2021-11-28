@@ -3888,6 +3888,7 @@ dependencies = [
  "legion-app",
  "legion-ecs",
  "legion-input",
+ "legion-window",
 ]
 
 [[package]]

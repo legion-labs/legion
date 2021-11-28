@@ -41,22 +41,25 @@ impl Plugin for RendererPlugin {
     }
 }
 
-fn update_ui(mut egui_ctx: ResMut<Egui>) {
-    egui::Window::new("Test window").show(&egui_ctx.ctx, |ui| {
-        let mut name = "Arthur".to_owned();
-        let mut age = 3;
-
-        ui.label("Hello, world!");
-        ui.heading("My egui Application");
-        ui.horizontal(|ui| {
-            ui.label("Your name: ");
-            ui.text_edit_singleline(&mut name);
-        });
-        ui.add(egui::Slider::new(&mut age, 0..=120).text("age"));
-        if ui.button("Click each year").clicked() {
-            age += 1;
+fn update_ui(mut egui_ctx: ResMut<Egui>, mut rotations: Query<'_, '_, &mut RotationComponent>) {
+    egui::Window::new("Update rotation speeds").show(&egui_ctx.ctx, |ui| {
+        for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("Object {}: ", i));
+                ui.add(
+                    egui::Slider::new(&mut rotation_component.rotation_speed.0, 0.0..=5.0)
+                        .text("x"),
+                );
+                ui.add(
+                    egui::Slider::new(&mut rotation_component.rotation_speed.1, 0.0..=5.0)
+                        .text("y"),
+                );
+                ui.add(
+                    egui::Slider::new(&mut rotation_component.rotation_speed.2, 0.0..=5.0)
+                        .text("z"),
+                );
+            });
         }
-        ui.label(format!("Hello '{}', age {}", name, age));
     });
 }
 
