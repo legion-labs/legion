@@ -1,4 +1,10 @@
 {
+  "name": "analytics-web",
+  "version": "0.1.0",
+  "description": "Legion's monorepo",
+  "repository": "https://github.com/legion-labs/legion",
+  "author": "devs@legionlabs.com",
+  "license": "MIT OR Apache-2.0",
   "private": true,
   "scripts": {
     "dev": "vite",
