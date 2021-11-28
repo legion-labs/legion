@@ -9,15 +9,14 @@
   "main": "dist",
   "scripts": {
     "build": "tsc -b",
-    "check:all": "tslint --project tsconfig.json",
+    "check:all": "echo No checks yet",
     "test": "yarn check:all"
   },
   "devDependencies": {
     "jest": "^27.3.1",
     "ts-jest": "^27.0.7",
     "typescript": "^4.5.2",
-    "yarn": "^1.22.17",
-    "tslint": "^6.1.3"
+    "yarn": "^1.22.17"
   },
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.15.0",
