@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-
   export let value: number;
 
   export let min: number | undefined = undefined;
