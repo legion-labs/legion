@@ -8,7 +8,7 @@ members = [
     "test/*",
     "compiler/*",
 ]
-exclude = ["test/test_data"]
+exclude = []
 
 [profile.dev]
 panic = 'abort'
@@ -24,3 +24,10 @@ opt-level = 3
 debug = true
 debug-assertions = false
 panic = 'abort'
+
+[patch.crates-io]
+lambda_runtime = { path = "external/lambda-runtime" }
+lambda_http = { path = "external/lambda-http" }
+tinycom = { path = "external/tinycom-rs" }
+hassle-rs = { path = "external/hassle-rs" }
+vk-mem = {path = "external/vk-mem" }

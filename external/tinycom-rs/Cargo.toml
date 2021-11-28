@@ -1,0 +1,11 @@
+[package]
+name = "tinycom"
+version = "0.1.0"
+edition = "2018"
+description = "Tiny COM implements the tiny subset necessary to consume IUnknown interfaces."
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/legion-labs/tinycom-rs"
+repository = "https://github.com/legion-labs/tinycom-rs"
+keywords = ["COM"]
+categories = ["Windows", "COM"]

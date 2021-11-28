@@ -8,8 +8,8 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", branch = "com_to_tinycom" }
 graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
+hassle-rs = "0.5"
 spirv-reflect = "0.2"
 spirv-tools = "0.7"
 anyhow = "1"
