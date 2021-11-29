@@ -40,28 +40,48 @@ It also supports manual RGBA edition with 4 different inputs.
    * issues are to be expected any time soon but it's something we might need to change at one point.
    */
   export let colors: ColorSet;
+  /** Position of the `ColorPicker` drowdown */
   export let position: "left" | "right" = "right";
+  /** Show the `ColorPicker` or not */
   export let visible = false;
 
-  let colorBlockCursorWidth: number | undefined;
-  let colorBlockCursorHeight: number | undefined;
-  let colorBlockDragging = false;
-  let colorBlockLeft = 0;
-  let colorBlockTop = 0;
+  /** A word on semantic:
+   * `hPicker` refers to the Hue range input
+   * `svPicker` to the "main" block that allows for both Saturation and Value selection
+   * `aPicker` refers to the Alpha channel range input
+   */
 
-  $: if (colorBlockCursorWidth && colorBlockCursorHeight) {
-    colorBlockLeft = (colorBlockCursorWidth / 100) * colors.hsv.s;
-    colorBlockTop = (colorBlockCursorHeight / 100) * (100 - colors.hsv.v);
+  /** The Saturation and Value picker width */
+  let svPickerCursorWidth: number | undefined;
+  /** The Saturation and Value picker height */
+  let svPickerCursorHeight: number | undefined;
+  /** When `true` indicates the user is moving their mouse over the Saturation and Value picker */
+  let svPickerDragging = false;
+  /** Left position of the picker cursor over the Saturation and Value picker */
+  let svPickerLeft = 0;
+  /** Top position of the picker cursor over the Saturation and Value picker */
+  let svPickerTop = 0;
+  /** The currently seleted Hue value as an Rgba color */
+  let hColor: Rgba;
+
+  // Sets the Saturation and Value picker selector position on color change
+  $: if (svPickerCursorWidth && svPickerCursorHeight) {
+    svPickerLeft = (svPickerCursorWidth / 100) * colors.hsv.s;
+    svPickerTop = (svPickerCursorHeight / 100) * (100 - colors.hsv.v);
   }
 
-  $: hColors = colorConvert.hsv.rgb([colors.hsv.h, 100, 100]);
+  // Sets the Saturation and Value picker background color on Hue change
+  $: {
+    const [r, g, b] = colorConvert.hsv.rgb([colors.hsv.h, 100, 100]);
 
-  $: hColor = { r: hColors[0], g: hColors[1], b: hColors[2], a: 1 };
+    hColor = { r, g, b, a: 1 };
+  }
 
-  function colorDrag(
+  /** Called when the user changes the Saturation and Value */
+  function svSelect(
     event: MouseEvent & { currentTarget: EventTarget & HTMLDivElement }
   ) {
-    colorBlockDragging = true;
+    svPickerDragging = true;
 
     const xPercentage = (100 / event.currentTarget.offsetWidth) * event.offsetX;
     const yPercentage =
@@ -114,86 +134,85 @@ It also supports manual RGBA edition with 4 different inputs.
     };
   }
 
-  function colorDragMove(
+  function svSelectMove(
     event: MouseEvent & { currentTarget: EventTarget & HTMLDivElement }
   ) {
-    if (colorBlockDragging) {
-      colorDrag(event);
+    if (svPickerDragging) {
+      svSelect(event);
     }
   }
 
-  function colorStopDragging() {
-    colorBlockDragging = false;
+  /** Called when the user is no longer changin Saturation and Value */
+  function svSelectEnd() {
+    svPickerDragging = false;
   }
 
   function toggle() {
     visible = !visible;
   }
-
-  $: console.log("xxx r", colors.rgba.r);
 </script>
 
 <div class="root">
   <div
-    class="color"
+    class="dropdown-toggle"
     on:click={toggle}
     style="--current-rgba-color: {hsvToColorString(colors.hsv)}"
   />
   <div
-    class="color-picker-dropdown"
+    class="dropdown"
     class:visible
     class:invisible={!visible}
     class:right-0={position === "left"}
   >
-    <div class="color-picker-selector">
+    <div class="sv-selector-input">
       <div
-        class="color-block-background"
+        class="sv-selector-background"
         style="--current-background: {rgbaToColorString(hColor)}"
       >
-        <div class="color-block-white-gradient">
+        <div class="sv-selector-white-gradient-mask">
           <div
-            class="color-block-black-gradient"
-            bind:clientWidth={colorBlockCursorWidth}
-            bind:clientHeight={colorBlockCursorHeight}
-            on:mousedown={colorDrag}
-            on:mouseup={colorStopDragging}
-            on:mousemove={colorDragMove}
-            on:mouseleave={colorStopDragging}
+            class="sv-selector-black-gradient-mask"
+            bind:clientWidth={svPickerCursorWidth}
+            bind:clientHeight={svPickerCursorHeight}
+            on:mousedown={svSelect}
+            on:mouseup={svSelectEnd}
+            on:mousemove={svSelectMove}
+            on:mouseleave={svSelectEnd}
           />
           <div
-            class="color-block-cursor"
+            class="sv-selector-cursor"
             style="--color-block-top: {`${
-              colorBlockTop - 6
+              svPickerTop - 6
             }px`}; --color-block-left: {`${
-              colorBlockLeft - 6
+              svPickerLeft - 6
             }px`}; --current-rgba-color: {hsvToColorString(colors.hsv, true)}"
           />
         </div>
       </div>
     </div>
-    <div class="color-picker-extra-selectors">
-      <div class="color-strip">
+    <div class="additional-selectors">
+      <div class="h-selector-container">
         <input
           type="range"
           min={0}
           max={maxHueValue}
-          class="color-strip-selector"
+          class="h-selector"
           style="--current-background: {rgbaToColorString(hColor, true)}"
           value={colors.hsv.h}
           on:input={updateHue}
         />
       </div>
-      <div class="alpha-strip">
-        <div class="alpha-strip-checkered-mask">
+      <div class="alpha-selector-container">
+        <div class="alpha-selector-checkered-mask">
           <div
-            class="alpha-strip-opacity-mask"
+            class="alpha-selector-opacity-mask"
             style="--tw-gradient-to: {rgbaToColorString(hColor, true)}"
           >
             <input
               type="range"
               min={0}
               max={100}
-              class="alpha-strip-selector"
+              class="alpha-selector"
               style="--current-background: {rgbaToColorString(hColor, true)}"
               value={colors.hsv.alpha}
               on:input={updateHsvAlpha}
@@ -201,7 +220,7 @@ It also supports manual RGBA edition with 4 different inputs.
           </div>
         </div>
       </div>
-      <div class="inputs">
+      <div class="rgba-inputs">
         <div>
           <NumberInput
             autoSelect
@@ -261,48 +280,48 @@ It also supports manual RGBA edition with 4 different inputs.
     @apply relative h-full w-full;
   }
 
-  .color {
+  .dropdown-toggle {
     @apply h-full w-full border border-white cursor-pointer;
     background-color: var(--current-rgba-color);
   }
 
-  .color-picker-dropdown {
+  .dropdown {
     @apply flex flex-col w-48 border border-gray-800 absolute bg-gray-700 rounded-b-sm mt-1 shadow-xl;
   }
 
-  .color-picker-selector {
+  .sv-selector-input {
     @apply flex flex-col w-full rounded-sm space-y-1;
   }
 
-  .color-block-background {
+  .sv-selector-background {
     @apply h-48 w-full relative;
     background-color: var(--current-background);
   }
 
-  .color-block-white-gradient {
+  .sv-selector-white-gradient-mask {
     @apply h-full w-full bg-gradient-to-r from-white to-transparent;
   }
 
-  .color-block-black-gradient {
+  .sv-selector-black-gradient-mask {
     @apply h-full w-full bg-gradient-to-b from-transparent to-black;
   }
 
-  .color-block-cursor {
+  .sv-selector-cursor {
     @apply h-4 w-4 rounded-full border-2 border-gray-700 absolute pointer-events-none;
     top: var(--color-block-top);
     left: var(--color-block-left);
     background: var(--current-rgba-color);
   }
 
-  .color-picker-extra-selectors {
+  .additional-selectors {
     @apply flex flex-col p-2 rounded-b-sm space-y-2;
   }
 
-  .color-strip {
+  .h-selector-container {
     @apply flex items-center h-4 w-full;
   }
 
-  .color-strip-selector {
+  .h-selector {
     @apply h-2 border-none rounded-full w-full appearance-none;
     background: linear-gradient(
       to right,
@@ -316,20 +335,20 @@ It also supports manual RGBA edition with 4 different inputs.
     );
   }
 
-  .color-strip-selector::-moz-range-thumb {
+  .h-selector::-moz-range-thumb {
     @apply w-3 h-3 cursor-pointer border-2 border-gray-700 rounded-full;
     background-color: var(--current-background);
   }
 
-  .color-strip-selector::-webkit-slider-thumb {
+  .h-selector::-webkit-slider-thumb {
     @apply bg-gray-800 w-4 h-4 cursor-pointer border-2 border-gray-700 rounded-full appearance-none;
   }
 
-  .alpha-strip {
+  .alpha-selector-container {
     @apply flex items-center h-4 w-full;
   }
 
-  .alpha-strip-checkered-mask {
+  .alpha-selector-checkered-mask {
     @apply w-full h-2 rounded-full;
     background: repeating-conic-gradient(
         theme("colors.gray.400") 0deg 90deg,
@@ -338,24 +357,24 @@ It also supports manual RGBA edition with 4 different inputs.
       0 0 / theme("spacing.2");
   }
 
-  .alpha-strip-opacity-mask {
+  .alpha-selector-opacity-mask {
     @apply w-full h-full relative rounded-full bg-gradient-to-r from-transparent;
   }
 
-  .alpha-strip-selector {
+  .alpha-selector {
     @apply bg-transparent h-2 absolute border-none rounded-full w-full appearance-none;
   }
 
-  .alpha-strip-selector::-moz-range-thumb {
+  .alpha-selector::-moz-range-thumb {
     @apply w-3 h-3 cursor-pointer border-2 border-gray-700 rounded-full;
     background-color: var(--current-background);
   }
 
-  .alpha-strip-selector::-webkit-slider-thumb {
+  .alpha-selector::-webkit-slider-thumb {
     @apply bg-gray-800 w-4 h-4 cursor-pointer border-2 border-gray-700 rounded-full appearance-none;
   }
 
-  .inputs {
+  .rgba-inputs {
     @apply flex flex-row bg-gray-700 space-x-0.5;
   }
 </style>
