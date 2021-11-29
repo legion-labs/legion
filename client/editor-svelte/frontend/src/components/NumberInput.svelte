@@ -13,6 +13,8 @@
 
   export let autoSelect = false;
 
+  export let step = 0;
+
   let input: HTMLInputElement | undefined;
 
   const onFocus = (_event: FocusEvent) => {
@@ -32,7 +34,9 @@
   type="number"
   {min}
   {max}
-  bind:value
+  {step}
+  {value}
+  on:input
   bind:this={input}
 />
 

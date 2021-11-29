@@ -8,16 +8,16 @@
   import asyncData from "@/stores/asyncData";
   import currentResource from "@/stores/currentResource";
 
-  const { run } = asyncData(getAllResources);
+  const { run: runGetAllResources } = asyncData(getAllResources);
 
   let currentResourceId: string | null = null;
-  let fetchAllResources = run();
+  let fetchAllResources = runGetAllResources();
   let desiredVideoResolution: Resolution | undefined;
 
   const tryAgain = () => {
     $currentResource = null;
     currentResourceId = null;
-    fetchAllResources = run();
+    fetchAllResources = runGetAllResources();
   };
 
   $: if (currentResourceId) {
