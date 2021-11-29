@@ -121,4 +121,7 @@ dockerize-push:
 clean:
 	cargo clean
 
-.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release cov grcov timings api-doc book dockerize dockerize-deploy clean
+git-clean:
+	git clean -fxd
+
+.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release cov grcov timings api-doc book dockerize dockerize-deploy clean git-clean
