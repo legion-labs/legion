@@ -23,6 +23,7 @@
   let processInfo: Process | null = null;
   let scopes: Record<number, ScopeDesc> = {};
   let nodes: CumulativeCallGraphNode[] | null = null;
+  let maxSum: number | null = null;
 
   
   function getUrlParams() :GraphParams {
@@ -64,6 +65,19 @@
     } );
     nodes = reply.nodes.filter( item => item.stats && item.hash != 0 ); //todo: fix this on server side
     nodes = nodes.sort( (lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum );
+    maxSum = nodes[0].stats!.sum;
+  }
+
+  function formatFunDivWidth(node: CumulativeCallGraphNode) : string{
+    if (!maxSum) {
+      return "";
+    }
+    const pct = node.stats!.sum * 100 / maxSum;
+    return `width:${pct*0.95}%`;
+  }
+
+  function formatFunLabel(node: CumulativeCallGraphNode) : string{
+    return scopes[node.hash].name + ' ' + formatExecutionTime(node.stats!.sum);
   }
 
   onMount(() => {
@@ -78,9 +92,9 @@
   {#if nodes}
     <h2>Function List</h2>
     {#each nodes as node (node.hash)}
-      <div class="fundiv">
+      <div class="fundiv" style={formatFunDivWidth(node)}>
         <span>
-          {scopes[node.hash].name + ' ' + formatExecutionTime(node.stats.sum)}
+          {formatFunLabel(node)}
         </span>
       </div>
     {/each}
@@ -93,6 +107,8 @@
     margin: 5px;
     text-align: left;
     background-color: rgba(64, 64, 200, 0.1);
+    overflow: visible;
+    white-space: nowrap;
   }
 
   .fundiv span {
@@ -103,5 +119,11 @@
     color: white;
     background-color: rgba(64, 64, 200, 1.0);
   }
+
+  .fundiv span:hover {
+    margin: 0 10px;
+    background-color: rgba(64, 64, 200, 1.0);
+  }
+  
   
 </style>
