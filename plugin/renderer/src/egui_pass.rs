@@ -195,22 +195,9 @@ impl EguiPass {
 
         // Texture data retrieved from egui context is only valid after the call to CtrRef::run()
 
-        let egui_texture = Arc::clone(&egui_ctx.texture());
-        let pixels = egui_texture
-            .pixels
-            .clone()
-            .into_iter()
-            .flat_map(|i| [255; 4])
-            .collect::<Vec<u8>>();
-        let staging_buffer = renderer
-            .device_context()
-            .create_buffer(&BufferDef::for_staging_buffer_data(
-                &pixels,
-                ResourceUsage::empty(),
-            ))
-            .unwrap();
-
         let device_context = renderer.device_context();
+        let egui_texture = &egui_ctx.texture();
+
         let texture_def = TextureDef {
             extents: Extents3D {
                 width: egui_texture.width as u32,
@@ -227,7 +214,6 @@ impl EguiPass {
         };
         let texture = device_context.create_texture(&texture_def).unwrap();
 
-        let egui_texture = Arc::clone(&egui_ctx.texture());
         let pixels = egui_texture
             .pixels
             .clone()
@@ -418,7 +404,7 @@ impl EguiPass {
                         .color
                         .to_array()
                         .into_iter()
-                        .map(|x| x as f32)
+                        .map(f32::from)
                         .collect::<Vec<f32>>();
                     let mut vertex = vec![v.pos.x, v.pos.y, v.uv.x, v.uv.y];
                     vertex.append(&mut color);

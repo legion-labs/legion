@@ -15,11 +15,19 @@ use crate::{
 #[derive(Default)]
 pub struct RendererPlugin;
 
+#[derive(Default)]
+struct RendererUI {
+    text: String,
+}
+
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut lgn_app::App) {
         let renderer = Renderer::new().unwrap();
         app.add_plugin(EguiPlugin::default());
         app.insert_resource(renderer);
+        app.insert_resource(RendererUI {
+            text: String::from("something"),
+        });
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
@@ -41,7 +49,11 @@ impl Plugin for RendererPlugin {
     }
 }
 
-fn update_ui(mut egui_ctx: ResMut<Egui>, mut rotations: Query<'_, '_, &mut RotationComponent>) {
+fn update_ui(
+    mut egui_ctx: ResMut<Egui>,
+    mut renderer_ui: ResMut<RendererUI>,
+    mut rotations: Query<'_, '_, &mut RotationComponent>,
+) {
     egui::Window::new("Update rotation speeds").show(&egui_ctx.ctx, |ui| {
         for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
             ui.horizontal(|ui| {
@@ -60,6 +72,7 @@ fn update_ui(mut egui_ctx: ResMut<Egui>, mut rotations: Query<'_, '_, &mut Rotat
                 );
             });
         }
+        ui.text_edit_multiline(&mut renderer_ui.text);
     });
 }
 
