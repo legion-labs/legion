@@ -56,11 +56,7 @@
 // crate-specific exceptions:
 #![allow()]
 
-use legion_app::{App, AppExit, CoreStage, Plugin};
-use legion_ecs::{prelude::*, system::IntoSystem};
-use legion_renderer::{components::RenderSurface, Renderer, RendererSystemLabel};
-
-use crate::component::PresenterSnapshot;
+use legion_app::{App, Plugin};
 
 pub mod component;
 pub use legion_presenter::offscreen_helper::Resolution;
@@ -69,16 +65,16 @@ pub use legion_presenter::offscreen_helper::Resolution;
 pub struct PresenterSnapshotPlugin;
 
 impl Plugin for PresenterSnapshotPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_system_to_stage(
-            CoreStage::PostUpdate,
-            render_presenter_snapshots
-                .system()
-                .after(RendererSystemLabel::FrameDone),
-        );
+    fn build(&self, _app: &mut App) {
+        // app.add_system_to_stage(
+        //     CoreStage::PostUpdate,
+        //     render_presenter_snapshots
+        //         .system()
+        //         .after(RendererSystemLabel::FrameDone),
+        // );
     }
 }
-
+/*
 #[allow(clippy::needless_pass_by_value)]
 fn render_presenter_snapshots(
     renderer: Res<'_, Renderer>,
@@ -86,9 +82,10 @@ fn render_presenter_snapshots(
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     mut app_exit_events: EventWriter<'_, '_, AppExit>,
 ) {
-    let graphics_queue = renderer.graphics_queue();
-    let transient_descriptor_heap = renderer.transient_descriptor_heap();
-    let wait_sem = renderer.frame_signal_semaphore();
+    let mut render_context = RenderContext::new(&renderer);
+    // let graphics_queue = renderer.queue(QueueType::Graphics);
+    // let transient_descriptor_heap = render_context.transient_descriptor_heap();
+    // let wait_sem = renderer.frame_signal_semaphore();
 
     for mut pres_snapshot in q_pres_snapshots.iter_mut() {
         // this loop is wrong, it's wip code, we need to add some snapshot render_surface mapping
@@ -100,9 +97,10 @@ fn render_presenter_snapshots(
         if let Some(render_surface) = render_surface {
             if pres_snapshot
                 .present(
-                    graphics_queue,
-                    transient_descriptor_heap,
-                    wait_sem,
+                    &mut render_context,
+                    // graphics_queue,
+                    // transient_descriptor_heap,
+                    // wait_sem,
                     render_surface,
                 )
                 .unwrap()
@@ -112,3 +110,4 @@ fn render_presenter_snapshots(
         }
     }
 }
+*/

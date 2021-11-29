@@ -77,11 +77,12 @@ impl VideoStream {
         record_int_metric(&FRAME_ID_RENDERED, self.frame_id as u64);
     }
 
-    pub(crate) fn present(
+    pub(crate) fn present<'renderer>(
         &mut self,
-        graphics_queue: &Queue,
-        transient_descriptor_heap: &DescriptorHeap,
-        wait_sem: &Semaphore,
+        render_context: &RenderContext<'renderer>
+        // graphics_queue: &Queue,
+        // transient_descriptor_heap: &DescriptorHeap,
+        // wait_sem: &Semaphore,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();

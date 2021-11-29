@@ -1,13 +1,14 @@
-use std::cmp::max;
+use std::{cmp::max, sync::Arc};
 
 use graphics_api::{
     CommandBuffer, Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState,
-    ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    ResourceUsage, Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
+    TextureViewDef,
 };
 use legion_ecs::prelude::Component;
 use legion_utils::Uuid;
 
-use crate::{Renderer, TmpRenderPass};
+use crate::{Presenter, RenderContext, Renderer, TmpRenderPass};
 
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RenderSurfaceId(Uuid);
@@ -18,15 +19,15 @@ impl RenderSurfaceId {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RenderSurfaceExtents {
-    pub extents_2d: Extents2D,
+    extents: Extents2D,
 }
 
 impl RenderSurfaceExtents {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
-            extents_2d: Extents2D {
+            extents: Extents2D {
                 width: max(1u32, width),
                 height: max(1u32, height),
             },
@@ -34,86 +35,26 @@ impl RenderSurfaceExtents {
     }
 
     pub fn width(&self) -> u32 {
-        self.extents_2d.width
+        self.extents.width
     }
 
     pub fn height(&self) -> u32 {
-        self.extents_2d.height
+        self.extents.height
     }
 }
 
 #[allow(dead_code)]
-#[derive(Component)]
-pub struct RenderSurface {
-    id: RenderSurfaceId,
-    pub extents: RenderSurfaceExtents,
+struct SizeDependentResources {
     texture: Texture,
     texture_srv: TextureView,
     texture_rtv: TextureView,
     texture_state: ResourceState,
-
     depth_stencil_texture: Texture,
     depth_stencil_texture_view: TextureView,
-
-    // tmp
-    pub test_renderpass: TmpRenderPass,
 }
 
-impl RenderSurface {
-    pub fn new(renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
-        Self::new_with_id(RenderSurfaceId::new(), renderer, extents)
-    }
-
-    pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
-        if (self.extents) != extents {
-            *self = Self::new_with_id(self.id, renderer, extents);
-        }
-    }
-
-    pub fn id(&self) -> RenderSurfaceId {
-        self.id
-    }
-
-    pub fn texture(&self) -> &Texture {
-        &self.texture
-    }
-
-    pub fn render_target_view(&self) -> &TextureView {
-        &self.texture_rtv
-    }
-
-    pub fn shader_resource_view(&self) -> &TextureView {
-        &self.texture_srv
-    }
-
-    pub fn depth_stencil_texture_view(&self) -> &TextureView {
-        &self.depth_stencil_texture_view
-    }
-
-    pub fn transition_to(&mut self, cmd_buffer: &CommandBuffer, dst_state: ResourceState) {
-        let src_state = self.texture_state;
-        let dst_state = dst_state;
-
-        if src_state != dst_state {
-            cmd_buffer
-                .cmd_resource_barrier(
-                    &[],
-                    &[TextureBarrier::state_transition(
-                        &self.texture,
-                        src_state,
-                        dst_state,
-                    )],
-                )
-                .unwrap();
-            self.texture_state = dst_state;
-        }
-    }
-
-    fn new_with_id(
-        id: RenderSurfaceId,
-        renderer: &Renderer,
-        extents: RenderSurfaceExtents,
-    ) -> Self {
+impl SizeDependentResources {
+    fn new(renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
         let device_context = renderer.device_context();
         let texture_def = TextureDef {
             extents: Extents3D {
@@ -162,15 +103,151 @@ impl RenderSurface {
             .unwrap();
 
         Self {
-            id,
-            extents,
             texture,
             texture_srv,
             texture_rtv,
             texture_state: ResourceState::UNDEFINED,
             depth_stencil_texture,
             depth_stencil_texture_view,
-            test_renderpass: TmpRenderPass::new(renderer),
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct RenderSurface {
+    id: RenderSurfaceId,
+    extents: RenderSurfaceExtents,
+    resources: SizeDependentResources,
+    // tmp
+    num_render_frames: usize,
+    render_frame_idx: usize,
+    signal_sems: Vec<Semaphore>,
+    test_renderpass: Arc<TmpRenderPass>,
+
+    // presenters
+    // presenters: RwLock<Vec<Box<dyn Presenter>>>,
+    presenters: Vec<Box<dyn Presenter>>,
+}
+
+impl RenderSurface {
+    pub fn new(renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
+        Self::new_with_id(RenderSurfaceId::new(), renderer, extents)
+    }
+
+    pub fn extents(&self) -> RenderSurfaceExtents {
+        self.extents
+    }
+
+    pub fn test_renderpass(&self) -> Arc<TmpRenderPass> {
+        self.test_renderpass.clone()
+    }
+
+    pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
+        if self.extents != extents {
+            self.resources = SizeDependentResources::new(renderer, extents);
+            // *self = Self::new_with_id(self.id, renderer, extents);
+
+            // let mut presenters = std::mem::take(&mut self.presenters);
+
+            for presenter in self.presenters.iter_mut() {
+                presenter.resize(extents);
+            }
+
+            // self.presenters = presenters;
+            self.extents = extents;
+        }
+    }
+
+    pub fn register_presenter<T: 'static + Presenter>(&mut self, create_fn: impl FnOnce() -> T) {
+        let presenter = create_fn();
+        // let mut presenters = self.presenters.write();
+        self.presenters.push(Box::new(presenter));
+    }
+
+    // pub fn presenters_mut(&self) -> RwLockReadGuard<'_, Vec<Box<dyn Presenter>>> {
+    //     self.presenters.read()
+    // }
+
+    pub fn id(&self) -> RenderSurfaceId {
+        self.id
+    }
+
+    pub fn texture(&self) -> &Texture {
+        &self.resources.texture
+    }
+
+    pub fn render_target_view(&self) -> &TextureView {
+        &self.resources.texture_rtv
+    }
+
+    pub fn shader_resource_view(&self) -> &TextureView {
+        &self.resources.texture_srv
+    }
+
+    pub fn depth_stencil_texture_view(&self) -> &TextureView {
+        &self.resources.depth_stencil_texture_view
+    }
+
+    pub fn transition_to(&mut self, cmd_buffer: &CommandBuffer, dst_state: ResourceState) {
+        let src_state = self.resources.texture_state;
+        let dst_state = dst_state;
+
+        if src_state != dst_state {
+            cmd_buffer
+                .cmd_resource_barrier(
+                    &[],
+                    &[TextureBarrier::state_transition(
+                        &self.resources.texture,
+                        src_state,
+                        dst_state,
+                    )],
+                )
+                .unwrap();
+            self.resources.texture_state = dst_state;
+        }
+    }
+
+    pub fn present<'renderer>(&mut self, render_context: &mut RenderContext<'renderer>) {
+        let mut presenters = std::mem::take(&mut self.presenters);
+
+        for presenter in presenters.iter_mut() {
+            presenter.as_mut().present(render_context, self);
+        }
+
+        self.presenters = presenters;
+    }
+
+    pub fn acquire(&mut self) -> &Semaphore {
+        let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;
+        let sem = &self.signal_sems[render_frame_idx];
+        self.render_frame_idx = render_frame_idx;
+        sem
+    }
+
+    pub fn sema(&self) -> &Semaphore {
+        &self.signal_sems[self.render_frame_idx]
+    }
+
+    fn new_with_id(
+        id: RenderSurfaceId,
+        renderer: &Renderer,
+        extents: RenderSurfaceExtents,
+    ) -> Self {
+        let num_render_frames = renderer.num_render_frames();
+        let device_context = renderer.device_context();
+        let signal_sems = (0..num_render_frames)
+            .map(|_| device_context.create_semaphore().unwrap())
+            .collect();
+
+        Self {
+            id,
+            extents,
+            resources: SizeDependentResources::new(renderer, extents),
+            num_render_frames,
+            render_frame_idx: 0,
+            signal_sems,
+            test_renderpass: Arc::new(TmpRenderPass::new(renderer)),
+            presenters: Vec::new(),
         }
     }
 }

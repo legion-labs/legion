@@ -285,9 +285,6 @@ pub mod prelude {
 pub use error::*;
 pub use types::*;
 
-#[cfg(feature = "vulkan")]
-pub type DefaultApi = GfxApi;
-
 //
 // Constants
 //

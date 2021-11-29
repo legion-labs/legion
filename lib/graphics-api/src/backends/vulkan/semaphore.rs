@@ -32,3 +32,4 @@ impl VulkanSemaphore {
         self.vk_semaphore
     }
 }
+

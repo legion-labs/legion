@@ -67,5 +67,8 @@ pub use renderer_plugin::*;
 mod renderer;
 pub use renderer::*;
 
+mod render_context;
+pub use render_context::*;
+
 pub mod components;
 pub mod static_mesh_render_data;

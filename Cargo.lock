@@ -4015,6 +4015,7 @@ dependencies = [
  "legion-transform",
  "legion-utils",
  "log",
+ "parking_lot 0.11.2",
 ]
 
 [[package]]

@@ -7,7 +7,7 @@ use crate::{
     Swapchain,
 };
 
-#[derive(Clone, Debug)]
+// #[derive(Clone, Debug)]
 pub(crate) struct VulkanQueue {
     queue: VkQueue,
 }
