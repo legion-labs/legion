@@ -8,18 +8,23 @@
   import { useLocation } from "svelte-navigator";
   import { onMount } from "svelte";
   import {
+    CumulativeCallGraphNode,
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
+    ScopeDesc,
   } from "@/proto/analytics";
   import { Process } from "@/proto/process";
+  import { formatExecutionTime } from "@/lib/format";
 
   const locationStore = useLocation();
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
   );
   let processInfo: Process | null = null;
-  
+  let scopes: Record<number, ScopeDesc> = {};
+  let nodes: CumulativeCallGraphNode[] | null = null;
 
+  
   function getUrlParams() :GraphParams {
     const params = new URLSearchParams($locationStore.search);
     const processId = params.get("process")
@@ -49,12 +54,16 @@
     }
     processInfo = process;
 
-    const { scopes, nodes } = await client.process_cumulative_call_graph({
+    const reply = await client.process_cumulative_call_graph({
       process: processInfo,
       beginMs: params.beginMs,
       endMs: params.endMs });
-    
-    console.log(scopes, nodes);
+
+    reply.scopes.forEach( function(scope){
+      scopes[scope.hash] = scope;
+    } );
+    nodes = reply.nodes.filter( item => item.stats && item.hash != 0 ); //todo: fix this on server side
+    nodes = nodes.sort( (lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum );
   }
 
   onMount(() => {
@@ -66,4 +75,33 @@
 
 <div>
   <h1>Graph</h1>
+  {#if nodes}
+    <h2>Function List</h2>
+    {#each nodes as node (node.hash)}
+      <div class="fundiv">
+        <span>
+          {scopes[node.hash].name + ' ' + formatExecutionTime(node.stats.sum)}
+        </span>
+      </div>
+    {/each}
+  {/if}
 </div>
+
+<style lang="postcss">
+
+  .fundiv {
+    margin: 5px;
+    text-align: left;
+    background-color: rgba(64, 64, 200, 0.1);
+  }
+
+  .fundiv span {
+    margin: 0 10px;
+  }
+  
+  .fundiv:hover {
+    color: white;
+    background-color: rgba(64, 64, 200, 1.0);
+  }
+  
+</style>

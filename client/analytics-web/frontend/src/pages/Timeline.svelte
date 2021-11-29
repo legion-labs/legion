@@ -28,6 +28,7 @@
   import { Process } from "@/proto/process";
   import { Stream } from "@/proto/stream";
   import { onMount } from "svelte";
+  import { formatExecutionTime } from "@/lib/format";
 
   export let id: string;
 
@@ -414,23 +415,6 @@
     ];
 
     drawCanvas();
-  }
-
-  function formatExecutionTime(time: number) {
-    let unit = "ms";
-
-    if (time < 1) {
-      unit = "us";
-      time = time * 1000;
-      return time.toFixed(3) + " " + unit;
-    }
-
-    if (time > 1000) {
-      unit = "seconds";
-      time = time / 1000;
-    }
-
-    return time.toFixed(3) + " " + unit;
   }
 </script>
 
