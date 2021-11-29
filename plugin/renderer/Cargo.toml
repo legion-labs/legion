@@ -10,6 +10,7 @@ anyhow = "1.0"
 graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
 graphics-utils = { path = "../../lib/graphics-utils", package = "legion-graphics-utils" }
 legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-async = { path = "../../plugin/async", version = "0.1.0" }
 legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
 legion-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }

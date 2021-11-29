@@ -5,8 +5,10 @@ use graphics_api::{
     ResourceUsage, Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
     TextureViewDef,
 };
+use legion_async::TokioAsyncRuntime;
 use legion_ecs::prelude::Component;
 use legion_utils::Uuid;
+use parking_lot::RwLock;
 
 use crate::{Presenter, RenderContext, Renderer, TmpRenderPass};
 
@@ -122,7 +124,7 @@ pub struct RenderSurface {
     num_render_frames: usize,
     render_frame_idx: usize,
     signal_sems: Vec<Semaphore>,
-    test_renderpass: Arc<TmpRenderPass>,
+    test_renderpass: Arc<RwLock<TmpRenderPass>>,
 
     // presenters
     // presenters: RwLock<Vec<Box<dyn Presenter>>>,
@@ -138,7 +140,7 @@ impl RenderSurface {
         self.extents
     }
 
-    pub fn test_renderpass(&self) -> Arc<TmpRenderPass> {
+    pub fn test_renderpass(&self) -> Arc<RwLock<TmpRenderPass>> {
         self.test_renderpass.clone()
     }
 
@@ -150,7 +152,7 @@ impl RenderSurface {
             // let mut presenters = std::mem::take(&mut self.presenters);
 
             for presenter in self.presenters.iter_mut() {
-                presenter.resize(extents);
+                presenter.resize(renderer, extents);
             }
 
             // self.presenters = presenters;
@@ -207,11 +209,15 @@ impl RenderSurface {
         }
     }
 
-    pub fn present<'renderer>(&mut self, render_context: &mut RenderContext<'renderer>) {
+    pub fn present<'renderer>(
+        &mut self,
+        render_context: &mut RenderContext<'renderer>,
+        async_rt: &mut TokioAsyncRuntime,
+    ) {
         let mut presenters = std::mem::take(&mut self.presenters);
 
         for presenter in presenters.iter_mut() {
-            presenter.as_mut().present(render_context, self);
+            presenter.as_mut().present(render_context, self, async_rt);
         }
 
         self.presenters = presenters;
@@ -246,7 +252,7 @@ impl RenderSurface {
             num_render_frames,
             render_frame_idx: 0,
             signal_sems,
-            test_renderpass: Arc::new(TmpRenderPass::new(renderer)),
+            test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(renderer))),
             presenters: Vec::new(),
         }
     }

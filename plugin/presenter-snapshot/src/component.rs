@@ -1,6 +1,7 @@
 #![allow(clippy::pedantic)]
 
 use graphics_api::prelude::*;
+use legion_async::TokioAsyncRuntime;
 use legion_ecs::prelude::Component;
 use legion_presenter::offscreen_helper::{self, Resolution};
 use legion_renderer::{
@@ -96,7 +97,11 @@ impl PresenterSnapshot {
 }
 
 impl Presenter for PresenterSnapshot {
-    fn resize(&mut self, _extents: legion_renderer::components::RenderSurfaceExtents) {
+    fn resize(
+        &mut self,
+        _renderer: &Renderer,
+        _extents: legion_renderer::components::RenderSurfaceExtents,
+    ) {
         unreachable!();
     }
 
@@ -104,6 +109,7 @@ impl Presenter for PresenterSnapshot {
         &mut self,
         render_context: &mut RenderContext<'renderer>,
         render_surface: &mut RenderSurface,
+        _async_rt: &mut TokioAsyncRuntime,
     ) {
         self.present(render_context, render_surface).unwrap();
     }

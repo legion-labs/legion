@@ -3968,6 +3968,7 @@ dependencies = [
  "crossbeam-channel",
  "instant",
  "legion-app",
+ "legion-async",
  "legion-ecs",
  "legion-graphics-api",
  "legion-presenter",
@@ -3982,6 +3983,7 @@ name = "legion-presenter-window"
 version = "0.1.0"
 dependencies = [
  "legion-app",
+ "legion-async",
  "legion-ecs",
  "legion-graphics-api",
  "legion-presenter",
@@ -4007,6 +4009,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "legion-app",
+ "legion-async",
  "legion-ecs",
  "legion-graphics-api",
  "legion-graphics-utils",

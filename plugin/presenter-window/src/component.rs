@@ -4,6 +4,7 @@ use std::convert::TryFrom;
 
 use graphics_api::prelude::*;
 
+use legion_async::TokioAsyncRuntime;
 use legion_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     Presenter, RenderContext, Renderer,
@@ -213,7 +214,7 @@ impl Drop for PresenterWindow {
 }
 
 impl Presenter for PresenterWindow {
-    fn resize(&mut self, extents: RenderSurfaceExtents) {
+    fn resize(&mut self, _renderer: &Renderer, extents: RenderSurfaceExtents) {
         self.extents = extents;
     }
 
@@ -221,6 +222,7 @@ impl Presenter for PresenterWindow {
         &mut self,
         render_context: &mut RenderContext<'renderer>,
         render_surface: &mut RenderSurface,
+        _async_rt: &mut TokioAsyncRuntime,
     ) {
         // FIXME: if the windows is minimized, we should not resize the RenderSurface and we should not present
         // the swapchain.
