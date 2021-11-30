@@ -154,7 +154,7 @@ impl RenderSurface {
     pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
         if self.extents != extents {
             self.resources = SizeDependentResources::new(renderer, extents);
-            for presenter in self.presenters.iter_mut() {
+            for presenter in &mut self.presenters {
                 presenter.resize(renderer, extents);
             }
             self.extents = extents;
@@ -212,7 +212,7 @@ impl RenderSurface {
     ) {
         let mut presenters = std::mem::take(&mut self.presenters);
 
-        for presenter in presenters.iter_mut() {
+        for presenter in &mut presenters {
             presenter.as_mut().present(render_context, self, async_rt);
         }
 

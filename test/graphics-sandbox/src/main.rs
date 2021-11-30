@@ -251,10 +251,8 @@ fn presenter_snapshot_system(
         });
 
         commands.spawn().insert(render_surface);
-    } else {
-        if frame_counter.frame_count > frame_counter.frame_target {
-            app_exit_events.send(AppExit);
-        }
+    } else if frame_counter.frame_count > frame_counter.frame_target {
+        app_exit_events.send(AppExit);
     }
     frame_counter.frame_count += 1;
 }

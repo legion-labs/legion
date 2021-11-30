@@ -58,6 +58,7 @@ fn update_rotation(mut query: Query<'_, '_, (&mut Transform, &RotationComponent)
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn render_update(
     renderer: ResMut<'_, Renderer>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
@@ -89,7 +90,7 @@ fn render_update(
         // queue
         let sem = render_surface.acquire();
         graphics_queue
-            .submit(&[&cmd_buffer], &[], &[&sem], None)
+            .submit(&[&cmd_buffer], &[], &[sem], None)
             .unwrap();
 
         render_context.release_cmd_buffer(cmd_buffer);

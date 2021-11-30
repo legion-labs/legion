@@ -1,5 +1,4 @@
 use std::num::NonZeroU32;
-use std::ops::Deref;
 
 use anyhow::Result;
 use graphics_utils::TransientPagedBuffer;
@@ -67,10 +66,7 @@ impl Renderer {
     pub fn queue(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
         match queue_type {
             QueueType::Graphics => self.graphics_queue.read(),
-            QueueType::Compute => todo!(),
-            QueueType::Transfer => todo!(),
-            QueueType::Decode => todo!(),
-            QueueType::Encode => todo!(),
+            _ => unreachable!(),
         }
     }
 
@@ -85,7 +81,7 @@ impl Renderer {
     ) -> CommandBufferPoolHandle {
         let queue = self.queue(queue_type);
         let mut pool = self.command_buffer_pools.write();
-        pool.acquire_or_create(|| CommandBufferPool::new(queue.deref()))
+        pool.acquire_or_create(|| CommandBufferPool::new(&*queue))
     }
 
     pub(crate) fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
@@ -98,7 +94,7 @@ impl Renderer {
         heap_def: &DescriptorHeapDef,
     ) -> DescriptorPoolHandle {
         let mut pool = self.descriptor_pools.write();
-        pool.acquire_or_create(|| DescriptorPool::new(self.device_context(), &heap_def))
+        pool.acquire_or_create(|| DescriptorPool::new(self.device_context(), heap_def))
     }
 
     pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
@@ -373,7 +369,7 @@ impl TmpRenderPass {
         render_surface: &mut RenderSurface,
         static_meshes: &[(&Transform, &StaticMesh)],
     ) {
-        render_surface.transition_to(&cmd_buffer, ResourceState::RENDER_TARGET);
+        render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
         cmd_buffer
             .cmd_begin_render_pass(

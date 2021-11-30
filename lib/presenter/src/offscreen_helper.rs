@@ -342,7 +342,7 @@ impl OffscreenHelper {
             .root_signature()
             .definition()
             .descriptor_set_layouts[0];
-        let mut descriptor_set_writer = render_context.alloc_descriptor_set(&descriptor_set_layout);
+        let mut descriptor_set_writer = render_context.alloc_descriptor_set(descriptor_set_layout);
         descriptor_set_writer
             .set_descriptors(
                 "hdr_image",
