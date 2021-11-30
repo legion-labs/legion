@@ -9,6 +9,7 @@
   import { debounce, retry } from "@/lib/promises";
   import { initializeStream, onReceiveControlMessage } from "@/api";
   import { statusStore } from "@/stores/statusBarData";
+  import log from "@/lib/log";
 
   const reconnectionTimeout = 600;
 
@@ -56,11 +57,11 @@
 
   const initialize = () => {
     if (!videoElement) {
-      console.error("Video element couldn't be found");
+      log.error("video", "Video element couldn't be found");
       return;
     }
 
-    console.log("Initializing WebRTC...");
+    log.debug("video", "Initializing WebRTC");
 
     peerConnection = new RTCPeerConnection({
       iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
@@ -73,7 +74,7 @@
     };
 
     peerConnection.onicecandidate = async (iceEvent) => {
-      console.log(iceEvent);
+      log.debug("video", iceEvent);
 
       if (peerConnection && iceEvent.candidate === null) {
         const remoteDescription = await retry(() => {
@@ -95,7 +96,7 @@
         peerConnection &&
         peerConnection.iceConnectionState === "disconnected"
       ) {
-        console.log("Disconnected");
+        log.debug("video", "Disconnected");
 
         window.setTimeout(() => {
           if (videoElement) {
@@ -124,7 +125,10 @@
         }
         const { videoWidth, videoHeight } = event.target;
 
-        console.log(`Video resolution is now: ${videoWidth}x${videoHeight}.`);
+        log.debug(
+          "video",
+          `Video resolution is now: ${videoWidth}x${videoHeight}.`
+        );
 
         loading = false;
         $statusStore = null;
@@ -133,15 +137,15 @@
     });
 
     videoChannel.onerror = (error: unknown) => {
-      console.log(error);
+      log.error("video", error);
     };
 
     videoChannel.onopen = () => {
-      console.log("Video channel is now open.");
+      log.debug("video", "Video channel is now open.");
     };
 
     videoChannel.onclose = () => {
-      console.log("Video channel is now closed.");
+      log.debug("video", "Video channel is now closed.");
     };
 
     videoChannel.onmessage = async (message) => {
@@ -157,11 +161,11 @@
     };
 
     controlChannel.onopen = (event) => {
-      console.log("Control channel is now open: ", event);
+      log.debug("video", log.json`Control channel is now open: ${event}`);
     };
 
     controlChannel.onclose = (event) => {
-      console.log("Control channel is now closed: ", event);
+      log.debug("video", log.json`Control channel is now closed: ${event}`);
     };
 
     controlChannel.onmessage = async (
@@ -192,7 +196,7 @@
       return;
     }
 
-    console.log(`Desired resolution is now: ${width}x${height}`);
+    log.debug("video", `Desired resolution is now: ${width}x${height}`);
 
     if (videoChannel && videoChannel.readyState === "open") {
       videoChannel.send(JSON.stringify({ event: "resize", width, height }));

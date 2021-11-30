@@ -1,5 +1,6 @@
 <script lang="ts">
   import clickOutside from "@/actions/clickOutside";
+  import log from "@/lib/log";
   import {
     default as topBarMenu,
     Id as TopBarMenuId,
@@ -19,10 +20,10 @@
     $topBarMenu ? topBarMenu.close() : topBarMenu.set(id);
   };
 
-  const onMenuItemClick = () => {
+  const onMenuItemClick = (title: string) => {
+    log.debug("layout:topbar", `Clicked on item ${title}`);
     // When a user clicks on a menu dropdown item, we just close the menu
     topBarMenu.close();
-    console.log("Executed");
   };
 
   const closeMenu = () => {
@@ -53,7 +54,10 @@
         >
           <div class="menu-dropdown-items">
             {#each [`Foo ${menu.title}`, `Bar ${menu.title}`, `Baz ${menu.title}`] as menuItemTitle}
-              <div class="menu-dropdown-item" on:click={onMenuItemClick}>
+              <div
+                class="menu-dropdown-item"
+                on:click={() => onMenuItemClick(menu.title)}
+              >
                 {menuItemTitle}
               </div>
             {/each}
