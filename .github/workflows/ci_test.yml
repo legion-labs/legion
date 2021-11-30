@@ -18,11 +18,13 @@ jobs:
       - name: Run Yarn install
         run: |
           ls -la /etc/profile.d/
-          echo $HOME
+          echo "Home: $HOME"
           ls -la ~/
           echo $CCX
           echo $PATH
           echo $CARGO_HOME
+          cat ~/profile
+          cat ~/bashrc
           sleep 5
           yarn install
 
