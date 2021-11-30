@@ -1,4 +1,12 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
+  // Type are not preserved when using the `on:input` shortcut
+  // so we must use dispatch and explicitely type it
+  const dispatch = createEventDispatcher<{
+    input: string;
+  }>();
+
   export let value: string;
 
   export let size: "default" = "default";
@@ -14,6 +22,14 @@
       input.select();
     }
   };
+
+  const onInput = (
+    event: Event & {
+      currentTarget: EventTarget & HTMLInputElement;
+    }
+  ) => {
+    dispatch("input", event.currentTarget.value);
+  };
 </script>
 
 <div
@@ -25,9 +41,9 @@
     class="input"
     class:input-with-extension={$$slots.extension}
     type="text"
-    on:input
+    on:input={onInput}
     on:focus={onFocus}
-    {value}
+    bind:value
     bind:this={input}
   />
   {#if $$slots.extension}
