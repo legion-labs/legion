@@ -125,7 +125,6 @@ pub(crate) async fn compute_cumulative_call_graph(
     begin_ms: f64,
     end_ms: f64,
 ) -> Result<CumulativeCallGraphReply> {
-    //todo: include child processes
     //this is a serial implementation, could be transformed in map/reduce
     let mut scopes = ScopeHashMap::new();
     let mut stats = StatsHashMap::new();
@@ -139,6 +138,25 @@ pub(crate) async fn compute_cumulative_call_graph(
         &mut stats,
     )
     .await?;
+
+    let root_start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
+        .with_context(|| String::from("parsing process start time"))?;
+
+    for child_process in fetch_child_processes(connection, &process.process_id).await? {
+        let child_start_time = chrono::DateTime::parse_from_rfc3339(&child_process.start_time)
+            .with_context(|| String::from("parsing process start time"))?;
+        let time_offset = (child_start_time - root_start_time).num_milliseconds() as f64;
+        record_process_call_graph(
+            connection,
+            data_path,
+            &child_process,
+            begin_ms - time_offset,
+            end_ms - time_offset,
+            &mut scopes,
+            &mut stats,
+        )
+        .await?;
+    }
 
     let mut scope_vec = vec![];
     scope_vec.reserve(scopes.len());
