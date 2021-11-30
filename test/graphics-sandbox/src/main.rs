@@ -140,7 +140,7 @@ fn main() {
         });
         app.add_plugin(WindowPlugin::default())
             .add_plugin(InputPlugin::default())
-            .add_plugin(WinitPlugin::default())            
+            .add_plugin(WinitPlugin::default())
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
             .add_system(on_window_close_requested.exclusive_system())

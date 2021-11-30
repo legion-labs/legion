@@ -54,7 +54,7 @@ impl Fence {
     pub fn wait_for_fences(device_context: &DeviceContext, fences: &[&Self]) -> GfxResult<()> {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
-       
+
         #[cfg(any(feature = "vulkan"))]
         {
             let mut fence_list = Vec::with_capacity(fences.len());

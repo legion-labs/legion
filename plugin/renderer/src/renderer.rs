@@ -7,8 +7,7 @@ use parking_lot::{RwLock, RwLockReadGuard};
 
 use crate::components::{RenderSurface, StaticMesh};
 use crate::resources::{
-    CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle,
-    GpuSafePool,
+    CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
 };
 
 use crate::static_mesh_render_data::StaticMeshRenderData;

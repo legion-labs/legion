@@ -1,5 +1,6 @@
 use graphics_api::{
-    DescriptorHeap, DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, DeviceContext, GfxResult,
+    DescriptorHeap, DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, DeviceContext,
+    GfxResult,
 };
 
 use crate::RendererHandle;

@@ -5,7 +5,7 @@ use graphics_api::prelude::*;
 
 use legion_async::TokioAsyncRuntime;
 use legion_renderer::{
-    components::{RenderSurface, RenderSurfaceExtents, Presenter},
+    components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
 

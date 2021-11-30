@@ -60,4 +60,3 @@ impl Semaphore {
         &self.inner.platform_semaphore
     }
 }
-

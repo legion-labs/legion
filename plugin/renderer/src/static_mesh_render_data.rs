@@ -1,4 +1,3 @@
-
 use graphics_api::prelude::*;
 use legion_math::Vec3;
 

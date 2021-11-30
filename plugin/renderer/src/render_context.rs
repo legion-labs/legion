@@ -59,7 +59,8 @@ impl<'a> RenderContext<'a> {
                 .renderer
                 .acquire_descriptor_pool(&default_descriptor_heap_size());
             self.descriptor_pool
-                .allocate_descriptor_set(descriptor_set_layout).unwrap()
+                .allocate_descriptor_set(descriptor_set_layout)
+                .unwrap()
         }
     }
 

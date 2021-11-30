@@ -10,7 +10,7 @@ use legion_ecs::prelude::Component;
 use legion_utils::Uuid;
 use parking_lot::RwLock;
 
-use crate::{ RenderContext, Renderer, TmpRenderPass};
+use crate::{RenderContext, Renderer, TmpRenderPass};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
@@ -21,7 +21,6 @@ pub trait Presenter: Send + Sync {
         async_rt: &mut TokioAsyncRuntime,
     );
 }
-
 
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RenderSurfaceId(Uuid);
@@ -220,10 +219,10 @@ impl RenderSurface {
         self.presenters = presenters;
     }
 
-    // 
-    // TODO: change that asap. Acquire can't be called more than once per frame. This would result 
+    //
+    // TODO: change that asap. Acquire can't be called more than once per frame. This would result
     // in a crash.
-    // 
+    //
     pub fn acquire(&mut self) -> &Semaphore {
         let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;
         let sem = &self.signal_sems[render_frame_idx];

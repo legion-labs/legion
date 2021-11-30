@@ -75,6 +75,5 @@ pub use render_context::*;
 
 mod resources;
 
-
 pub mod components;
 pub mod static_mesh_render_data;
