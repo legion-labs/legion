@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::resources::Rotate;
+use crate::resources::GpuSafeRotate;
 
 pub struct RendererHandle<T> {
     inner: Option<T>,
@@ -57,7 +57,7 @@ impl<T> Drop for RendererHandle<T> {
     }
 }
 
-impl<T: Rotate> Rotate for RendererHandle<T> {
+impl<T: GpuSafeRotate> GpuSafeRotate for RendererHandle<T> {
     fn rotate(&mut self) {
         match &mut self.inner {
             Some(e) => e.rotate(),

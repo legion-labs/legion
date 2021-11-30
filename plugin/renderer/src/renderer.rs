@@ -8,7 +8,7 @@ use parking_lot::{RwLock, RwLockReadGuard};
 use crate::components::{RenderSurface, StaticMesh};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle,
-    RotatingResourcePool,
+    GpuSafePool,
 };
 
 use crate::static_mesh_render_data::StaticMeshRenderData;
@@ -24,8 +24,8 @@ pub struct Renderer {
     num_render_frames: usize,
     frame_fences: Vec<Fence>,
     graphics_queue: RwLock<Queue>,
-    command_buffer_pools: RwLock<RotatingResourcePool<CommandBufferPool>>,
-    descriptor_pools: RwLock<RotatingResourcePool<DescriptorPool>>,
+    command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
+    descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
@@ -46,8 +46,8 @@ impl Renderer {
                 .map(|_| device_context.create_fence().unwrap())
                 .collect(),
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
-            command_buffer_pools: RwLock::new(RotatingResourcePool::new(num_render_frames)),
-            descriptor_pools: RwLock::new(RotatingResourcePool::new(num_render_frames)),
+            command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
+            descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             transient_buffer: TransientPagedBuffer::new(device_context, 16),
             api,
         })

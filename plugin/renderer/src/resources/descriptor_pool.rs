@@ -4,7 +4,7 @@ use graphics_api::{
 
 use crate::RendererHandle;
 
-use super::Rotate;
+use super::GpuSafeRotate;
 
 pub(crate) struct DescriptorPool {
     heap: DescriptorHeap,
@@ -29,7 +29,7 @@ impl DescriptorPool {
     }
 }
 
-impl Rotate for DescriptorPool {
+impl GpuSafeRotate for DescriptorPool {
     fn rotate(&mut self) {
         self.reset();
     }

@@ -1,9 +1,10 @@
-use graphics_api::{CommandBuffer, CommandPool, Queue, CommandPoolDef, CommandBufferDef};
+use graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, Queue};
 
 use crate::RendererHandle;
 
-use super::Rotate;
+use super::GpuSafeRotate;
 
+// TODO: CommandBuffer should be boxed.
 pub type CommandBufferHandle = RendererHandle<CommandBuffer>;
 
 pub(crate) struct CommandBufferPool {
@@ -46,7 +47,7 @@ impl CommandBufferPool {
     }
 }
 
-impl Rotate for CommandBufferPool {
+impl GpuSafeRotate for CommandBufferPool {
     fn rotate(&mut self) {
         self.reset();
     }

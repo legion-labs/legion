@@ -1,17 +1,17 @@
 use crate::RendererHandle;
 
-pub(crate) trait Rotate {
+pub(crate) trait GpuSafeRotate {
     fn rotate(&mut self);
 }
 
-pub(crate) struct RotatingResourcePool<T: Rotate> {
+pub(crate) struct GpuSafePool<T: GpuSafeRotate> {
     num_cpu_frames: usize,
     cur_cpu_frame: usize,
     available: Vec<T>,
     in_use: Vec<Vec<T>>,
 }
 
-impl<T: Rotate> RotatingResourcePool<T> {
+impl<T: GpuSafeRotate> GpuSafePool<T> {
     pub(crate) fn new(num_cpu_frames: usize) -> Self {
         Self {
             num_cpu_frames,
