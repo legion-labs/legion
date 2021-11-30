@@ -3,10 +3,10 @@ use graphics_utils::TransientBufferAllocator;
 
 use crate::{
     resources::{CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle},
-    Renderer, RendererHandle,
+    Renderer, RenderHandle,
 };
 
-type TransientBufferAllocatorHandle = RendererHandle<TransientBufferAllocator>;
+type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
 
 pub struct RenderContext<'a> {
     renderer: &'a Renderer,
@@ -54,7 +54,7 @@ impl<'a> RenderContext<'a> {
             writer
         } else {
             self.renderer
-                .release_descriptor_pool(self.descriptor_pool.take());
+                .release_descriptor_pool(self.descriptor_pool.transfer());
             self.descriptor_pool = self
                 .renderer
                 .acquire_descriptor_pool(&default_descriptor_heap_size());
@@ -65,7 +65,7 @@ impl<'a> RenderContext<'a> {
     }
 
     pub fn acquire_transient_buffer_allocator(&mut self) -> TransientBufferAllocatorHandle {
-        self.transient_buffer_allocator.take()
+        self.transient_buffer_allocator.transfer()
     }
 
     pub fn release_transient_buffer_allocator(
@@ -79,12 +79,12 @@ impl<'a> RenderContext<'a> {
 impl<'a> Drop for RenderContext<'a> {
     fn drop(&mut self) {
         self.renderer
-            .release_command_buffer_pool(self.cmd_buffer_pool_handle.take());
+            .release_command_buffer_pool(self.cmd_buffer_pool_handle.transfer());
 
         self.renderer
-            .release_descriptor_pool(self.descriptor_pool.take());
+            .release_descriptor_pool(self.descriptor_pool.transfer());
 
-        self.transient_buffer_allocator.peek();
+        self.transient_buffer_allocator.take();
     }
 }
 

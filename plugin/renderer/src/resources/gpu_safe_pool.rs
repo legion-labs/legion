@@ -1,4 +1,4 @@
-use crate::RendererHandle;
+use crate::RenderHandle;
 
 pub(crate) trait GpuSafeRotate {
     fn rotate(&mut self);
@@ -28,16 +28,16 @@ impl<T: GpuSafeRotate> GpuSafePool<T> {
         self.cur_cpu_frame = next_cpu_frame;
     }
 
-    pub(crate) fn acquire_or_create(&mut self, create_fn: impl FnOnce() -> T) -> RendererHandle<T> {
+    pub(crate) fn acquire_or_create(&mut self, create_fn: impl FnOnce() -> T) -> RenderHandle<T> {
         let result = if self.available.is_empty() {
             create_fn()
         } else {
             self.available.pop().unwrap()
         };
-        RendererHandle::new(result)
+        RenderHandle::new(result)
     }
 
-    pub(crate) fn release(&mut self, mut data: RendererHandle<T>) {
-        self.in_use[self.cur_cpu_frame].push(data.peek());
+    pub(crate) fn release(&mut self, mut data: RenderHandle<T>) {
+        self.in_use[self.cur_cpu_frame].push(data.take());
     }
 }

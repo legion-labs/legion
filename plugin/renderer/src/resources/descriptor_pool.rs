@@ -3,7 +3,7 @@ use graphics_api::{
     GfxResult,
 };
 
-use crate::RendererHandle;
+use crate::RenderHandle;
 
 use super::GpuSafeRotate;
 
@@ -36,4 +36,4 @@ impl GpuSafeRotate for DescriptorPool {
     }
 }
 
-pub(crate) type DescriptorPoolHandle = RendererHandle<DescriptorPool>;
+pub(crate) type DescriptorPoolHandle = RenderHandle<DescriptorPool>;

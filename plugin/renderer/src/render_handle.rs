@@ -2,11 +2,11 @@ use std::ops::{Deref, DerefMut};
 
 use crate::resources::GpuSafeRotate;
 
-pub struct RendererHandle<T> {
+pub struct RenderHandle<T> {
     inner: Option<T>,
 }
 
-impl<T> RendererHandle<T> {
+impl<T> RenderHandle<T> {
     pub fn new(data: T) -> Self {
         Self { inner: Some(data) }
     }
@@ -15,21 +15,21 @@ impl<T> RendererHandle<T> {
         self.inner.is_some()
     }
 
-    pub fn peek(&mut self) -> T {
+    pub fn take(&mut self) -> T {
         match self.inner.take() {
             Some(e) => e,
             None => unreachable!(),
         }
     }
 
-    pub fn take(&mut self) -> Self {
+    pub fn transfer(&mut self) -> Self {
         Self {
-            inner: self.inner.take(),
+            inner: Some(self.take()),
         }
     }
 }
 
-impl<T> Deref for RendererHandle<T> {
+impl<T> Deref for RenderHandle<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         match &self.inner {
@@ -39,7 +39,7 @@ impl<T> Deref for RendererHandle<T> {
     }
 }
 
-impl<T> DerefMut for RendererHandle<T> {
+impl<T> DerefMut for RenderHandle<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match &mut self.inner {
             Some(e) => e,
@@ -48,7 +48,7 @@ impl<T> DerefMut for RendererHandle<T> {
     }
 }
 
-impl<T> Drop for RendererHandle<T> {
+impl<T> Drop for RenderHandle<T> {
     fn drop(&mut self) {
         match &self.inner {
             Some(_) => unreachable!("This handle should have been released. It should not have the ownership of the internal resource."),
@@ -57,7 +57,7 @@ impl<T> Drop for RendererHandle<T> {
     }
 }
 
-impl<T: GpuSafeRotate> GpuSafeRotate for RendererHandle<T> {
+impl<T: GpuSafeRotate> GpuSafeRotate for RenderHandle<T> {
     fn rotate(&mut self) {
         match &mut self.inner {
             Some(e) => e.rotate(),
