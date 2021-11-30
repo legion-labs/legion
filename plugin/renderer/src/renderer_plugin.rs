@@ -38,9 +38,7 @@ impl Plugin for RendererPlugin {
         // Post-Update
         app.add_system_to_stage(
             CoreStage::PostUpdate,
-            render_post_update
-                .system()
-                .label(RendererSystemLabel::FrameDone),
+            render_post_update.system(), // .label(RendererSystemLabel::FrameDone),
         );
     }
 }
@@ -103,18 +101,12 @@ fn render_update(
     }
 }
 
-fn render_post_update(renderer: ResMut<'_, Renderer>) {
-    let mut render_context = RenderContext::new(&renderer);
-    let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
-    cmd_buffer.begin().unwrap();
-    cmd_buffer.end().unwrap();
-    let frame_fence = renderer.frame_fence();
-    let graphics_queue = renderer.queue(QueueType::Graphics);
-    graphics_queue
-        .submit(&[&cmd_buffer], &[], &[], Some(frame_fence))
-        .unwrap();
+fn render_post_update(mut renderer: ResMut<'_, Renderer>) {
+    // let mut render_context = RenderContext::new(&renderer);
+    // let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
+    // cmd_buffer.begin().unwrap();
+    // cmd_buffer.end().unwrap();
+    renderer.end_frame();
 
-    // let render_frame_idx = self.render_frame_idx;
-    // let signal_fence = &self.frame_fences[render_frame_idx as usize];
-    render_context.release_cmd_buffer(cmd_buffer);
+    // render_context.release_cmd_buffer(cmd_buffer);
 }
