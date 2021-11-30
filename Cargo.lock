@@ -6958,6 +6958,7 @@ name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
  "clap",
+<<<<<<< HEAD
  "instant",
  "lgn-app",
  "lgn-asset-registry",
@@ -6977,6 +6978,15 @@ dependencies = [
  "lgn-utils",
  "lgn-window",
  "lgn-winit",
+=======
+ "legion-app",
+ "legion-asset-registry",
+ "legion-core",
+ "legion-data-runtime",
+ "legion-log",
+ "legion-transform",
+ "legion-utils",
+>>>>>>> 5b74eac9 (add log plugin to runtime-srv)
 ]
 
 [[package]]
