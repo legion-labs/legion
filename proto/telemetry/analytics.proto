@@ -102,6 +102,7 @@ message NodeStats{
     double max = 3;
     double avg = 4;
     double median = 5;
+    uint64 count = 6;
 }
 
 message CumulativeCallGraphNode{

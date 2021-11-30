@@ -391,12 +391,12 @@ export const Stream = {
         ? ContainerMetadata.fromJSON(object.objectsMetadata)
         : undefined;
     message.tags = (object.tags ?? []).map((e: any) => String(e));
-    message.properties = {};
-    if (object.properties !== undefined && object.properties !== null) {
-      Object.entries(object.properties).forEach(([key, value]) => {
-        message.properties[key] = String(value);
-      });
-    }
+    message.properties = Object.entries(object.properties ?? {}).reduce<{
+      [key: string]: string;
+    }>((acc, [key, value]) => {
+      acc[key] = String(value);
+      return acc;
+    }, {});
     return message;
   },
 
@@ -440,14 +440,14 @@ export const Stream = {
         ? ContainerMetadata.fromPartial(object.objectsMetadata)
         : undefined;
     message.tags = (object.tags ?? []).map((e) => e);
-    message.properties = {};
-    if (object.properties !== undefined && object.properties !== null) {
-      Object.entries(object.properties).forEach(([key, value]) => {
-        if (value !== undefined) {
-          message.properties[key] = String(value);
-        }
-      });
-    }
+    message.properties = Object.entries(object.properties ?? {}).reduce<{
+      [key: string]: string;
+    }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = String(value);
+      }
+      return acc;
+    }, {});
     return message;
   },
 };

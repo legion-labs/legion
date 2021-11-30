@@ -125,6 +125,7 @@ pub(crate) async fn compute_cumulative_call_graph(
                 max: max_time,
                 avg: sum / node_stats.durations_ms.len() as f64,
                 median,
+                count: node_stats.durations_ms.len() as u64,
             }),
             callers: node_stats.parents,
             callees: node_stats.children,

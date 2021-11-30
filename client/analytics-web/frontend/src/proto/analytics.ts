@@ -97,6 +97,7 @@ export interface NodeStats {
   max: number;
   avg: number;
   median: number;
+  count: number;
 }
 
 export interface CumulativeCallGraphNode {
@@ -1184,7 +1185,14 @@ export const ProcessCumulativeCallGraphRequest = {
   },
 };
 
-const baseNodeStats: object = { sum: 0, min: 0, max: 0, avg: 0, median: 0 };
+const baseNodeStats: object = {
+  sum: 0,
+  min: 0,
+  max: 0,
+  avg: 0,
+  median: 0,
+  count: 0,
+};
 
 export const NodeStats = {
   encode(
@@ -1205,6 +1213,9 @@ export const NodeStats = {
     }
     if (message.median !== 0) {
       writer.uint32(41).double(message.median);
+    }
+    if (message.count !== 0) {
+      writer.uint32(48).uint64(message.count);
     }
     return writer;
   },
@@ -1231,6 +1242,9 @@ export const NodeStats = {
         case 5:
           message.median = reader.double();
           break;
+        case 6:
+          message.count = longToNumber(reader.uint64() as Long);
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -1253,6 +1267,10 @@ export const NodeStats = {
       object.median !== undefined && object.median !== null
         ? Number(object.median)
         : 0;
+    message.count =
+      object.count !== undefined && object.count !== null
+        ? Number(object.count)
+        : 0;
     return message;
   },
 
@@ -1263,6 +1281,7 @@ export const NodeStats = {
     message.max !== undefined && (obj.max = message.max);
     message.avg !== undefined && (obj.avg = message.avg);
     message.median !== undefined && (obj.median = message.median);
+    message.count !== undefined && (obj.count = message.count);
     return obj;
   },
 
@@ -1273,6 +1292,7 @@ export const NodeStats = {
     message.max = object.max ?? 0;
     message.avg = object.avg ?? 0;
     message.median = object.median ?? 0;
+    message.count = object.count ?? 0;
     return message;
   },
 };
@@ -2205,6 +2225,17 @@ export class GrpcWebImpl {
   }
 }
 
+declare var self: any | undefined;
+declare var window: any | undefined;
+declare var global: any | undefined;
+var globalThis: any = (() => {
+  if (typeof globalThis !== "undefined") return globalThis;
+  if (typeof self !== "undefined") return self;
+  if (typeof window !== "undefined") return window;
+  if (typeof global !== "undefined") return global;
+  throw "Unable to locate global object";
+})();
+
 type Builtin =
   | Date
   | Function
@@ -2222,6 +2253,13 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+function longToNumber(long: Long): number {
+  if (long.gt(Number.MAX_SAFE_INTEGER)) {
+    throw new globalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+  }
+  return long.toNumber();
+}
 
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;

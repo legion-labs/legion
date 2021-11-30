@@ -82,7 +82,6 @@
   }
 
   function onFunClick(node: CumulativeCallGraphNode) {
-    console.log("selecting ", scopes[node.hash].name);
     selectedNode = node;
   }
 
@@ -104,6 +103,10 @@
 
   function formatMedian(node: CumulativeCallGraphNode) : string{
     return formatExecutionTime(node.stats!.median);
+  }
+
+  function formatCount(node: CumulativeCallGraphNode) : string{
+    return node.stats!.count.toString()
   }
   
   onMount(() => {
@@ -153,6 +156,10 @@
       <div>
         <span class="selectedproperty">median </span>
         <span>{formatMedian(selectedNode)}</span>
+      </div>
+      <div>
+        <span class="selectedproperty">count </span>
+        <span>{formatCount(selectedNode)}</span>
       </div>
     </div>
   {/if}
