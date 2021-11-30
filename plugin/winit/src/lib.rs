@@ -72,7 +72,7 @@ pub use winit_windows::*;
 use legion_app::{App, AppExit, CoreStage, Events, ManualEventReader, Plugin};
 use legion_ecs::{system::IntoExclusiveSystem, world::World};
 use legion_math::{ivec2, Vec2};
-use legion_utils::tracing::{error, trace, warn};
+use legion_utils::log::{error, trace, warn};
 use legion_window::{
     CreateWindow, CursorEntered, CursorLeft, CursorMoved, FileDragAndDrop, ReceivedCharacter,
     WindowBackendScaleFactorChanged, WindowCloseRequested, WindowCreated, WindowFocused,

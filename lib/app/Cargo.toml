@@ -9,13 +9,13 @@ license = "MIT OR Apache-2.0"
 keywords = ["legion"]
 
 [features]
-trace = []
 legion_ci_testing = ["serde", "ron"]
 
 [dependencies]
 # legion
 legion-derive = { path = "../derive", version = "0.1.0" }
 legion-ecs = { path = "../ecs", version = "0.1.0" }
+legion-telemetry = { path = "../telemetry", version = "0.1.0" }
 legion-utils = { path = "../utils", version = "0.1.0" }
 
 # other
