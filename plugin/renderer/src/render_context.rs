@@ -3,7 +3,7 @@ use graphics_utils::TransientBufferAllocator;
 
 use crate::{
     resources::{CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle},
-    Renderer, RenderHandle,
+    RenderHandle, Renderer,
 };
 
 type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
