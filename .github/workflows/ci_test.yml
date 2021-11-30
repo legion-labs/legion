@@ -17,8 +17,11 @@ jobs:
 
       - name: Run Yarn install
         run: |
+          ls /etc/profile.d/
+          ls ~/
+          echo $CCX
           echo $PATH
-          echo $NODE_PATH
+          echo $CARGO_HOME
           yarn install
 
       - name: Run formatting check
