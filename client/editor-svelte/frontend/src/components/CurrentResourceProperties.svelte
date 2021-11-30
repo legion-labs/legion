@@ -42,8 +42,8 @@
       <!-- TODO: Make sure the name is unique -->
       {#each $currentResource.properties as property (property.name)}
         <div class="property">
-          <div class="property-name">
-            {property.name}
+          <div class="property-name" title={property.name}>
+            <div class="truncate">{property.name}</div>
           </div>
           <div class="property-input-container">
             <div class="property-input">
@@ -95,7 +95,15 @@
   }
 
   .property-name {
-    @apply font-bold text-lg;
+    @apply flex flex-shrink font-bold text-lg min-w-0 w-auto;
+  }
+
+  .property-input-container {
+    @apply flex w-1/2 min-w-[9rem] flex-shrink-0 space-x-1;
+  }
+
+  .property-input {
+    @apply flex w-full;
   }
 
   .property-actions {
@@ -104,13 +112,5 @@
 
   .property-action-default {
     @apply cursor-pointer text-lg;
-  }
-
-  .property-input-container {
-    @apply flex w-1/2 min-w-[160px] flex-shrink-0 space-x-1;
-  }
-
-  .property-input {
-    @apply flex w-full;
   }
 </style>
