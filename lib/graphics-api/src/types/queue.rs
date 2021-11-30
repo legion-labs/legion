@@ -6,7 +6,6 @@ use crate::{
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanQueue;
 
-// #[derive(Clone)]
 pub struct Queue {
     device_context: DeviceContext,
     queue_type: QueueType,

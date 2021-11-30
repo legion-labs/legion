@@ -5,17 +5,6 @@ use crate::{
     CommandBufferHandle, CommandBufferPoolHandle, DescriptorHeapHandle, Renderer, RendererHandle,
 };
 
-// struct TransientDescriptorHeap {}
-
-// // impl TransientDescriptorHeap {
-// //     pub fn allocate_descriptor_set(
-// //         &self,
-// //         descriptor_set_layout: &DescriptorSetLayout,
-// //     ) -> Result<DescriptorSetBufWriter> {
-// //         Err(anyhow!("x"))
-// //     }
-// // }
-
 type TransientBufferAllocatorHandle = RendererHandle<TransientBufferAllocator>;
 
 pub struct RenderContext<'a> {
@@ -32,25 +21,16 @@ impl<'a> RenderContext<'a> {
             renderer,
             cmd_buffer_pool_handle: renderer.acquire_command_buffer_pool(QueueType::Graphics),
             transient_descriptor_heap: renderer.acquire_transient_descriptor_heap(&heap_def),
-            transient_buffer_allocator: TransientBufferAllocatorHandle::new(TransientBufferAllocator::new(
-                renderer.transient_buffer(),
-                1000,
-            )),
+            // TMP: we should acquire a handle from the renderer
+            transient_buffer_allocator: TransientBufferAllocatorHandle::new(
+                TransientBufferAllocator::new(renderer.transient_buffer(), 1000),
+            ),
         }
     }
 
     pub fn renderer(&self) -> &'_ Renderer {
         self.renderer
     }
-
-    // pub fn render_frame_idx(&self) -> usize {
-    //     self.renderer.render_frame_idx()
-    // }
-
-    // pub fn queue(&self, queue_type: QueueType) -> &Queue {
-    //     assert_eq!(queue_type, QueueType::Graphics);
-    //     self.renderer.queue(queue_type)
-    // }
 
     pub fn acquire_cmd_buffer(&mut self, queue_type: QueueType) -> CommandBufferHandle {
         assert_eq!(queue_type, QueueType::Graphics);
@@ -86,7 +66,10 @@ impl<'a> RenderContext<'a> {
         self.transient_buffer_allocator.take()
     }
 
-    pub fn release_transient_buffer_allocator(&mut self, allocator: TransientBufferAllocatorHandle) {
+    pub fn release_transient_buffer_allocator(
+        &mut self,
+        allocator: TransientBufferAllocatorHandle,
+    ) {
         self.transient_buffer_allocator = allocator;
     }
 }
@@ -95,10 +78,6 @@ impl<'a> Drop for RenderContext<'a> {
     fn drop(&mut self) {
         self.renderer
             .release_command_buffer_pool(self.cmd_buffer_pool_handle.take());
-        // match self.cmd_buffer_pool_handle.take() {
-        //     Some(e) =>
-        //     None => panic!(),
-        // };
 
         self.renderer
             .release_transient_descriptor_heap(self.transient_descriptor_heap.take());

@@ -72,11 +72,11 @@ fn render_update(
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
-        // alloc command buffer
+        // TODO: render graph
         let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
 
         cmd_buffer.begin().unwrap();
-        // flush render graph
+
         let render_pass = render_surface.test_renderpass();
         let render_pass = render_pass.write();
         render_pass.render(
@@ -88,9 +88,6 @@ fn render_update(
         cmd_buffer.end().unwrap();
         // queue
         let sem = render_surface.acquire();
-        // let render_frame_idx = self.render_frame_idx;
-        // let signal_semaphore = &render_surface.frame_signal_sems[render_frame_idx as usize];
-        // let signal_fence = &render_surface.frame_fences[render_frame_idx as usize];
         graphics_queue
             .submit(&[&cmd_buffer], &[], &[&sem], None)
             .unwrap();
@@ -102,11 +99,5 @@ fn render_update(
 }
 
 fn render_post_update(mut renderer: ResMut<'_, Renderer>) {
-    // let mut render_context = RenderContext::new(&renderer);
-    // let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
-    // cmd_buffer.begin().unwrap();
-    // cmd_buffer.end().unwrap();
     renderer.end_frame();
-
-    // render_context.release_cmd_buffer(cmd_buffer);
 }

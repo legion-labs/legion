@@ -1,5 +1,4 @@
 //! Swapchain helper
-
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -138,32 +137,12 @@ impl PresentableFrame {
         assert!(self.sync_frame_index == sync_frame_index);
 
         let frame_fence = &shared_state.in_flight_fences[sync_frame_index];
-
         let wait_semaphores = [
             wait_sem,
             &shared_state.image_available_semaphores[sync_frame_index],
         ];
-        // wait_semaphores[0] =
-        //     MaybeUninit::new(&shared_state.image_available_semaphores[sync_frame_index]);
-        // let wait_semaphore_count = {
-        //     match wait_sem {
-        //         Some(e) => {
-        //             wait_semaphores[1] = MaybeUninit::new(e);
-        //             2
-        //         }
-        //         None => 1,
-        //     }
-        // };
-
         let signal_semaphores = [&shared_state.render_finished_semaphores[sync_frame_index]];
 
-        // unsafe fn f<T>(array: [MaybeUninit<T>; 16]) -> [T; 16] {
-        //     array.as_ptr().cast::<[T; 16]>().read()
-        // }
-
-        // #[allow(unsafe_code)]
-        // let wait_semaphores = unsafe { wait_semaphores.as_ptr().cast::<[&Semaphore; 2]>().read() };
-        // let wait_semaphores = &wait_semaphores[0..wait_semaphore_count];
         queue.submit(
             command_buffers,
             &wait_semaphores,
@@ -250,7 +229,7 @@ impl SwapchainHelper {
             swapchain_def,
             expect_result_from_previous_frame: false,
         })
-    }    
+    }
 
     /// destroy swapchain helper
     pub fn destroy(

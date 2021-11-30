@@ -128,7 +128,11 @@ fn main() {
         .insert_resource(ScheduleRunnerSettings::default())
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(PresenterSnapshotPlugin::default())
-        .add_system(presenter_snapshot_system.system().before(RendererSystemLabel::FrameUpdate))
+        .add_system(
+            presenter_snapshot_system
+                .system()
+                .before(RendererSystemLabel::FrameUpdate),
+        )
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
         app.insert_resource(WindowDescriptor {
@@ -168,9 +172,8 @@ fn on_window_created(
         let mut render_surface = RenderSurface::new(&renderer, extents);
         render_surfaces.insert(ev.id, render_surface.id());
         let winit_wnd = winit_wnd_list.get_window(ev.id).unwrap();
-        render_surface.register_presenter(|| {
-            PresenterWindow::from_window(&renderer, wnd.id(), winit_wnd, extents)
-        });
+        render_surface
+            .register_presenter(|| PresenterWindow::from_window(&renderer, winit_wnd, extents));
         commands.spawn().insert(render_surface);
     }
 }
@@ -234,7 +237,7 @@ fn presenter_snapshot_system(
                 snapshot_descriptor.height as u32,
             ),
         );
-        let render_surface_id = render_surface.id();        
+        let render_surface_id = render_surface.id();
 
         render_surface.register_presenter(|| {
             PresenterSnapshot::new(
@@ -257,19 +260,6 @@ fn presenter_snapshot_system(
         }
     }
     frame_counter.frame_count += 1;
-
-    // commands.spawn().insert(
-    //     PresenterSnapshot::new(
-    //         &snapshot_descriptor.setup_name,
-    //         renderer.into_inner(),
-    //         render_surface_id,
-    //         Resolution::new(
-    //             snapshot_descriptor.width as u32,
-    //             snapshot_descriptor.height as u32,
-    //         ),
-    //     )
-    //     .unwrap(),
-    // );
 }
 
 fn init_scene(mut commands: Commands) {
@@ -305,14 +295,10 @@ fn on_snapshot_app_exit(
     mut commands: Commands,
     mut app_exit: EventReader<AppExit>,
     query_render_surface: Query<(Entity, &RenderSurface)>,
-    // query_presenter_snapshot: Query<(Entity, &PresenterSnapshot)>,
 ) {
     if app_exit.iter().last().is_some() {
         for (entity, _) in query_render_surface.iter() {
             commands.entity(entity).despawn();
         }
-        // for (entity, _) in query_presenter_snapshot.iter() {
-        //     commands.entity(entity).despawn();
-        // }
     }
 }

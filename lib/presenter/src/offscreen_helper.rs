@@ -290,9 +290,6 @@ impl OffscreenHelper {
     pub fn present<'renderer, F: FnOnce(&[u8], usize)>(
         &mut self,
         render_context: &mut RenderContext<'renderer>,
-        // graphics_queue: &Queue,
-        // transient_descriptor_heap: &DescriptorHeap,
-        // wait_sem: &Semaphore,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
@@ -345,9 +342,6 @@ impl OffscreenHelper {
             .root_signature()
             .definition()
             .descriptor_set_layouts[0];
-        // let mut descriptor_set_writer = transient_descriptor_heap
-        //     .allocate_descriptor_set(descriptor_set_layout)
-        //     .unwrap();
         let mut descriptor_set_writer = render_context.alloc_descriptor_set(&descriptor_set_layout);
         descriptor_set_writer
             .set_descriptors(

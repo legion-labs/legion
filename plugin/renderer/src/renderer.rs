@@ -23,14 +23,6 @@ impl<T> RendererHandle<T> {
         Self { inner: Some(data) }
     }
 
-    // pub fn destroy(self) {
-    //     match &self.inner {
-    //         Some(e) => drop(e),
-    //         None => unreachable!(),
-    //     }
-    //     std::mem::forget(self);
-    // }
-
     pub fn is_valid(&self) -> bool {
         self.inner.is_some()
     }
@@ -105,15 +97,6 @@ impl CommandBufferPool {
         }
     }
 
-    // fn destroy(&mut self) {
-    //     for cmd_buffer_handle in self.availables.drain(..) {
-    //         cmd_buffer_handle.destroy();
-    //     }
-    //     for cmd_buffer_handle in self.in_flights.drain(..) {
-    //         cmd_buffer_handle.destroy();
-    //     }
-    // }
-
     pub fn reset(&mut self) {
         self.command_pool.reset_command_pool().unwrap();
         self.availables.append(&mut self.in_flights);
@@ -143,12 +126,6 @@ impl Rotate for CommandBufferPool {
     }
 }
 
-// impl Drop for CommandBufferPool {
-//     fn drop(&mut self) {
-//         self.destroy();
-//     }
-// }
-
 pub type CommandBufferPoolHandle = RendererHandle<CommandBufferPool>;
 pub type DescriptorHeapHandle = RendererHandle<DescriptorHeap>;
 
@@ -173,17 +150,6 @@ impl<T: Rotate> RotatingResourcePool<T> {
         }
     }
 
-    // fn destroy(&mut self) {
-    //     for data in self.available.drain(..) {
-    //         data.destroy();
-    //     }
-    //     for list in self.in_use.drain(..) {
-    //         for data in list.drain(..) {
-    //             data.destroy();
-    //         }
-    //     }
-    // }
-
     fn rotate(&mut self) {
         let next_cpu_frame = (self.cur_cpu_frame + 1) % self.num_cpu_frames;
         self.available.append(&mut self.in_use[next_cpu_frame]);
@@ -204,12 +170,6 @@ impl<T: Rotate> RotatingResourcePool<T> {
         self.in_use[self.cur_cpu_frame].push(data.peek());
     }
 }
-
-// impl<T: Rotate> Drop for RotatingResource<T> {
-//     fn drop(&mut self) {
-//         self.destroy();
-//     }
-// }
 
 impl Rotate for DescriptorHeap {
     fn rotate(&mut self) {
@@ -257,14 +217,9 @@ impl Renderer {
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
             command_buffer_pools: RwLock::new(RotatingResourcePool::new(num_render_frames)),
             descriptor_heaps: RwLock::new(RotatingResourcePool::new(num_render_frames)),
-            // presenters: RwLock::new(Vec::new()),
             transient_buffer: TransientPagedBuffer::new(device_context, 16),
             api,
         })
-    }
-
-    pub fn api(&self) -> &GfxApi {
-        &self.api
     }
 
     pub fn device_context(&self) -> &DeviceContext {
@@ -279,10 +234,6 @@ impl Renderer {
         self.render_frame_idx
     }
 
-    fn frame_fence(&self) -> &Fence {
-        &self.frame_fences[self.render_frame_idx]
-    }
-
     pub fn queue(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
         match queue_type {
             QueueType::Graphics => self.graphics_queue.read(),
@@ -293,19 +244,10 @@ impl Renderer {
         }
     }
 
+    // TMP: change that.
     pub fn transient_buffer(&self) -> &TransientPagedBuffer {
         &self.transient_buffer
     }
-
-    // pub fn queue_mut(&self, queue_type: QueueType) -> RwLockWriteGuard<'_, Queue> {
-    //     match queue_type {
-    //         QueueType::Graphics => self.graphics_queue.write(),
-    //         QueueType::Compute => todo!(),
-    //         QueueType::Transfer => todo!(),
-    //         QueueType::Decode => todo!(),
-    //         QueueType::Encode => todo!(),
-    //     }
-    // }
 
     pub fn acquire_command_buffer_pool(&self, queue_type: QueueType) -> CommandBufferPoolHandle {
         let queue = self.queue(queue_type);
@@ -335,11 +277,6 @@ impl Renderer {
         pool.release(handle);
     }
 
-    // pub fn frame_signal_semaphore(&self) -> &Semaphore {
-    //     let render_frame_index = self.render_frame_idx;
-    //     &self.frame_signal_sems[render_frame_index as usize]
-    // }
-
     pub(crate) fn begin_frame(&mut self) {
         //
         // Update frame indices
@@ -348,14 +285,9 @@ impl Renderer {
         self.render_frame_idx = self.frame_idx % self.num_render_frames;
 
         //
-        // Store on stack
+        // Wait for the next cpu frame to be available
         //
-        let render_frame_idx = self.render_frame_idx;
-
-        //
-        // Wait for the next frame to be available
-        //
-        let signal_fence = &self.frame_fences[render_frame_idx];
+        let signal_fence = &self.frame_fences[self.render_frame_idx];
         if signal_fence.get_fence_status().unwrap() == FenceStatus::Incomplete {
             signal_fence.wait().unwrap();
         }
@@ -367,7 +299,7 @@ impl Renderer {
         device_context.free_gpu_memory().unwrap();
 
         //
-        // Rotate resources
+        // ... and rotate resource pool.
         //
         {
             let mut pool = self.command_buffer_pools.write();
@@ -377,59 +309,20 @@ impl Renderer {
             let mut pool = self.descriptor_heaps.write();
             pool.rotate();
         }
-        // let cmd_pool = &self.command_pools[render_frame_idx as usize];
-        // let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
-        // let transient_descriptor_heap = &self.transient_descriptor_heaps[render_frame_idx as usize];
 
-        // cmd_pool.reset_command_pool().unwrap();
-        // cmd_buffer.begin().unwrap();
-
-        // transient_descriptor_heap.reset().unwrap();
+        // TMP: todo
         self.transient_buffer.begin_frame(self.device_context());
     }
 
     pub(crate) fn end_frame(&mut self) {
         let graphics_queue = self.graphics_queue.write();
-        let frame_fence = self.frame_fence();
+        let frame_fence = &self.frame_fences[self.render_frame_idx];
         graphics_queue
             .submit(&[], &[], &[], Some(frame_fence))
             .unwrap();
+        // TMP: todo
         self.transient_buffer.end_frame(&graphics_queue);
     }
-
-    // pub(crate) fn update(
-    //     &mut self,
-    //     q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>,
-    //     query: &Query<'_, '_, (&Transform, &StaticMesh)>,
-    // ) {
-    //     let render_context = self.get_render_context();
-    //     // let cmd_buffer = self.get_cmd_buffer();
-
-    //     let query = query.iter().collect::<Vec<(&Transform, &StaticMesh)>>();
-
-    //     for mut render_surface in q_render_surfaces.iter_mut() {
-    //         let render_pass = &render_surface.test_renderpass;
-    //         render_pass.render(&render_context, &render_surface, query.as_slice());
-    //     }
-    // }
-
-    // pub(crate) fn end_frame(&mut self) {
-    //     let render_frame_idx = self.render_frame_idx;
-    //     // let signal_semaphore = &self.frame_signal_sems[render_frame_idx as usize];
-    //     let signal_fence = &self.frame_fences[render_frame_idx as usize];
-    //     // let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
-
-    //     // cmd_buffer.end().unwrap();
-
-    //     let pool = self.acquire_command_buffer_pool(QueueType::Graphics);
-    //     let cmd_buffer = pool.get();
-    //     cmd_buffer.begin();
-    //     cmd_buffer.end();
-
-    //     self.graphics_queue
-    //         .submit(&[cmd_buffer], &[], &[], Some(signal_fence))
-    //         .unwrap();
-    // }
 }
 
 impl Drop for Renderer {
@@ -441,8 +334,6 @@ impl Drop for Renderer {
 
 pub struct TmpRenderPass {
     static_meshes: Vec<StaticMeshRenderData>,
-    // uniform_buffers: Vec<Buffer>,
-    // uniform_buffer_cbvs: Vec<BufferView>,
     root_signature: RootSignature,
     pipeline: Pipeline,
     pub color: [f32; 4],
@@ -453,10 +344,6 @@ impl TmpRenderPass {
     #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
-        // let num_render_frames = renderer.num_render_frames;
-        // let mut uniform_buffers = Vec::with_capacity(num_render_frames);
-        // let mut uniform_buffer_cbvs = Vec::with_capacity(num_render_frames);
-
         //
         // Shaders
         //
@@ -627,23 +514,6 @@ impl TmpRenderPass {
         //
         // Per frame resources
         //
-        // for _ in 0..renderer.num_render_frames {
-        //     let uniform_data = [0f32; 4];
-
-        //     let uniform_buffer = device_context
-        //         .create_buffer(&BufferDef::for_staging_uniform_buffer_data(&uniform_data))
-        //         .unwrap();
-        //     uniform_buffer
-        //         .copy_to_host_visible_buffer(&uniform_data)
-        //         .unwrap();
-
-        //     let view_def = BufferViewDef::as_const_buffer(uniform_buffer.definition());
-        //     let uniform_buffer_cbv = uniform_buffer.create_view(&view_def).unwrap();
-
-        //     uniform_buffer_cbvs.push(uniform_buffer_cbv);
-        //     uniform_buffers.push(uniform_buffer);
-        // }
-
         let static_meshes = vec![
             StaticMeshRenderData::new_plane(1.0, renderer),
             StaticMeshRenderData::new_cube(0.5, renderer),
@@ -652,8 +522,6 @@ impl TmpRenderPass {
 
         Self {
             static_meshes,
-            // uniform_buffers,
-            // uniform_buffer_cbvs,
             root_signature,
             pipeline,
             color: [0f32, 0f32, 0.2f32, 1.0f32],
@@ -676,24 +544,6 @@ impl TmpRenderPass {
         render_surface: &mut RenderSurface,
         static_meshes: &[(&Transform, &StaticMesh)],
     ) {
-        // let render_frame_idx = render_context.renderer().render_frame_idx();
-        //let elapsed_secs = self.speed * renderer.frame_idx as f32 / 60.0;
-
-        //
-        // Update vertex color
-        //
-
-        // let uniform_data = [1.0f32, 1.0, 1.0, 1.0];
-        // let uniform_buffer = &self.uniform_buffers[render_frame_idx];
-        // let uniform_buffer_cbv = &self.uniform_buffer_cbvs[render_frame_idx];
-        //
-        // uniform_buffer
-        //     .copy_to_host_visible_buffer(&uniform_data)
-        //     .unwrap();
-
-        //
-        // Fill command buffer
-        //
         render_surface.transition_to(&cmd_buffer, ResourceState::RENDER_TARGET);
 
         cmd_buffer
@@ -725,26 +575,6 @@ impl TmpRenderPass {
             .root_signature()
             .definition()
             .descriptor_set_layouts[0];
-        // let mut descriptor_set_writer = render_context.alloc_descriptor_set(&descriptor_set_layout);
-        // let mut descriptor_set_writer =
-        //     heap.allocate_descriptor_set(descriptor_set_layout).unwrap();
-        // descriptor_set_writer
-        //     .set_descriptors(
-        //         "uniform_data",
-        //         0,
-        //         &[DescriptorRef::BufferView(uniform_buffer_cbv)],
-        //     )
-        //     .unwrap();
-        // let descriptor_set_handle =
-        //     descriptor_set_writer.flush(render_context.renderer().device_context());
-
-        // cmd_buffer
-        //     .cmd_bind_descriptor_set_handle(
-        //         &self.root_signature,
-        //         descriptor_set_layout.definition().frequency,
-        //         descriptor_set_handle,
-        //     )
-        //     .unwrap();
 
         let color_table = [
             (1.0f32, 0.0f32, 0.0f32),
@@ -778,25 +608,12 @@ impl TmpRenderPass {
 
             let mesh = &self.static_meshes[static_mesh_component.mesh_id];
 
-            // let transient_allocator =
-            //     TransientBufferAllocator::new(renderer.transient_buffer(), 1000);
-
             let mut sub_allocation = transient_allocator.copy_data(None, &mesh.vertices, 0);
 
             render_context
                 .renderer()
                 .transient_buffer()
                 .bind_allocation_as_vertex_buffer(cmd_buffer, &sub_allocation);
-
-            // cmd_buffer
-            //     .cmd_bind_vertex_buffers(
-            //         0,
-            //         &[VertexBufferBinding {
-            //             buffer: &mesh.vertex_buffers[render_frame_idx],
-            //             byte_offset: 0,
-            //         }],
-            //     )
-            //     .unwrap();
 
             let color = color_table[index % color_table.len()];
 
@@ -838,10 +655,6 @@ impl TmpRenderPass {
                     descriptor_set_handle,
                 )
                 .unwrap();
-
-            // cmd_buffer
-            //     .cmd_push_constants(&self.root_signature, &push_constant_data)
-            //     .unwrap();
 
             cmd_buffer
                 .cmd_draw((mesh.num_vertices()) as u32, 0)

@@ -49,9 +49,6 @@ impl PresenterSnapshot {
     pub(crate) fn present<'renderer>(
         &mut self,
         render_context: &mut RenderContext<'renderer>,
-        // graphics_queue: &Queue,
-        // transient_descriptor_heap: &DescriptorHeap,
-        // wait_sem: &Semaphore,
         render_surface: &mut RenderSurface,
     ) -> anyhow::Result<bool> {
         //
@@ -60,9 +57,6 @@ impl PresenterSnapshot {
         let snapshot_frame = self.frame_idx == self.frame_target;
         self.offscreen_helper.present(
             render_context,
-            // graphics_queue,
-            // transient_descriptor_heap,
-            // wait_sem,
             render_surface,
             |rgba: &[u8], row_pitch: usize| {
                 // write frame to file

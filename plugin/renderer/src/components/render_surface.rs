@@ -120,15 +120,12 @@ pub struct RenderSurface {
     id: RenderSurfaceId,
     extents: RenderSurfaceExtents,
     resources: SizeDependentResources,
+    presenters: Vec<Box<dyn Presenter>>,
     // tmp
     num_render_frames: usize,
     render_frame_idx: usize,
     signal_sems: Vec<Semaphore>,
     test_renderpass: Arc<RwLock<TmpRenderPass>>,
-
-    // presenters
-    // presenters: RwLock<Vec<Box<dyn Presenter>>>,
-    presenters: Vec<Box<dyn Presenter>>,
 }
 
 impl RenderSurface {
@@ -147,28 +144,17 @@ impl RenderSurface {
     pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
         if self.extents != extents {
             self.resources = SizeDependentResources::new(renderer, extents);
-            // *self = Self::new_with_id(self.id, renderer, extents);
-
-            // let mut presenters = std::mem::take(&mut self.presenters);
-
             for presenter in self.presenters.iter_mut() {
                 presenter.resize(renderer, extents);
             }
-
-            // self.presenters = presenters;
             self.extents = extents;
         }
     }
 
     pub fn register_presenter<T: 'static + Presenter>(&mut self, create_fn: impl FnOnce() -> T) {
         let presenter = create_fn();
-        // let mut presenters = self.presenters.write();
         self.presenters.push(Box::new(presenter));
     }
-
-    // pub fn presenters_mut(&self) -> RwLockReadGuard<'_, Vec<Box<dyn Presenter>>> {
-    //     self.presenters.read()
-    // }
 
     pub fn id(&self) -> RenderSurfaceId {
         self.id
@@ -256,8 +242,4 @@ impl RenderSurface {
             presenters: Vec::new(),
         }
     }
-}
-
-impl Drop for RenderSurface {
-    fn drop(&mut self) {}
 }

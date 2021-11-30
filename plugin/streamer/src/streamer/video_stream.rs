@@ -47,7 +47,6 @@ impl VideoStream {
 
         let device_context = renderer.device_context();
         let graphics_queue = renderer.queue(QueueType::Graphics);
-        // let graphics_queue = renderer.graphics_queue();
         let encoder = VideoStreamEncoder::new(resolution)?;
         let offscreen_helper =
             offscreen_helper::OffscreenHelper::new(device_context, &graphics_queue, resolution)?;
@@ -85,9 +84,6 @@ impl VideoStream {
     pub(crate) fn present<'renderer>(
         &mut self,
         render_context: &mut RenderContext<'renderer>,
-        // graphics_queue: &Queue,
-        // transient_descriptor_heap: &DescriptorHeap,
-        // wait_sem: &Semaphore,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();
@@ -102,9 +98,6 @@ impl VideoStream {
                 .present(
                     render_context,
                     render_surface,
-                    // transient_descriptor_heap,
-                    // wait_sem,
-                    // render_surface,
                     |rgba: &[u8], row_pitch: usize| {
                         self.encoder.converter.convert_rgba(rgba, row_pitch);
                     },
