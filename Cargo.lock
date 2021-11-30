@@ -3528,6 +3528,7 @@ version = "0.1.0"
 dependencies = [
  "legion-derive",
  "legion-ecs",
+ "legion-telemetry",
  "legion-transform",
  "legion-utils",
  "ron",
@@ -3771,6 +3772,7 @@ dependencies = [
  "fxhash",
  "legion-ecs-macros",
  "legion-tasks",
+ "legion-telemetry",
  "legion-utils",
  "parking_lot 0.11.2",
  "rand 0.8.4",
@@ -4215,7 +4217,6 @@ dependencies = [
  "serde",
  "siphasher",
  "toml",
- "tracing",
  "uuid",
 ]
 

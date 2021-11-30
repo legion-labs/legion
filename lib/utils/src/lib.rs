@@ -71,7 +71,7 @@ mod hash;
 pub use hash::*;
 // republish types
 pub use instant::{Duration, Instant};
-pub use tracing;
+pub use log;
 pub use uuid::Uuid;
 
 mod settings;

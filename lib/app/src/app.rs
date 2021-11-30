@@ -9,9 +9,8 @@ use legion_ecs::{
     system::Resource,
     world::World,
 };
-use legion_utils::tracing::debug;
-#[cfg(feature = "trace")]
-use legion_utils::tracing::info_span;
+use legion_telemetry::trace_scope;
+use legion_utils::log::debug;
 
 use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupStage};
 
@@ -78,10 +77,9 @@ impl App {
     ///
     /// See [`Schedule::run_once`] for more details.
     pub fn update(&mut self) {
-        #[cfg(feature = "trace")]
-        let legion_frame_update_span = info_span!("frame");
-        #[cfg(feature = "trace")]
-        let _legion_frame_update_guard = legion_frame_update_span.enter();
+        trace_scope!();
+        // let legion_frame_update_span = info_span!("frame");
+        // let _legion_frame_update_guard = legion_frame_update_span.enter();
         self.schedule.run(&mut self.world);
     }
 
@@ -90,10 +88,9 @@ impl App {
     /// Finalizes the [`App`] configuration. For general usage, see the example on the item
     /// level documentation.
     pub fn run(&mut self) {
-        #[cfg(feature = "trace")]
-        let legion_app_run_span = info_span!("legion_app");
-        #[cfg(feature = "trace")]
-        let _legion_app_run_guard = legion_app_run_span.enter();
+        trace_scope!();
+        // let legion_app_run_span = info_span!("legion_app");
+        // let _legion_app_run_guard = legion_app_run_span.enter();
 
         let mut app = std::mem::replace(self, Self::empty());
         let runner = std::mem::replace(&mut app.runner, Box::new(run_once));
