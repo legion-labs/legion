@@ -2933,6 +2933,7 @@ dependencies = [
  "legion-ecs",
  "legion-graphics-api",
  "legion-input",
+ "legion-presenter",
  "legion-presenter-snapshot",
  "legion-presenter-window",
  "legion-renderer",

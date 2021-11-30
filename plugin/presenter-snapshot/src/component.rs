@@ -5,8 +5,8 @@ use legion_async::TokioAsyncRuntime;
 use legion_ecs::prelude::Component;
 use legion_presenter::offscreen_helper::{self, Resolution};
 use legion_renderer::{
-    components::{RenderSurface, RenderSurfaceId},
-    Presenter, RenderContext, Renderer,
+    components::{RenderSurface, RenderSurfaceId, Presenter},
+    RenderContext, Renderer,
 };
 
 #[derive(Component)]

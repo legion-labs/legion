@@ -10,8 +10,8 @@ use legion_graphics_api::prelude::*;
 use legion_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use legion_presenter::offscreen_helper::{self, Resolution};
 use legion_renderer::{
-    components::{RenderSurface, RenderSurfaceExtents},
-    Presenter, RenderContext, Renderer,
+    components::{RenderSurface, RenderSurfaceExtents, Presenter},
+    RenderContext, Renderer,
 };
 use legion_telemetry::prelude::*;
 use legion_utils::{memory::write_any, setting_get_or};

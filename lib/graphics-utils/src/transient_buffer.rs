@@ -195,9 +195,9 @@ pub struct TransientBufferAllocator {
 }
 
 impl TransientBufferAllocator {
-    pub fn new(paged_buffer: &TransientPagedBuffer, min_alloc_size: u64) -> Self {
+    pub fn new(paged_buffer: TransientPagedBuffer, min_alloc_size: u64) -> Self {
         Self {
-            paged_buffer: paged_buffer.clone(),
+            paged_buffer,
             page_size: min_alloc_size,
         }
     }

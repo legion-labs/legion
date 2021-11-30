@@ -6,10 +6,9 @@ use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
 use legion_ecs::prelude::*;
 use legion_input::InputPlugin;
+use legion_presenter::offscreen_helper::Resolution;
 use legion_presenter_snapshot::component::PresenterSnapshot;
-use legion_presenter_snapshot::{PresenterSnapshotPlugin, Resolution};
 use legion_presenter_window::component::PresenterWindow;
-use legion_presenter_window::PresenterWindowPlugin;
 use legion_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
 use legion_renderer::components::{RotationComponent, StaticMesh};
 use legion_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
@@ -127,7 +126,6 @@ fn main() {
         })
         .insert_resource(ScheduleRunnerSettings::default())
         .add_plugin(ScheduleRunnerPlugin::default())
-        .add_plugin(PresenterSnapshotPlugin::default())
         .add_system(
             presenter_snapshot_system
                 .system()
@@ -142,8 +140,7 @@ fn main() {
         });
         app.add_plugin(WindowPlugin::default())
             .add_plugin(InputPlugin::default())
-            .add_plugin(WinitPlugin::default())
-            .add_plugin(PresenterWindowPlugin::default())
+            .add_plugin(WinitPlugin::default())            
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
             .add_system(on_window_close_requested.exclusive_system())

@@ -1,191 +1,22 @@
 use std::num::NonZeroU32;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 
 use anyhow::Result;
 use graphics_utils::TransientPagedBuffer;
-use legion_async::TokioAsyncRuntime;
 use parking_lot::{RwLock, RwLockReadGuard};
 
-use crate::components::{RenderSurface, RenderSurfaceExtents, StaticMesh};
+use crate::components::{RenderSurface, StaticMesh};
+use crate::resources::{
+    CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle,
+    RotatingResourcePool,
+};
+
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
 use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_math::{Mat4, Vec3};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_transform::components::Transform;
-
-pub struct RendererHandle<T> {
-    inner: Option<T>,
-}
-
-impl<T> RendererHandle<T> {
-    pub fn new(data: T) -> Self {
-        Self { inner: Some(data) }
-    }
-
-    pub fn is_valid(&self) -> bool {
-        self.inner.is_some()
-    }
-
-    pub fn peek(&mut self) -> T {
-        match self.inner.take() {
-            Some(e) => e,
-            None => unreachable!(),
-        }
-    }
-
-    pub fn take(&mut self) -> Self {
-        Self {
-            inner: self.inner.take(),
-        }
-    }
-}
-
-impl<T> Deref for RendererHandle<T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        match &self.inner {
-            Some(e) => e,
-            None => unreachable!(),
-        }
-    }
-}
-
-impl<T> DerefMut for RendererHandle<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match &mut self.inner {
-            Some(e) => e,
-            None => unreachable!(),
-        }
-    }
-}
-
-impl<T> Drop for RendererHandle<T> {
-    fn drop(&mut self) {
-        match &self.inner {
-            Some(_) => unreachable!("todo"),
-            None => (),
-        }
-    }
-}
-
-impl<T: Rotate> Rotate for RendererHandle<T> {
-    fn rotate(&mut self) {
-        match &mut self.inner {
-            Some(e) => e.rotate(),
-            None => unreachable!(),
-        }
-    }
-}
-
-pub type CommandBufferHandle = RendererHandle<CommandBuffer>;
-
-pub struct CommandBufferPool {
-    command_pool: CommandPool,
-    availables: Vec<CommandBuffer>,
-    in_flights: Vec<CommandBuffer>,
-}
-
-impl CommandBufferPool {
-    fn new(queue: &Queue) -> Self {
-        Self {
-            command_pool: queue
-                .create_command_pool(&CommandPoolDef { transient: true })
-                .unwrap(),
-            availables: Vec::new(),
-            in_flights: Vec::new(),
-        }
-    }
-
-    pub fn reset(&mut self) {
-        self.command_pool.reset_command_pool().unwrap();
-        self.availables.append(&mut self.in_flights);
-    }
-
-    pub fn acquire(&mut self) -> CommandBufferHandle {
-        let result = if self.availables.is_empty() {
-            let def = CommandBufferDef {
-                is_secondary: false,
-            };
-            self.command_pool.create_command_buffer(&def).unwrap()
-        } else {
-            self.availables.pop().unwrap()
-        };
-        CommandBufferHandle::new(result)
-    }
-
-    pub fn release(&mut self, mut handle: CommandBufferHandle) {
-        assert!(handle.is_valid());
-        self.in_flights.push(handle.peek());
-    }
-}
-
-impl Rotate for CommandBufferPool {
-    fn rotate(&mut self) {
-        self.reset();
-    }
-}
-
-pub type CommandBufferPoolHandle = RendererHandle<CommandBufferPool>;
-pub type DescriptorHeapHandle = RendererHandle<DescriptorHeap>;
-
-trait Rotate {
-    fn rotate(&mut self);
-}
-
-struct RotatingResourcePool<T: Rotate> {
-    num_cpu_frames: usize,
-    cur_cpu_frame: usize,
-    available: Vec<T>,
-    in_use: Vec<Vec<T>>,
-}
-
-impl<T: Rotate> RotatingResourcePool<T> {
-    fn new(num_cpu_frames: usize) -> Self {
-        Self {
-            num_cpu_frames,
-            cur_cpu_frame: 0,
-            available: Vec::new(),
-            in_use: (0..num_cpu_frames).map(|_| Vec::new()).collect(),
-        }
-    }
-
-    fn rotate(&mut self) {
-        let next_cpu_frame = (self.cur_cpu_frame + 1) % self.num_cpu_frames;
-        self.available.append(&mut self.in_use[next_cpu_frame]);
-        self.available.iter_mut().for_each(|x| x.rotate());
-        self.cur_cpu_frame = next_cpu_frame;
-    }
-
-    fn acquire_or_create(&mut self, create_fn: impl FnOnce() -> T) -> RendererHandle<T> {
-        let result = if self.available.is_empty() {
-            create_fn()
-        } else {
-            self.available.pop().unwrap()
-        };
-        RendererHandle::new(result)
-    }
-
-    fn release(&mut self, mut data: RendererHandle<T>) {
-        self.in_use[self.cur_cpu_frame].push(data.peek());
-    }
-}
-
-impl Rotate for DescriptorHeap {
-    fn rotate(&mut self) {
-        self.reset().unwrap();
-    }
-}
-
-pub trait Presenter: Send + Sync {
-    fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
-    fn present<'renderer>(
-        &mut self,
-        render_context: &mut RenderContext<'renderer>,
-        render_surface: &mut RenderSurface,
-        async_rt: &mut TokioAsyncRuntime,
-    );
-}
 
 pub struct Renderer {
     frame_idx: usize,
@@ -194,7 +25,7 @@ pub struct Renderer {
     frame_fences: Vec<Fence>,
     graphics_queue: RwLock<Queue>,
     command_buffer_pools: RwLock<RotatingResourcePool<CommandBufferPool>>,
-    descriptor_heaps: RwLock<RotatingResourcePool<DescriptorHeap>>,
+    descriptor_pools: RwLock<RotatingResourcePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
@@ -216,7 +47,7 @@ impl Renderer {
                 .collect(),
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
             command_buffer_pools: RwLock::new(RotatingResourcePool::new(num_render_frames)),
-            descriptor_heaps: RwLock::new(RotatingResourcePool::new(num_render_frames)),
+            descriptor_pools: RwLock::new(RotatingResourcePool::new(num_render_frames)),
             transient_buffer: TransientPagedBuffer::new(device_context, 16),
             api,
         })
@@ -245,35 +76,34 @@ impl Renderer {
     }
 
     // TMP: change that.
-    pub fn transient_buffer(&self) -> &TransientPagedBuffer {
-        &self.transient_buffer
+    pub fn transient_buffer(&self) -> TransientPagedBuffer {
+        self.transient_buffer.clone()
     }
 
-    pub fn acquire_command_buffer_pool(&self, queue_type: QueueType) -> CommandBufferPoolHandle {
+    pub(crate) fn acquire_command_buffer_pool(
+        &self,
+        queue_type: QueueType,
+    ) -> CommandBufferPoolHandle {
         let queue = self.queue(queue_type);
         let mut pool = self.command_buffer_pools.write();
         pool.acquire_or_create(|| CommandBufferPool::new(queue.deref()))
     }
 
-    pub fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
+    pub(crate) fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
         let mut pool = self.command_buffer_pools.write();
         pool.release(handle);
     }
 
-    pub fn acquire_transient_descriptor_heap(
+    pub(crate) fn acquire_descriptor_pool(
         &self,
         heap_def: &DescriptorHeapDef,
-    ) -> DescriptorHeapHandle {
-        let mut pool = self.descriptor_heaps.write();
-        pool.acquire_or_create(|| {
-            self.device_context()
-                .create_descriptor_heap(&heap_def)
-                .unwrap()
-        })
+    ) -> DescriptorPoolHandle {
+        let mut pool = self.descriptor_pools.write();
+        pool.acquire_or_create(|| DescriptorPool::new(self.device_context(), &heap_def))
     }
 
-    pub fn release_transient_descriptor_heap(&self, handle: DescriptorHeapHandle) {
-        let mut pool = self.descriptor_heaps.write();
+    pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
+        let mut pool = self.descriptor_pools.write();
         pool.release(handle);
     }
 
@@ -306,7 +136,7 @@ impl Renderer {
             pool.rotate();
         }
         {
-            let mut pool = self.descriptor_heaps.write();
+            let mut pool = self.descriptor_pools.write();
             pool.rotate();
         }
 

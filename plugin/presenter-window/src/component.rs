@@ -5,8 +5,8 @@ use graphics_api::prelude::*;
 
 use legion_async::TokioAsyncRuntime;
 use legion_renderer::{
-    components::{RenderSurface, RenderSurfaceExtents},
-    Presenter, RenderContext, Renderer,
+    components::{RenderSurface, RenderSurfaceExtents, Presenter},
+    RenderContext, Renderer,
 };
 
 use raw_window_handle::HasRawWindowHandle;
