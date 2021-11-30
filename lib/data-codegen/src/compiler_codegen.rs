@@ -89,7 +89,7 @@ pub fn generate(
         use std::env;
         use legion_data_compiler::{
             compiler_api::{
-                compiler_main, CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
+                CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
                 DATA_BUILD_VERSION,
             },
             compiler_utils::hash_code_and_data,
@@ -100,7 +100,7 @@ pub fn generate(
         type OfflineType = #offline_crate_name::#type_name;
         type RuntimeType = #runtime_crate_name::#type_name;
 
-        static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
+        pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
             name: env!("CARGO_CRATE_NAME"),
             build_version: DATA_BUILD_VERSION,
             code_version: "1",
@@ -136,10 +136,5 @@ pub fn generate(
                 resource_references,
             })
         }
-
-        fn main() -> Result<(), CompilerError> {
-            compiler_main(env::args(), &COMPILER_INFO)
-        }
-
     }
 }
