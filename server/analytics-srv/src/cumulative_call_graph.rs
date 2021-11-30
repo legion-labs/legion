@@ -81,31 +81,23 @@ fn record_tree_stats(
     }
 }
 
-#[allow(clippy::cast_precision_loss)]
-pub(crate) async fn compute_cumulative_call_graph(
+async fn record_process_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process: &legion_telemetry::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
-) -> Result<CumulativeCallGraphReply> {
-    //todo: include child processes
-    //this is a serial implementation, could be transformed in map/reduce
-    dbg!(&process.start_time);
+    scopes: &mut ScopeHashMap,
+    stats: &mut StatsHashMap,
+) -> Result<()> {
     let start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
         .with_context(|| String::from("parsing process start time"))?;
-    dbg!(&start_time);
     let begin_offset_ns = begin_ms * 1_000_000.0;
     let begin_time = start_time + chrono::Duration::nanoseconds(begin_offset_ns as i64);
-    dbg!(begin_time);
 
     let end_offset_ns = end_ms * 1_000_000.0;
     let end_time = start_time + chrono::Duration::nanoseconds(end_offset_ns as i64);
-    dbg!(end_time);
-
     let streams = find_process_thread_streams(connection, &process.process_id).await?;
-    let mut scopes = ScopeHashMap::new();
-    let mut stats = StatsHashMap::new();
     for s in streams {
         let blocks = find_stream_blocks_in_range(
             connection,
@@ -119,9 +111,34 @@ pub(crate) async fn compute_cumulative_call_graph(
             //compute_block_call_tree fetches the block metadata again
             let tree =
                 compute_block_call_tree(connection, data_path, process, &s, &b.block_id).await?;
-            record_tree_stats(&tree, begin_ms, end_ms, &mut scopes, &mut stats, None);
+            record_tree_stats(&tree, begin_ms, end_ms, scopes, stats, None);
         }
     }
+    Ok(())
+}
+
+#[allow(clippy::cast_precision_loss)]
+pub(crate) async fn compute_cumulative_call_graph(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    process: &legion_telemetry::ProcessInfo,
+    begin_ms: f64,
+    end_ms: f64,
+) -> Result<CumulativeCallGraphReply> {
+    //todo: include child processes
+    //this is a serial implementation, could be transformed in map/reduce
+    let mut scopes = ScopeHashMap::new();
+    let mut stats = StatsHashMap::new();
+    record_process_call_graph(
+        connection,
+        data_path,
+        process,
+        begin_ms,
+        end_ms,
+        &mut scopes,
+        &mut stats,
+    )
+    .await?;
 
     let mut scope_vec = vec![];
     scope_vec.reserve(scopes.len());
