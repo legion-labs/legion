@@ -1,4 +1,12 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
+  // Type are not preserved when using the `on:input` shortcut
+  // so we must use dispatch and explicitely type it
+  const dispatch = createEventDispatcher<{
+    input: number;
+  }>();
+
   export let value: number;
 
   export let min: number | undefined = undefined;
@@ -22,6 +30,16 @@
       input.select();
     }
   };
+
+  const onInput = (
+    event: Event & {
+      currentTarget: EventTarget & HTMLInputElement;
+    }
+  ) => {
+    // Svelte will not call this function if the input value
+    // is not a valid number, so we can safely cast it to `number`
+    dispatch("input", +event.currentTarget.value);
+  };
 </script>
 
 <input
@@ -34,8 +52,8 @@
   {min}
   {max}
   {step}
-  {value}
-  on:input
+  bind:value
+  on:input={onInput}
   bind:this={input}
 />
 

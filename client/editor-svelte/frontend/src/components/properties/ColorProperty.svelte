@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { colorSetFromHex } from "@/lib/colors";
+  import { ColorSet, colorSetFromHex } from "@/lib/colors";
   import clickOutside from "@/actions/clickOutside";
 
   import ColorPicker from "../ColorPicker.svelte";
@@ -8,12 +8,17 @@
   export let value: string;
 
   let visible = false;
-  let colors = colorSetFromHex(value);
 
-  const setColors = (event: Event) => {
-    if (event.currentTarget instanceof HTMLInputElement) {
-      colors = colorSetFromHex(event.currentTarget.value);
-    }
+  const setColorsFromTextInput = ({
+    detail: newValue,
+  }: CustomEvent<string>) => {
+    value = newValue;
+  };
+
+  const setColorsFromColorPicker = ({
+    detail: { hex },
+  }: CustomEvent<ColorSet>) => {
+    value = hex;
   };
 </script>
 
@@ -23,8 +28,14 @@
     visible = false;
   }}
 >
-  <TextInput value={colors.hex} on:input={setColors} fullWidth autoSelect>
-    <ColorPicker slot="extension" bind:colors bind:visible position="left" />
+  <TextInput {value} on:input={setColorsFromTextInput} fullWidth autoSelect>
+    <ColorPicker
+      slot="extension"
+      on:change={setColorsFromColorPicker}
+      bind:visible
+      colors={colorSetFromHex(value)}
+      position="left"
+    />
   </TextInput>
 </div>
 
