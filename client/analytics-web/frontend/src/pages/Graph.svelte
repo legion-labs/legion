@@ -90,6 +90,10 @@
     selectedNode = node;
   }
 
+  function onEdgeClick(hash: number) {
+    selectedNode = nodes.find( item => item.hash === hash );
+  }
+
   function formatSum(node: CumulativeCallGraphNode) : string{
     return formatExecutionTime(node.stats!.sum);
   }
@@ -171,7 +175,10 @@
     <h3>Callees</h3>
 
     {#each selectedNode.callees as edge (edge.hash)}
-      <div class="fundiv" style={formatEdgeDivWidth(selectedNode, edge.weight)}>
+      <div class="fundiv"
+           style={formatEdgeDivWidth(selectedNode, edge.weight)}
+           on:click={function(_event){ onEdgeClick(edge.hash); }}
+           >
         <span>
           {scopes[edge.hash].name}
         </span>
@@ -181,7 +188,10 @@
     <h3>Callers</h3>
 
     {#each selectedNode.callers as edge (edge.hash)}
-      <div class="fundiv" style={formatEdgeDivWidth(selectedNode, edge.weight)}>
+      <div class="fundiv"
+           style={formatEdgeDivWidth(selectedNode, edge.weight)}
+           on:click={function(_event){ onEdgeClick(edge.hash); }}
+           >
         <span>
           {scopes[edge.hash].name}
         </span>

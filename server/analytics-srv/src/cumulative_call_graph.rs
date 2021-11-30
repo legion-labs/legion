@@ -25,6 +25,19 @@ impl NodeStatsAcc {
 
 type StatsHashMap = std::collections::HashMap<u32, NodeStatsAcc>;
 
+fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
+    let mut edges: Vec<CallGraphEdge> = edges_acc
+        .iter()
+        .filter(|(hash, _weight)| **hash != 0)
+        .map(|(hash, weight)| CallGraphEdge {
+            hash: *hash,
+            weight: *weight,
+        })
+        .collect();
+    edges.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
+    edges
+}
+
 fn record_tree_stats(
     tree: &CallTreeNode,
     scopes: &mut ScopeHashMap,
@@ -121,24 +134,8 @@ pub(crate) async fn compute_cumulative_call_graph(
             sum += time_ms;
         }
 
-        let mut callers: Vec<CallGraphEdge> = node_stats
-            .parents
-            .iter()
-            .map(|(hash, weight)| CallGraphEdge {
-                hash: *hash,
-                weight: *weight,
-            })
-            .collect();
-        callers.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
-        let mut callees: Vec<CallGraphEdge> = node_stats
-            .children
-            .iter()
-            .map(|(hash, weight)| CallGraphEdge {
-                hash: *hash,
-                weight: *weight,
-            })
-            .collect();
-        callees.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
+        let callers = make_edge_vector(&node_stats.parents);
+        let callees = make_edge_vector(&node_stats.children);
 
         nodes.push(CumulativeCallGraphNode {
             hash,
