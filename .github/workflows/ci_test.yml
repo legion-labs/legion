@@ -17,8 +17,9 @@ jobs:
 
       - name: Run Yarn install
         run: |
-          ls /etc/profile.d/
-          ls ~/
+          ls -la /etc/profile.d/
+          echo "Other:"
+          ls -la ~/
           echo $CCX
           echo $PATH
           echo $CARGO_HOME
