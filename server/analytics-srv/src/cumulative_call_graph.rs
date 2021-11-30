@@ -121,7 +121,7 @@ pub(crate) async fn compute_cumulative_call_graph(
             sum += time_ms;
         }
 
-        let callers = node_stats
+        let mut callers: Vec<CallGraphEdge> = node_stats
             .parents
             .iter()
             .map(|(hash, weight)| CallGraphEdge {
@@ -129,7 +129,8 @@ pub(crate) async fn compute_cumulative_call_graph(
                 weight: *weight,
             })
             .collect();
-        let callees = node_stats
+        callers.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
+        let mut callees: Vec<CallGraphEdge> = node_stats
             .children
             .iter()
             .map(|(hash, weight)| CallGraphEdge {
@@ -137,6 +138,7 @@ pub(crate) async fn compute_cumulative_call_graph(
                 weight: *weight,
             })
             .collect();
+        callees.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
 
         nodes.push(CumulativeCallGraphNode {
             hash,

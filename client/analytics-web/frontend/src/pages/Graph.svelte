@@ -73,8 +73,13 @@
     if (!maxSum) {
       return "";
     }
-    const pct = node.stats!.sum * 100 / maxSum;
-    return `width:${pct*0.95}%`;
+    const pct = node.stats!.sum * 95 / maxSum;
+    return `width:${pct}%`;
+  }
+
+  function formatEdgeDivWidth(selectedNode: CumulativeCallGraphNode, edgeWeight: number) : string{
+    const pct = edgeWeight * 95 / selectedNode.stats!.sum;
+    return `width:${pct}%`;
   }
 
   function formatFunLabel(node: CumulativeCallGraphNode) : string{
@@ -166,7 +171,7 @@
     <h3>Callees</h3>
 
     {#each selectedNode.callees as edge (edge.hash)}
-      <div class="fundiv">
+      <div class="fundiv" style={formatEdgeDivWidth(selectedNode, edge.weight)}>
         <span>
           {scopes[edge.hash].name}
         </span>
@@ -176,7 +181,7 @@
     <h3>Callers</h3>
 
     {#each selectedNode.callers as edge (edge.hash)}
-      <div class="fundiv">
+      <div class="fundiv" style={formatEdgeDivWidth(selectedNode, edge.weight)}>
         <span>
           {scopes[edge.hash].name}
         </span>
