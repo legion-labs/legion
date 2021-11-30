@@ -3567,6 +3567,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-build-utils"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitflags",
+ "thiserror",
+ "tonic-build",
+ "walkdir",
+ "which",
+]
+
+[[package]]
 name = "legion-cli"
 version = "0.1.0"
 dependencies = [
@@ -3793,11 +3805,11 @@ name = "legion-editor-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "legion-build-utils",
  "prost",
  "prost-types",
  "tokio",
  "tonic",
- "tonic-build",
 ]
 
 [[package]]

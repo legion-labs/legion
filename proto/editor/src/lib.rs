@@ -1,1 +1,3 @@
-tonic::include_proto!("editor");
+#[path = "../codegen/editor.rs"]
+mod editor;
+pub use editor::*;
