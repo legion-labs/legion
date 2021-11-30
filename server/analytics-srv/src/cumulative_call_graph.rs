@@ -38,27 +38,46 @@ fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
     edges
 }
 
+fn tree_overlaps(tree: &CallTreeNode, filter_begin_ms: f64, filter_end_ms: f64) -> bool {
+    tree.end_ms >= filter_begin_ms && tree.begin_ms <= filter_end_ms
+}
+
 fn record_tree_stats(
     tree: &CallTreeNode,
+    filter_begin_ms: f64,
+    filter_end_ms: f64,
     scopes: &mut ScopeHashMap,
     stats_map: &mut StatsHashMap,
     parent_hash: Option<u32>,
 ) {
+    if !tree_overlaps(tree, filter_begin_ms, filter_end_ms) {
+        return;
+    }
     record_scope_in_map(tree, scopes);
     {
         let stats = stats_map.entry(tree.hash).or_insert_with(NodeStatsAcc::new);
-        let duration = tree.end_ms - tree.begin_ms;
+        let duration = tree.end_ms.min(filter_end_ms) - tree.begin_ms.max(filter_begin_ms);
         stats.durations_ms.push(duration);
         if let Some(ph) = parent_hash {
             *stats.parents.entry(ph).or_insert(0.0) += duration;
         }
         for child in &tree.scopes {
-            let child_duration = child.end_ms - child.begin_ms;
-            *stats.children.entry(child.hash).or_insert(0.0) += child_duration;
+            if tree_overlaps(child, filter_begin_ms, filter_end_ms) {
+                let child_duration =
+                    child.end_ms.min(filter_end_ms) - child.begin_ms.max(filter_begin_ms);
+                *stats.children.entry(child.hash).or_insert(0.0) += child_duration;
+            }
         }
     }
     for child in &tree.scopes {
-        record_tree_stats(child, scopes, stats_map, Some(tree.hash));
+        record_tree_stats(
+            child,
+            filter_begin_ms,
+            filter_end_ms,
+            scopes,
+            stats_map,
+            Some(tree.hash),
+        );
     }
 }
 
@@ -98,10 +117,9 @@ pub(crate) async fn compute_cumulative_call_graph(
 
         for b in blocks {
             //compute_block_call_tree fetches the block metadata again
-            //todo: filter individual call instances to count only those between begin_ms and end_ms
             let tree =
                 compute_block_call_tree(connection, data_path, process, &s, &b.block_id).await?;
-            record_tree_stats(&tree, &mut scopes, &mut stats, None);
+            record_tree_stats(&tree, begin_ms, end_ms, &mut scopes, &mut stats, None);
         }
     }
 
