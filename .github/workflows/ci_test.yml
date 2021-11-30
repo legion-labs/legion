@@ -18,11 +18,12 @@ jobs:
       - name: Run Yarn install
         run: |
           ls -la /etc/profile.d/
-          echo "Other:"
+          echo $HOME
           ls -la ~/
           echo $CCX
           echo $PATH
           echo $CARGO_HOME
+          sleep 5
           yarn install
 
       - name: Run formatting check
