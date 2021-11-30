@@ -42,37 +42,42 @@
       <!-- TODO: Make sure the name is unique -->
       {#each $currentResource.properties as property (property.name)}
         <div class="property">
-          <div class="property-description">
-            <div class="property-name">
-              {property.name}
+          <div class="property-name">
+            {property.name}
+          </div>
+          <div class="property-input-container">
+            <div class="property-input">
+              {#if ptypeIsBoolean(property.ptype)}
+                <BooleanProperty bind:value={property.value} />
+              {:else if ptypeIsString(property.ptype)}
+                <StringProperty bind:value={property.value} />
+              {:else if ptypeIsNumber(property.ptype)}
+                <NumberProperty bind:value={property.value} />
+              {:else if ptypeIsColor(property.ptype)}
+                <ColorProperty bind:value={property.value} />
+              {:else if ptypeIsSpeed(property.ptype)}
+                <SpeedProperty bind:value={property.value} />
+              {:else if ptypeIsVector3(property.ptype)}
+                <Vector3Property bind:value={property.value} />
+              {:else if ptypeIsQuat(property.ptype)}
+                <QuatProperty bind:value={property.value} />
+              {:else if ptypeIsVecU8(property.ptype)}
+                Vec: {property.value}
+              {:else}
+                Unknown property type: {property.ptype}
+              {/if}
             </div>
             <div
               class="property-actions"
               on:click={() => (property.value = property.defaultValue)}
             >
-              <div class="property-action-default">default</div>
+              <div
+                class="property-action-default"
+                title="Reset value to default"
+              >
+                &#10227;
+              </div>
             </div>
-          </div>
-          <div class="property-input">
-            {#if ptypeIsBoolean(property.ptype)}
-              <BooleanProperty bind:value={property.value} />
-            {:else if ptypeIsString(property.ptype)}
-              <StringProperty bind:value={property.value} />
-            {:else if ptypeIsNumber(property.ptype)}
-              <NumberProperty bind:value={property.value} />
-            {:else if ptypeIsColor(property.ptype)}
-              <ColorProperty bind:value={property.value} />
-            {:else if ptypeIsSpeed(property.ptype)}
-              <SpeedProperty bind:value={property.value} />
-            {:else if ptypeIsVector3(property.ptype)}
-              <Vector3Property bind:value={property.value} />
-            {:else if ptypeIsQuat(property.ptype)}
-              <QuatProperty bind:value={property.value} />
-            {:else if ptypeIsVecU8(property.ptype)}
-              Vec: {property.value}
-            {:else}
-              Unknown property type: {property.ptype}
-            {/if}
           </div>
         </div>
       {/each}
@@ -86,26 +91,26 @@
   }
 
   .property {
-    @apply flex flex-col border-b py-2 border-gray-400 last:border-none space-y-0.5;
-  }
-
-  .property-description {
-    @apply flex flex-row items-center justify-between;
+    @apply flex flex-row border-b py-1 border-gray-400 border-opacity-30 last:border-none space-x-1 justify-between;
   }
 
   .property-name {
-    @apply font-bold text-sm;
+    @apply font-bold text-lg;
   }
 
   .property-actions {
-    @apply flex flex-row space-x-1;
+    @apply flex flex-row space-x-1 items-center;
   }
 
   .property-action-default {
-    @apply italic cursor-pointer underline;
+    @apply cursor-pointer text-lg;
+  }
+
+  .property-input-container {
+    @apply flex w-1/2 min-w-[160px] flex-shrink-0 space-x-1;
   }
 
   .property-input {
-    @apply flex text-sm w-full;
+    @apply flex w-full;
   }
 </style>

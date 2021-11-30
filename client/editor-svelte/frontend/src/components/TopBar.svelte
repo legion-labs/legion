@@ -78,11 +78,11 @@
 
 <style lang="postcss">
   .root {
-    @apply h-7 flex flex-row justify-between items-center flex-1 whitespace-nowrap;
+    @apply h-8 flex flex-row justify-between items-center flex-1 whitespace-nowrap;
   }
 
   .menus {
-    @apply flex flex-row h-full flex-1 space-x-1 text-sm justify-center md:justify-start;
+    @apply flex flex-row h-full flex-1 space-x-1 justify-center md:justify-start;
   }
 
   .brand {
