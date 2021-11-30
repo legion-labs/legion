@@ -1,7 +1,7 @@
 <script lang="ts">
   export let value: string;
 
-  export let size: "sm" | "default" = "default";
+  export let size: "default" = "default";
 
   export let fullWidth = false;
 
@@ -18,7 +18,6 @@
 
 <div
   class:w-full={fullWidth}
-  class:sm={size === "sm"}
   class:default={size === "default"}
   class:root-with-extension={$$slots.extension}
 >
@@ -32,11 +31,7 @@
     bind:this={input}
   />
   {#if $$slots.extension}
-    <div
-      class="extension"
-      class:extension-sm={size === "sm"}
-      class:extension-default={size === "default"}
-    >
+    <div class="extension" class:extension-default={size === "default"}>
       <slot name="extension" />
     </div>
   {/if}
@@ -55,20 +50,12 @@
     @apply rounded-r-none;
   }
 
-  .sm {
-    @apply h-7 text-sm;
-  }
-
   .default {
     @apply h-8;
   }
 
   .extension {
     @apply border-l rounded-r-sm bg-gray-800 border-gray-700 h-full p-1;
-  }
-
-  .extension-sm {
-    @apply w-7;
   }
 
   .extension-default {

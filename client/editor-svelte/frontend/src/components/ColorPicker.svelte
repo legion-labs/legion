@@ -226,7 +226,6 @@ It also supports manual RGBA edition with 4 different inputs.
             autoSelect
             noArrow
             fullWidth
-            size="sm"
             min={0}
             max={255}
             value={colors.rgba.r}
@@ -238,7 +237,6 @@ It also supports manual RGBA edition with 4 different inputs.
             autoSelect
             noArrow
             fullWidth
-            size="sm"
             min={0}
             max={255}
             value={colors.rgba.g}
@@ -250,7 +248,6 @@ It also supports manual RGBA edition with 4 different inputs.
             autoSelect
             noArrow
             fullWidth
-            size="sm"
             min={0}
             max={255}
             value={colors.rgba.b}
@@ -262,7 +259,6 @@ It also supports manual RGBA edition with 4 different inputs.
             autoSelect
             noArrow
             fullWidth
-            size="sm"
             min={0}
             max={1}
             step={0.01}

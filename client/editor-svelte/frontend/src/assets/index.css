@@ -4,6 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  font-size: 12px;
+}
+
 body {
   @apply select-none bg-gray-800 text-white font-default;
 }

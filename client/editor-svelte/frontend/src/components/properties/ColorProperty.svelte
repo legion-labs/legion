@@ -23,13 +23,7 @@
     visible = false;
   }}
 >
-  <TextInput
-    size="sm"
-    value={colors.hex}
-    on:input={setColors}
-    fullWidth
-    autoSelect
-  >
+  <TextInput value={colors.hex} on:input={setColors} fullWidth autoSelect>
     <ColorPicker slot="extension" bind:colors bind:visible position="left" />
   </TextInput>
 </div>

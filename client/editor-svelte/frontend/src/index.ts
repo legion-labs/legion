@@ -4,7 +4,7 @@ import log, { Level } from "@/lib/log";
 import App from "./App.svelte";
 
 // TODO: Set level from configuration file
-const logLevel: Level = "debug";
+const logLevel: Level = "warn";
 
 if (logLevel) {
   log.init();
