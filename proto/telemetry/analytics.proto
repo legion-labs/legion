@@ -105,11 +105,16 @@ message NodeStats{
     uint64 count = 6;
 }
 
+message CallGraphEdge{
+    uint32 hash = 1;
+    double weight = 2;
+}
+
 message CumulativeCallGraphNode{
     uint32 hash = 1;
     NodeStats stats = 2;
-    repeated uint32 callers = 3;
-    repeated uint32 callees = 4;
+    repeated CallGraphEdge callers = 3;
+    repeated CallGraphEdge callees = 4;
 }
 
 message CumulativeCallGraphReply{

@@ -100,11 +100,16 @@ export interface NodeStats {
   count: number;
 }
 
+export interface CallGraphEdge {
+  hash: number;
+  weight: number;
+}
+
 export interface CumulativeCallGraphNode {
   hash: number;
   stats: NodeStats | undefined;
-  callers: number[];
-  callees: number[];
+  callers: CallGraphEdge[];
+  callees: CallGraphEdge[];
 }
 
 export interface CumulativeCallGraphReply {
@@ -1297,7 +1302,72 @@ export const NodeStats = {
   },
 };
 
-const baseCumulativeCallGraphNode: object = { hash: 0, callers: 0, callees: 0 };
+const baseCallGraphEdge: object = { hash: 0, weight: 0 };
+
+export const CallGraphEdge = {
+  encode(
+    message: CallGraphEdge,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.hash !== 0) {
+      writer.uint32(8).uint32(message.hash);
+    }
+    if (message.weight !== 0) {
+      writer.uint32(17).double(message.weight);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): CallGraphEdge {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseCallGraphEdge } as CallGraphEdge;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.hash = reader.uint32();
+          break;
+        case 2:
+          message.weight = reader.double();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CallGraphEdge {
+    const message = { ...baseCallGraphEdge } as CallGraphEdge;
+    message.hash =
+      object.hash !== undefined && object.hash !== null
+        ? Number(object.hash)
+        : 0;
+    message.weight =
+      object.weight !== undefined && object.weight !== null
+        ? Number(object.weight)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: CallGraphEdge): unknown {
+    const obj: any = {};
+    message.hash !== undefined && (obj.hash = message.hash);
+    message.weight !== undefined && (obj.weight = message.weight);
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<CallGraphEdge>): CallGraphEdge {
+    const message = { ...baseCallGraphEdge } as CallGraphEdge;
+    message.hash = object.hash ?? 0;
+    message.weight = object.weight ?? 0;
+    return message;
+  },
+};
+
+const baseCumulativeCallGraphNode: object = { hash: 0 };
 
 export const CumulativeCallGraphNode = {
   encode(
@@ -1310,16 +1380,12 @@ export const CumulativeCallGraphNode = {
     if (message.stats !== undefined) {
       NodeStats.encode(message.stats, writer.uint32(18).fork()).ldelim();
     }
-    writer.uint32(26).fork();
     for (const v of message.callers) {
-      writer.uint32(v);
+      CallGraphEdge.encode(v!, writer.uint32(26).fork()).ldelim();
     }
-    writer.ldelim();
-    writer.uint32(34).fork();
     for (const v of message.callees) {
-      writer.uint32(v);
+      CallGraphEdge.encode(v!, writer.uint32(34).fork()).ldelim();
     }
-    writer.ldelim();
     return writer;
   },
 
@@ -1344,24 +1410,10 @@ export const CumulativeCallGraphNode = {
           message.stats = NodeStats.decode(reader, reader.uint32());
           break;
         case 3:
-          if ((tag & 7) === 2) {
-            const end2 = reader.uint32() + reader.pos;
-            while (reader.pos < end2) {
-              message.callers.push(reader.uint32());
-            }
-          } else {
-            message.callers.push(reader.uint32());
-          }
+          message.callers.push(CallGraphEdge.decode(reader, reader.uint32()));
           break;
         case 4:
-          if ((tag & 7) === 2) {
-            const end2 = reader.uint32() + reader.pos;
-            while (reader.pos < end2) {
-              message.callees.push(reader.uint32());
-            }
-          } else {
-            message.callees.push(reader.uint32());
-          }
+          message.callees.push(CallGraphEdge.decode(reader, reader.uint32()));
           break;
         default:
           reader.skipType(tag & 7);
@@ -1383,8 +1435,12 @@ export const CumulativeCallGraphNode = {
       object.stats !== undefined && object.stats !== null
         ? NodeStats.fromJSON(object.stats)
         : undefined;
-    message.callers = (object.callers ?? []).map((e: any) => Number(e));
-    message.callees = (object.callees ?? []).map((e: any) => Number(e));
+    message.callers = (object.callers ?? []).map((e: any) =>
+      CallGraphEdge.fromJSON(e)
+    );
+    message.callees = (object.callees ?? []).map((e: any) =>
+      CallGraphEdge.fromJSON(e)
+    );
     return message;
   },
 
@@ -1394,12 +1450,16 @@ export const CumulativeCallGraphNode = {
     message.stats !== undefined &&
       (obj.stats = message.stats ? NodeStats.toJSON(message.stats) : undefined);
     if (message.callers) {
-      obj.callers = message.callers.map((e) => e);
+      obj.callers = message.callers.map((e) =>
+        e ? CallGraphEdge.toJSON(e) : undefined
+      );
     } else {
       obj.callers = [];
     }
     if (message.callees) {
-      obj.callees = message.callees.map((e) => e);
+      obj.callees = message.callees.map((e) =>
+        e ? CallGraphEdge.toJSON(e) : undefined
+      );
     } else {
       obj.callees = [];
     }
@@ -1417,8 +1477,12 @@ export const CumulativeCallGraphNode = {
       object.stats !== undefined && object.stats !== null
         ? NodeStats.fromPartial(object.stats)
         : undefined;
-    message.callers = (object.callers ?? []).map((e) => e);
-    message.callees = (object.callees ?? []).map((e) => e);
+    message.callers = (object.callers ?? []).map((e) =>
+      CallGraphEdge.fromPartial(e)
+    );
+    message.callees = (object.callees ?? []).map((e) =>
+      CallGraphEdge.fromPartial(e)
+    );
     return message;
   },
 };

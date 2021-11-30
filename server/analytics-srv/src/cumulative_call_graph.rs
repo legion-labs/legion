@@ -2,22 +2,23 @@ use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNod
 use anyhow::{Context, Result};
 use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::{
-    CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
+    CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
+use std::collections::HashMap;
 use std::{cmp::min, path::Path};
 
 struct NodeStatsAcc {
     durations_ms: Vec<f64>,
-    parents: Vec<u32>,
-    children: Vec<u32>,
+    parents: HashMap<u32, f64>,
+    children: HashMap<u32, f64>,
 }
 
 impl NodeStatsAcc {
     pub fn new() -> Self {
         Self {
             durations_ms: Vec::new(),
-            parents: Vec::new(),
-            children: Vec::new(),
+            parents: HashMap::new(),
+            children: HashMap::new(),
         }
     }
 }
@@ -33,12 +34,14 @@ fn record_tree_stats(
     record_scope_in_map(tree, scopes);
     {
         let stats = stats_map.entry(tree.hash).or_insert_with(NodeStatsAcc::new);
-        stats.durations_ms.push(tree.end_ms - tree.begin_ms);
+        let duration = tree.end_ms - tree.begin_ms;
+        stats.durations_ms.push(duration);
         if let Some(ph) = parent_hash {
-            stats.parents.push(ph);
+            *stats.parents.entry(ph).or_insert(0.0) += duration;
         }
         for child in &tree.scopes {
-            stats.children.push(child.hash);
+            let child_duration = child.end_ms - child.begin_ms;
+            *stats.children.entry(child.hash).or_insert(0.0) += child_duration;
         }
     }
     for child in &tree.scopes {
@@ -117,6 +120,24 @@ pub(crate) async fn compute_cumulative_call_graph(
         for time_ms in &node_stats.durations_ms {
             sum += time_ms;
         }
+
+        let callers = node_stats
+            .parents
+            .iter()
+            .map(|(hash, weight)| CallGraphEdge {
+                hash: *hash,
+                weight: *weight,
+            })
+            .collect();
+        let callees = node_stats
+            .children
+            .iter()
+            .map(|(hash, weight)| CallGraphEdge {
+                hash: *hash,
+                weight: *weight,
+            })
+            .collect();
+
         nodes.push(CumulativeCallGraphNode {
             hash,
             stats: Some(NodeStats {
@@ -127,8 +148,8 @@ pub(crate) async fn compute_cumulative_call_graph(
                 median,
                 count: node_stats.durations_ms.len() as u64,
             }),
-            callers: node_stats.parents,
-            callees: node_stats.children,
+            callers,
+            callees,
         });
     }
 

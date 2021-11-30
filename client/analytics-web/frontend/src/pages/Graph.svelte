@@ -162,6 +162,27 @@
         <span>{formatCount(selectedNode)}</span>
       </div>
     </div>
+
+    <h3>Callees</h3>
+
+    {#each selectedNode.callees as edge (edge.hash)}
+      <div class="fundiv">
+        <span>
+          {scopes[edge.hash].name}
+        </span>
+      </div>
+    {/each}
+    
+    <h3>Callers</h3>
+
+    {#each selectedNode.callers as edge (edge.hash)}
+      <div class="fundiv">
+        <span>
+          {scopes[edge.hash].name}
+        </span>
+      </div>
+    {/each}
+    
   {/if}
 </div>
 
@@ -176,6 +197,7 @@
   }
 
   .selecteddiv {
+    margin: 5px;
     text-align: left;
     white-space: nowrap;
   }
