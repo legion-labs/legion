@@ -1,11 +1,8 @@
 use std::env;
 
 use compiler_test_split::COMPILER_INFO;
-use legion_data_compiler::compiler_api::compiler_main;
+use legion_data_compiler::compiler_api::{compiler_main, CompilerError};
 
-fn main() {
-    std::process::exit(match compiler_main(env::args(), &COMPILER_INFO) {
-        Ok(_) => 0,
-        Err(_) => 1,
-    });
+fn main() -> Result<(), CompilerError> {
+    compiler_main(env::args(), &COMPILER_INFO)
 }
