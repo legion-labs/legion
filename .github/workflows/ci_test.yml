@@ -20,7 +20,7 @@ jobs:
           ls -la /etc/profile.d/
           echo "Home: $HOME"
           ls -la ~/
-          echo $CCX
+          echo $CXX
           echo $PATH
           echo $CARGO_HOME
           cat ~/profile
