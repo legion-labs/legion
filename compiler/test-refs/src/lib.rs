@@ -58,8 +58,7 @@ use std::env;
 
 use legion_data_compiler::{
     compiler_api::{
-         CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
-        DATA_BUILD_VERSION,
+        CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
     },
     compiler_utils::hash_code_and_data,
 };

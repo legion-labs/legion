@@ -54,7 +54,6 @@
 // crate-specific exceptions:
 #![allow()]
 
-
 use std::env;
 
 use compiler_testentity::COMPILER_INFO;
