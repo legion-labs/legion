@@ -66,6 +66,7 @@ use legion_window::{CursorMoved, WindowCreated, Windows};
 
 pub struct Egui {
     pub ctx: egui::CtxRef,
+    pub scale: f32,
 }
 
 #[derive(Default)]
@@ -99,7 +100,7 @@ fn on_window_created(
         ..RawInput::default()
     });
     ctx.end_frame();
-    commands.insert_resource(Egui { ctx });
+    commands.insert_resource(Egui { ctx, scale: 1.0 });
 }
 
 fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerButton {
@@ -180,7 +181,8 @@ fn begin_frame(
     mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
 ) {
     egui::Window::new("Debug").show(&egui.ctx, |ui| {
-        egui.ctx.input().ui(ui);
+        egui.ctx.settings_ui(ui);
+        ui.label(egui.ctx.texture().version);
     });
 
     let mut scroll_delta = egui::vec2(0.0, 0.0);
@@ -203,12 +205,6 @@ fn begin_frame(
 
     // TODO: Copy,
     // TODO: Cut,
-    // TODO: Text(String),
-    // TODO: Key {
-    //    key: Key,
-    //    pressed: bool,
-    //    modifiers: Modifiers,
-    //},
     // TODO: PointerGone,
     // TODO: CompositionStart,
     // TODO: CompositionUpdate(String),

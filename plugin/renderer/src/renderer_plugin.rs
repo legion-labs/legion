@@ -50,7 +50,7 @@ impl Plugin for RendererPlugin {
 }
 
 fn update_ui(
-    mut egui_ctx: ResMut<Egui>,
+    egui_ctx: Res<Egui>,
     mut renderer_ui: ResMut<RendererUI>,
     mut rotations: Query<'_, '_, &mut RotationComponent>,
 ) {
