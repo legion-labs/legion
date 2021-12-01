@@ -3,16 +3,13 @@
 
 import colorConvert from "color-convert";
 
-// r: 0 ~ 255, g: 0 ~ 255, b: 0 ~ 255, a: 0 ~ 1
+// r: 0 ~ 255, g: 0 ~ 255, b: 0 ~ 255, a: 0 ~ 255
 export type Rgba = { r: number; g: number; b: number; a: number };
 
-// // r: 0 ~ 255, g: 0 ~ 255, b: 0 ~ 255
-// export type Rgb = { r: number; g: number; b: number };
+// h: 0 ~ 360, s: 0 ~ 100, v: 0 ~ 100, alpha: 0 ~ 255
+export type Hsv = { h: number; s: number; v: number; a: number };
 
-// h: 0 ~ 360, s: 0 ~ 100, v: 0 ~ 100, alpha: 0 ~ 100
-export type Hsv = { h: number; s: number; v: number; alpha: number };
-
-// Simple type alias for Hex colors (includes the #)
+// Simple type alias for Hex colors
 export type Hex = string;
 
 export type ColorSet = { hsv: Hsv; rgba: Rgba; hex: Hex };
@@ -47,62 +44,44 @@ export function parseRgba(rgba: string): Rgba {
   return { r, g, b, a };
 }
 
-// export function parseHex(hex: string): Rgba | null {
-//   if (hex.length === 4) {
-//     return {
-//       r: parseInt(hex.charAt(1), 16) * 0x11,
-//       g: parseInt(hex.charAt(2), 16) * 0x11,
-//       b: parseInt(hex.charAt(3), 16) * 0x11,
-//       a: 1,
-//     };
-//   }
-
-//   if (hex.length === 7) {
-//     return {
-//       r: parseInt(hex.substring(1, 3), 16),
-//       g: parseInt(hex.substring(3, 5), 16),
-//       b: parseInt(hex.substring(5, 7), 16),
-//       a: 1,
-//     };
-//   }
-
-//   return null;
-// }
-
-export function hsvToRgba({ h, s, v, alpha }: Hsv): Rgba {
+export function hsvToRgba({ h, s, v, a }: Hsv): Rgba {
   const [r, g, b] = colorConvert.hsv.rgb([h, s, v]);
 
-  return { r, g, b, a: alpha / 100 };
+  return { r, g, b, a };
 }
 
 export function rgbaToHsv({ r, g, b, a }: Rgba): Hsv {
   const [h, s, v] = colorConvert.rgb.hsv([r, g, b]);
 
-  return { h, s, v, alpha: a * 100 };
+  return { h, s, v, a };
 }
 
-export function rgbaToHex({ r, g, b }: Rgba) {
-  return `#${colorConvert.rgb.hex([r, g, b]).toLowerCase()}`;
+export function rgbaToHex({ r, g, b, a }: Rgba) {
+  return `${colorConvert.rgb.hex([r, g, b]).toLowerCase()}${a
+    .toString(16)
+    .padStart(2, "0")}`;
 }
 
-export function hsvToHex({ h, s, v }: Hsv) {
-  return `#${colorConvert.hsv.hex([h, s, v]).toLowerCase()}`;
+export function hsvToHex({ h, s, v, a }: Hsv) {
+  return `${colorConvert.hsv.hex([h, s, v]).toLowerCase()}${a
+    .toString(16)
+    .padStart(2, "0")}`;
 }
 
 export function hexToHsv(hex: Hex): Hsv {
-  const [h, s, v] = colorConvert.hex.hsv(hex.slice(1));
+  const [h, s, v] = colorConvert.hex.hsv(hex.slice(0, 6));
 
-  return { h, s, v, alpha: 100 };
+  return { h, s, v, a: parseInt(hex.slice(6, 8), 16) };
 }
 
 export function hexToRgba(hex: Hex): Rgba {
-  const [r, g, b] = colorConvert.hex.rgb(hex.slice(1));
+  const [r, g, b] = colorConvert.hex.rgb(hex);
 
-  return { r, g, b, a: 1 };
+  return { r, g, b, a: parseInt(hex.slice(6, 8), 16) };
 }
 
 export function rgbaToColorString({ r, g, b, a }: Rgba, ignoreAlpha = false) {
-  return `rgba(${r},${g},${b},${ignoreAlpha ? 1 : a.toPrecision(2)})`;
+  return `rgba(${r},${g},${b},${ignoreAlpha ? 1 : (a / 255).toPrecision(2)})`;
 }
 
 export function hsvToColorString(hsv: Hsv, ignoreAlpha = false): string {

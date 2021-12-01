@@ -77,7 +77,7 @@ It also supports manual RGBA edition with 4 different inputs.
   $: {
     const [r, g, b] = colorConvert.hsv.rgb([colors.hsv.h, 100, 100]);
 
-    hColor = { r, g, b, a: 1 };
+    hColor = { r, g, b, a: 255 };
   }
 
   $: dispatch("change", colors);
@@ -96,7 +96,7 @@ It also supports manual RGBA edition with 4 different inputs.
       h: colors.hsv.h,
       s: xPercentage,
       v: 100 - yPercentage,
-      alpha: colors.hsv.alpha,
+      a: colors.hsv.a,
     });
   }
 
@@ -109,23 +109,19 @@ It also supports manual RGBA edition with 4 different inputs.
     });
   }
 
-  function updateHsvAlpha(
+  function updateAlpha(
     event: Event & { currentTarget: EventTarget & HTMLInputElement }
   ) {
+    // We arbitrarily update the hsv color but we could update any other color representation
     colors = colorSetFromHsv({
       ...colors.hsv,
-      alpha: +event.currentTarget.value,
+      a: +event.currentTarget.value,
     });
   }
 
   function updateRgbaColor(key: keyof Rgba) {
     return ({ detail: newColorPart }: CustomEvent<number>) => {
-      const isAlpha = key === "a";
-
-      if (
-        newColorPart >= 0 &&
-        ((isAlpha && newColorPart <= 1) || (!isAlpha && newColorPart <= 255))
-      ) {
+      if (newColorPart >= 0 && newColorPart <= 255) {
         colors = colorSetFromRgba({
           ...colors.rgba,
           [key]: newColorPart,
@@ -160,7 +156,6 @@ It also supports manual RGBA edition with 4 different inputs.
   />
   <div
     class="dropdown"
-    class:visible
     class:invisible={!visible}
     class:right-0={position === "left"}
   >
@@ -211,11 +206,11 @@ It also supports manual RGBA edition with 4 different inputs.
             <input
               type="range"
               min={0}
-              max={100}
+              max={255}
               class="alpha-selector"
               style="--current-background: {rgbaToColorString(hColor, true)}"
-              value={colors.hsv.alpha}
-              on:input={updateHsvAlpha}
+              value={colors.hsv.a}
+              on:input={updateAlpha}
             />
           </div>
         </div>
@@ -260,8 +255,7 @@ It also supports manual RGBA edition with 4 different inputs.
             noArrow
             fullWidth
             min={0}
-            max={1}
-            step={0.01}
+            max={255}
             value={colors.rgba.a}
             on:input={updateRgbaColor("a")}
           />
@@ -271,7 +265,7 @@ It also supports manual RGBA edition with 4 different inputs.
   </div>
 </div>
 
-<style>
+<style lang="postcss">
   .root {
     @apply relative h-full w-full;
   }
@@ -286,7 +280,7 @@ It also supports manual RGBA edition with 4 different inputs.
   }
 
   .sv-selector-input {
-    @apply flex flex-col w-full rounded-sm space-y-1;
+    @apply flex flex-col w-full rounded-sm;
   }
 
   .sv-selector-background {

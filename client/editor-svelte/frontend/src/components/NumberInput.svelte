@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
+  type Size = "default";
+
   // Type are not preserved when using the `on:input` shortcut
   // so we must use dispatch and explicitely type it
   const dispatch = createEventDispatcher<{
@@ -13,7 +15,7 @@
 
   export let max: number | undefined = undefined;
 
-  export let size: "default" = "default";
+  export let size: Size = "default";
 
   export let fullWidth = false;
 

@@ -1,5 +1,9 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
   import NumberInput from "./NumberInput.svelte";
+
+  const dispatch = createEventDispatcher<{ input: number }>();
 
   export let value: number;
 
@@ -10,17 +14,43 @@
   export let min = -10;
 
   export let max = 10;
+
+  function onRangeInput(
+    event: Event & { currentTarget: EventTarget & HTMLInputElement }
+  ) {
+    // Svelte will not call this function if the input value
+    // is not a valid number, so we can safely cast it to `number`
+    dispatch("input", +event.currentTarget.value);
+  }
+
+  function onNumberInput({ detail }: CustomEvent<number>) {
+    dispatch("input", detail);
+  }
 </script>
 
 <div class="root" class:w-full={fullWidth}>
   <div class="slider-container group">
     <div>{min}</div>
-    <input class="slider" type="range" {min} {max} bind:value />
+    <input
+      class="slider"
+      type="range"
+      {min}
+      {max}
+      on:input={onRangeInput}
+      bind:value
+    />
     <div>{max}</div>
   </div>
   {#if withNumberInput}
     <div class="numeric-input-container">
-      <NumberInput bind:value {min} {max} noArrow fullWidth />
+      <NumberInput
+        bind:value
+        {min}
+        {max}
+        on:input={onNumberInput}
+        noArrow
+        fullWidth
+      />
     </div>
   {/if}
 </div>

@@ -5,4 +5,4 @@
 </script>
 
 <!-- For now the number property is only a Range but it might change -->
-<Range min={-10} max={10} fullWidth withNumberInput bind:value />
+<Range min={-10} max={10} fullWidth withNumberInput on:input bind:value />

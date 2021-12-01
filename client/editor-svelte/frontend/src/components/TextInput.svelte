@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
+  type Size = "default";
+
   // Type are not preserved when using the `on:input` shortcut
   // so we must use dispatch and explicitely type it
   const dispatch = createEventDispatcher<{
@@ -9,7 +11,7 @@
 
   export let value: string;
 
-  export let size: "default" = "default";
+  export let size: Size = "default";
 
   export let fullWidth = false;
 
@@ -35,20 +37,32 @@
 <div
   class:w-full={fullWidth}
   class:default={size === "default"}
-  class:root-with-extension={$$slots.extension}
+  class:root-with-extension={$$slots.rightExtension || $$slots.leftExtension}
 >
+  {#if $$slots.leftExtension}
+    <div
+      class="extension left-extension"
+      class:extension-default={size === "default"}
+    >
+      <slot name="leftExtension" />
+    </div>
+  {/if}
   <input
     class="input"
-    class:input-with-extension={$$slots.extension}
+    class:input-with-right-extension={$$slots.rightExtension}
+    class:input-with-left-extension={$$slots.leftExtension}
     type="text"
     on:input={onInput}
     on:focus={onFocus}
     bind:value
     bind:this={input}
   />
-  {#if $$slots.extension}
-    <div class="extension" class:extension-default={size === "default"}>
-      <slot name="extension" />
+  {#if $$slots.rightExtension}
+    <div
+      class="extension right-extension"
+      class:extension-default={size === "default"}
+    >
+      <slot name="rightExtension" />
     </div>
   {/if}
 </div>
@@ -62,8 +76,12 @@
     @apply bg-gray-800 border-gray-400 px-2 py-1 rounded-sm outline-none w-full;
   }
 
-  .input-with-extension {
+  .input-with-right-extension {
     @apply rounded-r-none;
+  }
+
+  .input-with-left-extension {
+    @apply rounded-l-none;
   }
 
   .default {
@@ -71,10 +89,22 @@
   }
 
   .extension {
-    @apply border-l rounded-r-sm bg-gray-800 border-gray-700 h-full p-1;
+    @apply bg-gray-800 border-gray-700 h-full p-1;
+  }
+
+  .left-extension {
+    @apply border-r rounded-l-sm;
+  }
+
+  .right-extension {
+    @apply border-l rounded-r-sm;
   }
 
   .extension-default {
-    @apply w-8;
+    @apply w-8 flex-shrink-0;
+  }
+
+  .extension-default {
+    @apply w-8 flex-shrink-0;
   }
 </style>
