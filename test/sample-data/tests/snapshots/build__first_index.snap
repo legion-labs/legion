@@ -8,27 +8,27 @@ expression: first_buildindex
   "compiled_resources": [
     {
       "compile_path": "0abe069400000000b9372a5690ac15c3|35b5717e",
-      "context_hash": "742ad8186628b62d",
+      "context_hash": "db0fa85a46cb49b7",
       "source_hash": "e23b85caf1cbe0e0",
       "compiled_path": "0abe069400000000b9372a5690ac15c3|35b5717e",
-      "compiled_checksum": "e3f25dc6990b712c16a23c54bf5ba3d8",
-      "compiled_size": 40
+      "compiled_checksum": "c5834c1fad3579d7575a1cb141ba4283",
+      "compiled_size": 64
     },
     {
       "compile_path": "0abe069400000000ee9a7a73809e33c0|35b5717e",
-      "context_hash": "742ad8186628b62d",
+      "context_hash": "db0fa85a46cb49b7",
       "source_hash": "e167daa6c4af4740",
       "compiled_path": "0abe069400000000ee9a7a73809e33c0|35b5717e",
-      "compiled_checksum": "42e0c966f187581f41f6f1f89cf87c28",
-      "compiled_size": 40
+      "compiled_checksum": "beec200009cffabd0f40c57d6ad7a431",
+      "compiled_size": 64
     },
     {
       "compile_path": "0abe069400000000f664236f445ca9bd|35b5717e",
-      "context_hash": "742ad8186628b62d",
+      "context_hash": "db0fa85a46cb49b7",
       "source_hash": "f7c3a72107343bcb",
       "compiled_path": "0abe069400000000f664236f445ca9bd|35b5717e",
-      "compiled_checksum": "ba808ba04b7bc9e790763bb0cb58d954",
-      "compiled_size": 40
+      "compiled_checksum": "6285d943759b3d78fb8579e4b98d30ca",
+      "compiled_size": 64
     },
     {
       "compile_path": "0cba171e000000005127bdca42145845|30495fed",
