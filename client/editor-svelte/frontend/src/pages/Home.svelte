@@ -7,6 +7,7 @@
   import Video, { Resolution } from "@/components/Video.svelte";
   import asyncData from "@/stores/asyncData";
   import currentResource from "@/stores/currentResource";
+  import NumberInput from "@/components/NumberInput.svelte";
 
   const { run: runGetAllResources } = asyncData(getAllResources);
 
@@ -31,22 +32,6 @@
   <TopBar />
   <div class="content-wrapper">
     <div class="content">
-      <div class="main-content">
-        <Panel>
-          <span slot="header">
-            <span>Main Stream</span>
-            {#if desiredVideoResolution}
-              <span>
-                - {desiredVideoResolution.width}x{desiredVideoResolution.height}
-              </span>
-            {/if}
-          </span>
-          <div class="video-container" slot="content">
-            <Video bind:desiredResolution={desiredVideoResolution} />
-          </div>
-        </Panel>
-      </div>
-      <div class="v-separator" />
       <div class="secondary-contents">
         <div class="resources">
           <Panel>
@@ -79,6 +64,30 @@
           </Panel>
         </div>
         <div class="h-separator" />
+        <div class="file-system">
+          <Panel>
+            <div slot="header">File System</div>
+          </Panel>
+        </div>
+      </div>
+      <div class="v-separator" />
+      <div class="main-content">
+        <Panel>
+          <span slot="header">
+            <span>Main Stream</span>
+            {#if desiredVideoResolution}
+              <span>
+                - {desiredVideoResolution.width}x{desiredVideoResolution.height}
+              </span>
+            {/if}
+          </span>
+          <div class="video-container" slot="content">
+            <Video bind:desiredResolution={desiredVideoResolution} />
+          </div>
+        </Panel>
+      </div>
+      <div class="v-separator" />
+      <div class="secondary-contents">
         <div class="properties">
           <Panel>
             <div slot="header">Properties</div>
@@ -107,7 +116,7 @@
   }
 
   .main-content {
-    @apply flex flex-col flex-shrink-0 w-3/4;
+    @apply flex flex-col w-full;
   }
 
   .video-container {
@@ -123,11 +132,11 @@
   }
 
   .secondary-contents {
-    @apply flex flex-col w-full;
+    @apply flex flex-col flex-shrink-0 w-80 h-full;
   }
 
   .resources {
-    @apply h-1/3;
+    @apply h-full flex-shrink overflow-auto;
   }
 
   .resources-loading {
@@ -151,10 +160,14 @@
   }
 
   .active-resource-item {
-    @apply bg-gray-500 italic;
+    @apply bg-gray-500;
+  }
+
+  .file-system {
+    @apply h-full flex-shrink overflow-auto;
   }
 
   .properties {
-    @apply h-full overflow-hidden;
+    @apply h-full flex-shrink overflow-auto;
   }
 </style>

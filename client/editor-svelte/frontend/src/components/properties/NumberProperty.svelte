@@ -5,4 +5,4 @@
 </script>
 
 <!-- For now the number property is only a NumberInput but it might change -->
-<NumberInput bind:value size="sm" noArrow fullWidth autoSelect />
+<NumberInput bind:value noArrow fullWidth autoSelect />

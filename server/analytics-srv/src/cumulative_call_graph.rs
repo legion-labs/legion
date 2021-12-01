@@ -2,75 +2,102 @@ use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNod
 use anyhow::{Context, Result};
 use legion_analytics::prelude::*;
 use legion_telemetry_proto::analytics::{
-    CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
+    CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
+use std::collections::HashMap;
 use std::{cmp::min, path::Path};
 
 struct NodeStatsAcc {
     durations_ms: Vec<f64>,
-    parents: Vec<u32>,
-    children: Vec<u32>,
+    parents: HashMap<u32, f64>,
+    children: HashMap<u32, f64>,
 }
 
 impl NodeStatsAcc {
     pub fn new() -> Self {
         Self {
             durations_ms: Vec::new(),
-            parents: Vec::new(),
-            children: Vec::new(),
+            parents: HashMap::new(),
+            children: HashMap::new(),
         }
     }
 }
 
 type StatsHashMap = std::collections::HashMap<u32, NodeStatsAcc>;
 
+fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
+    let mut edges: Vec<CallGraphEdge> = edges_acc
+        .iter()
+        .filter(|(hash, _weight)| **hash != 0)
+        .map(|(hash, weight)| CallGraphEdge {
+            hash: *hash,
+            weight: *weight,
+        })
+        .collect();
+    edges.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
+    edges
+}
+
+fn tree_overlaps(tree: &CallTreeNode, filter_begin_ms: f64, filter_end_ms: f64) -> bool {
+    tree.end_ms >= filter_begin_ms && tree.begin_ms <= filter_end_ms
+}
+
 fn record_tree_stats(
     tree: &CallTreeNode,
+    filter_begin_ms: f64,
+    filter_end_ms: f64,
     scopes: &mut ScopeHashMap,
     stats_map: &mut StatsHashMap,
     parent_hash: Option<u32>,
 ) {
+    if !tree_overlaps(tree, filter_begin_ms, filter_end_ms) {
+        return;
+    }
     record_scope_in_map(tree, scopes);
     {
         let stats = stats_map.entry(tree.hash).or_insert_with(NodeStatsAcc::new);
-        stats.durations_ms.push(tree.end_ms - tree.begin_ms);
+        let duration = tree.end_ms.min(filter_end_ms) - tree.begin_ms.max(filter_begin_ms);
+        stats.durations_ms.push(duration);
         if let Some(ph) = parent_hash {
-            stats.parents.push(ph);
+            *stats.parents.entry(ph).or_insert(0.0) += duration;
         }
         for child in &tree.scopes {
-            stats.children.push(child.hash);
+            if tree_overlaps(child, filter_begin_ms, filter_end_ms) {
+                let child_duration =
+                    child.end_ms.min(filter_end_ms) - child.begin_ms.max(filter_begin_ms);
+                *stats.children.entry(child.hash).or_insert(0.0) += child_duration;
+            }
         }
     }
     for child in &tree.scopes {
-        record_tree_stats(child, scopes, stats_map, Some(tree.hash));
+        record_tree_stats(
+            child,
+            filter_begin_ms,
+            filter_end_ms,
+            scopes,
+            stats_map,
+            Some(tree.hash),
+        );
     }
 }
 
-#[allow(clippy::cast_precision_loss)]
-pub(crate) async fn compute_cumulative_call_graph(
+async fn record_process_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process: &legion_telemetry::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
-) -> Result<CumulativeCallGraphReply> {
-    //todo: include child processes
-    //this is a serial implementation, could be transformed in map/reduce
-    dbg!(&process.start_time);
+    scopes: &mut ScopeHashMap,
+    stats: &mut StatsHashMap,
+) -> Result<()> {
     let start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
         .with_context(|| String::from("parsing process start time"))?;
-    dbg!(&start_time);
     let begin_offset_ns = begin_ms * 1_000_000.0;
     let begin_time = start_time + chrono::Duration::nanoseconds(begin_offset_ns as i64);
-    dbg!(begin_time);
 
     let end_offset_ns = end_ms * 1_000_000.0;
     let end_time = start_time + chrono::Duration::nanoseconds(end_offset_ns as i64);
-    dbg!(end_time);
-
     let streams = find_process_thread_streams(connection, &process.process_id).await?;
-    let mut scopes = ScopeHashMap::new();
-    let mut stats = StatsHashMap::new();
     for s in streams {
         let blocks = find_stream_blocks_in_range(
             connection,
@@ -82,11 +109,53 @@ pub(crate) async fn compute_cumulative_call_graph(
 
         for b in blocks {
             //compute_block_call_tree fetches the block metadata again
-            //todo: filter individual call instances to count only those between begin_ms and end_ms
             let tree =
                 compute_block_call_tree(connection, data_path, process, &s, &b.block_id).await?;
-            record_tree_stats(&tree, &mut scopes, &mut stats, None);
+            record_tree_stats(&tree, begin_ms, end_ms, scopes, stats, None);
         }
+    }
+    Ok(())
+}
+
+#[allow(clippy::cast_precision_loss)]
+pub(crate) async fn compute_cumulative_call_graph(
+    connection: &mut sqlx::AnyConnection,
+    data_path: &Path,
+    process: &legion_telemetry::ProcessInfo,
+    begin_ms: f64,
+    end_ms: f64,
+) -> Result<CumulativeCallGraphReply> {
+    //this is a serial implementation, could be transformed in map/reduce
+    let mut scopes = ScopeHashMap::new();
+    let mut stats = StatsHashMap::new();
+    record_process_call_graph(
+        connection,
+        data_path,
+        process,
+        begin_ms,
+        end_ms,
+        &mut scopes,
+        &mut stats,
+    )
+    .await?;
+
+    let root_start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
+        .with_context(|| String::from("parsing process start time"))?;
+
+    for child_process in fetch_child_processes(connection, &process.process_id).await? {
+        let child_start_time = chrono::DateTime::parse_from_rfc3339(&child_process.start_time)
+            .with_context(|| String::from("parsing process start time"))?;
+        let time_offset = (child_start_time - root_start_time).num_milliseconds() as f64;
+        record_process_call_graph(
+            connection,
+            data_path,
+            &child_process,
+            begin_ms - time_offset,
+            end_ms - time_offset,
+            &mut scopes,
+            &mut stats,
+        )
+        .await?;
     }
 
     let mut scope_vec = vec![];
@@ -117,6 +186,10 @@ pub(crate) async fn compute_cumulative_call_graph(
         for time_ms in &node_stats.durations_ms {
             sum += time_ms;
         }
+
+        let callers = make_edge_vector(&node_stats.parents);
+        let callees = make_edge_vector(&node_stats.children);
+
         nodes.push(CumulativeCallGraphNode {
             hash,
             stats: Some(NodeStats {
@@ -125,9 +198,10 @@ pub(crate) async fn compute_cumulative_call_graph(
                 max: max_time,
                 avg: sum / node_stats.durations_ms.len() as f64,
                 median,
+                count: node_stats.durations_ms.len() as u64,
             }),
-            callers: node_stats.parents,
-            callees: node_stats.children,
+            callers,
+            callees,
         });
     }
 

@@ -6,13 +6,13 @@
 
 <div class="root">
   <div>
-    <NumberInput bind:value={value[0]} size="sm" noArrow fullWidth autoSelect />
+    <NumberInput bind:value={value[0]} noArrow fullWidth autoSelect />
   </div>
   <div>
-    <NumberInput bind:value={value[1]} size="sm" noArrow fullWidth autoSelect />
+    <NumberInput bind:value={value[1]} noArrow fullWidth autoSelect />
   </div>
   <div>
-    <NumberInput bind:value={value[2]} size="sm" noArrow fullWidth autoSelect />
+    <NumberInput bind:value={value[2]} noArrow fullWidth autoSelect />
   </div>
 </div>
 

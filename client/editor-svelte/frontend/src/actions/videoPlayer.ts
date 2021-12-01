@@ -1,4 +1,5 @@
 import { onVideoChunkReceived, onVideoClose } from "@/api";
+import log from "@/lib/log";
 
 type Source = MediaSource | SourceBuffer | HTMLVideoElement;
 
@@ -38,7 +39,7 @@ export default function videoPlayer(
     videoElement.load();
 
     addListener(videoElement, "error", () => {
-      console.error(videoElement.error?.message);
+      log.error("video", videoElement.error?.message);
     });
 
     addListener(mediaSource, "sourceopen", () => {
@@ -63,7 +64,7 @@ export default function videoPlayer(
           videoSource.appendBuffer(frame);
         }
       } catch (error) {
-        console.warn(error);
+        log.error("video", error);
         destroy();
         options?.onFatal && options.onFatal();
       }

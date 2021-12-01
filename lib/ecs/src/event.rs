@@ -6,7 +6,7 @@ use std::{
     marker::PhantomData,
 };
 
-use legion_utils::tracing::trace;
+use legion_utils::log::trace;
 
 use crate::system::{Local, Res, ResMut, SystemParam};
 use crate::{self as legion_ecs, system::Resource};

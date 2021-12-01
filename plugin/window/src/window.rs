@@ -1,5 +1,5 @@
 use legion_math::{IVec2, Vec2};
-use legion_utils::{tracing::warn, Uuid};
+use legion_utils::{log::warn, Uuid};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct WindowId(Uuid);

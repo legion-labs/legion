@@ -24,9 +24,6 @@ jobs:
       - name: Run clippy checks
         run: make check-clippy
 
-      - name: Run dockerize checks
-        run: make check-dockerize
-
       - name: Run dependencies checks
         run: make check-deps
 

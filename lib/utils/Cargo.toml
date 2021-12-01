@@ -10,7 +10,6 @@ legion-derive = { path = "../derive", version = "0.1.0" }
 ahash = "0.7"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 siphasher = "0.3.7"
-tracing = { version = "0.1", features = ["release_max_level_info"] }
 toml = "0.5.8"
 lazy_static = "1.4"
 log = "0.4"

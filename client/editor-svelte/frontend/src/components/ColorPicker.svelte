@@ -24,6 +24,9 @@ It also supports manual RGBA edition with 4 different inputs.
     rgbaToColorString,
   } from "@/lib/colors";
   import NumberInput from "./NumberInput.svelte";
+  import { createEventDispatcher } from "svelte";
+
+  const dispatch = createEventDispatcher<{ change: ColorSet }>();
 
   // TODO: Use a better/smaller representation instead of ColorSet to prevent constent data conversion
   /** The colors props is a `ColorSet`, that is, a combination of 3 different color
@@ -77,6 +80,8 @@ It also supports manual RGBA edition with 4 different inputs.
     hColor = { r, g, b, a: 1 };
   }
 
+  $: dispatch("change", colors);
+
   /** Called when the user changes the Saturation and Value */
   function svSelect(
     event: MouseEvent & { currentTarget: EventTarget & HTMLDivElement }
@@ -114,13 +119,8 @@ It also supports manual RGBA edition with 4 different inputs.
   }
 
   function updateRgbaColor(key: keyof Rgba) {
-    return (event: Event) => {
+    return ({ detail: newColorPart }: CustomEvent<number>) => {
       const isAlpha = key === "a";
-
-      const newColorPart = +(
-        (event.currentTarget as HTMLInputElement | undefined)?.value ??
-        colors.rgba[key]
-      );
 
       if (
         newColorPart >= 0 &&
@@ -226,7 +226,6 @@ It also supports manual RGBA edition with 4 different inputs.
             autoSelect
             noArrow
             fullWidth
-            size="sm"
             min={0}
             max={255}
             value={colors.rgba.r}
@@ -238,7 +237,6 @@ It also supports manual RGBA edition with 4 different inputs.
             autoSelect
             noArrow
             fullWidth
-            size="sm"
             min={0}
             max={255}
             value={colors.rgba.g}
@@ -250,7 +248,6 @@ It also supports manual RGBA edition with 4 different inputs.
             autoSelect
             noArrow
             fullWidth
-            size="sm"
             min={0}
             max={255}
             value={colors.rgba.b}
@@ -262,7 +259,6 @@ It also supports manual RGBA edition with 4 different inputs.
             autoSelect
             noArrow
             fullWidth
-            size="sm"
             min={0}
             max={1}
             step={0.01}
