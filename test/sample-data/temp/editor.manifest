@@ -1,9 +1,24 @@
 {
   "compiled_resources": [
     {
+      "path": "0abe069400000000b9372a5690ac15c3|35b5717e",
+      "checksum": "65472add7143df8d5498156c9993b0c7",
+      "size": 98
+    },
+    {
       "path": "0abe069400000000cea897a15bc29f32|35b5717e",
       "checksum": "30f1e0310edf33d74650635a1ba7bd02",
       "size": 74
+    },
+    {
+      "path": "0abe069400000000ee9a7a73809e33c0|35b5717e",
+      "checksum": "cb039ec004856e590102af77dea5fe2b",
+      "size": 98
+    },
+    {
+      "path": "0abe069400000000f664236f445ca9bd|35b5717e",
+      "checksum": "17da4b89cc6cda16e13f6a536731995d",
+      "size": 98
     },
     {
       "path": "0cba171e000000005127bdca42145845|30495fed",
@@ -57,8 +72,8 @@
     },
     {
       "path": "97b0740f00000000fcd3242ec9691beb|aad89045",
-      "checksum": "3aba5061a97aa89bb522050b16081f67",
-      "size": 390
+      "checksum": "0d94b6dbb290545748dbc223858fc183",
+      "size": 454
     },
     {
       "path": "d8a1e0c20000000061f6de1be4764697|cf00bfee",
