@@ -1,3 +1,4 @@
+import log from "@/lib/log";
 import {
   GrpcWebImpl as EditorGrpcWebImpl,
   EditorClientImpl,
@@ -22,18 +23,14 @@ const bytesToString = (b: Uint8Array) => new TextDecoder().decode(b);
 
 const bytesToJson = <T>(b: Uint8Array): T => JSON.parse(bytesToString(b));
 
-// Our API (gRPC) clients
-
 export const editorClient = new EditorClientImpl(
   new EditorGrpcWebImpl(serverUrl, {
-    // TODO: Should be true in dev mode
     debug: false,
   })
 );
 
 export const streamerClient = new StreamerClientImpl(
   new StreamingGrpcWebImpl(serverUrl, {
-    // TODO: Should be true in dev mode
     debug: false,
   })
 );
@@ -154,29 +151,27 @@ export async function updateResourceProperties(
   });
 }
 
-// TODO: Implement logging
 /**
- * Used mostly for logging purpose
- * @param _jsonMsg
+ * Used for logging purpose
+ * @param jsonMsg
  * @returns
  */
-export async function onReceiveControlMessage(_jsonMsg: string) {
-  return;
+export async function onReceiveControlMessage(jsonMsg: string) {
+  log.info("video", `Received control message. msg=${jsonMsg}`);
 }
 
-// TODO: Implement logging
 /**
- * Used mostly for logging purpose
- * @param _jsonMsg
+ * Used for logging purpose
+ * @param jsonCommand
  * @returns
  */
-export async function onSendEditionCommand(_jsonCommand: string) {
-  return;
+export async function onSendEditionCommand(jsonCommand: string) {
+  log.info("video", `Sending edition_command=${jsonCommand}`);
 }
 
-// TODO: Implement logging
+// TODO: Implement logging and telemetry (https://github.com/legion-labs/legion/issues/481)
 /**
- * Used mostly for logging purpose
+ * Used for logging and telemetry purpose
  * @param _chunkHeader
  * @returns
  */
@@ -184,9 +179,9 @@ export async function onVideoChunkReceived(_chunkHeader: string) {
   return;
 }
 
-// TODO: Implement logging
+// TODO: Implement logging and telemetry (https://github.com/legion-labs/legion/issues/481)
 /**
- * Used mostly for logging purpose
+ * Used for logging and telemetry purpose
  * @returns
  */
 export async function onVideoClose() {

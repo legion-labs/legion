@@ -6,7 +6,8 @@ import App from "./App.svelte";
 // TODO: Set level from configuration file
 const logLevel: Level = "warn";
 
-if (logLevel) {
+// We log only in dev just in case, but that can change in the future
+if (import.meta.env.DEV && logLevel) {
   log.init();
   log.set(logLevel);
 }

@@ -1,5 +1,5 @@
 // TODO: We could add value validations even though
-// it's worth noticing that `color-convert` seems to handle well invalid values
+// `color-convert` seems to handle invalid values very well
 
 import colorConvert from "color-convert";
 
