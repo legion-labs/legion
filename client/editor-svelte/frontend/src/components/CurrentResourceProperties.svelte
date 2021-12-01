@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { updateResourceProperties } from "@/api";
+  import { ResourceProperty, updateResourceProperties } from "@/api";
   import currentResource from "@/stores/currentResource";
   import BooleanProperty from "./properties/BooleanProperty.svelte";
   import ColorProperty from "./properties/ColorProperty.svelte";
@@ -56,6 +56,12 @@
         { name, value: ptype === "color" ? parseInt(value, 16) : value },
       ]);
     }, propertyUpdateDebounceTimeout);
+  }
+
+  function setPropertyValueToDefault(property: ResourceProperty) {
+    property.value = property.defaultValue;
+
+    onInput(property.name, property.ptype, property.defaultValue);
   }
 </script>
 
@@ -123,7 +129,7 @@
             </div>
             <div
               class="property-actions"
-              on:click={() => (property.value = property.defaultValue)}
+              on:click={() => setPropertyValueToDefault(property)}
             >
               <div
                 class="property-action-default"

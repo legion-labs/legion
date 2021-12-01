@@ -119,15 +119,16 @@ It also supports manual RGBA edition with 4 different inputs.
     });
   }
 
-  function updateRgbaColor(key: keyof Rgba) {
-    return ({ detail: newColorPart }: CustomEvent<number>) => {
-      if (newColorPart >= 0 && newColorPart <= 255) {
-        colors = colorSetFromRgba({
-          ...colors.rgba,
-          [key]: newColorPart,
-        });
-      }
-    };
+  function updateRgbaColor(
+    key: keyof Rgba,
+    { detail: newColorPart }: CustomEvent<number>
+  ) {
+    if (newColorPart >= 0 && newColorPart <= 255) {
+      colors = colorSetFromRgba({
+        ...colors.rgba,
+        [key]: newColorPart,
+      });
+    }
   }
 
   function svSelectMove(
@@ -224,7 +225,7 @@ It also supports manual RGBA edition with 4 different inputs.
             min={0}
             max={255}
             value={colors.rgba.r}
-            on:input={updateRgbaColor("r")}
+            on:input={(event) => updateRgbaColor("r", event)}
           />
         </div>
         <div>
@@ -235,7 +236,7 @@ It also supports manual RGBA edition with 4 different inputs.
             min={0}
             max={255}
             value={colors.rgba.g}
-            on:input={updateRgbaColor("g")}
+            on:input={(event) => updateRgbaColor("g", event)}
           />
         </div>
         <div>
@@ -246,7 +247,7 @@ It also supports manual RGBA edition with 4 different inputs.
             min={0}
             max={255}
             value={colors.rgba.b}
-            on:input={updateRgbaColor("b")}
+            on:input={(event) => updateRgbaColor("b", event)}
           />
         </div>
         <div>
@@ -257,7 +258,7 @@ It also supports manual RGBA edition with 4 different inputs.
             min={0}
             max={255}
             value={colors.rgba.a}
-            on:input={updateRgbaColor("a")}
+            on:input={(event) => updateRgbaColor("a", event)}
           />
         </div>
       </div>

@@ -82,6 +82,8 @@ export type ResourceWithProperties = Awaited<
   ReturnType<typeof getResourceProperties>
 >;
 
+export type ResourceProperty = ResourceWithProperties["properties"][number];
+
 /**
  * Fetch a resource's properties using its ID
  * @param resource The resource description with the ID and the version
