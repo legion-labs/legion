@@ -1,6 +1,7 @@
-use crate::renderer::Renderer;
 use graphics_api::prelude::*;
 use legion_math::Vec3;
+
+use crate::Renderer;
 
 pub struct StaticMeshRenderData {
     pub vertices: Vec<f32>,
@@ -9,8 +10,8 @@ pub struct StaticMeshRenderData {
 
 impl StaticMeshRenderData {
     fn from_vertex_data(vertex_data: &[f32], renderer: &Renderer) -> Self {
-        let mut vertex_buffers = Vec::with_capacity(renderer.num_render_frames as usize);
-        for _ in 0..renderer.num_render_frames {
+        let mut vertex_buffers = Vec::with_capacity(renderer.num_render_frames() as usize);
+        for _ in 0..renderer.num_render_frames() {
             let vertex_buffer = renderer
                 .device_context()
                 .create_buffer(&BufferDef::for_staging_vertex_buffer_data(vertex_data))

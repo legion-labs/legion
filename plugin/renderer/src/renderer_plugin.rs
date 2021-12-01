@@ -1,4 +1,6 @@
+use graphics_api::QueueType;
 use legion_app::{CoreStage, Plugin};
+use legion_async::TokioAsyncRuntime;
 use legion_ecs::{prelude::*, system::IntoSystem};
 use legion_math::{EulerRot, Quat};
 use legion_transform::components::Transform;
@@ -6,7 +8,7 @@ use legion_transform::components::Transform;
 use crate::{
     components::{RenderSurface, RotationComponent, StaticMesh},
     labels::RendererSystemLabel,
-    Renderer,
+    RenderContext, Renderer,
 };
 
 #[derive(Default)]
@@ -20,9 +22,13 @@ impl Plugin for RendererPlugin {
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update.system());
-        app.add_system_to_stage(CoreStage::PreUpdate, update_rotation.system());
-
         // Update
+        app.add_system(
+            update_rotation
+                .system()
+                .before(RendererSystemLabel::FrameUpdate),
+        );
+
         app.add_system_set(
             SystemSet::new()
                 .with_system(render_update.system())
@@ -32,9 +38,7 @@ impl Plugin for RendererPlugin {
         // Post-Update
         app.add_system_to_stage(
             CoreStage::PostUpdate,
-            render_post_update
-                .system()
-                .label(RendererSystemLabel::FrameDone),
+            render_post_update.system(), // .label(RendererSystemLabel::FrameDone),
         );
     }
 }
@@ -56,11 +60,43 @@ fn update_rotation(mut query: Query<'_, '_, (&mut Transform, &RotationComponent)
 
 #[allow(clippy::needless_pass_by_value)]
 fn render_update(
-    mut renderer: ResMut<'_, Renderer>,
+    renderer: ResMut<'_, Renderer>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    query: Query<'_, '_, (&Transform, &StaticMesh)>,
+    q_drawables: Query<'_, '_, (&Transform, &StaticMesh)>,
+    mut async_rt: ResMut<'_, TokioAsyncRuntime>,
 ) {
-    renderer.update(&mut q_render_surfaces, &query);
+    let mut render_context = RenderContext::new(&renderer);
+    let q_drawables = q_drawables
+        .iter()
+        .collect::<Vec<(&Transform, &StaticMesh)>>();
+    let graphics_queue = renderer.queue(QueueType::Graphics);
+
+    // For each surface/view, we have to execute the render graph
+    for mut render_surface in q_render_surfaces.iter_mut() {
+        // TODO: render graph
+        let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
+
+        cmd_buffer.begin().unwrap();
+
+        let render_pass = render_surface.test_renderpass();
+        let render_pass = render_pass.write();
+        render_pass.render(
+            &mut render_context,
+            &cmd_buffer,
+            render_surface.as_mut(),
+            q_drawables.as_slice(),
+        );
+        cmd_buffer.end().unwrap();
+        // queue
+        let sem = render_surface.acquire();
+        graphics_queue
+            .submit(&[&cmd_buffer], &[], &[sem], None)
+            .unwrap();
+
+        render_context.release_cmd_buffer(cmd_buffer);
+
+        render_surface.present(&mut render_context, async_rt.as_mut());
+    }
 }
 
 fn render_post_update(mut renderer: ResMut<'_, Renderer>) {

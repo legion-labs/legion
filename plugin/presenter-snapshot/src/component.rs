@@ -1,11 +1,12 @@
 #![allow(clippy::pedantic)]
 
 use graphics_api::prelude::*;
+use legion_async::TokioAsyncRuntime;
 use legion_ecs::prelude::Component;
 use legion_presenter::offscreen_helper::{self, Resolution};
 use legion_renderer::{
-    components::{RenderSurface, RenderSurfaceId},
-    Renderer,
+    components::{Presenter, RenderSurface, RenderSurfaceId},
+    RenderContext, Renderer,
 };
 
 #[derive(Component)]
@@ -26,29 +27,28 @@ impl std::fmt::Debug for PresenterSnapshot {
 impl PresenterSnapshot {
     pub fn new(
         snapshot_name: &str,
+        frame_target: i32,
         renderer: &Renderer,
         render_surface_id: RenderSurfaceId,
         resolution: Resolution,
     ) -> anyhow::Result<Self> {
         let device_context = renderer.device_context();
-        let graphics_queue = renderer.graphics_queue();
+        let graphics_queue = renderer.queue(QueueType::Graphics);
         let offscreen_helper =
-            offscreen_helper::OffscreenHelper::new(device_context, graphics_queue, resolution)?;
+            offscreen_helper::OffscreenHelper::new(device_context, &graphics_queue, resolution)?;
 
         Ok(Self {
             snapshot_name: snapshot_name.to_string(),
             frame_idx: 0,
-            frame_target: 0,
+            frame_target,
             render_surface_id,
             offscreen_helper,
         })
     }
 
-    pub(crate) fn present(
+    pub(crate) fn present<'renderer>(
         &mut self,
-        graphics_queue: &Queue,
-        transient_descriptor_heap: &DescriptorHeap,
-        wait_sem: &Semaphore,
+        render_context: &mut RenderContext<'renderer>,
         render_surface: &mut RenderSurface,
     ) -> anyhow::Result<bool> {
         //
@@ -56,9 +56,7 @@ impl PresenterSnapshot {
         //
         let snapshot_frame = self.frame_idx == self.frame_target;
         self.offscreen_helper.present(
-            graphics_queue,
-            transient_descriptor_heap,
-            wait_sem,
+            render_context,
             render_surface,
             |rgba: &[u8], row_pitch: usize| {
                 // write frame to file
@@ -89,5 +87,24 @@ impl PresenterSnapshot {
 
     pub fn render_surface_id(&self) -> RenderSurfaceId {
         self.render_surface_id
+    }
+}
+
+impl Presenter for PresenterSnapshot {
+    fn resize(
+        &mut self,
+        _renderer: &Renderer,
+        _extents: legion_renderer::components::RenderSurfaceExtents,
+    ) {
+        unreachable!();
+    }
+
+    fn present<'renderer>(
+        &mut self,
+        render_context: &mut RenderContext<'renderer>,
+        render_surface: &mut RenderSurface,
+        _async_rt: &mut TokioAsyncRuntime,
+    ) {
+        self.present(render_context, render_surface).unwrap();
     }
 }

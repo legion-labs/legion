@@ -1,0 +1,102 @@
+use graphics_api::{DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, QueueType};
+use graphics_utils::TransientBufferAllocator;
+
+use crate::{
+    resources::{CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle},
+    RenderHandle, Renderer,
+};
+
+type TransientBufferAllocatorHandle = RenderHandle<TransientBufferAllocator>;
+
+pub struct RenderContext<'a> {
+    renderer: &'a Renderer,
+    cmd_buffer_pool_handle: CommandBufferPoolHandle,
+    descriptor_pool: DescriptorPoolHandle,
+    transient_buffer_allocator: TransientBufferAllocatorHandle,
+}
+
+impl<'a> RenderContext<'a> {
+    pub fn new(renderer: &'a Renderer) -> Self {
+        let heap_def = default_descriptor_heap_size();
+        Self {
+            renderer,
+            cmd_buffer_pool_handle: renderer.acquire_command_buffer_pool(QueueType::Graphics),
+            descriptor_pool: renderer.acquire_descriptor_pool(&heap_def),
+            // TMP: we should acquire a handle from the renderer
+            transient_buffer_allocator: TransientBufferAllocatorHandle::new(
+                TransientBufferAllocator::new(renderer.transient_buffer(), 1000),
+            ),
+        }
+    }
+
+    pub fn renderer(&self) -> &'_ Renderer {
+        self.renderer
+    }
+
+    pub fn acquire_cmd_buffer(&mut self, queue_type: QueueType) -> CommandBufferHandle {
+        assert_eq!(queue_type, QueueType::Graphics);
+        self.cmd_buffer_pool_handle.acquire()
+    }
+
+    pub fn release_cmd_buffer(&mut self, handle: CommandBufferHandle) {
+        self.cmd_buffer_pool_handle.release(handle);
+    }
+
+    #[allow(unreachable_code)]
+    pub fn alloc_descriptor_set(
+        &mut self,
+        descriptor_set_layout: &DescriptorSetLayout,
+    ) -> DescriptorSetBufWriter {
+        if let Ok(writer) = self
+            .descriptor_pool
+            .allocate_descriptor_set(descriptor_set_layout)
+        {
+            writer
+        } else {
+            self.renderer
+                .release_descriptor_pool(self.descriptor_pool.transfer());
+            self.descriptor_pool = self
+                .renderer
+                .acquire_descriptor_pool(&default_descriptor_heap_size());
+            self.descriptor_pool
+                .allocate_descriptor_set(descriptor_set_layout)
+                .unwrap()
+        }
+    }
+
+    pub fn acquire_transient_buffer_allocator(&mut self) -> TransientBufferAllocatorHandle {
+        self.transient_buffer_allocator.transfer()
+    }
+
+    pub fn release_transient_buffer_allocator(
+        &mut self,
+        allocator: TransientBufferAllocatorHandle,
+    ) {
+        self.transient_buffer_allocator = allocator;
+    }
+}
+
+impl<'a> Drop for RenderContext<'a> {
+    fn drop(&mut self) {
+        self.renderer
+            .release_command_buffer_pool(self.cmd_buffer_pool_handle.transfer());
+
+        self.renderer
+            .release_descriptor_pool(self.descriptor_pool.transfer());
+
+        self.transient_buffer_allocator.take();
+    }
+}
+
+fn default_descriptor_heap_size() -> DescriptorHeapDef {
+    DescriptorHeapDef {
+        transient: true,
+        max_descriptor_sets: 4096,
+        sampler_count: 128,
+        constant_buffer_count: 1024,
+        buffer_count: 1024,
+        rw_buffer_count: 1024,
+        texture_count: 1024,
+        rw_texture_count: 1024,
+    }
+}

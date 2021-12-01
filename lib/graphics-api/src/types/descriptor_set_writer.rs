@@ -47,7 +47,7 @@ impl DescriptorSetBufWriter {
         )
     }
 
-    pub fn flush(&mut self, vulkan_device_context: &DeviceContext) -> DescriptorSetHandle {
+    pub fn flush(mut self, vulkan_device_context: &DeviceContext) -> DescriptorSetHandle {
         #[cfg(any(feature = "vulkan"))]
         self.platform_write.flush(vulkan_device_context);
 

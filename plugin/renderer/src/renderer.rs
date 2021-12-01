@@ -1,27 +1,30 @@
 use std::num::NonZeroU32;
 
 use anyhow::Result;
+use graphics_utils::TransientPagedBuffer;
+use parking_lot::{RwLock, RwLockReadGuard};
 
 use crate::components::{RenderSurface, StaticMesh};
+use crate::resources::{
+    CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
+};
+
 use crate::static_mesh_render_data::StaticMeshRenderData;
-use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
-use graphics_utils::{TransientBufferAllocator, TransientPagedBuffer};
-use legion_ecs::prelude::Query;
+use crate::RenderContext;
+use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use legion_math::{Mat4, Vec3};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use legion_transform::components::Transform;
-pub struct Renderer {
-    pub frame_idx: usize,
-    render_frame_idx: u32,
-    pub num_render_frames: u32,
-    frame_signal_sems: Vec<Semaphore>,
-    frame_fences: Vec<Fence>,
-    graphics_queue: Queue,
-    command_pools: Vec<CommandPool>,
-    command_buffers: Vec<CommandBuffer>,
-    transient_descriptor_heaps: Vec<DescriptorHeap>,
-    transient_buffer: TransientPagedBuffer,
 
+pub struct Renderer {
+    frame_idx: usize,
+    render_frame_idx: usize,
+    num_render_frames: usize,
+    frame_fences: Vec<Fence>,
+    graphics_queue: RwLock<Queue>,
+    command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
+    descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
+    transient_buffer: TransientPagedBuffer,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
@@ -29,94 +32,74 @@ pub struct Renderer {
 impl Renderer {
     pub fn new() -> Result<Self> {
         #![allow(unsafe_code)]
-        let num_render_frames = 2u32;
+        let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
-        let graphics_queue = device_context.create_queue(QueueType::Graphics).unwrap();
-        let mut command_pools = Vec::with_capacity(num_render_frames as usize);
-        let mut command_buffers = Vec::with_capacity(num_render_frames as usize);
-        let mut frame_signal_sems = Vec::with_capacity(num_render_frames as usize);
-        let mut frame_fences = Vec::with_capacity(num_render_frames as usize);
-        let mut transient_descriptor_heaps = Vec::with_capacity(num_render_frames as usize);
-
-        for _ in 0..num_render_frames {
-            let command_pool =
-                graphics_queue.create_command_pool(&CommandPoolDef { transient: true })?;
-
-            let command_buffer = command_pool.create_command_buffer(&CommandBufferDef {
-                is_secondary: false,
-            })?;
-
-            let frame_signal_sem = device_context.create_semaphore()?;
-
-            let frame_fence = device_context.create_fence()?;
-
-            let transient_descriptor_heap_def = DescriptorHeapDef {
-                transient: true,
-                max_descriptor_sets: 10 * 1024,
-                sampler_count: 256,
-                constant_buffer_count: 10 * 1024,
-                buffer_count: 10 * 1024,
-                rw_buffer_count: 10 * 1024,
-                texture_count: 10 * 1024,
-                rw_texture_count: 10 * 1024,
-            };
-            let transient_descriptor_heap =
-                device_context.create_descriptor_heap(&transient_descriptor_heap_def)?;
-
-            command_pools.push(command_pool);
-            command_buffers.push(command_buffer);
-            frame_signal_sems.push(frame_signal_sem);
-            frame_fences.push(frame_fence);
-            transient_descriptor_heaps.push(transient_descriptor_heap);
-        }
-
-        let transient_buffer = TransientPagedBuffer::new(device_context, 16);
 
         Ok(Self {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
-            frame_signal_sems,
-            frame_fences,
-            graphics_queue,
-            command_pools,
-            command_buffers,
-            transient_descriptor_heaps,
-            transient_buffer,
+            frame_fences: (0..num_render_frames)
+                .map(|_| device_context.create_fence().unwrap())
+                .collect(),
+            graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
+            command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
+            descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
+            transient_buffer: TransientPagedBuffer::new(device_context, 16),
             api,
         })
-    }
-
-    pub fn api(&self) -> &DefaultApi {
-        &self.api
     }
 
     pub fn device_context(&self) -> &DeviceContext {
         self.api.device_context()
     }
 
-    pub fn graphics_queue(&self) -> &Queue {
-        &self.graphics_queue
+    pub fn num_render_frames(&self) -> usize {
+        self.num_render_frames
     }
 
-    pub fn get_cmd_buffer(&self) -> &CommandBuffer {
-        let render_frame_index = self.render_frame_idx;
-        &self.command_buffers[render_frame_index as usize]
+    pub fn render_frame_idx(&self) -> usize {
+        self.render_frame_idx
     }
 
-    pub fn frame_signal_semaphore(&self) -> &Semaphore {
-        let render_frame_index = self.render_frame_idx;
-        &self.frame_signal_sems[render_frame_index as usize]
+    pub fn queue(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
+        match queue_type {
+            QueueType::Graphics => self.graphics_queue.read(),
+            _ => unreachable!(),
+        }
     }
 
-    pub fn transient_descriptor_heap(&self) -> &DescriptorHeap {
-        let render_frame_index = self.render_frame_idx;
-        &self.transient_descriptor_heaps[render_frame_index as usize]
+    // TMP: change that.
+    pub fn transient_buffer(&self) -> TransientPagedBuffer {
+        self.transient_buffer.clone()
     }
 
-    pub fn transient_buffer(&self) -> &TransientPagedBuffer {
-        &self.transient_buffer
+    pub(crate) fn acquire_command_buffer_pool(
+        &self,
+        queue_type: QueueType,
+    ) -> CommandBufferPoolHandle {
+        let queue = self.queue(queue_type);
+        let mut pool = self.command_buffer_pools.write();
+        pool.acquire_or_create(|| CommandBufferPool::new(&*queue))
+    }
+
+    pub(crate) fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
+        let mut pool = self.command_buffer_pools.write();
+        pool.release(handle);
+    }
+
+    pub(crate) fn acquire_descriptor_pool(
+        &self,
+        heap_def: &DescriptorHeapDef,
+    ) -> DescriptorPoolHandle {
+        let mut pool = self.descriptor_pools.write();
+        pool.acquire_or_create(|| DescriptorPool::new(self.device_context(), heap_def))
+    }
+
+    pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
+        let mut pool = self.descriptor_pools.write();
+        pool.release(handle);
     }
 
     pub(crate) fn begin_frame(&mut self) {
@@ -124,17 +107,12 @@ impl Renderer {
         // Update frame indices
         //
         self.frame_idx += 1;
-        self.render_frame_idx = (self.frame_idx % self.num_render_frames as usize) as u32;
+        self.render_frame_idx = self.frame_idx % self.num_render_frames;
 
         //
-        // Store on stack
+        // Wait for the next cpu frame to be available
         //
-        let render_frame_idx = self.render_frame_idx;
-
-        //
-        // Wait for the next frame to be available
-        //
-        let signal_fence = &self.frame_fences[render_frame_idx as usize];
+        let signal_fence = &self.frame_fences[self.render_frame_idx];
         if signal_fence.get_fence_status().unwrap() == FenceStatus::Incomplete {
             signal_fence.wait().unwrap();
         }
@@ -146,57 +124,36 @@ impl Renderer {
         device_context.free_gpu_memory().unwrap();
 
         //
-        // Tmp. Reset command buffer.
+        // ... and rotate resource pool.
         //
-        let cmd_pool = &self.command_pools[render_frame_idx as usize];
-        let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
-        let transient_descriptor_heap = &self.transient_descriptor_heaps[render_frame_idx as usize];
+        {
+            let mut pool = self.command_buffer_pools.write();
+            pool.rotate();
+        }
+        {
+            let mut pool = self.descriptor_pools.write();
+            pool.rotate();
+        }
 
-        cmd_pool.reset_command_pool().unwrap();
-        cmd_buffer.begin().unwrap();
-        transient_descriptor_heap.reset().unwrap();
-
+        // TMP: todo
         self.transient_buffer.begin_frame(self.device_context());
     }
 
-    pub(crate) fn update(
-        &mut self,
-        q_render_surfaces: &mut Query<'_, '_, &mut RenderSurface>,
-        query: &Query<'_, '_, (&Transform, &StaticMesh)>,
-    ) {
-        let cmd_buffer = self.get_cmd_buffer();
-
-        let query = query.iter().collect::<Vec<(&Transform, &StaticMesh)>>();
-
-        for mut render_surface in q_render_surfaces.iter_mut() {
-            render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
-
-            {
-                let render_pass = &render_surface.test_renderpass;
-                render_pass.render(self, &render_surface, cmd_buffer, query.as_slice());
-            }
-        }
-    }
-
     pub(crate) fn end_frame(&mut self) {
-        let render_frame_idx = self.render_frame_idx;
-        let signal_semaphore = &self.frame_signal_sems[render_frame_idx as usize];
-        let signal_fence = &self.frame_fences[render_frame_idx as usize];
-        let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
-
-        cmd_buffer.end().unwrap();
-
-        self.transient_buffer.end_frame(&self.graphics_queue);
-
-        self.graphics_queue
-            .submit(&[cmd_buffer], &[], &[signal_semaphore], Some(signal_fence))
+        let graphics_queue = self.graphics_queue.write();
+        let frame_fence = &self.frame_fences[self.render_frame_idx];
+        graphics_queue
+            .submit(&[], &[], &[], Some(frame_fence))
             .unwrap();
+        // TMP: todo
+        self.transient_buffer.end_frame(&graphics_queue);
     }
 }
 
 impl Drop for Renderer {
     fn drop(&mut self) {
-        self.graphics_queue.wait_for_queue_idle().unwrap();
+        let graphics_queue = self.queue(QueueType::Graphics);
+        graphics_queue.wait_for_queue_idle().unwrap();
     }
 }
 
@@ -212,7 +169,6 @@ impl TmpRenderPass {
     #![allow(clippy::too_many_lines)]
     pub fn new(renderer: &Renderer) -> Self {
         let device_context = renderer.device_context();
-
         //
         // Shaders
         //
@@ -380,6 +336,9 @@ impl TmpRenderPass {
             })
             .unwrap();
 
+        //
+        // Per frame resources
+        //
         let static_meshes = vec![
             StaticMeshRenderData::new_plane(1.0, renderer),
             StaticMeshRenderData::new_cube(0.5, renderer),
@@ -395,16 +354,23 @@ impl TmpRenderPass {
         }
     }
 
+    pub fn set_color(&mut self, color: [f32; 4]) {
+        self.color = color;
+    }
+
+    pub fn set_speed(&mut self, speed: f32) {
+        self.speed = speed;
+    }
+
     pub fn render(
         &self,
-        renderer: &Renderer,
-        render_surface: &RenderSurface,
+        render_context: &mut RenderContext<'_>,
         cmd_buffer: &CommandBuffer,
+        render_surface: &mut RenderSurface,
         static_meshes: &[(&Transform, &StaticMesh)],
     ) {
-        //
-        // Fill command buffer
-        //
+        render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
+
         cmd_buffer
             .cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
@@ -429,7 +395,6 @@ impl TmpRenderPass {
 
         cmd_buffer.cmd_bind_pipeline(&self.pipeline).unwrap();
 
-        let heap = renderer.transient_descriptor_heap();
         let descriptor_set_layout = &self
             .pipeline
             .root_signature()
@@ -446,8 +411,8 @@ impl TmpRenderPass {
         ];
 
         let fov_y_radians: f32 = 45.0;
-        let width = render_surface.extents.extents_2d.width as f32;
-        let height = render_surface.extents.extents_2d.height as f32;
+        let width = render_surface.extents().width() as f32;
+        let height = render_surface.extents().height() as f32;
         let aspect_ratio: f32 = width / height;
         let z_near: f32 = 0.01;
         let z_far: f32 = 100.0;
@@ -458,6 +423,8 @@ impl TmpRenderPass {
         let up = Vec3::new(0.0, 1.0, 0.0);
         let view_matrix = Mat4::look_at_lh(eye, center, up);
 
+        let transient_allocator = render_context.acquire_transient_buffer_allocator();
+
         for (index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
             let mesh_id = static_mesh_component.mesh_id;
             if mesh_id >= self.static_meshes.len() {
@@ -466,12 +433,10 @@ impl TmpRenderPass {
 
             let mesh = &self.static_meshes[static_mesh_component.mesh_id];
 
-            let transient_allocator =
-                TransientBufferAllocator::new(renderer.transient_buffer(), 1000);
-
             let mut sub_allocation = transient_allocator.copy_data(None, &mesh.vertices, 0);
 
-            renderer
+            render_context
+                .renderer()
                 .transient_buffer()
                 .bind_allocation_as_vertex_buffer(cmd_buffer, &sub_allocation);
 
@@ -490,12 +455,14 @@ impl TmpRenderPass {
             sub_allocation =
                 transient_allocator.copy_data(Some(sub_allocation), &push_constant_data, 64);
 
-            let const_buffer_view = renderer
+            let const_buffer_view = render_context
+                .renderer()
                 .transient_buffer()
                 .const_buffer_view_for_allocation(&sub_allocation);
 
             let mut descriptor_set_writer =
-                heap.allocate_descriptor_set(descriptor_set_layout).unwrap();
+                render_context.alloc_descriptor_set(descriptor_set_layout);
+
             descriptor_set_writer
                 .set_descriptors(
                     "uniform_data",
@@ -503,7 +470,8 @@ impl TmpRenderPass {
                     &[DescriptorRef::BufferView(&const_buffer_view)],
                 )
                 .unwrap();
-            let descriptor_set_handle = descriptor_set_writer.flush(renderer.device_context());
+            let descriptor_set_handle =
+                descriptor_set_writer.flush(render_context.renderer().device_context());
 
             cmd_buffer
                 .cmd_bind_descriptor_set_handle(
@@ -513,17 +481,12 @@ impl TmpRenderPass {
                 )
                 .unwrap();
 
-            // cmd_buffer
-            //     .cmd_push_constants(
-            //         &self.root_signature,
-            //         &(sub_allocation.offset_of_page + sub_allocation.last_alloc_offset),
-            //     )
-            //     .unwrap();
-
             cmd_buffer
                 .cmd_draw((mesh.num_vertices()) as u32, 0)
                 .unwrap();
         }
+
+        render_context.release_transient_buffer_allocator(transient_allocator);
 
         cmd_buffer.cmd_end_render_pass().unwrap();
     }

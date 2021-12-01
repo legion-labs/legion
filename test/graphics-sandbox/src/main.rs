@@ -6,13 +6,12 @@ use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
 use legion_ecs::prelude::*;
 use legion_input::InputPlugin;
+use legion_presenter::offscreen_helper::Resolution;
 use legion_presenter_snapshot::component::PresenterSnapshot;
-use legion_presenter_snapshot::{PresenterSnapshotPlugin, Resolution};
 use legion_presenter_window::component::PresenterWindow;
-use legion_presenter_window::PresenterWindowPlugin;
 use legion_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
 use legion_renderer::components::{RotationComponent, StaticMesh};
-use legion_renderer::{Renderer, RendererPlugin};
+use legion_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
 use legion_transform::components::Transform;
 use legion_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
@@ -52,6 +51,12 @@ struct SnapshotDescriptor {
     setup_name: String,
     width: f32,
     height: f32,
+}
+
+#[derive(Default)]
+struct SnapshotFrameCounter {
+    frame_count: i32,
+    frame_target: i32,
 }
 
 fn main() {
@@ -121,8 +126,11 @@ fn main() {
         })
         .insert_resource(ScheduleRunnerSettings::default())
         .add_plugin(ScheduleRunnerPlugin::default())
-        .add_plugin(PresenterSnapshotPlugin::default())
-        .add_startup_system(add_presenter_snapshot_system.system())
+        .add_system(
+            presenter_snapshot_system
+                .system()
+                .before(RendererSystemLabel::FrameUpdate),
+        )
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
         app.insert_resource(WindowDescriptor {
@@ -133,7 +141,6 @@ fn main() {
         app.add_plugin(WindowPlugin::default())
             .add_plugin(InputPlugin::default())
             .add_plugin(WinitPlugin::default())
-            .add_plugin(PresenterWindowPlugin::default())
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
             .add_system(on_window_close_requested.exclusive_system())
@@ -152,28 +159,19 @@ fn on_window_created(
     mut commands: Commands,
     mut ev_wnd_created: EventReader<WindowCreated>,
     wnd_list: Res<Windows>,
-    tao_wnd_list: Res<WinitWindows>,
+    winit_wnd_list: Res<WinitWindows>,
     renderer: Res<Renderer>,
     mut render_surfaces: ResMut<RenderSurfaces>,
 ) {
     for ev in ev_wnd_created.iter() {
         let wnd = wnd_list.get(ev.id).unwrap();
-        let render_surface = RenderSurface::new(
-            &renderer,
-            RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
-        );
-        let render_surface_id = render_surface.id();
-        render_surfaces.insert(ev.id, render_surface_id);
-
+        let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
+        let mut render_surface = RenderSurface::new(&renderer, extents);
+        render_surfaces.insert(ev.id, render_surface.id());
+        let winit_wnd = winit_wnd_list.get_window(ev.id).unwrap();
+        render_surface
+            .register_presenter(|| PresenterWindow::from_window(&renderer, winit_wnd, extents));
         commands.spawn().insert(render_surface);
-
-        let tao_wnd = tao_wnd_list.get_window(ev.id).unwrap();
-        commands.spawn().insert(PresenterWindow::from_window(
-            &renderer,
-            wnd,
-            tao_wnd,
-            render_surface_id,
-        ));
     }
 }
 
@@ -205,7 +203,6 @@ fn on_window_close_requested(
     mut commands: Commands,
     mut ev_wnd_destroyed: EventReader<WindowCloseRequested>,
     query_render_surface: Query<(Entity, &RenderSurface)>,
-    query_presenter_window: Query<(Entity, &PresenterWindow)>,
     mut render_surfaces: ResMut<RenderSurfaces>,
 ) {
     for ev in ev_wnd_destroyed.iter() {
@@ -218,45 +215,46 @@ fn on_window_close_requested(
                 commands.entity(query_result.0).despawn();
             }
         }
-        {
-            let query_result = query_presenter_window
-                .iter()
-                .find(|x| x.1.window_id() == ev.id);
-            if let Some(query_result) = query_result {
-                commands.entity(query_result.0).despawn();
-            }
-        }
         render_surfaces.remove(ev.id);
     }
 }
 
-fn add_presenter_snapshot_system(
+fn presenter_snapshot_system(
     mut commands: Commands,
     snapshot_descriptor: Res<SnapshotDescriptor>,
     renderer: Res<Renderer>,
+    mut app_exit_events: EventWriter<'_, '_, AppExit>,
+    mut frame_counter: Local<SnapshotFrameCounter>,
 ) {
-    let render_surface = RenderSurface::new(
-        &renderer,
-        RenderSurfaceExtents::new(
-            snapshot_descriptor.width as u32,
-            snapshot_descriptor.height as u32,
-        ),
-    );
-    let render_surface_id = render_surface.id();
-
-    commands.spawn().insert(render_surface);
-    commands.spawn().insert(
-        PresenterSnapshot::new(
-            &snapshot_descriptor.setup_name,
-            renderer.into_inner(),
-            render_surface_id,
-            Resolution::new(
+    if frame_counter.frame_count == 0 {
+        let mut render_surface = RenderSurface::new(
+            &renderer,
+            RenderSurfaceExtents::new(
                 snapshot_descriptor.width as u32,
                 snapshot_descriptor.height as u32,
             ),
-        )
-        .unwrap(),
-    );
+        );
+        let render_surface_id = render_surface.id();
+
+        render_surface.register_presenter(|| {
+            PresenterSnapshot::new(
+                &snapshot_descriptor.setup_name,
+                frame_counter.frame_target,
+                renderer.into_inner(),
+                render_surface_id,
+                Resolution::new(
+                    snapshot_descriptor.width as u32,
+                    snapshot_descriptor.height as u32,
+                ),
+            )
+            .unwrap()
+        });
+
+        commands.spawn().insert(render_surface);
+    } else if frame_counter.frame_count > frame_counter.frame_target {
+        app_exit_events.send(AppExit);
+    }
+    frame_counter.frame_count += 1;
 }
 
 fn init_scene(mut commands: Commands) {
@@ -292,13 +290,9 @@ fn on_snapshot_app_exit(
     mut commands: Commands,
     mut app_exit: EventReader<AppExit>,
     query_render_surface: Query<(Entity, &RenderSurface)>,
-    query_presenter_snapshot: Query<(Entity, &PresenterSnapshot)>,
 ) {
     if app_exit.iter().last().is_some() {
         for (entity, _) in query_render_surface.iter() {
-            commands.entity(entity).despawn();
-        }
-        for (entity, _) in query_presenter_snapshot.iter() {
             commands.entity(entity).despawn();
         }
     }

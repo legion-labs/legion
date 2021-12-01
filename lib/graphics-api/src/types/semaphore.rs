@@ -2,9 +2,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanSemaphore;
-use crate::{DeviceContext, GfxResult};
+use crate::{deferred_drop::Drc, DeviceContext, GfxResult};
 
-pub struct Semaphore {
+struct SemaphoreInner {
     device_context: DeviceContext,
 
     // Set to true when an operation is scheduled to signal this semaphore
@@ -15,7 +15,11 @@ pub struct Semaphore {
     platform_semaphore: VulkanSemaphore,
 }
 
-impl Drop for Semaphore {
+pub struct Semaphore {
+    inner: Drc<SemaphoreInner>,
+}
+
+impl Drop for SemaphoreInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_semaphore.destroy(&self.device_context);
@@ -31,24 +35,28 @@ impl Semaphore {
         })?;
 
         Ok(Self {
-            device_context: device_context.clone(),
-            signal_available: AtomicBool::new(false),
-            #[cfg(any(feature = "vulkan"))]
-            platform_semaphore,
+            inner: device_context.deferred_dropper().new_drc(SemaphoreInner {
+                device_context: device_context.clone(),
+                signal_available: AtomicBool::new(false),
+                #[cfg(any(feature = "vulkan"))]
+                platform_semaphore,
+            }),
         })
     }
 
     pub fn signal_available(&self) -> bool {
-        self.signal_available.load(Ordering::Relaxed)
+        self.inner.signal_available.load(Ordering::Relaxed)
     }
 
     #[cfg(any(feature = "vulkan"))]
     pub fn set_signal_available(&self, available: bool) {
-        self.signal_available.store(available, Ordering::Relaxed);
+        self.inner
+            .signal_available
+            .store(available, Ordering::Relaxed);
     }
 
     #[cfg(feature = "vulkan")]
     pub(crate) fn platform_semaphore(&self) -> &VulkanSemaphore {
-        &self.platform_semaphore
+        &self.inner.platform_semaphore
     }
 }

@@ -9,7 +9,10 @@ use legion_ecs::prelude::*;
 use legion_graphics_api::prelude::*;
 use legion_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use legion_presenter::offscreen_helper::{self, Resolution};
-use legion_renderer::{components::RenderSurface, Renderer};
+use legion_renderer::{
+    components::{Presenter, RenderSurface, RenderSurfaceExtents},
+    RenderContext, Renderer,
+};
 use legion_telemetry::prelude::*;
 use legion_utils::{memory::write_any, setting_get_or};
 use log::{debug, warn};
@@ -43,10 +46,10 @@ impl VideoStream {
         trace_scope!();
 
         let device_context = renderer.device_context();
-        let graphics_queue = renderer.graphics_queue();
+        let graphics_queue = renderer.queue(QueueType::Graphics);
         let encoder = VideoStreamEncoder::new(resolution)?;
         let offscreen_helper =
-            offscreen_helper::OffscreenHelper::new(device_context, graphics_queue, resolution)?;
+            offscreen_helper::OffscreenHelper::new(device_context, &graphics_queue, resolution)?;
 
         Ok(Self {
             video_data_channel,
@@ -59,10 +62,11 @@ impl VideoStream {
     pub(crate) fn resize(
         &mut self,
         renderer: &Renderer,
-        resolution: Resolution,
+        extents: RenderSurfaceExtents,
     ) -> anyhow::Result<()> {
         trace_scope!();
         let device_context = renderer.device_context();
+        let resolution = Resolution::new(extents.width(), extents.height());
         if self.offscreen_helper.resize(device_context, resolution)? {
             self.encoder = VideoStreamEncoder::new(resolution)?;
         }
@@ -77,11 +81,9 @@ impl VideoStream {
         record_int_metric(&FRAME_ID_RENDERED, self.frame_id as u64);
     }
 
-    pub(crate) fn present(
+    pub(crate) fn present<'renderer>(
         &mut self,
-        graphics_queue: &Queue,
-        transient_descriptor_heap: &DescriptorHeap,
-        wait_sem: &Semaphore,
+        render_context: &mut RenderContext<'renderer>,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();
@@ -94,9 +96,7 @@ impl VideoStream {
         {
             self.offscreen_helper
                 .present(
-                    graphics_queue,
-                    transient_descriptor_heap,
-                    wait_sem,
+                    render_context,
                     render_surface,
                     |rgba: &[u8], row_pitch: usize| {
                         self.encoder.converter.convert_rgba(rgba, row_pitch);
@@ -142,6 +142,20 @@ impl VideoStream {
                 }
             }
         }
+    }
+}
+
+impl Presenter for VideoStream {
+    fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
+        self.resize(renderer, extents).unwrap();
+    }
+    fn present<'renderer>(
+        &mut self,
+        render_context: &mut RenderContext<'renderer>,
+        render_surface: &mut RenderSurface,
+        async_rt: &mut legion_async::TokioAsyncRuntime,
+    ) {
+        async_rt.start_detached(self.present(render_context, render_surface));
     }
 }
 

@@ -2933,6 +2933,7 @@ dependencies = [
  "legion-ecs",
  "legion-graphics-api",
  "legion-input",
+ "legion-presenter",
  "legion-presenter-snapshot",
  "legion-presenter-window",
  "legion-renderer",
@@ -3983,6 +3984,7 @@ dependencies = [
  "crossbeam-channel",
  "instant",
  "legion-app",
+ "legion-async",
  "legion-ecs",
  "legion-graphics-api",
  "legion-presenter",
@@ -3997,6 +3999,7 @@ name = "legion-presenter-window"
 version = "0.1.0"
 dependencies = [
  "legion-app",
+ "legion-async",
  "legion-ecs",
  "legion-graphics-api",
  "legion-presenter",
@@ -4022,6 +4025,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "legion-app",
+ "legion-async",
  "legion-ecs",
  "legion-graphics-api",
  "legion-graphics-utils",
@@ -4030,6 +4034,7 @@ dependencies = [
  "legion-transform",
  "legion-utils",
  "log",
+ "parking_lot 0.11.2",
 ]
 
 [[package]]
