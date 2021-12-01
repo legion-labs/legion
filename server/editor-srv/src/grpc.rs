@@ -40,11 +40,10 @@ impl Editor for GRPCServer {
         let descriptors: Vec<ResourceDescription> = ctx
             .project
             .resource_list()
-            .iter()
             .map(|resource_id| {
                 let name = ctx
                     .project
-                    .resource_name(*resource_id)
+                    .resource_name(resource_id)
                     .unwrap_or_else(|_err| "".into());
 
                 ResourceDescription {
