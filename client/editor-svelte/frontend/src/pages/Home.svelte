@@ -7,24 +7,30 @@
   import Video, { Resolution } from "@/components/Video.svelte";
   import asyncData from "@/stores/asyncData";
   import currentResource from "@/stores/currentResource";
-  import NumberInput from "@/components/NumberInput.svelte";
+  import { ResourceDescription } from "@lgn/proto-editor/codegen/editor";
 
   const { run: runGetAllResources } = asyncData(getAllResources);
 
-  let currentResourceId: string | null = null;
+  let currentResourceDescription: ResourceDescription | null = null;
   let fetchAllResources = runGetAllResources();
   let desiredVideoResolution: Resolution | undefined;
 
-  const tryAgain = () => {
-    $currentResource = null;
-    currentResourceId = null;
-    fetchAllResources = runGetAllResources();
-  };
-
-  $: if (currentResourceId) {
-    getResourceProperties(currentResourceId).then((resource) => {
+  $: if (currentResourceDescription) {
+    getResourceProperties(currentResourceDescription).then((resource) => {
       $currentResource = resource;
     });
+  }
+
+  function tryAgain() {
+    $currentResource = null;
+    currentResourceDescription = null;
+    fetchAllResources = runGetAllResources();
+  }
+
+  function setCurrentResourceDescription(
+    resourceDescription: ResourceDescription
+  ) {
+    currentResourceDescription = resourceDescription;
   }
 </script>
 
@@ -40,12 +46,13 @@
               {#await fetchAllResources}
                 <div class="resources-loading">Loading...</div>
               {:then data}
-                {#each data as resource (resource.id)}
+                <!-- TODO: Add `resource.id` key when fixed on the server side -->
+                {#each data as resource}
                   <div
                     class="resource-item"
-                    class:active-resource-item={currentResourceId ===
+                    class:active-resource-item={currentResourceDescription?.id ===
                       resource.id}
-                    on:click={() => (currentResourceId = resource.id)}
+                    on:click={() => setCurrentResourceDescription(resource)}
                   >
                     {resource.path}
                   </div>
@@ -67,6 +74,9 @@
         <div class="file-system">
           <Panel>
             <div slot="header">File System</div>
+            <div slot="content">
+              <CurrentResourceProperties />
+            </div>
           </Panel>
         </div>
       </div>

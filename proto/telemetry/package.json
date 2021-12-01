@@ -6,7 +6,6 @@
   "author": "devs@legionlabs.com",
   "license": "MIT OR Apache-2.0",
   "private": true,
-  "main": "dist",
   "scripts": {
     "build": "tsc -b",
     "check:all": "echo No checks yet",

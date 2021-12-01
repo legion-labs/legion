@@ -2,7 +2,6 @@ import {
   GrpcWebImpl as EditorGrpcWebImpl,
   EditorClientImpl,
   ResourceDescription,
-  GetResourcePropertiesResponse,
 } from "@lgn/proto-editor/codegen/editor";
 import {
   GrpcWebImpl as StreamingGrpcWebImpl,
@@ -83,14 +82,19 @@ export type ResourceWithProperties = Awaited<
   ReturnType<typeof getResourceProperties>
 >;
 
+export type ResourceProperty = ResourceWithProperties["properties"][number];
+
 /**
- * Fetch a resource's properties from an ID
- * @param resourceId The resource ID
+ * Fetch a resource's properties using its ID
+ * @param resource The resource description with the ID and the version
  * @returns The properties of the resource and possibly its description
  */
-export async function getResourceProperties(resourceId: string) {
+export async function getResourceProperties({
+  id,
+  version,
+}: ResourceDescription) {
   const { description, properties } = await editorClient.getResourceProperties({
-    id: resourceId,
+    id,
   });
 
   if (!description) {
@@ -98,7 +102,9 @@ export async function getResourceProperties(resourceId: string) {
   }
 
   return {
+    id,
     description,
+    version,
     properties: properties.map((property) => {
       const value = JSON.parse(new TextDecoder().decode(property.value));
       const defaultValue = JSON.parse(
@@ -108,17 +114,44 @@ export async function getResourceProperties(resourceId: string) {
       return {
         ...property,
         defaultValue:
-          // TODO: Support color alpha
           property.ptype === "color"
-            ? `#${defaultValue.toString(16).padStart(8, "0").slice(0, 6)}`
+            ? defaultValue.toString(16).padStart(8, "0")
             : defaultValue,
         value:
           property.ptype === "color"
-            ? `#${value.toString(16).padStart(8, "0").slice(0, 6)}`
+            ? value.toString(16).padStart(8, "0")
             : value,
       };
     }),
   };
+}
+
+export type PropertyUpdate = {
+  name: string;
+  // Can be any JSON serializable value
+  value: unknown;
+};
+
+/**
+ * Update a resource's properties
+ * @param resourceId The resource ID
+ * @param version
+ * @param propertyUpdates
+ * @returns
+ */
+export async function updateResourceProperties(
+  resourceId: string,
+  version: number,
+  propertyUpdates: PropertyUpdate[]
+) {
+  await editorClient.updateResourceProperties({
+    id: resourceId,
+    version,
+    propertyUpdates: propertyUpdates.map((propertyUpdate) => ({
+      ...propertyUpdate,
+      value: new TextEncoder().encode(JSON.stringify(propertyUpdate.value)),
+    })),
+  });
 }
 
 // TODO: Implement logging

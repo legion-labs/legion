@@ -1,21 +1,57 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
   import NumberInput from "../NumberInput.svelte";
 
-  export let value: [number, number, number, number];
+  type Quat = [number, number, number, number];
+
+  const dispatch = createEventDispatcher<{ input: Quat }>();
+
+  export let value: Quat;
+
+  function updateVectorAt(
+    index: 0 | 1 | 2 | 3,
+    { detail }: CustomEvent<number>
+  ) {
+    dispatch("input", Object.assign([], value, { [index]: detail }));
+  }
 </script>
 
 <div class="root">
   <div>
-    <NumberInput bind:value={value[0]} noArrow fullWidth autoSelect />
+    <NumberInput
+      on:input={(event) => updateVectorAt(0, event)}
+      bind:value={value[0]}
+      noArrow
+      fullWidth
+      autoSelect
+    />
   </div>
   <div>
-    <NumberInput bind:value={value[1]} noArrow fullWidth autoSelect />
+    <NumberInput
+      on:input={(event) => updateVectorAt(1, event)}
+      bind:value={value[1]}
+      noArrow
+      fullWidth
+      autoSelect
+    />
   </div>
   <div>
-    <NumberInput bind:value={value[2]} noArrow fullWidth autoSelect />
+    <NumberInput
+      on:input={(event) => updateVectorAt(2, event)}
+      bind:value={value[2]}
+      noArrow
+      fullWidth
+      autoSelect
+    />
   </div>
   <div>
-    <NumberInput bind:value={value[3]} noArrow fullWidth autoSelect />
+    <NumberInput
+      on:input={(event) => updateVectorAt(3, event)}
+      bind:value={value[3]}
+      noArrow
+      fullWidth
+      autoSelect
+    />
   </div>
 </div>
 

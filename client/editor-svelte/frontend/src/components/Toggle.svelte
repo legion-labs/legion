@@ -1,8 +1,19 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
+  const dispatch = createEventDispatcher<{
+    input: boolean;
+  }>();
+
   export let value: boolean;
+
+  function toggle() {
+    value = !value;
+    dispatch("input", value);
+  }
 </script>
 
-<div class="root group" on:click={() => (value = !value)}>
+<div class="root group" on:click={toggle}>
   <div class="handler" class:handler-off={!value} class:handler-on={value} />
 </div>
 

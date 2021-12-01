@@ -5,4 +5,4 @@
 </script>
 
 <!-- For now the boolean property is only a Toggle but it might change -->
-<Toggle bind:value />
+<Toggle on:input bind:value />
