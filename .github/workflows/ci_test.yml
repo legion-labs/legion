@@ -15,9 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Run yarn install
-        run: yarn install
-
       - name: Run formatting check
         run: make check-format
 

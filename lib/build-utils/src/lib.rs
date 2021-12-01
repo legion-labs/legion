@@ -149,8 +149,11 @@ pub fn build_protos(
     }
     if lang.contains(Language::TYPESCRIPT) {
         if Path::new("./package.json").exists() {
-            run_cmd("yarn", &["install"], ".")?;
-
+            {
+                let lock = named_lock::NamedLock::create("yarn_install").unwrap();
+                let _guard = lock.lock().unwrap();
+                run_cmd("yarn", &["install"], ".")?;
+            }
             let mut proto_plugin = PathBuf::from("./node_modules/.bin/protoc-gen-ts_proto");
             if cfg!(windows) {
                 proto_plugin = PathBuf::from(".\\node_modules\\.bin\\protoc-gen-ts_proto.cmd");
@@ -195,6 +198,49 @@ pub fn build_protos(
         println!("cargo:rerun-if-changed={}", proto.as_ref().display());
     }
 
+    Ok(())
+}
+
+/// Handle the copy/validation of the output files
+///
+/// # Errors
+/// Returns a generation error or an IO error
+///
+/// #[cfg(feature = "web-appgen")]
+pub fn build_web_app() -> Result<()> {
+    if let Ok(yarn_path) = which::which("yarn") {
+        let frontend_dir = "frontend";
+        {
+            let lock = named_lock::NamedLock::create("yarn_install").unwrap();
+            let _guard = lock.lock().unwrap();
+            run_cmd(&yarn_path, &["install"], frontend_dir)?;
+        }
+        run_cmd(&yarn_path, &["build"], frontend_dir)?;
+
+        // JS ecosystem forces us to have output files in our sources hierarchy
+        // we are filtering files
+        std::fs::read_dir(frontend_dir)
+            .unwrap()
+            .map(|res| res.map(|entry| entry.path()))
+            .filter_map(|path| {
+                if let Ok(path) = path {
+                    if let Some(file_name) = path.file_name() {
+                        if file_name != "dist" && file_name != "node_modules" {
+                            return Some(path);
+                        }
+                    }
+                }
+                None
+            })
+            .for_each(|path| {
+                // to_string_lossy should be fine here, our first level folder names are clean
+                println!("cargo:rerun-if-changed={}", path.to_string_lossy());
+            });
+    } else {
+        std::fs::create_dir_all("frontend/dist").unwrap();
+        std::fs::write("frontend/dist/index.html", "Yarn missing from path").unwrap();
+        println!("cargo:rerun-if-env-changed=PATH");
+    }
     Ok(())
 }
 
