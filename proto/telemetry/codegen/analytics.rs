@@ -121,6 +121,15 @@ pub struct NodeStats {
     pub avg: f64,
     #[prost(double, tag = "5")]
     pub median: f64,
+    #[prost(uint64, tag = "6")]
+    pub count: u64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CallGraphEdge {
+    #[prost(uint32, tag = "1")]
+    pub hash: u32,
+    #[prost(double, tag = "2")]
+    pub weight: f64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CumulativeCallGraphNode {
@@ -128,10 +137,10 @@ pub struct CumulativeCallGraphNode {
     pub hash: u32,
     #[prost(message, optional, tag = "2")]
     pub stats: ::core::option::Option<NodeStats>,
-    #[prost(uint32, repeated, tag = "3")]
-    pub callers: ::prost::alloc::vec::Vec<u32>,
-    #[prost(uint32, repeated, tag = "4")]
-    pub callees: ::prost::alloc::vec::Vec<u32>,
+    #[prost(message, repeated, tag = "3")]
+    pub callers: ::prost::alloc::vec::Vec<CallGraphEdge>,
+    #[prost(message, repeated, tag = "4")]
+    pub callees: ::prost::alloc::vec::Vec<CallGraphEdge>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CumulativeCallGraphReply {

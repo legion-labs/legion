@@ -187,7 +187,7 @@ export const Process = {
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<Process>, I>>(object: I): Process {
+  fromPartial(object: DeepPartial<Process>): Process {
     const message = { ...baseProcess } as Process;
     message.processId = object.processId ?? "";
     message.exe = object.exe ?? "";
@@ -223,7 +223,6 @@ type Builtin =
   | number
   | boolean
   | undefined;
-
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -233,14 +232,6 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
-
-type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin
-  ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
-        Exclude<keyof I, KeysOfUnion<P>>,
-        never
-      >;
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {
