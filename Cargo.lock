@@ -4028,6 +4028,7 @@ dependencies = [
  "legion-async",
  "legion-ecs",
  "legion-graphics-api",
+ "legion-graphics-data",
  "legion-graphics-utils",
  "legion-math",
  "legion-pso-compiler",

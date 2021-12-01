@@ -401,15 +401,6 @@ impl TmpRenderPass {
             .definition()
             .descriptor_set_layouts[0];
 
-        let color_table = [
-            (1.0f32, 0.0f32, 0.0f32),
-            (1.0f32, 1.0f32, 0.0f32),
-            (1.0f32, 0.0f32, 1.0f32),
-            (0.0f32, 0.0f32, 1.0f32),
-            (0.0f32, 1.0f32, 0.0f32),
-            (0.0f32, 1.0f32, 1.0f32),
-        ];
-
         let fov_y_radians: f32 = 45.0;
         let width = render_surface.extents().width() as f32;
         let height = render_surface.extents().height() as f32;
@@ -425,7 +416,7 @@ impl TmpRenderPass {
 
         let transient_allocator = render_context.acquire_transient_buffer_allocator();
 
-        for (index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
+        for (_index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
             let mesh_id = static_mesh_component.mesh_id;
             if mesh_id >= self.static_meshes.len() {
                 continue;
@@ -440,7 +431,12 @@ impl TmpRenderPass {
                 .transient_buffer()
                 .bind_allocation_as_vertex_buffer(cmd_buffer, &sub_allocation);
 
-            let color = color_table[index % color_table.len()];
+            let color: (f32, f32, f32, f32) = (
+                f32::from(static_mesh_component.color.r) / 255.0f32,
+                f32::from(static_mesh_component.color.g) / 255.0f32,
+                f32::from(static_mesh_component.color.b) / 255.0f32,
+                f32::from(static_mesh_component.color.a) / 255.0f32,
+            );
 
             let world = transform.compute_matrix();
             let mut push_constant_data: [f32; 52] = [0.0; 52];
