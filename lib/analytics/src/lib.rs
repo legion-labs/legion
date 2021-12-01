@@ -59,6 +59,7 @@
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
+use legion_telemetry::prelude::*;
 use legion_telemetry::{decompress, ContainerMetadata};
 use legion_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
@@ -186,6 +187,7 @@ pub async fn fetch_child_processes(
     connection: &mut sqlx::AnyConnection,
     parent_process_id: &str,
 ) -> Result<Vec<legion_telemetry::ProcessInfo>> {
+    trace_scope!();
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
@@ -507,6 +509,7 @@ pub fn parse_block<F>(
 where
     F: FnMut(Value) -> bool,
 {
+    trace_scope!();
     let dep_udts =
         container_metadata_as_transit_udt_vec(stream.dependencies_metadata.as_ref().unwrap());
     let dependencies = read_dependencies(

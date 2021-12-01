@@ -69,6 +69,7 @@ mod cumulative_call_graph;
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
 use legion_analytics::alloc_sql_pool;
+use legion_telemetry::prelude::*;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
 use std::path::PathBuf;
 use tonic::transport::Server;
@@ -83,7 +84,11 @@ fn get_data_directory() -> Result<PathBuf> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    simple_logger::init().unwrap();
+    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
+        simple_logger::SimpleLogger::new().with_level(log::LevelFilter::Info),
+    )));
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    trace_scope!();
     let addr = "127.0.0.1:9090".parse()?;
     let data_dir = get_data_directory()?;
     let pool = alloc_sql_pool(&data_dir).await?;

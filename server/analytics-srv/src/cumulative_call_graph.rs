@@ -1,6 +1,7 @@
 use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNode, ScopeHashMap}; //todo: move to analytics lib
 use anyhow::{Context, Result};
 use legion_analytics::prelude::*;
+use legion_telemetry::prelude::*;
 use legion_telemetry_proto::analytics::{
     CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
@@ -15,6 +16,7 @@ struct NodeStatsAcc {
 
 impl NodeStatsAcc {
     pub fn new() -> Self {
+        trace_scope!();
         Self {
             durations_ms: Vec::new(),
             parents: HashMap::new(),
@@ -26,6 +28,7 @@ impl NodeStatsAcc {
 type StatsHashMap = std::collections::HashMap<u32, NodeStatsAcc>;
 
 fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
+    trace_scope!();
     let mut edges: Vec<CallGraphEdge> = edges_acc
         .iter()
         .filter(|(hash, _weight)| **hash != 0)
@@ -39,6 +42,7 @@ fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
 }
 
 fn tree_overlaps(tree: &CallTreeNode, filter_begin_ms: f64, filter_end_ms: f64) -> bool {
+    trace_scope!();
     tree.end_ms >= filter_begin_ms && tree.begin_ms <= filter_end_ms
 }
 
@@ -50,6 +54,7 @@ fn record_tree_stats(
     stats_map: &mut StatsHashMap,
     parent_hash: Option<u32>,
 ) {
+    trace_scope!();
     if !tree_overlaps(tree, filter_begin_ms, filter_end_ms) {
         return;
     }
@@ -90,6 +95,7 @@ async fn record_process_call_graph(
     scopes: &mut ScopeHashMap,
     stats: &mut StatsHashMap,
 ) -> Result<()> {
+    trace_scope!();
     let start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
         .with_context(|| String::from("parsing process start time"))?;
     let begin_offset_ns = begin_ms * 1_000_000.0;
@@ -125,6 +131,7 @@ pub(crate) async fn compute_cumulative_call_graph(
     begin_ms: f64,
     end_ms: f64,
 ) -> Result<CumulativeCallGraphReply> {
+    trace_scope!();
     //this is a serial implementation, could be transformed in map/reduce
     let mut scopes = ScopeHashMap::new();
     let mut stats = StatsHashMap::new();

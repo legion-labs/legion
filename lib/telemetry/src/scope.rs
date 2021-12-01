@@ -25,6 +25,19 @@ pub fn type_name_of<T>(_: &T) -> &'static str {
 
 #[macro_export]
 macro_rules! trace_scope {
+    ($name:tt) => {
+        fn _scope() -> $crate::ScopeDesc {
+            $crate::ScopeDesc {
+                name: $name,
+                filename: file!(),
+                line: line!(),
+            }
+        }
+        let guard = $crate::ScopeGuard {
+            get_scope_desc: _scope,
+        };
+        $crate::on_begin_scope(_scope);
+    };
     () => {
         fn _scope() -> $crate::ScopeDesc {
             // no need to build the ScopeDesc object until we serialize the events
