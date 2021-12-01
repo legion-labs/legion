@@ -1,16 +1,19 @@
 <script lang="ts">
+  import { link } from "svelte-navigator";
   import {
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/codegen/analytics";
+  import { Process } from "@lgn/proto-telemetry/codegen/process";
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
   );
 
   export let id: string;
+  let processInfo: Process | null = null;
 
-  async function fetchProcess() {
+  async function fetchLogEntries() {
     const { process } = await client.find_process({
       processId: id,
     });
@@ -18,6 +21,8 @@
     if (!process) {
       throw new Error(`Process ${id} not found`);
     }
+
+    processInfo = process;
 
     const { entries } = await client.list_process_log_entries({
       process,
@@ -45,8 +50,24 @@
 </script>
 
 <div>
-  <div>process_id {id}</div>
-  {#await fetchProcess() then logEntriesList}
+  <h1>Legion Performance Analytics</h1>
+  <h2>Process Log</h2>
+  {#if processInfo}
+    <div class="process-details-div">
+      <div>process_id: {processInfo.processId}</div>
+      <div>exe: {processInfo.exe}</div>
+
+      {#if processInfo.parentProcessId}
+        <div class="parent-process">
+          <a href={`/log/${processInfo.parentProcessId}`} use:link>
+            Parent Process Log
+          </a>
+        </div>
+      {/if}
+      
+    </div>
+  {/if}
+  {#await fetchLogEntries() then logEntriesList}
     {#each logEntriesList as entry, index (index)}
       <div class="logentry">
         <span class="logentrytime">{formatTime(entry.timeMs)}</span>
@@ -59,11 +80,30 @@
 </div>
 
 <style lang="postcss">
+  h1 {
+    @apply text-2xl;
+  }
+
+  h2 {
+    @apply text-xl;
+  }
+
+  .process-details-div {
+    text-align: left;
+    margin: 0px 0px 5px 5px;
+  }
+
   .logentry {
     @apply text-left bg-[#f0f0f0];
+    margin: 0px 0px 0px 5px;
   }
 
   .logentrytime {
     @apply font-bold pr-5;
   }
+
+  .parent-process {
+    @apply text-[#42b983] underline;
+  }
+  
 </style>

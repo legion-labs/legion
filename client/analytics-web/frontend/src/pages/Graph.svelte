@@ -91,7 +91,15 @@
   }
 
   function onEdgeClick(hash: number) {
-    selectedNode = nodes.find( item => item.hash === hash );
+    if (!nodes){
+      return;
+    }
+    const found = nodes.find( item => item.hash === hash );
+    if (found){
+      selectedNode = found;
+    } else {
+      selectedNode = null;
+    }
   }
 
   function formatSum(node: CumulativeCallGraphNode) : string{
