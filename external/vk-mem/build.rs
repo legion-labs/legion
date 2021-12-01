@@ -87,6 +87,7 @@ fn main() {
             .flag("-Wno-unused-parameter")
             .flag("-Wno-unused-private-field")
             .flag("-Wno-reorder")
+            .flag("-Wno-nullability-completeness")
             .cpp_link_stdlib("stdc++")
             .cpp(true);
 
