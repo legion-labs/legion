@@ -7,7 +7,7 @@
         "unresolved-macro-call"
     ],
     "rust-analyzer.cargo.features": [
-        "run-codegen"
+        //"run-codegen"
     ],
     "files.eol": "\n",
     "cSpell.words": [
