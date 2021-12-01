@@ -210,14 +210,14 @@ pub async fn find_process_streams_tagged(
     process_id: &str,
     tag: &str,
 ) -> Result<Vec<legion_telemetry::StreamInfo>> {
-    let rows = sqlx::query(&format!(
+    let rows = sqlx::query(
         "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags, properties
          FROM streams
-         WHERE tags LIKE '%{}%'
+         WHERE tags LIKE ?
          AND process_id = ?
          ;",
-        tag
-    ))
+    )
+    .bind(format!("%{}%", tag))
     .bind(process_id)
     .fetch_all(connection)
     .await
