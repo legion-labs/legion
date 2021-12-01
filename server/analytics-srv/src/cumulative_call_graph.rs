@@ -145,13 +145,17 @@ pub(crate) async fn compute_cumulative_call_graph(
     for child_process in fetch_child_processes(connection, &process.process_id).await? {
         let child_start_time = chrono::DateTime::parse_from_rfc3339(&child_process.start_time)
             .with_context(|| String::from("parsing process start time"))?;
-        let time_offset = (child_start_time - root_start_time).num_milliseconds() as f64;
+        // how sensitive is this code to numerical instability?
+        let time_offset = child_start_time - root_start_time;
+        let time_offset_ms = time_offset.num_milliseconds() as f64;
+        let time_offset_ns = (time_offset.num_nanoseconds().unwrap() % 1_000_000) as f64;
+        let time_offset_total = time_offset_ms + (time_offset_ns / 1_000_000.0);
         record_process_call_graph(
             connection,
             data_path,
             &child_process,
-            begin_ms - time_offset,
-            end_ms - time_offset,
+            begin_ms - time_offset_total,
+            end_ms - time_offset_total,
             &mut scopes,
             &mut stats,
         )
