@@ -61,14 +61,12 @@
 // crate-specific exceptions:
 #![allow()]
 
-use std::str::FromStr;
-
 use clap::Arg;
 use instant::Duration;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_core::CorePlugin;
-use legion_data_runtime::ResourceId;
+use legion_data_runtime::{from_str, ResourceId, ResourceType};
 use legion_transform::prelude::*;
 
 fn main() {
@@ -102,18 +100,15 @@ fn main() {
         .value_of(ARG_NAME_MANIFEST)
         .unwrap_or("test/sample-data/runtime/game.manifest");
 
-    let mut assets_to_load: Vec<ResourceId> = Vec::new();
+    let mut assets_to_load = Vec::<(ResourceType, ResourceId)>::new();
 
     // default root object is in sample data
     // /world/sample_1.ent
-    // resource-id: 97b0740f00000000fcd3242ec9691beb
-    // asset-id: aad8904500000000ab5fe63eda1e1c4f
-    // checksum: 3aba5061a97aa89bb522050b16081f67
 
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
-        .unwrap_or("aad8904500000000ab5fe63eda1e1c4f");
-    if let Ok(asset_id) = ResourceId::from_str(root_asset) {
+        .unwrap_or("(97b0740f,fb3aaf63-ad20-40c6-bfd2-2c3e76af1d74)");
+    if let Ok(asset_id) = from_str(root_asset) {
         assets_to_load.push(asset_id);
     }
 

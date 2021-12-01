@@ -1,6 +1,6 @@
 use crate::{LockContext, Transaction};
 use legion_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
-use legion_data_runtime::{AssetRegistry, ResourceId, ResourceType};
+use legion_data_runtime::{to_string, AssetRegistry, ResourceId, ResourceType};
 use log::info;
 use std::sync::Arc;
 use thiserror::Error;
@@ -14,32 +14,32 @@ pub enum Error {
     NoCommittedTransaction,
 
     ///Resource failed to deserializer from memory
-    #[error("ResourceId '{0}' failed to deserialize")]
-    InvalidResourceDeserialization(ResourceId),
+    #[error("ResourceId '{0:?}' failed to deserialize")]
+    InvalidResourceDeserialization((ResourceType, ResourceId)),
 
     /// Resource Id Already Exists
-    #[error("Resource '{0}' already exists in the Project")]
-    ResourceIdAlreadyExist(ResourceId),
+    #[error("Resource '{0:?}' already exists in the Project")]
+    ResourceIdAlreadyExist((ResourceType, ResourceId)),
 
     /// Resource Path Already Exists
     #[error("Resource Path '{0}' already exists in the Project")]
     ResourcePathAlreadyExist(ResourcePathName),
 
     /// Invalid Delete Operation
-    #[error("Invalid DeleteOperation on Resoruce'{0}'")]
-    InvalidDeleteOperation(ResourceId),
+    #[error("Invalid DeleteOperation on Resource'{0:?}'")]
+    InvalidDeleteOperation((ResourceType, ResourceId)),
 
     /// Invalid Resource
-    #[error("ResourceId '{0}' not found")]
-    InvalidResource(ResourceId),
+    #[error("ResourceId '{0:?}' not found")]
+    InvalidResource((ResourceType, ResourceId)),
 
     /// Resource of type failed to create
     #[error("Cannot create Resource of type {0}")]
     ResourceCreationFailed(ResourceType),
 
     /// Invalid Resource Reflection
-    #[error("Resource {0} doesn't have reflection.")]
-    InvalidResourceReflection(ResourceId),
+    #[error("Resource {0:?} doesn't have reflection.")]
+    InvalidResourceReflection((ResourceType, ResourceId)),
 }
 
 /// System that manage the current state of the Loaded Offline Data
@@ -80,7 +80,7 @@ impl DataManager {
             project
                 .load_resource(resource_id, &mut resource_registry)
                 .map_or_else(
-                    |err| log::warn!("Failed to load {}: {}", resource_id, err),
+                    |err| log::warn!("Failed to load {}: {}", to_string(resource_id), err),
                     |handle| resource_handles.insert(resource_id, handle),
                 );
         }

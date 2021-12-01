@@ -17,7 +17,7 @@ pub struct LockContext<'a> {
     /// Reference to the Asset Registry
     pub asset_registry: Arc<AssetRegistry>,
     // List of Resouce changed during the lock (that need saving)
-    pub(crate) changed_resources: HashSet<ResourceId>,
+    pub(crate) changed_resources: HashSet<(ResourceType, ResourceId)>,
 }
 
 impl<'a> LockContext<'a> {

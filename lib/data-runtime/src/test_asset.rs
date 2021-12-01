@@ -43,21 +43,22 @@ pub(crate) mod tests {
         97, 115, 102, 116, // header (asft)
         1, 0, // version
         0, 0, 0, 0, 0, 0, 0, 0, // references count (none here)
-        0xb3, 0x68, 0x0, 0x81, // first asset type (RessourceType)
+        0xb3, 0x68, 0x0,
+        0x81, // first asset type (RessourceType, here a hash of "test_asset")
         1, 0, 0, 0, 0, 0, 0, 0, // assets count following in stream
         5, 0, 0, 0, 0, 0, 0, 0, // bytes for next asset data
-        99, 104, 105, 108, 100, // asset data
+        99, 104, 105, 108, 100, // asset data, here TestAssert
     ];
 
-    pub(crate) const BINARY_PARENT_ASSETFILE: [u8; 56] = [
+    pub(crate) const BINARY_PARENT_ASSETFILE: [u8; 60] = [
         97, 115, 102, 116, // header (asft)
         1, 0, // version
         1, 0, 0, 0, 0, 0, 0, 0, // references count
-        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xb3, 0x68, 0x0,
-        0x81, // first reference (RessourceId)
-        0xb3, 0x68, 0x0, 0x81, // asset type (RessourceType)
+        0xb3, 0x68, 0x0, 0x81, // first reference (ResourceType)
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0xf0, 0, 0, 0, 0, 0, 0, // first reference (RessourceId)
+        0xb3, 0x68, 0x0, 0x81, // asset type (RessourceType, here a hash of "test_asset")
         1, 0, 0, 0, 0, 0, 0, 0, // assets count following in stream
         6, 0, 0, 0, 0, 0, 0, 0, // bytes for next asset data
-        112, 97, 114, 101, 110, 116, // asset data
+        112, 97, 114, 101, 110, 116, // asset data, here TestAssert
     ];
 }

@@ -109,8 +109,8 @@ impl Transaction {
         &mut self,
         resource_path: ResourcePathName,
         resource_type: ResourceType,
-    ) -> anyhow::Result<ResourceId> {
-        let resource_id = ResourceId::new_random_id(resource_type);
+    ) -> anyhow::Result<(ResourceType, ResourceId)> {
+        let resource_id = (resource_type, ResourceId::new());
         self.operations.push(Box::new(CreateResourceOperation::new(
             resource_id,
             resource_path,
@@ -119,7 +119,10 @@ impl Transaction {
     }
 
     /// Queue the Delete of the Resources
-    pub fn delete_resource(&mut self, resource_id: ResourceId) -> anyhow::Result<()> {
+    pub fn delete_resource(
+        &mut self,
+        resource_id: (ResourceType, ResourceId),
+    ) -> anyhow::Result<()> {
         self.operations
             .push(Box::new(DeleteResourceOperation::new(resource_id)));
         Ok(())
@@ -128,7 +131,7 @@ impl Transaction {
     /// Queue Update of the Property of a Resource using Reflection
     pub fn update_property(
         &mut self,
-        resource_id: ResourceId,
+        resource_id: (ResourceType, ResourceId),
         property_name: &str,
         new_value: &str,
     ) -> anyhow::Result<()> {

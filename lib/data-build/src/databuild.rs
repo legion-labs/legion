@@ -69,9 +69,9 @@ fn compute_context_hash(
 /// # use legion_content_store::ContentStoreAddr;
 /// # use legion_data_compiler::{Locale, Platform, Target};
 /// # use legion_data_offline::ResourcePathId;
-/// # use legion_data_runtime::{ResourceId, ResourceType};
+/// # use legion_data_runtime::{ResourceId, ResourceType, from_str};
 /// # use std::str::FromStr;
-/// # let offline_anim = ResourceId::from_str("invalid").unwrap();
+/// # let offline_anim: (ResourceType, ResourceId) = from_str("(type,invalid_id)").unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// let mut build = DataBuildOptions::new(".")
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
@@ -178,7 +178,7 @@ impl DataBuild {
     /// Returns a source of a resource id.
     ///
     /// It will return None if the build never recorded a source for a given id.
-    pub fn lookup_pathid(&self, id: ResourceId) -> Option<ResourcePathId> {
+    pub fn lookup_pathid(&self, id: (ResourceType, ResourceId)) -> Option<ResourcePathId> {
         self.build_index.lookup_pathid(id)
     }
 
@@ -658,7 +658,6 @@ impl DataBuild {
             //
             let asset_id = resource.compiled_path.resource_id();
 
-            let mut output: Vec<u8> = vec![];
             let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
             let reference_list = references
                 .iter()
@@ -673,12 +672,7 @@ impl DataBuild {
                     )
                 });
 
-            let bytes_written = write_assetfile(
-                resource_list,
-                reference_list,
-                &self.content_store,
-                &mut output,
-            )?;
+            let output = write_assetfile(resource_list, reference_list, &self.content_store)?;
 
             let checksum = self
                 .content_store
@@ -688,7 +682,7 @@ impl DataBuild {
             let asset_file = CompiledResource {
                 path: resource.compiled_path.clone(),
                 checksum,
-                size: bytes_written,
+                size: output.len(),
             };
             resource_files.push(asset_file);
         }

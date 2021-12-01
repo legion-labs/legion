@@ -6,6 +6,7 @@ use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuil
 use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
 use legion_data_runtime::ResourceId;
+use legion_data_runtime::{ResourceId, ResourceType};
 use legion_grpc::{GRPCPlugin, GRPCPluginSettings};
 use legion_renderer::RendererPlugin;
 use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
@@ -128,7 +129,7 @@ fn main() {
         Some(DataBuildSettings::new(build_bin, buildindex))
     };
 
-    let assets_to_load: Vec<ResourceId> = Vec::new();
+    let assets_to_load = Vec::<(ResourceType, ResourceId)>::new();
 
     App::new()
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(

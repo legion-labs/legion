@@ -1,16 +1,20 @@
 use crate::{Error, LockContext, TransactionOperation};
 use async_trait::async_trait;
-use legion_data_runtime::ResourceId;
+use legion_data_runtime::{ResourceId, ResourceType};
 
 pub(crate) struct UpdatePropertyOperation {
-    resource_id: ResourceId,
+    resource_id: (ResourceType, ResourceId),
     property_name: String,
     new_value: String,
     old_value: Option<String>,
 }
 
 impl UpdatePropertyOperation {
-    pub fn new(resource_id: ResourceId, property_name: &str, new_value: &str) -> Self {
+    pub fn new(
+        resource_id: (ResourceType, ResourceId),
+        property_name: &str,
+        new_value: &str,
+    ) -> Self {
         Self {
             resource_id,
             property_name: property_name.into(),
@@ -30,7 +34,7 @@ impl TransactionOperation for UpdatePropertyOperation {
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection_mut(self.resource_id.ty(), resource_handle)
+            .get_resource_reflection_mut(self.resource_id.0, resource_handle)
             .ok_or(Error::InvalidResourceReflection(self.resource_id))?;
 
         if self.old_value.is_none() {
@@ -51,7 +55,7 @@ impl TransactionOperation for UpdatePropertyOperation {
 
             let reflection = ctx
                 .resource_registry
-                .get_resource_reflection_mut(self.resource_id.ty(), handle)
+                .get_resource_reflection_mut(self.resource_id.0, handle)
                 .ok_or(Error::InvalidResourceReflection(self.resource_id))?;
             reflection.write_property(self.property_name.as_str(), old_value.as_str())?;
             ctx.changed_resources.insert(self.resource_id);

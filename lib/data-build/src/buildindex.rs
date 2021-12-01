@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{HashMap, VecDeque},
     fs::{File, OpenOptions},
     hash::{Hash, Hasher},
     io::Seek,
@@ -13,10 +13,11 @@ use legion_data_offline::{
     resource::{Project, ResourceHash},
     ResourcePathId,
 };
-use legion_data_runtime::ResourceId;
+use legion_data_runtime::{ResourceId, ResourceType};
 use legion_utils::DefaultHasher;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_with::serde_as;
 
 use crate::Error;
 
@@ -71,17 +72,6 @@ impl CompiledResourceReference {
     }
 }
 
-fn ordered_map<S>(
-    value: &HashMap<ResourceId, ResourcePathId>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let ordered: BTreeMap<_, _> = value.iter().collect();
-    ordered.serialize(serializer)
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 struct SourceContent {
     version: String,
@@ -100,13 +90,14 @@ impl SourceContent {
     }
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 struct OutputContent {
     version: String,
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
-    #[serde(serialize_with = "ordered_map")]
-    pathid_mapping: HashMap<ResourceId, ResourcePathId>,
+    #[serde_as(as = "Vec<(_, _)>")]
+    pathid_mapping: HashMap<(ResourceType, ResourceId), ResourcePathId>,
 }
 
 impl OutputContent {
@@ -385,7 +376,7 @@ impl BuildIndex {
             .insert(id.resource_id(), id.clone());
     }
 
-    pub fn lookup_pathid(&self, id: ResourceId) -> Option<ResourcePathId> {
+    pub fn lookup_pathid(&self, id: (ResourceType, ResourceId)) -> Option<ResourcePathId> {
         self.output_content.pathid_mapping.get(&id).cloned()
     }
 
@@ -543,8 +534,8 @@ impl BuildIndex {
 
         self.output_file.set_len(0).unwrap();
         self.output_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&self.output_file, &self.output_content)
-            .map_err(|_e| Error::IOError)
+        let r = serde_json::to_writer_pretty(&self.output_file, &self.output_content);
+        r.map_err(|_e| Error::IOError)
     }
 }
 
@@ -578,7 +569,7 @@ mod tests {
         let project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
-        let source_id = ResourceId::new_random_id(refs_resource::TestResource::TYPE);
+        let source_id = (refs_resource::TestResource::TYPE, ResourceId::new());
         let source_resource = ResourcePathId::from(source_id);
         let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
         let output_resource = intermediate_resource.push(refs_resource::TestResource::TYPE);
@@ -631,7 +622,7 @@ mod tests {
         let project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
-        let source_id = ResourceId::new_random_id(refs_resource::TestResource::TYPE);
+        let source_id = (refs_resource::TestResource::TYPE, ResourceId::new());
         let source_resource = ResourcePathId::from(source_id);
         let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
         let output_resources = intermediate_resource.push(refs_resource::TestResource::TYPE);

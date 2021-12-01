@@ -11,7 +11,7 @@
 //!
 //! # `rty` - Resource Type Tool
 //!
-//! Various commands to help identify resource types known under a specified sourcecode directory.
+//! Various commands to help identify resource types known under a specified source code directory.
 //!
 //! It helps with mapping between `Resource::TYPENAME` and `Resource::TYPE`.
 //!
@@ -120,7 +120,7 @@
 //!
 //! The tool prints detailed information about the specified `ResourcePathId` - such as the name of the source resource, its type and all transformations with their parameters.
 //!
-//! It also accepts `ResourceId` as input - in which case it will try to find its corresponding `ResourcePathId` (if it occured during data compilation).
+//! It also accepts `ResourceId` as input - in which case it will try to find its corresponding `ResourcePathId` (if it occurred during data compilation).
 //!
 //! ## `ResourceId` as input
 //!
@@ -243,7 +243,7 @@ use legion_data_offline::{
     resource::{Project, ResourcePathName},
     ResourcePathId,
 };
-use legion_data_runtime::{ResourceId, ResourceType};
+use legion_data_runtime::{from_str, to_string, ResourceId, ResourceType};
 
 mod config;
 use config::Config;
@@ -394,14 +394,14 @@ fn main() -> Result<(), String> {
             ("list", _) => {
                 for id in project.resource_list() {
                     let name = project.resource_name(id).map_err(|e| e.to_string())?;
-                    println!("{} = {}", name, id);
+                    println!("{} = {}", name, to_string(id));
                 }
             }
             ("name", Some(cmd_args)) => {
                 let id = cmd_args.value_of("id").unwrap();
-                let id = ResourceId::from_str(id).map_err(|e| e.to_string())?;
+                let id = from_str(id).map_err(|e| e.to_string())?;
                 if let Ok(name) = project.resource_name(id) {
-                    println!("{} = {}", name, id);
+                    println!("{} = {}", name, to_string(id));
                 } else {
                     println!("None");
                 }
@@ -410,7 +410,7 @@ fn main() -> Result<(), String> {
                 let name = cmd_args.value_of("name").unwrap();
                 let name = ResourcePathName::from(name);
                 if let Ok(id) = project.find_resource(&name) {
-                    println!("{} = {}", name, id);
+                    println!("{} = {}", name, to_string(id));
                 } else {
                     println!("None");
                 }
@@ -443,13 +443,13 @@ fn main() -> Result<(), String> {
             let rid = {
                 if let Ok(rid) = ResourcePathId::from_str(text_id) {
                     rid
-                } else if let Ok(resource_id) = ResourceId::from_str(text_id) {
+                } else if let Ok(resource_id) = from_str(text_id) {
                     if let Some(rid) = build.lookup_pathid(resource_id) {
                         rid
                     } else {
                         return Err(format!(
                             "Failed to find a source ResourcePathId for ResourceId '{}'",
-                            resource_id
+                            to_string(resource_id)
                         ));
                     }
                 } else {
@@ -468,10 +468,10 @@ fn main() -> Result<(), String> {
         if let Some(config) = config {
             let (build, project) = config.open()?;
             let rid = {
-                if let Ok(resource_id) = ResourceId::from_str(text_id) {
+                if let Ok(resource_id) = from_str(text_id) {
                     build
                         .lookup_pathid(resource_id)
-                        .ok_or(format!("ResourceId '{}' not found", resource_id))?
+                        .ok_or(format!("ResourceId '{}' not found", to_string(resource_id)))?
                 } else {
                     ResourcePathId::from_str(text_id)
                         .map_err(|_e| format!("Invalid ResourcePathId '{}'", text_id))?
@@ -714,14 +714,14 @@ fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Con
     if let Ok(source_name) = project.resource_name(rid.source_resource()) {
         output_text.push_str(&source_name.to_string());
     } else {
-        output_text.push_str(&rid.source_resource().to_string());
+        output_text.push_str(&format!("{}", to_string(rid.source_resource())));
     }
 
     let source_ty_pretty = config
         .type_map
-        .get(&rid.source_resource().ty())
+        .get(&rid.source_resource().0)
         .cloned()
-        .unwrap_or_else(|| rid.source_resource().ty().to_string());
+        .unwrap_or_else(|| rid.source_resource().0.to_string());
     output_text.push_str(&format!(" ({})", source_ty_pretty));
 
     for (_, target, name) in rid.transforms() {

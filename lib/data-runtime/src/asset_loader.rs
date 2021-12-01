@@ -15,8 +15,8 @@ use crate::{vfs, AssetLoader, HandleUntyped, ReferenceUntyped, ResourceId, Resou
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AssetReference {
-    primary: ResourceId,
-    secondary: ResourceId,
+    primary: (ResourceType, ResourceId),
+    secondary: (ResourceType, ResourceId),
 }
 
 /// The intermediate output of asset loading process.
@@ -25,13 +25,16 @@ struct AssetReference {
 struct LoadOutput {
     /// None here means the asset was already loaded before so it doesn't have to be
     /// loaded again. It will still contribute to reference count though.
-    assets: Vec<(ResourceId, Option<Box<dyn Any + Send + Sync>>)>,
+    assets: Vec<(
+        (ResourceType, ResourceId),
+        Option<Box<dyn Any + Send + Sync>>,
+    )>,
     load_dependencies: Vec<AssetReference>,
 }
 
 pub(crate) enum LoaderResult {
     Loaded(HandleUntyped, Box<dyn Any + Send + Sync>, Option<LoadId>),
-    Unloaded(ResourceId),
+    Unloaded((ResourceType, ResourceId)),
     LoadError(HandleUntyped, Option<LoadId>, io::ErrorKind),
     Reloaded(HandleUntyped, Box<dyn Any + Send + Sync>),
 }
@@ -39,7 +42,7 @@ pub(crate) enum LoaderResult {
 pub(crate) enum LoaderRequest {
     Load(HandleUntyped, Option<LoadId>),
     Reload(HandleUntyped),
-    Unload(ResourceId),
+    Unload((ResourceType, ResourceId)),
     Terminate,
 }
 
@@ -57,23 +60,23 @@ struct LoadState {
 }
 
 struct HandleMap {
-    unload_tx: crossbeam_channel::Sender<ResourceId>,
-    handles: flurry::HashMap<ResourceId, ReferenceUntyped>,
+    unload_tx: crossbeam_channel::Sender<(ResourceType, ResourceId)>,
+    handles: flurry::HashMap<(ResourceType, ResourceId), ReferenceUntyped>,
 }
 
 impl HandleMap {
-    fn new(unload_tx: crossbeam_channel::Sender<ResourceId>) -> Arc<Self> {
+    fn new(unload_tx: crossbeam_channel::Sender<(ResourceType, ResourceId)>) -> Arc<Self> {
         Arc::new(Self {
             unload_tx,
             handles: flurry::HashMap::new(),
         })
     }
 
-    fn create_handle(&self, id: ResourceId) -> HandleUntyped {
-        let handle = HandleUntyped::new_handle(id, self.unload_tx.clone());
+    fn create_handle(&self, type_id: (ResourceType, ResourceId)) -> HandleUntyped {
+        let handle = HandleUntyped::new_handle(type_id, self.unload_tx.clone());
 
         let weak_ref = HandleUntyped::downgrade(&handle);
-        match self.handles.pin().try_insert(id, weak_ref) {
+        match self.handles.pin().try_insert(type_id, weak_ref) {
             Ok(_) => handle,
             Err(TryInsertError {
                 current,
@@ -87,7 +90,7 @@ impl HandleMap {
 }
 
 impl Deref for HandleMap {
-    type Target = flurry::HashMap<ResourceId, ReferenceUntyped>;
+    type Target = flurry::HashMap<(ResourceType, ResourceId), ReferenceUntyped>;
 
     fn deref(&self) -> &Self::Target {
         &self.handles
@@ -115,7 +118,7 @@ pub(crate) fn create_loader(
 }
 
 pub(crate) struct AssetLoaderStub {
-    unload_channel_rx: crossbeam_channel::Receiver<ResourceId>,
+    unload_channel_rx: crossbeam_channel::Receiver<(ResourceType, ResourceId)>,
     handles: Arc<HandleMap>,
     request_tx: crossbeam_channel::Sender<LoaderRequest>,
     result_rx: crossbeam_channel::Receiver<LoaderResult>,
@@ -127,7 +130,7 @@ impl AssetLoaderStub {
     fn new(
         request_tx: crossbeam_channel::Sender<LoaderRequest>,
         result_rx: crossbeam_channel::Receiver<LoaderResult>,
-        unload_channel_rx: crossbeam_channel::Receiver<ResourceId>,
+        unload_channel_rx: crossbeam_channel::Receiver<(ResourceType, ResourceId)>,
         handles: Arc<HandleMap>,
     ) -> Self {
         Self {
@@ -138,27 +141,30 @@ impl AssetLoaderStub {
         }
     }
 
-    pub(crate) fn get_handle(&self, id: ResourceId) -> Option<HandleUntyped> {
+    pub(crate) fn get_handle(&self, type_id: (ResourceType, ResourceId)) -> Option<HandleUntyped> {
         self.handles
             .pin()
-            .get(&id)
+            .get(&type_id)
             .and_then(ReferenceUntyped::upgrade)
     }
 
-    pub(crate) fn get_or_create_handle(&self, id: ResourceId) -> HandleUntyped {
-        if let Some(handle) = self.get_handle(id) {
+    pub(crate) fn get_or_create_handle(
+        &self,
+        type_id: (ResourceType, ResourceId),
+    ) -> HandleUntyped {
+        if let Some(handle) = self.get_handle(type_id) {
             return handle;
         }
 
-        self.handles.create_handle(id)
+        self.handles.create_handle(type_id)
     }
 
-    pub(crate) fn collect_dropped_handles(&self) -> Vec<ResourceId> {
+    pub(crate) fn collect_dropped_handles(&self) -> Vec<(ResourceType, ResourceId)> {
         let mut all_removed = vec![];
         while let Ok(unload_id) = self.unload_channel_rx.try_recv() {
             let handles = self.handles.pin();
             let removed = handles.remove(&unload_id).expect("weak ref");
-            assert!(removed.upgrade().is_none(), "a load after unload occured");
+            assert!(removed.upgrade().is_none(), "a load after unload occurred");
             all_removed.push(unload_id);
         }
         all_removed
@@ -168,7 +174,7 @@ impl AssetLoaderStub {
         self.request_tx.send(LoaderRequest::Terminate).unwrap();
     }
 
-    pub(crate) fn load(&self, resource_id: ResourceId) -> HandleUntyped {
+    pub(crate) fn load(&self, resource_id: (ResourceType, ResourceId)) -> HandleUntyped {
         let handle = self.get_or_create_handle(resource_id);
 
         // todo: for now, this is a made up number to track the id of the load request
@@ -181,7 +187,7 @@ impl AssetLoaderStub {
         handle
     }
 
-    pub(crate) fn reload(&self, resource_id: ResourceId) -> bool {
+    pub(crate) fn reload(&self, resource_id: (ResourceType, ResourceId)) -> bool {
         self.get_handle(resource_id).map_or(false, |handle| {
             self.request_tx.send(LoaderRequest::Reload(handle)).unwrap();
             true
@@ -192,8 +198,10 @@ impl AssetLoaderStub {
         self.result_rx.try_recv().ok()
     }
 
-    pub(crate) fn unload(&self, id: ResourceId) {
-        self.request_tx.send(LoaderRequest::Unload(id)).unwrap();
+    pub(crate) fn unload(&self, type_id: (ResourceType, ResourceId)) {
+        self.request_tx
+            .send(LoaderRequest::Unload(type_id))
+            .unwrap();
     }
 }
 
@@ -207,7 +215,7 @@ pub(crate) struct AssetLoaderIO {
     /// List of load requests waiting for all references to be loaded.
     processing_list: Vec<LoadState>,
 
-    loaded_resources: HashSet<ResourceId>,
+    loaded_resources: HashSet<(ResourceType, ResourceId)>,
 
     devices: Vec<Box<dyn vfs::Device>>,
 
@@ -249,9 +257,9 @@ impl AssetLoaderIO {
         self.loaders.insert(kind, loader);
     }
 
-    fn load_resource(&self, id: ResourceId) -> io::Result<Vec<u8>> {
+    fn load_resource(&self, type_id: (ResourceType, ResourceId)) -> io::Result<Vec<u8>> {
         for device in &self.devices {
-            if let Some(content) = device.load(id) {
+            if let Some(content) = device.load(type_id) {
                 return Ok(content);
             }
         }
@@ -262,15 +270,15 @@ impl AssetLoaderIO {
         ))
     }
 
-    fn reload_resource(&self, id: ResourceId) -> io::Result<Vec<u8>> {
+    fn reload_resource(&self, type_id: (ResourceType, ResourceId)) -> io::Result<Vec<u8>> {
         for device in &self.devices {
-            if let Some(content) = device.reload(id) {
+            if let Some(content) = device.reload(type_id) {
                 return Ok(content);
             }
         }
 
         // fallback to loading existing resources.
-        self.load_resource(id)
+        self.load_resource(type_id)
     }
 
     fn process_reload(&mut self, primary_handle: &HandleUntyped) -> Result<(), io::Error> {
@@ -304,7 +312,7 @@ impl AssetLoaderIO {
         let (_, primary_resource) = output.assets.first_mut().unwrap();
 
         if let Some(boxed) = primary_resource {
-            let loader = self.loaders.get_mut(&primary_id.ty()).unwrap();
+            let loader = self.loaders.get_mut(&primary_id.0).unwrap();
             loader.load_init(boxed.as_mut());
         }
         assert!(self.loaded_resources.contains(&primary_id));
@@ -376,7 +384,7 @@ impl AssetLoaderIO {
         Ok(())
     }
 
-    fn process_unload(&mut self, resource_id: ResourceId) {
+    fn process_unload(&mut self, resource_id: (ResourceType, ResourceId)) {
         self.loaded_resources.remove(&resource_id);
         self.result_tx
             .send(LoaderResult::Unloaded(resource_id))
@@ -458,7 +466,7 @@ impl AssetLoaderIO {
 
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
-                        let loader = self.loaders.get_mut(&asset_id.id().ty()).unwrap();
+                        let loader = self.loaders.get_mut(&asset_id.id().0).unwrap();
                         loader.load_init(boxed.as_mut());
                     }
                     // if there is no boxed asset here, it means it was already loaded before.
@@ -497,16 +505,16 @@ impl AssetLoaderIO {
         reader: &mut dyn io::Read,
         loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
     ) -> Result<LoadOutput, io::Error> {
-        let id = handle.id();
+        let type_id = handle.id();
         let mut content = Vec::new();
         reader.read_to_end(&mut content)?;
 
-        let asset_type = id.ty();
+        let asset_type = type_id.0;
         let loader = loaders.get_mut(&asset_type).unwrap();
         let boxed_asset = loader.load(&mut &content[..])?;
 
         Ok(LoadOutput {
-            assets: vec![(id, Some(boxed_asset))],
+            assets: vec![(type_id, Some(boxed_asset))],
             load_dependencies: vec![],
         })
     }
@@ -540,9 +548,10 @@ impl AssetLoaderIO {
         let reference_count = reader.read_u64::<LittleEndian>()?;
         let mut reference_list = Vec::with_capacity(reference_count as usize);
         for _ in 0..reference_count {
-            let asset_ref = unsafe {
-                std::mem::transmute::<u128, ResourceId>(reader.read_u128::<LittleEndian>()?)
-            };
+            let asset_ref = (
+                ResourceType::from_raw(reader.read_u32::<LittleEndian>()?),
+                ResourceId::from_raw(reader.read_u128::<LittleEndian>()?),
+            );
             reference_list.push(AssetReference {
                 primary: asset_ref,
                 secondary: asset_ref,
@@ -556,8 +565,7 @@ impl AssetLoaderIO {
             )
         };
         assert_eq!(
-            asset_type,
-            primary_id.ty(),
+            asset_type, primary_id.0,
             "The asset must be of primary id's type"
         );
 
@@ -604,15 +612,15 @@ mod tests {
     use crate::{
         asset_loader::{HandleMap, LoaderRequest, LoaderResult},
         manifest::Manifest,
-        test_asset, vfs, Handle, Resource, ResourceId,
+        test_asset, vfs, Handle, Resource, ResourceId, ResourceType,
     };
 
-    fn setup_test() -> (ResourceId, AssetLoaderStub, AssetLoaderIO) {
+    fn setup_test() -> ((ResourceType, ResourceId), AssetLoaderStub, AssetLoaderIO) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let asset_id = {
-            let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
+            let id = (test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_ASSETFILE)
                 .unwrap();
@@ -683,7 +691,7 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let asset_id = {
-            let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
+            let id = (test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_ASSETFILE)
                 .unwrap();
@@ -742,7 +750,7 @@ mod tests {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        let parent_id = ResourceId::new(test_asset::TestAsset::TYPE, 2);
+        let parent_id = (test_asset::TestAsset::TYPE, ResourceId::new_explicit(2));
 
         let asset_id = {
             let checksum = content_store
@@ -797,8 +805,8 @@ mod tests {
 
         let parent_content = "parent";
 
-        let parent_id = ResourceId::new(test_asset::TestAsset::TYPE, 2);
-        let child_id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
+        let parent_id = (test_asset::TestAsset::TYPE, ResourceId::new_explicit(2));
+        let child_id = (test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
 
         let asset_id = {
             manifest.insert(
@@ -899,7 +907,7 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let asset_id = {
-            let id = ResourceId::new(test_asset::TestAsset::TYPE, 1);
+            let id = (test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_ASSETFILE)
                 .unwrap();

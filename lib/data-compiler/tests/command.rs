@@ -6,12 +6,12 @@ use legion_data_compiler::{
     Locale, Platform, Target,
 };
 use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{AssetLoader, Resource, ResourceId};
+use legion_data_runtime::{to_string, AssetLoader, Resource, ResourceId, ResourceType};
 
 mod common;
 
-fn create_test_resource(id: ResourceId, dir: &Path, content: &str) {
-    let path = dir.join(format!("{:x}", id));
+fn create_test_resource(id: (ResourceType, ResourceId), dir: &Path, content: &str) {
+    let path = dir.join(to_string(id));
     let mut file = File::create(path).expect("new file");
 
     let mut proc = refs_resource::TestResourceProc {};
@@ -50,7 +50,7 @@ fn command_compile() {
 
     let content = "test content";
 
-    let source = ResourceId::new_random_id(refs_resource::TestResource::TYPE);
+    let source = (refs_resource::TestResource::TYPE, ResourceId::new());
     create_test_resource(source, &resource_dir, content);
 
     let exe_path = common::compiler_exe("test-refs");

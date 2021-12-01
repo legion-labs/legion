@@ -2,26 +2,22 @@
 
 use std::hash::{Hash, Hasher};
 
+use bincode;
 use legion_data_offline::ResourcePathId;
-use legion_data_runtime::ResourceId;
+use legion_data_runtime::{ResourceId, ResourceType};
 use legion_utils::DefaultHasher;
 
 use crate::{CompilerHash, Locale, Platform, Target};
 
 /// Converts `ResourcePathId` to `ResourceId`.
-pub fn path_id_to_asset_id(path: &Option<ResourcePathId>) -> Option<ResourceId> {
+pub fn path_id_to_asset_id(path: &Option<ResourcePathId>) -> Option<(ResourceType, ResourceId)> {
     path.as_ref().map(ResourcePathId::resource_id)
 }
 
-/// Converts `ResourceId` to underlying binary representation.
-pub fn asset_id_to_bin(id: Option<ResourceId>) -> u128 {
-    unsafe { std::mem::transmute::<Option<ResourceId>, u128>(id) }
-}
-
 /// Converts `ResourcePathId` through `ResourceId` to binary representation.
-pub fn path_id_to_binary(path: &Option<ResourcePathId>) -> u128 {
-    let id = path_id_to_asset_id(path);
-    asset_id_to_bin(id)
+pub fn path_id_to_binary(path: &Option<ResourcePathId>) -> Vec<u8> {
+    let id = path_id_to_asset_id(path).unwrap();
+    bincode::serialize(&id).unwrap()
 }
 
 /// Compiler hasher function that hashes only code and data versions

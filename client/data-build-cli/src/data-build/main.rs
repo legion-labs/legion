@@ -61,7 +61,7 @@ use legion_content_store::ContentStoreAddr;
 use legion_data_build::DataBuildOptions;
 use legion_data_compiler::{Locale, Platform, Target};
 use legion_data_offline::ResourcePathId;
-use legion_data_runtime::ResourceId;
+use legion_data_runtime::{from_str, to_string};
 
 const ARG_NAME_RESOURCE_PATH: &str = "resource";
 const ARG_NAME_BUILDINDEX: &str = "buildindex";
@@ -209,11 +209,11 @@ fn main() -> Result<(), String> {
 
         let derived = {
             if runtime_flag {
-                let id = ResourceId::from_str(derived)
+                let id = from_str(derived)
                     .map_err(|_e| format!("Invalid Resource (ResourceId) '{}'", derived))?;
                 build.lookup_pathid(id).ok_or(format!(
                     "Cannot resolve ResourceId to ResourcePathId: '{}'",
-                    id
+                    to_string(id)
                 ))?
             } else {
                 ResourcePathId::from_str(derived)

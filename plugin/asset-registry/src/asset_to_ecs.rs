@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use legion_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceId};
+use legion_data_runtime::{
+    to_string, AssetRegistry, HandleUntyped, Resource, ResourceId, ResourceType,
+};
 use legion_ecs::prelude::*;
 use legion_renderer::components::{RotationComponent, StaticMesh};
 use legion_transform::prelude::*;
@@ -9,7 +11,7 @@ use sample_data_runtime as runtime_data;
 use crate::asset_entities::AssetToEntityMap;
 
 pub(crate) fn load_ecs_asset<T>(
-    asset_id: &ResourceId,
+    asset_id: &(ResourceType, ResourceId),
     handle: &HandleUntyped,
     registry: &ResMut<'_, Arc<AssetRegistry>>,
     commands: &mut Commands<'_, '_>,
@@ -18,7 +20,7 @@ pub(crate) fn load_ecs_asset<T>(
 where
     T: AssetToECS + Resource + 'static,
 {
-    if asset_id.ty() == T::TYPE {
+    if asset_id.0 == T::TYPE {
         if let Some(asset) = handle.get::<T>(registry) {
             let entity = T::create_in_ecs(commands, &asset, asset_to_entity_map);
 
@@ -30,11 +32,11 @@ where
                 println!(
                     "Loaded {}: {} -> ECS id: {:?}",
                     T::TYPENAME,
-                    asset_id,
+                    to_string(*asset_id),
                     entity_id,
                 );
             } else {
-                println!("Loaded {}: {}", T::TYPENAME, asset_id);
+                println!("Loaded {}: {}", T::TYPENAME, to_string(*asset_id));
             }
         }
 

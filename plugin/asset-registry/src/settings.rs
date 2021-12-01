@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use legion_data_runtime::ResourceId;
+use legion_data_runtime::{ResourceId, ResourceType};
 use legion_utils::Settings;
 
 pub struct DataBuildSettings {
@@ -21,14 +21,14 @@ pub struct AssetRegistrySettings {
     pub(crate) content_store_addr: PathBuf,
     pub(crate) game_manifest: PathBuf,
     pub(crate) databuild_settings: Option<DataBuildSettings>,
-    pub(crate) assets_to_load: Vec<ResourceId>,
+    pub(crate) assets_to_load: Vec<(ResourceType, ResourceId)>,
 }
 
 impl AssetRegistrySettings {
     pub fn new(
         content_store_addr: impl AsRef<Path>,
         game_manifest: impl AsRef<Path>,
-        assets_to_load: Vec<ResourceId>,
+        assets_to_load: Vec<(ResourceType, ResourceId)>,
         databuild_settings: Option<DataBuildSettings>,
     ) -> Self {
         Self {

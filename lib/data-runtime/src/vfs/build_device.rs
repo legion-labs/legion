@@ -5,7 +5,7 @@ use std::{
 };
 
 use super::Device;
-use crate::{manifest::Manifest, ResourceId};
+use crate::{manifest::Manifest, to_string, ResourceId, ResourceType};
 use legion_content_store::{ContentStore, ContentStoreAddr};
 use std::time::Instant;
 
@@ -40,22 +40,22 @@ impl BuildDevice {
 }
 
 impl Device for BuildDevice {
-    fn load(&self, id: ResourceId) -> Option<Vec<u8>> {
+    fn load(&self, type_id: (ResourceType, ResourceId)) -> Option<Vec<u8>> {
         if self.force_recompile {
-            self.reload(id)
+            self.reload(type_id)
         } else {
-            let (checksum, size) = self.manifest.borrow().find(id)?;
+            let (checksum, size) = self.manifest.borrow().find(type_id)?;
             let content = self.content_store.read(checksum)?;
             assert_eq!(content.len(), size);
             Some(content)
         }
     }
 
-    fn reload(&self, id: ResourceId) -> Option<Vec<u8>> {
-        let output = self.build_resource(id).ok()?;
+    fn reload(&self, type_id: (ResourceType, ResourceId)) -> Option<Vec<u8>> {
+        let output = self.build_resource(type_id).ok()?;
         self.manifest.borrow_mut().extend(output);
 
-        let (checksum, size) = self.manifest.borrow().find(id)?;
+        let (checksum, size) = self.manifest.borrow().find(type_id)?;
         let content = self.content_store.read(checksum)?;
         assert_eq!(content.len(), size);
         Some(content)
@@ -63,7 +63,7 @@ impl Device for BuildDevice {
 }
 
 impl BuildDevice {
-    fn build_resource(&self, resource_id: ResourceId) -> io::Result<Manifest> {
+    fn build_resource(&self, resource_id: (ResourceType, ResourceId)) -> io::Result<Manifest> {
         let mut command = build_command(
             &self.databuild_bin,
             resource_id,
@@ -71,12 +71,15 @@ impl BuildDevice {
             &self.buildindex,
         );
 
-        log::info!("Running DataBuild for ResourceId: {}", resource_id);
+        log::info!(
+            "Running DataBuild for ResourceId: {}",
+            to_string(resource_id)
+        );
         let start = Instant::now();
         let output = command.output()?;
 
         log::info!(
-            "{} DataBuild for Resource: {} processed in {:?}",
+            "{} DataBuild for Resource: {:?} processed in {:?}",
             if output.status.success() {
                 "Succeeded"
             } else {
@@ -115,7 +118,7 @@ impl BuildDevice {
 
 fn build_command(
     databuild_path: impl AsRef<Path>,
-    resource_id: ResourceId,
+    resource_id: (ResourceType, ResourceId),
     cas: &ContentStoreAddr,
     buildindex_dir: impl AsRef<Path>,
 ) -> std::process::Command {
@@ -124,7 +127,7 @@ fn build_command(
     let locale = "en";
     let mut command = std::process::Command::new(databuild_path.as_ref());
     command.arg("compile");
-    command.arg(format!("{}", resource_id));
+    command.arg(format!("{}", to_string(resource_id)));
     command.arg("--rt");
     command.arg(format!("--cas={}", cas));
     command.arg(format!("--target={}", target));

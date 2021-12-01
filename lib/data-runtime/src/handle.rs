@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use crate::{AssetRegistry, Ref, Resource, ResourceId};
+use crate::{AssetRegistry, Ref, Resource, ResourceId, ResourceType};
 
 //
 //
@@ -13,12 +13,12 @@ use crate::{AssetRegistry, Ref, Resource, ResourceId};
 /// Arc<Inner> is responsible for sending a 'unload' message when last reference is dropped.
 #[derive(Debug)]
 struct Inner {
-    id: ResourceId,
-    unload_tx: Option<crossbeam_channel::Sender<ResourceId>>,
+    type_id: (ResourceType, ResourceId),
+    unload_tx: Option<crossbeam_channel::Sender<(ResourceType, ResourceId)>>,
 }
 impl Drop for Inner {
     fn drop(&mut self) {
-        let _ = self.unload_tx.as_ref().map(|tx| tx.send(self.id));
+        let _ = self.unload_tx.as_ref().map(|tx| tx.send(self.type_id));
     }
 }
 
@@ -57,18 +57,18 @@ pub struct HandleUntyped {
 
 impl PartialEq for HandleUntyped {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.id == other.inner.id
+        self.inner.type_id == other.inner.type_id
     }
 }
 
 impl HandleUntyped {
     pub(crate) fn new_handle(
-        id: ResourceId,
-        handle_drop_tx: crossbeam_channel::Sender<ResourceId>,
+        type_id: (ResourceType, ResourceId),
+        handle_drop_tx: crossbeam_channel::Sender<(ResourceType, ResourceId)>,
     ) -> Self {
         Self {
             inner: Arc::new(Inner {
-                id,
+                type_id,
                 unload_tx: Some(handle_drop_tx),
             }),
         }
@@ -91,22 +91,22 @@ impl HandleUntyped {
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
     pub fn get<'a, T: Any + Resource>(&'_ self, registry: &'a AssetRegistry) -> Option<Ref<'a, T>> {
-        registry.get::<T>(self.inner.id)
+        registry.get::<T>(self.inner.type_id)
     }
 
     /// Returns `ResourceId` associated with this handle.
-    pub fn id(&self) -> ResourceId {
-        self.inner.id
+    pub fn id(&self) -> (ResourceType, ResourceId) {
+        self.inner.type_id
     }
 
     /// Returns true if [`Resource`] load is finished and has succeeded.
     pub fn is_loaded(&self, registry: &AssetRegistry) -> bool {
-        registry.is_loaded(self.inner.id)
+        registry.is_loaded(self.inner.type_id)
     }
 
     /// Returns true if [`Resource`] load failed.
     pub fn is_err(&self, registry: &AssetRegistry) -> bool {
-        registry.is_err(self.inner.id)
+        registry.is_err(self.inner.type_id)
     }
 }
 
@@ -122,7 +122,7 @@ pub struct Handle<T: Any + Resource> {
 
 impl<T: Any + Resource> PartialEq for Handle<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.id == other.inner.id
+        self.inner.type_id == other.inner.type_id
     }
 }
 
@@ -138,21 +138,21 @@ impl<T: Any + Resource> From<HandleUntyped> for Handle<T> {
 impl<T: Any + Resource> Handle<T> {
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
     pub fn get<'a>(&'_ self, registry: &'a AssetRegistry) -> Option<Ref<'a, T>> {
-        registry.get::<T>(self.inner.id)
+        registry.get::<T>(self.inner.type_id)
     }
 
     /// Returns `ResourceId` associated with this handle.
-    pub fn id(&self) -> ResourceId {
-        self.inner.id
+    pub fn id(&self) -> (ResourceType, ResourceId) {
+        self.inner.type_id
     }
 
     /// Returns true if [`Resource`] load is finished and has succeeded.
     pub fn is_loaded(&self, registry: &AssetRegistry) -> bool {
-        registry.is_loaded(self.inner.id)
+        registry.is_loaded(self.inner.type_id)
     }
 
     /// Returns true if [`Resource`] load failed.
     pub fn is_err(&self, registry: &AssetRegistry) -> bool {
-        registry.is_err(self.inner.id)
+        registry.is_err(self.inner.type_id)
     }
 }

@@ -1,17 +1,21 @@
 use std::collections::BTreeMap;
 
-use legion_data_runtime::ResourceId;
+use legion_data_runtime::{ResourceId, ResourceType};
 use legion_ecs::prelude::Entity;
 
 #[derive(Default)]
-pub(crate) struct AssetToEntityMap(BTreeMap<ResourceId, Entity>);
+pub(crate) struct AssetToEntityMap(BTreeMap<(ResourceType, ResourceId), Entity>);
 
 impl AssetToEntityMap {
-    pub(crate) fn get(&self, asset_id: ResourceId) -> Option<Entity> {
+    pub(crate) fn get(&self, asset_id: (ResourceType, ResourceId)) -> Option<Entity> {
         self.0.get(&asset_id).copied()
     }
 
-    pub(crate) fn insert(&mut self, asset_id: ResourceId, entity: Entity) -> Option<Entity> {
+    pub(crate) fn insert(
+        &mut self,
+        asset_id: (ResourceType, ResourceId),
+        entity: Entity,
+    ) -> Option<Entity> {
         self.0.insert(asset_id, entity)
     }
 }

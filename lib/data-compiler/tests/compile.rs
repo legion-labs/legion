@@ -9,7 +9,7 @@ use legion_data_compiler::{
     Locale, Platform, Target,
 };
 use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{AssetLoader, Resource, ResourceId};
+use legion_data_runtime::{to_string, AssetLoader, Resource, ResourceId};
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
 use text_resource::TextResource;
 
@@ -32,7 +32,7 @@ fn compile_atoi() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::new_random_id(text_resource::TextResource::TYPE);
+        let source = (text_resource::TextResource::TYPE, ResourceId::new());
 
         let mut proc = text_resource::TextResourceProc {};
 
@@ -43,7 +43,7 @@ fn compile_atoi() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(format!("{:x}", source));
+        let path = resource_dir.join(to_string(source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -100,7 +100,7 @@ fn compile_intermediate() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceId::new_random_id(text_resource::TextResource::TYPE);
+        let source = (text_resource::TextResource::TYPE, ResourceId::new());
         let mut proc = text_resource::TextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -109,7 +109,7 @@ fn compile_intermediate() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(format!("{:x}", source));
+        let path = resource_dir.join(to_string(source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -190,7 +190,10 @@ fn compile_multi_resource() {
     let source_text_list = vec![String::from("hello"), String::from("world")];
 
     let source = {
-        let source = ResourceId::new_random_id(multitext_resource::MultiTextResource::TYPE);
+        let source = (
+            multitext_resource::MultiTextResource::TYPE,
+            ResourceId::new(),
+        );
         let mut proc = MultiTextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -199,7 +202,7 @@ fn compile_multi_resource() {
 
         resource.text_list = source_text_list.clone();
 
-        let path = resource_dir.join(format!("{:x}", source));
+        let path = resource_dir.join(to_string(source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -269,7 +272,7 @@ fn compile_base64() {
     let expected_base64_value = String::from("AQIDBAUGBwgJ");
 
     let source = {
-        let source = ResourceId::new_random_id(binary_resource::BinaryResource::TYPE);
+        let source = (binary_resource::BinaryResource::TYPE, ResourceId::new());
 
         let mut proc = binary_resource::BinaryResourceProc {};
 
@@ -280,7 +283,7 @@ fn compile_base64() {
 
         resource.content = source_binary_value;
 
-        let path = resource_dir.join(format!("{:x}", source));
+        let path = resource_dir.join(to_string(source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
