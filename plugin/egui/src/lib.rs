@@ -69,19 +69,60 @@ pub struct Egui {
     pub scale: f32,
 }
 
+#[derive(SystemLabel, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum EguiLabels {
+    GatherInput,
+    BeginFrame,
+}
+
 #[derive(Default)]
-pub struct EguiPlugin {}
+pub struct EguiPlugin {
+    has_window: bool,
+}
+
+impl EguiPlugin {
+    pub fn new(has_window: bool) -> EguiPlugin {
+        EguiPlugin { has_window }
+    }
+}
 
 impl Plugin for EguiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(on_window_created.system())
-            .add_system_to_stage(CoreStage::PreUpdate, begin_frame.system());
+        if self.has_window {
+            app.add_startup_system(on_window_created.system());
+        }
+
+        app.insert_resource(Egui {
+            ctx: egui::CtxRef::default(),
+            scale: 1.0,
+        });
+        app.insert_resource(RawInput::default());
+        app.add_system_to_stage(
+            CoreStage::PreUpdate,
+            gather_input.system().label(EguiLabels::GatherInput),
+        );
+        if self.has_window {
+            app.add_system_to_stage(
+                CoreStage::PreUpdate,
+                gather_input_window
+                    .system()
+                    .after(EguiLabels::GatherInput)
+                    .before(EguiLabels::BeginFrame),
+            );
+        }
+        app.add_system_to_stage(
+            CoreStage::PreUpdate,
+            begin_frame
+                .system()
+                .label(EguiLabels::BeginFrame)
+                .after(EguiLabels::GatherInput),
+        );
     }
 }
 
 #[allow(clippy::needless_pass_by_value)]
 fn on_window_created(
-    mut commands: Commands<'_, '_>,
+    mut egui: ResMut<'_, Egui>,
     mut ev_wnd_created: EventReader<'_, '_, WindowCreated>,
     wnd_list: Res<'_, Windows>,
 ) {
@@ -92,15 +133,13 @@ fn on_window_created(
         size = egui::vec2(wnd.physical_width() as f32, wnd.physical_height() as f32);
         pixels_per_point = wnd.scale_factor();
     }
-    let mut ctx = egui::CtxRef::default();
     // We need to run begin_frame at least once so we have the font texture content
-    ctx.begin_frame(RawInput {
+    egui.ctx.begin_frame(RawInput {
         screen_rect: Some(egui::Rect::from_min_size(egui::pos2(0.0, 0.0), size)),
         pixels_per_point: Some(pixels_per_point as f32),
         ..RawInput::default()
     });
-    ctx.end_frame();
-    commands.insert_resource(Egui { ctx, scale: 1.0 });
+    egui.ctx.end_frame();
 }
 
 fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerButton {
@@ -173,18 +212,13 @@ fn key_from_key_code(key: KeyCode) -> Option<Key> {
     }
 }
 
-fn begin_frame(
-    mut egui: ResMut<'_, Egui>,
-    mut cursor_moved: EventReader<'_, '_, CursorMoved>,
+fn gather_input(
+    egui: Res<'_, Egui>,
+    mut raw_input: ResMut<'_, RawInput>,
     mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
     mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
 ) {
-    egui::Window::new("Debug").show(&egui.ctx, |ui| {
-        egui.ctx.settings_ui(ui);
-        ui.label(egui.ctx.texture().version);
-    });
-
     let mut scroll_delta = egui::vec2(0.0, 0.0);
     for mouse_wheel_event in mouse_wheel_events.iter() {
         scroll_delta.x += mouse_wheel_event.x;
@@ -210,12 +244,6 @@ fn begin_frame(
     // TODO: CompositionUpdate(String),
     // TODO: CompositionEnd(String),
     // TODO: Touch
-    for cursor_moved_event in cursor_moved.iter() {
-        events.push(Event::PointerMoved(egui::pos2(
-            cursor_moved_event.position.x * egui.ctx.pixels_per_point(),
-            cursor_moved_event.position.y * egui.ctx.pixels_per_point(),
-        )));
-    }
 
     for cursor_button_event in cursor_button.iter() {
         events.push(Event::PointerButton {
@@ -245,10 +273,32 @@ fn begin_frame(
         }
     }
 
-    let input = RawInput {
+    let raw_input = raw_input.into_inner();
+    raw_input.clone_from(&RawInput {
         scroll_delta,
         events,
         ..RawInput::default()
-    };
-    egui.ctx.begin_frame(input);
+    });
+}
+
+fn gather_input_window(
+    egui: Res<'_, Egui>,
+    mut raw_input: ResMut<'_, RawInput>,
+    mut cursor_moved: EventReader<'_, '_, CursorMoved>,
+) {
+    for cursor_moved_event in cursor_moved.iter() {
+        raw_input.events.push(Event::PointerMoved(egui::pos2(
+            cursor_moved_event.position.x * egui.ctx.pixels_per_point(),
+            cursor_moved_event.position.y * egui.ctx.pixels_per_point(),
+        )));
+    }
+}
+
+fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
+    egui.ctx.begin_frame(raw_input.to_owned());
+
+    egui::Window::new("Debug").show(&egui.ctx, |ui| {
+        egui.ctx.settings_ui(ui);
+        ui.label(egui.ctx.texture().version);
+    });
 }

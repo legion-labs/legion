@@ -8,6 +8,7 @@ use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceId;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_renderer::RendererPlugin;
+use lgn_input::InputPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry::prelude::*;
@@ -148,7 +149,8 @@ fn main() {
         .add_plugin(ResourceRegistryPlugin::default())
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
-        .add_plugin(RendererPlugin::default())
+        .add_plugin(InputPlugin::default())
+        .add_plugin(RendererPlugin::new(false))
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
         .add_plugin(TransformPlugin::default())

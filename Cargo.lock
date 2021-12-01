@@ -2018,6 +2018,7 @@ dependencies = [
  "lgn-editor-proto",
  "lgn-grpc",
  "lgn-mp4",
+ "lgn-input",
  "lgn-renderer",
  "lgn-resource-registry",
  "lgn-streamer",

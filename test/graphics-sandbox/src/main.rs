@@ -115,7 +115,7 @@ fn main() {
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
-        .add_plugin(RendererPlugin::default());
+        .add_plugin(RendererPlugin::new(true));
 
     if matches.is_present("snapshot") {
         app.insert_resource(SnapshotDescriptor {

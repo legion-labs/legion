@@ -3,6 +3,7 @@ use anyhow::Context;
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::QueueType;
 use lgn_math::{EulerRot, Quat};
+use lgn_egui::{Egui, EguiLabels, EguiPlugin};
 use lgn_transform::components::Transform;
 use lgn_egui::{Egui, EguiPlugin};
 
@@ -13,7 +14,15 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct RendererPlugin;
+pub struct RendererPlugin {
+    has_window: bool,
+}
+
+impl RendererPlugin {
+    pub fn new(has_window: bool) -> RendererPlugin {
+        RendererPlugin { has_window }
+    }
+}
 
 #[derive(Default)]
 struct RendererUI {
@@ -23,7 +32,7 @@ struct RendererUI {
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut lgn_app::App) {
         let renderer = Renderer::new().unwrap();
-        app.add_plugin(EguiPlugin::default());
+        app.add_plugin(EguiPlugin::new(self.has_window));
         app.insert_resource(renderer);
         app.insert_resource(RendererUI {
             text: String::from("something"),
@@ -31,7 +40,10 @@ impl Plugin for RendererPlugin {
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
-        app.add_system_to_stage(CoreStage::PreUpdate, update_ui.system());
+        app.add_system_to_stage(
+            CoreStage::PreUpdate,
+            update_ui.system().after(EguiLabels::BeginFrame),
+        );
         // Update
         app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
 
