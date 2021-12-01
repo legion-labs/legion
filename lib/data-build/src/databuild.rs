@@ -186,13 +186,11 @@ impl DataBuild {
     pub fn source_pull(&mut self) -> Result<i32, Error> {
         let mut updated_resources = 0;
 
-        let all_resources = self.project.resource_list();
-
-        for resource_id in &all_resources {
-            let (resource_hash, resource_deps) = self.project.resource_info(*resource_id)?;
+        for resource_id in self.project.resource_list() {
+            let (resource_hash, resource_deps) = self.project.resource_info(resource_id)?;
 
             if self.build_index.update_resource(
-                ResourcePathId::from(*resource_id),
+                ResourcePathId::from(resource_id),
                 Some(resource_hash),
                 resource_deps.clone(),
             ) {
