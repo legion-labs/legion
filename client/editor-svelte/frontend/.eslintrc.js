@@ -17,7 +17,7 @@ module.exports = {
     "svelte3/ignore-styles": () => true,
   },
   rules: {
-    "no-console": "off",
+    "no-console": "error",
     "@typescript-eslint/no-unused-vars": "off",
   },
 };

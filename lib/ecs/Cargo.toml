@@ -9,13 +9,11 @@ license = "MIT OR Apache-2.0"
 keywords = ["ecs", "game", "legion"]
 categories = ["game-engines", "data-structures"]
 
-[features]
-trace = []
-
 [dependencies]
-legion-tasks = { path = "../tasks", version = "0.1.0" }
-legion-utils = { path = "../utils", version = "0.1.0" }
 legion-ecs-macros = { path = "macros", version = "0.1.0" }
+legion-tasks = { path = "../tasks", version = "0.1.0" }
+legion-telemetry = { path = "../telemetry", version = "0.1.0" }
+legion-utils = { path = "../utils", version = "0.1.0" }
 
 async-channel = "1.6"
 fixedbitset = "0.4"

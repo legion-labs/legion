@@ -9,10 +9,6 @@ default-run = "editor-client-svelte"
 license = "MIT OR Apache-2.0"
 keywords = ["game", "legion"]
 
-[build-dependencies]
-tauri-build = "1.0.0-beta.4"
-which = "4.2.2"
-
 [dependencies]
 legion-app = { path = "../../lib/app", version = "0.1.0" }
 #legion-telemetry = { path = "../../lib/telemetry" }
@@ -33,6 +29,10 @@ tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
 log = "0.4"
 regex = "1.5"
 url = "2.2.2"
+
+[build-dependencies]
+legion-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = ["web-appgen"] }
+tauri-build = "1.0.0-beta.4"
 
 [features]
 default = ["custom-protocol"]

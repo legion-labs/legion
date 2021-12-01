@@ -195,23 +195,53 @@ fn create_or_find_default(
         ids.insert(name, id);
     }
 
-    // Create TestEntity Generic DataContainer
-    {
-        let name: ResourcePathName = "/entity/DebugCube".into();
-        let id = {
-            if let Ok(id) = project.find_resource(&name) {
-                id
-            } else {
-                let kind = DebugCube::TYPE;
-                let id = ResourceId::new(kind, name.default_hash());
-                let cube_entity_handle = resources.new_resource(kind).unwrap();
-                project
-                    .add_resource_with_id(name.clone(), kind, id, cube_entity_handle, resources)
-                    .unwrap()
-            }
-        };
+    // Create DebugCube DataContainer
+    (0..3).for_each(|index| {
+        let name: ResourcePathName = format!("/entity/DebugCube{}", index).into();
+        let id = project.find_resource(&name).unwrap_or_else(|_err| {
+            let kind = DebugCube::TYPE;
+            let id = ResourceId::new(kind, name.default_hash());
+            let cube_entity_handle = resources.new_resource(kind).unwrap();
+            let cube_entity = cube_entity_handle.get_mut::<DebugCube>(resources).unwrap();
+
+            cube_entity.color = match index {
+                0 => (255, 0, 0).into(),
+                1 => (255, 255, 0).into(),
+                2 => (255, 0, 255).into(),
+                3 => (0, 0, 255).into(),
+                _ => (192, 192, 192).into(),
+            };
+
+            cube_entity.mesh_id = 1;
+            cube_entity.rotation_speed = match index {
+                0 => (0.4f32, 0.0f32, 0.0f32).into(),
+                1 => (0.0f32, 0.4f32, 0.0f32).into(),
+                2 => (0.0f32, 0.0f32, 0.4f32).into(),
+                3 => (0.0f32, 0.3f32, 0.0f32).into(),
+                _ => (0.0f32, 0.0f32, 0.0f32).into(),
+            };
+
+            cube_entity.position = match index {
+                0 => (0.0f32, 0.0f32, 1.0f32).into(),
+                1 => (1.0f32, 0.0f32, 0.0f32).into(),
+                2 => (-1.0f32, 0.0f32, 0.0f32).into(),
+                3 => (0.0f32, 1.0f32, 0.0f32).into(),
+                _ => (0.0f32, 0.0f32, 0.0f32).into(),
+            };
+
+            project
+                .add_resource_with_id(
+                    name.clone(),
+                    DebugCube::TYPE,
+                    id,
+                    cube_entity_handle,
+                    resources,
+                )
+                .unwrap()
+        });
+
         ids.insert(name, id);
-    }
+    });
 
     ids
 }

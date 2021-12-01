@@ -1,0 +1,16 @@
+[package]
+name = "compiler-test-refs"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "compiler-test-refs"
+doc = false
+
+[dependencies]
+legion-data-compiler = { path = "../../lib/data-compiler" }
+legion-data-runtime = { path = "../../lib/data-runtime" }
+refs-resource = { path = "../../lib/data-offline/test-refs-resource" }
+refs-asset = { path = "../../lib/data-runtime/test-refs-asset" }

@@ -1,6 +1,6 @@
 use legion_ecs::world::World;
 use legion_tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, TaskPoolBuilder};
-use legion_utils::tracing::trace;
+use legion_utils::log::trace;
 
 /// Defines a simple way to determine how many threads to use given the number of remaining cores
 /// and number of total cores

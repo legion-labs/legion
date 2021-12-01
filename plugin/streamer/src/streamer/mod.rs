@@ -1,7 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
 use legion_async::TokioAsyncRuntime;
-use legion_core::Time;
 use legion_ecs::prelude::*;
 use legion_presenter::offscreen_helper::Resolution;
 use legion_renderer::{
@@ -101,13 +100,14 @@ pub(crate) fn handle_stream_events(
             }
             StreamEvent::VideoChannelOpened(stream_id, data_channel) => {
                 let resolution = Resolution::new(1024, 768);
-                commands
-                    .entity(stream_id.entity)
-                    .insert(RenderSurface::new(
-                        &renderer,
-                        RenderSurfaceExtents::new(resolution.width(), resolution.height()),
-                    ))
-                    .insert(VideoStream::new(&renderer, resolution, data_channel).unwrap());
+                let mut render_surface = RenderSurface::new(
+                    &renderer,
+                    RenderSurfaceExtents::new(resolution.width(), resolution.height()),
+                );
+                render_surface.register_presenter(|| {
+                    VideoStream::new(&renderer, resolution, data_channel).unwrap()
+                });
+                commands.entity(stream_id.entity).insert(render_surface);
 
                 info!(
                     "Video channel is now opened for stream {}: adding a video-stream component",
@@ -115,7 +115,6 @@ pub(crate) fn handle_stream_events(
                 );
             }
             StreamEvent::VideoChannelClosed(stream_id, _) => {
-                commands.entity(stream_id.entity).remove::<VideoStream>();
                 commands.entity(stream_id.entity).remove::<RenderSurface>();
 
                 info!(
@@ -171,16 +170,16 @@ pub(crate) fn handle_stream_events(
 
 pub(crate) fn update_streams(
     renderer: Res<'_, Renderer>,
-    mut query: Query<'_, '_, (&mut VideoStream, &mut RenderSurface)>,
+    mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
 ) {
     for event in video_stream_events.iter() {
-        let (mut video_stream, mut render_surface) = query.get_mut(event.stream_id.entity).unwrap();
-
+        let mut render_surface = query.get_mut(event.stream_id.entity).unwrap();
+        let render_pass = render_surface.test_renderpass();
         match &event.info {
             VideoStreamEventInfo::Color { id, color } => {
                 log::info!("received color command id={}", id);
-                render_surface.test_renderpass.color = color.0;
+                render_pass.write().set_color(color.0);
             }
             VideoStreamEventInfo::Resize { width, height } => {
                 let resolution = Resolution::new(*width, *height);
@@ -188,34 +187,11 @@ pub(crate) fn update_streams(
                     &renderer,
                     RenderSurfaceExtents::new(resolution.width(), resolution.height()),
                 );
-                video_stream.resize(&renderer, resolution).unwrap();
             }
             VideoStreamEventInfo::Speed { id, speed } => {
                 log::info!("received speed command id={}", id);
-                render_surface.test_renderpass.speed = *speed;
+                render_pass.write().set_speed(*speed);
             }
         }
-    }
-}
-
-pub(crate) fn render_streams(
-    async_rt: ResMut<'_, TokioAsyncRuntime>,
-    renderer: Res<'_, Renderer>,
-    mut q_vs_rs: Query<'_, '_, (&mut VideoStream, &mut RenderSurface)>,
-    mut time: ResMut<'_, Time>,
-) {
-    time.update();
-
-    let graphics_queue = renderer.graphics_queue();
-    let transient_descriptor_heap = renderer.transient_descriptor_heap();
-    let wait_sem = renderer.frame_signal_semaphore();
-
-    for (mut video_stream, render_surface) in q_vs_rs.iter_mut() {
-        async_rt.start_detached(video_stream.present(
-            graphics_queue,
-            transient_descriptor_heap,
-            wait_sem,
-            render_surface.into_inner(),
-        ));
     }
 }

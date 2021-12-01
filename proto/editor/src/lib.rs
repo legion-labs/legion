@@ -1,1 +1,4 @@
-tonic::include_proto!("editor");
+#[rustfmt::skip]
+#[path = "../codegen/editor.rs"]
+mod editor;
+pub use editor::*;

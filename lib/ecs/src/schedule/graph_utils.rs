@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt::Debug, hash::Hash};
 
 use fixedbitset::FixedBitSet;
-use legion_utils::{tracing::warn, AHashExt, HashMap, HashSet};
+use legion_utils::{log::warn, AHashExt, HashMap, HashSet};
 
 pub enum DependencyGraphError<Labels> {
     GraphCycles(Vec<(usize, Labels)>),

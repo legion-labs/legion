@@ -162,15 +162,16 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
         generate_offline_json_writes(&offline_default_instance, &data_container_info.members);
 
     let use_quotes = if add_uses {
+        let imports = data_container_info.imports();
         quote! {
             use std::{any::Any, io};
             use legion_data_offline::{PropertyDescriptor,
                 resource::{OfflineResource, ResourceProcessor, ResourceReflection},
-                ResourcePathId
             };
             use legion_data_runtime::{Asset, AssetLoader, Resource};
             use legion_utils::DefaultHash;
             use std::collections::HashMap;
+            #(use #imports;)*
         }
     } else {
         quote! {}

@@ -13,11 +13,11 @@ endif
 
 # make takes the first target as the default target, so please keep it at the top
 # all the checks used in the CI
-check: check-format check-build check-clippy check-deps check-dockerize
+check: check-format check-build check-clippy check-deps
 
 check-env:
 	rustup --version
-	cargo deny --version
+	cargo --version
 	mdbook --version
 	cmake --version
 	python3 --version
@@ -36,13 +36,11 @@ check-clippy:
 check-deps:
 	cargo deny check
 
-check-dockerize:
-	echo "cargo dockerize check"
-
 test: test-build test-run
 
 test-build:
 	cargo test --no-run
+	cargo build -p compiler-*
 
 test-run:
 	cargo test -- --skip gpu_
@@ -63,11 +61,11 @@ build-all: build build-release
 build:
 	cargo build
 
+codegen:
+	cargo build --features=run-codegen
+
 build-release:
 	cargo build --release
-
-build-release-musl:
-	cargo build --bin "aws-lambda-*" --target x86_64-unknown-linux-musl --release
 
 cov:
 	cargo clean
@@ -108,16 +106,10 @@ api-doc:
 book:
 	mdbook build ./doc/
 
-dockerize:
-	echo "cargo dockerize build"
-
-dockerize-release:
-	echo "cargo dockerize build --release"
-
-dockerize-push:
-	echo "cargo dockerize push --provider=aws"
-
 clean:
 	cargo clean
 
-.PHONY: check-format check-build check-clippy check-deps check-env check-dockerize test test-build test-run bench bench-build bench-run build-all build build-release cov grcov timings api-doc book dockerize dockerize-deploy clean
+git-clean:
+	git clean -fxd
+
+.PHONY: check-format check-build check-clippy check-deps check-env test test-build test-run bench bench-build bench-run build-all build build-release cov grcov timings api-doc book clean git-clean

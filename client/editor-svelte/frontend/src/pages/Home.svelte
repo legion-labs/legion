@@ -1,34 +1,30 @@
 <script lang="ts">
   import { getAllResources, getResourceProperties } from "@/api";
+  import CurrentResourceProperties from "@/components/CurrentResourceProperties.svelte";
   import Panel from "@/components/Panel.svelte";
   import TopBar from "@/components/TopBar.svelte";
-  import Video, {
-    Resolution,
-    ResourceWithProperties,
-  } from "@/components/Video.svelte";
-  import { asyncData } from "@/stores/asyncData";
+  import StatusBar from "@/components/StatusBar.svelte";
+  import Video, { Resolution } from "@/components/Video.svelte";
+  import asyncData from "@/stores/asyncData";
+  import currentResource from "@/stores/currentResource";
+  import NumberInput from "@/components/NumberInput.svelte";
 
-  let selectedResourceId: string | null = null;
-  let selectedResource: ResourceWithProperties | null = null;
+  const { run: runGetAllResources } = asyncData(getAllResources);
 
-  const { run } = asyncData(getAllResources);
-
-  let fetchAllResources = run();
-
+  let currentResourceId: string | null = null;
+  let fetchAllResources = runGetAllResources();
   let desiredVideoResolution: Resolution | undefined;
 
   const tryAgain = () => {
-    fetchAllResources = run();
+    $currentResource = null;
+    currentResourceId = null;
+    fetchAllResources = runGetAllResources();
   };
 
-  $: if (selectedResourceId) {
-    getResourceProperties(selectedResourceId).then(
-      ({ description, properties }) => {
-        if (description) {
-          selectedResource = { description, properties };
-        }
-      }
-    );
+  $: if (currentResourceId) {
+    getResourceProperties(currentResourceId).then((resource) => {
+      $currentResource = resource;
+    });
   }
 </script>
 
@@ -36,39 +32,20 @@
   <TopBar />
   <div class="content-wrapper">
     <div class="content">
-      <div class="main-content">
-        <Panel>
-          <span slot="header">
-            <span>Main Stream</span>
-            {#if desiredVideoResolution}
-              <span>
-                - {desiredVideoResolution.width}x{desiredVideoResolution.height}
-              </span>
-            {/if}
-          </span>
-          <div class="video-container" slot="content">
-            <Video
-              bind:desiredResolution={desiredVideoResolution}
-              resource={selectedResource}
-            />
-          </div>
-        </Panel>
-      </div>
-      <div class="v-separator" />
       <div class="secondary-contents">
         <div class="resources">
           <Panel>
-            <span slot="header"> Resources </span>
+            <span slot="header">Resources</span>
             <div class="resource-content" slot="content">
               {#await fetchAllResources}
-                <div class="resources-loading">loading...</div>
+                <div class="resources-loading">Loading...</div>
               {:then data}
                 {#each data as resource (resource.id)}
                   <div
                     class="resource-item"
-                    class:active-resource-item={selectedResourceId ===
+                    class:active-resource-item={currentResourceId ===
                       resource.id}
-                    on:click={() => (selectedResourceId = resource.id)}
+                    on:click={() => (currentResourceId = resource.id)}
                   >
                     {resource.path}
                   </div>
@@ -87,13 +64,42 @@
           </Panel>
         </div>
         <div class="h-separator" />
+        <div class="file-system">
+          <Panel>
+            <div slot="header">File System</div>
+          </Panel>
+        </div>
+      </div>
+      <div class="v-separator" />
+      <div class="main-content">
         <Panel>
-          <span slot="header"> Properties </span>
-          <span slot="content"> <div /> </span>
+          <span slot="header">
+            <span>Main Stream</span>
+            {#if desiredVideoResolution}
+              <span>
+                - {desiredVideoResolution.width}x{desiredVideoResolution.height}
+              </span>
+            {/if}
+          </span>
+          <div class="video-container" slot="content">
+            <Video bind:desiredResolution={desiredVideoResolution} />
+          </div>
         </Panel>
+      </div>
+      <div class="v-separator" />
+      <div class="secondary-contents">
+        <div class="properties">
+          <Panel>
+            <div slot="header">Properties</div>
+            <div slot="content">
+              <CurrentResourceProperties />
+            </div>
+          </Panel>
+        </div>
       </div>
     </div>
   </div>
+  <StatusBar />
 </div>
 
 <style lang="postcss">
@@ -102,7 +108,7 @@
   }
 
   .content-wrapper {
-    @apply h-[calc(100vh-1.75rem)] w-full;
+    @apply h-[calc(100vh-3.5rem)] w-full overflow-auto;
   }
 
   .content {
@@ -110,7 +116,7 @@
   }
 
   .main-content {
-    @apply flex flex-col flex-shrink-0 w-3/4;
+    @apply flex flex-col w-full;
   }
 
   .video-container {
@@ -126,11 +132,11 @@
   }
 
   .secondary-contents {
-    @apply flex flex-col w-full;
+    @apply flex flex-col flex-shrink-0 w-80 h-full;
   }
 
   .resources {
-    @apply h-1/3;
+    @apply h-full flex-shrink overflow-auto;
   }
 
   .resources-loading {
@@ -146,14 +152,22 @@
   }
 
   .resource-content {
-    @apply pb-2;
+    @apply pb-2 break-all;
   }
 
   .resource-item {
-    @apply cursor-pointer hover:bg-gray-400 py-1 px-2;
+    @apply cursor-pointer hover:bg-gray-500 py-1 px-2;
   }
 
   .active-resource-item {
-    @apply bg-gray-400 italic;
+    @apply bg-gray-500;
+  }
+
+  .file-system {
+    @apply h-full flex-shrink overflow-auto;
+  }
+
+  .properties {
+    @apply h-full flex-shrink overflow-auto;
   }
 </style>

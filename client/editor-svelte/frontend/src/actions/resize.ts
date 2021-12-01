@@ -1,14 +1,12 @@
 export default function resize(
-  node: Node,
+  element: Element,
   listener: (rect: DOMRectReadOnly) => void
 ) {
   const observer = new ResizeObserver(([entry]) => {
     listener(entry.contentRect);
   });
 
-  if (node instanceof Element) {
-    observer.observe(node as Element);
-  }
+  observer.observe(element);
 
   return {
     destroy() {

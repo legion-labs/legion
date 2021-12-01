@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use downcast_rs::{impl_downcast, Downcast};
 use fixedbitset::FixedBitSet;
-use legion_utils::{tracing::info, HashMap, HashSet};
+use legion_utils::{log::info, HashMap, HashSet};
 
 use super::IntoSystemDescriptor;
 use crate::{

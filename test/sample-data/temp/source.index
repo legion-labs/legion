@@ -3,6 +3,18 @@
   "project_index": "..\\project.index",
   "resources": [
     {
+      "id": "0abe069400000000b9372a5690ac15c3",
+      "dependencies": [],
+      "resource_hash": "eeb3c79906957aa8"
+    },
+    {
+      "id": "0abe069400000000b9372a5690ac15c3|35b5717e",
+      "dependencies": [
+        "0abe069400000000b9372a5690ac15c3"
+      ],
+      "resource_hash": null
+    },
+    {
       "id": "0abe069400000000cea897a15bc29f32",
       "dependencies": [],
       "resource_hash": "ac268ff01e93b12e"
@@ -11,6 +23,30 @@
       "id": "0abe069400000000cea897a15bc29f32|35b5717e",
       "dependencies": [
         "0abe069400000000cea897a15bc29f32"
+      ],
+      "resource_hash": null
+    },
+    {
+      "id": "0abe069400000000ee9a7a73809e33c0",
+      "dependencies": [],
+      "resource_hash": "6d1c727b13bc8984"
+    },
+    {
+      "id": "0abe069400000000ee9a7a73809e33c0|35b5717e",
+      "dependencies": [
+        "0abe069400000000ee9a7a73809e33c0"
+      ],
+      "resource_hash": null
+    },
+    {
+      "id": "0abe069400000000f664236f445ca9bd",
+      "dependencies": [],
+      "resource_hash": "3aaef74888627c46"
+    },
+    {
+      "id": "0abe069400000000f664236f445ca9bd|35b5717e",
+      "dependencies": [
+        "0abe069400000000f664236f445ca9bd"
       ],
       "resource_hash": null
     },
@@ -126,7 +162,7 @@
         "e2e9edca000000007714d9ad404557f7|84935d1f",
         "e2e9edca000000007714d9ad404557f7|84935d1f"
       ],
-      "resource_hash": "cc05b4b99ecf0786"
+      "resource_hash": "6ffa29fa0abde998"
     },
     {
       "id": "97b0740f00000000519d4a9f47df0ce5|aad89045",
@@ -153,7 +189,7 @@
     {
       "id": "97b0740f0000000091d021d6f4e05efe",
       "dependencies": [],
-      "resource_hash": "a7a94184f11d5ade"
+      "resource_hash": "11a19c2066c8b883"
     },
     {
       "id": "97b0740f0000000091d021d6f4e05efe|aad89045",
@@ -165,14 +201,16 @@
     {
       "id": "97b0740f00000000fcd3242ec9691beb",
       "dependencies": [
-        "0abe069400000000cea897a15bc29f32|35b5717e",
+        "0abe069400000000b9372a5690ac15c3|35b5717e",
+        "0abe069400000000ee9a7a73809e33c0|35b5717e",
+        "0abe069400000000f664236f445ca9bd|35b5717e",
         "0cba171e000000005127bdca42145845|30495fed",
         "0cba171e000000007a80bfadcb6549e7|30495fed",
         "0cba171e000000007df5d0fcdb1eb69b|30495fed",
         "0cba171e0000000090b1c112655b00e8|30495fed",
         "97b0740f00000000519d4a9f47df0ce5|aad89045"
       ],
-      "resource_hash": "b6a5b531a7d2e747"
+      "resource_hash": "020b45bc53cb19c9"
     },
     {
       "id": "d8a1e0c20000000061f6de1be4764697",

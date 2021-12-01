@@ -124,7 +124,7 @@ impl PresentableFrame {
         result
     }
 
-    /// Present the current swapchain
+    /// Present the current swapchain    
     pub fn do_present(
         &mut self,
         queue: &Queue,

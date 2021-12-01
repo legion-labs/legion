@@ -1,29 +1,23 @@
 <script context="module" lang="ts">
-  export type ResourceWithProperties = {
-    description: ResourceDescription;
-    properties: ResourceProperty[];
-  };
-
   export type Resolution = { width: number; height: number };
 </script>
 
 <script lang="ts">
   import { onMount } from "svelte";
   import resize from "@/actions/resize";
-  import { VideoPlayer } from "@/lib";
+  import videoPlayer, { PushableHTMLVideoElement } from "@/actions/videoPlayer";
   import { debounce, retry } from "@/lib/promises";
   import { initializeStream, onReceiveControlMessage } from "@/api";
-  import { ResourceDescription, ResourceProperty } from "@/proto/editor/editor";
+  import { statusStore } from "@/stores/statusBarData";
+  import log from "@/lib/log";
 
   const reconnectionTimeout = 600;
 
   const resizeVideoTimeout = 300;
 
-  export let resource: ResourceWithProperties | null;
+  export let desiredResolution: Resolution | undefined;
 
   let resolution: Resolution | undefined;
-
-  export let desiredResolution: Resolution | undefined;
 
   let videoElement: HTMLVideoElement;
 
@@ -31,13 +25,13 @@
 
   let controlChannel: RTCDataChannel | null;
 
-  let statusMessage: string | null = "Connecting...";
-
   let peerConnection: RTCPeerConnection | null;
 
   let videoAlreadyRendered = false;
 
   let loading = false;
+
+  $statusStore = "Connecting...";
 
   onMount(async () => {
     initialize();
@@ -63,13 +57,11 @@
 
   const initialize = () => {
     if (!videoElement) {
-      console.error("Video element couldn't be found");
+      log.error("video", "Video element couldn't be found");
       return;
     }
 
-    const videoPlayer = new VideoPlayer(videoElement);
-
-    console.log("Initializing WebRTC...");
+    log.debug("video", "Initializing WebRTC");
 
     peerConnection = new RTCPeerConnection({
       iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
@@ -82,7 +74,7 @@
     };
 
     peerConnection.onicecandidate = async (iceEvent) => {
-      console.log(iceEvent);
+      log.debug("video", iceEvent);
 
       if (peerConnection && iceEvent.candidate === null) {
         const remoteDescription = await retry(() => {
@@ -104,7 +96,7 @@
         peerConnection &&
         peerConnection.iceConnectionState === "disconnected"
       ) {
-        console.log("Disconnected");
+        log.debug("video", "Disconnected");
 
         window.setTimeout(() => {
           if (videoElement) {
@@ -113,7 +105,7 @@
             videoElement.load();
           }
 
-          statusMessage = "Reconnecting...";
+          $statusStore = "Reconnecting...";
 
           destroyResources();
 
@@ -133,28 +125,33 @@
         }
         const { videoWidth, videoHeight } = event.target;
 
-        console.log(`Video resolution is now: ${videoWidth}x${videoHeight}.`);
+        log.debug(
+          "video",
+          `Video resolution is now: ${videoWidth}x${videoHeight}.`
+        );
 
         loading = false;
-        statusMessage = null;
+        $statusStore = null;
         resolution = desiredResolution;
       }
     });
 
     videoChannel.onerror = (error: unknown) => {
-      console.log(error);
+      log.error("video", error);
     };
 
     videoChannel.onopen = () => {
-      console.log("Video channel is now open.");
+      log.debug("video", "Video channel is now open.");
     };
 
     videoChannel.onclose = () => {
-      console.log("Video channel is now closed.");
+      log.debug("video", "Video channel is now closed.");
     };
 
     videoChannel.onmessage = async (message) => {
-      videoPlayer.push(
+      // videoElement is augmented with the `videoPlayer` action and will
+      // provide a `push` function.
+      (videoElement as PushableHTMLVideoElement).push(
         // In Tauri message.data is an ArrayBuffer
         // while it's a Blob in browser
         message.data instanceof ArrayBuffer
@@ -164,11 +161,11 @@
     };
 
     controlChannel.onopen = (event) => {
-      console.log("Control channel is now open: ", event);
+      log.debug("video", log.json`Control channel is now open: ${event}`);
     };
 
     controlChannel.onclose = (event) => {
-      console.log("Control channel is now closed: ", event);
+      log.debug("video", log.json`Control channel is now closed: ${event}`);
     };
 
     controlChannel.onmessage = async (
@@ -199,7 +196,7 @@
       return;
     }
 
-    console.log(`Desired resolution is now: ${width}x${height}`);
+    log.debug("video", `Desired resolution is now: ${width}x${height}`);
 
     if (videoChannel && videoChannel.readyState === "open") {
       videoChannel.send(JSON.stringify({ event: "resize", width, height }));
@@ -213,9 +210,6 @@
     };
   };
 
-  // TODO: Drop?
-  $: console.log(`New resource requested ${resource}`);
-
   $: if (
     resolution &&
     desiredResolution &&
@@ -223,7 +217,7 @@
       resolution.width !== desiredResolution.width)
   ) {
     resizeVideo(desiredResolution);
-    statusMessage = "Resizing...";
+    $statusStore = "Resizing...";
     loading = true;
   }
 </script>
@@ -233,13 +227,14 @@
     class="video"
     class:opacity-0={loading}
     class:opacity-100={!loading}
+    use:videoPlayer
     bind:this={videoElement}
   >
     <track kind="captions" />
   </video>
-  {#if statusMessage}
+  {#if $statusStore}
     <h3 class="status">
-      <span>{statusMessage}</span>
+      <span>{$statusStore}</span>
     </h3>
   {/if}
 </div>

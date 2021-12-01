@@ -20,7 +20,7 @@
   }
 
   .tabs {
-    @apply flex flex-row h-7;
+    @apply flex flex-row h-8;
   }
 
   .header {
@@ -28,7 +28,7 @@
   }
 
   .header-container {
-    @apply flex flex-row items-center bg-gray-700 px-2 rounded-t-lg text-sm;
+    @apply flex flex-row items-center bg-gray-700 px-2 rounded-t-lg;
   }
 
   .tabs-filler-bg {

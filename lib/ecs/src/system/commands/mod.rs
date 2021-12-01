@@ -3,7 +3,7 @@ mod command_queue;
 use std::marker::PhantomData;
 
 pub use command_queue::CommandQueue;
-use legion_utils::tracing::{error, warn};
+use legion_utils::log::{error, warn};
 
 use super::Resource;
 use crate::{

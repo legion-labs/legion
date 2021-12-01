@@ -36,11 +36,13 @@ async fn parse_thread_bock<Proc: ThreadBlockProcessor>(
     Ok(())
 }
 
+#[derive(Debug)]
 pub(crate) struct CallTreeNode {
-    name: String,
-    scopes: Vec<CallTreeNode>,
-    begin_ms: f64,
-    end_ms: f64,
+    pub hash: u32,
+    pub name: String,
+    pub scopes: Vec<CallTreeNode>,
+    pub begin_ms: f64,
+    pub end_ms: f64,
 }
 
 struct CallTreeBuilder {
@@ -70,6 +72,7 @@ impl CallTreeBuilder {
     pub fn finish(mut self) -> CallTreeNode {
         if self.stack.is_empty() {
             return CallTreeNode {
+                hash: 0,
                 name: String::new(),
                 begin_ms: self.get_time(self.ts_begin_block),
                 end_ms: self.get_time(self.ts_end_block),
@@ -97,6 +100,7 @@ impl CallTreeBuilder {
             self.stack.push(top);
         } else {
             let new_root = CallTreeNode {
+                hash: 0,
                 name: String::new(),
                 begin_ms: self.get_time(self.ts_begin_block),
                 end_ms: self.get_time(self.ts_end_block),
@@ -111,6 +115,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
     fn on_begin_scope(&mut self, scope_name: String, ts: u64) {
         let time = self.get_time(ts);
         let scope = CallTreeNode {
+            hash: compute_scope_hash(&scope_name),
             name: scope_name,
             begin_ms: time,
             end_ms: self.get_time(self.ts_end_block),
@@ -126,6 +131,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
             } else if old_top.name.is_empty() {
+                old_top.hash = compute_scope_hash(&scope_name);
                 old_top.name = scope_name;
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
@@ -134,6 +140,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
             }
         } else {
             let scope = CallTreeNode {
+                hash: compute_scope_hash(&scope_name),
                 name: scope_name,
                 begin_ms: self.get_time(self.ts_begin_block),
                 end_ms: time,
@@ -165,8 +172,22 @@ pub(crate) async fn compute_block_call_tree(
     Ok(builder.finish())
 }
 
-type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
+pub(crate) type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
 const CRC32: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_ISCSI);
+
+fn compute_scope_hash(name: &str) -> u32 {
+    //todo: add filename
+    CRC32.checksum(name.as_bytes())
+}
+
+pub(crate) fn record_scope_in_map(node: &CallTreeNode, scopes: &mut ScopeHashMap) {
+    scopes.entry(node.hash).or_insert_with(|| ScopeDesc {
+        name: node.name.clone(),
+        filename: "".to_string(),
+        line: 0,
+        hash: node.hash,
+    });
+}
 
 fn make_spans_from_tree(
     tree: &CallTreeNode,
@@ -174,15 +195,9 @@ fn make_spans_from_tree(
     scopes: &mut ScopeHashMap,
     spans: &mut Vec<Span>,
 ) -> u32 {
-    let scope_hash = CRC32.checksum(tree.name.as_bytes()); //todo: add filename
-    scopes.entry(scope_hash).or_insert_with(|| ScopeDesc {
-        name: tree.name.clone(),
-        filename: "".to_string(),
-        line: 0,
-        hash: scope_hash,
-    });
+    record_scope_in_map(tree, scopes);
     let span = Span {
-        scope_hash,
+        scope_hash: tree.hash,
         depth,
         begin_ms: tree.begin_ms,
         end_ms: tree.end_ms,

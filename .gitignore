@@ -13,7 +13,6 @@
 !/.vscode/cspell.json
 !/.vscode/extensions.json
 !/.vscode/settings.json
-!/.vscode/settings.json
 !/.vscode/launch_sample.json
 !/.vscode/tasks_sample.json
 
@@ -23,3 +22,8 @@
 # Emacs/Vim temp files
 *~
 legion_local.toml
+
+# Yarn/NodeJs files
+node_modules/
+dist/
+yarn-*.log

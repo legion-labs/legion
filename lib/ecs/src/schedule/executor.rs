@@ -1,4 +1,5 @@
 use downcast_rs::{impl_downcast, Downcast};
+use legion_telemetry::trace_scope;
 
 use crate::{archetype::ArchetypeGeneration, schedule::ParallelSystemContainer, world::World};
 
@@ -31,11 +32,10 @@ impl ParallelSystemExecutor for SingleThreadedExecutor {
 
         for system in systems {
             if system.should_run() {
-                #[cfg(feature = "trace")]
-                let system_span =
-                    legion_utils::tracing::info_span!("system", name = &*system.name());
-                #[cfg(feature = "trace")]
-                let _system_guard = system_span.enter();
+                // TODO: add system name to trace scope
+                trace_scope!();
+                // let system_span = info_span!("system", name = &*system.name());
+                // let _system_guard = system_span.enter();
                 system.system_mut().run((), world);
             }
         }
