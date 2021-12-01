@@ -3,11 +3,11 @@ import {
   EditorClientImpl,
   ResourceDescription,
   GetResourcePropertiesResponse,
-} from "@lgn/protos-editor/codegen/editor";
+} from "@lgn/proto-editor/codegen/editor";
 import {
   GrpcWebImpl as StreamingGrpcWebImpl,
   StreamerClientImpl,
-} from "@/proto/streaming/streaming";
+} from "@lgn/proto-streaming/codegen/streaming";
 
 // TODO: Move to config
 const serverUrl = "http://[::1]:50051";

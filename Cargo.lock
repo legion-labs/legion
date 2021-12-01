@@ -4112,10 +4112,10 @@ name = "legion-streaming-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "legion-build-utils",
  "prost",
  "tokio",
  "tonic",
- "tonic-build",
 ]
 
 [[package]]

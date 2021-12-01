@@ -23,7 +23,7 @@
 //! Restriction and rules:
 //! * We can't have binary files checked in
 //! * Modification of the generated files would not be allowed under any circumstances, the build machines fail if any change was detected
-//! * Files whose generation ca be driven by features, or that are platform dependent would still use OUT_DIR.
+//! * Files whose generation ca be driven by features, or that are platform dependent would still use `OUT_DIR`.
 //! * Other cases where the in repo generation doesn't bring much
 //!
 

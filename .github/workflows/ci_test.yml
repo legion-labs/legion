@@ -15,12 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Run Yarn install
-        run: |
-          echo $PATH
-          ls $CARGO_HOME
-          yarn install
-
       - name: Run formatting check
         run: make check-format
 
