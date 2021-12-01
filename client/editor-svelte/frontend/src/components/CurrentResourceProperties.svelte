@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ResourceProperty, updateResourceProperties } from "@/api";
+  import { PropertyUpdate, updateResourceProperties } from "@/api";
   import currentResource from "@/stores/currentResource";
   import BooleanProperty from "./properties/BooleanProperty.svelte";
   import ColorProperty from "./properties/ColorProperty.svelte";
@@ -38,9 +38,36 @@
 
   // TODO: Improve type safety
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let propertyUpdates: PropertyUpdate[] = [];
+
+  // TODO: Improve type safety
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function onInput(name: string, ptype: string, value: any) {
     if (updateTimeout) {
       clearTimeout(updateTimeout);
+    }
+
+    const newPropertyUpdate = {
+      name,
+      value: ptype === "color" ? parseInt(value, 16) : value,
+    };
+
+    // We save all the property updates performed in a batch.
+    // In order to do so we need to know if the property that
+    // just got modified was pristine or not, so we look for it
+    // in the property updates array.
+    const propertyUpdateIndex = propertyUpdates.findIndex(
+      (propertyUpdate) => propertyUpdate.name === name
+    );
+
+    if (propertyUpdateIndex < 0) {
+      // If the property has not been modified since the debounce timeout
+      // started then we can push the new update to the known property updates
+      propertyUpdates = [...propertyUpdates, newPropertyUpdate];
+    } else {
+      // Otherwise, we simply need to replace the already modified property value
+      // by the new one
+      propertyUpdates[propertyUpdateIndex].value = newPropertyUpdate.value;
     }
 
     updateTimeout = setTimeout(() => {
@@ -50,18 +77,14 @@
         return;
       }
 
-      // TODO: The update strategy hasn't been decided yet
-      // but in the future we might want to batch the updates
-      updateResourceProperties($currentResource.id, $currentResource.version, [
-        { name, value: ptype === "color" ? parseInt(value, 16) : value },
-      ]);
+      updateResourceProperties(
+        $currentResource.id,
+        $currentResource.version,
+        propertyUpdates
+      );
+
+      propertyUpdates = [];
     }, propertyUpdateDebounceTimeout);
-  }
-
-  function setPropertyValueToDefault(property: ResourceProperty) {
-    property.value = property.defaultValue;
-
-    onInput(property.name, property.ptype, property.defaultValue);
   }
 </script>
 
@@ -129,7 +152,11 @@
             </div>
             <div
               class="property-actions"
-              on:click={() => setPropertyValueToDefault(property)}
+              on:click={() => {
+                property.value = property.defaultValue;
+
+                onInput(property.name, property.ptype, property.defaultValue);
+              }}
             >
               <div
                 class="property-action-default"

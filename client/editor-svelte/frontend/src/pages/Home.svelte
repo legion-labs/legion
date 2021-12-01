@@ -74,6 +74,9 @@
         <div class="file-system">
           <Panel>
             <div slot="header">File System</div>
+            <div slot="content">
+              <CurrentResourceProperties />
+            </div>
           </Panel>
         </div>
       </div>

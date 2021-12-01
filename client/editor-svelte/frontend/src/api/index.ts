@@ -126,7 +126,7 @@ export async function getResourceProperties({
   };
 }
 
-type PropertyUpdate = {
+export type PropertyUpdate = {
   name: string;
   // Can be any JSON serializable value
   value: unknown;
