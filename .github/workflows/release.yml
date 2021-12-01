@@ -21,9 +21,6 @@ jobs:
       - name: Build release
         run: make build-release
 
-      - name: Build release musl
-        run: make build-release-musl
-
       - name: Upload release artifacts
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v2
