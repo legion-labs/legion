@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { invoke } from "@tauri-apps/api";
   import clickOutside from "@/actions/clickOutside";
   import log from "@/lib/log";
   import {
@@ -9,28 +10,39 @@
 
   export let documentTitle: string | null = null;
 
-  const onMenuMouseEnter = (id: TopBarMenuId) => {
+  function onMenuMouseEnter(id: TopBarMenuId) {
     // We set the topBarMenu value (and therefore open said menu dropdown)
     // only when a menu is open
     $topBarMenu && topBarMenu.set(id);
-  };
+  }
 
-  const onMenuClick = (id: TopBarMenuId) => {
+  function onMenuClick(id: TopBarMenuId) {
     // Simple menu dropdown display toggle
     $topBarMenu ? topBarMenu.close() : topBarMenu.set(id);
-  };
+  }
 
-  const onMenuItemClick = (title: string) => {
+  function onMenuItemClick(title: string) {
     log.debug("layout:topbar", `Clicked on item ${title}`);
-    // When a user clicks on a menu dropdown item, we just close the menu
+    // When a user clicks on a menu dropdown item, we just close the menu for now
     topBarMenu.close();
-  };
+  }
 
-  const closeMenu = () => {
+  function closeMenu() {
     if ($topBarMenu) {
       topBarMenu.close();
     }
-  };
+  }
+
+  async function authenticate() {
+    if (!window.__TAURI__) {
+      // TODO: Add TS auth code: https://github.com/legion-labs/legion/issues/617
+      log.error("auth", "You can't authenticate in the browser for the moment");
+
+      return;
+    }
+
+    log.debug("auth", await invoke("authenticate"));
+  }
 </script>
 
 <div class="root">
@@ -73,7 +85,11 @@
       Untitled document
     {/if}
   </div>
-  <div class="filler" />
+  <div class="actions">
+    <div class="authenticate" title="Authenticate" on:click={authenticate}>
+      Me
+    </div>
+  </div>
 </div>
 
 <style lang="postcss">
@@ -113,7 +129,11 @@
     @apply hidden sm:flex;
   }
 
-  .filler {
-    @apply hidden sm:flex flex-1;
+  .actions {
+    @apply justify-end hidden sm:flex items-center flex-1 pr-2;
+  }
+
+  .authenticate {
+    @apply flex justify-center items-center cursor-pointer rounded-full bg-white h-6 w-6 text-sm text-gray-800;
   }
 </style>

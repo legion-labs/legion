@@ -60,16 +60,51 @@
     windows_subsystem = "windows"
 )]
 
+use std::sync::Arc;
+
+use config::Config;
 use legion_app::prelude::*;
 use legion_async::AsyncPlugin;
-use legion_tauri::{TauriPlugin, TauriPluginSettings};
+use legion_online::authentication::{
+    Authenticator, AwsCognitoClientAuthenticator, TokenCache as OnlineTokenCache, UserInfo,
+};
+use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
 
-fn main() {
-    let builder = tauri::Builder::default().invoke_handler(tauri::generate_handler![]);
+mod config;
+
+type TokenCache = OnlineTokenCache<AwsCognitoClientAuthenticator>;
+
+#[legion_tauri_command]
+async fn authenticate(token_cache: tauri::State<'_, Arc<TokenCache>>) -> anyhow::Result<UserInfo> {
+    let access_token = token_cache.login().await?.access_token;
+
+    token_cache
+        .authenticator()
+        .get_user_info(&access_token)
+        .await
+        .map_err(Into::into)
+}
+
+fn main() -> anyhow::Result<()> {
+    let config = Config::new_from_environment()?;
+
+    let authenticator =
+        AwsCognitoClientAuthenticator::from_authorization_url(&config.authorization_url)?;
+
+    let projects_dir = directories::ProjectDirs::from("com", "legionlabs", "legion-editor")
+        .expect("Failed to get project directory");
+
+    let token_cache = Arc::new(TokenCache::new(authenticator, projects_dir));
+
+    let builder = tauri::Builder::default()
+        .manage(Arc::clone(&token_cache))
+        .invoke_handler(tauri::generate_handler![authenticate]);
 
     App::new()
         .insert_non_send_resource(TauriPluginSettings::new(builder))
         .add_plugin(TauriPlugin::new(tauri::generate_context!()))
-        .add_plugin(AsyncPlugin {})
+        .add_plugin(AsyncPlugin)
         .run();
+
+    Ok(())
 }
