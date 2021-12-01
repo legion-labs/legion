@@ -61,6 +61,9 @@ build-all: build build-release
 build:
 	cargo build
 
+codegen:
+	cargo build --features=run-codegen
+
 build-release:
 	cargo build --release
 
