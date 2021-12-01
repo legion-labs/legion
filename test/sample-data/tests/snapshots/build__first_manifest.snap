@@ -117,18 +117,18 @@ expression: manifest
     },
     {
       "path": "0abe069400000000f664236f445ca9bd|35b5717e",
-      "checksum": "77a68cac04a214c0faf759963ea399de",
-      "size": 74
+      "checksum": "17da4b89cc6cda16e13f6a536731995d",
+      "size": 98
     },
     {
       "path": "0abe069400000000ee9a7a73809e33c0|35b5717e",
-      "checksum": "8ecfc647a37eeb683c0494c730b8e14e",
-      "size": 74
+      "checksum": "cb039ec004856e590102af77dea5fe2b",
+      "size": 98
     },
     {
       "path": "0abe069400000000b9372a5690ac15c3|35b5717e",
-      "checksum": "62bf6abe3f2d58f8521ffe2332dac27e",
-      "size": 74
+      "checksum": "65472add7143df8d5498156c9993b0c7",
+      "size": 98
     },
     {
       "path": "97b0740f00000000fcd3242ec9691beb|aad89045",
