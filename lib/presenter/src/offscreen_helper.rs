@@ -291,7 +291,7 @@ impl OffscreenHelper {
         &mut self,
         graphics_queue: &Queue,
         transient_descriptor_heap: &DescriptorHeap,
-        wait_sem: &Semaphore,
+        wait_sem: Semaphore,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {

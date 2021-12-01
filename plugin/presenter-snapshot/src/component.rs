@@ -48,7 +48,7 @@ impl PresenterSnapshot {
         &mut self,
         graphics_queue: &Queue,
         transient_descriptor_heap: &DescriptorHeap,
-        wait_sem: &Semaphore,
+        wait_sem: Semaphore,
         render_surface: &mut RenderSurface,
     ) -> anyhow::Result<bool> {
         //

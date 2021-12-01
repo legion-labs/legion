@@ -82,7 +82,7 @@ impl PresenterWindow {
         &mut self,
         wnd: &Window,
         present_queue: &Queue,
-        wait_sem: &Semaphore,
+        wait_sem: Semaphore,
         render_surface: Option<&mut RenderSurface>,
     ) {
         //

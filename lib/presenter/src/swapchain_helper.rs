@@ -50,8 +50,8 @@ impl SwapchainHelperSharedState {
         let mut in_flight_fences = Vec::with_capacity(image_count);
 
         for _ in 0..image_count {
-            image_available_semaphores.push(device_context.create_semaphore()?);
-            render_finished_semaphores.push(device_context.create_semaphore()?);
+            image_available_semaphores.push(device_context.create_semaphore());
+            render_finished_semaphores.push(device_context.create_semaphore());
             in_flight_fences.push(device_context.create_fence()?);
         }
 
@@ -108,7 +108,7 @@ impl PresentableFrame {
     pub fn present(
         mut self,
         queue: &Queue,
-        wait_sem: &Semaphore,
+        wait_sem: Semaphore,
         command_buffers: &[&CommandBuffer],
     ) -> GfxResult<PresentSuccessResult> {
         log::trace!(
@@ -128,7 +128,7 @@ impl PresentableFrame {
     pub fn do_present(
         &mut self,
         queue: &Queue,
-        wait_sem: &Semaphore,
+        wait_sem: Semaphore,
         command_buffers: &[&CommandBuffer],
     ) -> GfxResult<PresentSuccessResult> {
         // A present can only occur using the result from the previous acquire_next_image call
@@ -139,9 +139,9 @@ impl PresentableFrame {
         let frame_fence = &shared_state.in_flight_fences[sync_frame_index];
         let wait_semaphores = [
             wait_sem,
-            &shared_state.image_available_semaphores[sync_frame_index],
+            shared_state.image_available_semaphores[sync_frame_index],
         ];
-        let signal_semaphores = [&shared_state.render_finished_semaphores[sync_frame_index]];
+        let signal_semaphores = [shared_state.render_finished_semaphores[sync_frame_index]];
 
         queue.submit(
             command_buffers,
@@ -456,7 +456,7 @@ impl SwapchainHelper {
         self.device_context.wait_for_fences(&[frame_fence]).unwrap();
 
         // Acquire the next image and signal the image available semaphore when it's ready to use
-        let image_available_semaphore = &shared_state.image_available_semaphores[sync_frame_index];
+        let image_available_semaphore = shared_state.image_available_semaphores[sync_frame_index];
         let swapchain_image = swapchain.acquire_next_image_semaphore(image_available_semaphore)?;
 
         self.expect_result_from_previous_frame = true;

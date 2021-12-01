@@ -1,4 +1,4 @@
-use crate::backends::vulkan::VulkanMemoryAllocation;
+use crate::backends::vulkan::{VulkanMemoryAllocation, VulkanMemoryPagesAllocation};
 use crate::deferred_drop::Drc;
 use crate::{Buffer, DeviceContext, MemoryUsage};
 
@@ -137,5 +137,56 @@ impl MemoryMappingInfo {
 impl Drop for MemoryMappingInfo {
     fn drop(&mut self) {
         self.allocation.unmap_buffer();
+    }
+}
+
+struct MemoryPagesAllocationInner {
+    device_context: DeviceContext,
+
+    #[cfg(feature = "vulkan")]
+    pub(super) platform_allocation: VulkanMemoryPagesAllocation,
+}
+
+impl Drop for MemoryPagesAllocationInner {
+    fn drop(&mut self) {
+        #[cfg(any(feature = "vulkan"))]
+        self.platform_allocation.destroy(&self.device_context);
+    }
+}
+
+#[derive(Clone)]
+pub struct MemoryPagesAllocation {
+    inner: Drc<MemoryPagesAllocationInner>,
+}
+
+impl MemoryPagesAllocation {
+    pub fn for_sparse_buffer(
+        device_context: &DeviceContext,
+        buffer: &Buffer,
+        buffer_offset: u64,
+        page_count: u64,
+    ) -> Self {
+        #[cfg(feature = "vulkan")]
+        let platform_allocation = VulkanMemoryPagesAllocation::for_sparse_buffer(
+            device_context,
+            buffer,
+            buffer_offset,
+            page_count,
+        );
+
+        Self {
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(MemoryPagesAllocationInner {
+                    device_context: device_context.clone(),
+                    #[cfg(any(feature = "vulkan"))]
+                    platform_allocation,
+                }),
+        }
+    }
+
+    #[cfg(feature = "vulkan")]
+    pub(crate) fn platform_allocation(&self) -> &VulkanMemoryPagesAllocation {
+        &self.inner.platform_allocation
     }
 }

@@ -9,7 +9,7 @@ pub(crate) struct VulkanBuffer {
 }
 
 impl VulkanBuffer {
-    pub fn new(device_context: &VulkanDeviceContext, buffer_def: &BufferDef) -> Self {
+    pub fn new(device_context: &VulkanDeviceContext, buffer_def: &BufferDef) -> (Self, u64) {
         buffer_def.verify();
         let mut allocation_size = buffer_def.size;
 
@@ -51,9 +51,15 @@ impl VulkanBuffer {
                 .unwrap()
         };
 
+        let memory_requirements = unsafe {
+            device_context
+                .device()
+                .get_buffer_memory_requirements(buffer)
+        };
+
         log::trace!("Buffer {:?} crated with size {}", buffer, buffer_info.size,);
 
-        Self { buffer }
+        (Self { buffer }, memory_requirements.alignment)
     }
 
     pub fn destroy(&self, device_context: &VulkanDeviceContext, buffer_def: &BufferDef) {

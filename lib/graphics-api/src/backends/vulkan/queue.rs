@@ -3,8 +3,8 @@ use ash::vk;
 use super::internal::VkQueue;
 use super::{VulkanDeviceContext, VulkanSwapchain};
 use crate::{
-    CommandBuffer, DeviceContext, Fence, GfxResult, PresentSuccessResult, QueueType, Semaphore,
-    Swapchain,
+    CommandBuffer, DeviceContext, Fence, GfxResult, MemoryPagesAllocation, PresentSuccessResult,
+    QueueType, Semaphore, Swapchain,
 };
 
 #[derive(Clone, Debug)]
@@ -90,8 +90,8 @@ impl VulkanQueue {
     pub fn submit(
         &self,
         command_buffers: &[&CommandBuffer],
-        wait_semaphores: &[&Semaphore],
-        signal_semaphores: &[&Semaphore],
+        wait_semaphores: &[Semaphore],
+        signal_semaphores: &[Semaphore],
         signal_fence: Option<&Fence>,
     ) -> GfxResult<()> {
         let mut command_buffer_list = Vec::with_capacity(command_buffers.len());
@@ -102,24 +102,13 @@ impl VulkanQueue {
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
         let mut wait_dst_stage_mask = Vec::with_capacity(wait_semaphores.len());
         for wait_semaphore in wait_semaphores {
-            // Don't wait on a semaphore that will never signal
-            //TODO: Assert or fail here?
-            if wait_semaphore.signal_available() {
-                wait_semaphore_list.push(wait_semaphore.platform_semaphore().vk_semaphore());
-                wait_dst_stage_mask.push(vk::PipelineStageFlags::ALL_COMMANDS);
-
-                wait_semaphore.set_signal_available(false);
-            }
+            wait_semaphore_list.push(wait_semaphore.platform_semaphore().vk_semaphore());
+            wait_dst_stage_mask.push(vk::PipelineStageFlags::ALL_COMMANDS);
         }
 
         let mut signal_semaphore_list = Vec::with_capacity(signal_semaphores.len());
         for signal_semaphore in signal_semaphores {
-            // Don't signal a semaphore if something is already going to signal it
-            //TODO: Assert or fail here?
-            if !signal_semaphore.signal_available() {
-                signal_semaphore_list.push(signal_semaphore.platform_semaphore().vk_semaphore());
-                signal_semaphore.set_signal_available(true);
-            }
+            signal_semaphore_list.push(signal_semaphore.platform_semaphore().vk_semaphore());
         }
 
         let submit_info = vk::SubmitInfo::builder()
@@ -153,15 +142,12 @@ impl VulkanQueue {
         &self,
         device_context: &DeviceContext,
         swapchain: &Swapchain,
-        wait_semaphores: &[&Semaphore],
+        wait_semaphores: &[Semaphore],
         image_index: u32,
     ) -> GfxResult<PresentSuccessResult> {
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
         for wait_semaphore in wait_semaphores {
-            if wait_semaphore.signal_available() {
-                wait_semaphore_list.push(wait_semaphore.platform_semaphore().vk_semaphore());
-                wait_semaphore.set_signal_available(false);
-            }
+            wait_semaphore_list.push(wait_semaphore.platform_semaphore().vk_semaphore());
         }
 
         let swapchains = [swapchain.platform_swap_chain().vk_swapchain()];
@@ -208,5 +194,69 @@ impl VulkanQueue {
         }
 
         Ok(())
+    }
+
+    pub fn commmit_sparse_bindings(
+        &self,
+        prev_frame_semaphore: Semaphore,
+        sparse_unbindings: &[MemoryPagesAllocation],
+        unbind_semaphore: Semaphore,
+        sparse_bindings: &[MemoryPagesAllocation],
+        bind_semaphore: Semaphore,
+    ) -> Option<Semaphore> {
+        let queue = self.queue.queue().lock().unwrap();
+
+        let vk_prev_frame_semaphores = [prev_frame_semaphore.platform_semaphore().vk_semaphore()];
+        let vk_unbind_semaphores = [unbind_semaphore.platform_semaphore().vk_semaphore()];
+        let vk_bind_semaphores = [bind_semaphore.platform_semaphore().vk_semaphore()];
+
+        if !sparse_unbindings.is_empty() {
+            let mut vk_unbindings = Vec::with_capacity(sparse_unbindings.len());
+            for binding in sparse_unbindings {
+                vk_unbindings.push(binding.platform_allocation().unbinding_info());
+            }
+
+            let unbind_info_builder = ash::vk::BindSparseInfo::builder()
+                .buffer_binds(&vk_unbindings)
+                .wait_semaphores(&vk_prev_frame_semaphores)
+                .signal_semaphores(&vk_unbind_semaphores);
+
+            unsafe {
+                self.queue
+                    .device_context()
+                    .device()
+                    .queue_bind_sparse(*queue, &[*unbind_info_builder], vk::Fence::null())
+                    .unwrap();
+            }
+        }
+
+        if !sparse_bindings.is_empty() {
+            let mut vk_bindings = Vec::with_capacity(sparse_bindings.len());
+            for binding in sparse_bindings {
+                vk_bindings.push(binding.platform_allocation().binding_info());
+            }
+
+            let mut bind_info_builder = ash::vk::BindSparseInfo::builder()
+                .buffer_binds(&vk_bindings)
+                .signal_semaphores(&vk_bind_semaphores);
+            if sparse_unbindings.is_empty() {
+                bind_info_builder = bind_info_builder.wait_semaphores(&vk_prev_frame_semaphores);
+            } else {
+                bind_info_builder = bind_info_builder.wait_semaphores(&vk_unbind_semaphores);
+            }
+
+            unsafe {
+                self.queue
+                    .device_context()
+                    .device()
+                    .queue_bind_sparse(*queue, &[*bind_info_builder], vk::Fence::null())
+                    .unwrap();
+            }
+            Some(bind_semaphore)
+        } else if !sparse_unbindings.is_empty() {
+            Some(unbind_semaphore)
+        } else {
+            None
+        }
     }
 }

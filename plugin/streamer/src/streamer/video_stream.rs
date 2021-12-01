@@ -81,7 +81,7 @@ impl VideoStream {
         &mut self,
         graphics_queue: &Queue,
         transient_descriptor_heap: &DescriptorHeap,
-        wait_sem: &Semaphore,
+        wait_sem: Semaphore,
         render_surface: &mut RenderSurface,
     ) -> impl std::future::Future<Output = ()> + 'static {
         trace_scope!();

@@ -1,4 +1,4 @@
-use ash::vk;
+use ash::vk::{self, SparseMemoryBindFlags};
 
 use crate::{Buffer, DeviceContext, MemoryAllocationDef};
 
@@ -77,5 +77,102 @@ impl VulkanMemoryAllocation {
 
     pub fn size(&self) -> usize {
         self.allocation_info.get_size()
+    }
+}
+
+pub(crate) struct VulkanMemoryPagesAllocation {
+    allocated_pages: Vec<(vk_mem::Allocation, vk_mem::AllocationInfo)>,
+    sparse_bindings: Vec<ash::vk::SparseMemoryBind>,
+    sparse_unbindings: Vec<ash::vk::SparseMemoryBind>,
+    buffer: Buffer,
+}
+
+impl VulkanMemoryPagesAllocation {
+    pub fn for_sparse_buffer(
+        device_context: &DeviceContext,
+        buffer: &Buffer,
+        buffer_offset: u64,
+        page_count: u64,
+    ) -> Self {
+        let memory_requirements = unsafe {
+            device_context
+                .platform_device_context()
+                .device()
+                .get_buffer_memory_requirements(buffer.platform_buffer().vk_buffer())
+        };
+
+        let allocation_create_info = vk_mem::AllocationCreateInfo {
+            usage: vk_mem::MemoryUsage::GpuOnly,
+            flags: vk_mem::AllocationCreateFlags::NONE,
+            required_flags: vk::MemoryPropertyFlags::empty(),
+            preferred_flags: vk::MemoryPropertyFlags::empty(),
+            memory_type_bits: 0, // Do not exclude any memory types
+            pool: None,
+            user_data: None,
+        };
+
+        let allocated_pages = device_context
+            .platform_device_context()
+            .allocator()
+            .allocate_memory_pages(
+                &memory_requirements,
+                &allocation_create_info,
+                page_count as usize,
+            )
+            .unwrap();
+
+        let mut sparse_bindings = Vec::with_capacity(allocated_pages.len());
+        for allocation in &allocated_pages {
+            let sparse_binding_builder = ash::vk::SparseMemoryBind::builder()
+                .resource_offset(buffer_offset)
+                .size(allocation.1.get_size() as u64)
+                .memory(allocation.1.get_device_memory())
+                .memory_offset(allocation.1.get_offset() as u64);
+
+            sparse_bindings.push(*sparse_binding_builder);
+        }
+
+        let mut sparse_unbindings = Vec::with_capacity(allocated_pages.len());
+        for allocation in &allocated_pages {
+            sparse_unbindings.push(ash::vk::SparseMemoryBind {
+                resource_offset: buffer_offset,
+                size: allocation.1.get_size() as u64,
+                memory: allocation.1.get_device_memory(),
+                memory_offset: allocation.1.get_offset() as u64,
+                flags: SparseMemoryBindFlags::empty(),
+            });
+        }
+
+        Self {
+            allocated_pages,
+            sparse_bindings,
+            sparse_unbindings,
+            buffer: buffer.clone(),
+        }
+    }
+
+    pub fn destroy(&mut self, device_context: &DeviceContext) {
+        let mut allocations = Vec::with_capacity(self.allocated_pages.len());
+        for allocation in &self.allocated_pages {
+            allocations.push(allocation.0);
+        }
+        device_context
+            .platform_device_context()
+            .allocator()
+            .free_memory_pages(&allocations);
+
+        self.allocated_pages.clear();
+    }
+
+    pub fn binding_info(&self) -> ash::vk::SparseBufferMemoryBindInfo {
+        *ash::vk::SparseBufferMemoryBindInfo::builder()
+            .buffer(self.buffer.platform_buffer().vk_buffer())
+            .binds(&self.sparse_bindings)
+    }
+
+    pub fn unbinding_info(&self) -> ash::vk::SparseBufferMemoryBindInfo {
+        *ash::vk::SparseBufferMemoryBindInfo::builder()
+            .buffer(self.buffer.platform_buffer().vk_buffer())
+            .binds(&self.sparse_unbindings)
     }
 }

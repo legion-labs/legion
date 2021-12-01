@@ -229,7 +229,7 @@ impl DeviceContext {
         Fence::new(self)
     }
 
-    pub fn create_semaphore(&self) -> GfxResult<Semaphore> {
+    pub fn create_semaphore(&self) -> Semaphore {
         Semaphore::new(self)
     }
 

@@ -239,7 +239,7 @@ impl VulkanSwapchain {
     //TODO: Return something like PresentResult?
     pub fn acquire_next_image_semaphore(
         &mut self,
-        semaphore: &Semaphore,
+        semaphore: Semaphore,
     ) -> GfxResult<SwapchainImage> {
         let result = unsafe {
             self.swapchain.swapchain_loader.acquire_next_image(
@@ -252,11 +252,9 @@ impl VulkanSwapchain {
 
         if let Ok((present_index, is_suboptimal)) = result {
             self.last_image_suboptimal = is_suboptimal;
-            semaphore.set_signal_available(true);
             Ok(self.swapchain_images[present_index as usize].clone())
         } else {
             self.last_image_suboptimal = false;
-            semaphore.set_signal_available(false);
             // todo(jal)
             Err(GfxError::StringError("GfxError::VkError(e)".to_string()))
         }

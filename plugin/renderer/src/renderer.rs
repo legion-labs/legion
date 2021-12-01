@@ -2,10 +2,11 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
-use crate::components::{RenderSurface, StaticMesh};
+use crate::components::{
+    RenderSurface, StaticMesh, TransientBufferAllocator, TransientPagedBuffer, UnifiedStaticBuffer,
+};
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use graphics_api::{prelude::*, DefaultApi, MAX_DESCRIPTOR_SET_LAYOUTS};
-use graphics_utils::{TransientBufferAllocator, TransientPagedBuffer};
 use legion_ecs::prelude::Query;
 use legion_math::{Mat4, Vec3};
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
@@ -14,6 +15,9 @@ pub struct Renderer {
     pub frame_idx: usize,
     render_frame_idx: u32,
     pub num_render_frames: u32,
+    prev_frame_sems: Vec<Semaphore>,
+    sparse_unbind_sems: Vec<Semaphore>,
+    sparse_bind_sems: Vec<Semaphore>,
     frame_signal_sems: Vec<Semaphore>,
     frame_fences: Vec<Fence>,
     graphics_queue: Queue,
@@ -21,6 +25,7 @@ pub struct Renderer {
     command_buffers: Vec<CommandBuffer>,
     transient_descriptor_heaps: Vec<DescriptorHeap>,
     transient_buffer: TransientPagedBuffer,
+    static_buffer: UnifiedStaticBuffer,
 
     // This should be last, as it must be destroyed last.
     api: GfxApi,
@@ -35,6 +40,9 @@ impl Renderer {
         let graphics_queue = device_context.create_queue(QueueType::Graphics).unwrap();
         let mut command_pools = Vec::with_capacity(num_render_frames as usize);
         let mut command_buffers = Vec::with_capacity(num_render_frames as usize);
+        let mut prev_frame_sems = Vec::with_capacity(num_render_frames as usize);
+        let mut sparse_unbind_sems = Vec::with_capacity(num_render_frames as usize);
+        let mut sparse_bind_sems = Vec::with_capacity(num_render_frames as usize);
         let mut frame_signal_sems = Vec::with_capacity(num_render_frames as usize);
         let mut frame_fences = Vec::with_capacity(num_render_frames as usize);
         let mut transient_descriptor_heaps = Vec::with_capacity(num_render_frames as usize);
@@ -47,7 +55,11 @@ impl Renderer {
                 is_secondary: false,
             })?;
 
-            let frame_signal_sem = device_context.create_semaphore()?;
+            let prev_frame_sem = device_context.create_semaphore();
+            let sparse_unbind_sem = device_context.create_semaphore();
+            let sparse_bind_sem = device_context.create_semaphore();
+
+            let frame_signal_sem = device_context.create_semaphore();
 
             let frame_fence = device_context.create_fence()?;
 
@@ -66,6 +78,10 @@ impl Renderer {
 
             command_pools.push(command_pool);
             command_buffers.push(command_buffer);
+
+            prev_frame_sems.push(prev_frame_sem);
+            sparse_unbind_sems.push(sparse_unbind_sem);
+            sparse_bind_sems.push(sparse_bind_sem);
             frame_signal_sems.push(frame_signal_sem);
             frame_fences.push(frame_fence);
             transient_descriptor_heaps.push(transient_descriptor_heap);
@@ -73,10 +89,15 @@ impl Renderer {
 
         let transient_buffer = TransientPagedBuffer::new(device_context, 64, 64 * 1024);
 
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
+
         Ok(Self {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
+            prev_frame_sems,
+            sparse_unbind_sems,
+            sparse_bind_sems,
             frame_signal_sems,
             frame_fences,
             graphics_queue,
@@ -84,6 +105,7 @@ impl Renderer {
             command_buffers,
             transient_descriptor_heaps,
             transient_buffer,
+            static_buffer,
             api,
         })
     }
@@ -105,9 +127,9 @@ impl Renderer {
         &self.command_buffers[render_frame_index as usize]
     }
 
-    pub fn frame_signal_semaphore(&self) -> &Semaphore {
+    pub fn frame_signal_semaphore(&self) -> Semaphore {
         let render_frame_index = self.render_frame_idx;
-        &self.frame_signal_sems[render_frame_index as usize]
+        self.frame_signal_sems[render_frame_index as usize]
     }
 
     pub fn transient_descriptor_heap(&self) -> &DescriptorHeap {
@@ -180,11 +202,23 @@ impl Renderer {
 
     pub(crate) fn end_frame(&mut self) {
         let render_frame_idx = self.render_frame_idx;
-        let signal_semaphore = &self.frame_signal_sems[render_frame_idx as usize];
+
+        let prev_frame_semaphore = self.prev_frame_sems[render_frame_idx as usize];
+        let unbind_semaphore = self.sparse_unbind_sems[render_frame_idx as usize];
+        let bind_semaphore = self.sparse_bind_sems[render_frame_idx as usize];
+
+        let signal_semaphore = self.frame_signal_sems[render_frame_idx as usize];
         let signal_fence = &self.frame_fences[render_frame_idx as usize];
         let cmd_buffer = &self.command_buffers[render_frame_idx as usize];
 
         cmd_buffer.end().unwrap();
+
+        self.static_buffer.commmit_sparse_bindings(
+            &self.graphics_queue,
+            prev_frame_semaphore,
+            unbind_semaphore,
+            bind_semaphore,
+        );
 
         self.graphics_queue
             .submit(&[cmd_buffer], &[], &[signal_semaphore], Some(signal_fence))
@@ -456,6 +490,12 @@ impl TmpRenderPass {
         let up = Vec3::new(0.0, 1.0, 0.0);
         let view_matrix = Mat4::look_at_lh(eye, center, up);
 
+        let mut transient_allocator = TransientBufferAllocator::new(
+            renderer.device_context(),
+            renderer.transient_buffer(),
+            64 * 1024,
+        );
+
         for (index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
             let mesh_id = static_mesh_component.mesh_id;
             if mesh_id >= self.static_meshes.len() {
@@ -463,12 +503,6 @@ impl TmpRenderPass {
             }
 
             let mesh = &self.static_meshes[static_mesh_component.mesh_id];
-
-            let mut transient_allocator = TransientBufferAllocator::new(
-                renderer.device_context(),
-                renderer.transient_buffer(),
-                64 * 1024,
-            );
 
             let mut sub_allocation =
                 transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
