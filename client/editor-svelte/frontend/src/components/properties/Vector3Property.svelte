@@ -8,16 +8,8 @@
 
   export let value: Vector3;
 
-  // TODO: Cleanup
   function updateVectorAt(index: 0 | 1 | 2, { detail }: CustomEvent<number>) {
-    switch (index) {
-      case 0:
-        return dispatch("input", [detail, value[1], value[2]]);
-      case 1:
-        return dispatch("input", [value[0], detail, value[2]]);
-      case 2:
-        return dispatch("input", [value[0], value[1], detail]);
-    }
+    dispatch("input", Object.assign([], value, { [index]: detail }));
   }
 </script>
 
