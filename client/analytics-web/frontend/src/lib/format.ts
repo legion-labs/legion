@@ -1,4 +1,3 @@
-
 export function formatExecutionTime(time: number) {
   let unit = "ms";
 

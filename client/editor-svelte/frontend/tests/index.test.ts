@@ -1,5 +1,5 @@
 describe("Truth", () => {
-  it("pass", () => {
+  it("passes the test", () => {
     expect(true).toBe(true);
   });
 });
