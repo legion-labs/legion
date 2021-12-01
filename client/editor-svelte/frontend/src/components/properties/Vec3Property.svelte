@@ -1,12 +1,11 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
+  import { Vec3 } from "@/api";
   import NumberInput from "../NumberInput.svelte";
 
-  type Vector3 = [number, number, number];
+  const dispatch = createEventDispatcher<{ input: Vec3 }>();
 
-  const dispatch = createEventDispatcher<{ input: Vector3 }>();
-
-  export let value: Vector3;
+  export let value: Vec3;
 
   function updateVectorAt(index: 0 | 1 | 2, { detail }: CustomEvent<number>) {
     dispatch("input", Object.assign([], value, { [index]: detail }));

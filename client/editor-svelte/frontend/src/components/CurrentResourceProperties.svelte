@@ -1,5 +1,16 @@
 <script lang="ts">
-  import { PropertyUpdate, updateResourceProperties } from "@/api";
+  import {
+    propertyIsBoolean,
+    propertyIsColor,
+    propertyIsNumber,
+    propertyIsQuat,
+    propertyIsSpeed,
+    propertyIsString,
+    propertyIsVec3,
+    propertyIsVecU8,
+    PropertyUpdate,
+    updateResourceProperties,
+  } from "@/api";
   import currentResource from "@/stores/currentResource";
   import BooleanProperty from "./properties/BooleanProperty.svelte";
   import ColorProperty from "./properties/ColorProperty.svelte";
@@ -7,67 +18,35 @@
   import QuatProperty from "./properties/QuatProperty.svelte";
   import SpeedProperty from "./properties/SpeedProperty.svelte";
   import StringProperty from "./properties/StringProperty.svelte";
-  import Vector3Property from "./properties/Vector3Property.svelte";
+  import Vec3Property from "./properties/Vec3Property.svelte";
 
   const propertyUpdateDebounceTimeout = 300;
 
-  const ptypeIsBoolean = (ptype: string) =>
-    ["bool"].includes(ptype.toLowerCase());
-
-  const ptypeIsSpeed = (ptype: string) =>
-    ["speed"].includes(ptype.toLowerCase());
-
-  const ptypeIsColor = (ptype: string) =>
-    ["color"].includes(ptype.toLowerCase());
-
-  const ptypeIsString = (ptype: string) =>
-    ["string"].includes(ptype.toLowerCase());
-
-  const ptypeIsNumber = (ptype: string) =>
-    ["i32", "u32", "f32", "f64"].includes(ptype.toLowerCase());
-
-  const ptypeIsVector3 = (ptype: string) =>
-    ["vec3"].includes(ptype.toLowerCase());
-
-  const ptypeIsQuat = (ptype: string) => ["quat"].includes(ptype.toLowerCase());
-
-  const ptypeIsVecU8 = (ptype: string) =>
-    ["vec < u8 >"].includes(ptype.toLowerCase());
-
   let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // TODO: Improve type safety
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let propertyUpdates: PropertyUpdate[] = [];
 
-  // TODO: Improve type safety
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function onInput(name: string, ptype: string, value: any) {
+  function onInput(propertyUpdate: PropertyUpdate) {
     if (updateTimeout) {
       clearTimeout(updateTimeout);
     }
-
-    const newPropertyUpdate = {
-      name,
-      value: ptype === "color" ? parseInt(value, 16) : value,
-    };
 
     // We save all the property updates performed in a batch.
     // In order to do so we need to know if the property that
     // just got modified was pristine or not, so we look for it
     // in the property updates array.
     const propertyUpdateIndex = propertyUpdates.findIndex(
-      (propertyUpdate) => propertyUpdate.name === name
+      ({ name }) => name === propertyUpdate.name
     );
 
     if (propertyUpdateIndex < 0) {
       // If the property has not been modified since the debounce timeout
       // started then we can push the new update to the known property updates
-      propertyUpdates = [...propertyUpdates, newPropertyUpdate];
+      propertyUpdates = [...propertyUpdates, propertyUpdate];
     } else {
       // Otherwise, we simply need to replace the already modified property value
       // by the new one
-      propertyUpdates[propertyUpdateIndex].value = newPropertyUpdate.value;
+      propertyUpdates[propertyUpdateIndex].value = propertyUpdate.value;
     }
 
     updateTimeout = setTimeout(() => {
@@ -102,52 +81,52 @@
           </div>
           <div class="property-input-container">
             <div class="property-input">
-              {#if ptypeIsBoolean(property.ptype)}
+              {#if propertyIsBoolean(property)}
                 <BooleanProperty
                   on:input={({ detail }) =>
-                    onInput(property.name, property.ptype, detail)}
+                    onInput({ name: property.name, value: detail })}
                   bind:value={property.value}
                 />
-              {:else if ptypeIsString(property.ptype)}
+              {:else if propertyIsString(property)}
                 <StringProperty
                   on:input={({ detail }) =>
-                    onInput(property.name, property.ptype, detail)}
+                    onInput({ name: property.name, value: detail })}
                   bind:value={property.value}
                 />
-              {:else if ptypeIsNumber(property.ptype)}
+              {:else if propertyIsNumber(property)}
                 <NumberProperty
                   on:input={({ detail }) =>
-                    onInput(property.name, property.ptype, detail)}
+                    onInput({ name: property.name, value: detail })}
                   bind:value={property.value}
                 />
-              {:else if ptypeIsColor(property.ptype)}
+              {:else if propertyIsColor(property)}
                 <ColorProperty
                   on:input={({ detail }) =>
-                    onInput(property.name, property.ptype, detail)}
+                    onInput({ name: property.name, value: detail })}
                   bind:value={property.value}
                 />
-              {:else if ptypeIsSpeed(property.ptype)}
+              {:else if propertyIsSpeed(property)}
                 <SpeedProperty
                   on:input={({ detail }) =>
-                    onInput(property.name, property.ptype, detail)}
+                    onInput({ name: property.name, value: detail })}
                   bind:value={property.value}
                 />
-              {:else if ptypeIsVector3(property.ptype)}
-                <Vector3Property
+              {:else if propertyIsVec3(property)}
+                <Vec3Property
                   on:input={({ detail }) =>
-                    onInput(property.name, property.ptype, detail)}
+                    onInput({ name: property.name, value: detail })}
                   bind:value={property.value}
                 />
-              {:else if ptypeIsQuat(property.ptype)}
+              {:else if propertyIsQuat(property)}
                 <QuatProperty
                   on:input={({ detail }) =>
-                    onInput(property.name, property.ptype, detail)}
+                    onInput({ name: property.name, value: detail })}
                   bind:value={property.value}
                 />
-              {:else if ptypeIsVecU8(property.ptype)}
+              {:else if propertyIsVecU8(property)}
                 Vec: {property.value}
               {:else}
-                Unknown property type: {property.ptype}
+                Unknown property: {JSON.stringify(property)}
               {/if}
             </div>
             <div
@@ -155,7 +134,7 @@
               on:click={() => {
                 property.value = property.defaultValue;
 
-                onInput(property.name, property.ptype, property.defaultValue);
+                onInput({ name: property.name, value: property.defaultValue });
               }}
             >
               <div

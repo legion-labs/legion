@@ -74,12 +74,108 @@ export async function getAllResources() {
   return getMoreResources("");
 }
 
-// TODO: Improve type safety for properties
-export type ResourceWithProperties = Awaited<
-  ReturnType<typeof getResourceProperties>
+type ResourcePropertyTemplate<Value, Type extends string> = {
+  defaultValue: Value;
+  value: Value;
+  name: string;
+  ptype: Type;
+  group: string;
+};
+
+export type BooleanProperty = ResourcePropertyTemplate<boolean, "bool">;
+
+export type Speed = number;
+
+export type SpeedProperty = ResourcePropertyTemplate<Speed, "speed">;
+
+export type Color = number;
+
+export type ColorProperty = ResourcePropertyTemplate<Color, "color">;
+
+export type StringProperty = ResourcePropertyTemplate<string, "string">;
+
+export type NumberProperty = ResourcePropertyTemplate<
+  number,
+  "i32" | "u32" | "f32" | "f64"
 >;
 
-export type ResourceProperty = ResourceWithProperties["properties"][number];
+export type Vec3 = [number, number, number];
+
+export type Vec3Property = ResourcePropertyTemplate<Vec3, "vec3">;
+
+export type Quat = [number, number, number, number];
+
+export type QuatProperty = ResourcePropertyTemplate<Quat, "quat">;
+
+// Uint8Array might fit better here, but it requires some value conversion at runtime
+export type VecU8 = number[];
+
+export type VecU8Property = ResourcePropertyTemplate<VecU8, "vec < u8 >">;
+
+export type ResourceProperty =
+  | BooleanProperty
+  | SpeedProperty
+  | ColorProperty
+  | StringProperty
+  | NumberProperty
+  | Vec3Property
+  | QuatProperty
+  | VecU8Property;
+
+export function propertyIsBoolean(
+  property: ResourceProperty
+): property is BooleanProperty {
+  return property.ptype === "bool";
+}
+
+export function propertyIsSpeed(
+  property: ResourceProperty
+): property is SpeedProperty {
+  return property.ptype === "speed";
+}
+
+export function propertyIsColor(
+  property: ResourceProperty
+): property is ColorProperty {
+  return property.ptype === "color";
+}
+
+export function propertyIsString(
+  property: ResourceProperty
+): property is StringProperty {
+  return property.ptype === "string";
+}
+
+export function propertyIsNumber(
+  property: ResourceProperty
+): property is NumberProperty {
+  return ["i32", "u32", "f32", "f64"].includes(property.ptype);
+}
+
+export function propertyIsVec3(
+  property: ResourceProperty
+): property is Vec3Property {
+  return property.ptype === "vec3";
+}
+
+export function propertyIsQuat(
+  property: ResourceProperty
+): property is QuatProperty {
+  return property.ptype === "quat";
+}
+
+export function propertyIsVecU8(
+  property: ResourceProperty
+): property is VecU8Property {
+  return property.ptype === "vec < u8 >";
+}
+
+export type ResourceWithProperties = {
+  id: string;
+  description: ResourceDescription;
+  version: number;
+  properties: ResourceProperty[];
+};
 
 /**
  * Fetch a resource's properties using its ID
@@ -89,7 +185,7 @@ export type ResourceProperty = ResourceWithProperties["properties"][number];
 export async function getResourceProperties({
   id,
   version,
-}: ResourceDescription) {
+}: ResourceDescription): Promise<ResourceWithProperties> {
   const { description, properties } = await editorClient.getResourceProperties({
     id,
   });
@@ -110,14 +206,11 @@ export async function getResourceProperties({
 
       return {
         ...property,
-        defaultValue:
-          property.ptype === "color"
-            ? defaultValue.toString(16).padStart(8, "0")
-            : defaultValue,
-        value:
-          property.ptype === "color"
-            ? value.toString(16).padStart(8, "0")
-            : value,
+        defaultValue,
+        value,
+        // We don't actually validate the incoming data to keep it fast
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ptype: property.ptype as ResourceProperty["ptype"],
       };
     }),
   };
@@ -126,7 +219,7 @@ export async function getResourceProperties({
 export type PropertyUpdate = {
   name: string;
   // Can be any JSON serializable value
-  value: unknown;
+  value: ResourceProperty["value"];
 };
 
 /**
