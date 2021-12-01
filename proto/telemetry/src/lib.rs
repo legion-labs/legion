@@ -1,14 +1,11 @@
 //! telemetry protocols
 //!
 
-pub mod telemetry {
-    tonic::include_proto!("telemetry");
-}
+#[path = "../codegen/telemetry.rs"]
+pub mod telemetry;
 
-pub mod ingestion {
-    tonic::include_proto!("ingestion");
-}
+#[path = "../codegen/ingestion.rs"]
+pub mod ingestion;
 
-pub mod analytics {
-    tonic::include_proto!("analytics");
-}
+#[path = "../codegen/analytics.rs"]
+pub mod analytics;

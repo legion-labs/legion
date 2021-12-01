@@ -180,7 +180,9 @@ export const FindProcessRequest = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<FindProcessRequest>): FindProcessRequest {
+  fromPartial<I extends Exact<DeepPartial<FindProcessRequest>, I>>(
+    object: I
+  ): FindProcessRequest {
     const message = { ...baseFindProcessRequest } as FindProcessRequest;
     message.processId = object.processId ?? "";
     return message;
@@ -236,7 +238,9 @@ export const FindProcessReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<FindProcessReply>): FindProcessReply {
+  fromPartial<I extends Exact<DeepPartial<FindProcessReply>, I>>(
+    object: I
+  ): FindProcessReply {
     const message = { ...baseFindProcessReply } as FindProcessReply;
     message.process =
       object.process !== undefined && object.process !== null
@@ -284,7 +288,9 @@ export const RecentProcessesRequest = {
     return obj;
   },
 
-  fromPartial(_: DeepPartial<RecentProcessesRequest>): RecentProcessesRequest {
+  fromPartial<I extends Exact<DeepPartial<RecentProcessesRequest>, I>>(
+    _: I
+  ): RecentProcessesRequest {
     const message = { ...baseRecentProcessesRequest } as RecentProcessesRequest;
     return message;
   },
@@ -379,7 +385,9 @@ export const ProcessInstance = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessInstance>): ProcessInstance {
+  fromPartial<I extends Exact<DeepPartial<ProcessInstance>, I>>(
+    object: I
+  ): ProcessInstance {
     const message = { ...baseProcessInstance } as ProcessInstance;
     message.processInfo =
       object.processInfo !== undefined && object.processInfo !== null
@@ -446,11 +454,12 @@ export const ProcessListReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessListReply>): ProcessListReply {
+  fromPartial<I extends Exact<DeepPartial<ProcessListReply>, I>>(
+    object: I
+  ): ProcessListReply {
     const message = { ...baseProcessListReply } as ProcessListReply;
-    message.processes = (object.processes ?? []).map((e) =>
-      ProcessInstance.fromPartial(e)
-    );
+    message.processes =
+      object.processes?.map((e) => ProcessInstance.fromPartial(e)) || [];
     return message;
   },
 };
@@ -508,8 +517,8 @@ export const ListProcessStreamsRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ListProcessStreamsRequest>
+  fromPartial<I extends Exact<DeepPartial<ListProcessStreamsRequest>, I>>(
+    object: I
   ): ListProcessStreamsRequest {
     const message = {
       ...baseListProcessStreamsRequest,
@@ -571,9 +580,11 @@ export const ListStreamsReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ListStreamsReply>): ListStreamsReply {
+  fromPartial<I extends Exact<DeepPartial<ListStreamsReply>, I>>(
+    object: I
+  ): ListStreamsReply {
     const message = { ...baseListStreamsReply } as ListStreamsReply;
-    message.streams = (object.streams ?? []).map((e) => Stream.fromPartial(e));
+    message.streams = object.streams?.map((e) => Stream.fromPartial(e)) || [];
     return message;
   },
 };
@@ -631,8 +642,8 @@ export const ListStreamBlocksRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ListStreamBlocksRequest>
+  fromPartial<I extends Exact<DeepPartial<ListStreamBlocksRequest>, I>>(
+    object: I
   ): ListStreamBlocksRequest {
     const message = {
       ...baseListStreamBlocksRequest,
@@ -693,11 +704,11 @@ export const ListStreamBlocksReply = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ListStreamBlocksReply>
+  fromPartial<I extends Exact<DeepPartial<ListStreamBlocksReply>, I>>(
+    object: I
   ): ListStreamBlocksReply {
     const message = { ...baseListStreamBlocksReply } as ListStreamBlocksReply;
-    message.blocks = (object.blocks ?? []).map((e) => Block.fromPartial(e));
+    message.blocks = object.blocks?.map((e) => Block.fromPartial(e)) || [];
     return message;
   },
 };
@@ -778,7 +789,7 @@ export const Span = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<Span>): Span {
+  fromPartial<I extends Exact<DeepPartial<Span>, I>>(object: I): Span {
     const message = { ...baseSpan } as Span;
     message.scopeHash = object.scopeHash ?? 0;
     message.depth = object.depth ?? 0;
@@ -867,7 +878,9 @@ export const ScopeDesc = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ScopeDesc>): ScopeDesc {
+  fromPartial<I extends Exact<DeepPartial<ScopeDesc>, I>>(
+    object: I
+  ): ScopeDesc {
     const message = { ...baseScopeDesc } as ScopeDesc;
     message.name = object.name ?? "";
     message.filename = object.filename ?? "";
@@ -949,7 +962,9 @@ export const BlockSpansRequest = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<BlockSpansRequest>): BlockSpansRequest {
+  fromPartial<I extends Exact<DeepPartial<BlockSpansRequest>, I>>(
+    object: I
+  ): BlockSpansRequest {
     const message = { ...baseBlockSpansRequest } as BlockSpansRequest;
     message.process =
       object.process !== undefined && object.process !== null
@@ -1078,10 +1093,12 @@ export const BlockSpansReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<BlockSpansReply>): BlockSpansReply {
+  fromPartial<I extends Exact<DeepPartial<BlockSpansReply>, I>>(
+    object: I
+  ): BlockSpansReply {
     const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = (object.scopes ?? []).map((e) => ScopeDesc.fromPartial(e));
-    message.spans = (object.spans ?? []).map((e) => Span.fromPartial(e));
+    message.scopes = object.scopes?.map((e) => ScopeDesc.fromPartial(e)) || [];
+    message.spans = object.spans?.map((e) => Span.fromPartial(e)) || [];
     message.blockId = object.blockId ?? "";
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
@@ -1168,9 +1185,9 @@ export const ProcessCumulativeCallGraphRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ProcessCumulativeCallGraphRequest>
-  ): ProcessCumulativeCallGraphRequest {
+  fromPartial<
+    I extends Exact<DeepPartial<ProcessCumulativeCallGraphRequest>, I>
+  >(object: I): ProcessCumulativeCallGraphRequest {
     const message = {
       ...baseProcessCumulativeCallGraphRequest,
     } as ProcessCumulativeCallGraphRequest;
@@ -1266,7 +1283,9 @@ export const NodeStats = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<NodeStats>): NodeStats {
+  fromPartial<I extends Exact<DeepPartial<NodeStats>, I>>(
+    object: I
+  ): NodeStats {
     const message = { ...baseNodeStats } as NodeStats;
     message.sum = object.sum ?? 0;
     message.min = object.min ?? 0;
@@ -1386,8 +1405,8 @@ export const CumulativeCallGraphNode = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<CumulativeCallGraphNode>
+  fromPartial<I extends Exact<DeepPartial<CumulativeCallGraphNode>, I>>(
+    object: I
   ): CumulativeCallGraphNode {
     const message = {
       ...baseCumulativeCallGraphNode,
@@ -1397,8 +1416,8 @@ export const CumulativeCallGraphNode = {
       object.stats !== undefined && object.stats !== null
         ? NodeStats.fromPartial(object.stats)
         : undefined;
-    message.callers = (object.callers ?? []).map((e) => e);
-    message.callees = (object.callees ?? []).map((e) => e);
+    message.callers = object.callers?.map((e) => e) || [];
+    message.callees = object.callees?.map((e) => e) || [];
     return message;
   },
 };
@@ -1481,16 +1500,15 @@ export const CumulativeCallGraphReply = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<CumulativeCallGraphReply>
+  fromPartial<I extends Exact<DeepPartial<CumulativeCallGraphReply>, I>>(
+    object: I
   ): CumulativeCallGraphReply {
     const message = {
       ...baseCumulativeCallGraphReply,
     } as CumulativeCallGraphReply;
-    message.scopes = (object.scopes ?? []).map((e) => ScopeDesc.fromPartial(e));
-    message.nodes = (object.nodes ?? []).map((e) =>
-      CumulativeCallGraphNode.fromPartial(e)
-    );
+    message.scopes = object.scopes?.map((e) => ScopeDesc.fromPartial(e)) || [];
+    message.nodes =
+      object.nodes?.map((e) => CumulativeCallGraphNode.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1544,7 +1562,9 @@ export const ProcessLogRequest = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessLogRequest>): ProcessLogRequest {
+  fromPartial<I extends Exact<DeepPartial<ProcessLogRequest>, I>>(
+    object: I
+  ): ProcessLogRequest {
     const message = { ...baseProcessLogRequest } as ProcessLogRequest;
     message.process =
       object.process !== undefined && object.process !== null
@@ -1609,7 +1629,7 @@ export const LogEntry = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<LogEntry>): LogEntry {
+  fromPartial<I extends Exact<DeepPartial<LogEntry>, I>>(object: I): LogEntry {
     const message = { ...baseLogEntry } as LogEntry;
     message.timeMs = object.timeMs ?? 0;
     message.msg = object.msg ?? "";
@@ -1669,11 +1689,11 @@ export const ProcessLogReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessLogReply>): ProcessLogReply {
+  fromPartial<I extends Exact<DeepPartial<ProcessLogReply>, I>>(
+    object: I
+  ): ProcessLogReply {
     const message = { ...baseProcessLogReply } as ProcessLogReply;
-    message.entries = (object.entries ?? []).map((e) =>
-      LogEntry.fromPartial(e)
-    );
+    message.entries = object.entries?.map((e) => LogEntry.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1731,8 +1751,8 @@ export const ListProcessChildrenRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ListProcessChildrenRequest>
+  fromPartial<I extends Exact<DeepPartial<ListProcessChildrenRequest>, I>>(
+    object: I
   ): ListProcessChildrenRequest {
     const message = {
       ...baseListProcessChildrenRequest,
@@ -1797,11 +1817,12 @@ export const ProcessChildrenReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessChildrenReply>): ProcessChildrenReply {
+  fromPartial<I extends Exact<DeepPartial<ProcessChildrenReply>, I>>(
+    object: I
+  ): ProcessChildrenReply {
     const message = { ...baseProcessChildrenReply } as ProcessChildrenReply;
-    message.processes = (object.processes ?? []).map((e) =>
-      Process.fromPartial(e)
-    );
+    message.processes =
+      object.processes?.map((e) => Process.fromPartial(e)) || [];
     return message;
   },
 };
@@ -2213,6 +2234,7 @@ type Builtin =
   | number
   | boolean
   | undefined;
+
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -2222,6 +2244,14 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
 
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;

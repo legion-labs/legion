@@ -2,7 +2,7 @@
   import {
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
-  } from "@/proto/analytics";
+  } from "@lgn/proto-telemetry/codegen/analytics";
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})

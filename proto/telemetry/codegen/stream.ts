@@ -133,7 +133,9 @@ export const UDTMember = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<UDTMember>): UDTMember {
+  fromPartial<I extends Exact<DeepPartial<UDTMember>, I>>(
+    object: I
+  ): UDTMember {
     const message = { ...baseUDTMember } as UDTMember;
     message.name = object.name ?? "";
     message.typeName = object.typeName ?? "";
@@ -218,13 +220,14 @@ export const UserDefinedType = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<UserDefinedType>): UserDefinedType {
+  fromPartial<I extends Exact<DeepPartial<UserDefinedType>, I>>(
+    object: I
+  ): UserDefinedType {
     const message = { ...baseUserDefinedType } as UserDefinedType;
     message.name = object.name ?? "";
     message.size = object.size ?? 0;
-    message.members = (object.members ?? []).map((e) =>
-      UDTMember.fromPartial(e)
-    );
+    message.members =
+      object.members?.map((e) => UDTMember.fromPartial(e)) || [];
     return message;
   },
 };
@@ -281,11 +284,12 @@ export const ContainerMetadata = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ContainerMetadata>): ContainerMetadata {
+  fromPartial<I extends Exact<DeepPartial<ContainerMetadata>, I>>(
+    object: I
+  ): ContainerMetadata {
     const message = { ...baseContainerMetadata } as ContainerMetadata;
-    message.types = (object.types ?? []).map((e) =>
-      UserDefinedType.fromPartial(e)
-    );
+    message.types =
+      object.types?.map((e) => UserDefinedType.fromPartial(e)) || [];
     return message;
   },
 };
@@ -391,12 +395,12 @@ export const Stream = {
         ? ContainerMetadata.fromJSON(object.objectsMetadata)
         : undefined;
     message.tags = (object.tags ?? []).map((e: any) => String(e));
-    message.properties = {};
-    if (object.properties !== undefined && object.properties !== null) {
-      Object.entries(object.properties).forEach(([key, value]) => {
-        message.properties[key] = String(value);
-      });
-    }
+    message.properties = Object.entries(object.properties ?? {}).reduce<{
+      [key: string]: string;
+    }>((acc, [key, value]) => {
+      acc[key] = String(value);
+      return acc;
+    }, {});
     return message;
   },
 
@@ -426,7 +430,7 @@ export const Stream = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<Stream>): Stream {
+  fromPartial<I extends Exact<DeepPartial<Stream>, I>>(object: I): Stream {
     const message = { ...baseStream } as Stream;
     message.streamId = object.streamId ?? "";
     message.processId = object.processId ?? "";
@@ -439,15 +443,15 @@ export const Stream = {
       object.objectsMetadata !== undefined && object.objectsMetadata !== null
         ? ContainerMetadata.fromPartial(object.objectsMetadata)
         : undefined;
-    message.tags = (object.tags ?? []).map((e) => e);
-    message.properties = {};
-    if (object.properties !== undefined && object.properties !== null) {
-      Object.entries(object.properties).forEach(([key, value]) => {
-        if (value !== undefined) {
-          message.properties[key] = String(value);
-        }
-      });
-    }
+    message.tags = object.tags?.map((e) => e) || [];
+    message.properties = Object.entries(object.properties ?? {}).reduce<{
+      [key: string]: string;
+    }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = String(value);
+      }
+      return acc;
+    }, {});
     return message;
   },
 };
@@ -510,8 +514,8 @@ export const Stream_PropertiesEntry = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<Stream_PropertiesEntry>
+  fromPartial<I extends Exact<DeepPartial<Stream_PropertiesEntry>, I>>(
+    object: I
   ): Stream_PropertiesEntry {
     const message = { ...baseStream_PropertiesEntry } as Stream_PropertiesEntry;
     message.key = object.key ?? "";
@@ -528,6 +532,7 @@ type Builtin =
   | number
   | boolean
   | undefined;
+
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -537,6 +542,14 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
 
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;

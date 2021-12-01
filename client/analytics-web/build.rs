@@ -20,8 +20,6 @@ fn build_web_app() {
         let frontend_dir = "frontend";
 
         run(&yarn_path, "install", frontend_dir);
-        // protobuf generation should be tracked outside
-        // run(&yarn_path, "setup", frontend_dir);
         run(yarn_path, "build", frontend_dir);
 
         // JS ecosystem forces us to have output files in our sources hiearchy

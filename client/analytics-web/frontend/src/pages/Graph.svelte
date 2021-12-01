@@ -12,8 +12,8 @@
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
     ScopeDesc,
-  } from "@/proto/analytics";
-  import { Process } from "@/proto/process";
+  } from "@lgn/proto-telemetry/codegen/analytics";
+  import { Process } from "@lgn/proto-telemetry/codegen/process";
   import { formatExecutionTime } from "@/lib/format";
 
   const locationStore = useLocation();

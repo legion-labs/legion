@@ -23,10 +23,10 @@
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
     ScopeDesc,
-  } from "@/proto/analytics";
-  import { Block } from "@/proto/block";
-  import { Process } from "@/proto/process";
-  import { Stream } from "@/proto/stream";
+  } from "@lgn/proto-telemetry/codegen/analytics";
+  import { Block } from "@lgn/proto-telemetry/codegen/block";
+  import { Process } from "@lgn/proto-telemetry/codegen/process";
+  import { Stream } from "@lgn/proto-telemetry/codegen/stream";
   import { onMount } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
 
