@@ -162,10 +162,10 @@ name = "analytics-web"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "legion-build-utils",
  "tokio",
  "tower",
  "tower-http",
- "which",
 ]
 
 [[package]]
@@ -2154,6 +2154,7 @@ dependencies = [
  "base64",
  "legion-app",
  "legion-async",
+ "legion-build-utils",
  "legion-ecs",
  "legion-tauri",
  "log",
@@ -2164,7 +2165,6 @@ dependencies = [
  "tauri-build",
  "tokio",
  "url",
- "which",
 ]
 
 [[package]]
@@ -3568,6 +3568,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "legion-build-utils"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitflags",
+ "named-lock",
+ "thiserror",
+ "tonic-build",
+ "walkdir",
+ "which",
+]
+
+[[package]]
 name = "legion-cli"
 version = "0.1.0"
 dependencies = [
@@ -3795,11 +3808,11 @@ name = "legion-editor-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "legion-build-utils",
  "prost",
  "prost-types",
  "tokio",
  "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -4102,10 +4115,10 @@ name = "legion-streaming-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "legion-build-utils",
  "prost",
  "tokio",
  "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -4169,10 +4182,10 @@ name = "legion-telemetry-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "legion-build-utils",
  "prost",
  "tokio",
  "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -4652,6 +4665,20 @@ dependencies = [
  "legion-data-runtime",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "named-lock"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3ab176d4bcfbcb53b8c7c5a25cb2c01674cda33db27064a85a16814c88c1f2d"
+dependencies = [
+ "libc",
+ "once_cell",
+ "parking_lot 0.10.2",
+ "thiserror",
+ "widestring 0.4.3",
+ "winapi",
 ]
 
 [[package]]

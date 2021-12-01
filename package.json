@@ -3,7 +3,7 @@
   "workspaces": [
     "client/editor-svelte/frontend",
     "client/analytics-web/frontend",
-    "proto/editor"
+    "proto/*"
   ],
   "scripts": {
     "build": "yarn workspaces run build",

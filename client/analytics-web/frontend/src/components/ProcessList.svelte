@@ -2,7 +2,7 @@
   import {
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
-  } from "@/proto/analytics";
+  } from "@lgn/proto-telemetry/codegen/analytics";
   import { link } from "svelte-navigator";
 
   const client = new PerformanceAnalyticsClientImpl(
