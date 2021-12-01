@@ -17,15 +17,8 @@ jobs:
 
       - name: Run Yarn install
         run: |
-          ls -la /etc/profile.d/
-          echo "Home: $HOME"
-          ls -la ~/
-          echo $CXX
           echo $PATH
-          echo $CARGO_HOME
-          cat ~/profile
-          cat ~/bashrc
-          sleep 5
+          ls $CARGO_HOME
           yarn install
 
       - name: Run formatting check
