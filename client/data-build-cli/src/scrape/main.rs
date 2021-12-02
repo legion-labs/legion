@@ -490,21 +490,20 @@ fn main() -> Result<(), String> {
         let code_paths = cmd_args.values_of("code_path").map_or_else(
             || {
                 vec![
-                    workspace_dir.join("lib\\"),
-                    workspace_dir.join("client\\"),
-                    workspace_dir.join("test\\"),
+                    workspace_dir.join("lib/"),
+                    workspace_dir.join("client/"),
+                    workspace_dir.join("test/"),
                 ]
             },
             |args| args.into_iter().map(PathBuf::from).collect::<Vec<_>>(),
         );
 
-        let buildindex = cmd_args.value_of("buildindex").map_or(
-            workspace_dir.join("test\\sample-data\\temp\\"),
-            PathBuf::from,
-        );
+        let buildindex = cmd_args
+            .value_of("buildindex")
+            .map_or(workspace_dir.join("test/sample-data/temp/"), PathBuf::from);
 
         let project = cmd_args.value_of("project").map_or(
-            workspace_dir.join("test\\sample-data\\project.index"),
+            workspace_dir.join("test/sample-data/project.index"),
             PathBuf::from,
         );
 
