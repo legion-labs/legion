@@ -1,8 +1,8 @@
 #[cfg(target_arch = "wasm32")]
 use std::{cell::RefCell, rc::Rc};
 
+use instant::{Duration, Instant};
 use legion_ecs::event::Events;
-use legion_utils::{Duration, Instant};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
 

@@ -6,7 +6,6 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-anyhow = "1.0"
 graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
 graphics-data = { path = "../../lib/graphics-data", package = "legion-graphics-data", version = "0.1.0" }
 graphics-utils = { path = "../../lib/graphics-utils", package = "legion-graphics-utils" }
@@ -17,8 +16,16 @@ legion-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 legion-transform = { path = "../transform", version = "0.1.0" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
+
+anyhow = "1.0"
 log = "0.4"
 parking_lot = "0.11"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+uuid = { version = "0.8", features = ["v4", "serde"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+uuid = { version = "0.8", features = ["wasm-bindgen"] }
 
 [features]
 default = ["graphics-api/vulkan"]

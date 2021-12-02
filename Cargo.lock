@@ -3538,6 +3538,7 @@ dependencies = [
 name = "legion-app"
 version = "0.1.0"
 dependencies = [
+ "instant",
  "legion-derive",
  "legion-ecs",
  "legion-telemetry",
@@ -3626,6 +3627,7 @@ name = "legion-core"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "instant",
  "legion-app",
  "legion-derive",
  "legion-ecs",
@@ -3725,7 +3727,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -4048,6 +4049,7 @@ dependencies = [
  "legion-utils",
  "log",
  "parking_lot 0.11.2",
+ "uuid",
 ]
 
 [[package]]
@@ -4242,14 +4244,12 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.7.6",
  "getrandom 0.2.3",
- "instant",
  "lazy_static",
  "legion-derive",
  "log",
  "serde",
  "siphasher",
  "toml",
- "uuid",
 ]
 
 [[package]]
@@ -4260,6 +4260,7 @@ dependencies = [
  "legion-math",
  "legion-utils",
  "log",
+ "uuid",
  "web-sys",
 ]
 
@@ -6154,6 +6155,7 @@ name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "instant",
  "legion-app",
  "legion-asset-registry",
  "legion-core",

@@ -17,5 +17,9 @@ legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 # other
 log = "0.4"
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+uuid = { version = "0.8", features = ["v4", "serde"] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+uuid = { version = "0.8", features = ["wasm-bindgen"] }
 web-sys = "0.3"

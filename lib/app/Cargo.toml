@@ -19,6 +19,7 @@ legion-telemetry = { path = "../telemetry", version = "0.1.0" }
 legion-utils = { path = "../utils", version = "0.1.0" }
 
 # other
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 ron = { version = "0.7.0", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }

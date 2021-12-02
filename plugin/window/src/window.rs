@@ -1,6 +1,6 @@
 use legion_math::{IVec2, Vec2};
-use legion_utils::Uuid;
 use log::warn;
+use uuid::Uuid;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct WindowId(Uuid);

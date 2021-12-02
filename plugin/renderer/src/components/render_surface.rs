@@ -7,8 +7,8 @@ use graphics_api::{
 };
 use legion_async::TokioAsyncRuntime;
 use legion_ecs::prelude::Component;
-use legion_utils::Uuid;
 use parking_lot::RwLock;
+use uuid::Uuid;
 
 use crate::{RenderContext, Renderer, TmpRenderPass};
 

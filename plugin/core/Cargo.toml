@@ -18,6 +18,7 @@ legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
 bytemuck = "1.7"
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 
 [dev-dependencies]

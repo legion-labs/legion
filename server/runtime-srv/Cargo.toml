@@ -16,3 +16,4 @@ legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
 clap = "2.33"
+instant = { version = "0.1", features = ["wasm-bindgen"] }

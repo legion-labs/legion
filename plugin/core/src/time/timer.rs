@@ -1,5 +1,5 @@
+use instant::Duration;
 use legion_ecs::component::Component;
-use legion_utils::Duration;
 
 use crate::Stopwatch;
 
