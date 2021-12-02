@@ -99,7 +99,7 @@ pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
     content_store: HddContentStore,
-    config: DataBuildOptions,
+    compiler_search_paths: Vec<PathBuf>,
 }
 
 impl DataBuild {
@@ -124,7 +124,7 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            config: config.clone(),
+            compiler_search_paths: config.compiler_search_paths.clone(),
         })
     }
 
@@ -138,7 +138,7 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            config: config.clone(),
+            compiler_search_paths: config.compiler_search_paths.clone(),
         })
     }
 
@@ -158,7 +158,7 @@ impl DataBuild {
                     build_index,
                     project,
                     content_store,
-                    config: config.clone(),
+                    compiler_search_paths: config.compiler_search_paths.clone(),
                 })
             }
             Err(Error::NotFound) => Self::new(config, project_dir),
@@ -443,7 +443,7 @@ impl DataBuild {
         })?;
 
         let compiler_details = {
-            let compilers = list_compilers(&self.config.compiler_search_paths);
+            let compilers = list_compilers(&self.compiler_search_paths);
 
             let info_cmd = CompilerInfoCmd::default();
             let compilers: Vec<(CompilerInfo, CompilerInfoCmdOutput)> = compilers

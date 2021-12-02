@@ -75,7 +75,7 @@ pub struct CompilerInfo {
 }
 
 /// Returns a list of compilers found at locations `paths`.
-pub fn list_compilers(paths: &[PathBuf]) -> Vec<CompilerInfo> {
+pub fn list_compilers(paths: &[impl AsRef<Path>]) -> Vec<CompilerInfo> {
     let mut commands = Vec::new();
     let prefix = "compiler-";
     let suffix = env::consts::EXE_SUFFIX;
@@ -105,8 +105,11 @@ pub fn list_compilers(paths: &[PathBuf]) -> Vec<CompilerInfo> {
     commands
 }
 
-fn search_directories(paths: &[PathBuf]) -> Vec<PathBuf> {
-    let mut dirs = paths.to_owned();
+fn search_directories(paths: &[impl AsRef<Path>]) -> Vec<PathBuf> {
+    let mut dirs = paths
+        .iter()
+        .map(|a| a.as_ref().to_owned())
+        .collect::<Vec<_>>();
     if let Ok(cwd) = env::current_dir() {
         dirs.push(cwd);
     }

@@ -1,4 +1,3 @@
-use core::slice;
 use std::fs::File;
 
 use binary_resource::BinaryResource;
@@ -17,7 +16,7 @@ fn find_compiler() {
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());
 
-    let compilers = list_compilers(slice::from_ref(&common::target_dir()));
+    let compilers = list_compilers(std::slice::from_ref(&common::target_dir()));
     assert_ne!(compilers.len(), 0);
 }
 
