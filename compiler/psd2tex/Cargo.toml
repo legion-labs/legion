@@ -5,6 +5,9 @@ authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+[lib]
+doc = false
+
 [[bin]]
 name = "compiler-psd2tex"
 doc = false

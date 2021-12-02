@@ -54,11 +54,4 @@
 // crate-specific exceptions:
 #![allow()]
 
-use std::env;
-
-use compiler_test_refs::COMPILER_INFO;
-use legion_data_compiler::compiler_api::{compiler_main, CompilerError};
-
-fn main() -> Result<(), CompilerError> {
-    compiler_main(env::args(), &COMPILER_INFO)
-}
+include!(concat!(env!("OUT_DIR"), "/compiler_instancedc.rs"));
