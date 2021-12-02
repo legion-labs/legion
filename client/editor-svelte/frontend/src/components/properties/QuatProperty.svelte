@@ -1,8 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
+  import { Quat } from "@/api";
   import NumberInput from "../NumberInput.svelte";
-
-  type Quat = [number, number, number, number];
 
   const dispatch = createEventDispatcher<{ input: Quat }>();
 

@@ -41,7 +41,6 @@ function levelPriority(level: Level) {
   }
 }
 
-// TODO: Sync with local storage
 declare global {
   interface Window {
     __LOG__: { level: Level; namespace: RegExp } | null;
@@ -54,6 +53,7 @@ const localStorageKey = "__LOG__";
 function init() {
   try {
     const log = localStorage.getItem(localStorageKey);
+
     window.__LOG__ = log ? JSON.parse(log) : null;
   } catch {
     window.__LOG__ = null;

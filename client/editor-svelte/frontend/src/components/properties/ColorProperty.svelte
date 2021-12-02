@@ -2,30 +2,34 @@
   import { createEventDispatcher } from "svelte";
   import { ColorSet, colorSetFromHex } from "@/lib/colors";
   import clickOutside from "@/actions/clickOutside";
-  import ColorPicker from "../ColorPicker.svelte";
-  import TextInput from "../TextInput.svelte";
+  import ColorPicker from "@/components/ColorPicker.svelte";
+  import TextInput from "@/components/TextInput.svelte";
 
   const dispatch = createEventDispatcher<{
-    input: string;
+    input: number;
   }>();
 
-  export let value: string;
+  export let value: number;
 
   let visible = false;
 
-  const setColorsFromTextInput = ({
-    detail: newValue,
-  }: CustomEvent<string>) => {
-    value = newValue;
-    dispatch("input", value);
-  };
+  $: hexValue = value.toString(16).padStart(8, "0");
 
-  const setColorsFromColorPicker = ({
-    detail: { hex },
-  }: CustomEvent<ColorSet>) => {
-    value = hex;
+  function setColors(newValue: string) {
+    value = parseInt(newValue, 16);
+
     dispatch("input", value);
-  };
+  }
+
+  function setColorsFromTextInput({ detail: newValue }: CustomEvent<string>) {
+    setColors(newValue);
+  }
+
+  function setColorsFromColorPicker({
+    detail: { hex },
+  }: CustomEvent<ColorSet>) {
+    setColors(hex);
+  }
 </script>
 
 <div
@@ -34,7 +38,12 @@
     visible = false;
   }}
 >
-  <TextInput {value} on:input={setColorsFromTextInput} fullWidth autoSelect>
+  <TextInput
+    value={hexValue}
+    on:input={setColorsFromTextInput}
+    fullWidth
+    autoSelect
+  >
     <div
       class="h-full w-full flex items-center justify-center text-xl font-bold"
       slot="leftExtension"
@@ -46,7 +55,7 @@
       slot="rightExtension"
       on:change={setColorsFromColorPicker}
       bind:visible
-      colors={colorSetFromHex(value)}
+      colors={colorSetFromHex(hexValue)}
       position="left"
     />
   </TextInput>
