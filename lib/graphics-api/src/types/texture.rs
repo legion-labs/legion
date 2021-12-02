@@ -98,7 +98,7 @@ impl Texture {
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let (platform_texture, texture_id) = VulkanTexture::from_existing(
-            &device_context,
+            device_context,
             #[cfg(feature = "vulkan")]
             existing_image,
             texture_def,

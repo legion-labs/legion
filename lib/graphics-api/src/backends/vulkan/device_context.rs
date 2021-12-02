@@ -231,7 +231,7 @@ impl DeviceContext {
     }
 
     pub(crate) fn create_renderpass(
-        device_context: &DeviceContext,
+        device_context: &Self,
         renderpass_def: &VulkanRenderpassDef,
     ) -> GfxResult<VulkanRenderpass> {
         VulkanRenderpass::new(device_context, renderpass_def)

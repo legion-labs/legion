@@ -42,7 +42,7 @@ pub enum PhysicalDeviceType {
 
 pub(crate) struct DeviceContextInner {
     #[cfg(any(feature = "vulkan"))]
-    device_info: DeviceInfo,
+    _device_info: DeviceInfo,
     deferred_dropper: DeferredDropper,
     destroyed: AtomicBool,
 
@@ -113,7 +113,7 @@ impl DeviceContextInner {
 
         Ok(Self {
             #[cfg(any(feature = "vulkan"))]
-            device_info,
+            _device_info: device_info,
             deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
 

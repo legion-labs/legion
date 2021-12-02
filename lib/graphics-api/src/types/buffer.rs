@@ -107,7 +107,7 @@ pub struct Buffer {
 impl Buffer {
     pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
-        let platform_buffer = VulkanBuffer::new(&device_context, buffer_def).map_err(|e| {
+        let platform_buffer = VulkanBuffer::new(device_context, buffer_def).map_err(|e| {
             log::error!("Error creating buffer {:?}", e);
             ash::vk::Result::ERROR_UNKNOWN
         })?;

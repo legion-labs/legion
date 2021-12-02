@@ -20,7 +20,7 @@ impl Drop for PipelineInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_pipeline
-            .destroy(&self.root_signature.device_context());
+            .destroy(self.root_signature.device_context());
     }
 }
 
@@ -55,7 +55,7 @@ impl Pipeline {
         pipeline_def: &ComputePipelineDef<'_>,
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
-        let platform_pipeline = VulkanPipeline::new_compute_pipeline(&device_context, pipeline_def)
+        let platform_pipeline = VulkanPipeline::new_compute_pipeline(device_context, pipeline_def)
             .map_err(|e| {
                 log::error!("Error creating compute pipeline {:?}", e);
                 ash::vk::Result::ERROR_UNKNOWN
