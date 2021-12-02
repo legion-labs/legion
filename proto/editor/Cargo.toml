@@ -9,12 +9,13 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 tonic = "0.6"
 prost = "0.9"
-prost-types = "0.9"
 tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
 base64 = "0.13.0"
 
 [build-dependencies]
-legion-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = ["proto-codegen"]}
+legion-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = [
+    "proto-codegen",
+] }
 
 [features]
 run-codegen = []
