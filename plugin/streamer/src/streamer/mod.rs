@@ -74,7 +74,6 @@ pub(crate) fn handle_stream_events(
     renderer: Res<'_, Renderer>,
     mut commands: Commands<'_, '_>,
     mut video_stream_events: EventWriter<'_, '_, VideoStreamEvent>,
-    egui: Res<'_, Egui>,
 ) {
     for event in streamer.stream_events_receiver.try_iter() {
         match event {
@@ -173,7 +172,6 @@ pub(crate) fn update_streams(
     renderer: Res<'_, Renderer>,
     mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
-    egui: Res<'_, Egui>,
 ) {
     for event in video_stream_events.iter() {
         let mut render_surface = query.get_mut(event.stream_id.entity).unwrap();
@@ -188,7 +186,6 @@ pub(crate) fn update_streams(
                 render_surface.resize(
                     &renderer,
                     RenderSurfaceExtents::new(resolution.width(), resolution.height()),
-                    &(*egui).ctx,
                 );
             }
             VideoStreamEventInfo::Speed { id, speed } => {

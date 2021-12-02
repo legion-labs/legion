@@ -1,5 +1,4 @@
 use lgn_app::{CoreStage, Plugin};
-use anyhow::Context;
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::QueueType;
 use lgn_math::{EulerRot, Quat};
@@ -19,8 +18,8 @@ pub struct RendererPlugin {
 }
 
 impl RendererPlugin {
-    pub fn new(has_window: bool) -> RendererPlugin {
-        RendererPlugin { has_window }
+    pub fn new(has_window: bool) -> Self {
+        Self { has_window }
     }
 }
 
@@ -61,12 +60,13 @@ impl Plugin for RendererPlugin {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn update_ui(
-    egui_ctx: Res<Egui>,
-    mut renderer_ui: ResMut<RendererUI>,
+    egui_ctx: Res<'_, Egui>,
+    mut renderer_ui: ResMut<'_, RendererUI>,
     mut rotations: Query<'_, '_, &mut RotationComponent>,
 ) {
-    egui::Window::new("Update rotation speeds").show(&egui_ctx.ctx, |ui| {
+    egui::Window::new("Rotations").show(&egui_ctx.ctx, |ui| {
         for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.label(format!("Object {}: ", i));
@@ -132,6 +132,17 @@ fn render_update(
             render_surface.as_mut(),
             q_drawables.as_slice(),
         );
+
+        let egui_pass = render_surface.egui_renderpass();
+        let mut egui_pass = egui_pass.write();
+        egui_pass.update_font_texture(&mut render_context, &cmd_buffer, &egui.ctx);
+        egui_pass.render(
+            &mut render_context,
+            &cmd_buffer,
+            render_surface.as_mut(),
+            &mut egui.ctx,
+        );
+
         cmd_buffer.end().unwrap();
         // queue
         let sem = render_surface.acquire();

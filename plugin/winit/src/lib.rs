@@ -364,9 +364,6 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
                         let winit_window = winit_windows.get_window(window_id).unwrap();
                         let position = position.to_logical(winit_window.scale_factor());
                         let position = Vec2::new(position.x, position.y);
-                        let inner_size = winit_window
-                            .inner_size()
-                            .to_logical::<f32>(winit_window.scale_factor());
                         window.update_cursor_position_from_backend(Some(position));
 
                         cursor_moved_events.send(CursorMoved {

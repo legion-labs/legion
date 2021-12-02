@@ -62,11 +62,11 @@ use legion_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
 };
-use legion_window::{CursorMoved, WindowCreated, Windows};
+use legion_window::{CursorMoved, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows};
 
+#[derive(Default)]
 pub struct Egui {
     pub ctx: egui::CtxRef,
-    pub scale: f32,
 }
 
 #[derive(SystemLabel, Debug, Clone, PartialEq, Eq, Hash)]
@@ -81,8 +81,8 @@ pub struct EguiPlugin {
 }
 
 impl EguiPlugin {
-    pub fn new(has_window: bool) -> EguiPlugin {
-        EguiPlugin { has_window }
+    pub fn new(has_window: bool) -> Self {
+        Self { has_window }
     }
 }
 
@@ -92,10 +92,7 @@ impl Plugin for EguiPlugin {
             app.add_startup_system(on_window_created.system());
         }
 
-        app.insert_resource(Egui {
-            ctx: egui::CtxRef::default(),
-            scale: 1.0,
-        });
+        app.insert_resource(Egui::default());
         app.insert_resource(RawInput::default());
         app.add_system_to_stage(
             CoreStage::PreUpdate,
@@ -130,7 +127,10 @@ fn on_window_created(
     let mut pixels_per_point = 1.0;
     for ev in ev_wnd_created.iter() {
         let wnd = wnd_list.get(ev.id).unwrap();
-        size = egui::vec2(wnd.physical_width() as f32, wnd.physical_height() as f32);
+        #[allow(clippy::cast_precision_loss)]
+        {
+            size = egui::vec2(wnd.physical_width() as f32, wnd.physical_height() as f32);
+        }
         pixels_per_point = wnd.scale_factor();
     }
     // We need to run begin_frame at least once so we have the font texture content
@@ -139,13 +139,15 @@ fn on_window_created(
         pixels_per_point: Some(pixels_per_point as f32),
         ..RawInput::default()
     });
-    egui.ctx.end_frame();
+    #[allow(unused_must_use)]
+    {
+        egui.ctx.end_frame();
+    }
 }
 
 fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerButton {
     match mouse_button {
         MouseButton::Left => egui::PointerButton::Primary,
-        MouseButton::Right => egui::PointerButton::Secondary,
         MouseButton::Middle => egui::PointerButton::Middle,
         _ => egui::PointerButton::Secondary,
     }
@@ -213,8 +215,7 @@ fn key_from_key_code(key: KeyCode) -> Option<Key> {
 }
 
 fn gather_input(
-    egui: Res<'_, Egui>,
-    mut raw_input: ResMut<'_, RawInput>,
+    raw_input: ResMut<'_, RawInput>,
     mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
     mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
@@ -247,10 +248,7 @@ fn gather_input(
 
     for cursor_button_event in cursor_button.iter() {
         events.push(Event::PointerButton {
-            pos: egui::pos2(
-                cursor_button_event.pos.x * egui.ctx.pixels_per_point(),
-                cursor_button_event.pos.y * egui.ctx.pixels_per_point(),
-            ),
+            pos: egui::pos2(cursor_button_event.pos.x, cursor_button_event.pos.y),
             button: pointer_button_from_mouse_button(cursor_button_event.button),
             pressed: cursor_button_event.state.is_pressed(),
             modifiers: egui::Modifiers::default(), // TODO
@@ -282,18 +280,29 @@ fn gather_input(
 }
 
 fn gather_input_window(
-    egui: Res<'_, Egui>,
     mut raw_input: ResMut<'_, RawInput>,
     mut cursor_moved: EventReader<'_, '_, CursorMoved>,
+    mut scale_factor_changed: EventReader<'_, '_, WindowScaleFactorChanged>,
+    mut window_resized_events: EventReader<'_, '_, WindowResized>,
 ) {
     for cursor_moved_event in cursor_moved.iter() {
         raw_input.events.push(Event::PointerMoved(egui::pos2(
-            cursor_moved_event.position.x * egui.ctx.pixels_per_point(),
-            cursor_moved_event.position.y * egui.ctx.pixels_per_point(),
+            cursor_moved_event.position.x,
+            cursor_moved_event.position.y,
         )));
+    }
+    for scale_factor_event in scale_factor_changed.iter() {
+        raw_input.pixels_per_point = Some(scale_factor_event.scale_factor as f32);
+    }
+    for window_resized_event in window_resized_events.iter() {
+        raw_input.screen_rect = Some(egui::Rect::from_min_size(
+            egui::pos2(0.0, 0.0),
+            egui::vec2(window_resized_event.width, window_resized_event.height),
+        ));
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
     egui.ctx.begin_frame(raw_input.to_owned());
 

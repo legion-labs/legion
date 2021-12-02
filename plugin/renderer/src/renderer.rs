@@ -18,8 +18,6 @@ use crate::resources::{
 };
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
-use crate::EguiPass;
-use legion_egui::Egui;
 
 pub struct Renderer {
     frame_idx: usize,
@@ -56,7 +54,7 @@ impl Renderer {
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, 16),
+            transient_buffer: TransientPagedBuffer::new(device_context, 1024),
             bump_allocator_pool: RwLock::new(CpuPool::new()),
             api,
         })
@@ -147,12 +145,9 @@ impl Renderer {
         //
         // Broadcast begin frame event
         //
-        egui_ctx: &mut egui::CtxRef,
         {
             let mut pool = self.command_buffer_pools.write();
             pool.begin_frame();
-                let egui_pass = &render_surface.egui_pass;
-                egui_pass.render(self, &render_surface, cmd_buffer, egui_ctx);
         }
         {
             let mut pool = self.descriptor_pools.write();

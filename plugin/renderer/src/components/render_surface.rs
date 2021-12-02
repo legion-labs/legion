@@ -10,7 +10,7 @@ use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
 use uuid::Uuid;
 
-use crate::{RenderContext, EguiPass, Renderer, TmpRenderPass};
+use crate::{EguiPass, RenderContext, Renderer, TmpRenderPass};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);
@@ -63,15 +63,10 @@ struct SizeDependentResources {
     texture_state: ResourceState,
     depth_stencil_texture: Texture,
     depth_stencil_texture_view: TextureView,
-    pub egui_pass: EguiPass,
-    }
-
-
-
+}
 
 impl SizeDependentResources {
     fn new(renderer: &Renderer, extents: RenderSurfaceExtents) -> Self {
-        egui_ctx: &egui::CtxRef,
         let device_context = renderer.device_context();
         let texture_def = TextureDef {
             extents: Extents3D {
@@ -126,7 +121,6 @@ impl SizeDependentResources {
             texture_state: ResourceState::UNDEFINED,
             depth_stencil_texture,
             depth_stencil_texture_view,
-            egui_pass: EguiPass::new(renderer, egui_ctx),
         }
     }
 }
@@ -142,6 +136,7 @@ pub struct RenderSurface {
     render_frame_idx: usize,
     signal_sems: Vec<Semaphore>,
     test_renderpass: Arc<RwLock<TmpRenderPass>>,
+    egui_renderpass: Arc<RwLock<EguiPass>>,
 }
 
 impl RenderSurface {
@@ -155,6 +150,10 @@ impl RenderSurface {
 
     pub fn test_renderpass(&self) -> Arc<RwLock<TmpRenderPass>> {
         self.test_renderpass.clone()
+    }
+
+    pub fn egui_renderpass(&self) -> Arc<RwLock<EguiPass>> {
+        self.egui_renderpass.clone()
     }
 
     pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
@@ -259,6 +258,7 @@ impl RenderSurface {
             render_frame_idx: 0,
             signal_sems,
             test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(renderer))),
+            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(renderer))),
             presenters: Vec::new(),
         }
     }
