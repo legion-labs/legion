@@ -13,7 +13,7 @@ impl VulkanSemaphore {
 
         let vk_semaphore = unsafe {
             device_context
-                .platform_device()
+                .vk_device()
                 .create_semaphore(&*create_info, None)?
         };
 
@@ -23,7 +23,7 @@ impl VulkanSemaphore {
     pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
-                .platform_device()
+                .vk_device()
                 .destroy_semaphore(self.vk_semaphore, None);
         }
     }

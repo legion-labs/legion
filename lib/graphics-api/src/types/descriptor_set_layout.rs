@@ -21,8 +21,7 @@ pub(crate) struct DescriptorSetLayoutInner {
 impl Drop for DescriptorSetLayoutInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_layout
-            .destroy(self.device_context.platform_device_context());
+        self.platform_layout.destroy(&self.device_context);
     }
 }
 
@@ -82,11 +81,10 @@ impl DescriptorSetLayout {
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let (platform_layout, descriptors, update_data_count) =
-            VulkanDescriptorSetLayout::new(device_context.platform_device_context(), definition)
-                .map_err(|e| {
-                    log::error!("Error creating platform descriptor set layout {:?}", e);
-                    ash::vk::Result::ERROR_UNKNOWN
-                })?;
+            VulkanDescriptorSetLayout::new(device_context, definition).map_err(|e| {
+                log::error!("Error creating platform descriptor set layout {:?}", e);
+                ash::vk::Result::ERROR_UNKNOWN
+            })?;
         #[cfg(not(any(feature = "vulkan")))]
         let update_data_count = 0;
 

@@ -52,13 +52,12 @@ impl GfxApi {
             #[cfg(feature = "vulkan")]
             VulkanApi::destroy(&device_context);
             let inner = device_context.inner.clone();
-            inner.deferred_dropper.destroy();
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
             let _create_index = device_context.create_index;
 
-            // Thsi should be the final device context
+            // This should be the final device context
             std::mem::drop(device_context);
 
             let strong_count = Arc::strong_count(&inner);

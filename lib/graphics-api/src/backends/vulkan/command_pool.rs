@@ -1,10 +1,8 @@
-use ash::vk;
-
 use super::VulkanQueue;
-use crate::{CommandPoolDef, DeviceContext, GfxResult};
+use crate::{CommandPool, CommandPoolDef, DeviceContext, GfxResult};
 
 pub(crate) struct VulkanCommandPool {
-    vk_command_pool: vk::CommandPool,
+    vk_command_pool: ash::vk::CommandPool,
 }
 
 impl VulkanCommandPool {
@@ -19,42 +17,45 @@ impl VulkanCommandPool {
             queue_family_index
         );
 
-        let mut command_pool_create_flags = vk::CommandPoolCreateFlags::empty();
+        let mut command_pool_create_flags = ash::vk::CommandPoolCreateFlags::empty();
         if command_pool_def.transient {
-            command_pool_create_flags |= vk::CommandPoolCreateFlags::TRANSIENT;
+            command_pool_create_flags |= ash::vk::CommandPoolCreateFlags::TRANSIENT;
         }
 
-        let pool_create_info = vk::CommandPoolCreateInfo::builder()
+        let pool_create_info = ash::vk::CommandPoolCreateInfo::builder()
             .flags(command_pool_create_flags)
             .queue_family_index(queue_family_index);
 
         let vk_command_pool = unsafe {
             devie_context
-                .platform_device()
+                .vk_device()
                 .create_command_pool(&pool_create_info, None)?
         };
 
         Ok(Self { vk_command_pool })
     }
 
-    pub fn destroy(&self, device_context: &DeviceContext) {
+    pub(crate) fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
-                .platform_device()
+                .vk_device()
                 .destroy_command_pool(self.vk_command_pool, None);
         }
     }
+}
 
-    pub fn reset_command_pool(&self, device_context: &DeviceContext) -> GfxResult<()> {
+impl CommandPool {
+    pub(crate) fn reset_command_pool_platform(&self) -> GfxResult<()> {
         unsafe {
-            device_context
-                .platform_device()
-                .reset_command_pool(self.vk_command_pool, vk::CommandPoolResetFlags::empty())?;
+            self.inner.device_context.vk_device().reset_command_pool(
+                self.inner.platform_command_pool.vk_command_pool,
+                ash::vk::CommandPoolResetFlags::empty(),
+            )?;
         }
         Ok(())
     }
 
-    pub fn vk_command_pool(&self) -> vk::CommandPool {
-        self.vk_command_pool
+    pub(crate) fn vk_command_pool(&self) -> ash::vk::CommandPool {
+        self.inner.platform_command_pool.vk_command_pool
     }
 }

@@ -1,36 +1,32 @@
 #![allow(clippy::too_many_lines)]
 use std::{mem, ptr};
 
-use ash::vk;
-
-use super::{internal, VulkanDeviceContext, VulkanRootSignature};
+use super::{internal, VulkanRootSignature};
 use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams,
-    CmdCopyTextureParams, ColorRenderTargetBinding, CommandBufferDef, CommandPool,
+    CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer, CommandBufferDef, CommandPool,
     DepthStencilRenderTargetBinding, DescriptorSetHandle, DeviceContext, GfxResult,
-    IndexBufferBinding, Pipeline, QueueType, ResourceState, ResourceUsage, RootSignature, Texture,
+    IndexBufferBinding, Pipeline, ResourceState, ResourceUsage, RootSignature, Texture,
     TextureBarrier, VertexBufferBinding,
 };
-
 pub(crate) struct VulkanCommandBuffer {
-    vk_command_pool: vk::CommandPool,
-    vk_command_buffer: vk::CommandBuffer,
+    vk_command_buffer: ash::vk::CommandBuffer,
 }
 
 impl VulkanCommandBuffer {
-    pub fn new(
+    pub(crate) fn new(
         command_pool: &CommandPool,
         command_buffer_def: &CommandBufferDef,
     ) -> GfxResult<Self> {
-        let vk_command_pool = command_pool.platform_command_pool().vk_command_pool();
+        let vk_command_pool = command_pool.vk_command_pool();
         log::trace!("Creating command buffers from pool {:?}", vk_command_pool);
         let command_buffer_level = if command_buffer_def.is_secondary {
-            vk::CommandBufferLevel::SECONDARY
+            ash::vk::CommandBufferLevel::SECONDARY
         } else {
-            vk::CommandBufferLevel::PRIMARY
+            ash::vk::CommandBufferLevel::PRIMARY
         };
 
-        let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
+        let command_buffer_allocate_info = ash::vk::CommandBufferAllocateInfo::builder()
             .command_pool(vk_command_pool)
             .level(command_buffer_level)
             .command_buffer_count(1);
@@ -38,74 +34,62 @@ impl VulkanCommandBuffer {
         let vk_command_buffer = unsafe {
             command_pool
                 .device_context()
-                .platform_device()
+                .vk_device()
                 .allocate_command_buffers(&command_buffer_allocate_info)
         }?[0];
 
-        Ok(Self {
-            vk_command_pool,
-            vk_command_buffer,
-        })
+        Ok(Self { vk_command_buffer })
+    }
+}
+
+impl CommandBuffer {
+    pub(crate) fn vk_command_buffer(&self) -> ash::vk::CommandBuffer {
+        self.inner.platform_command_buffer.vk_command_buffer
     }
 
-    pub fn vk_command_buffer(&self) -> vk::CommandBuffer {
-        self.vk_command_buffer
-    }
+    pub(crate) fn begin_platform(&self) -> GfxResult<()> {
+        // TODO: check if it is not a ONE TIME SUBMIT
+        let command_buffer_usage_flags = ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT;
 
-    pub fn begin(&self, device_context: &DeviceContext) -> GfxResult<()> {
-        //TODO: Use one-time-submit?
-        let command_buffer_usage_flags = vk::CommandBufferUsageFlags::empty();
-
-        let begin_info = vk::CommandBufferBeginInfo::builder().flags(command_buffer_usage_flags);
+        let begin_info =
+            ash::vk::CommandBufferBeginInfo::builder().flags(command_buffer_usage_flags);
 
         unsafe {
-            device_context
-                .platform_device_context()
-                .device()
-                .begin_command_buffer(self.vk_command_buffer, &*begin_info)?;
+            self.inner.device_context.vk_device().begin_command_buffer(
+                self.inner.platform_command_buffer.vk_command_buffer,
+                &*begin_info,
+            )?;
         }
 
         Ok(())
     }
 
-    pub fn end_command_buffer(&self, device_context: &DeviceContext) -> GfxResult<()> {
+    pub(crate) fn end_platform(&self) -> GfxResult<()> {
         unsafe {
-            device_context
-                .platform_device_context()
-                .device()
-                .end_command_buffer(self.vk_command_buffer)?;
+            self.inner
+                .device_context
+                .vk_device()
+                .end_command_buffer(self.inner.platform_command_buffer.vk_command_buffer)?;
         }
         Ok(())
     }
 
-    pub fn return_to_pool(&self, device_context: &DeviceContext) {
-        unsafe {
-            device_context
-                .platform_device_context()
-                .device()
-                .free_command_buffers(self.vk_command_pool, &[self.vk_command_buffer]);
-        }
-    }
-
-    pub fn cmd_begin_render_pass(
+    pub(crate) fn cmd_begin_render_pass_platform(
         &self,
-        device_context: &DeviceContext,
-        queue_type: QueueType,
-        queue_family_index: u32,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<()> {
         let (renderpass, framebuffer) = {
-            let resource_cache = device_context.platform_device_context().resource_cache();
+            let resource_cache = self.inner.device_context.resource_cache();
             let mut resource_cache = resource_cache.inner.lock().unwrap();
 
             let renderpass = resource_cache.renderpass_cache.get_or_create_renderpass(
-                device_context,
+                &self.inner.device_context,
                 color_targets,
                 depth_target.as_ref(),
             )?;
             let framebuffer = resource_cache.framebuffer_cache.get_or_create_framebuffer(
-                device_context,
+                &self.inner.device_context,
                 &renderpass,
                 color_targets,
                 depth_target.as_ref(),
@@ -159,9 +143,9 @@ impl VulkanCommandBuffer {
             barriers
         };
 
-        let render_area = vk::Rect2D {
-            offset: vk::Offset2D { x: 0, y: 0 },
-            extent: vk::Extent2D {
+        let render_area = ash::vk::Rect2D {
+            offset: ash::vk::Offset2D { x: 0, y: 0 },
+            extent: ash::vk::Extent2D {
                 width: framebuffer.width(),
                 height: framebuffer.height(),
             },
@@ -177,62 +161,49 @@ impl VulkanCommandBuffer {
         }
 
         if !barriers.is_empty() {
-            self.cmd_resource_barrier(
-                device_context,
-                queue_type,
-                queue_family_index,
-                &[],
-                &barriers,
-            );
+            self.cmd_resource_barrier_platform(&[], &barriers);
         }
 
-        let begin_renderpass_create_info = vk::RenderPassBeginInfo::builder()
+        let begin_renderpass_create_info = ash::vk::RenderPassBeginInfo::builder()
             .render_pass(renderpass.vk_renderpass())
             .framebuffer(framebuffer.vk_framebuffer())
             .render_area(render_area)
             .clear_values(&clear_values);
 
         unsafe {
-            device_context.platform_device().cmd_begin_render_pass(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_begin_render_pass(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 &*begin_renderpass_create_info,
-                vk::SubpassContents::INLINE,
+                ash::vk::SubpassContents::INLINE,
             );
         }
 
         #[allow(clippy::cast_precision_loss)]
         self.cmd_set_viewport(
-            device_context,
             0.0,
             0.0,
             framebuffer.width() as f32,
             framebuffer.height() as f32,
             0.0,
             1.0,
-        );
-        self.cmd_set_scissor(
-            device_context,
-            0,
-            0,
-            framebuffer.width(),
-            framebuffer.height(),
-        );
+        )?;
+        self.cmd_set_scissor(0, 0, framebuffer.width(), framebuffer.height())?;
 
         Ok(())
     }
 
-    pub fn cmd_end_render_pass(&self, device_context: &DeviceContext) {
+    pub(crate) fn cmd_end_render_pass_platform(&self) {
         unsafe {
-            device_context
-                .platform_device()
-                .cmd_end_render_pass(self.vk_command_buffer);
+            self.inner
+                .device_context
+                .vk_device()
+                .cmd_end_render_pass(self.inner.platform_command_buffer.vk_command_buffer);
         }
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn cmd_set_viewport(
+    pub(crate) fn cmd_set_viewport_platform(
         &self,
-        device_context: &DeviceContext,
         x: f32,
         y: f32,
         width: f32,
@@ -243,10 +214,10 @@ impl VulkanCommandBuffer {
         unsafe {
             // We invert the viewport by using negative height and setting y = y + height
             // This is supported in vulkan 1.1 or 1.0 with an extension
-            device_context.platform_device().cmd_set_viewport(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_set_viewport(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 0,
-                &[vk::Viewport {
+                &[ash::vk::Viewport {
                     x,
                     y: y + height,
                     width,
@@ -258,94 +229,87 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_set_scissor(
-        &self,
-        device_context: &DeviceContext,
-        x: u32,
-        y: u32,
-        width: u32,
-        height: u32,
-    ) {
+    pub(crate) fn cmd_set_scissor_platform(&self, x: u32, y: u32, width: u32, height: u32) {
         unsafe {
-            device_context.platform_device().cmd_set_scissor(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_set_scissor(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 0,
-                &[vk::Rect2D {
-                    offset: vk::Offset2D {
+                &[ash::vk::Rect2D {
+                    offset: ash::vk::Offset2D {
                         x: x.try_into().unwrap(),
                         y: y.try_into().unwrap(),
                     },
-                    extent: vk::Extent2D { width, height },
+                    extent: ash::vk::Extent2D { width, height },
                 }],
             );
         }
     }
 
-    pub fn cmd_set_stencil_reference_value(&self, device_context: &DeviceContext, value: u32) {
+    pub(crate) fn cmd_set_stencil_reference_value_platform(&self, value: u32) {
         unsafe {
-            device_context.platform_device().cmd_set_stencil_reference(
-                self.vk_command_buffer,
-                vk::StencilFaceFlags::FRONT_AND_BACK,
-                value,
-            );
+            self.inner
+                .device_context
+                .vk_device()
+                .cmd_set_stencil_reference(
+                    self.inner.platform_command_buffer.vk_command_buffer,
+                    ash::vk::StencilFaceFlags::FRONT_AND_BACK,
+                    value,
+                );
         }
     }
 
-    pub fn cmd_bind_pipeline(&self, device_context: &DeviceContext, pipeline: &Pipeline) {
+    pub(crate) fn cmd_bind_pipeline_platform(&self, pipeline: &Pipeline) {
         //TODO: Add verification that the pipeline is compatible with the renderpass created by the targets
         let pipeline_bind_point =
             super::internal::pipeline_type_pipeline_bind_point(pipeline.pipeline_type());
 
         unsafe {
-            device_context.platform_device().cmd_bind_pipeline(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_bind_pipeline(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 pipeline_bind_point,
-                pipeline.platform_pipeline().vk_pipeline(),
+                pipeline.vk_pipeline(),
             );
         }
     }
 
-    pub fn cmd_bind_vertex_buffers(
+    pub(crate) fn cmd_bind_vertex_buffers_platform(
         &self,
-        device_context: &DeviceContext,
         first_binding: u32,
         bindings: &[VertexBufferBinding<'_>],
     ) {
         let mut buffers = Vec::with_capacity(bindings.len());
         let mut offsets = Vec::with_capacity(bindings.len());
         for binding in bindings {
-            buffers.push(binding.buffer.platform_buffer().vk_buffer());
+            buffers.push(binding.buffer.vk_buffer());
             offsets.push(binding.byte_offset);
         }
 
         unsafe {
-            device_context.platform_device().cmd_bind_vertex_buffers(
-                self.vk_command_buffer,
-                first_binding,
-                &buffers,
-                &offsets,
-            );
+            self.inner
+                .device_context
+                .vk_device()
+                .cmd_bind_vertex_buffers(
+                    self.inner.platform_command_buffer.vk_command_buffer,
+                    first_binding,
+                    &buffers,
+                    &offsets,
+                );
         }
     }
 
-    pub fn cmd_bind_index_buffer(
-        &self,
-        device_context: &DeviceContext,
-        binding: &IndexBufferBinding<'_>,
-    ) {
+    pub(crate) fn cmd_bind_index_buffer_platform(&self, binding: &IndexBufferBinding<'_>) {
         unsafe {
-            device_context.platform_device().cmd_bind_index_buffer(
-                self.vk_command_buffer,
-                binding.buffer.platform_buffer().vk_buffer(),
+            self.inner.device_context.vk_device().cmd_bind_index_buffer(
+                self.inner.platform_command_buffer.vk_command_buffer,
+                binding.buffer.vk_buffer(),
                 binding.byte_offset,
                 binding.index_type.into(),
             );
         }
     }
 
-    pub fn cmd_bind_descriptor_set_handle(
+    pub(crate) fn cmd_bind_descriptor_set_handle_platform(
         &self,
-        device_context: &DeviceContext,
         root_signature: &RootSignature,
         set_index: u32,
         descriptor_set_handle: DescriptorSetHandle,
@@ -353,22 +317,24 @@ impl VulkanCommandBuffer {
         let bind_point = root_signature.pipeline_type();
 
         unsafe {
-            device_context.platform_device().cmd_bind_descriptor_sets(
-                self.vk_command_buffer,
-                super::internal::pipeline_type_pipeline_bind_point(bind_point),
-                root_signature
-                    .platform_root_signature()
-                    .vk_pipeline_layout(),
-                set_index,
-                &[descriptor_set_handle.vk_type],
-                &[],
-            );
+            self.inner
+                .device_context
+                .vk_device()
+                .cmd_bind_descriptor_sets(
+                    self.inner.platform_command_buffer.vk_command_buffer,
+                    super::internal::pipeline_type_pipeline_bind_point(bind_point),
+                    root_signature
+                        .platform_root_signature()
+                        .vk_pipeline_layout(),
+                    set_index,
+                    &[descriptor_set_handle.vk_type],
+                    &[],
+                );
         }
     }
 
-    pub fn cmd_push_constants<T: Sized>(
+    pub(crate) fn cmd_push_constants_platform<T: Sized>(
         &self,
-        device_context: &DeviceContext,
         root_signature: &VulkanRootSignature,
         constants: &T,
     ) {
@@ -376,20 +342,20 @@ impl VulkanCommandBuffer {
         let constants_ptr = (constants as *const T).cast::<u8>();
         unsafe {
             let data_slice = &*ptr::slice_from_raw_parts(constants_ptr, constants_size);
-            device_context.platform_device().cmd_push_constants(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_push_constants(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 root_signature.vk_pipeline_layout(),
-                vk::ShaderStageFlags::ALL,
+                ash::vk::ShaderStageFlags::ALL,
                 0,
                 data_slice,
             );
         }
     }
 
-    pub fn cmd_draw(&self, device_context: &DeviceContext, vertex_count: u32, first_vertex: u32) {
+    pub(crate) fn cmd_draw_platform(&self, vertex_count: u32, first_vertex: u32) {
         unsafe {
-            device_context.platform_device().cmd_draw(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_draw(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 vertex_count,
                 1,
                 first_vertex,
@@ -398,17 +364,16 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_draw_instanced(
+    pub(crate) fn cmd_draw_instanced_platform(
         &self,
-        device_context: &DeviceContext,
         vertex_count: u32,
         first_vertex: u32,
         instance_count: u32,
         first_instance: u32,
     ) {
         unsafe {
-            device_context.platform_device().cmd_draw(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_draw(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 vertex_count,
                 instance_count,
                 first_vertex,
@@ -417,16 +382,15 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_draw_indexed(
+    pub(crate) fn cmd_draw_indexed_platform(
         &self,
-        device_context: &DeviceContext,
         index_count: u32,
         first_index: u32,
         vertex_offset: i32,
     ) {
         unsafe {
-            device_context.platform_device().cmd_draw_indexed(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_draw_indexed(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 index_count,
                 1,
                 first_index,
@@ -436,9 +400,8 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_draw_indexed_instanced(
+    pub(crate) fn cmd_draw_indexed_instanced_platform(
         &self,
-        device_context: &DeviceContext,
         index_count: u32,
         first_index: u32,
         instance_count: u32,
@@ -446,8 +409,8 @@ impl VulkanCommandBuffer {
         vertex_offset: i32,
     ) {
         unsafe {
-            device_context.platform_device().cmd_draw_indexed(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_draw_indexed(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 index_count,
                 instance_count,
                 first_index,
@@ -457,16 +420,15 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_dispatch(
+    pub(crate) fn cmd_dispatch_platform(
         &self,
-        device_context: &DeviceContext,
         group_count_x: u32,
         group_count_y: u32,
         group_count_z: u32,
     ) {
         unsafe {
-            device_context.platform_device().cmd_dispatch(
-                self.vk_command_buffer,
+            self.inner.device_context.vk_device().cmd_dispatch(
+                self.inner.platform_command_buffer.vk_command_buffer,
                 group_count_x,
                 group_count_y,
                 group_count_z,
@@ -474,53 +436,50 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_resource_barrier(
+    pub(crate) fn cmd_resource_barrier_platform(
         &self,
-        device_context: &DeviceContext,
-        queue_type: QueueType,
-        queue_family_index: u32,
         buffer_barriers: &[BufferBarrier<'_>],
         texture_barriers: &[TextureBarrier<'_>],
     ) {
         let mut vk_image_barriers = Vec::with_capacity(texture_barriers.len());
         let mut vk_buffer_barriers = Vec::with_capacity(buffer_barriers.len());
 
-        let mut src_access_flags = vk::AccessFlags::empty();
-        let mut dst_access_flags = vk::AccessFlags::empty();
+        let mut src_access_flags = ash::vk::AccessFlags::empty();
+        let mut dst_access_flags = ash::vk::AccessFlags::empty();
 
         for barrier in buffer_barriers {
-            let mut vk_buffer_barrier = vk::BufferMemoryBarrier::builder()
+            let mut vk_buffer_barrier = ash::vk::BufferMemoryBarrier::builder()
                 .src_access_mask(super::internal::resource_state_to_access_flags(
                     barrier.src_state,
                 ))
                 .dst_access_mask(super::internal::resource_state_to_access_flags(
                     barrier.dst_state,
                 ))
-                .buffer(barrier.buffer.platform_buffer().vk_buffer())
-                .size(vk::WHOLE_SIZE)
+                .buffer(barrier.buffer.vk_buffer())
+                .size(ash::vk::WHOLE_SIZE)
                 .offset(0)
                 .build();
 
             match &barrier.queue_transition {
                 BarrierQueueTransition::ReleaseTo(dst_queue_type) => {
-                    vk_buffer_barrier.src_queue_family_index = queue_family_index;
+                    vk_buffer_barrier.src_queue_family_index = self.inner.queue_family_index;
                     vk_buffer_barrier.dst_queue_family_index =
                         super::internal::queue_type_to_family_index(
-                            device_context.platform_device_context(),
+                            &self.inner.device_context,
                             *dst_queue_type,
                         );
                 }
                 BarrierQueueTransition::AcquireFrom(src_queue_type) => {
                     vk_buffer_barrier.src_queue_family_index =
                         super::internal::queue_type_to_family_index(
-                            device_context.platform_device_context(),
+                            &self.inner.device_context,
                             *src_queue_type,
                         );
-                    vk_buffer_barrier.dst_queue_family_index = queue_family_index;
+                    vk_buffer_barrier.dst_queue_family_index = self.inner.queue_family_index;
                 }
                 BarrierQueueTransition::None => {
-                    vk_buffer_barrier.src_queue_family_index = vk::QUEUE_FAMILY_IGNORED;
-                    vk_buffer_barrier.dst_queue_family_index = vk::QUEUE_FAMILY_IGNORED;
+                    vk_buffer_barrier.src_queue_family_index = ash::vk::QUEUE_FAMILY_IGNORED;
+                    vk_buffer_barrier.dst_queue_family_index = ash::vk::QUEUE_FAMILY_IGNORED;
                 }
             }
 
@@ -534,9 +493,9 @@ impl VulkanCommandBuffer {
             texture: &Texture,
             array_slice: Option<u16>,
             mip_slice: Option<u8>,
-        ) -> vk::ImageSubresourceRange {
-            let mut subresource_range = vk::ImageSubresourceRange::builder()
-                .aspect_mask(texture.platform_texture().vk_aspect_mask())
+        ) -> ash::vk::ImageSubresourceRange {
+            let mut subresource_range = ash::vk::ImageSubresourceRange::builder()
+                .aspect_mask(texture.vk_aspect_mask())
                 .build();
 
             if let Some(array_slice) = array_slice {
@@ -544,7 +503,7 @@ impl VulkanCommandBuffer {
                 subresource_range.base_array_layer = u32::from(array_slice);
                 assert!(u32::from(array_slice) < texture.definition().array_length);
             } else {
-                subresource_range.layer_count = vk::REMAINING_ARRAY_LAYERS;
+                subresource_range.layer_count = ash::vk::REMAINING_ARRAY_LAYERS;
                 subresource_range.base_array_layer = 0;
             };
 
@@ -553,7 +512,7 @@ impl VulkanCommandBuffer {
                 subresource_range.base_mip_level = u32::from(mip_slice);
                 assert!(u32::from(mip_slice) < texture.definition().mip_count);
             } else {
-                subresource_range.level_count = vk::REMAINING_MIP_LEVELS;
+                subresource_range.level_count = ash::vk::REMAINING_MIP_LEVELS;
                 subresource_range.base_mip_level = 0;
             }
 
@@ -561,8 +520,8 @@ impl VulkanCommandBuffer {
         }
 
         fn set_queue_family_indices(
-            vk_image_barrier: &mut vk::ImageMemoryBarrier,
-            device_context: &VulkanDeviceContext,
+            vk_image_barrier: &mut ash::vk::ImageMemoryBarrier,
+            device_context: &DeviceContext,
             self_queue_family_index: u32,
             queue_transition: &BarrierQueueTransition,
         ) {
@@ -584,8 +543,8 @@ impl VulkanCommandBuffer {
                     vk_image_barrier.dst_queue_family_index = self_queue_family_index;
                 }
                 BarrierQueueTransition::None => {
-                    vk_image_barrier.src_queue_family_index = vk::QUEUE_FAMILY_IGNORED;
-                    vk_image_barrier.dst_queue_family_index = vk::QUEUE_FAMILY_IGNORED;
+                    vk_image_barrier.src_queue_family_index = ash::vk::QUEUE_FAMILY_IGNORED;
+                    vk_image_barrier.dst_queue_family_index = ash::vk::QUEUE_FAMILY_IGNORED;
                 }
             }
         }
@@ -597,7 +556,7 @@ impl VulkanCommandBuffer {
             // First transition is always from undefined. Doing it here can save downstream code
             // from having to implement a "first time" path and a "normal" path
             let old_layout = if barrier.texture.take_is_undefined_layout() {
-                vk::ImageLayout::UNDEFINED
+                ash::vk::ImageLayout::UNDEFINED
             } else {
                 internal::resource_state_to_image_layout(barrier.src_state).unwrap()
             };
@@ -610,7 +569,7 @@ impl VulkanCommandBuffer {
                 new_layout
             );
 
-            let mut vk_image_barrier = vk::ImageMemoryBarrier::builder()
+            let mut vk_image_barrier = ash::vk::ImageMemoryBarrier::builder()
                 .src_access_mask(super::internal::resource_state_to_access_flags(
                     barrier.src_state,
                 ))
@@ -619,14 +578,14 @@ impl VulkanCommandBuffer {
                 ))
                 .old_layout(old_layout)
                 .new_layout(new_layout)
-                .image(barrier.texture.platform_texture().vk_image())
+                .image(barrier.texture.vk_image())
                 .subresource_range(subresource_range)
                 .build();
 
             set_queue_family_indices(
                 &mut vk_image_barrier,
-                device_context.platform_device_context(),
-                queue_family_index,
+                &self.inner.device_context,
+                self.inner.queue_family_index,
                 &barrier.queue_transition,
             );
 
@@ -636,18 +595,22 @@ impl VulkanCommandBuffer {
             vk_image_barriers.push(vk_image_barrier);
         }
 
-        let src_stage_mask =
-            super::internal::determine_pipeline_stage_flags(queue_type, src_access_flags);
-        let dst_stage_mask =
-            super::internal::determine_pipeline_stage_flags(queue_type, dst_access_flags);
+        let src_stage_mask = super::internal::determine_pipeline_stage_flags(
+            self.inner.queue_type,
+            src_access_flags,
+        );
+        let dst_stage_mask = super::internal::determine_pipeline_stage_flags(
+            self.inner.queue_type,
+            dst_access_flags,
+        );
 
         if !vk_buffer_barriers.is_empty() || !vk_image_barriers.is_empty() {
             unsafe {
-                device_context.platform_device().cmd_pipeline_barrier(
-                    self.vk_command_buffer,
+                self.inner.device_context.vk_device().cmd_pipeline_barrier(
+                    self.inner.platform_command_buffer.vk_command_buffer,
                     src_stage_mask,
                     dst_stage_mask,
-                    vk::DependencyFlags::empty(),
+                    ash::vk::DependencyFlags::empty(),
                     &[],
                     &vk_buffer_barriers,
                     &vk_image_barriers,
@@ -656,9 +619,9 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_copy_buffer_to_buffer(
+    pub(crate) fn cmd_copy_buffer_to_buffer_platform(
         &self,
-        device_context: &DeviceContext,
+
         src_buffer: &Buffer,
         dst_buffer: &Buffer,
         src_offset: u64,
@@ -666,11 +629,11 @@ impl VulkanCommandBuffer {
         size: u64,
     ) {
         unsafe {
-            device_context.platform_device().cmd_copy_buffer(
-                self.vk_command_buffer,
-                src_buffer.platform_buffer().vk_buffer(),
-                dst_buffer.platform_buffer().vk_buffer(),
-                &[vk::BufferCopy {
+            self.inner.device_context.vk_device().cmd_copy_buffer(
+                self.inner.platform_command_buffer.vk_command_buffer,
+                src_buffer.vk_buffer(),
+                dst_buffer.vk_buffer(),
+                &[ash::vk::BufferCopy {
                     src_offset,
                     dst_offset,
                     size,
@@ -679,9 +642,9 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_copy_buffer_to_texture(
+    pub(crate) fn cmd_copy_buffer_to_texture_platform(
         &self,
-        device_context: &DeviceContext,
+
         src_buffer: &Buffer,
         dst_texture: &Texture,
         params: &CmdCopyBufferToTextureParams,
@@ -693,35 +656,38 @@ impl VulkanCommandBuffer {
         let depth = 1.max(texture_def.extents.depth >> params.mip_level);
 
         unsafe {
-            device_context.platform_device().cmd_copy_buffer_to_image(
-                self.vk_command_buffer,
-                src_buffer.platform_buffer().vk_buffer(),
-                dst_texture.platform_texture().vk_image(),
-                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                &[vk::BufferImageCopy {
-                    image_extent: vk::Extent3D {
-                        width,
-                        height,
-                        depth,
-                    },
-                    image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
-                    image_subresource: vk::ImageSubresourceLayers {
-                        aspect_mask: dst_texture.platform_texture().vk_aspect_mask(),
-                        mip_level: u32::from(params.mip_level),
-                        base_array_layer: u32::from(params.array_layer),
-                        layer_count: 1,
-                    },
-                    buffer_offset: params.buffer_offset,
-                    buffer_image_height: 0,
-                    buffer_row_length: 0,
-                }],
-            );
+            self.inner
+                .device_context
+                .vk_device()
+                .cmd_copy_buffer_to_image(
+                    self.inner.platform_command_buffer.vk_command_buffer,
+                    src_buffer.vk_buffer(),
+                    dst_texture.vk_image(),
+                    ash::vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    &[ash::vk::BufferImageCopy {
+                        image_extent: ash::vk::Extent3D {
+                            width,
+                            height,
+                            depth,
+                        },
+                        image_offset: ash::vk::Offset3D { x: 0, y: 0, z: 0 },
+                        image_subresource: ash::vk::ImageSubresourceLayers {
+                            aspect_mask: dst_texture.vk_aspect_mask(),
+                            mip_level: u32::from(params.mip_level),
+                            base_array_layer: u32::from(params.array_layer),
+                            layer_count: 1,
+                        },
+                        buffer_offset: params.buffer_offset,
+                        buffer_image_height: 0,
+                        buffer_row_length: 0,
+                    }],
+                );
         }
     }
 
-    pub fn cmd_blit_texture(
+    pub(crate) fn cmd_blit_texture_platform(
         &self,
-        device_context: &DeviceContext,
+
         src_texture: &Texture,
         dst_texture: &Texture,
         params: &CmdBlitParams,
@@ -740,11 +706,11 @@ impl VulkanCommandBuffer {
         let dst_aspect_mask =
             super::internal::image_format_to_aspect_mask(dst_texture.definition().format);
 
-        let mut src_subresource = vk::ImageSubresourceLayers::builder()
+        let mut src_subresource = ash::vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)
             .mip_level(u32::from(params.src_mip_level))
             .build();
-        let mut dst_subresource = vk::ImageSubresourceLayers::builder()
+        let mut dst_subresource = ash::vk::ImageSubresourceLayers::builder()
             .aspect_mask(dst_aspect_mask)
             .mip_level(u32::from(params.dst_mip_level))
             .build();
@@ -757,17 +723,17 @@ impl VulkanCommandBuffer {
         } else {
             src_subresource.base_array_layer = 0;
             dst_subresource.base_array_layer = 0;
-            src_subresource.layer_count = vk::REMAINING_ARRAY_LAYERS;
-            dst_subresource.layer_count = vk::REMAINING_ARRAY_LAYERS;
+            src_subresource.layer_count = ash::vk::REMAINING_ARRAY_LAYERS;
+            dst_subresource.layer_count = ash::vk::REMAINING_ARRAY_LAYERS;
         }
 
         let src_offsets = [
-            vk::Offset3D {
+            ash::vk::Offset3D {
                 x: params.src_offsets[0].x as i32,
                 y: params.src_offsets[0].y as i32,
                 z: params.src_offsets[0].z as i32,
             },
-            vk::Offset3D {
+            ash::vk::Offset3D {
                 x: params.src_offsets[1].x as i32,
                 y: params.src_offsets[1].y as i32,
                 z: params.src_offsets[1].z as i32,
@@ -775,30 +741,30 @@ impl VulkanCommandBuffer {
         ];
 
         let dst_offsets = [
-            vk::Offset3D {
+            ash::vk::Offset3D {
                 x: params.dst_offsets[0].x as i32,
                 y: params.dst_offsets[0].y as i32,
                 z: params.dst_offsets[0].z as i32,
             },
-            vk::Offset3D {
+            ash::vk::Offset3D {
                 x: params.dst_offsets[1].x as i32,
                 y: params.dst_offsets[1].y as i32,
                 z: params.dst_offsets[1].z as i32,
             },
         ];
 
-        let image_blit = vk::ImageBlit::builder()
+        let image_blit = ash::vk::ImageBlit::builder()
             .src_offsets(src_offsets)
             .src_subresource(src_subresource)
             .dst_offsets(dst_offsets)
             .dst_subresource(dst_subresource);
 
         unsafe {
-            device_context.platform_device().cmd_blit_image(
-                self.vk_command_buffer,
-                src_texture.platform_texture().vk_image(),
+            self.inner.device_context.vk_device().cmd_blit_image(
+                self.inner.platform_command_buffer.vk_command_buffer,
+                src_texture.vk_image(),
                 super::internal::resource_state_to_image_layout(params.src_state).unwrap(),
-                dst_texture.platform_texture().vk_image(),
+                dst_texture.vk_image(),
                 super::internal::resource_state_to_image_layout(params.dst_state).unwrap(),
                 &[*image_blit],
                 params.filtering.into(),
@@ -806,9 +772,9 @@ impl VulkanCommandBuffer {
         }
     }
 
-    pub fn cmd_copy_image(
+    pub(crate) fn cmd_copy_image_platform(
         &self,
-        device_context: &DeviceContext,
+
         src_texture: &Texture,
         dst_texture: &Texture,
         params: &CmdCopyTextureParams,
@@ -827,11 +793,11 @@ impl VulkanCommandBuffer {
         let dst_aspect_mask =
             super::internal::image_format_to_aspect_mask(dst_texture.definition().format);
 
-        let mut src_subresource = vk::ImageSubresourceLayers::builder()
+        let mut src_subresource = ash::vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)
             .mip_level(u32::from(params.src_mip_level))
             .build();
-        let mut dst_subresource = vk::ImageSubresourceLayers::builder()
+        let mut dst_subresource = ash::vk::ImageSubresourceLayers::builder()
             .aspect_mask(dst_aspect_mask)
             .mip_level(u32::from(params.dst_mip_level))
             .build();
@@ -841,35 +807,35 @@ impl VulkanCommandBuffer {
         src_subresource.layer_count = 1;
         dst_subresource.layer_count = 1;
 
-        let src_offset = vk::Offset3D {
+        let src_offset = ash::vk::Offset3D {
             x: params.src_offset.x,
             y: params.src_offset.y,
             z: params.src_offset.z,
         };
 
-        let dst_offset = vk::Offset3D {
+        let dst_offset = ash::vk::Offset3D {
             x: params.dst_offset.x,
             y: params.dst_offset.y,
             z: params.dst_offset.z,
         };
 
-        let image_copy = vk::ImageCopy::builder()
+        let image_copy = ash::vk::ImageCopy::builder()
             .src_offset(src_offset)
             .src_subresource(src_subresource)
             .dst_offset(dst_offset)
             .dst_subresource(dst_subresource)
-            .extent(vk::Extent3D {
+            .extent(ash::vk::Extent3D {
                 width: params.extent.width,
                 height: params.extent.height,
                 depth: params.extent.depth,
             });
 
         unsafe {
-            device_context.platform_device().cmd_copy_image(
-                self.vk_command_buffer,
-                src_texture.platform_texture().vk_image(),
+            self.inner.device_context.vk_device().cmd_copy_image(
+                self.inner.platform_command_buffer.vk_command_buffer,
+                src_texture.vk_image(),
                 super::internal::resource_state_to_image_layout(params.src_state).unwrap(),
-                dst_texture.platform_texture().vk_image(),
+                dst_texture.vk_image(),
                 super::internal::resource_state_to_image_layout(params.dst_state).unwrap(),
                 &[*image_copy],
             );

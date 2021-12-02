@@ -4,10 +4,7 @@ use ash::vk;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::FnvHashMap;
 
-use crate::{
-    backends::vulkan::{VkQueueFamilyIndices, VulkanDeviceContext},
-    DeviceContext,
-};
+use crate::{backends::vulkan::VkQueueFamilyIndices, DeviceContext};
 
 /// Has the indexes for all the queue families we will need. It's possible that a single queue
 /// family will need to be shared across these usages
@@ -71,8 +68,8 @@ impl VkQueue {
         self.inner.unallocated_queue.inner.queue_family_index
     }
 
-    pub(crate) fn device_context(&self) -> &VulkanDeviceContext {
-        &self.inner.device_context.inner.platform_device_context
+    pub(crate) fn device_context(&self) -> &DeviceContext {
+        &self.inner.device_context
     }
 }
 
@@ -233,7 +230,7 @@ impl VkQueueRequirements {
         }
     }
 
-    pub fn determine_required_queue_counts(
+    pub(crate) fn determine_required_queue_counts(
         queue_family_indices: &VkQueueFamilyIndices,
         all_queue_families: &[ash::vk::QueueFamilyProperties],
         graphics_allocation_strategy: VkQueueAllocationStrategy,

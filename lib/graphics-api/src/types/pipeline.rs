@@ -13,24 +13,19 @@ pub(crate) struct PipelineInner {
     pipeline_type: PipelineType,
 
     #[cfg(feature = "vulkan")]
-    pub(super) platform_pipeline: VulkanPipeline,
+    pub(crate) platform_pipeline: VulkanPipeline,
 }
 
 impl Drop for PipelineInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_pipeline.destroy(
-            &self
-                .root_signature
-                .device_context()
-                .inner
-                .platform_device_context,
-        );
+        self.platform_pipeline
+            .destroy(self.root_signature.device_context());
     }
 }
 
 pub struct Pipeline {
-    inner: Drc<PipelineInner>,
+    pub(crate) inner: Drc<PipelineInner>,
 }
 
 impl Pipeline {
@@ -60,14 +55,11 @@ impl Pipeline {
         pipeline_def: &ComputePipelineDef<'_>,
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
-        let platform_pipeline = VulkanPipeline::new_compute_pipeline(
-            &device_context.inner.platform_device_context,
-            pipeline_def,
-        )
-        .map_err(|e| {
-            log::error!("Error creating compute pipeline {:?}", e);
-            ash::vk::Result::ERROR_UNKNOWN
-        })?;
+        let platform_pipeline = VulkanPipeline::new_compute_pipeline(device_context, pipeline_def)
+            .map_err(|e| {
+                log::error!("Error creating compute pipeline {:?}", e);
+                ash::vk::Result::ERROR_UNKNOWN
+            })?;
 
         Ok(Self {
             inner: device_context.deferred_dropper().new_drc(PipelineInner {
@@ -85,10 +77,5 @@ impl Pipeline {
 
     pub fn root_signature(&self) -> &RootSignature {
         &self.inner.root_signature
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_pipeline(&self) -> &VulkanPipeline {
-        &self.inner.platform_pipeline
     }
 }

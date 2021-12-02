@@ -49,7 +49,7 @@ impl VulkanApi {
     }
 
     pub fn destroy(device_context: &DeviceContext) {
-        let inner = device_context.inner.clone();
-        inner.platform_device_context.resource_cache.clear_caches();
+        device_context.resource_cache().clear_caches();
+        device_context.deferred_dropper().destroy();
     }
 }

@@ -6,7 +6,7 @@ use ash::vk;
 use ash::vk::Extent2D;
 use raw_window_handle::HasRawWindowHandle;
 
-use super::{VulkanDeviceContext, VulkanRawImage};
+use super::VulkanRawImage;
 
 use crate::{
     deferred_drop::Drc, CommandBufferDef, CommandPoolDef, DeviceContext, Extents3D, Fence, Format,
@@ -14,8 +14,6 @@ use crate::{
     Semaphore, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureTiling,
     TextureViewDef,
 };
-
-pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 
 /// Used to select which `PresentMode` is preferred. Some of this is hardware/platform dependent and
 /// it's a good idea to read the Vulkan spec.
@@ -101,20 +99,19 @@ impl VulkanSwapchain {
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &SwapchainDef,
     ) -> GfxResult<Self> {
-        let vulkan_device_context = device_context.platform_device_context();
         // Get the surface, needed to select the best queue family
         let surface = unsafe {
             ash_window::create_surface(
-                &*vulkan_device_context.entry(),
-                vulkan_device_context.instance(),
+                &*device_context.vk_entry(),
+                device_context.vk_instance(),
                 raw_window_handle,
                 None,
             )?
         };
 
         let surface_loader = device_context.deferred_dropper().new_drc(khr::Surface::new(
-            vulkan_device_context.entry(),
-            vulkan_device_context.instance(),
+            device_context.vk_entry(),
+            device_context.vk_instance(),
         ));
 
         let present_mode_priority = present_mode_priority(swapchain_def);
@@ -226,8 +223,7 @@ impl VulkanSwapchain {
             unsafe {
                 self.swapchain
                     .device_context
-                    .platform_device_context()
-                    .device()
+                    .vk_device()
                     .reset_fences(&[fence.vk_fence()])?;
             }
             fence.set_submitted(false);
@@ -318,10 +314,9 @@ impl SwapchainVulkanInstance {
         present_mode_priority: &[VkPresentMode],
         window_inner_size: Extent2D,
     ) -> VkResult<Self> {
-        let vulkan_device_context = device_context.platform_device_context();
         let (available_formats, available_present_modes, surface_capabilities) =
             Self::query_swapchain_support(
-                vulkan_device_context.physical_device(),
+                device_context.vk_physical_device(),
                 surface,
                 surface_loader,
             )?;
@@ -339,19 +334,17 @@ impl SwapchainVulkanInstance {
         let present_queue_family_index = Self::choose_present_queue_family_index(
             surface,
             surface_loader,
-            vulkan_device_context.physical_device(),
-            &vulkan_device_context
-                .physical_device_info()
-                .all_queue_families,
-            vulkan_device_context
-                .queue_family_indices()
+            device_context.vk_physical_device(),
+            &device_context.physical_device_info().all_queue_families,
+            device_context
+                .vk_queue_family_indices()
                 .graphics_queue_family_index,
         )?;
 
         let swapchain_image_usage_flags =
             vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_DST;
         let create_swapchain_result = Self::create_swapchain(
-            vulkan_device_context,
+            device_context,
             surface,
             &surface_capabilities,
             surface_format,
@@ -392,8 +385,8 @@ impl SwapchainVulkanInstance {
         let mut swapchain_images = Vec::with_capacity(self.swapchain_images.len());
         for (image_index, image) in self.swapchain_images.iter().enumerate() {
             let raw_image = VulkanRawImage {
-                image: *image,
-                allocation: None,
+                vk_image: *image,
+                vk_allocation: None,
             };
 
             let format: Format = self.swapchain_info.surface_format.format.into();
@@ -619,7 +612,7 @@ impl SwapchainVulkanInstance {
 
     #[allow(clippy::too_many_arguments)]
     fn create_swapchain(
-        device_context: &VulkanDeviceContext,
+        device_context: &DeviceContext,
         surface: vk::SurfaceKHR,
         surface_capabilities: &vk::SurfaceCapabilitiesKHR,
         surface_format: vk::SurfaceFormatKHR,
@@ -641,7 +634,7 @@ impl SwapchainVulkanInstance {
         }
 
         let swapchain_loader =
-            khr::Swapchain::new(device_context.instance(), device_context.device());
+            khr::Swapchain::new(device_context.vk_instance(), device_context.vk_device());
 
         let mut swapchain_create_info = vk::SwapchainCreateInfoKHR::builder()
             .surface(surface)
@@ -667,14 +660,14 @@ impl SwapchainVulkanInstance {
         // must provide this list of queue families.
         let queue_families = [
             device_context
-                .queue_family_indices()
+                .vk_queue_family_indices()
                 .graphics_queue_family_index,
             present_queue_family_index,
         ];
 
         let mut dedicated_present_queue = None;
         if device_context
-            .queue_family_indices()
+            .vk_queue_family_indices()
             .graphics_queue_family_index
             != present_queue_family_index
         {
@@ -684,7 +677,7 @@ impl SwapchainVulkanInstance {
 
             dedicated_present_queue = Some(unsafe {
                 device_context
-                    .device()
+                    .vk_device()
                     .get_device_queue(present_queue_family_index, 0)
             });
         }

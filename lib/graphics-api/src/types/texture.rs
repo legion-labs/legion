@@ -10,24 +10,23 @@ use crate::{
 };
 
 #[cfg(feature = "vulkan")]
-use crate::backends::vulkan::{VulkanDeviceContext, VulkanRawImage, VulkanTexture};
+use crate::backends::vulkan::{VulkanRawImage, VulkanTexture};
 
 #[derive(Debug)]
 pub(crate) struct TextureInner {
-    device_context: DeviceContext,
-    texture_def: TextureDef,
-    is_undefined_layout: AtomicBool,
-    texture_id: u32,
+    pub(crate) device_context: DeviceContext,
+    pub(crate) texture_def: TextureDef,
+    pub(crate) is_undefined_layout: AtomicBool,
+    pub(crate) texture_id: u32,
 
     #[cfg(feature = "vulkan")]
-    platform_texture: VulkanTexture,
+    pub(crate) platform_texture: VulkanTexture,
 }
 
 impl Drop for TextureInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_texture
-            .destroy(&self.device_context.inner.platform_device_context);
+        self.platform_texture.destroy(&self.device_context);
     }
 }
 
@@ -35,7 +34,7 @@ impl Drop for TextureInner {
 /// provided `ResourceType` in the `texture_def`.
 #[derive(Clone, Debug)]
 pub struct Texture {
-    inner: Drc<TextureInner>,
+    pub(crate) inner: Drc<TextureInner>,
 }
 
 impl PartialEq for Texture {
@@ -65,18 +64,12 @@ impl Texture {
         &self.inner.device_context
     }
 
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_texture(&self) -> &VulkanTexture {
-        &self.inner.platform_texture
-    }
+    // #[cfg(feature = "vulkan")]
+    // pub(crate) fn platform_texture(&self) -> &VulkanTexture {
+    //     &self.inner.platform_texture
+    // }
 
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_device_context(&self) -> &VulkanDeviceContext {
-        &self.inner.device_context.inner.platform_device_context
-    }
-
-    // Used internally as part of the hash for creating/reusing framebuffers
-    #[cfg(any(feature = "vulkan"))]
+    // // Used internally as part of the hash for creating/reusing framebuffers
     pub(crate) fn texture_id(&self) -> u32 {
         self.inner.texture_id
     }
@@ -105,7 +98,7 @@ impl Texture {
     ) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
         let (platform_texture, texture_id) = VulkanTexture::from_existing(
-            &device_context.inner.platform_device_context,
+            device_context,
             #[cfg(feature = "vulkan")]
             existing_image,
             texture_def,
@@ -134,9 +127,7 @@ impl Texture {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.inner
-            .platform_texture
-            .map_texture(&self.inner.device_context.inner.platform_device_context)
+        self.map_texture_platform()
     }
 
     pub fn unmap_texture(&self) {
@@ -144,9 +135,7 @@ impl Texture {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.inner
-            .platform_texture
-            .unmap_texture(&self.inner.device_context.inner.platform_device_context);
+        self.unmap_texture_platform();
     }
 
     pub fn create_view(&self, view_def: &TextureViewDef) -> GfxResult<TextureView> {

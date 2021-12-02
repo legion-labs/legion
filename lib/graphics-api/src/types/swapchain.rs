@@ -4,8 +4,6 @@ use raw_window_handle::HasRawWindowHandle;
 use crate::backends::vulkan::VulkanSwapchain;
 use crate::{DeviceContext, Fence, Format, GfxResult, Semaphore, SwapchainDef, SwapchainImage};
 
-pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
-
 pub struct Swapchain {
     device_context: DeviceContext,
     swapchain_def: SwapchainDef,

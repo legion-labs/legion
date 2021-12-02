@@ -1,17 +1,14 @@
-use ash::vk;
-
-use super::VulkanDeviceContext;
-use crate::{BufferDef, GfxResult, MemoryUsage, ResourceUsage};
+use crate::{Buffer, BufferDef, DeviceContext, GfxResult, MemoryUsage, ResourceUsage};
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
     allocation_info: vk_mem::AllocationInfo,
     allocation: vk_mem::Allocation,
-    buffer: vk::Buffer,
+    vk_buffer: ash::vk::Buffer,
 }
 
 impl VulkanBuffer {
-    pub fn new(device_context: &VulkanDeviceContext, buffer_def: &BufferDef) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> GfxResult<Self> {
         buffer_def.verify();
         let mut allocation_size = buffer_def.size;
 
@@ -31,7 +28,7 @@ impl VulkanBuffer {
         if buffer_def.memory_usage == MemoryUsage::GpuOnly
             || buffer_def.memory_usage == MemoryUsage::CpuToGpu
         {
-            usage_flags |= vk::BufferUsageFlags::TRANSFER_DST;
+            usage_flags |= ash::vk::BufferUsageFlags::TRANSFER_DST;
         }
 
         let mut flags = vk_mem::AllocationCreateFlags::NONE;
@@ -42,8 +39,8 @@ impl VulkanBuffer {
         let allocation_create_info = vk_mem::AllocationCreateInfo {
             usage: buffer_def.memory_usage.into(),
             flags,
-            required_flags: vk::MemoryPropertyFlags::empty(),
-            preferred_flags: vk::MemoryPropertyFlags::empty(),
+            required_flags: ash::vk::MemoryPropertyFlags::empty(),
+            preferred_flags: ash::vk::MemoryPropertyFlags::empty(),
             memory_type_bits: 0, // Do not exclude any memory types
             pool: None,
             user_data: None,
@@ -51,18 +48,18 @@ impl VulkanBuffer {
 
         assert_ne!(allocation_size, 0);
 
-        let buffer_info = vk::BufferCreateInfo::builder()
+        let buffer_info = ash::vk::BufferCreateInfo::builder()
             .size(allocation_size)
             .usage(usage_flags)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+            .sharing_mode(ash::vk::SharingMode::EXCLUSIVE);
 
         //TODO: Better way of handling allocator errors
         let (buffer, allocation, allocation_info) = device_context
-            .allocator()
+            .vk_allocator()
             .create_buffer(&buffer_info, &allocation_create_info)
             .map_err(|e| {
                 log::error!("Error creating buffer {:?}", e);
-                vk::Result::ERROR_UNKNOWN
+                ash::vk::Result::ERROR_UNKNOWN
             })?;
 
         log::trace!(
@@ -75,43 +72,50 @@ impl VulkanBuffer {
         Ok(Self {
             allocation_info,
             allocation,
-            buffer,
+            vk_buffer: buffer,
         })
     }
 
-    pub fn destroy(&self, device_context: &VulkanDeviceContext, buffer_def: &BufferDef) {
-        log::trace!("destroying BufferVulkanInner");
+    pub(crate) fn destroy(&self, device_context: &DeviceContext, buffer_def: &BufferDef) {
+        log::trace!("destroying VulkanBuffer");
 
         log::trace!(
             "Buffer {:?} destroying with size {} (always mapped: {:?})",
-            self.buffer,
+            self.vk_buffer,
             buffer_def.size,
             buffer_def.always_mapped
         );
 
         device_context
-            .allocator()
-            .destroy_buffer(self.buffer, &self.allocation);
+            .vk_allocator()
+            .destroy_buffer(self.vk_buffer, &self.allocation);
 
-        log::trace!("destroyed BufferVulkanInner");
+        log::trace!("destroyed VulkanBuffer");
+    }
+}
+
+impl Buffer {
+    pub(crate) fn vk_buffer(&self) -> ash::vk::Buffer {
+        self.inner.platform_buffer.vk_buffer
     }
 
-    pub fn map_buffer(&self, device_context: &VulkanDeviceContext) -> GfxResult<*mut u8> {
-        let ptr = device_context
-            .allocator()
-            .map_memory(&self.allocation)
+    pub(crate) fn map_buffer_platform(&self) -> GfxResult<*mut u8> {
+        let ptr = self
+            .inner
+            .device_context
+            .vk_allocator()
+            .map_memory(&self.inner.platform_buffer.allocation)
             .map_err(|e| {
                 log::error!("Error mapping buffer {:?}", e);
-                vk::Result::ERROR_UNKNOWN
+                ash::vk::Result::ERROR_UNKNOWN
             })?;
         Ok(ptr)
     }
 
-    pub fn unmap_buffer(&self, device_context: &VulkanDeviceContext) {
-        device_context.allocator().unmap_memory(&self.allocation);
-    }
-
-    pub fn vk_buffer(&self) -> vk::Buffer {
-        self.buffer
+    pub(crate) fn unmap_buffer_platform(&self) {
+        self.inner
+            .device_context
+            .vk_allocator()
+            .unmap_memory(&self.inner.platform_buffer.allocation);
     }
 }

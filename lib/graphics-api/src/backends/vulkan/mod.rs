@@ -4,10 +4,10 @@ mod api;
 pub(crate) use api::*;
 
 mod device_context;
-pub use device_context::*;
+pub(crate) use device_context::*;
 
 mod swapchain;
-pub use swapchain::*;
+pub(crate) use swapchain::*;
 
 mod shader_module;
 pub(crate) use shader_module::*;
@@ -55,7 +55,6 @@ mod descriptor_set_layout;
 pub(crate) use descriptor_set_layout::*;
 
 mod video;
-pub use video::*;
 
 mod internal;
 pub(crate) use internal::*;

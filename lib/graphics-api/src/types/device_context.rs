@@ -3,6 +3,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use super::deferred_drop::DeferredDropper;
+
+#[cfg(feature = "vulkan")]
+use crate::backends::vulkan::VulkanDeviceContext;
+
 use crate::{
     ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
     DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence, GfxResult,
@@ -13,9 +17,6 @@ use crate::{
 
 #[cfg(any(feature = "vulkan"))]
 use crate::DeviceInfo;
-
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanDeviceContext;
 
 /// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
 /// spec to understand precisely what these types mean
@@ -41,8 +42,8 @@ pub enum PhysicalDeviceType {
 
 pub(crate) struct DeviceContextInner {
     #[cfg(any(feature = "vulkan"))]
-    device_info: DeviceInfo,
-    pub(crate) deferred_dropper: DeferredDropper,
+    _device_info: DeviceInfo,
+    deferred_dropper: DeferredDropper,
     destroyed: AtomicBool,
 
     #[cfg(debug_assertions)]
@@ -57,13 +58,13 @@ pub(crate) struct DeviceContextInner {
     pub(crate) platform_device_context: VulkanDeviceContext,
 }
 
-impl std::fmt::Debug for DeviceContextInner {
+impl std::fmt::Debug for DeviceContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("VulkanDeviceContext")
+        f.debug_struct("DeviceContext")
             .field(
                 "handle",
                 #[cfg(any(feature = "vulkan"))]
-                &self.platform_device_context.device().handle(),
+                &self.vk_device().handle(),
                 #[cfg(not(any(feature = "vulkan")))]
                 &0,
             )
@@ -112,7 +113,7 @@ impl DeviceContextInner {
 
         Ok(Self {
             #[cfg(any(feature = "vulkan"))]
-            device_info,
+            _device_info: device_info,
             deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
 
@@ -130,7 +131,6 @@ impl DeviceContextInner {
     }
 }
 
-#[derive(Debug)]
 pub struct DeviceContext {
     pub(crate) inner: Arc<DeviceContextInner>,
     #[cfg(debug_assertions)]
@@ -202,25 +202,6 @@ impl DeviceContext {
         })
     }
 
-    #[cfg(any(feature = "vulkan"))]
-    pub fn device_info(&self) -> &DeviceInfo {
-        &self.inner.device_info
-    }
-
-    pub fn deferred_dropper(&self) -> &DeferredDropper {
-        &self.inner.deferred_dropper
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_device_context(&self) -> &VulkanDeviceContext {
-        &self.inner.platform_device_context
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub fn platform_device(&self) -> &ash::Device {
-        self.inner.platform_device_context.device()
-    }
-
     pub fn create_queue(&self, queue_type: QueueType) -> GfxResult<Queue> {
         Queue::new(self, queue_type)
     }
@@ -239,10 +220,6 @@ impl DeviceContext {
         swapchain_def: &SwapchainDef,
     ) -> GfxResult<Swapchain> {
         Swapchain::new(self, raw_window_handle, swapchain_def)
-    }
-
-    pub fn wait_for_fences(&self, fences: &[&Fence]) -> GfxResult<()> {
-        Fence::wait_for_fences(self, fences)
     }
 
     pub fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<Sampler> {
@@ -302,6 +279,10 @@ impl DeviceContext {
 
     pub fn create_shader_module(&self, data: ShaderModuleDef<'_>) -> GfxResult<ShaderModule> {
         ShaderModule::new(self, data)
+    }
+
+    pub(crate) fn deferred_dropper(&self) -> &DeferredDropper {
+        &self.inner.deferred_dropper
     }
 
     pub fn free_gpu_memory(&self) -> GfxResult<()> {

@@ -105,7 +105,7 @@ impl VulkanDescriptorSetBufWriter {
                         assert!(buffer_view.is_compatible_with_descriptor(descriptor));
                         let buffer_info =
                             &mut self.vk_descriptors.buffer_infos[next_index as usize];
-                        buffer_info.buffer = buffer_view.buffer().platform_buffer().vk_buffer();
+                        buffer_info.buffer = buffer_view.buffer().vk_buffer();
                         buffer_info.offset = buffer_view.offset();
                         buffer_info.range = buffer_view.size();
                     } else {
@@ -134,8 +134,7 @@ impl VulkanDescriptorSetBufWriter {
                         let image_info = &mut self.vk_descriptors.image_infos[next_index as usize];
 
                         image_info.sampler = vk::Sampler::null();
-                        image_info.image_view =
-                            texture_view.platform_texture_view().vk_image_view();
+                        image_info.image_view = texture_view.vk_image_view();
                         image_info.image_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
                     } else {
                         todo!();
@@ -162,11 +161,12 @@ impl VulkanDescriptorSetBufWriter {
         Ok(())
     }
 
-    pub fn flush(&mut self, vulkan_device_context: &DeviceContext) {
+    pub fn flush(&mut self, device_context: &DeviceContext) {
         if !self.pending_writes.is_empty() {
-            let device = vulkan_device_context.platform_device();
             unsafe {
-                device.update_descriptor_sets(&self.pending_writes, &[]);
+                device_context
+                    .vk_device()
+                    .update_descriptor_sets(&self.pending_writes, &[]);
             }
 
             self.pending_writes.clear();

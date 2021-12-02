@@ -1,5 +1,5 @@
 #[cfg(feature = "vulkan")]
-use crate::backends::vulkan::{VulkanBuffer, VulkanDeviceContext};
+use crate::backends::vulkan::VulkanBuffer;
 use crate::{BufferView, GfxResult};
 
 use super::{
@@ -84,38 +84,33 @@ impl BufferDef {
 }
 
 pub(crate) struct BufferInner {
-    buffer_def: BufferDef,
-    device_context: DeviceContext,
+    pub(crate) buffer_def: BufferDef,
+    pub(crate) device_context: DeviceContext,
 
     #[cfg(feature = "vulkan")]
-    pub(super) platform_buffer: VulkanBuffer,
+    pub(crate) platform_buffer: VulkanBuffer,
 }
 
 impl Drop for BufferInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_buffer.destroy(
-            &self.device_context.inner.platform_device_context,
-            &self.buffer_def,
-        );
+        self.platform_buffer
+            .destroy(&self.device_context, &self.buffer_def);
     }
 }
 
 #[derive(Clone)]
 pub struct Buffer {
-    inner: Drc<BufferInner>,
+    pub(crate) inner: Drc<BufferInner>,
 }
 
 impl Buffer {
     pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
-        let platform_buffer =
-            VulkanBuffer::new(&device_context.inner.platform_device_context, buffer_def).map_err(
-                |e| {
-                    log::error!("Error creating buffer {:?}", e);
-                    ash::vk::Result::ERROR_UNKNOWN
-                },
-            )?;
+        let platform_buffer = VulkanBuffer::new(device_context, buffer_def).map_err(|e| {
+            log::error!("Error creating buffer {:?}", e);
+            ash::vk::Result::ERROR_UNKNOWN
+        })?;
 
         Ok(Self {
             inner: device_context.deferred_dropper().new_drc(BufferInner {
@@ -135,26 +130,13 @@ impl Buffer {
         &self.inner.device_context
     }
 
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_buffer(&self) -> &VulkanBuffer {
-        &self.inner.platform_buffer
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_device_context(&self) -> &VulkanDeviceContext {
-        &self.inner.device_context.inner.platform_device_context
-    }
-
     pub fn map_buffer(&self) -> GfxResult<BufferMappingInfo> {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
         {
-            let ptr = self
-                .inner
-                .platform_buffer
-                .map_buffer(self.platform_device_context())?;
+            let ptr = self.map_buffer_platform()?;
 
             Ok(BufferMappingInfo {
                 buffer: self.clone(),
@@ -165,9 +147,7 @@ impl Buffer {
 
     pub fn unmap_buffer(&self) {
         #[cfg(any(feature = "vulkan"))]
-        self.inner
-            .platform_buffer
-            .unmap_buffer(self.platform_device_context());
+        self.unmap_buffer_platform();
     }
 
     pub fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) -> GfxResult<()> {

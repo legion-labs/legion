@@ -10,18 +10,22 @@ use crate::{
     GfxResult, IndexBufferBinding, QueueType, RootSignature, TextureBarrier, VertexBufferBinding,
 };
 
-pub struct CommandBuffer {
-    device_context: DeviceContext,
-    queue_type: QueueType,
-    queue_family_index: u32,
+pub(crate) struct CommandBufferInner {
+    pub(crate) device_context: DeviceContext,
+    pub(crate) queue_type: QueueType,
+    pub(crate) queue_family_index: u32,
     has_active_renderpass: AtomicBool,
 
     #[cfg(feature = "vulkan")]
-    platform_command_buffer: VulkanCommandBuffer,
+    pub(crate) platform_command_buffer: VulkanCommandBuffer,
+}
+
+pub struct CommandBuffer {
+    pub(crate) inner: Box<CommandBufferInner>,
 }
 
 impl CommandBuffer {
-    pub fn new(
+    pub(crate) fn new(
         device_context: &DeviceContext,
         command_pool: &CommandPool,
         command_buffer_def: &CommandBufferDef,
@@ -34,18 +38,15 @@ impl CommandBuffer {
             })?;
 
         Ok(Self {
-            device_context: device_context.clone(),
-            queue_type: command_pool.queue_type(),
-            queue_family_index: command_pool.queue_family_index(),
-            has_active_renderpass: AtomicBool::new(false),
-            #[cfg(any(feature = "vulkan"))]
-            platform_command_buffer,
+            inner: Box::new(CommandBufferInner {
+                device_context: device_context.clone(),
+                queue_type: command_pool.queue_type(),
+                queue_family_index: command_pool.queue_family_index(),
+                has_active_renderpass: AtomicBool::new(false),
+                #[cfg(any(feature = "vulkan"))]
+                platform_command_buffer,
+            }),
         })
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_command_buffer(&self) -> &VulkanCommandBuffer {
-        &self.platform_command_buffer
     }
 
     pub fn begin(&self) -> GfxResult<()> {
@@ -53,28 +54,21 @@ impl CommandBuffer {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.begin(&self.device_context)
+        self.begin_platform()
     }
 
     pub fn end(&self) -> GfxResult<()> {
-        if self.has_active_renderpass.load(Ordering::Relaxed) {
+        if self.inner.has_active_renderpass.load(Ordering::Relaxed) {
             #[cfg(any(feature = "vulkan"))]
-            self.platform_command_buffer
-                .cmd_end_render_pass(&self.device_context);
-            self.has_active_renderpass.store(false, Ordering::Relaxed);
+            self.cmd_end_render_pass()?;
+            self.inner
+                .has_active_renderpass
+                .store(false, Ordering::Relaxed);
         }
 
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer
-            .end_command_buffer(&self.device_context)?;
+        self.end_platform()?;
 
-        Ok(())
-    }
-
-    pub fn return_to_pool(&self) -> GfxResult<()> {
-        #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer
-            .return_to_pool(&self.device_context);
         Ok(())
     }
 
@@ -83,7 +77,7 @@ impl CommandBuffer {
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<()> {
-        if self.has_active_renderpass.load(Ordering::Relaxed) {
+        if self.inner.has_active_renderpass.load(Ordering::Relaxed) {
             self.cmd_end_render_pass()?;
         }
 
@@ -92,24 +86,21 @@ impl CommandBuffer {
         }
 
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_begin_render_pass(
-            &self.device_context,
-            self.queue_type,
-            self.queue_family_index,
-            color_targets,
-            depth_target,
-        )?;
+        self.cmd_begin_render_pass_platform(color_targets, depth_target)?;
 
-        self.has_active_renderpass.store(true, Ordering::Relaxed);
+        self.inner
+            .has_active_renderpass
+            .store(true, Ordering::Relaxed);
 
         Ok(())
     }
 
     pub fn cmd_end_render_pass(&self) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer
-            .cmd_end_render_pass(&self.device_context);
-        self.has_active_renderpass.store(false, Ordering::Relaxed);
+        self.cmd_end_render_pass_platform();
+        self.inner
+            .has_active_renderpass
+            .store(false, Ordering::Relaxed);
         Ok(())
     }
 
@@ -123,36 +114,25 @@ impl CommandBuffer {
         depth_max: f32,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_set_viewport(
-            &self.device_context,
-            x,
-            y,
-            width,
-            height,
-            depth_min,
-            depth_max,
-        );
+        self.cmd_set_viewport_platform(x, y, width, height, depth_min, depth_max);
         Ok(())
     }
 
     pub fn cmd_set_scissor(&self, x: u32, y: u32, width: u32, height: u32) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer
-            .cmd_set_scissor(&self.device_context, x, y, width, height);
+        self.cmd_set_scissor_platform(x, y, width, height);
         Ok(())
     }
 
     pub fn cmd_set_stencil_reference_value(&self, value: u32) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer
-            .cmd_set_stencil_reference_value(&self.device_context, value);
+        self.cmd_set_stencil_reference_value_platform(value);
         Ok(())
     }
 
     pub fn cmd_bind_pipeline(&self, pipeline: &Pipeline) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer
-            .cmd_bind_pipeline(&self.device_context, pipeline);
+        self.cmd_bind_pipeline_platform(pipeline);
         Ok(())
     }
 
@@ -162,18 +142,13 @@ impl CommandBuffer {
         bindings: &[VertexBufferBinding<'_>],
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_bind_vertex_buffers(
-            &self.device_context,
-            first_binding,
-            bindings,
-        );
+        self.cmd_bind_vertex_buffers_platform(first_binding, bindings);
         Ok(())
     }
 
     pub fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_>) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer
-            .cmd_bind_index_buffer(&self.device_context, binding);
+        self.cmd_bind_index_buffer_platform(binding);
         Ok(())
     }
 
@@ -184,8 +159,7 @@ impl CommandBuffer {
         descriptor_set_handle: DescriptorSetHandle,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_bind_descriptor_set_handle(
-            &self.device_context,
+        self.cmd_bind_descriptor_set_handle_platform(
             root_signature,
             set_index,
             descriptor_set_handle,
@@ -199,18 +173,13 @@ impl CommandBuffer {
         constants: &T,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_push_constants(
-            &self.device_context,
-            root_signature.platform_root_signature(),
-            constants,
-        );
+        self.cmd_push_constants_platform(root_signature.platform_root_signature(), constants);
         Ok(())
     }
 
     pub fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer
-            .cmd_draw(&self.device_context, vertex_count, first_vertex);
+        self.cmd_draw_platform(vertex_count, first_vertex);
         Ok(())
     }
 
@@ -222,8 +191,7 @@ impl CommandBuffer {
         first_instance: u32,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_draw_instanced(
-            &self.device_context,
+        self.cmd_draw_instanced_platform(
             vertex_count,
             first_vertex,
             instance_count,
@@ -239,12 +207,7 @@ impl CommandBuffer {
         vertex_offset: i32,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_draw_indexed(
-            &self.device_context,
-            index_count,
-            first_index,
-            vertex_offset,
-        );
+        self.cmd_draw_indexed_platform(index_count, first_index, vertex_offset);
         Ok(())
     }
 
@@ -257,8 +220,7 @@ impl CommandBuffer {
         vertex_offset: i32,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_draw_indexed_instanced(
-            &self.device_context,
+        self.cmd_draw_indexed_instanced_platform(
             index_count,
             first_index,
             instance_count,
@@ -275,12 +237,7 @@ impl CommandBuffer {
         group_count_z: u32,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_dispatch(
-            &self.device_context,
-            group_count_x,
-            group_count_y,
-            group_count_z,
-        );
+        self.cmd_dispatch_platform(group_count_x, group_count_y, group_count_z);
         Ok(())
     }
 
@@ -290,17 +247,11 @@ impl CommandBuffer {
         texture_barriers: &[TextureBarrier<'_>],
     ) -> GfxResult<()> {
         assert!(
-            !self.has_active_renderpass.load(Ordering::Relaxed),
+            !self.inner.has_active_renderpass.load(Ordering::Relaxed),
             "cmd_resource_barrier may not be called if inside render pass"
         );
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_resource_barrier(
-            &self.device_context,
-            self.queue_type,
-            self.queue_family_index,
-            buffer_barriers,
-            texture_barriers,
-        );
+        self.cmd_resource_barrier_platform(buffer_barriers, texture_barriers);
         Ok(())
     }
 
@@ -313,13 +264,8 @@ impl CommandBuffer {
         size: u64,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_copy_buffer_to_buffer(
-            &self.device_context,
-            src_buffer,
-            dst_buffer,
-            src_offset,
-            dst_offset,
-            size,
+        self.cmd_copy_buffer_to_buffer_platform(
+            src_buffer, dst_buffer, src_offset, dst_offset, size,
         );
         Ok(())
     }
@@ -331,12 +277,7 @@ impl CommandBuffer {
         params: &CmdCopyBufferToTextureParams,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_copy_buffer_to_texture(
-            &self.device_context,
-            src_buffer,
-            dst_texture,
-            params,
-        );
+        self.cmd_copy_buffer_to_texture_platform(src_buffer, dst_texture, params);
         Ok(())
     }
 
@@ -347,12 +288,7 @@ impl CommandBuffer {
         params: &CmdBlitParams,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_blit_texture(
-            &self.device_context,
-            src_texture,
-            dst_texture,
-            params,
-        );
+        self.cmd_blit_texture_platform(src_texture, dst_texture, params);
         Ok(())
     }
 
@@ -363,12 +299,7 @@ impl CommandBuffer {
         params: &CmdCopyTextureParams,
     ) -> GfxResult<()> {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_buffer.cmd_copy_image(
-            &self.device_context,
-            src_texture,
-            dst_texture,
-            params,
-        );
+        self.cmd_copy_image_platform(src_texture, dst_texture, params);
         Ok(())
     }
 }

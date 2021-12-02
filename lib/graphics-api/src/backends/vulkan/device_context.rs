@@ -15,7 +15,7 @@ use crate::{DeviceContext, DeviceInfo, ExtensionMode, GfxResult, PhysicalDeviceT
 
 impl PhysicalDeviceType {
     /// Convert to `vk::PhysicalDeviceType`
-    pub fn to_vk(self) -> vk::PhysicalDeviceType {
+    pub(crate) fn to_vk(self) -> vk::PhysicalDeviceType {
         match self {
             PhysicalDeviceType::Other => vk::PhysicalDeviceType::OTHER,
             PhysicalDeviceType::IntegratedGpu => vk::PhysicalDeviceType::INTEGRATED_GPU,
@@ -27,39 +27,38 @@ impl PhysicalDeviceType {
 }
 
 #[derive(Clone)]
-pub struct PhysicalDeviceInfo {
-    pub score: i32,
-    pub queue_family_indices: VkQueueFamilyIndices,
-    pub properties: vk::PhysicalDeviceProperties,
-    pub features: vk::PhysicalDeviceFeatures,
-    pub extension_properties: Vec<ash::vk::ExtensionProperties>,
-    pub all_queue_families: Vec<ash::vk::QueueFamilyProperties>,
-    pub required_extensions: Vec<&'static CStr>,
+pub(crate) struct PhysicalDeviceInfo {
+    pub(crate) score: i32,
+    pub(crate) queue_family_indices: VkQueueFamilyIndices,
+    pub(crate) properties: vk::PhysicalDeviceProperties,
+    pub(crate) features: vk::PhysicalDeviceFeatures,
+    pub(crate) extension_properties: Vec<ash::vk::ExtensionProperties>,
+    pub(crate) all_queue_families: Vec<ash::vk::QueueFamilyProperties>,
+    pub(crate) required_extensions: Vec<&'static CStr>,
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct VkQueueFamilyIndices {
-    pub graphics_queue_family_index: u32,
-    pub compute_queue_family_index: u32,
-    pub transfer_queue_family_index: u32,
-    pub decode_queue_family_index: Option<u32>,
-    pub encode_queue_family_index: Option<u32>,
+pub(crate) struct VkQueueFamilyIndices {
+    pub(crate) graphics_queue_family_index: u32,
+    pub(crate) compute_queue_family_index: u32,
+    pub(crate) transfer_queue_family_index: u32,
+    pub(crate) decode_queue_family_index: Option<u32>,
+    pub(crate) encode_queue_family_index: Option<u32>,
 }
 
 pub(crate) struct VulkanDeviceContext {
-    pub(crate) resource_cache: DeviceVulkanResourceCache,
-    // pub(crate) descriptor_heap: VulkanDescriptorHeap,
+    resource_cache: DeviceVulkanResourceCache,
     queue_allocator: VkQueueAllocatorSet,
 
     // If we need a dedicated present queue, we share a single queue across all swapchains. This
     // lock ensures that the present operations for those swapchains do not occur concurrently
     dedicated_present_queue_lock: Mutex<()>,
 
-    device: ash::Device,
-    allocator: vk_mem::Allocator,
+    vk_device: ash::Device,
+    vk_allocator: vk_mem::Allocator,
     entry: Arc<ash::Entry>,
     instance: ash::Instance,
-    physical_device: vk::PhysicalDevice,
+    vk_physical_device: vk::PhysicalDevice,
     physical_device_info: PhysicalDeviceInfo,
 
     #[cfg(debug_assertions)]
@@ -72,13 +71,13 @@ pub(crate) struct VulkanDeviceContext {
 }
 
 impl VulkanDeviceContext {
-    pub fn new(
+    pub(crate) fn new(
         instance: &VkInstance,
         windowing_mode: ExtensionMode,
         video_mode: ExtensionMode,
     ) -> GfxResult<(Self, DeviceInfo)> {
         // Pick a physical device
-        let (physical_device, physical_device_info) =
+        let (vk_physical_device, physical_device_info) =
             choose_physical_device(&instance.instance, windowing_mode, video_mode)?;
 
         //TODO: Don't hardcode queue counts
@@ -93,22 +92,22 @@ impl VulkanDeviceContext {
         );
 
         // Create a logical device
-        let logical_device = create_logical_device(
+        let vk_logical_device = create_logical_device(
             &instance.instance,
-            physical_device,
+            vk_physical_device,
             &physical_device_info,
             &queue_requirements,
         )?;
 
         let queue_allocator = VkQueueAllocatorSet::new(
-            &logical_device,
+            &vk_logical_device,
             &physical_device_info.all_queue_families,
             queue_requirements,
         );
 
         let allocator_create_info = vk_mem::AllocatorCreateInfo {
-            physical_device,
-            device: logical_device.clone(),
+            physical_device: vk_physical_device,
+            device: vk_logical_device.clone(),
             instance: instance.instance.clone(),
             flags: vk_mem::AllocatorCreateFlags::default(),
             preferred_large_heap_block_size: Default::default(),
@@ -116,7 +115,7 @@ impl VulkanDeviceContext {
             heap_size_limits: Option::default(),
         };
 
-        let allocator = vk_mem::Allocator::new(&allocator_create_info)?;
+        let vk_allocator = vk_mem::Allocator::new(&allocator_create_info)?;
 
         let limits = &physical_device_info.properties.limits;
 
@@ -132,18 +131,6 @@ impl VulkanDeviceContext {
         };
 
         let resource_cache = DeviceVulkanResourceCache::default();
-        // let descriptor_heap = VulkanDescriptorHeap::new_old(&logical_device,
-        //     &DescriptorHeapDef {
-        //         transient: false,
-        //         max_descriptor_sets: 8192,
-        //         sampler_count: 1024,
-        //         constant_buffer_count: 8192,
-        //         buffer_count: 8192,
-        //         rw_buffer_count: 1024,
-        //         texture_count: 8192,
-        //         rw_texture_count: 1024,
-        //     }
-        // )?;
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
@@ -161,10 +148,10 @@ impl VulkanDeviceContext {
                 dedicated_present_queue_lock: Mutex::default(),
                 entry: instance.entry.clone(),
                 instance: instance.instance.clone(),
-                physical_device,
+                vk_physical_device,
                 physical_device_info,
-                device: logical_device,
-                allocator,
+                vk_device: vk_logical_device,
+                vk_allocator,
 
                 #[cfg(debug_assertions)]
                 #[cfg(feature = "track-device-contexts")]
@@ -178,59 +165,73 @@ impl VulkanDeviceContext {
         ))
     }
 
-    pub fn destroy(&mut self) {
+    pub(crate) fn destroy(&mut self) {
         unsafe {
-            self.allocator.destroy();
-            self.device.destroy_device(None);
+            self.vk_allocator.destroy();
+            self.vk_device.destroy_device(None);
         }
     }
+}
 
+impl DeviceContext {
     pub(crate) fn resource_cache(&self) -> &DeviceVulkanResourceCache {
-        &self.resource_cache
+        &self.inner.platform_device_context.resource_cache
     }
 
-    pub fn entry(&self) -> &ash::Entry {
-        &*self.entry
+    pub(crate) fn vk_entry(&self) -> &ash::Entry {
+        &*self.inner.platform_device_context.entry
     }
 
-    pub fn instance(&self) -> &ash::Instance {
-        &self.instance
+    pub(crate) fn vk_instance(&self) -> &ash::Instance {
+        &self.inner.platform_device_context.instance
     }
 
-    pub fn device(&self) -> &ash::Device {
-        &self.device
+    pub(crate) fn vk_device(&self) -> &ash::Device {
+        &self.inner.platform_device_context.vk_device
     }
 
-    pub fn physical_device(&self) -> vk::PhysicalDevice {
-        self.physical_device
+    pub(crate) fn vk_physical_device(&self) -> vk::PhysicalDevice {
+        self.inner.platform_device_context.vk_physical_device
     }
 
-    pub fn physical_device_info(&self) -> &PhysicalDeviceInfo {
-        &self.physical_device_info
+    pub(crate) fn physical_device_info(&self) -> &PhysicalDeviceInfo {
+        &self.inner.platform_device_context.physical_device_info
     }
 
-    pub fn limits(&self) -> &vk::PhysicalDeviceLimits {
-        &self.physical_device_info().properties.limits
+    pub(crate) fn limits(&self) -> &vk::PhysicalDeviceLimits {
+        &self
+            .inner
+            .platform_device_context
+            .physical_device_info
+            .properties
+            .limits
     }
 
-    pub fn allocator(&self) -> &vk_mem::Allocator {
-        &self.allocator
+    pub(crate) fn vk_allocator(&self) -> &vk_mem::Allocator {
+        &self.inner.platform_device_context.vk_allocator
     }
 
-    pub fn queue_allocator(&self) -> &VkQueueAllocatorSet {
-        &self.queue_allocator
+    pub(crate) fn queue_allocator(&self) -> &VkQueueAllocatorSet {
+        &self.inner.platform_device_context.queue_allocator
     }
 
-    pub fn queue_family_indices(&self) -> &VkQueueFamilyIndices {
-        &self.physical_device_info.queue_family_indices
+    pub(crate) fn vk_queue_family_indices(&self) -> &VkQueueFamilyIndices {
+        &self
+            .inner
+            .platform_device_context
+            .physical_device_info
+            .queue_family_indices
     }
 
-    pub fn dedicated_present_queue_lock(&self) -> &Mutex<()> {
-        &self.dedicated_present_queue_lock
+    pub(crate) fn dedicated_present_queue_lock(&self) -> &Mutex<()> {
+        &self
+            .inner
+            .platform_device_context
+            .dedicated_present_queue_lock
     }
 
     pub(crate) fn create_renderpass(
-        device_context: &DeviceContext,
+        device_context: &Self,
         renderpass_def: &VulkanRenderpassDef,
     ) -> GfxResult<VulkanRenderpass> {
         VulkanRenderpass::new(device_context, renderpass_def)

@@ -92,7 +92,7 @@ pub(crate) struct VulkanDescriptorHeap {
 
 impl VulkanDescriptorHeap {
     pub fn new(device_context: &DeviceContext, definition: &DescriptorHeapDef) -> GfxResult<Self> {
-        let device = device_context.platform_device();
+        let device = device_context.vk_device();
         let heap_pool_config: DescriptorHeapPoolConfig = definition.into();
         let vk_pool = heap_pool_config.create_pool(device)?;
 
@@ -100,14 +100,14 @@ impl VulkanDescriptorHeap {
     }
 
     pub fn destroy(&self, device_context: &DeviceContext) {
-        let device = device_context.platform_device();
+        let device = device_context.vk_device();
         unsafe {
             device.destroy_descriptor_pool(self.vk_pool, None);
         }
     }
 
     pub fn reset(&self, device_context: &DeviceContext) -> GfxResult<()> {
-        let device = device_context.platform_device();
+        let device = device_context.vk_device();
         unsafe {
             device
                 .reset_descriptor_pool(self.vk_pool, vk::DescriptorPoolResetFlags::default())
@@ -120,7 +120,7 @@ impl VulkanDescriptorHeap {
         device_context: &DeviceContext,
         descriptor_set_layout: &DescriptorSetLayout,
     ) -> GfxResult<DescriptorSetBufWriter> {
-        let device = device_context.platform_device();
+        let device = device_context.vk_device();
         let allocate_info = vk::DescriptorSetAllocateInfo::builder()
             .set_layouts(&[descriptor_set_layout.platform_layout().vk_layout()])
             .descriptor_pool(self.vk_pool)
