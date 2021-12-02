@@ -65,7 +65,7 @@ use legion_app::Plugin;
 use legion_data_offline::resource::{Project, ResourceRegistryOptions};
 use legion_data_runtime::AssetRegistry;
 use legion_data_transaction::DataManager;
-use legion_ecs::prelude::*;
+use legion_tasks::IoTaskPool;
 use sample_data_offline as offline_data;
 
 use std::sync::Arc;
@@ -97,23 +97,23 @@ impl Plugin for ResourceRegistryPlugin {
                     asset_registry.clone(),
                 )));
 
-                app.insert_resource(data_manager)
-                    .add_startup_system(Self::setup);
+                let task_pool = app
+                    .world
+                    .get_resource::<IoTaskPool>()
+                    .expect("IoTaskPool is not available, missing CorePlugin?");
+
+                {
+                    let data_manager = data_manager.clone();
+                    task_pool
+                        .spawn(async move {
+                            let mut data_manager = data_manager.lock().await;
+                            data_manager.load_all_resources().await;
+                        })
+                        .detach();
+                }
+
+                app.insert_resource(data_manager);
             }
         }
-    }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-impl ResourceRegistryPlugin {
-    fn setup(
-        data_manager: ResMut<'_, Arc<Mutex<DataManager>>>,
-        rt: ResMut<'_, legion_async::TokioAsyncRuntime>,
-    ) {
-        let data_manager = data_manager.clone();
-        rt.start_detached(async move {
-            let mut data_manager = data_manager.lock().await;
-            data_manager.load_all_resources().await;
-        });
     }
 }

@@ -4,6 +4,7 @@ use clap::Arg;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuildSettings};
 use legion_async::AsyncPlugin;
+use legion_core::CorePlugin;
 use legion_data_runtime::ResourceId;
 use legion_grpc::{GRPCPlugin, GRPCPluginSettings};
 use legion_renderer::RendererPlugin;
@@ -133,6 +134,7 @@ fn main() {
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
         )))
+        .add_plugin(CorePlugin::default())
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(AsyncPlugin::default())
         .insert_resource(AssetRegistrySettings::new(

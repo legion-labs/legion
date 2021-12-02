@@ -2187,6 +2187,7 @@ dependencies = [
  "legion-asset-registry",
  "legion-async",
  "legion-codec-api",
+ "legion-core",
  "legion-data-offline",
  "legion-data-runtime",
  "legion-data-transaction",
@@ -4055,12 +4056,12 @@ version = "0.1.0"
 dependencies = [
  "generic_data_offline",
  "legion-app",
- "legion-async",
  "legion-data-offline",
  "legion-data-runtime",
  "legion-data-transaction",
  "legion-ecs",
  "legion-graphics-offline",
+ "legion-tasks",
  "sample-data-offline",
  "tokio",
 ]
