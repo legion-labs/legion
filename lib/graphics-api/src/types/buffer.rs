@@ -130,16 +130,6 @@ impl Buffer {
         &self.inner.device_context
     }
 
-    // #[cfg(feature = "vulkan")]
-    // pub(crate) fn platform_buffer(&self) -> &VulkanBuffer {
-    //     &self.inner.platform_buffer
-    // }
-
-    // #[cfg(feature = "vulkan")]
-    // pub(crate) fn Device_context(&self) -> &DeviceContext {
-    //     &self.inner.device_context
-    // }
-
     pub fn map_buffer(&self) -> GfxResult<BufferMappingInfo> {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();

@@ -13,7 +13,7 @@ pub(crate) struct PipelineInner {
     pipeline_type: PipelineType,
 
     #[cfg(feature = "vulkan")]
-    pub(super) platform_pipeline: VulkanPipeline,
+    pub(crate) platform_pipeline: VulkanPipeline,
 }
 
 impl Drop for PipelineInner {
@@ -25,7 +25,7 @@ impl Drop for PipelineInner {
 }
 
 pub struct Pipeline {
-    inner: Drc<PipelineInner>,
+    pub(crate) inner: Drc<PipelineInner>,
 }
 
 impl Pipeline {
@@ -77,10 +77,5 @@ impl Pipeline {
 
     pub fn root_signature(&self) -> &RootSignature {
         &self.inner.root_signature
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_pipeline(&self) -> &VulkanPipeline {
-        &self.inner.platform_pipeline
     }
 }

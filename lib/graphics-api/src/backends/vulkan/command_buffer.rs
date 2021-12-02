@@ -267,7 +267,7 @@ impl CommandBuffer {
             self.inner.device_context.vk_device().cmd_bind_pipeline(
                 self.inner.platform_command_buffer.vk_command_buffer,
                 pipeline_bind_point,
-                pipeline.platform_pipeline().vk_pipeline(),
+                pipeline.vk_pipeline(),
             );
         }
     }

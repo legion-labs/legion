@@ -222,10 +222,6 @@ impl DeviceContext {
         Swapchain::new(self, raw_window_handle, swapchain_def)
     }
 
-    pub fn wait_for_fences(&self, fences: &[&Fence]) -> GfxResult<()> {
-        Fence::wait_for_fences(self, fences)
-    }
-
     pub fn create_sampler(&self, sampler_def: &SamplerDef) -> GfxResult<Sampler> {
         Sampler::new(self, sampler_def)
     }

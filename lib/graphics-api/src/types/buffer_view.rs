@@ -132,22 +132,18 @@ impl BufferView {
         })
     }
 
-    #[cfg(any(feature = "vulkan"))]
     pub(crate) fn buffer(&self) -> &Buffer {
         &self.inner.buffer
     }
 
-    #[cfg(any(feature = "vulkan"))]
     pub(crate) fn offset(&self) -> u64 {
         self.inner.offset
     }
 
-    #[cfg(any(feature = "vulkan"))]
     pub(crate) fn size(&self) -> u64 {
         self.inner.size
     }
 
-    #[cfg(any(feature = "vulkan"))]
     pub(crate) fn is_compatible_with_descriptor(&self, descriptor: &Descriptor) -> bool {
         match descriptor.shader_resource_type {
             ShaderResourceType::ConstantBuffer => {

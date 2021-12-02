@@ -3,11 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanFence;
 use crate::{DeviceContext, FenceStatus, GfxResult};
-#[cfg(feature = "vulkan")]
-use ash::vk;
 
-struct FenceInner {
-    device_context: DeviceContext,
+pub(crate) struct FenceInner {
+    pub(crate) device_context: DeviceContext,
     // Set to true when an operation is scheduled to signal this fence
     // Cleared when an operation is scheduled to consume this fence
     submitted: AtomicBool,
@@ -17,7 +15,7 @@ struct FenceInner {
 }
 
 pub struct Fence {
-    inner: Box<FenceInner>,
+    pub(crate) inner: Box<FenceInner>,
 }
 
 impl Drop for Fence {
@@ -63,24 +61,23 @@ impl Fence {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();
 
-        #[cfg(any(feature = "vulkan"))]
-        {
-            let mut fence_list = Vec::with_capacity(fences.len());
-            for fence in fences {
-                if fence.submitted() {
-                    fence_list.push(fence.vk_fence());
-                }
+        let mut fence_list = Vec::with_capacity(fences.len());
+        for fence in fences {
+            if fence.submitted() {
+                fence_list.push(*fence);
             }
-
-            #[cfg(feature = "vulkan")]
-            VulkanFence::wait_for_fences(device_context, &fence_list)?;
-
-            for fence in fences {
-                fence.set_submitted(false);
-            }
-
-            Ok(())
         }
+
+        if !fence_list.is_empty() {
+            #[cfg(any(feature = "vulkan"))]
+            Self::wait_for_fences_platform(device_context, fence_list.as_slice())?;
+        }
+
+        for fence in fences {
+            fence.set_submitted(false);
+        }
+
+        Ok(())
     }
 
     pub fn get_fence_status(&self) -> GfxResult<FenceStatus> {
@@ -93,20 +90,12 @@ impl Fence {
             #[cfg(any(feature = "vulkan"))]
             {
                 #[cfg(any(feature = "vulkan"))]
-                let status = self
-                    .inner
-                    .platform_fence
-                    .get_fence_status(&self.inner.device_context);
+                let status = self.get_fence_status_platform();
                 if status.is_ok() && FenceStatus::Complete == status.clone().unwrap() {
                     self.set_submitted(false);
                 }
                 status
             }
         }
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub fn vk_fence(&self) -> vk::Fence {
-        self.inner.platform_fence.vk_fence()
     }
 }

@@ -56,6 +56,5 @@ pub(crate) use descriptor_set_layout::*;
 
 mod video;
 
-
 mod internal;
 pub(crate) use internal::*;
