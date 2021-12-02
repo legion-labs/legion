@@ -3664,6 +3664,7 @@ dependencies = [
  "legion-data-compiler",
  "legion-data-offline",
  "legion-data-runtime",
+ "proc-macro2",
  "refs-asset",
  "refs-resource",
  "serde",

@@ -626,7 +626,9 @@ fn find_resource_attribs(content: &[syn::Item]) -> Vec<(String, ResourceType)> {
 // Finds all #[resource="name"] attributes in a file and returns (name, hashed name) tuple.
 fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
     let src = std::fs::read_to_string(&source).expect("Read file");
-    let ast = syn::parse_file(&src).expect("Unable to parse file");
+    proc_macro2::fallback::force(); // prevent panic, if panic = abort is set
+    let tokens = proc_macro2::TokenStream::from_str(&src).expect("Tokenize source file");
+    let ast: syn::File = syn::parse2(tokens).expect("Unable to parse file");
     find_resource_attribs(&ast.items)
 }
 
