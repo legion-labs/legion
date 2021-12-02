@@ -26,7 +26,16 @@
 
   onMount(() => {
     getRecentProcesses();
-  });  
+  });
+
+  function formatLocalTime(timeStr: string):string{
+    const time = new Date(timeStr);
+    return time.toLocaleTimeString( navigator.language, { timeZoneName: 'short',
+                                                          hour12: false,
+                                                          year: 'numeric',
+                                                          month: '2-digit',
+                                                          day: '2-digit' } );
+  }
 </script>
 
 <div>
@@ -39,31 +48,34 @@
     </div>
     <table>
       <thead>
-        <th>Start Time</th>
-        <th>id</th>
+        <th>start time</th>
         <th>exe</th>
-        <th>parent id</th>
+        <th>username</th>
+        <th>computer</th>
+        <th>log</th>
         <th>timeline</th>
       </thead>
       <tbody>
         {#each processList as { nbCpuBlocks, nbLogBlocks, processInfo } (processInfo?.processId)}
           <tr>
-            <td>{processInfo?.startTime}</td>
-            <td>{processInfo?.processId}</td>
+            <td>{formatLocalTime(processInfo?.startTime)}</td>
             <td>{processInfo?.exe}</td>
-            <td>{processInfo?.parentProcessId}</td>
+            <td>{processInfo?.username}</td>
+            <td>{processInfo?.computer}</td>
+            <td>
+              {#if nbLogBlocks > 0 && processInfo}
+                <div>
+                  <a href={`/log/${processInfo?.processId}`} use:link>
+                    log
+                  </a>
+                </div>
+              {/if}
+            </td>
             <td>
               {#if nbCpuBlocks > 0 && processInfo}
                 <div>
                   <a href={`/timeline/${processInfo?.processId}`} use:link>
                     timeline
-                  </a>
-                </div>
-              {/if}
-              {#if nbLogBlocks > 0 && processInfo}
-                <div>
-                  <a href={`/log/${processInfo?.processId}`} use:link>
-                    log
                   </a>
                 </div>
               {/if}
@@ -86,6 +98,7 @@
 
   table {
     @apply border-collapse;
+    width: 95%;
   }
 
   table tbody {
@@ -98,11 +111,18 @@
 
   table th {
     @apply py-1 text-center border border-[rgb(153,153,153)];
+    border-style: none;
+    text-align: left;
   }
 
+  table tr:nth-child(even){
+    background-color: #f2f2f2;
+  }
+  
   table td {
     @apply p-1 text-left border border-[rgb(153,153,153)];
     font-family: monospace;
+    border-style: none;
   }
 
   table td div {
