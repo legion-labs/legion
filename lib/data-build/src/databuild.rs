@@ -99,7 +99,7 @@ pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
     content_store: HddContentStore,
-    compiler_search_paths: Vec<PathBuf>,
+    compilers: Vec<CompilerInfo>,
 }
 
 impl DataBuild {
@@ -124,7 +124,7 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            compiler_search_paths: config.compiler_search_paths.clone(),
+            compilers: list_compilers(&config.compiler_search_paths),
         })
     }
 
@@ -138,7 +138,7 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            compiler_search_paths: config.compiler_search_paths.clone(),
+            compilers: list_compilers(&config.compiler_search_paths),
         })
     }
 
@@ -158,7 +158,7 @@ impl DataBuild {
                     build_index,
                     project,
                     content_store,
-                    compiler_search_paths: config.compiler_search_paths.clone(),
+                    compilers: list_compilers(&config.compiler_search_paths),
                 })
             }
             Err(Error::NotFound) => Self::new(config, project_dir),
@@ -443,10 +443,9 @@ impl DataBuild {
         })?;
 
         let compiler_details = {
-            let compilers = list_compilers(&self.compiler_search_paths);
-
             let info_cmd = CompilerInfoCmd::default();
-            let compilers: Vec<(CompilerInfo, CompilerInfoCmdOutput)> = compilers
+            let compilers: Vec<(CompilerInfo, CompilerInfoCmdOutput)> = self
+                .compilers
                 .iter()
                 .filter_map(|info| {
                     info_cmd
