@@ -4,9 +4,8 @@ use legion_ecs::prelude::*;
 use legion_presenter::offscreen_helper::Resolution;
 use legion_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
-    Renderer,
+    RenderTaskPool, Renderer,
 };
-use legion_tasks::ComputeTaskPool;
 use log::{error, info, warn};
 use webrtc::{
     data::data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
@@ -69,7 +68,7 @@ impl Streamer {
 }
 
 pub(crate) fn handle_stream_events(
-    task_pool: Res<'_, ComputeTaskPool>,
+    task_pool: Res<'_, RenderTaskPool>,
     streamer: ResMut<'_, Streamer>,
     renderer: Res<'_, Renderer>,
     mut commands: Commands<'_, '_>,

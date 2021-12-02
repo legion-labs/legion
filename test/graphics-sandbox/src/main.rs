@@ -126,11 +126,7 @@ fn main() {
         })
         .insert_resource(ScheduleRunnerSettings::default())
         .add_plugin(ScheduleRunnerPlugin::default())
-        .add_system(
-            presenter_snapshot_system
-                .system()
-                .before(RendererSystemLabel::FrameUpdate),
-        )
+        .add_system(presenter_snapshot_system.before(RendererSystemLabel::FrameUpdate))
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
         app.insert_resource(WindowDescriptor {
@@ -150,7 +146,7 @@ fn main() {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default());
     } else {
-        app.add_startup_system(init_scene.system());
+        app.add_startup_system(init_scene);
     }
     app.run();
 }
