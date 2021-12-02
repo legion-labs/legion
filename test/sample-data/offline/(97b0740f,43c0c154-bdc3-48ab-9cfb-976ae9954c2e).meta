@@ -1,8 +1,0 @@
-{
-  "name": "/prefab/props/cube_group.ent",
-  "dependencies": [
-    "(0cba171e,3136b0c4-7092-4884-b9f5-d05677c532ce)|30495fed",
-    "(0cba171e,5fd90a86-eba2-407e-9613-472116aaf8fa)|30495fed"
-  ],
-  "content_checksum": "3f4d55fe819de10a0840253042cccf8e"
-}

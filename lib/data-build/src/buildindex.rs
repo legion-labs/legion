@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{HashMap, VecDeque},
+    collections::{BTreeMap, HashMap, VecDeque},
     fs::{File, OpenOptions},
     hash::{Hash, Hasher},
     io::Seek,
@@ -97,7 +97,7 @@ struct OutputContent {
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
     #[serde_as(as = "Vec<(_, _)>")]
-    pathid_mapping: HashMap<(ResourceType, ResourceId), ResourcePathId>,
+    pathid_mapping: BTreeMap<(ResourceType, ResourceId), ResourcePathId>,
 }
 
 impl OutputContent {
@@ -177,7 +177,7 @@ impl BuildIndex {
             version: String::from(version),
             compiled_resources: vec![],
             compiled_resource_references: vec![],
-            pathid_mapping: HashMap::new(),
+            pathid_mapping: BTreeMap::new(),
         };
 
         // todo: write the output file

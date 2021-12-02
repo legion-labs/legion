@@ -47,7 +47,7 @@ impl Editor for GRPCServer {
                     .unwrap_or_else(|_err| "".into());
 
                 ResourceDescription {
-                    id: format!("{}", to_string(*resource_id)),
+                    id: format!("{}", to_string(resource_id)),
                     path: name.to_string(),
                     version: 1,
                 }

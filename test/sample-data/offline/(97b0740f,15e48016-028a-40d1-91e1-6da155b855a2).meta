@@ -1,0 +1,14 @@
+{
+  "name": "/world/sample_1.ent",
+  "dependencies": [
+    "(97b0740f,09c3f1cc-fb5c-4e5c-af62-183c162d7772)|aad89045",
+    "(0cba171e,1e0fcc21-c19e-4198-8457-d899ae682392)|30495fed",
+    "(0cba171e,ae47596b-8f2d-47ea-86da-699db6876659)|30495fed",
+    "(0cba171e,30ef1c7a-8c6a-4edb-ba55-dc2a70453702)|30495fed",
+    "(0cba171e,d0e11d1a-874c-42a1-a6a2-fdbb090f48cb)|30495fed",
+    "(0abe0694,46c791c4-8ee0-4cfa-9f96-16c3afe474ac)|35b5717e",
+    "(0abe0694,7de59276-74f3-4ab2-b84c-23a0c3a542bc)|35b5717e",
+    "(0abe0694,70c0bd02-629c-4ebb-9586-63688cc2716a)|35b5717e"
+  ],
+  "content_checksum": "9e1d6857c535f88d342c1d454893a284"
+}
