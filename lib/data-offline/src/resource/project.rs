@@ -198,7 +198,10 @@ impl Project {
     }
 
     /// Finds resource by its name and returns its `(ResourceType, ResourceId)`.
-    pub fn find_resource(&self, name: &ResourcePathName) -> Result<(ResourceType, ResourceId), Error> {
+    pub fn find_resource(
+        &self,
+        name: &ResourcePathName,
+    ) -> Result<(ResourceType, ResourceId), Error> {
         // this below would be better expressed as try_map (still experimental).
         let res = self
             .resource_list()
