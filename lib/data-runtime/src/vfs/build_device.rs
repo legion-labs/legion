@@ -127,7 +127,7 @@ fn build_command(
     let locale = "en";
     let mut command = std::process::Command::new(databuild_path.as_ref());
     command.arg("compile");
-    command.arg(format!("{}", to_string(resource_id)));
+    command.arg(to_string(resource_id));
     command.arg("--rt");
     command.arg(format!("--cas={}", cas));
     command.arg(format!("--target={}", target));

@@ -5,7 +5,6 @@ use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuildSettings};
 use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
-use legion_data_runtime::ResourceId;
 use legion_data_runtime::{ResourceId, ResourceType};
 use legion_grpc::{GRPCPlugin, GRPCPluginSettings};
 use legion_renderer::RendererPlugin;

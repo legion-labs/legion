@@ -47,7 +47,7 @@ impl Editor for GRPCServer {
                     .unwrap_or_else(|_err| "".into());
 
                 ResourceDescription {
-                    id: format!("{}", to_string(resource_id)),
+                    id: to_string(resource_id),
                     path: name.to_string(),
                     version: 1,
                 }
@@ -110,7 +110,7 @@ impl Editor for GRPCServer {
 
         let mut response = GetResourcePropertiesResponse {
             description: Some(ResourceDescription {
-                id: format!("{}", to_string(resource_id)),
+                id: to_string(resource_id),
                 path: ctx
                     .project
                     .resource_name(resource_id)

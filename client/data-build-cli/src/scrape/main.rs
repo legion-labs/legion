@@ -639,13 +639,13 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
     let mut f = File::open(path).expect("unable to open asset file");
 
     let file_name = path.file_name().unwrap().to_string_lossy();
-    let file_guid = u128::from_str_radix(&file_name, 16);
+    let file_guid = from_str(&file_name);
     if let Err(_e) = file_guid {
         // not an asset file, just ignore it
         return;
     }
     let file_guid = file_guid.unwrap();
-    println!("\nasset {:032x}", file_guid);
+    println!("\nasset {}", to_string(file_guid));
 
     let mut typename: [u8; 4] = [0; 4];
     let typename_result = f.read_exact(&mut typename);
@@ -670,27 +670,27 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
     if reference_count != 0 {
         println!("\treference count: {}", reference_count);
         for _ in 0..reference_count {
-            let asset_ref = unsafe {
-                std::mem::transmute::<u128, ResourceId>(
-                    f.read_u128::<LittleEndian>().expect("valid data"),
-                )
-            };
+            let asset_ref_type =
+                ResourceType::from_raw(f.read_u32::<LittleEndian>().expect("valid data"));
+            let asset_ref_id =
+                ResourceId::from_raw(f.read_u128::<LittleEndian>().expect("valid data"));
             if let Some(config) = config {
                 let (_build, project) = config.open().expect("open config");
-                let path_id = ResourcePathId::from(asset_ref);
+                let path_id = ResourcePathId::from((asset_ref_type, asset_ref_id));
                 println!(
                     "\t\treference: {}",
                     pretty_name_from_pathid(&path_id, &project, config)
                 );
             } else {
-                println!("\t\treference: {}", asset_ref);
+                println!(
+                    "\t\treference: {}",
+                    to_string((asset_ref_type, asset_ref_id,))
+                );
             }
         }
     }
 
-    let asset_type = unsafe {
-        std::mem::transmute::<u32, ResourceType>(f.read_u32::<LittleEndian>().expect("valid data"))
-    };
+    let asset_type = ResourceType::from_raw(f.read_u32::<LittleEndian>().expect("valid data"));
     if let Some(config) = config {
         if let Some(asset_type_name) = config.type_map.get(&asset_type).cloned() {
             println!("\tasset type: {} ({})", asset_type, asset_type_name);
@@ -714,7 +714,7 @@ fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Con
     if let Ok(source_name) = project.resource_name(rid.source_resource()) {
         output_text.push_str(&source_name.to_string());
     } else {
-        output_text.push_str(&format!("{}", to_string(rid.source_resource())));
+        output_text.push_str(&to_string(rid.source_resource()));
     }
 
     let source_ty_pretty = config

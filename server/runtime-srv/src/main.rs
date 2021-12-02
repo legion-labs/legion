@@ -107,7 +107,7 @@ fn main() {
 
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
-        .unwrap_or("(97b0740f,fb3aaf63-ad20-40c6-bfd2-2c3e76af1d74)");
+        .unwrap_or("(97b0740f,6f9c3cba-b1f1-468a-a109-e71b0ac0e9fa)");
     if let Ok(asset_id) = from_str(root_asset) {
         assets_to_load.push(asset_id);
     }
