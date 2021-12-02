@@ -87,6 +87,10 @@
   }
 
   function onFunClick(node: CumulativeCallGraphNode) {
+    const funlist = document.getElementById("funlist");
+    if (funlist) {
+      funlist.style.height = window.innerHeight * 0.4 + 'px';
+    }
     selectedNode = node;
   }
 
@@ -137,15 +141,17 @@
   <h1>Graph</h1>
   {#if nodes}
     <h2>Function List</h2>
-    {#each nodes as node (node.hash)}
-      <div class="fundiv" style={formatFunDivWidth(node)}
-           on:click={function(_event){ onFunClick(node); }}
-           >
-        <span>
-          {formatFunLabel(node)}
-        </span>
-      </div>
-    {/each}
+    <div id="funlist">
+      {#each nodes as node (node.hash)}
+        <div class="fundiv" style={formatFunDivWidth(node)}
+             on:click={function(_event){ onFunClick(node); }}
+             >
+          <span>
+            {formatFunLabel(node)}
+          </span>
+        </div>
+      {/each}
+    </div>
   {/if}
   {#if selectedNode}
     <h2>Selected Function</h2>
@@ -217,6 +223,10 @@
 
   h2 {
     @apply text-xl;
+  }
+
+  #funlist {
+    overflow-y: auto;
   }
 
   .selecteddiv {
