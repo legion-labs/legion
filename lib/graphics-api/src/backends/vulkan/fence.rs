@@ -35,7 +35,7 @@ impl Fence {
 
     pub(crate) fn wait_for_fences_platform(
         device_context: &DeviceContext,
-        fence_list: &[&Fence],
+        fence_list: &[&Self],
     ) -> GfxResult<()> {
         assert!(!fence_list.is_empty());
 
