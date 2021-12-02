@@ -27,7 +27,7 @@
         About
       </a>
     </div>
-    <Route path="/"><Home /></Route>
+    <Route path="/" primary={false}><Home /></Route>
     <Route path="/about"><About /></Route>
     <Route path="/log/:id" let:params primary={false}>
       {#key params.id}

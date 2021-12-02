@@ -22,6 +22,7 @@ use legion_telemetry_proto::analytics::ProcessListReply;
 use legion_telemetry_proto::analytics::ProcessLogReply;
 use legion_telemetry_proto::analytics::ProcessLogRequest;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
+use legion_telemetry_proto::analytics::SearchProcessRequest;
 use tonic::{Request, Response, Status};
 
 pub struct AnalyticsService {
@@ -44,6 +45,14 @@ impl AnalyticsService {
     ) -> Result<Vec<legion_telemetry_proto::analytics::ProcessInstance>> {
         let mut connection = self.pool.acquire().await?;
         fetch_recent_processes(&mut connection).await
+    }
+
+    async fn search_processes_impl(
+        &self,
+        search: &str,
+    ) -> Result<Vec<legion_telemetry_proto::analytics::ProcessInstance>> {
+        let mut connection = self.pool.acquire().await?;
+        search_processes(&mut connection, search).await
     }
 
     async fn list_process_streams_impl(
@@ -144,6 +153,28 @@ impl PerformanceAnalytics for AnalyticsService {
     ) -> Result<Response<ProcessListReply>, Status> {
         log::info!("list_recent_processes");
         match self.list_recent_processes_impl().await {
+            Ok(processes) => {
+                let reply = ProcessListReply { processes };
+                log::info!("list_recent_processes_impl ok");
+                Ok(Response::new(reply))
+            }
+            Err(e) => {
+                return Err(Status::internal(format!(
+                    "Error in list_recent_processes_impl: {}",
+                    e
+                )));
+            }
+        }
+    }
+
+    async fn search_processes(
+        &self,
+        request: Request<SearchProcessRequest>,
+    ) -> Result<Response<ProcessListReply>, Status> {
+        log::info!("search_processes");
+        let inner = request.into_inner();
+        dbg!(&inner.search);
+        match self.search_processes_impl(&inner.search).await {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };
                 log::info!("list_recent_processes_impl ok");

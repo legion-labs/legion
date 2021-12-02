@@ -2,24 +2,41 @@
   import {
     GrpcWebImpl,
     PerformanceAnalyticsClientImpl,
+    ProcessInstance,
   } from "@lgn/proto-telemetry/codegen/analytics";
+  import { onMount } from "svelte";
   import { link } from "svelte-navigator";
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
   );
 
-  async function getProcessesList() {
-    const response = await client.list_recent_processes({});
+  let processList: ProcessInstance[] = [];
 
-    return response.processes;
+  async function getRecentProcesses() {
+    const response = await client.list_recent_processes({});
+    processList = response.processes;
   }
+
+  async function onSearchChange(evt: Event & { currentTarget: EventTarget & HTMLInputElement; }) {
+    const searchString = evt.currentTarget.value;
+    const response = await client.search_processes({search: searchString});
+    processList = response.processes;
+  }
+
+  onMount(() => {
+    getRecentProcesses();
+  });  
 </script>
 
 <div>
   <h1>Legion Performance Analytics</h1>
   <h2>Process List</h2>
   <center>
+    <div class="search-div">
+      <!-- svelte-ignore a11y-autofocus -->
+      <input autofocus type="text" class="search-input" placeholder="search exe" on:input={onSearchChange} />
+    </div>
     <table>
       <thead>
         <th>Start Time</th>
@@ -29,34 +46,30 @@
         <th>timeline</th>
       </thead>
       <tbody>
-        {#await getProcessesList() then processList}
-          {#each processList as { nbCpuBlocks, nbLogBlocks, processInfo } (processInfo?.processId)}
-            <tr>
-              <td>{processInfo?.startTime}</td>
-              <td>{processInfo?.processId}</td>
-              <td>{processInfo?.exe}</td>
-              <td>{processInfo?.parentProcessId}</td>
-              <td>
-                {#if nbCpuBlocks > 0 && processInfo}
-                  <div>
-                    <a href={`/timeline/${processInfo?.processId}`} use:link>
-                      timeline
-                    </a>
-                  </div>
-                {/if}
-                {#if nbLogBlocks > 0 && processInfo}
-                  <div>
-                    <a href={`/log/${processInfo?.processId}`} use:link>
-                      log
-                    </a>
-                  </div>
-                {/if}
-              </td>
-            </tr>
-          {/each}
-        {:catch}
-          <tr><td>Error in list_recent_processes</td></tr>
-        {/await}
+        {#each processList as { nbCpuBlocks, nbLogBlocks, processInfo } (processInfo?.processId)}
+          <tr>
+            <td>{processInfo?.startTime}</td>
+            <td>{processInfo?.processId}</td>
+            <td>{processInfo?.exe}</td>
+            <td>{processInfo?.parentProcessId}</td>
+            <td>
+              {#if nbCpuBlocks > 0 && processInfo}
+                <div>
+                  <a href={`/timeline/${processInfo?.processId}`} use:link>
+                    timeline
+                  </a>
+                </div>
+              {/if}
+              {#if nbLogBlocks > 0 && processInfo}
+                <div>
+                  <a href={`/log/${processInfo?.processId}`} use:link>
+                    log
+                  </a>
+                </div>
+              {/if}
+            </td>
+          </tr>
+        {/each}
       </tbody>
     </table>
   </center>
@@ -99,4 +112,16 @@
   a {
     @apply text-[#42b983] underline;
   }
+
+  .search-div {
+    margin: 10px 0px 10px 0px;
+  }
+
+  .search-input {
+    border-style: solid;
+    border-width: 2px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
 </style>

@@ -28,6 +28,12 @@ pub struct ProcessListReply {
     #[prost(message, repeated, tag = "1")]
     pub processes: ::prost::alloc::vec::Vec<ProcessInstance>,
 }
+/// search_processes
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SearchProcessRequest {
+    #[prost(string, tag = "1")]
+    pub search: ::prost::alloc::string::String,
+}
 /// list_process_streams
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListProcessStreamsRequest {
@@ -349,6 +355,22 @@ pub mod performance_analytics_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        pub async fn search_processes(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SearchProcessRequest>,
+        ) -> Result<tonic::Response<super::ProcessListReply>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/analytics.PerformanceAnalytics/search_processes",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         pub async fn list_stream_blocks(
             &mut self,
             request: impl tonic::IntoRequest<super::ListStreamBlocksRequest>,
@@ -401,6 +423,10 @@ pub mod performance_analytics_server {
         async fn list_recent_processes(
             &self,
             request: tonic::Request<super::RecentProcessesRequest>,
+        ) -> Result<tonic::Response<super::ProcessListReply>, tonic::Status>;
+        async fn search_processes(
+            &self,
+            request: tonic::Request<super::SearchProcessRequest>,
         ) -> Result<tonic::Response<super::ProcessListReply>, tonic::Status>;
         async fn list_stream_blocks(
             &self,
@@ -677,6 +703,40 @@ pub mod performance_analytics_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = list_recent_processesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/analytics.PerformanceAnalytics/search_processes" => {
+                    #[allow(non_camel_case_types)]
+                    struct search_processesSvc<T: PerformanceAnalytics>(pub Arc<T>);
+                    impl<T: PerformanceAnalytics>
+                        tonic::server::UnaryService<super::SearchProcessRequest>
+                        for search_processesSvc<T>
+                    {
+                        type Response = super::ProcessListReply;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SearchProcessRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).search_processes(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = search_processesSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,
