@@ -3,7 +3,7 @@ use legion_ecs::{
     system::{Command, EntityCommands},
     world::{EntityMut, World},
 };
-use legion_utils::log::debug;
+use log::debug;
 
 use crate::components::{Children, Parent};
 

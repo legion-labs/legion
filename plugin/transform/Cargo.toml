@@ -16,4 +16,5 @@ legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
+log = "0.4"
 smallvec = { version = "1.7", features = ["serde", "union", "const_generics"] }

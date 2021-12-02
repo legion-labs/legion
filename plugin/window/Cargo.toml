@@ -14,8 +14,8 @@ legion-app = { path = "../../lib/app", version = "0.1.0" }
 legion-math = { path = "../../lib/math", version = "0.1.0" }
 legion-utils = { path = "../../lib/utils", version = "0.1.0" }
 
-
 # other
+log = "0.4"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = "0.3"

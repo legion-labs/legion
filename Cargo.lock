@@ -3542,6 +3542,7 @@ dependencies = [
  "legion-telemetry",
  "legion-transform",
  "legion-utils",
+ "log",
  "ron",
  "serde",
  "wasm-bindgen",
@@ -3630,6 +3631,7 @@ dependencies = [
  "legion-math",
  "legion-tasks",
  "legion-utils",
+ "log",
 ]
 
 [[package]]
@@ -3798,6 +3800,7 @@ dependencies = [
  "legion-tasks",
  "legion-telemetry",
  "legion-utils",
+ "log",
  "parking_lot 0.11.2",
  "rand 0.8.4",
  "serde",
@@ -4217,6 +4220,7 @@ dependencies = [
  "legion-ecs",
  "legion-math",
  "legion-utils",
+ "log",
  "smallvec",
 ]
 
@@ -4254,6 +4258,7 @@ dependencies = [
  "legion-app",
  "legion-math",
  "legion-utils",
+ "log",
  "web-sys",
 ]
 
@@ -4268,6 +4273,7 @@ dependencies = [
  "legion-math",
  "legion-utils",
  "legion-window",
+ "log",
  "wasm-bindgen",
  "web-sys",
  "winit",

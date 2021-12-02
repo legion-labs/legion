@@ -10,7 +10,7 @@ use legion_ecs::{
     world::World,
 };
 use legion_telemetry::trace_scope;
-use legion_utils::log::debug;
+use log::debug;
 
 use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupStage};
 

@@ -1,6 +1,7 @@
 use std::any::TypeId;
 
-use legion_utils::{log::debug, HashMap};
+use legion_utils::HashMap;
+use log::debug;
 
 use crate::{App, Plugin};
 
