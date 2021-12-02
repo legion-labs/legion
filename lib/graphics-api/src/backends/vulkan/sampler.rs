@@ -41,7 +41,7 @@ impl VulkanSampler {
 
         let sampler = unsafe {
             device_context
-                .platform_device()
+                .vk_device()
                 .create_sampler(&*sampler_create_info, None)?
         };
 
@@ -51,7 +51,7 @@ impl VulkanSampler {
     pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
-                .platform_device()
+                .vk_device()
                 .destroy_sampler(self.sampler, None);
         }
     }

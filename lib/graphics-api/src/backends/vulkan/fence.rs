@@ -16,9 +16,7 @@ impl VulkanFence {
 
         let vk_fence = unsafe {
             device_context
-                .inner
-                .platform_device_context
-                .device()
+                .vk_device()
                 .create_fence(&*create_info, None)?
         };
 
@@ -28,9 +26,7 @@ impl VulkanFence {
     pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
-                .inner
-                .platform_device_context
-                .device()
+                .vk_device()
                 .destroy_fence(self.vk_fence, None);
         }
     }
@@ -44,7 +40,7 @@ impl VulkanFence {
         fence_list: &[vk::Fence],
     ) -> GfxResult<()> {
         if !fence_list.is_empty() {
-            let device = device_context.platform_device();
+            let device = device_context.vk_device();
             unsafe {
                 device.wait_for_fences(fence_list, true, std::u64::MAX)?;
                 device.reset_fences(fence_list)?;
@@ -55,7 +51,7 @@ impl VulkanFence {
     }
 
     pub fn get_fence_status(&self, device_context: &DeviceContext) -> GfxResult<FenceStatus> {
-        let device = device_context.platform_device();
+        let device = device_context.vk_device();
         unsafe {
             let is_ready = device.get_fence_status(self.vk_fence)?;
             if is_ready {

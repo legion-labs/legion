@@ -26,9 +26,7 @@ impl Drop for FramebufferVulkanInner {
     fn drop(&mut self) {
         unsafe {
             self.device_context
-                .inner
-                .platform_device_context
-                .device()
+                .vk_device()
                 .destroy_framebuffer(self.framebuffer, None);
         }
     }
@@ -76,18 +74,12 @@ impl FramebufferVulkan {
         let mut image_views = Vec::with_capacity(framebuffer_def.color_attachments.len() + 1);
 
         for color_rt in &framebuffer_def.color_attachments {
-            let image_view = color_rt
-                .texture_view
-                .platform_texture_view()
-                .vk_image_view();
+            let image_view = color_rt.texture_view.vk_image_view();
             image_views.push(image_view);
         }
 
         if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {
-            let image_view = depth_rt
-                .texture_view
-                .platform_texture_view()
-                .vk_image_view();
+            let image_view = depth_rt.texture_view.vk_image_view();
             image_views.push(image_view);
         };
 
@@ -100,9 +92,7 @@ impl FramebufferVulkan {
 
         let framebuffer = unsafe {
             device_context
-                .inner
-                .platform_device_context
-                .device()
+                .vk_device()
                 .create_framebuffer(&*framebuffer_create_info, None)?
         };
 

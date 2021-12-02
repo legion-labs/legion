@@ -3,39 +3,40 @@ use std::sync::atomic::Ordering;
 
 use ash::vk::{self};
 
-use crate::{GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, TextureDef, TextureSubResource};
-
-use super::VulkanDeviceContext;
+use crate::{
+    DeviceContext, GfxResult, MemoryUsage, ResourceFlags, ResourceUsage, Texture, TextureDef,
+    TextureSubResource,
+};
 
 // This is used to allow the underlying image/allocation to be removed from a VulkanTexture,
 // or to init a VulkanTexture with an existing image/allocation. If the allocation is none, we
 // will not destroy the image when VulkanRawImage is dropped
 #[derive(Debug)]
 pub(crate) struct VulkanRawImage {
-    pub(crate) image: vk::Image,
-    pub(crate) allocation: Option<vk_mem::Allocation>,
+    pub(crate) vk_image: vk::Image,
+    pub(crate) vk_allocation: Option<vk_mem::Allocation>,
 }
 
 impl VulkanRawImage {
-    fn destroy_image(&mut self, device_context: &VulkanDeviceContext) {
-        if let Some(allocation) = self.allocation.take() {
+    fn destroy_image(&mut self, device_context: &DeviceContext) {
+        if let Some(allocation) = self.vk_allocation.take() {
             log::trace!("destroying ImageVulkan");
-            assert_ne!(self.image, vk::Image::null());
+            assert_ne!(self.vk_image, vk::Image::null());
             device_context
-                .allocator()
-                .destroy_image(self.image, &allocation);
-            self.image = vk::Image::null();
+                .vk_allocator()
+                .destroy_image(self.vk_image, &allocation);
+            self.vk_image = vk::Image::null();
             log::trace!("destroyed ImageVulkan");
         } else {
             log::trace!("ImageVulkan has no allocation associated with it, not destroying image");
-            self.image = vk::Image::null();
+            self.vk_image = vk::Image::null();
         }
     }
 }
 
 impl Drop for VulkanRawImage {
     fn drop(&mut self) {
-        assert!(self.allocation.is_none());
+        assert!(self.vk_allocation.is_none());
     }
 }
 
@@ -46,22 +47,10 @@ pub(crate) struct VulkanTexture {
 }
 
 impl VulkanTexture {
-    pub(super) fn vk_aspect_mask(&self) -> vk::ImageAspectFlags {
-        self.aspect_mask
-    }
-
-    pub(super) fn vk_image(&self) -> vk::Image {
-        self.image.image
-    }
-
-    pub(super) fn vk_allocation(&self) -> Option<vk_mem::Allocation> {
-        self.image.allocation
-    }
-
     // This path is mostly so we can wrap a provided swapchain image
     #[allow(clippy::too_many_lines)]
     pub fn from_existing(
-        device_context: &VulkanDeviceContext,
+        device_context: &DeviceContext,
         existing_image: Option<VulkanRawImage>,
         texture_def: &TextureDef,
     ) -> GfxResult<(Self, u32)> {
@@ -168,7 +157,7 @@ impl VulkanTexture {
 
             //let allocator = device.allocator().clone();
             let (image, allocation, _allocation_info) = device_context
-                .allocator()
+                .vk_allocator()
                 .create_image(&image_create_info, &allocation_create_info)
                 .map_err(|_e| {
                     log::error!("Error creating image");
@@ -176,8 +165,8 @@ impl VulkanTexture {
                 })?;
 
             VulkanRawImage {
-                image,
-                allocation: Some(allocation),
+                vk_image: image,
+                vk_allocation: Some(allocation),
             }
         };
 
@@ -355,16 +344,29 @@ impl VulkanTexture {
         Ok((Self { image, aspect_mask }, texture_id))
     }
 
-    pub fn destroy(&mut self, device_context: &VulkanDeviceContext) {
+    pub fn destroy(&mut self, device_context: &DeviceContext) {
         self.image.destroy_image(device_context);
     }
+}
 
-    pub fn map_texture(
-        &self,
-        device_context: &VulkanDeviceContext,
-    ) -> GfxResult<TextureSubResource<'_>> {
-        let ptr = device_context
-            .allocator()
+impl Texture {
+    pub(crate) fn vk_aspect_mask(&self) -> vk::ImageAspectFlags {
+        self.inner.platform_texture.aspect_mask
+    }
+
+    pub(crate) fn vk_image(&self) -> vk::Image {
+        self.inner.platform_texture.image.vk_image
+    }
+
+    pub(crate) fn vk_allocation(&self) -> Option<vk_mem::Allocation> {
+        self.inner.platform_texture.image.vk_allocation
+    }
+
+    pub(crate) fn map_texture_platform(&self) -> GfxResult<TextureSubResource<'_>> {
+        let ptr = self
+            .inner
+            .device_context
+            .vk_allocator()
             .map_memory(&self.vk_allocation().unwrap())?;
 
         let sub_res = vk::ImageSubresource::builder()
@@ -372,9 +374,11 @@ impl VulkanTexture {
             .build();
 
         unsafe {
-            let sub_res_layout = device_context
-                .device()
-                .get_image_subresource_layout(self.image.image, sub_res);
+            let sub_res_layout = self
+                .inner
+                .device_context
+                .vk_device()
+                .get_image_subresource_layout(self.inner.platform_texture.image.vk_image, sub_res);
 
             Ok(TextureSubResource {
                 data: &*slice_from_raw_parts(
@@ -388,9 +392,10 @@ impl VulkanTexture {
         }
     }
 
-    pub fn unmap_texture(&self, device_context: &VulkanDeviceContext) {
-        device_context
-            .allocator()
+    pub(crate) fn unmap_texture_platform(&self) {
+        self.inner
+            .device_context
+            .vk_allocator()
             .unmap_memory(&self.vk_allocation().unwrap());
     }
 }

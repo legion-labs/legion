@@ -2,8 +2,7 @@ use std::cmp;
 
 use ash::vk;
 
-use super::VulkanDeviceContext;
-use crate::{GfxResult, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::{DeviceContext, GfxResult, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -18,7 +17,7 @@ pub(crate) struct VulkanRootSignature {
 
 impl VulkanRootSignature {
     pub(crate) fn new(
-        device_context: &VulkanDeviceContext,
+        device_context: &DeviceContext,
         definition: &RootSignatureDef,
     ) -> GfxResult<Self> {
         log::trace!("Create VulkanRootSignature");
@@ -52,15 +51,15 @@ impl VulkanRootSignature {
 
         let pipeline_layout = unsafe {
             device_context
-                .device()
+                .vk_device()
                 .create_pipeline_layout(&pipeline_layout_create_info, None)?
         };
 
         Ok(Self { pipeline_layout })
     }
 
-    pub fn destroy(&self, device_context: &VulkanDeviceContext) {
-        let device = device_context.device();
+    pub fn destroy(&self, device_context: &DeviceContext) {
+        let device = device_context.vk_device();
 
         unsafe {
             device.destroy_pipeline_layout(self.pipeline_layout, None);

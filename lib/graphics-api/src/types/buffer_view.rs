@@ -102,8 +102,7 @@ impl BufferViewDef {
     }
 }
 
-#[derive(Clone)]
-pub(crate) struct BufferViewInner {
+struct BufferViewInner {
     definition: BufferViewDef,
     buffer: Buffer,
     offset: u64,

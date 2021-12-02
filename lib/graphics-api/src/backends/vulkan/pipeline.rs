@@ -4,8 +4,7 @@ use std::ffi::CString;
 use ash::vk;
 
 use super::{
-    VulkanDeviceContext, VulkanRenderpassColorAttachment, VulkanRenderpassDef,
-    VulkanRenderpassDepthAttachment,
+    VulkanRenderpassColorAttachment, VulkanRenderpassDef, VulkanRenderpassDepthAttachment,
 };
 use crate::{
     ComputePipelineDef, DeviceContext, Format, GfxResult, GraphicsPipelineDef, LoadOp,
@@ -22,10 +21,11 @@ impl VulkanPipeline {
         self.pipeline
     }
 
-    pub fn destroy(&self, device_context: &VulkanDeviceContext) {
+    pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
-            let device = device_context.device();
-            device.destroy_pipeline(self.pipeline, None);
+            device_context
+                .vk_device()
+                .destroy_pipeline(self.pipeline, None);
         }
     }
 
@@ -64,7 +64,7 @@ impl VulkanPipeline {
         };
 
         // Temporary renderpass, required to create pipeline but don't need to keep it
-        let renderpass = VulkanDeviceContext::create_renderpass(
+        let renderpass = DeviceContext::create_renderpass(
             device_context,
             &VulkanRenderpassDef {
                 color_attachments,
@@ -190,7 +190,7 @@ impl VulkanPipeline {
         // };
 
         let pipeline = unsafe {
-            match device_context.platform_device().create_graphics_pipelines(
+            match device_context.vk_device().create_graphics_pipelines(
                 vk::PipelineCache::null(),
                 &[pipeline_create_info],
                 None,
@@ -204,7 +204,7 @@ impl VulkanPipeline {
     }
 
     pub fn new_compute_pipeline(
-        device_context: &VulkanDeviceContext,
+        device_context: &DeviceContext,
         pipeline_def: &ComputePipelineDef<'_>,
     ) -> GfxResult<Self> {
         //log::trace!("Create pipeline\n{:#?}", pipeline_def);
@@ -245,7 +245,7 @@ impl VulkanPipeline {
             .build();
 
         let pipeline = unsafe {
-            match device_context.device().create_compute_pipelines(
+            match device_context.vk_device().create_compute_pipelines(
                 vk::PipelineCache::null(),
                 &[pipeline_create_info],
                 None,

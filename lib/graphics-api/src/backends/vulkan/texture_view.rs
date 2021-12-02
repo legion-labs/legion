@@ -1,7 +1,6 @@
 use ash::vk;
 
-use crate::backends::vulkan::VulkanDeviceContext;
-use crate::{GfxResult, Texture, TextureViewDef};
+use crate::{DeviceContext, GfxResult, Texture, TextureView, TextureViewDef};
 
 #[derive(Clone, Debug)]
 pub(crate) struct VulkanTextureView {
@@ -12,8 +11,8 @@ impl VulkanTextureView {
     pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> GfxResult<Self> {
         view_def.verify(texture.definition());
 
-        let device_context = texture.platform_device_context();
-        let device = device_context.device();
+        let device_context = texture.device_context();
+        let device = device_context.vk_device();
         let texture_def = texture.definition();
         let aspect_mask = super::internal::image_format_to_aspect_mask(texture_def.format);
         let subresource_range = vk::ImageSubresourceRange::builder()
@@ -23,7 +22,7 @@ impl VulkanTextureView {
             .base_array_layer(view_def.first_array_slice)
             .layer_count(view_def.array_size);
         let builder = vk::ImageViewCreateInfo::builder()
-            .image(texture.platform_texture().vk_image())
+            .image(texture.vk_image())
             .components(vk::ComponentMapping::default())
             .view_type(view_def.view_dimension.into())
             .format(texture_def.format.into())
@@ -33,14 +32,17 @@ impl VulkanTextureView {
         Ok(Self { vk_image_view })
     }
 
-    pub fn destroy(&self, device_context: &VulkanDeviceContext) {
-        let device = device_context.device();
+    pub(crate) fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
-            device.destroy_image_view(self.vk_image_view, None);
+            device_context
+                .vk_device()
+                .destroy_image_view(self.vk_image_view, None);
         }
     }
+}
 
-    pub fn vk_image_view(&self) -> vk::ImageView {
-        self.vk_image_view
+impl TextureView {
+    pub(crate) fn vk_image_view(&self) -> vk::ImageView {
+        self.inner.platform_texture_view.vk_image_view
     }
 }

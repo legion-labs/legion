@@ -1,7 +1,6 @@
 use ash::vk;
 
-use super::VulkanDeviceContext;
-use crate::{Descriptor, DescriptorSetLayoutDef, GfxResult};
+use crate::{Descriptor, DescriptorSetLayoutDef, DeviceContext, GfxResult};
 
 #[derive(Clone, Debug)]
 pub(crate) struct VulkanDescriptorSetLayout {
@@ -14,7 +13,7 @@ impl VulkanDescriptorSetLayout {
     }
 
     pub fn new(
-        device_context: &VulkanDeviceContext,
+        device_context: &DeviceContext,
         definition: &DescriptorSetLayoutDef,
     ) -> GfxResult<(Self, Vec<Descriptor>, u32)> {
         let mut descriptors = Vec::new();
@@ -48,7 +47,7 @@ impl VulkanDescriptorSetLayout {
         }
 
         let vk_layout = unsafe {
-            device_context.device().create_descriptor_set_layout(
+            device_context.vk_device().create_descriptor_set_layout(
                 &*vk::DescriptorSetLayoutCreateInfo::builder().bindings(&vk_bindings),
                 None,
             )?
@@ -57,10 +56,10 @@ impl VulkanDescriptorSetLayout {
         Ok((Self { vk_layout }, descriptors, update_data_count))
     }
 
-    pub fn destroy(&self, device_context: &VulkanDeviceContext) {
+    pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
-                .device()
+                .vk_device()
                 .destroy_descriptor_set_layout(self.vk_layout, None);
         }
     }

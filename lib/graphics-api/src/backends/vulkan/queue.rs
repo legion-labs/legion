@@ -1,7 +1,7 @@
 use ash::vk;
 
 use super::internal::VkQueue;
-use super::{VulkanDeviceContext, VulkanSwapchain};
+use super::VulkanSwapchain;
 use crate::{
     CommandBuffer, DeviceContext, Fence, GfxResult, PresentSuccessResult, QueueType, Semaphore,
     Swapchain,
@@ -19,23 +19,18 @@ impl VulkanQueue {
     pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> GfxResult<Self> {
         let queue = match queue_type {
             QueueType::Graphics => device_context
-                .platform_device_context()
                 .queue_allocator()
                 .allocate_graphics_queue(device_context),
             QueueType::Compute => device_context
-                .platform_device_context()
                 .queue_allocator()
                 .allocate_compute_queue(device_context),
             QueueType::Transfer => device_context
-                .platform_device_context()
                 .queue_allocator()
                 .allocate_transfer_queue(device_context),
             QueueType::Decode => device_context
-                .platform_device_context()
                 .queue_allocator()
                 .allocate_decode_queue(device_context),
             QueueType::Encode => device_context
-                .platform_device_context()
                 .queue_allocator()
                 .allocate_encode_queue(device_context),
         }
@@ -47,7 +42,7 @@ impl VulkanQueue {
     // Make sure we always use the dedicated queue if it exists
     pub(self) fn present_to_given_or_dedicated_queue(
         &self,
-        vulkan_device_context: &VulkanDeviceContext,
+        device_context: &DeviceContext,
         swapchain: &VulkanSwapchain,
         present_info: &vk::PresentInfoKHR,
     ) -> GfxResult<bool> {
@@ -56,7 +51,7 @@ impl VulkanQueue {
                 // Because of the way we search for present-compatible queues, we don't necessarily have
                 // the same underlying mutex in all instances of a dedicated present queue. So fallback
                 // to a single global lock
-                let _dedicated_present_lock = vulkan_device_context
+                let _dedicated_present_lock = device_context
                     .dedicated_present_queue_lock()
                     .lock()
                     .unwrap();
@@ -95,7 +90,7 @@ impl VulkanQueue {
     ) -> GfxResult<()> {
         let mut command_buffer_list = Vec::with_capacity(command_buffers.len());
         for command_buffer in command_buffers {
-            command_buffer_list.push(command_buffer.platform_command_buffer().vk_command_buffer());
+            command_buffer_list.push(command_buffer.vk_command_buffer());
         }
 
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
@@ -137,7 +132,7 @@ impl VulkanQueue {
             );
             self.queue
                 .device_context()
-                .device()
+                .vk_device()
                 .queue_submit(*queue, &[*submit_info], fence)?;
         }
 
@@ -174,7 +169,7 @@ impl VulkanQueue {
         // presumably that's for multiwindow cases.
 
         let result = self.present_to_given_or_dedicated_queue(
-            device_context.platform_device_context(),
+            device_context,
             swapchain.platform_swap_chain(),
             &*present_info,
         );
@@ -202,7 +197,7 @@ impl VulkanQueue {
         unsafe {
             self.queue
                 .device_context()
-                .device()
+                .vk_device()
                 .queue_wait_idle(*queue)?;
         }
 
