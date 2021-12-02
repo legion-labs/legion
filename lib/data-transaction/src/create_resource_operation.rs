@@ -23,7 +23,7 @@ impl TransactionOperation for CreateResourceOperation {
         let handle = ctx
             .resource_registry
             .new_resource(self.resource_id.0)
-            .ok_or_else(|| Error::ResourceCreationFailed(self.resource_id.0))?;
+            .ok_or(Error::ResourceCreationFailed(self.resource_id.0))?;
 
         // Validate duplicate id/name
         if ctx.project.exists(self.resource_id) {
