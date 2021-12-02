@@ -2939,7 +2939,6 @@ dependencies = [
  "clap",
  "legion-app",
  "legion-asset-registry",
- "legion-async",
  "legion-core",
  "legion-ecs",
  "legion-graphics-api",

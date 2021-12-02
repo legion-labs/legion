@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use legion_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
 use legion_ecs::prelude::*;
 use legion_input::InputPlugin;
@@ -115,7 +114,6 @@ fn main() {
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
-        .add_plugin(AsyncPlugin {})
         .add_plugin(RendererPlugin::default());
 
     if matches.is_present("snapshot") {
