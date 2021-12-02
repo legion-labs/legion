@@ -7,12 +7,12 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
-legion-app = { path = "../../lib/app" }
-legion-ecs = { path = "../../lib/ecs" }
-legion-presenter = { path = "../../lib/presenter" }
-legion-renderer = { path = "../../plugin/renderer" }
-legion-tasks = { path = "../../lib/tasks" }
+graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api", version = "0.1.0" }
+legion-app = { path = "../../lib/app", version = "0.1.0" }
+legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+legion-presenter = { path = "../../lib/presenter", version = "0.1.0" }
+legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+legion-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 
 anyhow = "1.0"
 crossbeam-channel = "0.5"
