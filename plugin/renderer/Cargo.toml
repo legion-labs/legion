@@ -7,15 +7,15 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
-graphics-data = { path = "../../lib/graphics-data", package = "legion-graphics-data", version = "0.1.0" }
+graphics-data = { path = "../../lib/graphics-data", package = "legion-graphics-data" }
 graphics-utils = { path = "../../lib/graphics-utils", package = "legion-graphics-utils" }
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-async = { path = "../../plugin/async", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
-legion-transform = { path = "../transform", version = "0.1.0" }
-legion-math = { path = "../../lib/math", version = "0.1.0" }
+legion-app = { path = "../../lib/app" }
+legion-ecs = { path = "../../lib/ecs" }
+legion-math = { path = "../../lib/math" }
+legion-pso-compiler = { path = "../../lib/pso-compiler" }
+legion-utils = { path = "../../lib/utils" }
+legion-tasks = { path = "../../lib/tasks" }
+legion-transform = { path = "../transform" }
 
 anyhow = "1.0"
 log = "0.4"

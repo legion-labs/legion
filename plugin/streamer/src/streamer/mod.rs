@@ -1,12 +1,12 @@
 use std::{fmt::Display, sync::Arc};
 
-use legion_async::TokioAsyncRuntime;
 use legion_ecs::prelude::*;
 use legion_presenter::offscreen_helper::Resolution;
 use legion_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     Renderer,
 };
+use legion_tasks::ComputeTaskPool;
 use log::{error, info, warn};
 use webrtc::{
     data::data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
@@ -69,7 +69,7 @@ impl Streamer {
 }
 
 pub(crate) fn handle_stream_events(
-    async_rt: ResMut<'_, TokioAsyncRuntime>,
+    task_pool: Res<'_, ComputeTaskPool>,
     streamer: ResMut<'_, Streamer>,
     renderer: Res<'_, Renderer>,
     mut commands: Commands<'_, '_>,
@@ -136,7 +136,7 @@ pub(crate) fn handle_stream_events(
                 let mut control_stream = ControlStream::new(data_channel);
                 match control_stream.say_hello() {
                     Ok(future) => {
-                        async_rt.start_detached(future);
+                        task_pool.spawn(future).detach();
                     }
                     Err(e) => {
                         error!("say_hello failed: {}", e);

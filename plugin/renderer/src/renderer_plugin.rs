@@ -1,8 +1,8 @@
 use graphics_api::QueueType;
 use legion_app::{CoreStage, Plugin};
-use legion_async::TokioAsyncRuntime;
 use legion_ecs::{prelude::*, system::IntoSystem};
 use legion_math::{EulerRot, Quat};
+use legion_tasks::ComputeTaskPool;
 use legion_transform::components::Transform;
 
 use crate::{
@@ -63,7 +63,7 @@ fn render_update(
     renderer: ResMut<'_, Renderer>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     q_drawables: Query<'_, '_, (&Transform, &StaticMesh)>,
-    mut async_rt: ResMut<'_, TokioAsyncRuntime>,
+    task_pool: ResMut<'_, ComputeTaskPool>,
 ) {
     let mut render_context = RenderContext::new(&renderer);
     let q_drawables = q_drawables
@@ -95,7 +95,7 @@ fn render_update(
 
         render_context.release_cmd_buffer(cmd_buffer);
 
-        render_surface.present(&mut render_context, async_rt.as_mut());
+        render_surface.present(&mut render_context, &task_pool);
     }
 }
 

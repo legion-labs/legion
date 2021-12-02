@@ -8,17 +8,18 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-async = { path = "../../plugin/async", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-presenter = { path = "../../lib/presenter", version = "0.1.0" }
-legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
-log = "0.4"
-raw-window-handle = "0.3"
+legion-app = { path = "../../lib/app" }
+legion-ecs = { path = "../../lib/ecs" }
+legion-presenter = { path = "../../lib/presenter" }
+legion-renderer = { path = "../../plugin/renderer" }
+legion-tasks = { path = "../../lib/tasks" }
+
+anyhow = "1.0"
 crossbeam-channel = "0.5"
 instant = "0.1"
-anyhow = "1.0"
+log = "0.4"
 png = "0.17"
+raw-window-handle = "0.3"
 
 [features]
 default = []
