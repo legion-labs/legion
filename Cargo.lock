@@ -3840,7 +3840,7 @@ dependencies = [
  "fnv",
  "legion-utils",
  "log",
- "raw-window-handle 0.3.4",
+ "raw-window-handle 0.4.2",
  "serde",
  "vk-mem",
 ]
@@ -3986,7 +3986,7 @@ dependencies = [
  "legion-pso-compiler",
  "legion-renderer",
  "log",
- "raw-window-handle 0.3.4",
+ "raw-window-handle 0.4.2",
 ]
 
 [[package]]
@@ -4004,7 +4004,7 @@ dependencies = [
  "legion-tasks",
  "log",
  "png 0.17.2",
- "raw-window-handle 0.3.4",
+ "raw-window-handle 0.4.2",
 ]
 
 [[package]]
@@ -4017,7 +4017,7 @@ dependencies = [
  "legion-presenter",
  "legion-renderer",
  "legion-tasks",
- "raw-window-handle 0.3.4",
+ "raw-window-handle 0.4.2",
 ]
 
 [[package]]
