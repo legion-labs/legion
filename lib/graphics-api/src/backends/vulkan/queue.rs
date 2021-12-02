@@ -99,7 +99,7 @@ impl VulkanQueue {
             // Don't wait on a semaphore that will never signal
             //TODO: Assert or fail here?
             if wait_semaphore.signal_available() {
-                wait_semaphore_list.push(wait_semaphore.platform_semaphore().vk_semaphore());
+                wait_semaphore_list.push(wait_semaphore.vk_semaphore());
                 wait_dst_stage_mask.push(vk::PipelineStageFlags::ALL_COMMANDS);
 
                 wait_semaphore.set_signal_available(false);
@@ -111,7 +111,7 @@ impl VulkanQueue {
             // Don't signal a semaphore if something is already going to signal it
             //TODO: Assert or fail here?
             if !signal_semaphore.signal_available() {
-                signal_semaphore_list.push(signal_semaphore.platform_semaphore().vk_semaphore());
+                signal_semaphore_list.push(signal_semaphore.vk_semaphore());
                 signal_semaphore.set_signal_available(true);
             }
         }
@@ -153,7 +153,7 @@ impl VulkanQueue {
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
         for wait_semaphore in wait_semaphores {
             if wait_semaphore.signal_available() {
-                wait_semaphore_list.push(wait_semaphore.platform_semaphore().vk_semaphore());
+                wait_semaphore_list.push(wait_semaphore.vk_semaphore());
                 wait_semaphore.set_signal_available(false);
             }
         }

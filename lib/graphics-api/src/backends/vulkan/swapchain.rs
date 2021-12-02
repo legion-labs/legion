@@ -241,7 +241,7 @@ impl VulkanSwapchain {
             self.swapchain.swapchain_loader.acquire_next_image(
                 self.swapchain.swapchain,
                 std::u64::MAX,
-                semaphore.platform_semaphore().vk_semaphore(),
+                semaphore.vk_semaphore(),
                 vk::Fence::null(),
             )
         };

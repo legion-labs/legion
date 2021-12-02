@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use crate::backends::vulkan::VulkanSemaphore;
 use crate::{deferred_drop::Drc, DeviceContext, GfxResult};
 
-struct SemaphoreInner {
+pub(crate) struct SemaphoreInner {
     device_context: DeviceContext,
 
     // Set to true when an operation is scheduled to signal this semaphore
@@ -12,11 +12,11 @@ struct SemaphoreInner {
     signal_available: AtomicBool,
 
     #[cfg(feature = "vulkan")]
-    platform_semaphore: VulkanSemaphore,
+    pub(crate) platform_semaphore: VulkanSemaphore,
 }
 
 pub struct Semaphore {
-    inner: Drc<SemaphoreInner>,
+    pub(crate) inner: Drc<SemaphoreInner>,
 }
 
 impl Drop for SemaphoreInner {
@@ -48,15 +48,9 @@ impl Semaphore {
         self.inner.signal_available.load(Ordering::Relaxed)
     }
 
-    #[cfg(any(feature = "vulkan"))]
     pub fn set_signal_available(&self, available: bool) {
         self.inner
             .signal_available
             .store(available, Ordering::Relaxed);
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_semaphore(&self) -> &VulkanSemaphore {
-        &self.inner.platform_semaphore
     }
 }
