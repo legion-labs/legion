@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use legion_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use legion_async::AsyncPlugin;
 use legion_core::CorePlugin;
 use legion_ecs::prelude::*;
 use legion_input::InputPlugin;
@@ -115,7 +114,6 @@ fn main() {
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
-        .add_plugin(AsyncPlugin {})
         .add_plugin(RendererPlugin::default());
 
     if matches.is_present("snapshot") {
@@ -126,11 +124,7 @@ fn main() {
         })
         .insert_resource(ScheduleRunnerSettings::default())
         .add_plugin(ScheduleRunnerPlugin::default())
-        .add_system(
-            presenter_snapshot_system
-                .system()
-                .before(RendererSystemLabel::FrameUpdate),
-        )
+        .add_system(presenter_snapshot_system.before(RendererSystemLabel::FrameUpdate))
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
         app.insert_resource(WindowDescriptor {
@@ -150,7 +144,7 @@ fn main() {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default());
     } else {
-        app.add_startup_system(init_scene.system());
+        app.add_startup_system(init_scene);
     }
     app.run();
 }

@@ -77,3 +77,5 @@ mod resources;
 
 pub mod components;
 pub mod static_mesh_render_data;
+
+pub use legion_tasks::ComputeTaskPool as RenderTaskPool;

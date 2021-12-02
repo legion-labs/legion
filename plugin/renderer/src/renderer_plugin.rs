@@ -1,7 +1,6 @@
 use graphics_api::QueueType;
 use legion_app::{CoreStage, Plugin};
-use legion_async::TokioAsyncRuntime;
-use legion_ecs::{prelude::*, system::IntoSystem};
+use legion_ecs::prelude::*;
 use legion_math::{EulerRot, Quat};
 use legion_transform::components::Transform;
 
@@ -21,24 +20,20 @@ impl Plugin for RendererPlugin {
         app.insert_resource(renderer);
 
         // Pre-Update
-        app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update.system());
+        app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
         // Update
-        app.add_system(
-            update_rotation
-                .system()
-                .before(RendererSystemLabel::FrameUpdate),
-        );
+        app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
 
         app.add_system_set(
             SystemSet::new()
-                .with_system(render_update.system())
+                .with_system(render_update)
                 .label(RendererSystemLabel::FrameUpdate),
         );
 
         // Post-Update
         app.add_system_to_stage(
             CoreStage::PostUpdate,
-            render_post_update.system(), // .label(RendererSystemLabel::FrameDone),
+            render_post_update, // .label(RendererSystemLabel::FrameDone),
         );
     }
 }
@@ -63,7 +58,7 @@ fn render_update(
     renderer: ResMut<'_, Renderer>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     q_drawables: Query<'_, '_, (&Transform, &StaticMesh)>,
-    mut async_rt: ResMut<'_, TokioAsyncRuntime>,
+    task_pool: Res<'_, crate::RenderTaskPool>,
 ) {
     let mut render_context = RenderContext::new(&renderer);
     let q_drawables = q_drawables
@@ -95,7 +90,7 @@ fn render_update(
 
         render_context.release_cmd_buffer(cmd_buffer);
 
-        render_surface.present(&mut render_context, async_rt.as_mut());
+        render_surface.present(&mut render_context, &task_pool);
     }
 }
 

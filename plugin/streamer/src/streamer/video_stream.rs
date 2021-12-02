@@ -13,6 +13,7 @@ use legion_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
+use legion_tasks::TaskPool;
 use legion_telemetry::prelude::*;
 use legion_utils::{memory::write_any, setting_get_or};
 use log::{debug, warn};
@@ -153,9 +154,11 @@ impl Presenter for VideoStream {
         &mut self,
         render_context: &mut RenderContext<'renderer>,
         render_surface: &mut RenderSurface,
-        async_rt: &mut legion_async::TokioAsyncRuntime,
+        task_pool: &TaskPool,
     ) {
-        async_rt.start_detached(self.present(render_context, render_surface));
+        task_pool
+            .spawn(self.present(render_context, render_surface))
+            .detach();
     }
 }
 
