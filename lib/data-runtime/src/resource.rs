@@ -135,12 +135,6 @@ impl ResourceId {
     }
 }
 
-/*impl fmt::LowerHex for ResourceId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.0, f)
-    }
-}*/
-
 impl fmt::Display for ResourceId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{}", Uuid::from_u128(self.0.get())))
@@ -195,24 +189,27 @@ impl<'de> Deserialize<'de> for ResourceId {
     }
 }
 
-/// Create a `(ResourceType, ResourceId)` tuple from a string.
-/// # Errors
-/// Might return a `ParseIntError` if the input `s` contains anything other than a tuple of hexadecimal values.
-/// FIXME: this is temporary, only to avoid having a concrete struct for `(ResourceType, ResourceId)` tuple and because a tuple is always considered as foreign.
-pub fn from_str(s: &str) -> Result<(ResourceType, ResourceId), Box<dyn std::error::Error>> {
-    let pair: Vec<&str> = s
-        .trim_matches(|p| p == '(' || p == ')')
-        .split(',')
-        .collect();
-    let t = pair[0].parse::<ResourceType>()?;
-    let id = pair[1].parse::<ResourceId>()?;
-    Ok((t, id))
-}
+/// FIXME: temporary, only to avoid having a concrete struct for `(ResourceType, ResourceId)` tuple and because a tuple is always considered as foreign.
+pub mod resource_type_id_tuple {
+    use crate::{ResourceId, ResourceType};
 
-/// Returns a string from a formatted `(ResourceType, ResourceId)` tuple.
-/// FIXME: this is temporary, only to avoid having a concrete struct for `(ResourceType, ResourceId)` tuple and because a tuple is always considered as foreign.
-pub fn to_string(v: (ResourceType, ResourceId)) -> String {
-    format!("({},{})", v.0, v.1)
+    /// Create a `(ResourceType, ResourceId)` tuple from a string.
+    /// # Errors
+    /// Might return a `ParseIntError` if the input `s` contains anything other than a tuple of hexadecimal values.
+    pub fn from_str(s: &str) -> Result<(ResourceType, ResourceId), Box<dyn std::error::Error>> {
+        let pair: Vec<&str> = s
+            .trim_matches(|p| p == '(' || p == ')')
+            .split(',')
+            .collect();
+        let t = pair[0].parse::<ResourceType>()?;
+        let id = pair[1].parse::<ResourceId>()?;
+        Ok((t, id))
+    }
+
+    /// Returns a string from a formatted `(ResourceType, ResourceId)` tuple.
+    pub fn to_string(v: (ResourceType, ResourceId)) -> String {
+        format!("({},{})", v.0, v.1)
+    }
 }
 
 /// Trait describing resource type name.

@@ -6,7 +6,7 @@ use std::{
 };
 
 use legion_content_store::content_checksum_from_read;
-use legion_data_runtime::{to_string, ResourceId, ResourceType};
+use legion_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
 use crate::resource::{
@@ -398,13 +398,14 @@ impl Project {
 
     fn metadata_path(&self, type_id: (ResourceType, ResourceId)) -> PathBuf {
         let mut path = self.resource_dir();
-        path.push(to_string(type_id));
+        path.push(resource_type_id_tuple::to_string(type_id));
         path.set_extension(METADATA_EXT);
         path
     }
 
     fn resource_path(&self, type_id: (ResourceType, ResourceId)) -> PathBuf {
-        self.resource_dir().join(to_string(type_id))
+        self.resource_dir()
+            .join(resource_type_id_tuple::to_string(type_id))
     }
 
     /// Moves a `remote` resources to the list of `local` resources.

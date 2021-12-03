@@ -66,7 +66,7 @@ use instant::Duration;
 use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use legion_core::CorePlugin;
-use legion_data_runtime::{from_str, ResourceId, ResourceType};
+use legion_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
 use legion_transform::prelude::*;
 
 fn main() {
@@ -108,7 +108,7 @@ fn main() {
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
         .unwrap_or("(97b0740f,6f9c3cba-b1f1-468a-a109-e71b0ac0e9fa)");
-    if let Ok(asset_id) = from_str(root_asset) {
+    if let Ok(asset_id) = resource_type_id_tuple::from_str(root_asset) {
         assets_to_load.push(asset_id);
     }
 

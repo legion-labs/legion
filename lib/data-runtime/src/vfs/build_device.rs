@@ -5,7 +5,7 @@ use std::{
 };
 
 use super::Device;
-use crate::{manifest::Manifest, to_string, ResourceId, ResourceType};
+use crate::{manifest::Manifest, resource_type_id_tuple, ResourceId, ResourceType};
 use legion_content_store::{ContentStore, ContentStoreAddr};
 use std::time::Instant;
 
@@ -73,7 +73,7 @@ impl BuildDevice {
 
         log::info!(
             "Running DataBuild for ResourceId: {}",
-            to_string(resource_id)
+            resource_type_id_tuple::to_string(resource_id)
         );
         let start = Instant::now();
         let output = command.output()?;
@@ -127,7 +127,7 @@ fn build_command(
     let locale = "en";
     let mut command = std::process::Command::new(databuild_path.as_ref());
     command.arg("compile");
-    command.arg(to_string(resource_id));
+    command.arg(resource_type_id_tuple::to_string(resource_id));
     command.arg("--rt");
     command.arg(format!("--cas={}", cas));
     command.arg(format!("--target={}", target));

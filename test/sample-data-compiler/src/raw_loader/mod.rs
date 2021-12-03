@@ -14,7 +14,7 @@ use generic_data_offline::{DebugCube, TestEntity};
 use legion_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
-use legion_data_runtime::{to_string, Resource, ResourceId, ResourceType};
+use legion_data_runtime::{resource_type_id_tuple, Resource, ResourceId, ResourceType};
 use legion_graphics_offline::PsdFile;
 use sample_data_offline as offline_data;
 use serde::de::DeserializeOwned;
@@ -90,7 +90,11 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                     _ => panic!(),
                 }
 
-                println!("Loaded: {}. id: {}", resource_name, to_string(resource_id));
+                println!(
+                    "Loaded: {}. id: {}",
+                    resource_name,
+                    resource_type_id_tuple::to_string(resource_id)
+                );
             }
         } else {
             eprintln!(

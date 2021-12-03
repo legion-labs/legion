@@ -69,9 +69,9 @@ fn compute_context_hash(
 /// # use legion_content_store::ContentStoreAddr;
 /// # use legion_data_compiler::{Locale, Platform, Target};
 /// # use legion_data_offline::ResourcePathId;
-/// # use legion_data_runtime::{ResourceId, ResourceType, from_str};
+/// # use legion_data_runtime::{ResourceId, ResourceType, resource_type_id_tuple};
 /// # use std::str::FromStr;
-/// # let offline_anim: (ResourceType, ResourceId) = from_str("(type,invalid_id)").unwrap();
+/// # let offline_anim: (ResourceType, ResourceId) = resource_type_id_tuple::from_str("(type,invalid_id)").unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// let mut build = DataBuildOptions::new(".")
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))

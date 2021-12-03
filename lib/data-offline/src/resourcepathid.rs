@@ -1,6 +1,6 @@
 use std::{fmt, hash::Hash, str::FromStr};
 
-use legion_data_runtime::{to_string, ResourceId, ResourceType};
+use legion_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
 /// Identifier of a path in a build graph.
@@ -57,7 +57,10 @@ impl From<(ResourceType, ResourceId)> for ResourcePathId {
 
 impl fmt::Display for ResourcePathId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", to_string(self.source)))?;
+        f.write_fmt(format_args!(
+            "{}",
+            resource_type_id_tuple::to_string(self.source)
+        ))?;
         for (kind, name) in &self.transforms {
             if let Some(name) = name {
                 f.write_fmt(format_args!("|{}_{}", kind, name))?;
@@ -88,7 +91,7 @@ impl FromStr for ResourcePathId {
 
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {
         let end = s.find('|').unwrap_or(s.len());
-        let source = legion_data_runtime::from_str(&s[0..end])?;
+        let source = resource_type_id_tuple::from_str(&s[0..end])?;
         s = &s[end..];
 
         let mut transforms = vec![];

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use legion_data_runtime::{from_str, to_string, ResourceId, ResourceType};
+use legion_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
 use legion_editor_proto::{
     editor_server::{Editor, EditorServer},
     GetResourcePropertiesRequest, GetResourcePropertiesResponse, RedoTransactionRequest,
@@ -47,7 +47,7 @@ impl Editor for GRPCServer {
                     .unwrap_or_else(|_err| "".into());
 
                 ResourceDescription {
-                    id: to_string(resource_id),
+                    id: resource_type_id_tuple::to_string(resource_id),
                     path: name.to_string(),
                     version: 1,
                 }
@@ -93,8 +93,8 @@ impl Editor for GRPCServer {
         &self,
         request: Request<GetResourcePropertiesRequest>,
     ) -> Result<Response<GetResourcePropertiesResponse>, Status> {
-        let resource_id: (ResourceType, ResourceId) = from_str(request.get_ref().id.as_str())
-            .map_err(|_err| {
+        let resource_id: (ResourceType, ResourceId) =
+            resource_type_id_tuple::from_str(request.get_ref().id.as_str()).map_err(|_err| {
                 Status::internal(format!(
                     "Invalid ResourceID format: {}",
                     request.get_ref().id
@@ -110,7 +110,7 @@ impl Editor for GRPCServer {
 
         let mut response = GetResourcePropertiesResponse {
             description: Some(ResourceDescription {
-                id: to_string(resource_id),
+                id: resource_type_id_tuple::to_string(resource_id),
                 path: ctx
                     .project
                     .resource_name(resource_id)
@@ -167,7 +167,7 @@ impl Editor for GRPCServer {
         info!("updating resource properties for entity {}", request.id);
 
         let resource_id: (ResourceType, ResourceId) =
-            from_str(request.id.as_str()).map_err(|_err| {
+            resource_type_id_tuple::from_str(request.id.as_str()).map_err(|_err| {
                 Status::internal(format!("Invalid ResourceID format: {}", request.id))
             })?;
 
@@ -193,14 +193,20 @@ impl Editor for GRPCServer {
             .loaded_resource_handles
             .get(resource_id)
             .ok_or_else(|| {
-                Status::internal(format!("Invalid ResourceID: {}", to_string(resource_id)))
+                Status::internal(format!(
+                    "Invalid ResourceID: {}",
+                    resource_type_id_tuple::to_string(resource_id)
+                ))
             })?;
 
         let reflection = ctx
             .resource_registry
             .get_resource_reflection(resource_id.0, handle)
             .ok_or_else(|| {
-                Status::internal(format!("Invalid ResourceID: {}", to_string(resource_id)))
+                Status::internal(format!(
+                    "Invalid ResourceID: {}",
+                    resource_type_id_tuple::to_string(resource_id)
+                ))
             })?;
 
         let results: anyhow::Result<Vec<ResourcePropertyUpdate>> = request

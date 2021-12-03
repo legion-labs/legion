@@ -6,12 +6,14 @@ use legion_data_compiler::{
     Locale, Platform, Target,
 };
 use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{to_string, AssetLoader, Resource, ResourceId, ResourceType};
+use legion_data_runtime::{
+    resource_type_id_tuple, AssetLoader, Resource, ResourceId, ResourceType,
+};
 
 mod common;
 
 fn create_test_resource(id: (ResourceType, ResourceId), dir: &Path, content: &str) {
-    let path = dir.join(to_string(id));
+    let path = dir.join(resource_type_id_tuple::to_string(id));
     let mut file = File::create(path).expect("new file");
 
     let mut proc = refs_resource::TestResourceProc {};

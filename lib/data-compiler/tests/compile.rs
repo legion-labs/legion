@@ -9,7 +9,7 @@ use legion_data_compiler::{
     Locale, Platform, Target,
 };
 use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{to_string, AssetLoader, Resource, ResourceId};
+use legion_data_runtime::{resource_type_id_tuple, AssetLoader, Resource, ResourceId};
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
 use text_resource::TextResource;
 
@@ -43,7 +43,7 @@ fn compile_atoi() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(to_string(source));
+        let path = resource_dir.join(resource_type_id_tuple::to_string(source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -109,7 +109,7 @@ fn compile_intermediate() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(to_string(source));
+        let path = resource_dir.join(resource_type_id_tuple::to_string(source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -202,7 +202,7 @@ fn compile_multi_resource() {
 
         resource.text_list = source_text_list.clone();
 
-        let path = resource_dir.join(to_string(source));
+        let path = resource_dir.join(resource_type_id_tuple::to_string(source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -283,7 +283,7 @@ fn compile_base64() {
 
         resource.content = source_binary_value;
 
-        let path = resource_dir.join(to_string(source));
+        let path = resource_dir.join(resource_type_id_tuple::to_string(source));
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");

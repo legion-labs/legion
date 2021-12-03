@@ -1,6 +1,6 @@
 use crate::{LockContext, Transaction};
 use legion_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
-use legion_data_runtime::{to_string, AssetRegistry, ResourceId, ResourceType};
+use legion_data_runtime::{resource_type_id_tuple, AssetRegistry, ResourceId, ResourceType};
 use log::info;
 use std::sync::Arc;
 use thiserror::Error;
@@ -80,7 +80,13 @@ impl DataManager {
             project
                 .load_resource(resource_id, &mut resource_registry)
                 .map_or_else(
-                    |err| log::warn!("Failed to load {}: {}", to_string(resource_id), err),
+                    |err| {
+                        log::warn!(
+                            "Failed to load {}: {}",
+                            resource_type_id_tuple::to_string(resource_id),
+                            err
+                        );
+                    },
                     |handle| resource_handles.insert(resource_id, handle),
                 );
         }

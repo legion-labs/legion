@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use legion_data_runtime::{
-    to_string, AssetRegistry, HandleUntyped, Resource, ResourceId, ResourceType,
+    resource_type_id_tuple, AssetRegistry, HandleUntyped, Resource, ResourceId, ResourceType,
 };
 use legion_ecs::prelude::*;
 use legion_renderer::components::{RotationComponent, StaticMesh};
@@ -32,11 +32,15 @@ where
                 println!(
                     "Loaded {}: {} -> ECS id: {:?}",
                     T::TYPENAME,
-                    to_string(*asset_id),
+                    resource_type_id_tuple::to_string(*asset_id),
                     entity_id,
                 );
             } else {
-                println!("Loaded {}: {}", T::TYPENAME, to_string(*asset_id));
+                println!(
+                    "Loaded {}: {}",
+                    T::TYPENAME,
+                    resource_type_id_tuple::to_string(*asset_id)
+                );
             }
         }
 
