@@ -207,6 +207,7 @@
         message.data instanceof ArrayBuffer
           ? new TextDecoder().decode(message.data)
           : // TODO: Refine data type
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (message.data as any);
 
       onReceiveControlMessage(jsonMsg);

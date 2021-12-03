@@ -10,7 +10,7 @@ members = [
     "build/monorepo",
     "build/workspace-hack",
 ]
-exclude = []
+exclude = ["lib/vite-plugin-wasm"]
 
 [profile.dev]
 panic = 'abort'

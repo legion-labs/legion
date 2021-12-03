@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "outDir": "./dist",
+    "noEmit": true,
+    "allowJs": true,
     "checkJs": true,
     "target": "esnext",
     "module": "esnext",
@@ -10,16 +13,27 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
-    "types": ["svelte", "jest", "vite/client", "@lgn/frontend/src/types/tauri"],
+    "types": [
+      "svelte",
+      "jest",
+      "vite/client",
+      "@lgn/frontend/src/types/tauri",
+      "node"
+    ],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     }
   },
   "include": [
+    // Source
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.svelte",
-    "tests/**/*.ts"
-  ]
+    // Tests
+    "tests/**/*.ts",
+    // Config files
+    "./*.js"
+  ],
+  "exclude": ["node_modules", "dist"]
 }

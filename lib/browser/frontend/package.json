@@ -8,6 +8,7 @@
   "private": true,
   "packageManager": "pnpm@6.24.1",
   "type": "module",
+  "main": "src/index.ts",
   "scripts": {
     "check:all": "pnpm eslint:check && pnpm prettier:check && pnpm svelte:check",
     "eslint:check": "eslint --ext .ts,.svelte .",
@@ -46,9 +47,11 @@
   },
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.15.0",
+    "@lgn/browser-auth": "^0.1.0",
     "@lgn/proto-streaming": "^0.1.0",
     "@tauri-apps/api": "^1.0.0-beta.8",
     "browser-headers": "^0.4.1",
+    "google-protobuf": "^3.19.1",
     "grpc-web": "^1.3.0",
     "long": "^5.2.0",
     "pnpm": "^6.24.2",

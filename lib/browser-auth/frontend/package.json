@@ -1,0 +1,26 @@
+{
+  "name": "@lgn/browser-auth",
+  "collaborators": [
+    "devs@legionlabs.com"
+  ],
+  "description": "A simple auth lib focusing the browsers (wasm)",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "files": [
+    "index_bg.wasm",
+    "index.js",
+    "index.d.ts"
+  ],
+  "module": "index.js",
+  "types": "index.d.ts",
+  "sideEffects": false,
+  "keywords": [
+    "game",
+    "legion",
+    "auth"
+  ]
+}

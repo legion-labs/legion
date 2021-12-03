@@ -1,249 +1,251 @@
-import { getCookie, setCookie } from "./cookie";
+export const x = 0;
 
-const authorizationUrl = new URL(
-  "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=5m58nrjfv6kr144prif9jk62di&response_type=code&scope=aws.cognito.signin.user.admin+email+https://legionlabs.com/editor/allocate+openid+profile&redirect_uri=http://localhost:3000/&identity_provider=Azure"
-);
+// import { getCookie, setCookie } from "./cookie";
 
-export type UserInfo = {
-  sub: string;
-  name?: string;
-  given_name?: string;
-  family_name?: string;
-  middle_name?: string;
-  nickname?: string;
-  preferred_username?: string;
-  profile?: string;
-  picture?: string;
-  website?: string;
-  email?: string;
-  email_verified?: "true" | "false";
-  gender?: string;
-  birthdate?: string;
-  zoneinfo?: string;
-  locale?: string;
-  phone_number?: string;
-  phone_number_verified?: "true" | "false";
-  updated_at?: string;
-  // Azure-specific fields.
-  //
-  // This is a merely a convention, but we need one.
-  //
-  // These fields contains the Azure-specific information about the user, which allow us to query
-  // the Azure API for extended user information (like the user's photo).
-  "custom:azure_oid"?: string;
-  "custom:azure_tid"?: string;
-};
+// const authorizationUrl = new URL(
+//   "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=5m58nrjfv6kr144prif9jk62di&response_type=code&scope=aws.cognito.signin.user.admin+email+https://legionlabs.com/editor/allocate+openid+profile&redirect_uri=http://localhost:3000/&identity_provider=Azure"
+// );
 
-export type ClientTokenSet = {
-  access_token: string;
-  refresh_token?: string;
-  expires_in: number;
-};
+// export type UserInfo = Readonly<{
+//   sub: string;
+//   name?: string;
+//   given_name?: string;
+//   family_name?: string;
+//   middle_name?: string;
+//   nickname?: string;
+//   preferred_username?: string;
+//   profile?: string;
+//   picture?: string;
+//   website?: string;
+//   email?: string;
+//   email_verified?: "true" | "false";
+//   gender?: string;
+//   birthdate?: string;
+//   zoneinfo?: string;
+//   locale?: string;
+//   phone_number?: string;
+//   phone_number_verified?: "true" | "false";
+//   updated_at?: string;
+//   // Azure-specific fields.
+//   //
+//   // This is a merely a convention, but we need one.
+//   //
+//   // These fields contains the Azure-specific information about the user, which allow us to query
+//   // the Azure API for extended user information (like the user's photo).
+//   "custom:azure_oid"?: string;
+//   "custom:azure_tid"?: string;
+// }>;
 
-export interface Authenticator {
-  getAuthorizationCodeInteractive(): void;
+// export type ClientTokenSet = {
+//   access_token: string;
+//   refresh_token?: string;
+//   expires_in: number;
+// };
 
-  getTokenSetFromAuthorizationCode(code: string): Promise<ClientTokenSet>;
-}
+// export interface Authenticator {
+//   getAuthorizationCodeInteractive(): void;
 
-export class TokenCache<A extends Authenticator> {
-  constructor(public authenticator: A) {}
+//   getTokenSetFromAuthorizationCode(code: string): Promise<ClientTokenSet>;
+// }
 
-  getAuthorizationCodeInteractive() {
-    if (this.tokenIsInvalid()) {
-      return this.authenticator.getAuthorizationCodeInteractive();
-    }
-  }
+// export class TokenCache<A extends Authenticator> {
+//   constructor(public authenticator: A) {}
 
-  getTokenSetFromAuthorizationCode(code: string) {
-    if (this.tokenIsInvalid()) {
-      return this.authenticator.getTokenSetFromAuthorizationCode(code);
-    }
-  }
+//   getAuthorizationCodeInteractive() {
+//     if (this.tokenIsInvalid()) {
+//       return this.authenticator.getAuthorizationCodeInteractive();
+//     }
+//   }
 
-  tokenIsInvalid() {
-    const expiresAt = getCookie("expires_at");
-    const access_token = getCookie("access_token");
+//   getTokenSetFromAuthorizationCode(code: string) {
+//     if (this.tokenIsInvalid()) {
+//       return this.authenticator.getTokenSetFromAuthorizationCode(code);
+//     }
+//   }
 
-    return !expiresAt || !access_token || new Date(expiresAt) <= new Date();
-  }
-}
+//   tokenIsInvalid() {
+//     const expiresAt = getCookie("expires_at");
+//     const access_token = getCookie("access_token");
 
-export class AwsCognitoClientAuthenticator implements Authenticator {
-  private domainName: string;
-  private region: string;
-  private clientId: string;
-  private scopes: string[];
-  private identityProvider: string | null;
-  private port: number;
+//     return !expiresAt || !access_token || new Date(expiresAt) <= new Date();
+//   }
+// }
 
-  constructor(authorizationUrl: URL) {
-    if (authorizationUrl.pathname != "/oauth2/authorize") {
-      throw new Error("URL must be an AWS Cognito authorization URL");
-    }
+// export class AwsCognitoClientAuthenticator implements Authenticator {
+//   private domainName: string;
+//   private region: string;
+//   private clientId: string;
+//   private scopes: string[];
+//   private identityProvider: string | null;
+//   private port: number;
 
-    const [domainName, auth, region, amazoncognito, com] =
-      authorizationUrl.host.split(".");
+//   constructor(authorizationUrl: URL) {
+//     if (authorizationUrl.pathname != "/oauth2/authorize") {
+//       throw new Error("URL must be an AWS Cognito authorization URL");
+//     }
 
-    if (auth !== "auth" || amazoncognito !== "amazoncognito" || com !== "com") {
-      throw new Error(
-        "Host must respect the `<domain_name>.auth.<region>.amazoncognito.com` format"
-      );
-    }
+//     const [domainName, auth, region, amazoncognito, com] =
+//       authorizationUrl.host.split(".");
 
-    const clientId = authorizationUrl.searchParams.get("client_id");
+//     if (auth !== "auth" || amazoncognito !== "amazoncognito" || com !== "com") {
+//       throw new Error(
+//         "Host must respect the `<domain_name>.auth.<region>.amazoncognito.com` format"
+//       );
+//     }
 
-    if (!clientId) {
-      throw new Error("Client id not provided in URL search params");
-    }
+//     const clientId = authorizationUrl.searchParams.get("client_id");
 
-    const scopes =
-      authorizationUrl.searchParams.get("scopes")?.split("+") || [];
+//     if (!clientId) {
+//       throw new Error("Client id not provided in URL search params");
+//     }
 
-    const identityProvider =
-      authorizationUrl.searchParams.get("identity_provider");
+//     const scopes =
+//       authorizationUrl.searchParams.get("scopes")?.split("+") || [];
 
-    const redirectUri = authorizationUrl.searchParams.get("redirect_uri");
+//     const identityProvider =
+//       authorizationUrl.searchParams.get("identity_provider");
 
-    if (!redirectUri) {
-      throw new Error("Redirect URI not provided in URL search params");
-    }
+//     const redirectUri = authorizationUrl.searchParams.get("redirect_uri");
 
-    const redirectUrl = new URL(redirectUri);
+//     if (!redirectUri) {
+//       throw new Error("Redirect URI not provided in URL search params");
+//     }
 
-    const port = +redirectUrl.port || 80;
+//     const redirectUrl = new URL(redirectUri);
 
-    this.clientId = clientId;
-    this.domainName = domainName;
-    this.port = port;
-    this.region = region;
-    this.scopes = scopes;
-    this.identityProvider = identityProvider;
-  }
+//     const port = +redirectUrl.port || 80;
 
-  private baseUrl(path: string) {
-    return new URL(
-      `https://${this.domainName}.auth.${this.region}.amazoncognito.com/${path}`
-    );
-  }
+//     this.clientId = clientId;
+//     this.domainName = domainName;
+//     this.port = port;
+//     this.region = region;
+//     this.scopes = scopes;
+//     this.identityProvider = identityProvider;
+//   }
 
-  private get redirectUri() {
-    return `http://localhost:${this.port}/`;
-  }
+//   private baseUrl(path: string) {
+//     return new URL(
+//       `https://${this.domainName}.auth.${this.region}.amazoncognito.com/${path}`
+//     );
+//   }
 
-  private get accessTokenUrl() {
-    return this.baseUrl("oauth2/token");
-  }
+//   private get redirectUri() {
+//     return `http://localhost:${this.port}/`;
+//   }
 
-  private get userInfoUrl() {
-    return this.baseUrl("oauth2/userInfo");
-  }
+//   private get accessTokenUrl() {
+//     return this.baseUrl("oauth2/token");
+//   }
 
-  private get authorizationUrl() {
-    const authorizationUrl = this.baseUrl("oauth2/authorize");
+//   private get userInfoUrl() {
+//     return this.baseUrl("oauth2/userInfo");
+//   }
 
-    authorizationUrl.searchParams.set("client_id", this.clientId);
-    authorizationUrl.searchParams.set("response_type", "code");
-    authorizationUrl.searchParams.set("scope", this.scopes.join("+"));
-    authorizationUrl.searchParams.set("redirect_uri", this.redirectUri);
+//   private get authorizationUrl() {
+//     const authorizationUrl = this.baseUrl("oauth2/authorize");
 
-    if (this.identityProvider) {
-      authorizationUrl.searchParams.set(
-        "identity_provider",
-        this.identityProvider
-      );
-    }
+//     authorizationUrl.searchParams.set("client_id", this.clientId);
+//     authorizationUrl.searchParams.set("response_type", "code");
+//     authorizationUrl.searchParams.set("scope", this.scopes.join("+"));
+//     authorizationUrl.searchParams.set("redirect_uri", this.redirectUri);
 
-    return authorizationUrl;
-  }
+//     if (this.identityProvider) {
+//       authorizationUrl.searchParams.set(
+//         "identity_provider",
+//         this.identityProvider
+//       );
+//     }
 
-  getAuthorizationCodeInteractive() {
-    window.location.href = this.authorizationUrl.toString();
-  }
+//     return authorizationUrl;
+//   }
 
-  async getTokenSetFromAuthorizationCode(
-    code: string
-  ): Promise<ClientTokenSet> {
-    const body = new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: this.clientId,
-      code: code,
-      redirect_uri: this.redirectUri,
-    });
+//   getAuthorizationCodeInteractive() {
+//     window.location.href = this.authorizationUrl.toString();
+//   }
 
-    const requestInit: RequestInit = {
-      method: "POST",
-      mode: "cors",
-      body,
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    };
+//   async getTokenSetFromAuthorizationCode(
+//     code: string
+//   ): Promise<ClientTokenSet> {
+//     const body = new URLSearchParams({
+//       grant_type: "authorization_code",
+//       client_id: this.clientId,
+//       code: code,
+//       redirect_uri: this.redirectUri,
+//     });
 
-    const request = new Request(this.accessTokenUrl.toString(), requestInit);
+//     const requestInit: RequestInit = {
+//       method: "POST",
+//       mode: "cors",
+//       body,
+//       headers: { "Content-Type": "application/x-www-form-urlencoded" },
+//     };
 
-    const response = await fetch(request);
+//     const request = new Request(this.accessTokenUrl.toString(), requestInit);
 
-    if (!response.ok) {
-      throw new Error(await response.text());
-    }
+//     const response = await fetch(request);
 
-    return response.json();
-  }
+//     if (!response.ok) {
+//       throw new Error(await response.text());
+//     }
 
-  async getUserInfo(accessToken: string): Promise<UserInfo> {
-    const requestInit: RequestInit = {
-      method: "GET",
-      mode: "cors",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    };
+//     return response.json();
+//   }
 
-    const request = new Request(this.userInfoUrl.toString(), requestInit);
+//   async getUserInfo(accessToken: string): Promise<UserInfo> {
+//     const requestInit: RequestInit = {
+//       method: "GET",
+//       mode: "cors",
+//       headers: { Authorization: `Bearer ${accessToken}` },
+//     };
 
-    const response = await fetch(request);
+//     const request = new Request(this.userInfoUrl.toString(), requestInit);
 
-    if (!response.ok) {
-      throw new Error(await response.text());
-    }
+//     const response = await fetch(request);
 
-    return response.json();
-  }
-}
+//     if (!response.ok) {
+//       throw new Error(await response.text());
+//     }
 
-export function createAwsCognito() {
-  return new AwsCognitoClientAuthenticator(authorizationUrl);
-}
+//     return response.json();
+//   }
+// }
 
-export function createAwsCognitoTokenCache() {
-  return new TokenCache(createAwsCognito());
-}
+// export function createAwsCognito() {
+//   return new AwsCognitoClientAuthenticator(authorizationUrl);
+// }
 
-/**
- * Takes a code inserted by AWS Cognito in the URL's query params,
- * set all cookies in the browser, and return the UserInfo.
- * @param code Code inserted by AWS Cognito in the URL's query params
- * @returns The user info
- */
-export async function finalizeAwsCognitoAuth(
-  awsCognitoTokenCache: TokenCache<AwsCognitoClientAuthenticator>,
-  code: string
-) {
-  const clientTokenSet =
-    await awsCognitoTokenCache.getTokenSetFromAuthorizationCode(code);
+// export function createAwsCognitoTokenCache() {
+//   return new TokenCache(createAwsCognito());
+// }
 
-  if (!clientTokenSet) {
-    return null;
-  }
+// /**
+//  * Takes a code inserted by AWS Cognito in the URL's query params,
+//  * set all cookies in the browser, and return the UserInfo.
+//  * @param code Code inserted by AWS Cognito in the URL's query params
+//  * @returns The user info
+//  */
+// export async function finalizeAwsCognitoAuth(
+//   awsCognitoTokenCache: TokenCache<AwsCognitoClientAuthenticator>,
+//   code: string
+// ) {
+//   const clientTokenSet =
+//     await awsCognitoTokenCache.getTokenSetFromAuthorizationCode(code);
 
-  const { access_token, expires_in, refresh_token } = clientTokenSet;
+//   if (!clientTokenSet) {
+//     return null;
+//   }
 
-  const expiresAt = new Date(Date.now() + expires_in * 1000).toUTCString();
+//   const { access_token, expires_in, refresh_token } = clientTokenSet;
 
-  setCookie("access_token", access_token, expires_in);
+//   const expiresAt = new Date(Date.now() + expires_in * 1000).toUTCString();
 
-  if (refresh_token) {
-    setCookie("refresh_token", refresh_token, expires_in);
-  }
+//   setCookie("access_token", access_token, expires_in);
 
-  setCookie("expires_at", expiresAt, expires_in);
+//   if (refresh_token) {
+//     setCookie("refresh_token", refresh_token, expires_in);
+//   }
 
-  return awsCognitoTokenCache.authenticator.getUserInfo(access_token);
-}
+//   setCookie("expires_at", expiresAt, expires_in);
+
+//   return awsCognitoTokenCache.authenticator.getUserInfo(access_token);
+// }

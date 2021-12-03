@@ -1,7 +1,7 @@
 {
   "name": "legion",
-	"version": "0.0.1",
-	"description": "monorepo for legion labs",
+  "version": "0.0.1",
+  "description": "monorepo for legion labs",
   "private": true,
   "packageManager": "pnpm@6.24.1",
   "scripts": {
@@ -14,6 +14,10 @@
     "runtime:dev": "pnpm -C client/runtime/frontend dev"
   },
   "devDependencies": {
-    "rimraf": "^3.0.2"
+    "rimraf": "^3.0.2",
+    "wasm-pack": "0.10.1"
+  },
+  "dependencies": {
+    "google-protobuf": "^3.19.1"
   }
 }

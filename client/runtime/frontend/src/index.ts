@@ -1,55 +1,44 @@
 import "./assets/index.css";
 
 import log, { Level } from "@lgn/frontend/src/lib/log";
-import userInfo from "@lgn/frontend/src/stores/userInfo";
-import {
-  createAwsCognitoTokenCache,
-  finalizeAwsCognitoAuth,
-} from "@lgn/frontend/src/lib/auth";
+import { authUser, init as initLgnFrontend } from "@lgn/frontend";
 import App from "@/App.svelte";
 
-const target = document.querySelector("#root");
+/**
+ * Runs the application.
+ */
+async function run() {
+  const target = document.querySelector("#root");
 
-if (!target) {
-  throw new Error("#root element can't be found");
-}
+  if (!target) {
+    log.error("#root element can't be found");
 
-// TODO: Set level from configuration file
-const logLevel: Level = "warn";
+    return;
+  }
 
-if (logLevel) {
-  log.init();
-  log.set(logLevel);
-}
+  const logLevel: Level = "debug";
 
-const code =
-  window.location.pathname === "/" &&
-  new URLSearchParams(window.location.search).get("code");
+  if (logLevel) {
+    log.init();
+    log.set(logLevel);
+  }
 
-if (code) {
-  const awsCognitoTokenCache = createAwsCognitoTokenCache();
+  await initLgnFrontend();
 
-  finalizeAwsCognitoAuth(awsCognitoTokenCache, code)
-    .then((newUserInfo) => {
-      if (newUserInfo) {
-        userInfo.data.set(newUserInfo);
-      }
-    })
-    .then(() => {
-      // Cleanup the Url
-      window.history.replaceState(null, "Home", "/");
-    });
-}
+  const userInfo = await authUser();
 
-// Fetch user info before running the application
-userInfo
-  .run()
-  .then((_userInfo) => {
-    log.debug("User is authed");
-  })
-  .catch(() => {
-    log.debug("User is not authed");
-  })
-  .finally(() => {
+  log.debug(
+    "user",
+    userInfo ? log.json`User is authed: ${userInfo}` : "User is not authed"
+  );
+
+  try {
     new App({ target });
-  });
+  } catch (error) {
+    log.error(error);
+
+    return;
+  }
+}
+
+run();

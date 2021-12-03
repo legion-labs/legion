@@ -4,10 +4,10 @@
     Id as TopBarMenuId,
     menus as topBarMenus,
   } from "../stores/topBarMenu";
-  import { createAwsCognitoTokenCache } from "../lib/auth";
   import userInfo from "../stores/userInfo";
   import log from "../lib/log";
   import clickOutside from "../actions/clickOutside";
+  import { getAuthorizationCodeInteractive } from "@lgn/browser-auth";
 
   export let documentTitle: string | null = null;
 
@@ -53,9 +53,7 @@
       return;
     }
 
-    const awsCognitoTokenCache = createAwsCognitoTokenCache();
-
-    awsCognitoTokenCache.getAuthorizationCodeInteractive();
+    getAuthorizationCodeInteractive();
   }
 </script>
 
@@ -106,7 +104,7 @@
       title={$userInfoData
         ? `Welcome back ${$userInfoData.name}`
         : "Authenticate"}
-      on:click={authenticate}
+      on:click={$userInfoData ? null : authenticate}
     >
       {userInitials}
     </div>

@@ -1,4 +1,5 @@
 packages:
   - "client/*/frontend"
   - "lib/*/frontend"
+  - "lib/vite-plugin-wasm"
   - "proto/*"
