@@ -4,7 +4,7 @@ use std::path::Path;
 use crate::{
     assert_not_locked, connect_to_server, find_local_change, find_workspace_root,
     make_canonical_relative_path, make_file_read_only, make_path_absolute, read_workspace_spec,
-    save_local_change, trace_scope, ChangeType, LocalChange, LocalWorkspaceConnection,
+    save_local_change, ChangeType, LocalChange, LocalWorkspaceConnection,
 };
 
 pub async fn delete_local_file(
@@ -58,7 +58,6 @@ pub async fn delete_local_file(
 }
 
 pub async fn delete_file_command(path_specified: &Path) -> Result<(), String> {
-    trace_scope!();
     let abs_path = make_path_absolute(path_specified);
     if !abs_path.exists() {
         return Err(format!("Error: file not found {}", abs_path.display()));

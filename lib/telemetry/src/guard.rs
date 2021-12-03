@@ -30,7 +30,7 @@ pub fn init_telemetry(app_log: Option<Box<dyn log::Log>>) {
         };
     if let Err(_e) = init_event_dispatch(
         10 * 1024 * 1024,
-        5 * 1024 * 1024,
+        10 * 1024 * 1024,
         1024 * 1024,
         &mut make_sink,
     ) {
@@ -47,12 +47,16 @@ pub fn shutdown_telemetry() {
     shutdown_event_dispatch();
 }
 
-pub struct TelemetryThreadGuard {}
+pub struct TelemetryThreadGuard {
+    _dummy_ptr: *mut u8,
+}
 
 impl TelemetryThreadGuard {
     pub fn new() -> Self {
         init_thread_stream();
-        Self {}
+        Self {
+            _dummy_ptr: std::ptr::null_mut(),
+        }
     }
 }
 

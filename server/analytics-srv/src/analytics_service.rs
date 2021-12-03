@@ -4,6 +4,7 @@ use crate::call_tree::compute_block_spans;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use anyhow::Result;
 use legion_analytics::prelude::*;
+use legion_telemetry::prelude::*;
 use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use legion_telemetry_proto::analytics::BlockSpansReply;
 use legion_telemetry_proto::analytics::BlockSpansRequest;
@@ -132,6 +133,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<FindProcessRequest>,
     ) -> Result<Response<FindProcessReply>, Status> {
+        init_thread_stream();
         log::info!("find_process");
         let find_request = request.into_inner();
         match self.find_process_impl(&find_request.process_id).await {
@@ -151,6 +153,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         _request: Request<RecentProcessesRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
+        init_thread_stream();
         log::info!("list_recent_processes");
         match self.list_recent_processes_impl().await {
             Ok(processes) => {
@@ -171,6 +174,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<SearchProcessRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
+        init_thread_stream();
         log::info!("search_processes");
         let inner = request.into_inner();
         dbg!(&inner.search);
@@ -193,6 +197,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ListProcessStreamsRequest>,
     ) -> Result<Response<ListStreamsReply>, Status> {
+        init_thread_stream();
         log::info!("list_process_streams");
         let list_request = request.into_inner();
         match self
@@ -217,6 +222,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ListStreamBlocksRequest>,
     ) -> Result<Response<ListStreamBlocksReply>, Status> {
+        init_thread_stream();
         let list_request = request.into_inner();
         match self.list_stream_blocks_impl(&list_request.stream_id).await {
             Ok(blocks) => {
@@ -236,8 +242,8 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<BlockSpansRequest>,
     ) -> Result<Response<BlockSpansReply>, Status> {
+        init_thread_stream();
         let inner_request = request.into_inner();
-
         if inner_request.process.is_none() {
             return Err(Status::internal(String::from(
                 "Missing process in block_spans",
@@ -268,6 +274,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ProcessCumulativeCallGraphRequest>,
     ) -> Result<Response<CumulativeCallGraphReply>, Status> {
+        init_thread_stream();
         let inner_request = request.into_inner();
         if inner_request.process.is_none() {
             return Err(Status::internal(String::from(
@@ -294,6 +301,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ProcessLogRequest>,
     ) -> Result<Response<ProcessLogReply>, Status> {
+        init_thread_stream();
         let inner_request = request.into_inner();
         if inner_request.process.is_none() {
             return Err(Status::internal(String::from(
@@ -313,6 +321,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ListProcessChildrenRequest>,
     ) -> Result<Response<ProcessChildrenReply>, Status> {
+        init_thread_stream();
         let inner_request = request.into_inner();
         if inner_request.process_id.is_empty() {
             return Err(Status::internal(String::from(

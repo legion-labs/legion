@@ -20,7 +20,6 @@ async fn parse_thread_bock<Proc: ThreadBlockProcessor>(
     block_id: &str,
     processor: &mut Proc,
 ) -> Result<()> {
-    trace_scope!();
     let payload = fetch_block_payload(connection, data_path, block_id).await?;
     parse_block(stream, &payload, |val| {
         trace_scope!("obj_in_block");
@@ -166,7 +165,6 @@ pub(crate) async fn compute_block_call_tree(
     stream: &legion_telemetry::StreamInfo,
     block_id: &str,
 ) -> Result<CallTreeNode> {
-    trace_scope!();
     let ts_offset = process.start_ticks;
     let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64;
     let block = find_block(connection, block_id).await?;
@@ -229,7 +227,6 @@ pub(crate) async fn compute_block_spans(
     stream: &legion_telemetry::StreamInfo,
     block_id: &str,
 ) -> Result<BlockSpansReply> {
-    trace_scope!();
     let tree = compute_block_call_tree(connection, data_path, process, stream, block_id).await?;
     let mut scopes = ScopeHashMap::new();
     let mut spans = vec![];

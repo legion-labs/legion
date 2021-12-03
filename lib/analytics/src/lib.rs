@@ -245,7 +245,6 @@ pub async fn fetch_child_processes(
     connection: &mut sqlx::AnyConnection,
     parent_process_id: &str,
 ) -> Result<Vec<legion_telemetry::ProcessInfo>> {
-    trace_scope!();
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id

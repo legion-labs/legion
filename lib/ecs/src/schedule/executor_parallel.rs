@@ -1,7 +1,6 @@
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
 use legion_tasks::{ComputeTaskPool, Scope, TaskPool};
-use legion_telemetry::trace_scope;
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 
@@ -188,8 +187,8 @@ impl ParallelExecutor {
                         .recv()
                         .await
                         .unwrap_or_else(|error| unreachable!(error));
-                    // TODO: add system name to trace scope
-                    trace_scope!();
+                    // TODO: add system name to async trace scope
+                    // trace_scope!();
                     // let system_span = info_span!("system", name = &*system.name());
                     // let system_guard = system_span.enter();
                     unsafe {

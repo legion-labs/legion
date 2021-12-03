@@ -95,7 +95,6 @@ async fn record_process_call_graph(
     scopes: &mut ScopeHashMap,
     stats: &mut StatsHashMap,
 ) -> Result<()> {
-    trace_scope!();
     let start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
         .with_context(|| String::from("parsing process start time"))?;
     let begin_offset_ns = begin_ms * 1_000_000.0;
@@ -131,7 +130,6 @@ pub(crate) async fn compute_cumulative_call_graph(
     begin_ms: f64,
     end_ms: f64,
 ) -> Result<CumulativeCallGraphReply> {
-    trace_scope!();
     //this is a serial implementation, could be transformed in map/reduce
     let mut scopes = ScopeHashMap::new();
     let mut stats = StatsHashMap::new();
