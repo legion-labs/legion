@@ -1,69 +1,63 @@
-# editor
+# Legion Editor - Client
 
-## Build Setup
+_You can take a look at the [Client documentation](../README.md) too._
+
+## Resources
+
+First, you might want to read the documentation for the libraries the client uses:
+
+- [Svelte](https://svelte.dev/) - The UI framework itself
+- [TypeScript](https://www.typescriptlang.org/) - The language the application is written in
+- [Tailwind](https://tailwindcss.com/) - An "atomic" css library that makes prototyping a breeze
+- [Vite](vitejs.dev/) - The application "runner" and bundler you will love
+- [Jest](https://jestjs.io/) - To test the client
+
+We also use [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) to keep our codebase as clean as posible.
+
+## Getting started
+
+Make sure to install the dependencies
 
 ```bash
-# install dependencies
-$ yarn install
-
-# serve with hot reload at localhost:3000
-$ yarn dev
-
-# build for production and launch server
-$ yarn build
-$ yarn start
-
-# generate static project
-$ yarn generate
+yarn install
 ```
 
-For detailed explanation on how things work, check out the [documentation](https://nuxtjs.org).
+And to setup the application:
 
-## Special Directories
+```bash
+yarn setup
+```
 
-You can create the following extra directories, some of which have special behaviors. Only `pages` is required; you can delete them if you don't want to use their functionality.
+You can now run the application:
 
-### `assets`
+```
+yarn dev
+```
 
-The assets directory contains your uncompiled assets such as Stylus or Sass files, images, or fonts.
+The development server on will be accessible on [http://localhost:3000](http://localhost:3000).
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/assets).
+## Keeping the code clean
 
-### `components`
+You should regularly check that the code is clean and properly formatted:
 
-The components directory contains your Vue.js components. Components make up the different parts of your page and can be reused and imported into your pages, layouts and even other components.
+```
+yarn eslint:check # yarn eslint:fix to fix the errors when possible
+yarn prettier:check # yarn prettier:fix to format the code
+yarn svelte:check # TypeScript and Svelte code checkers
+```
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/components).
+## Tests
 
-### `layouts`
+You can run the tests by simply typing:
 
-Layouts are a great help when you want to change the look and feel of your Nuxt app, whether you want to include a sidebar or have distinct layouts for mobile and desktop.
+```
+yarn test
+```
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/layouts).
+## Production
 
+You can build the application for production using this command:
 
-### `pages`
-
-This directory contains your application views and routes. Nuxt will read all the `*.vue` files inside this directory and setup Vue Router automatically.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/get-started/routing).
-
-### `plugins`
-
-The plugins directory contains JavaScript plugins that you want to run before instantiating the root Vue.js Application. This is the place to add Vue plugins and to inject functions or constants. Every time you need to use `Vue.use()`, you should create a file in `plugins/` and add its path to plugins in `nuxt.config.js`.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/plugins).
-
-### `static`
-
-This directory contains your static files. Each file inside this directory is mapped to `/`.
-
-Example: `/static/robots.txt` is mapped as `/robots.txt`.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/static).
-
-### `store`
-
-This directory contains your Vuex store files. Creating a file in this directory automatically activates Vuex.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/store).
+```bash
+yarn build
+```

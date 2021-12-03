@@ -87,7 +87,7 @@ timings:
 	rm -rf timings
 	mkdir timings
 	echo "<html><head><title>Cargo Build Timings</title></head><body><h1>Build Timings</h1>" > timings/index.html 
-	for TARGET in runtime-srv editor-srv editor-client editor-client-svelte ; do \
+	for TARGET in runtime-srv editor-srv editor-client ; do \
 		cargo clean && \
 		cargo build --bin $$TARGET -Z timings=html && \
 		mv cargo-timing.html timings/$$TARGET.html && \

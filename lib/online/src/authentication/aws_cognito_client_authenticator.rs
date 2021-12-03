@@ -47,7 +47,7 @@ impl AwsCognitoClientAuthenticator {
     /// use legion_online::authentication::AwsCognitoClientAuthenticator;
     /// use url::Url;
     ///
-    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:3000/&identity_provider=Azure").unwrap();
     /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     /// ```
     pub fn from_authorization_url(authorization_url: &Url) -> Result<Self> {
@@ -165,12 +165,12 @@ impl AwsCognitoClientAuthenticator {
     /// use url::Url;
     ///
     /// # fn main() {
-    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:3000/&identity_provider=Azure").unwrap();
     /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     ///
     /// assert_eq!(
     ///     auth.get_authorization_url().as_str(),
-    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2F&identity_provider=Azure",
+    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2F&identity_provider=Azure",
     /// );
     /// # }
     /// ```
@@ -200,12 +200,12 @@ impl AwsCognitoClientAuthenticator {
     /// use url::Url;
     ///
     /// # fn main() {
-    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:3000/&identity_provider=Azure").unwrap();
     /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     ///
     /// assert_eq!(
     ///     auth.get_logout_url().as_str(),
-    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/logout?client_id=4a6vcgqr108in51n3di730hk25&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2F",
+    ///     "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/logout?client_id=4a6vcgqr108in51n3di730hk25&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2F",
     /// );
     /// # }
     /// ```
@@ -228,7 +228,7 @@ impl AwsCognitoClientAuthenticator {
     /// use url::Url;
     ///
     /// # fn main() {
-    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:3000/&identity_provider=Azure").unwrap();
     /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     ///
     /// assert_eq!(
@@ -250,7 +250,7 @@ impl AwsCognitoClientAuthenticator {
     /// use url::Url;
     ///
     /// # fn main() {
-    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:5001/&identity_provider=Azure").unwrap();
+    /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:3000/&identity_provider=Azure").unwrap();
     /// let auth = AwsCognitoClientAuthenticator::from_authorization_url(&url).unwrap();
     ///
     /// assert_eq!(
