@@ -1,4 +1,3 @@
-
 //
 // TODO: At some point, it might be better to add a FrameEvent trait with on_begin_frame, on_end_frame???
 //

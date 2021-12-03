@@ -1,3 +1,5 @@
+#![allow(clippy::inline_always)]
+
 use crate::{resources::OnNewFrame, RenderHandle};
 
 pub struct BumpAllocator {
@@ -14,6 +16,7 @@ impl BumpAllocator {
     }
 
     #[inline(always)]
+    #[allow(clippy::mut_from_ref)]
     pub fn alloc<T>(&self, val: T) -> &mut T {
         self.bump_allocator.alloc(val)
     }
