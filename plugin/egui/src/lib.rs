@@ -64,16 +64,29 @@ use legion_input::{
 };
 use legion_window::{CursorMoved, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows};
 
-#[derive(Default)]
 pub struct Egui {
     pub ctx: egui::CtxRef,
     pub enable: bool,
+    pub output: egui::Output,
+    pub shapes: Vec<epaint::ClippedShape>,
+}
+
+impl Default for Egui {
+    fn default() -> Self {
+        Self {
+            ctx: egui::CtxRef::default(),
+            enable: false,
+            output: egui::Output::default(),
+            shapes: Vec::new(),
+        }
+    }
 }
 
 #[derive(SystemLabel, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EguiLabels {
     GatherInput,
     BeginFrame,
+    EndFrame,
 }
 
 #[derive(Default)]
@@ -122,6 +135,13 @@ impl Plugin for EguiPlugin {
                 .label(EguiLabels::BeginFrame)
                 .after(EguiLabels::GatherInput),
         );
+        app.add_system_to_stage(
+            CoreStage::PreUpdate,
+            end_frame
+                .system()
+                .label(EguiLabels::EndFrame)
+                .after(EguiLabels::GatherInput),
+        );
     }
 }
 
@@ -167,6 +187,130 @@ fn on_windowless_created(mut egui: ResMut<'_, Egui>) {
     {
         egui.ctx.end_frame();
     }
+}
+
+fn gather_input(
+    raw_input: ResMut<'_, RawInput>,
+    mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
+    mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
+    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
+) {
+    let mut scroll_delta = egui::vec2(0.0, 0.0);
+    for mouse_wheel_event in mouse_wheel_events.iter() {
+        scroll_delta.x += mouse_wheel_event.x;
+        scroll_delta.y += mouse_wheel_event.y;
+    }
+
+    // TODO: zoom_delta
+    // TODO: time
+    // TODO: predicted_dt: f32,
+    // TODO: modifiers: Modifiers,
+    // TODO: hovered_files: Vec<HoveredFile>,
+    // TODO: dropped_files: Vec<DroppedFile>,
+
+    // Events
+    let mut events: Vec<Event> = Vec::new();
+
+    // TODO: Copy,
+    // TODO: Cut,
+    // TODO: PointerGone,
+    // TODO: CompositionStart,
+    // TODO: CompositionUpdate(String),
+    // TODO: CompositionEnd(String),
+    // TODO: Touch
+
+    for cursor_button_event in cursor_button.iter() {
+        events.push(Event::PointerButton {
+            pos: egui::pos2(cursor_button_event.pos.x, cursor_button_event.pos.y),
+            button: pointer_button_from_mouse_button(cursor_button_event.button),
+            pressed: cursor_button_event.state.is_pressed(),
+            modifiers: egui::Modifiers::default(), // TODO
+        });
+    }
+
+    for keyboard_input_event in keyboard_input_events.iter() {
+        if let Some(key_code) = keyboard_input_event.key_code {
+            if let Some(key) = key_from_key_code(key_code) {
+                events.push(Event::Key {
+                    key,
+                    pressed: keyboard_input_event.state.is_pressed(),
+                    modifiers: egui::Modifiers::default(), // TODO
+                });
+            }
+            if keyboard_input_event.state.is_pressed() {
+                let ch: char = key_code.into();
+                if ch != 0 as char {
+                    events.push(Event::Text(String::from(ch)));
+                }
+            }
+        }
+    }
+
+    let raw_input = raw_input.into_inner();
+    raw_input.clone_from(&RawInput {
+        scroll_delta,
+        events,
+        ..RawInput::default()
+    });
+}
+
+fn gather_input_window(
+    mut raw_input: ResMut<'_, RawInput>,
+    mut cursor_moved: EventReader<'_, '_, CursorMoved>,
+    mut scale_factor_changed: EventReader<'_, '_, WindowScaleFactorChanged>,
+    mut window_resized_events: EventReader<'_, '_, WindowResized>,
+) {
+    for cursor_moved_event in cursor_moved.iter() {
+        raw_input.events.push(Event::PointerMoved(egui::pos2(
+            cursor_moved_event.position.x,
+            cursor_moved_event.position.y,
+        )));
+    }
+    for scale_factor_event in scale_factor_changed.iter() {
+        raw_input.pixels_per_point = Some(scale_factor_event.scale_factor as f32);
+    }
+    for window_resized_event in window_resized_events.iter() {
+        raw_input.screen_rect = Some(egui::Rect::from_min_size(
+            egui::pos2(0.0, 0.0),
+            egui::vec2(window_resized_event.width, window_resized_event.height),
+        ));
+    }
+}
+
+//pub struct UISystemEvent {
+//    name: String,
+//    f: Box<dyn FnOnce(&egui::Ui)>,
+//}
+
+#[allow(clippy::needless_pass_by_value)]
+fn begin_frame(
+    mut egui: ResMut<'_, Egui>,
+    raw_input: Res<'_, RawInput>,
+    //ui_systems: EventReader<'_, '_, UISystemEvent>,
+) {
+    if !egui.enable {
+        egui.ctx.begin_frame(RawInput::default());
+        return;
+    }
+    egui.ctx.begin_frame(raw_input.to_owned());
+
+    //egui::TopBottomPanel::top("Top menu").show(&egui.ctx, |ui| {
+    //    for ui_system in ui_systems {
+    //        ui_system.f(ui);
+    //    }
+    //});
+
+    egui::Window::new("Debug").show(&egui.ctx, |ui| {
+        egui.ctx.settings_ui(ui);
+        ui.label(egui.ctx.texture().version);
+    });
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn end_frame(mut egui: ResMut<'_, Egui>) {
+    let (output, shapes) = egui.ctx.end_frame();
+    egui.output = output;
+    egui.shapes = shapes;
 }
 
 fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerButton {
@@ -236,125 +380,4 @@ fn key_from_key_code(key: KeyCode) -> Option<Key> {
         KeyCode::Z => Some(Key::Z), // Used for cmd+Z (undo)
         _ => None,
     }
-}
-
-fn gather_input(
-    raw_input: ResMut<'_, RawInput>,
-    mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
-    mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
-    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
-) {
-    let mut scroll_delta = egui::vec2(0.0, 0.0);
-    for mouse_wheel_event in mouse_wheel_events.iter() {
-        scroll_delta.x += mouse_wheel_event.x;
-        scroll_delta.y += mouse_wheel_event.y;
-    }
-
-    // TODO: zoom_delta
-    // TODO: screen_rect
-    // TODO: pixels_per_point
-    // TODO: time
-    // TODO: predicted_dt: f32,
-    // TODO: modifiers: Modifiers,
-    // TODO: hovered_files: Vec<HoveredFile>,
-    // TODO: dropped_files: Vec<DroppedFile>,
-
-    // Events
-    let mut events: Vec<Event> = Vec::new();
-
-    // TODO: Copy,
-    // TODO: Cut,
-    // TODO: PointerGone,
-    // TODO: CompositionStart,
-    // TODO: CompositionUpdate(String),
-    // TODO: CompositionEnd(String),
-    // TODO: Touch
-
-    for cursor_button_event in cursor_button.iter() {
-        events.push(Event::PointerButton {
-            pos: egui::pos2(cursor_button_event.pos.x, cursor_button_event.pos.y),
-            button: pointer_button_from_mouse_button(cursor_button_event.button),
-            pressed: cursor_button_event.state.is_pressed(),
-            modifiers: egui::Modifiers::default(), // TODO
-        });
-    }
-
-    for keyboard_input_event in keyboard_input_events.iter() {
-        if let Some(key) = key_from_key_code(keyboard_input_event.key_code.unwrap()) {
-            events.push(Event::Key {
-                key,
-                pressed: keyboard_input_event.state.is_pressed(),
-                modifiers: egui::Modifiers::default(), // TODO
-            });
-        }
-        if keyboard_input_event.state.is_pressed() {
-            let ch: char = keyboard_input_event.key_code.unwrap().into();
-            if ch != 0 as char {
-                events.push(Event::Text(String::from(ch)));
-            }
-        }
-    }
-
-    let raw_input = raw_input.into_inner();
-    raw_input.clone_from(&RawInput {
-        scroll_delta,
-        events,
-        ..RawInput::default()
-    });
-}
-
-fn gather_input_window(
-    mut raw_input: ResMut<'_, RawInput>,
-    mut cursor_moved: EventReader<'_, '_, CursorMoved>,
-    mut scale_factor_changed: EventReader<'_, '_, WindowScaleFactorChanged>,
-    mut window_resized_events: EventReader<'_, '_, WindowResized>,
-) {
-    for cursor_moved_event in cursor_moved.iter() {
-        raw_input.events.push(Event::PointerMoved(egui::pos2(
-            cursor_moved_event.position.x,
-            cursor_moved_event.position.y,
-        )));
-    }
-    for scale_factor_event in scale_factor_changed.iter() {
-        raw_input.pixels_per_point = Some(scale_factor_event.scale_factor as f32);
-    }
-    for window_resized_event in window_resized_events.iter() {
-        raw_input.screen_rect = Some(egui::Rect::from_min_size(
-            egui::pos2(0.0, 0.0),
-            egui::vec2(window_resized_event.width, window_resized_event.height),
-        ));
-    }
-}
-
-//pub struct UISystemEvent {
-//    name: String,
-//    f: Box<dyn FnOnce(&egui::Ui)>,
-//}
-
-#[allow(clippy::needless_pass_by_value)]
-fn begin_frame(
-    mut egui: ResMut<'_, Egui>,
-    raw_input: Res<'_, RawInput>,
-    //ui_systems: EventReader<'_, '_, UISystemEvent>,
-) {
-    if !egui.enable {
-        egui.ctx.begin_frame(RawInput::default());
-        #[allow(unused_must_use)]
-        {
-            egui.ctx.end_frame();
-        }
-        return;
-    }
-    egui.ctx.begin_frame(raw_input.to_owned());
-
-    //egui::TopBottomPanel::top("Top menu").show(&egui.ctx, |ui| {
-    //    for ui_system in ui_systems {
-    //        ui_system.f(ui);
-    //    }
-    //});
-
-    egui::Window::new("Debug").show(&egui.ctx, |ui| {
-        egui.ctx.settings_ui(ui);
-        ui.label(egui.ctx.texture().version);
-    });
 }

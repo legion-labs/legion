@@ -45,7 +45,10 @@ impl Plugin for RendererPlugin {
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
         app.add_system_to_stage(
             CoreStage::PreUpdate,
-            update_ui.system().after(EguiLabels::BeginFrame),
+            update_ui
+                .system()
+                .after(EguiLabels::BeginFrame)
+                .before(EguiLabels::EndFrame),
         );
         // Update
         app.add_system(update_rotation.before(RendererSystemLabel::FrameUpdate));
@@ -113,7 +116,7 @@ fn render_update(
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     q_drawables: Query<'_, '_, (&Transform, &StaticMesh)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
-    mut egui: ResMut<'_, Egui>,
+    egui: Res<'_, Egui>,
 ) {
     let mut render_context = RenderContext::new(&renderer);
     let q_drawables = q_drawables
@@ -145,7 +148,7 @@ fn render_update(
                 &mut render_context,
                 &cmd_buffer,
                 render_surface.as_mut(),
-                &mut egui.ctx,
+                &egui,
             );
         }
 

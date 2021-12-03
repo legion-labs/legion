@@ -2,6 +2,7 @@ use crate::components::RenderSurface;
 use crate::RenderContext;
 use crate::Renderer;
 use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use legion_egui::Egui;
 use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use std::num::NonZeroU32;
 use std::sync::Arc;
@@ -294,7 +295,7 @@ impl EguiPass {
         render_context: &mut RenderContext<'_>,
         cmd_buffer: &CommandBuffer,
         render_surface: &RenderSurface,
-        egui_ctx: &mut egui::CtxRef,
+        egui: &Egui,
     ) {
         cmd_buffer
             .cmd_begin_render_pass(
@@ -338,8 +339,7 @@ impl EguiPass {
                 descriptor_set_handle,
             )
             .unwrap();
-        let (_output, shapes) = egui_ctx.end_frame(); // TODO: handle output
-        let clipped_meshes = egui_ctx.tessellate(shapes);
+        let clipped_meshes = egui.ctx.tessellate(egui.shapes.clone());
 
         let transient_allocator = render_context.acquire_transient_buffer_allocator();
 
@@ -383,8 +383,8 @@ impl EguiPass {
                 scale,
                 0.0,
                 0.0,
-                render_surface.extents().width() as f32 / egui_ctx.pixels_per_point(),
-                render_surface.extents().height() as f32 / egui_ctx.pixels_per_point(),
+                render_surface.extents().width() as f32 / egui.ctx.pixels_per_point(),
+                render_surface.extents().height() as f32 / egui.ctx.pixels_per_point(),
             ];
 
             cmd_buffer
