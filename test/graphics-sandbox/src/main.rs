@@ -60,41 +60,54 @@ struct SnapshotFrameCounter {
 }
 
 fn main() {
+    const ARG_NAME_WIDTH: &str = "width";
+    const ARG_NAME_HEIGHT: &str = "height";
+    const ARG_NAME_SNAPSHOT: &str = "snapshot";
+    const ARG_NAME_SETUP_NAME: &str = "setup-name";
+    const ARG_NAME_EGUI: &str = "egui";
+    const ARG_NAME_USE_ASSET_REGISTRY: &str = "use-asset-registry";
     let matches = clap::App::new("graphics-sandbox")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Legion Labs")
         .about("A sandbox for graphics")
         .arg(
-            clap::Arg::with_name("width")
+            clap::Arg::with_name(ARG_NAME_WIDTH)
                 .short("w")
-                .long("width")
+                .long(ARG_NAME_WIDTH)
                 .help("The width of the window")
                 .takes_value(true),
         )
         .arg(
-            clap::Arg::with_name("height")
+            clap::Arg::with_name(ARG_NAME_HEIGHT)
                 .short("h")
-                .long("height")
+                .long(ARG_NAME_HEIGHT)
                 .help("The height of the window")
                 .takes_value(true),
         )
         .arg(
-            clap::Arg::with_name("snapshot")
+            clap::Arg::with_name(ARG_NAME_SNAPSHOT)
                 .short("s")
-                .long("snapshot")
+                .long(ARG_NAME_SNAPSHOT)
                 .help("Saves a snapshot of the scene")
                 .takes_value(false),
         )
         .arg(
-            clap::Arg::with_name("setup-name")
-                .long("setup-name")
+            clap::Arg::with_name(ARG_NAME_SETUP_NAME)
+                .long(ARG_NAME_SETUP_NAME)
                 .help("Name of the setup to launch")
                 .takes_value(true),
         )
         .arg(
-            clap::Arg::with_name("use-asset-registry")
+            clap::Arg::with_name(ARG_NAME_USE_ASSET_REGISTRY)
+                .long(ARG_NAME_USE_ASSET_REGISTRY)
                 .takes_value(false)
-                .help(""),
+                .help("Use asset registry data instead of a hardcoded scene"),
+        )
+        .arg(
+            clap::Arg::with_name(ARG_NAME_EGUI)
+                .long(ARG_NAME_EGUI)
+                .takes_value(false)
+                .help("Enable egui immediate mode GUI"),
         )
         .get_matches();
 
@@ -104,20 +117,20 @@ fn main() {
         .unwrap();
 
     let width = matches
-        .value_of("width")
+        .value_of(ARG_NAME_WIDTH)
         .map(|s| s.parse::<f32>().unwrap())
         .unwrap_or(1280.0);
     let height = matches
-        .value_of("height")
+        .value_of(ARG_NAME_HEIGHT)
         .map(|s| s.parse::<f32>().unwrap())
         .unwrap_or(720.0);
-    let setup_name = matches.value_of("setup-name").unwrap_or("simple-scene");
+    let setup_name = matches.value_of(ARG_NAME_SETUP_NAME).unwrap_or("simple-scene");
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
-        .add_plugin(RendererPlugin::new(true));
+        .add_plugin(RendererPlugin::new(true, matches.is_present(ARG_NAME_EGUI)));
 
-    if matches.is_present("snapshot") {
+    if matches.is_present(ARG_NAME_SNAPSHOT) {
         app.insert_resource(SnapshotDescriptor {
             setup_name: setup_name.to_string(),
             width,
@@ -141,7 +154,7 @@ fn main() {
             .add_system(on_window_close_requested.exclusive_system())
             .insert_resource(RenderSurfaces::new());
     }
-    if matches.is_present("use-asset-registry") {
+    if matches.is_present(ARG_NAME_USE_ASSET_REGISTRY) {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default());
     } else {

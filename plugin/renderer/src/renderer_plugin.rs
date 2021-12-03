@@ -15,11 +15,15 @@ use crate::{
 #[derive(Default)]
 pub struct RendererPlugin {
     has_window: bool,
+    enable_egui: bool,
 }
 
 impl RendererPlugin {
-    pub fn new(has_window: bool) -> Self {
-        Self { has_window }
+    pub fn new(has_window: bool, enable_egui: bool) -> Self {
+        Self {
+            has_window,
+            enable_egui,
+        }
     }
 }
 
@@ -31,7 +35,7 @@ struct RendererUI {
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut lgn_app::App) {
         let renderer = Renderer::new().unwrap();
-        app.add_plugin(EguiPlugin::new(self.has_window));
+        app.add_plugin(EguiPlugin::new(self.has_window, self.enable_egui));
         app.insert_resource(renderer);
         app.insert_resource(RendererUI {
             text: String::from("something"),
@@ -136,12 +140,14 @@ fn render_update(
         let egui_pass = render_surface.egui_renderpass();
         let mut egui_pass = egui_pass.write();
         egui_pass.update_font_texture(&mut render_context, &cmd_buffer, &egui.ctx);
-        egui_pass.render(
-            &mut render_context,
-            &cmd_buffer,
-            render_surface.as_mut(),
-            &mut egui.ctx,
-        );
+        if egui.enable {
+            egui_pass.render(
+                &mut render_context,
+                &cmd_buffer,
+                render_surface.as_mut(),
+                &mut egui.ctx,
+            );
+        }
 
         cmd_buffer.end().unwrap();
         // queue

@@ -54,7 +54,7 @@ impl Renderer {
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, 1024),
+            transient_buffer: TransientPagedBuffer::new(device_context, 128),
             bump_allocator_pool: RwLock::new(CpuPool::new()),
             api,
         })

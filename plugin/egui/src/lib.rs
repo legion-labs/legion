@@ -67,6 +67,7 @@ use legion_window::{CursorMoved, WindowCreated, WindowResized, WindowScaleFactor
 #[derive(Default)]
 pub struct Egui {
     pub ctx: egui::CtxRef,
+    pub enable: bool,
 }
 
 #[derive(SystemLabel, Debug, Clone, PartialEq, Eq, Hash)]
@@ -78,21 +79,28 @@ pub enum EguiLabels {
 #[derive(Default)]
 pub struct EguiPlugin {
     has_window: bool,
+    enable: bool,
 }
 
 impl EguiPlugin {
-    pub fn new(has_window: bool) -> Self {
-        Self { has_window }
+    pub fn new(has_window: bool, enable: bool) -> Self {
+        Self { has_window, enable }
     }
 }
 
 impl Plugin for EguiPlugin {
     fn build(&self, app: &mut App) {
+        // TODO: remove dependency on window
         if self.has_window {
             app.add_startup_system(on_window_created.system());
+        } else {
+            app.add_startup_system(on_windowless_created.system());
         }
 
-        app.insert_resource(Egui::default());
+        app.insert_resource(Egui {
+            enable: self.enable,
+            ..Egui::default()
+        });
         app.insert_resource(RawInput::default());
         app.add_system_to_stage(
             CoreStage::PreUpdate,
@@ -137,6 +145,22 @@ fn on_window_created(
     egui.ctx.begin_frame(RawInput {
         screen_rect: Some(egui::Rect::from_min_size(egui::pos2(0.0, 0.0), size)),
         pixels_per_point: Some(pixels_per_point as f32),
+        ..RawInput::default()
+    });
+    #[allow(unused_must_use)]
+    {
+        egui.ctx.end_frame();
+    }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn on_windowless_created(mut egui: ResMut<'_, Egui>) {
+    egui.ctx.begin_frame(RawInput {
+        screen_rect: Some(egui::Rect::from_min_size(
+            egui::pos2(0.0, 0.0),
+            egui::vec2(1280.0, 720.0),
+        )),
+        pixels_per_point: Some(1.0),
         ..RawInput::default()
     });
     #[allow(unused_must_use)]
@@ -302,9 +326,32 @@ fn gather_input_window(
     }
 }
 
+//pub struct UISystemEvent {
+//    name: String,
+//    f: Box<dyn FnOnce(&egui::Ui)>,
+//}
+
 #[allow(clippy::needless_pass_by_value)]
-fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
+fn begin_frame(
+    mut egui: ResMut<'_, Egui>,
+    raw_input: Res<'_, RawInput>,
+    //ui_systems: EventReader<'_, '_, UISystemEvent>,
+) {
+    if !egui.enable {
+        egui.ctx.begin_frame(RawInput::default());
+        #[allow(unused_must_use)]
+        {
+            egui.ctx.end_frame();
+        }
+        return;
+    }
     egui.ctx.begin_frame(raw_input.to_owned());
+
+    //egui::TopBottomPanel::top("Top menu").show(&egui.ctx, |ui| {
+    //    for ui_system in ui_systems {
+    //        ui_system.f(ui);
+    //    }
+    //});
 
     egui::Window::new("Debug").show(&egui.ctx, |ui| {
         egui.ctx.settings_ui(ui);
