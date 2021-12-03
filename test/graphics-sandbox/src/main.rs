@@ -110,7 +110,7 @@ fn main() {
         .value_of("height")
         .map(|s| s.parse::<f32>().unwrap())
         .unwrap_or(720.0);
-    let setup_name = matches.value_of("setup-name").unwrap_or("triangle");
+    let setup_name = matches.value_of("setup-name").unwrap_or("simple-scene");
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
