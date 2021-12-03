@@ -4036,6 +4036,7 @@ name = "legion-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bumpalo",
  "legion-app",
  "legion-ecs",
  "legion-graphics-api",

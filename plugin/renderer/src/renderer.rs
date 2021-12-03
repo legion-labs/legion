@@ -1,3 +1,5 @@
+#![allow(unsafe_code)]
+
 use std::num::NonZeroU32;
 
 use anyhow::Result;
@@ -5,8 +7,10 @@ use graphics_utils::TransientPagedBuffer;
 use parking_lot::{RwLock, RwLockReadGuard};
 
 use crate::components::{RenderSurface, StaticMesh};
+use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
-    CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
+    CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
+    GpuSafePool,
 };
 
 use crate::static_mesh_render_data::StaticMeshRenderData;
@@ -25,9 +29,14 @@ pub struct Renderer {
     command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
+    bump_allocator_pool: RwLock<CpuPool<BumpAllocator>>,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
+
+unsafe impl Send for Renderer {}
+
+unsafe impl Sync for Renderer {}
 
 impl Renderer {
     pub fn new() -> Result<Self> {
@@ -47,6 +56,7 @@ impl Renderer {
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             transient_buffer: TransientPagedBuffer::new(device_context, 16),
+            bump_allocator_pool: RwLock::new(CpuPool::new()),
             api,
         })
     }
@@ -102,6 +112,16 @@ impl Renderer {
         pool.release(handle);
     }
 
+    pub(crate) fn acquire_bump_allocator(&self) -> BumpAllocatorHandle {
+        let mut pool = self.bump_allocator_pool.write();
+        pool.acquire_or_create(BumpAllocator::new)
+    }
+
+    pub(crate) fn release_bump_allocator(&self, handle: BumpAllocatorHandle) {
+        let mut pool = self.bump_allocator_pool.write();
+        pool.release(handle);
+    }
+
     pub(crate) fn begin_frame(&mut self) {
         //
         // Update frame indices
@@ -124,15 +144,19 @@ impl Renderer {
         device_context.free_gpu_memory().unwrap();
 
         //
-        // ... and rotate resource pool.
+        // Broadcast begin frame event
         //
         {
             let mut pool = self.command_buffer_pools.write();
-            pool.rotate();
+            pool.begin_frame();
         }
         {
             let mut pool = self.descriptor_pools.write();
-            pool.rotate();
+            pool.begin_frame();
+        }
+        {
+            let mut pool = self.bump_allocator_pool.write();
+            pool.begin_frame();
         }
 
         // TMP: todo
@@ -145,8 +169,24 @@ impl Renderer {
         graphics_queue
             .submit(&[], &[], &[], Some(frame_fence))
             .unwrap();
-        // TMP: todo
+
+        //
+        // Broadcast end frame event
+        //
         self.transient_buffer.end_frame(&graphics_queue);
+
+        {
+            let mut pool = self.command_buffer_pools.write();
+            pool.end_frame();
+        }
+        {
+            let mut pool = self.descriptor_pools.write();
+            pool.end_frame();
+        }
+        {
+            let mut pool = self.bump_allocator_pool.write();
+            pool.end_frame();
+        }
     }
 }
 
@@ -369,6 +409,13 @@ impl TmpRenderPass {
         render_surface: &mut RenderSurface,
         static_meshes: &[(&Transform, &StaticMesh)],
     ) {
+        {
+            let bump = render_context.acquire_bump_allocator();
+            let x = bump.alloc(3);
+            *x += 1;
+            render_context.release_bump_allocator(bump);
+        }
+
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
         cmd_buffer

@@ -1,7 +1,5 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::resources::GpuSafeRotate;
-
 pub struct RenderHandle<T> {
     inner: Option<T>,
 }
@@ -53,15 +51,6 @@ impl<T> Drop for RenderHandle<T> {
         match &self.inner {
             Some(_) => unreachable!("This handle should have been released. It should not have the ownership of the internal resource."),
             None => (),
-        }
-    }
-}
-
-impl<T: GpuSafeRotate> GpuSafeRotate for RenderHandle<T> {
-    fn rotate(&mut self) {
-        match &mut self.inner {
-            Some(e) => e.rotate(),
-            None => unreachable!(),
         }
     }
 }
