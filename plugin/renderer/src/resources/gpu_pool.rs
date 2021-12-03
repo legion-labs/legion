@@ -1,11 +1,6 @@
 use crate::RenderHandle;
 
-//
-// TODO: At some point, it might be better to add a FrameEvent trait with on_begin_frame, on_end_frame???
-//
-pub(crate) trait OnNewFrame {
-    fn on_new_frame(&mut self);
-}
+use super::OnNewFrame;
 
 pub(crate) struct GpuSafePool<T: OnNewFrame> {
     num_cpu_frames: usize,

@@ -1,5 +1,3 @@
-use std::ops::{Deref, DerefMut};
-
 use crate::{resources::OnNewFrame, RenderHandle};
 
 pub struct BumpAllocator {
@@ -14,23 +12,15 @@ impl BumpAllocator {
             bump_allocator: bumpalo::Bump::new(),
         }
     }
+
+    #[inline(always)]
+    pub fn alloc<T>(&self, val: T) -> &mut T {
+        self.bump_allocator.alloc(val)
+    }
 }
 
 impl OnNewFrame for BumpAllocator {
     fn on_new_frame(&mut self) {
         self.bump_allocator.reset();
-    }
-}
-
-impl Deref for BumpAllocator {
-    type Target = bumpalo::Bump;
-    fn deref(&self) -> &Self::Target {
-        &self.bump_allocator
-    }
-}
-
-impl DerefMut for BumpAllocator {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.bump_allocator
     }
 }

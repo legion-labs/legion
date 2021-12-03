@@ -1,3 +1,6 @@
+mod pool_shared;
+pub(crate) use pool_shared::*;
+
 mod cpu_pool;
 pub(crate) use cpu_pool::*;
 
