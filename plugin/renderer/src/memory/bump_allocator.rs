@@ -1,6 +1,6 @@
 #![allow(clippy::inline_always)]
 
-use crate::{resources::OnNewFrame, RenderHandle};
+use crate::{resources::OnFrameEventHandler, RenderHandle};
 
 pub struct BumpAllocator {
     bump_allocator: bumpalo::Bump,
@@ -22,8 +22,10 @@ impl BumpAllocator {
     }
 }
 
-impl OnNewFrame for BumpAllocator {
-    fn on_new_frame(&mut self) {
+impl OnFrameEventHandler for BumpAllocator {
+    fn on_begin_frame(&mut self) {
         self.bump_allocator.reset();
     }
+
+    fn on_end_frame(&mut self) {}
 }

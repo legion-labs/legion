@@ -144,19 +144,19 @@ impl Renderer {
         device_context.free_gpu_memory().unwrap();
 
         //
-        // ... and rotate resource pools.
+        // Broadcast begin frame event
         //
         {
             let mut pool = self.command_buffer_pools.write();
-            pool.new_frame();
+            pool.begin_frame();
         }
         {
             let mut pool = self.descriptor_pools.write();
-            pool.new_frame();
+            pool.begin_frame();
         }
         {
             let mut pool = self.bump_allocator_pool.write();
-            pool.new_frame();
+            pool.begin_frame();
         }
 
         // TMP: todo
@@ -169,8 +169,24 @@ impl Renderer {
         graphics_queue
             .submit(&[], &[], &[], Some(frame_fence))
             .unwrap();
-        // TMP: todo
+
+        //
+        // Broadcast end frame event
+        //
         self.transient_buffer.end_frame(&graphics_queue);
+
+        {
+            let mut pool = self.command_buffer_pools.write();
+            pool.end_frame();
+        }
+        {
+            let mut pool = self.descriptor_pools.write();
+            pool.end_frame();
+        }
+        {
+            let mut pool = self.bump_allocator_pool.write();
+            pool.end_frame();
+        }
     }
 }
 

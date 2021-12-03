@@ -2,7 +2,7 @@ use graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef,
 
 use crate::RenderHandle;
 
-use super::OnNewFrame;
+use super::OnFrameEventHandler;
 
 // TODO: CommandBuffer should be boxed.
 pub type CommandBufferHandle = RenderHandle<CommandBuffer>;
@@ -11,6 +11,7 @@ pub(crate) struct CommandBufferPool {
     command_pool: CommandPool,
     availables: Vec<CommandBuffer>,
     in_flights: Vec<CommandBuffer>,
+    acquired_count: u32,
 }
 
 impl CommandBufferPool {
@@ -21,6 +22,7 @@ impl CommandBufferPool {
                 .unwrap(),
             availables: Vec::new(),
             in_flights: Vec::new(),
+            acquired_count: 0,
         }
     }
 
@@ -38,18 +40,25 @@ impl CommandBufferPool {
         } else {
             self.availables.pop().unwrap()
         };
+        self.acquired_count += 1;
         CommandBufferHandle::new(result)
     }
 
     pub(crate) fn release(&mut self, mut handle: CommandBufferHandle) {
         assert!(handle.is_valid());
+        assert!(self.acquired_count > 0);
         self.in_flights.push(handle.take());
+        self.acquired_count -= 1;
     }
 }
 
-impl OnNewFrame for CommandBufferPool {
-    fn on_new_frame(&mut self) {
+impl OnFrameEventHandler for CommandBufferPool {
+    fn on_begin_frame(&mut self) {
         self.reset();
+    }
+
+    fn on_end_frame(&mut self) {
+        assert_eq!(self.acquired_count, 0);
     }
 }
 
