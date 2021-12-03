@@ -1,17 +1,20 @@
 use crate::RenderHandle;
 
-pub(crate) trait GpuSafeRotate {
-    fn rotate(&mut self);
+//
+// TODO: At some point, it might be better to add a FrameEvent trait with on_begin_frame, on_end_frame???
+//
+pub(crate) trait OnNewFrame {
+    fn on_new_frame(&mut self);
 }
 
-pub(crate) struct GpuSafePool<T: GpuSafeRotate> {
+pub(crate) struct GpuSafePool<T: OnNewFrame> {
     num_cpu_frames: usize,
     cur_cpu_frame: usize,
     available: Vec<T>,
     in_use: Vec<Vec<T>>,
 }
 
-impl<T: GpuSafeRotate> GpuSafePool<T> {
+impl<T: OnNewFrame> GpuSafePool<T> {
     pub(crate) fn new(num_cpu_frames: usize) -> Self {
         Self {
             num_cpu_frames,
@@ -21,10 +24,10 @@ impl<T: GpuSafeRotate> GpuSafePool<T> {
         }
     }
 
-    pub(crate) fn rotate(&mut self) {
+    pub(crate) fn new_frame(&mut self) {
         let next_cpu_frame = (self.cur_cpu_frame + 1) % self.num_cpu_frames;
         self.available.append(&mut self.in_use[next_cpu_frame]);
-        self.available.iter_mut().for_each(|x| x.rotate());
+        self.available.iter_mut().for_each(|x| x.on_new_frame());
         self.cur_cpu_frame = next_cpu_frame;
     }
 

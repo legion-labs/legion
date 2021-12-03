@@ -5,7 +5,7 @@ use graphics_api::{
 
 use crate::RenderHandle;
 
-use super::GpuSafeRotate;
+use super::OnNewFrame;
 
 pub(crate) struct DescriptorPool {
     heap: DescriptorHeap,
@@ -30,8 +30,8 @@ impl DescriptorPool {
     }
 }
 
-impl GpuSafeRotate for DescriptorPool {
-    fn rotate(&mut self) {
+impl OnNewFrame for DescriptorPool {
+    fn on_new_frame(&mut self) {
         self.reset();
     }
 }

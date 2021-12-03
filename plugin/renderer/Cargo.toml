@@ -18,6 +18,7 @@ legion-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 legion-transform = { path = "../transform", version = "0.1.0" }
 
 anyhow = "1.0"
+bumpalo= "3.8"
 log = "0.4"
 parking_lot = "0.11"
 

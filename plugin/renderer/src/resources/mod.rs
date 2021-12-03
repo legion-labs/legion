@@ -1,5 +1,8 @@
-mod gpu_safe_pool;
-pub(crate) use gpu_safe_pool::*;
+mod cpu_pool;
+pub(crate) use cpu_pool::*;
+
+mod gpu_pool;
+pub(crate) use gpu_pool::*;
 
 mod command_buffer_pool;
 pub(crate) use command_buffer_pool::*;

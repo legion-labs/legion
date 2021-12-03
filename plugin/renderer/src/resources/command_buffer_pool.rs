@@ -2,7 +2,7 @@ use graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef,
 
 use crate::RenderHandle;
 
-use super::GpuSafeRotate;
+use super::OnNewFrame;
 
 // TODO: CommandBuffer should be boxed.
 pub type CommandBufferHandle = RenderHandle<CommandBuffer>;
@@ -47,8 +47,8 @@ impl CommandBufferPool {
     }
 }
 
-impl GpuSafeRotate for CommandBufferPool {
-    fn rotate(&mut self) {
+impl OnNewFrame for CommandBufferPool {
+    fn on_new_frame(&mut self) {
         self.reset();
     }
 }
