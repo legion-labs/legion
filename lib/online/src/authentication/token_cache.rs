@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 use directories::ProjectDirs;
 use log::{debug, warn};
@@ -13,6 +14,7 @@ pub struct TokenCache<A> {
     authenticator: A,
     project_dirs: ProjectDirs,
     validation: UnsecureValidation<'static>,
+    semaphore: Semaphore,
 }
 
 impl<A> TokenCache<A>
@@ -25,6 +27,7 @@ where
             authenticator,
             project_dirs,
             validation: UnsecureValidation::default(),
+            semaphore: Semaphore::new(1),
         }
     }
 
@@ -94,6 +97,13 @@ where
             }
         }
     }
+
+    async fn lock(&self) -> Result<SemaphorePermit<'_>> {
+        self.semaphore
+            .acquire()
+            .await
+            .map_err(|e| Error::InternalError(format!("failed to acquire semaphore: {}", e)))
+    }
 }
 
 #[async_trait]
@@ -108,6 +118,8 @@ where
     ///
     /// If the tokens end up being refreshed, they will be stored in the cache.
     async fn login(&self) -> Result<ClientTokenSet> {
+        let _permit = self.lock().await?;
+
         let token_set = match self.read_token_set_from_cache() {
             Ok(token_set) => {
                 let access_token = &token_set.access_token[..];
@@ -157,6 +169,8 @@ where
     }
 
     async fn refresh_login(&self, refresh_token: &str) -> Result<ClientTokenSet> {
+        let _permit = self.lock().await?;
+
         self.authenticator
             .refresh_login(refresh_token)
             .await
@@ -171,6 +185,8 @@ where
 
     /// Perform a logout, delegating its execution to the owned `Authenticator` and clearing the cache.
     async fn logout(&self) -> Result<()> {
+        let _permit = self.lock().await?;
+
         self.delete_cache()?;
 
         self.authenticator.logout().await
