@@ -1,8 +1,8 @@
 use std::str::FromStr;
-use strum_macros::{Display, EnumString};
 
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
+use strum_macros::{Display, EnumString};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

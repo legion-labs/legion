@@ -13,10 +13,9 @@ use super::{
     PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
     VertexAttributeRate,
 };
-use crate::{DescriptorSetLayout, ResourceFlags, RootSignature, Shader, ShaderModule};
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VkInstance;
+use crate::{DescriptorSetLayout, ResourceFlags, RootSignature, Shader, ShaderModule};
 
 /// Controls if an extension is enabled or not. The requirements/behaviors of validation is
 /// API-specific.

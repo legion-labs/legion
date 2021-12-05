@@ -1,10 +1,9 @@
+#[cfg(feature = "vulkan")]
+use crate::backends::vulkan::VulkanQueue;
 use crate::{
     CommandBuffer, CommandPool, CommandPoolDef, DeviceContext, Fence, GfxResult,
     PresentSuccessResult, QueueType, Semaphore, Swapchain,
 };
-
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanQueue;
 
 struct QueueInner {
     device_context: DeviceContext,

@@ -1,8 +1,7 @@
 use graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, Queue};
 
-use crate::RenderHandle;
-
 use super::OnFrameEventHandler;
+use crate::RenderHandle;
 
 // TODO: CommandBuffer should be boxed.
 pub type CommandBufferHandle = RenderHandle<CommandBuffer>;

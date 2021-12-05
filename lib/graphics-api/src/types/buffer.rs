@@ -1,10 +1,9 @@
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanBuffer;
-use crate::{BufferView, GfxResult};
-
 use super::{
     deferred_drop::Drc, BufferViewDef, DeviceContext, MemoryUsage, QueueType, ResourceUsage,
 };
+#[cfg(feature = "vulkan")]
+use crate::backends::vulkan::VulkanBuffer;
+use crate::{BufferView, GfxResult};
 
 #[derive(Clone, Debug, Default)]
 pub struct BufferElementData {

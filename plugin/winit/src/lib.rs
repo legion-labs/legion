@@ -61,16 +61,13 @@ mod converters;
 mod winit_config;
 mod winit_windows;
 
+use legion_app::{App, AppExit, CoreStage, Events, ManualEventReader, Plugin};
+use legion_ecs::{system::IntoExclusiveSystem, world::World};
 use legion_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseMotion, MouseScrollUnit, MouseWheel},
     touch::TouchInput,
 };
-pub use winit_config::*;
-pub use winit_windows::*;
-
-use legion_app::{App, AppExit, CoreStage, Events, ManualEventReader, Plugin};
-use legion_ecs::{system::IntoExclusiveSystem, world::World};
 use legion_math::{ivec2, Vec2};
 use legion_window::{
     CreateWindow, CursorEntered, CursorLeft, CursorMoved, FileDragAndDrop, ReceivedCharacter,
@@ -78,12 +75,6 @@ use legion_window::{
     WindowMoved, WindowResized, WindowScaleFactorChanged, Windows,
 };
 use log::{error, trace, warn};
-use winit::{
-    dpi::PhysicalPosition,
-    event::{self, DeviceEvent, Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
-};
-
 use winit::dpi::LogicalSize;
 #[cfg(any(
     target_os = "linux",
@@ -93,6 +84,13 @@ use winit::dpi::LogicalSize;
     target_os = "openbsd"
 ))]
 use winit::platform::unix::EventLoopExtUnix;
+use winit::{
+    dpi::PhysicalPosition,
+    event::{self, DeviceEvent, Event, WindowEvent},
+    event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
+};
+pub use winit_config::*;
+pub use winit_windows::*;
 
 #[derive(Default)]
 pub struct WinitPlugin;

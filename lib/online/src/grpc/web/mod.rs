@@ -5,6 +5,5 @@ mod errors;
 mod response;
 
 use encoding::GrpcWebBodyParser;
-use response::GrpcWebResponse;
-
 pub use errors::{Error, Result};
+use response::GrpcWebResponse;

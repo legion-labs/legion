@@ -1,6 +1,5 @@
-use crate::RenderHandle;
-
 use super::OnFrameEventHandler;
+use crate::RenderHandle;
 
 pub(crate) struct CpuPool<T: OnFrameEventHandler> {
     availables: Vec<T>,

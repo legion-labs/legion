@@ -1,8 +1,7 @@
-use crate::GfxResult;
-
 use super::{deferred_drop::Drc, Buffer, BufferDef, BufferViewFlags, GPUViewType, ResourceUsage};
 #[cfg(any(feature = "vulkan"))]
 use super::{Descriptor, ShaderResourceType};
+use crate::GfxResult;
 
 #[derive(Clone, Copy, Debug)]
 pub struct BufferViewDef {

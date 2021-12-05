@@ -1,13 +1,12 @@
+use async_trait::async_trait;
+use legion_data_offline::resource::ResourcePathName;
+use legion_data_runtime::{ResourceId, ResourceType};
+use log::{info, warn};
+
 use crate::create_resource_operation::CreateResourceOperation;
 use crate::delete_resource_operation::DeleteResourceOperation;
 use crate::update_property_operation::UpdatePropertyOperation;
-
 use crate::LockContext;
-use legion_data_offline::resource::ResourcePathName;
-use legion_data_runtime::{ResourceId, ResourceType};
-
-use async_trait::async_trait;
-use log::{info, warn};
 
 /// Definition of a Transaction
 pub struct Transaction {

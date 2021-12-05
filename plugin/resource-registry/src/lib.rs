@@ -59,7 +59,7 @@
 
 mod settings;
 
-pub use settings::ResourceRegistrySettings;
+use std::sync::Arc;
 
 use legion_app::Plugin;
 use legion_data_offline::resource::{Project, ResourceRegistryOptions};
@@ -67,8 +67,7 @@ use legion_data_runtime::AssetRegistry;
 use legion_data_transaction::DataManager;
 use legion_tasks::IoTaskPool;
 use sample_data_offline as offline_data;
-
-use std::sync::Arc;
+pub use settings::ResourceRegistrySettings;
 use tokio::sync::Mutex;
 
 #[derive(Default)]

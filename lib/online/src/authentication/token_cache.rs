@@ -1,11 +1,11 @@
-use async_trait::async_trait;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
-use tokio::sync::{Semaphore, SemaphorePermit};
 
+use async_trait::async_trait;
 use directories::ProjectDirs;
 use log::{debug, warn};
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 use super::{jwt::UnsecureValidation, Authenticator, ClientTokenSet, Error, Result};
 

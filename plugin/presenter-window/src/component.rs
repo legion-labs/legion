@@ -2,16 +2,13 @@
 use std::convert::TryFrom;
 
 use graphics_api::prelude::*;
-
+use legion_presenter::swapchain_helper::SwapchainHelper;
 use legion_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
 use legion_tasks::TaskPool;
-
 use raw_window_handle::HasRawWindowHandle;
-
-use legion_presenter::swapchain_helper::SwapchainHelper;
 
 pub struct PresenterWindow {
     swapchain_helper: SwapchainHelper,

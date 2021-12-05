@@ -1,6 +1,5 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanCommandPool;
-
 use crate::{
     CommandBuffer, CommandBufferDef, CommandPoolDef, DeviceContext, GfxResult, Queue, QueueType,
 };

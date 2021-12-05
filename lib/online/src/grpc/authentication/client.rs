@@ -6,10 +6,9 @@ use http_body::{combinators::UnsyncBoxBody, Body};
 use tonic::codegen::{BoxFuture, StdError};
 use tower::Service;
 
-use crate::authentication::Authenticator;
-
 use super::super::buf::BoxBuf;
 use super::{Error, Result};
+use crate::authentication::Authenticator;
 
 /// A `gRPC` client wrapper that adds authentication.
 #[derive(Clone)]

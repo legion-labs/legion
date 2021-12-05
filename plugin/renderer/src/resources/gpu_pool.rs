@@ -1,6 +1,5 @@
-use crate::RenderHandle;
-
 use super::OnFrameEventHandler;
+use crate::RenderHandle;
 
 pub(crate) struct GpuSafePool<T: OnFrameEventHandler> {
     num_cpu_frames: usize,

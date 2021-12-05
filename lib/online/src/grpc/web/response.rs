@@ -1,9 +1,10 @@
-use http_body::Body;
-use pin_project::pin_project;
 use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+
+use http_body::Body;
+use pin_project::pin_project;
 use tonic::codegen::StdError;
 
 use super::super::buf::BoxBuf;

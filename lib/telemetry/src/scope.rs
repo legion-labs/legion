@@ -1,5 +1,6 @@
-use crate::{on_end_scope, GetScopeDesc};
 use std::marker::PhantomData;
+
+use crate::{on_end_scope, GetScopeDesc};
 
 #[derive(Debug)]
 pub struct ScopeDesc {

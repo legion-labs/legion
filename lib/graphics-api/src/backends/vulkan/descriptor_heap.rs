@@ -1,8 +1,9 @@
+use ash::vk;
+
 use crate::{
     DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetHandle, DescriptorSetLayout,
     DeviceContext, GfxResult,
 };
-use ash::vk;
 
 struct DescriptorHeapPoolConfig {
     pool_flags: vk::DescriptorPoolCreateFlags,

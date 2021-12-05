@@ -1,12 +1,14 @@
-use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNode, ScopeHashMap}; //todo: move to analytics lib
+use std::collections::HashMap;
+use std::{cmp::min, path::Path};
+
 use anyhow::{Context, Result};
 use legion_analytics::prelude::*;
 use legion_telemetry::prelude::*;
 use legion_telemetry_proto::analytics::{
     CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
-use std::collections::HashMap;
-use std::{cmp::min, path::Path};
+
+use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNode, ScopeHashMap}; //todo: move to analytics lib
 
 struct NodeStatsAcc {
     durations_ms: Vec<f64>,

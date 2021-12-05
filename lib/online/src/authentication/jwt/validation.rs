@@ -218,9 +218,8 @@ struct Claims {
 
 #[cfg(test)]
 mod tests {
-    use crate::authentication::jwt::signature_validation::RsaSignatureValidation;
-
     use super::*;
+    use crate::authentication::jwt::signature_validation::RsaSignatureValidation;
 
     #[derive(Deserialize, PartialEq, Eq, Debug, Clone)]
     struct MyClaims {}

@@ -1,12 +1,13 @@
-use raw_window_handle::HasRawWindowHandle;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use super::deferred_drop::DeferredDropper;
+use raw_window_handle::HasRawWindowHandle;
 
+use super::deferred_drop::DeferredDropper;
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDeviceContext;
-
+#[cfg(any(feature = "vulkan"))]
+use crate::DeviceInfo;
 use crate::{
     ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
     DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence, GfxResult,
@@ -14,9 +15,6 @@ use crate::{
     RootSignatureDef, Sampler, SamplerDef, Semaphore, Shader, ShaderModule, ShaderModuleDef,
     ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
 };
-
-#[cfg(any(feature = "vulkan"))]
-use crate::DeviceInfo;
 
 /// Used to specify which type of physical device is preferred. It's recommended to read the Vulkan
 /// spec to understand precisely what these types mean

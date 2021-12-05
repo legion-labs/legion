@@ -83,11 +83,12 @@
 // crate-specific exceptions:
 #![allow()]
 
-use bitflags::bitflags;
 use std::ffi::OsStr;
 use std::fmt::Formatter;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use bitflags::bitflags;
 use thiserror::Error;
 use walkdir::WalkDir;
 

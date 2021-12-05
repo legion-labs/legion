@@ -9,7 +9,6 @@ use super::{
     DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
     VkQueueRequirements, VulkanRenderpass, VulkanRenderpassDef,
 };
-
 use crate::backends::vulkan::check_extensions_availability;
 use crate::{DeviceContext, DeviceInfo, ExtensionMode, GfxResult, PhysicalDeviceType};
 

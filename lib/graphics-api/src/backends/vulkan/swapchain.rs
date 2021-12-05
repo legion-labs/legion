@@ -7,7 +7,6 @@ use ash::vk::Extent2D;
 use raw_window_handle::HasRawWindowHandle;
 
 use super::VulkanRawImage;
-
 use crate::{
     deferred_drop::Drc, CommandBufferDef, CommandPoolDef, DeviceContext, Extents3D, Fence, Format,
     GfxError, GfxResult, MemoryUsage, QueueType, ResourceFlags, ResourceState, ResourceUsage,

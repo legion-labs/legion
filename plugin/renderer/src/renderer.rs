@@ -3,7 +3,11 @@
 use std::num::NonZeroU32;
 
 use anyhow::Result;
+use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use graphics_utils::TransientPagedBuffer;
+use legion_math::{Mat4, Vec3};
+use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use legion_transform::components::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
 
 use crate::components::{RenderSurface, StaticMesh};
@@ -12,13 +16,8 @@ use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
     GpuSafePool,
 };
-
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
-use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use legion_math::{Mat4, Vec3};
-use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use legion_transform::components::Transform;
 
 pub struct Renderer {
     frame_idx: usize,

@@ -9,14 +9,14 @@ mod system_container;
 mod system_descriptor;
 mod system_set;
 
-use legion_telemetry::trace_scope;
-use legion_utils::HashMap;
 use std::fmt::Debug;
 
 pub use executor::*;
 pub use executor_parallel::*;
 pub use graph_utils::GraphNode;
 pub use label::*;
+use legion_telemetry::trace_scope;
+use legion_utils::HashMap;
 pub use run_criteria::*;
 pub use stage::*;
 pub use state::*;

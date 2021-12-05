@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use crate::call_tree::compute_block_spans;
-use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use anyhow::Result;
 use legion_analytics::prelude::*;
 use legion_telemetry::prelude::*;
@@ -25,6 +23,9 @@ use legion_telemetry_proto::analytics::ProcessLogRequest;
 use legion_telemetry_proto::analytics::RecentProcessesRequest;
 use legion_telemetry_proto::analytics::SearchProcessRequest;
 use tonic::{Request, Response, Status};
+
+use crate::call_tree::compute_block_spans;
+use crate::cumulative_call_graph::compute_cumulative_call_graph;
 
 pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,

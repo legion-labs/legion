@@ -7,7 +7,6 @@ use tonic::codegen::{BoxFuture, StdError};
 use tower::Service;
 
 use super::super::consts::{GRPC, GRPC_WEB, PROTOBUF};
-
 use super::Error;
 
 /// A gRPC-Web client wrapper that causes all outgoing `gRPC` requests to be sent as HTTP 1.1

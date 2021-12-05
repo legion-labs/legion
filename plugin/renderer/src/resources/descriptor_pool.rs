@@ -3,9 +3,8 @@ use graphics_api::{
     GfxResult,
 };
 
-use crate::RenderHandle;
-
 use super::OnFrameEventHandler;
+use crate::RenderHandle;
 
 pub(crate) struct DescriptorPool {
     heap: DescriptorHeap,

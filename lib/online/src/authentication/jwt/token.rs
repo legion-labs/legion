@@ -1,5 +1,6 @@
-use anyhow::{anyhow, Context};
 use std::ops::Deref;
+
+use anyhow::{anyhow, Context};
 
 use super::{signature_validation::SignatureValidation, Header, Validation};
 

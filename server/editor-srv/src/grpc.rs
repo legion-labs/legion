@@ -1,6 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use legion_data_runtime::ResourceId;
+use legion_data_transaction::{DataManager, LockContext, Transaction};
 use legion_editor_proto::{
     editor_server::{Editor, EditorServer},
     GetResourcePropertiesRequest, GetResourcePropertiesResponse, RedoTransactionRequest,
@@ -11,8 +12,6 @@ use legion_editor_proto::{
 use log::info;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
-
-use legion_data_transaction::{DataManager, LockContext, Transaction};
 
 pub(crate) struct GRPCServer {
     data_manager: Arc<Mutex<DataManager>>,

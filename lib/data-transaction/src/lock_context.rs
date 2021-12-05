@@ -1,10 +1,12 @@
-use crate::DataManager;
+use std::collections::HashSet;
+use std::sync::Arc;
+
 use legion_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
 use legion_data_offline::ResourcePathId;
 use legion_data_runtime::{AssetRegistry, ResourceId, ResourceType};
-use std::collections::HashSet;
-use std::sync::Arc;
 use tokio::sync::MutexGuard;
+
+use crate::DataManager;
 
 /// Describe a Lock on the Database (Project/ResourceRegistry/LoadedResources)
 pub struct LockContext<'a> {

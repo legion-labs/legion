@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use legion_app::prelude::*;
 use legion_data_transaction::DataManager;
-use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Default)]

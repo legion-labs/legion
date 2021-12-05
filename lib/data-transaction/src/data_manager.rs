@@ -1,10 +1,12 @@
-use crate::{LockContext, Transaction};
+use std::sync::Arc;
+
 use legion_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
 use legion_data_runtime::{AssetRegistry, ResourceId, ResourceType};
 use log::info;
-use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
+
+use crate::{LockContext, Transaction};
 
 /// Error returned by the Transaction System.
 #[derive(Error, Debug)]
