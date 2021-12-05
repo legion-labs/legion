@@ -2,7 +2,7 @@ use crate::{Buffer, BufferDef, DeviceContext, GfxResult, MemoryUsage, ResourceUs
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
-    allocation_info: vk_mem::AllocationInfo,
+    _allocation_info: vk_mem::AllocationInfo,
     allocation: vk_mem::Allocation,
     vk_buffer: ash::vk::Buffer,
 }
@@ -70,7 +70,7 @@ impl VulkanBuffer {
         );
 
         Ok(Self {
-            allocation_info,
+            _allocation_info: allocation_info,
             allocation,
             vk_buffer: buffer,
         })

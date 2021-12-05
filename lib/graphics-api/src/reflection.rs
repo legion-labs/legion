@@ -51,21 +51,11 @@ impl ShaderResource {
 }
 
 /// Reflection data for a pipeline, created by merging shader stage reflection data
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Debug)]
 pub struct PipelineReflection {
     pub shader_resources: Vec<ShaderResource>,
     pub push_constant: Option<PushConstant>,
     pub compute_threads_per_group: Option<[u32; 3]>,
-}
-
-impl Default for PipelineReflection {
-    fn default() -> Self {
-        Self {
-            shader_resources: Vec::new(),
-            push_constant: None,
-            compute_threads_per_group: None,
-        }
-    }
 }
 
 impl PipelineReflection {

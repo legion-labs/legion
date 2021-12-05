@@ -25,6 +25,7 @@ use crate::buildindex::{BuildIndex, CompiledResourceInfo, CompiledResourceRefere
 use crate::{DataBuildOptions, Error};
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // used by tests
 struct CompileStat {
     time: std::time::Duration,
     from_cache: bool,

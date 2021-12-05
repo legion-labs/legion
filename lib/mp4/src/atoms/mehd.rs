@@ -9,21 +9,11 @@ use super::{
 };
 use crate::{Error, FourCC, Result};
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize)]
 pub struct MehdAtom {
     pub version: u8,
     pub flags: u32,
     pub fragment_duration: u64,
-}
-
-impl Default for MehdAtom {
-    fn default() -> Self {
-        Self {
-            version: 0,
-            flags: 0,
-            fragment_duration: 0,
-        }
-    }
 }
 
 impl Atom for MehdAtom {

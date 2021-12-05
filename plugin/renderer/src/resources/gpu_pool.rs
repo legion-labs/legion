@@ -24,7 +24,7 @@ impl<T: OnFrameEventHandler> GpuSafePool<T> {
     pub(crate) fn begin_frame(&mut self) {
         let next_cpu_frame = (self.cur_cpu_frame + 1) % self.num_cpu_frames;
         self.available.append(&mut self.in_use[next_cpu_frame]);
-        self.available.iter_mut().for_each(|x| x.on_begin_frame());
+        self.available.iter_mut().for_each(T::on_begin_frame);
         self.cur_cpu_frame = next_cpu_frame;
     }
 
@@ -32,7 +32,7 @@ impl<T: OnFrameEventHandler> GpuSafePool<T> {
         assert_eq!(self.acquired_count, 0);
         self.in_use[self.cur_cpu_frame]
             .iter_mut()
-            .for_each(|x| x.on_end_frame());
+            .for_each(T::on_end_frame);
     }
 
     pub(crate) fn acquire_or_create(&mut self, create_fn: impl FnOnce() -> T) -> RenderHandle<T> {

@@ -16,12 +16,12 @@ impl<T: OnFrameEventHandler> CpuPool<T> {
     }
 
     pub(crate) fn begin_frame(&mut self) {
-        self.availables.iter_mut().for_each(|x| x.on_begin_frame());
+        self.availables.iter_mut().for_each(T::on_begin_frame);
     }
 
     pub(crate) fn end_frame(&mut self) {
         assert_eq!(self.acquired_count, 0);
-        self.availables.iter_mut().for_each(|x| x.on_end_frame());
+        self.availables.iter_mut().for_each(T::on_end_frame);
     }
 
     pub(crate) fn acquire_or_create(&mut self, create_fn: impl FnOnce() -> T) -> RenderHandle<T> {

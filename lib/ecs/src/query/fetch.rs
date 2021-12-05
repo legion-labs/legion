@@ -133,6 +133,8 @@ pub unsafe trait FetchState: Send + Sync + Sized {
 }
 
 /// A fetch that is read only. This must only be implemented for read-only fetches.
+/// # Safety
+/// Implementer must ensure that access is read only
 pub unsafe trait ReadOnlyFetch {}
 
 impl WorldQuery for Entity {

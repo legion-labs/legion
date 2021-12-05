@@ -111,7 +111,7 @@ impl VulkanDescriptorHeap {
         unsafe {
             device
                 .reset_descriptor_pool(self.vk_pool, vk::DescriptorPoolResetFlags::default())
-                .map_err(|x| x.into())
+                .map_err(Into::into)
         }
     }
 

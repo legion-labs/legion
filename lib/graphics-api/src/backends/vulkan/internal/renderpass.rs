@@ -13,7 +13,7 @@ pub(crate) struct VulkanRenderpassColorAttachment {
 
 #[derive(Clone, Debug)]
 pub(crate) struct RenderpassVulkanResolveAttachment {
-    pub(crate) format: Format,
+    pub(crate) _format: Format,
 }
 
 #[derive(Clone, Debug)]

@@ -66,9 +66,7 @@ pub struct EntityLabels {
 
 impl EntityLabels {
     pub fn get(&self, label: &str) -> &[Entity] {
-        self.label_entities
-            .get(label)
-            .map_or(&[], |entities| entities.as_slice())
+        self.label_entities.get(label).map_or(&[], Vec::as_slice)
     }
 }
 

@@ -81,7 +81,7 @@ pub fn list_compilers(paths: &[PathBuf]) -> Vec<CompilerInfo> {
     let suffix = env::consts::EXE_SUFFIX;
     for dir in search_directories(paths) {
         if let Ok(entries) = fs::read_dir(&dir) {
-            for entry in entries.filter_map(|e| e.ok()) {
+            for entry in entries.filter_map(std::result::Result::ok) {
                 let path = entry.path();
                 let filename = match path.file_name().and_then(OsStr::to_str) {
                     Some(filename) => filename,

@@ -107,6 +107,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
         }
 
         // Runtime default implementation
+        #[allow(clippy::derivable_impls)]
         impl #life_time Default for #runtime_identifier #life_time {
             fn default() -> Self {
                 Self {

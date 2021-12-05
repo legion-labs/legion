@@ -583,19 +583,10 @@ pub struct VertexLayoutBuffer {
 }
 
 /// Describes how vertex attributes are laid out within one or more buffers
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VertexLayout {
     pub attributes: Vec<VertexLayoutAttribute>,
     pub buffers: Vec<VertexLayoutBuffer>,
-}
-
-impl Default for VertexLayout {
-    fn default() -> Self {
-        Self {
-            attributes: Vec::new(),
-            buffers: Vec::new(),
-        }
-    }
 }
 
 /// Affects depth testing and stencil usage. Commonly used to enable "Z-buffering".

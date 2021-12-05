@@ -171,20 +171,23 @@ impl VkInstance {
         match validation_mode {
             ExtensionMode::Disabled => {}
             ExtensionMode::EnabledIfAvailable | ExtensionMode::Enabled => {
-                let validation_layer = Self::find_best_validation_layer(&layers);
-                let has_debug_extension =
-                    check_extensions_availability(&[DebugUtils::name()], &extensions);
-                if !has_debug_extension || validation_layer.is_none() {
-                    if validation_mode == ExtensionMode::EnabledIfAvailable {
-                        log::warn!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
-                    } else {
-                        log::error!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
-                        return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
+                match (
+                    Self::find_best_validation_layer(&layers),
+                    check_extensions_availability(&[DebugUtils::name()], &extensions),
+                ) {
+                    (Some(validation_layer), true) => {
+                        layer_names.push(validation_layer);
+                        extension_names.push(DebugUtils::name());
                     }
-                } else {
-                    layer_names.push(validation_layer.expect("tested above"));
-                    extension_names.push(DebugUtils::name());
-                }
+                    (_, _) => {
+                        if validation_mode == ExtensionMode::EnabledIfAvailable {
+                            log::warn!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
+                        } else {
+                            log::error!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
+                            return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
+                        }
+                    }
+                };
             }
         };
         match windowing_mode {
