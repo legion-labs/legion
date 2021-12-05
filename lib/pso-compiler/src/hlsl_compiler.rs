@@ -448,6 +448,7 @@ mod tests {
     }";
 
     #[test]
+    #[ignore]
     fn compile_vs_shader() {
         let compiler = HlslCompiler::new().expect(
             "dxcompiler dynamic library needs to be available in the default system search paths",
@@ -479,6 +480,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn compile_ps_shader() {
         let compiler = HlslCompiler::new().expect(
             "dxcompiler dynamic library needs to be available in the default system search paths",
