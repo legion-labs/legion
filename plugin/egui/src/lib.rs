@@ -56,13 +56,13 @@
 // crate-specific exceptions:
 
 use egui::{Event, Key, RawInput};
-use legion_app::prelude::*;
-use legion_ecs::prelude::*;
-use legion_input::{
+use lgn_app::prelude::*;
+use lgn_ecs::prelude::*;
+use lgn_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
 };
-use legion_window::{CursorMoved, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows};
+use lgn_window::{CursorMoved, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows};
 
 pub struct Egui {
     pub ctx: egui::CtxRef,

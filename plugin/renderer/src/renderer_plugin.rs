@@ -1,10 +1,9 @@
 use lgn_app::{CoreStage, Plugin};
 use lgn_ecs::prelude::*;
+use lgn_egui::{Egui, EguiLabels, EguiPlugin};
 use lgn_graphics_api::QueueType;
 use lgn_math::{EulerRot, Quat};
-use lgn_egui::{Egui, EguiLabels, EguiPlugin};
 use lgn_transform::components::Transform;
-use lgn_egui::{Egui, EguiPlugin};
 
 use crate::{
     components::{RenderSurface, RotationComponent, StaticMesh},

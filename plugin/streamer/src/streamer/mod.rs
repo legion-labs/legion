@@ -2,7 +2,6 @@ use std::{fmt::Display, sync::Arc};
 
 use lgn_ecs::prelude::*;
 use lgn_presenter::offscreen_helper::Resolution;
-use lgn_egui::Egui;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     RenderTaskPool, Renderer,

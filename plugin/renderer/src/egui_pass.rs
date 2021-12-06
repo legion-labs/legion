@@ -1,9 +1,9 @@
 use crate::components::RenderSurface;
 use crate::RenderContext;
 use crate::Renderer;
-use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use legion_egui::Egui;
-use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use lgn_egui::Egui;
+use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
