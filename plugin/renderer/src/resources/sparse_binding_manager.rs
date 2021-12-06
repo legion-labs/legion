@@ -1,4 +1,4 @@
-use graphics_api::{PagedBufferAllocation, Queue, Semaphore};
+use lgn_graphics_api::{PagedBufferAllocation, Queue, Semaphore};
 
 pub struct SparseBindingManager {
     sparse_buffer_bindings: Vec<PagedBufferAllocation>,

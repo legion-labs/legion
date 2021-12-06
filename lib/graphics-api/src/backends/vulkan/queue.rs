@@ -1,7 +1,7 @@
 use ash::vk;
 
-use super::internal::VkQueue;
 use super::VulkanSwapchain;
+use super::{internal::VkQueue, SparseBindingInfo};
 use crate::{
     CommandBuffer, DeviceContext, Fence, GfxResult, PagedBufferAllocation, PresentSuccessResult,
     QueueType, Semaphore, Swapchain,
@@ -214,9 +214,13 @@ impl VulkanQueue {
     ) -> &'a Semaphore {
         let queue = self.queue.queue().lock().unwrap();
 
-        let vk_prev_frame_semaphores = [prev_frame_semaphore.platform_semaphore().vk_semaphore()];
-        let vk_unbind_semaphores = [unbind_semaphore.platform_semaphore().vk_semaphore()];
-        let vk_bind_semaphores = [bind_semaphore.platform_semaphore().vk_semaphore()];
+        let mut vk_prev_frame_semaphore = Vec::new();
+        if prev_frame_semaphore.signal_available() {
+            vk_prev_frame_semaphore.push(prev_frame_semaphore.vk_semaphore());
+            prev_frame_semaphore.set_signal_available(false);
+        }
+        let vk_unbind_semaphores = [unbind_semaphore.vk_semaphore()];
+        let vk_bind_semaphores = [bind_semaphore.vk_semaphore()];
 
         if !unbind_pages.is_empty() {
             let mut binding_infos = Vec::with_capacity(unbind_pages.len());
@@ -230,24 +234,20 @@ impl VulkanQueue {
                     bind: false,
                 };
 
-                vk_unbindings.push(
-                    page.memory
-                        .platform_allocation()
-                        .binding_info(&mut binding_info),
-                );
+                vk_unbindings.push(page.memory.binding_info(&mut binding_info));
 
                 binding_infos.push(binding_info);
             }
 
             let unbind_info_builder = ash::vk::BindSparseInfo::builder()
                 .buffer_binds(&vk_unbindings)
-                .wait_semaphores(&vk_prev_frame_semaphores)
-                .signal_semaphores(&vk_unbind_semaphores);
+                .signal_semaphores(&vk_unbind_semaphores)
+                .wait_semaphores(&vk_prev_frame_semaphore);
 
             unsafe {
                 self.queue
                     .device_context()
-                    .device()
+                    .vk_device()
                     .queue_bind_sparse(*queue, &[*unbind_info_builder], vk::Fence::null())
                     .unwrap();
             }
@@ -265,11 +265,7 @@ impl VulkanQueue {
                     bind: false,
                 };
 
-                vk_bindings.push(
-                    page.memory
-                        .platform_allocation()
-                        .binding_info(&mut binding_info),
-                );
+                vk_bindings.push(page.memory.binding_info(&mut binding_info));
 
                 binding_infos.push(binding_info);
             }
@@ -278,7 +274,7 @@ impl VulkanQueue {
                 .buffer_binds(&vk_bindings)
                 .signal_semaphores(&vk_bind_semaphores);
             if unbind_pages.is_empty() {
-                bind_info_builder = bind_info_builder.wait_semaphores(&vk_prev_frame_semaphores);
+                bind_info_builder = bind_info_builder.wait_semaphores(&vk_prev_frame_semaphore);
             } else {
                 bind_info_builder = bind_info_builder.wait_semaphores(&vk_unbind_semaphores);
             }
@@ -286,12 +282,14 @@ impl VulkanQueue {
             unsafe {
                 self.queue
                     .device_context()
-                    .device()
+                    .vk_device()
                     .queue_bind_sparse(*queue, &[*bind_info_builder], vk::Fence::null())
                     .unwrap();
             }
+            bind_semaphore.set_signal_available(true);
             bind_semaphore
         } else if !unbind_pages.is_empty() {
+            unbind_semaphore.set_signal_available(true);
             unbind_semaphore
         } else {
             prev_frame_semaphore

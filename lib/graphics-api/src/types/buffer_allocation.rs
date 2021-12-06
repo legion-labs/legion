@@ -63,4 +63,10 @@ impl<AllocType> BufferSubAllocation<AllocType> {
 
         BufferView::from_buffer(&self.buffer, &buffer_view_def).unwrap()
     }
+
+    pub fn byte_address_buffer_view_for_allocation(&self, read_only: bool) -> BufferView {
+        let buffer_view_def =
+            BufferViewDef::as_byte_address_buffer(self.buffer.definition(), read_only);
+        BufferView::from_buffer(&self.buffer, &buffer_view_def).unwrap()
+    }
 }

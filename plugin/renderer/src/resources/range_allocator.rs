@@ -1,4 +1,4 @@
-use graphics_api::Range;
+use lgn_graphics_api::Range;
 
 pub(crate) struct RangeAllocator {
     free_list: Vec<Range>,

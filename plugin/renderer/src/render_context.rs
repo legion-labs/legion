@@ -1,9 +1,11 @@
 use lgn_graphics_api::{DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, QueueType};
-use lgn_graphics_utils::TransientBufferAllocator;
 
 use crate::{
     memory::BumpAllocatorHandle,
-    resources::{CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle},
+    resources::{
+        CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle,
+        TransientBufferAllocator,
+    },
     RenderHandle, Renderer,
 };
 

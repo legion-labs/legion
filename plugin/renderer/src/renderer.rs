@@ -4,7 +4,6 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use lgn_graphics_utils::TransientPagedBuffer;
 use lgn_math::{Mat4, Vec3};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use lgn_transform::components::Transform;
@@ -14,7 +13,8 @@ use crate::components::{RenderSurface, StaticMesh};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
-    GpuSafePool,
+    EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
+    UnifiedStaticBufferUpdater, UniformGPUData, UniformGPUDataUploadJobBlock,
 };
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
@@ -31,6 +31,9 @@ pub struct Renderer {
     command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
+    // Temp for testing
+    test_transform_data: TestStaticBuffer,
+    test_updater: UnifiedStaticBufferUpdater,
     bump_allocator_pool: RwLock<CpuPool<BumpAllocator>>,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
@@ -46,6 +49,13 @@ impl Renderer {
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
+
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
+        let test_transform_data = TestStaticBuffer::new(UniformGPUData::<EntityTransforms>::new(
+            &static_buffer,
+            64 * 1024,
+        ));
+        let test_updater = UnifiedStaticBufferUpdater::new(&static_buffer);
 
         Ok(Self {
             frame_idx: 0,
@@ -66,7 +76,9 @@ impl Renderer {
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, 16),
+            transient_buffer: TransientPagedBuffer::new(device_context, 16, 64 * 1024),
+            test_transform_data,
+            test_updater,
             bump_allocator_pool: RwLock::new(CpuPool::new()),
             api,
         })
@@ -95,10 +107,34 @@ impl Renderer {
     pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
         self.transient_buffer.clone()
     }
-    // And this?
-    pub(crate) fn static_buffer(&self) -> UnifiedStaticBuffer {
-        self.static_buffer.clone()
+
+    pub fn transform_data(&mut self) -> TestStaticBuffer {
+        self.test_transform_data.transfer()
     }
+
+    pub fn test_add_update_jobs(&mut self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
+        self.test_updater.add_update_job_block(job_blocks);
+    }
+
+    pub fn flush_update_jobs(
+        &self,
+        render_context: &mut RenderContext<'_>,
+        graphics_queue: &RwLockReadGuard<'_, Queue>,
+    ) {
+        let prev_frame_semaphore = &self.prev_frame_sems[self.render_frame_idx];
+        let unbind_semaphore = &self.sparse_unbind_sems[self.render_frame_idx];
+        let bind_semaphore = &self.sparse_bind_sems[self.render_frame_idx];
+
+        self.test_updater.flush_updater(
+            prev_frame_semaphore,
+            unbind_semaphore,
+            bind_semaphore,
+            render_context,
+            graphics_queue,
+        );
+    }
+
+    //    pub fn prev_frame_semaphore(&self)
 
     pub(crate) fn acquire_command_buffer_pool(
         &self,
@@ -189,7 +225,6 @@ impl Renderer {
         //
         // Broadcast end frame event
         //
-        self.transient_buffer.end_frame(&graphics_queue);
 
         {
             let mut pool = self.command_buffer_pools.write();

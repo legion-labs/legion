@@ -1,15 +1,15 @@
 use ash::vk;
 
-use crate::{CompareOp, DeviceContext, GfxResult, MipMapMode, SamplerDef};
+use crate::{CompareOp, DeviceContext, GfxResult, MipMapMode, Sampler, SamplerDef};
 
 pub(crate) struct VulkanSampler {
-    sampler: vk::Sampler,
+    vk_sampler: vk::Sampler,
 }
 
 impl std::fmt::Debug for VulkanSampler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("VulkanSampler")
-            .field("sampler", &self.sampler)
+            .field("sampler", &self.vk_sampler)
             .finish()
     }
 }
@@ -45,18 +45,22 @@ impl VulkanSampler {
                 .create_sampler(&*sampler_create_info, None)?
         };
 
-        Ok(Self { sampler })
+        Ok(Self {
+            vk_sampler: sampler,
+        })
     }
 
     pub fn destroy(&self, device_context: &DeviceContext) {
         unsafe {
             device_context
                 .vk_device()
-                .destroy_sampler(self.sampler, None);
+                .destroy_sampler(self.vk_sampler, None);
         }
     }
+}
 
+impl Sampler {
     pub fn vk_sampler(&self) -> vk::Sampler {
-        self.sampler
+        self.inner.platform_sampler.vk_sampler
     }
 }

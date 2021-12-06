@@ -22,7 +22,7 @@ mod descriptor_set_writer;
 pub use descriptor_set_writer::*;
 
 mod device_context;
-pub use device_context::*;
+pub(crate) use device_context::*;
 
 mod fence;
 pub(crate) use fence::*;
@@ -52,7 +52,7 @@ mod shader_module;
 pub(crate) use shader_module::*;
 
 mod swapchain;
-pub use swapchain::*;
+pub(crate) use swapchain::*;
 
 mod texture;
 pub(crate) use texture::*;

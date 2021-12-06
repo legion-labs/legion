@@ -18,11 +18,11 @@ impl Default for MemoryAllocationDef {
     }
 }
 
-struct MemoryAllocationInner {
+pub(crate) struct MemoryAllocationInner {
     device_context: DeviceContext,
 
     #[cfg(feature = "vulkan")]
-    pub(super) platform_allocation: VulkanMemoryAllocation,
+    pub(crate) platform_allocation: VulkanMemoryAllocation,
 }
 
 impl Drop for MemoryAllocationInner {
@@ -34,7 +34,7 @@ impl Drop for MemoryAllocationInner {
 
 #[derive(Clone)]
 pub struct MemoryAllocation {
-    inner: Drc<MemoryAllocationInner>,
+    pub(crate) inner: Drc<MemoryAllocationInner>,
 }
 
 impl MemoryAllocation {
@@ -61,38 +61,6 @@ impl MemoryAllocation {
     pub fn device_context(&self) -> &DeviceContext {
         &self.inner.device_context
     }
-    pub fn map_buffer(&self) -> MemoryMappingInfo {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        {
-            let ptr = self
-                .inner
-                .platform_allocation
-                .map_buffer(self.device_context());
-
-            MemoryMappingInfo {
-                allocation: self.clone(),
-                data_ptr: ptr,
-            }
-        }
-    }
-
-    pub fn unmap_buffer(&self) {
-        #[cfg(any(feature = "vulkan"))]
-        self.inner
-            .platform_allocation
-            .unmap_buffer(self.device_context());
-    }
-
-    pub fn mapped_ptr(&self) -> *mut u8 {
-        #[cfg(not(any(feature = "vulkan")))]
-        unimplemented!();
-
-        #[cfg(any(feature = "vulkan"))]
-        self.inner.platform_allocation.mapped_ptr()
-    }
 
     pub fn copy_to_host_visible_buffer<T: Copy>(&self, data: &[T]) {
         // Cannot check size of data == buffer because buffer size might be rounded up
@@ -104,17 +72,15 @@ impl MemoryAllocation {
         data: &[T],
         buffer_byte_offset: u64,
     ) {
-        let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
+        let data_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
         #[cfg(any(feature = "vulkan"))]
-        assert!(
-            buffer_byte_offset + data_size_in_bytes <= self.inner.platform_allocation.size() as u64
-        );
+        assert!(buffer_byte_offset + data_size_in_bytes <= self.size() as u64);
 
         let src = data.as_ptr().cast::<u8>();
 
         let required_alignment = std::mem::align_of::<T>();
 
-        let mapping_info = self.map_buffer();
+        let mapping_info = self.map_buffer(self.device_context());
 
         #[allow(unsafe_code)]
         unsafe {
@@ -138,15 +104,16 @@ impl MemoryMappingInfo {
 
 impl Drop for MemoryMappingInfo {
     fn drop(&mut self) {
-        self.allocation.unmap_buffer();
+        self.allocation
+            .unmap_buffer(self.allocation.device_context());
     }
 }
 
-struct MemoryPagesAllocationInner {
+pub(crate) struct MemoryPagesAllocationInner {
     device_context: DeviceContext,
 
     #[cfg(feature = "vulkan")]
-    pub(super) platform_allocation: VulkanMemoryPagesAllocation,
+    pub(crate) platform_allocation: VulkanMemoryPagesAllocation,
 }
 
 impl Drop for MemoryPagesAllocationInner {
@@ -158,7 +125,7 @@ impl Drop for MemoryPagesAllocationInner {
 
 #[derive(Clone)]
 pub struct MemoryPagesAllocation {
-    inner: Drc<MemoryPagesAllocationInner>,
+    pub(crate) inner: Drc<MemoryPagesAllocationInner>,
 }
 
 impl MemoryPagesAllocation {
@@ -180,11 +147,6 @@ impl MemoryPagesAllocation {
                     platform_allocation,
                 }),
         }
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_allocation(&self) -> &VulkanMemoryPagesAllocation {
-        &self.inner.platform_allocation
     }
 }
 

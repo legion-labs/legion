@@ -1,10 +1,10 @@
 use ash::vk::{self};
 
-use crate::{Buffer, DeviceContext, MemoryAllocationDef};
+use crate::{Buffer, DeviceContext, MemoryAllocation, MemoryAllocationDef, MemoryPagesAllocation};
 
 pub(crate) struct VulkanMemoryAllocation {
-    allocation_info: vk_mem::AllocationInfo,
-    allocation: vk_mem::Allocation,
+    vk_allocation_info: vk_mem::AllocationInfo,
+    vk_allocation: vk_mem::Allocation,
 }
 
 impl VulkanMemoryAllocation {
@@ -28,60 +28,85 @@ impl VulkanMemoryAllocation {
             user_data: None,
         };
 
-        let (allocation, allocation_info) = device_context
-            .platform_device_context()
-            .allocator()
-            .allocate_memory_for_buffer(
-                buffer.platform_buffer().vk_buffer(),
-                &allocation_create_info,
-            )
+        let (vk_allocation, vk_allocation_info) = device_context
+            .vk_allocator()
+            .allocate_memory_for_buffer(buffer.vk_buffer(), &allocation_create_info)
             .unwrap();
 
         device_context
-            .platform_device_context()
-            .allocator()
-            .bind_buffer_memory(buffer.platform_buffer().vk_buffer(), &allocation)
+            .vk_allocator()
+            .bind_buffer_memory(buffer.vk_buffer(), &vk_allocation)
             .unwrap();
 
         Self {
-            allocation_info,
-            allocation,
+            vk_allocation_info,
+            vk_allocation,
         }
     }
 
     pub fn destroy(&self, device_context: &DeviceContext) {
         device_context
-            .platform_device_context()
-            .allocator()
-            .free_memory(&self.allocation);
+            .vk_allocator()
+            .free_memory(&self.vk_allocation);
     }
+}
 
-    pub fn map_buffer(&self, device_context: &DeviceContext) -> *mut u8 {
-        device_context
-            .platform_device_context()
-            .allocator()
-            .map_memory(&self.allocation)
-            .unwrap()
+impl MemoryAllocation {
+    pub fn map_buffer(&self, device_context: &DeviceContext) -> BufferMappingInfo {
+        let ptr = device_context
+            .vk_allocator()
+            .map_memory(self.vk_allocation())
+            .unwrap();
+
+        BufferMappingInfo {
+            allocation: self.clone(),
+            data_ptr: ptr,
+        }
     }
 
     pub fn unmap_buffer(&self, device_context: &DeviceContext) {
         device_context
-            .platform_device_context()
-            .allocator()
-            .unmap_memory(&self.allocation);
+            .vk_allocator()
+            .unmap_memory(self.vk_allocation());
     }
 
     pub fn mapped_ptr(&self) -> *mut u8 {
-        self.allocation_info.get_mapped_data()
+        self.vk_allocation_info().get_mapped_data()
     }
 
     pub fn size(&self) -> usize {
-        self.allocation_info.get_size()
+        self.vk_allocation_info().get_size()
+    }
+
+    pub(crate) fn vk_allocation(&self) -> &vk_mem::Allocation {
+        &self.inner.platform_allocation.vk_allocation
+    }
+
+    pub(crate) fn vk_allocation_info(&self) -> &vk_mem::AllocationInfo {
+        &self.inner.platform_allocation.vk_allocation_info
+    }
+}
+
+pub struct BufferMappingInfo {
+    allocation: MemoryAllocation,
+    data_ptr: *mut u8,
+}
+
+impl BufferMappingInfo {
+    pub fn data_ptr(&self) -> *mut u8 {
+        self.data_ptr
+    }
+}
+
+impl Drop for BufferMappingInfo {
+    fn drop(&mut self) {
+        self.allocation
+            .unmap_buffer(self.allocation.device_context());
     }
 }
 
 pub(crate) struct VulkanMemoryPagesAllocation {
-    allocated_pages: Vec<(vk_mem::Allocation, vk_mem::AllocationInfo)>,
+    vk_allocated_pages: Vec<(vk_mem::Allocation, vk_mem::AllocationInfo)>,
 }
 
 impl VulkanMemoryPagesAllocation {
@@ -92,9 +117,8 @@ impl VulkanMemoryPagesAllocation {
     ) -> Self {
         let memory_requirements = unsafe {
             device_context
-                .platform_device_context()
-                .device()
-                .get_buffer_memory_requirements(buffer.platform_buffer().vk_buffer())
+                .vk_device()
+                .get_buffer_memory_requirements(buffer.vk_buffer())
         };
 
         let allocation_create_info = vk_mem::AllocationCreateInfo {
@@ -108,8 +132,7 @@ impl VulkanMemoryPagesAllocation {
         };
 
         let allocated_pages = device_context
-            .platform_device_context()
-            .allocator()
+            .vk_allocator()
             .allocate_memory_pages(
                 &memory_requirements,
                 &allocation_create_info,
@@ -117,27 +140,34 @@ impl VulkanMemoryPagesAllocation {
             )
             .unwrap();
 
-        Self { allocated_pages }
+        Self {
+            vk_allocated_pages: allocated_pages,
+        }
     }
 
     pub fn destroy(&mut self, device_context: &DeviceContext) {
-        let mut allocations = Vec::with_capacity(self.allocated_pages.len());
-        for allocation in &self.allocated_pages {
+        let mut allocations = Vec::with_capacity(self.vk_allocated_pages.len());
+        for allocation in &self.vk_allocated_pages {
             allocations.push(allocation.0);
         }
         device_context
-            .platform_device_context()
-            .allocator()
+            .vk_allocator()
             .free_memory_pages(&allocations);
 
-        self.allocated_pages.clear();
+        self.vk_allocated_pages.clear();
+    }
+}
+
+impl MemoryPagesAllocation {
+    pub fn vk_allocated_pages(&self) -> &Vec<(vk_mem::Allocation, vk_mem::AllocationInfo)> {
+        &self.inner.platform_allocation.vk_allocated_pages
     }
 
     pub fn binding_info(
         &self,
         sparse_binding_info: &mut SparseBindingInfo<'_>,
     ) -> ash::vk::SparseBufferMemoryBindInfo {
-        for allocation in &self.allocated_pages {
+        for allocation in self.vk_allocated_pages() {
             let mut builder = ash::vk::SparseMemoryBind::builder()
                 .resource_offset(sparse_binding_info.buffer_offset)
                 .size(allocation.1.get_size() as u64);
@@ -153,12 +183,12 @@ impl VulkanMemoryPagesAllocation {
         }
 
         *ash::vk::SparseBufferMemoryBindInfo::builder()
-            .buffer(sparse_binding_info.buffer.platform_buffer().vk_buffer())
+            .buffer(sparse_binding_info.buffer.vk_buffer())
             .binds(&sparse_binding_info.sparse_bindings)
     }
 }
 
-pub(crate) struct SparseBindingInfo<'a> {
+pub struct SparseBindingInfo<'a> {
     pub(crate) sparse_bindings: Vec<ash::vk::SparseMemoryBind>,
     pub(crate) buffer_offset: u64,
     pub(crate) buffer: &'a Buffer,

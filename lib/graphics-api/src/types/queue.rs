@@ -114,7 +114,7 @@ impl Queue {
         bind_semaphore: &'a Semaphore,
     ) -> &'a Semaphore {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_queue.commmit_sparse_bindings(
+        self.inner.platform_queue.commmit_sparse_bindings(
             prev_frame_semaphore,
             unbind_pages,
             unbind_semaphore,

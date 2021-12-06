@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use graphics_api::{
+use lgn_graphics_api::{
     Buffer, BufferAllocation, BufferDef, DeviceContext, DeviceInfo, MemoryAllocation,
     MemoryAllocationDef, MemoryUsage, QueueType, Range, ResourceCreation, ResourceUsage,
 };
@@ -57,7 +57,7 @@ impl PageHeap {
     }
 
     pub fn allocate_page(&mut self, size: u64) -> Option<BufferAllocation> {
-        let alloc_size = legion_utils::memory::round_size_up_to_alignment_u64(size, self.page_size);
+        let alloc_size = lgn_utils::memory::round_size_up_to_alignment_u64(size, self.page_size);
         let num_pages = alloc_size / self.page_size;
 
         match self.range_allocator.allocate(num_pages) {
@@ -110,7 +110,7 @@ pub(crate) struct TransientPagedBufferInner {
 }
 
 #[derive(Clone)]
-pub(crate) struct TransientPagedBuffer {
+pub struct TransientPagedBuffer {
     inner: Arc<Mutex<TransientPagedBufferInner>>,
 }
 
@@ -152,7 +152,7 @@ impl TransientPagedBuffer {
     }
 }
 
-pub(crate) struct TransientBufferAllocator {
+pub struct TransientBufferAllocator {
     paged_buffer: TransientPagedBuffer,
     allocation: BufferAllocation,
     device_info: DeviceInfo,
@@ -185,8 +185,8 @@ impl TransientBufferAllocator {
         };
 
         let old_offset =
-            legion_utils::memory::round_size_up_to_alignment_u64(self.offset, u64::from(alignment));
-        self.offset += legion_utils::memory::round_size_up_to_alignment_u64(
+            lgn_utils::memory::round_size_up_to_alignment_u64(self.offset, u64::from(alignment));
+        self.offset += lgn_utils::memory::round_size_up_to_alignment_u64(
             data_size_in_bytes,
             u64::from(alignment),
         );
@@ -211,7 +211,7 @@ impl TransientBufferAllocator {
         data: &[T],
         resource_usage: ResourceUsage,
     ) -> BufferAllocation {
-        let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
+        let data_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
 
         let allocation = self.allocate(data_size_in_bytes, resource_usage);
         let src = data.as_ptr().cast::<u8>();
