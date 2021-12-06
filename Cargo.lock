@@ -1167,18 +1167,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compiler-tex2bin"
-version = "0.1.0"
-dependencies = [
- "lgn-data-compiler",
- "lgn-data-runtime",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "concurrent-queue"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3597,6 +3585,18 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-tex2bin"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "lgn-graphics-runtime",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
