@@ -2,11 +2,11 @@
 
 use std::{any::Any, io};
 
-use legion_data_offline::{
+use lgn_data_offline::{
     resource::{OfflineResource, ResourceProcessor},
     ResourcePathId,
 };
-use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
 use serde::{Deserialize, Serialize};
 
 /// Offline material resource.

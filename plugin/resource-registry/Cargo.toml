@@ -1,5 +1,5 @@
 [package]
-name = "legion-resource-registry"
+name = "lgn-resource-registry"
 version = "0.1.0"
 edition = "2021"
 description = "Provides access to the runtime asset-registry for Legion Engine"
@@ -10,13 +10,13 @@ keywords = ["legion"]
 
 [dependencies]
 # Legion engine
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
-legion-data-transaction = { path = "../../lib/data-transaction", version = "0.1.0" }
-legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-graphics-offline = { path = "../../lib/graphics-offline", version = "0.1.0" }
-legion-tasks = { path = "../../lib/tasks", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+lgn-data-transaction = { path = "../../lib/data-transaction", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-graphics-offline = { path = "../../lib/graphics-offline", version = "0.1.0" }
+lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
 
 # temp dependency on sample-data, until offline data moved to plugins
 sample-data-offline = { path = "../../test/sample-data-offline", version = "0.1.0" }

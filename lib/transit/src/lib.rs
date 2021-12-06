@@ -74,10 +74,10 @@ pub use static_string::*;
 
 #[allow(unused_imports)]
 #[macro_use]
-extern crate legion_derive_transit;
+extern crate lgn_derive_transit;
 
 pub mod prelude {
-    pub use legion_derive_transit::*;
+    pub use lgn_derive_transit::*;
 
     pub use crate::{
         DynString, HeterogeneousQueue, InProcSerialize, Member, Object, QueueIterator, Reflect,

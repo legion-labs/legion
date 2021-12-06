@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use legion_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{AssetRegistry, ResourceId, ResourceType};
+use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
+use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::{AssetRegistry, ResourceId, ResourceType};
 use tokio::sync::MutexGuard;
 
 use crate::DataManager;

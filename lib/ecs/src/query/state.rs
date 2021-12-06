@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
 use fixedbitset::FixedBitSet;
-use legion_tasks::TaskPool;
+use lgn_tasks::TaskPool;
 use thiserror::Error;
 
 use crate::{

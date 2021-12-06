@@ -1,7 +1,7 @@
 use std::{collections::HashMap, hash::BuildHasher};
 
 use anyhow::{bail, Result};
-use legion_utils::memory::read_any;
+use lgn_utils::memory::read_any;
 
 use crate::{DynString, InProcSerialize, UserDefinedType};
 

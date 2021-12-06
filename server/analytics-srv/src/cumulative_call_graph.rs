@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::{cmp::min, path::Path};
 
 use anyhow::{Context, Result};
-use legion_analytics::prelude::*;
-use legion_telemetry::prelude::*;
-use legion_telemetry_proto::analytics::{
+use lgn_analytics::prelude::*;
+use lgn_telemetry::prelude::*;
+use lgn_telemetry_proto::analytics::{
     CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
 
@@ -91,7 +91,7 @@ fn record_tree_stats(
 async fn record_process_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
+    process: &lgn_telemetry::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
     scopes: &mut ScopeHashMap,
@@ -128,7 +128,7 @@ async fn record_process_call_graph(
 pub(crate) async fn compute_cumulative_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
+    process: &lgn_telemetry::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
 ) -> Result<CumulativeCallGraphReply> {

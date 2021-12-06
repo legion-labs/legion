@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use legion_content_store::ContentStoreAddr;
-use legion_data_offline::{
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
     ResourcePathId,
 };
-use legion_data_runtime::Resource;
+use lgn_data_runtime::Resource;
 use tempfile::TempDir;
 
 use crate::DataBuildOptions;

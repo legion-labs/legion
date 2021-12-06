@@ -59,9 +59,9 @@
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
-use legion_telemetry::prelude::*;
-use legion_telemetry::{decompress, ContainerMetadata};
-use legion_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
+use lgn_telemetry::prelude::*;
+use lgn_telemetry::{decompress, ContainerMetadata};
+use lgn_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
 use sqlx::Row;
 
@@ -74,10 +74,10 @@ pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
     Ok(pool)
 }
 
-fn process_from_row(row: &sqlx::any::AnyRow) -> legion_telemetry::ProcessInfo {
+fn process_from_row(row: &sqlx::any::AnyRow) -> lgn_telemetry::ProcessInfo {
     let tsc_frequency: i64 = row.get("tsc_frequency");
     let start_ticks: i64 = row.get("start_ticks");
-    legion_telemetry::ProcessInfo {
+    lgn_telemetry::ProcessInfo {
         process_id: row.get("process_id"),
         exe: row.get("exe"),
         username: row.get("username"),
@@ -95,7 +95,7 @@ fn process_from_row(row: &sqlx::any::AnyRow) -> legion_telemetry::ProcessInfo {
 pub async fn processes_by_name_substring(
     connection: &mut sqlx::AnyConnection,
     filter: &str,
-) -> Result<Vec<legion_telemetry::ProcessInfo>> {
+) -> Result<Vec<lgn_telemetry::ProcessInfo>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
@@ -116,7 +116,7 @@ pub async fn processes_by_name_substring(
 pub async fn find_process(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<legion_telemetry::ProcessInfo> {
+) -> Result<lgn_telemetry::ProcessInfo> {
     let row = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
          FROM processes
@@ -130,7 +130,7 @@ pub async fn find_process(
 
 pub async fn fetch_recent_processes(
     connection: &mut sqlx::AnyConnection,
-) -> Result<Vec<legion_telemetry_proto::analytics::ProcessInstance>> {
+) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id, 
@@ -172,7 +172,7 @@ pub async fn fetch_recent_processes(
         let nb_cpu_blocks: i32 = r.get("nb_cpu_blocks");
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
-        let instance = legion_telemetry_proto::analytics::ProcessInstance {
+        let instance = lgn_telemetry_proto::analytics::ProcessInstance {
             process_info: Some(process_from_row(&r)),
             nb_cpu_blocks: nb_cpu_blocks as u32,
             nb_log_blocks: nb_log_blocks as u32,
@@ -186,7 +186,7 @@ pub async fn fetch_recent_processes(
 pub async fn search_processes(
     connection: &mut sqlx::AnyConnection,
     exe_substr: &str,
-) -> Result<Vec<legion_telemetry_proto::analytics::ProcessInstance>> {
+) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id, 
@@ -230,7 +230,7 @@ pub async fn search_processes(
         let nb_cpu_blocks: i32 = r.get("nb_cpu_blocks");
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
-        let instance = legion_telemetry_proto::analytics::ProcessInstance {
+        let instance = lgn_telemetry_proto::analytics::ProcessInstance {
             process_info: Some(process_from_row(&r)),
             nb_cpu_blocks: nb_cpu_blocks as u32,
             nb_log_blocks: nb_log_blocks as u32,
@@ -244,7 +244,7 @@ pub async fn search_processes(
 pub async fn fetch_child_processes(
     connection: &mut sqlx::AnyConnection,
     parent_process_id: &str,
-) -> Result<Vec<legion_telemetry::ProcessInfo>> {
+) -> Result<Vec<lgn_telemetry::ProcessInfo>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
@@ -266,7 +266,7 @@ pub async fn find_process_streams_tagged(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
     tag: &str,
-) -> Result<Vec<legion_telemetry::StreamInfo>> {
+) -> Result<Vec<lgn_telemetry::StreamInfo>> {
     let rows = sqlx::query(
         "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags, properties
          FROM streams
@@ -283,19 +283,19 @@ pub async fn find_process_streams_tagged(
     for r in rows {
         let stream_id: String = r.get("stream_id");
         let dependencies_metadata_buffer: Vec<u8> = r.get("dependencies_metadata");
-        let dependencies_metadata = legion_telemetry_proto::telemetry::ContainerMetadata::decode(
+        let dependencies_metadata = lgn_telemetry_proto::telemetry::ContainerMetadata::decode(
             &*dependencies_metadata_buffer,
         )
         .with_context(|| "decoding dependencies metadata")?;
         let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
         let objects_metadata =
-            legion_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+            lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
                 .with_context(|| "decoding objects metadata")?;
         let tags_str: String = r.get("tags");
         let properties_str: String = r.get("properties");
         let properties: std::collections::HashMap<String, String> =
             serde_json::from_str(&properties_str).unwrap();
-        res.push(legion_telemetry::StreamInfo {
+        res.push(lgn_telemetry::StreamInfo {
             stream_id,
             process_id: r.get("process_id"),
             dependencies_metadata: Some(dependencies_metadata),
@@ -310,7 +310,7 @@ pub async fn find_process_streams_tagged(
 pub async fn find_process_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<legion_telemetry::StreamInfo>> {
+) -> Result<Vec<lgn_telemetry::StreamInfo>> {
     let rows = sqlx::query(
         "SELECT stream_id, process_id, dependencies_metadata, objects_metadata, tags, properties
          FROM streams
@@ -325,19 +325,19 @@ pub async fn find_process_streams(
     for r in rows {
         let stream_id: String = r.get("stream_id");
         let dependencies_metadata_buffer: Vec<u8> = r.get("dependencies_metadata");
-        let dependencies_metadata = legion_telemetry_proto::telemetry::ContainerMetadata::decode(
+        let dependencies_metadata = lgn_telemetry_proto::telemetry::ContainerMetadata::decode(
             &*dependencies_metadata_buffer,
         )
         .with_context(|| "decoding dependencies metadata")?;
         let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
         let objects_metadata =
-            legion_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+            lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
                 .with_context(|| "decoding objects metadata")?;
         let tags_str: String = r.get("tags");
         let properties_str: String = r.get("properties");
         let properties: std::collections::HashMap<String, String> =
             serde_json::from_str(&properties_str).unwrap();
-        res.push(legion_telemetry::StreamInfo {
+        res.push(lgn_telemetry::StreamInfo {
             stream_id,
             process_id: r.get("process_id"),
             dependencies_metadata: Some(dependencies_metadata),
@@ -352,28 +352,28 @@ pub async fn find_process_streams(
 pub async fn find_process_log_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<legion_telemetry::StreamInfo>> {
+) -> Result<Vec<lgn_telemetry::StreamInfo>> {
     find_process_streams_tagged(connection, process_id, "log").await
 }
 
 pub async fn find_process_thread_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<legion_telemetry::StreamInfo>> {
+) -> Result<Vec<lgn_telemetry::StreamInfo>> {
     find_process_streams_tagged(connection, process_id, "cpu").await
 }
 
 pub async fn find_process_metrics_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
-) -> Result<Vec<legion_telemetry::StreamInfo>> {
+) -> Result<Vec<lgn_telemetry::StreamInfo>> {
     find_process_streams_tagged(connection, process_id, "metrics").await
 }
 
 pub async fn find_stream(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
-) -> Result<legion_telemetry::StreamInfo> {
+) -> Result<lgn_telemetry::StreamInfo> {
     let row = sqlx::query(
         "SELECT process_id, dependencies_metadata, objects_metadata, tags, properties
          FROM streams
@@ -385,19 +385,18 @@ pub async fn find_stream(
     .await
     .with_context(|| "find_stream")?;
     let dependencies_metadata_buffer: Vec<u8> = row.get("dependencies_metadata");
-    let dependencies_metadata = legion_telemetry_proto::telemetry::ContainerMetadata::decode(
-        &*dependencies_metadata_buffer,
-    )
-    .with_context(|| "decoding dependencies metadata")?;
+    let dependencies_metadata =
+        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+            .with_context(|| "decoding dependencies metadata")?;
     let objects_metadata_buffer: Vec<u8> = row.get("objects_metadata");
     let objects_metadata =
-        legion_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
             .with_context(|| "decoding objects metadata")?;
     let tags_str: String = row.get("tags");
     let properties_str: String = row.get("properties");
     let properties: std::collections::HashMap<String, String> =
         serde_json::from_str(&properties_str).unwrap();
-    Ok(legion_telemetry::StreamInfo {
+    Ok(lgn_telemetry::StreamInfo {
         stream_id: String::from(stream_id),
         process_id: row.get("process_id"),
         dependencies_metadata: Some(dependencies_metadata),
@@ -410,7 +409,7 @@ pub async fn find_stream(
 pub async fn find_block(
     connection: &mut sqlx::AnyConnection,
     block_id: &str,
-) -> Result<legion_telemetry::EncodedBlock> {
+) -> Result<lgn_telemetry::EncodedBlock> {
     let row = sqlx::query(
         "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks
          FROM blocks
@@ -424,7 +423,7 @@ pub async fn find_block(
 
     let begin_ticks: i64 = row.get("begin_ticks");
     let end_ticks: i64 = row.get("end_ticks");
-    let block = legion_telemetry::EncodedBlock {
+    let block = lgn_telemetry::EncodedBlock {
         block_id: String::from(block_id),
         stream_id: row.get("stream_id"),
         begin_time: row.get("begin_time"),
@@ -439,7 +438,7 @@ pub async fn find_block(
 pub async fn find_stream_blocks(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
-) -> Result<Vec<legion_telemetry::EncodedBlock>> {
+) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
     let blocks = sqlx::query(
         "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
          FROM blocks
@@ -454,7 +453,7 @@ pub async fn find_stream_blocks(
     .map(|r| {
         let begin_ticks: i64 = r.get("begin_ticks");
         let end_ticks: i64 = r.get("end_ticks");
-        legion_telemetry::EncodedBlock {
+        lgn_telemetry::EncodedBlock {
             block_id: r.get("block_id"),
             stream_id: String::from(stream_id),
             begin_time: r.get("begin_time"),
@@ -473,7 +472,7 @@ pub async fn find_stream_blocks_in_range(
     stream_id: &str,
     begin_time: &str,
     end_time: &str,
-) -> Result<Vec<legion_telemetry::EncodedBlock>> {
+) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
     let blocks = sqlx::query(
         "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks
          FROM blocks
@@ -492,7 +491,7 @@ pub async fn find_stream_blocks_in_range(
     .map(|r| {
         let begin_ticks: i64 = r.get("begin_ticks");
         let end_ticks: i64 = r.get("end_ticks");
-        legion_telemetry::EncodedBlock {
+        lgn_telemetry::EncodedBlock {
             block_id: r.get("block_id"),
             stream_id: String::from(stream_id),
             begin_time: r.get("begin_time"),
@@ -510,7 +509,7 @@ pub async fn fetch_block_payload(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     block_id: &str,
-) -> Result<legion_telemetry_proto::telemetry::BlockPayload> {
+) -> Result<lgn_telemetry_proto::telemetry::BlockPayload> {
     let opt_row = sqlx::query("SELECT payload FROM payloads where block_id = ?;")
         .bind(block_id)
         .fetch_optional(connection)
@@ -528,14 +527,14 @@ pub async fn fetch_block_payload(
             .with_context(|| format!("reading payload file {}", payload_path.display()))?
     };
 
-    let payload = legion_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
+    let payload = lgn_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
         .with_context(|| format!("reading payload {}", block_id))?;
     Ok(payload)
 }
 
 fn container_metadata_as_transit_udt_vec(
     value: &ContainerMetadata,
-) -> Vec<legion_transit::UserDefinedType> {
+) -> Vec<lgn_transit::UserDefinedType> {
     value
         .types
         .iter()
@@ -559,8 +558,8 @@ fn container_metadata_as_transit_udt_vec(
 
 // parse_block calls fun for each object in the block until fun returns `false`
 pub fn parse_block<F>(
-    stream: &legion_telemetry::StreamInfo,
-    payload: &legion_telemetry_proto::telemetry::BlockPayload,
+    stream: &lgn_telemetry::StreamInfo,
+    payload: &lgn_telemetry_proto::telemetry::BlockPayload,
     fun: F,
 ) -> Result<()>
 where
@@ -646,7 +645,7 @@ pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(u64, String)>(
     Ok(())
 }
 
-pub async fn for_each_process_metric<ProcessMetric: FnMut(legion_transit::Object)>(
+pub async fn for_each_process_metric<ProcessMetric: FnMut(lgn_transit::Object)>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process_id: &str,
@@ -669,12 +668,12 @@ pub async fn for_each_process_metric<ProcessMetric: FnMut(legion_transit::Object
 #[async_recursion::async_recursion]
 pub async fn for_each_process_in_tree<F>(
     pool: &sqlx::AnyPool,
-    root: &legion_telemetry::ProcessInfo,
+    root: &lgn_telemetry::ProcessInfo,
     rec_level: u16,
     fun: F,
 ) -> Result<()>
 where
-    F: Fn(&legion_telemetry::ProcessInfo, u16) + std::marker::Send + Clone,
+    F: Fn(&lgn_telemetry::ProcessInfo, u16) + std::marker::Send + Clone,
 {
     fun(root, rec_level);
     let mut connection = pool.acquire().await?;

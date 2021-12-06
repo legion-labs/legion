@@ -63,9 +63,9 @@ use std::sync::{Arc, RwLock};
 
 use http::response::Response;
 use hyper::body::Body;
-use legion_source_control::sql_repository_query::{Databases, SqlRepositoryQuery};
+use lgn_source_control::sql_repository_query::{Databases, SqlRepositoryQuery};
 #[allow(clippy::wildcard_imports)]
-use legion_source_control::{sql::SqlConnectionPool, *};
+use lgn_source_control::{sql::SqlConnectionPool, *};
 use warp::Filter;
 use Result::Ok;
 

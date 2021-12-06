@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use legion_graphics_api::{
+use lgn_graphics_api::{
     Buffer, BufferDef, BufferView, BufferViewDef, CommandBuffer, DeviceContext, Fence, FenceStatus,
     IndexBufferBinding, IndexType, MemoryUsage, Queue, QueueType, ResourceUsage,
     VertexBufferBinding,
@@ -224,7 +224,7 @@ impl TransientBufferAllocator {
         alignment: usize,
     ) -> TransientSubAllocation<'a> {
         let required_alignment = std::cmp::max(std::mem::align_of::<T>(), alignment) as u64;
-        let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
+        let data_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
 
         let mut mapped_pages = match optional_mapped_pages {
             Some(value) => value,

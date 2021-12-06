@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use anyhow::Result;
-use legion_analytics::prelude::*;
-use legion_transit::prelude::*;
+use lgn_analytics::prelude::*;
+use lgn_transit::prelude::*;
 
 pub async fn print_process_metrics(
     connection: &mut sqlx::AnyConnection,

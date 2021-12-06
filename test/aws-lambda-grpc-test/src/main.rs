@@ -2,8 +2,8 @@ mod handler;
 
 use anyhow::{Error, Result};
 use handler::MyStreamer;
-use legion_online::grpc::Server;
-use legion_streaming_proto::streamer_server::StreamerServer;
+use lgn_online::grpc::Server;
+use lgn_streaming_proto::streamer_server::StreamerServer;
 
 #[tokio::main]
 async fn main() -> Result<()> {

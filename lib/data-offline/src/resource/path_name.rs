@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// # Example
 /// ```
-/// # use legion_data_offline::resource::ResourcePathName;
+/// # use lgn_data_offline::resource::ResourcePathName;
 /// let mut path = ResourcePathName::new("model");
 /// path.push("npc");
 /// path.push("dragon");

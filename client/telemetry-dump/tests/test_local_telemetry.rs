@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::*;
-use legion_analytics::*;
-use legion_test_utils::*;
+use lgn_analytics::*;
+use lgn_test_utils::*;
 use sqlx::Row;
 
 static DUMP_EXE_VAR: &str = env!("CARGO_BIN_EXE_telemetry-dump");

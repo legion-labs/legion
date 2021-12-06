@@ -1,5 +1,5 @@
 [package]
-name = "legion-asset-registry"
+name = "lgn-asset-registry"
 version = "0.1.0"
 edition = "2021"
 description = "Provides access to the runtime asset-registry for Legion Engine"
@@ -10,14 +10,14 @@ keywords = ["legion"]
 
 [dependencies]
 # Legion engine
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-content-store = { path = "../../lib/content-store" }
-legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-graphics-runtime = { path = "../../lib/graphics-runtime", version = "0.1.0" }
-legion-transform = { path = "../transform", version = "0.1.0" }
-legion-renderer = { path = "../renderer", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-content-store = { path = "../../lib/content-store", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-graphics-runtime = { path = "../../lib/graphics-runtime", version = "0.1.0" }
+lgn-transform = { path = "../transform", version = "0.1.0" }
+lgn-renderer = { path = "../renderer", version = "0.1.0" }
 
 # temp dependency on sample-data, until runtime data moved to plugins
 sample-data-runtime = { path = "../../test/sample-data-runtime", version = "0.1.0" }

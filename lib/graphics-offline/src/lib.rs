@@ -57,7 +57,7 @@
 #![allow()]
 #![warn(missing_docs)]
 
-use legion_data_offline::resource::ResourceRegistryOptions;
+use lgn_data_offline::resource::ResourceRegistryOptions;
 
 pub mod material;
 pub use material::Material;

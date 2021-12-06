@@ -1,6 +1,6 @@
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
-use legion_tasks::{ComputeTaskPool, Scope, TaskPool};
+use lgn_tasks::{ComputeTaskPool, Scope, TaskPool};
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 
@@ -316,7 +316,7 @@ mod tests {
     use async_channel::Receiver;
 
     use super::SchedulingEvent::{self, StartedSystems};
-    use crate as legion_ecs;
+    use crate as lgn_ecs;
     use crate::component::Component;
     use crate::{
         schedule::{SingleThreadedExecutor, Stage, SystemStage},

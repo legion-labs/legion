@@ -1,12 +1,12 @@
 [package]
-name = "legion-data-codegen"
+name = "lgn-data-codegen"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-legion-utils = { path = "../utils" }
+lgn-utils = { path = "../utils", version = "0.1.0" }
 syn = { version = "1.0", features = ["extra-traits", "full"] }
 quote = "1.0"
 proc-macro2 = "1.0.29"

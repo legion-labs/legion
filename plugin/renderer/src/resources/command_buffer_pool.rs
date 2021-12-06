@@ -1,4 +1,4 @@
-use graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, Queue};
+use lgn_graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, Queue};
 
 use super::OnFrameEventHandler;
 use crate::RenderHandle;

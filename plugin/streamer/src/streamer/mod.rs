@@ -1,8 +1,8 @@
 use std::{fmt::Display, sync::Arc};
 
-use legion_ecs::prelude::*;
-use legion_presenter::offscreen_helper::Resolution;
-use legion_renderer::{
+use lgn_ecs::prelude::*;
+use lgn_presenter::offscreen_helper::Resolution;
+use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
     RenderTaskPool, Renderer,
 };

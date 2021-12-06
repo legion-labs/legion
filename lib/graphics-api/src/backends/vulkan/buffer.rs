@@ -16,7 +16,7 @@ impl VulkanBuffer {
             .usage_flags
             .intersects(ResourceUsage::AS_CONST_BUFFER)
         {
-            allocation_size = legion_utils::memory::round_size_up_to_alignment_u64(
+            allocation_size = lgn_utils::memory::round_size_up_to_alignment_u64(
                 buffer_def.size,
                 device_context.limits().min_uniform_buffer_offset_alignment,
             );

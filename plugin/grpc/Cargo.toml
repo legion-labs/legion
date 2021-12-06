@@ -1,5 +1,5 @@
 [package]
-name = "legion-grpc"
+name = "lgn-grpc"
 version = "0.1.0"
 edition = "2021"
 description = "Legion's ECS gRPC server plugin"
@@ -10,10 +10,10 @@ keywords = ["ecs", "game", "legion", "grpc"]
 
 [dependencies]
 futures-lite = "1.12"
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-online = { path = "../../lib/online", version = "0.1.0" }
-legion-async = { path = "../async", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-online = { path = "../../lib/online", version = "0.1.0" }
+lgn-async = { path = "../async", version = "0.1.0" }
 tonic = { version = "0.6", features = ["tls-roots"] }
 log = "0.4"
 anyhow = "1.0"

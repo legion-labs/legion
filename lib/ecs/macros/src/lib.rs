@@ -61,7 +61,7 @@
 
 mod component;
 
-use legion_macro_utils::LegionManifest;
+use lgn_macro_utils::LegionManifest;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
@@ -533,7 +533,7 @@ fn derive_label(input: DeriveInput, label_type: Ident) -> TokenStream2 {
 }
 
 fn legion_ecs_path() -> syn::Path {
-    LegionManifest::default().get_path("legion_ecs")
+    LegionManifest::default().get_path("lgn_ecs")
 }
 
 #[proc_macro_derive(Component, attributes(component))]

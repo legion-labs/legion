@@ -1,7 +1,7 @@
 //! Data compiler interface.
 //!
-//! Data compiler is a binary that takes as input a [`legion_data_runtime::Resource`] and Resources it depends on and produces
-//! one or more [`legion_data_runtime::Resource`]s that are stored in a [`ContentStore`]. As a results it creates new
+//! Data compiler is a binary that takes as input a [`lgn_data_runtime::Resource`] and Resources it depends on and produces
+//! one or more [`lgn_data_runtime::Resource`]s that are stored in a [`ContentStore`]. As a results it creates new
 //! or updates existing [`Manifest`] file containing metadata about the derived resources.
 //!
 //! [`compiler_api`] allows to structure *data compiler* in a specific way.
@@ -15,11 +15,11 @@
 //! Below you can see a minimum code required to compile a data compiler:
 //!
 //! ```no_run
-//! # use legion_data_compiler::{CompilerHash, Locale, Platform, Target};
-//! # use legion_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
-//! # use legion_data_offline::ResourcePathId;
-//! # use legion_data_runtime::ResourceType;
-//! # use legion_content_store::ContentStoreAddr;
+//! # use lgn_data_compiler::{CompilerHash, Locale, Platform, Target};
+//! # use lgn_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
+//! # use lgn_data_offline::ResourcePathId;
+//! # use lgn_data_runtime::ResourceType;
+//! # use lgn_content_store::ContentStoreAddr;
 //! # use std::path::Path;
 //! # const INPUT_TYPE: ResourceType = ResourceType::new(b"src");
 //! # const OUTPUT_TYPE: ResourceType = ResourceType::new(b"dst");
@@ -55,7 +55,7 @@
 //! }
 //! ```
 //!
-//! [`legion_data_build`]: ../../legion_data_build/index.html
+//! [`lgn_data_build`]: ../../lgn_data_build/index.html
 //! [`compiler_api`]: ../compiler_api/index.html
 //! [`ContentStore`]: ../content_store/index.html
 //! [`Manifest`]: ../struct.Manifest.html
@@ -71,9 +71,9 @@ use std::{
 };
 
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
-use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{AssetRegistryOptions, ResourceType};
+use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::{AssetRegistryOptions, ResourceType};
 
 use crate::{
     compiler_cmd::{
@@ -98,7 +98,7 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// *Data Compiler's* output.
 ///
-/// Includes data which allows to load and validate [`legion_data_runtime::Resource`]s stored in [`ContentStore`].
+/// Includes data which allows to load and validate [`lgn_data_runtime::Resource`]s stored in [`ContentStore`].
 /// As well as references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../content_store/index.html

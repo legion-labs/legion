@@ -5,7 +5,7 @@ use std::{
     any::{Any, TypeId},
 };
 
-pub use legion_ecs_macros::Component;
+pub use lgn_ecs_macros::Component;
 use thiserror::Error;
 
 use crate::{
@@ -20,7 +20,7 @@ use crate::{
 ///
 /// In order to use foreign types as components, wrap them using a newtype pattern.
 /// ```
-/// # use legion_ecs::component::Component;
+/// # use lgn_ecs::component::Component;
 /// use std::time::Duration;
 /// #[derive(Component)]
 /// struct Cooldown(Duration);
@@ -59,7 +59,7 @@ mod sealed {
 }
 
 // ECS dependencies cannot derive Component, so we must implement it manually for relevant structs.
-impl<T> Component for legion_tasks::Task<T>
+impl<T> Component for lgn_tasks::Task<T>
 where
     Self: Send + Sync + 'static,
 {
@@ -72,7 +72,7 @@ where
 /// The [`StorageType`] for a component is configured via the derive attribute
 ///
 /// ```
-/// # use legion_ecs::{prelude::*, component::*};
+/// # use lgn_ecs::{prelude::*, component::*};
 /// #[derive(Component)]
 /// #[component(storage = "SparseSet")]
 /// struct A;
@@ -390,7 +390,7 @@ impl ComponentTicks {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use legion_ecs::{world::World, component::ComponentTicks};
+    /// # use lgn_ecs::{world::World, component::ComponentTicks};
     /// let world: World = unimplemented!();
     /// let component_ticks: ComponentTicks = unimplemented!();
     ///

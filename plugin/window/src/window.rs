@@ -1,4 +1,4 @@
-use legion_math::{IVec2, Vec2};
+use lgn_math::{IVec2, Vec2};
 use log::warn;
 use uuid::Uuid;
 

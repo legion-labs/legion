@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
 use anyhow::{Context, Result};
-use legion_analytics::prelude::*;
-use legion_transit::prelude::*;
+use lgn_analytics::prelude::*;
+use lgn_transit::prelude::*;
 
 async fn find_server_process_id(
     connection: &mut sqlx::AnyConnection,

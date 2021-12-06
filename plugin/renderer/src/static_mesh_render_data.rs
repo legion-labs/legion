@@ -1,5 +1,5 @@
-use graphics_api::prelude::*;
-use legion_math::Vec3;
+use lgn_graphics_api::prelude::*;
+use lgn_math::Vec3;
 
 use crate::Renderer;
 

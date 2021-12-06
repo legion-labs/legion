@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_content_store::{ContentStore, ContentStoreAddr};
+use lgn_content_store::{ContentStore, ContentStoreAddr};
 
 use super::Device;
 use crate::{manifest::Manifest, ResourceId};

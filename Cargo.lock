@@ -137,10 +137,10 @@ dependencies = [
  "anyhow",
  "chrono",
  "crc",
- "legion-analytics",
- "legion-telemetry",
- "legion-telemetry-proto",
- "legion-transit",
+ "lgn-analytics",
+ "lgn-telemetry",
+ "lgn-telemetry-proto",
+ "lgn-transit",
  "log",
  "prost",
  "simple_logger",
@@ -156,7 +156,7 @@ name = "analytics-web"
 version = "0.1.0"
 dependencies = [
  "axum",
- "legion-build-utils",
+ "lgn-build-utils",
  "tokio",
  "tower",
  "tower-http",
@@ -477,8 +477,8 @@ dependencies = [
  "hyper",
  "lambda_http",
  "lambda_runtime",
- "legion-online",
- "legion-streaming-proto",
+ "lgn-online",
+ "lgn-streaming-proto",
  "log",
  "serde",
  "serde_json",
@@ -756,8 +756,8 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 name = "binary-resource"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "serde",
 ]
 
@@ -1173,10 +1173,10 @@ dependencies = [
  "bincode",
  "generic_data_offline",
  "generic_data_runtime",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
 ]
 
 [[package]]
@@ -1186,10 +1186,10 @@ dependencies = [
  "bincode",
  "generic_data_offline",
  "generic_data_runtime",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
 ]
 
 [[package]]
@@ -1199,31 +1199,31 @@ dependencies = [
  "bincode",
  "generic_data_offline",
  "generic_data_runtime",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
 ]
 
 [[package]]
 name = "compiler-material"
 version = "0.1.0"
 dependencies = [
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "lgn-graphics-runtime",
 ]
 
 [[package]]
 name = "compiler-psd2tex"
 version = "0.1.0"
 dependencies = [
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-graphics-offline",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
  "serde",
  "serde_json",
 ]
@@ -1233,9 +1233,9 @@ name = "compiler-runtime-entity"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "sample-data-compiler",
  "sample-data-offline",
  "sample-data-runtime",
@@ -1246,9 +1246,9 @@ name = "compiler-runtime-instance"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "sample-data-compiler",
  "sample-data-offline",
  "sample-data-runtime",
@@ -1259,9 +1259,9 @@ name = "compiler-runtime-mesh"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "sample-data-compiler",
  "sample-data-offline",
  "sample-data-runtime",
@@ -1272,8 +1272,8 @@ name = "compiler-test-atoi"
 version = "0.1.0"
 dependencies = [
  "integer-asset",
- "legion-data-compiler",
- "legion-data-runtime",
+ "lgn-data-compiler",
+ "lgn-data-runtime",
  "text-resource",
 ]
 
@@ -1283,8 +1283,8 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "binary-resource",
- "legion-data-compiler",
- "legion-data-runtime",
+ "lgn-data-compiler",
+ "lgn-data-runtime",
  "text-resource",
 ]
 
@@ -1292,8 +1292,8 @@ dependencies = [
 name = "compiler-test-refs"
 version = "0.1.0"
 dependencies = [
- "legion-data-compiler",
- "legion-data-runtime",
+ "lgn-data-compiler",
+ "lgn-data-runtime",
  "refs-asset",
  "refs-resource",
 ]
@@ -1302,9 +1302,9 @@ dependencies = [
 name = "compiler-test-reverse"
 version = "0.1.0"
 dependencies = [
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "text-resource",
 ]
 
@@ -1312,9 +1312,9 @@ dependencies = [
 name = "compiler-test-split"
 version = "0.1.0"
 dependencies = [
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "multitext-resource",
  "text-resource",
 ]
@@ -1326,20 +1326,20 @@ dependencies = [
  "bincode",
  "generic_data_offline",
  "generic_data_runtime",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
 ]
 
 [[package]]
 name = "compiler-tex2bin"
 version = "0.1.0"
 dependencies = [
- "legion-data-compiler",
- "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
+ "lgn-data-compiler",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "lgn-graphics-runtime",
  "serde",
  "serde_json",
 ]
@@ -2123,15 +2123,15 @@ dependencies = [
  "clap",
  "directories",
  "json",
- "legion-analytics",
- "legion-app",
- "legion-async",
- "legion-build-utils",
- "legion-ecs",
- "legion-online",
- "legion-tauri",
- "legion-telemetry",
- "legion-transit",
+ "lgn-analytics",
+ "lgn-app",
+ "lgn-async",
+ "lgn-build-utils",
+ "lgn-ecs",
+ "lgn-online",
+ "lgn-tauri",
+ "lgn-telemetry",
+ "lgn-transit",
  "log",
  "prost",
  "regex",
@@ -2151,23 +2151,23 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "legion-app",
- "legion-asset-registry",
- "legion-async",
- "legion-codec-api",
- "legion-core",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-data-transaction",
- "legion-editor-proto",
- "legion-grpc",
- "legion-mp4",
- "legion-renderer",
- "legion-resource-registry",
- "legion-streamer",
- "legion-telemetry",
- "legion-transform",
- "legion-utils",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-async",
+ "lgn-codec-api",
+ "lgn-core",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-data-transaction",
+ "lgn-editor-proto",
+ "lgn-grpc",
+ "lgn-mp4",
+ "lgn-renderer",
+ "lgn-resource-registry",
+ "lgn-streamer",
+ "lgn-telemetry",
+ "lgn-transform",
+ "lgn-utils",
  "log",
  "simple_logger",
  "tokio",
@@ -2659,12 +2659,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "lazy_static",
- "legion-data-codegen",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-graphics-data",
- "legion-math",
- "legion-utils",
+ "lgn-data-codegen",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-data",
+ "lgn-math",
+ "lgn-utils",
  "serde",
  "serde_json",
 ]
@@ -2675,10 +2675,10 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "lazy_static",
- "legion-data-codegen",
- "legion-data-runtime",
- "legion-graphics-data",
- "legion-math",
+ "lgn-data-codegen",
+ "lgn-data-runtime",
+ "lgn-graphics-data",
+ "lgn-math",
  "serde",
 ]
 
@@ -2905,20 +2905,20 @@ name = "graphics-sandbox"
 version = "0.1.0"
 dependencies = [
  "clap",
- "legion-app",
- "legion-asset-registry",
- "legion-core",
- "legion-ecs",
- "legion-graphics-api",
- "legion-input",
- "legion-presenter",
- "legion-presenter-snapshot",
- "legion-presenter-window",
- "legion-renderer",
- "legion-test-utils",
- "legion-transform",
- "legion-window",
- "legion-winit",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-core",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-input",
+ "lgn-presenter",
+ "lgn-presenter-snapshot",
+ "lgn-presenter-window",
+ "lgn-renderer",
+ "lgn-test-utils",
+ "lgn-transform",
+ "lgn-window",
+ "lgn-winit",
  "log",
  "png 0.17.2",
  "simple_logger",
@@ -3340,7 +3340,7 @@ dependencies = [
 name = "integer-asset"
 version = "0.1.0"
 dependencies = [
- "legion-data-runtime",
+ "lgn-data-runtime",
 ]
 
 [[package]]
@@ -3494,29 +3494,42 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-analytics"
+name = "lexical-core"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6607c62aa161d23d17a9072cc5da0be67cdfc89d3afb1e8d9c842bebc2525ffe"
+dependencies = [
+ "arrayvec 0.5.2",
+ "bitflags",
+ "cfg-if 1.0.0",
+ "ryu",
+ "static_assertions",
+]
+
+[[package]]
+name = "lgn-analytics"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-recursion",
- "legion-telemetry",
- "legion-telemetry-proto",
- "legion-transit",
+ "lgn-telemetry",
+ "lgn-telemetry-proto",
+ "lgn-transit",
  "prost",
  "serde_json",
  "sqlx",
 ]
 
 [[package]]
-name = "legion-app"
+name = "lgn-app"
 version = "0.1.0"
 dependencies = [
  "instant",
- "legion-derive",
- "legion-ecs",
- "legion-telemetry",
- "legion-transform",
- "legion-utils",
+ "lgn-derive",
+ "lgn-ecs",
+ "lgn-telemetry",
+ "lgn-transform",
+ "lgn-utils",
  "log",
  "ron",
  "serde",
@@ -3525,37 +3538,37 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-asset-registry"
+name = "lgn-asset-registry"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "generic_data_runtime",
- "legion-app",
- "legion-content-store",
- "legion-data-runtime",
- "legion-ecs",
- "legion-graphics-runtime",
- "legion-renderer",
- "legion-transform",
- "legion-utils",
+ "lgn-app",
+ "lgn-content-store",
+ "lgn-data-runtime",
+ "lgn-ecs",
+ "lgn-graphics-runtime",
+ "lgn-renderer",
+ "lgn-transform",
+ "lgn-utils",
  "sample-data-runtime",
  "serde_json",
 ]
 
 [[package]]
-name = "legion-async"
+name = "lgn-async"
 version = "0.1.0"
 dependencies = [
  "futures-lite",
- "legion-app",
- "legion-ecs",
+ "lgn-app",
+ "lgn-ecs",
  "ntest",
  "retain_mut",
  "tokio",
 ]
 
 [[package]]
-name = "legion-build-utils"
+name = "lgn-build-utils"
 version = "0.1.0"
 dependencies = [
  "bitflags",
@@ -3567,7 +3580,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-cli"
+name = "lgn-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -3578,7 +3591,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-codec-api"
+name = "lgn-codec-api"
 version = "0.1.0"
 dependencies = [
  "ash",
@@ -3587,41 +3600,41 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-content-store"
+name = "lgn-content-store"
 version = "0.1.0"
 dependencies = [
  "hex",
- "legion-utils",
+ "lgn-utils",
  "serde",
 ]
 
 [[package]]
-name = "legion-core"
+name = "lgn-core"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
  "instant",
- "legion-app",
- "legion-derive",
- "legion-ecs",
- "legion-math",
- "legion-tasks",
- "legion-utils",
+ "lgn-app",
+ "lgn-derive",
+ "lgn-ecs",
+ "lgn-math",
+ "lgn-tasks",
+ "lgn-utils",
  "log",
 ]
 
 [[package]]
-name = "legion-data-build"
+name = "lgn-data-build"
 version = "0.1.0"
 dependencies = [
  "byteorder",
  "hex",
  "integer-asset",
- "legion-content-store",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-utils",
+ "lgn-content-store",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-utils",
  "multitext-resource",
  "petgraph",
  "refs-asset",
@@ -3633,17 +3646,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-build-cli"
+name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
  "clap",
  "integer-asset",
- "legion-content-store",
- "legion-data-build",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-content-store",
+ "lgn-data-build",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "proc-macro2",
  "refs-asset",
  "refs-resource",
@@ -3655,10 +3668,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-codegen"
+name = "lgn-data-codegen"
 version = "0.1.0"
 dependencies = [
- "legion-utils",
+ "lgn-utils",
  "proc-macro2",
  "quote",
  "syn",
@@ -3666,16 +3679,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-compiler"
+name = "lgn-data-compiler"
 version = "0.1.0"
 dependencies = [
  "binary-resource",
  "clap",
  "integer-asset",
- "legion-content-store",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-utils",
+ "lgn-content-store",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-utils",
  "multitext-resource",
  "refs-asset",
  "refs-resource",
@@ -3686,15 +3699,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-offline"
+name = "lgn-data-offline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
  "hex",
- "legion-content-store",
- "legion-data-runtime",
- "legion-utils",
+ "lgn-content-store",
+ "lgn-data-runtime",
+ "lgn-utils",
  "rand 0.8.4",
  "serde",
  "serde_json",
@@ -3703,15 +3716,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-runtime"
+name = "lgn-data-runtime"
 version = "0.1.0"
 dependencies = [
  "byteorder",
  "crossbeam-channel",
  "flurry",
  "hex",
- "legion-content-store",
- "legion-data-runtime-macros",
+ "lgn-content-store",
+ "lgn-data-runtime-macros",
  "log",
  "rand 0.8.4",
  "serde",
@@ -3720,7 +3733,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-runtime-macros"
+name = "lgn-data-runtime-macros"
 version = "0.1.0"
 dependencies = [
  "quote",
@@ -3728,15 +3741,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-transaction"
+name = "lgn-data-transaction"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
  "generic_data_offline",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-utils",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-utils",
  "log",
  "serde",
  "serde_json",
@@ -3747,16 +3760,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-derive"
+name = "lgn-derive"
 version = "0.1.0"
 dependencies = [
- "legion-macro-utils",
+ "lgn-macro-utils",
  "quote",
  "syn",
 ]
 
 [[package]]
-name = "legion-derive-transit"
+name = "lgn-derive-transit"
 version = "0.1.0"
 dependencies = [
  "quote",
@@ -3764,17 +3777,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-ecs"
+name = "lgn-ecs"
 version = "0.1.0"
 dependencies = [
  "async-channel",
  "downcast-rs",
  "fixedbitset",
  "fxhash",
- "legion-ecs-macros",
- "legion-tasks",
- "legion-telemetry",
- "legion-utils",
+ "lgn-ecs-macros",
+ "lgn-tasks",
+ "lgn-telemetry",
+ "lgn-utils",
  "log",
  "parking_lot 0.11.2",
  "rand 0.8.4",
@@ -3783,28 +3796,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-ecs-macros"
+name = "lgn-ecs-macros"
 version = "0.1.0"
 dependencies = [
- "legion-macro-utils",
+ "lgn-macro-utils",
  "proc-macro2",
  "quote",
  "syn",
 ]
 
 [[package]]
-name = "legion-editor-proto"
+name = "lgn-editor-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
- "legion-build-utils",
+ "lgn-build-utils",
  "prost",
  "tokio",
  "tonic",
 ]
 
 [[package]]
-name = "legion-graphics-api"
+name = "lgn-graphics-api"
 version = "0.1.0"
 dependencies = [
  "ash",
@@ -3812,7 +3825,7 @@ dependencies = [
  "bitflags",
  "crossbeam-channel",
  "fnv",
- "legion-utils",
+ "lgn-utils",
  "log",
  "raw-window-handle 0.4.2",
  "serde",
@@ -3820,66 +3833,66 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-graphics-data"
+name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
-name = "legion-graphics-offline"
+name = "lgn-graphics-offline"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "psd",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "legion-graphics-runtime"
+name = "lgn-graphics-runtime"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "legion-data-runtime",
+ "lgn-data-runtime",
 ]
 
 [[package]]
-name = "legion-graphics-utils"
+name = "lgn-graphics-utils"
 version = "0.1.0"
 dependencies = [
- "legion-graphics-api",
- "legion-utils",
+ "lgn-graphics-api",
+ "lgn-utils",
 ]
 
 [[package]]
-name = "legion-grpc"
+name = "lgn-grpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "futures-lite",
- "legion-app",
- "legion-async",
- "legion-ecs",
- "legion-online",
+ "lgn-app",
+ "lgn-async",
+ "lgn-ecs",
+ "lgn-online",
  "log",
  "tonic",
 ]
 
 [[package]]
-name = "legion-input"
+name = "lgn-input"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-ecs",
- "legion-math",
- "legion-utils",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-math",
+ "lgn-utils",
  "serde",
 ]
 
 [[package]]
-name = "legion-macro-utils"
+name = "lgn-macro-utils"
 version = "0.1.0"
 dependencies = [
  "cargo-manifest",
@@ -3887,14 +3900,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-math"
+name = "lgn-math"
 version = "0.1.0"
 dependencies = [
  "glam",
 ]
 
 [[package]]
-name = "legion-mp4"
+name = "lgn-mp4"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -3908,7 +3921,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-online"
+name = "lgn-online"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -3949,100 +3962,100 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-presenter"
+name = "lgn-presenter"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "ash",
  "crossbeam-channel",
  "instant",
- "legion-graphics-api",
- "legion-pso-compiler",
- "legion-renderer",
+ "lgn-graphics-api",
+ "lgn-pso-compiler",
+ "lgn-renderer",
  "log",
  "raw-window-handle 0.4.2",
 ]
 
 [[package]]
-name = "legion-presenter-snapshot"
+name = "lgn-presenter-snapshot"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
  "instant",
- "legion-app",
- "legion-ecs",
- "legion-graphics-api",
- "legion-presenter",
- "legion-renderer",
- "legion-tasks",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-presenter",
+ "lgn-renderer",
+ "lgn-tasks",
  "log",
  "png 0.17.2",
 ]
 
 [[package]]
-name = "legion-presenter-window"
+name = "lgn-presenter-window"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-ecs",
- "legion-graphics-api",
- "legion-presenter",
- "legion-renderer",
- "legion-tasks",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-presenter",
+ "lgn-renderer",
+ "lgn-tasks",
  "raw-window-handle 0.4.2",
 ]
 
 [[package]]
-name = "legion-pso-compiler"
+name = "lgn-pso-compiler"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "hassle-rs",
- "legion-graphics-api",
+ "lgn-graphics-api",
  "spirv-reflect",
  "spirv-tools",
 ]
 
 [[package]]
-name = "legion-renderer"
+name = "lgn-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bumpalo",
- "legion-app",
- "legion-ecs",
- "legion-graphics-api",
- "legion-graphics-data",
- "legion-graphics-utils",
- "legion-math",
- "legion-pso-compiler",
- "legion-tasks",
- "legion-transform",
- "legion-utils",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-graphics-data",
+ "lgn-graphics-utils",
+ "lgn-math",
+ "lgn-pso-compiler",
+ "lgn-tasks",
+ "lgn-transform",
+ "lgn-utils",
  "log",
  "parking_lot 0.11.2",
  "uuid",
 ]
 
 [[package]]
-name = "legion-resource-registry"
+name = "lgn-resource-registry"
 version = "0.1.0"
 dependencies = [
  "generic_data_offline",
- "legion-app",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-data-transaction",
- "legion-ecs",
- "legion-graphics-offline",
- "legion-tasks",
+ "lgn-app",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-data-transaction",
+ "lgn-ecs",
+ "lgn-graphics-offline",
+ "lgn-tasks",
  "sample-data-offline",
  "tokio",
 ]
 
 [[package]]
-name = "legion-source-control"
+name = "lgn-source-control"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -4055,7 +4068,7 @@ dependencies = [
  "git2",
  "glob",
  "http",
- "legion-telemetry",
+ "lgn-telemetry",
  "lz4",
  "path-clean",
  "reqwest",
@@ -4071,7 +4084,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-streamer"
+name = "lgn-streamer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4081,20 +4094,20 @@ dependencies = [
  "futures-lite",
  "hex",
  "interceptor",
- "legion-app",
- "legion-codec-api",
- "legion-core",
- "legion-ecs",
- "legion-graphics-api",
- "legion-grpc",
- "legion-mp4",
- "legion-presenter",
- "legion-pso-compiler",
- "legion-renderer",
- "legion-streaming-proto",
- "legion-tasks",
- "legion-telemetry",
- "legion-utils",
+ "lgn-app",
+ "lgn-codec-api",
+ "lgn-core",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-grpc",
+ "lgn-mp4",
+ "lgn-presenter",
+ "lgn-pso-compiler",
+ "lgn-renderer",
+ "lgn-streaming-proto",
+ "lgn-tasks",
+ "lgn-telemetry",
+ "lgn-utils",
  "log",
  "serde",
  "serde_json",
@@ -4104,18 +4117,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-streaming-proto"
+name = "lgn-streaming-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
- "legion-build-utils",
+ "lgn-build-utils",
  "prost",
  "tokio",
  "tonic",
 ]
 
 [[package]]
-name = "legion-tasks"
+name = "lgn-tasks"
 version = "0.1.0"
 dependencies = [
  "async-channel",
@@ -4128,18 +4141,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-tauri"
+name = "lgn-tauri"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-ecs",
- "legion-tauri-macros",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-tauri-macros",
  "tauri",
  "tokio",
 ]
 
 [[package]]
-name = "legion-tauri-macros"
+name = "lgn-tauri-macros"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",
@@ -4148,16 +4161,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-telemetry"
+name = "lgn-telemetry"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
  "ctrlc",
  "lazy_static",
- "legion-telemetry-proto",
- "legion-transit",
- "legion-utils",
+ "lgn-telemetry-proto",
+ "lgn-transit",
+ "lgn-utils",
  "log",
  "lz4",
  "memoffset 0.6.5",
@@ -4171,54 +4184,54 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-telemetry-proto"
+name = "lgn-telemetry-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
- "legion-build-utils",
+ "lgn-build-utils",
  "prost",
  "tokio",
  "tonic",
 ]
 
 [[package]]
-name = "legion-test-utils"
+name = "lgn-test-utils"
 version = "0.1.0"
 dependencies = [
- "legion-telemetry",
+ "lgn-telemetry",
 ]
 
 [[package]]
-name = "legion-transform"
+name = "lgn-transform"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-ecs",
- "legion-math",
- "legion-utils",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-math",
+ "lgn-utils",
  "log",
  "smallvec",
 ]
 
 [[package]]
-name = "legion-transit"
+name = "lgn-transit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "legion-derive-transit",
- "legion-utils",
+ "lgn-derive-transit",
+ "lgn-utils",
  "memoffset 0.6.5",
  "serde",
 ]
 
 [[package]]
-name = "legion-utils"
+name = "lgn-utils"
 version = "0.1.0"
 dependencies = [
  "ahash 0.7.6",
  "getrandom 0.2.3",
  "lazy_static",
- "legion-derive",
+ "lgn-derive",
  "log",
  "serde",
  "siphasher",
@@ -4226,45 +4239,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-window"
+name = "lgn-window"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-math",
- "legion-utils",
+ "lgn-app",
+ "lgn-math",
+ "lgn-utils",
  "log",
  "uuid",
  "web-sys",
 ]
 
 [[package]]
-name = "legion-winit"
+name = "lgn-winit"
 version = "0.1.0"
 dependencies = [
  "approx",
- "legion-app",
- "legion-ecs",
- "legion-input",
- "legion-math",
- "legion-utils",
- "legion-window",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-input",
+ "lgn-math",
+ "lgn-utils",
+ "lgn-window",
  "log",
  "wasm-bindgen",
  "web-sys",
  "winit",
-]
-
-[[package]]
-name = "lexical-core"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6607c62aa161d23d17a9072cc5da0be67cdfc89d3afb1e8d9c842bebc2525ffe"
-dependencies = [
- "arrayvec 0.5.2",
- "bitflags",
- "cfg-if 1.0.0",
- "ryu",
- "static_assertions",
 ]
 
 [[package]]
@@ -4393,9 +4393,9 @@ name = "lsc"
 version = "0.1.0"
 dependencies = [
  "clap",
- "legion-source-control",
- "legion-telemetry",
- "legion-test-utils",
+ "lgn-source-control",
+ "lgn-telemetry",
+ "lgn-test-utils",
  "tokio",
 ]
 
@@ -4647,8 +4647,8 @@ dependencies = [
 name = "multitext-resource"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "serde",
  "serde_json",
 ]
@@ -5926,15 +5926,15 @@ name = "refs-asset"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "legion-data-runtime",
+ "lgn-data-runtime",
 ]
 
 [[package]]
 name = "refs-resource"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "serde",
  "serde_json",
 ]
@@ -6114,12 +6114,12 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "instant",
- "legion-app",
- "legion-asset-registry",
- "legion-core",
- "legion-data-runtime",
- "legion-transform",
- "legion-utils",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-core",
+ "lgn-data-runtime",
+ "lgn-transform",
+ "lgn-utils",
 ]
 
 [[package]]
@@ -6240,7 +6240,7 @@ version = "0.1.0"
 dependencies = [
  "insta",
  "json",
- "legion-data-compiler",
+ "lgn-data-compiler",
  "serde_json",
  "tempfile",
 ]
@@ -6253,15 +6253,15 @@ dependencies = [
  "clap",
  "generic_data_offline",
  "generic_data_runtime",
- "legion-content-store",
- "legion-data-build",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
- "legion-math",
- "legion-utils",
+ "lgn-content-store",
+ "lgn-data-build",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "lgn-graphics-runtime",
+ "lgn-math",
+ "lgn-utils",
  "ron",
  "sample-data-offline",
  "sample-data-runtime",
@@ -6274,9 +6274,9 @@ dependencies = [
 name = "sample-data-offline"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
- "legion-math",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-math",
  "serde",
  "serde_json",
  "typetag",
@@ -6287,9 +6287,9 @@ name = "sample-data-runtime"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "legion-data-runtime",
- "legion-graphics-runtime",
- "legion-math",
+ "lgn-data-runtime",
+ "lgn-graphics-runtime",
+ "lgn-math",
  "serde",
  "typetag",
 ]
@@ -6693,7 +6693,7 @@ dependencies = [
  "http",
  "hyper",
  "lazy_static",
- "legion-source-control",
+ "lgn-source-control",
  "serde_json",
  "tokio",
  "warp",
@@ -7278,10 +7278,10 @@ dependencies = [
  "clap",
  "fs_extra",
  "json",
- "legion-analytics",
- "legion-telemetry",
- "legion-test-utils",
- "legion-transit",
+ "lgn-analytics",
+ "lgn-telemetry",
+ "lgn-test-utils",
+ "lgn-transit",
  "lz4",
  "prost",
  "sqlx",
@@ -7294,8 +7294,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "legion-telemetry",
- "legion-telemetry-proto",
+ "lgn-telemetry",
+ "lgn-telemetry-proto",
  "log",
  "prost",
  "serde_json",
@@ -7346,8 +7346,8 @@ dependencies = [
 name = "text-resource"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "serde",
  "serde_json",
 ]
@@ -8008,7 +8008,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "legion-cli",
+ "lgn-cli",
  "log",
  "simple_logger",
  "tokio",

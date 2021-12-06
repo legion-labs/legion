@@ -1,12 +1,12 @@
 use std::{borrow::Cow, fmt::Debug};
 
-use legion_ecs::{
+use lgn_ecs::{
     component::Component,
     entity::Entity,
     query::Changed,
     system::{Query, RemovedComponents, ResMut},
 };
-use legion_utils::{HashMap, HashSet};
+use lgn_utils::{HashMap, HashSet};
 
 /// A collection of labels
 #[derive(Component, Default)]
@@ -56,8 +56,8 @@ impl Labels {
     }
 }
 
-/// Maintains a mapping from [Entity](legion_ecs::prelude::Entity) ids to entity labels and entity
-/// labels to [Entities](legion_ecs::prelude::Entity).
+/// Maintains a mapping from [Entity](lgn_ecs::prelude::Entity) ids to entity labels and entity
+/// labels to [Entities](lgn_ecs::prelude::Entity).
 #[derive(Debug, Default)]
 pub struct EntityLabels {
     label_entities: HashMap<Cow<'static, str>, Vec<Entity>>,
@@ -113,7 +113,7 @@ pub(crate) fn entity_labels_system(
 
 #[cfg(test)]
 mod tests {
-    use legion_ecs::{
+    use lgn_ecs::{
         schedule::{Schedule, Stage, SystemStage},
         world::World,
     };

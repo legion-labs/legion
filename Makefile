@@ -101,7 +101,7 @@ timings:
 
 api-doc:
 	cargo doc --workspace --no-deps --all-features
-	echo "<meta http-equiv=\"refresh\" content=\"0; URL=legion_app/index.html\"/>" > target/doc/index.html
+	echo "<meta http-equiv=\"refresh\" content=\"0; URL=lgn_app/index.html\"/>" > target/doc/index.html
 
 book:
 	mdbook build ./doc/

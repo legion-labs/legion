@@ -44,7 +44,7 @@ impl AwsCognitoClientAuthenticator {
     /// # Example
     ///
     /// ```
-    /// use legion_online::authentication::AwsCognitoClientAuthenticator;
+    /// use lgn_online::authentication::AwsCognitoClientAuthenticator;
     /// use url::Url;
     ///
     /// let url = Url::parse("https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=4a6vcgqr108in51n3di730hk25&response_type=code&scope=aws.cognito.signin.user.admin+email+openid&redirect_uri=http://localhost:3000/&identity_provider=Azure").unwrap();
@@ -161,7 +161,7 @@ impl AwsCognitoClientAuthenticator {
     /// # Example
     ///
     /// ```
-    /// use legion_online::authentication::AwsCognitoClientAuthenticator;
+    /// use lgn_online::authentication::AwsCognitoClientAuthenticator;
     /// use url::Url;
     ///
     /// # fn main() {
@@ -196,7 +196,7 @@ impl AwsCognitoClientAuthenticator {
     /// # Example
     ///
     /// ```
-    /// use legion_online::authentication::AwsCognitoClientAuthenticator;
+    /// use lgn_online::authentication::AwsCognitoClientAuthenticator;
     /// use url::Url;
     ///
     /// # fn main() {
@@ -224,7 +224,7 @@ impl AwsCognitoClientAuthenticator {
     /// # Example
     ///
     /// ```
-    /// use legion_online::authentication::AwsCognitoClientAuthenticator;
+    /// use lgn_online::authentication::AwsCognitoClientAuthenticator;
     /// use url::Url;
     ///
     /// # fn main() {
@@ -246,7 +246,7 @@ impl AwsCognitoClientAuthenticator {
     /// # Example
     ///
     /// ```
-    /// use legion_online::authentication::AwsCognitoClientAuthenticator;
+    /// use lgn_online::authentication::AwsCognitoClientAuthenticator;
     /// use url::Url;
     ///
     /// # fn main() {

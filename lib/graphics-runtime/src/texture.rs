@@ -2,7 +2,7 @@
 
 use std::{any::Any, io};
 
-use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
 
 /// Runtime texture.
 #[resource("runtime_texture")]

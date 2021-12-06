@@ -1,5 +1,5 @@
-use legion_math::prelude::*;
-use legion_utils::HashMap;
+use lgn_math::prelude::*;
+use lgn_utils::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]

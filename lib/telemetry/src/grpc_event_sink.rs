@@ -1,4 +1,4 @@
-use legion_telemetry_proto::ingestion::telemetry_ingestion_client::TelemetryIngestionClient;
+use lgn_telemetry_proto::ingestion::telemetry_ingestion_client::TelemetryIngestionClient;
 
 use crate::{EventBlockSink, StreamBlock, TelemetrySinkEvent};
 

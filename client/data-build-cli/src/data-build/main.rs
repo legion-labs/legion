@@ -57,11 +57,11 @@
 use std::{path::PathBuf, str::FromStr};
 
 use clap::{AppSettings, Arg, SubCommand};
-use legion_content_store::ContentStoreAddr;
-use legion_data_build::DataBuildOptions;
-use legion_data_compiler::{Locale, Platform, Target};
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::ResourceId;
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_build::DataBuildOptions;
+use lgn_data_compiler::{Locale, Platform, Target};
+use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourceId;
 
 const ARG_NAME_RESOURCE_PATH: &str = "resource";
 const ARG_NAME_BUILDINDEX: &str = "buildindex";

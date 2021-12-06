@@ -6,7 +6,7 @@ use std::{
     ptr::NonNull,
 };
 
-use legion_utils::{DefaultHash, HashMap};
+use lgn_utils::{DefaultHash, HashMap};
 
 use crate::{
     component::{ComponentId, ComponentInfo, ComponentTicks, Components},
@@ -523,7 +523,7 @@ impl IndexMut<TableId> for Tables {
 
 #[cfg(test)]
 mod tests {
-    use crate as legion_ecs;
+    use crate as lgn_ecs;
     use crate::component::Component;
     use crate::storage::Storages;
     use crate::{component::Components, entity::Entity, storage::Table};

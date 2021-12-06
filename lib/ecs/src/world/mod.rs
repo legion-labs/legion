@@ -49,7 +49,7 @@ pub use identifier::WorldId;
 /// # let mut world = World::default();
 /// # let mut schedule = Schedule::default();
 /// # schedule.add_stage("update", SystemStage::parallel());
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// #
 /// struct MyResource { value: u32 }
 ///
@@ -180,7 +180,7 @@ impl World {
     /// to check for entity existence instead of implicitly panic-ing.
     ///
     /// ```
-    /// use legion_ecs::{component::Component, world::World};
+    /// use lgn_ecs::{component::Component, world::World};
     ///
     /// #[derive(Component)]
     /// struct Position {
@@ -206,7 +206,7 @@ impl World {
     /// to check for entity existence instead of implicitly panic-ing.
     ///
     /// ```
-    /// use legion_ecs::{component::Component, world::World};
+    /// use lgn_ecs::{component::Component, world::World};
     ///
     /// #[derive(Component)]
     /// struct Position {
@@ -255,7 +255,7 @@ impl World {
     /// to unwrap the [`EntityRef`] yourself.
     ///
     /// ```
-    /// use legion_ecs::{component::Component, world::World};
+    /// use lgn_ecs::{component::Component, world::World};
     ///
     /// #[derive(Component)]
     /// struct Position {
@@ -283,7 +283,7 @@ impl World {
     /// to unwrap the [`EntityMut`] yourself.
     ///
     /// ```
-    /// use legion_ecs::{component::Component, world::World};
+    /// use lgn_ecs::{component::Component, world::World};
     ///
     /// #[derive(Component)]
     /// struct Position {
@@ -311,7 +311,7 @@ impl World {
     /// to add components to the entity or retrieve its id.
     ///
     /// ```
-    /// use legion_ecs::{component::Component, world::World};
+    /// use lgn_ecs::{component::Component, world::World};
     ///
     /// #[derive(Component)]
     /// struct Position {
@@ -363,7 +363,7 @@ impl World {
     /// individually is more flexible.
     ///
     /// ```
-    /// use legion_ecs::{component::Component, entity::Entity, world::World};
+    /// use lgn_ecs::{component::Component, entity::Entity, world::World};
     ///
     /// #[derive(Component)]
     /// struct Str(&'static str);
@@ -389,7 +389,7 @@ impl World {
     /// Retrieves a reference to the given `entity`'s [Component] of the given type.
     /// Returns [None] if the `entity` does not have a [Component] of the given type.
     /// ```
-    /// use legion_ecs::{component::Component, world::World};
+    /// use lgn_ecs::{component::Component, world::World};
     ///
     /// #[derive(Component)]
     /// struct Position {
@@ -412,7 +412,7 @@ impl World {
     /// Retrieves a mutable reference to the given `entity`'s [Component] of the given type.
     /// Returns [None] if the `entity` does not have a [Component] of the given type.
     /// ```
-    /// use legion_ecs::{component::Component, world::World};
+    /// use lgn_ecs::{component::Component, world::World};
     ///
     /// #[derive(Component)]
     /// struct Position {
@@ -436,7 +436,7 @@ impl World {
     /// [Component]s. Returns `true` if the `entity` is successfully despawned and `false` if
     /// the `entity` does not exist.
     /// ```
-    /// use legion_ecs::{component::Component, world::World};
+    /// use lgn_ecs::{component::Component, world::World};
     ///
     /// #[derive(Component)]
     /// struct Position {
@@ -472,7 +472,7 @@ impl World {
     /// Returns [`QueryState`] for the given [`WorldQuery`], which is used to efficiently
     /// run queries on the [World] by storing and reusing the [`QueryState`].
     /// ```
-    /// use legion_ecs::{component::Component, entity::Entity, world::World};
+    /// use lgn_ecs::{component::Component, entity::Entity, world::World};
     ///
     /// #[derive(Component, Debug, PartialEq)]
     /// struct Position {
@@ -508,7 +508,7 @@ impl World {
     /// and allocation of a [Vec] to store it.
     ///
     /// ```
-    /// use legion_ecs::{component::Component, entity::Entity, world::World};
+    /// use lgn_ecs::{component::Component, entity::Entity, world::World};
     ///
     /// #[derive(Component, PartialEq, Eq, PartialOrd, Ord, Debug)]
     /// struct Order(i32);
@@ -539,7 +539,7 @@ impl World {
     /// Returns [`QueryState`] for the given filtered [`WorldQuery`], which is used to efficiently
     /// run queries on the [`World`] by storing and reusing the [`QueryState`].
     /// ```
-    /// use legion_ecs::{component::Component, entity::Entity, world::World, query::With};
+    /// use lgn_ecs::{component::Component, entity::Entity, world::World, query::With};
     ///
     /// #[derive(Component)]
     /// struct A;
@@ -766,7 +766,7 @@ impl World {
     /// worked out to share an ID space (which doesn't happen by default).
     ///
     /// ```
-    /// use legion_ecs::{entity::Entity, world::World, component::Component};
+    /// use lgn_ecs::{entity::Entity, world::World, component::Component};
     /// #[derive(Component)]
     /// struct A(&'static str);
     /// #[derive(Component, PartialEq, Debug)]
@@ -881,7 +881,7 @@ impl World {
     /// returning. This enables safe mutable access to a resource while still providing mutable
     /// world access
     /// ```
-    /// use legion_ecs::{component::Component, world::{World, Mut}};
+    /// use lgn_ecs::{component::Component, world::{World, Mut}};
     /// #[derive(Component)]
     /// struct A(u32);
     /// #[derive(Component)]

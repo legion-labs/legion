@@ -1,5 +1,5 @@
 [package]
-name = "legion-tauri"
+name = "lgn-tauri"
 version = "0.1.0"
 edition = "2021"
 description = "Legion's ECS Tauri plugin"
@@ -9,8 +9,8 @@ license = "MIT OR Apache-2.0"
 keywords = ["ecs", "game", "legion", "tauri"]
 
 [dependencies]
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-tauri-macros = { path = "./tauri-macros" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-tauri-macros = { path = "./tauri-macros", version = "0.1.0" }
 tokio = { version = "1.13", features = ["macros", "rt-multi-thread"] }
 tauri = { version = "1.0.0-beta.8", features = ["api-all"] }

@@ -2,9 +2,9 @@ use std::io::Write;
 use std::{fs::OpenOptions, path::PathBuf};
 
 use anyhow::Result;
-use legion_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestion;
-use legion_telemetry_proto::ingestion::InsertReply;
-use legion_telemetry_proto::telemetry::{Block, Process, Stream};
+use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestion;
+use lgn_telemetry_proto::ingestion::InsertReply;
+use lgn_telemetry_proto::telemetry::{Block, Process, Stream};
 use log::info;
 use prost::Message;
 use tonic::{Request, Response, Status};

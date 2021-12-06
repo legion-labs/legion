@@ -1,12 +1,12 @@
 [package]
-name = "legion-transit"
+name = "lgn-transit"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-legion-utils = { path = "../utils" }
-legion-derive-transit = { path = "derive-transit", version = "0.1.0" }
+lgn-utils = { path = "../utils" }
+lgn-derive-transit = { path = "derive-transit", version = "0.1.0" }
 serde = { version = "1.0", features = ["derive"] }
 anyhow = "1.0"
 

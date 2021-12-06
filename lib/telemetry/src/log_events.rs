@@ -1,5 +1,5 @@
-use legion_transit::prelude::*;
-use legion_utils::memory::{read_any, write_any};
+use lgn_transit::prelude::*;
+use lgn_utils::memory::{read_any, write_any};
 
 #[derive(Debug, Clone, Copy)]
 pub enum LogLevel {

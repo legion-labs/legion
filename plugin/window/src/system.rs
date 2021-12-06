@@ -1,4 +1,4 @@
-use legion_app::{AppExit, EventReader, EventWriter};
+use lgn_app::{AppExit, EventReader, EventWriter};
 
 use crate::WindowCloseRequested;
 

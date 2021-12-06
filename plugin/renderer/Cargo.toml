@@ -1,21 +1,21 @@
 [package]
-name = "legion-renderer"
+name = "lgn-renderer"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api", version = "0.1.0" }
-graphics-data = { path = "../../lib/graphics-data", package = "legion-graphics-data", version = "0.1.0" }
-graphics-utils = { path = "../../lib/graphics-utils", package = "legion-graphics-utils", version = "0.1.0" }
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-math = { path = "../../lib/math", version = "0.1.0" }
-legion-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
-legion-tasks = { path = "../../lib/tasks", version = "0.1.0" }
-legion-transform = { path = "../transform", version = "0.1.0" }
+lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
+lgn-graphics-data = { path = "../../lib/graphics-data", version = "0.1.0" }
+lgn-graphics-utils = { path = "../../lib/graphics-utils", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-pso-compiler = { path = "../../lib/pso-compiler", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
+lgn-transform = { path = "../transform", version = "0.1.0" }
 
 anyhow = "1.0"
 bumpalo= "3.8"
@@ -29,5 +29,5 @@ uuid = { version = "0.8", features = ["v4", "serde"] }
 uuid = { version = "0.8", features = ["wasm-bindgen"] }
 
 [features]
-default = ["graphics-api/vulkan"]
-vulkan = ["graphics-api/vulkan"]
+default = ["lgn-graphics-api/vulkan"]
+vulkan = ["lgn-graphics-api/vulkan"]

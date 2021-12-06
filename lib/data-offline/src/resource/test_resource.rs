@@ -4,7 +4,7 @@
 
 use std::{any::Any, io, str::FromStr};
 
-use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
 
 use super::OfflineResource;
 use crate::{resource::ResourceProcessor, ResourcePathId};

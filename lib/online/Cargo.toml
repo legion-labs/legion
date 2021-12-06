@@ -1,5 +1,5 @@
 [package]
-name = "legion-online"
+name = "lgn-online"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"

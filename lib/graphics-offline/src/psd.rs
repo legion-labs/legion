@@ -2,8 +2,8 @@
 
 use std::{any::Any, io};
 
-use legion_data_offline::resource::{OfflineResource, ResourceProcessor};
-use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_data_offline::resource::{OfflineResource, ResourceProcessor};
+use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
 
 use crate::texture::{Texture, TextureType};
 
@@ -100,7 +100,7 @@ impl ResourceProcessor for PsdFileProcessor {
     fn extract_build_dependencies(
         &mut self,
         _resource: &dyn Any,
-    ) -> Vec<legion_data_offline::ResourcePathId> {
+    ) -> Vec<lgn_data_offline::ResourcePathId> {
         vec![]
     }
 

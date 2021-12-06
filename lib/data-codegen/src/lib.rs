@@ -228,17 +228,17 @@ macro_rules! data_container_gen {
             let mut data_path = package_path.replace("_runtime", "_offline").replace("_compiler", "_offline");
             data_path.push_str($x);
             if package_path.ends_with("_offline") {
-                legion_data_codegen::generate_data_container_code(
+                lgn_data_codegen::generate_data_container_code(
                     std::path::Path::new(&data_path),
-                    &legion_data_codegen::GenerationType::OfflineFormat,
+                    &lgn_data_codegen::GenerationType::OfflineFormat,
                 ).expect("Offline data codegen failed");
             } else if package_path.ends_with("_runtime") {
-                legion_data_codegen::generate_data_container_code(
+                lgn_data_codegen::generate_data_container_code(
                     std::path::Path::new(&data_path),
-                    &legion_data_codegen::GenerationType::RuntimeFormat,
+                    &lgn_data_codegen::GenerationType::RuntimeFormat,
                 ).expect("Runtime data codegen failed");
             } else if package_path.ends_with("_compiler") {
-                legion_data_codegen::generate_data_compiler_code(std::path::Path::new(&data_path)
+                lgn_data_codegen::generate_data_compiler_code(std::path::Path::new(&data_path)
                 ).expect("Compiler codegen failed");
             }
             println!("cargo:rerun-if-changed={}", data_path);

@@ -1,5 +1,5 @@
-use legion_graphics_data::Color;
-use legion_math::prelude::*;
+use lgn_graphics_data::Color;
+use lgn_math::prelude::*;
 
 #[data_container()]
 struct DebugCube {

@@ -66,7 +66,7 @@ use std::process::Stdio;
 
 use anyhow::Context;
 use config::{CommandConfig, Config};
-use legion_cli::termination_handler::AsyncTerminationHandler;
+use lgn_cli::termination_handler::AsyncTerminationHandler;
 use log::{debug, info};
 use simple_logger::SimpleLogger;
 use tokio::{

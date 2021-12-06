@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use generic_data_offline::TestEntity;
-use legion_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
-use legion_data_runtime::{AssetRegistryOptions, Resource};
+use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
+use lgn_data_runtime::{AssetRegistryOptions, Resource};
 use tokio::sync::Mutex;
 
 use crate::{DataManager, Transaction};

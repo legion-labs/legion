@@ -3,7 +3,7 @@
 // NOTE: we can reexport common traits and methods from bytemuck to avoid requiring dependency most of
 // the time, but unfortunately we can't use derive macros that way due to hardcoded path in generated code.
 pub use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
-pub use legion_derive::Bytes;
+pub use lgn_derive::Bytes;
 
 // FIXME: `Bytes` trait doesn't specify the expected encoding format,
 // which means types that implement it have to know what format is expected
@@ -56,7 +56,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use legion_math::{Mat4, Vec2, Vec3, Vec4};
+    use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
     use super::{Bytes, FromBytes};
 

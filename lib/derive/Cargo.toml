@@ -1,5 +1,5 @@
 [package]
-name = "legion-derive"
+name = "lgn-derive"
 version = "0.1.0"
 edition = "2021"
 description = "Provides derive implementations for Legion"
@@ -12,7 +12,7 @@ keywords = ["legion"]
 proc-macro = true
 
 [dependencies]
-legion-macro-utils = { path = "../macro-utils", version = "0.1.0" }
+lgn-macro-utils = { path = "../macro-utils", version = "0.1.0" }
 
 quote = "1.0"
 syn = "1.0"

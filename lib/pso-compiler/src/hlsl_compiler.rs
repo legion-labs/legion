@@ -1,10 +1,10 @@
 use std::{io::Read, path::PathBuf};
 
 use anyhow::{anyhow, Result};
-use graphics_api::{
+use hassle_rs::{Dxc, DxcIncludeHandler};
+use lgn_graphics_api::{
     PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags,
 };
-use hassle_rs::{Dxc, DxcIncludeHandler};
 use spirv_reflect::types::{
     ReflectBlockVariable, ReflectDecorationFlags, ReflectDescriptorBinding, ReflectShaderStageFlags,
 };

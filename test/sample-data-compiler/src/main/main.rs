@@ -62,7 +62,7 @@
 #![allow()]
 
 use clap::{App, Arg};
-use legion_data_offline::resource::ResourcePathName;
+use lgn_data_offline::resource::ResourcePathName;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
 fn main() {

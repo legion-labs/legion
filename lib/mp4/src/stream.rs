@@ -35,10 +35,10 @@ use crate::{MediaConfig, Mp4Config, Result, TrackConfig};
 /// # Examples
 ///
 /// ```rust
-/// use legion_mp4::{Mp4Stream, Mp4Config};
+/// use lgn_mp4::{Mp4Stream, Mp4Config};
 /// use std::io::Cursor;
 ///
-/// # fn main() -> legion_mp4::Result<()> {
+/// # fn main() -> lgn_mp4::Result<()> {
 /// let config = Mp4Config {
 ///     major_brand: str::parse("isom").unwrap(),
 ///     minor_version: 512,

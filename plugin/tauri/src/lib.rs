@@ -60,8 +60,8 @@
 
 use std::sync::Mutex;
 
-use legion_app::prelude::*;
-pub use legion_tauri_macros::*;
+use lgn_app::prelude::*;
+pub use lgn_tauri_macros::*;
 
 pub struct TauriPluginSettings<R: tauri::Runtime> {
     builder: tauri::Builder<R>,

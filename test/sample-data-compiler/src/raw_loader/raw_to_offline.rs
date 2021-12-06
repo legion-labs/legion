@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use legion_data_offline::{resource::ResourcePathName, ResourcePathId};
-use legion_data_runtime::{ResourceId, ResourceType};
+use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
+use lgn_data_runtime::{ResourceId, ResourceType};
 use sample_data_offline as offline_data;
 
 use super::raw_data;
@@ -272,7 +272,7 @@ impl FromRaw<raw_data::Instance> for offline_data::Instance {
 
 // ----- Material conversions -----
 
-impl FromRaw<raw_data::Material> for legion_graphics_offline::Material {
+impl FromRaw<raw_data::Material> for lgn_graphics_offline::Material {
     fn from_raw(
         raw: raw_data::Material,
         references: &HashMap<ResourcePathName, ResourceId>,

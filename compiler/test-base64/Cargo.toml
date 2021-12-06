@@ -14,7 +14,7 @@ doc = false
 
 [dependencies]
 base64 = "0.13.0"
-legion-data-compiler = { path = "../../lib/data-compiler" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 text-resource = { path = "../../lib/data-offline/test-text-resource" }
 binary-resource = { path = "../../lib/data-offline/test-binary-resource" }

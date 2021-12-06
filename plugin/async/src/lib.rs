@@ -59,8 +59,8 @@
 // crate-specific exceptions:
 #![allow()]
 
-use legion_app::prelude::*;
-use legion_ecs::prelude::*;
+use lgn_app::prelude::*;
+use lgn_ecs::prelude::*;
 
 pub mod operation;
 pub mod runtime;

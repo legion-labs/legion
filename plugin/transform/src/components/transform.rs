@@ -1,7 +1,7 @@
 use std::ops::Mul;
 
-use legion_ecs::component::Component;
-use legion_math::{Mat3, Mat4, Quat, Vec3};
+use lgn_ecs::component::Component;
+use lgn_math::{Mat3, Mat4, Quat, Vec3};
 
 use super::GlobalTransform;
 

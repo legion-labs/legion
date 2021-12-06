@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
-use legion_content_store::ContentStoreAddr;
-use legion_data_offline::resource::Project;
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_offline::resource::Project;
 use tempfile::TempDir;
 
 use crate::{buildindex::BuildIndex, databuild::DataBuild, DataBuildOptions};

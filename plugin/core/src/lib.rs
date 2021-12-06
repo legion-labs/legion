@@ -77,8 +77,8 @@ pub mod prelude {
     pub use crate::{DefaultTaskPoolOptions, EntityLabels, Labels, Name, Time, Timer};
 }
 
-use legion_app::prelude::*;
-use legion_ecs::{
+use lgn_app::prelude::*;
+use lgn_ecs::{
     schedule::{ExclusiveSystemDescriptorCoercion, SystemLabel},
     system::IntoExclusiveSystem,
 };

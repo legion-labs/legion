@@ -1,4 +1,4 @@
-use graphics_api::{
+use lgn_graphics_api::{
     DescriptorHeap, DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, DeviceContext,
     GfxResult,
 };

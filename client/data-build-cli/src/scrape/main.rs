@@ -239,11 +239,11 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{AppSettings, Arg, SubCommand};
-use legion_data_offline::{
+use lgn_data_offline::{
     resource::{Project, ResourcePathName},
     ResourcePathId,
 };
-use legion_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceId, ResourceType};
 
 mod config;
 use config::Config;

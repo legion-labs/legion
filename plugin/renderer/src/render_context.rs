@@ -1,5 +1,5 @@
-use graphics_api::{DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, QueueType};
-use graphics_utils::TransientBufferAllocator;
+use lgn_graphics_api::{DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, QueueType};
+use lgn_graphics_utils::TransientBufferAllocator;
 
 use crate::{
     memory::BumpAllocatorHandle,

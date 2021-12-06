@@ -7,14 +7,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_content_store::Checksum;
-use legion_data_compiler::CompiledResource;
-use legion_data_offline::{
+use lgn_content_store::Checksum;
+use lgn_data_compiler::CompiledResource;
+use lgn_data_offline::{
     resource::{Project, ResourceHash},
     ResourcePathId,
 };
-use legion_data_runtime::ResourceId;
-use legion_utils::DefaultHasher;
+use lgn_data_runtime::ResourceId;
+use lgn_utils::DefaultHasher;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -551,8 +551,8 @@ impl BuildIndex {
 #[cfg(test)]
 mod tests {
 
-    use legion_data_offline::{resource::Project, ResourcePathId};
-    use legion_data_runtime::{Resource, ResourceId};
+    use lgn_data_offline::{resource::Project, ResourcePathId};
+    use lgn_data_runtime::{Resource, ResourceId};
 
     use super::BuildIndex;
 

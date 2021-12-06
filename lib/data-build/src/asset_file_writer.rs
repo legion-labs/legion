@@ -1,6 +1,6 @@
 use byteorder::{LittleEndian, WriteBytesExt};
-use legion_content_store::{Checksum, ContentStore};
-use legion_data_runtime::{ResourceId, ResourceType};
+use lgn_content_store::{Checksum, ContentStore};
+use lgn_data_runtime::{ResourceId, ResourceType};
 
 use crate::Error;
 
@@ -78,8 +78,8 @@ mod tests {
     use std::io::Read;
 
     use byteorder::ReadBytesExt;
-    use legion_content_store::RamContentStore;
-    use legion_data_runtime::Resource;
+    use lgn_content_store::RamContentStore;
+    use lgn_data_runtime::Resource;
 
     use super::*;
 

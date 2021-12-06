@@ -1,5 +1,5 @@
-use legion_app::AppExit;
-use legion_ecs::prelude::{EventReader, EventWriter};
+use lgn_app::AppExit;
+use lgn_ecs::prelude::{EventReader, EventWriter};
 
 use crate::{
     keyboard::{KeyCode, KeyboardInput},

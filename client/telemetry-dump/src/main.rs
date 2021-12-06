@@ -66,8 +66,8 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
-use legion_analytics::alloc_sql_pool;
-use legion_telemetry::{init_thread_stream, log_str, LogLevel, TelemetrySystemGuard};
+use lgn_analytics::alloc_sql_pool;
+use lgn_telemetry::{init_thread_stream, log_str, LogLevel, TelemetrySystemGuard};
 use process_log::{print_logs_by_process, print_process_log};
 use process_search::print_process_search;
 use process_search::print_process_tree;

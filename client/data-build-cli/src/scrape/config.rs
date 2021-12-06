@@ -3,10 +3,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_content_store::ContentStoreAddr;
-use legion_data_build::{DataBuild, DataBuildOptions};
-use legion_data_offline::resource::Project;
-use legion_data_runtime::ResourceType;
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_build::{DataBuild, DataBuildOptions};
+use lgn_data_offline::resource::Project;
+use lgn_data_runtime::ResourceType;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]

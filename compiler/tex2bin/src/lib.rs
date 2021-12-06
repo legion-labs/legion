@@ -56,13 +56,13 @@
 
 use std::env;
 
-use legion_data_compiler::{
+use lgn_data_compiler::{
     compiler_api::{
         CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
     },
     compiler_utils::hash_code_and_data,
 };
-use legion_data_runtime::Resource;
+use lgn_data_runtime::Resource;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -70,8 +70,8 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        legion_graphics_offline::Texture::TYPE,
-        legion_graphics_runtime::Texture::TYPE,
+        lgn_graphics_offline::Texture::TYPE,
+        lgn_graphics_runtime::Texture::TYPE,
     ),
     compiler_hash_func: hash_code_and_data,
     compile_func: compile,
@@ -80,11 +80,11 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let resources = context
         .take_registry()
-        .add_loader::<legion_graphics_offline::Texture>()
+        .add_loader::<lgn_graphics_offline::Texture>()
         .create();
 
     let resource =
-        resources.load_sync::<legion_graphics_offline::Texture>(context.source.resource_id());
+        resources.load_sync::<lgn_graphics_offline::Texture>(context.source.resource_id());
     let resource = resource.get(&resources).unwrap();
 
     let compiled_asset = resource.rgba.clone();

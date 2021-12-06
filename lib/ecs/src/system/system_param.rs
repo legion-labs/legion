@@ -4,8 +4,8 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-pub use legion_ecs_macros::SystemParam;
-use legion_ecs_macros::{all_tuples, impl_query_set};
+pub use lgn_ecs_macros::SystemParam;
+use lgn_ecs_macros::{all_tuples, impl_query_set};
 
 pub use crate::change_detection::{NonSendMut, ResMut};
 use crate::{
@@ -29,9 +29,9 @@ use crate::{
 /// is that every struct field must also implement `SystemParam`.
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// use std::marker::PhantomData;
-/// use legion_ecs::system::SystemParam;
+/// use lgn_ecs::system::SystemParam;
 ///
 /// #[derive(SystemParam)]
 /// struct MyParam<'w, 's> {
@@ -541,7 +541,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for CommandQueue {
 /// # Examples
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// # let world = &mut World::default();
 /// fn write_to_local(mut local: Local<usize>) {
 ///     *local = 42;
@@ -630,9 +630,9 @@ impl<'w, 's, T: Resource + FromWorld> SystemParamFetch<'w, 's> for LocalState<T>
 /// Basic usage:
 ///
 /// ```
-/// # use legion_ecs::component::Component;
-/// # use legion_ecs::system::IntoSystem;
-/// # use legion_ecs::system::RemovedComponents;
+/// # use lgn_ecs::component::Component;
+/// # use lgn_ecs::system::IntoSystem;
+/// # use lgn_ecs::system::RemovedComponents;
 /// #
 /// # #[derive(Component)]
 /// # struct MyComponent;
