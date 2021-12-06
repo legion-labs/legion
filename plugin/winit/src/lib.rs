@@ -363,14 +363,7 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
                             world.get_resource_mut::<Events<CursorMoved>>().unwrap();
                         let winit_window = winit_windows.get_window(window_id).unwrap();
                         let position = position.to_logical(winit_window.scale_factor());
-                        let inner_size = winit_window
-                            .inner_size()
-                            .to_logical::<f32>(winit_window.scale_factor());
-
-                        // move origin to bottom left
-                        let y_position = inner_size.height - position.y;
-
-                        let position = Vec2::new(position.x, y_position);
+                        let position = Vec2::new(position.x, position.y);
                         window.update_cursor_position_from_backend(Some(position));
 
                         cursor_moved_events.send(CursorMoved {
@@ -393,9 +386,11 @@ pub fn winit_runner_with(mut app: App, mut event_loop: EventLoop<()>) {
                         let mut mouse_button_input_events = world
                             .get_resource_mut::<Events<MouseButtonInput>>()
                             .unwrap();
+                        let pos = window.cursor_position().unwrap();
                         mouse_button_input_events.send(MouseButtonInput {
                             button: converters::convert_mouse_button(button),
                             state: converters::convert_element_state(state),
+                            pos: Vec2::new(pos.x, pos.y),
                         });
                     }
                     WindowEvent::MouseWheel { delta, .. } => match delta {

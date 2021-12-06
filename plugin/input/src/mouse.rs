@@ -8,13 +8,14 @@ use crate::{ElementState, Input};
 pub struct MouseButtonInput {
     pub button: MouseButton,
     pub state: ElementState,
+    pub pos: Vec2,
 }
 
 /// A button on a mouse device
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 pub enum MouseButton {
-    Left,
+    Left, // TODO: we may need to change this notation to Primary/Secondary and match it with the OS settings in case left-handed user changed it
     Right,
     Middle,
     Other(u16),
