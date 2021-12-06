@@ -7,11 +7,8 @@ use std::time::SystemTime;
 use std::{env, io};
 
 use lgn_content_store::{ContentStore, HddContentStore};
-use lgn_data_compiler::compiler_api::{CompilationEnv, DATA_BUILD_VERSION};
-use lgn_data_compiler::compiler_cmd::{
-    list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
-    CompilerInfoCmd, CompilerInfoCmdOutput,
-};
+use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
+use lgn_data_compiler::compiler_reg::CompilerRegistry;
 use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
 use lgn_data_offline::Transform;
@@ -99,7 +96,7 @@ pub struct DataBuild {
     build_index: BuildIndex,
     project: Project,
     content_store: HddContentStore,
-    compilers: Vec<CompilerInfo>,
+    compilers: CompilerRegistry,
 }
 
 impl DataBuild {
@@ -124,7 +121,7 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            compilers: list_compilers(&config.compiler_search_paths),
+            compilers: CompilerRegistry::from_dir(&config.compiler_search_paths),
         })
     }
 
@@ -138,7 +135,7 @@ impl DataBuild {
             build_index,
             project,
             content_store,
-            compilers: list_compilers(&config.compiler_search_paths),
+            compilers: CompilerRegistry::from_dir(&config.compiler_search_paths),
         })
     }
 
@@ -158,7 +155,7 @@ impl DataBuild {
                     build_index,
                     project,
                     content_store,
-                    compilers: list_compilers(&config.compiler_search_paths),
+                    compilers: CompilerRegistry::from_dir(&config.compiler_search_paths),
                 })
             }
             Err(Error::NotFound) => Self::new(config, project_dir),
@@ -308,7 +305,7 @@ impl DataBuild {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         env: &CompilationEnv,
-        compiler_path: &Path,
+        compiler_index: usize,
     ) -> Result<
         (
             Vec<CompiledResourceInfo>,
@@ -339,20 +336,20 @@ impl DataBuild {
                     .collect::<Vec<_>>(),
                 )
             } else {
-                let mut compile_cmd = CompilerCompileCmd::new(
-                    compile_node,
-                    dependencies,
-                    derived_deps,
-                    &self.content_store.address(),
-                    &self.project.resource_dir(),
-                    env,
-                );
-
-                let CompilerCompileCmdOutput {
+                let CompilationOutput {
                     compiled_resources,
                     resource_references,
-                } = compile_cmd
-                    .execute(compiler_path)
+                } = self
+                    .compilers
+                    .compile(
+                        compiler_index,
+                        compile_node.clone(),
+                        dependencies,
+                        derived_deps,
+                        self.content_store.address(),
+                        &self.project.resource_dir(),
+                        env,
+                    )
                     .map_err(Error::CompilerError)?;
 
                 self.build_index.insert_compiled(
@@ -443,18 +440,7 @@ impl DataBuild {
         })?;
 
         let compiler_details = {
-            let info_cmd = CompilerInfoCmd::default();
-            let compilers: Vec<(CompilerInfo, CompilerInfoCmdOutput)> = self
-                .compilers
-                .iter()
-                .filter_map(|info| {
-                    info_cmd
-                        .execute(&info.path)
-                        .ok()
-                        .filter(|res| res.build_version == Self::version())
-                        .map(|res| ((*info).clone(), res))
-                })
-                .collect();
+            self.compilers.collect_info();
 
             let unique_transforms = {
                 let mut transforms = vec![];
@@ -473,23 +459,16 @@ impl DataBuild {
                 transforms
             };
 
-            let compiler_hash_cmd = CompilerHashCmd::new(env);
-
             unique_transforms
                 .into_iter()
                 .map(|transform| {
-                    compilers
-                        .iter()
-                        .find(|info| info.1.transform == transform)
-                        .map_or(Err(Error::CompilerNotFound), |e| {
-                            let res = compiler_hash_cmd
-                                .execute(&e.0.path)
-                                .map_err(Error::CompilerError)?;
-
-                            Ok((transform, (e.0.path.clone(), res.compiler_hash)))
-                        })
+                    let (compiler_index, compiler_hash) = self
+                        .compilers
+                        .get_hash(transform, env)
+                        .map_err(|_e| Error::CompilerNotFound)?;
+                    Ok((transform, (compiler_index, compiler_hash)))
                 })
-                .collect::<Result<HashMap<_, _>, _>>()?
+                .collect::<Result<HashMap<_, _>, Error>>()?
         };
         let mut compiled_resources = vec![];
         let mut compiled_references = vec![];
@@ -542,10 +521,10 @@ impl DataBuild {
                     .find_dependencies(&direct_dependency)
                     .unwrap_or_default();
 
-                let (compiler_path, compiler_hash) = compiler_details.get(&transform).unwrap();
+                let (compiler_index, compiler_hash) = *compiler_details.get(&transform).unwrap();
 
                 // todo: not sure if transform is the right thing here. resource_path_id better? transform is already defined by the compiler_hash so it seems redundant.
-                let context_hash = compute_context_hash(transform, *compiler_hash, Self::version());
+                let context_hash = compute_context_hash(transform, compiler_hash, Self::version());
 
                 let source_hash = {
                     if direct_dependency.is_source() {
@@ -603,7 +582,7 @@ impl DataBuild {
                     &dependencies,
                     &accumulated_dependencies,
                     env,
-                    compiler_path,
+                    compiler_index,
                 )?;
 
                 // we check if the expected named output was produced.

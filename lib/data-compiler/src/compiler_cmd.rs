@@ -56,18 +56,17 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_content_store::ContentStoreAddr;
-use lgn_data_offline::{ResourcePathId, Transform};
-use serde::{Deserialize, Serialize};
-
 use crate::{
-    compiler_api::{CompilationEnv, CompilerDescriptor},
+    compiler_api::{CompilationEnv, CompilerDescriptor, CompilerInfo},
     CompiledResource, CompilerHash,
 };
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_offline::ResourcePathId;
+use serde::{Deserialize, Serialize};
 
 /// Description of a compiler.
 #[derive(Debug, Clone)]
-pub struct CompilerInfo {
+pub struct CompilerLocation {
     /// Name of the compiler.
     pub name: String,
     /// Binary location.
@@ -75,7 +74,7 @@ pub struct CompilerInfo {
 }
 
 /// Returns a list of compilers found at locations `paths`.
-pub fn list_compilers(paths: &[impl AsRef<Path>]) -> Vec<CompilerInfo> {
+pub fn list_compilers(paths: &[impl AsRef<Path>]) -> Vec<CompilerLocation> {
     let mut commands = Vec::new();
     let prefix = "compiler-";
     let suffix = env::consts::EXE_SUFFIX;
@@ -94,7 +93,7 @@ pub fn list_compilers(paths: &[impl AsRef<Path>]) -> Vec<CompilerInfo> {
                     continue;
                 }
                 let name = filename[prefix.len()..(filename.len() - suffix.len())].to_string();
-                commands.push(CompilerInfo {
+                commands.push(CompilerLocation {
                     name,
                     path: path.clone(),
                 });
@@ -173,18 +172,8 @@ impl CommandBuilder {
 // Compiler Info Command
 //
 
-#[derive(Serialize, Deserialize, Debug)]
 /// Output of `compiler_info` command.
-pub struct CompilerInfoCmdOutput {
-    /// Data build version of data compiler.
-    pub build_version: String,
-    /// Code version of data compiler.
-    pub code_version: String,
-    /// Resource and Asset data version.
-    pub data_version: String,
-    /// Transformation supported by data compiler.
-    pub transform: Transform,
-}
+pub type CompilerInfoCmdOutput = CompilerInfo;
 
 impl CompilerInfoCmdOutput {
     pub(crate) fn from_descriptor(descriptor: &CompilerDescriptor) -> Self {
@@ -225,7 +214,7 @@ impl CompilerInfoCmd {
 
     /// Runs the command on compiler process located at `compiler_path`, waits for completion, returns the result.
     pub fn execute(&self, compiler_path: impl AsRef<OsStr>) -> io::Result<CompilerInfoCmdOutput> {
-        let output = self.0.exec(compiler_path)?;
+        let output = self.0.exec(&compiler_path)?;
         CompilerInfoCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
