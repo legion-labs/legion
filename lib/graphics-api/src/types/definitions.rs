@@ -203,7 +203,7 @@ pub struct Descriptor {
     pub(crate) update_data_offset: u32,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct DescriptorSetHandle {
     #[cfg(feature = "vulkan")]
     pub vk_type: ash::vk::DescriptorSet,

@@ -64,22 +64,12 @@ use lgn_input::{
 };
 use lgn_window::{CursorMoved, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows};
 
+#[derive(Default)]
 pub struct Egui {
     pub ctx: egui::CtxRef,
     pub enable: bool,
     pub output: egui::Output,
     pub shapes: Vec<epaint::ClippedShape>,
-}
-
-impl Default for Egui {
-    fn default() -> Self {
-        Self {
-            ctx: egui::CtxRef::default(),
-            enable: false,
-            output: egui::Output::default(),
-            shapes: Vec::new(),
-        }
-    }
 }
 
 #[derive(SystemLabel, Debug, Clone, PartialEq, Eq, Hash)]
@@ -277,28 +267,13 @@ fn gather_input_window(
     }
 }
 
-//pub struct UISystemEvent {
-//    name: String,
-//    f: Box<dyn FnOnce(&egui::Ui)>,
-//}
-
 #[allow(clippy::needless_pass_by_value)]
-fn begin_frame(
-    mut egui: ResMut<'_, Egui>,
-    raw_input: Res<'_, RawInput>,
-    //ui_systems: EventReader<'_, '_, UISystemEvent>,
-) {
+fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
     if !egui.enable {
         egui.ctx.begin_frame(RawInput::default());
         return;
     }
     egui.ctx.begin_frame(raw_input.to_owned());
-
-    //egui::TopBottomPanel::top("Top menu").show(&egui.ctx, |ui| {
-    //    for ui_system in ui_systems {
-    //        ui_system.f(ui);
-    //    }
-    //});
 
     egui::Window::new("Debug").show(&egui.ctx, |ui| {
         egui.ctx.settings_ui(ui);

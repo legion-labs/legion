@@ -5,7 +5,6 @@ use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
 use lgn_input::InputPlugin;
-use lgn_egui::Egui;
 use lgn_presenter::offscreen_helper::Resolution;
 use lgn_presenter_snapshot::component::PresenterSnapshot;
 use lgn_presenter_window::component::PresenterWindow;
@@ -124,7 +123,9 @@ fn main() {
         .value_of(ARG_NAME_HEIGHT)
         .map(|s| s.parse::<f32>().unwrap())
         .unwrap_or(720.0);
-    let setup_name = matches.value_of(ARG_NAME_SETUP_NAME).unwrap_or("simple-scene");
+    let setup_name = matches
+        .value_of(ARG_NAME_SETUP_NAME)
+        .unwrap_or("simple-scene");
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())

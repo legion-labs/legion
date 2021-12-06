@@ -528,7 +528,8 @@ impl TmpRenderPass {
                 .unwrap();
         }
 
-        cmd_buffer.cmd_end_render_pass().unwrap();
         render_context.release_transient_buffer_allocator(transient_allocator);
+
+        cmd_buffer.cmd_end_render_pass().unwrap();
     }
 }
