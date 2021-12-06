@@ -326,6 +326,17 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
             rotation_speed: (0.0, 0.0, 0.4),
         });
 
+    // directional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Directional {
+                direction: (0.0, 1.0, 0.0),
+            },
+            radiance: 40.0,
+        });
+
     // camera
     commands
         .spawn()

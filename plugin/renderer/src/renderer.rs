@@ -290,3 +290,5 @@ impl Drop for Renderer {
         graphics_queue.wait_for_queue_idle().unwrap();
     }
 }
+
+        lights: &[(&Transform, &LightComponent)],

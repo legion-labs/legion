@@ -68,8 +68,13 @@ impl Plugin for RendererPlugin {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn update_ui(egui_ctx: Res<'_, Egui>, mut rotations: Query<'_, '_, &mut RotationComponent>) {
-    egui::Window::new("Rotations").show(&egui_ctx.ctx, |ui| {
+fn update_ui(
+    egui_ctx: Res<'_, Egui>,
+    mut rotations: Query<'_, '_, &mut RotationComponent>,
+    mut lights: Query<'_, '_, &mut LightComponent>,
+) {
+    egui::Window::new("Scene ").show(&egui_ctx.ctx, |ui| {
+        ui.label("Objects");
         for (i, mut rotation_component) in rotations.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.label(format!("Object {}: ", i));
@@ -85,6 +90,21 @@ fn update_ui(egui_ctx: Res<'_, Egui>, mut rotations: Query<'_, '_, &mut Rotation
                     egui::Slider::new(&mut rotation_component.rotation_speed.2, 0.0..=5.0)
                         .text("z"),
                 );
+            });
+        }
+
+        ui.label("Lights");
+        for (i, mut light) in lights.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("Light {}: ", i));
+                match light.light_type {
+                    LightType::Directional { ref mut direction } => {
+                        ui.add(egui::Slider::new(&mut direction.0, -1.0..=1.0).text("x"));
+                        ui.add(egui::Slider::new(&mut direction.1, -1.0..=1.0).text("y"));
+                        ui.add(egui::Slider::new(&mut direction.2, -1.0..=1.0).text("z"));
+                    }
+                    _ => unimplemented!(),
+                }
             });
         }
     });
@@ -135,6 +155,7 @@ fn render_update(
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     q_drawables: Query<'_, '_, (&StaticMesh, Option<&PickedComponent>)>,
     q_debug_drawables: Query<'_, '_, (&StaticMesh, &Transform, &PickedComponent)>,
+    q_lights: Query<'_, '_, (&Transform, &LightComponent)>,
     task_pool: Res<'_, crate::RenderTaskPool>,
     mut egui: ResMut<'_, Egui>,
     q_cameras: Query<'_, '_, (&CameraComponent, &Transform)>,
@@ -148,6 +169,9 @@ fn render_update(
     let q_debug_drawables =
         q_debug_drawables
             .iter()
+    let q_lights = q_lights
+        .iter()
+        .collect::<Vec<(&Transform, &LightComponent)>>();
             .collect::<Vec<(&StaticMesh, &Transform, &PickedComponent)>>();
     let default_camera = CameraComponent::default_transform();
     let q_cameras = q_cameras
@@ -185,6 +209,7 @@ fn render_update(
             } else {
                 &default_camera
             },
+            q_lights.as_slice(),
         );
 
         let debug_renderpass = render_surface.debug_renderpass();
