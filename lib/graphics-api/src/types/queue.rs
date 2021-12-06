@@ -1,6 +1,6 @@
 use crate::{
     CommandBuffer, CommandPool, CommandPoolDef, DeviceContext, Fence, GfxResult,
-    MemoryPagesAllocation, PresentSuccessResult, QueueType, Semaphore, Swapchain,
+    PagedBufferAllocation, PresentSuccessResult, QueueType, Semaphore, Swapchain,
 };
 
 #[cfg(feature = "vulkan")]
@@ -58,8 +58,8 @@ impl Queue {
     pub fn submit(
         &self,
         command_buffers: &[&CommandBuffer],
-        wait_semaphores: &[Semaphore],
-        signal_semaphores: &[Semaphore],
+        wait_semaphores: &[&Semaphore],
+        signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
     ) -> GfxResult<()> {
         #[cfg(not(any(feature = "vulkan")))]
@@ -77,7 +77,7 @@ impl Queue {
     pub fn present(
         &self,
         swapchain: &Swapchain,
-        wait_semaphores: &[Semaphore],
+        wait_semaphores: &[&Semaphore],
         image_index: u32,
     ) -> GfxResult<PresentSuccessResult> {
         #[cfg(not(any(feature = "vulkan")))]
@@ -100,20 +100,20 @@ impl Queue {
         self.platform_queue.wait_for_queue_idle()
     }
 
-    pub fn commmit_sparse_bindings(
+    pub fn commmit_sparse_bindings<'a>(
         &self,
-        prev_frame_semaphore: Semaphore,
-        sparse_unbindings: &[MemoryPagesAllocation],
-        unbind_semaphore: Semaphore,
-        sparse_bindings: &[MemoryPagesAllocation],
-        bind_semaphore: Semaphore,
-    ) -> Option<Semaphore> {
+        prev_frame_semaphore: &'a Semaphore,
+        unbind_pages: &[PagedBufferAllocation],
+        unbind_semaphore: &'a Semaphore,
+        bind_pages: &[PagedBufferAllocation],
+        bind_semaphore: &'a Semaphore,
+    ) -> &'a Semaphore {
         #[cfg(any(feature = "vulkan"))]
         self.platform_queue.commmit_sparse_bindings(
             prev_frame_semaphore,
-            sparse_unbindings,
+            unbind_pages,
             unbind_semaphore,
-            sparse_bindings,
+            bind_pages,
             bind_semaphore,
         )
     }

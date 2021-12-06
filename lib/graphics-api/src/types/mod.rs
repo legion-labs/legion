@@ -9,11 +9,14 @@ pub use api::*;
 mod format;
 pub use format::*;
 
-mod buffer_view;
-pub use buffer_view::*;
-
 mod buffer;
 pub use buffer::*;
+
+mod buffer_allocation;
+pub use buffer_allocation::*;
+
+mod buffer_view;
+pub use buffer_view::*;
 
 mod command_buffer;
 pub use command_buffer::*;

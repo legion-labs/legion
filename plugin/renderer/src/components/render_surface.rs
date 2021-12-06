@@ -242,7 +242,7 @@ impl RenderSurface {
         let num_render_frames = renderer.num_render_frames();
         let device_context = renderer.device_context();
         let signal_sems = (0..num_render_frames)
-            .map(|_| device_context.create_semaphore().unwrap())
+            .map(|_| device_context.create_semaphore())
             .collect();
 
         Self {

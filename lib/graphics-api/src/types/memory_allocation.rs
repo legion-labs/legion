@@ -2,6 +2,8 @@ use crate::backends::vulkan::{VulkanMemoryAllocation, VulkanMemoryPagesAllocatio
 use crate::deferred_drop::Drc;
 use crate::{Buffer, DeviceContext, MemoryUsage};
 
+use super::buffer_allocation::BufferSubAllocation;
+
 pub struct MemoryAllocationDef {
     pub memory_usage: MemoryUsage,
     pub always_mapped: bool,
@@ -163,16 +165,11 @@ impl MemoryPagesAllocation {
     pub fn for_sparse_buffer(
         device_context: &DeviceContext,
         buffer: &Buffer,
-        buffer_offset: u64,
         page_count: u64,
     ) -> Self {
         #[cfg(feature = "vulkan")]
-        let platform_allocation = VulkanMemoryPagesAllocation::for_sparse_buffer(
-            device_context,
-            buffer,
-            buffer_offset,
-            page_count,
-        );
+        let platform_allocation =
+            VulkanMemoryPagesAllocation::for_sparse_buffer(device_context, buffer, page_count);
 
         Self {
             inner: device_context
@@ -190,3 +187,6 @@ impl MemoryPagesAllocation {
         &self.inner.platform_allocation
     }
 }
+
+pub type BufferAllocation = BufferSubAllocation<MemoryAllocation>;
+pub type PagedBufferAllocation = BufferSubAllocation<MemoryPagesAllocation>;

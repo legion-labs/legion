@@ -1,4 +1,4 @@
-use ash::vk::{self, SparseMemoryBindFlags};
+use ash::vk::{self};
 
 use crate::{Buffer, DeviceContext, MemoryAllocationDef};
 
@@ -82,16 +82,12 @@ impl VulkanMemoryAllocation {
 
 pub(crate) struct VulkanMemoryPagesAllocation {
     allocated_pages: Vec<(vk_mem::Allocation, vk_mem::AllocationInfo)>,
-    sparse_bindings: Vec<ash::vk::SparseMemoryBind>,
-    sparse_unbindings: Vec<ash::vk::SparseMemoryBind>,
-    buffer: Buffer,
 }
 
 impl VulkanMemoryPagesAllocation {
     pub fn for_sparse_buffer(
         device_context: &DeviceContext,
         buffer: &Buffer,
-        buffer_offset: u64,
         page_count: u64,
     ) -> Self {
         let memory_requirements = unsafe {
@@ -121,34 +117,7 @@ impl VulkanMemoryPagesAllocation {
             )
             .unwrap();
 
-        let mut sparse_bindings = Vec::with_capacity(allocated_pages.len());
-        for allocation in &allocated_pages {
-            let sparse_binding_builder = ash::vk::SparseMemoryBind::builder()
-                .resource_offset(buffer_offset)
-                .size(allocation.1.get_size() as u64)
-                .memory(allocation.1.get_device_memory())
-                .memory_offset(allocation.1.get_offset() as u64);
-
-            sparse_bindings.push(*sparse_binding_builder);
-        }
-
-        let mut sparse_unbindings = Vec::with_capacity(allocated_pages.len());
-        for allocation in &allocated_pages {
-            sparse_unbindings.push(ash::vk::SparseMemoryBind {
-                resource_offset: buffer_offset,
-                size: allocation.1.get_size() as u64,
-                memory: allocation.1.get_device_memory(),
-                memory_offset: allocation.1.get_offset() as u64,
-                flags: SparseMemoryBindFlags::empty(),
-            });
-        }
-
-        Self {
-            allocated_pages,
-            sparse_bindings,
-            sparse_unbindings,
-            buffer: buffer.clone(),
-        }
+        Self { allocated_pages }
     }
 
     pub fn destroy(&mut self, device_context: &DeviceContext) {
@@ -164,15 +133,34 @@ impl VulkanMemoryPagesAllocation {
         self.allocated_pages.clear();
     }
 
-    pub fn binding_info(&self) -> ash::vk::SparseBufferMemoryBindInfo {
-        *ash::vk::SparseBufferMemoryBindInfo::builder()
-            .buffer(self.buffer.platform_buffer().vk_buffer())
-            .binds(&self.sparse_bindings)
-    }
+    pub fn binding_info(
+        &self,
+        sparse_binding_info: &mut SparseBindingInfo<'_>,
+    ) -> ash::vk::SparseBufferMemoryBindInfo {
+        for allocation in &self.allocated_pages {
+            let mut builder = ash::vk::SparseMemoryBind::builder()
+                .resource_offset(sparse_binding_info.buffer_offset)
+                .size(allocation.1.get_size() as u64);
 
-    pub fn unbinding_info(&self) -> ash::vk::SparseBufferMemoryBindInfo {
+            if sparse_binding_info.bind {
+                builder = builder
+                    .memory(allocation.1.get_device_memory())
+                    .memory_offset(allocation.1.get_offset() as u64);
+            }
+
+            sparse_binding_info.sparse_bindings.push(*builder);
+            sparse_binding_info.buffer_offset += allocation.1.get_size() as u64;
+        }
+
         *ash::vk::SparseBufferMemoryBindInfo::builder()
-            .buffer(self.buffer.platform_buffer().vk_buffer())
-            .binds(&self.sparse_unbindings)
+            .buffer(sparse_binding_info.buffer.platform_buffer().vk_buffer())
+            .binds(&sparse_binding_info.sparse_bindings)
     }
+}
+
+pub(crate) struct SparseBindingInfo<'a> {
+    pub(crate) sparse_bindings: Vec<ash::vk::SparseMemoryBind>,
+    pub(crate) buffer_offset: u64,
+    pub(crate) buffer: &'a Buffer,
+    pub(crate) bind: bool,
 }

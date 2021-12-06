@@ -239,7 +239,7 @@ impl VulkanSwapchain {
     //TODO: Return something like PresentResult?
     pub fn acquire_next_image_semaphore(
         &mut self,
-        semaphore: Semaphore,
+        semaphore: &Semaphore,
     ) -> GfxResult<SwapchainImage> {
         let result = unsafe {
             self.swapchain.swapchain_loader.acquire_next_image(

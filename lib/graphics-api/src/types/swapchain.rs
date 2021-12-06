@@ -79,7 +79,7 @@ impl Swapchain {
     //TODO: Return something like PresentResult?
     pub fn acquire_next_image_semaphore(
         &mut self,
-        semaphore: Semaphore,
+        semaphore: &Semaphore,
     ) -> GfxResult<SwapchainImage> {
         #[cfg(not(any(feature = "vulkan")))]
         unimplemented!();

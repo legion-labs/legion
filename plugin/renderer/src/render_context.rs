@@ -1,8 +1,10 @@
 use graphics_api::{DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, QueueType};
-use graphics_utils::TransientBufferAllocator;
 
 use crate::{
-    resources::{CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle},
+    resources::{
+        CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle,
+        TransientBufferAllocator,
+    },
     RenderHandle, Renderer,
 };
 
@@ -24,7 +26,11 @@ impl<'a> RenderContext<'a> {
             descriptor_pool: renderer.acquire_descriptor_pool(&heap_def),
             // TMP: we should acquire a handle from the renderer
             transient_buffer_allocator: TransientBufferAllocatorHandle::new(
-                TransientBufferAllocator::new(renderer.transient_buffer(), 1000),
+                TransientBufferAllocator::new(
+                    renderer.device_context(),
+                    &renderer.transient_buffer(),
+                    1000,
+                ),
             ),
         }
     }
@@ -64,11 +70,11 @@ impl<'a> RenderContext<'a> {
         }
     }
 
-    pub fn acquire_transient_buffer_allocator(&mut self) -> TransientBufferAllocatorHandle {
+    pub(crate) fn acquire_transient_buffer_allocator(&mut self) -> TransientBufferAllocatorHandle {
         self.transient_buffer_allocator.transfer()
     }
 
-    pub fn release_transient_buffer_allocator(
+    pub(crate) fn release_transient_buffer_allocator(
         &mut self,
         allocator: TransientBufferAllocatorHandle,
     ) {

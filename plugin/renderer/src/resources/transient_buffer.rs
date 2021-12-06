@@ -1,53 +1,11 @@
 use std::sync::{Arc, Mutex};
 
 use graphics_api::{
-    Buffer, BufferDef, BufferView, BufferViewDef, CommandBuffer, DeviceContext, DeviceInfo,
-    IndexBufferBinding, IndexType, MemoryAllocation, MemoryAllocationDef, MemoryUsage, QueueType,
-    ResourceCreation, ResourceUsage, VertexBufferBinding,
+    Buffer, BufferAllocation, BufferDef, DeviceContext, DeviceInfo, MemoryAllocation,
+    MemoryAllocationDef, MemoryUsage, QueueType, Range, ResourceCreation, ResourceUsage,
 };
 
-use super::{Range, RangeAllocator};
-
-pub struct TransientSubAllocation {
-    buffer: Buffer,
-    data: *mut u8,
-    offset: u64,
-    size: u64,
-}
-
-impl TransientSubAllocation {
-    pub fn bind_allocation_as_vertex_buffer(&self, cmd_buffer: &CommandBuffer) {
-        cmd_buffer
-            .cmd_bind_vertex_buffers(
-                0,
-                &[VertexBufferBinding {
-                    buffer: &self.buffer,
-                    byte_offset: self.offset,
-                }],
-            )
-            .unwrap();
-    }
-
-    pub fn bind_allocation_as_index_buffer(
-        &self,
-        cmd_buffer: &CommandBuffer,
-        index_type: IndexType,
-    ) {
-        cmd_buffer
-            .cmd_bind_index_buffer(&IndexBufferBinding {
-                buffer: &self.buffer,
-                byte_offset: self.offset,
-                index_type,
-            })
-            .unwrap();
-    }
-
-    pub fn const_buffer_view_for_allocation(&self) -> BufferView {
-        let buffer_view_def = BufferViewDef::as_const_buffer_with_offset(self.size, self.offset);
-
-        BufferView::from_buffer(&self.buffer, &buffer_view_def).unwrap()
-    }
-}
+use super::RangeAllocator;
 
 #[derive(Clone)]
 struct PageAllocationsForFrame {
@@ -98,7 +56,7 @@ impl PageHeap {
         }
     }
 
-    pub fn allocate_page(&mut self, size: u64) -> Option<TransientSubAllocation> {
+    pub fn allocate_page(&mut self, size: u64) -> Option<BufferAllocation> {
         let alloc_size = legion_utils::memory::round_size_up_to_alignment_u64(size, self.page_size);
         let num_pages = alloc_size / self.page_size;
 
@@ -106,11 +64,10 @@ impl PageHeap {
             None => None,
             Some(range) => {
                 self.frame_allocations.allocations.push(range);
-                Some(TransientSubAllocation {
+                Some(BufferAllocation {
                     buffer: self.buffer.clone(),
-                    data: self.buffer_memory.mapped_ptr(),
-                    offset: range.first * self.page_size,
-                    size: alloc_size,
+                    memory: self.buffer_memory.clone(),
+                    range,
                 })
             }
         }
@@ -153,7 +110,7 @@ pub(crate) struct TransientPagedBufferInner {
 }
 
 #[derive(Clone)]
-pub struct TransientPagedBuffer {
+pub(crate) struct TransientPagedBuffer {
     inner: Arc<Mutex<TransientPagedBufferInner>>,
 }
 
@@ -168,7 +125,7 @@ impl TransientPagedBuffer {
         }
     }
 
-    pub fn allocate_page(&self, size: u64) -> TransientSubAllocation {
+    pub fn allocate_page(&self, size: u64) -> BufferAllocation {
         let mut inner = self.inner.lock().unwrap();
 
         for page_heap in &mut inner.page_heaps {
@@ -195,9 +152,9 @@ impl TransientPagedBuffer {
     }
 }
 
-pub struct TransientBufferAllocator {
+pub(crate) struct TransientBufferAllocator {
     paged_buffer: TransientPagedBuffer,
-    allocation: TransientSubAllocation,
+    allocation: BufferAllocation,
     device_info: DeviceInfo,
     offset: u64,
 }
@@ -220,7 +177,7 @@ impl TransientBufferAllocator {
         &mut self,
         data_size_in_bytes: u64,
         resource_usage: ResourceUsage,
-    ) -> TransientSubAllocation {
+    ) -> BufferAllocation {
         let alignment = if resource_usage == ResourceUsage::AS_CONST_BUFFER {
             self.device_info.min_uniform_buffer_offset_alignment
         } else {
@@ -234,16 +191,18 @@ impl TransientBufferAllocator {
             u64::from(alignment),
         );
 
-        if self.offset > self.allocation.size {
+        if self.offset > self.allocation.size() {
             self.allocation = self.paged_buffer.allocate_page(data_size_in_bytes);
             self.offset = 0;
         }
 
-        TransientSubAllocation {
+        BufferAllocation {
             buffer: self.allocation.buffer.clone(),
-            data: self.allocation.data,
-            offset: self.allocation.offset + old_offset,
-            size: self.offset - old_offset,
+            memory: self.allocation.memory.clone(),
+            range: Range {
+                first: old_offset,
+                last: self.offset,
+            },
         }
     }
 
@@ -251,7 +210,7 @@ impl TransientBufferAllocator {
         &mut self,
         data: &[T],
         resource_usage: ResourceUsage,
-    ) -> TransientSubAllocation {
+    ) -> BufferAllocation {
         let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
 
         let allocation = self.allocate(data_size_in_bytes, resource_usage);
@@ -261,11 +220,13 @@ impl TransientBufferAllocator {
         unsafe {
             std::ptr::copy_nonoverlapping(
                 src,
-                allocation.data.add(allocation.offset as usize),
+                allocation
+                    .memory
+                    .mapped_ptr()
+                    .add(allocation.offset() as usize),
                 data_size_in_bytes as usize,
             );
         }
-
         allocation
     }
 }

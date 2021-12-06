@@ -1,23 +1,15 @@
-#[derive(Clone, Copy)]
-pub(crate) struct Range {
-    pub first: u64,
-    pub last: u64,
-}
-
-impl Range {
-    fn new(first: u64, last: u64) -> Self {
-        Self { first, last }
-    }
-}
+use graphics_api::Range;
 
 pub(crate) struct RangeAllocator {
     free_list: Vec<Range>,
+    available: u64,
 }
 
 impl RangeAllocator {
     pub fn new(size: u64) -> Self {
         Self {
             free_list: vec![Range::new(0, size)],
+            available: size,
         }
     }
 
@@ -29,6 +21,7 @@ impl RangeAllocator {
                 let mut range = &mut self.free_list[index];
                 let range_size = range.last - range.first;
                 if range_size >= size {
+                    self.available -= size;
                     result = Some(Range::new(range.first, range.first + size));
                     if range_size != size {
                         range.first += size;
@@ -68,6 +61,7 @@ impl RangeAllocator {
                 break;
             }
         }
+        self.available += free_range.last - free_range.first;
         self.free_list.insert(insert_index, free_range);
     }
 }

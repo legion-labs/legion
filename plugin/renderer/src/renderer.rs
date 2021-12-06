@@ -1,12 +1,12 @@
 use std::num::NonZeroU32;
 
 use anyhow::Result;
-use graphics_utils::TransientPagedBuffer;
 use parking_lot::{RwLock, RwLockReadGuard};
 
 use crate::components::{RenderSurface, StaticMesh};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
+    TransientPagedBuffer, UnifiedStaticBuffer,
 };
 
 use crate::static_mesh_render_data::StaticMeshRenderData;
@@ -20,6 +20,9 @@ pub struct Renderer {
     frame_idx: usize,
     render_frame_idx: usize,
     num_render_frames: usize,
+    prev_frame_sems: Vec<Semaphore>,
+    sparse_unbind_sems: Vec<Semaphore>,
+    sparse_bind_sems: Vec<Semaphore>,
     frame_fences: Vec<Fence>,
     graphics_queue: RwLock<Queue>,
     command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
@@ -42,13 +45,23 @@ impl Renderer {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
+            prev_frame_sems: (0..num_render_frames)
+                .map(|_| device_context.create_semaphore())
+                .collect(),
+            sparse_unbind_sems: (0..num_render_frames)
+                .map(|_| device_context.create_semaphore())
+                .collect(),
+            sparse_bind_sems: (0..num_render_frames)
+                .map(|_| device_context.create_semaphore())
+                .collect(),
             frame_fences: (0..num_render_frames)
                 .map(|_| device_context.create_fence().unwrap())
                 .collect(),
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, 16),
+            transient_buffer: TransientPagedBuffer::new(device_context, 16, 64 * 1024),
+            static_buffer: UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024),
             api,
         })
     }
@@ -73,8 +86,12 @@ impl Renderer {
     }
 
     // TMP: change that.
-    pub fn transient_buffer(&self) -> TransientPagedBuffer {
+    pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
         self.transient_buffer.clone()
+    }
+    // And this?
+    pub(crate) fn static_buffer(&self) -> UnifiedStaticBuffer {
+        self.static_buffer.clone()
     }
 
     pub(crate) fn acquire_command_buffer_pool(
@@ -138,17 +155,16 @@ impl Renderer {
         }
 
         // TMP: todo
-        self.transient_buffer.begin_frame(self.device_context());
+        self.transient_buffer.begin_frame();
     }
 
     pub(crate) fn end_frame(&mut self) {
         let graphics_queue = self.graphics_queue.write();
         let frame_fence = &self.frame_fences[self.render_frame_idx];
+
         graphics_queue
             .submit(&[], &[], &[], Some(frame_fence))
             .unwrap();
-        // TMP: todo
-        self.transient_buffer.end_frame(&graphics_queue);
     }
 }
 
@@ -416,7 +432,7 @@ impl TmpRenderPass {
         let up = Vec3::new(0.0, 1.0, 0.0);
         let view_matrix = Mat4::look_at_lh(eye, center, up);
 
-        let transient_allocator = render_context.acquire_transient_buffer_allocator();
+        let mut transient_allocator = render_context.acquire_transient_buffer_allocator();
 
         for (_index, (transform, static_mesh_component)) in static_meshes.iter().enumerate() {
             let mesh_id = static_mesh_component.mesh_id;
@@ -426,12 +442,10 @@ impl TmpRenderPass {
 
             let mesh = &self.static_meshes[static_mesh_component.mesh_id];
 
-            let mut sub_allocation = transient_allocator.copy_data(None, &mesh.vertices, 0);
+            let mut sub_allocation =
+                transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
 
-            render_context
-                .renderer()
-                .transient_buffer()
-                .bind_allocation_as_vertex_buffer(cmd_buffer, &sub_allocation);
+            sub_allocation.bind_allocation_as_vertex_buffer(cmd_buffer);
 
             let color: (f32, f32, f32, f32) = (
                 f32::from(static_mesh_component.color.r) / 255.0f32,
@@ -453,10 +467,7 @@ impl TmpRenderPass {
             sub_allocation =
                 transient_allocator.copy_data(&push_constant_data, ResourceUsage::AS_CONST_BUFFER);
 
-            let const_buffer_view = render_context
-                .renderer()
-                .transient_buffer()
-                .const_buffer_view_for_allocation(&sub_allocation);
+            let const_buffer_view = sub_allocation.const_buffer_view_for_allocation();
 
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);

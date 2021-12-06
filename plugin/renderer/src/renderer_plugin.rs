@@ -22,6 +22,7 @@ impl Plugin for RendererPlugin {
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update.system());
+
         // Update
         app.add_system(
             update_rotation
@@ -70,6 +71,14 @@ fn render_update(
         .iter()
         .collect::<Vec<(&Transform, &StaticMesh)>>();
     let graphics_queue = renderer.queue(QueueType::Graphics);
+
+    // let static_buffer = renderer.static_buffer();
+    // static_buffer.commmit_segment_memory(
+    //     &(*graphics_queue),
+    //     prev_frame_semaphore,
+    //     unbind_semaphore,
+    //     bind_semaphore,
+    // );
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
