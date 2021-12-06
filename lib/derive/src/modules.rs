@@ -1,2 +1,2 @@
-pub const LEGION_CORE: &str = "legion_core";
-pub const LEGION_UTILS: &str = "legion_utils";
+pub const LEGION_CORE: &str = "lgn_core";
+pub const LEGION_UTILS: &str = "lgn_utils";

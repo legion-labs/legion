@@ -4,8 +4,8 @@
 
 use std::{any::TypeId, collections::HashMap};
 
-use legion_ecs_macros::all_tuples;
-pub use legion_ecs_macros::Bundle;
+use lgn_ecs_macros::all_tuples;
+pub use lgn_ecs_macros::Bundle;
 
 use crate::{
     archetype::{AddBundle, Archetype, ArchetypeId, Archetypes, ComponentStatus},
@@ -29,7 +29,7 @@ use crate::{
 /// struct field is a component:
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// # #[derive(Component)]
 /// # struct ComponentA;
 /// # #[derive(Component)]
@@ -47,7 +47,7 @@ use crate::{
 ///
 /// You can nest bundles using the `#[bundle]` attribute:
 /// ```
-/// # use legion_ecs::{component::Component, bundle::Bundle};
+/// # use lgn_ecs::{component::Component, bundle::Bundle};
 ///
 /// #[derive(Component)]
 /// struct X(i32);
@@ -480,7 +480,7 @@ impl<'a, 'b> BundleInserter<'a, 'b> {
                 // redundant copies
                 let move_result = self
                     .table
-                    .move_to_superset_unchecked(result.table_row, &mut *new_table);
+                    .move_to_superset_unchecked(result.table_row, *new_table);
                 let new_location = new_archetype.allocate(entity, move_result.new_row);
                 self.entities.meta[entity.id as usize].location = new_location;
 

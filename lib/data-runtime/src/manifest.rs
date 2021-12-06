@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use legion_content_store::Checksum;
+use lgn_content_store::Checksum;
 use serde::{Deserialize, Serialize};
 
 use crate::{ResourceId, ResourceType};

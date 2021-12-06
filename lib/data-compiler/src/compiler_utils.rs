@@ -3,9 +3,9 @@
 use std::hash::{Hash, Hasher};
 
 use bincode;
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{ResourceId, ResourceType};
-use legion_utils::DefaultHasher;
+use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_utils::DefaultHasher;
 
 use crate::{CompilerHash, Locale, Platform, Target};
 

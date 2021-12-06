@@ -64,7 +64,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_utils::{DefaultHash, DefaultHasher128};
+use lgn_utils::{DefaultHash, DefaultHasher128};
 
 /// Returns the hash of the provided data.
 pub fn content_checksum(data: &[u8]) -> Checksum {

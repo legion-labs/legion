@@ -11,7 +11,7 @@
 //! System functions often look like this:
 //!
 //! ```
-//! # use legion_ecs::prelude::*;
+//! # use lgn_ecs::prelude::*;
 //! #
 //! # #[derive(Component)]
 //! # struct Player { alive: bool }
@@ -87,7 +87,7 @@ mod tests {
     use std::any::TypeId;
 
     use crate::{
-        self as legion_ecs,
+        self as lgn_ecs,
         archetype::Archetypes,
         bundle::Bundles,
         component::{Component, Components},
@@ -810,7 +810,7 @@ mod tests {
 }
 
 /// ```compile_fail
-/// use legion_ecs::prelude::*;
+/// use lgn_ecs::prelude::*;
 /// struct A(usize);
 /// fn system(mut query: Query<&mut A>, e: Res<Entity>) {
 ///     let mut iter = query.iter_mut();
@@ -828,7 +828,7 @@ mod tests {
 fn system_query_iter_lifetime_safety_test() {}
 
 /// ```compile_fail
-/// use legion_ecs::prelude::*;
+/// use lgn_ecs::prelude::*;
 /// struct A(usize);
 /// fn system(mut query: Query<&mut A>, e: Res<Entity>) {
 ///     let mut a1 = query.get_mut(*e).unwrap();
@@ -842,7 +842,7 @@ fn system_query_iter_lifetime_safety_test() {}
 fn system_query_get_lifetime_safety_test() {}
 
 /// ```compile_fail
-/// use legion_ecs::prelude::*;
+/// use lgn_ecs::prelude::*;
 /// struct A(usize);
 /// fn query_set(mut queries: QuerySet<(QueryState<&mut A>, QueryState<&A>)>, e: Res<Entity>) {
 ///     let mut q2 = queries.q0();
@@ -862,7 +862,7 @@ fn system_query_get_lifetime_safety_test() {}
 fn system_query_set_iter_lifetime_safety_test() {}
 
 /// ```compile_fail
-/// use legion_ecs::prelude::*;
+/// use lgn_ecs::prelude::*;
 /// struct A(usize);
 /// fn query_set(mut queries: QuerySet<(QueryState<&mut A>, QueryState<&A>)>, e: Res<Entity>) {
 ///     let q1 = queries.q1();
@@ -882,7 +882,7 @@ fn system_query_set_iter_lifetime_safety_test() {}
 fn system_query_set_iter_flip_lifetime_safety_test() {}
 
 /// ```compile_fail
-/// use legion_ecs::prelude::*;
+/// use lgn_ecs::prelude::*;
 /// struct A(usize);
 /// fn query_set(mut queries: QuerySet<(QueryState<&mut A>, QueryState<&A>)>, e: Res<Entity>) {
 ///     let mut q2 = queries.q0();
@@ -900,7 +900,7 @@ fn system_query_set_iter_flip_lifetime_safety_test() {}
 fn system_query_set_get_lifetime_safety_test() {}
 
 /// ```compile_fail
-/// use legion_ecs::prelude::*;
+/// use lgn_ecs::prelude::*;
 /// struct A(usize);
 /// fn query_set(mut queries: QuerySet<(QueryState<&mut A>, QueryState<&A>)>, e: Res<Entity>) {
 ///     let q1 = queries.q1();
@@ -917,8 +917,8 @@ fn system_query_set_get_lifetime_safety_test() {}
 fn system_query_set_get_flip_lifetime_safety_test() {}
 
 /// ```compile_fail
-/// use legion_ecs::prelude::*;
-/// use legion_ecs::system::SystemState;
+/// use lgn_ecs::prelude::*;
+/// use lgn_ecs::system::SystemState;
 /// struct A(usize);
 /// struct B(usize);
 /// struct State {
@@ -944,8 +944,8 @@ fn system_query_set_get_flip_lifetime_safety_test() {}
 fn system_state_get_lifetime_safety_test() {}
 
 /// ```compile_fail
-/// use legion_ecs::prelude::*;
-/// use legion_ecs::system::SystemState;
+/// use lgn_ecs::prelude::*;
+/// use lgn_ecs::system::SystemState;
 /// struct A(usize);
 /// struct B(usize);
 /// struct State {

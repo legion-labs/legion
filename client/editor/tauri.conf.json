@@ -5,7 +5,7 @@
   },
   "build": {
     "distDir": "./frontend/dist",
-    "devPath": "http://localhost:8080",
+    "devPath": "http://localhost:3000",
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
     "withGlobalTauri": true
@@ -60,8 +60,7 @@
         "minWidth": 800,
         "minHeight": 600,
         "resizable": true,
-        "fullscreen": false,
-        "decorations": false
+        "fullscreen": false
       }
     ],
     "security": {

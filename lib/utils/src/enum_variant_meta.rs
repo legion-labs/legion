@@ -1,4 +1,4 @@
-pub use legion_derive::EnumVariantMeta;
+pub use lgn_derive::EnumVariantMeta;
 
 pub trait EnumVariantMeta {
     fn enum_variant_index(&self) -> usize;

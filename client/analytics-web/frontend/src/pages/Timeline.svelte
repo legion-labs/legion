@@ -431,21 +431,25 @@
       {/if}
       {#if selectedRange}
         <button class="call-graph-button">
-          <a href={`/cumulative-call-graph?process=${currentProcess.processId}&begin=${selectedRange[0]}&end=${selectedRange[1]}`} use:link>
+          <a
+            href={`/cumulative-call-graph?process=${currentProcess.processId}&begin=${selectedRange[0]}&end=${selectedRange[1]}`}
+            use:link
+          >
             Cumulative Call Graph
           </a>
         </button>
       {/if}
     </div>
   {/if}
-  <canvas class="timeline-canvas"
-          bind:this={canvas}
-          id="canvas_timeline"
-          width="1024px"
-          on:wheel|preventDefault={onZoom}
-          on:mousemove={onMouseMove}
-          on:mousedown={onMouseDown}
-          />
+  <canvas
+    class="timeline-canvas"
+    bind:this={canvas}
+    id="canvas_timeline"
+    width="1024px"
+    on:wheel|preventDefault={onZoom}
+    on:mousemove={onMouseMove}
+    on:mousedown={onMouseDown}
+  />
 </div>
 
 <style lang="postcss">
@@ -465,8 +469,8 @@
   }
 
   .call-graph-button:hover {
-    background-color: rgba(64, 64, 200, 1.0);
+    background-color: rgba(64, 64, 200, 1);
     color: white;
     border: 1px solid;
-  }  
+  }
 </style>

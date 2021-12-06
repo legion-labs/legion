@@ -61,8 +61,8 @@
 )]
 #![warn(missing_docs)]
 
-use legion_app::prelude::*;
-use legion_core::Time;
+use lgn_app::prelude::*;
+use lgn_core::Time;
 
 mod grpc;
 mod streamer;
@@ -93,7 +93,7 @@ impl Plugin for StreamerPlugin {
         let grpc_server = grpc::GRPCServer::new(webrtc_server, stream_events_sender);
 
         app.world
-            .get_resource_mut::<legion_grpc::GRPCPluginSettings>()
+            .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
             .expect("the streamer plugin requires the gRPC plugin")
             .into_inner()
             .register_service(grpc_server.service());

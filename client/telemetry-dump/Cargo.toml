@@ -6,9 +6,9 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 clap = "2.33"
-legion-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
-legion-analytics = { path = "../../lib/analytics", version = "0.1.0" }
-legion-transit = { path = "../../lib/transit", version = "0.1.0" }
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-analytics = { path = "../../lib/analytics", version = "0.1.0" }
+lgn-transit = { path = "../../lib/transit", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 sqlx = { version = "0.5", features = [
     "sqlite",
@@ -22,5 +22,5 @@ lz4 = "1.23"
 json = "0.12"
 
 [dev-dependencies]
-legion-test-utils = { path = "../../lib/test-utils" }
+lgn-test-utils = { path = "../../lib/test-utils", version = "0.1.0" }
 fs_extra = "1.2"

@@ -1,8 +1,9 @@
+use ash::vk;
+
 use crate::{
     DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetHandle, DescriptorSetLayout,
     DeviceContext, GfxResult,
 };
-use ash::vk;
 
 struct DescriptorHeapPoolConfig {
     pool_flags: vk::DescriptorPoolCreateFlags,
@@ -111,7 +112,7 @@ impl VulkanDescriptorHeap {
         unsafe {
             device
                 .reset_descriptor_pool(self.vk_pool, vk::DescriptorPoolResetFlags::default())
-                .map_err(|x| x.into())
+                .map_err(Into::into)
         }
     }
 

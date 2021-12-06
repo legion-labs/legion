@@ -1,8 +1,8 @@
+use std::convert::TryFrom;
 use std::{fmt, hash::Hash, str::FromStr};
 
-use legion_utils::DefaultHash;
+use lgn_utils::DefaultHash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::convert::TryFrom;
 use uuid::Uuid;
 use xxhash_rust::const_xxh3::xxh3_64 as const_xxh3;
 

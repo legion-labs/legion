@@ -1,6 +1,6 @@
 use std::collections::hash_map::Entry;
 
-use legion_utils::HashMap;
+use lgn_utils::HashMap;
 use thiserror::Error;
 
 use crate::entity::Entity;

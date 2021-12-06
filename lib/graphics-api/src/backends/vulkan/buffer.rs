@@ -2,7 +2,7 @@ use crate::{Buffer, BufferDef, DeviceContext, GfxResult, MemoryUsage, ResourceUs
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
-    allocation_info: vk_mem::AllocationInfo,
+    _allocation_info: vk_mem::AllocationInfo,
     allocation: vk_mem::Allocation,
     vk_buffer: ash::vk::Buffer,
 }
@@ -16,7 +16,7 @@ impl VulkanBuffer {
             .usage_flags
             .intersects(ResourceUsage::AS_CONST_BUFFER)
         {
-            allocation_size = legion_utils::memory::round_size_up_to_alignment_u64(
+            allocation_size = lgn_utils::memory::round_size_up_to_alignment_u64(
                 buffer_def.size,
                 device_context.limits().min_uniform_buffer_offset_alignment,
             );
@@ -70,7 +70,7 @@ impl VulkanBuffer {
         );
 
         Ok(Self {
-            allocation_info,
+            _allocation_info: allocation_info,
             allocation,
             vk_buffer: buffer,
         })

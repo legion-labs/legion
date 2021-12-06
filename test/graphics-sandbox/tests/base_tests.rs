@@ -1,10 +1,11 @@
-use legion_test_utils::*;
 use std::{
     fs::File,
     io,
     path::{Path, PathBuf},
     process::Command,
 };
+
+use lgn_test_utils::*;
 
 static GRAPHICS_SANDBOX_CLI_EXE: &str = env!("CARGO_BIN_EXE_graphics-sandbox");
 static GRAPHICS_SANDBOX_TEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
@@ -59,17 +60,18 @@ fn load_image(path: &Path) -> io::Result<SnapshotData> {
 }
 
 #[test]
-#[ignore]
-fn gpu_triangle_render() {
-    let test_name = "triangle_render";
-    let setup_name = "triangle_render";
+fn gpu_simple_scene() {
+    let test_name = "simple-scene";
+    let setup_name = "simple-scene";
     let wd = init_test_dir(test_name);
     generate_image(&wd, setup_name);
-    let snapshot = load_image(&wd.join(&format!("{}.png", setup_name))).unwrap();
+    let snapshot = load_image(&wd.join(setup_name).with_extension("png")).unwrap();
     let ref_path = Path::new(GRAPHICS_SANDBOX_TEST_DIR)
         .join("tests")
         .join("refs")
-        .join(&format!("{}_{}.png", test_name, setup_name));
+        .join(test_name)
+        .join(setup_name)
+        .with_extension("png");
 
     let ref_snapshot = load_image(&ref_path).unwrap();
     assert_eq!(snapshot.width, ref_snapshot.width);

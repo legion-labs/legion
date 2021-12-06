@@ -2,7 +2,7 @@
 
 use std::{cell::UnsafeCell, marker::PhantomData, ptr};
 
-use legion_ecs_macros::all_tuples;
+use lgn_ecs_macros::all_tuples;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
@@ -54,10 +54,10 @@ where
 /// # Examples
 ///
 /// ```
-/// # use legion_ecs::component::Component;
-/// # use legion_ecs::query::With;
-/// # use legion_ecs::system::IntoSystem;
-/// # use legion_ecs::system::Query;
+/// # use lgn_ecs::component::Component;
+/// # use lgn_ecs::query::With;
+/// # use lgn_ecs::system::IntoSystem;
+/// # use lgn_ecs::system::Query;
 /// #
 /// # #[derive(Component)]
 /// # struct IsBeautiful;
@@ -173,10 +173,10 @@ impl<'w, 's, T: Component> Fetch<'w, 's> for WithFetch<T> {
 /// # Examples
 ///
 /// ```
-/// # use legion_ecs::component::Component;
-/// # use legion_ecs::query::Without;
-/// # use legion_ecs::system::IntoSystem;
-/// # use legion_ecs::system::Query;
+/// # use lgn_ecs::component::Component;
+/// # use lgn_ecs::query::Without;
+/// # use lgn_ecs::system::IntoSystem;
+/// # use lgn_ecs::system::Query;
 /// #
 /// # #[derive(Component)]
 /// # struct Permit;
@@ -296,12 +296,12 @@ impl<'w, 's, T: Component> Fetch<'w, 's> for WithoutFetch<T> {
 /// # Examples
 ///
 /// ```
-/// # use legion_ecs::component::Component;
-/// # use legion_ecs::entity::Entity;
-/// # use legion_ecs::query::Changed;
-/// # use legion_ecs::query::Or;
-/// # use legion_ecs::system::IntoSystem;
-/// # use legion_ecs::system::Query;
+/// # use lgn_ecs::component::Component;
+/// # use lgn_ecs::entity::Entity;
+/// # use lgn_ecs::query::Changed;
+/// # use lgn_ecs::query::Or;
+/// # use lgn_ecs::system::IntoSystem;
+/// # use lgn_ecs::system::Query;
 /// #
 /// # #[derive(Component, Debug)]
 /// # struct Color {};
@@ -595,10 +595,10 @@ impl_tick_filter!(
     /// # Examples
     ///
     /// ```
-    /// # use legion_ecs::component::Component;
-    /// # use legion_ecs::query::Added;
-    /// # use legion_ecs::system::IntoSystem;
-    /// # use legion_ecs::system::Query;
+    /// # use lgn_ecs::component::Component;
+    /// # use lgn_ecs::query::Added;
+    /// # use lgn_ecs::system::IntoSystem;
+    /// # use lgn_ecs::system::Query;
     /// #
     /// # #[derive(Component, Debug)]
     /// # struct Name {};
@@ -636,10 +636,10 @@ impl_tick_filter!(
     /// # Examples
     ///
     /// ```
-    /// # use legion_ecs::component::Component;
-    /// # use legion_ecs::query::Changed;
-    /// # use legion_ecs::system::IntoSystem;
-    /// # use legion_ecs::system::Query;
+    /// # use lgn_ecs::component::Component;
+    /// # use lgn_ecs::query::Changed;
+    /// # use lgn_ecs::system::IntoSystem;
+    /// # use lgn_ecs::system::Query;
     /// #
     /// # #[derive(Component, Debug)]
     /// # struct Name {};

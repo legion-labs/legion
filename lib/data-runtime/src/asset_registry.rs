@@ -13,7 +13,7 @@ use std::{
     time::Duration,
 };
 
-use legion_content_store::{ContentStore, ContentStoreAddr};
+use lgn_content_store::{ContentStore, ContentStoreAddr};
 
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
@@ -476,7 +476,7 @@ mod tests {
 
     use std::panic;
 
-    use legion_content_store::RamContentStore;
+    use lgn_content_store::RamContentStore;
 
     use super::*;
     use crate::test_asset;

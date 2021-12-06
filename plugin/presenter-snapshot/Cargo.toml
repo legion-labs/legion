@@ -1,5 +1,5 @@
 [package]
-name = "legion-presenter-snapshot"
+name = "lgn-presenter-snapshot"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -7,17 +7,17 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-async = { path = "../../plugin/async", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-presenter = { path = "../../lib/presenter", version = "0.1.0" }
-legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
-log = "0.4"
-raw-window-handle = "0.3"
+graphics-api = { path = "../../lib/graphics-api", package = "lgn-graphics-api", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-presenter = { path = "../../lib/presenter", version = "0.1.0" }
+lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
+
+anyhow = "1.0"
 crossbeam-channel = "0.5"
 instant = "0.1"
-anyhow = "1.0"
+log = "0.4"
 png = "0.17"
 
 [features]

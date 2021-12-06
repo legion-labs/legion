@@ -1,4 +1,4 @@
-use legion_ecs::prelude::*;
+use lgn_ecs::prelude::*;
 
 #[derive(Component)]
 pub struct RotationComponent {

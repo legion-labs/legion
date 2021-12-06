@@ -4,12 +4,11 @@ use anyhow::{bail, Context};
 use log::debug;
 use serde::{Deserialize, Serialize};
 
-use crate::authentication::jwt::signature_validation::RsaSignatureValidation;
-
 use super::{
     SignatureValidation,
     ValidationResult::{self, Unsupported},
 };
+use crate::authentication::jwt::signature_validation::RsaSignatureValidation;
 
 pub struct AwsCognitoSignatureValidation {
     keys: HashMap<String, Box<dyn SignatureValidation>>,

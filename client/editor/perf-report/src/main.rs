@@ -3,8 +3,8 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg, SubCommand};
-use legion_analytics::prelude::*;
-use legion_telemetry::prelude::*;
+use lgn_analytics::prelude::*;
+use lgn_telemetry::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {

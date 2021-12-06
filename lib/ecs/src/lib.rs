@@ -111,10 +111,10 @@ mod tests {
         },
     };
 
-    use legion_tasks::TaskPool;
+    use lgn_tasks::TaskPool;
     use parking_lot::Mutex;
 
-    use crate as legion_ecs;
+    use crate as lgn_ecs;
     use crate::{
         bundle::Bundle,
         component::{Component, ComponentId},

@@ -11,11 +11,11 @@ use std::{
 };
 
 use generic_data_offline::{DebugCube, TestEntity};
-use legion_data_offline::resource::{
+use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
-use legion_data_runtime::{resource_type_id_tuple, Resource, ResourceId, ResourceType};
-use legion_graphics_offline::PsdFile;
+use lgn_data_runtime::{resource_type_id_tuple, Resource, ResourceId, ResourceType};
+use lgn_graphics_offline::PsdFile;
 use sample_data_offline as offline_data;
 use serde::de::DeserializeOwned;
 
@@ -67,7 +67,7 @@ pub fn build_offline(root_folder: impl AsRef<Path>) {
                         );
                     }
                     "mat" => {
-                        load_ron_resource::<raw_data::Material, legion_graphics_offline::Material>(
+                        load_ron_resource::<raw_data::Material, lgn_graphics_offline::Material>(
                             resource_id,
                             path,
                             &resource_ids,
@@ -117,7 +117,7 @@ fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) 
 
     let mut registry = ResourceRegistryOptions::new();
     registry = offline_data::register_resource_types(registry);
-    registry = legion_graphics_offline::register_resource_types(registry);
+    registry = lgn_graphics_offline::register_resource_types(registry);
     registry = generic_data_offline::register_resource_types(registry);
     let registry = registry.create_registry();
 
@@ -128,9 +128,9 @@ fn ext_to_resource_kind(ext: &str) -> ResourceType {
     match ext {
         "ent" => offline_data::Entity::TYPE,
         "ins" => offline_data::Instance::TYPE,
-        "mat" => legion_graphics_offline::Material::TYPE,
+        "mat" => lgn_graphics_offline::Material::TYPE,
         "mesh" => offline_data::Mesh::TYPE,
-        "psd" => legion_graphics_offline::PsdFile::TYPE,
+        "psd" => lgn_graphics_offline::PsdFile::TYPE,
         _ => panic!(),
     }
 }
@@ -187,7 +187,7 @@ fn create_or_find_default(
                 test_entity.test_float32 = 1.0;
                 test_entity.test_float64 = 2.0;
                 test_entity.test_int = 1337;
-                test_entity.test_position = legion_math::Vec3::new(0.0, 100.0, 0.0);
+                test_entity.test_position = lgn_math::Vec3::new(0.0, 100.0, 0.0);
                 project
                     .add_resource_with_id(name.clone(), kind, id, test_entity_handle, resources)
                     .unwrap()

@@ -1,5 +1,5 @@
 use instant::{Duration, Instant};
-use legion_ecs::system::ResMut;
+use lgn_ecs::system::ResMut;
 
 /// Tracks elapsed time since the last update and since the App has started
 #[derive(Debug, Clone)]

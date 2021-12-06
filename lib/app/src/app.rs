@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use legion_ecs::{
+use lgn_ecs::{
     prelude::{FromWorld, IntoExclusiveSystem},
     schedule::{
         IntoSystemDescriptor, RunOnce, Schedule, Stage, StageLabel, State, StateData, SystemSet,
@@ -9,7 +9,7 @@ use legion_ecs::{
     system::Resource,
     world::World,
 };
-use legion_telemetry::trace_scope;
+use lgn_telemetry::trace_scope;
 use log::debug;
 
 use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupStage};
@@ -25,8 +25,8 @@ use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupS
 /// ## Example
 /// Here is a simple "Hello World" Legion app:
 /// ```
-/// # use legion_app::prelude::*;
-/// # use legion_ecs::prelude::*;
+/// # use lgn_app::prelude::*;
+/// # use lgn_ecs::prelude::*;
 ///
 /// fn main() {
 ///    App::new()
@@ -51,7 +51,7 @@ impl Default for App {
             .add_event::<AppExit>()
             .add_system_to_stage(CoreStage::Last, World::clear_trackers.exclusive_system());
 
-        #[cfg(feature = "legion_ci_testing")]
+        #[cfg(feature = "lgn_ci_testing")]
         {
             crate::ci_testing::setup_app(&mut app);
         }
@@ -103,8 +103,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// # let mut app = App::new();
     /// #
     /// app.add_stage("my_stage", SystemStage::parallel());
@@ -120,8 +120,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// # let mut app = App::new();
     /// #
     /// app.add_stage_after(CoreStage::Update, "my_stage", SystemStage::parallel());
@@ -142,8 +142,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// # let mut app = App::new();
     /// #
     /// app.add_stage_before(CoreStage::Update, "my_stage", SystemStage::parallel());
@@ -164,8 +164,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// # let mut app = App::new();
     /// #
     /// app.add_startup_stage("my_startup_stage", SystemStage::parallel());
@@ -186,8 +186,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// # let mut app = App::new();
     /// #
     /// app.add_startup_stage_after(
@@ -217,8 +217,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// # let mut app = App::new();
     /// #
     /// app.add_startup_stage_before(
@@ -254,8 +254,8 @@ impl App {
     /// Here the closure is used to add a system to the update stage:
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut app = App::new();
     /// # fn my_system() {}
@@ -275,14 +275,14 @@ impl App {
 
     /// Adds a system to the [update stage](Self::add_default_stages) of the app's [`Schedule`].
     ///
-    /// Refer to the [system module documentation](legion_ecs::system) to see how a system
+    /// Refer to the [system module documentation](lgn_ecs::system) to see how a system
     /// can be defined.
     ///
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # fn my_system() {}
     /// # let mut app = App::new();
@@ -298,8 +298,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut app = App::new();
     /// # fn system_a() {}
@@ -322,8 +322,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut app = App::new();
     /// # fn my_system() {}
@@ -344,8 +344,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut app = App::new();
     /// # fn system_a() {}
@@ -377,8 +377,8 @@ impl App {
     ///
     /// ## Example
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// fn my_startup_system(_commands: Commands) {
     ///     println!("My startup system");
@@ -399,8 +399,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut app = App::new();
     /// # fn startup_system_a() {}
@@ -426,8 +426,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut app = App::new();
     /// # fn my_startup_system() {}
@@ -454,8 +454,8 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut app = App::new();
     /// # fn startup_system_a() {}
@@ -538,7 +538,7 @@ impl App {
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
+    /// # use lgn_app::prelude::*;
     /// #
     /// let app = App::empty().add_default_stages();
     /// ```
@@ -563,13 +563,13 @@ impl App {
     /// This is done by adding a `Resource` of type `Events::<T>`,
     /// and inserting a `Events::<T>::update_system` system into `CoreStage::First`.
     ///
-    /// See [`Events`](legion_ecs::event::Events) for defining events.
+    /// See [`Events`](lgn_ecs::event::Events) for defining events.
     ///
     /// # Example
     ///
     /// ```
-    /// # use legion_app::prelude::*;
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_app::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct MyEvent;
     /// # let mut app = App::new();
@@ -593,7 +593,7 @@ impl App {
     ///
     /// ## Example
     /// ```
-    /// # use legion_app::prelude::*;
+    /// # use lgn_app::prelude::*;
     /// #
     /// struct MyCounter {
     ///     counter: usize,
@@ -617,7 +617,7 @@ impl App {
     ///
     /// ## Example
     /// ```
-    /// # use legion_app::prelude::*;
+    /// # use lgn_app::prelude::*;
     /// #
     /// struct MyCounter {
     ///     counter: usize,
@@ -642,7 +642,7 @@ impl App {
     ///
     /// ## Example
     /// ```
-    /// # use legion_app::prelude::*;
+    /// # use lgn_app::prelude::*;
     /// #
     /// struct MyCounter {
     ///     counter: usize,
@@ -699,7 +699,7 @@ impl App {
     ///
     /// ## Example
     /// ```
-    /// # use legion_app::prelude::*;
+    /// # use lgn_app::prelude::*;
     /// #
     /// fn my_runner(mut app: App) {
     ///     loop {
@@ -725,9 +725,9 @@ impl App {
     ///
     /// ## Example
     /// ```
-    /// # use legion_app::prelude::*;
+    /// # use lgn_app::prelude::*;
     /// #
-    /// App::new().add_plugin(legion_transform::TransformPlugin::default());
+    /// App::new().add_plugin(lgn_transform::TransformPlugin::default());
     /// ```
     #[allow(clippy::needless_pass_by_value)]
     pub fn add_plugin<T>(&mut self, plugin: T) -> &mut Self
@@ -748,7 +748,7 @@ impl App {
     ///
     /// ## Example
     /// ```
-    /// # use legion_app::{prelude::*, PluginGroupBuilder};
+    /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
     /// # // Dummy created to avoid using legion_internal, which pulls in to many dependencies.
     /// # struct MinimalPlugins;
@@ -775,13 +775,13 @@ impl App {
     ///
     /// ## Example
     /// ```
-    /// # use legion_app::{prelude::*, PluginGroupBuilder};
+    /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
     /// # // Dummies created to avoid using legion_internal which pulls in to many dependencies.
     /// # struct DefaultPlugins;
     /// # impl PluginGroup for DefaultPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){
-    /// #         group.add(legion_transform::TransformPlugin::default());
+    /// #         group.add(lgn_transform::TransformPlugin::default());
     /// #     }
     /// # }
     /// #
@@ -792,7 +792,7 @@ impl App {
     /// #
     /// App::new()
     ///      .add_plugins_with(DefaultPlugins, |group| {
-    ///             group.add_before::<legion_transform::TransformPlugin, _>(MyOwnPlugin)
+    ///             group.add_before::<lgn_transform::TransformPlugin, _>(MyOwnPlugin)
     ///         });
     /// ```
     pub fn add_plugins_with<T, F>(&mut self, mut group: T, func: F) -> &mut Self

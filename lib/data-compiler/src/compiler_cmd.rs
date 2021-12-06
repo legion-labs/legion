@@ -1,6 +1,6 @@
 //! Interface to interact with data compilers.
 //!
-//! Data compiler is a binary that takes as input [`legion_data_runtime::Resource`]s.
+//! Data compiler is a binary that takes as input [`lgn_data_runtime::Resource`]s.
 //! Because each *data compiler* is an external binary interacting with them can be challenging.
 //!
 //! [`compiler_cmd`] provides utilities that simplify interactions with data compilers.
@@ -10,7 +10,7 @@
 //! You can retrieve information about all compilers in a specified directory:
 //!
 //! ```
-//! # use legion_data_compiler::compiler_cmd::{list_compilers, CompilerInfoCmd};
+//! # use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerInfoCmd};
 //! # use std::slice;
 //! # use std::path::PathBuf;
 //! for compiler in list_compilers(slice::from_ref(&PathBuf::from("./compilers/"))) {
@@ -22,8 +22,8 @@
 //! Retrieve the information about a specific compiler:
 //!
 //! ```no_run
-//! # use legion_data_compiler::compiler_cmd::CompilerHashCmd;
-//! # use legion_data_compiler::{Locale, Platform, Target};
+//! # use lgn_data_compiler::compiler_cmd::CompilerHashCmd;
+//! # use lgn_data_compiler::{Locale, Platform, Target};
 //! let command = CompilerHashCmd::new(Target::Game, Platform::Windows, &Locale::new("en"));
 //! let info = command.execute("my_compiler.exe").expect("compiler hash info");
 //! ```
@@ -31,10 +31,10 @@
 //! Or compile the resources:
 //!
 //! ```no_run
-//! # use legion_data_compiler::compiler_cmd::CompilerCompileCmd;
-//! # use legion_content_store::ContentStoreAddr;
-//! # use legion_data_compiler::{Locale, Platform, Target};
-//! # use legion_data_offline::ResourcePathId;
+//! # use lgn_data_compiler::compiler_cmd::CompilerCompileCmd;
+//! # use lgn_content_store::ContentStoreAddr;
+//! # use lgn_data_compiler::{Locale, Platform, Target};
+//! # use lgn_data_offline::ResourcePathId;
 //! # use std::path::PathBuf;
 //! fn compile_resource(compile_path: ResourcePathId, dependencies: &[ResourcePathId]) {
 //!     let content_store = ContentStoreAddr::from("./content_store/");
@@ -56,9 +56,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_content_store::ContentStoreAddr;
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::ResourceType;
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourceType;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -81,7 +81,7 @@ pub fn list_compilers(paths: &[PathBuf]) -> Vec<CompilerInfo> {
     let suffix = env::consts::EXE_SUFFIX;
     for dir in search_directories(paths) {
         if let Ok(entries) = fs::read_dir(&dir) {
-            for entry in entries.filter_map(|e| e.ok()) {
+            for entry in entries.filter_map(std::result::Result::ok) {
                 let path = entry.path();
                 let filename = match path.file_name().and_then(OsStr::to_str) {
                     Some(filename) => filename,

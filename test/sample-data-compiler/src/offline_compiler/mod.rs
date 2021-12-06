@@ -4,11 +4,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_content_store::ContentStoreAddr;
-use legion_data_build::DataBuildOptions;
-use legion_data_compiler::{Locale, Platform, Target};
-use legion_data_offline::{resource::ResourcePathName, ResourcePathId};
-use legion_data_runtime::Resource;
+use lgn_content_store::ContentStoreAddr;
+use lgn_data_build::DataBuildOptions;
+use lgn_data_compiler::{Locale, Platform, Target};
+use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
+use lgn_data_runtime::Resource;
 use sample_data_runtime as runtime_data;
 
 use crate::offline_to_runtime::find_derived_path;
@@ -83,8 +83,8 @@ pub fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
                 runtime_data::Entity::TYPE
                     | runtime_data::Instance::TYPE
                     | runtime_data::Mesh::TYPE
-                    | legion_graphics_runtime::Texture::TYPE
-                    | legion_graphics_runtime::Material::TYPE
+                    | lgn_graphics_runtime::Texture::TYPE
+                    | lgn_graphics_runtime::Material::TYPE
                     | generic_data_runtime::DebugCube::TYPE
             )
         };

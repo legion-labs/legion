@@ -1,6 +1,6 @@
 use std::{fmt, hash::Hash, str::FromStr};
 
-use legion_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
+use lgn_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
 /// Identifier of a path in a build graph.
@@ -22,8 +22,8 @@ use serde::{Deserialize, Serialize};
 /// definition of a path representing a *derived resource* of a runtime geometry data after LOD-generation process.
 ///
 /// ```no_run
-/// # use legion_data_offline::{resource::{Project, ResourcePathName, ResourceRegistryOptions}, ResourcePathId};
-/// # use legion_data_runtime::ResourceType;
+/// # use lgn_data_offline::{resource::{Project, ResourcePathName, ResourceRegistryOptions}, ResourcePathId};
+/// # use lgn_data_runtime::ResourceType;
 /// # use std::path::PathBuf;
 /// # let resources = ResourceRegistryOptions::new().create_registry();
 /// # let mut resources = resources.lock().unwrap();
@@ -261,8 +261,8 @@ impl ResourcePathId {
     /// # Example
     ///
     /// ```
-    /// # use legion_data_runtime::{ResourceType, ResourceId};
-    /// # use legion_data_offline::{ResourcePathId};
+    /// # use lgn_data_runtime::{ResourceType, ResourceId};
+    /// # use lgn_data_offline::{ResourcePathId};
     /// # const FOO_TYPE: ResourceType = ResourceType::new(b"foo");
     /// # const BAR_TYPE: ResourceType = ResourceType::new(b"bar");
     /// let source = (FOO_TYPE, ResourceId::new());
@@ -316,7 +316,7 @@ mod tests {
 
     use std::str::FromStr;
 
-    use legion_data_runtime::{Resource, ResourceId, ResourceType};
+    use lgn_data_runtime::{Resource, ResourceId, ResourceType};
 
     use crate::{resource::test_resource, ResourcePathId};
 

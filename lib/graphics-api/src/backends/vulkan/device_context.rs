@@ -9,7 +9,6 @@ use super::{
     DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
     VkQueueRequirements, VulkanRenderpass, VulkanRenderpassDef,
 };
-
 use crate::backends::vulkan::check_extensions_availability;
 use crate::{DeviceContext, DeviceInfo, ExtensionMode, GfxResult, PhysicalDeviceType};
 
@@ -31,7 +30,7 @@ pub(crate) struct PhysicalDeviceInfo {
     pub(crate) score: i32,
     pub(crate) queue_family_indices: VkQueueFamilyIndices,
     pub(crate) properties: vk::PhysicalDeviceProperties,
-    pub(crate) features: vk::PhysicalDeviceFeatures,
+    pub(crate) _features: vk::PhysicalDeviceFeatures,
     pub(crate) extension_properties: Vec<ash::vk::ExtensionProperties>,
     pub(crate) all_queue_families: Vec<ash::vk::QueueFamilyProperties>,
     pub(crate) required_extensions: Vec<&'static CStr>,
@@ -375,7 +374,7 @@ fn query_physical_device_info(
             queue_family_indices,
             properties,
             extension_properties: extensions,
-            features,
+            _features: features,
             all_queue_families,
             required_extensions,
         };

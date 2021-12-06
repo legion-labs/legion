@@ -6,23 +6,23 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Legion engine
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
-legion-async = { path = "../../plugin/async", version = "0.1.0" }
-legion-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
-legion-core = { path = "../../plugin/core", version = "0.1.0" }
-legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
-legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
-legion-data-transaction = { path = "../../lib/data-transaction", version = "0.1.0" }
-legion-editor-proto = { path = "../../proto/editor", version = "0.1.0" }
-legion-grpc = { path = "../../plugin/grpc", version = "0.1.0" }
-legion-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
-legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
-legion-resource-registry = { path = "../../plugin/resource-registry", version = "0.1.0" }
-legion-streamer = { path = "../../plugin/streamer", version = "0.1.0" }
-legion-telemetry = { path = "../../lib/telemetry" }
-legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
+lgn-async = { path = "../../plugin/async", version = "0.1.0" }
+lgn-codec-api = { path = "../../lib/codec-api", version = "0.1.0" }
+lgn-core = { path = "../../plugin/core", version = "0.1.0" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-data-transaction = { path = "../../lib/data-transaction", version = "0.1.0" }
+lgn-editor-proto = { path = "../../proto/editor", version = "0.1.0" }
+lgn-grpc = { path = "../../plugin/grpc", version = "0.1.0" }
+lgn-mp4 = { path = "../../lib/mp4", version = "0.1.0" }
+lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+lgn-resource-registry = { path = "../../plugin/resource-registry", version = "0.1.0" }
+lgn-streamer = { path = "../../plugin/streamer", version = "0.1.0" }
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 tonic = "0.6"
 clap = "2.33"
@@ -31,4 +31,4 @@ log = "0.4"
 anyhow = "1.0"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
-legion-streamer = { path = "../../plugin/streamer", features = ["vulkan"] }
+lgn-streamer = { path = "../../plugin/streamer", version = "0.1.0", features = ["vulkan"]}

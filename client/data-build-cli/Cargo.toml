@@ -1,5 +1,5 @@
 [package]
-name = "legion-data-build-cli"
+name = "lgn-data-build-cli"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -23,15 +23,15 @@ proc-macro2 = "1.0"
 syn = { version = "1.0", features = ["full"] }
 serde = "1.0"
 serde_json = "1.0"
-legion-data-build = { path = "../../lib/data-build" }
-legion-data-compiler = { path = "../../lib/data-compiler" }
-legion-content-store = { path = "../../lib/content-store" }
-legion-data-offline = { path = "../../lib/data-offline" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
+lgn-data-build = { path = "../../lib/data-build", version = "0.1.0" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
+lgn-content-store = { path = "../../lib/content-store", version = "0.1.0" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 
 [dev-dependencies]
 tempfile = "3.2.0"
-refs-resource = { path = "../../lib/data-offline/test-refs-resource" }
-text-resource = { path = "../../lib/data-offline/test-text-resource" }
-integer-asset = { path = "../../lib/data-runtime/test-integer-asset" }
-refs-asset = { path = "../../lib/data-runtime/test-refs-asset" }
+refs-resource = { path = "../../lib/data-offline/test-refs-resource", version = "0.1.0" }
+text-resource = { path = "../../lib/data-offline/test-text-resource", version = "0.1.0" }
+integer-asset = { path = "../../lib/data-runtime/test-integer-asset", version = "0.1.0" }
+refs-asset = { path = "../../lib/data-runtime/test-refs-asset", version = "0.1.0" }

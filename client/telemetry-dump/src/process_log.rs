@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use legion_analytics::prelude::*;
+use lgn_analytics::prelude::*;
 
 pub async fn print_process_log(
     connection: &mut sqlx::AnyConnection,

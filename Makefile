@@ -87,7 +87,7 @@ timings:
 	rm -rf timings
 	mkdir timings
 	echo "<html><head><title>Cargo Build Timings</title></head><body><h1>Build Timings</h1>" > timings/index.html 
-	for TARGET in runtime-srv editor-srv editor-client editor-client-svelte ; do \
+	for TARGET in runtime-srv editor-srv editor-client ; do \
 		cargo clean && \
 		cargo build --bin $$TARGET -Z timings=html && \
 		mv cargo-timing.html timings/$$TARGET.html && \
@@ -101,7 +101,7 @@ timings:
 
 api-doc:
 	cargo doc --workspace --no-deps --all-features
-	echo "<meta http-equiv=\"refresh\" content=\"0; URL=legion_app/index.html\"/>" > target/doc/index.html
+	echo "<meta http-equiv=\"refresh\" content=\"0; URL=lgn_app/index.html\"/>" > target/doc/index.html
 
 book:
 	mdbook build ./doc/

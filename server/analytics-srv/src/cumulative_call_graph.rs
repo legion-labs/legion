@@ -1,12 +1,14 @@
-use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNode, ScopeHashMap}; //todo: move to analytics lib
-use anyhow::{Context, Result};
-use legion_analytics::prelude::*;
-use legion_telemetry::prelude::*;
-use legion_telemetry_proto::analytics::{
-    CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
-};
 use std::collections::HashMap;
 use std::{cmp::min, path::Path};
+
+use anyhow::{Context, Result};
+use lgn_analytics::prelude::*;
+use lgn_telemetry::prelude::*;
+use lgn_telemetry_proto::analytics::{
+    CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
+};
+
+use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNode, ScopeHashMap}; //todo: move to analytics lib
 
 struct NodeStatsAcc {
     durations_ms: Vec<f64>,
@@ -89,13 +91,12 @@ fn record_tree_stats(
 async fn record_process_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
+    process: &lgn_telemetry::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
     scopes: &mut ScopeHashMap,
     stats: &mut StatsHashMap,
 ) -> Result<()> {
-    trace_scope!();
     let start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
         .with_context(|| String::from("parsing process start time"))?;
     let begin_offset_ns = begin_ms * 1_000_000.0;
@@ -127,11 +128,10 @@ async fn record_process_call_graph(
 pub(crate) async fn compute_cumulative_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
+    process: &lgn_telemetry::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
 ) -> Result<CumulativeCallGraphReply> {
-    trace_scope!();
     //this is a serial implementation, could be transformed in map/reduce
     let mut scopes = ScopeHashMap::new();
     let mut stats = StatsHashMap::new();

@@ -1,13 +1,13 @@
 [package]
-name = "legion-analytics"
+name = "lgn-analytics"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-legion-telemetry = { path = "../telemetry" }
-legion-transit = { path = "../transit", version = "0.1.0" }
-legion-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
+lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lgn-transit = { path = "../transit", version = "0.1.0" }
+lgn-telemetry-proto = { path = "../../proto/telemetry", version = "0.1.0" }
 sqlx = { version = "0.5", features = [
     "sqlite",
     "any",

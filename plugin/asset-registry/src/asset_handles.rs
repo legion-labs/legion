@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use legion_data_runtime::{HandleUntyped, ResourceId, ResourceType};
+use lgn_data_runtime::{HandleUntyped, ResourceId, ResourceType};
 
 #[derive(Default)]
 pub(crate) struct AssetHandles(BTreeMap<(ResourceType, ResourceId), HandleUntyped>);

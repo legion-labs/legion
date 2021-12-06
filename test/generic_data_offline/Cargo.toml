@@ -9,11 +9,11 @@ doc = false
 
 [dependencies]
 # Legion engine
-legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
-legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
-legion-graphics-data = { path = "../../lib/graphics-data", version = "0.1.0" }
-legion-math = { path = "../../lib/math", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-graphics-data = { path = "../../lib/graphics-data", version = "0.1.0" }
+lgn-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
 anyhow = "1.0"
@@ -22,4 +22,4 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [build-dependencies]
-legion-data-codegen = { path = "../../lib/data-codegen", version = "0.1.0" }
+lgn-data-codegen = { path = "../../lib/data-codegen", version = "0.1.0" }

@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::{
-    connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec, trace_scope,
+    connect_to_server, find_workspace_root, read_current_branch, read_workspace_spec,
     LocalWorkspaceConnection, RepositoryQuery,
 };
 
@@ -27,7 +27,6 @@ async fn find_branch_descendants(
 }
 
 pub async fn detach_branch_command() -> Result<(), String> {
-    trace_scope!();
     let current_dir = std::env::current_dir().unwrap();
     let workspace_root = find_workspace_root(&current_dir)?;
     let mut workspace_connection = LocalWorkspaceConnection::new(&workspace_root).await?;

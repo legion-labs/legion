@@ -1,12 +1,12 @@
 use std::path::Path;
 
 use anyhow::Result;
-use legion_analytics::prelude::*;
-use legion_telemetry::prelude::*;
-use legion_telemetry_proto::analytics::BlockSpansReply;
-use legion_telemetry_proto::analytics::ScopeDesc;
-use legion_telemetry_proto::analytics::Span;
-use legion_transit::prelude::*;
+use lgn_analytics::prelude::*;
+use lgn_telemetry::prelude::*;
+use lgn_telemetry_proto::analytics::BlockSpansReply;
+use lgn_telemetry_proto::analytics::ScopeDesc;
+use lgn_telemetry_proto::analytics::Span;
+use lgn_transit::prelude::*;
 
 trait ThreadBlockProcessor {
     fn on_begin_scope(&mut self, scope_name: String, ts: u64);
@@ -16,11 +16,10 @@ trait ThreadBlockProcessor {
 async fn parse_thread_bock<Proc: ThreadBlockProcessor>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    stream: &legion_telemetry::StreamInfo,
+    stream: &lgn_telemetry::StreamInfo,
     block_id: &str,
     processor: &mut Proc,
 ) -> Result<()> {
-    trace_scope!();
     let payload = fetch_block_payload(connection, data_path, block_id).await?;
     parse_block(stream, &payload, |val| {
         trace_scope!("obj_in_block");
@@ -162,11 +161,10 @@ impl ThreadBlockProcessor for CallTreeBuilder {
 pub(crate) async fn compute_block_call_tree(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
-    stream: &legion_telemetry::StreamInfo,
+    process: &lgn_telemetry::ProcessInfo,
+    stream: &lgn_telemetry::StreamInfo,
     block_id: &str,
 ) -> Result<CallTreeNode> {
-    trace_scope!();
     let ts_offset = process.start_ticks;
     let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64;
     let block = find_block(connection, block_id).await?;
@@ -225,11 +223,10 @@ fn make_spans_from_tree(
 pub(crate) async fn compute_block_spans(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
-    stream: &legion_telemetry::StreamInfo,
+    process: &lgn_telemetry::ProcessInfo,
+    stream: &lgn_telemetry::StreamInfo,
     block_id: &str,
 ) -> Result<BlockSpansReply> {
-    trace_scope!();
     let tree = compute_block_call_tree(connection, data_path, process, stream, block_id).await?;
     let mut scopes = ScopeHashMap::new();
     let mut spans = vec![];

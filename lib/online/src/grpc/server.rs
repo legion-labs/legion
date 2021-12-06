@@ -1,6 +1,5 @@
 use std::net::SocketAddr;
 
-use crate::aws::lambda::is_running_as_lambda;
 use http::{Request, Response};
 use lambda_http::handler;
 use log::info;
@@ -8,6 +7,7 @@ use tonic::{body::BoxBody, transport::NamedService};
 use tower::Service;
 
 use super::{aws_lambda_handler::AwsLambdaHandler, Error, Result};
+use crate::aws::lambda::is_running_as_lambda;
 
 #[derive(Default)]
 pub struct Server {

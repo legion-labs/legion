@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use legion_utils::decimal::DecimalF32;
+use lgn_utils::decimal::DecimalF32;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 

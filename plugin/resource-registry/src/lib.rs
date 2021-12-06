@@ -59,29 +59,28 @@
 
 mod settings;
 
-pub use settings::ResourceRegistrySettings;
-
-use legion_app::Plugin;
-use legion_data_offline::resource::{Project, ResourceRegistryOptions};
-use legion_data_runtime::AssetRegistry;
-use legion_data_transaction::DataManager;
-use legion_tasks::IoTaskPool;
-use sample_data_offline as offline_data;
-
 use std::sync::Arc;
+
+use lgn_app::Plugin;
+use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
+use lgn_data_runtime::AssetRegistry;
+use lgn_data_transaction::DataManager;
+use lgn_tasks::IoTaskPool;
+use sample_data_offline as offline_data;
+pub use settings::ResourceRegistrySettings;
 use tokio::sync::Mutex;
 
 #[derive(Default)]
 pub struct ResourceRegistryPlugin {}
 
 impl Plugin for ResourceRegistryPlugin {
-    fn build(&self, app: &mut legion_app::App) {
+    fn build(&self, app: &mut lgn_app::App) {
         if let Some(settings) = app.world.get_resource::<ResourceRegistrySettings>() {
             if let Ok(project) = Project::open(&settings.root_folder) {
                 // register resource types
                 let mut registry = ResourceRegistryOptions::new();
                 registry = offline_data::register_resource_types(registry);
-                registry = legion_graphics_offline::register_resource_types(registry);
+                registry = lgn_graphics_offline::register_resource_types(registry);
                 registry = generic_data_offline::register_resource_types(registry);
                 let registry = registry.create_async_registry();
                 let project = Arc::new(Mutex::new(project));

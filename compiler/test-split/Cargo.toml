@@ -1,5 +1,5 @@
 [package]
-name = "compiler-test-split"
+name = "lgn-compiler-test-split"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -10,11 +10,12 @@ doc = false
 
 [[bin]]
 name = "compiler-test-split"
+path = "src/main.rs"
 doc = false
 
 [dependencies]
-legion-data-compiler = { path = "../../lib/data-compiler" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
-legion-data-offline = { path = "../../lib/data-offline" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 multitext-resource = { path = "../../lib/data-offline/test-multitext-resource" }
 text-resource = { path = "../../lib/data-offline/test-text-resource" }

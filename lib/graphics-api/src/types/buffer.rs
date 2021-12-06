@@ -1,10 +1,9 @@
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanBuffer;
-use crate::{BufferView, GfxResult};
-
 use super::{
     deferred_drop::Drc, BufferViewDef, DeviceContext, MemoryUsage, QueueType, ResourceUsage,
 };
+#[cfg(feature = "vulkan")]
+use crate::backends::vulkan::VulkanBuffer;
+use crate::{BufferView, GfxResult};
 
 #[derive(Clone, Debug, Default)]
 pub struct BufferElementData {
@@ -55,7 +54,7 @@ impl BufferDef {
     }
 
     pub fn for_staging_buffer_data<T: Copy>(data: &[T], usage_flags: ResourceUsage) -> Self {
-        Self::for_staging_buffer(legion_utils::memory::slice_size_in_bytes(data), usage_flags)
+        Self::for_staging_buffer(lgn_utils::memory::slice_size_in_bytes(data), usage_flags)
     }
 
     pub fn for_staging_vertex_buffer(size: usize) -> Self {
@@ -160,7 +159,7 @@ impl Buffer {
         data: &[T],
         buffer_byte_offset: u64,
     ) -> GfxResult<()> {
-        let data_size_in_bytes = legion_utils::memory::slice_size_in_bytes(data) as u64;
+        let data_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
         assert!(buffer_byte_offset + data_size_in_bytes <= self.inner.buffer_def.size);
 
         let src = data.as_ptr().cast::<u8>();

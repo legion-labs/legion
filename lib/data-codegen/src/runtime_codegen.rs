@@ -61,7 +61,7 @@ pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStr
         })
         .collect();
     quote! {
-        pub fn add_loaders(registry: legion_data_runtime::AssetRegistryOptions) -> legion_data_runtime::AssetRegistryOptions {
+        pub fn add_loaders(registry: lgn_data_runtime::AssetRegistryOptions) -> lgn_data_runtime::AssetRegistryOptions {
             registry
             #(#entries)*
         }
@@ -85,7 +85,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
         quote! {
         use std::{any::Any, io};
         use serde::{Deserialize, Serialize};
-        use legion_data_runtime::{Asset, AssetLoader,Resource};
+        use lgn_data_runtime::{Asset, AssetLoader,Resource};
         #(use #import_types;)*
         }
     } else {
@@ -107,6 +107,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
         }
 
         // Runtime default implementation
+        #[allow(clippy::derivable_impls)]
         impl #life_time Default for #runtime_identifier #life_time {
             fn default() -> Self {
                 Self {

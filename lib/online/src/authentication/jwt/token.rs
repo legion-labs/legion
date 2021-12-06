@@ -1,5 +1,6 @@
-use anyhow::{anyhow, Context};
 use std::ops::Deref;
+
+use anyhow::{anyhow, Context};
 
 use super::{signature_validation::SignatureValidation, Header, Validation};
 
@@ -107,7 +108,7 @@ impl<'a> TryFrom<&'a str> for Token<'a> {
     ///
     /// # Example
     /// ```
-    /// use legion_online::authentication::jwt::Token;
+    /// use lgn_online::authentication::jwt::Token;
     ///
     /// let raw_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
     /// let token: Token = raw_token.clone().try_into().unwrap();

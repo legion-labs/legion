@@ -126,7 +126,7 @@ mod asset;
 pub use asset::*;
 pub mod manifest;
 
-pub use legion_data_runtime_macros::resource;
+pub use lgn_data_runtime_macros::resource;
 
 #[cfg(test)]
 mod test_asset;

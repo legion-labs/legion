@@ -138,7 +138,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use legion_utils::{HashMap, AHashExt};
+    /// use lgn_utils::{HashMap, AHashExt};
     /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
     /// assert!(map.capacity() >= 10);
     /// ```
@@ -160,7 +160,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use legion_utils::{HashSet, AHashExt};
+    /// use lgn_utils::{HashSet, AHashExt};
     /// let set: HashSet<i32> = HashSet::with_capacity(10);
     /// assert!(set.capacity() >= 10);
     /// ```

@@ -9,7 +9,7 @@ use std::{
 use log::trace;
 
 use crate::system::{Local, Res, ResMut, SystemParam};
-use crate::{self as legion_ecs, system::Resource};
+use crate::{self as lgn_ecs, system::Resource};
 
 /// An `EventId` uniquely identifies an event.
 ///
@@ -69,7 +69,7 @@ enum State {
 /// [`Events::update`] exactly once per update/frame.
 ///
 /// [`Events::update_system`] is a system that does this, typically intialized automatically using
-/// [`App::add_event`]. [EventReader]s are expected to read events from this collection at
+/// [`App::add_event`]. [`EventReader`]s are expected to read events from this collection at
 /// least once per loop/frame.
 /// Events will persist across a single frame boundary and so ordering of event producers and
 /// consumers is not critical (although poorly-planned ordering may cause accumulating lag).
@@ -78,7 +78,7 @@ enum State {
 ///
 /// # Example
 /// ```
-/// use legion_ecs::event::Events;
+/// use lgn_ecs::event::Events;
 ///
 /// struct MyEvent {
 ///     value: usize
@@ -273,7 +273,7 @@ impl<'w, 's, T: Resource> EventReader<'w, 's, T> {
 }
 
 impl<T: Resource> Events<T> {
-    /// "Sends" an `event` by writing it to the current event buffer. [EventReader]s can then read
+    /// "Sends" an `event` by writing it to the current event buffer. [`EventReader`]s can then read
     /// the event.
     pub fn send(&mut self, event: T) {
         let event_id = EventId {

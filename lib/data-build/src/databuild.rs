@@ -6,18 +6,18 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::{env, io};
 
-use legion_content_store::{ContentStore, HddContentStore};
-use legion_data_compiler::compiler_api::DATA_BUILD_VERSION;
-use legion_data_compiler::compiler_cmd::{
+use lgn_content_store::{ContentStore, HddContentStore};
+use lgn_data_compiler::compiler_api::DATA_BUILD_VERSION;
+use lgn_data_compiler::compiler_cmd::{
     list_compilers, CompilerCompileCmd, CompilerCompileCmdOutput, CompilerHashCmd, CompilerInfo,
     CompilerInfoCmd, CompilerInfoCmdOutput,
 };
-use legion_data_compiler::CompilerHash;
-use legion_data_compiler::{CompiledResource, Manifest};
-use legion_data_compiler::{Locale, Platform, Target};
-use legion_data_offline::{resource::Project, ResourcePathId};
-use legion_data_runtime::{ResourceId, ResourceType};
-use legion_utils::{DefaultHash, DefaultHasher};
+use lgn_data_compiler::CompilerHash;
+use lgn_data_compiler::{CompiledResource, Manifest};
+use lgn_data_compiler::{Locale, Platform, Target};
+use lgn_data_offline::{resource::Project, ResourcePathId};
+use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
 use crate::asset_file_writer::write_assetfile;
@@ -25,6 +25,7 @@ use crate::buildindex::{BuildIndex, CompiledResourceInfo, CompiledResourceRefere
 use crate::{DataBuildOptions, Error};
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // used by tests
 struct CompileStat {
     time: std::time::Duration,
     from_cache: bool,
@@ -60,16 +61,16 @@ fn compute_context_hash(
 /// `DataBuild` provides methods to compile offline resources into runtime format.
 ///
 /// Data build uses file-based storage to persist the state of data builds and data compilation.
-/// It requires access to offline resources to retrieve resource metadata - through  [`legion_data_offline::resource::Project`].
+/// It requires access to offline resources to retrieve resource metadata - through  [`lgn_data_offline::resource::Project`].
 ///
 /// # Example Usage
 ///
 /// ```no_run
-/// # use legion_data_build::{DataBuild, DataBuildOptions};
-/// # use legion_content_store::ContentStoreAddr;
-/// # use legion_data_compiler::{Locale, Platform, Target};
-/// # use legion_data_offline::ResourcePathId;
-/// # use legion_data_runtime::{ResourceId, ResourceType, resource_type_id_tuple};
+/// # use lgn_data_build::{DataBuild, DataBuildOptions};
+/// # use lgn_content_store::ContentStoreAddr;
+/// # use lgn_data_compiler::{Locale, Platform, Target};
+/// # use lgn_data_offline::ResourcePathId;
+/// # use lgn_data_runtime::{ResourceId, ResourceType, resource_type_id_tuple};
 /// # use std::str::FromStr;
 /// # let offline_anim: (ResourceType, ResourceId) = resource_type_id_tuple::from_str("(type,invalid_id)").unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
@@ -163,10 +164,10 @@ impl DataBuild {
 
     fn open_project(project_dir: &Path) -> Result<Project, Error> {
         Project::open(project_dir).map_err(|e| match e {
-            legion_data_offline::resource::Error::ParseError => Error::IntegrityFailure,
-            legion_data_offline::resource::Error::NotFound
-            | legion_data_offline::resource::Error::InvalidPath => Error::NotFound,
-            legion_data_offline::resource::Error::IOError(_) => Error::IOError,
+            lgn_data_offline::resource::Error::ParseError => Error::IntegrityFailure,
+            lgn_data_offline::resource::Error::NotFound
+            | lgn_data_offline::resource::Error::InvalidPath => Error::NotFound,
+            lgn_data_offline::resource::Error::IOError(_) => Error::IOError,
         })
     }
 
@@ -218,7 +219,7 @@ impl DataBuild {
     /// To compile a given `ResourcePathId` it compiles all its dependent derived resources.
     /// The specified `manifest_file` is updated with information about changed assets.
     ///
-    /// Compilation results are stored in [`ContentStore`](`legion_content_store::ContentStore`)
+    /// Compilation results are stored in [`ContentStore`](`lgn_content_store::ContentStore`)
     /// specified in [`DataBuildOptions`] used to create this `DataBuild`.
     ///
     /// Provided `target`, `platform` and `locale` define the compilation context that can yield different compilation results.
@@ -411,7 +412,7 @@ impl DataBuild {
     ) -> String {
         let build_graph = self.build_index.generate_build_graph(compile_path);
         let inner_getter = |_g: &Graph<ResourcePathId, ()>,
-                            nr: <&petgraph::Graph<legion_data_offline::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
+                            nr: <&petgraph::Graph<lgn_data_offline::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
             format!("label = \"{}\"", (name_parser)(nr.1))
         };
         let dot = petgraph::dot::Dot::with_attr_getters(
@@ -426,7 +427,7 @@ impl DataBuild {
 
     /// Compile a resource identified by [`ResourcePathId`] and all its dependencies and update the *build index* with compilation results.
     /// Returns a list of (id, checksum, size) of created resources and information about their dependencies.
-    /// The returned results can be accessed by  [`legion_content_store::ContentStore`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
+    /// The returned results can be accessed by  [`lgn_content_store::ContentStore`] specified in [`DataBuildOptions`] used to create this `DataBuild`.
     // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many contexts (platform, target, locale, etc).
     #[allow(clippy::too_many_lines)]
     fn compile_path(

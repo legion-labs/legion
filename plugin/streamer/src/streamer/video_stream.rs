@@ -1,20 +1,21 @@
 use std::{cmp::min, io::Cursor, sync::Arc};
 
 use bytes::Bytes;
-use legion_codec_api::{
+use lgn_codec_api::{
     backends::openh264::encoder::{self, Encoder},
     formats::{self, RBGYUVConverter},
 };
-use legion_ecs::prelude::*;
-use legion_graphics_api::prelude::*;
-use legion_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
-use legion_presenter::offscreen_helper::{self, Resolution};
-use legion_renderer::{
+use lgn_ecs::prelude::*;
+use lgn_graphics_api::prelude::*;
+use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
+use lgn_presenter::offscreen_helper::{self, Resolution};
+use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
-use legion_telemetry::prelude::*;
-use legion_utils::{memory::write_any, setting_get_or};
+use lgn_tasks::TaskPool;
+use lgn_telemetry::prelude::*;
+use lgn_utils::{memory::write_any, setting_get_or};
 use log::{debug, warn};
 use serde::Serialize;
 use webrtc::data::data_channel::RTCDataChannel;
@@ -153,9 +154,11 @@ impl Presenter for VideoStream {
         &mut self,
         render_context: &mut RenderContext<'renderer>,
         render_surface: &mut RenderSurface,
-        async_rt: &mut legion_async::TokioAsyncRuntime,
+        task_pool: &TaskPool,
     ) {
-        async_rt.start_detached(self.present(render_context, render_surface));
+        task_pool
+            .spawn(self.present(render_context, render_surface))
+            .detach();
     }
 }
 

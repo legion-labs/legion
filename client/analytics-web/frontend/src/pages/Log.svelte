@@ -64,7 +64,6 @@
           </a>
         </div>
       {/if}
-      
     </div>
   {/if}
   {#await fetchLogEntries() then logEntriesList}
@@ -105,5 +104,4 @@
   .parent-process {
     @apply text-[#42b983] underline;
   }
-  
 </style>

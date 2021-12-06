@@ -12,10 +12,10 @@ fn generate_compile_resource(data_container_info: &DataContainerMetaInfo) -> Tok
             let member_ident = format_ident!("{}", &m.name);
             match m.type_name.as_str() {
                 "Option < ResourcePathId >" => quote! {
-                    #member_ident :  offline.#member_ident.as_ref().map(|path| legion_data_runtime::Reference::Passive(path.resource_id())),
+                    #member_ident :  offline.#member_ident.as_ref().map(|path| lgn_data_runtime::Reference::Passive(path.resource_id())),
                 },
                 "Vec < ResourcePathId >" => quote! {
-                    #member_ident : offline.#member_ident.iter().map(|path| legion_data_runtime::Reference::Passive(path.resource_id())).collect(),
+                    #member_ident : offline.#member_ident.iter().map(|path| lgn_data_runtime::Reference::Passive(path.resource_id())).collect(),
                 },
                 _ => quote! {
                     #member_ident : offline.#member_ident.clone(),
@@ -87,7 +87,7 @@ pub fn generate(
     quote! {
 
         use std::env;
-        use legion_data_compiler::{
+        use lgn_data_compiler::{
             compiler_api::{
                 CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError,
                 DATA_BUILD_VERSION,
@@ -95,8 +95,8 @@ pub fn generate(
             compiler_utils::hash_code_and_data,
         };
 
-        use legion_data_offline::ResourcePathId;
-        use legion_data_runtime::{Resource};
+        use lgn_data_offline::ResourcePathId;
+        use lgn_data_runtime::{Resource};
         type OfflineType = #offline_crate_name::#type_name;
         type RuntimeType = #runtime_crate_name::#type_name;
 

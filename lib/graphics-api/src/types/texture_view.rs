@@ -1,6 +1,5 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanTextureView;
-
 use crate::{deferred_drop::Drc, GfxResult, Texture, TextureViewDef};
 #[cfg(any(feature = "vulkan"))]
 use crate::{Descriptor, GPUViewType, ShaderResourceType};

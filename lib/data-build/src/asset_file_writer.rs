@@ -1,5 +1,5 @@
-use legion_content_store::{Checksum, ContentStore};
-use legion_data_runtime::{ResourceId, ResourceType};
+use lgn_content_store::{Checksum, ContentStore};
+use lgn_data_runtime::{ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
 use crate::Error;
@@ -57,8 +57,8 @@ pub fn write_assetfile(
 mod tests {
 
     use bincode::Options;
-    use legion_content_store::RamContentStore;
-    use legion_data_runtime::Resource;
+    use lgn_content_store::RamContentStore;
+    use lgn_data_runtime::Resource;
     use serde::Serialize;
 
     use super::*;

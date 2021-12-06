@@ -5,8 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_content_store::content_checksum_from_read;
-use legion_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
+use lgn_content_store::content_checksum_from_read;
+use lgn_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
 use crate::resource::{
@@ -516,7 +516,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use std::{fs::File, path::Path, str::FromStr};
 
-    use legion_data_runtime::{resource, Resource, ResourceType};
+    use lgn_data_runtime::{resource, Resource, ResourceType};
     use tempfile::TempDir;
 
     use super::ResourceDb;

@@ -7,7 +7,7 @@
 //! will own the output end.
 //!
 //! ```
-//! # use legion_codec_api::{
+//! # use lgn_codec_api::{
 //! #    backends::null::{NullEncoder, NullEncoderConfig},
 //! #    Error, GpuImage, VideoProcessor,
 //! # };

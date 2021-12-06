@@ -1,13 +1,13 @@
 use std::fs;
 
-use legion_content_store::{ContentStoreAddr, HddContentStore};
-use legion_data_build::DataBuildOptions;
-use legion_data_compiler::{Locale, Platform, Target};
-use legion_data_offline::{
+use lgn_content_store::{ContentStoreAddr, HddContentStore};
+use lgn_data_build::DataBuildOptions;
+use lgn_data_compiler::{Locale, Platform, Target};
+use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistryOptions},
     ResourcePathId,
 };
-use legion_data_runtime::{AssetRegistryOptions, Resource};
+use lgn_data_runtime::{AssetRegistryOptions, Resource};
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
 
@@ -88,7 +88,7 @@ fn build_device() {
     // create resource registry that uses the 'build device'
     let cas_addr = ContentStoreAddr::from(cas);
     let content_store = HddContentStore::open(cas_addr.clone()).expect("valid cas");
-    let manifest = legion_data_runtime::manifest::Manifest::default();
+    let manifest = lgn_data_runtime::manifest::Manifest::default();
     let registry = AssetRegistryOptions::new()
         .add_loader::<refs_resource::TestResource>()
         .add_loader::<refs_asset::RefsAsset>()
@@ -225,7 +225,7 @@ fn no_intermediate_resource() {
     }
 
     assert!(output.status.success());
-    let _manifest: legion_data_compiler::Manifest =
+    let _manifest: lgn_data_compiler::Manifest =
         serde_json::from_slice(&output.stdout).expect("valid manifest");
 }
 
@@ -308,6 +308,6 @@ fn with_intermediate_resource() {
     }
 
     assert!(output.status.success());
-    let _manifest: legion_data_compiler::Manifest =
+    let _manifest: lgn_data_compiler::Manifest =
         serde_json::from_slice(&output.stdout).expect("valid manifest");
 }

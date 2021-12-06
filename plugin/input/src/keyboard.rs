@@ -1,5 +1,5 @@
-use legion_app::EventReader;
-use legion_ecs::system::ResMut;
+use lgn_app::EventReader;
+use lgn_ecs::system::ResMut;
 
 use crate::{ElementState, Input};
 

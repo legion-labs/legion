@@ -1,14 +1,12 @@
 use std::{fs::File, path::Path};
 
-use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use legion_data_compiler::{
+use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use lgn_data_compiler::{
     compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
     Locale, Platform, Target,
 };
-use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{
-    resource_type_id_tuple, AssetLoader, Resource, ResourceId, ResourceType,
-};
+use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
+use lgn_data_runtime::{resource_type_id_tuple, AssetLoader, Resource, ResourceId, ResourceType};
 
 mod common;
 

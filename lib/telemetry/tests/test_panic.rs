@@ -4,6 +4,6 @@ fn test_panic() {
         dbg!(panic_info);
         std::process::exit(0);
     }));
-    legion_telemetry::panic_hook::init_panic_hook();
+    lgn_telemetry::panic_hook::init_panic_hook();
     panic!("PANIC!!");
 }

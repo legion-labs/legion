@@ -60,140 +60,22 @@
     windows_subsystem = "windows"
 )]
 
-mod config;
-mod interop;
-
-use std::error::Error;
 use std::sync::Arc;
 
 use config::Config;
-use interop::js::editor::{
-    IntoVec, JSGetResourcePropertiesRequest, JSGetResourcePropertiesResponse,
-    JSRedoTransactionResponse, JSSearchResourcesResponse, JSUndoTransactionResponse,
-    JSUpdateResourcePropertiesRequest, JSUpdateResourcePropertiesResponse,
+use lgn_app::prelude::*;
+use lgn_async::AsyncPlugin;
+use lgn_online::authentication::{
+    Authenticator, AwsCognitoClientAuthenticator, TokenCache as OnlineTokenCache, UserInfo,
 };
-use legion_app::prelude::*;
-use legion_async::AsyncPlugin;
-use legion_editor_proto::{
-    editor_client::EditorClient, GetResourcePropertiesRequest, RedoTransactionRequest,
-    SearchResourcesRequest, UndoTransactionRequest, UpdateResourcePropertiesRequest,
-};
-use legion_online::authentication::{
-    Authenticator, AwsCognitoClientAuthenticator, TokenCache as OnlineTokenCache,
-};
-use legion_online::grpc::{AuthenticatedClient, GrpcWebClient};
-use legion_streaming_proto::{streamer_client::StreamerClient, InitializeStreamRequest};
-use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
-use legion_telemetry::prelude::*;
-use log::error;
-use simple_logger::SimpleLogger;
-use tauri::async_runtime::Mutex;
+use lgn_tauri::{lgn_tauri_command, TauriPlugin, TauriPluginSettings};
+
+mod config;
 
 type TokenCache = OnlineTokenCache<AwsCognitoClientAuthenticator>;
-type GrpcClient = AuthenticatedClient<GrpcWebClient, Arc<TokenCache>>;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let config = Config::new_from_environment()?;
-
-    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
-        SimpleLogger::new().with_level(config.log_level),
-    )));
-    let _telemetry_thread_guard = TelemetryThreadGuard::new();
-
-    let authenticator =
-        AwsCognitoClientAuthenticator::from_authorization_url(&config.authorization_url)?;
-    let projects_dir = directories::ProjectDirs::from("com", "legionlabs", "legion-editor")
-        .expect("Failed to get project directory");
-    let token_cache = Arc::new(TokenCache::new(authenticator, projects_dir));
-    let grpc_client = GrpcWebClient::new(config.server_addr.clone());
-    let grpc_client = AuthenticatedClient::new(grpc_client, Arc::clone(&token_cache));
-    let streamer_client = Mutex::new(StreamerClient::new(grpc_client.clone()));
-    let editor_client = Mutex::new(EditorClient::new(grpc_client));
-
-    let builder = tauri::Builder::default()
-        .manage(config)
-        .manage(Arc::clone(&token_cache))
-        .manage(streamer_client)
-        .manage(editor_client)
-        .invoke_handler(tauri::generate_handler![
-            authenticate,
-            initialize_stream,
-            search_resources,
-            undo_transaction,
-            redo_transaction,
-            get_resource_properties,
-            update_resource_properties,
-            on_receive_control_message,
-            on_send_edition_command,
-            on_video_close,
-            on_video_chunk_received,
-        ]);
-
-    App::new()
-        .insert_non_send_resource(TauriPluginSettings::new(builder))
-        .add_plugin(TauriPlugin::new(tauri::generate_context!()))
-        .add_plugin(AsyncPlugin {})
-        .run();
-    Ok(())
-}
-
-#[tauri::command]
-fn on_send_edition_command(json_command: &str) {
-    log::info!("sending edition_command={}", json_command);
-}
-
-#[tauri::command]
-fn on_receive_control_message(json_msg: &str) {
-    log::info!("received control message. msg={}", json_msg);
-}
-
-#[tauri::command]
-fn on_video_close() {
-    flush_log_buffer();
-    flush_metrics_buffer();
-}
-
-fn record_json_metric(desc: &'static MetricDesc, value: &json::JsonValue) {
-    match value.as_i64() {
-        Some(int_value) => {
-            record_int_metric(desc, int_value as u64);
-        }
-        None => {
-            log::error!("Error converting {} to i64", value);
-        }
-    }
-}
-
-#[tauri::command]
-fn on_video_chunk_received(chunk_header: &str) {
-    static CHUNK_INDEX_IN_FRAME_METRIC: MetricDesc = MetricDesc {
-        name: "Chunk Index in Frame",
-        unit: "",
-    };
-
-    static FRAME_ID_OF_CHUNK_RECEIVED: MetricDesc = MetricDesc {
-        name: "Frame ID of chunk received",
-        unit: "",
-    };
-
-    match json::parse(chunk_header) {
-        Ok(header) => {
-            record_json_metric(
-                &CHUNK_INDEX_IN_FRAME_METRIC,
-                &header["chunk_index_in_frame"],
-            );
-            record_json_metric(&FRAME_ID_OF_CHUNK_RECEIVED, &header["frame_id"]);
-        }
-        Err(e) => {
-            log::error!("Error parsing chunk header: {}", e);
-        }
-    }
-}
-
-#[legion_tauri_command]
-async fn authenticate(
-    token_cache: tauri::State<'_, Arc<TokenCache>>,
-) -> anyhow::Result<legion_online::authentication::UserInfo> {
+#[lgn_tauri_command]
+async fn authenticate(token_cache: tauri::State<'_, Arc<TokenCache>>) -> anyhow::Result<UserInfo> {
     let access_token = token_cache.login().await?.access_token;
 
     token_cache
@@ -203,119 +85,26 @@ async fn authenticate(
         .map_err(Into::into)
 }
 
-#[legion_tauri_command]
-async fn initialize_stream(
-    streamer_client: tauri::State<'_, Mutex<StreamerClient<GrpcClient>>>,
-    rtc_session_description: String,
-) -> anyhow::Result<String> {
-    let rtc_session_description = base64::decode(rtc_session_description)?;
-    let request = tonic::Request::new(InitializeStreamRequest {
-        rtc_session_description,
-    });
+fn main() -> anyhow::Result<()> {
+    let config = Config::new_from_environment()?;
 
-    let mut streamer_client = streamer_client.lock().await;
+    let authenticator =
+        AwsCognitoClientAuthenticator::from_authorization_url(&config.authorization_url)?;
 
-    let response = match streamer_client.initialize_stream(request).await {
-        Ok(response) => Ok(response.into_inner()),
-        Err(e) => {
-            error!("Error initializing stream: {}", e);
+    let projects_dir = directories::ProjectDirs::from("com", "legionlabs", "legion-editor")
+        .expect("Failed to get project directory");
 
-            Err(e)
-        }
-    }?;
+    let token_cache = Arc::new(TokenCache::new(authenticator, projects_dir));
 
-    if response.error.is_empty() {
-        Ok(base64::encode(response.rtc_session_description))
-    } else {
-        Err(anyhow::format_err!("{}", response.error))
-    }
-}
+    let builder = tauri::Builder::default()
+        .manage(Arc::clone(&token_cache))
+        .invoke_handler(tauri::generate_handler![authenticate]);
 
-#[legion_tauri_command]
-async fn search_resources(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
-) -> anyhow::Result<JSSearchResourcesResponse> {
-    let mut editor_client = editor_client.lock().await;
+    App::new()
+        .insert_non_send_resource(TauriPluginSettings::new(builder))
+        .add_plugin(TauriPlugin::new(tauri::generate_context!()))
+        .add_plugin(AsyncPlugin)
+        .run();
 
-    let mut result = JSSearchResourcesResponse::default();
-
-    // TODO: perhaps this method is too smart and should be more straighforward, and let the
-    // pagination be done at the Javascript level.
-    let mut search_token = String::new();
-
-    loop {
-        let request = tonic::Request::new(SearchResourcesRequest { search_token });
-
-        let response = editor_client.search_resources(request).await?.into_inner();
-
-        search_token = response.next_search_token;
-        result
-            .resource_descriptions
-            .extend(response.resource_descriptions.into_vec());
-
-        if search_token.is_empty() {
-            return Ok(result);
-        }
-    }
-}
-
-#[legion_tauri_command]
-async fn undo_transaction(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
-) -> anyhow::Result<JSUndoTransactionResponse> {
-    let mut editor_client = editor_client.lock().await;
-
-    let mut result = JSUndoTransactionResponse::default();
-
-    let request = tonic::Request::new(UndoTransactionRequest { id: -1 });
-    let response = editor_client.undo_transaction(request).await?.into_inner();
-    result.transaction_id = response.id;
-    Ok(result)
-}
-
-#[legion_tauri_command]
-async fn redo_transaction(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
-) -> anyhow::Result<JSRedoTransactionResponse> {
-    let mut editor_client = editor_client.lock().await;
-
-    let mut result = JSRedoTransactionResponse::default();
-    let request = tonic::Request::new(RedoTransactionRequest { id: -1 });
-    let response = editor_client.redo_transaction(request).await?.into_inner();
-    result.transaction_id = response.id;
-    Ok(result)
-}
-
-#[legion_tauri_command]
-async fn get_resource_properties(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
-    request: JSGetResourcePropertiesRequest,
-) -> anyhow::Result<JSGetResourcePropertiesResponse> {
-    let mut editor_client = editor_client.lock().await;
-
-    let request: GetResourcePropertiesRequest = request.into();
-    let request = tonic::Request::new(request);
-
-    Ok(editor_client
-        .get_resource_properties(request)
-        .await?
-        .into_inner()
-        .into())
-}
-
-#[legion_tauri_command]
-async fn update_resource_properties(
-    editor_client: tauri::State<'_, Mutex<EditorClient<GrpcClient>>>,
-    request: JSUpdateResourcePropertiesRequest,
-) -> anyhow::Result<JSUpdateResourcePropertiesResponse> {
-    let mut editor_client = editor_client.lock().await;
-
-    let request: UpdateResourcePropertiesRequest = request.into();
-    let request = tonic::Request::new(request);
-
-    Ok(editor_client
-        .update_resource_properties(request)
-        .await?
-        .into_inner()
-        .into())
+    Ok(())
 }

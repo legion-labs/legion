@@ -195,7 +195,7 @@ impl Dispatch {
         log_stream.get_events_mut().push(LogDynMsgEvent {
             time,
             level: level as u8,
-            msg: legion_transit::DynString(msg),
+            msg: lgn_transit::DynString(msg),
         });
         if log_stream.is_full() {
             drop(log_stream);
@@ -345,6 +345,9 @@ pub fn flush_metrics_buffer() {
 //todo: should be implicit by default but limit the maximum number of tracked threads
 pub fn init_thread_stream() {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {
+        if (*cell.as_ptr()).is_some() {
+            return;
+        }
         if let Some(d) = &mut G_DISPATCH {
             d.init_thread_stream(cell);
         } else {
@@ -371,7 +374,7 @@ pub fn flush_thread_buffer() {
 
 fn on_thread_event<T>(event: T)
 where
-    T: legion_transit::InProcSerialize + ThreadEventQueueTypeIndex,
+    T: lgn_transit::InProcSerialize + ThreadEventQueueTypeIndex,
 {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {
         let opt_stream = &mut *cell.as_ptr();

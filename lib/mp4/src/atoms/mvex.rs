@@ -20,7 +20,7 @@ impl Atom for MvexAtom {
     const FOUR_CC: FourCC = FourCC::new(b"mvex");
 
     fn size(&self) -> u64 {
-        HEADER_SIZE + self.mehd.as_ref().map_or(0, |x| x.size()) + self.trex.size()
+        HEADER_SIZE + self.mehd.as_ref().map_or(0, MehdAtom::size) + self.trex.size()
     }
 
     fn to_json(&self) -> Result<String> {

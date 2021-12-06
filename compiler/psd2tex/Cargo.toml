@@ -1,5 +1,5 @@
 [package]
-name = "compiler-psd2tex"
+name = "lgn-compiler-psd2tex"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -10,12 +10,13 @@ doc = false
 
 [[bin]]
 name = "compiler-psd2tex"
+path = "src/main.rs"
 doc = false
 
 [dependencies]
-legion-data-offline = { path = "../../lib/data-offline" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
-legion-graphics-offline = { path = "../../lib/graphics-offline" }
-legion-data-compiler = { path = "../../lib/data-compiler" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-graphics-offline = { path = "../../lib/graphics-offline", version = "0.1.0" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

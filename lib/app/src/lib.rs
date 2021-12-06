@@ -64,12 +64,12 @@ mod plugin;
 mod plugin_group;
 mod schedule_runner;
 
-#[cfg(feature = "legion_ci_testing")]
+#[cfg(feature = "lgn_ci_testing")]
 mod ci_testing;
 
 pub use app::*;
-pub use legion_derive::DynamicPlugin;
-pub use legion_ecs::event::*;
+pub use lgn_derive::DynamicPlugin;
+pub use lgn_ecs::event::*;
 pub use plugin::*;
 pub use plugin_group::*;
 pub use schedule_runner::*;
@@ -79,7 +79,7 @@ pub mod prelude {
     pub use crate::{app::App, CoreStage, DynamicPlugin, Plugin, PluginGroup, StartupStage};
 }
 
-use legion_ecs::schedule::StageLabel;
+use lgn_ecs::schedule::StageLabel;
 
 /// The names of the default App stages
 #[derive(Debug, Hash, PartialEq, Eq, Clone, StageLabel)]

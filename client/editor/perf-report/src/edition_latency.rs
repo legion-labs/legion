@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
 use anyhow::{Context, Result};
-use legion_analytics::prelude::*;
-use legion_transit::prelude::*;
+use lgn_analytics::prelude::*;
+use lgn_transit::prelude::*;
 
 async fn find_server_process_id(
     connection: &mut sqlx::AnyConnection,
@@ -117,7 +117,7 @@ async fn find_process_metrics(
     Ok(res)
 }
 
-//todo: make all times relative to start of process
+// TODO: Make all times relative to start of process
 fn find_timed_event<T>(v: &[(u64, T)], time: u64) -> Option<(u64, T)>
 where
     T: Clone,

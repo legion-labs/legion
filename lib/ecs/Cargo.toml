@@ -1,5 +1,5 @@
 [package]
-name = "legion-ecs"
+name = "lgn-ecs"
 version = "0.1.0"
 edition = "2021"
 description = "Legion's entity component system"
@@ -10,10 +10,10 @@ keywords = ["ecs", "game", "legion"]
 categories = ["game-engines", "data-structures"]
 
 [dependencies]
-legion-ecs-macros = { path = "macros", version = "0.1.0" }
-legion-tasks = { path = "../tasks", version = "0.1.0" }
-legion-telemetry = { path = "../telemetry", version = "0.1.0" }
-legion-utils = { path = "../utils", version = "0.1.0" }
+lgn-ecs-macros = { path = "macros", version = "0.1.0" }
+lgn-tasks = { path = "../tasks", version = "0.1.0" }
+lgn-telemetry = { path = "../telemetry", version = "0.1.0" }
+lgn-utils = { path = "../utils", version = "0.1.0" }
 
 async-channel = "1.6"
 downcast-rs = "1.2"

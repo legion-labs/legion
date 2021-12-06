@@ -3,15 +3,15 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use legion_telemetry::*;
-use legion_test_utils::*;
+use lgn_telemetry::*;
+use lgn_test_utils::*;
 
 fn write_lorem_ipsum(p: &Path) {
     let contents = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In iaculis odio ac nulla porta, eget dictum nulla euismod. Vivamus congue eros vitae velit feugiat lacinia. Curabitur mi lectus, semper in posuere nec, eleifend eu magna. Morbi egestas magna eget ligula aliquet, vitae mattis urna pellentesque. Maecenas sem risus, scelerisque id semper ut, ornare id diam. Integer ut urna varius, lobortis sapien id, ullamcorper mi. Donec pulvinar ante ligula, in interdum turpis tempor a. Maecenas malesuada turpis orci, vitae efficitur tortor laoreet sit amet.
 
 Nulla eu scelerisque odio. Suspendisse ultrices convallis hendrerit. Duis lacinia lacus ut urna pellentesque, euismod auctor risus volutpat. Sed et congue dolor, et bibendum dolor. Nam sit amet ante id eros aliquet luctus. Donec pulvinar mauris turpis, a ullamcorper mi fermentum ac. Morbi a volutpat turpis. Nulla facilisi. Sed rutrum placerat nisl vitae condimentum. Nunc et lacus ut lacus aliquet tempor et volutpat mi. Maecenas pretium ultricies mi id vestibulum. Sed turpis justo, semper eu nisl ac, hendrerit mattis turpis. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Praesent condimentum pellentesque vestibulum. Fusce at hendrerit lorem.\n";
 
-    legion_source_control::write_file(p, contents.as_bytes()).expect("write failed");
+    lgn_source_control::write_file(p, contents.as_bytes()).expect("write failed");
 }
 
 fn append_text_to_file(p: &Path, contents: &str) {
@@ -37,7 +37,7 @@ fn lsc_cli_sys_fail(wd: &Path, args: &[&str]) {
 
 async fn init_test_repo(test_dir: &Path, name: &str) -> String {
     trace_scope!();
-    match std::env::var("legion_source_control_TEST_HOST") {
+    match std::env::var("lgn_source_control_TEST_HOST") {
         Ok(test_host_uri) => {
             let repo_uri = format!("{}/{}", test_host_uri, name);
 
@@ -47,7 +47,7 @@ async fn init_test_repo(test_dir: &Path, name: &str) -> String {
                 .status()
                 .expect("failed to execute command");
 
-            match std::env::var("legion_source_control_TEST_BLOB_STORAGE") {
+            match std::env::var("lgn_source_control_TEST_BLOB_STORAGE") {
                 Ok(blob_storage_uri) => lsc_cli_sys(
                     test_dir,
                     &["init-remote-repository", &repo_uri, &blob_storage_uri],
@@ -165,14 +165,14 @@ fn local_repo_suite() {
     lsc_cli_sys(&work1, &["revert", "dir0/file1.txt"]);
 
     //sync backwards
-    let workspace_spec = legion_source_control::read_workspace_spec(&work1).unwrap();
+    let workspace_spec = lgn_source_control::read_workspace_spec(&work1).unwrap();
     let connection = tokio_runtime
-        .block_on(legion_source_control::connect_to_server(&workspace_spec))
+        .block_on(lgn_source_control::connect_to_server(&workspace_spec))
         .unwrap();
     let query = connection.query();
     let main_branch = tokio_runtime.block_on(query.read_branch("main")).unwrap();
     let log_vec = tokio_runtime
-        .block_on(legion_source_control::find_branch_commits(
+        .block_on(lgn_source_control::find_branch_commits(
             &connection,
             &main_branch,
         ))
@@ -203,7 +203,7 @@ fn local_single_branch_merge_flow() {
         &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
-    legion_source_control::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
+    lgn_source_control::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file1.txt"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"add file1""#]);
 
@@ -244,7 +244,7 @@ fn test_print_config() {
     init_telemetry(None);
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
-    let config_file_path = legion_source_control::Config::config_file_path().unwrap();
+    let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
         lsc_cli_sys(std::env::current_dir().unwrap().as_path(), &["config"]);
     } else {
@@ -260,7 +260,7 @@ fn test_branch() {
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_branch");
-    let config_file_path = legion_source_control::Config::config_file_path().unwrap();
+    let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
         lsc_cli_sys(&test_dir, &["config"]);
     } else {
@@ -276,10 +276,10 @@ fn test_branch() {
         &["init-workspace", work1.to_str().unwrap(), &repo_uri],
     );
 
-    legion_source_control::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
+    lgn_source_control::write_file(&work1.join("file1.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file1.txt"]);
 
-    legion_source_control::write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
+    lgn_source_control::write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file2.txt"]);
 
     lsc_cli_sys(&work1, &["commit", r#"-m"add file1""#]);
@@ -289,11 +289,11 @@ fn test_branch() {
 
     lsc_cli_sys(&work1, &["delete", "file2.txt"]);
 
-    legion_source_control::write_file(&work1.join("file3.txt"), "line1\n".as_bytes()).unwrap();
+    lgn_source_control::write_file(&work1.join("file3.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file3.txt"]);
 
     std::fs::create_dir_all(work1.join("dir0/deep")).expect("dir0 creation failed");
-    legion_source_control::write_file(
+    lgn_source_control::write_file(
         &work1.join("dir0/deep/inner_task.txt"),
         "line1\n".as_bytes(),
     )
@@ -360,7 +360,7 @@ fn test_locks() {
     let _telemetry_thread_guard = TelemetryThreadGuard::new();
     trace_scope!();
     let test_dir = init_test_dir("test_locks");
-    let config_file_path = legion_source_control::Config::config_file_path().unwrap();
+    let config_file_path = lgn_source_control::Config::config_file_path().unwrap();
     if config_file_path.exists() {
         lsc_cli_sys(&test_dir, &["config"]);
     } else {
@@ -378,7 +378,7 @@ fn test_locks() {
     );
 
     std::fs::create_dir_all(work1.join("dir/deep")).unwrap();
-    legion_source_control::write_file(&work1.join("dir/deep/file1.txt"), "line1\n".as_bytes())
+    lgn_source_control::write_file(&work1.join("dir/deep/file1.txt"), "line1\n".as_bytes())
         .unwrap();
 
     lsc_cli_sys(&work1, &["lock", "dir\\deep\\file1.txt"]);
@@ -395,7 +395,7 @@ fn test_locks() {
     lsc_cli_sys(&work1, &["commit", r#"-m"non-edit file1 in task branch""#]);
 
     lsc_cli_sys(&work1, &["switch-branch", "main"]);
-    legion_source_control::write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
+    lgn_source_control::write_file(&work1.join("file2.txt"), "line1\n".as_bytes()).unwrap();
     lsc_cli_sys(&work1, &["add", "file2.txt"]);
     lsc_cli_sys(&work1, &["commit", r#"-m"add file2 in task main""#]);
     lsc_cli_sys(&work1, &["switch-branch", "task"]);

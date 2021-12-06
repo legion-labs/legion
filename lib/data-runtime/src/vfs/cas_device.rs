@@ -1,4 +1,4 @@
-use legion_content_store::ContentStore;
+use lgn_content_store::ContentStore;
 
 use super::Device;
 use crate::{manifest::Manifest, ResourceId, ResourceType};

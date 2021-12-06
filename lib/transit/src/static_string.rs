@@ -1,4 +1,4 @@
-use legion_utils::memory::{read_any, write_any};
+use lgn_utils::memory::{read_any, write_any};
 
 use crate::{InProcSerialize, Reflect, UserDefinedType};
 

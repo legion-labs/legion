@@ -1,5 +1,5 @@
 [package]
-name = "legion-input"
+name = "lgn-input"
 version = "0.1.0"
 edition = "2021"
 description = "Provides hierarchy and transform functionality for Legion Engine"
@@ -14,10 +14,10 @@ serialize = ["serde"]
 
 [dependencies]
 # legion
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-math = { path = "../../lib/math", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
 serde = { version = "1.0", features = ["derive"], optional = true }

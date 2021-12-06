@@ -1,8 +1,8 @@
 [package]
-name = "legion-test-utils"
+name = "lgn-test-utils"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-legion-telemetry = { path = "../telemetry" }
+lgn-telemetry = { path = "../telemetry" }

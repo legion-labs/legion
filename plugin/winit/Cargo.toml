@@ -1,5 +1,5 @@
 [package]
-name = "legion-winit"
+name = "lgn-winit"
 version = "0.1.0"
 edition = "2021"
 description = "Provides hierarchy and transform functionality for Legion Engine"
@@ -14,20 +14,20 @@ x11 = ["winit/x11"]
 
 [dependencies]
 # bevy
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-input = { path = "../input", version = "0.1.0" }
-legion-math = { path = "../../lib/math", version = "0.1.0" }
-legion-window = { path = "../window", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-input = { path = "../input", version = "0.1.0" }
+lgn-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-window = { path = "../window", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
 log = "0.4"
-winit = { version = "0.25.0", default-features = false }
+winit = { version = "0.26.0", default-features = false }
 approx = { version = "0.5.0", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-winit = { version = "0.25.0", features = ["web-sys"], default-features = false }
+winit = { version = "0.26.0", default-features = false }
 wasm-bindgen = { version = "0.2" }
 web-sys = "0.3"
 

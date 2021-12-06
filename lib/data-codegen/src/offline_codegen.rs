@@ -65,6 +65,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo) -> TokenStream {
         }
 
         // Offline default implementation
+        #[allow(clippy::derivable_impls)]
         impl Default for #offline_identifier {
             fn default() -> Self {
                 Self {

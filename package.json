@@ -1,8 +1,7 @@
 {
   "private": true,
   "workspaces": [
-    "client/editor-svelte/frontend",
-    "client/analytics-web/frontend",
+    "client/*/frontend",
     "proto/*"
   ],
   "scripts": {

@@ -4,7 +4,7 @@
     beginMs: number;
     endMs: number;
   };
-  
+
   import { useLocation } from "svelte-navigator";
   import { onMount } from "svelte";
   import {
@@ -26,10 +26,9 @@
   let maxSum: number | null = null;
   let selectedNode: CumulativeCallGraphNode | null = null;
 
-  
-  function getUrlParams() :GraphParams {
+  function getUrlParams(): GraphParams {
     const params = new URLSearchParams($locationStore.search);
-    const processId = params.get("process")
+    const processId = params.get("process");
     if (!processId) {
       throw new Error("missing param process");
     }
@@ -42,15 +41,17 @@
       throw new Error("missing param end");
     }
     return {
-      processId : processId,
+      processId: processId,
       beginMs: parseFloat(beginStr),
-      endMs: parseFloat(endStr)
+      endMs: parseFloat(endStr),
     };
   }
 
   async function fetchData() {
     const params = getUrlParams();
-    const { process } = await client.find_process({ processId: params.processId });
+    const { process } = await client.find_process({
+      processId: params.processId,
+    });
     if (!process) {
       throw new Error("Error in client.find_process");
     }
@@ -59,93 +60,105 @@
     const reply = await client.process_cumulative_call_graph({
       process: processInfo,
       beginMs: params.beginMs,
-      endMs: params.endMs });
+      endMs: params.endMs,
+    });
 
-    reply.scopes.forEach( function(scope){
+    reply.scopes.forEach(function (scope) {
       scopes[scope.hash] = scope;
-    } );
-    nodes = reply.nodes.filter( item => item.stats && item.hash != 0 ); //todo: fix this on server side
-    nodes = nodes.sort( (lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum );
+    });
+    nodes = reply.nodes.filter((item) => item.stats && item.hash != 0); //todo: fix this on server side
+    nodes = nodes.sort((lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum);
     maxSum = nodes[0].stats!.sum;
   }
 
-  function formatFunDivWidth(node: CumulativeCallGraphNode) : string{
+  function formatFunDivWidth(node: CumulativeCallGraphNode): string {
     if (!maxSum) {
       return "";
     }
-    const pct = node.stats!.sum * 95 / maxSum;
+    const pct = (node.stats!.sum * 95) / maxSum;
     return `width:${pct}%`;
   }
 
-  function formatEdgeDivWidth(selectedNode: CumulativeCallGraphNode, edgeWeight: number) : string{
-    const pct = edgeWeight * 95 / selectedNode.stats!.sum;
+  function formatEdgeDivWidth(
+    selectedNode: CumulativeCallGraphNode,
+    edgeWeight: number
+  ): string {
+    const pct = (edgeWeight * 95) / selectedNode.stats!.sum;
     return `width:${pct}%`;
   }
 
-  function formatFunLabel(node: CumulativeCallGraphNode) : string{
-    return scopes[node.hash].name + ' ' + formatExecutionTime(node.stats!.sum);
+  function formatFunLabel(node: CumulativeCallGraphNode): string {
+    return scopes[node.hash].name + " " + formatExecutionTime(node.stats!.sum);
   }
 
   function onFunClick(node: CumulativeCallGraphNode) {
+    const funlist = document.getElementById("funlist");
+    if (funlist) {
+      funlist.style.height = window.innerHeight * 0.4 + "px";
+    }
     selectedNode = node;
   }
 
   function onEdgeClick(hash: number) {
-    if (!nodes){
+    if (!nodes) {
       return;
     }
-    const found = nodes.find( item => item.hash === hash );
-    if (found){
+    const found = nodes.find((item) => item.hash === hash);
+    if (found) {
       selectedNode = found;
     } else {
       selectedNode = null;
     }
   }
 
-  function formatSum(node: CumulativeCallGraphNode) : string{
+  function formatSum(node: CumulativeCallGraphNode): string {
     return formatExecutionTime(node.stats!.sum);
   }
 
-  function formatMin(node: CumulativeCallGraphNode) : string{
+  function formatMin(node: CumulativeCallGraphNode): string {
     return formatExecutionTime(node.stats!.min);
   }
 
-  function formatMax(node: CumulativeCallGraphNode) : string{
+  function formatMax(node: CumulativeCallGraphNode): string {
     return formatExecutionTime(node.stats!.max);
   }
 
-  function formatAvg(node: CumulativeCallGraphNode) : string{
+  function formatAvg(node: CumulativeCallGraphNode): string {
     return formatExecutionTime(node.stats!.avg);
   }
 
-  function formatMedian(node: CumulativeCallGraphNode) : string{
+  function formatMedian(node: CumulativeCallGraphNode): string {
     return formatExecutionTime(node.stats!.median);
   }
 
-  function formatCount(node: CumulativeCallGraphNode) : string{
-    return node.stats!.count.toString()
+  function formatCount(node: CumulativeCallGraphNode): string {
+    return node.stats!.count.toString();
   }
-  
+
   onMount(() => {
     fetchData();
   });
-
-  
 </script>
 
 <div>
   <h1>Graph</h1>
   {#if nodes}
     <h2>Function List</h2>
-    {#each nodes as node (node.hash)}
-      <div class="fundiv" style={formatFunDivWidth(node)}
-           on:click={function(_event){ onFunClick(node); }}
-           >
-        <span>
-          {formatFunLabel(node)}
-        </span>
-      </div>
-    {/each}
+    <div id="funlist">
+      {#each nodes as node (node.hash)}
+        <div
+          class="fundiv"
+          style={formatFunDivWidth(node)}
+          on:click={function (_event) {
+            onFunClick(node);
+          }}
+        >
+          <span>
+            {formatFunLabel(node)}
+          </span>
+        </div>
+      {/each}
+    </div>
   {/if}
   {#if selectedNode}
     <h2>Selected Function</h2>
@@ -183,40 +196,48 @@
     <h3>Callees</h3>
 
     {#each selectedNode.callees as edge (edge.hash)}
-      <div class="fundiv"
-           style={formatEdgeDivWidth(selectedNode, edge.weight)}
-           on:click={function(_event){ onEdgeClick(edge.hash); }}
-           >
+      <div
+        class="fundiv"
+        style={formatEdgeDivWidth(selectedNode, edge.weight)}
+        on:click={function (_event) {
+          onEdgeClick(edge.hash);
+        }}
+      >
         <span>
           {scopes[edge.hash].name}
         </span>
       </div>
     {/each}
-    
+
     <h3>Callers</h3>
 
     {#each selectedNode.callers as edge (edge.hash)}
-      <div class="fundiv"
-           style={formatEdgeDivWidth(selectedNode, edge.weight)}
-           on:click={function(_event){ onEdgeClick(edge.hash); }}
-           >
+      <div
+        class="fundiv"
+        style={formatEdgeDivWidth(selectedNode, edge.weight)}
+        on:click={function (_event) {
+          onEdgeClick(edge.hash);
+        }}
+      >
         <span>
           {scopes[edge.hash].name}
         </span>
       </div>
     {/each}
-    
   {/if}
 </div>
 
 <style lang="postcss">
-
   h1 {
     @apply text-2xl;
   }
 
   h2 {
     @apply text-xl;
+  }
+
+  #funlist {
+    overflow-y: auto;
   }
 
   .selecteddiv {
@@ -240,16 +261,14 @@
   .fundiv span {
     margin: 0 10px;
   }
-  
+
   .fundiv:hover {
     color: white;
-    background-color: rgba(64, 64, 200, 1.0);
+    background-color: rgba(64, 64, 200, 1);
   }
 
   .fundiv span:hover {
     margin: 0 10px;
-    background-color: rgba(64, 64, 200, 1.0);
+    background-color: rgba(64, 64, 200, 1);
   }
-  
-  
 </style>

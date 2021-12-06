@@ -1,4 +1,4 @@
-use legion_telemetry::*;
+use lgn_telemetry::*;
 use LogMsgQueueAny::*;
 use MetricsMsgQueueAny::*;
 use ThreadEventQueueAny::*;

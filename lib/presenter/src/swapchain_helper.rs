@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crossbeam_channel::{Receiver, Sender};
-use legion_graphics_api::{
+use lgn_graphics_api::{
     CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult, Queue,
     Semaphore, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureView,
 };

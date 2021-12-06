@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use legion_data_runtime::{ResourceId, ResourceType};
-use legion_utils::Settings;
+use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_utils::Settings;
 
 pub struct DataBuildSettings {
     pub(crate) build_bin: PathBuf,

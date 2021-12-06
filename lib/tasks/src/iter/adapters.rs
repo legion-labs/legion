@@ -225,7 +225,7 @@ where
     type Item = P::Item;
 
     fn next_batch(&mut self) -> Option<B> {
-        if let batch @ Some(_) = self.curr.as_mut().and_then(|c| c.next_batch()) {
+        if let batch @ Some(_) = self.curr.as_mut().and_then(P::next_batch) {
             batch
         } else {
             self.curr = Some(self.iter.clone());

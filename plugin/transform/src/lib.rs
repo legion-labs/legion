@@ -67,8 +67,8 @@ pub mod prelude {
     pub use crate::{components::*, hierarchy::*, TransformPlugin};
 }
 
-use legion_app::prelude::*;
-use legion_ecs::schedule::{ParallelSystemDescriptorCoercion, SystemLabel};
+use lgn_app::prelude::*;
+use lgn_ecs::schedule::{ParallelSystemDescriptorCoercion, SystemLabel};
 use prelude::parent_update_system;
 
 #[derive(Default)]

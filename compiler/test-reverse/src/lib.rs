@@ -56,14 +56,14 @@
 
 use std::env;
 
-use legion_data_compiler::{
+use lgn_data_compiler::{
     compiler_api::{
         CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
     },
     compiler_utils::hash_code_and_data,
 };
-use legion_data_offline::resource::ResourceProcessor;
-use legion_data_runtime::Resource;
+use lgn_data_offline::resource::ResourceProcessor;
+use lgn_data_runtime::Resource;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),

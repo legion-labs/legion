@@ -1,6 +1,7 @@
-use crate::{Error, LockContext, TransactionOperation};
 use async_trait::async_trait;
-use legion_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceId, ResourceType};
+
+use crate::{Error, LockContext, TransactionOperation};
 
 pub(crate) struct UpdatePropertyOperation {
     resource_id: (ResourceType, ResourceId),

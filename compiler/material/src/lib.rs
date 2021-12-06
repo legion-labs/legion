@@ -54,14 +54,14 @@
 // crate-specific exceptions:
 #![allow()]
 
-use legion_data_compiler::{
+use lgn_data_compiler::{
     compiler_api::{
         CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
     },
     compiler_utils::{hash_code_and_data, path_id_to_binary},
 };
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::Resource;
+use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::Resource;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -69,8 +69,8 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &(
-        legion_graphics_offline::Material::TYPE,
-        legion_graphics_runtime::Material::TYPE,
+        lgn_graphics_offline::Material::TYPE,
+        lgn_graphics_runtime::Material::TYPE,
     ),
     compiler_hash_func: hash_code_and_data,
     compile_func: compile,
@@ -79,11 +79,11 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let resources = context
         .take_registry()
-        .add_loader::<legion_graphics_offline::Material>()
+        .add_loader::<lgn_graphics_offline::Material>()
         .create();
 
     let resource =
-        resources.load_sync::<legion_graphics_offline::Material>(context.source.resource_id());
+        resources.load_sync::<lgn_graphics_offline::Material>(context.source.resource_id());
 
     let resource = resource.get(&resources).unwrap();
 

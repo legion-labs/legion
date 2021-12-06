@@ -25,7 +25,7 @@ use crate::{
 /// ```
 /// use std::num::ParseIntError;
 ///
-/// use legion_ecs::prelude::*;
+/// use lgn_ecs::prelude::*;
 ///
 /// fn main() {
 ///     let mut world = World::default();

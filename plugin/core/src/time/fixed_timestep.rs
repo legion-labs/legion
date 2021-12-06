@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use legion_ecs::{
+use lgn_ecs::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
     query::Access,
@@ -10,7 +10,7 @@ use legion_ecs::{
     system::{ConfigurableSystem, IntoSystem, Local, Res, ResMut, System},
     world::World,
 };
-use legion_utils::HashMap;
+use lgn_utils::HashMap;
 
 use crate::Time;
 

@@ -1,6 +1,6 @@
 use std::{any::Any, marker::PhantomData};
 
-use legion_data_runtime::Resource;
+use lgn_data_runtime::Resource;
 
 use super::ResourceRegistry;
 

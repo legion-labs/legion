@@ -608,7 +608,7 @@ impl AssetLoaderIO {
 mod tests {
     use std::time::Duration;
 
-    use legion_content_store::{ContentStore, RamContentStore};
+    use lgn_content_store::{ContentStore, RamContentStore};
 
     use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
     use crate::{

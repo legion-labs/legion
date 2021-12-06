@@ -3,14 +3,13 @@ use std::sync::atomic::AtomicBool;
 #[cfg(any(feature = "vulkan"))]
 use std::sync::atomic::Ordering;
 
+#[cfg(feature = "vulkan")]
+use crate::backends::vulkan::{VulkanRawImage, VulkanTexture};
 use crate::deferred_drop::Drc;
 use crate::{
     DeviceContext, Extents3D, GfxResult, TextureDef, TextureSubResource, TextureView,
     TextureViewDef,
 };
-
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::{VulkanRawImage, VulkanTexture};
 
 #[derive(Debug)]
 pub(crate) struct TextureInner {

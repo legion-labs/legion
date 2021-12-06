@@ -1,17 +1,13 @@
 use std::collections::BTreeMap;
 
-use legion_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceId, ResourceType};
 
 use super::ResourceHandleUntyped;
 
 /// Mapping between a `ResourceId` and `ResourceHandleUntyped`
+#[derive(Default)]
 pub struct ResourceHandles(BTreeMap<(ResourceType, ResourceId), ResourceHandleUntyped>);
 
-impl Default for ResourceHandles {
-    fn default() -> Self {
-        Self(BTreeMap::new())
-    }
-}
 impl ResourceHandles {
     /// Retrieve a `ResourceHandleUntyped` from a `ResourceId`
     pub fn get(&self, resource_id: (ResourceType, ResourceId)) -> Option<&ResourceHandleUntyped> {

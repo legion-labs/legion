@@ -1,5 +1,5 @@
 [package]
-name = "compiler-test-atoi"
+name = "lgn-compiler-test-atoi"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -10,10 +10,11 @@ doc = false
 
 [[bin]]
 name = "compiler-test-atoi"
+path = "src/main.rs"
 doc = false
 
 [dependencies]
-legion-data-compiler = { path = "../../lib/data-compiler" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 text-resource = { path = "../../lib/data-offline/test-text-resource" }
 integer-asset = { path = "../../lib/data-runtime/test-integer-asset" }

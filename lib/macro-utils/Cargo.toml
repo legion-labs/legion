@@ -1,5 +1,5 @@
 [package]
-name = "legion-macro-utils"
+name = "lgn-macro-utils"
 version = "0.1.0"
 edition = "2021"
 description = "A collection of utils for Legion"

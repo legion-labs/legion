@@ -75,5 +75,9 @@ pub use render_context::*;
 
 mod resources;
 
+mod memory;
+
 pub mod components;
 pub mod static_mesh_render_data;
+
+pub use lgn_tasks::ComputeTaskPool as RenderTaskPool;

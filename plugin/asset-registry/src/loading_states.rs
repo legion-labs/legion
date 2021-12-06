@@ -1,6 +1,6 @@
 use std::collections::{btree_map::IterMut, BTreeMap};
 
-use legion_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceId, ResourceType};
 
 #[derive(Default)]
 pub(crate) struct AssetLoadingStates(BTreeMap<(ResourceType, ResourceId), LoadingState>);

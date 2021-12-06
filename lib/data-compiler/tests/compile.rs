@@ -3,13 +3,13 @@ use std::fs::File;
 
 use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use legion_data_compiler::{
+use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use lgn_data_compiler::{
     compiler_cmd::{list_compilers, CompilerCompileCmd},
     Locale, Platform, Target,
 };
-use legion_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use legion_data_runtime::{resource_type_id_tuple, AssetLoader, Resource, ResourceId};
+use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
+use lgn_data_runtime::{resource_type_id_tuple, AssetLoader, Resource, ResourceId};
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
 use text_resource::TextResource;
 

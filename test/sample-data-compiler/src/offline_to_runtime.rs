@@ -1,7 +1,7 @@
 use std::any::Any;
 
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::{Reference, Resource};
+use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::{Reference, Resource};
 use sample_data_offline as offline_data;
 use sample_data_runtime as runtime_data;
 
@@ -11,12 +11,10 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
         offline_data::Entity::TYPE => path.push(runtime_data::Entity::TYPE),
         offline_data::Instance::TYPE => path.push(runtime_data::Instance::TYPE),
         offline_data::Mesh::TYPE => path.push(runtime_data::Mesh::TYPE),
-        legion_graphics_offline::PsdFile::TYPE => path
-            .push(legion_graphics_offline::Texture::TYPE)
-            .push(legion_graphics_runtime::Texture::TYPE),
-        legion_graphics_offline::Material::TYPE => {
-            path.push(legion_graphics_runtime::Material::TYPE)
-        }
+        lgn_graphics_offline::PsdFile::TYPE => path
+            .push(lgn_graphics_offline::Texture::TYPE)
+            .push(lgn_graphics_runtime::Texture::TYPE),
+        lgn_graphics_offline::Material::TYPE => path.push(lgn_graphics_runtime::Material::TYPE),
         generic_data_offline::DebugCube::TYPE => path.push(generic_data_runtime::DebugCube::TYPE),
         _ => {
             panic!("unrecognized offline type {}", offline_type);

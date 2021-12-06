@@ -117,7 +117,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        self as legion_ecs,
+        self as lgn_ecs,
         component::Component,
         entity::Entity,
         query::With,

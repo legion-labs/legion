@@ -8,8 +8,8 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::io;
 
-use legion_data_runtime::Asset;
-use legion_utils::DefaultHash;
+use lgn_data_runtime::Asset;
+use lgn_utils::DefaultHash;
 
 use crate::PropertyDescriptor;
 use crate::ResourcePathId;
