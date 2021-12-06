@@ -1,5 +1,5 @@
 [package]
-name = "compiler-psd2tex"
+name = "lgn-compiler-psd2tex"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -10,6 +10,7 @@ doc = false
 
 [[bin]]
 name = "compiler-psd2tex"
+path = "src/main.rs"
 doc = false
 
 [dependencies]

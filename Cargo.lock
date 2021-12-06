@@ -1167,172 +1167,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compiler-debugcube"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
-name = "compiler-entitydc"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
-name = "compiler-instancedc"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
-name = "compiler-material"
-version = "0.1.0"
-dependencies = [
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
- "lgn-graphics-offline",
- "lgn-graphics-runtime",
-]
-
-[[package]]
-name = "compiler-psd2tex"
-version = "0.1.0"
-dependencies = [
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
- "lgn-graphics-offline",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "compiler-runtime-entity"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
-]
-
-[[package]]
-name = "compiler-runtime-instance"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
-]
-
-[[package]]
-name = "compiler-runtime-mesh"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
-]
-
-[[package]]
-name = "compiler-test-atoi"
-version = "0.1.0"
-dependencies = [
- "integer-asset",
- "lgn-data-compiler",
- "lgn-data-runtime",
- "text-resource",
-]
-
-[[package]]
-name = "compiler-test-base64"
-version = "0.1.0"
-dependencies = [
- "base64",
- "binary-resource",
- "lgn-data-compiler",
- "lgn-data-runtime",
- "text-resource",
-]
-
-[[package]]
-name = "compiler-test-refs"
-version = "0.1.0"
-dependencies = [
- "lgn-data-compiler",
- "lgn-data-runtime",
- "refs-asset",
- "refs-resource",
-]
-
-[[package]]
-name = "compiler-test-reverse"
-version = "0.1.0"
-dependencies = [
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
- "text-resource",
-]
-
-[[package]]
-name = "compiler-test-split"
-version = "0.1.0"
-dependencies = [
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
- "multitext-resource",
- "text-resource",
-]
-
-[[package]]
-name = "compiler-testentity"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
 name = "compiler-tex2bin"
 version = "0.1.0"
 dependencies = [
@@ -3597,6 +3431,172 @@ dependencies = [
  "ash",
  "openh264-sys2",
  "smallvec",
+]
+
+[[package]]
+name = "lgn-compiler-debugcube"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-entitydc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-instancedc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-material"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "lgn-graphics-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-psd2tex"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "lgn-compiler-runtime-entity"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-runtime-instance"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-runtime-mesh"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-test-atoi"
+version = "0.1.0"
+dependencies = [
+ "integer-asset",
+ "lgn-data-compiler",
+ "lgn-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "lgn-compiler-test-base64"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "binary-resource",
+ "lgn-data-compiler",
+ "lgn-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "lgn-compiler-test-refs"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-runtime",
+ "refs-asset",
+ "refs-resource",
+]
+
+[[package]]
+name = "lgn-compiler-test-reverse"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "lgn-compiler-test-split"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "multitext-resource",
+ "text-resource",
+]
+
+[[package]]
+name = "lgn-compiler-testentity"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
 ]
 
 [[package]]

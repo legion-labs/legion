@@ -1,5 +1,5 @@
 [package]
-name = "compiler-test-reverse"
+name = "lgn-compiler-test-reverse"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -10,6 +10,7 @@ doc = false
 
 [[bin]]
 name = "compiler-test-reverse"
+path = "src/main.rs"
 doc = false
 
 [dependencies]

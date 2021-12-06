@@ -1,5 +1,5 @@
 [package]
-name = "compiler-test-refs"
+name = "lgn-compiler-test-refs"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -10,6 +10,7 @@ doc = false
 
 [[bin]]
 name = "compiler-test-refs"
+path = "src/main.rs"
 doc = false
 
 [dependencies]
