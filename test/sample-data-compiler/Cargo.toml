@@ -7,15 +7,15 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 
 # Legion engine
-legion-content-store = { path = "../../lib/content-store", version = "0.1.0" }
-legion-data-build = { path = "../../lib/data-build", version = "0.1.0" }
-legion-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
-legion-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
-legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
-legion-graphics-runtime = { path = "../../lib/graphics-runtime" }
-legion-graphics-offline = { path = "../../lib/graphics-offline" }
-legion-math = { path = "../../lib/math", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-content-store = { path = "../../lib/content-store", version = "0.1.0" }
+lgn-data-build = { path = "../../lib/data-build", version = "0.1.0" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-graphics-runtime = { path = "../../lib/graphics-runtime" }
+lgn-graphics-offline = { path = "../../lib/graphics-offline" }
+lgn-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 generic_data_offline = { path = "../generic_data_offline" }
 generic_data_runtime = { path = "../generic_data_runtime" }
 

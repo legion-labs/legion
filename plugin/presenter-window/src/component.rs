@@ -2,12 +2,12 @@
 use std::convert::TryFrom;
 
 use graphics_api::prelude::*;
-use legion_presenter::swapchain_helper::SwapchainHelper;
-use legion_renderer::{
+use lgn_presenter::swapchain_helper::SwapchainHelper;
+use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
-use legion_tasks::TaskPool;
+use lgn_tasks::TaskPool;
 use raw_window_handle::HasRawWindowHandle;
 
 pub struct PresenterWindow {

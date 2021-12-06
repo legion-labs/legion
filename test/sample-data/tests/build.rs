@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_data_compiler::Manifest;
+use lgn_data_compiler::Manifest;
 
 pub fn target_dir() -> PathBuf {
     env::current_exe()

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use legion_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
-use legion_data_runtime::{AssetRegistry, ResourceId, ResourceType};
+use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
+use lgn_data_runtime::{AssetRegistry, ResourceId, ResourceType};
 use log::info;
 use thiserror::Error;
 use tokio::sync::Mutex;

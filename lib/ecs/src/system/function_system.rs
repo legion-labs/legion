@@ -2,7 +2,7 @@
 
 use std::{borrow::Cow, marker::PhantomData};
 
-use legion_ecs_macros::all_tuples;
+use lgn_ecs_macros::all_tuples;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration, ArchetypeId},
@@ -171,8 +171,8 @@ impl<Param: SystemParam> SystemState<Param> {
 /// # Examples
 ///
 /// ```
-/// use legion_ecs::system::IntoSystem;
-/// use legion_ecs::system::Res;
+/// use lgn_ecs::system::IntoSystem;
+/// use lgn_ecs::system::Res;
 ///
 /// fn my_system_function(an_usize_resource: Res<usize>) {}
 ///
@@ -209,7 +209,7 @@ impl<In, Out, Sys: System<In = In, Out = Out>> IntoSystem<In, Out, AlreadyWasSys
 /// Here is a simple example of a system that takes a [`usize`] returning the square of it.
 ///
 /// ```
-/// use legion_ecs::prelude::*;
+/// use lgn_ecs::prelude::*;
 ///
 /// fn main() {
 ///     let mut square_system = square.system();
@@ -251,7 +251,7 @@ impl<In, Out, Param: SystemParam, Marker, F> FunctionSystem<In, Out, Param, Mark
     /// # Examples
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// # let world = &mut World::default();
     /// fn local_is_42(local: Local<usize>) {
     ///     assert_eq!(*local, 42);

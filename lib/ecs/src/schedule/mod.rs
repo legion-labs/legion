@@ -15,8 +15,8 @@ pub use executor::*;
 pub use executor_parallel::*;
 pub use graph_utils::GraphNode;
 pub use label::*;
-use legion_telemetry::trace_scope;
-use legion_utils::HashMap;
+use lgn_telemetry::trace_scope;
+use lgn_utils::HashMap;
 pub use run_criteria::*;
 pub use stage::*;
 pub use state::*;
@@ -96,7 +96,7 @@ impl Schedule {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut schedule = Schedule::default();
     /// schedule.add_stage("my_stage", SystemStage::parallel());
@@ -116,7 +116,7 @@ impl Schedule {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut schedule = Schedule::default();
     /// # schedule.add_stage("target_stage", SystemStage::parallel());
@@ -153,7 +153,7 @@ impl Schedule {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut schedule = Schedule::default();
     /// # schedule.add_stage("target_stage", SystemStage::parallel());
@@ -190,7 +190,7 @@ impl Schedule {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # fn my_system() {}
     /// # let mut schedule = Schedule::default();
@@ -224,7 +224,7 @@ impl Schedule {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # fn my_system() {}
     /// # let mut schedule = Schedule::default();
@@ -262,7 +262,7 @@ impl Schedule {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # let mut schedule = Schedule::default();
     /// # schedule.add_stage("my_stage", SystemStage::parallel());
@@ -296,7 +296,7 @@ impl Schedule {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # fn my_system() {}
     /// # let mut schedule = Schedule::default();
@@ -317,7 +317,7 @@ impl Schedule {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # fn my_system() {}
     /// # let mut schedule = Schedule::default();

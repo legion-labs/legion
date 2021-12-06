@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 //type QuoteRes = quote::__private::TokenStream;
-use legion_utils::DefaultHasher;
+use lgn_utils::DefaultHasher;
 use proc_macro2::{TokenStream, TokenTree};
 use quote::{quote, ToTokens};
 
@@ -135,7 +135,7 @@ impl MemberMetaInfo {
                 } else {
                     quote! { Option<Reference<Resource>> }
                 };
-                (ty, syn::parse_str("legion_data_runtime::Reference").ok())
+                (ty, syn::parse_str("lgn_data_runtime::Reference").ok())
             }
             "Vec < ResourcePathId >" => {
                 let ty = if let Some(resource_type) = &self.resource_type {
@@ -143,7 +143,7 @@ impl MemberMetaInfo {
                 } else {
                     quote! { Vec<Reference<Resource>> }
                 };
-                (ty, syn::parse_str("legion_data_runtime::Reference").ok())
+                (ty, syn::parse_str("lgn_data_runtime::Reference").ok())
             }
 
             _ => (quote! { #member_type }, None),
@@ -313,9 +313,9 @@ pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
                         TRANSIENT_ATTR => member_info.transient = true,
                         RESOURCE_TYPE_ATTR => {
                             member_info.resource_type = get_resource_type(&mut group_iter);
-                            member_info.imports.push(
-                                syn::parse_str("legion_data_offline::ResourcePathId").unwrap(),
-                            );
+                            member_info
+                                .imports
+                                .push(syn::parse_str("lgn_data_offline::ResourcePathId").unwrap());
                         }
                         TOOLTIP_ATTR => {
                             member_info.tooltip = get_attribute_literal(&mut group_iter);

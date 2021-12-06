@@ -1,5 +1,5 @@
 [package]
-name = "legion-graphics-utils"
+name = "lgn-graphics-utils"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -8,5 +8,5 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-legion-utils = { path = "../../lib/utils", package = "legion-utils" }
-legion-graphics-api = { path = "../graphics-api", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-graphics-api = { path = "../graphics-api", version = "0.1.0" }

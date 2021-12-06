@@ -6,7 +6,7 @@ use std::{
     ptr::{self, NonNull},
 };
 
-use legion_ecs_macros::all_tuples;
+use lgn_ecs_macros::all_tuples;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
@@ -681,10 +681,10 @@ impl<'w, 's, T: Fetch<'w, 's>> Fetch<'w, 's> for OptionFetch<T> {
 /// # Examples
 ///
 /// ```
-/// # use legion_ecs::component::Component;
-/// # use legion_ecs::query::ChangeTrackers;
-/// # use legion_ecs::system::IntoSystem;
-/// # use legion_ecs::system::Query;
+/// # use lgn_ecs::component::Component;
+/// # use lgn_ecs::query::ChangeTrackers;
+/// # use lgn_ecs::system::IntoSystem;
+/// # use lgn_ecs::system::Query;
 /// #
 /// # #[derive(Component, Debug)]
 /// # struct Name {};

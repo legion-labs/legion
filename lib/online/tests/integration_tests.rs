@@ -13,7 +13,7 @@ use echo::{
     echoer_server::{Echoer, EchoerServer},
     EchoRequest, EchoResponse,
 };
-use legion_online::{
+use lgn_online::{
     authentication::{self, Authenticator, ClientTokenSet},
     grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
 };
@@ -94,10 +94,10 @@ impl Authenticator for MockAuthenticator {
 async fn test_service_multiplexer() -> anyhow::Result<()> {
     setup_test_logger();
 
-    //let server = legion_grpc::server::transport::http2::Server::default();
+    //let server = lgn_grpc::server::transport::http2::Server::default();
     let echo_service = EchoerServer::new(Service {});
     let sum_service = SummerServer::new(Service {});
-    let service = legion_online::grpc::MultiplexerService::builder()
+    let service = lgn_online::grpc::MultiplexerService::builder()
         .add_service(echo_service)
         .add_service(sum_service)
         .build();

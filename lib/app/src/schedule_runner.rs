@@ -2,7 +2,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
-use legion_ecs::event::Events;
+use lgn_ecs::event::Events;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
 
@@ -46,7 +46,7 @@ impl ScheduleRunnerSettings {
     }
 }
 
-/// Configures an App to run its [Schedule](legion_ecs::schedule::Schedule) according to a given
+/// Configures an App to run its [Schedule](lgn_ecs::schedule::Schedule) according to a given
 /// [`RunMode`]
 #[derive(Default)]
 pub struct ScheduleRunnerPlugin;

@@ -61,12 +61,12 @@ use std::{
     io,
 };
 
-use legion_data_offline::{
+use lgn_data_offline::{
     resource::{OfflineResource, ResourceProcessor, ResourceRegistryOptions},
     ResourcePathId,
 };
-use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
-use legion_math::prelude::*;
+use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
+use lgn_math::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub fn register_resource_types(registry: ResourceRegistryOptions) -> ResourceRegistryOptions {

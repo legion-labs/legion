@@ -1,22 +1,22 @@
 use std::collections::HashMap;
 
-use legion_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use legion_core::CorePlugin;
-use legion_ecs::prelude::*;
-use legion_input::InputPlugin;
-use legion_presenter::offscreen_helper::Resolution;
-use legion_presenter_snapshot::component::PresenterSnapshot;
-use legion_presenter_window::component::PresenterWindow;
-use legion_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
-use legion_renderer::components::{RotationComponent, StaticMesh};
-use legion_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
-use legion_transform::components::Transform;
-use legion_window::{
+use lgn_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use lgn_core::CorePlugin;
+use lgn_ecs::prelude::*;
+use lgn_input::InputPlugin;
+use lgn_presenter::offscreen_helper::Resolution;
+use lgn_presenter_snapshot::component::PresenterSnapshot;
+use lgn_presenter_window::component::PresenterWindow;
+use lgn_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
+use lgn_renderer::components::{RotationComponent, StaticMesh};
+use lgn_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
+use lgn_transform::components::Transform;
+use lgn_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
     Windows,
 };
-use legion_winit::{WinitPlugin, WinitWindows};
+use lgn_winit::{WinitPlugin, WinitWindows};
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 

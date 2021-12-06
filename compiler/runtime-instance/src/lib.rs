@@ -56,14 +56,14 @@
 
 use std::env;
 
-use legion_data_compiler::{
+use lgn_data_compiler::{
     compiler_api::{
         CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
     },
     compiler_utils::hash_code_and_data,
 };
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::Resource;
+use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::Resource;
 use sample_data_compiler::offline_to_runtime::FromOffline;
 use sample_data_offline as offline_data;
 use sample_data_runtime as runtime_data;

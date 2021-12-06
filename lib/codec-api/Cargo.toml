@@ -1,5 +1,5 @@
 [package]
-name = "legion-codec-api"
+name = "lgn-codec-api"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"

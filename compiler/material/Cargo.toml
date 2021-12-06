@@ -13,8 +13,8 @@ name = "compiler-material"
 doc = false
 
 [dependencies]
-legion-data-offline = { path = "../../lib/data-offline" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
-legion-graphics-runtime = { path = "../../lib/graphics-runtime" }
-legion-graphics-offline = { path = "../../lib/graphics-offline" }
-legion-data-compiler = { path = "../../lib/data-compiler" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-graphics-runtime = { path = "../../lib/graphics-runtime", version = "0.1.0" }
+lgn-graphics-offline = { path = "../../lib/graphics-offline", version = "0.1.0" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }

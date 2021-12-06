@@ -1,8 +1,8 @@
 use std::{str::FromStr, sync::Arc};
 
-use legion_data_runtime::ResourceId;
-use legion_data_transaction::{DataManager, LockContext, Transaction};
-use legion_editor_proto::{
+use lgn_data_runtime::ResourceId;
+use lgn_data_transaction::{DataManager, LockContext, Transaction};
+use lgn_editor_proto::{
     editor_server::{Editor, EditorServer},
     GetResourcePropertiesRequest, GetResourcePropertiesResponse, RedoTransactionRequest,
     RedoTransactionResponse, ResourceDescription, ResourceProperty, ResourcePropertyUpdate,

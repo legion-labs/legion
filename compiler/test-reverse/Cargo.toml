@@ -13,7 +13,7 @@ name = "compiler-test-reverse"
 doc = false
 
 [dependencies]
-legion-data-compiler = { path = "../../lib/data-compiler" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
-legion-data-offline = { path = "../../lib/data-offline" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
 text-resource = { path = "../../lib/data-offline/test-text-resource" }

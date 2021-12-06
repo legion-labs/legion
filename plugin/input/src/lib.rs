@@ -68,7 +68,7 @@ pub mod touch;
 
 pub use axis::*;
 pub use input::*;
-use legion_ecs::schedule::{ParallelSystemDescriptorCoercion, SystemLabel};
+use lgn_ecs::schedule::{ParallelSystemDescriptorCoercion, SystemLabel};
 
 pub mod prelude {
     #[doc(hidden)]
@@ -89,7 +89,7 @@ use gamepad::{
     GamepadSettings,
 };
 use keyboard::{keyboard_input_system, KeyCode, KeyboardInput};
-use legion_app::prelude::*;
+use lgn_app::prelude::*;
 use mouse::{mouse_button_input_system, MouseButton, MouseButtonInput, MouseMotion, MouseWheel};
 use touch::{touch_screen_input_system, TouchInput, Touches};
 

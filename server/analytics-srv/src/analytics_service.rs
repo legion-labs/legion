@@ -1,27 +1,27 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use legion_analytics::prelude::*;
-use legion_telemetry::prelude::*;
-use legion_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
-use legion_telemetry_proto::analytics::BlockSpansReply;
-use legion_telemetry_proto::analytics::BlockSpansRequest;
-use legion_telemetry_proto::analytics::CumulativeCallGraphReply;
-use legion_telemetry_proto::analytics::FindProcessReply;
-use legion_telemetry_proto::analytics::FindProcessRequest;
-use legion_telemetry_proto::analytics::ListProcessChildrenRequest;
-use legion_telemetry_proto::analytics::ListProcessStreamsRequest;
-use legion_telemetry_proto::analytics::ListStreamBlocksReply;
-use legion_telemetry_proto::analytics::ListStreamBlocksRequest;
-use legion_telemetry_proto::analytics::ListStreamsReply;
-use legion_telemetry_proto::analytics::LogEntry;
-use legion_telemetry_proto::analytics::ProcessChildrenReply;
-use legion_telemetry_proto::analytics::ProcessCumulativeCallGraphRequest;
-use legion_telemetry_proto::analytics::ProcessListReply;
-use legion_telemetry_proto::analytics::ProcessLogReply;
-use legion_telemetry_proto::analytics::ProcessLogRequest;
-use legion_telemetry_proto::analytics::RecentProcessesRequest;
-use legion_telemetry_proto::analytics::SearchProcessRequest;
+use lgn_analytics::prelude::*;
+use lgn_telemetry::prelude::*;
+use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
+use lgn_telemetry_proto::analytics::BlockSpansReply;
+use lgn_telemetry_proto::analytics::BlockSpansRequest;
+use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
+use lgn_telemetry_proto::analytics::FindProcessReply;
+use lgn_telemetry_proto::analytics::FindProcessRequest;
+use lgn_telemetry_proto::analytics::ListProcessChildrenRequest;
+use lgn_telemetry_proto::analytics::ListProcessStreamsRequest;
+use lgn_telemetry_proto::analytics::ListStreamBlocksReply;
+use lgn_telemetry_proto::analytics::ListStreamBlocksRequest;
+use lgn_telemetry_proto::analytics::ListStreamsReply;
+use lgn_telemetry_proto::analytics::LogEntry;
+use lgn_telemetry_proto::analytics::ProcessChildrenReply;
+use lgn_telemetry_proto::analytics::ProcessCumulativeCallGraphRequest;
+use lgn_telemetry_proto::analytics::ProcessListReply;
+use lgn_telemetry_proto::analytics::ProcessLogReply;
+use lgn_telemetry_proto::analytics::ProcessLogRequest;
+use lgn_telemetry_proto::analytics::RecentProcessesRequest;
+use lgn_telemetry_proto::analytics::SearchProcessRequest;
 use tonic::{Request, Response, Status};
 
 use crate::call_tree::compute_block_spans;
@@ -37,14 +37,14 @@ impl AnalyticsService {
         Self { pool, data_dir }
     }
 
-    async fn find_process_impl(&self, process_id: &str) -> Result<legion_telemetry::ProcessInfo> {
+    async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry::ProcessInfo> {
         let mut connection = self.pool.acquire().await?;
         find_process(&mut connection, process_id).await
     }
 
     async fn list_recent_processes_impl(
         &self,
-    ) -> Result<Vec<legion_telemetry_proto::analytics::ProcessInstance>> {
+    ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
         let mut connection = self.pool.acquire().await?;
         fetch_recent_processes(&mut connection).await
     }
@@ -52,7 +52,7 @@ impl AnalyticsService {
     async fn search_processes_impl(
         &self,
         search: &str,
-    ) -> Result<Vec<legion_telemetry_proto::analytics::ProcessInstance>> {
+    ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
         let mut connection = self.pool.acquire().await?;
         search_processes(&mut connection, search).await
     }
@@ -60,7 +60,7 @@ impl AnalyticsService {
     async fn list_process_streams_impl(
         &self,
         process_id: &str,
-    ) -> Result<Vec<legion_telemetry::StreamInfo>> {
+    ) -> Result<Vec<lgn_telemetry::StreamInfo>> {
         let mut connection = self.pool.acquire().await?;
         find_process_streams(&mut connection, process_id).await
     }
@@ -68,15 +68,15 @@ impl AnalyticsService {
     async fn list_stream_blocks_impl(
         &self,
         stream_id: &str,
-    ) -> Result<Vec<legion_telemetry::EncodedBlock>> {
+    ) -> Result<Vec<lgn_telemetry::EncodedBlock>> {
         let mut connection = self.pool.acquire().await?;
         find_stream_blocks(&mut connection, stream_id).await
     }
 
     async fn block_spans_impl(
         &self,
-        process: &legion_telemetry::ProcessInfo,
-        stream: &legion_telemetry::StreamInfo,
+        process: &lgn_telemetry::ProcessInfo,
+        stream: &lgn_telemetry::StreamInfo,
         block_id: &str,
     ) -> Result<BlockSpansReply> {
         let mut connection = self.pool.acquire().await?;
@@ -85,7 +85,7 @@ impl AnalyticsService {
 
     async fn process_cumulative_call_graph_impl(
         &self,
-        process: &legion_telemetry::ProcessInfo,
+        process: &lgn_telemetry::ProcessInfo,
         begin_ms: f64,
         end_ms: f64,
     ) -> Result<CumulativeCallGraphReply> {
@@ -97,7 +97,7 @@ impl AnalyticsService {
     #[allow(clippy::cast_precision_loss)]
     async fn process_log_impl(
         &self,
-        process: &legion_telemetry::ProcessInfo,
+        process: &lgn_telemetry::ProcessInfo,
     ) -> Result<ProcessLogReply> {
         let mut connection = self.pool.acquire().await?;
         let mut entries = vec![];

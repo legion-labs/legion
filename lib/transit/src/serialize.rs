@@ -1,4 +1,4 @@
-use legion_utils::memory::{read_any, write_any};
+use lgn_utils::memory::{read_any, write_any};
 
 // InProcSerialize is used by the heterogeneous queue to write objects in its buffer
 // serialized objects can have references with static lifetimes

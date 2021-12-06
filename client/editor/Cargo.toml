@@ -10,14 +10,14 @@ license = "MIT OR Apache-2.0"
 keywords = ["game", "legion"]
 
 [dependencies]
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-telemetry = { path = "../../lib/telemetry" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-async = { path = "../../plugin/async", version = "0.1.0" }
-legion-online = { path = "../../lib/online", version = "0.1.0" }
-legion-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
-legion-analytics = { path = "../../lib/analytics", version = "0.1.0" }
-legion-transit = { path = "../../lib/transit", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-telemetry = { path = "../../lib/telemetry", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-async = { path = "../../plugin/async", version = "0.1.0" }
+lgn-online = { path = "../../lib/online", version = "0.1.0" }
+lgn-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
+lgn-analytics = { path = "../../lib/analytics", version = "0.1.0" }
+lgn-transit = { path = "../../lib/transit", version = "0.1.0" }
 anyhow = "1.0.44"
 clap = "2.33"
 tonic = "0.6"
@@ -40,7 +40,7 @@ sqlx = { version = "0.5", features = [
 directories = "4"
 
 [build-dependencies]
-legion-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = [
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = [
     "web-appgen",
 ] }
 tauri-build = "1.0.0-beta.4"

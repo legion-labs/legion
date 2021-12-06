@@ -1,8 +1,8 @@
 #![allow(clippy::too_many_lines)]
 
-use legion_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use legion_renderer::{components::RenderSurface, RenderContext};
+use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use lgn_renderer::{components::RenderSurface, RenderContext};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Resolution {

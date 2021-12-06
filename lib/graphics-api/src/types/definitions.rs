@@ -3,7 +3,7 @@ use std::{
     num::NonZeroU32,
 };
 
-use legion_utils::decimal::DecimalF32;
+use lgn_utils::decimal::DecimalF32;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 

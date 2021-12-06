@@ -62,11 +62,11 @@ use std::{
     sync::Arc,
 };
 
-use legion_data_runtime::{
+use lgn_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistry, AssetRegistryOptions, Reference, Resource,
 };
-use legion_graphics_runtime::Material;
-use legion_math::prelude::*;
+use lgn_graphics_runtime::Material;
+use lgn_math::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 pub fn add_loaders(registry: AssetRegistryOptions) -> AssetRegistryOptions {

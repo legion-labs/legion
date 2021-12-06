@@ -82,7 +82,7 @@ pub use compression::*;
 pub use dual_time::*;
 pub use event_block_sink::*;
 pub use grpc_event_sink::*;
-pub use legion_transit::HeterogeneousQueue;
+pub use lgn_transit::HeterogeneousQueue;
 pub use log_block::*;
 pub use log_bridge::*;
 pub use metrics_block::*;
@@ -91,10 +91,10 @@ pub use stream::*;
 pub use thread_block::*;
 pub use thread_events::*;
 
-pub type ProcessInfo = legion_telemetry_proto::telemetry::Process;
-pub type StreamInfo = legion_telemetry_proto::telemetry::Stream;
-pub type EncodedBlock = legion_telemetry_proto::telemetry::Block;
-pub use legion_telemetry_proto::telemetry::ContainerMetadata;
+pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
+pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
+pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
 
 pub mod prelude {
     pub use crate::dispatch::*;

@@ -5,7 +5,7 @@ use std::{
     process::Command,
 };
 
-use legion_test_utils::*;
+use lgn_test_utils::*;
 
 static GRAPHICS_SANDBOX_CLI_EXE: &str = env!("CARGO_BIN_EXE_graphics-sandbox");
 static GRAPHICS_SANDBOX_TEST_DIR: &str = env!("CARGO_MANIFEST_DIR");

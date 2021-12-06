@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use legion_analytics::prelude::*;
-use legion_transit::prelude::*;
+use lgn_analytics::prelude::*;
+use lgn_transit::prelude::*;
 
 pub async fn print_process_thread_events(
     connection: &mut sqlx::AnyConnection,
@@ -36,7 +36,7 @@ pub async fn print_process_thread_events(
 async fn extract_process_thread_events(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process_info: &legion_telemetry::ProcessInfo,
+    process_info: &lgn_telemetry::ProcessInfo,
     ts_offset: u64,
     inv_tsc_frequency: f64,
 ) -> Result<json::Array> {

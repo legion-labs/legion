@@ -9,7 +9,7 @@ use std::{
 use log::trace;
 
 use crate::system::{Local, Res, ResMut, SystemParam};
-use crate::{self as legion_ecs, system::Resource};
+use crate::{self as lgn_ecs, system::Resource};
 
 /// An `EventId` uniquely identifies an event.
 ///
@@ -78,7 +78,7 @@ enum State {
 ///
 /// # Example
 /// ```
-/// use legion_ecs::event::Events;
+/// use lgn_ecs::event::Events;
 ///
 /// struct MyEvent {
 ///     value: usize

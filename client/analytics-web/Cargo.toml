@@ -16,4 +16,4 @@ tower = "0.4.11"
 tower-http = { version = "0.2.0", features = ["fs"] }
 
 [build-dependencies]
-legion-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = ["web-appgen"] }
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = ["web-appgen"] }

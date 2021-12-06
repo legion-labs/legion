@@ -1,5 +1,5 @@
 use generic_data_runtime::TestEntity;
-use legion_math::prelude::*;
+use lgn_math::prelude::*;
 
 #[test]
 fn test_default_implementation() {

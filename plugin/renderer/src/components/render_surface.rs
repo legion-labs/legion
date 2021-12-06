@@ -1,12 +1,12 @@
 use std::{cmp::max, sync::Arc};
 
-use graphics_api::{
+use lgn_ecs::prelude::Component;
+use lgn_graphics_api::{
     CommandBuffer, Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState,
     ResourceUsage, Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
     TextureViewDef,
 };
-use legion_ecs::prelude::Component;
-use legion_tasks::TaskPool;
+use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
 use uuid::Uuid;
 

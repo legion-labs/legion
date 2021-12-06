@@ -1,4 +1,4 @@
-use legion_telemetry::prelude::*;
+use lgn_telemetry::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use legion_ecs::prelude::*;
+use lgn_ecs::prelude::*;
 use rand::Rng;
 
 // In this example we add a counter resource and increase it's value in one system,

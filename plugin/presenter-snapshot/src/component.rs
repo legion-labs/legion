@@ -1,13 +1,13 @@
 #![allow(clippy::pedantic)]
 
 use graphics_api::prelude::*;
-use legion_ecs::prelude::Component;
-use legion_presenter::offscreen_helper::{self, Resolution};
-use legion_renderer::{
+use lgn_ecs::prelude::Component;
+use lgn_presenter::offscreen_helper::{self, Resolution};
+use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceId},
     RenderContext, Renderer,
 };
-use legion_tasks::TaskPool;
+use lgn_tasks::TaskPool;
 
 #[derive(Component)]
 pub struct PresenterSnapshot {
@@ -94,7 +94,7 @@ impl Presenter for PresenterSnapshot {
     fn resize(
         &mut self,
         _renderer: &Renderer,
-        _extents: legion_renderer::components::RenderSurfaceExtents,
+        _extents: lgn_renderer::components::RenderSurfaceExtents,
     ) {
         unreachable!();
     }

@@ -3,11 +3,11 @@
 use std::num::NonZeroU32;
 
 use anyhow::Result;
-use graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
-use graphics_utils::TransientPagedBuffer;
-use legion_math::{Mat4, Vec3};
-use legion_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
-use legion_transform::components::Transform;
+use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
+use lgn_graphics_utils::TransientPagedBuffer;
+use lgn_math::{Mat4, Vec3};
+use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use lgn_transform::components::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
 
 use crate::components::{RenderSurface, StaticMesh};

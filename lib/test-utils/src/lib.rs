@@ -63,7 +63,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_telemetry::prelude::*;
+use lgn_telemetry::prelude::*;
 
 //std::fs::remove_dir_all leaves read-only files and reports an error
 fn force_delete_all(dir: &Path) {

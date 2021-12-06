@@ -1,13 +1,13 @@
 [package]
-name = "legion-data-runtime"
+name = "lgn-data-runtime"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-legion-content-store = { path = "../content-store" }
-legion-data-runtime-macros = { path = "macros" }
+lgn-content-store = { path = "../content-store", version = "0.1.0" }
+lgn-data-runtime-macros = { path = "macros", version = "0.1.0" }
 
 byteorder = "1.4"
 crossbeam-channel = "0.5.1"

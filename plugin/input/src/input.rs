@@ -2,8 +2,8 @@ use std::hash::Hash;
 
 // unused import, but needed for intra doc link to work
 #[allow(unused_imports)]
-use legion_ecs::schedule::State;
-use legion_utils::HashSet;
+use lgn_ecs::schedule::State;
+use lgn_utils::HashSet;
 
 /// A "press-able" input of type `T`.
 ///

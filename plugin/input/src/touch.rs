@@ -1,7 +1,7 @@
-use legion_app::EventReader;
-use legion_ecs::system::ResMut;
-use legion_math::Vec2;
-use legion_utils::HashMap;
+use lgn_app::EventReader;
+use lgn_ecs::system::ResMut;
+use lgn_math::Vec2;
+use lgn_utils::HashMap;
 
 /// Represents a touch event
 ///
@@ -237,7 +237,7 @@ mod test {
 
     #[test]
     fn touch_update() {
-        use legion_math::Vec2;
+        use lgn_math::Vec2;
 
         use crate::{touch::Touch, Touches};
 
@@ -269,7 +269,7 @@ mod test {
 
     #[test]
     fn touch_process() {
-        use legion_math::Vec2;
+        use lgn_math::Vec2;
 
         use crate::{touch::TouchPhase, TouchInput, Touches};
 
@@ -345,7 +345,7 @@ mod test {
 
     #[test]
     fn touch_pressed() {
-        use legion_math::Vec2;
+        use lgn_math::Vec2;
 
         use crate::{touch::TouchPhase, TouchInput, Touches};
 
@@ -368,7 +368,7 @@ mod test {
 
     #[test]
     fn touch_released() {
-        use legion_math::Vec2;
+        use lgn_math::Vec2;
 
         use crate::{touch::TouchPhase, TouchInput, Touches};
 
@@ -391,7 +391,7 @@ mod test {
 
     #[test]
     fn touch_cancelled() {
-        use legion_math::Vec2;
+        use lgn_math::Vec2;
 
         use crate::{touch::TouchPhase, TouchInput, Touches};
 

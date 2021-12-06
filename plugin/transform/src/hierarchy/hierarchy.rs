@@ -1,4 +1,4 @@
-use legion_ecs::{
+use lgn_ecs::{
     entity::Entity,
     system::{Command, EntityCommands},
     world::{EntityMut, World},
@@ -71,7 +71,7 @@ impl<'w> DespawnRecursiveExt for EntityMut<'w> {
 
 #[cfg(test)]
 mod tests {
-    use legion_ecs::{
+    use lgn_ecs::{
         component::Component,
         system::{CommandQueue, Commands},
         world::World,

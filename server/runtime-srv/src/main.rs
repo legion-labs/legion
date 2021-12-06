@@ -65,11 +65,11 @@ use std::str::FromStr;
 
 use clap::Arg;
 use instant::Duration;
-use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use legion_core::CorePlugin;
-use legion_data_runtime::ResourceId;
-use legion_transform::prelude::*;
+use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use lgn_core::CorePlugin;
+use lgn_data_runtime::ResourceId;
+use lgn_transform::prelude::*;
 
 fn main() {
     const ARG_NAME_CAS: &str = "cas";

@@ -1,6 +1,6 @@
 use std::{any::TypeId, fmt::Debug};
 
-use legion_tasks::TaskPool;
+use lgn_tasks::TaskPool;
 use thiserror::Error;
 
 use crate::{
@@ -45,9 +45,9 @@ use crate::{
 /// immutably helps system parallelization.
 ///
 /// ```
-/// # use legion_ecs::component::Component;
-/// # use legion_ecs::system::IntoSystem;
-/// # use legion_ecs::system::Query;
+/// # use lgn_ecs::component::Component;
+/// # use lgn_ecs::system::IntoSystem;
+/// # use lgn_ecs::system::Query;
 /// # #[derive(Component)]
 /// # struct ComponentA;
 /// # #[derive(Component)]
@@ -65,9 +65,9 @@ use crate::{
 /// in the same query.
 ///
 /// ```
-/// # use legion_ecs::component::Component;
-/// # use legion_ecs::system::IntoSystem;
-/// # use legion_ecs::system::Query;
+/// # use lgn_ecs::component::Component;
+/// # use lgn_ecs::system::IntoSystem;
+/// # use lgn_ecs::system::Query;
 /// # #[derive(Component)]
 /// # struct ComponentA;
 /// # #[derive(Component)]
@@ -93,7 +93,7 @@ use crate::{
 /// will give access to the entity ID.
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// # #[derive(Component)]
 /// # struct ComponentA;
 /// # #[derive(Component)]
@@ -110,7 +110,7 @@ use crate::{
 /// out the query results that don't satisfy the given condition.
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// # #[derive(Component)]
 /// # struct ComponentA;
 /// # #[derive(Component)]
@@ -127,7 +127,7 @@ use crate::{
 /// If you need to apply more filters in a single query, group them into a tuple:
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// # #[derive(Component)]
 /// # struct ComponentA;
 /// # #[derive(Component)]
@@ -156,7 +156,7 @@ use crate::{
 /// `ComponentA` and `ComponentB`, and entities that contain `ComponentA` but not `ComponentB`.
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// # #[derive(Component)]
 /// # struct ComponentA;
 /// # #[derive(Component)]
@@ -179,7 +179,7 @@ use crate::{
 /// of `Query` can be omitted.
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// # #[derive(Component)]
 /// # struct MyComponent;
 /// # fn tuple_system(
@@ -208,7 +208,7 @@ use crate::{
 /// for advanced iterator usage.
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// # #[derive(Component)]
 /// # struct ComponentA;
 /// # #[derive(Component)]
@@ -288,7 +288,7 @@ where
     /// that contains it:
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # #[derive(Component)]
     /// # struct Player { name: String }
@@ -321,7 +321,7 @@ where
     /// the world that contains it in order to update it:
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # #[derive(Component)]
     /// # struct Velocity { x: f32, y: f32, z: f32 }
@@ -372,7 +372,7 @@ where
     /// In order to iterate it, use `fetch_next` method with `while let Some(..)` loop pattern.
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #[derive(Component)]
     /// # struct A;
     /// # fn some_system(mut query: Query<&mut A>) {
@@ -447,7 +447,7 @@ where
     /// that contains it:
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # #[derive(Component)]
     /// # struct Player { name: String }
@@ -485,7 +485,7 @@ where
     /// the world that contains it in order to update it:
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # #[derive(Component)]
     /// # struct Velocity { x: f32, y: f32, z: f32 }
@@ -574,7 +574,7 @@ where
     /// `SelectedCharacter` resource.
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct SelectedCharacter { entity: Entity }
     /// # #[derive(Component)]
@@ -622,7 +622,7 @@ where
     /// `PoisonedCharacter` resource.
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct PoisonedCharacter { character_id: Entity }
     /// # #[derive(Component)]
@@ -683,7 +683,7 @@ where
     /// specified by the `SelectedCharacter` resource.
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct SelectedCharacter { entity: Entity }
     /// # #[derive(Component)]
@@ -741,7 +741,7 @@ where
     /// specified by the `PoisonedCharacter` resource.
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct PoisonedCharacter { character_id: Entity }
     /// # #[derive(Component)]
@@ -812,7 +812,7 @@ where
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// # #[derive(Component)]
     /// # struct Player;
     /// # #[derive(Component)]
@@ -849,8 +849,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
-    /// # use legion_ecs::system::QuerySingleError;
+    /// # use lgn_ecs::prelude::*;
+    /// # use lgn_ecs::system::QuerySingleError;
     /// # #[derive(Component)]
     /// # struct PlayerScore(i32);
     /// fn player_scoring_system(query: Query<&PlayerScore>) {
@@ -891,7 +891,7 @@ where
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # #[derive(Component)]
     /// # struct Player;
@@ -923,7 +923,7 @@ where
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # #[derive(Component)]
     /// # struct Player;
@@ -960,7 +960,7 @@ where
     /// in the world:
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # #[derive(Component)]
     /// # struct Player;

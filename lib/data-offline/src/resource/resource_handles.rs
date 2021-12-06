@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use legion_data_runtime::ResourceId;
+use lgn_data_runtime::ResourceId;
 
 use super::ResourceHandleUntyped;
 

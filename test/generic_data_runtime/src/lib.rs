@@ -75,8 +75,8 @@ pub use instance_dc::*;
 pub use test_entity::*;
 
 pub fn add_loaders(
-    registry: legion_data_runtime::AssetRegistryOptions,
-) -> legion_data_runtime::AssetRegistryOptions {
+    registry: lgn_data_runtime::AssetRegistryOptions,
+) -> lgn_data_runtime::AssetRegistryOptions {
     let registry = debug_cube::add_loaders(registry);
     let registry = entity_dc::add_loaders(registry);
     let registry = instance_dc::add_loaders(registry);

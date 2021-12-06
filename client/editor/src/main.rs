@@ -63,18 +63,18 @@
 use std::sync::Arc;
 
 use config::Config;
-use legion_app::prelude::*;
-use legion_async::AsyncPlugin;
-use legion_online::authentication::{
+use lgn_app::prelude::*;
+use lgn_async::AsyncPlugin;
+use lgn_online::authentication::{
     Authenticator, AwsCognitoClientAuthenticator, TokenCache as OnlineTokenCache, UserInfo,
 };
-use legion_tauri::{legion_tauri_command, TauriPlugin, TauriPluginSettings};
+use lgn_tauri::{lgn_tauri_command, TauriPlugin, TauriPluginSettings};
 
 mod config;
 
 type TokenCache = OnlineTokenCache<AwsCognitoClientAuthenticator>;
 
-#[legion_tauri_command]
+#[lgn_tauri_command]
 async fn authenticate(token_cache: tauri::State<'_, Arc<TokenCache>>) -> anyhow::Result<UserInfo> {
     let access_token = token_cache.login().await?.access_token;
 

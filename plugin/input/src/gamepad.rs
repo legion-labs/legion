@@ -1,6 +1,6 @@
-use legion_app::{EventReader, EventWriter};
-use legion_ecs::system::{Res, ResMut};
-use legion_utils::HashMap;
+use lgn_app::{EventReader, EventWriter};
+use lgn_ecs::system::{Res, ResMut};
+use lgn_utils::HashMap;
 
 use crate::{Axis, Input};
 

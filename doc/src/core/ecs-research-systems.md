@@ -128,7 +128,7 @@ for <'a> &'a mut Func:
 ### References
 
 * Bevy the book, [section 2.3. ecs](https://bevyengine.org/learn/book/getting-started/ecs/)
-* [ecs crate README](https://github.com/bevyengine/bevy/blob/main/crates/legion_ecs/README.md)
+* [ecs crate README](https://github.com/bevyengine/bevy/blob/main/crates/bevy_ecs/README.md)
 * [ECS guided introduction](https://github.com/bevyengine/bevy/blob/latest/examples/ecs/ecs_guide.rs)
 
 ## DCES

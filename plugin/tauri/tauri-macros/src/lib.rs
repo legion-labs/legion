@@ -64,17 +64,17 @@ use quote::quote;
 use syn::{parse_macro_input, parse_quote, FnArg, Ident, ItemFn};
 
 #[proc_macro_attribute]
-pub fn legion_tauri_command(
+pub fn lgn_tauri_command(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     assert!(args.is_empty());
 
     let function = parse_macro_input!(input as ItemFn);
-    proc_macro::TokenStream::from(legion_tauri_command_impl(function))
+    proc_macro::TokenStream::from(lgn_tauri_command_impl(function))
 }
 
-fn legion_tauri_command_impl(mut function: syn::ItemFn) -> TokenStream {
+fn lgn_tauri_command_impl(mut function: syn::ItemFn) -> TokenStream {
     if let Some(raw_return_type) = extract_result_return_type(&function) {
         // Let's create an exposed function that grabs the original name and calls
         // the original function.
@@ -173,13 +173,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_legion_tauri_command() {
+    fn test_lgn_tauri_command() {
         let no_return_value = parse_quote! {
             fn f() {}
         };
 
         assert_eq!(
-            legion_tauri_command_impl(no_return_value).to_string(),
+            lgn_tauri_command_impl(no_return_value).to_string(),
             "# [tauri :: command] fn f () { }"
         );
 
@@ -188,7 +188,7 @@ mod tests {
         };
 
         assert_eq!(
-            legion_tauri_command_impl(async_no_return_value).to_string(),
+            lgn_tauri_command_impl(async_no_return_value).to_string(),
             "# [tauri :: command] async fn f () { }"
         );
 
@@ -197,7 +197,7 @@ mod tests {
         };
 
         assert_eq!(
-            legion_tauri_command_impl(standard_result_return_value).to_string(),
+            lgn_tauri_command_impl(standard_result_return_value).to_string(),
             "fn __f_impl (x : u32 , i : usize) -> Result < u32 , Box < dyn Error + 'static > > { Ok (42) } # [tauri :: command] fn f (x : u32 , i : usize) -> std :: result :: Result < u32 , String > { return match __f_impl (x , i) { Ok (v) => Ok (v) , Err (e) => Err (format ! (\"{}\" , e)) , } ; }"
         );
 
@@ -206,7 +206,7 @@ mod tests {
         };
 
         assert_eq!(
-            legion_tauri_command_impl(async_standard_result_return_value).to_string(),
+            lgn_tauri_command_impl(async_standard_result_return_value).to_string(),
             "async fn __f_impl () -> Result < String , Box < dyn Error + 'static > > { Ok (\"foo\" . into ()) } # [tauri :: command] async fn f () -> std :: result :: Result < String , String > { return match __f_impl () . await { Ok (v) => Ok (v) , Err (e) => Err (format ! (\"{}\" , e)) , } ; }"
         );
     }

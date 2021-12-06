@@ -1,8 +1,8 @@
-use graphics_api::QueueType;
-use legion_app::{CoreStage, Plugin};
-use legion_ecs::prelude::*;
-use legion_math::{EulerRot, Quat};
-use legion_transform::components::Transform;
+use lgn_app::{CoreStage, Plugin};
+use lgn_ecs::prelude::*;
+use lgn_graphics_api::QueueType;
+use lgn_math::{EulerRot, Quat};
+use lgn_transform::components::Transform;
 
 use crate::{
     components::{RenderSurface, RotationComponent, StaticMesh},
@@ -14,7 +14,7 @@ use crate::{
 pub struct RendererPlugin;
 
 impl Plugin for RendererPlugin {
-    fn build(&self, app: &mut legion_app::App) {
+    fn build(&self, app: &mut lgn_app::App) {
         let renderer = Renderer::new().unwrap();
 
         app.insert_resource(renderer);
