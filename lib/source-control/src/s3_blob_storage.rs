@@ -10,7 +10,7 @@ use crate::{compute_file_hash, lz4_decompress, lz4_read, BlobStorage};
 pub struct S3BlobStorage {
     bucket_name: String,
     root: PathBuf,
-    client: s3::Client,
+    client: aws_sdk_s3::Client,
     compressed_blob_cache: PathBuf,
 }
 
@@ -20,7 +20,7 @@ impl S3BlobStorage {
         let bucket_name = String::from(uri.host().unwrap());
         let root = PathBuf::from(uri.path().strip_prefix('/').unwrap());
         let config = aws_config::load_from_env().await;
-        let client = s3::Client::new(&config);
+        let client = aws_sdk_s3::Client::new(&config);
 
         let req = client.get_bucket_location().bucket(&bucket_name);
         if let Err(e) = req.send().await {
@@ -45,8 +45,8 @@ impl S3BlobStorage {
             .key(key);
         match req_acl.send().await {
             Ok(_acl) => Ok(true),
-            Err(s3::SdkError::ServiceError { err, raw }) => {
-                if let s3::error::GetObjectAclErrorKind::NoSuchKey(_) = err.kind {
+            Err(aws_sdk_s3::SdkError::ServiceError { err, raw }) => {
+                if let aws_sdk_s3::error::GetObjectAclErrorKind::NoSuchKey(_) = err.kind {
                     Ok(false)
                 } else {
                     let _dummy = raw;
@@ -146,7 +146,7 @@ impl BlobStorage for S3BlobStorage {
                 return Err(format!("Error making lz4 encoder: {}", e));
             }
         }
-        if let Err(e) = req.body(s3::ByteStream::from(buffer)).send().await {
+        if let Err(e) = req.body(aws_sdk_s3::ByteStream::from(buffer)).send().await {
             return Err(format!("Error writing to bucket {}", e));
         }
 
