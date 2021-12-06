@@ -34,7 +34,7 @@ pin-project = "1"
 dyn-clone = "1"
 lambda_runtime = "0.4"
 lambda_http = "0.4"
-strum = "0.22"
+strum = "0.23"
 strum_macros = "0.22"
 
 [build-dependencies]
