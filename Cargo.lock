@@ -3,13 +3,13 @@
 version = 3
 
 [[package]]
-name = "ab_glyph"name = "ab_glyph"
+name = "ab_glyph"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20b228f2c198f98d4337ceb560333fb12cbb2f4948a953bf8c57d09deb219603"
 dependencies = [
  "ab_glyph_rasterizer",
- "owned_ttf_parser 0.13.2",name = "ab_glyph"
+ "owned_ttf_parser",
 ]
 
 [[package]]
@@ -179,6 +179,7 @@ dependencies = [
 ]
 
 [[package]]
+name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
@@ -729,9 +730,9 @@ dependencies = [
 
 [[package]]
 name = "axum"
-version = "0.4.0"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ffb96dd8f4ac663bdda87a7c7b458a7e28cbd6d2f7f16f1e274a413863bc443"
+checksum = "ae08f7a0b974a1b226b9a4bb07fcc865f25d7c7513cefc53603f84ab41e586fd"
 dependencies = [
  "async-trait",
  "axum-core",
@@ -759,9 +760,9 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95dfe272060b44b3845e7657652363153531409331641b766bff4bfdcb75c8c0"
+checksum = "1ca6c0b218388a7ed6a8d25e94f7dea5498daaa4fd8c711fb3ff166041b06fda"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2022,8 +2023,8 @@ dependencies = [
  "lgn-data-transaction",
  "lgn-editor-proto",
  "lgn-grpc",
- "lgn-mp4",
  "lgn-input",
+ "lgn-mp4",
  "lgn-renderer",
  "lgn-resource-registry",
  "lgn-streamer",
@@ -2802,6 +2803,7 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-core",
  "lgn-ecs",
+ "lgn-egui",
  "lgn-graphics-api",
  "lgn-input",
  "lgn-presenter",
@@ -3893,10 +3895,10 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "epaint",
- "legion-app",
- "legion-ecs",
- "legion-input",
- "legion-window",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-input",
+ "lgn-window",
 ]
 
 [[package]]
@@ -4109,9 +4111,9 @@ dependencies = [
  "egui",
  "lgn-app",
  "lgn-ecs",
+ "lgn-egui",
  "lgn-graphics-api",
  "lgn-graphics-data",
- "lgn-egui",
  "lgn-graphics-utils",
  "lgn-math",
  "lgn-pso-compiler",
@@ -4184,7 +4186,6 @@ dependencies = [
  "lgn-core",
  "lgn-ecs",
  "lgn-graphics-api",
- "lgn-egui",
  "lgn-grpc",
  "lgn-mp4",
  "lgn-presenter",
@@ -5282,15 +5283,15 @@ dependencies = [
 ]
 
 [[package]]
-]
-
-[[package]]
 name = "owned_ttf_parser"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65ee3f72636e6f164cc41c9f9057f4e58c4e13507699ea7f5e5242b64b8198ee"
 dependencies = [
- "ttf-parser 0.13.4",
+ "ttf-parser",
+]
+
+[[package]]
 name = "p256"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6198,9 +6199,9 @@ dependencies = [
 
 [[package]]
 name = "rtp"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d9aecae352bf513f2f699d3454dacf0767ba2b9fc7df84b1e0f51bc324260ff"
+checksum = "a1e44f95229d1df4f9d852a3305ecb8529043afd53b5cc1786146cd344b37fbe"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6310,9 +6311,9 @@ dependencies = [
 
 [[package]]
 name = "rustversion"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61b3909d758bb75c79f23d4736fac9433868679d3ad2ea7a61e3c25cfda9a088"
+checksum = "f2cc38e8fa666e2de3c4aba7edeb5ffc5246c1c2ed0e3d17e560aeeba736b23f"
 
 [[package]]
 name = "ryu"
@@ -7904,9 +7905,9 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
 name = "ttf-parser"
-version = "0.6.2"
+version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e5d7cd7ab3e47dda6e56542f4bbf3824c15234958c6e1bd6aaa347e93499fdc"
+checksum = "76dacc724328b3d5e2ed67f9e30cdb56893a34ab239032502cc8f19f8dae4bbc"
 
 [[package]]
 name = "tungstenite"
@@ -8579,9 +8580,9 @@ dependencies = [
 
 [[package]]
 name = "webrtc-media"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57154ab9c451ee7fe1f02d3eaabd4ff6ccc666d3350b08da62a7902d9b5be8de"
+checksum = "b2466af3221da8c48cf7fea4656945447a7247b900e7f928a02e631e8c16e1fd"
 dependencies = [
  "byteorder",
  "bytes",
