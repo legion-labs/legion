@@ -1,17 +1,20 @@
+#[cfg(feature = "vulkan")]
+use crate::backends::vulkan::VulkanQueue;
 use crate::{
     CommandBuffer, CommandPool, CommandPoolDef, DeviceContext, Fence, GfxResult,
     PagedBufferAllocation, PresentSuccessResult, QueueType, Semaphore, Swapchain,
 };
 
-#[cfg(feature = "vulkan")]
-use crate::backends::vulkan::VulkanQueue;
-
-pub struct Queue {
+struct QueueInner {
     device_context: DeviceContext,
     queue_type: QueueType,
 
     #[cfg(feature = "vulkan")]
     platform_queue: VulkanQueue,
+}
+
+pub struct Queue {
+    inner: Box<QueueInner>,
 }
 
 impl Queue {
@@ -23,19 +26,21 @@ impl Queue {
         })?;
 
         Ok(Self {
-            device_context: device_context.clone(),
-            queue_type,
-            #[cfg(any(feature = "vulkan"))]
-            platform_queue,
+            inner: Box::new(QueueInner {
+                device_context: device_context.clone(),
+                queue_type,
+                #[cfg(any(feature = "vulkan"))]
+                platform_queue,
+            }),
         })
     }
 
     pub fn device_context(&self) -> &DeviceContext {
-        &self.device_context
+        &self.inner.device_context
     }
 
     pub fn queue_type(&self) -> QueueType {
-        self.queue_type
+        self.inner.queue_type
     }
 
     pub fn queue_family_index(&self) -> u32 {
@@ -48,7 +53,7 @@ impl Queue {
 
     #[cfg(feature = "vulkan")]
     pub(crate) fn platform_queue(&self) -> &VulkanQueue {
-        &self.platform_queue
+        &self.inner.platform_queue
     }
 
     pub fn create_command_pool(&self, command_pool_def: &CommandPoolDef) -> GfxResult<CommandPool> {
@@ -66,7 +71,7 @@ impl Queue {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.platform_queue.submit(
+        self.inner.platform_queue.submit(
             command_buffers,
             wait_semaphores,
             signal_semaphores,
@@ -84,8 +89,8 @@ impl Queue {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.platform_queue.present(
-            &self.device_context,
+        self.inner.platform_queue.present(
+            &self.inner.device_context,
             swapchain,
             wait_semaphores,
             image_index,
@@ -97,7 +102,7 @@ impl Queue {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.platform_queue.wait_for_queue_idle()
+        self.inner.platform_queue.wait_for_queue_idle()
     }
 
     pub fn commmit_sparse_bindings<'a>(

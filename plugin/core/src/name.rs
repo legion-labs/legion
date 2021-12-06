@@ -4,8 +4,8 @@ use std::{
     ops::Deref,
 };
 
-use legion_ecs::component::Component;
-use legion_utils::DefaultHash;
+use lgn_ecs::component::Component;
+use lgn_utils::DefaultHash;
 
 /// Component used to identify an entity. Stores a hash for faster comparisons
 #[derive(Component, Debug, Clone)]

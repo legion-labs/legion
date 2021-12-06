@@ -85,8 +85,8 @@ where
 impl<Block, DepsQueue> Stream for EventStream<Block, DepsQueue>
 where
     Block: TelemetryBlock,
-    DepsQueue: legion_transit::HeterogeneousQueue,
-    <Block as TelemetryBlock>::Queue: legion_transit::HeterogeneousQueue,
+    DepsQueue: lgn_transit::HeterogeneousQueue,
+    <Block as TelemetryBlock>::Queue: lgn_transit::HeterogeneousQueue,
 {
     fn get_stream_info(&self) -> StreamInfo {
         let dependencies_meta = make_queue_metedata::<DepsQueue>();

@@ -27,15 +27,19 @@
         About
       </a>
     </div>
-    <Route path="/"><Home /></Route>
+    <Route path="/" primary={false}><Home /></Route>
     <Route path="/about"><About /></Route>
-    <Route path="/log/:id" let:params><Log id={params.id} /></Route>
+    <Route path="/log/:id" let:params primary={false}>
+      {#key params.id}
+        <Log id={params.id} />
+      {/key}
+    </Route>
     <Route path="/timeline/:id" let:params primary={false}>
       {#key params.id}
         <Timeline id={params.id} />
       {/key}
     </Route>
-    <Route path="/cumulative-call-graph"><Graph /></Route>
+    <Route path="/cumulative-call-graph" primary={false}><Graph /></Route>
   </div>
 </Router>
 

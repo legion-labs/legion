@@ -2,7 +2,8 @@ use std::fmt::Debug;
 
 use downcast_rs::{impl_downcast, Downcast};
 use fixedbitset::FixedBitSet;
-use legion_utils::{log::info, HashMap, HashSet};
+use lgn_utils::{HashMap, HashSet};
+use log::info;
 
 use super::IntoSystemDescriptor;
 use crate::{
@@ -668,7 +669,7 @@ fn process_systems(
 /// Systems must be topologically sorted beforehand.
 fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<ComponentId>)> {
     let mut ambiguity_set_labels = HashMap::default();
-    for set in systems.iter().flat_map(|c| c.ambiguity_sets()) {
+    for set in systems.iter().flat_map(SystemContainer::ambiguity_sets) {
         let len = ambiguity_set_labels.len();
         ambiguity_set_labels.entry(set).or_insert(len);
     }
@@ -893,7 +894,7 @@ impl Stage for SystemStage {
 
 #[cfg(test)]
 mod tests {
-    use crate as legion_ecs;
+    use crate as lgn_ecs;
     use crate::component::Component;
     use crate::{
         entity::Entity,
@@ -2024,7 +2025,7 @@ mod tests {
 
     #[test]
     fn change_query_wrapover() {
-        use crate::{self as legion_ecs, component::Component};
+        use crate::{self as lgn_ecs, component::Component};
 
         #[derive(Component)]
         struct C;
@@ -2062,7 +2063,7 @@ mod tests {
 
     #[test]
     fn run_criteria_with_query() {
-        use crate::{self as legion_ecs, component::Component};
+        use crate::{self as lgn_ecs, component::Component};
 
         #[derive(Component)]
         struct Foo;
@@ -2101,7 +2102,7 @@ mod tests {
 
     #[test]
     fn stage_run_criteria_with_query() {
-        use crate::{self as legion_ecs, component::Component};
+        use crate::{self as lgn_ecs, component::Component};
 
         #[derive(Component)]
         struct Foo;

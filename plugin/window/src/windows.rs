@@ -1,4 +1,4 @@
-use legion_utils::HashMap;
+use lgn_utils::HashMap;
 
 use super::{Window, WindowId};
 

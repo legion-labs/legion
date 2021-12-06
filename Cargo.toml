@@ -31,3 +31,4 @@ lambda_http = { path = "external/lambda-http" }
 tinycom = { path = "external/tinycom-rs" }
 hassle-rs = { path = "external/hassle-rs" }
 vk-mem = { path = "external/vk-mem" }
+ash-window = { path = "external/ash-window" }

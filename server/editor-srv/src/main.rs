@@ -1,17 +1,18 @@
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::Arg;
-use legion_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuildSettings};
-use legion_async::AsyncPlugin;
-use legion_data_runtime::ResourceId;
-use legion_grpc::{GRPCPlugin, GRPCPluginSettings};
-use legion_renderer::RendererPlugin;
-use legion_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
-use legion_streamer::StreamerPlugin;
-use legion_telemetry::prelude::*;
-use legion_transform::TransformPlugin;
-use legion_utils::Settings;
+use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings, DataBuildSettings};
+use lgn_async::AsyncPlugin;
+use lgn_core::CorePlugin;
+use lgn_data_runtime::ResourceId;
+use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
+use lgn_renderer::RendererPlugin;
+use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
+use lgn_streamer::StreamerPlugin;
+use lgn_telemetry::prelude::*;
+use lgn_transform::TransformPlugin;
+use lgn_utils::Settings;
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 
@@ -133,6 +134,7 @@ fn main() {
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
         )))
+        .add_plugin(CorePlugin::default())
         .add_plugin(ScheduleRunnerPlugin::default())
         .add_plugin(AsyncPlugin::default())
         .insert_resource(AssetRegistrySettings::new(

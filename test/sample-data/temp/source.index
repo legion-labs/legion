@@ -15,18 +15,6 @@
       "resource_hash": null
     },
     {
-      "id": "0abe069400000000cea897a15bc29f32",
-      "dependencies": [],
-      "resource_hash": "ac268ff01e93b12e"
-    },
-    {
-      "id": "0abe069400000000cea897a15bc29f32|35b5717e",
-      "dependencies": [
-        "0abe069400000000cea897a15bc29f32"
-      ],
-      "resource_hash": null
-    },
-    {
       "id": "0abe069400000000ee9a7a73809e33c0",
       "dependencies": [],
       "resource_hash": "6d1c727b13bc8984"

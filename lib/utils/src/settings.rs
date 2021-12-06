@@ -2,6 +2,7 @@ use std::env;
 use std::mem::discriminant;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
+
 use toml::value::{Table, Value};
 
 const DEFAULT_CONFIG_FILENAME: &str = "legion.toml";

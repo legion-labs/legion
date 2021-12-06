@@ -1,16 +1,16 @@
 [package]
-name = "legion-data-build"
+name = "lgn-data-build"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-legion-data-offline = { path = "../data-offline" }
-legion-data-compiler = { path = "../data-compiler" }
-legion-content-store = { path = "../content-store" }
-legion-data-runtime = { path = "../data-runtime" }
-legion-utils = { path = "../utils" }
+lgn-data-offline = { path = "../data-offline", version = "0.1.0" }
+lgn-data-compiler = { path = "../data-compiler", version = "0.1.0" }
+lgn-content-store = { path = "../content-store", version = "0.1.0" }
+lgn-data-runtime = { path = "../data-runtime", version = "0.1.0" }
+lgn-utils = { path = "../utils", version = "0.1.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 petgraph = "0.6"

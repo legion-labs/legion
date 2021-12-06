@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use legion_math::{IVec2, Vec2};
+use lgn_math::{IVec2, Vec2};
 
 use super::{WindowDescriptor, WindowId};
 

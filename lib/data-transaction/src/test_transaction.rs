@@ -1,10 +1,11 @@
+use std::sync::Arc;
+
 use generic_data_offline::TestEntity;
-use legion_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
+use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
+use lgn_data_runtime::{AssetRegistryOptions, Resource};
+use tokio::sync::Mutex;
 
 use crate::{DataManager, Transaction};
-use legion_data_runtime::{AssetRegistryOptions, Resource};
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn test_transaction_system() -> anyhow::Result<()> {

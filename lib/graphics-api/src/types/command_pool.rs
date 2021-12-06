@@ -4,16 +4,20 @@ use crate::{
     CommandBuffer, CommandBufferDef, CommandPoolDef, DeviceContext, GfxResult, Queue, QueueType,
 };
 
-pub struct CommandPool {
-    device_context: DeviceContext,
-    queue_type: QueueType,
-    queue_family_index: u32,
+pub(crate) struct CommandPoolInner {
+    pub(crate) device_context: DeviceContext,
+    pub(crate) queue_type: QueueType,
+    pub(crate) queue_family_index: u32,
 
     #[cfg(feature = "vulkan")]
-    platform_command_pool: VulkanCommandPool,
+    pub(crate) platform_command_pool: VulkanCommandPool,
 }
 
-impl Drop for CommandPool {
+pub struct CommandPool {
+    pub(crate) inner: Box<CommandPoolInner>,
+}
+
+impl Drop for CommandPoolInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_command_pool.destroy(&self.device_context);
@@ -32,11 +36,13 @@ impl CommandPool {
                 })?;
 
         Ok(Self {
-            device_context,
-            queue_type: queue.queue_type(),
-            queue_family_index: queue.queue_family_index(),
-            #[cfg(any(feature = "vulkan"))]
-            platform_command_pool,
+            inner: Box::new(CommandPoolInner {
+                device_context,
+                queue_type: queue.queue_type(),
+                queue_family_index: queue.queue_family_index(),
+                #[cfg(any(feature = "vulkan"))]
+                platform_command_pool,
+            }),
         })
     }
 
@@ -52,24 +58,18 @@ impl CommandPool {
         unimplemented!();
 
         #[cfg(any(feature = "vulkan"))]
-        self.platform_command_pool
-            .reset_command_pool(&self.device_context)
+        self.reset_command_pool_platform()
     }
 
     pub fn device_context(&self) -> &DeviceContext {
-        &self.device_context
+        &self.inner.device_context
     }
 
     pub fn queue_type(&self) -> QueueType {
-        self.queue_type
+        self.inner.queue_type
     }
 
     pub fn queue_family_index(&self) -> u32 {
-        self.queue_family_index
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_command_pool(&self) -> &VulkanCommandPool {
-        &self.platform_command_pool
+        self.inner.queue_family_index
     }
 }

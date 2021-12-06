@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use legion_transit::prelude::*;
+use lgn_transit::prelude::*;
 
 use crate::{
     compress, event_block::EventBlock, BeginScopeEvent, EncodedBlock, EndScopeEvent, EventStream,
@@ -62,7 +62,7 @@ impl StreamBlock for ThreadBlock {
             }
         }
 
-        let payload = legion_telemetry_proto::telemetry::BlockPayload {
+        let payload = lgn_telemetry_proto::telemetry::BlockPayload {
             dependencies: compress(deps.as_bytes())?,
             objects: compress(self.events.as_bytes())?,
         };

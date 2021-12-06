@@ -5,7 +5,7 @@
 use std::{any::Any, io, sync::Arc};
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use legion_data_runtime::{
+use lgn_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId,
 };
 /// Asset temporarily used for testing.

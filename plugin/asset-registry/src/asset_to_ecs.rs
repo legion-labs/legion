@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use legion_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceId};
-use legion_ecs::prelude::*;
-use legion_renderer::components::{RotationComponent, StaticMesh};
-use legion_transform::prelude::*;
+use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceId};
+use lgn_ecs::prelude::*;
+use lgn_renderer::components::{RotationComponent, StaticMesh};
+use lgn_transform::prelude::*;
 use sample_data_runtime as runtime_data;
 
 use crate::asset_entities::AssetToEntityMap;
@@ -122,11 +122,11 @@ impl AssetToECS for runtime_data::Instance {
     }
 }
 
-impl AssetToECS for legion_graphics_runtime::Material {}
+impl AssetToECS for lgn_graphics_runtime::Material {}
 
 impl AssetToECS for runtime_data::Mesh {}
 
-impl AssetToECS for legion_graphics_runtime::Texture {}
+impl AssetToECS for lgn_graphics_runtime::Texture {}
 
 impl AssetToECS for generic_data_runtime::DebugCube {
     fn create_in_ecs(

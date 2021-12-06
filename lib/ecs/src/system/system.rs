@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use legion_utils::log::warn;
+use log::warn;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},

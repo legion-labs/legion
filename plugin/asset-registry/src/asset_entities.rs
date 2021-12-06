@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use legion_data_runtime::ResourceId;
-use legion_ecs::prelude::Entity;
+use lgn_data_runtime::ResourceId;
+use lgn_ecs::prelude::Entity;
 
 #[derive(Default)]
 pub(crate) struct AssetToEntityMap(BTreeMap<ResourceId, Entity>);

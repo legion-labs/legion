@@ -1,6 +1,6 @@
 #![allow(unsafe_code)]
 
-use legion_ecs::{
+use lgn_ecs::{
     bundle::Bundle,
     entity::Entity,
     system::{Command, Commands, EntityCommands},
@@ -335,7 +335,7 @@ impl<'w> BuildWorldChildren for WorldChildBuilder<'w> {
 
 #[cfg(test)]
 mod tests {
-    use legion_ecs::{
+    use lgn_ecs::{
         component::Component,
         entity::Entity,
         system::{CommandQueue, Commands},

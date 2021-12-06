@@ -1,4 +1,4 @@
-use legion_ecs::{
+use lgn_ecs::{
     entity::Entity,
     query::{Changed, With, Without},
     system::Query,
@@ -78,7 +78,7 @@ fn propagate_recursive(
 
 #[cfg(test)]
 mod test {
-    use legion_ecs::{
+    use lgn_ecs::{
         schedule::{Schedule, Stage, SystemStage},
         system::{CommandQueue, Commands},
         world::World,

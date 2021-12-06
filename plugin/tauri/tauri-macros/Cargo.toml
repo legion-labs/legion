@@ -1,5 +1,5 @@
 [package]
-name = "legion-tauri-macros"
+name = "lgn-tauri-macros"
 version = "0.1.0"
 edition = "2021"
 description = "Legion's ECS Tauri plugin macros"

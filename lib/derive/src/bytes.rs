@@ -1,4 +1,4 @@
-use legion_macro_utils::LegionManifest;
+use lgn_macro_utils::LegionManifest;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DataStruct, DeriveInput, Fields};
@@ -13,7 +13,7 @@ pub fn derive_bytes(input: TokenStream) -> TokenStream {
         _ => panic!("Expected a struct with named fields."),
     };
 
-    let legion_core_path = LegionManifest::default().get_path(crate::modules::LEGION_CORE);
+    let lgn_core_path = LegionManifest::default().get_path(crate::modules::LEGION_CORE);
 
     let fields = fields
         .iter()
@@ -24,7 +24,7 @@ pub fn derive_bytes(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     TokenStream::from(quote! {
-        impl #impl_generics #legion_core_path::Bytes for #struct_name #ty_generics #where_clause {
+        impl #impl_generics #lgn_core_path::Bytes for #struct_name #ty_generics #where_clause {
             fn write_bytes(&self, buffer: &mut [u8]) {
                 let mut offset: usize = 0;
                 #(let byte_len = self.#fields.byte_len();

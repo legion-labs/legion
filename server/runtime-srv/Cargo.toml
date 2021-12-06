@@ -7,12 +7,13 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Legion engine
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
-legion-core = { path = "../../plugin/core", version = "0.1.0" }
-legion-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
-legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
+lgn-core = { path = "../../plugin/core", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
+lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
 clap = "2.33"
+instant = { version = "0.1", features = ["wasm-bindgen"] }

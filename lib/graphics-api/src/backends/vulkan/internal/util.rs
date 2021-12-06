@@ -1,9 +1,8 @@
 use ash::vk;
 
-use crate::backends::vulkan::VulkanDeviceContext;
 use crate::{
-    BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, Format,
-    PipelineType, QueueType, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
+    BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, DeviceContext,
+    Format, PipelineType, QueueType, RasterizerState, ResourceState, ResourceUsage,
     ShaderResourceType,
 };
 
@@ -189,34 +188,34 @@ pub(crate) fn resource_state_to_image_layout(state: ResourceState) -> Option<vk:
 }
 
 pub(crate) fn queue_type_to_family_index(
-    device_context: &VulkanDeviceContext,
+    device_context: &DeviceContext,
     queue_type: QueueType,
 ) -> u32 {
     match queue_type {
         QueueType::Graphics => {
             device_context
-                .queue_family_indices()
+                .vk_queue_family_indices()
                 .graphics_queue_family_index
         }
         QueueType::Compute => {
             device_context
-                .queue_family_indices()
+                .vk_queue_family_indices()
                 .compute_queue_family_index
         }
         QueueType::Transfer => {
             device_context
-                .queue_family_indices()
+                .vk_queue_family_indices()
                 .transfer_queue_family_index
         }
         QueueType::Decode => {
             device_context
-                .queue_family_indices()
+                .vk_queue_family_indices()
                 .decode_queue_family_index
                 .unwrap() // we just assert if the decode queue is used when not available
         }
         QueueType::Encode => {
             device_context
-                .queue_family_indices()
+                .vk_queue_family_indices()
                 .encode_queue_family_index
                 .unwrap() // we just assert if the decode queue is used when not available
         }

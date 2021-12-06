@@ -2,9 +2,9 @@
 
 use std::hash::{Hash, Hasher};
 
-use legion_data_offline::ResourcePathId;
-use legion_data_runtime::ResourceId;
-use legion_utils::DefaultHasher;
+use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourceId;
+use lgn_utils::DefaultHasher;
 
 use crate::{CompilerHash, Locale, Platform, Target};
 

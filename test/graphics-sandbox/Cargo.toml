@@ -7,29 +7,27 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-graphics-api = { path = "../../lib/graphics-api", package = "legion-graphics-api" }
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
-legion-async = { path = "../../plugin/async", version = "0.1.0" }
-legion-core = { path = "../../plugin/core", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-input = { path = "../../plugin/input" }
-legion-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
-legion-presenter = { path = "../../lib/presenter", version = "0.1.0" }
-legion-presenter-window = { path = "../../plugin/presenter-window", version = "0.1.0" }
-legion-presenter-snapshot = { path = "../../plugin/presenter-snapshot", version = "0.1.0" }
-legion-winit = { path = "../../plugin/winit", version = "0.1.0" }
-legion-window = { path = "../../plugin/window", version = "0.1.0" }
-legion-transform = { path = "../../plugin/transform", version = "0.1.0" }
+lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-asset-registry = { path = "../../plugin/asset-registry", version = "0.1.0" }
+lgn-core = { path = "../../plugin/core", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-input = { path = "../../plugin/input", version = "0.1.0" }
+lgn-renderer = { path = "../../plugin/renderer", version = "0.1.0" }
+lgn-presenter = { path = "../../lib/presenter", version = "0.1.0" }
+lgn-presenter-window = { path = "../../plugin/presenter-window", version = "0.1.0" }
+lgn-presenter-snapshot = { path = "../../plugin/presenter-snapshot", version = "0.1.0" }
+lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
+lgn-window = { path = "../../plugin/window", version = "0.1.0" }
+lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
+
+clap = "2.33"
 log = "0.4"
 simple_logger = "1.13"
-clap = "2.33"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-legion-winit = { path = "../../plugin/winit", version = "0.1.0", features = [
-    "x11",
-] }
+lgn-winit = { path = "../../plugin/winit", features = ["x11"] }
 
 [dev-dependencies]
 png = "0.17"
-legion-test-utils = { path = "../../lib/test-utils" }
+lgn-test-utils = { path = "../../lib/test-utils" }

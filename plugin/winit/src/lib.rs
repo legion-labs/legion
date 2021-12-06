@@ -61,29 +61,20 @@ mod converters;
 mod winit_config;
 mod winit_windows;
 
-use legion_input::{
+use lgn_app::{App, AppExit, CoreStage, Events, ManualEventReader, Plugin};
+use lgn_ecs::{system::IntoExclusiveSystem, world::World};
+use lgn_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseMotion, MouseScrollUnit, MouseWheel},
     touch::TouchInput,
 };
-pub use winit_config::*;
-pub use winit_windows::*;
-
-use legion_app::{App, AppExit, CoreStage, Events, ManualEventReader, Plugin};
-use legion_ecs::{system::IntoExclusiveSystem, world::World};
-use legion_math::{ivec2, Vec2};
-use legion_utils::log::{error, trace, warn};
-use legion_window::{
+use lgn_math::{ivec2, Vec2};
+use lgn_window::{
     CreateWindow, CursorEntered, CursorLeft, CursorMoved, FileDragAndDrop, ReceivedCharacter,
     WindowBackendScaleFactorChanged, WindowCloseRequested, WindowCreated, WindowFocused,
     WindowMoved, WindowResized, WindowScaleFactorChanged, Windows,
 };
-use winit::{
-    dpi::PhysicalPosition,
-    event::{self, DeviceEvent, Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
-};
-
+use log::{error, trace, warn};
 use winit::dpi::LogicalSize;
 #[cfg(any(
     target_os = "linux",
@@ -93,6 +84,13 @@ use winit::dpi::LogicalSize;
     target_os = "openbsd"
 ))]
 use winit::platform::unix::EventLoopExtUnix;
+use winit::{
+    dpi::PhysicalPosition,
+    event::{self, DeviceEvent, Event, WindowEvent},
+    event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
+};
+pub use winit_config::*;
+pub use winit_windows::*;
 
 #[derive(Default)]
 pub struct WinitPlugin;
@@ -114,42 +112,41 @@ fn change_window(world: &mut World) {
         let id = legion_window.id();
         for command in legion_window.drain_commands() {
             match command {
-                legion_window::WindowCommand::SetWindowMode {
+                lgn_window::WindowCommand::SetWindowMode {
                     mode,
                     resolution: (width, height),
                 } => {
                     let window = winit_windows.get_window(id).unwrap();
                     match mode {
-                        legion_window::WindowMode::BorderlessFullscreen => {
+                        lgn_window::WindowMode::BorderlessFullscreen => {
                             window
                                 .set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
                         }
-                        legion_window::WindowMode::Fullscreen { use_size } => window
-                            .set_fullscreen(Some(winit::window::Fullscreen::Exclusive(
-                                if use_size {
-                                    get_fitting_videomode(
-                                        &window.current_monitor().unwrap(),
-                                        width,
-                                        height,
-                                    )
-                                } else {
-                                    get_best_videomode(&window.current_monitor().unwrap())
-                                },
-                            ))),
-                        legion_window::WindowMode::Windowed => window.set_fullscreen(None),
+                        lgn_window::WindowMode::Fullscreen { use_size } => window.set_fullscreen(
+                            Some(winit::window::Fullscreen::Exclusive(if use_size {
+                                get_fitting_videomode(
+                                    &window.current_monitor().unwrap(),
+                                    width,
+                                    height,
+                                )
+                            } else {
+                                get_best_videomode(&window.current_monitor().unwrap())
+                            })),
+                        ),
+                        lgn_window::WindowMode::Windowed => window.set_fullscreen(None),
                     }
                 }
-                legion_window::WindowCommand::SetTitle { title } => {
+                lgn_window::WindowCommand::SetTitle { title } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window.set_title(&title);
                 }
-                legion_window::WindowCommand::SetScaleFactor { scale_factor } => {
+                lgn_window::WindowCommand::SetScaleFactor { scale_factor } => {
                     let mut window_dpi_changed_events = world
                         .get_resource_mut::<Events<WindowScaleFactorChanged>>()
                         .unwrap();
                     window_dpi_changed_events.send(WindowScaleFactorChanged { id, scale_factor });
                 }
-                legion_window::WindowCommand::SetResolution {
+                lgn_window::WindowCommand::SetResolution {
                     logical_resolution: (width, height),
                     scale_factor,
                 } => {
@@ -159,26 +156,26 @@ fn change_window(world: &mut World) {
                             .to_physical::<f64>(scale_factor),
                     );
                 }
-                legion_window::WindowCommand::SetVsync { .. } => (),
-                legion_window::WindowCommand::SetResizable { resizable } => {
+                lgn_window::WindowCommand::SetVsync { .. } => (),
+                lgn_window::WindowCommand::SetResizable { resizable } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window.set_resizable(resizable);
                 }
-                legion_window::WindowCommand::SetDecorations { decorations } => {
+                lgn_window::WindowCommand::SetDecorations { decorations } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window.set_decorations(decorations);
                 }
-                legion_window::WindowCommand::SetCursorLockMode { locked } => {
+                lgn_window::WindowCommand::SetCursorLockMode { locked } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window
                         .set_cursor_grab(locked)
                         .unwrap_or_else(|e| error!("Unable to un/grab cursor: {}", e));
                 }
-                legion_window::WindowCommand::SetCursorVisibility { visible } => {
+                lgn_window::WindowCommand::SetCursorVisibility { visible } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window.set_cursor_visible(visible);
                 }
-                legion_window::WindowCommand::SetCursorPosition { position } => {
+                lgn_window::WindowCommand::SetCursorPosition { position } => {
                     let window = winit_windows.get_window(id).unwrap();
                     let inner_size = window.inner_size().to_logical::<f32>(window.scale_factor());
                     window
@@ -188,22 +185,22 @@ fn change_window(world: &mut World) {
                         ))
                         .unwrap_or_else(|e| error!("Unable to set cursor position: {}", e));
                 }
-                legion_window::WindowCommand::SetMaximized { maximized } => {
+                lgn_window::WindowCommand::SetMaximized { maximized } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window.set_maximized(maximized);
                 }
-                legion_window::WindowCommand::SetMinimized { minimized } => {
+                lgn_window::WindowCommand::SetMinimized { minimized } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window.set_minimized(minimized);
                 }
-                legion_window::WindowCommand::SetPosition { position } => {
+                lgn_window::WindowCommand::SetPosition { position } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window.set_outer_position(PhysicalPosition {
                         x: position[0],
                         y: position[1],
                     });
                 }
-                legion_window::WindowCommand::SetResizeConstraints { resize_constraints } => {
+                lgn_window::WindowCommand::SetResizeConstraints { resize_constraints } => {
                     let window = winit_windows.get_window(id).unwrap();
                     let constraints = resize_constraints.check_constraints();
                     let min_inner_size = LogicalSize {

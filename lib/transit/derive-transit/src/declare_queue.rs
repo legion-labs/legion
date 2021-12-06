@@ -15,16 +15,16 @@ fn gen_read_method(
                 unsafe{
                     let mut begin_obj = self.buffer.as_ptr().add( offset+1 );
                     let next_object_offset;
-                    let value_size = if <#value_type_id as legion_transit::InProcSerialize>::is_size_static(){
+                    let value_size = if <#value_type_id as lgn_transit::InProcSerialize>::is_size_static(){
                         next_object_offset = offset + 1 + std::mem::size_of::<#value_type_id>();
                         None
                     }else{
-                        let size_instance = legion_utils::memory::read_any::<u32>(begin_obj);
+                        let size_instance = lgn_utils::memory::read_any::<u32>(begin_obj);
                         begin_obj = begin_obj.add( std::mem::size_of::<u32>() );
                         next_object_offset = offset + 1 + std::mem::size_of::<u32>() + size_instance as usize;
                         Some(size_instance)
                     };
-                    let obj = #any_ident::#value_type_id( <#value_type_id as legion_transit::InProcSerialize>::read_value(begin_obj, value_size) );
+                    let obj = #any_ident::#value_type_id( <#value_type_id as lgn_transit::InProcSerialize>::read_value(begin_obj, value_size) );
                     (obj,next_object_offset)
                 }
             },
@@ -71,7 +71,7 @@ fn gen_hetero_queue_impl(
 ) -> quote::__private::TokenStream {
     let read_method = gen_read_method(type_args, any_ident);
     quote! {
-        impl legion_transit::HeterogeneousQueue for #struct_identifier {
+        impl lgn_transit::HeterogeneousQueue for #struct_identifier {
             type Item = #any_ident;
 
             fn new(buffer_size: usize) -> Self {
@@ -149,7 +149,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
 
             pub fn push<T>(&mut self, value: T)
             where
-                T: legion_transit::InProcSerialize + #type_index_ident,
+                T: lgn_transit::InProcSerialize + #type_index_ident,
             {
                 // write type discriminant
                 self.buffer.push(<T as #type_index_ident>::TYPE_INDEX);
@@ -162,7 +162,7 @@ pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
                     // we force the dynamically sized object to first serialize their size as unsigned 32 bits
                     // this will allow unparsable objects to be skipped by the reader
                     let value_size = T::get_value_size(&value).unwrap();
-                    legion_utils::memory::write_any(&mut self.buffer, &value_size);
+                    lgn_utils::memory::write_any(&mut self.buffer, &value_size);
                     value.write_value(&mut self.buffer);
                     assert!(
                         self.buffer.len()

@@ -16,15 +16,15 @@
 //! - **Hermetic** - dependent only on a known set of inputs.
 //! - **Deterministic** - the result is bit-by-bit reproducible given the same set of inputs.
 //!
-//! All the results of data-compilation are stored in a [`ContentStore`](`legion_content_store::ContentStore`) and a manifest
+//! All the results of data-compilation are stored in a [`ContentStore`](`lgn_content_store::ContentStore`) and a manifest
 //! file containing the metadata about the results is returned.
 //!
 //! To support incremental building the data build is persisted on disk in `source.index` and `output.index` files.
 //! Those files contain:
 //! - **source.index** - The build-oriented data structure describing resources and build dependencies in the [`project`] that is being built.
-//! - **output.index** - Records of derived resources that are stored in a [`ContentStore`](`legion_content_store::ContentStore`).
+//! - **output.index** - Records of derived resources that are stored in a [`ContentStore`](`lgn_content_store::ContentStore`).
 //!
-//! For other parts of the data pipeline see [`legion_data_offline`], [`legion_data_runtime`] and [`legion_data_compiler`] modules.
+//! For other parts of the data pipeline see [`lgn_data_offline`], [`lgn_data_runtime`] and [`lgn_data_compiler`] modules.
 //!
 //! # Structure on disk
 //!
@@ -66,7 +66,7 @@
 //!         - when it is a **derived resource**: use the checksum of the output of it's *source build graph node*.
 //! 6. Check the `build index` if there is already existing output for given (**Context Hash**, **Source Hash**) tuple.
 //! 7. If not, compile the resource:
-//!     - Store the resulting resource in [`ContentStore`](`legion_content_store::ContentStore`) and a record an entry in `build index`.
+//!     - Store the resulting resource in [`ContentStore`](`lgn_content_store::ContentStore`) and a record an entry in `build index`.
 //!     - Add the compiled resource to the resulting `manifest file`.
 //!
 //! # `SourceHash` and `ContextHash`
@@ -83,7 +83,7 @@
 //!     * checksum of the resource's content (available in [`.meta`] file).
 //!     * checksum of content of each of the resource's dependencies (list of dependencies is in [`.meta`] file)
 //! * For **derived resource**:
-//!     * checksum of the output of the directly dependent data compilation (as described in the [`ResourcePathId`](`legion_data_offline::ResourcePathId`))
+//!     * checksum of the output of the directly dependent data compilation (as described in the [`ResourcePathId`](`lgn_data_offline::ResourcePathId`))
 //!
 //! #### `ContextHash` - the signature of the compilation context
 //!
@@ -214,13 +214,13 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl From<legion_data_offline::resource::Error> for Error {
-    fn from(err: legion_data_offline::resource::Error) -> Self {
+impl From<lgn_data_offline::resource::Error> for Error {
+    fn from(err: lgn_data_offline::resource::Error) -> Self {
         match err {
-            legion_data_offline::resource::Error::NotFound
-            | legion_data_offline::resource::Error::InvalidPath => Self::NotFound,
-            legion_data_offline::resource::Error::ParseError
-            | legion_data_offline::resource::Error::IOError(_) => Self::ProjectError,
+            lgn_data_offline::resource::Error::NotFound
+            | lgn_data_offline::resource::Error::InvalidPath => Self::NotFound,
+            lgn_data_offline::resource::Error::ParseError
+            | lgn_data_offline::resource::Error::IOError(_) => Self::ProjectError,
         }
     }
 }

@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use legion_ecs::prelude::*;
+use lgn_ecs::prelude::*;
 use rand::Rng;
 
 // In this example we will simulate a population of entities. In every tick we will:

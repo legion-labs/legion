@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::ffi::CStr;
 
 use ash::vk;
@@ -19,13 +21,12 @@ pub struct VideoQueue {
 //} StdVideoH264ProfileIdc;
 
 impl VideoQueue {
-    pub fn new(device_ctx: DeviceContext) -> Self {
+    pub(crate) fn new(device_ctx: DeviceContext) -> Self {
         let mut video_queue_fn = vk::KhrVideoQueueFn::load(|name| unsafe {
             std::mem::transmute(
                 device_ctx
-                    .platform_device_context()
-                    .instance()
-                    .get_device_proc_addr(device_ctx.platform_device().handle(), name.as_ptr()),
+                    .vk_instance()
+                    .get_device_proc_addr(device_ctx.vk_device().handle(), name.as_ptr()),
             )
         });
         // The following functions need to be loaded from the instance rather than from the device
@@ -35,12 +36,8 @@ impl VideoQueue {
                     b"vkGetPhysicalDeviceVideoCapabilitiesKHR\0",
                 );
                 device_ctx
-                    .platform_device_context()
-                    .entry()
-                    .get_instance_proc_addr(
-                        device_ctx.platform_device_context().instance().handle(),
-                        cname.as_ptr(),
-                    )
+                    .vk_entry()
+                    .get_instance_proc_addr(device_ctx.vk_instance().handle(), cname.as_ptr())
             };
             if let Some(func) = func {
                 video_queue_fn.get_physical_device_video_capabilities_khr =
@@ -53,12 +50,8 @@ impl VideoQueue {
                     b"vkGetPhysicalDeviceVideoFormatPropertiesKHR\0",
                 );
                 device_ctx
-                    .platform_device_context()
-                    .entry()
-                    .get_instance_proc_addr(
-                        device_ctx.platform_device_context().instance().handle(),
-                        cname.as_ptr(),
-                    )
+                    .vk_entry()
+                    .get_instance_proc_addr(device_ctx.vk_instance().handle(), cname.as_ptr())
             };
             if let Some(func) = func {
                 video_queue_fn.get_physical_device_video_format_properties_khr =
@@ -71,15 +64,15 @@ impl VideoQueue {
         }
     }
 
-    pub fn name() -> &'static CStr {
+    pub(crate) fn name() -> &'static CStr {
         vk::KhrVideoQueueFn::name()
     }
 
-    pub fn fp(&self) -> &vk::KhrVideoQueueFn {
+    pub(crate) fn fp(&self) -> &vk::KhrVideoQueueFn {
         &self.video_queue_fn
     }
 
-    pub fn get_physical_device_video_capabilities(
+    pub(crate) fn get_physical_device_video_capabilities(
         &self,
         video_profile: &vk::VideoProfileKHR,
         capabilities: &mut vk::VideoCapabilitiesKHR,
@@ -87,7 +80,7 @@ impl VideoQueue {
         unsafe {
             self.video_queue_fn
                 .get_physical_device_video_capabilities_khr(
-                    self.device_ctx.platform_device_context().physical_device(),
+                    self.device_ctx.vk_physical_device(),
                     video_profile,
                     capabilities,
                 )
@@ -96,7 +89,7 @@ impl VideoQueue {
         Ok(())
     }
 
-    pub fn get_physical_device_video_format_properties(
+    pub(crate) fn get_physical_device_video_format_properties(
         &self,
         video_format_info: &vk::PhysicalDeviceVideoFormatInfoKHR,
         video_format_properties: &mut Vec<vk::VideoFormatPropertiesKHR>,
@@ -105,7 +98,7 @@ impl VideoQueue {
         unsafe {
             self.video_queue_fn
                 .get_physical_device_video_format_properties_khr(
-                    self.device_ctx.platform_device_context().physical_device(),
+                    self.device_ctx.vk_physical_device(),
                     video_format_info,
                     &mut video_format_info_count,
                     std::ptr::null_mut(),
@@ -117,7 +110,7 @@ impl VideoQueue {
             );
             self.video_queue_fn
                 .get_physical_device_video_format_properties_khr(
-                    self.device_ctx.platform_device_context().physical_device(),
+                    self.device_ctx.vk_physical_device(),
                     video_format_info,
                     &mut video_format_info_count,
                     video_format_properties.as_mut_ptr(),
@@ -127,7 +120,7 @@ impl VideoQueue {
         Ok(())
     }
 
-    pub fn create_video_session(
+    pub(crate) fn create_video_session(
         &self,
         video_session_info: &vk::VideoSessionCreateInfoKHR,
     ) -> GfxResult<vk::VideoSessionKHR> {
@@ -135,7 +128,7 @@ impl VideoQueue {
         unsafe {
             self.video_queue_fn
                 .create_video_session_khr(
-                    self.device_ctx.platform_device_context().device().handle(),
+                    self.device_ctx.vk_device().handle(),
                     video_session_info,
                     std::ptr::null(),
                     &mut video_session,
@@ -145,17 +138,17 @@ impl VideoQueue {
         Ok(video_session)
     }
 
-    pub fn destroy_video_session(&self, video_session: vk::VideoSessionKHR) {
+    pub(crate) fn destroy_video_session(&self, video_session: vk::VideoSessionKHR) {
         unsafe {
             self.video_queue_fn.destroy_video_session_khr(
-                self.device_ctx.platform_device().handle(),
+                self.device_ctx.vk_device().handle(),
                 video_session,
                 std::ptr::null(),
             );
         }
     }
 
-    pub fn get_video_session_memory_requirements(
+    pub(crate) fn get_video_session_memory_requirements(
         &self,
         video_session: vk::VideoSessionKHR,
         memory_requirements: &mut Vec<vk::MemoryRequirements2>,
@@ -165,7 +158,7 @@ impl VideoQueue {
         unsafe {
             self.video_queue_fn
                 .get_video_session_memory_requirements_khr(
-                    self.device_ctx.platform_device().handle(),
+                    self.device_ctx.vk_device().handle(),
                     video_session,
                     &mut video_session_memory_requirements_count,
                     std::ptr::null_mut(),
@@ -186,7 +179,7 @@ impl VideoQueue {
 
             self.video_queue_fn
                 .get_video_session_memory_requirements_khr(
-                    self.device_ctx.platform_device().handle(),
+                    self.device_ctx.vk_device().handle(),
                     video_session,
                     &mut video_session_memory_requirements_count,
                     video_session_memory_requirements.as_mut_ptr(),

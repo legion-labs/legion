@@ -10,10 +10,10 @@ license = "MIT OR Apache-2.0"
 keywords = ["game", "legion", "analytics"]
 
 [dependencies]
-axum = "0.3.4"
+axum = "0.4.0"
 tokio = { version = "1.14.0", features = ["full"] }
 tower = "0.4.11"
-tower-http = { version = "0.1.2", features = ["fs"] }
+tower-http = { version = "0.2.0", features = ["fs"] }
 
 [build-dependencies]
-legion-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = ["web-appgen"] }
+lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = ["web-appgen"] }

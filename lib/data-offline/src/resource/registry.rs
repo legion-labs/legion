@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::{any::Any, collections::HashMap, io};
 
-use legion_data_runtime::ResourceType;
+use lgn_data_runtime::ResourceType;
 
 use super::{
     OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor,
@@ -249,7 +249,7 @@ impl ResourceRegistry {
 mod tests {
     use std::{any::Any, io};
 
-    use legion_data_runtime::{resource, Asset, AssetLoader, Resource};
+    use lgn_data_runtime::{resource, Asset, AssetLoader, Resource};
 
     use crate::{
         resource::{registry::ResourceRegistryOptions, OfflineResource, ResourceProcessor},

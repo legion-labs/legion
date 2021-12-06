@@ -75,8 +75,8 @@ pub use instance_dc::*;
 pub use test_entity::*;
 
 pub fn register_resource_types(
-    registry: legion_data_offline::resource::ResourceRegistryOptions,
-) -> legion_data_offline::resource::ResourceRegistryOptions {
+    registry: lgn_data_offline::resource::ResourceRegistryOptions,
+) -> lgn_data_offline::resource::ResourceRegistryOptions {
     let registry = debug_cube::register_resource_types(registry);
     let registry = entity_dc::register_resource_types(registry);
     let registry = instance_dc::register_resource_types(registry);

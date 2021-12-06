@@ -3,7 +3,7 @@ use std::{
     num::NonZeroU32,
 };
 
-use legion_utils::decimal::DecimalF32;
+use lgn_utils::decimal::DecimalF32;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
@@ -13,10 +13,9 @@ use super::{
     PrimitiveTopology, SampleCount, ShaderStageFlags, StencilOp, TextureTiling,
     VertexAttributeRate,
 };
-use crate::{DescriptorSetLayout, ResourceFlags, RootSignature, Shader, ShaderModule};
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VkInstance;
+use crate::{DescriptorSetLayout, ResourceFlags, RootSignature, Shader, ShaderModule};
 
 /// Controls if an extension is enabled or not. The requirements/behaviors of validation is
 /// API-specific.
@@ -591,19 +590,10 @@ pub struct VertexLayoutBuffer {
 }
 
 /// Describes how vertex attributes are laid out within one or more buffers
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VertexLayout {
     pub attributes: Vec<VertexLayoutAttribute>,
     pub buffers: Vec<VertexLayoutBuffer>,
-}
-
-impl Default for VertexLayout {
-    fn default() -> Self {
-        Self {
-            attributes: Vec::new(),
-            buffers: Vec::new(),
-        }
-    }
 }
 
 /// Affects depth testing and stencil usage. Commonly used to enable "Z-buffering".

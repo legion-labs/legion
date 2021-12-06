@@ -1,7 +1,7 @@
 use std::{fmt, hash::Hash};
 
-use legion_content_store::Checksum;
-use legion_utils::DefaultHash;
+use lgn_content_store::Checksum;
+use lgn_utils::DefaultHash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{resource::ResourcePathName, ResourcePathId};

@@ -1,8 +1,8 @@
+use std::convert::TryFrom;
 use std::{fmt, hash::Hash, str::FromStr};
 
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::convert::TryFrom;
 use xxhash_rust::const_xxh3::xxh3_64 as const_xxh3;
 
 /// Type identifier of resource or asset.

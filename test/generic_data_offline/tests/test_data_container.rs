@@ -1,9 +1,9 @@
 use std::io::Cursor;
 
 use generic_data_offline::{TestEntity, TestEntityProcessor};
-use legion_data_offline::resource::ResourceReflection;
-use legion_data_runtime::AssetLoader;
-use legion_math::prelude::*;
+use lgn_data_offline::resource::ResourceReflection;
+use lgn_data_runtime::AssetLoader;
+use lgn_math::prelude::*;
 
 #[test]
 fn test_default_implementation() {

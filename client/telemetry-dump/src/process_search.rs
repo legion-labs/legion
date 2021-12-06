@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use legion_analytics::prelude::*;
+use lgn_analytics::prelude::*;
 
 pub async fn print_recent_processes(connection: &mut sqlx::AnyConnection) {
     for p in fetch_recent_processes(connection).await.unwrap() {

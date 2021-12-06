@@ -4,14 +4,14 @@ use std::sync::{Arc, Mutex};
 use std::{env, vec};
 
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use legion_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use legion_data_compiler::{Locale, Manifest, Platform, Target};
-use legion_data_offline::resource::ResourceRegistryOptions;
-use legion_data_offline::{
+use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use lgn_data_compiler::{Locale, Manifest, Platform, Target};
+use lgn_data_offline::resource::ResourceRegistryOptions;
+use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceProcessor, ResourceRegistry},
     ResourcePathId,
 };
-use legion_data_runtime::{AssetLoader, Resource, ResourceId};
+use lgn_data_runtime::{AssetLoader, Resource, ResourceId};
 use multitext_resource::MultiTextResource;
 use tempfile::TempDir;
 use text_resource::{TextResource, TextResourceProc};

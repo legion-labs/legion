@@ -1,5 +1,5 @@
 [package]
-name = "legion-core"
+name = "lgn-core"
 version = "0.1.0"
 edition = "2021"
 description = "Provides core functionality for Legion"
@@ -10,14 +10,16 @@ keywords = ["legion"]
 
 [dependencies]
 # legion
-legion-app = { path = "../../lib/app", version = "0.1.0" }
-legion-derive = { path = "../../lib/derive", version = "0.1.0" }
-legion-ecs = { path = "../../lib/ecs", version = "0.1.0" }
-legion-tasks = { path = "../../lib/tasks", version = "0.1.0" }
-legion-utils = { path = "../../lib/utils", version = "0.1.0" }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-derive = { path = "../../lib/derive", version = "0.1.0" }
+lgn-ecs = { path = "../../lib/ecs", version = "0.1.0" }
+lgn-tasks = { path = "../../lib/tasks", version = "0.1.0" }
+lgn-utils = { path = "../../lib/utils", version = "0.1.0" }
 
 # other
 bytemuck = "1.7"
+instant = { version = "0.1", features = ["wasm-bindgen"] }
+log = "0.4"
 
 [dev-dependencies]
-legion-math = { path = "../../lib/math", version = "0.1.0" }
+lgn-math = { path = "../../lib/math", version = "0.1.0" }

@@ -20,8 +20,7 @@ pub(crate) struct RootSignatureInner {
 impl Drop for RootSignatureInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
-        self.platform_root_signature
-            .destroy(self.device_context.platform_device_context());
+        self.platform_root_signature.destroy(&self.device_context);
     }
 }
 
@@ -33,12 +32,11 @@ pub struct RootSignature {
 impl RootSignature {
     pub fn new(device_context: &DeviceContext, definition: &RootSignatureDef) -> GfxResult<Self> {
         #[cfg(feature = "vulkan")]
-        let platform_root_signature =
-            VulkanRootSignature::new(device_context.platform_device_context(), definition)
-                .map_err(|e| {
-                    log::error!("Error creating platform root signature {:?}", e);
-                    ash::vk::Result::ERROR_UNKNOWN
-                })?;
+        let platform_root_signature = VulkanRootSignature::new(device_context, definition)
+            .map_err(|e| {
+                log::error!("Error creating platform root signature {:?}", e);
+                ash::vk::Result::ERROR_UNKNOWN
+            })?;
 
         let inner = RootSignatureInner {
             device_context: device_context.clone(),

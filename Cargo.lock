@@ -3,12 +3,6 @@
 version = 3
 
 [[package]]
-name = "ab_glyph_rasterizer"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a13739d7177fbd22bb0ed28badfff9f372f8bef46c863db4e1c6248f6b223b6e"
-
-[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -143,10 +137,10 @@ dependencies = [
  "anyhow",
  "chrono",
  "crc",
- "legion-analytics",
- "legion-telemetry",
- "legion-telemetry-proto",
- "legion-transit",
+ "lgn-analytics",
+ "lgn-telemetry",
+ "lgn-telemetry-proto",
+ "lgn-transit",
  "log",
  "prost",
  "simple_logger",
@@ -162,32 +156,10 @@ name = "analytics-web"
 version = "0.1.0"
 dependencies = [
  "axum",
- "legion-build-utils",
+ "lgn-build-utils",
  "tokio",
  "tower",
  "tower-http",
-]
-
-[[package]]
-name = "andrew"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c4afb09dd642feec8408e33f92f3ffc4052946f6b20f32fb99c1f58cd4fa7cf"
-dependencies = [
- "bitflags",
- "rusttype",
- "walkdir",
- "xdg",
- "xml-rs",
-]
-
-[[package]]
-name = "ansi_term"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
-dependencies = [
- "winapi",
 ]
 
 [[package]]
@@ -201,9 +173,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.49"
+version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a03e93e97a28fbc9f42fbc5ba0886a3c67eb637b476dbee711f80a6ffe8223d"
+checksum = "8b26702f315f53b6071259e15dd9d64528213b44d61de1ec926eca7715d62203"
 
 [[package]]
 name = "approx"
@@ -238,17 +210,15 @@ version = "0.33.3+1.2.191"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc4f1d82f164f838ae413296d1131aa6fa79b917d25bebaa7033d25620c09219"
 dependencies = [
- "libloading 0.7.2",
+ "libloading",
 ]
 
 [[package]]
 name = "ash-window"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12f91ce4c6be1a2ba99d3d6cd57d5bae9ac6d6f903b5ae53d6b1dee2edf872af"
 dependencies = [
  "ash",
- "raw-window-handle 0.3.4",
+ "raw-window-handle 0.4.2",
  "raw-window-metal",
 ]
 
@@ -427,8 +397,9 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "aws-config"
-version = "0.0.26-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b14ae9e658d7c4920a1ea2873ba86afbcd285c5bf627fde9b2af295488f702bc"
 dependencies = [
  "aws-http",
  "aws-hyper",
@@ -449,8 +420,9 @@ dependencies = [
 
 [[package]]
 name = "aws-endpoint"
-version = "0.0.26-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d3862993d16ce409bbc9beb16744e1e906130c8071ca75e84d967f7ea590eeb"
 dependencies = [
  "aws-smithy-http",
  "aws-types",
@@ -461,8 +433,9 @@ dependencies = [
 
 [[package]]
 name = "aws-http"
-version = "0.0.26-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21902b7009bb5290acab8a297d8c3287b990bdf1c57bb72f331dfaa171854416"
 dependencies = [
  "aws-smithy-http",
  "aws-smithy-types",
@@ -474,8 +447,9 @@ dependencies = [
 
 [[package]]
 name = "aws-hyper"
-version = "0.0.26-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5be61f82810771f547ed72fe9db7e087f555ce1612908ea23b58977272eb2da1"
 dependencies = [
  "aws-endpoint",
  "aws-http",
@@ -507,8 +481,8 @@ dependencies = [
  "hyper",
  "lambda_http",
  "lambda_runtime",
- "legion-online",
- "legion-streaming-proto",
+ "lgn-online",
+ "lgn-streaming-proto",
  "log",
  "serde",
  "serde_json",
@@ -520,8 +494,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-s3"
-version = "0.0.26-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0dd39e7e35ae6abe15a7fbe9bf8048ce2e7780026c287f8d43dc5e73b8c0074a"
 dependencies = [
  "aws-endpoint",
  "aws-http",
@@ -543,8 +518,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-sts"
-version = "0.0.26-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74056f7f75eabfb600311f45bdcaae17b29a6f413af1f9c43aca6c486bdeb7af"
 dependencies = [
  "aws-endpoint",
  "aws-http",
@@ -563,8 +539,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sig-auth"
-version = "0.0.26-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a16b8c9818854a3a3bba85e970f59d7f09ca0985ff10c9031bb03c95b291323"
 dependencies = [
  "aws-sigv4",
  "aws-smithy-eventstream",
@@ -577,8 +554,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sigv4"
-version = "0.0.26-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7f531763d106b1f050421d8256ce5d585e75e861d466fe8920157a004d28bf0"
 dependencies = [
  "aws-smithy-eventstream",
  "bytes",
@@ -595,8 +573,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-async"
-version = "0.30.0-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "969717af8b7eb7424b67fce3f3c8539b0cf72322f909a30d7ea9e8c5ed2bf929"
 dependencies = [
  "pin-project-lite",
  "tokio",
@@ -604,8 +583,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-client"
-version = "0.30.0-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97ffd13190653d37833cf403f7b2963bdd903166933db231a13bdc48ba3fd237"
 dependencies = [
  "aws-smithy-async",
  "aws-smithy-http",
@@ -627,8 +607,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-eventstream"
-version = "0.30.0-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d1c450819c3918ad7ee8c768a0304edf1f2c53645e0f6b73368bdbbcf540dad"
 dependencies = [
  "aws-smithy-types",
  "bytes",
@@ -637,8 +618,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-http"
-version = "0.30.0-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4b5992632c561f03699f25d1deda4c73b70be7c9acc0fc3626b270d3cb9a987"
 dependencies = [
  "aws-smithy-eventstream",
  "aws-smithy-types",
@@ -657,8 +639,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-http-tower"
-version = "0.30.0-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaff953c819ed72da79b302ce7ca4464881af23eadc7e5762e9244c90ae6b708"
 dependencies = [
  "aws-smithy-http",
  "bytes",
@@ -671,16 +654,18 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-json"
-version = "0.30.0-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1656c19cedeaf2d9b2b42cfebf76d1cae7c7d69c454bd2ab2e0b55b7dfa4442c"
 dependencies = [
  "aws-smithy-types",
 ]
 
 [[package]]
 name = "aws-smithy-query"
-version = "0.30.0-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "504c2b89119b68cec24e8ef6d9e2e2b8566a358faf096b4c78fdcf99732b0839"
 dependencies = [
  "aws-smithy-types",
  "urlencoding",
@@ -688,8 +673,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-types"
-version = "0.30.0-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6371c45cde03dc11814f63496366367dacd19af6bfc089c27582bad0c7384fab"
 dependencies = [
  "itoa",
  "num-integer",
@@ -699,8 +685,9 @@ dependencies = [
 
 [[package]]
 name = "aws-smithy-xml"
-version = "0.30.0-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "167c7e63beace20d29d94143c5a6dd6f4d24142c97ef6c36d8bc7fbf9475c93b"
 dependencies = [
  "thiserror",
  "xmlparser",
@@ -708,8 +695,9 @@ dependencies = [
 
 [[package]]
 name = "aws-types"
-version = "0.0.26-alpha"
-source = "git+https://github.com/awslabs/aws-sdk-rust?tag=v0.0.26-alpha#f1d144d5a0aa385256989a6171f0cd514a55ef7d"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d3d5fa5c7fba8b0e9b743ba3da17a14c9f2e882f775d5ed198b602fb331b670"
 dependencies = [
  "aws-smithy-async",
  "aws-smithy-types",
@@ -720,11 +708,12 @@ dependencies = [
 
 [[package]]
 name = "axum"
-version = "0.3.4"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b4e96976b2022b23b2199168ff9b281e9ddc1aa795607d5cb7146868ca5c101"
+checksum = "9ffb96dd8f4ac663bdda87a7c7b458a7e28cbd6d2f7f16f1e274a413863bc443"
 dependencies = [
  "async-trait",
+ "axum-core",
  "bitflags",
  "bytes",
  "futures-util",
@@ -745,6 +734,20 @@ dependencies = [
  "tower-http",
  "tower-layer",
  "tower-service",
+]
+
+[[package]]
+name = "axum-core"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95dfe272060b44b3845e7657652363153531409331641b766bff4bfdcb75c8c0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "futures-util",
+ "http",
+ "http-body",
+ "mime",
 ]
 
 [[package]]
@@ -771,8 +774,8 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 name = "binary-resource"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "serde",
 ]
 
@@ -977,12 +980,12 @@ dependencies = [
 
 [[package]]
 name = "calloop"
-version = "0.6.5"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b036167e76041694579972c28cf4877b4f92da222560ddb49008937b6a6727c"
+checksum = "42dcfbd723aa6eff9f024cfd5ad08b11144d79b2d8d37b4a31a006ceab255c77"
 dependencies = [
  "log",
- "nix 0.18.0",
+ "nix 0.22.0",
 ]
 
 [[package]]
@@ -1086,11 +1089,11 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.33.3"
+version = "2.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37e58ac78573c40708d45522f0d80fa2f01cc4f9b4e2bf749807255454312002"
+checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
 dependencies = [
- "ansi_term 0.11.0",
+ "ansi_term",
  "atty",
  "bitflags",
  "strsim 0.8.0",
@@ -1179,184 +1182,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "compiler-debugcube"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
-]
-
-[[package]]
-name = "compiler-entitydc"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
-]
-
-[[package]]
-name = "compiler-instancedc"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
-]
-
-[[package]]
-name = "compiler-material"
-version = "0.1.0"
-dependencies = [
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
-]
-
-[[package]]
-name = "compiler-psd2tex"
-version = "0.1.0"
-dependencies = [
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-graphics-offline",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "compiler-runtime-entity"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
-]
-
-[[package]]
-name = "compiler-runtime-instance"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
-]
-
-[[package]]
-name = "compiler-runtime-mesh"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "sample-data-compiler",
- "sample-data-offline",
- "sample-data-runtime",
-]
-
-[[package]]
-name = "compiler-test-atoi"
-version = "0.1.0"
-dependencies = [
- "integer-asset",
- "legion-data-compiler",
- "legion-data-runtime",
- "text-resource",
-]
-
-[[package]]
-name = "compiler-test-base64"
-version = "0.1.0"
-dependencies = [
- "base64",
- "binary-resource",
- "legion-data-compiler",
- "legion-data-runtime",
- "text-resource",
-]
-
-[[package]]
-name = "compiler-test-refs"
-version = "0.1.0"
-dependencies = [
- "legion-data-compiler",
- "legion-data-runtime",
- "refs-asset",
- "refs-resource",
-]
-
-[[package]]
-name = "compiler-test-reverse"
-version = "0.1.0"
-dependencies = [
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "text-resource",
-]
-
-[[package]]
-name = "compiler-test-split"
-version = "0.1.0"
-dependencies = [
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "multitext-resource",
- "text-resource",
-]
-
-[[package]]
-name = "compiler-testentity"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic_data_offline",
- "generic_data_runtime",
- "legion-data-codegen",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
-]
-
-[[package]]
-name = "compiler-tex2bin"
-version = "0.1.0"
-dependencies = [
- "legion-data-compiler",
- "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -1513,9 +1338,9 @@ checksum = "ccaeedb56da03b09f598226e25e80088cb4cd25f316e6e4df7d695f0feeb1403"
 
 [[package]]
 name = "crc32fast"
-version = "1.2.2"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3825b1e8580894917dc4468cb634a1b4e9745fddc854edad72d9c04644c0319f"
+checksum = "738c290dfaea84fc1ca15ad9c168d083b05a714e1efddd8edaab678dc28d2836"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -1579,7 +1404,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "crossbeam-utils 0.8.5",
  "lazy_static",
- "memoffset 0.6.4",
+ "memoffset 0.6.5",
  "scopeguard",
 ]
 
@@ -1748,6 +1573,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "darling"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "757c0ded2af11d8e739c4daea1ac623dd1624b06c844cf3f5a39f1bdbd99bb12"
+dependencies = [
+ "darling_core 0.13.0",
+ "darling_macro 0.13.0",
+]
+
+[[package]]
 name = "darling_core"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1776,6 +1611,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "darling_core"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c34d8efb62d0c2d7f60ece80f75e5c63c1588ba68032740494b0b9a996466e3"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim 0.10.0",
+ "syn",
+]
+
+[[package]]
 name = "darling_macro"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1793,6 +1642,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29b5acf0dea37a7f66f7b25d2c5e93fd46f8f6968b1a5d7a3e02e97768afc95a"
 dependencies = [
  "darling_core 0.12.4",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ade7bff147130fe5e6d39f089c6bd49ec0250f35d70b2eebf72afdfc919f15cc"
+dependencies = [
+ "darling_core 0.13.0",
  "quote",
  "syn",
 ]
@@ -1934,14 +1794,14 @@ dependencies = [
 
 [[package]]
 name = "derive_more"
-version = "0.99.16"
+version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40eebddd2156ce1bb37b20bbe5151340a31828b1f2d22ba4141f3531710e38df"
+checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
 dependencies = [
  "convert_case",
  "proc-macro2",
  "quote",
- "rustc_version 0.3.3",
+ "rustc_version 0.4.0",
  "syn",
 ]
 
@@ -1951,7 +1811,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c1ff48e3f358d3158f88b2c95071f28d136be31d89e5fa843095032a70bff56"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
 ]
 
 [[package]]
@@ -1981,15 +1841,6 @@ dependencies = [
  "libc",
  "redox_users 0.3.5",
  "winapi",
-]
-
-[[package]]
-name = "dirs"
-version = "3.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30baa043103c9d0c2a57cf537cc2f35623889dc0d405e6c3cccfadbc81c71309"
-dependencies = [
- "dirs-sys",
 ]
 
 [[package]]
@@ -2052,20 +1903,11 @@ dependencies = [
 
 [[package]]
 name = "dlib"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b11f15d1e3268f140f68d390637d5e76d849782d971ae7063e0da69fe9709a76"
-dependencies = [
- "libloading 0.6.7",
-]
-
-[[package]]
-name = "dlib"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac1b7517328c04c2aa68422fc60a41b92208182142ed04a25879c26c8f878794"
 dependencies = [
- "libloading 0.7.2",
+ "libloading",
 ]
 
 [[package]]
@@ -2121,49 +1963,25 @@ dependencies = [
  "clap",
  "directories",
  "json",
- "legion-analytics",
- "legion-app",
- "legion-async",
- "legion-ecs",
- "legion-editor-proto",
- "legion-online",
- "legion-streaming-proto",
- "legion-tauri",
- "legion-telemetry",
- "legion-transit",
+ "lgn-analytics",
+ "lgn-app",
+ "lgn-async",
+ "lgn-build-utils",
+ "lgn-ecs",
+ "lgn-online",
+ "lgn-tauri",
+ "lgn-telemetry",
+ "lgn-transit",
  "log",
  "prost",
  "regex",
  "serde",
  "serde_json",
- "simple_logger",
  "sqlx",
  "tauri",
  "tauri-build",
  "tokio",
  "tonic",
- "url",
- "which",
-]
-
-[[package]]
-name = "editor-client-svelte"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64",
- "legion-app",
- "legion-async",
- "legion-build-utils",
- "legion-ecs",
- "legion-tauri",
- "log",
- "regex",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tokio",
  "url",
 ]
 
@@ -2173,22 +1991,23 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "legion-app",
- "legion-asset-registry",
- "legion-async",
- "legion-codec-api",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-data-transaction",
- "legion-editor-proto",
- "legion-grpc",
- "legion-mp4",
- "legion-renderer",
- "legion-resource-registry",
- "legion-streamer",
- "legion-telemetry",
- "legion-transform",
- "legion-utils",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-async",
+ "lgn-codec-api",
+ "lgn-core",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-data-transaction",
+ "lgn-editor-proto",
+ "lgn-grpc",
+ "lgn-mp4",
+ "lgn-renderer",
+ "lgn-resource-registry",
+ "lgn-streamer",
+ "lgn-telemetry",
+ "lgn-transform",
+ "lgn-utils",
  "log",
  "simple_logger",
  "tokio",
@@ -2370,7 +2189,7 @@ version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e1c54951450cbd39f3dbcf1005ac413b49487dabf18a720ad2383eccfeffb92"
 dependencies = [
- "memoffset 0.6.4",
+ "memoffset 0.6.5",
  "rustc_version 0.3.3",
 ]
 
@@ -2680,12 +2499,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "lazy_static",
- "legion-data-codegen",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-graphics-data",
- "legion-math",
- "legion-utils",
+ "lgn-data-codegen",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-data",
+ "lgn-math",
+ "lgn-utils",
  "serde",
  "serde_json",
 ]
@@ -2696,10 +2515,10 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "lazy_static",
- "legion-data-codegen",
- "legion-data-runtime",
- "legion-graphics-data",
- "legion-math",
+ "lgn-data-codegen",
+ "lgn-data-runtime",
+ "lgn-graphics-data",
+ "lgn-math",
  "serde",
 ]
 
@@ -2803,9 +2622,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.13.24"
+version = "0.13.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "845e007a28f1fcac035715988a234e8ec5458fd825b20a20c7dec74237ef341f"
+checksum = "f29229cc1b24c0e6062f6e742aa3e256492a5323365e5ed3413599f8a5eff7d6"
 dependencies = [
  "bitflags",
  "libc",
@@ -2926,21 +2745,20 @@ name = "graphics-sandbox"
 version = "0.1.0"
 dependencies = [
  "clap",
- "legion-app",
- "legion-asset-registry",
- "legion-async",
- "legion-core",
- "legion-ecs",
- "legion-graphics-api",
- "legion-input",
- "legion-presenter",
- "legion-presenter-snapshot",
- "legion-presenter-window",
- "legion-renderer",
- "legion-test-utils",
- "legion-transform",
- "legion-window",
- "legion-winit",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-core",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-input",
+ "lgn-presenter",
+ "lgn-presenter-snapshot",
+ "lgn-presenter-window",
+ "lgn-renderer",
+ "lgn-test-utils",
+ "lgn-transform",
+ "lgn-window",
+ "lgn-winit",
  "log",
  "png 0.17.2",
  "simple_logger",
@@ -3056,7 +2874,7 @@ version = "0.5.4"
 dependencies = [
  "bitflags",
  "libc",
- "libloading 0.7.2",
+ "libloading",
  "thiserror",
  "tinycom",
  "widestring 0.5.1",
@@ -3173,6 +2991,12 @@ name = "http-range"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eee9694f83d9b7c09682fdb32213682939507884e5bcf227be9aff5d644b90dc"
+
+[[package]]
+name = "http-range-header"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bfe8eed0a9285ef776bb792479ea3834e8b94e13d615c2f66d03dd50a435a29"
 
 [[package]]
 name = "httparse"
@@ -3356,7 +3180,7 @@ dependencies = [
 name = "integer-asset"
 version = "0.1.0"
 dependencies = [
- "legion-data-runtime",
+ "lgn-data-runtime",
 ]
 
 [[package]]
@@ -3510,28 +3334,43 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-analytics"
+name = "lexical-core"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6607c62aa161d23d17a9072cc5da0be67cdfc89d3afb1e8d9c842bebc2525ffe"
+dependencies = [
+ "arrayvec 0.5.2",
+ "bitflags",
+ "cfg-if 1.0.0",
+ "ryu",
+ "static_assertions",
+]
+
+[[package]]
+name = "lgn-analytics"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-recursion",
- "legion-telemetry",
- "legion-telemetry-proto",
- "legion-transit",
+ "lgn-telemetry",
+ "lgn-telemetry-proto",
+ "lgn-transit",
  "prost",
  "serde_json",
  "sqlx",
 ]
 
 [[package]]
-name = "legion-app"
+name = "lgn-app"
 version = "0.1.0"
 dependencies = [
- "legion-derive",
- "legion-ecs",
- "legion-telemetry",
- "legion-transform",
- "legion-utils",
+ "instant",
+ "lgn-derive",
+ "lgn-ecs",
+ "lgn-telemetry",
+ "lgn-transform",
+ "lgn-utils",
+ "log",
  "ron",
  "serde",
  "wasm-bindgen",
@@ -3539,40 +3378,39 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-asset-registry"
+name = "lgn-asset-registry"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "generic_data_runtime",
- "legion-app",
- "legion-content-store",
- "legion-data-runtime",
- "legion-ecs",
- "legion-graphics-runtime",
- "legion-renderer",
- "legion-transform",
- "legion-utils",
+ "lgn-app",
+ "lgn-content-store",
+ "lgn-data-runtime",
+ "lgn-ecs",
+ "lgn-graphics-runtime",
+ "lgn-renderer",
+ "lgn-transform",
+ "lgn-utils",
  "sample-data-runtime",
  "serde_json",
 ]
 
 [[package]]
-name = "legion-async"
+name = "lgn-async"
 version = "0.1.0"
 dependencies = [
  "futures-lite",
- "legion-app",
- "legion-ecs",
+ "lgn-app",
+ "lgn-ecs",
  "ntest",
  "retain_mut",
  "tokio",
 ]
 
 [[package]]
-name = "legion-build-utils"
+name = "lgn-build-utils"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bitflags",
  "named-lock",
  "thiserror",
@@ -3582,7 +3420,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-cli"
+name = "lgn-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -3593,7 +3431,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-codec-api"
+name = "lgn-codec-api"
 version = "0.1.0"
 dependencies = [
  "ash",
@@ -3602,39 +3440,219 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-content-store"
+name = "lgn-compiler-debugcube"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-entitydc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-instancedc"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-material"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "lgn-graphics-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-psd2tex"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "lgn-compiler-runtime-entity"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-runtime-instance"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-runtime-mesh"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "sample-data-compiler",
+ "sample-data-offline",
+ "sample-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-test-atoi"
+version = "0.1.0"
+dependencies = [
+ "integer-asset",
+ "lgn-data-compiler",
+ "lgn-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "lgn-compiler-test-base64"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "binary-resource",
+ "lgn-data-compiler",
+ "lgn-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "lgn-compiler-test-refs"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-runtime",
+ "refs-asset",
+ "refs-resource",
+]
+
+[[package]]
+name = "lgn-compiler-test-reverse"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "text-resource",
+]
+
+[[package]]
+name = "lgn-compiler-test-split"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "multitext-resource",
+ "text-resource",
+]
+
+[[package]]
+name = "lgn-compiler-testentity"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "generic_data_offline",
+ "generic_data_runtime",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+]
+
+[[package]]
+name = "lgn-compiler-tex2bin"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "lgn-graphics-runtime",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "lgn-content-store"
 version = "0.1.0"
 dependencies = [
  "hex",
- "legion-utils",
+ "lgn-utils",
  "serde",
 ]
 
 [[package]]
-name = "legion-core"
+name = "lgn-core"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "legion-app",
- "legion-derive",
- "legion-ecs",
- "legion-math",
- "legion-tasks",
- "legion-utils",
+ "instant",
+ "lgn-app",
+ "lgn-derive",
+ "lgn-ecs",
+ "lgn-math",
+ "lgn-tasks",
+ "lgn-utils",
+ "log",
 ]
 
 [[package]]
-name = "legion-data-build"
+name = "lgn-data-build"
 version = "0.1.0"
 dependencies = [
  "byteorder",
  "hex",
  "integer-asset",
- "legion-content-store",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-utils",
+ "lgn-content-store",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-utils",
  "multitext-resource",
  "petgraph",
  "refs-asset",
@@ -3646,17 +3664,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-build-cli"
+name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
  "clap",
  "integer-asset",
- "legion-content-store",
- "legion-data-build",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-content-store",
+ "lgn-data-build",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "proc-macro2",
  "refs-asset",
  "refs-resource",
  "serde",
@@ -3667,10 +3686,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-codegen"
+name = "lgn-data-codegen"
 version = "0.1.0"
 dependencies = [
- "legion-utils",
+ "lgn-utils",
  "proc-macro2",
  "quote",
  "syn",
@@ -3678,16 +3697,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-compiler"
+name = "lgn-data-compiler"
 version = "0.1.0"
 dependencies = [
  "binary-resource",
  "clap",
  "integer-asset",
- "legion-content-store",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-utils",
+ "lgn-content-store",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-utils",
  "multitext-resource",
  "refs-asset",
  "refs-resource",
@@ -3698,33 +3717,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-offline"
+name = "lgn-data-offline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
  "hex",
- "legion-content-store",
- "legion-data-runtime",
- "legion-utils",
+ "lgn-content-store",
+ "lgn-data-runtime",
+ "lgn-utils",
  "rand 0.8.4",
  "serde",
  "serde_json",
  "tempfile",
  "tokio",
- "uuid",
 ]
 
 [[package]]
-name = "legion-data-runtime"
+name = "lgn-data-runtime"
 version = "0.1.0"
 dependencies = [
  "byteorder",
  "crossbeam-channel",
  "flurry",
  "hex",
- "legion-content-store",
- "legion-data-runtime-macros",
+ "lgn-content-store",
+ "lgn-data-runtime-macros",
  "log",
  "rand 0.8.4",
  "serde",
@@ -3733,7 +3751,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-runtime-macros"
+name = "lgn-data-runtime-macros"
 version = "0.1.0"
 dependencies = [
  "quote",
@@ -3741,15 +3759,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-data-transaction"
+name = "lgn-data-transaction"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
  "generic_data_offline",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-utils",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-utils",
  "log",
  "serde",
  "serde_json",
@@ -3760,16 +3778,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-derive"
+name = "lgn-derive"
 version = "0.1.0"
 dependencies = [
- "legion-macro-utils",
+ "lgn-macro-utils",
  "quote",
  "syn",
 ]
 
 [[package]]
-name = "legion-derive-transit"
+name = "lgn-derive-transit"
 version = "0.1.0"
 dependencies = [
  "quote",
@@ -3777,17 +3795,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-ecs"
+name = "lgn-ecs"
 version = "0.1.0"
 dependencies = [
  "async-channel",
  "downcast-rs",
  "fixedbitset",
  "fxhash",
- "legion-ecs-macros",
- "legion-tasks",
- "legion-telemetry",
- "legion-utils",
+ "lgn-ecs-macros",
+ "lgn-tasks",
+ "lgn-telemetry",
+ "lgn-utils",
+ "log",
  "parking_lot 0.11.2",
  "rand 0.8.4",
  "serde",
@@ -3795,29 +3814,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-ecs-macros"
+name = "lgn-ecs-macros"
 version = "0.1.0"
 dependencies = [
- "legion-macro-utils",
+ "lgn-macro-utils",
  "proc-macro2",
  "quote",
  "syn",
 ]
 
 [[package]]
-name = "legion-editor-proto"
+name = "lgn-editor-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
- "legion-build-utils",
+ "lgn-build-utils",
  "prost",
- "prost-types",
  "tokio",
  "tonic",
 ]
 
 [[package]]
-name = "legion-graphics-api"
+name = "lgn-graphics-api"
 version = "0.1.0"
 dependencies = [
  "ash",
@@ -3825,66 +3843,66 @@ dependencies = [
  "bitflags",
  "crossbeam-channel",
  "fnv",
- "legion-utils",
+ "lgn-utils",
  "log",
- "raw-window-handle 0.3.4",
+ "raw-window-handle 0.4.2",
  "serde",
  "vk-mem",
 ]
 
 [[package]]
-name = "legion-graphics-data"
+name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
-name = "legion-graphics-offline"
+name = "lgn-graphics-offline"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "psd",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "legion-graphics-runtime"
+name = "lgn-graphics-runtime"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "legion-data-runtime",
+ "lgn-data-runtime",
 ]
 
 [[package]]
-name = "legion-grpc"
+name = "lgn-grpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "futures-lite",
- "legion-app",
- "legion-async",
- "legion-ecs",
- "legion-online",
+ "lgn-app",
+ "lgn-async",
+ "lgn-ecs",
+ "lgn-online",
  "log",
  "tonic",
 ]
 
 [[package]]
-name = "legion-input"
+name = "lgn-input"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-ecs",
- "legion-math",
- "legion-utils",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-math",
+ "lgn-utils",
  "serde",
 ]
 
 [[package]]
-name = "legion-macro-utils"
+name = "lgn-macro-utils"
 version = "0.1.0"
 dependencies = [
  "cargo-manifest",
@@ -3892,14 +3910,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-math"
+name = "lgn-math"
 version = "0.1.0"
 dependencies = [
  "glam",
 ]
 
 [[package]]
-name = "legion-mp4"
+name = "lgn-mp4"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -3913,7 +3931,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-online"
+name = "lgn-online"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -3940,8 +3958,8 @@ dependencies = [
  "serial_test",
  "simple_asn1",
  "simple_logger",
- "strum 0.22.0",
- "strum_macros 0.22.0",
+ "strum 0.23.0",
+ "strum_macros 0.23.1",
  "thiserror",
  "tokio",
  "tonic",
@@ -3954,99 +3972,99 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-presenter"
+name = "lgn-presenter"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "ash",
  "crossbeam-channel",
  "instant",
- "legion-graphics-api",
- "legion-pso-compiler",
- "legion-renderer",
+ "lgn-graphics-api",
+ "lgn-pso-compiler",
+ "lgn-renderer",
  "log",
- "raw-window-handle 0.3.4",
+ "raw-window-handle 0.4.2",
 ]
 
 [[package]]
-name = "legion-presenter-snapshot"
+name = "lgn-presenter-snapshot"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
  "instant",
- "legion-app",
- "legion-async",
- "legion-ecs",
- "legion-graphics-api",
- "legion-presenter",
- "legion-renderer",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-presenter",
+ "lgn-renderer",
+ "lgn-tasks",
  "log",
  "png 0.17.2",
- "raw-window-handle 0.3.4",
 ]
 
 [[package]]
-name = "legion-presenter-window"
+name = "lgn-presenter-window"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-async",
- "legion-ecs",
- "legion-graphics-api",
- "legion-presenter",
- "legion-renderer",
- "legion-window",
- "raw-window-handle 0.3.4",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-presenter",
+ "lgn-renderer",
+ "lgn-tasks",
+ "raw-window-handle 0.4.2",
 ]
 
 [[package]]
-name = "legion-pso-compiler"
+name = "lgn-pso-compiler"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "hassle-rs",
- "legion-graphics-api",
+ "lgn-graphics-api",
  "spirv-reflect",
  "spirv-tools",
 ]
 
 [[package]]
-name = "legion-renderer"
+name = "lgn-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "legion-app",
- "legion-async",
- "legion-ecs",
- "legion-graphics-api",
- "legion-graphics-data",
- "legion-math",
- "legion-pso-compiler",
- "legion-transform",
- "legion-utils",
+ "bumpalo",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-graphics-data",
+ "lgn-math",
+ "lgn-pso-compiler",
+ "lgn-tasks",
+ "lgn-transform",
+ "lgn-utils",
  "log",
  "parking_lot 0.11.2",
+ "uuid",
 ]
 
 [[package]]
-name = "legion-resource-registry"
+name = "lgn-resource-registry"
 version = "0.1.0"
 dependencies = [
  "generic_data_offline",
- "legion-app",
- "legion-async",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-data-transaction",
- "legion-ecs",
- "legion-graphics-offline",
+ "lgn-app",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-data-transaction",
+ "lgn-ecs",
+ "lgn-graphics-offline",
+ "lgn-tasks",
  "sample-data-offline",
  "tokio",
 ]
 
 [[package]]
-name = "legion-source-control"
+name = "lgn-source-control"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -4059,7 +4077,7 @@ dependencies = [
  "git2",
  "glob",
  "http",
- "legion-telemetry",
+ "lgn-telemetry",
  "lz4",
  "path-clean",
  "reqwest",
@@ -4075,7 +4093,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-streamer"
+name = "lgn-streamer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4085,20 +4103,20 @@ dependencies = [
  "futures-lite",
  "hex",
  "interceptor",
- "legion-app",
- "legion-async",
- "legion-codec-api",
- "legion-core",
- "legion-ecs",
- "legion-graphics-api",
- "legion-grpc",
- "legion-mp4",
- "legion-presenter",
- "legion-pso-compiler",
- "legion-renderer",
- "legion-streaming-proto",
- "legion-telemetry",
- "legion-utils",
+ "lgn-app",
+ "lgn-codec-api",
+ "lgn-core",
+ "lgn-ecs",
+ "lgn-graphics-api",
+ "lgn-grpc",
+ "lgn-mp4",
+ "lgn-presenter",
+ "lgn-pso-compiler",
+ "lgn-renderer",
+ "lgn-streaming-proto",
+ "lgn-tasks",
+ "lgn-telemetry",
+ "lgn-utils",
  "log",
  "serde",
  "serde_json",
@@ -4108,18 +4126,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-streaming-proto"
+name = "lgn-streaming-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
- "legion-build-utils",
+ "lgn-build-utils",
  "prost",
  "tokio",
  "tonic",
 ]
 
 [[package]]
-name = "legion-tasks"
+name = "lgn-tasks"
 version = "0.1.0"
 dependencies = [
  "async-channel",
@@ -4132,18 +4150,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-tauri"
+name = "lgn-tauri"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-ecs",
- "legion-tauri-macros",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-tauri-macros",
  "tauri",
  "tokio",
 ]
 
 [[package]]
-name = "legion-tauri-macros"
+name = "lgn-tauri-macros"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",
@@ -4152,19 +4170,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-telemetry"
+name = "lgn-telemetry"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
  "ctrlc",
  "lazy_static",
- "legion-telemetry-proto",
- "legion-transit",
- "legion-utils",
+ "lgn-telemetry-proto",
+ "lgn-transit",
+ "lgn-utils",
  "log",
  "lz4",
- "memoffset 0.6.4",
+ "memoffset 0.6.5",
  "prost",
  "raw-cpuid",
  "thread-id",
@@ -4175,111 +4193,100 @@ dependencies = [
 ]
 
 [[package]]
-name = "legion-telemetry-proto"
+name = "lgn-telemetry-proto"
 version = "0.1.0"
 dependencies = [
  "base64",
- "legion-build-utils",
+ "lgn-build-utils",
  "prost",
  "tokio",
  "tonic",
 ]
 
 [[package]]
-name = "legion-test-utils"
+name = "lgn-test-utils"
 version = "0.1.0"
 dependencies = [
- "legion-telemetry",
+ "lgn-telemetry",
 ]
 
 [[package]]
-name = "legion-transform"
+name = "lgn-transform"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-ecs",
- "legion-math",
- "legion-utils",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-math",
+ "lgn-utils",
+ "log",
  "smallvec",
 ]
 
 [[package]]
-name = "legion-transit"
+name = "lgn-transit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "legion-derive-transit",
- "legion-utils",
- "memoffset 0.6.4",
+ "lgn-derive-transit",
+ "lgn-utils",
+ "memoffset 0.6.5",
  "serde",
 ]
 
 [[package]]
-name = "legion-utils"
+name = "lgn-utils"
 version = "0.1.0"
 dependencies = [
  "ahash 0.7.6",
  "getrandom 0.2.3",
- "instant",
  "lazy_static",
- "legion-derive",
+ "lgn-derive",
  "log",
  "serde",
  "siphasher",
  "toml",
- "uuid",
 ]
 
 [[package]]
-name = "legion-window"
+name = "lgn-window"
 version = "0.1.0"
 dependencies = [
- "legion-app",
- "legion-math",
- "legion-utils",
+ "lgn-app",
+ "lgn-math",
+ "lgn-utils",
+ "log",
+ "uuid",
  "web-sys",
 ]
 
 [[package]]
-name = "legion-winit"
+name = "lgn-winit"
 version = "0.1.0"
 dependencies = [
  "approx",
- "legion-app",
- "legion-ecs",
- "legion-input",
- "legion-math",
- "legion-utils",
- "legion-window",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-input",
+ "lgn-math",
+ "lgn-utils",
+ "lgn-window",
+ "log",
  "wasm-bindgen",
  "web-sys",
  "winit",
 ]
 
 [[package]]
-name = "lexical-core"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6607c62aa161d23d17a9072cc5da0be67cdfc89d3afb1e8d9c842bebc2525ffe"
-dependencies = [
- "arrayvec 0.5.2",
- "bitflags",
- "cfg-if 1.0.0",
- "ryu",
- "static_assertions",
-]
-
-[[package]]
 name = "libc"
-version = "0.2.108"
+version = "0.2.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8521a1b57e76b1ec69af7599e75e38e7b7fad6610f037db8c79b127201b5d119"
+checksum = "f98a04dce437184842841303488f70d0188c5f51437d2a834dc097eafa909a01"
 
 [[package]]
 name = "libgit2-sys"
-version = "0.12.25+1.3.0"
+version = "0.12.26+1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f68169ef08d6519b2fe133ecc637408d933c0174b23b80bb2f79828966fbaab"
+checksum = "19e1c899248e606fbfe68dcb31d8b0176ebab833b103824af31bddf4b7457494"
 dependencies = [
  "cc",
  "libc",
@@ -4287,16 +4294,6 @@ dependencies = [
  "libz-sys",
  "openssl-sys",
  "pkg-config",
-]
-
-[[package]]
-name = "libloading"
-version = "0.6.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "351a32417a12d5f7e82c368a66781e307834dae04c6ce0cd4456d52989229883"
-dependencies = [
- "cfg-if 1.0.0",
- "winapi",
 ]
 
 [[package]]
@@ -4387,9 +4384,9 @@ dependencies = [
 
 [[package]]
 name = "loom"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5df2c4aeb432e60c9e5ae517ca8ed8b63556ce23093b2758fc8837d75439c5ec"
+checksum = "edc5c7d328e32cc4954e8e01193d7f0ef5ab257b5090b70a964e099a36034309"
 dependencies = [
  "cfg-if 1.0.0",
  "generator",
@@ -4397,7 +4394,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
- "tracing-subscriber 0.3.2",
+ "tracing-subscriber 0.3.3",
 ]
 
 [[package]]
@@ -4405,9 +4402,9 @@ name = "lsc"
 version = "0.1.0"
 dependencies = [
  "clap",
- "legion-source-control",
- "legion-telemetry",
- "legion-test-utils",
+ "lgn-source-control",
+ "lgn-telemetry",
+ "lgn-test-utils",
  "tokio",
 ]
 
@@ -4524,9 +4521,9 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
 name = "memmap2"
-version = "0.1.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b70ca2a6103ac8b665dc150b142ef0e4e89df640c9e6cf295d189c3caebe5a"
+checksum = "00b6c2ebff6180198788f5db08d7ce3bc1d0b617176678831a7510825973e357"
 dependencies = [
  "libc",
 ]
@@ -4542,9 +4539,9 @@ dependencies = [
 
 [[package]]
 name = "memoffset"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59accc507f1338036a0477ef61afdae33cde60840f4dfe481319ce3ad116ddf9"
+checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
 dependencies = [
  "autocfg 1.0.1",
 ]
@@ -4610,15 +4607,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "mio-misc"
-version = "1.2.1"
+name = "mio"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ddf05411bb159cdb5801bb10002afb66cb4572be656044315e363460ce69dc2"
+checksum = "ba272f85fa0b41fc91872be579b3bbe0f56b792aa361a380eb669469f68dafb2"
 dependencies = [
- "crossbeam",
- "crossbeam-queue",
+ "libc",
  "log",
- "mio",
+ "miow",
+ "ntapi",
+ "winapi",
 ]
 
 [[package]]
@@ -4658,8 +4656,8 @@ dependencies = [
 name = "multitext-resource"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "serde",
  "serde_json",
 ]
@@ -4680,9 +4678,9 @@ dependencies = [
 
 [[package]]
 name = "nasm-rs"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dbff86bd2ee8cb407e8608e2c3504412a967c06286ef7e5cf7c1b9db756f0a9"
+checksum = "a06380d23b58dcdaf892fa36c3950cad3110e7d76851275d5f85c22eb9cdd614"
 dependencies = [
  "rayon",
 ]
@@ -4717,18 +4715,6 @@ dependencies = [
 
 [[package]]
 name = "ndk"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8794322172319b972f528bf90c6b467be0079f1fa82780ffb431088e741a73ab"
-dependencies = [
- "jni-sys",
- "ndk-sys",
- "num_enum",
- "thiserror",
-]
-
-[[package]]
-name = "ndk"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d64d6af06fde0e527b1ba5c7b79a6cc89cfc46325b0b2887dffe8f70197e0c3c"
@@ -4741,17 +4727,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "ndk-glue"
-version = "0.3.0"
+name = "ndk"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5caf0c24d51ac1c905c27d4eda4fa0635bbe0de596b8f79235e0b17a4d29385"
+checksum = "96d868f654c72e75f8687572699cdabe755f03effbb62542768e995d5b8d699d"
 dependencies = [
- "lazy_static",
- "libc",
- "log",
- "ndk 0.3.0",
- "ndk-macro",
+ "bitflags",
+ "jni-sys",
  "ndk-sys",
+ "num_enum",
+ "thiserror",
 ]
 
 [[package]]
@@ -4764,7 +4749,21 @@ dependencies = [
  "libc",
  "log",
  "ndk 0.4.0",
- "ndk-macro",
+ "ndk-macro 0.2.0",
+ "ndk-sys",
+]
+
+[[package]]
+name = "ndk-glue"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc291b8de2095cba8dab7cf381bf582ff4c17a09acf854c32e46545b08085d28"
+dependencies = [
+ "lazy_static",
+ "libc",
+ "log",
+ "ndk 0.5.0",
+ "ndk-macro 0.3.0",
  "ndk-sys",
 ]
 
@@ -4776,6 +4775,19 @@ checksum = "05d1c6307dc424d0f65b9b06e94f88248e6305726b14729fd67a5e47b2dc481d"
 dependencies = [
  "darling 0.10.2",
  "proc-macro-crate 0.1.5",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "ndk-macro"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0df7ac00c4672f9d5aece54ee3347520b7e20f158656c7db2e6de01902eb7a6c"
+dependencies = [
+ "darling 0.13.0",
+ "proc-macro-crate 1.1.0",
  "proc-macro2",
  "quote",
  "syn",
@@ -4808,26 +4820,15 @@ dependencies = [
 
 [[package]]
 name = "nix"
-version = "0.18.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83450fe6a6142ddd95fb064b746083fc4ef1705fe81f64a64e1d4b39f54a1055"
-dependencies = [
- "bitflags",
- "cc",
- "cfg-if 0.1.10",
- "libc",
-]
-
-[[package]]
-name = "nix"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa9b4819da1bc61c0ea48b63b7bc8604064dd43013e7cc325df098d49cd7c18a"
+checksum = "cf1e25ee6b412c2a1e3fcb6a4499a5c1bfe7f43e014bdce9a6b6666e5aa2d187"
 dependencies = [
  "bitflags",
  "cc",
  "cfg-if 1.0.0",
  "libc",
+ "memoffset 0.6.5",
 ]
 
 [[package]]
@@ -4840,7 +4841,7 @@ dependencies = [
  "cc",
  "cfg-if 1.0.0",
  "libc",
- "memoffset 0.6.4",
+ "memoffset 0.6.5",
 ]
 
 [[package]]
@@ -5114,9 +5115,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "open"
-version = "2.0.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b46b233de7d83bc167fe43ae2dda3b5b84e80e09cceba581e4decb958a4896bf"
+checksum = "176ee4b630d174d2da8241336763bb459281dddc0f4d87f72c3b1efc9a6109b7"
 dependencies = [
  "pathdiff",
  "winapi",
@@ -5195,15 +5196,6 @@ checksum = "fb233f06c2307e1f5ce2ecad9f8121cffbbee2c95428f44ea85222e460d0d213"
 dependencies = [
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "owned_ttf_parser"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f923fb806c46266c02ab4a5b239735c144bdeda724a50ed058e5226f594cde3"
-dependencies = [
- "ttf-parser",
 ]
 
 [[package]]
@@ -5637,9 +5629,9 @@ checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.32"
+version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba508cc11742c0dc5c1659771673afbab7a0efab23aa17e854cbab0837ed0b43"
+checksum = "fb37d2df5df740e582f28f8560cf425f52bb267d872fe58358eadb554909f07a"
 dependencies = [
  "unicode-xid",
 ]
@@ -5943,15 +5935,15 @@ name = "refs-asset"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "legion-data-runtime",
+ "lgn-data-runtime",
 ]
 
 [[package]]
 name = "refs-resource"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "serde",
  "serde_json",
 ]
@@ -5993,9 +5985,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.6"
+version = "0.11.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66d2927ca2f685faf0fc620ac4834690d29e7abb153add10f5812eef20b5e280"
+checksum = "07bea77bc708afa10e59905c3d4af7c8fd43c9214251673095ff8b14345fcbc5"
 dependencies = [
  "base64",
  "bytes",
@@ -6028,9 +6020,9 @@ dependencies = [
 
 [[package]]
 name = "retain_mut"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "448296241d034b96c11173591deaa1302f2c17b56092106c1f92c1bc0183a8c9"
+checksum = "11000e6ba5020e53e7cc26f73b91ae7d5496b4977851479edb66b694c0675c21"
 
 [[package]]
 name = "rfd"
@@ -6130,12 +6122,13 @@ name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
  "clap",
- "legion-app",
- "legion-asset-registry",
- "legion-core",
- "legion-data-runtime",
- "legion-transform",
- "legion-utils",
+ "instant",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-core",
+ "lgn-data-runtime",
+ "lgn-transform",
+ "lgn-utils",
 ]
 
 [[package]]
@@ -6224,16 +6217,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rusttype"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc7c727aded0be18c5b80c1640eae0ac8e396abf6fa8477d96cb37d18ee5ec59"
-dependencies = [
- "ab_glyph_rasterizer",
- "owned_ttf_parser",
-]
-
-[[package]]
 name = "rustversion"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6241,9 +6224,9 @@ checksum = "61b3909d758bb75c79f23d4736fac9433868679d3ad2ea7a61e3c25cfda9a088"
 
 [[package]]
 name = "ryu"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
+checksum = "3c9613b5a66ab9ba26415184cfc41156594925a9cf3a2057e57f31ff145f6568"
 
 [[package]]
 name = "safemem"
@@ -6266,7 +6249,7 @@ version = "0.1.0"
 dependencies = [
  "insta",
  "json",
- "legion-data-compiler",
+ "lgn-data-compiler",
  "serde_json",
  "tempfile",
 ]
@@ -6279,15 +6262,15 @@ dependencies = [
  "clap",
  "generic_data_offline",
  "generic_data_runtime",
- "legion-content-store",
- "legion-data-build",
- "legion-data-compiler",
- "legion-data-offline",
- "legion-data-runtime",
- "legion-graphics-offline",
- "legion-graphics-runtime",
- "legion-math",
- "legion-utils",
+ "lgn-content-store",
+ "lgn-data-build",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-offline",
+ "lgn-graphics-runtime",
+ "lgn-math",
+ "lgn-utils",
  "ron",
  "sample-data-offline",
  "sample-data-runtime",
@@ -6300,9 +6283,9 @@ dependencies = [
 name = "sample-data-offline"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
- "legion-math",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-math",
  "serde",
  "serde_json",
  "typetag",
@@ -6313,9 +6296,9 @@ name = "sample-data-runtime"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "legion-data-runtime",
- "legion-graphics-runtime",
- "legion-math",
+ "lgn-data-runtime",
+ "lgn-graphics-runtime",
+ "lgn-math",
  "serde",
  "typetag",
 ]
@@ -6668,18 +6651,18 @@ dependencies = [
 
 [[package]]
 name = "smithay-client-toolkit"
-version = "0.12.3"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4750c76fd5d3ac95fa3ed80fe667d6a3d8590a960e5b575b98eea93339a80b80"
+checksum = "210cf40de565aaaa085face1d860b17f6aee9f76f9d2816307ea2cc45eeb64f3"
 dependencies = [
- "andrew",
  "bitflags",
  "calloop",
- "dlib 0.4.2",
+ "dlib",
  "lazy_static",
  "log",
  "memmap2",
- "nix 0.18.0",
+ "nix 0.22.0",
+ "pkg-config",
  "wayland-client",
  "wayland-cursor",
  "wayland-protocols",
@@ -6719,7 +6702,7 @@ dependencies = [
  "http",
  "hyper",
  "lazy_static",
- "legion-source-control",
+ "lgn-source-control",
  "serde_json",
  "tokio",
  "warp",
@@ -6971,6 +6954,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "strum"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cae14b91c7d11c9a851d3fbc80a963198998c2a64eec840477fa92d8ce9b70bb"
+
+[[package]]
 name = "strum_macros"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7003,6 +6992,19 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
+ "syn",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bb0dc7ee9c15cea6199cde9a127fa16a4c5819af85395457ad72d68edc85a38"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "rustversion",
  "syn",
 ]
 
@@ -7304,10 +7306,10 @@ dependencies = [
  "clap",
  "fs_extra",
  "json",
- "legion-analytics",
- "legion-telemetry",
- "legion-test-utils",
- "legion-transit",
+ "lgn-analytics",
+ "lgn-telemetry",
+ "lgn-test-utils",
+ "lgn-transit",
  "lz4",
  "prost",
  "sqlx",
@@ -7320,8 +7322,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "legion-telemetry",
- "legion-telemetry-proto",
+ "lgn-telemetry",
+ "lgn-telemetry-proto",
  "log",
  "prost",
  "serde_json",
@@ -7372,8 +7374,8 @@ dependencies = [
 name = "text-resource"
 version = "0.1.0"
 dependencies = [
- "legion-data-offline",
- "legion-data-runtime",
+ "lgn-data-offline",
+ "lgn-data-runtime",
  "serde",
  "serde_json",
 ]
@@ -7490,7 +7492,7 @@ dependencies = [
  "bytes",
  "libc",
  "memchr",
- "mio",
+ "mio 0.7.14",
  "num_cpus",
  "once_cell",
  "parking_lot 0.11.2",
@@ -7676,19 +7678,21 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.1.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f70061b0592867f0a60e67a6e699da5fe000c88a360a5b92ebdba9d73b2238c"
+checksum = "39ee603d6e665ecc7e0f8d479eedb4626bd4726f0ee6119cee5b3a6bf184cac0"
 dependencies = [
+ "bitflags",
  "bytes",
  "futures-core",
  "futures-util",
  "http",
  "http-body",
+ "http-range-header",
  "mime",
  "mime_guess",
  "percent-encoding",
- "pin-project",
+ "pin-project-lite",
  "tokio",
  "tokio-util",
  "tower-layer",
@@ -7784,11 +7788,11 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7507ec620f809cdf07cccb5bc57b13069a88031b795efd4079b1c71b66c1613d"
+checksum = "245da694cc7fc4729f3f418b304cb57789f1bed2a78c575407ab8a23f53cb4d3"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "lazy_static",
  "matchers",
  "regex",
@@ -7805,12 +7809,6 @@ name = "try-lock"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
-
-[[package]]
-name = "ttf-parser"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e5d7cd7ab3e47dda6e56542f4bbf3824c15234958c6e1bd6aaa347e93499fdc"
 
 [[package]]
 name = "tungstenite"
@@ -8038,7 +8036,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "legion-cli",
+ "lgn-cli",
  "log",
  "simple_logger",
  "tokio",
@@ -8196,14 +8194,14 @@ checksum = "0237232789cf037d5480773fe568aac745bfe2afbc11a863e97901780a6b47cc"
 
 [[package]]
 name = "wayland-client"
-version = "0.28.6"
+version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3ab332350e502f159382201394a78e3cc12d0f04db863429260164ea40e0355"
+checksum = "9108ec1c37f4774d0c2937ba1a6c23d1786b2152c4a13bd9fdb20e42d16e8841"
 dependencies = [
  "bitflags",
  "downcast-rs",
  "libc",
- "nix 0.20.0",
+ "nix 0.22.0",
  "scoped-tls",
  "wayland-commons",
  "wayland-scanner",
@@ -8212,11 +8210,11 @@ dependencies = [
 
 [[package]]
 name = "wayland-commons"
-version = "0.28.6"
+version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a21817947c7011bbd0a27e11b17b337bfd022e8544b071a2641232047966fbda"
+checksum = "265ef51b3b3e5c9ef098f10425c39624663f459c3821dcaacc4748be975f1beb"
 dependencies = [
- "nix 0.20.0",
+ "nix 0.22.0",
  "once_cell",
  "smallvec",
  "wayland-sys",
@@ -8224,20 +8222,20 @@ dependencies = [
 
 [[package]]
 name = "wayland-cursor"
-version = "0.28.6"
+version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be610084edd1586d45e7bdd275fe345c7c1873598caa464c4fb835dee70fa65a"
+checksum = "6c19bb6628daf4097e58b7911481e8371e13318d5a60894779901bd3267407a7"
 dependencies = [
- "nix 0.20.0",
+ "nix 0.22.0",
  "wayland-client",
  "xcursor",
 ]
 
 [[package]]
 name = "wayland-protocols"
-version = "0.28.6"
+version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "286620ea4d803bacf61fa087a4242ee316693099ee5a140796aaba02b29f861f"
+checksum = "7b3b6f1dc0193072ef4eadcb144da30d58c1f2895516c063804d213310703c8e"
 dependencies = [
  "bitflags",
  "wayland-client",
@@ -8247,9 +8245,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-scanner"
-version = "0.28.6"
+version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce923eb2deb61de332d1f356ec7b6bf37094dc5573952e1c8936db03b54c03f1"
+checksum = "eaaf2bc85e7b9143159af96bd23d954a5abe391c4376db712320643280fdc6f4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8258,12 +8256,11 @@ dependencies = [
 
 [[package]]
 name = "wayland-sys"
-version = "0.28.6"
+version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d841fca9aed7febf9bed2e9796c49bf58d4152ceda8ac949ebe00868d8f0feb8"
+checksum = "ba9e06acb775b3007f8d3094438306979e572d1d3b844d7a71557a84b055d959"
 dependencies = [
- "dlib 0.5.0",
- "lazy_static",
+ "dlib",
  "pkg-config",
 ]
 
@@ -8700,11 +8697,12 @@ checksum = "9bd8f062d8ca5446358159d79a90be12c543b3a965c847c8f3eedf14b321d399"
 
 [[package]]
 name = "winit"
-version = "0.25.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79610794594d5e86be473ef7763f604f2159cbac8c94debd00df8fb41e86c2f8"
+checksum = "70466a5f4825cc88c92963591b06dbc255420bffe19d847bfcda475e82d079c0"
 dependencies = [
  "bitflags",
+ "block",
  "cocoa",
  "core-foundation 0.9.2",
  "core-graphics 0.22.3",
@@ -8714,19 +8712,18 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "mio",
- "mio-misc",
- "ndk 0.3.0",
- "ndk-glue 0.3.0",
+ "mio 0.8.0",
+ "ndk 0.5.0",
+ "ndk-glue 0.5.0",
  "ndk-sys",
  "objc",
  "parking_lot 0.11.2",
  "percent-encoding",
- "raw-window-handle 0.3.4",
- "scopeguard",
+ "raw-window-handle 0.4.2",
  "smithay-client-toolkit",
  "wasm-bindgen",
  "wayland-client",
+ "wayland-protocols",
  "web-sys",
  "winapi",
  "x11-dl",
@@ -8871,15 +8868,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "463705a63313cd4301184381c5e8042f0a7e9b4bb63653f216311d4ae74690b7"
 dependencies = [
  "nom 7.1.0",
-]
-
-[[package]]
-name = "xdg"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a23fe958c70412687039c86f578938b4a0bb50ec788e96bce4d6ab00ddd5803"
-dependencies = [
- "dirs 3.0.2",
 ]
 
 [[package]]

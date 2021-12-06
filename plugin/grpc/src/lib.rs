@@ -60,9 +60,9 @@
 
 use std::net::SocketAddr;
 
-use legion_app::prelude::*;
-use legion_ecs::prelude::*;
-use legion_online::grpc::{
+use lgn_app::prelude::*;
+use lgn_ecs::prelude::*;
+use lgn_online::grpc::{
     multiplexer_service::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder},
     Server,
 };
@@ -113,7 +113,7 @@ impl GRPCPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn start_grpc_server(
         settings: Res<'_, GRPCPluginSettings>,
-        rt: ResMut<'_, legion_async::TokioAsyncRuntime>,
+        rt: ResMut<'_, lgn_async::TokioAsyncRuntime>,
     ) {
         if let Some(service) = settings.multiplexer_service_builder.build() {
             let server = Server::default().set_listen_address(settings.grpc_server_addr);

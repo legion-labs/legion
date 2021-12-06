@@ -1,5 +1,5 @@
-use legion_ecs::system::ResMut;
-use legion_utils::{Duration, Instant};
+use instant::{Duration, Instant};
+use lgn_ecs::system::ResMut;
 
 /// Tracks elapsed time since the last update and since the App has started
 #[derive(Debug, Clone)]
@@ -91,7 +91,7 @@ pub(crate) fn time_system(mut time: ResMut<'_, Time>) {
 #[cfg(test)]
 #[allow(clippy::float_cmp)]
 mod tests {
-    use legion_utils::{Duration, Instant};
+    use instant::{Duration, Instant};
 
     use super::Time;
 

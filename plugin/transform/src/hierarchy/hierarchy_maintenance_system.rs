@@ -1,10 +1,10 @@
-use legion_ecs::{
+use lgn_ecs::{
     entity::Entity,
     prelude::Changed,
     query::Without,
     system::{Commands, Query},
 };
-use legion_utils::HashMap;
+use lgn_utils::HashMap;
 use smallvec::SmallVec;
 
 use crate::components::{Children, Parent, PreviousParent};
@@ -78,7 +78,7 @@ pub fn parent_update_system(
 }
 #[cfg(test)]
 mod test {
-    use legion_ecs::{
+    use lgn_ecs::{
         schedule::{Schedule, Stage, SystemStage},
         system::CommandQueue,
         world::World,

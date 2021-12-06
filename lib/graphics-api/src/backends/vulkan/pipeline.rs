@@ -4,31 +4,19 @@ use std::ffi::CString;
 use ash::vk;
 
 use super::{
-    VulkanDeviceContext, VulkanRenderpassColorAttachment, VulkanRenderpassDef,
-    VulkanRenderpassDepthAttachment,
+    VulkanRenderpassColorAttachment, VulkanRenderpassDef, VulkanRenderpassDepthAttachment,
 };
 use crate::{
-    ComputePipelineDef, DeviceContext, Format, GfxResult, GraphicsPipelineDef, LoadOp,
+    ComputePipelineDef, DeviceContext, Format, GfxResult, GraphicsPipelineDef, LoadOp, Pipeline,
     ShaderStageFlags, StoreOp,
 };
 
 #[derive(Debug)]
 pub(crate) struct VulkanPipeline {
-    pipeline: vk::Pipeline,
+    vk_pipeline: vk::Pipeline,
 }
 
 impl VulkanPipeline {
-    pub fn vk_pipeline(&self) -> vk::Pipeline {
-        self.pipeline
-    }
-
-    pub fn destroy(&self, device_context: &VulkanDeviceContext) {
-        unsafe {
-            let device = device_context.device();
-            device.destroy_pipeline(self.pipeline, None);
-        }
-    }
-
     pub fn new_graphics_pipeline(
         device_context: &DeviceContext,
         pipeline_def: &GraphicsPipelineDef<'_>,
@@ -64,7 +52,7 @@ impl VulkanPipeline {
         };
 
         // Temporary renderpass, required to create pipeline but don't need to keep it
-        let renderpass = VulkanDeviceContext::create_renderpass(
+        let renderpass = DeviceContext::create_renderpass(
             device_context,
             &VulkanRenderpassDef {
                 color_attachments,
@@ -189,8 +177,8 @@ impl VulkanPipeline {
         //     depth_state.into_vk_builder()
         // };
 
-        let pipeline = unsafe {
-            match device_context.platform_device().create_graphics_pipelines(
+        let vk_pipeline = unsafe {
+            match device_context.vk_device().create_graphics_pipelines(
                 vk::PipelineCache::null(),
                 &[pipeline_create_info],
                 None,
@@ -200,11 +188,11 @@ impl VulkanPipeline {
             }
         }?[0];
 
-        Ok(Self { pipeline })
+        Ok(Self { vk_pipeline })
     }
 
     pub fn new_compute_pipeline(
-        device_context: &VulkanDeviceContext,
+        device_context: &DeviceContext,
         pipeline_def: &ComputePipelineDef<'_>,
     ) -> GfxResult<Self> {
         //log::trace!("Create pipeline\n{:#?}", pipeline_def);
@@ -244,8 +232,8 @@ impl VulkanPipeline {
             .base_pipeline_index(-1)
             .build();
 
-        let pipeline = unsafe {
-            match device_context.device().create_compute_pipelines(
+        let vk_pipeline = unsafe {
+            match device_context.vk_device().create_compute_pipelines(
                 vk::PipelineCache::null(),
                 &[pipeline_create_info],
                 None,
@@ -255,6 +243,20 @@ impl VulkanPipeline {
             }
         }?[0];
 
-        Ok(Self { pipeline })
+        Ok(Self { vk_pipeline })
+    }
+
+    pub fn destroy(&self, device_context: &DeviceContext) {
+        unsafe {
+            device_context
+                .vk_device()
+                .destroy_pipeline(self.vk_pipeline, None);
+        }
+    }
+}
+
+impl Pipeline {
+    pub fn vk_pipeline(&self) -> vk::Pipeline {
+        self.inner.platform_pipeline.vk_pipeline
     }
 }

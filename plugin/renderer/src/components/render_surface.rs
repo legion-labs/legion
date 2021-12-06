@@ -1,14 +1,14 @@
 use std::{cmp::max, sync::Arc};
 
-use graphics_api::{
+use lgn_ecs::prelude::Component;
+use lgn_graphics_api::{
     CommandBuffer, Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState,
     ResourceUsage, Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
     TextureViewDef,
 };
-use legion_async::TokioAsyncRuntime;
-use legion_ecs::prelude::Component;
-use legion_utils::Uuid;
+use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
+use uuid::Uuid;
 
 use crate::{RenderContext, Renderer, TmpRenderPass};
 
@@ -18,7 +18,7 @@ pub trait Presenter: Send + Sync {
         &mut self,
         render_context: &mut RenderContext<'renderer>,
         render_surface: &mut RenderSurface,
-        async_rt: &mut TokioAsyncRuntime,
+        task_pool: &TaskPool,
     );
 }
 
@@ -208,12 +208,12 @@ impl RenderSurface {
     pub fn present<'renderer>(
         &mut self,
         render_context: &mut RenderContext<'renderer>,
-        async_rt: &mut TokioAsyncRuntime,
+        task_pool: &TaskPool,
     ) {
         let mut presenters = std::mem::take(&mut self.presenters);
 
         for presenter in &mut presenters {
-            presenter.as_mut().present(render_context, self, async_rt);
+            presenter.as_mut().present(render_context, self, task_pool);
         }
 
         self.presenters = presenters;

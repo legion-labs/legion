@@ -13,7 +13,7 @@ pub(crate) struct VulkanRenderpassColorAttachment {
 
 #[derive(Clone, Debug)]
 pub(crate) struct RenderpassVulkanResolveAttachment {
-    pub(crate) format: Format,
+    pub(crate) _format: Format,
 }
 
 #[derive(Clone, Debug)]
@@ -40,9 +40,7 @@ impl Drop for RenderpassVulkanInner {
     fn drop(&mut self) {
         unsafe {
             self.device_context
-                .inner
-                .platform_device_context
-                .device()
+                .vk_device()
                 .destroy_render_pass(self.renderpass, None);
         }
     }
@@ -131,9 +129,7 @@ impl VulkanRenderpass {
 
         let renderpass = unsafe {
             device_context
-                .inner
-                .platform_device_context
-                .device()
+                .vk_device()
                 .create_render_pass(&*renderpass_create_info, None)?
         };
 

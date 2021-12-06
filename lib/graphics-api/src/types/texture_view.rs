@@ -1,6 +1,5 @@
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanTextureView;
-
 use crate::{deferred_drop::Drc, GfxResult, Texture, TextureViewDef};
 #[cfg(any(feature = "vulkan"))]
 use crate::{Descriptor, GPUViewType, ShaderResourceType};
@@ -11,20 +10,20 @@ pub(crate) struct TextureViewInner {
     texture: Texture,
 
     #[cfg(feature = "vulkan")]
-    platform_texture_view: VulkanTextureView,
+    pub(crate) platform_texture_view: VulkanTextureView,
 }
 
 impl Drop for TextureViewInner {
     fn drop(&mut self) {
         #[cfg(any(feature = "vulkan"))]
         self.platform_texture_view
-            .destroy(self.texture.platform_device_context());
+            .destroy(self.texture.device_context());
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct TextureView {
-    inner: Drc<TextureViewInner>,
+    pub(crate) inner: Drc<TextureViewInner>,
 }
 
 impl TextureView {
@@ -47,19 +46,12 @@ impl TextureView {
         })
     }
 
-    #[cfg(any(feature = "vulkan"))]
     pub(crate) fn definition(&self) -> &TextureViewDef {
         &self.inner.definition
     }
 
-    #[cfg(any(feature = "vulkan"))]
     pub(crate) fn texture(&self) -> &Texture {
         &self.inner.texture
-    }
-
-    #[cfg(feature = "vulkan")]
-    pub(crate) fn platform_texture_view(&self) -> &VulkanTextureView {
-        &self.inner.platform_texture_view
     }
 
     #[cfg(any(feature = "vulkan"))]

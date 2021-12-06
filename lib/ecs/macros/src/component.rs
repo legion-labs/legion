@@ -1,4 +1,4 @@
-use legion_macro_utils::{get_lit_str, Symbol};
+use lgn_macro_utils::{get_lit_str, Symbol};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
@@ -44,7 +44,7 @@ enum StorageTy {
 }
 
 fn parse_component_attr(ast: &DeriveInput) -> Result<Attrs> {
-    let meta_items = legion_macro_utils::parse_attrs(ast, COMPONENT)?;
+    let meta_items = lgn_macro_utils::parse_attrs(ast, COMPONENT)?;
 
     let mut attrs = Attrs {
         storage: StorageTy::Table,

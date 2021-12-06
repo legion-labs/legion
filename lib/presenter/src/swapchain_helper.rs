@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crossbeam_channel::{Receiver, Sender};
-use legion_graphics_api::{
+use lgn_graphics_api::{
     CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult, Queue,
     Semaphore, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureView,
 };
@@ -258,7 +258,8 @@ impl SwapchainHelper {
                 Ok(shared_state) => {
                     log::debug!("wait for all fences to complete");
                     let fences: Vec<_> = shared_state.in_flight_fences.iter().collect();
-                    self.device_context.wait_for_fences(&fences)?;
+                    // self.device_context.wait_for_fences(&fences)?;
+                    Fence::wait_for_fences(&self.device_context, &fences)?;
 
                     if let Some(event_listener) = event_listener.as_mut() {
                         let old_swapchain = shared_state.swapchain.lock().unwrap();
@@ -453,7 +454,7 @@ impl SwapchainHelper {
 
         // If this swapchain image is still being process on the GPU, block until it is flushed
         let frame_fence = &shared_state.in_flight_fences[sync_frame_index];
-        self.device_context.wait_for_fences(&[frame_fence]).unwrap();
+        Fence::wait_for_fences(&self.device_context, &[frame_fence])?;
 
         // Acquire the next image and signal the image available semaphore when it's ready to use
         let image_available_semaphore = &shared_state.image_available_semaphores[sync_frame_index];

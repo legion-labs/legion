@@ -1,23 +1,22 @@
 use std::collections::HashMap;
 
-use legion_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use legion_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use legion_async::AsyncPlugin;
-use legion_core::CorePlugin;
-use legion_ecs::prelude::*;
-use legion_input::InputPlugin;
-use legion_presenter::offscreen_helper::Resolution;
-use legion_presenter_snapshot::component::PresenterSnapshot;
-use legion_presenter_window::component::PresenterWindow;
-use legion_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
-use legion_renderer::components::{RotationComponent, StaticMesh};
-use legion_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
-use legion_transform::components::Transform;
-use legion_window::{
+use lgn_app::{App, AppExit, CoreStage, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use lgn_core::CorePlugin;
+use lgn_ecs::prelude::*;
+use lgn_input::InputPlugin;
+use lgn_presenter::offscreen_helper::Resolution;
+use lgn_presenter_snapshot::component::PresenterSnapshot;
+use lgn_presenter_window::component::PresenterWindow;
+use lgn_renderer::components::{RenderSurface, RenderSurfaceExtents, RenderSurfaceId};
+use lgn_renderer::components::{RotationComponent, StaticMesh};
+use lgn_renderer::{Renderer, RendererPlugin, RendererSystemLabel};
+use lgn_transform::components::Transform;
+use lgn_window::{
     WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowPlugin, WindowResized,
     Windows,
 };
-use legion_winit::{WinitPlugin, WinitWindows};
+use lgn_winit::{WinitPlugin, WinitWindows};
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 
@@ -111,11 +110,10 @@ fn main() {
         .value_of("height")
         .map(|s| s.parse::<f32>().unwrap())
         .unwrap_or(720.0);
-    let setup_name = matches.value_of("setup-name").unwrap_or("triangle");
+    let setup_name = matches.value_of("setup-name").unwrap_or("simple-scene");
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
-        .add_plugin(AsyncPlugin {})
         .add_plugin(RendererPlugin::default());
 
     if matches.is_present("snapshot") {
@@ -126,11 +124,7 @@ fn main() {
         })
         .insert_resource(ScheduleRunnerSettings::default())
         .add_plugin(ScheduleRunnerPlugin::default())
-        .add_system(
-            presenter_snapshot_system
-                .system()
-                .before(RendererSystemLabel::FrameUpdate),
-        )
+        .add_system(presenter_snapshot_system.before(RendererSystemLabel::FrameUpdate))
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
         app.insert_resource(WindowDescriptor {
@@ -150,7 +144,7 @@ fn main() {
         app.insert_resource(AssetRegistrySettings::default())
             .add_plugin(AssetRegistryPlugin::default());
     } else {
-        app.add_startup_system(init_scene.system());
+        app.add_startup_system(init_scene);
     }
     app.run();
 }

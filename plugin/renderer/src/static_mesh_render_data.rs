@@ -1,4 +1,8 @@
-use legion_math::Vec3;
+use lgn_graphics_api::prelude::*;
+use lgn_math::Vec3;
+
+use crate::Renderer;
+
 pub struct StaticMeshRenderData {
     pub vertices: Vec<f32>,
 }

@@ -13,7 +13,7 @@ use crate::{component::ComponentTicks, system::Resource};
 /// it can be manually triggered via [`DetectChanges::set_changed`].
 ///
 /// ```
-/// use legion_ecs::prelude::*;
+/// use lgn_ecs::prelude::*;
 ///
 /// struct MyResource(u32);
 ///

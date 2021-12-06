@@ -13,6 +13,7 @@ service PerformanceAnalytics {
     rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
     rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
     rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
+    rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
     rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
 }
 
@@ -38,6 +39,11 @@ message ProcessInstance{
 
 message ProcessListReply {
     repeated ProcessInstance processes = 1;
+}
+
+// search_processes
+message SearchProcessRequest {
+    string search = 1;
 }
 
 // list_process_streams

@@ -68,12 +68,12 @@ use std::{fs::File, path::Path, sync::Arc};
 use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
-use legion_app::Plugin;
-use legion_content_store::{ContentStoreAddr, HddContentStore};
-use legion_data_runtime::{
+use lgn_app::Plugin;
+use lgn_content_store::{ContentStoreAddr, HddContentStore};
+use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceLoadEvent,
 };
-use legion_ecs::prelude::*;
+use lgn_ecs::prelude::*;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data_runtime as runtime_data;
 pub use settings::AssetRegistrySettings;
@@ -83,7 +83,7 @@ pub use settings::DataBuildSettings;
 pub struct AssetRegistryPlugin {}
 
 impl Plugin for AssetRegistryPlugin {
-    fn build(&self, app: &mut legion_app::App) {
+    fn build(&self, app: &mut lgn_app::App) {
         if let Some(mut settings) = app.world.get_resource_mut::<AssetRegistrySettings>() {
             let content_store_addr = ContentStoreAddr::from(settings.content_store_addr.clone());
             if let Some(content_store) = HddContentStore::open(content_store_addr) {
@@ -94,7 +94,7 @@ impl Plugin for AssetRegistryPlugin {
 
                 let mut registry = AssetRegistryOptions::new();
                 registry = runtime_data::add_loaders(registry);
-                registry = legion_graphics_runtime::add_loaders(registry);
+                registry = lgn_graphics_runtime::add_loaders(registry);
                 registry = generic_data_runtime::add_loaders(registry);
 
                 if let Some(databuild_settings) = &settings.databuild_settings {
@@ -183,7 +183,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                        ) && !load_ecs_asset::<legion_graphics_runtime::Material>(
+                        ) && !load_ecs_asset::<lgn_graphics_runtime::Material>(
                             asset_id,
                             handle,
                             &registry,
@@ -195,7 +195,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                        ) && !load_ecs_asset::<legion_graphics_runtime::Texture>(
+                        ) && !load_ecs_asset::<lgn_graphics_runtime::Texture>(
                             asset_id,
                             handle,
                             &registry,

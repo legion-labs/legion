@@ -1,10 +1,9 @@
-use graphics_api::{DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, QueueType};
+use lgn_graphics_api::{DescriptorHeapDef, DescriptorSetBufWriter, DescriptorSetLayout, QueueType};
+use lgn_graphics_utils::TransientBufferAllocator;
 
 use crate::{
-    resources::{
-        CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle,
-        TransientBufferAllocator,
-    },
+    memory::BumpAllocatorHandle,
+    resources::{CommandBufferHandle, CommandBufferPoolHandle, DescriptorPoolHandle},
     RenderHandle, Renderer,
 };
 
@@ -15,6 +14,7 @@ pub struct RenderContext<'a> {
     cmd_buffer_pool_handle: CommandBufferPoolHandle,
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
+    bump_allocator: BumpAllocatorHandle,
 }
 
 impl<'a> RenderContext<'a> {
@@ -32,6 +32,7 @@ impl<'a> RenderContext<'a> {
                     1000,
                 ),
             ),
+            bump_allocator: renderer.acquire_bump_allocator(),
         }
     }
 
@@ -74,11 +75,16 @@ impl<'a> RenderContext<'a> {
         self.transient_buffer_allocator.transfer()
     }
 
-    pub(crate) fn release_transient_buffer_allocator(
-        &mut self,
-        allocator: TransientBufferAllocatorHandle,
-    ) {
-        self.transient_buffer_allocator = allocator;
+    pub fn release_transient_buffer_allocator(&mut self, handle: TransientBufferAllocatorHandle) {
+        self.transient_buffer_allocator = handle;
+    }
+
+    pub fn acquire_bump_allocator(&mut self) -> BumpAllocatorHandle {
+        self.bump_allocator.transfer()
+    }
+
+    pub fn release_bump_allocator(&mut self, handle: BumpAllocatorHandle) {
+        self.bump_allocator = handle;
     }
 }
 
@@ -91,6 +97,9 @@ impl<'a> Drop for RenderContext<'a> {
             .release_descriptor_pool(self.descriptor_pool.transfer());
 
         self.transient_buffer_allocator.take();
+
+        self.renderer
+            .release_bump_allocator(self.bump_allocator.transfer());
     }
 }
 

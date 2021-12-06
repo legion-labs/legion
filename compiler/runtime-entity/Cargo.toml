@@ -1,18 +1,22 @@
 [package]
-name = "compiler-runtime-entity"
+name = "lgn-compiler-runtime-entity"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+[lib]
+doc = false
+
 [[bin]]
 name = "compiler-runtime-entity"
+path = "src/main.rs"
 doc = false
 
 [dependencies]
-legion-data-compiler = { path = "../../lib/data-compiler" }
-legion-data-offline = { path = "../../lib/data-offline" }
-legion-data-runtime = { path = "../../lib/data-runtime" }
+lgn-data-compiler = { path = "../../lib/data-compiler", version = "0.1.0" }
+lgn-data-offline = { path = "../../lib/data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../../lib/data-runtime", version = "0.1.0" }
 # temp dependency on sample-data, until runtime data moved to plugins
 sample-data-offline = { path = "../../test/sample-data-offline", version = "0.1.0" }
 sample-data-runtime = { path = "../../test/sample-data-runtime", version = "0.1.0" }

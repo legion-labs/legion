@@ -1,10 +1,10 @@
-use legion_mp4::Mp4Stream;
+use lgn_mp4::Mp4Stream;
 
 #[test]
 fn test_add() {
     use std::io::Cursor;
 
-    use legion_mp4::{AvcConfig, MediaConfig, Mp4Config};
+    use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config};
     fn find_nal(stream: &[u8]) -> (&[u8], &[u8]) {
         let mut current = 0;
         let mut start = 0;

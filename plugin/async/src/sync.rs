@@ -15,7 +15,7 @@ use tokio::sync::{Mutex, MutexGuard};
 /// Here is a trivial example usage:
 ///
 /// ```
-/// # use legion_async::sync::LazyMutex;
+/// # use lgn_async::sync::LazyMutex;
 /// #
 /// #[tokio::main]
 /// async fn main() {

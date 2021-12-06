@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
-use legion_ecs::prelude::*;
-use legion_telemetry::prelude::*;
+use lgn_ecs::prelude::*;
+use lgn_telemetry::prelude::*;
 use serde::Serialize;
 use webrtc::data::data_channel::RTCDataChannel;
 

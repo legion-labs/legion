@@ -1,4 +1,4 @@
-use legion_utils::DefaultHash;
+use lgn_utils::DefaultHash;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
@@ -126,7 +126,7 @@ pub fn generate_registration_code(structs: &[DataContainerMetaInfo]) -> TokenStr
         .collect();
 
     quote! {
-        pub fn register_resource_types(registry: legion_data_offline::resource::ResourceRegistryOptions) -> legion_data_offline::resource::ResourceRegistryOptions {
+        pub fn register_resource_types(registry: lgn_data_offline::resource::ResourceRegistryOptions) -> lgn_data_offline::resource::ResourceRegistryOptions {
             registry
             #(#entries)*
         }
@@ -165,11 +165,11 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
         let imports = data_container_info.imports();
         quote! {
             use std::{any::Any, io};
-            use legion_data_offline::{PropertyDescriptor,
+            use lgn_data_offline::{PropertyDescriptor,
                 resource::{OfflineResource, ResourceProcessor, ResourceReflection},
             };
-            use legion_data_runtime::{Asset, AssetLoader, Resource};
-            use legion_utils::DefaultHash;
+            use lgn_data_runtime::{Asset, AssetLoader, Resource};
+            use lgn_utils::DefaultHash;
             use std::collections::HashMap;
             #(use #imports;)*
         }
@@ -257,7 +257,7 @@ pub fn generate(data_container_info: &DataContainerMetaInfo, add_uses: bool) -> 
                 Box::new(#offline_identifier { ..#offline_identifier::default() })
             }
 
-            fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<legion_data_offline::ResourcePathId> {
+            fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<lgn_data_offline::ResourcePathId> {
                 vec![]
             }
 

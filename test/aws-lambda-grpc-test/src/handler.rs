@@ -1,4 +1,4 @@
-use legion_streaming_proto::{
+use lgn_streaming_proto::{
     streamer_server::Streamer, InitializeStreamRequest, InitializeStreamResponse,
 };
 use log::info;

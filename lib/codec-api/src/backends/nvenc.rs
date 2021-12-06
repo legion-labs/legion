@@ -6,7 +6,7 @@ use crate::{CpuBuffer, GpuImage, VideoProcessor};
 pub struct NvEncEncoderConfig {}
 
 /// Nvenc Encoder
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct NvEncEncoder {}
 
 impl VideoProcessor for NvEncEncoder {
@@ -24,12 +24,6 @@ impl VideoProcessor for NvEncEncoder {
 
     fn new(_config: Self::Config) -> Option<Self> {
         Some(Self {})
-    }
-}
-
-impl Default for NvEncEncoderConfig {
-    fn default() -> Self {
-        Self {}
     }
 }
 

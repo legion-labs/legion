@@ -1,6 +1,6 @@
-use legion_math::IVec2;
-use legion_utils::HashMap;
-use legion_window::{Window, WindowDescriptor, WindowId, WindowMode};
+use lgn_math::IVec2;
+use lgn_utils::HashMap;
+use lgn_window::{Window, WindowDescriptor, WindowId, WindowMode};
 use winit::dpi::LogicalSize;
 
 #[derive(Debug, Default)]

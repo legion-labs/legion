@@ -1,7 +1,8 @@
-use crate::{Error, LockContext, TransactionOperation};
 use async_trait::async_trait;
-use legion_data_offline::resource::ResourcePathName;
-use legion_data_runtime::ResourceId;
+use lgn_data_offline::resource::ResourcePathName;
+use lgn_data_runtime::ResourceId;
+
+use crate::{Error, LockContext, TransactionOperation};
 
 pub(crate) struct DeleteResourceOperation {
     resource_id: ResourceId,

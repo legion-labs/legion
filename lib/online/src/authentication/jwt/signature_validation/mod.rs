@@ -22,7 +22,7 @@ impl ValidationResult<'_> {
     /// # Example
     ///
     /// ```rust
-    /// use legion_online::authentication::jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported};
+    /// use lgn_online::authentication::jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported};
     ///
     /// assert!(Unsupported("", None).or_else(|| Valid).is_valid());
     /// assert!(Invalid(anyhow::anyhow!("error")).or_else(|| Valid).is_invalid());
@@ -56,7 +56,7 @@ impl ValidationResult<'_> {
     /// # Example
     ///
     /// ```rust
-    /// use legion_online::authentication::jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported};
+    /// use lgn_online::authentication::jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported};
     ///
     /// assert!(Valid.ok().is_ok());
     /// assert!(Invalid(anyhow::anyhow!("error")).ok().is_err());
@@ -151,7 +151,7 @@ macro_rules! chain {
         $x
     };
     ($x:expr, $($y:expr),*) => {
-        legion_online::authentication::jwt::signature_validation::SignatureValidationChain::new(
+        lgn_online::authentication::jwt::signature_validation::SignatureValidationChain::new(
             $x,
             chain!($($y),*),
         )

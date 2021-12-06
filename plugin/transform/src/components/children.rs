@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use legion_ecs::{
+use lgn_ecs::{
     component::Component,
     entity::{Entity, EntityMap, MapEntities, MapEntitiesError},
 };

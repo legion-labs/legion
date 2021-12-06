@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use legion_streaming_proto::{
+use lgn_streaming_proto::{
     streamer_server::{Streamer, StreamerServer},
     InitializeStreamRequest, InitializeStreamResponse,
 };

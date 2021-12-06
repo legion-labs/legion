@@ -1,10 +1,10 @@
-use legion_input::{
+use lgn_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::MouseButton,
     touch::{ForceTouch, TouchInput, TouchPhase},
     ElementState,
 };
-use legion_math::Vec2;
+use lgn_math::Vec2;
 
 pub fn convert_keyboard_input(keyboard_input: &winit::event::KeyboardInput) -> KeyboardInput {
     KeyboardInput {

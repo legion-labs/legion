@@ -2,16 +2,13 @@
 use std::convert::TryFrom;
 
 use graphics_api::prelude::*;
-
-use legion_async::TokioAsyncRuntime;
-use legion_renderer::{
+use lgn_presenter::swapchain_helper::SwapchainHelper;
+use lgn_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
-
+use lgn_tasks::TaskPool;
 use raw_window_handle::HasRawWindowHandle;
-
-use legion_presenter::swapchain_helper::SwapchainHelper;
 
 pub struct PresenterWindow {
     swapchain_helper: SwapchainHelper,
@@ -161,7 +158,7 @@ impl Presenter for PresenterWindow {
         &mut self,
         render_context: &mut RenderContext<'renderer>,
         render_surface: &mut RenderSurface,
-        _async_rt: &mut TokioAsyncRuntime,
+        _task_pool: &TaskPool,
     ) {
         // FIXME: if the windows is minimized, we should not resize the RenderSurface and we should not present
         // the swapchain.

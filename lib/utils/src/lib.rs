@@ -69,10 +69,6 @@ pub use enum_variant_meta::*;
 
 mod hash;
 pub use hash::*;
-// republish types
-pub use instant::{Duration, Instant};
-pub use log;
-pub use uuid::Uuid;
 
 mod settings;
 pub use settings::*;

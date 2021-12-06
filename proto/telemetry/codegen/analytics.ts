@@ -32,6 +32,11 @@ export interface ProcessListReply {
   processes: ProcessInstance[];
 }
 
+/** search_processes */
+export interface SearchProcessRequest {
+  search: string;
+}
+
 /** list_process_streams */
 export interface ListProcessStreamsRequest {
   processId: string;
@@ -457,6 +462,62 @@ export const ProcessListReply = {
     message.processes = (object.processes ?? []).map((e) =>
       ProcessInstance.fromPartial(e)
     );
+    return message;
+  },
+};
+
+const baseSearchProcessRequest: object = { search: "" };
+
+export const SearchProcessRequest = {
+  encode(
+    message: SearchProcessRequest,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.search !== "") {
+      writer.uint32(10).string(message.search);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): SearchProcessRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseSearchProcessRequest } as SearchProcessRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.search = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SearchProcessRequest {
+    const message = { ...baseSearchProcessRequest } as SearchProcessRequest;
+    message.search =
+      object.search !== undefined && object.search !== null
+        ? String(object.search)
+        : "";
+    return message;
+  },
+
+  toJSON(message: SearchProcessRequest): unknown {
+    const obj: any = {};
+    message.search !== undefined && (obj.search = message.search);
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<SearchProcessRequest>): SearchProcessRequest {
+    const message = { ...baseSearchProcessRequest } as SearchProcessRequest;
+    message.search = object.search ?? "";
     return message;
   },
 };
@@ -1919,6 +1980,10 @@ export interface PerformanceAnalytics {
     request: DeepPartial<RecentProcessesRequest>,
     metadata?: grpc.Metadata
   ): Promise<ProcessListReply>;
+  search_processes(
+    request: DeepPartial<SearchProcessRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessListReply>;
   list_stream_blocks(
     request: DeepPartial<ListStreamBlocksRequest>,
     metadata?: grpc.Metadata
@@ -1938,6 +2003,7 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     this.list_process_log_entries = this.list_process_log_entries.bind(this);
     this.list_process_streams = this.list_process_streams.bind(this);
     this.list_recent_processes = this.list_recent_processes.bind(this);
+    this.search_processes = this.search_processes.bind(this);
     this.list_stream_blocks = this.list_stream_blocks.bind(this);
   }
 
@@ -2014,6 +2080,17 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     return this.rpc.unary(
       PerformanceAnalyticslist_recent_processesDesc,
       RecentProcessesRequest.fromPartial(request),
+      metadata
+    );
+  }
+
+  search_processes(
+    request: DeepPartial<SearchProcessRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessListReply> {
+    return this.rpc.unary(
+      PerformanceAnalyticssearch_processesDesc,
+      SearchProcessRequest.fromPartial(request),
       metadata
     );
   }
@@ -2179,6 +2256,29 @@ export const PerformanceAnalyticslist_recent_processesDesc: UnaryMethodDefinitio
     requestType: {
       serializeBinary() {
         return RecentProcessesRequest.encode(this).finish();
+      },
+    } as any,
+    responseType: {
+      deserializeBinary(data: Uint8Array) {
+        return {
+          ...ProcessListReply.decode(data),
+          toObject() {
+            return this;
+          },
+        };
+      },
+    } as any,
+  };
+
+export const PerformanceAnalyticssearch_processesDesc: UnaryMethodDefinitionish =
+  {
+    methodName: "search_processes",
+    service: PerformanceAnalyticsDesc,
+    requestStream: false,
+    responseStream: false,
+    requestType: {
+      serializeBinary() {
+        return SearchProcessRequest.encode(this).finish();
       },
     } as any,
     responseType: {

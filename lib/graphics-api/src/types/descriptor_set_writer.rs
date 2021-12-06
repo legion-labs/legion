@@ -1,7 +1,6 @@
-use crate::{DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxResult};
-
 #[cfg(feature = "vulkan")]
 use crate::backends::vulkan::VulkanDescriptorSetBufWriter;
+use crate::{DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxResult};
 
 pub struct DescriptorSetBufWriter {
     descriptor_set: DescriptorSetHandle,

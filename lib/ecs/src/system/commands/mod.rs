@@ -3,7 +3,7 @@ mod command_queue;
 use std::marker::PhantomData;
 
 pub use command_queue::CommandQueue;
-use legion_utils::log::{error, warn};
+use log::{error, warn};
 
 use super::Resource;
 use crate::{
@@ -27,7 +27,7 @@ pub trait Command: Send + Sync + 'static {
 /// as a function parameter:
 ///
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// #
 /// fn my_system(mut commands: Commands) {
 ///    // ...
@@ -59,7 +59,7 @@ impl<'w, 's> Commands<'w, 's> {
     /// # Example
     ///
     /// ```
-    /// use legion_ecs::prelude::*;
+    /// use lgn_ecs::prelude::*;
     ///
     /// #[derive(Component)]
     /// struct Label(&'static str);
@@ -122,7 +122,7 @@ impl<'w, 's> Commands<'w, 's> {
     /// # Example
     ///
     /// ```
-    /// use legion_ecs::prelude::*;
+    /// use lgn_ecs::prelude::*;
     ///
     /// #[derive(Component)]
     /// struct Component1;
@@ -169,7 +169,7 @@ impl<'w, 's> Commands<'w, 's> {
     /// # Example
     ///
     /// ```
-    /// use legion_ecs::prelude::*;
+    /// use lgn_ecs::prelude::*;
     ///
     /// #[derive(Component)]
     /// struct Label(&'static str);
@@ -213,7 +213,7 @@ impl<'w, 's> Commands<'w, 's> {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # #[derive(Component)]
     /// # struct Name(String);
@@ -268,7 +268,7 @@ impl<'w, 's> Commands<'w, 's> {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct Scoreboard {
     /// #     current_score: u32,
@@ -294,7 +294,7 @@ impl<'w, 's> Commands<'w, 's> {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct Scoreboard {
     /// #     current_score: u32,
@@ -317,8 +317,8 @@ impl<'w, 's> Commands<'w, 's> {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
-    /// use legion_ecs::system::InsertBundle;
+    /// # use lgn_ecs::prelude::*;
+    /// use lgn_ecs::system::InsertBundle;
     /// #
     /// # struct PlayerEntity { entity: Entity }
     /// # #[derive(Component)]
@@ -364,7 +364,7 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// fn my_system(mut commands: Commands) {
     ///     let entity_id = commands.spawn().id();    
@@ -381,7 +381,7 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct PlayerEntity { entity: Entity }
     /// # #[derive(Component)]
@@ -432,7 +432,7 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// `Self::insert` can be chained with [`Commands::spawn`].
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # #[derive(Component)]
     /// # struct Component1;
@@ -467,7 +467,7 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct PlayerEntity { entity: Entity }
     /// #
@@ -499,7 +499,7 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct TargetEnemy { entity: Entity }
     /// # #[derive(Component)]
@@ -528,7 +528,7 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// # Example
     ///
     /// ```
-    /// # use legion_ecs::prelude::*;
+    /// # use lgn_ecs::prelude::*;
     /// #
     /// # struct CharacterToRemove { entity: Entity }
     /// #
@@ -742,7 +742,7 @@ mod tests {
     };
 
     use crate::{
-        self as legion_ecs,
+        self as lgn_ecs,
         component::Component,
         system::{CommandQueue, Commands},
         world::World,

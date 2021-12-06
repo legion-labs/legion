@@ -1,11 +1,14 @@
-use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNode, ScopeHashMap}; //todo: move to analytics lib
-use anyhow::{Context, Result};
-use legion_analytics::prelude::*;
-use legion_telemetry_proto::analytics::{
-    CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
-};
 use std::collections::HashMap;
 use std::{cmp::min, path::Path};
+
+use anyhow::{Context, Result};
+use lgn_analytics::prelude::*;
+use lgn_telemetry::prelude::*;
+use lgn_telemetry_proto::analytics::{
+    CallGraphEdge, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
+};
+
+use crate::call_tree::{compute_block_call_tree, record_scope_in_map, CallTreeNode, ScopeHashMap}; //todo: move to analytics lib
 
 struct NodeStatsAcc {
     durations_ms: Vec<f64>,
@@ -15,6 +18,7 @@ struct NodeStatsAcc {
 
 impl NodeStatsAcc {
     pub fn new() -> Self {
+        trace_scope!();
         Self {
             durations_ms: Vec::new(),
             parents: HashMap::new(),
@@ -26,6 +30,7 @@ impl NodeStatsAcc {
 type StatsHashMap = std::collections::HashMap<u32, NodeStatsAcc>;
 
 fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
+    trace_scope!();
     let mut edges: Vec<CallGraphEdge> = edges_acc
         .iter()
         .filter(|(hash, _weight)| **hash != 0)
@@ -39,6 +44,7 @@ fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
 }
 
 fn tree_overlaps(tree: &CallTreeNode, filter_begin_ms: f64, filter_end_ms: f64) -> bool {
+    trace_scope!();
     tree.end_ms >= filter_begin_ms && tree.begin_ms <= filter_end_ms
 }
 
@@ -50,6 +56,7 @@ fn record_tree_stats(
     stats_map: &mut StatsHashMap,
     parent_hash: Option<u32>,
 ) {
+    trace_scope!();
     if !tree_overlaps(tree, filter_begin_ms, filter_end_ms) {
         return;
     }
@@ -84,7 +91,7 @@ fn record_tree_stats(
 async fn record_process_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
+    process: &lgn_telemetry::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
     scopes: &mut ScopeHashMap,
@@ -121,7 +128,7 @@ async fn record_process_call_graph(
 pub(crate) async fn compute_cumulative_call_graph(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
+    process: &lgn_telemetry::ProcessInfo,
     begin_ms: f64,
     end_ms: f64,
 ) -> Result<CumulativeCallGraphReply> {

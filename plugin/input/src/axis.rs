@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use legion_utils::HashMap;
+use lgn_utils::HashMap;
 
 #[derive(Debug)]
 pub struct Axis<T> {

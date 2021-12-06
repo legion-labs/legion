@@ -1,20 +1,17 @@
-use ash::vk;
+use crate::{DeviceContext, GfxResult, Semaphore};
 
-use crate::DeviceContext;
-
-#[derive(Clone, Copy)]
 pub(crate) struct VulkanSemaphore {
-    vk_semaphore: vk::Semaphore,
+    vk_semaphore: ash::vk::Semaphore,
 }
 
 impl VulkanSemaphore {
     pub fn new(device_context: &DeviceContext) -> Self {
         let create_info =
-            vk::SemaphoreCreateInfo::builder().flags(vk::SemaphoreCreateFlags::empty());
+            ash::vk::SemaphoreCreateInfo::builder().flags(ash::vk::SemaphoreCreateFlags::empty());
 
         let vk_semaphore = unsafe {
             device_context
-                .platform_device()
+                .vk_device()
                 .create_semaphore(&*create_info, None)
                 .unwrap()
         };
@@ -25,12 +22,14 @@ impl VulkanSemaphore {
     pub fn destroy(self, device_context: &DeviceContext) {
         unsafe {
             device_context
-                .platform_device()
+                .vk_device()
                 .destroy_semaphore(self.vk_semaphore, None);
         }
     }
+}
 
-    pub fn vk_semaphore(self) -> vk::Semaphore {
-        self.vk_semaphore
+impl Semaphore {
+    pub fn vk_semaphore(&self) -> ash::vk::Semaphore {
+        self.inner.platform_semaphore.vk_semaphore
     }
 }

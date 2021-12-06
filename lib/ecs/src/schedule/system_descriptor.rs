@@ -22,7 +22,7 @@ use crate::{
 ///
 /// # Example
 /// ```
-/// # use legion_ecs::prelude::*;
+/// # use lgn_ecs::prelude::*;
 /// # fn do_something() {}
 /// # fn do_the_other_thing() {}
 /// # fn do_something_else() {}

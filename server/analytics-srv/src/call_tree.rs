@@ -1,11 +1,12 @@
 use std::path::Path;
 
 use anyhow::Result;
-use legion_analytics::prelude::*;
-use legion_telemetry_proto::analytics::BlockSpansReply;
-use legion_telemetry_proto::analytics::ScopeDesc;
-use legion_telemetry_proto::analytics::Span;
-use legion_transit::prelude::*;
+use lgn_analytics::prelude::*;
+use lgn_telemetry::prelude::*;
+use lgn_telemetry_proto::analytics::BlockSpansReply;
+use lgn_telemetry_proto::analytics::ScopeDesc;
+use lgn_telemetry_proto::analytics::Span;
+use lgn_transit::prelude::*;
 
 trait ThreadBlockProcessor {
     fn on_begin_scope(&mut self, scope_name: String, ts: u64);
@@ -15,12 +16,13 @@ trait ThreadBlockProcessor {
 async fn parse_thread_bock<Proc: ThreadBlockProcessor>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    stream: &legion_telemetry::StreamInfo,
+    stream: &lgn_telemetry::StreamInfo,
     block_id: &str,
     processor: &mut Proc,
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, data_path, block_id).await?;
     parse_block(stream, &payload, |val| {
+        trace_scope!("obj_in_block");
         if let Value::Object(obj) = val {
             let tick = obj.get::<u64>("time").unwrap();
             let scope = obj.get::<Object>("scope").unwrap();
@@ -70,6 +72,7 @@ impl CallTreeBuilder {
     }
 
     pub fn finish(mut self) -> CallTreeNode {
+        trace_scope!();
         if self.stack.is_empty() {
             return CallTreeNode {
                 hash: 0,
@@ -95,6 +98,7 @@ impl CallTreeBuilder {
     }
 
     fn add_child_to_top(&mut self, scope: CallTreeNode) {
+        trace_scope!();
         if let Some(mut top) = self.stack.pop() {
             top.scopes.push(scope);
             self.stack.push(top);
@@ -113,6 +117,7 @@ impl CallTreeBuilder {
 
 impl ThreadBlockProcessor for CallTreeBuilder {
     fn on_begin_scope(&mut self, scope_name: String, ts: u64) {
+        trace_scope!();
         let time = self.get_time(ts);
         let scope = CallTreeNode {
             hash: compute_scope_hash(&scope_name),
@@ -125,6 +130,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
     }
 
     fn on_end_scope(&mut self, scope_name: String, ts: u64) {
+        trace_scope!();
         let time = self.get_time(ts);
         if let Some(mut old_top) = self.stack.pop() {
             if old_top.name == scope_name {
@@ -155,8 +161,8 @@ impl ThreadBlockProcessor for CallTreeBuilder {
 pub(crate) async fn compute_block_call_tree(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
-    stream: &legion_telemetry::StreamInfo,
+    process: &lgn_telemetry::ProcessInfo,
+    stream: &lgn_telemetry::StreamInfo,
     block_id: &str,
 ) -> Result<CallTreeNode> {
     let ts_offset = process.start_ticks;
@@ -181,6 +187,7 @@ fn compute_scope_hash(name: &str) -> u32 {
 }
 
 pub(crate) fn record_scope_in_map(node: &CallTreeNode, scopes: &mut ScopeHashMap) {
+    trace_scope!();
     scopes.entry(node.hash).or_insert_with(|| ScopeDesc {
         name: node.name.clone(),
         filename: "".to_string(),
@@ -216,8 +223,8 @@ fn make_spans_from_tree(
 pub(crate) async fn compute_block_spans(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
-    process: &legion_telemetry::ProcessInfo,
-    stream: &legion_telemetry::StreamInfo,
+    process: &lgn_telemetry::ProcessInfo,
+    stream: &lgn_telemetry::StreamInfo,
     block_id: &str,
 ) -> Result<BlockSpansReply> {
     let tree = compute_block_call_tree(connection, data_path, process, stream, block_id).await?;

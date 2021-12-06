@@ -75,7 +75,7 @@ pub mod prelude {
     };
 }
 
-use legion_app::{prelude::*, Events};
+use lgn_app::{prelude::*, Events};
 
 pub struct WindowPlugin {
     pub add_primary_window: bool,

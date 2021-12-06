@@ -1,5 +1,5 @@
 [package]
-name = "legion-online"
+name = "lgn-online"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -32,11 +32,10 @@ http = "0.2"
 http-body = "0.4"
 pin-project = "1"
 dyn-clone = "1"
-backoff = { version = "0.3.0", features = ["tokio"] }
 lambda_runtime = "0.4"
 lambda_http = "0.4"
-strum = "0.22"
-strum_macros = "0.22"
+strum = "0.23"
+strum_macros = "0.23"
 
 [build-dependencies]
 tonic-build = "0.6"
@@ -45,3 +44,4 @@ tonic-build = "0.6"
 prost = "0.9"
 simple_logger = "1.13"
 serial_test = "0.5"
+backoff = { version = "0.3.0", features = ["tokio"] }

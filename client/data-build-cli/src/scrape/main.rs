@@ -239,11 +239,11 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{AppSettings, Arg, SubCommand};
-use legion_data_offline::{
+use lgn_data_offline::{
     resource::{Project, ResourcePathName},
     ResourcePathId,
 };
-use legion_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceId, ResourceType};
 
 mod config;
 use config::Config;
@@ -423,12 +423,12 @@ fn main() -> Result<(), String> {
         if let Some(path) = cmd_args.value_of("path") {
             let path = Path::new(path);
             if path.is_file() {
-                parse_asset_file(path);
+                parse_asset_file(path, &config);
             } else if path.is_dir() {
                 for entry in path.read_dir().unwrap().flatten() {
                     let path = entry.path();
                     if path.is_file() {
-                        parse_asset_file(path);
+                        parse_asset_file(path, &config);
                     }
                 }
             }
@@ -448,7 +448,7 @@ fn main() -> Result<(), String> {
                         rid
                     } else {
                         return Err(format!(
-                            "Failed to find a source ResroucePathId for ResourceId '{}'",
+                            "Failed to find a source ResourcePathId for ResourceId '{}'",
                             resource_id
                         ));
                     }
@@ -490,21 +490,20 @@ fn main() -> Result<(), String> {
         let code_paths = cmd_args.values_of("code_path").map_or_else(
             || {
                 vec![
-                    workspace_dir.join("lib\\"),
-                    workspace_dir.join("client\\"),
-                    workspace_dir.join("test\\"),
+                    workspace_dir.join("lib/"),
+                    workspace_dir.join("client/"),
+                    workspace_dir.join("test/"),
                 ]
             },
             |args| args.into_iter().map(PathBuf::from).collect::<Vec<_>>(),
         );
 
-        let buildindex = cmd_args.value_of("buildindex").map_or(
-            workspace_dir.join("test\\sample-data\\temp\\"),
-            PathBuf::from,
-        );
+        let buildindex = cmd_args
+            .value_of("buildindex")
+            .map_or(workspace_dir.join("test/sample-data/temp/"), PathBuf::from);
 
         let project = cmd_args.value_of("project").map_or(
-            workspace_dir.join("test\\sample-data\\project.index"),
+            workspace_dir.join("test/sample-data/project.index"),
             PathBuf::from,
         );
 
@@ -627,13 +626,15 @@ fn find_resource_attribs(content: &[syn::Item]) -> Vec<(String, ResourceType)> {
 // Finds all #[resource="name"] attributes in a file and returns (name, hashed name) tuple.
 fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
     let src = std::fs::read_to_string(&source).expect("Read file");
-    let ast = syn::parse_file(&src).expect("Unable to parse file");
+    proc_macro2::fallback::force(); // prevent panic, if panic = abort is set
+    let tokens = proc_macro2::TokenStream::from_str(&src).expect("Tokenize source file");
+    let ast: syn::File = syn::parse2(tokens).expect("Unable to parse file");
     find_resource_attribs(&ast.items)
 }
 
 // Reads an asset file, and prints out its header information.
 #[allow(unsafe_code)]
-fn parse_asset_file(path: impl AsRef<Path>) {
+fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
     let path = path.as_ref();
     let mut f = File::open(path).expect("unable to open asset file");
 
@@ -674,14 +675,31 @@ fn parse_asset_file(path: impl AsRef<Path>) {
                     f.read_u128::<LittleEndian>().expect("valid data"),
                 )
             };
-            println!("\t\treference: {}", asset_ref);
+            if let Some(config) = config {
+                let (_build, project) = config.open().expect("open config");
+                let path_id = ResourcePathId::from(asset_ref);
+                println!(
+                    "\t\treference: {}",
+                    pretty_name_from_pathid(&path_id, &project, config)
+                );
+            } else {
+                println!("\t\treference: {}", asset_ref);
+            }
         }
     }
 
     let asset_type = unsafe {
         std::mem::transmute::<u32, ResourceType>(f.read_u32::<LittleEndian>().expect("valid data"))
     };
-    println!("\tasset type: {}", asset_type);
+    if let Some(config) = config {
+        if let Some(asset_type_name) = config.type_map.get(&asset_type).cloned() {
+            println!("\tasset type: {} ({})", asset_type, asset_type_name);
+        } else {
+            println!("\tasset type: {}", asset_type);
+        }
+    } else {
+        println!("\tasset type: {}", asset_type);
+    }
 
     let asset_count = f.read_u64::<LittleEndian>().expect("valid data");
     println!("\tasset count: {}", asset_count);

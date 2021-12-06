@@ -5,8 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use legion_content_store::content_checksum_from_read;
-use legion_data_runtime::{ResourceId, ResourceType};
+use lgn_content_store::content_checksum_from_read;
+use lgn_data_runtime::{ResourceId, ResourceType};
 use serde::{Deserialize, Serialize};
 
 use crate::resource::{
@@ -186,31 +186,32 @@ impl Project {
         let _res = fs::remove_file(index_path);
     }
 
-    /// Returns the list resources.
+    /// Returns an iterator on the list of resources.
     ///
     /// This method flattens the `remote` and `local` resources into one list.
-    pub fn resource_list(&self) -> Vec<ResourceId> {
-        let all_resources = [&self.db.remote_resources, &self.db.local_resources];
-        let references = all_resources.iter().flat_map(|v| v.iter());
-        references.copied().collect()
+    pub fn resource_list(&self) -> impl Iterator<Item = ResourceId> + '_ {
+        self.db
+            .remote_resources
+            .iter()
+            .chain(self.db.local_resources.iter())
+            .copied()
     }
 
     /// Finds resource by its name and returns its `ResourceId`.
     pub fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceId, Error> {
-        let all_resources = [&self.db.remote_resources, &self.db.local_resources];
-        let mut references = all_resources.iter().flat_map(|v| v.iter());
-
         // this below would be better expressed as try_map (still experimental).
-        let res = references.find_map(|id| match self.read_meta(*id) {
-            Ok(meta) => {
-                if &meta.name == name {
-                    Some(Ok(*id))
-                } else {
-                    None
+        let res = self
+            .resource_list()
+            .find_map(|id| match self.read_meta(id) {
+                Ok(meta) => {
+                    if &meta.name == name {
+                        Some(Ok(id))
+                    } else {
+                        None
+                    }
                 }
-            }
-            Err(e) => Some(Err(e)),
-        });
+                Err(e) => Some(Err(e)),
+            });
 
         match res {
             None => Err(Error::NotFound),
@@ -225,11 +226,7 @@ impl Project {
 
     /// Checks if a resource is part of the project.
     pub fn exists(&self, id: ResourceId) -> bool {
-        let all_resources = [&self.db.remote_resources, &self.db.local_resources];
-        all_resources
-            .iter()
-            .flat_map(|v| v.iter())
-            .any(|v| v == &id)
+        self.resource_list().any(|v| v == id)
     }
 
     /// Add a given resource of a given type with an associated `.meta`.
@@ -496,8 +493,7 @@ impl Drop for Project {
 
 impl fmt::Debug for Project {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let resources = self.resource_list();
-        let names = resources.iter().map(|r| self.resource_name(*r).unwrap());
+        let names = self.resource_list().map(|r| self.resource_name(r).unwrap());
         f.debug_list().entries(names).finish()
     }
 }
@@ -508,7 +504,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use std::{fs::File, path::Path, str::FromStr};
 
-    use legion_data_runtime::{resource, Resource, ResourceType};
+    use lgn_data_runtime::{resource, Resource, ResourceType};
     use tempfile::TempDir;
 
     use super::ResourceDb;

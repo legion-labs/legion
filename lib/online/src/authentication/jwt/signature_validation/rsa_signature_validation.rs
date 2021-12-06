@@ -49,7 +49,7 @@ impl SignatureValidation for RsaSignatureValidation {
     /// # Example
     ///
     /// ```
-    /// use legion_online::authentication::jwt::{
+    /// use lgn_online::authentication::jwt::{
     ///     Token,
     ///     signature_validation::{
     ///         RsaSignatureValidation,

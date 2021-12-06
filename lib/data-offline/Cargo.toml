@@ -1,5 +1,5 @@
 [package]
-name = "legion-data-offline"
+name = "lgn-data-offline"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -7,18 +7,17 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Legion engine
-legion-content-store = { path = "../content-store" } # for ContentType
-legion-data-runtime = { path = "../data-runtime" }
-legion-utils = { path = "../utils" }
+lgn-content-store = { path = "../content-store", version = "0.1.0" } # for ContentType
+lgn-data-runtime = { path = "../data-runtime", version = "0.1.0" }
+lgn-utils = { path = "../utils", version = "0.1.0" }
 
 # others
+anyhow = "1.0"
 crossbeam-channel = "0.5.1"
 hex = "0.4.3"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-uuid = { version = "0.8", features = ["v4"] }
-anyhow = "1.0"
 tokio = { version = "1.13", features = ["full"] }
 
 [dev-dependencies]

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use legion_content_store::ContentStoreAddr;
+use lgn_content_store::ContentStoreAddr;
 
 use crate::{DataBuild, Error};
 
@@ -13,8 +13,8 @@ use crate::{DataBuild, Error};
 /// # Example Usage
 ///
 /// ```
-/// # use legion_data_build::DataBuildOptions;
-/// # use legion_content_store::ContentStoreAddr;
+/// # use lgn_data_build::DataBuildOptions;
+/// # use lgn_content_store::ContentStoreAddr;
 /// let mut build = DataBuildOptions::new(".")
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .compiler_dir("./compilers/")
@@ -61,9 +61,9 @@ impl DataBuildOptions {
     /// Opens existing build index.
     ///
     /// The following conditions need to be met to successfully open a build index:
-    /// * [`ContentStore`](`legion_content_store::ContentStore`) must exist under address set by [`DataBuildOptions::content_store()`].
+    /// * [`ContentStore`](`lgn_content_store::ContentStore`) must exist under address set by [`DataBuildOptions::content_store()`].
     /// * Build index must exist and be of a supported version provided by [`DataBuildOptions::new()`].
-    /// * The build index must point to an existing [`legion_data_offline::resource::Project`].
+    /// * The build index must point to an existing [`lgn_data_offline::resource::Project`].
     pub fn open(&self) -> Result<DataBuild, Error> {
         DataBuild::open(self)
     }

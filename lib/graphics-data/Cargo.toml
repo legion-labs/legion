@@ -1,5 +1,5 @@
 [package]
-name = "legion-graphics-data"
+name = "lgn-graphics-data"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"

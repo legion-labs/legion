@@ -400,20 +400,11 @@ where
     }
 }
 
+#[derive(Default)]
 pub struct RunOnce {
     ran: bool,
     archetype_component_access: Access<ArchetypeComponentId>,
     component_access: Access<ComponentId>,
-}
-
-impl Default for RunOnce {
-    fn default() -> Self {
-        Self {
-            ran: false,
-            archetype_component_access: Access::default(),
-            component_access: Access::default(),
-        }
-    }
 }
 
 impl System for RunOnce {

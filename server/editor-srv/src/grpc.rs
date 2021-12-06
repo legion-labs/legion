@@ -1,7 +1,8 @@
 use std::{str::FromStr, sync::Arc};
 
-use legion_data_runtime::ResourceId;
-use legion_editor_proto::{
+use lgn_data_runtime::ResourceId;
+use lgn_data_transaction::{DataManager, LockContext, Transaction};
+use lgn_editor_proto::{
     editor_server::{Editor, EditorServer},
     GetResourcePropertiesRequest, GetResourcePropertiesResponse, RedoTransactionRequest,
     RedoTransactionResponse, ResourceDescription, ResourceProperty, ResourcePropertyUpdate,
@@ -11,8 +12,6 @@ use legion_editor_proto::{
 use log::info;
 use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
-
-use legion_data_transaction::{DataManager, LockContext, Transaction};
 
 pub(crate) struct GRPCServer {
     data_manager: Arc<Mutex<DataManager>>,
@@ -40,11 +39,10 @@ impl Editor for GRPCServer {
         let descriptors: Vec<ResourceDescription> = ctx
             .project
             .resource_list()
-            .iter()
             .map(|resource_id| {
                 let name = ctx
                     .project
-                    .resource_name(*resource_id)
+                    .resource_name(resource_id)
                     .unwrap_or_else(|_err| "".into());
 
                 ResourceDescription {
