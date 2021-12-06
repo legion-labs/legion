@@ -2,6 +2,13 @@ import "./assets/index.css";
 
 import log, { Level } from "@/lib/log";
 import App from "./App.svelte";
+import { createAwsCognitoTokenCache, finalizeAwsCognitoAuth } from "./lib/auth";
+
+const target = document.querySelector("#root");
+
+if (!target) {
+  throw new Error("#root element can't be found");
+}
 
 // TODO: Set level from configuration file
 const logLevel: Level = "warn";
@@ -11,10 +18,18 @@ if (logLevel) {
   log.set(logLevel);
 }
 
-const target = document.querySelector("#root");
+// TODO: Make a small router for this
+if (window.location.pathname === "/") {
+  const code = new URLSearchParams(window.location.search).get("code");
 
-if (!target) {
-  throw new Error("#root element can't be found");
+  if (code) {
+    const awsCognitoTokenCache = createAwsCognitoTokenCache();
+
+    finalizeAwsCognitoAuth(awsCognitoTokenCache, code).then((_userInfo) => {
+      // Cleanup the Url
+      window.history.pushState(null, "Home", "/");
+    });
+  }
 }
 
 new App({ target });
