@@ -10,7 +10,8 @@ use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
 use uuid::Uuid;
 
-use crate::{EguiPass, RenderContext, Renderer, TmpRenderPass};
+use crate::egui::egui_pass::EguiPass;
+use crate::{RenderContext, Renderer, TmpRenderPass};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents);

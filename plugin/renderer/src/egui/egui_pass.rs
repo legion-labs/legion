@@ -1,7 +1,7 @@
 use crate::components::RenderSurface;
+use crate::egui::egui_plugin::Egui;
 use crate::RenderContext;
 use crate::Renderer;
-use lgn_egui::Egui;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
 use std::num::NonZeroU32;
@@ -25,7 +25,7 @@ impl EguiPass {
         let shader_compiler = HlslCompiler::new().unwrap();
 
         let shader_source =
-            String::from_utf8(include_bytes!("../shaders/ui.hlsl").to_vec()).unwrap();
+            String::from_utf8(include_bytes!("../../shaders/ui.hlsl").to_vec()).unwrap();
 
         let shader_build_result = shader_compiler
             .compile(&CompileParams {

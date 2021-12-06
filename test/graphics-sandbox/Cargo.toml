@@ -20,7 +20,6 @@ lgn-presenter-snapshot = { path = "../../plugin/presenter-snapshot", version = "
 lgn-winit = { path = "../../plugin/winit", version = "0.1.0" }
 lgn-window = { path = "../../plugin/window", version = "0.1.0" }
 lgn-transform = { path = "../../plugin/transform", version = "0.1.0" }
-lgn-egui = { path = "../../plugin/egui", version = "0.1.0" }
 
 clap = "2.33"
 log = "0.4"

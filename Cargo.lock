@@ -2803,7 +2803,6 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-core",
  "lgn-ecs",
- "lgn-egui",
  "lgn-graphics-api",
  "lgn-input",
  "lgn-presenter",
@@ -3890,18 +3889,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-egui"
-version = "0.1.0"
-dependencies = [
- "egui",
- "epaint",
- "lgn-app",
- "lgn-ecs",
- "lgn-input",
- "lgn-window",
-]
-
-[[package]]
 name = "lgn-graphics-api"
 version = "0.1.0"
 dependencies = [
@@ -4109,17 +4096,19 @@ dependencies = [
  "anyhow",
  "bumpalo",
  "egui",
+ "epaint",
  "lgn-app",
  "lgn-ecs",
- "lgn-egui",
  "lgn-graphics-api",
  "lgn-graphics-data",
  "lgn-graphics-utils",
+ "lgn-input",
  "lgn-math",
  "lgn-pso-compiler",
  "lgn-tasks",
  "lgn-transform",
  "lgn-utils",
+ "lgn-window",
  "log",
  "parking_lot 0.11.2",
  "uuid",
