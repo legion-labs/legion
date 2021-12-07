@@ -92,8 +92,7 @@ bitflags::bitflags! {
             Self::AS_INDEX_BUFFER.bits|
             Self::AS_INDIRECT_BUFFER.bits;
         const TEXTURE_ONLY_USAGE_FLAGS =
-            Self::AS_DEPTH_STENCIL.bits|
-            Self::AS_TRANSFERABLE.bits;
+            Self::AS_DEPTH_STENCIL.bits;
     }
 }
 

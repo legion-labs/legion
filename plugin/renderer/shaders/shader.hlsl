@@ -22,7 +22,7 @@ struct PushConstData {
 
 struct EntityTransforms {
     float4x4 world;
-}
+};
 
 ConstantBuffer<ConstData> const_data;
 
@@ -34,12 +34,12 @@ ConstantBuffer<PushConstData> push_constant;
 VertexOut main_vs(in VertexIn vertex_in) {
     VertexOut vertex_out;
 
-    float4 world = static_buffer.Load<EntityTransforms>(push_constant.offset);
+    EntityTransforms transform = static_buffer.Load<EntityTransforms>(push_constant.offset);
 
-    float4 pos_view_relative = mul(const_data.view, mul(world, float4(vertex_in.pos, 1.0)));
+    float4 pos_view_relative = mul(const_data.view, mul(transform.world, float4(vertex_in.pos, 1.0)));
     vertex_out.hpos = mul(const_data.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
-    vertex_out.normal = mul(const_data.view, mul(world, float4(vertex_in.normal, 0.0))).xyz;
+    vertex_out.normal = mul(const_data.view, mul(transform.world, float4(vertex_in.normal, 0.0))).xyz;
     return vertex_out;
 }
 

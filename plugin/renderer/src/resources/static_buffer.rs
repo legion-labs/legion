@@ -32,7 +32,7 @@ impl UnifiedStaticBuffer {
         let buffer_def = BufferDef {
             size: virtual_buffer_size,
             queue_type: QueueType::Graphics,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
+            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             creation_flags: ResourceCreation::SPARSE_BINDING,
         };
 
@@ -47,7 +47,7 @@ impl UnifiedStaticBuffer {
         Self {
             inner: Arc::new(Mutex::new(UnifiedStaticBufferInner {
                 buffer,
-                segment_allocator: RangeAllocator::new(virtual_buffer_size / required_alignment),
+                segment_allocator: RangeAllocator::new(virtual_buffer_size),
                 binding_manager: SparseBindingManager::new(),
                 page_size: required_alignment,
                 read_only_view,
@@ -62,8 +62,9 @@ impl UnifiedStaticBuffer {
         let page_size = inner.page_size;
         let page_count =
             lgn_utils::memory::round_size_up_to_alignment_u64(segment_size, page_size) / page_size;
+        let alloc_size = page_count * page_size;
 
-        let location = inner.segment_allocator.allocate(page_count).unwrap();
+        let location = inner.segment_allocator.allocate(alloc_size).unwrap();
         let allocation = MemoryPagesAllocation::for_sparse_buffer(
             inner.buffer.device_context(),
             &inner.buffer,
@@ -207,9 +208,9 @@ impl<T> UniformGPUData<T> {
         }
 
         let index_of_page = index_64 / elements_per_page;
-        let page_in_index = index_64 % elements_per_page;
+        let index_in_page = index_64 % elements_per_page;
 
-        self.allocated_pages[index_of_page as usize].offset() + (page_in_index * self.element_size)
+        self.allocated_pages[index_of_page as usize].offset() + (index_in_page * self.element_size)
     }
 }
 

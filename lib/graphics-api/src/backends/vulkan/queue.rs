@@ -262,7 +262,7 @@ impl VulkanQueue {
                     sparse_bindings: Vec::new(),
                     buffer_offset: page.offset(),
                     buffer: &page.buffer,
-                    bind: false,
+                    bind: true,
                 };
 
                 vk_bindings.push(page.memory.binding_info(&mut binding_info));

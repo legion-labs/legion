@@ -46,7 +46,7 @@ impl PageHeap {
         Self {
             buffer,
             buffer_memory,
-            range_allocator: RangeAllocator::new(num_pages),
+            range_allocator: RangeAllocator::new(page_size * num_pages),
             page_size,
             frame_allocations: PageAllocationsForFrame {
                 frame: 0,
@@ -58,9 +58,8 @@ impl PageHeap {
 
     pub fn allocate_page(&mut self, size: u64) -> Option<BufferAllocation> {
         let alloc_size = lgn_utils::memory::round_size_up_to_alignment_u64(size, self.page_size);
-        let num_pages = alloc_size / self.page_size;
 
-        match self.range_allocator.allocate(num_pages) {
+        match self.range_allocator.allocate(alloc_size) {
             None => None,
             Some(range) => {
                 self.frame_allocations.allocations.push(range);

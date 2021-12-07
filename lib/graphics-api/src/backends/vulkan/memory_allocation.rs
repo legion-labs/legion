@@ -115,11 +115,12 @@ impl VulkanMemoryPagesAllocation {
         buffer: &Buffer,
         page_count: u64,
     ) -> Self {
-        let memory_requirements = unsafe {
+        let mut memory_requirements = unsafe {
             device_context
                 .vk_device()
                 .get_buffer_memory_requirements(buffer.vk_buffer())
         };
+        memory_requirements.size = memory_requirements.alignment;
 
         let allocation_create_info = vk_mem::AllocationCreateInfo {
             usage: vk_mem::MemoryUsage::GpuOnly,

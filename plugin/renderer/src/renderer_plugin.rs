@@ -45,13 +45,13 @@ fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
 
 fn update_rotation(
     mut renderer: ResMut<'_, Renderer>,
-    mut query: Query<'_, '_, (Entity, &mut Transform, &RotationComponent)>,
+    mut query: Query<'_, '_, (Entity, &mut Transform, &RotationComponent, &mut StaticMesh)>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-    let mut gpu_data = renderer.transform_data();
+    let mut gpu_data = renderer.aquire_transform_data();
 
-    for (entity, mut transform, rotation) in query.iter_mut() {
-        let offset = gpu_data.ensure_index_allocated(entity.id());
+    for (entity, mut transform, rotation, mut mesh) in query.iter_mut() {
+        mesh.offset = gpu_data.ensure_index_allocated(entity.id());
 
         transform.rotate(Quat::from_euler(
             EulerRot::XYZ,
@@ -64,10 +64,12 @@ fn update_rotation(
             world: transform.compute_matrix(),
         };
 
-        updater.add_update_jobs(&[world], offset);
+        updater.add_update_jobs(&[world], mesh.offset);
     }
 
     renderer.test_add_update_jobs(updater.job_blocks());
+
+    renderer.release_transform_data(gpu_data);
 }
 
 #[allow(clippy::needless_pass_by_value)]

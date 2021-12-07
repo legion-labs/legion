@@ -107,8 +107,12 @@ impl Renderer {
         self.transient_buffer.clone()
     }
 
-    pub fn transform_data(&mut self) -> TestStaticBuffer {
+    pub fn aquire_transform_data(&mut self) -> TestStaticBuffer {
         self.test_transform_data.transfer()
+    }
+
+    pub fn release_transform_data(&mut self, test: TestStaticBuffer) {
+        self.test_transform_data = test;
     }
 
     pub fn test_add_update_jobs(&mut self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
@@ -131,6 +135,10 @@ impl Renderer {
             render_context,
             graphics_queue,
         );
+    }
+
+    pub fn static_buffer_ro_view(&self) -> BufferView {
+        self.static_buffer.read_only_view()
     }
 
     //    pub fn prev_frame_semaphore(&self)
@@ -524,7 +532,7 @@ impl TmpRenderPass {
             let mut sub_allocation =
                 transient_allocator.copy_data(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
 
-            sub_allocation.bind_allocation_as_vertex_buffer(cmd_buffer);
+            sub_allocation.bind_as_vertex_buffer(cmd_buffer);
 
             let color: (f32, f32, f32, f32) = (
                 f32::from(static_mesh_component.color.r) / 255.0f32,
@@ -546,18 +554,29 @@ impl TmpRenderPass {
             sub_allocation =
                 transient_allocator.copy_data(&push_constant_data, ResourceUsage::AS_CONST_BUFFER);
 
-            let const_buffer_view = sub_allocation.const_buffer_view_for_allocation();
+            let const_buffer_view = sub_allocation.const_buffer_view();
 
             let mut descriptor_set_writer =
                 render_context.alloc_descriptor_set(descriptor_set_layout);
 
             descriptor_set_writer
                 .set_descriptors(
-                    "uniform_data",
+                    "const_data",
                     0,
                     &[DescriptorRef::BufferView(&const_buffer_view)],
                 )
                 .unwrap();
+
+            descriptor_set_writer
+                .set_descriptors(
+                    "static_buffer",
+                    0,
+                    &[DescriptorRef::BufferView(
+                        &render_context.renderer().static_buffer_ro_view(),
+                    )],
+                )
+                .unwrap();
+
             let descriptor_set_handle =
                 descriptor_set_writer.flush(render_context.renderer().device_context());
 
@@ -567,6 +586,10 @@ impl TmpRenderPass {
                     descriptor_set_layout.definition().frequency,
                     descriptor_set_handle,
                 )
+                .unwrap();
+
+            cmd_buffer
+                .cmd_push_constants(&self.root_signature, &(static_mesh_component.offset))
                 .unwrap();
 
             cmd_buffer
