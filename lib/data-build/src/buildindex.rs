@@ -13,7 +13,7 @@ use lgn_data_offline::{
     resource::{Project, ResourceHash},
     ResourcePathId,
 };
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_utils::DefaultHasher;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -97,7 +97,7 @@ struct OutputContent {
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
     #[serde_as(as = "Vec<(_, _)>")]
-    pathid_mapping: BTreeMap<(ResourceType, ResourceId), ResourcePathId>,
+    pathid_mapping: BTreeMap<ResourceTypeAndId, ResourcePathId>,
 }
 
 impl OutputContent {
@@ -376,7 +376,7 @@ impl BuildIndex {
             .insert(id.resource_id(), id.clone());
     }
 
-    pub fn lookup_pathid(&self, id: (ResourceType, ResourceId)) -> Option<ResourcePathId> {
+    pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
         self.output_content.pathid_mapping.get(&id).cloned()
     }
 
@@ -543,7 +543,7 @@ impl BuildIndex {
 mod tests {
 
     use lgn_data_offline::{resource::Project, ResourcePathId};
-    use lgn_data_runtime::{Resource, ResourceId};
+    use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 
     use super::BuildIndex;
 
@@ -569,7 +569,7 @@ mod tests {
         let project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
-        let source_id = (refs_resource::TestResource::TYPE, ResourceId::new());
+        let source_id = ResourceTypeAndId(refs_resource::TestResource::TYPE, ResourceId::new());
         let source_resource = ResourcePathId::from(source_id);
         let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
         let output_resource = intermediate_resource.push(refs_resource::TestResource::TYPE);
@@ -622,7 +622,7 @@ mod tests {
         let project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
-        let source_id = (refs_resource::TestResource::TYPE, ResourceId::new());
+        let source_id = ResourceTypeAndId(refs_resource::TestResource::TYPE, ResourceId::new());
         let source_resource = ResourcePathId::from(source_id);
         let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
         let output_resources = intermediate_resource.push(refs_resource::TestResource::TYPE);

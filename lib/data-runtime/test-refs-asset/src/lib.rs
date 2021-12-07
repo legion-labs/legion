@@ -7,6 +7,7 @@ use std::{any::Any, io, sync::Arc};
 use byteorder::{LittleEndian, ReadBytesExt};
 use lgn_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId, ResourceType,
+    ResourceTypeAndId,
 };
 /// Asset temporarily used for testing.
 ///
@@ -67,7 +68,7 @@ where
     if underlying_id == 0 {
         return Ok(None);
     }
-    Ok(Some(Reference::Passive((
+    Ok(Some(Reference::Passive(ResourceTypeAndId(
         ResourceType::from_raw(underlying_type),
         ResourceId::from_raw(underlying_id),
     ))))

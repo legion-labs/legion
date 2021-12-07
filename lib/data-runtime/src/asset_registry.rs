@@ -18,7 +18,7 @@ use lgn_content_store::{ContentStore, ContentStoreAddr};
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    vfs, Asset, AssetLoader, Handle, HandleUntyped, Resource, ResourceId, ResourceType,
+    vfs, Asset, AssetLoader, Handle, HandleUntyped, Resource, ResourceType, ResourceTypeAndId,
 };
 
 /// Wraps a borrowed reference to a resource.
@@ -210,8 +210,8 @@ impl AssetRegistryOptions {
 }
 
 struct Inner {
-    assets: HashMap<(ResourceType, ResourceId), Box<dyn Any + Send + Sync>>,
-    load_errors: HashMap<(ResourceType, ResourceId), io::ErrorKind>,
+    assets: HashMap<ResourceTypeAndId, Box<dyn Any + Send + Sync>>,
+    load_errors: HashMap<ResourceTypeAndId, io::ErrorKind>,
     load_event_senders: Vec<crossbeam_channel::Sender<ResourceLoadEvent>>,
 }
 
@@ -239,9 +239,9 @@ pub enum ResourceLoadEvent {
     /// Successful resource load, resulting from either a handle load, or the loading of a dependency
     Loaded(HandleUntyped),
     /// Resource unload event
-    Unloaded((ResourceType, ResourceId)),
+    Unloaded(ResourceTypeAndId),
     /// Sent when a loading attempt has failed
-    LoadError((ResourceType, ResourceId), io::ErrorKind),
+    LoadError(ResourceTypeAndId, io::ErrorKind),
     /// Successful resource reload
     Reloaded(HandleUntyped),
 }
@@ -270,22 +270,22 @@ impl AssetRegistry {
     ///
     /// The asset will be unloaded after all instances of [`HandleUntyped`] and
     /// [`Handle`] that refer to that asset go out of scope.
-    pub fn load_untyped(&self, type_id: (ResourceType, ResourceId)) -> HandleUntyped {
+    pub fn load_untyped(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
         self.loader.load(type_id)
     }
 
     /// Trigger a reload of a given primary resource.
-    pub fn reload(&self, type_id: (ResourceType, ResourceId)) -> bool {
+    pub fn reload(&self, type_id: ResourceTypeAndId) -> bool {
         self.loader.reload(type_id)
     }
 
     /// Returns a handle to the resource if a handle to this resource already exists.
-    pub fn get_untyped(&self, type_id: (ResourceType, ResourceId)) -> Option<HandleUntyped> {
+    pub fn get_untyped(&self, type_id: ResourceTypeAndId) -> Option<HandleUntyped> {
         self.loader.get_handle(type_id)
     }
 
     /// Same as [`Self::load_untyped`] but blocks until the resource load completes or returns an error.
-    pub fn load_untyped_sync(&self, type_id: (ResourceType, ResourceId)) -> HandleUntyped {
+    pub fn load_untyped_sync(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
         let handle = self.loader.load(type_id);
         // todo: this will be improved with async/await
         while !handle.is_loaded(self) && !handle.is_err(self) {
@@ -297,22 +297,19 @@ impl AssetRegistry {
     }
 
     /// Same as [`Self::load_untyped`] but the returned handle is generic over asset type `T` for convenience.
-    pub fn load<T: Any + Resource>(&self, id: (ResourceType, ResourceId)) -> Handle<T> {
+    pub fn load<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped(id);
         Handle::<T>::from(handle)
     }
 
     /// Same as [`Self::load`] but blocks until the resource load completes or returns an error.
-    pub fn load_sync<T: Any + Resource>(&self, id: (ResourceType, ResourceId)) -> Handle<T> {
+    pub fn load_sync<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_sync(id);
         Handle::<T>::from(handle)
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Any + Resource>(
-        &self,
-        id: (ResourceType, ResourceId),
-    ) -> Option<Ref<'_, T>> {
+    pub(crate) fn get<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Option<Ref<'_, T>> {
         let inner = self.read_inner();
 
         if let Some(asset) = inner.detach().assets.get(&id) {
@@ -324,7 +321,7 @@ impl AssetRegistry {
     }
 
     /// Tests if an asset is loaded.
-    pub(crate) fn is_loaded(&self, id: (ResourceType, ResourceId)) -> bool {
+    pub(crate) fn is_loaded(&self, id: ResourceTypeAndId) -> bool {
         self.read_inner().assets.get(&id).is_some()
     }
 
@@ -375,7 +372,7 @@ impl AssetRegistry {
         }
     }
 
-    pub(crate) fn is_err(&self, type_id: (ResourceType, ResourceId)) -> bool {
+    pub(crate) fn is_err(&self, type_id: ResourceTypeAndId) -> bool {
         self.read_inner().load_errors.contains_key(&type_id)
     }
 
@@ -390,6 +387,7 @@ impl AssetRegistry {
 
 #[cfg(test)]
 mod tests {
+    use crate::ResourceId;
 
     mod refs_asset {
         //! This module defines a test asset.
@@ -402,7 +400,7 @@ mod tests {
 
         use crate::{
             resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId,
-            ResourceType,
+            ResourceType, ResourceTypeAndId,
         };
         /// Asset temporarily used for testing.
         ///
@@ -467,7 +465,7 @@ mod tests {
             if underlying_id == 0 {
                 return Ok(None);
             }
-            Ok(Some(Reference::Passive((
+            Ok(Some(Reference::Passive(ResourceTypeAndId(
                 ResourceType::from_raw(underlying_type),
                 ResourceId::from_raw(underlying_id),
             ))))
@@ -481,14 +479,13 @@ mod tests {
     use super::*;
     use crate::test_asset;
 
-    fn setup_singular_asset_test(
-        content: &[u8],
-    ) -> ((ResourceType, ResourceId), Arc<AssetRegistry>) {
+    fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
         let asset_id = {
-            let type_id = (test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
+            let type_id =
+                ResourceTypeAndId(test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
             let checksum = content_store.store(content).unwrap();
             manifest.insert(type_id, checksum, content.len());
             type_id
@@ -502,11 +499,7 @@ mod tests {
         (asset_id, reg)
     }
 
-    fn setup_dependency_test() -> (
-        (ResourceType, ResourceId),
-        (ResourceType, ResourceId),
-        Arc<AssetRegistry>,
-    ) {
+    fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
@@ -533,7 +526,7 @@ mod tests {
             0, 0, 0, // asset data
         ];
 
-        let child_id = (refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(1));
+        let child_id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(1));
 
         let parent_id = {
             manifest.insert(
@@ -542,7 +535,7 @@ mod tests {
                 BINARY_CHILD_ASSETFILE.len(),
             );
             let checksum = content_store.store(&BINARY_PARENT_ASSETFILE).unwrap();
-            let id = (refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(2));
+            let id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(2));
             manifest.insert(id, checksum, BINARY_PARENT_ASSETFILE.len());
             id
         };
@@ -632,7 +625,10 @@ mod tests {
 
         let internal_id;
         {
-            let a = reg.load_untyped((test_asset::TestAsset::TYPE, ResourceId::new_explicit(7)));
+            let a = reg.load_untyped(ResourceTypeAndId(
+                test_asset::TestAsset::TYPE,
+                ResourceId::new_explicit(7),
+            ));
             internal_id = a.id();
 
             let mut test_timeout = Duration::from_millis(500);
@@ -657,8 +653,10 @@ mod tests {
 
         let internal_id;
         {
-            let a =
-                reg.load_untyped_sync((test_asset::TestAsset::TYPE, ResourceId::new_explicit(7)));
+            let a = reg.load_untyped_sync(ResourceTypeAndId(
+                test_asset::TestAsset::TYPE,
+                ResourceId::new_explicit(7),
+            ));
             internal_id = a.id();
 
             assert!(!a.is_loaded(&reg));

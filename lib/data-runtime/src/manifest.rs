@@ -5,13 +5,13 @@ use std::collections::HashMap;
 use lgn_content_store::Checksum;
 use serde::{Deserialize, Serialize};
 
-use crate::{ResourceId, ResourceType};
+use crate::ResourceTypeAndId;
 
 /// Description of a compiled asset.
 #[derive(Serialize, Deserialize)]
 pub struct CompiledAsset {
     /// The id of the asset.
-    pub guid: (ResourceType, ResourceId),
+    pub guid: ResourceTypeAndId,
     /// The checksum of the asset.
     pub checksum: Checksum,
     /// The size of the asset.
@@ -20,21 +20,21 @@ pub struct CompiledAsset {
 
 /// `Manifest` contains storage information about assets - their checksums and sizes.
 #[derive(Debug, Default)]
-pub struct Manifest(HashMap<(ResourceType, ResourceId), (Checksum, usize)>);
+pub struct Manifest(HashMap<ResourceTypeAndId, (Checksum, usize)>);
 
 impl Manifest {
     /// Retrieve information about `Asset` identified by a given [`ResourceId`], if available.
-    pub fn find(&self, type_id: (ResourceType, ResourceId)) -> Option<(Checksum, usize)> {
+    pub fn find(&self, type_id: ResourceTypeAndId) -> Option<(Checksum, usize)> {
         self.0.get(&type_id).copied()
     }
 
     /// Add new information about an `Asset`.
-    pub fn insert(&mut self, type_id: (ResourceType, ResourceId), checksum: Checksum, size: usize) {
+    pub fn insert(&mut self, type_id: ResourceTypeAndId, checksum: Checksum, size: usize) {
         self.0.insert(type_id, (checksum, size));
     }
 
     /// An iterator visiting all assets in manifest, in an arbitrary order.
-    pub fn resources(&self) -> impl Iterator<Item = &(ResourceType, ResourceId)> {
+    pub fn resources(&self) -> impl Iterator<Item = &ResourceTypeAndId> {
         self.0.keys()
     }
 

@@ -61,7 +61,7 @@ use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{Locale, Platform, Target};
 use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::resource_type_id_tuple;
+use lgn_data_runtime::ResourceTypeAndId;
 
 const ARG_NAME_RESOURCE_PATH: &str = "resource";
 const ARG_NAME_BUILDINDEX: &str = "buildindex";
@@ -209,11 +209,12 @@ fn main() -> Result<(), String> {
 
         let derived = {
             if runtime_flag {
-                let id = resource_type_id_tuple::from_str(derived)
+                let id = derived
+                    .parse::<ResourceTypeAndId>()
                     .map_err(|_e| format!("Invalid Resource (ResourceId) '{}'", derived))?;
                 build.lookup_pathid(id).ok_or(format!(
                     "Cannot resolve ResourceId to ResourcePathId: '{}'",
-                    resource_type_id_tuple::to_string(id)
+                    id
                 ))?
             } else {
                 ResourcePathId::from_str(derived)

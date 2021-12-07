@@ -8,7 +8,7 @@ use std::{
 use lgn_content_store::{ContentStore, ContentStoreAddr};
 
 use super::Device;
-use crate::{manifest::Manifest, resource_type_id_tuple, ResourceId, ResourceType};
+use crate::{manifest::Manifest, ResourceTypeAndId};
 
 /// Storage device that builds resources on demand. Resources are accessed through a manifest access table.
 pub(crate) struct BuildDevice {
@@ -41,7 +41,7 @@ impl BuildDevice {
 }
 
 impl Device for BuildDevice {
-    fn load(&self, type_id: (ResourceType, ResourceId)) -> Option<Vec<u8>> {
+    fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         if self.force_recompile {
             self.reload(type_id)
         } else {
@@ -52,7 +52,7 @@ impl Device for BuildDevice {
         }
     }
 
-    fn reload(&self, type_id: (ResourceType, ResourceId)) -> Option<Vec<u8>> {
+    fn reload(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         let output = self.build_resource(type_id).ok()?;
         self.manifest.borrow_mut().extend(output);
 
@@ -64,7 +64,7 @@ impl Device for BuildDevice {
 }
 
 impl BuildDevice {
-    fn build_resource(&self, resource_id: (ResourceType, ResourceId)) -> io::Result<Manifest> {
+    fn build_resource(&self, resource_id: ResourceTypeAndId) -> io::Result<Manifest> {
         let mut command = build_command(
             &self.databuild_bin,
             resource_id,
@@ -72,10 +72,7 @@ impl BuildDevice {
             &self.buildindex,
         );
 
-        log::info!(
-            "Running DataBuild for ResourceId: {}",
-            resource_type_id_tuple::to_string(resource_id)
-        );
+        log::info!("Running DataBuild for ResourceId: {}", resource_id);
         let start = Instant::now();
         let output = command.output()?;
 
@@ -119,7 +116,7 @@ impl BuildDevice {
 
 fn build_command(
     databuild_path: impl AsRef<Path>,
-    resource_id: (ResourceType, ResourceId),
+    resource_id: ResourceTypeAndId,
     cas: &ContentStoreAddr,
     buildindex_dir: impl AsRef<Path>,
 ) -> std::process::Command {
@@ -128,7 +125,7 @@ fn build_command(
     let locale = "en";
     let mut command = std::process::Command::new(databuild_path.as_ref());
     command.arg("compile");
-    command.arg(resource_type_id_tuple::to_string(resource_id));
+    command.arg(format!("{}", resource_id));
     command.arg("--rt");
     command.arg(format!("--cas={}", cas));
     command.arg(format!("--target={}", target));

@@ -2,7 +2,7 @@ use std::any::Any;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{AssetRegistry, Handle, Resource, ResourceId, ResourceType};
+use crate::{AssetRegistry, Handle, Resource, ResourceTypeAndId};
 
 /// A `ResourceReference` represents a reference to an external resource, that can be promoted to a handle
 pub enum Reference<T>
@@ -10,7 +10,7 @@ where
     T: Any + Resource,
 {
     /// Reference is not yet active, and is simply described as an id
-    Passive((ResourceType, ResourceId)),
+    Passive(ResourceTypeAndId),
 
     /// Reference is active, and be accessed through a typed handle
     Active(Handle<T>),
@@ -21,7 +21,7 @@ where
     T: Any + Resource,
 {
     /// Returns resource id associated with this Reference
-    pub fn id(&self) -> (ResourceType, ResourceId) {
+    pub fn id(&self) -> ResourceTypeAndId {
         match self {
             Self::Passive(resource_id) => *resource_id,
             Self::Active(handle) => handle.id(),
@@ -58,7 +58,7 @@ where
         D: Deserializer<'de>,
     {
         // A Reference is always deserialized as passive, and will require activation
-        let resource_id = <(ResourceType, ResourceId)>::deserialize(deserializer)?;
+        let resource_id = <ResourceTypeAndId>::deserialize(deserializer)?;
         Ok(Self::Passive(resource_id))
     }
 }

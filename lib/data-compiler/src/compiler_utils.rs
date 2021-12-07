@@ -4,13 +4,13 @@ use std::hash::{Hash, Hasher};
 
 use bincode;
 use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_utils::DefaultHasher;
 
 use crate::{CompilerHash, Locale, Platform, Target};
 
 /// Converts `ResourcePathId` to `ResourceId`.
-pub fn path_id_to_asset_id(path: &Option<ResourcePathId>) -> Option<(ResourceType, ResourceId)> {
+pub fn path_id_to_asset_id(path: &Option<ResourcePathId>) -> Option<ResourceTypeAndId> {
     path.as_ref().map(ResourcePathId::resource_id)
 }
 

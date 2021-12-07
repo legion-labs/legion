@@ -1,16 +1,16 @@
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
 pub(crate) struct CreateResourceOperation {
-    resource_id: (ResourceType, ResourceId),
+    resource_id: ResourceTypeAndId,
     resource_path: ResourcePathName,
 }
 
 impl CreateResourceOperation {
-    pub fn new(resource_id: (ResourceType, ResourceId), resource_path: ResourcePathName) -> Self {
+    pub fn new(resource_id: ResourceTypeAndId, resource_path: ResourcePathName) -> Self {
         Self {
             resource_id,
             resource_path,

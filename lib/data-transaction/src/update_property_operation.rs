@@ -1,21 +1,17 @@
 use async_trait::async_trait;
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
 pub(crate) struct UpdatePropertyOperation {
-    resource_id: (ResourceType, ResourceId),
+    resource_id: ResourceTypeAndId,
     property_name: String,
     new_value: String,
     old_value: Option<String>,
 }
 
 impl UpdatePropertyOperation {
-    pub fn new(
-        resource_id: (ResourceType, ResourceId),
-        property_name: &str,
-        new_value: &str,
-    ) -> Self {
+    pub fn new(resource_id: ResourceTypeAndId, property_name: &str, new_value: &str) -> Self {
         Self {
             resource_id,
             property_name: property_name.into(),

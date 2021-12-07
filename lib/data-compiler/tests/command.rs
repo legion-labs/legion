@@ -6,12 +6,12 @@ use lgn_data_compiler::{
     Locale, Platform, Target,
 };
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
-use lgn_data_runtime::{resource_type_id_tuple, AssetLoader, Resource, ResourceId, ResourceType};
+use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
 
 mod common;
 
-fn create_test_resource(id: (ResourceType, ResourceId), dir: &Path, content: &str) {
-    let path = dir.join(resource_type_id_tuple::to_string(id));
+fn create_test_resource(id: ResourceTypeAndId, dir: &Path, content: &str) {
+    let path = dir.join(format!("{}", id));
     let mut file = File::create(path).expect("new file");
 
     let mut proc = refs_resource::TestResourceProc {};
@@ -50,7 +50,7 @@ fn command_compile() {
 
     let content = "test content";
 
-    let source = (refs_resource::TestResource::TYPE, ResourceId::new());
+    let source = ResourceTypeAndId(refs_resource::TestResource::TYPE, ResourceId::new());
     create_test_resource(source, &resource_dir, content);
 
     let exe_path = common::compiler_exe("test-refs");

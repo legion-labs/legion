@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use crate::{AssetRegistry, Ref, Resource, ResourceId, ResourceType};
+use crate::{AssetRegistry, Ref, Resource, ResourceTypeAndId};
 
 //
 //
@@ -13,8 +13,8 @@ use crate::{AssetRegistry, Ref, Resource, ResourceId, ResourceType};
 /// Arc<Inner> is responsible for sending a 'unload' message when last reference is dropped.
 #[derive(Debug)]
 struct Inner {
-    type_id: (ResourceType, ResourceId),
-    unload_tx: Option<crossbeam_channel::Sender<(ResourceType, ResourceId)>>,
+    type_id: ResourceTypeAndId,
+    unload_tx: Option<crossbeam_channel::Sender<ResourceTypeAndId>>,
 }
 impl Drop for Inner {
     fn drop(&mut self) {
@@ -63,8 +63,8 @@ impl PartialEq for HandleUntyped {
 
 impl HandleUntyped {
     pub(crate) fn new_handle(
-        type_id: (ResourceType, ResourceId),
-        handle_drop_tx: crossbeam_channel::Sender<(ResourceType, ResourceId)>,
+        type_id: ResourceTypeAndId,
+        handle_drop_tx: crossbeam_channel::Sender<ResourceTypeAndId>,
     ) -> Self {
         Self {
             inner: Arc::new(Inner {
@@ -95,7 +95,7 @@ impl HandleUntyped {
     }
 
     /// Returns `ResourceId` associated with this handle.
-    pub fn id(&self) -> (ResourceType, ResourceId) {
+    pub fn id(&self) -> ResourceTypeAndId {
         self.inner.type_id
     }
 
@@ -142,7 +142,7 @@ impl<T: Any + Resource> Handle<T> {
     }
 
     /// Returns `ResourceId` associated with this handle.
-    pub fn id(&self) -> (ResourceType, ResourceId) {
+    pub fn id(&self) -> ResourceTypeAndId {
         self.inner.type_id
     }
 

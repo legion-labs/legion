@@ -32,12 +32,17 @@ impl ResourceType {
     /// which can be used to identify a resource or asset.
     pub const fn new(v: &[u8]) -> Self {
         let v = const_xxh3(v) as u32;
-        Self(unsafe { std::num::NonZeroU32::new_unchecked(v) }) // unwrap() doesn't work with const functions ATM
+        //Self(unsafe { std::num::NonZeroU32::new_unchecked(v) }) // unwrap() doesn't work with const functions ATM
+        Self::from_raw(v)
     }
 
     /// Creates a type id from a non-zero integer.
-    pub fn from_raw(v: u32) -> Self {
-        Self(std::num::NonZeroU32::new(v).unwrap())
+    pub const fn from_raw(v: u32) -> Self {
+        let v = match std::num::NonZeroU32::new(v) {
+            Some(v) => v,
+            None => panic!(),
+        };
+        Self(v)
     }
 }
 
@@ -189,28 +194,34 @@ impl<'de> Deserialize<'de> for ResourceId {
     }
 }
 
-/// FIXME: temporary, only to avoid having a concrete struct for `(ResourceType, ResourceId)` tuple and because a tuple is always considered as foreign.
-pub mod resource_type_id_tuple {
-    use crate::{ResourceId, ResourceType};
+/// FIXME: This should only be a temporary struct, we should be using the `ResourceId` directly.
+#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash, Serialize, Deserialize)]
+pub struct ResourceTypeAndId(pub ResourceType, pub ResourceId);
 
-    /// Create a `(ResourceType, ResourceId)` tuple from a string.
-    /// # Errors
-    /// Might return a `ParseIntError` if the input `s` contains anything other than a tuple of hexadecimal values.
-    pub fn from_str(s: &str) -> Result<(ResourceType, ResourceId), Box<dyn std::error::Error>> {
+impl FromStr for ResourceTypeAndId {
+    type Err = Box<dyn std::error::Error>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let pair: Vec<&str> = s
             .trim_matches(|p| p == '(' || p == ')')
             .split(',')
             .collect();
         let t = pair[0].parse::<ResourceType>()?;
         let id = pair[1].parse::<ResourceId>()?;
-        Ok((t, id))
-    }
-
-    /// Returns a string from a formatted `(ResourceType, ResourceId)` tuple.
-    pub fn to_string(v: (ResourceType, ResourceId)) -> String {
-        format!("({},{})", v.0, v.1)
+        Ok(Self(t, id))
     }
 }
+
+impl fmt::Display for ResourceTypeAndId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("({},{})", self.0, self.1))
+    }
+}
+
+/// Returns a string from a formatted `ResourceTypeAndId` tuple.
+/*pub fn to_string(v: ResourceTypeAndId) -> String {
+    format!("({},{})", v.0, v.1)
+}*/
 
 /// Trait describing resource type name.
 pub trait Resource {

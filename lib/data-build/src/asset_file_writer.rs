@@ -1,5 +1,5 @@
 use lgn_content_store::{Checksum, ContentStore};
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 use serde::{Deserialize, Serialize};
 
 use crate::Error;
@@ -8,7 +8,7 @@ use crate::Error;
 struct AssetFile {
     header: [u8; 4],
     version: u16,
-    deps: Vec<(ResourceType, ResourceId)>,
+    deps: Vec<ResourceTypeAndId>,
     kind: ResourceType,
     assets: Vec<Vec<u8>>,
 }
@@ -18,18 +18,13 @@ const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 
 // todo: no asset ids are written because we assume 1 asset in asset_file now.
 pub fn write_assetfile(
-    asset_list: impl Iterator<Item = ((ResourceType, ResourceId), Checksum)> + Clone,
-    reference_list: impl Iterator<
-            Item = (
-                (ResourceType, ResourceId),
-                ((ResourceType, ResourceId), (ResourceType, ResourceId)),
-            ),
-        > + Clone,
+    asset_list: impl Iterator<Item = (ResourceTypeAndId, Checksum)> + Clone,
+    reference_list: impl Iterator<Item = (ResourceTypeAndId, (ResourceTypeAndId, ResourceTypeAndId))>
+        + Clone,
     content_store: &impl ContentStore,
 ) -> Result<Vec<u8>, Error> {
     // Prepare dependencies
-    let mut primary_dependencies: Vec<(ResourceType, ResourceId)> =
-        reference_list.map(|r| r.1 .0).collect();
+    let mut primary_dependencies: Vec<ResourceTypeAndId> = reference_list.map(|r| r.1 .0).collect();
     primary_dependencies.sort();
     primary_dependencies.dedup();
 
@@ -58,7 +53,7 @@ mod tests {
 
     use bincode::Options;
     use lgn_content_store::RamContentStore;
-    use lgn_data_runtime::Resource;
+    use lgn_data_runtime::{Resource, ResourceId};
     use serde::Serialize;
 
     use super::*;
@@ -66,13 +61,13 @@ mod tests {
     #[derive(Serialize)]
     struct RefAssetContent {
         text: &'static str,
-        reference: (ResourceType, ResourceId),
+        reference: ResourceTypeAndId,
     }
 
     fn create_ref_asset(text: &'static str, reference: ResourceId) -> Vec<u8> {
         let content = RefAssetContent {
             text,
-            reference: (refs_asset::RefsAsset::TYPE, reference),
+            reference: ResourceTypeAndId(refs_asset::RefsAsset::TYPE, reference),
         };
         bincode::DefaultOptions::new()
             .with_varint_encoding()
@@ -85,7 +80,7 @@ mod tests {
     fn one_asset_no_references() {
         let mut content_store = RamContentStore::default();
 
-        let asset_id = (refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(1));
+        let asset_id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(1));
         let asset_content = create_ref_asset("test_content", ResourceId::new_explicit(9));
         let asset_checksum = content_store.store(&asset_content).expect("to store asset");
         assert_eq!(content_store.read(asset_checksum).unwrap(), asset_content);
@@ -112,12 +107,12 @@ mod tests {
     fn two_dependent_assets() {
         let mut content_store = RamContentStore::default();
 
-        let child_id = (refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(1));
+        let child_id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(1));
         let child_content = create_ref_asset("child", ResourceId::new_explicit(9));
         let child_checksum = content_store.store(&child_content).expect("to store asset");
         assert_eq!(content_store.read(child_checksum).unwrap(), child_content);
 
-        let parent_id = (refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(2));
+        let parent_id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(2));
         let parent_content = create_ref_asset("parent", ResourceId::new_explicit(1));
         let parent_checksum = content_store
             .store(&parent_content)

@@ -243,7 +243,7 @@ use lgn_data_offline::{
     resource::{Project, ResourcePathName},
     ResourcePathId,
 };
-use lgn_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 
 mod config;
 use config::Config;
@@ -394,14 +394,14 @@ fn main() -> Result<(), String> {
             ("list", _) => {
                 for id in project.resource_list() {
                     let name = project.resource_name(id).map_err(|e| e.to_string())?;
-                    println!("{} = {}", name, resource_type_id_tuple::to_string(id));
+                    println!("{} = {}", name, id);
                 }
             }
             ("name", Some(cmd_args)) => {
                 let id = cmd_args.value_of("id").unwrap();
-                let id = resource_type_id_tuple::from_str(id).map_err(|e| e.to_string())?;
+                let id = id.parse::<ResourceTypeAndId>().map_err(|e| e.to_string())?;
                 if let Ok(name) = project.resource_name(id) {
-                    println!("{} = {}", name, resource_type_id_tuple::to_string(id));
+                    println!("{} = {}", name, id);
                 } else {
                     println!("None");
                 }
@@ -410,7 +410,7 @@ fn main() -> Result<(), String> {
                 let name = cmd_args.value_of("name").unwrap();
                 let name = ResourcePathName::from(name);
                 if let Ok(id) = project.find_resource(&name) {
-                    println!("{} = {}", name, resource_type_id_tuple::to_string(id));
+                    println!("{} = {}", name, id);
                 } else {
                     println!("None");
                 }
@@ -443,13 +443,13 @@ fn main() -> Result<(), String> {
             let rid = {
                 if let Ok(rid) = ResourcePathId::from_str(text_id) {
                     rid
-                } else if let Ok(resource_id) = resource_type_id_tuple::from_str(text_id) {
+                } else if let Ok(resource_id) = text_id.parse() {
                     if let Some(rid) = build.lookup_pathid(resource_id) {
                         rid
                     } else {
                         return Err(format!(
                             "Failed to find a source ResourcePathId for ResourceId '{}'",
-                            resource_type_id_tuple::to_string(resource_id)
+                            resource_id
                         ));
                     }
                 } else {
@@ -468,11 +468,10 @@ fn main() -> Result<(), String> {
         if let Some(config) = config {
             let (build, project) = config.open()?;
             let rid = {
-                if let Ok(resource_id) = resource_type_id_tuple::from_str(text_id) {
-                    build.lookup_pathid(resource_id).ok_or(format!(
-                        "ResourceId '{}' not found",
-                        resource_type_id_tuple::to_string(resource_id)
-                    ))?
+                if let Ok(resource_id) = text_id.parse() {
+                    build
+                        .lookup_pathid(resource_id)
+                        .ok_or(format!("ResourceId '{}' not found", resource_id))?
                 } else {
                     ResourcePathId::from_str(text_id)
                         .map_err(|_e| format!("Invalid ResourcePathId '{}'", text_id))?
@@ -640,13 +639,13 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
     let mut f = File::open(path).expect("unable to open asset file");
 
     let file_name = path.file_name().unwrap().to_string_lossy();
-    let file_guid = resource_type_id_tuple::from_str(&file_name);
+    let file_guid = file_name.parse::<ResourceTypeAndId>();
     if let Err(_e) = file_guid {
         // not an asset file, just ignore it
         return;
     }
     let file_guid = file_guid.unwrap();
-    println!("\nasset {}", resource_type_id_tuple::to_string(file_guid));
+    println!("\nasset {}", file_guid);
 
     let mut typename: [u8; 4] = [0; 4];
     let typename_result = f.read_exact(&mut typename);
@@ -677,7 +676,7 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
                 ResourceId::from_raw(f.read_u128::<LittleEndian>().expect("valid data"));
             if let Some(config) = config {
                 let (_build, project) = config.open().expect("open config");
-                let path_id = ResourcePathId::from((asset_ref_type, asset_ref_id));
+                let path_id = ResourcePathId::from(ResourceTypeAndId(asset_ref_type, asset_ref_id));
                 println!(
                     "\t\treference: {}",
                     pretty_name_from_pathid(&path_id, &project, config)
@@ -685,7 +684,7 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
             } else {
                 println!(
                     "\t\treference: {}",
-                    resource_type_id_tuple::to_string((asset_ref_type, asset_ref_id,))
+                    ResourceTypeAndId(asset_ref_type, asset_ref_id,)
                 );
             }
         }
@@ -715,7 +714,7 @@ fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Con
     if let Ok(source_name) = project.resource_name(rid.source_resource()) {
         output_text.push_str(&source_name.to_string());
     } else {
-        output_text.push_str(&resource_type_id_tuple::to_string(rid.source_resource()));
+        output_text.push_str(&format!("{}", rid.source_resource()));
     }
 
     let source_ty_pretty = config

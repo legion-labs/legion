@@ -66,7 +66,7 @@ use instant::Duration;
 use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
-use lgn_data_runtime::{resource_type_id_tuple, ResourceId, ResourceType};
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_transform::prelude::*;
 
 fn main() {
@@ -100,7 +100,7 @@ fn main() {
         .value_of(ARG_NAME_MANIFEST)
         .unwrap_or("test/sample-data/runtime/game.manifest");
 
-    let mut assets_to_load = Vec::<(ResourceType, ResourceId)>::new();
+    let mut assets_to_load = Vec::<ResourceTypeAndId>::new();
 
     // default root object is in sample data
     // /world/sample_1.ent
@@ -108,7 +108,7 @@ fn main() {
     let root_asset = args
         .value_of(ARG_NAME_ROOT)
         .unwrap_or("(97b0740f,6f9c3cba-b1f1-468a-a109-e71b0ac0e9fa)");
-    if let Ok(asset_id) = resource_type_id_tuple::from_str(root_asset) {
+    if let Ok(asset_id) = root_asset.parse::<ResourceTypeAndId>() {
         assets_to_load.push(asset_id);
     }
 

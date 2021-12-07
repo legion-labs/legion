@@ -5,6 +5,7 @@ use std::{any::Any, io, sync::Arc};
 use byteorder::{LittleEndian, ReadBytesExt};
 use lgn_data_runtime::{
     resource, Asset, AssetLoader, AssetRegistry, Reference, Resource, ResourceId, ResourceType,
+    ResourceTypeAndId,
 };
 
 use crate::Texture;
@@ -38,7 +39,7 @@ where
 {
     let underlying_type = reader.read_u32::<LittleEndian>()?;
     let underlying_id = reader.read_u128::<LittleEndian>()?;
-    Ok(Reference::Passive((
+    Ok(Reference::Passive(ResourceTypeAndId(
         ResourceType::from_raw(underlying_type),
         ResourceId::from_raw(underlying_id),
     )))

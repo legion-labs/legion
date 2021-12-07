@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName, ResourceRegistry};
-use lgn_data_runtime::{resource_type_id_tuple, AssetRegistry, ResourceId, ResourceType};
+use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
 use log::info;
 use thiserror::Error;
 use tokio::sync::Mutex;
@@ -17,11 +17,11 @@ pub enum Error {
 
     ///Resource failed to deserializer from memory
     #[error("ResourceId '{0:?}' failed to deserialize")]
-    InvalidResourceDeserialization((ResourceType, ResourceId)),
+    InvalidResourceDeserialization(ResourceTypeAndId),
 
     /// Resource Id Already Exists
     #[error("Resource '{0:?}' already exists in the Project")]
-    ResourceIdAlreadyExist((ResourceType, ResourceId)),
+    ResourceIdAlreadyExist(ResourceTypeAndId),
 
     /// Resource Path Already Exists
     #[error("Resource Path '{0}' already exists in the Project")]
@@ -29,11 +29,11 @@ pub enum Error {
 
     /// Invalid Delete Operation
     #[error("Invalid DeleteOperation on Resource'{0:?}'")]
-    InvalidDeleteOperation((ResourceType, ResourceId)),
+    InvalidDeleteOperation(ResourceTypeAndId),
 
     /// Invalid Resource
     #[error("ResourceId '{0:?}' not found")]
-    InvalidResource((ResourceType, ResourceId)),
+    InvalidResource(ResourceTypeAndId),
 
     /// Resource of type failed to create
     #[error("Cannot create Resource of type {0}")]
@@ -41,7 +41,7 @@ pub enum Error {
 
     /// Invalid Resource Reflection
     #[error("Resource {0:?} doesn't have reflection.")]
-    InvalidResourceReflection((ResourceType, ResourceId)),
+    InvalidResourceReflection(ResourceTypeAndId),
 }
 
 /// System that manage the current state of the Loaded Offline Data
@@ -83,11 +83,7 @@ impl DataManager {
                 .load_resource(resource_id, &mut resource_registry)
                 .map_or_else(
                     |err| {
-                        log::warn!(
-                            "Failed to load {}: {}",
-                            resource_type_id_tuple::to_string(resource_id),
-                            err
-                        );
+                        log::warn!("Failed to load {}: {}", resource_id, err);
                     },
                     |handle| resource_handles.insert(resource_id, handle),
                 );

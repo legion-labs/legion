@@ -16,7 +16,7 @@ use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
 use lgn_data_compiler::{Locale, Platform, Target};
 use lgn_data_offline::{resource::Project, ResourcePathId};
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -70,9 +70,9 @@ fn compute_context_hash(
 /// # use lgn_content_store::ContentStoreAddr;
 /// # use lgn_data_compiler::{Locale, Platform, Target};
 /// # use lgn_data_offline::ResourcePathId;
-/// # use lgn_data_runtime::{ResourceId, ResourceType, resource_type_id_tuple};
+/// # use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 /// # use std::str::FromStr;
-/// # let offline_anim: (ResourceType, ResourceId) = resource_type_id_tuple::from_str("(type,invalid_id)").unwrap();
+/// # let offline_anim: ResourceTypeAndId = "(type,invalid_id)".parse::<ResourceTypeAndId>().unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// let mut build = DataBuildOptions::new(".")
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
@@ -179,7 +179,7 @@ impl DataBuild {
     /// Returns a source of a resource id.
     ///
     /// It will return None if the build never recorded a source for a given id.
-    pub fn lookup_pathid(&self, id: (ResourceType, ResourceId)) -> Option<ResourcePathId> {
+    pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
         self.build_index.lookup_pathid(id)
     }
 
