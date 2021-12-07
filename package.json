@@ -7,6 +7,8 @@
   "scripts": {
     "build": "yarn workspaces run build",
     "check:all": "yarn workspaces run check:all",
-    "test": "yarn workspaces run test"
+    "test": "yarn workspaces run test",
+    "analytics:dev": "yarn workspace analytics-web run dev",
+    "editor:dev": "yarn workspace editor run dev"
   }
 }
