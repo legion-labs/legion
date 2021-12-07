@@ -122,7 +122,7 @@ fn generate_rust_descriptorset(
     writer.indent();
     writer.add_line("let mut layout_def = DescriptorSetLayoutDef::default();".to_string());
     writer.add_line(format!("layout_def.frequency = {};", descriptor_set.frequency));
-    for descriptor_def in &descriptor_set.descriptors {}
+    for _descriptor_def in &descriptor_set.descriptors {}
     writer.add_line(
         "let api_layout = device_context.create_descriptorset_layout(&layout_def).unwrap();"
             .to_string(),

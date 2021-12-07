@@ -19,7 +19,7 @@ pub fn from_syn(file_path: &Path) -> anyhow::Result<Model> {
 
     let mut model = Model::new();
 
-    // let cur_dir = file_path.parent()?;
+    proc_macro2::fallback::force();
 
     process_syn_model(&mut model, &file_path, true)?;
 
@@ -495,7 +495,7 @@ fn process_syn_descriptorset(model: &mut Model, prop_bag: &PropertyBag) -> anyho
                 }
                 let read_write = prop_ty_name.starts_with("RW");
                 let sub_ty_pos = read_write as usize * "RW".len() + "Texture".len();
-                let sub_ty = &prop_ty_name[sub_ty_pos..];               
+                let sub_ty = &prop_ty_name[sub_ty_pos..];
 
                 builder = builder.add_texture(
                     prop_name,
@@ -530,7 +530,7 @@ fn process_syn_pipelinelayout(model: &mut Model, prop_bag: &PropertyBag) -> anyh
                 if !prop.ty.is_templated() {
                     return Err(anyhow!("#todo"));
                 }
-                builder = builder.add_descriptorset(prop.name.as_str(), prop.ty.template_name())?;                
+                builder = builder.add_descriptorset(prop.name.as_str(), prop.ty.template_name())?;
             }
             "PushConstant" => {
                 if !prop.ty.is_templated() {

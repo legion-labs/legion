@@ -34,8 +34,12 @@ impl PresenterSnapshot {
     ) -> anyhow::Result<Self> {
         let device_context = renderer.device_context();
         let graphics_queue = renderer.queue(QueueType::Graphics);
-        let offscreen_helper =
-            offscreen_helper::OffscreenHelper::new(device_context, &graphics_queue, resolution)?;
+        let offscreen_helper = offscreen_helper::OffscreenHelper::new(
+            renderer.shader_compiler(),
+            device_context,
+            &graphics_queue,
+            resolution,
+        )?;
 
         Ok(Self {
             snapshot_name: snapshot_name.to_string(),

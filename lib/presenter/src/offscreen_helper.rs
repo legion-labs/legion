@@ -114,20 +114,22 @@ pub struct OffscreenHelper {
 
 impl OffscreenHelper {
     pub fn new(
+        shader_compiler: HlslCompiler,
         device_context: &DeviceContext,
         graphics_queue: &Queue,
         resolution: Resolution,
     ) -> anyhow::Result<Self> {
+        shader_compiler
+            .filesystem()
+            .add_mount_point("presenter", env!("CARGO_MANIFEST_DIR"))?;
+
         //
         // Immutable resources
         //
-        let shader_compiler = HlslCompiler::new().unwrap();
-
-        let shader_source =
-            String::from_utf8(include_bytes!("../data/display_mapper.hlsl").to_vec())?;
-
         let shader_build_result = shader_compiler.compile(&CompileParams {
-            shader_source: ShaderSource::Code(shader_source),
+            shader_source: ShaderSource::Path(
+                "crate://presenter/data/display_mapper.hlsl".to_string(),
+            ),
             glob_defines: Vec::new(),
             entry_points: vec![
                 EntryPoint {

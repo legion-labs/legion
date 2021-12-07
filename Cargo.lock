@@ -2857,9 +2857,8 @@ dependencies = [
  "fxhash",
  "heck",
  "log",
+ "proc-macro2",
  "relative-path",
- "serde",
- "serde_yaml",
  "simple_logger",
  "strum 0.21.0",
  "syn",
@@ -4033,6 +4032,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-graphics-cgen-runtime"
+version = "0.1.0"
+dependencies = [
+ "glam",
+]
+
+[[package]]
 name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
@@ -4214,6 +4220,8 @@ dependencies = [
  "anyhow",
  "hassle-rs",
  "lgn-graphics-api",
+ "normpath",
+ "relative-path",
  "spirv-reflect",
  "spirv-tools",
 ]
@@ -4230,6 +4238,7 @@ dependencies = [
  "lgn-app",
  "lgn-ecs",
  "lgn-graphics-api",
+ "lgn-graphics-cgen-runtime",
  "lgn-graphics-data",
  "lgn-input",
  "lgn-math",
@@ -5138,6 +5147,15 @@ dependencies = [
  "memchr",
  "minimal-lexical",
  "version_check",
+]
+
+[[package]]
+name = "normpath"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "640c20e9df4a2d4a5adad5b47e17d76dac3e824346b181931c3ec9f7a85687b1"
+dependencies = [
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -6269,9 +6287,9 @@ checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
 name = "relative-path"
-version = "1.5.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9629de8974fd69c97684736786b807edd3da456d3e3f95341dd9d4cbd8f5ad6"
+checksum = "73d4caf086b102ab49d0525b721594a555ab55c6556086bbe52a430ad26c3bd7"
 
 [[package]]
 name = "remove_dir_all"

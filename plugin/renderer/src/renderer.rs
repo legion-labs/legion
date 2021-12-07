@@ -1,15 +1,16 @@
 #![allow(unsafe_code)]
 
+use std::ascii::AsciiExt;
 use std::num::NonZeroU32;
+use std::sync::Arc;
 
 use anyhow::Result;
 use lgn_graphics_api::{prelude::*, MAX_DESCRIPTOR_SET_LAYOUTS};
 use lgn_math::{Mat4, Vec3};
-use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource};
+use lgn_pso_compiler::{CompileParams, EntryPoint, HlslCompiler, ShaderSource, FileSystem};
 use lgn_transform::components::Transform;
 use parking_lot::{RwLock, RwLockReadGuard};
 
-use crate::cgen::descriptor_set::frame_descriptor_set::{self, FrameDescriptorSet};
 use crate::cgen::CodeGen;
 use crate::components::{RenderSurface, StaticMesh};
 use crate::memory::{BumpAllocator, BumpAllocatorHandle};
@@ -38,6 +39,7 @@ pub struct Renderer {
     // Temp for testing
     test_transform_data: TestStaticBuffer,
     bump_allocator_pool: RwLock<CpuPool<BumpAllocator>>,
+    shader_compiler: HlslCompiler,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
@@ -52,6 +54,10 @@ impl Renderer {
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
+        let mut filesystem = FileSystem::new("d:\\")?;
+        filesystem.add_mount_point("renderer", env!("CARGO_MANIFEST_DIR"))?;
+
+        let shader_compiler = HlslCompiler::new(filesystem).unwrap();
 
         let cgen = CodeGen::new(&device_context);
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, true);
@@ -84,6 +90,7 @@ impl Renderer {
             static_buffer,
             test_transform_data,
             bump_allocator_pool: RwLock::new(CpuPool::new()),
+            shader_compiler,
             api,
         })
     }
@@ -107,6 +114,10 @@ impl Renderer {
         }
     }
 
+    pub fn shader_compiler(&self) -> HlslCompiler {
+        self.shader_compiler.clone()
+    }
+    
     // TMP: change that.
     pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
         self.transient_buffer.clone()
@@ -281,14 +292,14 @@ impl TmpRenderPass {
         //
         // Shaders
         //
-        let shader_compiler = HlslCompiler::new().unwrap();
 
-        let shader_source =
-            String::from_utf8(include_bytes!("../shaders/shader.hlsl").to_vec()).unwrap();
+        let shader_compiler = renderer.shader_compiler();
 
         let shader_build_result = shader_compiler
             .compile(&CompileParams {
-                shader_source: ShaderSource::Code(shader_source),
+                shader_source: ShaderSource::Path(
+                    "crate://renderer/shaders/shader.hlsl".to_owned(),
+                ),
                 glob_defines: Vec::new(),
                 entry_points: vec![
                     EntryPoint {
@@ -526,7 +537,6 @@ impl TmpRenderPass {
         // let mut descriptor_set_writer =
         //     heap.allocate_descriptor_set(frame_descriptor_set.api_layout()).unwrap();
         
-
         // helper
         // frame_descriptor_set.set_uniform_data(uniform_buffer_cbv);\
         // frame_descriptor_set.set_constant_buffer_view(FrameDescriptorSet::UNIFORM_DATA, uniform_buffer_cbv);

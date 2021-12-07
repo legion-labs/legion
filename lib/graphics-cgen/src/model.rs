@@ -202,10 +202,9 @@ impl Model {
     pub fn new() -> Self {
         let mut ret = Self::default();
 
-        ret.add(CGenType::Native(NativeType::Float1)).unwrap();
-        ret.add(CGenType::Native(NativeType::Float2)).unwrap();
-        ret.add(CGenType::Native(NativeType::Float3)).unwrap();
-        ret.add(CGenType::Native(NativeType::Float4)).unwrap();
+        for native_type in NativeType::iter() {
+            ret.add(CGenType::Native(native_type)).unwrap();
+        }
 
         ret
     }
@@ -235,11 +234,6 @@ impl Model {
         Ok(object_id)
     }
 
-    // pub fn objects<T: ModelObject>(&self) -> Option<&ModelVec> {
-    //     let container = self.get_container::<T>()?;
-    //     Some(container)
-    // }
-
     pub fn object_iter<T: ModelObject>(&self) -> Option<ModelVecIter<'_, T>> {
         let container = self.get_container::<T>()?;
         Some(ModelVecIter::new(container))
@@ -253,51 +247,6 @@ impl Model {
         let ptr = container.get_object_ref(id.object_index as usize) as *const T;
         unsafe { ptr.as_ref() }
     }
-
-    // pub fn get_descriptorset_type_dependencies(&self, id: &str) -> Result<HashSet<CGenType>> {
-    //     let mut result = HashSet::<CGenType>::new();
-
-    //     let ds = self.descriptorsets.get(id)?;
-
-    //     for d in &ds.descriptors {
-    //         match &d.def {
-    //             DescriptorDef::ConstantBuffer(def) => {
-    //                 result.insert(def.inner_type.clone());
-    //                 if let CGenType::Complex(t) = &def.inner_type {
-    //                     result.extend(self.get_struct_type_dependencies(t)?);
-    //                     // for x in t.drain() {
-    //                     //     result.insert(x);
-    //                     // }
-    //                 }
-    //             }
-    //             DescriptorDef::StructuredBuffer(def) | DescriptorDef::RWStructuredBuffer(def) => {
-    //                 result.insert(def.inner_type.clone());
-    //                 if let CGenType::Complex(t) = &def.inner_type {
-    //                     result.extend(self.get_struct_type_dependencies(t)?);
-    //                 }
-    //             }
-    //             DescriptorDef::Sampler
-    //             | DescriptorDef::ByteAddressBuffer
-    //             | DescriptorDef::RWByteAddressBuffer
-    //             | DescriptorDef::Texture2D(_)
-    //             | DescriptorDef::RWTexture2D(_) => {}
-    //         }
-    //     }
-
-    //     Ok(result)
-    // }
-
-    // pub fn get_pipelinelayout_type_dependencies(&self, id: &str) -> Result<HashSet<CGenType>> {
-    //     let mut result = HashSet::<CGenType>::new();
-
-    //     let pl = self.pipelinelayouts.get(id)?;
-
-    //     for ds_name in pl.descriptorsets.iter() {
-    //         result.extend(self.get_descriptorset_type_dependencies(&ds_name)?);
-    //     }
-
-    //     Ok(result)
-    // }
 
     fn get_or_create_container<T: ModelObject>(&mut self) -> usize {
         unsafe fn drop_ptr<T>(x: *mut u8) {
@@ -372,12 +321,13 @@ impl<T: Default> ModelContainer<T> {
     }
 }
 
-#[derive(Debug, Clone, Copy, EnumString, AsStaticStr)]
+#[derive(Debug, Clone, Copy, EnumString, EnumIter, AsStaticStr)]
 pub enum NativeType {
     Float1,
     Float2,
     Float3,
     Float4,
+    Float4x4,
 }
 
 #[derive(Debug, Clone)]

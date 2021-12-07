@@ -22,7 +22,7 @@ impl EguiPass {
         //
         // Shaders
         //
-        let shader_compiler = HlslCompiler::new().unwrap();
+        let shader_compiler = renderer.shader_compiler();
 
         let shader_source =
             String::from_utf8(include_bytes!("../../shaders/ui.hlsl").to_vec()).unwrap();

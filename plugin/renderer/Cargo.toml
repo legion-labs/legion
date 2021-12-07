@@ -6,6 +6,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+lgn-graphics-cgen-runtime = { path = "../../lib/graphics-cgen-runtime", version = "0.1.0" }
 lgn-graphics-api = { path = "../../lib/graphics-api", version = "0.1.0" }
 lgn-graphics-data = { path = "../../lib/graphics-data", version = "0.1.0" }
 lgn-app = { path = "../../lib/app", version = "0.1.0" }

@@ -11,9 +11,8 @@ clap = "2.33"
 fxhash = "0.2"
 heck = "0.3"
 log = "0.4"
-relative-path = "1.5"
+proc-macro2 = "1.0"
+relative-path = "1.6"
 strum = { version = "0.21", features = ["derive"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.8"
 simple_logger = "1.13"
-syn = { version = "1.0", features = ["parsing"] }
+syn = { version = "1.0", features = ["extra-traits", "full"] }

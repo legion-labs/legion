@@ -22,7 +22,9 @@ fn main() {
     // run the generation
     let ctx = ctx_builder.build();
     match graphics_cgen::run::run(&ctx) {
-        Ok(_) => {}
+        Ok(_) => {
+            println!("Code generation succeeded");
+        }
         Err(e) => {
             for msg in e.chain() {
                 eprintln!("{}", msg);

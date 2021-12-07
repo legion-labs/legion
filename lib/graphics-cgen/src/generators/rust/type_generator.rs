@@ -1,6 +1,5 @@
 use heck::SnakeCase;
 
-
 use crate::{
     generators::{
         file_writer::FileWriter, product::Product, rust::utils::get_rust_typestring, CGenVariant,
@@ -21,7 +20,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
         .map(|content| {
             products.push(Product::new(
                 CGenVariant::Rust,
-                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),                
+                GeneratorContext::get_object_rel_path(cgen_type, CGenVariant::Rust),
                 content,
             ))
         });
@@ -29,7 +28,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
 
     if !products.is_empty() {
         let mut mod_path = GeneratorContext::get_object_folder::<CGenType>();
-        mod_path.push("mod.rs");        
+        mod_path.push("mod.rs");
 
         let mut writer = FileWriter::new();
         for product in &products {
@@ -61,10 +60,13 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     let deps = GeneratorContext::get_type_dependencies(ty);
 
     if !deps.is_empty() {
+        let mut has_native_types = false;
         for key in &deps {
             let dep_ty = ctx.model.get::<CGenType>(*key).unwrap();
             match dep_ty {
-                CGenType::Native(_) => {}
+                CGenType::Native(_) => {
+                    has_native_types = true;
+                }
                 CGenType::Struct(e) => {
                     writer.add_line(format!(
                         "use super::{}::{};",
@@ -73,6 +75,9 @@ fn generate_rust_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
                     ));
                 }
             }
+        }
+        if has_native_types {
+            writer.add_line(format!("use lgn_graphics_cgen_runtime::prelude::*;"));
         }
         writer.new_line();
     }

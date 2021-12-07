@@ -1,5 +1,6 @@
+use lgn_graphics_cgen_runtime::prelude::*;
 
 pub struct LayoutD {
-	pub(crate) a: f32,
+	pub(crate) a: Float4,
 } // LayoutD
 

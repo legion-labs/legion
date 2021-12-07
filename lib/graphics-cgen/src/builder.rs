@@ -146,6 +146,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
                     | NativeType::Float2
                     | NativeType::Float3
                     | NativeType::Float4 => true,
+                    _ => false,
                 },
             }
         };
@@ -310,9 +311,7 @@ impl<'mdl> PipelineLayoutBuilder<'mdl> {
         // Only struct types allowed for now
         if let CGenType::Struct(_def) = ty {           
         } else {
-            return Err(anyhow!(
-                "PushConstant must be Struct types "
-            ));
+            return Err(anyhow!("PushConstant must be Struct types "));
         }
         // done
         self.add_member(name, PipelineLayoutContent::Pushconstant(model_key))

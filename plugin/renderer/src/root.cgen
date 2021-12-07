@@ -11,6 +11,18 @@ struct LayoutB {
     c: LayoutA,
 }
 
+struct ConstData {
+    world: Float4x4,
+    view: Float4x4,
+    projection: Float4x4,
+    color: Float4,
+}
+
+#[DescriptorSet(frequency = 0)]
+struct DefaultDescriptorSet {
+    uniform_data: ConstantBuffer<ConstData>,
+}
+
 #[DescriptorSet(frequency = 1, transient)]
 struct FrameDescriptorSet {
     smp: Sampler,
@@ -34,7 +46,6 @@ struct FrameDescriptorSet {
 }
 
 #[PipelineLayout]
-struct DefaultPL {
-    frame_set: DescriptorSet<FrameDescriptorSet>,
-    b: PushConstant<LayoutA>,
+struct DefaultPipelineLayout {
+    default_set: DescriptorSet<DefaultDescriptorSet>,
 }
