@@ -69,9 +69,18 @@ use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceId;
+use lgn_telemetry::prelude::*;
 use lgn_transform::prelude::*;
+use log::LevelFilter;
+use simple_logger::SimpleLogger;
 
 fn main() {
+    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
+        SimpleLogger::new().with_level(LevelFilter::Info),
+    )));
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    trace_scope!();
+
     const ARG_NAME_CAS: &str = "cas";
     const ARG_NAME_MANIFEST: &str = "manifest";
     const ARG_NAME_ROOT: &str = "root";

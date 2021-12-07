@@ -6348,8 +6348,11 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-core",
  "lgn-data-runtime",
+ "lgn-telemetry",
  "lgn-transform",
  "lgn-utils",
+ "log",
+ "simple_logger",
 ]
 
 [[package]]
