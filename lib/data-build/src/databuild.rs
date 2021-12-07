@@ -45,7 +45,7 @@ struct CompileOutput {
 /// yield the same compilation outcome.
 // todo(kstasik): `context_hash` should also include localization_id
 fn compute_context_hash(
-    transform: &Transform,
+    transform: Transform,
     compiler_hash: CompilerHash,
     databuild_version: &'static str,
 ) -> u64 {
@@ -546,8 +546,7 @@ impl DataBuild {
                 let (compiler_path, compiler_hash) = compiler_details.get(&transform).unwrap();
 
                 // todo: not sure if transform is the right thing here. resource_path_id better? transform is already defined by the compiler_hash so it seems redundant.
-                let context_hash =
-                    compute_context_hash(&transform, *compiler_hash, Self::version());
+                let context_hash = compute_context_hash(transform, *compiler_hash, Self::version());
 
                 let source_hash = {
                     if direct_dependency.is_source() {
