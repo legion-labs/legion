@@ -14,7 +14,7 @@ use crate::memory::{BumpAllocator, BumpAllocatorHandle};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, CpuPool, DescriptorPool, DescriptorPoolHandle,
     EntityTransforms, GpuSafePool, TestStaticBuffer, TransientPagedBuffer, UnifiedStaticBuffer,
-    UnifiedStaticBufferUpdater, UniformGPUData, UniformGPUDataUploadJobBlock,
+    UniformGPUData, UniformGPUDataUploadJobBlock,
 };
 use crate::static_mesh_render_data::StaticMeshRenderData;
 use crate::RenderContext;
@@ -31,9 +31,9 @@ pub struct Renderer {
     command_buffer_pools: RwLock<GpuSafePool<CommandBufferPool>>,
     descriptor_pools: RwLock<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
+    static_buffer: UnifiedStaticBuffer,
     // Temp for testing
     test_transform_data: TestStaticBuffer,
-    test_updater: UnifiedStaticBufferUpdater,
     bump_allocator_pool: RwLock<CpuPool<BumpAllocator>>,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
@@ -55,7 +55,6 @@ impl Renderer {
             &static_buffer,
             64 * 1024,
         ));
-        let test_updater = UnifiedStaticBufferUpdater::new(&static_buffer);
 
         Ok(Self {
             frame_idx: 0,
@@ -77,8 +76,8 @@ impl Renderer {
             command_buffer_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: RwLock::new(GpuSafePool::new(num_render_frames)),
             transient_buffer: TransientPagedBuffer::new(device_context, 16, 64 * 1024),
+            static_buffer,
             test_transform_data,
-            test_updater,
             bump_allocator_pool: RwLock::new(CpuPool::new()),
             api,
         })
@@ -113,7 +112,7 @@ impl Renderer {
     }
 
     pub fn test_add_update_jobs(&mut self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
-        self.test_updater.add_update_job_block(job_blocks);
+        self.static_buffer.add_update_job_block(job_blocks);
     }
 
     pub fn flush_update_jobs(
@@ -125,7 +124,7 @@ impl Renderer {
         let unbind_semaphore = &self.sparse_unbind_sems[self.render_frame_idx];
         let bind_semaphore = &self.sparse_bind_sems[self.render_frame_idx];
 
-        self.test_updater.flush_updater(
+        self.static_buffer.flush_updater(
             prev_frame_semaphore,
             unbind_semaphore,
             bind_semaphore,

@@ -19,7 +19,7 @@ pub(crate) struct UnifiedStaticBufferInner {
     binding_manager: SparseBindingManager,
     page_size: u64,
     read_only_view: BufferView,
-    read_write_view: BufferView,
+    job_blocks: Vec<UniformGPUDataUploadJobBlock>,
 }
 
 #[derive(Clone)]
@@ -44,9 +44,6 @@ impl UnifiedStaticBuffer {
         let ro_view_def = BufferViewDef::as_byte_address_buffer(buffer.definition(), true);
         let read_only_view = BufferView::from_buffer(&buffer, &ro_view_def).unwrap();
 
-        let rw_view_def = BufferViewDef::as_byte_address_buffer(buffer.definition(), false);
-        let read_write_view = BufferView::from_buffer(&buffer, &rw_view_def).unwrap();
-
         Self {
             inner: Arc::new(Mutex::new(UnifiedStaticBufferInner {
                 buffer,
@@ -54,7 +51,7 @@ impl UnifiedStaticBuffer {
                 binding_manager: SparseBindingManager::new(),
                 page_size: required_alignment,
                 read_only_view,
-                read_write_view,
+                job_blocks: Vec::new(),
             })),
         }
     }
@@ -93,58 +90,10 @@ impl UnifiedStaticBuffer {
         inner.binding_manager.add_sparse_unbinding(segment);
     }
 
-    pub fn commmit_segment_memory<'a>(
-        &self,
-        queue: &Queue,
-        prev_frame_semaphore: &'a Semaphore,
-        unbind_semaphore: &'a Semaphore,
-        bind_semaphore: &'a Semaphore,
-    ) -> &'a Semaphore {
+    pub fn add_update_job_block(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
         let inner = &mut *self.inner.lock().unwrap();
 
-        inner.binding_manager.commmit_sparse_bindings(
-            queue,
-            prev_frame_semaphore,
-            unbind_semaphore,
-            bind_semaphore,
-        )
-    }
-
-    pub fn buffer(&self) -> Buffer {
-        let inner = self.inner.lock().unwrap();
-
-        inner.buffer.clone()
-    }
-
-    pub fn read_only_view(&self) -> BufferView {
-        let inner = self.inner.lock().unwrap();
-
-        inner.read_only_view.clone()
-    }
-
-    pub fn read_write_view(&self) -> BufferView {
-        let inner = self.inner.lock().unwrap();
-
-        inner.read_write_view.clone()
-    }
-}
-
-pub(crate) struct UnifiedStaticBufferUpdater {
-    static_buffer: UnifiedStaticBuffer,
-
-    job_blocks: Vec<UniformGPUDataUploadJobBlock>,
-}
-
-impl UnifiedStaticBufferUpdater {
-    pub fn new(static_buffer: &UnifiedStaticBuffer) -> Self {
-        Self {
-            static_buffer: static_buffer.clone(),
-            job_blocks: Vec::new(),
-        }
-    }
-
-    pub fn add_update_job_block(&mut self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
-        self.job_blocks.append(job_blocks);
+        inner.job_blocks.append(job_blocks);
     }
 
     pub fn flush_updater(
@@ -155,8 +104,10 @@ impl UnifiedStaticBufferUpdater {
         render_context: &mut RenderContext<'_>,
         graphics_queue: &RwLockReadGuard<'_, Queue>,
     ) {
-        let bind_semsphore = self.static_buffer.commmit_segment_memory(
-            &(*graphics_queue),
+        let inner = &mut *self.inner.lock().unwrap();
+
+        let last_semaphore = inner.binding_manager.commmit_sparse_bindings(
+            graphics_queue,
             prev_frame_semaphore,
             unbind_semaphore,
             bind_semaphore,
@@ -169,7 +120,7 @@ impl UnifiedStaticBufferUpdater {
         cmd_buffer
             .cmd_resource_barrier(
                 &[BufferBarrier {
-                    buffer: &self.static_buffer.buffer(),
+                    buffer: &inner.buffer,
                     src_state: ResourceState::SHADER_RESOURCE,
                     dst_state: ResourceState::COPY_DST,
                     queue_transition: BarrierQueueTransition::None,
@@ -178,10 +129,10 @@ impl UnifiedStaticBufferUpdater {
             )
             .unwrap();
 
-        for job in &self.job_blocks {
+        for job in &inner.job_blocks {
             cmd_buffer.cmd_copy_buffer_to_buffer(
                 &job.upload_allocation.buffer,
-                &self.static_buffer.buffer(),
+                &inner.buffer,
                 &job.upload_jobs,
             );
         }
@@ -189,7 +140,7 @@ impl UnifiedStaticBufferUpdater {
         cmd_buffer
             .cmd_resource_barrier(
                 &[BufferBarrier {
-                    buffer: &self.static_buffer.buffer(),
+                    buffer: &inner.buffer,
                     src_state: ResourceState::COPY_DST,
                     dst_state: ResourceState::SHADER_RESOURCE,
                     queue_transition: BarrierQueueTransition::None,
@@ -201,9 +152,9 @@ impl UnifiedStaticBufferUpdater {
         cmd_buffer.end().unwrap();
 
         let mut wait_sems = Vec::new();
-        if bind_semsphore.signal_available() {
-            wait_sems.push(bind_semsphore);
-            bind_semsphore.set_signal_available(false);
+        if last_semaphore.signal_available() {
+            wait_sems.push(last_semaphore);
+            last_semaphore.set_signal_available(false);
         }
 
         graphics_queue
@@ -211,6 +162,12 @@ impl UnifiedStaticBufferUpdater {
             .unwrap();
 
         render_context.release_cmd_buffer(cmd_buffer);
+    }
+
+    pub fn read_only_view(&self) -> BufferView {
+        let inner = self.inner.lock().unwrap();
+
+        inner.read_only_view.clone()
     }
 }
 
