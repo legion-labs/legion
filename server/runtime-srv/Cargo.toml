@@ -26,3 +26,7 @@ clap = "2.33"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 simple_logger = "1.13"
+
+[features]
+default = ["standalone"]
+standalone = []
