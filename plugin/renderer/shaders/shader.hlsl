@@ -51,37 +51,104 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
 
 #define PI 3.141592
 
-float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    float3 normal = normalize(vertex_out.normal);
-    float3 light_pos = float3(1.0, 4.0, -2.0);
-    float3 light_dir = light_pos - vertex_out.pos.xyz;
-    float3 light_color = float3(1.0, 1.0, 1.0);
-    float light_power = 40.0;
-    float distance = length(light_dir);
-    distance = distance * distance;
-    light_dir = normalize(light_dir);
+struct OmnidirectionalLight {
+    float3 pos;
+    float radiance;
+    float attenuation;
+    float3 color;
+};
 
-    float4 uniform_color = const_data.color; 
+struct DirectionalLight {
+    float3 dir;
+    float radiance;
+    float3 color;
+};
 
-    float3 ambient_color = uniform_color.xyz / 5.0;
-    float3 diffuse_color = uniform_color.xyz;
-    float3 spec_color = float3(1.0, 1.0, 1.0);
+struct SpotLight {
+    float3 pos;
+    float radiance;
+    float3 dir;
+    float cone_angle;
+    float attenuation;
+};
+
+struct Lighting {
+    float3 specular;
+    float3 diffuse;
+};
+
+StructuredBuffer<DirectionalLight> directional_lights;
+StructuredBuffer<OmnidirectionalLight> omnidirectional_lights;
+
+Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 normal, float3 pos) {
+    float3 light_dir = normalize(light.dir);
 
     float lambertian = max(dot(light_dir, normal)/PI, 0.0);
     float specular = 0.0;
 
     if (lambertian > 0.0)
     {
-        float3 view_dir = normalize(-vertex_out.pos.xyz);
+        float3 view_dir = normalize(-pos);
         float3 half_vector = normalize(light_dir + view_dir);
-        float spec_angle = max(dot(half_vector, vertex_out.normal), 0.0);
-        float specular = pow(spec_angle, 16);
+        float spec_angle = max(dot(half_vector, normal), 0.0);
+        specular = pow(spec_angle, 16);
     }
 
-    float3 color = ambient_color + 
-                    diffuse_color * lambertian * light_color * light_power / distance + 
-                    spec_color * specular * light_color * light_power / distance;
-    //debug normals: float4((float3(1.0, 1.0, 1.0) + vertex_out.normal)/2.0, 1.0);
+    Lighting lighting;
+    lighting.diffuse = lambertian * light.color * light.radiance;
+    lighting.specular = specular * light.color * light.radiance;
+
+    return lighting;
+}
+
+Lighting CalculateIncidentOmnidirectionalLight(OmnidirectionalLight light, float3 normal, float3 pos) {
+    float3 light_dir = light.pos - pos;
+    float distance = length(light_dir);
+    distance = distance * distance;
+    light_dir = normalize(light_dir);
+
+    float lambertian = max(dot(light_dir, normal)/PI, 0.0);
+    float specular = 0.0;
+
+    if (lambertian > 0.0)
+    {
+        float3 view_dir = normalize(-pos);
+        float3 half_vector = normalize(light_dir + view_dir);
+        float spec_angle = max(dot(half_vector, normal), 0.0);
+        specular = pow(spec_angle, 16);
+    }
+
+    Lighting lighting;
+    lighting.diffuse = lambertian * light.color * light.radiance / distance;
+    lighting.specular = specular * light.color * light.radiance / distance;
+
+    return lighting;
+}
+
+float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
+    float4 uniform_color = uniform_data.color; 
+    float3 ambient_color = uniform_color.xyz / 5.0;
+    float3 diffuse_color = uniform_color.xyz;
+    float3 spec_color = diffuse_color + float3(0.5, 0.5, 0.5);
+
+    float3 color = ambient_color;
+    uint num_lights, stride_lights;
+    directional_lights.GetDimensions(num_lights, stride_lights);
+    for (uint i = 0; i < num_lights; i++)
+    {
+        DirectionalLight light = directional_lights[i];
+        Lighting lighting = CalculateIncidentDirectionalLight(light, vertex_out.normal, vertex_out.pos);
+        //color += diffuse_color * lighting.diffuse + spec_color * lighting.specular;
+    }
+
+    omnidirectional_lights.GetDimensions(num_lights, stride_lights);
+    for (i = 0; i < num_lights; i++)
+    {
+        OmnidirectionalLight light = omnidirectional_lights[i];
+        Lighting lighting = CalculateIncidentOmnidirectionalLight(light, vertex_out.normal, vertex_out.pos);
+        color += diffuse_color * lighting.diffuse + spec_color * lighting.specular;
+    }
+    
     float4 result = float4(pow(color, float3(1.0/2.2, 1.0/2.2, 1.0/2.2)), 1.0);
     float4 picking_color = float4(0.0f, 0.5f, 0.5f, 1.0f);
 

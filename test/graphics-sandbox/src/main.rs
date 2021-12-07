@@ -283,15 +283,15 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
         .insert(StaticMesh {
-            mesh_id: 0,
-            color: (0, 0, 255).into(),
+            mesh_id: 1,
+            color: (128, 128, 128).into(),
             vertex_offset: default_meshes.mesh_offset_from_id(0),
             num_verticies: default_meshes.mesh_from_id(0).num_vertices() as u32,
             world_offset: 0,
             picking_id: 0,
         })
         .insert(RotationComponent {
-            rotation_speed: (0.4, 0.0, 0.0),
+            rotation_speed: (0.1, 0.0, 0.0),
         });
 
     // cube
@@ -300,14 +300,14 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(StaticMesh {
             mesh_id: 1,
-            color: (255, 0, 0).into(),
+            color: (128, 128, 128).into(),
             vertex_offset: default_meshes.mesh_offset_from_id(1),
             num_verticies: default_meshes.mesh_from_id(1).num_vertices() as u32,
             world_offset: 0,
             picking_id: 0,
         })
         .insert(RotationComponent {
-            rotation_speed: (0.0, 0.4, 0.0),
+            rotation_speed: (0.0, 0.1, 0.0),
         });
 
     // pyramid
@@ -315,15 +315,15 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
         .insert(StaticMesh {
-            mesh_id: 2,
-            color: (0, 255, 0).into(),
+            mesh_id: 1,
+            color: (128, 128, 128).into(),
             vertex_offset: default_meshes.mesh_offset_from_id(2),
             num_verticies: default_meshes.mesh_from_id(2).num_vertices() as u32,
             world_offset: 0,
             picking_id: 0,
         })
         .insert(RotationComponent {
-            rotation_speed: (0.0, 0.0, 0.4),
+            rotation_speed: (0.0, 0.0, 0.1),
         });
 
     // directional light
@@ -335,6 +335,27 @@ fn init_scene(mut commands: Commands, default_meshes: Res<'_, DefaultMeshes>) {
                 direction: (0.0, 1.0, 0.0),
             },
             radiance: 40.0,
+            color: (1.0, 1.0, 1.0),
+        });
+
+    // omnidirectional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional { attenuation: 1.0 },
+            radiance: 40.0,
+            color: (1.0, 0.1, 0.1),
+        });
+
+    // omnidirectional light
+    commands
+        .spawn()
+        .insert(Transform::from_xyz(-1.0, 1.0, 0.0))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional { attenuation: 1.0 },
+            radiance: 40.0,
+            color: (0.1, 0.1, 1.0),
         });
 
     // camera

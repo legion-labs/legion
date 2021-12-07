@@ -17,5 +17,6 @@ pub enum LightType {
 #[derive(Component)]
 pub struct LightComponent {
     pub light_type: LightType,
+    pub color: (f32, f32, f32),
     pub radiance: f32,
 }

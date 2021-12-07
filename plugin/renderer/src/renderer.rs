@@ -292,3 +292,63 @@ impl Drop for Renderer {
 }
 
         lights: &[(&Transform, &LightComponent)],
+        camera: &CameraComponent,
+        // Lights
+        let mut directional_lights_data = Vec::<f32>::new();
+        let mut omnidirectional_lights_data = Vec::<f32>::new();
+        for (transform, light) in lights {
+            match light.light_type {
+                LightType::Directional { direction } => {
+                    directional_lights_data.push(direction.0);
+                    directional_lights_data.push(direction.1);
+                    directional_lights_data.push(direction.2);
+                    directional_lights_data.push(light.radiance);
+                    directional_lights_data.push(light.color.0);
+                    directional_lights_data.push(light.color.1);
+                    directional_lights_data.push(light.color.2);
+                    directional_lights_data.push(0.0);
+                }
+                LightType::Omnidirectional { attenuation } => {
+                    omnidirectional_lights_data.push(transform.translation.x);
+                    omnidirectional_lights_data.push(transform.translation.y);
+                    omnidirectional_lights_data.push(transform.translation.z);
+                    omnidirectional_lights_data.push(light.radiance);
+                    omnidirectional_lights_data.push(attenuation);
+                    omnidirectional_lights_data.push(light.color.0);
+                    omnidirectional_lights_data.push(light.color.1);
+                    omnidirectional_lights_data.push(light.color.2);
+                }
+                _ => unimplemented!(),
+            }
+        }
+        let mut sub_allocation = transient_allocator.copy_data(None, &directional_lights_data, 64);
+
+        let directional_lights_buffer_view = render_context
+            .renderer()
+            .transient_buffer()
+            .structured_buffer_view_for_allocation(&sub_allocation, 8 * 4, true);
+
+        sub_allocation =
+            transient_allocator.copy_data(Some(sub_allocation), &omnidirectional_lights_data, 64);
+
+        let omnidirectional_lights_buffer_view = render_context
+            .renderer()
+            .transient_buffer()
+            .structured_buffer_view_for_allocation(&sub_allocation, 8 * 4, true);
+
+                )
+                .unwrap();
+            descriptor_set_writer
+                .set_descriptors(
+                    "directional_lights",
+                    0,
+                    &[DescriptorRef::BufferView(&directional_lights_buffer_view)],
+                )
+                .unwrap();
+            descriptor_set_writer
+                .set_descriptors(
+                    "omnidirectional_lights",
+                    0,
+                    &[DescriptorRef::BufferView(
+                        &omnidirectional_lights_buffer_view,
+                    )],

@@ -71,7 +71,7 @@ impl Plugin for RendererPlugin {
 fn update_ui(
     egui_ctx: Res<'_, Egui>,
     mut rotations: Query<'_, '_, &mut RotationComponent>,
-    mut lights: Query<'_, '_, &mut LightComponent>,
+    mut lights: Query<'_, '_, (&mut LightComponent, &mut Transform)>,
 ) {
     egui::Window::new("Scene ").show(&egui_ctx.ctx, |ui| {
         ui.label("Objects");
@@ -94,17 +94,24 @@ fn update_ui(
         }
 
         ui.label("Lights");
-        for (i, mut light) in lights.iter_mut().enumerate() {
-            ui.horizontal(|ui| {
-                ui.label(format!("Light {}: ", i));
-                match light.light_type {
-                    LightType::Directional { ref mut direction } => {
-                        ui.add(egui::Slider::new(&mut direction.0, -1.0..=1.0).text("x"));
-                        ui.add(egui::Slider::new(&mut direction.1, -1.0..=1.0).text("y"));
-                        ui.add(egui::Slider::new(&mut direction.2, -1.0..=1.0).text("z"));
-                    }
-                    _ => unimplemented!(),
+        for (i, (mut light, mut transform)) in lights.iter_mut().enumerate() {
+            ui.horizontal(|ui| match light.light_type {
+                LightType::Directional { ref mut direction } => {
+                    ui.label(format!("Light {} (dir): ", i));
+                    ui.add(egui::Slider::new(&mut direction.0, -1.0..=1.0).text("x"));
+                    ui.add(egui::Slider::new(&mut direction.1, -1.0..=1.0).text("y"));
+                    ui.add(egui::Slider::new(&mut direction.2, -1.0..=1.0).text("z"));
                 }
+                LightType::Omnidirectional {
+                    ref mut attenuation,
+                } => {
+                    ui.label(format!("Light {} (omni): ", i));
+                    ui.add(egui::Slider::new(&mut transform.translation.x, -10.0..=10.0).text("x"));
+                    ui.add(egui::Slider::new(&mut transform.translation.y, -10.0..=10.0).text("y"));
+                    ui.add(egui::Slider::new(&mut transform.translation.z, -10.0..=10.0).text("z"));
+                    ui.add(egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"));
+                }
+                _ => unimplemented!(),
             });
         }
     });
@@ -210,6 +217,11 @@ fn render_update(
                 &default_camera
             },
             q_lights.as_slice(),
+            if !q_cameras.is_empty() {
+                q_cameras[0]
+            } else {
+                &default_camera
+            },
         );
 
         let debug_renderpass = render_surface.debug_renderpass();
