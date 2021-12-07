@@ -4,10 +4,7 @@ use std::fs::File;
 use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use lgn_data_compiler::{
-    compiler_cmd::{list_compilers, CompilerCompileCmd},
-    Locale, Platform, Target,
-};
+use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use lgn_data_runtime::{AssetLoader, Resource, ResourceId};
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
@@ -63,9 +60,7 @@ fn compile_atoi() {
             &[],
             &cas_addr,
             &resource_dir,
-            Target::Game,
-            Platform::Windows,
-            &Locale::new("en"),
+            &common::default_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");
@@ -128,9 +123,7 @@ fn compile_intermediate() {
             &[],
             &cas_addr,
             &resource_dir,
-            Target::Game,
-            Platform::Windows,
-            &Locale::new("en"),
+            &common::default_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");
@@ -151,9 +144,7 @@ fn compile_intermediate() {
             &[intermediate_info],
             &cas_addr,
             &resource_dir,
-            Target::Game,
-            Platform::Windows,
-            &Locale::new("en"),
+            &common::default_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");
@@ -219,9 +210,7 @@ fn compile_multi_resource() {
             &[],
             &cas_addr,
             &resource_dir,
-            Target::Game,
-            Platform::Windows,
-            &Locale::new("en"),
+            &common::default_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");
@@ -300,9 +289,7 @@ fn compile_base64() {
             &[],
             &cas_addr,
             &resource_dir,
-            Target::Game,
-            Platform::Windows,
-            &Locale::new("en"),
+            &common::default_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");

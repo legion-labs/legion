@@ -23,8 +23,8 @@
 //!
 //! ```no_run
 //! # use lgn_data_compiler::compiler_cmd::CompilerHashCmd;
-//! # use lgn_data_compiler::{Locale, Platform, Target};
-//! let command = CompilerHashCmd::new(Target::Game, Platform::Windows, &Locale::new("en"));
+//! # use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
+//! let command = CompilerHashCmd::new(&CompilationEnv{ target: Target::Game, platform: Platform::Windows, locale: Locale::new("en") });
 //! let info = command.execute("my_compiler.exe").expect("compiler hash info");
 //! ```
 //!
@@ -33,13 +33,13 @@
 //! ```no_run
 //! # use lgn_data_compiler::compiler_cmd::CompilerCompileCmd;
 //! # use lgn_content_store::ContentStoreAddr;
-//! # use lgn_data_compiler::{Locale, Platform, Target};
+//! # use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 //! # use lgn_data_offline::ResourcePathId;
 //! # use std::path::PathBuf;
-//! fn compile_resource(compile_path: ResourcePathId, dependencies: &[ResourcePathId]) {
+//! fn compile_resource(compile_path: ResourcePathId, dependencies: &[ResourcePathId], env: &CompilationEnv) {
 //!     let content_store = ContentStoreAddr::from("./content_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
-//!     let mut command = CompilerCompileCmd::new(&compile_path, dependencies, &[], &content_store, &resource_dir, Target::Game, Platform::Windows, &Locale::new("en"));
+//!     let mut command = CompilerCompileCmd::new(&compile_path, dependencies, &[], &content_store, &resource_dir, &env);
 //!     let output = command.execute("my_compiler.exe").expect("compiled resources");
 //!}
 //! ```
@@ -61,7 +61,8 @@ use lgn_data_offline::{ResourcePathId, Transform};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    compiler_api::CompilerDescriptor, CompiledResource, CompilerHash, Locale, Platform, Target,
+    compiler_api::{CompilationEnv, CompilerDescriptor},
+    CompiledResource, CompilerHash,
 };
 
 /// Description of a compiler.
@@ -253,12 +254,12 @@ pub struct CompilerHashCmd(CommandBuilder);
 
 impl CompilerHashCmd {
     /// Creates a new command for a given compilation context.
-    pub fn new(target: Target, platform: Platform, locale: &Locale) -> Self {
+    pub fn new(env: &CompilationEnv) -> Self {
         let mut builder = CommandBuilder::default();
         builder.arg(COMMAND_NAME_COMPILER_HASH);
-        builder.arg(format!("--{}={}", COMMAND_ARG_TARGET, target));
-        builder.arg(format!("--{}={}", COMMAND_ARG_PLATFORM, platform));
-        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, locale.0));
+        builder.arg(format!("--{}={}", COMMAND_ARG_TARGET, env.target));
+        builder.arg(format!("--{}={}", COMMAND_ARG_PLATFORM, env.platform));
+        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, env.locale.0));
         Self(builder)
     }
 
@@ -305,9 +306,7 @@ impl CompilerCompileCmd {
         derived_deps: &[CompiledResource],
         cas_addr: &ContentStoreAddr,
         resource_dir: &Path,
-        target: Target,
-        platform: Platform,
-        locale: &Locale,
+        env: &CompilationEnv,
     ) -> Self {
         let mut builder = CommandBuilder::default();
         builder.arg(COMMAND_NAME_COMPILE);
@@ -334,9 +333,9 @@ impl CompilerCompileCmd {
             resource_dir.display()
         ));
 
-        builder.arg(format!("--{}={}", COMMAND_ARG_TARGET, target));
-        builder.arg(format!("--{}={}", COMMAND_ARG_PLATFORM, platform));
-        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, locale.0));
+        builder.arg(format!("--{}={}", COMMAND_ARG_TARGET, env.target));
+        builder.arg(format!("--{}={}", COMMAND_ARG_PLATFORM, env.platform));
+        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, env.locale.0));
         Self(builder)
     }
 

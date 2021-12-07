@@ -1,10 +1,7 @@
 use std::{fs::File, path::Path};
 
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use lgn_data_compiler::{
-    compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd},
-    Locale, Platform, Target,
-};
+use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use lgn_data_runtime::{AssetLoader, Resource, ResourceId};
 
@@ -39,7 +36,7 @@ fn command_compiler_hash() {
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());
 
-    let command = CompilerHashCmd::new(Target::Game, Platform::Windows, &Locale::new("en"));
+    let command = CompilerHashCmd::new(&common::default_env());
     let _hashes = command.execute(&exe_path).expect("hash list");
 }
 
@@ -65,9 +62,7 @@ fn command_compile() {
         &[],
         &cas_addr,
         &resource_dir,
-        Target::Game,
-        Platform::Windows,
-        &Locale::new("en"),
+        &common::default_env(),
     );
 
     let result = command.execute(&exe_path).expect("compile result");

@@ -6,7 +6,7 @@ use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::ResourceId;
 use lgn_utils::DefaultHasher;
 
-use crate::{CompilerHash, Locale, Platform, Target};
+use crate::{compiler_api::CompilationEnv, CompilerHash};
 
 /// Converts `ResourcePathId` to `ResourceId`.
 pub fn path_id_to_asset_id(path: &Option<ResourcePathId>) -> Option<ResourceId> {
@@ -28,9 +28,7 @@ pub fn path_id_to_binary(path: &Option<ResourcePathId>) -> u128 {
 pub fn hash_code_and_data(
     code: &'static str,
     data: &'static str,
-    _target: Target,
-    _platform: Platform,
-    _locale: &Locale,
+    _env: &CompilationEnv,
 ) -> CompilerHash {
     let mut hasher = DefaultHasher::new();
     code.hash(&mut hasher);
