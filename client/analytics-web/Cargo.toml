@@ -10,10 +10,20 @@ license = "MIT OR Apache-2.0"
 keywords = ["game", "legion", "analytics"]
 
 [dependencies]
-axum = "0.4.2"
-tokio = { version = "1.14.0", features = ["full"] }
-tower = "0.4.11"
-tower-http = { version = "0.2.0", features = ["fs"] }
+lgn-app = { path = "../../lib/app", version = "0.1.0" }
+lgn-async = { path = "../../plugin/async", version = "0.1.0" }
+lgn-online = { path = "../../lib/online", version = "0.1.0" }
+lgn-tauri = { path = "../../plugin/tauri", version = "0.1.0" }
+anyhow = "1.0.44"
+clap = "2.33"
+url = "2.2.2"
+tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
+directories = "4"
 
 [build-dependencies]
 lgn-build-utils = { path = "../../lib/build-utils", version = "0.1.0", features = ["web-appgen"] }
+tauri-build = "1.0.0-beta.4"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
