@@ -90,7 +90,9 @@ export const BlockPayload = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<BlockPayload>): BlockPayload {
+  fromPartial<I extends Exact<DeepPartial<BlockPayload>, I>>(
+    object: I
+  ): BlockPayload {
     const message = { ...baseBlockPayload } as BlockPayload;
     message.dependencies = object.dependencies ?? new Uint8Array();
     message.objects = object.objects ?? new Uint8Array();
@@ -119,13 +121,13 @@ export const Block = {
       writer.uint32(26).string(message.beginTime);
     }
     if (message.beginTicks !== 0) {
-      writer.uint32(32).uint64(message.beginTicks);
+      writer.uint32(32).int64(message.beginTicks);
     }
     if (message.endTime !== "") {
       writer.uint32(42).string(message.endTime);
     }
     if (message.endTicks !== 0) {
-      writer.uint32(48).uint64(message.endTicks);
+      writer.uint32(48).int64(message.endTicks);
     }
     if (message.payload !== undefined) {
       BlockPayload.encode(message.payload, writer.uint32(58).fork()).ldelim();
@@ -150,13 +152,13 @@ export const Block = {
           message.beginTime = reader.string();
           break;
         case 4:
-          message.beginTicks = longToNumber(reader.uint64() as Long);
+          message.beginTicks = longToNumber(reader.int64() as Long);
           break;
         case 5:
           message.endTime = reader.string();
           break;
         case 6:
-          message.endTicks = longToNumber(reader.uint64() as Long);
+          message.endTicks = longToNumber(reader.int64() as Long);
           break;
         case 7:
           message.payload = BlockPayload.decode(reader, reader.uint32());
@@ -217,7 +219,7 @@ export const Block = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<Block>): Block {
+  fromPartial<I extends Exact<DeepPartial<Block>, I>>(object: I): Block {
     const message = { ...baseBlock } as Block;
     message.blockId = object.blockId ?? "";
     message.streamId = object.streamId ?? "";
@@ -275,6 +277,7 @@ type Builtin =
   | number
   | boolean
   | undefined;
+
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -284,6 +287,14 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {

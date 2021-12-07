@@ -76,7 +76,6 @@ pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
 
 fn process_from_row(row: &sqlx::any::AnyRow) -> lgn_telemetry::ProcessInfo {
     let tsc_frequency: i64 = row.get("tsc_frequency");
-    let start_ticks: i64 = row.get("start_ticks");
     lgn_telemetry::ProcessInfo {
         process_id: row.get("process_id"),
         exe: row.get("exe"),
@@ -87,7 +86,7 @@ fn process_from_row(row: &sqlx::any::AnyRow) -> lgn_telemetry::ProcessInfo {
         cpu_brand: row.get("cpu_brand"),
         tsc_frequency: tsc_frequency as u64,
         start_time: row.get("start_time"),
-        start_ticks: start_ticks as u64,
+        start_ticks: row.get("start_ticks"),
         parent_process_id: row.get("parent_process_id"),
     }
 }
@@ -421,15 +420,13 @@ pub async fn find_block(
     .await
     .with_context(|| "find_block")?;
 
-    let begin_ticks: i64 = row.get("begin_ticks");
-    let end_ticks: i64 = row.get("end_ticks");
     let block = lgn_telemetry::EncodedBlock {
         block_id: String::from(block_id),
         stream_id: row.get("stream_id"),
         begin_time: row.get("begin_time"),
-        begin_ticks: begin_ticks as u64,
+        begin_ticks: row.get("begin_ticks"),
         end_time: row.get("end_time"),
-        end_ticks: end_ticks as u64,
+        end_ticks: row.get("end_ticks"),
         payload: None,
     };
     Ok(block)
@@ -450,18 +447,14 @@ pub async fn find_stream_blocks(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| {
-        let begin_ticks: i64 = r.get("begin_ticks");
-        let end_ticks: i64 = r.get("end_ticks");
-        lgn_telemetry::EncodedBlock {
-            block_id: r.get("block_id"),
-            stream_id: String::from(stream_id),
-            begin_time: r.get("begin_time"),
-            begin_ticks: begin_ticks as u64,
-            end_time: r.get("end_time"),
-            end_ticks: end_ticks as u64,
-            payload: None,
-        }
+    .map(|r| lgn_telemetry::EncodedBlock {
+        block_id: r.get("block_id"),
+        stream_id: String::from(stream_id),
+        begin_time: r.get("begin_time"),
+        begin_ticks: r.get("begin_ticks"),
+        end_time: r.get("end_time"),
+        end_ticks: r.get("end_ticks"),
+        payload: None,
     })
     .collect();
     Ok(blocks)
@@ -488,18 +481,14 @@ pub async fn find_stream_blocks_in_range(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| {
-        let begin_ticks: i64 = r.get("begin_ticks");
-        let end_ticks: i64 = r.get("end_ticks");
-        lgn_telemetry::EncodedBlock {
-            block_id: r.get("block_id"),
-            stream_id: String::from(stream_id),
-            begin_time: r.get("begin_time"),
-            begin_ticks: begin_ticks as u64,
-            end_time: r.get("end_time"),
-            end_ticks: end_ticks as u64,
-            payload: None,
-        }
+    .map(|r| lgn_telemetry::EncodedBlock {
+        block_id: r.get("block_id"),
+        stream_id: String::from(stream_id),
+        begin_time: r.get("begin_time"),
+        begin_ticks: r.get("begin_ticks"),
+        end_time: r.get("end_time"),
+        end_ticks: r.get("end_ticks"),
+        payload: None,
     })
     .collect();
     Ok(blocks)
@@ -592,7 +581,7 @@ fn format_log_level(level: u8) -> &'static str {
 }
 
 // find_process_log_entry calls pred(time_ticks,entry_str) with each log entry until pred returns Some(x)
-pub async fn find_process_log_entry<Res, Predicate: FnMut(u64, String) -> Option<Res>>(
+pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option<Res>>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process_id: &str,
@@ -606,7 +595,7 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(u64, String) -> Option
                 if let Value::Object(obj) = val {
                     match obj.type_name.as_str() {
                         "LogMsgEvent" | "LogDynMsgEvent" => {
-                            let time = obj.get::<u64>("time").unwrap();
+                            let time = obj.get::<i64>("time").unwrap();
                             let entry = format!(
                                 "[{}] {}",
                                 format_log_level(obj.get::<u8>("level").unwrap()),
@@ -630,7 +619,7 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(u64, String) -> Option
     Ok(found_entry)
 }
 
-pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(u64, String)>(
+pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process_id: &str,
@@ -695,6 +684,7 @@ pub mod prelude {
     pub use crate::find_block;
     pub use crate::find_process;
     pub use crate::find_process_log_entry;
+    pub use crate::find_process_metrics_streams;
     pub use crate::find_process_streams;
     pub use crate::find_process_thread_streams;
     pub use crate::find_stream_blocks;

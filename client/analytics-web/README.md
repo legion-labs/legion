@@ -20,12 +20,14 @@ cd frontend
 yarn install
 yarn dev
 ```
-or
+
+Or from the root of the monorepo:
+
 ```
-yarn workspace analytics-web run dev
+yarn analytics:dev
 ```
 
-## valiations: tsc && svelte-check
+## validations: tsc && svelte-check
 
 ```
 yarn workspace analytics-web run svelte:check

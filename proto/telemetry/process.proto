@@ -11,6 +11,6 @@ message Process {
   string cpu_brand = 7;
   uint64 tsc_frequency = 8;
   string start_time = 9; // RFC 3339
-  uint64 start_ticks = 10;
+  int64 start_ticks = 10;
   string parent_process_id = 11;
 }

@@ -62,10 +62,25 @@ impl TransitValue for u32 {
 
 impl TransitValue for u64 {
     fn get(value: &Value) -> Result<Self> {
-        if let Value::U64(val) = value {
-            Ok(*val)
-        } else {
-            bail!("bad type cast u64 for value {:?}", value);
+        match value {
+            Value::I64(val) => Ok(*val as Self),
+            Value::U64(val) => Ok(*val),
+            _ => {
+                bail!("bad type cast u64 for value {:?}", value)
+            }
+        }
+    }
+}
+
+impl TransitValue for i64 {
+    #[allow(clippy::cast_possible_wrap)]
+    fn get(value: &Value) -> Result<Self> {
+        match value {
+            Value::I64(val) => Ok(*val),
+            Value::U64(val) => Ok(*val as Self),
+            _ => {
+                bail!("bad type cast i64 for value {:?}", value)
+            }
         }
     }
 }
@@ -107,6 +122,7 @@ pub enum Value {
     U8(u8),
     U32(u32),
     U64(u64),
+    I64(i64),
     F64(f64),
     None,
 }
@@ -252,6 +268,12 @@ where
                     "u64" => {
                         assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
                         Value::U64(read_any::<u64>(unsafe {
+                            buffer.as_ptr().add(offset + member_meta.offset)
+                        }))
+                    }
+                    "i64" => {
+                        assert_eq!(std::mem::size_of::<i64>(), member_meta.size);
+                        Value::I64(read_any::<i64>(unsafe {
                             buffer.as_ptr().add(offset + member_meta.offset)
                         }))
                     }

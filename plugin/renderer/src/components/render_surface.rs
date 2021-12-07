@@ -10,6 +10,7 @@ use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
 use uuid::Uuid;
 
+use crate::egui::egui_pass::EguiPass;
 use crate::{RenderContext, Renderer, TmpRenderPass};
 
 pub trait Presenter: Send + Sync {
@@ -136,6 +137,7 @@ pub struct RenderSurface {
     render_frame_idx: usize,
     signal_sems: Vec<Semaphore>,
     test_renderpass: Arc<RwLock<TmpRenderPass>>,
+    egui_renderpass: Arc<RwLock<EguiPass>>,
 }
 
 impl RenderSurface {
@@ -149,6 +151,10 @@ impl RenderSurface {
 
     pub fn test_renderpass(&self) -> Arc<RwLock<TmpRenderPass>> {
         self.test_renderpass.clone()
+    }
+
+    pub fn egui_renderpass(&self) -> Arc<RwLock<EguiPass>> {
+        self.egui_renderpass.clone()
     }
 
     pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
@@ -253,6 +259,7 @@ impl RenderSurface {
             render_frame_idx: 0,
             signal_sems,
             test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(renderer))),
+            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(renderer))),
             presenters: Vec::new(),
         }
     }

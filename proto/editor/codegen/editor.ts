@@ -118,8 +118,8 @@ export const UndoTransactionRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<UndoTransactionRequest>
+  fromPartial<I extends Exact<DeepPartial<UndoTransactionRequest>, I>>(
+    object: I
   ): UndoTransactionRequest {
     const message = { ...baseUndoTransactionRequest } as UndoTransactionRequest;
     message.id = object.id ?? 0;
@@ -178,8 +178,8 @@ export const UndoTransactionResponse = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<UndoTransactionResponse>
+  fromPartial<I extends Exact<DeepPartial<UndoTransactionResponse>, I>>(
+    object: I
   ): UndoTransactionResponse {
     const message = {
       ...baseUndoTransactionResponse,
@@ -236,8 +236,8 @@ export const RedoTransactionRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<RedoTransactionRequest>
+  fromPartial<I extends Exact<DeepPartial<RedoTransactionRequest>, I>>(
+    object: I
   ): RedoTransactionRequest {
     const message = { ...baseRedoTransactionRequest } as RedoTransactionRequest;
     message.id = object.id ?? 0;
@@ -296,8 +296,8 @@ export const RedoTransactionResponse = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<RedoTransactionResponse>
+  fromPartial<I extends Exact<DeepPartial<RedoTransactionResponse>, I>>(
+    object: I
   ): RedoTransactionResponse {
     const message = {
       ...baseRedoTransactionResponse,
@@ -357,8 +357,8 @@ export const SearchResourcesRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<SearchResourcesRequest>
+  fromPartial<I extends Exact<DeepPartial<SearchResourcesRequest>, I>>(
+    object: I
   ): SearchResourcesRequest {
     const message = { ...baseSearchResourcesRequest } as SearchResourcesRequest;
     message.searchToken = object.searchToken ?? "";
@@ -450,17 +450,18 @@ export const SearchResourcesResponse = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<SearchResourcesResponse>
+  fromPartial<I extends Exact<DeepPartial<SearchResourcesResponse>, I>>(
+    object: I
   ): SearchResourcesResponse {
     const message = {
       ...baseSearchResourcesResponse,
     } as SearchResourcesResponse;
     message.nextSearchToken = object.nextSearchToken ?? "";
     message.total = object.total ?? 0;
-    message.resourceDescriptions = (object.resourceDescriptions ?? []).map(
-      (e) => ResourceDescription.fromPartial(e)
-    );
+    message.resourceDescriptions =
+      object.resourceDescriptions?.map((e) =>
+        ResourceDescription.fromPartial(e)
+      ) || [];
     return message;
   },
 };
@@ -531,7 +532,9 @@ export const ResourceDescription = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ResourceDescription>): ResourceDescription {
+  fromPartial<I extends Exact<DeepPartial<ResourceDescription>, I>>(
+    object: I
+  ): ResourceDescription {
     const message = { ...baseResourceDescription } as ResourceDescription;
     message.id = object.id ?? "";
     message.path = object.path ?? "";
@@ -591,8 +594,8 @@ export const GetResourcePropertiesRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<GetResourcePropertiesRequest>
+  fromPartial<I extends Exact<DeepPartial<GetResourcePropertiesRequest>, I>>(
+    object: I
   ): GetResourcePropertiesRequest {
     const message = {
       ...baseGetResourcePropertiesRequest,
@@ -683,8 +686,8 @@ export const GetResourcePropertiesResponse = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<GetResourcePropertiesResponse>
+  fromPartial<I extends Exact<DeepPartial<GetResourcePropertiesResponse>, I>>(
+    object: I
   ): GetResourcePropertiesResponse {
     const message = {
       ...baseGetResourcePropertiesResponse,
@@ -693,9 +696,8 @@ export const GetResourcePropertiesResponse = {
       object.description !== undefined && object.description !== null
         ? ResourceDescription.fromPartial(object.description)
         : undefined;
-    message.properties = (object.properties ?? []).map((e) =>
-      ResourceProperty.fromPartial(e)
-    );
+    message.properties =
+      object.properties?.map((e) => ResourceProperty.fromPartial(e)) || [];
     return message;
   },
 };
@@ -800,7 +802,9 @@ export const ResourceProperty = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ResourceProperty>): ResourceProperty {
+  fromPartial<I extends Exact<DeepPartial<ResourceProperty>, I>>(
+    object: I
+  ): ResourceProperty {
     const message = { ...baseResourceProperty } as ResourceProperty;
     message.name = object.name ?? "";
     message.ptype = object.ptype ?? "";
@@ -892,17 +896,18 @@ export const UpdateResourcePropertiesRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<UpdateResourcePropertiesRequest>
+  fromPartial<I extends Exact<DeepPartial<UpdateResourcePropertiesRequest>, I>>(
+    object: I
   ): UpdateResourcePropertiesRequest {
     const message = {
       ...baseUpdateResourcePropertiesRequest,
     } as UpdateResourcePropertiesRequest;
     message.id = object.id ?? "";
     message.version = object.version ?? 0;
-    message.propertyUpdates = (object.propertyUpdates ?? []).map((e) =>
-      ResourcePropertyUpdate.fromPartial(e)
-    );
+    message.propertyUpdates =
+      object.propertyUpdates?.map((e) =>
+        ResourcePropertyUpdate.fromPartial(e)
+      ) || [];
     return message;
   },
 };
@@ -979,16 +984,17 @@ export const UpdateResourcePropertiesResponse = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<UpdateResourcePropertiesResponse>
-  ): UpdateResourcePropertiesResponse {
+  fromPartial<
+    I extends Exact<DeepPartial<UpdateResourcePropertiesResponse>, I>
+  >(object: I): UpdateResourcePropertiesResponse {
     const message = {
       ...baseUpdateResourcePropertiesResponse,
     } as UpdateResourcePropertiesResponse;
     message.version = object.version ?? 0;
-    message.updatedProperties = (object.updatedProperties ?? []).map((e) =>
-      ResourcePropertyUpdate.fromPartial(e)
-    );
+    message.updatedProperties =
+      object.updatedProperties?.map((e) =>
+        ResourcePropertyUpdate.fromPartial(e)
+      ) || [];
     return message;
   },
 };
@@ -1057,8 +1063,8 @@ export const ResourcePropertyUpdate = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ResourcePropertyUpdate>
+  fromPartial<I extends Exact<DeepPartial<ResourcePropertyUpdate>, I>>(
+    object: I
   ): ResourcePropertyUpdate {
     const message = { ...baseResourcePropertyUpdate } as ResourcePropertyUpdate;
     message.name = object.name ?? "";
@@ -1387,6 +1393,7 @@ type Builtin =
   | number
   | boolean
   | undefined;
+
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -1396,6 +1403,14 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {

@@ -7,6 +7,7 @@ use lgn_async::AsyncPlugin;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
+use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_streamer::StreamerPlugin;
@@ -34,6 +35,7 @@ fn main() {
     const ARG_NAME_MANIFEST: &str = "manifest";
     const ARG_NAME_BUILDINDEX: &str = "buildindex";
     const ARG_NAME_DATABUILD_CLI: &str = "databuild";
+    const ARG_NAME_EGUI: &str = "egui";
 
     let args = clap::App::new("Legion Labs editor server")
         .author(clap::crate_authors!())
@@ -74,6 +76,12 @@ fn main() {
                 .long(ARG_NAME_DATABUILD_CLI)
                 .takes_value(true)
                 .help("Path to data build command line interface"),
+        )
+        .arg(
+            Arg::with_name(ARG_NAME_EGUI)
+                .long(ARG_NAME_EGUI)
+                .takes_value(false)
+                .help("If supplied, starts with egui enabled"),
         )
         .get_matches();
 
@@ -148,7 +156,8 @@ fn main() {
         .add_plugin(ResourceRegistryPlugin::default())
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
-        .add_plugin(RendererPlugin::default())
+        .add_plugin(InputPlugin::default())
+        .add_plugin(RendererPlugin::new(false, args.is_present(ARG_NAME_EGUI)))
         .add_plugin(StreamerPlugin::default())
         .add_plugin(EditorPlugin::default())
         .add_plugin(TransformPlugin::default())

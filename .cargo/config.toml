@@ -3,6 +3,10 @@ name = "Legion Labs"
 email = "devs@legionlabs.com"
 vcs = "none"
 
+[alias]
+cg = "build --features=run-codegen"
+codegen = "build --features=run-codegen"
+
 [build]
 # 
 # make rustdoc treat warnings as errors.

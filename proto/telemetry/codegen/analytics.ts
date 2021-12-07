@@ -145,6 +145,39 @@ export interface ProcessChildrenReply {
   processes: Process[];
 }
 
+/** list_process_metrics */
+export interface ListProcessMetricsRequest {
+  processId: string;
+}
+
+export interface MetricDesc {
+  name: string;
+  unit: string;
+}
+
+export interface ProcessMetricsReply {
+  metrics: MetricDesc[];
+  minTimeMs: number;
+  maxTimeMs: number;
+}
+
+/** fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply); */
+export interface FetchProcessMetricRequest {
+  processId: string;
+  metricName: string;
+  beginMs: number;
+  endMs: number;
+}
+
+export interface MetricDataPoint {
+  timeMs: number;
+  value: number;
+}
+
+export interface ProcessMetricReply {
+  points: MetricDataPoint[];
+}
+
 const baseFindProcessRequest: object = { processId: "" };
 
 export const FindProcessRequest = {
@@ -191,7 +224,9 @@ export const FindProcessRequest = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<FindProcessRequest>): FindProcessRequest {
+  fromPartial<I extends Exact<DeepPartial<FindProcessRequest>, I>>(
+    object: I
+  ): FindProcessRequest {
     const message = { ...baseFindProcessRequest } as FindProcessRequest;
     message.processId = object.processId ?? "";
     return message;
@@ -247,7 +282,9 @@ export const FindProcessReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<FindProcessReply>): FindProcessReply {
+  fromPartial<I extends Exact<DeepPartial<FindProcessReply>, I>>(
+    object: I
+  ): FindProcessReply {
     const message = { ...baseFindProcessReply } as FindProcessReply;
     message.process =
       object.process !== undefined && object.process !== null
@@ -295,7 +332,9 @@ export const RecentProcessesRequest = {
     return obj;
   },
 
-  fromPartial(_: DeepPartial<RecentProcessesRequest>): RecentProcessesRequest {
+  fromPartial<I extends Exact<DeepPartial<RecentProcessesRequest>, I>>(
+    _: I
+  ): RecentProcessesRequest {
     const message = { ...baseRecentProcessesRequest } as RecentProcessesRequest;
     return message;
   },
@@ -390,7 +429,9 @@ export const ProcessInstance = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessInstance>): ProcessInstance {
+  fromPartial<I extends Exact<DeepPartial<ProcessInstance>, I>>(
+    object: I
+  ): ProcessInstance {
     const message = { ...baseProcessInstance } as ProcessInstance;
     message.processInfo =
       object.processInfo !== undefined && object.processInfo !== null
@@ -457,11 +498,12 @@ export const ProcessListReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessListReply>): ProcessListReply {
+  fromPartial<I extends Exact<DeepPartial<ProcessListReply>, I>>(
+    object: I
+  ): ProcessListReply {
     const message = { ...baseProcessListReply } as ProcessListReply;
-    message.processes = (object.processes ?? []).map((e) =>
-      ProcessInstance.fromPartial(e)
-    );
+    message.processes =
+      object.processes?.map((e) => ProcessInstance.fromPartial(e)) || [];
     return message;
   },
 };
@@ -515,7 +557,9 @@ export const SearchProcessRequest = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<SearchProcessRequest>): SearchProcessRequest {
+  fromPartial<I extends Exact<DeepPartial<SearchProcessRequest>, I>>(
+    object: I
+  ): SearchProcessRequest {
     const message = { ...baseSearchProcessRequest } as SearchProcessRequest;
     message.search = object.search ?? "";
     return message;
@@ -575,8 +619,8 @@ export const ListProcessStreamsRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ListProcessStreamsRequest>
+  fromPartial<I extends Exact<DeepPartial<ListProcessStreamsRequest>, I>>(
+    object: I
   ): ListProcessStreamsRequest {
     const message = {
       ...baseListProcessStreamsRequest,
@@ -638,9 +682,11 @@ export const ListStreamsReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ListStreamsReply>): ListStreamsReply {
+  fromPartial<I extends Exact<DeepPartial<ListStreamsReply>, I>>(
+    object: I
+  ): ListStreamsReply {
     const message = { ...baseListStreamsReply } as ListStreamsReply;
-    message.streams = (object.streams ?? []).map((e) => Stream.fromPartial(e));
+    message.streams = object.streams?.map((e) => Stream.fromPartial(e)) || [];
     return message;
   },
 };
@@ -698,8 +744,8 @@ export const ListStreamBlocksRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ListStreamBlocksRequest>
+  fromPartial<I extends Exact<DeepPartial<ListStreamBlocksRequest>, I>>(
+    object: I
   ): ListStreamBlocksRequest {
     const message = {
       ...baseListStreamBlocksRequest,
@@ -760,11 +806,11 @@ export const ListStreamBlocksReply = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ListStreamBlocksReply>
+  fromPartial<I extends Exact<DeepPartial<ListStreamBlocksReply>, I>>(
+    object: I
   ): ListStreamBlocksReply {
     const message = { ...baseListStreamBlocksReply } as ListStreamBlocksReply;
-    message.blocks = (object.blocks ?? []).map((e) => Block.fromPartial(e));
+    message.blocks = object.blocks?.map((e) => Block.fromPartial(e)) || [];
     return message;
   },
 };
@@ -845,7 +891,7 @@ export const Span = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<Span>): Span {
+  fromPartial<I extends Exact<DeepPartial<Span>, I>>(object: I): Span {
     const message = { ...baseSpan } as Span;
     message.scopeHash = object.scopeHash ?? 0;
     message.depth = object.depth ?? 0;
@@ -934,7 +980,9 @@ export const ScopeDesc = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ScopeDesc>): ScopeDesc {
+  fromPartial<I extends Exact<DeepPartial<ScopeDesc>, I>>(
+    object: I
+  ): ScopeDesc {
     const message = { ...baseScopeDesc } as ScopeDesc;
     message.name = object.name ?? "";
     message.filename = object.filename ?? "";
@@ -1016,7 +1064,9 @@ export const BlockSpansRequest = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<BlockSpansRequest>): BlockSpansRequest {
+  fromPartial<I extends Exact<DeepPartial<BlockSpansRequest>, I>>(
+    object: I
+  ): BlockSpansRequest {
     const message = { ...baseBlockSpansRequest } as BlockSpansRequest;
     message.process =
       object.process !== undefined && object.process !== null
@@ -1145,10 +1195,12 @@ export const BlockSpansReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<BlockSpansReply>): BlockSpansReply {
+  fromPartial<I extends Exact<DeepPartial<BlockSpansReply>, I>>(
+    object: I
+  ): BlockSpansReply {
     const message = { ...baseBlockSpansReply } as BlockSpansReply;
-    message.scopes = (object.scopes ?? []).map((e) => ScopeDesc.fromPartial(e));
-    message.spans = (object.spans ?? []).map((e) => Span.fromPartial(e));
+    message.scopes = object.scopes?.map((e) => ScopeDesc.fromPartial(e)) || [];
+    message.spans = object.spans?.map((e) => Span.fromPartial(e)) || [];
     message.blockId = object.blockId ?? "";
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
@@ -1235,9 +1287,9 @@ export const ProcessCumulativeCallGraphRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ProcessCumulativeCallGraphRequest>
-  ): ProcessCumulativeCallGraphRequest {
+  fromPartial<
+    I extends Exact<DeepPartial<ProcessCumulativeCallGraphRequest>, I>
+  >(object: I): ProcessCumulativeCallGraphRequest {
     const message = {
       ...baseProcessCumulativeCallGraphRequest,
     } as ProcessCumulativeCallGraphRequest;
@@ -1351,7 +1403,9 @@ export const NodeStats = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<NodeStats>): NodeStats {
+  fromPartial<I extends Exact<DeepPartial<NodeStats>, I>>(
+    object: I
+  ): NodeStats {
     const message = { ...baseNodeStats } as NodeStats;
     message.sum = object.sum ?? 0;
     message.min = object.min ?? 0;
@@ -1420,7 +1474,9 @@ export const CallGraphEdge = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<CallGraphEdge>): CallGraphEdge {
+  fromPartial<I extends Exact<DeepPartial<CallGraphEdge>, I>>(
+    object: I
+  ): CallGraphEdge {
     const message = { ...baseCallGraphEdge } as CallGraphEdge;
     message.hash = object.hash ?? 0;
     message.weight = object.weight ?? 0;
@@ -1527,8 +1583,8 @@ export const CumulativeCallGraphNode = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<CumulativeCallGraphNode>
+  fromPartial<I extends Exact<DeepPartial<CumulativeCallGraphNode>, I>>(
+    object: I
   ): CumulativeCallGraphNode {
     const message = {
       ...baseCumulativeCallGraphNode,
@@ -1538,12 +1594,10 @@ export const CumulativeCallGraphNode = {
       object.stats !== undefined && object.stats !== null
         ? NodeStats.fromPartial(object.stats)
         : undefined;
-    message.callers = (object.callers ?? []).map((e) =>
-      CallGraphEdge.fromPartial(e)
-    );
-    message.callees = (object.callees ?? []).map((e) =>
-      CallGraphEdge.fromPartial(e)
-    );
+    message.callers =
+      object.callers?.map((e) => CallGraphEdge.fromPartial(e)) || [];
+    message.callees =
+      object.callees?.map((e) => CallGraphEdge.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1626,16 +1680,15 @@ export const CumulativeCallGraphReply = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<CumulativeCallGraphReply>
+  fromPartial<I extends Exact<DeepPartial<CumulativeCallGraphReply>, I>>(
+    object: I
   ): CumulativeCallGraphReply {
     const message = {
       ...baseCumulativeCallGraphReply,
     } as CumulativeCallGraphReply;
-    message.scopes = (object.scopes ?? []).map((e) => ScopeDesc.fromPartial(e));
-    message.nodes = (object.nodes ?? []).map((e) =>
-      CumulativeCallGraphNode.fromPartial(e)
-    );
+    message.scopes = object.scopes?.map((e) => ScopeDesc.fromPartial(e)) || [];
+    message.nodes =
+      object.nodes?.map((e) => CumulativeCallGraphNode.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1689,7 +1742,9 @@ export const ProcessLogRequest = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessLogRequest>): ProcessLogRequest {
+  fromPartial<I extends Exact<DeepPartial<ProcessLogRequest>, I>>(
+    object: I
+  ): ProcessLogRequest {
     const message = { ...baseProcessLogRequest } as ProcessLogRequest;
     message.process =
       object.process !== undefined && object.process !== null
@@ -1754,7 +1809,7 @@ export const LogEntry = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<LogEntry>): LogEntry {
+  fromPartial<I extends Exact<DeepPartial<LogEntry>, I>>(object: I): LogEntry {
     const message = { ...baseLogEntry } as LogEntry;
     message.timeMs = object.timeMs ?? 0;
     message.msg = object.msg ?? "";
@@ -1814,11 +1869,11 @@ export const ProcessLogReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessLogReply>): ProcessLogReply {
+  fromPartial<I extends Exact<DeepPartial<ProcessLogReply>, I>>(
+    object: I
+  ): ProcessLogReply {
     const message = { ...baseProcessLogReply } as ProcessLogReply;
-    message.entries = (object.entries ?? []).map((e) =>
-      LogEntry.fromPartial(e)
-    );
+    message.entries = object.entries?.map((e) => LogEntry.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1876,8 +1931,8 @@ export const ListProcessChildrenRequest = {
     return obj;
   },
 
-  fromPartial(
-    object: DeepPartial<ListProcessChildrenRequest>
+  fromPartial<I extends Exact<DeepPartial<ListProcessChildrenRequest>, I>>(
+    object: I
   ): ListProcessChildrenRequest {
     const message = {
       ...baseListProcessChildrenRequest,
@@ -1942,11 +1997,463 @@ export const ProcessChildrenReply = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<ProcessChildrenReply>): ProcessChildrenReply {
+  fromPartial<I extends Exact<DeepPartial<ProcessChildrenReply>, I>>(
+    object: I
+  ): ProcessChildrenReply {
     const message = { ...baseProcessChildrenReply } as ProcessChildrenReply;
-    message.processes = (object.processes ?? []).map((e) =>
-      Process.fromPartial(e)
+    message.processes =
+      object.processes?.map((e) => Process.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+const baseListProcessMetricsRequest: object = { processId: "" };
+
+export const ListProcessMetricsRequest = {
+  encode(
+    message: ListProcessMetricsRequest,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.processId !== "") {
+      writer.uint32(10).string(message.processId);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ListProcessMetricsRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseListProcessMetricsRequest,
+    } as ListProcessMetricsRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.processId = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListProcessMetricsRequest {
+    const message = {
+      ...baseListProcessMetricsRequest,
+    } as ListProcessMetricsRequest;
+    message.processId =
+      object.processId !== undefined && object.processId !== null
+        ? String(object.processId)
+        : "";
+    return message;
+  },
+
+  toJSON(message: ListProcessMetricsRequest): unknown {
+    const obj: any = {};
+    message.processId !== undefined && (obj.processId = message.processId);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ListProcessMetricsRequest>, I>>(
+    object: I
+  ): ListProcessMetricsRequest {
+    const message = {
+      ...baseListProcessMetricsRequest,
+    } as ListProcessMetricsRequest;
+    message.processId = object.processId ?? "";
+    return message;
+  },
+};
+
+const baseMetricDesc: object = { name: "", unit: "" };
+
+export const MetricDesc = {
+  encode(
+    message: MetricDesc,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    if (message.unit !== "") {
+      writer.uint32(18).string(message.unit);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MetricDesc {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseMetricDesc } as MetricDesc;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.name = reader.string();
+          break;
+        case 2:
+          message.unit = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MetricDesc {
+    const message = { ...baseMetricDesc } as MetricDesc;
+    message.name =
+      object.name !== undefined && object.name !== null
+        ? String(object.name)
+        : "";
+    message.unit =
+      object.unit !== undefined && object.unit !== null
+        ? String(object.unit)
+        : "";
+    return message;
+  },
+
+  toJSON(message: MetricDesc): unknown {
+    const obj: any = {};
+    message.name !== undefined && (obj.name = message.name);
+    message.unit !== undefined && (obj.unit = message.unit);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MetricDesc>, I>>(
+    object: I
+  ): MetricDesc {
+    const message = { ...baseMetricDesc } as MetricDesc;
+    message.name = object.name ?? "";
+    message.unit = object.unit ?? "";
+    return message;
+  },
+};
+
+const baseProcessMetricsReply: object = { minTimeMs: 0, maxTimeMs: 0 };
+
+export const ProcessMetricsReply = {
+  encode(
+    message: ProcessMetricsReply,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    for (const v of message.metrics) {
+      MetricDesc.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.minTimeMs !== 0) {
+      writer.uint32(17).double(message.minTimeMs);
+    }
+    if (message.maxTimeMs !== 0) {
+      writer.uint32(25).double(message.maxTimeMs);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ProcessMetricsReply {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseProcessMetricsReply } as ProcessMetricsReply;
+    message.metrics = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.metrics.push(MetricDesc.decode(reader, reader.uint32()));
+          break;
+        case 2:
+          message.minTimeMs = reader.double();
+          break;
+        case 3:
+          message.maxTimeMs = reader.double();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProcessMetricsReply {
+    const message = { ...baseProcessMetricsReply } as ProcessMetricsReply;
+    message.metrics = (object.metrics ?? []).map((e: any) =>
+      MetricDesc.fromJSON(e)
     );
+    message.minTimeMs =
+      object.minTimeMs !== undefined && object.minTimeMs !== null
+        ? Number(object.minTimeMs)
+        : 0;
+    message.maxTimeMs =
+      object.maxTimeMs !== undefined && object.maxTimeMs !== null
+        ? Number(object.maxTimeMs)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: ProcessMetricsReply): unknown {
+    const obj: any = {};
+    if (message.metrics) {
+      obj.metrics = message.metrics.map((e) =>
+        e ? MetricDesc.toJSON(e) : undefined
+      );
+    } else {
+      obj.metrics = [];
+    }
+    message.minTimeMs !== undefined && (obj.minTimeMs = message.minTimeMs);
+    message.maxTimeMs !== undefined && (obj.maxTimeMs = message.maxTimeMs);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ProcessMetricsReply>, I>>(
+    object: I
+  ): ProcessMetricsReply {
+    const message = { ...baseProcessMetricsReply } as ProcessMetricsReply;
+    message.metrics =
+      object.metrics?.map((e) => MetricDesc.fromPartial(e)) || [];
+    message.minTimeMs = object.minTimeMs ?? 0;
+    message.maxTimeMs = object.maxTimeMs ?? 0;
+    return message;
+  },
+};
+
+const baseFetchProcessMetricRequest: object = {
+  processId: "",
+  metricName: "",
+  beginMs: 0,
+  endMs: 0,
+};
+
+export const FetchProcessMetricRequest = {
+  encode(
+    message: FetchProcessMetricRequest,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.processId !== "") {
+      writer.uint32(10).string(message.processId);
+    }
+    if (message.metricName !== "") {
+      writer.uint32(18).string(message.metricName);
+    }
+    if (message.beginMs !== 0) {
+      writer.uint32(25).double(message.beginMs);
+    }
+    if (message.endMs !== 0) {
+      writer.uint32(33).double(message.endMs);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): FetchProcessMetricRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseFetchProcessMetricRequest,
+    } as FetchProcessMetricRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.processId = reader.string();
+          break;
+        case 2:
+          message.metricName = reader.string();
+          break;
+        case 3:
+          message.beginMs = reader.double();
+          break;
+        case 4:
+          message.endMs = reader.double();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FetchProcessMetricRequest {
+    const message = {
+      ...baseFetchProcessMetricRequest,
+    } as FetchProcessMetricRequest;
+    message.processId =
+      object.processId !== undefined && object.processId !== null
+        ? String(object.processId)
+        : "";
+    message.metricName =
+      object.metricName !== undefined && object.metricName !== null
+        ? String(object.metricName)
+        : "";
+    message.beginMs =
+      object.beginMs !== undefined && object.beginMs !== null
+        ? Number(object.beginMs)
+        : 0;
+    message.endMs =
+      object.endMs !== undefined && object.endMs !== null
+        ? Number(object.endMs)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: FetchProcessMetricRequest): unknown {
+    const obj: any = {};
+    message.processId !== undefined && (obj.processId = message.processId);
+    message.metricName !== undefined && (obj.metricName = message.metricName);
+    message.beginMs !== undefined && (obj.beginMs = message.beginMs);
+    message.endMs !== undefined && (obj.endMs = message.endMs);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<FetchProcessMetricRequest>, I>>(
+    object: I
+  ): FetchProcessMetricRequest {
+    const message = {
+      ...baseFetchProcessMetricRequest,
+    } as FetchProcessMetricRequest;
+    message.processId = object.processId ?? "";
+    message.metricName = object.metricName ?? "";
+    message.beginMs = object.beginMs ?? 0;
+    message.endMs = object.endMs ?? 0;
+    return message;
+  },
+};
+
+const baseMetricDataPoint: object = { timeMs: 0, value: 0 };
+
+export const MetricDataPoint = {
+  encode(
+    message: MetricDataPoint,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.timeMs !== 0) {
+      writer.uint32(9).double(message.timeMs);
+    }
+    if (message.value !== 0) {
+      writer.uint32(17).double(message.value);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MetricDataPoint {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseMetricDataPoint } as MetricDataPoint;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.timeMs = reader.double();
+          break;
+        case 2:
+          message.value = reader.double();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MetricDataPoint {
+    const message = { ...baseMetricDataPoint } as MetricDataPoint;
+    message.timeMs =
+      object.timeMs !== undefined && object.timeMs !== null
+        ? Number(object.timeMs)
+        : 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? Number(object.value)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: MetricDataPoint): unknown {
+    const obj: any = {};
+    message.timeMs !== undefined && (obj.timeMs = message.timeMs);
+    message.value !== undefined && (obj.value = message.value);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MetricDataPoint>, I>>(
+    object: I
+  ): MetricDataPoint {
+    const message = { ...baseMetricDataPoint } as MetricDataPoint;
+    message.timeMs = object.timeMs ?? 0;
+    message.value = object.value ?? 0;
+    return message;
+  },
+};
+
+const baseProcessMetricReply: object = {};
+
+export const ProcessMetricReply = {
+  encode(
+    message: ProcessMetricReply,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    for (const v of message.points) {
+      MetricDataPoint.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ProcessMetricReply {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseProcessMetricReply } as ProcessMetricReply;
+    message.points = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.points.push(MetricDataPoint.decode(reader, reader.uint32()));
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProcessMetricReply {
+    const message = { ...baseProcessMetricReply } as ProcessMetricReply;
+    message.points = (object.points ?? []).map((e: any) =>
+      MetricDataPoint.fromJSON(e)
+    );
+    return message;
+  },
+
+  toJSON(message: ProcessMetricReply): unknown {
+    const obj: any = {};
+    if (message.points) {
+      obj.points = message.points.map((e) =>
+        e ? MetricDataPoint.toJSON(e) : undefined
+      );
+    } else {
+      obj.points = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ProcessMetricReply>, I>>(
+    object: I
+  ): ProcessMetricReply {
+    const message = { ...baseProcessMetricReply } as ProcessMetricReply;
+    message.points =
+      object.points?.map((e) => MetricDataPoint.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1988,6 +2495,14 @@ export interface PerformanceAnalytics {
     request: DeepPartial<ListStreamBlocksRequest>,
     metadata?: grpc.Metadata
   ): Promise<ListStreamBlocksReply>;
+  list_process_metrics(
+    request: DeepPartial<ListProcessMetricsRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessMetricsReply>;
+  fetch_process_metric(
+    request: DeepPartial<FetchProcessMetricRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessMetricReply>;
 }
 
 export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
@@ -2005,6 +2520,8 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     this.list_recent_processes = this.list_recent_processes.bind(this);
     this.search_processes = this.search_processes.bind(this);
     this.list_stream_blocks = this.list_stream_blocks.bind(this);
+    this.list_process_metrics = this.list_process_metrics.bind(this);
+    this.fetch_process_metric = this.fetch_process_metric.bind(this);
   }
 
   block_spans(
@@ -2102,6 +2619,28 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     return this.rpc.unary(
       PerformanceAnalyticslist_stream_blocksDesc,
       ListStreamBlocksRequest.fromPartial(request),
+      metadata
+    );
+  }
+
+  list_process_metrics(
+    request: DeepPartial<ListProcessMetricsRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessMetricsReply> {
+    return this.rpc.unary(
+      PerformanceAnalyticslist_process_metricsDesc,
+      ListProcessMetricsRequest.fromPartial(request),
+      metadata
+    );
+  }
+
+  fetch_process_metric(
+    request: DeepPartial<FetchProcessMetricRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessMetricReply> {
+    return this.rpc.unary(
+      PerformanceAnalyticsfetch_process_metricDesc,
+      FetchProcessMetricRequest.fromPartial(request),
       metadata
     );
   }
@@ -2316,6 +2855,52 @@ export const PerformanceAnalyticslist_stream_blocksDesc: UnaryMethodDefinitionis
     } as any,
   };
 
+export const PerformanceAnalyticslist_process_metricsDesc: UnaryMethodDefinitionish =
+  {
+    methodName: "list_process_metrics",
+    service: PerformanceAnalyticsDesc,
+    requestStream: false,
+    responseStream: false,
+    requestType: {
+      serializeBinary() {
+        return ListProcessMetricsRequest.encode(this).finish();
+      },
+    } as any,
+    responseType: {
+      deserializeBinary(data: Uint8Array) {
+        return {
+          ...ProcessMetricsReply.decode(data),
+          toObject() {
+            return this;
+          },
+        };
+      },
+    } as any,
+  };
+
+export const PerformanceAnalyticsfetch_process_metricDesc: UnaryMethodDefinitionish =
+  {
+    methodName: "fetch_process_metric",
+    service: PerformanceAnalyticsDesc,
+    requestStream: false,
+    responseStream: false,
+    requestType: {
+      serializeBinary() {
+        return FetchProcessMetricRequest.encode(this).finish();
+      },
+    } as any,
+    responseType: {
+      deserializeBinary(data: Uint8Array) {
+        return {
+          ...ProcessMetricReply.decode(data),
+          toObject() {
+            return this;
+          },
+        };
+      },
+    } as any,
+  };
+
 interface UnaryMethodDefinitionishR
   extends grpc.UnaryMethodDefinition<any, any> {
   requestStream: any;
@@ -2408,6 +2993,7 @@ type Builtin =
   | number
   | boolean
   | undefined;
+
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -2417,6 +3003,14 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {

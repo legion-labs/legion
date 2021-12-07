@@ -14,7 +14,7 @@ pub struct MetricDesc {
 pub struct IntegerMetricEvent {
     pub metric: &'static MetricDesc,
     pub value: u64,
-    pub time: u64,
+    pub time: i64,
 }
 
 impl InProcSerialize for IntegerMetricEvent {}
@@ -28,7 +28,7 @@ impl MetricEvent for IntegerMetricEvent {
 pub struct FloatMetricEvent {
     pub metric: &'static MetricDesc,
     pub value: f64,
-    pub time: u64,
+    pub time: i64,
 }
 
 impl InProcSerialize for FloatMetricEvent {}

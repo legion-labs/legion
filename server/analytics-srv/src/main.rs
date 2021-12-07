@@ -65,6 +65,7 @@
 mod analytics_service;
 mod call_tree;
 mod cumulative_call_graph;
+mod metrics;
 
 use std::path::PathBuf;
 

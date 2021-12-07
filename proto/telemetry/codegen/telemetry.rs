@@ -19,8 +19,8 @@ pub struct Process {
     /// RFC 3339
     #[prost(string, tag = "9")]
     pub start_time: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "10")]
-    pub start_ticks: u64,
+    #[prost(int64, tag = "10")]
+    pub start_ticks: i64,
     #[prost(string, tag = "11")]
     pub parent_process_id: ::prost::alloc::string::String,
 }
@@ -84,12 +84,12 @@ pub struct Block {
     /// frequency
     #[prost(string, tag = "3")]
     pub begin_time: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "4")]
-    pub begin_ticks: u64,
+    #[prost(int64, tag = "4")]
+    pub begin_ticks: i64,
     #[prost(string, tag = "5")]
     pub end_time: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "6")]
-    pub end_ticks: u64,
+    #[prost(int64, tag = "6")]
+    pub end_ticks: i64,
     #[prost(message, optional, tag = "7")]
     pub payload: ::core::option::Option<BlockPayload>,
 }
