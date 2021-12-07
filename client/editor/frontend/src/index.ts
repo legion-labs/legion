@@ -25,9 +25,9 @@ if (window.location.pathname === "/") {
   if (code) {
     const awsCognitoTokenCache = createAwsCognitoTokenCache();
 
-    finalizeAwsCognitoAuth(awsCognitoTokenCache, code).then((_userInfo) => {
+    finalizeAwsCognitoAuth(awsCognitoTokenCache, code).then(() => {
       // Cleanup the Url
-      window.history.pushState(null, "Home", "/");
+      window.history.replaceState(null, "Home", "/");
     });
   }
 }

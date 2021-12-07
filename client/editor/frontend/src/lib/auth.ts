@@ -2,6 +2,8 @@ const authorizationUrl = new URL(
   "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=5m58nrjfv6kr144prif9jk62di&response_type=code&scope=aws.cognito.signin.user.admin+email+https://legionlabs.com/editor/allocate+openid+profile&redirect_uri=http://localhost:3000/&identity_provider=Azure"
 );
 
+const cookieDomain = "localhost";
+
 export type UserInfo = {
   sub: string;
   name?: string;
@@ -44,17 +46,59 @@ export interface Authenticator {
   getTokenSetFromAuthorizationCode(code: string): Promise<ClientTokenSet>;
 }
 
+/**
+ * Fast cookie lookup function
+ * @param name Cookie name
+ * @returns The cookie value or `null`
+ */
+function getCookie(name: string) {
+  const parts = document.cookie.split(/[;=]/);
+
+  for (let i = 0; i < parts.length - 1; i += 2) {
+    if (parts[i].trim() === name) {
+      const value = parts[i + 1];
+
+      return value && value.trim();
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Safely set a cookie in the browser
+ * @param name Cookie name
+ * @param value Cookie value (must be serializable)
+ * @param maxAge Cookie duration (in seconds)
+ */
+function setCookie(
+  name: string,
+  value: { toString(): string },
+  maxAge: number
+) {
+  document.cookie = `${name}=${value.toString()};domain=${cookieDomain};path=/;max-age=${maxAge};samesite=strict;secure`;
+}
+
 export class TokenCache<A extends Authenticator> {
   constructor(public authenticator: A) {}
 
   getAuthorizationCodeInteractive() {
-    // TODO: Check cache
-    return this.authenticator.getAuthorizationCodeInteractive();
+    if (this.tokenIsInvalid()) {
+      return this.authenticator.getAuthorizationCodeInteractive();
+    }
   }
 
   getTokenSetFromAuthorizationCode(code: string) {
-    // TODO: Check cache
-    return this.authenticator.getTokenSetFromAuthorizationCode(code);
+    if (this.tokenIsInvalid()) {
+      return this.authenticator.getTokenSetFromAuthorizationCode(code);
+    }
+  }
+
+  tokenIsInvalid() {
+    const expiresAt = getCookie("expires_at");
+    const access_token = getCookie("access_token");
+
+    return !expiresAt || !access_token || new Date(expiresAt) <= new Date();
   }
 }
 
@@ -189,8 +233,6 @@ export class AwsCognitoClientAuthenticator implements Authenticator {
   }
 }
 
-type AwsCognitoTokenCache = TokenCache<AwsCognitoClientAuthenticator>;
-
 export function createAwsCognitoTokenCache() {
   return new TokenCache(new AwsCognitoClientAuthenticator(authorizationUrl));
 }
@@ -202,23 +244,27 @@ export function createAwsCognitoTokenCache() {
  * @returns The user info
  */
 export async function finalizeAwsCognitoAuth(
-  awsCognitoTokenCache: AwsCognitoTokenCache,
+  awsCognitoTokenCache: TokenCache<AwsCognitoClientAuthenticator>,
   code: string
 ) {
   const clientTokenSet =
     await awsCognitoTokenCache.getTokenSetFromAuthorizationCode(code);
 
-  for (const name of ["access_token", "refresh_token", "expires_in"] as const) {
-    const value = clientTokenSet[name];
-
-    if (value) {
-      document.cookie = `${name}=${value.toString()};domain=localhost;path=/;max-age=${
-        clientTokenSet.expires_in
-      };samesite=strict;secure`;
-    }
+  if (!clientTokenSet) {
+    return null;
   }
 
-  return awsCognitoTokenCache.authenticator.getUserInfo(
-    clientTokenSet.access_token
-  );
+  const { access_token, expires_in, refresh_token } = clientTokenSet;
+
+  const expiresAt = new Date(Date.now() + expires_in * 1000).toUTCString();
+
+  setCookie("access_token", access_token, expires_in);
+
+  if (refresh_token) {
+    setCookie("refresh_token", refresh_token, expires_in);
+  }
+
+  setCookie("expires_at", expiresAt, expires_in);
+
+  return awsCognitoTokenCache.authenticator.getUserInfo(access_token);
 }
