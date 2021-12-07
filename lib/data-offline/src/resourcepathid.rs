@@ -5,7 +5,7 @@ use lgn_utils::DefaultHash;
 use serde::{Deserialize, Serialize};
 
 /// Resource transformation identifier.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Hash, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Copy, Hash, PartialOrd, Ord)]
 pub struct Transform {
     from: ResourceType,
     to: ResourceType,

@@ -259,7 +259,7 @@ impl CompilerHashCmd {
         builder.arg(COMMAND_NAME_COMPILER_HASH);
         builder.arg(format!("--{}={}", COMMAND_ARG_TARGET, env.target));
         builder.arg(format!("--{}={}", COMMAND_ARG_PLATFORM, env.platform));
-        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, env.locale.0));
+        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, env.locale));
         Self(builder)
     }
 
@@ -335,7 +335,7 @@ impl CompilerCompileCmd {
 
         builder.arg(format!("--{}={}", COMMAND_ARG_TARGET, env.target));
         builder.arg(format!("--{}={}", COMMAND_ARG_PLATFORM, env.platform));
-        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, env.locale.0));
+        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, env.locale));
         Self(builder)
     }
 

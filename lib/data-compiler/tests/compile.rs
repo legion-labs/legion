@@ -60,7 +60,7 @@ fn compile_atoi() {
             &[],
             &cas_addr,
             &resource_dir,
-            &common::default_env(),
+            &common::test_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");
@@ -123,7 +123,7 @@ fn compile_intermediate() {
             &[],
             &cas_addr,
             &resource_dir,
-            &common::default_env(),
+            &common::test_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");
@@ -144,7 +144,7 @@ fn compile_intermediate() {
             &[intermediate_info],
             &cas_addr,
             &resource_dir,
-            &common::default_env(),
+            &common::test_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");
@@ -210,7 +210,7 @@ fn compile_multi_resource() {
             &[],
             &cas_addr,
             &resource_dir,
-            &common::default_env(),
+            &common::test_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");
@@ -289,7 +289,7 @@ fn compile_base64() {
             &[],
             &cas_addr,
             &resource_dir,
-            &common::default_env(),
+            &common::test_env(),
         );
 
         let result = command.execute(&exe_path).expect("compile result");

@@ -29,7 +29,7 @@ pub fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
     (resource_dir, output_dir)
 }
 
-pub fn default_env() -> CompilationEnv {
+pub fn test_env() -> CompilationEnv {
     CompilationEnv {
         target: Target::Game,
         platform: Platform::Windows,

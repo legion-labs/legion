@@ -36,7 +36,7 @@ fn command_compiler_hash() {
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());
 
-    let command = CompilerHashCmd::new(&common::default_env());
+    let command = CompilerHashCmd::new(&common::test_env());
     let _hashes = command.execute(&exe_path).expect("hash list");
 }
 
@@ -62,7 +62,7 @@ fn command_compile() {
         &[],
         &cas_addr,
         &resource_dir,
-        &common::default_env(),
+        &common::test_env(),
     );
 
     let result = command.execute(&exe_path).expect("compile result");

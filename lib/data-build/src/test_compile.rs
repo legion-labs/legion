@@ -91,7 +91,7 @@ fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
     (project_dir.to_owned(), output_dir)
 }
 
-fn default_env() -> CompilationEnv {
+fn test_env() -> CompilationEnv {
     CompilationEnv {
         target: Target::Game,
         platform: Platform::Windows,
@@ -138,7 +138,7 @@ fn compile_change_no_deps() {
         let mut build = config.create(&project_dir).expect("to create index");
         build.source_pull().expect("failed to pull from project");
 
-        let compile_output = build.compile_path(target.clone(), &default_env()).unwrap();
+        let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
 
         assert_eq!(compile_output.resources.len(), 1);
         assert_eq!(compile_output.references.len(), 0);
@@ -172,7 +172,7 @@ fn compile_change_no_deps() {
     let modified_checksum = {
         let mut build = config.open().expect("to open index");
         build.source_pull().expect("failed to pull from project");
-        let compile_output = build.compile_path(target.clone(), &default_env()).unwrap();
+        let compile_output = build.compile_path(target.clone(), &test_env()).unwrap();
 
         assert_eq!(compile_output.resources.len(), 1);
         assert_eq!(compile_output.resources[0].compile_path, target);
@@ -294,7 +294,7 @@ fn intermediate_resource() {
     let integer_path = reversed_path.push(integer_asset::IntegerAsset::TYPE);
 
     let compile_output = build
-        .compile_path(integer_path.clone(), &default_env())
+        .compile_path(integer_path.clone(), &test_env())
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), 2); // intermediate and final result
@@ -379,7 +379,7 @@ fn unnamed_cache_use() {
             references,
             statistics,
         } = build
-            .compile_path(target.clone(), &default_env())
+            .compile_path(target.clone(), &test_env())
             .expect("successful compilation");
 
         assert_eq!(resources.len(), NUM_OUTPUTS);
@@ -394,7 +394,7 @@ fn unnamed_cache_use() {
             references,
             statistics,
         } = build
-            .compile_path(target.clone(), &default_env())
+            .compile_path(target.clone(), &test_env())
             .expect("successful compilation");
 
         assert_eq!(resources.len(), NUM_OUTPUTS);
@@ -412,7 +412,7 @@ fn unnamed_cache_use() {
             references,
             statistics,
         } = build
-            .compile_path(target.clone(), &default_env())
+            .compile_path(target.clone(), &test_env())
             .expect("successful compilation");
 
         assert_eq!(resources.len(), NUM_OUTPUTS);
@@ -431,7 +431,7 @@ fn unnamed_cache_use() {
             references,
             statistics,
         } = build
-            .compile_path(target, &default_env())
+            .compile_path(target, &test_env())
             .expect("successful compilation");
 
         assert_eq!(resources.len(), 5);
@@ -492,7 +492,7 @@ fn named_path_cache_use() {
 
     // compile "integer path 0"
     let compile_output = build
-        .compile_path(integer_path_0.clone(), &default_env())
+        .compile_path(integer_path_0.clone(), &test_env())
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
@@ -539,7 +539,7 @@ fn named_path_cache_use() {
 
     // compile "integer path 1"
     let compile_output = build
-        .compile_path(integer_path_1.clone(), &default_env())
+        .compile_path(integer_path_1.clone(), &test_env())
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
@@ -558,7 +558,7 @@ fn named_path_cache_use() {
 
     // recompile "integer path 0" - all from cache
     let compile_output = build
-        .compile_path(integer_path_0.clone(), &default_env())
+        .compile_path(integer_path_0.clone(), &test_env())
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
@@ -590,7 +590,7 @@ fn named_path_cache_use() {
     }
 
     let compile_output = build
-        .compile_path(integer_path_0.clone(), &default_env())
+        .compile_path(integer_path_0.clone(), &test_env())
         .unwrap();
 
     // ..recompiled: multitext -> text_0, text_1
@@ -633,7 +633,7 @@ fn named_path_cache_use() {
 
     // compile from "text_0"
     let compile_output = build
-        .compile_path(integer_path_0.clone(), &default_env())
+        .compile_path(integer_path_0.clone(), &test_env())
         .unwrap();
 
     // ..recompiled: multitext -> text_0, text_1, text_0 -> integer
@@ -653,7 +653,7 @@ fn named_path_cache_use() {
         .all(|r| !r.compile_path.is_named()));
 
     // compile from "text_1"
-    let compile_output = build.compile_path(integer_path_1, &default_env()).unwrap();
+    let compile_output = build.compile_path(integer_path_1, &test_env()).unwrap();
 
     // ..recompiled: text_1 -> integer
     // ..from cache: multitext -> text_0, text_1
@@ -731,7 +731,7 @@ fn link() {
 
     let target = ResourcePathId::from(parent_id).push(refs_asset::RefsAsset::TYPE);
     let compile_output = build
-        .compile_path(target, &default_env())
+        .compile_path(target, &test_env())
         .expect("successful compilation");
 
     assert_eq!(compile_output.resources.len(), 2);
@@ -820,7 +820,7 @@ fn verify_manifest() {
         .compile(
             compile_path,
             Some(output_manifest_file.clone()),
-            &default_env(),
+            &test_env(),
         )
         .unwrap();
 
