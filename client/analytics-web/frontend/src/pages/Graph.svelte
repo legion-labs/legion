@@ -1,4 +1,6 @@
 <script lang="ts">
+  /* eslint-disable @typescript-eslint/no-non-null-assertion */
+
   type GraphParams = {
     processId: string;
     beginMs: number;

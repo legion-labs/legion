@@ -21,8 +21,5 @@
         "bradlc.vscode-tailwindcss",
         // Svelte extension
         "svelte.svelte-vscode",
-        // Web related tests extensions
-        "orta.vscode-jest",
-        "firsttris.vscode-jest-runner",
     ]
 }

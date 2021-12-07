@@ -90,7 +90,9 @@ export const BlockPayload = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<BlockPayload>): BlockPayload {
+  fromPartial<I extends Exact<DeepPartial<BlockPayload>, I>>(
+    object: I
+  ): BlockPayload {
     const message = { ...baseBlockPayload } as BlockPayload;
     message.dependencies = object.dependencies ?? new Uint8Array();
     message.objects = object.objects ?? new Uint8Array();
@@ -217,7 +219,7 @@ export const Block = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<Block>): Block {
+  fromPartial<I extends Exact<DeepPartial<Block>, I>>(object: I): Block {
     const message = { ...baseBlock } as Block;
     message.blockId = object.blockId ?? "";
     message.streamId = object.streamId ?? "";
@@ -275,6 +277,7 @@ type Builtin =
   | number
   | boolean
   | undefined;
+
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -284,6 +287,14 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {

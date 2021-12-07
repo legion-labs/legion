@@ -7,7 +7,7 @@ module.exports = {
         preprocess: true,
       },
     ],
-    "^.+\\.ts$": "ts-jest",
+    "^.+\\.(t|j)s$": "@swc/jest",
   },
   moduleFileExtensions: ["js", "ts", "svelte"],
   testMatch: ["**/tests/**/*.test.ts"],
@@ -15,4 +15,5 @@ module.exports = {
     "^\\@\\/(.*)": "<rootDir>/src/$1",
   },
   setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
+  transformIgnorePatterns: ["node_modules/(?!@tauri-apps/api)"],
 };

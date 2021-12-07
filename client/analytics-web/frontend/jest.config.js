@@ -7,7 +7,7 @@ module.exports = {
         preprocess: true,
       },
     ],
-    "^.+\\.ts$": "ts-jest",
+    "^.+\\.(t|j)s$": "@swc/jest",
   },
   moduleFileExtensions: ["js", "ts", "svelte"],
   testMatch: ["**/tests/**/*.test.ts"],
