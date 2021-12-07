@@ -66,7 +66,7 @@ use instant::Duration;
 use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
-use lgn_data_runtime::{ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_telemetry::prelude::*;

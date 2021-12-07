@@ -32,7 +32,6 @@ impl ResourceType {
     /// which can be used to identify a resource or asset.
     pub const fn new(v: &[u8]) -> Self {
         let v = const_xxh3(v) as u32;
-        //Self(unsafe { std::num::NonZeroU32::new_unchecked(v) }) // unwrap() doesn't work with const functions ATM
         Self::from_raw(v)
     }
 
@@ -217,11 +216,6 @@ impl fmt::Display for ResourceTypeAndId {
         f.write_fmt(format_args!("({},{})", self.0, self.1))
     }
 }
-
-/// Returns a string from a formatted `ResourceTypeAndId` tuple.
-/*pub fn to_string(v: ResourceTypeAndId) -> String {
-    format!("({},{})", v.0, v.1)
-}*/
 
 /// Trait describing resource type name.
 pub trait Resource {
