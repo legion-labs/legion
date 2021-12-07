@@ -168,12 +168,13 @@ impl EmbeddedFileSystem {
             }
         });
 
-        EmbeddedFileSystem {
+        Self {
             path_to_content,
             bus,
         }
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn read<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>, std::io::Error> {
         let path = path.as_ref();
         if let Some(file) = self.path_to_content.get(path.to_str().unwrap()) {
@@ -191,6 +192,7 @@ impl EmbeddedFileSystem {
         }
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn read_as_string<P: AsRef<Path>>(&self, path: P) -> Result<String, std::io::Error> {
         let content = self.read(path)?;
         Ok(String::from_utf8_lossy(&content).to_string())
