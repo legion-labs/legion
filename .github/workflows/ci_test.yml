@@ -15,13 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Set the value
+        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
+
       - name: Cache cargo registery
         uses: actions/cache@v2
         with:
           path: |
-            $CARGO_HOME/registry
-            $CARGO_HOME/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+            ${{ env.cargo_home }}/registry
+            ${{ env.cargo_home }}/git
+          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
 
       - name: Run formatting check
         run: make check-format
