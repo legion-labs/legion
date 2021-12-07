@@ -17,7 +17,7 @@
 //! ```no_run
 //! # use lgn_data_compiler::{CompilerHash, Locale, Platform, Target};
 //! # use lgn_data_compiler::compiler_api::{DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
-//! # use lgn_data_offline::ResourcePathId;
+//! # use lgn_data_offline::{ResourcePathId, Transform};
 //! # use lgn_data_runtime::ResourceType;
 //! # use lgn_content_store::ContentStoreAddr;
 //! # use std::path::Path;
@@ -28,7 +28,7 @@
 //!    build_version: DATA_BUILD_VERSION,
 //!    code_version: "",
 //!    data_version: "",
-//!    transform: &(INPUT_TYPE, OUTPUT_TYPE),
+//!    transform: &Transform::new(INPUT_TYPE, OUTPUT_TYPE),
 //!    compiler_hash_func: compiler_hash,
 //!    compile_func: compile,
 //! };
@@ -72,8 +72,8 @@ use std::{
 
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::{AssetRegistryOptions, ResourceType};
+use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_runtime::AssetRegistryOptions;
 
 use crate::{
     compiler_cmd::{
@@ -166,7 +166,7 @@ pub struct CompilerDescriptor {
     /// Version of resource data formats.
     pub data_version: &'static str,
     /// Compiler supported resource transformation `f(.0)->.1`.
-    pub transform: &'static (ResourceType, ResourceType),
+    pub transform: &'static Transform,
     /// Function returning a list of `CompilerHash` for a given context.
     pub compiler_hash_func: fn(
         code: &'static str,

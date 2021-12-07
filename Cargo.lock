@@ -3664,6 +3664,7 @@ version = "0.1.0"
 dependencies = [
  "integer-asset",
  "lgn-data-compiler",
+ "lgn-data-offline",
  "lgn-data-runtime",
  "text-resource",
 ]
@@ -3675,6 +3676,7 @@ dependencies = [
  "base64",
  "binary-resource",
  "lgn-data-compiler",
+ "lgn-data-offline",
  "lgn-data-runtime",
  "text-resource",
 ]
@@ -3684,6 +3686,7 @@ name = "lgn-compiler-test-refs"
 version = "0.1.0"
 dependencies = [
  "lgn-data-compiler",
+ "lgn-data-offline",
  "lgn-data-runtime",
  "refs-asset",
  "refs-resource",
@@ -3728,6 +3731,7 @@ name = "lgn-compiler-tex2bin"
 version = "0.1.0"
 dependencies = [
  "lgn-data-compiler",
+ "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-offline",
  "lgn-graphics-runtime",

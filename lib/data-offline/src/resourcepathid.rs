@@ -4,6 +4,20 @@ use lgn_data_runtime::{ResourceId, ResourceType};
 use lgn_utils::DefaultHash;
 use serde::{Deserialize, Serialize};
 
+/// Resource transformation identifier.
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Hash, PartialOrd, Ord)]
+pub struct Transform {
+    from: ResourceType,
+    to: ResourceType,
+}
+
+impl Transform {
+    /// Creates a new resource transform.
+    pub const fn new(from: ResourceType, to: ResourceType) -> Self {
+        Self { from, to }
+    }
+}
+
 /// Identifier of a path in a build graph.
 ///
 /// Considering a build graph where nodes represent *resources* and edges representing *transformations* between resources
@@ -222,13 +236,16 @@ impl ResourcePathId {
     /// Returns the last transformation that must be applied to produce the resource.
     ///
     /// Returns None if self is a `source resource`.
-    pub fn last_transform(&self) -> Option<(ResourceType, ResourceType)> {
+    pub fn last_transform(&self) -> Option<Transform> {
         match self.transforms.len() {
             0 => None,
-            1 => Some((self.source.ty(), self.transforms[0].0)),
+            1 => Some(Transform::new(self.source.ty(), self.transforms[0].0)),
             _ => {
                 let len = self.transforms.len();
-                Some((self.transforms[len - 2].0, self.transforms[len - 1].0))
+                Some(Transform::new(
+                    self.transforms[len - 2].0,
+                    self.transforms[len - 1].0,
+                ))
             }
         }
     }

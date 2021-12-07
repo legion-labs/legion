@@ -15,8 +15,9 @@ use lgn_data_compiler::compiler_cmd::{
 use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
 use lgn_data_compiler::{Locale, Platform, Target};
+use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
-use lgn_data_runtime::{ResourceId, ResourceType};
+use lgn_data_runtime::ResourceId;
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -45,7 +46,7 @@ struct CompileOutput {
 /// yield the same compilation outcome.
 // todo(kstasik): `context_hash` should also include localization_id
 fn compute_context_hash(
-    transform: (ResourceType, ResourceType),
+    transform: &Transform,
     compiler_hash: CompilerHash,
     databuild_version: &'static str,
 ) -> u64 {
@@ -550,7 +551,8 @@ impl DataBuild {
                 let (compiler_path, compiler_hash) = compiler_details.get(&transform).unwrap();
 
                 // todo: not sure if transform is the right thing here. resource_path_id better? transform is already defined by the compiler_hash so it seems redundant.
-                let context_hash = compute_context_hash(transform, *compiler_hash, Self::version());
+                let context_hash =
+                    compute_context_hash(&transform, *compiler_hash, Self::version());
 
                 let source_hash = {
                     if direct_dependency.is_source() {

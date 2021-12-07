@@ -57,8 +57,7 @@ use std::{
 };
 
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_offline::ResourcePathId;
-use lgn_data_runtime::ResourceType;
+use lgn_data_offline::{ResourcePathId, Transform};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -180,7 +179,7 @@ pub struct CompilerInfoCmdOutput {
     /// Resource and Asset data version.
     pub data_version: String,
     /// Transformation supported by data compiler.
-    pub transform: (ResourceType, ResourceType),
+    pub transform: Transform,
 }
 
 impl CompilerInfoCmdOutput {
@@ -189,7 +188,7 @@ impl CompilerInfoCmdOutput {
             build_version: descriptor.build_version.to_owned(),
             code_version: descriptor.code_version.to_owned(),
             data_version: descriptor.data_version.to_owned(),
-            transform: descriptor.transform.to_owned(),
+            transform: descriptor.transform.clone(),
         }
     }
     pub(crate) fn from_bytes(bytes: &[u8]) -> Option<Self> {
