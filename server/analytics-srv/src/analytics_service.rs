@@ -26,11 +26,14 @@ use lgn_telemetry_proto::analytics::ProcessMetricReply;
 use lgn_telemetry_proto::analytics::ProcessMetricsReply;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tonic::{Request, Response, Status};
 
 use crate::call_tree::compute_block_spans;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use crate::metrics;
+
+static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
 
 struct RequestGuard {
     begin_ticks: i64,
@@ -39,6 +42,13 @@ struct RequestGuard {
 impl RequestGuard {
     fn new() -> Self {
         init_thread_stream();
+        let previous_count = REQUEST_COUNT.fetch_add(1, Ordering::SeqCst);
+        static REQUEST_ID_METRIC: MetricDesc = MetricDesc {
+            name: "Request ID",
+            unit: "count",
+        };
+        record_int_metric(&REQUEST_ID_METRIC, previous_count);
+
         let begin_ticks = lgn_telemetry::now();
         Self { begin_ticks }
     }

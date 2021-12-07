@@ -39,8 +39,9 @@
 
   async function fetchProcessInfo() {
     const reply = await client.list_process_metrics( {processId: id });
-    console.log(reply);
     metrics = reply.metrics;
+    minMs = reply.minTimeMs;
+    maxMs = reply.maxTimeMs;
   }
 
   function drawCanvas() {

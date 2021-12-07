@@ -271,6 +271,12 @@ where
                             buffer.as_ptr().add(offset + member_meta.offset)
                         }))
                     }
+                    "i64" => {
+                        assert_eq!(std::mem::size_of::<i64>(), member_meta.size);
+                        Value::I64(read_any::<i64>(unsafe {
+                            buffer.as_ptr().add(offset + member_meta.offset)
+                        }))
+                    }
                     "f64" => {
                         assert_eq!(std::mem::size_of::<f64>(), member_meta.size);
                         Value::F64(read_any::<f64>(unsafe {
