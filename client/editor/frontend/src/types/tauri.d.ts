@@ -5,4 +5,5 @@ declare module "@tauri-apps/api" {
   };
 
   function invoke(command: "authenticate"): Promise<UserInfo>;
+  function invoke(command: "get_access_token"): Promise<string>;
 }

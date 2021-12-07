@@ -8,8 +8,17 @@
     menus as topBarMenus,
   } from "@/stores/topBarMenu";
   import { createAwsCognitoTokenCache } from "@/lib/auth";
+  import userInfo from "@/stores/userInfo";
 
   export let documentTitle: string | null = null;
+
+  const { data: userInfoData } = userInfo;
+
+  $: userInitials =
+    $userInfoData && $userInfoData.given_name && $userInfoData.family_name
+      ? `${$userInfoData.given_name[0]}${$userInfoData.family_name[0]}`
+      : // TODO: Use an icon
+        "Me";
 
   function onMenuMouseEnter(id: TopBarMenuId) {
     // We set the topBarMenu value (and therefore open said menu dropdown)
@@ -35,15 +44,19 @@
   }
 
   async function authenticate() {
-    if (!window.__TAURI__) {
-      const awsCognitoTokenCache = createAwsCognitoTokenCache();
+    if (window.__TAURI__) {
+      const userInfo = await invoke("authenticate");
 
-      awsCognitoTokenCache.getAuthorizationCodeInteractive();
+      log.debug("auth", userInfo);
+
+      userInfoData.set(userInfo);
 
       return;
     }
 
-    log.debug("auth", await invoke("authenticate"));
+    const awsCognitoTokenCache = createAwsCognitoTokenCache();
+
+    awsCognitoTokenCache.getAuthorizationCodeInteractive();
   }
 </script>
 
@@ -88,8 +101,15 @@
     {/if}
   </div>
   <div class="actions">
-    <div class="authenticate" title="Authenticate" on:click={authenticate}>
-      Me
+    <div
+      class="authenticate"
+      class:cursor-pointer={!$userInfoData}
+      title={$userInfoData
+        ? `Welcome back ${$userInfoData.name}`
+        : "Authenticate"}
+      on:click={authenticate}
+    >
+      {userInitials}
     </div>
   </div>
 </div>
@@ -136,6 +156,6 @@
   }
 
   .authenticate {
-    @apply flex justify-center items-center cursor-pointer rounded-full bg-white h-6 w-6 text-sm text-gray-800;
+    @apply flex justify-center items-center rounded-full bg-white h-6 w-6 text-sm text-gray-800;
   }
 </style>
