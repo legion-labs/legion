@@ -15,8 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set the value
+      - name: Set cargo home on linux
+        if: runner.os == 'Linux'
         run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
+
+      - name: Set cargo home on windows
+        if: runner.os == 'Windows'
+        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
 
       - name: Cache cargo registery
         uses: actions/cache@v2
@@ -38,26 +43,6 @@ jobs:
       - name: Run dependencies checks
         run: make check-deps
 
-  test:
-    name: Running tests
-    needs: lint
-    strategy:
-      matrix:
-        os:
-          [
-            [self-hosted, windows, common, build],
-            [self-hosted, linux, common, build],
-          ]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Build tests
-        run: make test-build
-
-      - name: Run tests
-        run: make test-run
-
   check_needs_gpu_tests:
     name: Check if graphics libs changed
     runs-on: ubuntu-latest
@@ -78,6 +63,42 @@ jobs:
             ^plugin/presenter-*
             ^test/graphics-*
 
+  test:
+    name: Running tests
+    needs: lint
+    strategy:
+      matrix:
+        os:
+          [
+            [self-hosted, windows, common, build],
+            [self-hosted, linux, common, build],
+          ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set cargo home on linux
+        if: runner.os == 'Linux'
+        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
+
+      - name: Set cargo home on windows
+        if: runner.os == 'Windows'
+        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
+
+      - name: Cache cargo registery
+        uses: actions/cache@v2
+        with:
+          path: |
+            ${{ env.cargo_home }}/registry
+            ${{ env.cargo_home }}/git
+          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
+
+      - name: Build tests
+        run: make test-build
+
+      - name: Run tests
+        run: make test-run
+
   test_gpu:
     name: Running gpu tests
     needs: [lint, check_needs_gpu_tests]
@@ -93,6 +114,22 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Set cargo home on linux
+        if: runner.os == 'Linux'
+        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
+
+      - name: Set cargo home on windows
+        if: runner.os == 'Windows'
+        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
+
+      - name: Cache cargo registery
+        uses: actions/cache@v2
+        with:
+          path: |
+            ${{ env.cargo_home }}/registry
+            ${{ env.cargo_home }}/git
+          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
+
       - name: Run tests
         continue-on-error: true # experimental test
         run: cargo test --test base_tests -- gpu_
@@ -103,6 +140,22 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
+
+      - name: Set cargo home on linux
+        if: runner.os == 'Linux'
+        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
+
+      - name: Set cargo home on windows
+        if: runner.os == 'Windows'
+        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
+
+      - name: Cache cargo registery
+        uses: actions/cache@v2
+        with:
+          path: |
+            ${{ env.cargo_home }}/registry
+            ${{ env.cargo_home }}/git
+          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
 
       - name: Build docs
         run: make api-doc
