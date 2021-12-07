@@ -247,9 +247,11 @@ impl VulkanSwapchain {
 
         if let Ok((present_index, is_suboptimal)) = result {
             self.last_image_suboptimal = is_suboptimal;
+            semaphore.set_signal_available(true);
             Ok(self.swapchain_images[present_index as usize].clone())
         } else {
             self.last_image_suboptimal = false;
+            semaphore.set_signal_available(false);
             // todo(jal)
             Err(GfxError::StringError("GfxError::VkError(e)".to_string()))
         }

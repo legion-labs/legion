@@ -47,6 +47,8 @@ fn update_rotation(
     mut renderer: ResMut<'_, Renderer>,
     mut query: Query<'_, '_, (Entity, &mut Transform, &RotationComponent, &mut StaticMesh)>,
 ) {
+    let _first_alloc = renderer.transient_buffer().allocate_page(64 * 1024);
+
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut gpu_data = renderer.aquire_transform_data();
 

@@ -137,6 +137,7 @@ impl UnifiedStaticBuffer {
                 &job.upload_jobs,
             );
         }
+        inner.job_blocks.clear();
 
         cmd_buffer
             .cmd_resource_barrier(
@@ -235,6 +236,7 @@ impl UniformGPUDataUploadJobBlock {
         let upload_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
         if self.offset + upload_size_in_bytes <= self.upload_allocation.size() {
             let src = data.as_ptr().cast::<u8>();
+            let upload_offset = self.upload_allocation.offset() + self.offset;
             {
                 #[allow(unsafe_code)]
                 unsafe {
@@ -243,7 +245,7 @@ impl UniformGPUDataUploadJobBlock {
                         self.upload_allocation
                             .memory
                             .mapped_ptr()
-                            .add((self.upload_allocation.offset() + self.offset) as usize),
+                            .add(upload_offset as usize),
                         upload_size_in_bytes as usize,
                     );
                 }
@@ -252,7 +254,7 @@ impl UniformGPUDataUploadJobBlock {
             for i in 0..data.len() as u64 {
                 let data_size = std::mem::size_of::<T>() as u64;
                 self.upload_jobs.push(BufferCopy {
-                    src_offset: self.offset,
+                    src_offset: upload_offset,
                     dst_offset: dst_offset + (i * data_size),
                     size: data_size,
                 });
