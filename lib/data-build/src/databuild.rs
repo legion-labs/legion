@@ -8,7 +8,7 @@ use std::{env, io};
 
 use lgn_content_store::{ContentStore, HddContentStore};
 use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
-use lgn_data_compiler::compiler_reg::CompilerRegistry;
+use lgn_data_compiler::compiler_reg::{CompilerRegistry, CompilerRegistryOptions};
 use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, Manifest};
 use lgn_data_offline::Transform;
@@ -117,15 +117,12 @@ impl DataBuild {
         let content_store = HddContentStore::open(config.contentstore_path.clone())
             .ok_or(Error::InvalidContentStore)?;
 
-        let mut build = Self {
+        Ok(Self {
             build_index,
             project,
             content_store,
-            compilers: CompilerRegistry::from_dir(&config.compiler_search_paths),
-        };
-
-        build.compilers.collect_info();
-        Ok(build)
+            compilers: CompilerRegistryOptions::from_dir(&config.compiler_search_paths).create(),
+        })
     }
 
     pub(crate) fn open(config: &DataBuildOptions) -> Result<Self, Error> {
@@ -134,15 +131,12 @@ impl DataBuild {
 
         let build_index = BuildIndex::open(&config.buildindex_dir, Self::version())?;
         let project = build_index.open_project()?;
-        let mut build = Self {
+        Ok(Self {
             build_index,
             project,
             content_store,
-            compilers: CompilerRegistry::from_dir(&config.compiler_search_paths),
-        };
-
-        build.compilers.collect_info();
-        Ok(build)
+            compilers: CompilerRegistryOptions::from_dir(&config.compiler_search_paths).create(),
+        })
     }
 
     /// Opens the existing build index.
@@ -157,14 +151,13 @@ impl DataBuild {
         match BuildIndex::open(&config.buildindex_dir, Self::version()) {
             Ok(build_index) => {
                 let project = build_index.open_project()?;
-                let mut build = Self {
+                Ok(Self {
                     build_index,
                     project,
                     content_store,
-                    compilers: CompilerRegistry::from_dir(&config.compiler_search_paths),
-                };
-                build.compilers.collect_info();
-                Ok(build)
+                    compilers: CompilerRegistryOptions::from_dir(&config.compiler_search_paths)
+                        .create(),
+                })
             }
             Err(Error::NotFound) => Self::new(config, project_dir),
             Err(e) => Err(e),

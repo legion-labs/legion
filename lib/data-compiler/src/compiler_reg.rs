@@ -129,14 +129,12 @@ impl CompilerStub for BinCompilerStub {
     }
 }
 
-/// A registry of data compilers.
-#[derive(Default)]
-pub struct CompilerRegistry {
+/// Options and flags which can be used to configure how a compiler registry is created.
+pub struct CompilerRegistryOptions {
     compilers: Vec<Box<dyn CompilerStub>>,
-    infos: Option<Vec<CompilerInfo>>,
 }
 
-impl CompilerRegistry {
+impl CompilerRegistryOptions {
     /// Creates `CompilerRegistry` based on provided compiler directory paths.
     pub fn from_dir(dirs: &[impl AsRef<Path>]) -> Self {
         let compilers = list_compilers(dirs)
@@ -149,23 +147,39 @@ impl CompilerRegistry {
             })
             .collect::<Vec<Box<dyn CompilerStub>>>();
 
-        Self {
-            compilers,
-            infos: None,
+        Self { compilers }
+    }
+
+    /// Creates a new compiler registry based on specified options.
+    pub fn create(mut self) -> CompilerRegistry {
+        let infos = self.collect_info();
+
+        CompilerRegistry {
+            compilers: self.compilers,
+            infos: Some(infos),
         }
     }
 
     /// Gathers info on all compilers.
-    pub fn collect_info(&mut self) {
+    fn collect_info(&mut self) -> Vec<CompilerInfo> {
         // todo: panic if info already gathered
         let mut infos = Vec::with_capacity(self.compilers.len());
         for compiler in &self.compilers {
             let info = compiler.info().unwrap(); // todo: support failure
             infos.push(info);
         }
-        self.infos = Some(infos);
+        infos
     }
+}
 
+/// A registry of data compilers.
+#[derive(Default)]
+pub struct CompilerRegistry {
+    compilers: Vec<Box<dyn CompilerStub>>,
+    infos: Option<Vec<CompilerInfo>>,
+}
+
+impl CompilerRegistry {
     /// Returns the compiler index and `CompilerHash` for a given transform and compilation context.
     pub fn get_hash(
         &self,
