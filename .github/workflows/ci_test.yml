@@ -15,22 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set cargo home on linux
-        if: runner.os == 'Linux'
-        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
-
-      - name: Set cargo home on windows
-        if: runner.os == 'Windows'
-        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
-
-      - name: Cache cargo registery
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ env.cargo_home }}/registry
-            ${{ env.cargo_home }}/git
-          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
-
       - name: Run formatting check
         run: make check-format
 
@@ -77,22 +61,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set cargo home on linux
-        if: runner.os == 'Linux'
-        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
-
-      - name: Set cargo home on windows
-        if: runner.os == 'Windows'
-        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
-
-      - name: Cache cargo registery
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ env.cargo_home }}/registry
-            ${{ env.cargo_home }}/git
-          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
-
       - name: Build tests
         run: make test-build
 
@@ -114,22 +82,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set cargo home on linux
-        if: runner.os == 'Linux'
-        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
-
-      - name: Set cargo home on windows
-        if: runner.os == 'Windows'
-        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
-
-      - name: Cache cargo registery
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ env.cargo_home }}/registry
-            ${{ env.cargo_home }}/git
-          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
-
       - name: Run tests
         continue-on-error: true # experimental test
         run: cargo test --test base_tests -- gpu_
@@ -140,22 +92,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
-
-      - name: Set cargo home on linux
-        if: runner.os == 'Linux'
-        run: echo "cargo_home=$CARGO_HOME" >> $GITHUB_ENV
-
-      - name: Set cargo home on windows
-        if: runner.os == 'Windows'
-        run: echo "cargo_home=$env:CARGO_HOME" >> $env:GITHUB_ENV
-
-      - name: Cache cargo registery
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ env.cargo_home }}/registry
-            ${{ env.cargo_home }}/git
-          key: ${{ runner.os }}-cargo-fetch1-${{ hashFiles('Cargo.lock') }}
 
       - name: Build docs
         run: make api-doc
