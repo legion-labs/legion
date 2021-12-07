@@ -180,12 +180,25 @@ impl AnalyticsService {
 
     async fn fetch_process_metric_impl(
         &self,
-        _process_id: &str,
-        _metric_name: &str,
-        _begin_ms: f64,
-        _end_ms: f64,
+        process_id: &str,
+        metric_name: &str,
+        unit: &str,
+        begin_ms: f64,
+        end_ms: f64,
     ) -> Result<ProcessMetricReply> {
-        anyhow::bail!("not impl");
+        let mut connection = self.pool.acquire().await?;
+        Ok(ProcessMetricReply {
+            points: metrics::fetch_process_metric(
+                &mut connection,
+                &self.data_dir,
+                process_id,
+                metric_name,
+                unit,
+                begin_ms,
+                end_ms,
+            )
+            .await?,
+        })
     }
 }
 
@@ -440,6 +453,7 @@ impl PerformanceAnalytics for AnalyticsService {
             .fetch_process_metric_impl(
                 &inner_request.process_id,
                 &inner_request.metric_name,
+                &inner_request.unit,
                 inner_request.begin_ms,
                 inner_request.end_ms,
             )

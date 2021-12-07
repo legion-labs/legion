@@ -165,6 +165,7 @@ export interface ProcessMetricsReply {
 export interface FetchProcessMetricRequest {
   processId: string;
   metricName: string;
+  unit: string;
   beginMs: number;
   endMs: number;
 }
@@ -2227,6 +2228,7 @@ export const ProcessMetricsReply = {
 const baseFetchProcessMetricRequest: object = {
   processId: "",
   metricName: "",
+  unit: "",
   beginMs: 0,
   endMs: 0,
 };
@@ -2242,11 +2244,14 @@ export const FetchProcessMetricRequest = {
     if (message.metricName !== "") {
       writer.uint32(18).string(message.metricName);
     }
+    if (message.unit !== "") {
+      writer.uint32(26).string(message.unit);
+    }
     if (message.beginMs !== 0) {
-      writer.uint32(25).double(message.beginMs);
+      writer.uint32(33).double(message.beginMs);
     }
     if (message.endMs !== 0) {
-      writer.uint32(33).double(message.endMs);
+      writer.uint32(41).double(message.endMs);
     }
     return writer;
   },
@@ -2270,9 +2275,12 @@ export const FetchProcessMetricRequest = {
           message.metricName = reader.string();
           break;
         case 3:
-          message.beginMs = reader.double();
+          message.unit = reader.string();
           break;
         case 4:
+          message.beginMs = reader.double();
+          break;
+        case 5:
           message.endMs = reader.double();
           break;
         default:
@@ -2295,6 +2303,10 @@ export const FetchProcessMetricRequest = {
       object.metricName !== undefined && object.metricName !== null
         ? String(object.metricName)
         : "";
+    message.unit =
+      object.unit !== undefined && object.unit !== null
+        ? String(object.unit)
+        : "";
     message.beginMs =
       object.beginMs !== undefined && object.beginMs !== null
         ? Number(object.beginMs)
@@ -2310,6 +2322,7 @@ export const FetchProcessMetricRequest = {
     const obj: any = {};
     message.processId !== undefined && (obj.processId = message.processId);
     message.metricName !== undefined && (obj.metricName = message.metricName);
+    message.unit !== undefined && (obj.unit = message.unit);
     message.beginMs !== undefined && (obj.beginMs = message.beginMs);
     message.endMs !== undefined && (obj.endMs = message.endMs);
     return obj;
@@ -2323,6 +2336,7 @@ export const FetchProcessMetricRequest = {
     } as FetchProcessMetricRequest;
     message.processId = object.processId ?? "";
     message.metricName = object.metricName ?? "";
+    message.unit = object.unit ?? "";
     message.beginMs = object.beginMs ?? 0;
     message.endMs = object.endMs ?? 0;
     return message;

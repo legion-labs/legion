@@ -213,9 +213,11 @@ pub struct FetchProcessMetricRequest {
     pub process_id: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub metric_name: ::prost::alloc::string::String,
-    #[prost(double, tag = "3")]
-    pub begin_ms: f64,
+    #[prost(string, tag = "3")]
+    pub unit: ::prost::alloc::string::String,
     #[prost(double, tag = "4")]
+    pub begin_ms: f64,
+    #[prost(double, tag = "5")]
     pub end_ms: f64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

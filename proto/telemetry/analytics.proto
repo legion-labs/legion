@@ -173,8 +173,9 @@ message ProcessMetricsReply{
 message FetchProcessMetricRequest{
     string process_id = 1;
     string metric_name = 2;
-    double begin_ms = 3;
-    double end_ms = 4;
+    string unit = 3;
+    double begin_ms = 4;
+    double end_ms = 5;
 }
 
 message MetricDataPoint{
