@@ -119,13 +119,13 @@ export const Block = {
       writer.uint32(26).string(message.beginTime);
     }
     if (message.beginTicks !== 0) {
-      writer.uint32(32).uint64(message.beginTicks);
+      writer.uint32(32).int64(message.beginTicks);
     }
     if (message.endTime !== "") {
       writer.uint32(42).string(message.endTime);
     }
     if (message.endTicks !== 0) {
-      writer.uint32(48).uint64(message.endTicks);
+      writer.uint32(48).int64(message.endTicks);
     }
     if (message.payload !== undefined) {
       BlockPayload.encode(message.payload, writer.uint32(58).fork()).ldelim();
@@ -150,13 +150,13 @@ export const Block = {
           message.beginTime = reader.string();
           break;
         case 4:
-          message.beginTicks = longToNumber(reader.uint64() as Long);
+          message.beginTicks = longToNumber(reader.int64() as Long);
           break;
         case 5:
           message.endTime = reader.string();
           break;
         case 6:
-          message.endTicks = longToNumber(reader.uint64() as Long);
+          message.endTicks = longToNumber(reader.int64() as Long);
           break;
         case 7:
           message.payload = BlockPayload.decode(reader, reader.uint32());

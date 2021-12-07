@@ -4,14 +4,15 @@ use chrono::{DateTime, Utc};
 
 #[derive(Debug)]
 pub struct DualTime {
-    pub ticks: u64,
+    pub ticks: i64,
     pub time: DateTime<Utc>,
 }
 
-pub fn now() -> u64 {
+#[allow(clippy::cast_possible_wrap)]
+pub fn now() -> i64 {
     //_rdtsc does not wait for previous instructions to be retired
     // we could use __rdtscp if we needed more precision at the cost of slightly higher overhead
-    unsafe { _rdtsc() }
+    unsafe { _rdtsc() as i64 }
 }
 
 impl DualTime {

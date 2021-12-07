@@ -12,8 +12,8 @@ message Block {
   // we send both RFC3339 times and ticks to be able to calibrate the tick
   // frequency
   string begin_time = 3;
-  uint64 begin_ticks = 4;
+  int64 begin_ticks = 4;
   string end_time = 5;
-  uint64 end_ticks = 6;
+  int64 end_ticks = 6;
   BlockPayload payload = 7;
 }

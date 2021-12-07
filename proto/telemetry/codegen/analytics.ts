@@ -145,6 +145,39 @@ export interface ProcessChildrenReply {
   processes: Process[];
 }
 
+/** list_process_metrics */
+export interface ListProcessMetricsRequest {
+  processId: string;
+}
+
+export interface MetricDesc {
+  name: string;
+  unit: string;
+}
+
+export interface ProcessMetricsReply {
+  metrics: MetricDesc[];
+  minTimeMs: number;
+  maxTimeMs: number;
+}
+
+/** fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply); */
+export interface FetchProcessMetricRequest {
+  processId: string;
+  metricName: string;
+  beginMs: number;
+  endMs: number;
+}
+
+export interface MetricDataPoint {
+  timeMs: number;
+  value: number;
+}
+
+export interface ProcessMetricReply {
+  points: MetricDataPoint[];
+}
+
 const baseFindProcessRequest: object = { processId: "" };
 
 export const FindProcessRequest = {
@@ -1951,6 +1984,451 @@ export const ProcessChildrenReply = {
   },
 };
 
+const baseListProcessMetricsRequest: object = { processId: "" };
+
+export const ListProcessMetricsRequest = {
+  encode(
+    message: ListProcessMetricsRequest,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.processId !== "") {
+      writer.uint32(10).string(message.processId);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ListProcessMetricsRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseListProcessMetricsRequest,
+    } as ListProcessMetricsRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.processId = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListProcessMetricsRequest {
+    const message = {
+      ...baseListProcessMetricsRequest,
+    } as ListProcessMetricsRequest;
+    message.processId =
+      object.processId !== undefined && object.processId !== null
+        ? String(object.processId)
+        : "";
+    return message;
+  },
+
+  toJSON(message: ListProcessMetricsRequest): unknown {
+    const obj: any = {};
+    message.processId !== undefined && (obj.processId = message.processId);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<ListProcessMetricsRequest>
+  ): ListProcessMetricsRequest {
+    const message = {
+      ...baseListProcessMetricsRequest,
+    } as ListProcessMetricsRequest;
+    message.processId = object.processId ?? "";
+    return message;
+  },
+};
+
+const baseMetricDesc: object = { name: "", unit: "" };
+
+export const MetricDesc = {
+  encode(
+    message: MetricDesc,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    if (message.unit !== "") {
+      writer.uint32(18).string(message.unit);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MetricDesc {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseMetricDesc } as MetricDesc;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.name = reader.string();
+          break;
+        case 2:
+          message.unit = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MetricDesc {
+    const message = { ...baseMetricDesc } as MetricDesc;
+    message.name =
+      object.name !== undefined && object.name !== null
+        ? String(object.name)
+        : "";
+    message.unit =
+      object.unit !== undefined && object.unit !== null
+        ? String(object.unit)
+        : "";
+    return message;
+  },
+
+  toJSON(message: MetricDesc): unknown {
+    const obj: any = {};
+    message.name !== undefined && (obj.name = message.name);
+    message.unit !== undefined && (obj.unit = message.unit);
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<MetricDesc>): MetricDesc {
+    const message = { ...baseMetricDesc } as MetricDesc;
+    message.name = object.name ?? "";
+    message.unit = object.unit ?? "";
+    return message;
+  },
+};
+
+const baseProcessMetricsReply: object = { minTimeMs: 0, maxTimeMs: 0 };
+
+export const ProcessMetricsReply = {
+  encode(
+    message: ProcessMetricsReply,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    for (const v of message.metrics) {
+      MetricDesc.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.minTimeMs !== 0) {
+      writer.uint32(17).double(message.minTimeMs);
+    }
+    if (message.maxTimeMs !== 0) {
+      writer.uint32(25).double(message.maxTimeMs);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ProcessMetricsReply {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseProcessMetricsReply } as ProcessMetricsReply;
+    message.metrics = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.metrics.push(MetricDesc.decode(reader, reader.uint32()));
+          break;
+        case 2:
+          message.minTimeMs = reader.double();
+          break;
+        case 3:
+          message.maxTimeMs = reader.double();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProcessMetricsReply {
+    const message = { ...baseProcessMetricsReply } as ProcessMetricsReply;
+    message.metrics = (object.metrics ?? []).map((e: any) =>
+      MetricDesc.fromJSON(e)
+    );
+    message.minTimeMs =
+      object.minTimeMs !== undefined && object.minTimeMs !== null
+        ? Number(object.minTimeMs)
+        : 0;
+    message.maxTimeMs =
+      object.maxTimeMs !== undefined && object.maxTimeMs !== null
+        ? Number(object.maxTimeMs)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: ProcessMetricsReply): unknown {
+    const obj: any = {};
+    if (message.metrics) {
+      obj.metrics = message.metrics.map((e) =>
+        e ? MetricDesc.toJSON(e) : undefined
+      );
+    } else {
+      obj.metrics = [];
+    }
+    message.minTimeMs !== undefined && (obj.minTimeMs = message.minTimeMs);
+    message.maxTimeMs !== undefined && (obj.maxTimeMs = message.maxTimeMs);
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<ProcessMetricsReply>): ProcessMetricsReply {
+    const message = { ...baseProcessMetricsReply } as ProcessMetricsReply;
+    message.metrics = (object.metrics ?? []).map((e) =>
+      MetricDesc.fromPartial(e)
+    );
+    message.minTimeMs = object.minTimeMs ?? 0;
+    message.maxTimeMs = object.maxTimeMs ?? 0;
+    return message;
+  },
+};
+
+const baseFetchProcessMetricRequest: object = {
+  processId: "",
+  metricName: "",
+  beginMs: 0,
+  endMs: 0,
+};
+
+export const FetchProcessMetricRequest = {
+  encode(
+    message: FetchProcessMetricRequest,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.processId !== "") {
+      writer.uint32(10).string(message.processId);
+    }
+    if (message.metricName !== "") {
+      writer.uint32(18).string(message.metricName);
+    }
+    if (message.beginMs !== 0) {
+      writer.uint32(25).double(message.beginMs);
+    }
+    if (message.endMs !== 0) {
+      writer.uint32(33).double(message.endMs);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): FetchProcessMetricRequest {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseFetchProcessMetricRequest,
+    } as FetchProcessMetricRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.processId = reader.string();
+          break;
+        case 2:
+          message.metricName = reader.string();
+          break;
+        case 3:
+          message.beginMs = reader.double();
+          break;
+        case 4:
+          message.endMs = reader.double();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FetchProcessMetricRequest {
+    const message = {
+      ...baseFetchProcessMetricRequest,
+    } as FetchProcessMetricRequest;
+    message.processId =
+      object.processId !== undefined && object.processId !== null
+        ? String(object.processId)
+        : "";
+    message.metricName =
+      object.metricName !== undefined && object.metricName !== null
+        ? String(object.metricName)
+        : "";
+    message.beginMs =
+      object.beginMs !== undefined && object.beginMs !== null
+        ? Number(object.beginMs)
+        : 0;
+    message.endMs =
+      object.endMs !== undefined && object.endMs !== null
+        ? Number(object.endMs)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: FetchProcessMetricRequest): unknown {
+    const obj: any = {};
+    message.processId !== undefined && (obj.processId = message.processId);
+    message.metricName !== undefined && (obj.metricName = message.metricName);
+    message.beginMs !== undefined && (obj.beginMs = message.beginMs);
+    message.endMs !== undefined && (obj.endMs = message.endMs);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<FetchProcessMetricRequest>
+  ): FetchProcessMetricRequest {
+    const message = {
+      ...baseFetchProcessMetricRequest,
+    } as FetchProcessMetricRequest;
+    message.processId = object.processId ?? "";
+    message.metricName = object.metricName ?? "";
+    message.beginMs = object.beginMs ?? 0;
+    message.endMs = object.endMs ?? 0;
+    return message;
+  },
+};
+
+const baseMetricDataPoint: object = { timeMs: 0, value: 0 };
+
+export const MetricDataPoint = {
+  encode(
+    message: MetricDataPoint,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.timeMs !== 0) {
+      writer.uint32(9).double(message.timeMs);
+    }
+    if (message.value !== 0) {
+      writer.uint32(17).double(message.value);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MetricDataPoint {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseMetricDataPoint } as MetricDataPoint;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.timeMs = reader.double();
+          break;
+        case 2:
+          message.value = reader.double();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MetricDataPoint {
+    const message = { ...baseMetricDataPoint } as MetricDataPoint;
+    message.timeMs =
+      object.timeMs !== undefined && object.timeMs !== null
+        ? Number(object.timeMs)
+        : 0;
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? Number(object.value)
+        : 0;
+    return message;
+  },
+
+  toJSON(message: MetricDataPoint): unknown {
+    const obj: any = {};
+    message.timeMs !== undefined && (obj.timeMs = message.timeMs);
+    message.value !== undefined && (obj.value = message.value);
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<MetricDataPoint>): MetricDataPoint {
+    const message = { ...baseMetricDataPoint } as MetricDataPoint;
+    message.timeMs = object.timeMs ?? 0;
+    message.value = object.value ?? 0;
+    return message;
+  },
+};
+
+const baseProcessMetricReply: object = {};
+
+export const ProcessMetricReply = {
+  encode(
+    message: ProcessMetricReply,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    for (const v of message.points) {
+      MetricDataPoint.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ProcessMetricReply {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseProcessMetricReply } as ProcessMetricReply;
+    message.points = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.points.push(MetricDataPoint.decode(reader, reader.uint32()));
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProcessMetricReply {
+    const message = { ...baseProcessMetricReply } as ProcessMetricReply;
+    message.points = (object.points ?? []).map((e: any) =>
+      MetricDataPoint.fromJSON(e)
+    );
+    return message;
+  },
+
+  toJSON(message: ProcessMetricReply): unknown {
+    const obj: any = {};
+    if (message.points) {
+      obj.points = message.points.map((e) =>
+        e ? MetricDataPoint.toJSON(e) : undefined
+      );
+    } else {
+      obj.points = [];
+    }
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<ProcessMetricReply>): ProcessMetricReply {
+    const message = { ...baseProcessMetricReply } as ProcessMetricReply;
+    message.points = (object.points ?? []).map((e) =>
+      MetricDataPoint.fromPartial(e)
+    );
+    return message;
+  },
+};
+
 export interface PerformanceAnalytics {
   block_spans(
     request: DeepPartial<BlockSpansRequest>,
@@ -1988,6 +2466,14 @@ export interface PerformanceAnalytics {
     request: DeepPartial<ListStreamBlocksRequest>,
     metadata?: grpc.Metadata
   ): Promise<ListStreamBlocksReply>;
+  list_process_metrics(
+    request: DeepPartial<ListProcessMetricsRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessMetricsReply>;
+  fetch_process_metric(
+    request: DeepPartial<FetchProcessMetricRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessMetricReply>;
 }
 
 export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
@@ -2005,6 +2491,8 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     this.list_recent_processes = this.list_recent_processes.bind(this);
     this.search_processes = this.search_processes.bind(this);
     this.list_stream_blocks = this.list_stream_blocks.bind(this);
+    this.list_process_metrics = this.list_process_metrics.bind(this);
+    this.fetch_process_metric = this.fetch_process_metric.bind(this);
   }
 
   block_spans(
@@ -2102,6 +2590,28 @@ export class PerformanceAnalyticsClientImpl implements PerformanceAnalytics {
     return this.rpc.unary(
       PerformanceAnalyticslist_stream_blocksDesc,
       ListStreamBlocksRequest.fromPartial(request),
+      metadata
+    );
+  }
+
+  list_process_metrics(
+    request: DeepPartial<ListProcessMetricsRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessMetricsReply> {
+    return this.rpc.unary(
+      PerformanceAnalyticslist_process_metricsDesc,
+      ListProcessMetricsRequest.fromPartial(request),
+      metadata
+    );
+  }
+
+  fetch_process_metric(
+    request: DeepPartial<FetchProcessMetricRequest>,
+    metadata?: grpc.Metadata
+  ): Promise<ProcessMetricReply> {
+    return this.rpc.unary(
+      PerformanceAnalyticsfetch_process_metricDesc,
+      FetchProcessMetricRequest.fromPartial(request),
       metadata
     );
   }
@@ -2308,6 +2818,52 @@ export const PerformanceAnalyticslist_stream_blocksDesc: UnaryMethodDefinitionis
       deserializeBinary(data: Uint8Array) {
         return {
           ...ListStreamBlocksReply.decode(data),
+          toObject() {
+            return this;
+          },
+        };
+      },
+    } as any,
+  };
+
+export const PerformanceAnalyticslist_process_metricsDesc: UnaryMethodDefinitionish =
+  {
+    methodName: "list_process_metrics",
+    service: PerformanceAnalyticsDesc,
+    requestStream: false,
+    responseStream: false,
+    requestType: {
+      serializeBinary() {
+        return ListProcessMetricsRequest.encode(this).finish();
+      },
+    } as any,
+    responseType: {
+      deserializeBinary(data: Uint8Array) {
+        return {
+          ...ProcessMetricsReply.decode(data),
+          toObject() {
+            return this;
+          },
+        };
+      },
+    } as any,
+  };
+
+export const PerformanceAnalyticsfetch_process_metricDesc: UnaryMethodDefinitionish =
+  {
+    methodName: "fetch_process_metric",
+    service: PerformanceAnalyticsDesc,
+    requestStream: false,
+    responseStream: false,
+    requestType: {
+      serializeBinary() {
+        return FetchProcessMetricRequest.encode(this).finish();
+      },
+    } as any,
+    responseType: {
+      deserializeBinary(data: Uint8Array) {
+        return {
+          ...ProcessMetricReply.decode(data),
           toObject() {
             return this;
           },

@@ -7,9 +7,11 @@ use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAna
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BlockSpansRequest;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
+use lgn_telemetry_proto::analytics::FetchProcessMetricRequest;
 use lgn_telemetry_proto::analytics::FindProcessReply;
 use lgn_telemetry_proto::analytics::FindProcessRequest;
 use lgn_telemetry_proto::analytics::ListProcessChildrenRequest;
+use lgn_telemetry_proto::analytics::ListProcessMetricsRequest;
 use lgn_telemetry_proto::analytics::ListProcessStreamsRequest;
 use lgn_telemetry_proto::analytics::ListStreamBlocksReply;
 use lgn_telemetry_proto::analytics::ListStreamBlocksRequest;
@@ -20,15 +22,18 @@ use lgn_telemetry_proto::analytics::ProcessCumulativeCallGraphRequest;
 use lgn_telemetry_proto::analytics::ProcessListReply;
 use lgn_telemetry_proto::analytics::ProcessLogReply;
 use lgn_telemetry_proto::analytics::ProcessLogRequest;
+use lgn_telemetry_proto::analytics::ProcessMetricReply;
+use lgn_telemetry_proto::analytics::ProcessMetricsReply;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
 use tonic::{Request, Response, Status};
 
 use crate::call_tree::compute_block_spans;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
+use crate::metrics;
 
 struct RequestGuard {
-    begin_ticks: u64,
+    begin_ticks: i64,
 }
 
 impl RequestGuard {
@@ -47,7 +52,7 @@ impl Drop for RequestGuard {
             name: "Request Time",
             unit: "ticks",
         };
-        record_int_metric(&REQUEST_TIME_METRIC, duration);
+        record_int_metric(&REQUEST_TIME_METRIC, duration as u64);
     }
 }
 
@@ -149,6 +154,28 @@ impl AnalyticsService {
         Ok(ProcessChildrenReply {
             processes: children,
         })
+    }
+
+    async fn list_process_metrics_impl(&self, process_id: &str) -> Result<ProcessMetricsReply> {
+        let mut connection = self.pool.acquire().await?;
+        let m = metrics::list_process_metrics(&mut connection, &self.data_dir, process_id).await?;
+        let time_range =
+            metrics::get_process_metrics_time_range(&mut connection, process_id).await?;
+        Ok(ProcessMetricsReply {
+            metrics: m,
+            min_time_ms: time_range.0,
+            max_time_ms: time_range.1,
+        })
+    }
+
+    async fn fetch_process_metric_impl(
+        &self,
+        _process_id: &str,
+        _metric_name: &str,
+        _begin_ms: f64,
+        _end_ms: f64,
+    ) -> Result<ProcessMetricReply> {
+        anyhow::bail!("not impl");
     }
 }
 
@@ -359,7 +386,58 @@ impl PerformanceAnalytics for AnalyticsService {
         {
             Ok(reply) => Ok(Response::new(reply)),
             Err(e) => Err(Status::internal(format!(
-                "Error in list_process_log_entries: {}",
+                "Error in list_process_children: {}",
+                e
+            ))),
+        }
+    }
+
+    async fn list_process_metrics(
+        &self,
+        request: Request<ListProcessMetricsRequest>,
+    ) -> Result<Response<ProcessMetricsReply>, Status> {
+        let _guard = RequestGuard::new();
+        let inner_request = request.into_inner();
+        if inner_request.process_id.is_empty() {
+            return Err(Status::internal(String::from(
+                "Missing process_id in list_process_metrics",
+            )));
+        }
+        match self
+            .list_process_metrics_impl(&inner_request.process_id)
+            .await
+        {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => Err(Status::internal(format!(
+                "Error in list_process_metrics: {}",
+                e
+            ))),
+        }
+    }
+
+    async fn fetch_process_metric(
+        &self,
+        request: Request<FetchProcessMetricRequest>,
+    ) -> Result<Response<ProcessMetricReply>, Status> {
+        let _guard = RequestGuard::new();
+        let inner_request = request.into_inner();
+        if inner_request.process_id.is_empty() {
+            return Err(Status::internal(String::from(
+                "Missing process_id in fetch_process_metric",
+            )));
+        }
+        match self
+            .fetch_process_metric_impl(
+                &inner_request.process_id,
+                &inner_request.metric_name,
+                inner_request.begin_ms,
+                inner_request.end_ms,
+            )
+            .await
+        {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => Err(Status::internal(format!(
+                "Error in fetch_process_metric: {}",
                 e
             ))),
         }

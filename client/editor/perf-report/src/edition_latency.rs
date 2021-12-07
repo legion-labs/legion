@@ -40,7 +40,7 @@ async fn find_client_edition_commands(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     editor_client_process_id: &str,
-) -> Result<Vec<(u64, String)>> {
+) -> Result<Vec<(i64, String)>> {
     let re = regex::Regex::new(r"sending edition_command=(?P<cmd>\{[^\}]*})")
         .with_context(|| "find_edition_commands")?;
     let mut res = vec![];
@@ -69,7 +69,7 @@ async fn find_server_edition_commands(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     editor_server_process_id: &str,
-) -> Result<Vec<(u64, String)>> {
+) -> Result<Vec<(i64, String)>> {
     let re = regex::Regex::new(r"received \w* command id=(?P<id>.*)")
         .with_context(|| "find_edition_commands")?;
     let mut res = vec![];
@@ -97,7 +97,7 @@ async fn find_process_metrics(
     data_path: &Path,
     editor_server_process_id: &str,
     metric_name: &str,
-) -> Result<Vec<(u64, u64)>> {
+) -> Result<Vec<(i64, u64)>> {
     let mut res = vec![];
     for_each_process_metric(
         connection,
@@ -107,7 +107,7 @@ async fn find_process_metrics(
             let metric_desc = metric_instance.get::<Object>("metric").unwrap();
             let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
             if name == metric_name {
-                let time = metric_instance.get::<u64>("time").unwrap();
+                let time = metric_instance.get::<i64>("time").unwrap();
                 let frame_id = metric_instance.get::<u64>("value").unwrap();
                 res.push((time, frame_id));
             }
@@ -118,7 +118,7 @@ async fn find_process_metrics(
 }
 
 // TODO: Make all times relative to start of process
-fn find_timed_event<T>(v: &[(u64, T)], time: u64) -> Option<(u64, T)>
+fn find_timed_event<T>(v: &[(i64, T)], time: i64) -> Option<(i64, T)>
 where
     T: Clone,
 {

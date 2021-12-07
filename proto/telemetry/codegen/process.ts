@@ -66,7 +66,7 @@ export const Process = {
       writer.uint32(74).string(message.startTime);
     }
     if (message.startTicks !== 0) {
-      writer.uint32(80).uint64(message.startTicks);
+      writer.uint32(80).int64(message.startTicks);
     }
     if (message.parentProcessId !== "") {
       writer.uint32(90).string(message.parentProcessId);
@@ -109,7 +109,7 @@ export const Process = {
           message.startTime = reader.string();
           break;
         case 10:
-          message.startTicks = longToNumber(reader.uint64() as Long);
+          message.startTicks = longToNumber(reader.int64() as Long);
           break;
         case 11:
           message.parentProcessId = reader.string();

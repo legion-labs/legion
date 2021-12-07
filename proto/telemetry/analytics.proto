@@ -15,6 +15,8 @@ service PerformanceAnalytics {
     rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
     rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
     rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
+    rpc list_process_metrics(ListProcessMetricsRequest) returns (ProcessMetricsReply);
+    rpc fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply);
 }
 
 // find_process
@@ -149,4 +151,37 @@ message ListProcessChildrenRequest{
 
 message ProcessChildrenReply{
     repeated telemetry.Process processes = 1;
+}
+
+// list_process_metrics
+message ListProcessMetricsRequest{
+    string process_id = 1;
+}
+
+message MetricDesc{
+    string name = 1;
+    string unit = 2;
+}
+
+message ProcessMetricsReply{
+    repeated MetricDesc metrics = 1;
+    double min_time_ms = 2;
+    double max_time_ms = 3;
+}
+
+// fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply);
+message FetchProcessMetricRequest{
+    string process_id = 1;
+    string metric_name = 2;
+    double begin_ms = 3;
+    double end_ms = 4;
+}
+
+message MetricDataPoint{
+    double time_ms = 1;
+    double value = 2;
+}
+
+message ProcessMetricReply{
+    repeated MetricDataPoint points = 1;
 }

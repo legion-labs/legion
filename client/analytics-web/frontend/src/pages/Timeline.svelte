@@ -11,7 +11,7 @@
     beginYOffset: number;
   };
 
-  type BeginDetect = {
+  type BeginSelect = {
     beginMouseX: number;
   };
 </script>
@@ -45,7 +45,7 @@
   let selectedRange: [number, number] | undefined;
   let viewRange: [number, number] | undefined;
   let beginPan: BeginPan | undefined;
-  let beginSelect: BeginDetect | undefined;
+  let beginSelect: BeginSelect | undefined;
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
