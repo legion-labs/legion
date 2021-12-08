@@ -1,10 +1,10 @@
 <script lang="ts">
   import {
     GrpcWebImpl,
+    MetricDataPoint,
     MetricDesc,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/codegen/analytics";
-  import { Process } from "@lgn/proto-telemetry/codegen/process";
   import { onMount } from "svelte";
 
   export let id: string;
@@ -21,16 +21,16 @@
   );
 
   onMount(() => {
-    canvas = document.getElementById("canvas_plot");
-
-    if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
+    canvas = document.getElementById("canvas_plot") as HTMLCanvasElement;
+    if (!canvas) {
       throw new Error("Canvas can't be found or is invalid");
     }
 
-    renderingContext = canvas.getContext("2d");
-    if (!renderingContext) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx){
       throw new Error("Couldn't get context for canvas");
     }
+    renderingContext = ctx;
 
     fetchProcessInfo();
     drawCanvas();
@@ -45,6 +45,9 @@
 
   function drawTrack( points: MetricDataPoint[] ){
     if (points.length == 0){
+      return;
+    }
+    if (!canvas || !renderingContext){
       return;
     }
     let minValue = Infinity;
@@ -94,25 +97,18 @@
     }
   }
 
-  function getViewRange(): [number, number] {
-    if (viewRange) {
-      return viewRange;
-    }
-
-    return [minMs, maxMs];
-  }
-
-  async function onMetricSelectionChanged( name:string, selected:bool ){
+  async function onMetricSelectionChanged(metricName: string, evt: Event & { currentTarget: EventTarget & HTMLInputElement; }) {
+    const selected = evt.currentTarget.checked;
     if ( !selected ){
-      delete dataTracks[name];
+      delete dataTracks[metricName];
       drawCanvas();
       return;
     }
     const reply = await client.fetch_process_metric( {processId: id,
-                                                      metricName: name,
+                                                      metricName: metricName,
                                                       beginMs: minMs,
                                                       endMs: maxMs} );
-    dataTracks[name] = reply.points;
+    dataTracks[metricName] = reply.points;
     drawCanvas();
   }
 
@@ -123,7 +119,7 @@
     {#each metrics as metric (metric.name)}
       <div class="metric-checkbox-div">
         <input type="checkbox" id={metric.name+'_select'}
-               on:click={evt => onMetricSelectionChanged(metric.name, evt.srcElement.checked)}
+               on:click={evt => onMetricSelectionChanged(metric.name, evt)}
         />
         <label for={metric.name+'_select'}> {metric.name}</label>
       </div>
