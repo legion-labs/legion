@@ -93,14 +93,14 @@ fn lgn_tauri_command_impl(mut function: syn::ItemFn) -> TokenStream {
             exposed_function.block.stmts = vec![parse_quote! {
                 return match #name(#(#args),*) {
                     Ok(v) => Ok(v),
-                    Err(e) => Err(format!("{}", e)),
+                    Err(e) => Err(e.to_string()),
                 };
             }];
         } else {
             exposed_function.block.stmts = vec![parse_quote! {
                 return match #name(#(#args),*).await {
                     Ok(v) => Ok(v),
-                    Err(e) => Err(format!("{}", e)),
+                    Err(e) => Err(e.to_string()),
                 };
             }];
         }

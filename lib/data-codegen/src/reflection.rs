@@ -279,7 +279,7 @@ pub fn get_member_info(field: &syn::Field) -> Option<MemberMetaInfo> {
     let mut member_info = MemberMetaInfo {
         name: field.ident.as_ref().unwrap().to_string(),
         type_id: field.ty.clone(),
-        type_name: format!("{}", field_type),
+        type_name: field_type.to_string(),
         resource_type: None,
         imports: vec![],
         category: String::default(),

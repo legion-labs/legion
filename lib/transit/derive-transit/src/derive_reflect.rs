@@ -29,7 +29,7 @@ fn metadata_from_type(t: &syn::Type) -> (QuoteRes, bool) {
 pub fn derive_reflect_impl(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let udt_identifier = ast.ident.clone();
-    let udt_name = format!("{}", ast.ident);
+    let udt_name = ast.ident.to_string();
     let mut members = Vec::new();
 
     match ast.data {
@@ -52,7 +52,7 @@ pub fn derive_reflect_impl(input: TokenStream) -> TokenStream {
         let member_name = &m.0;
         let member_ident = format_ident!("{}", &m.0);
         let member_type = &m.1;
-        let member_type_name = format!("{}", member_type);
+        let member_type_name = member_type.to_string();
         let is_reference = &m.2;
         quote! {
             Member{ name: String::from(#member_name),
