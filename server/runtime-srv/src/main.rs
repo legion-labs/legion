@@ -69,12 +69,32 @@ use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceId;
+use lgn_input::InputPlugin;
+use lgn_renderer::RendererPlugin;
+use lgn_telemetry::prelude::*;
 use lgn_transform::prelude::*;
+use log::LevelFilter;
+use simple_logger::SimpleLogger;
+
+#[cfg(feature = "standalone")]
+mod standalone;
+#[cfg(feature = "standalone")]
+use standalone::build_standalone;
 
 fn main() {
+    let _telemetry_guard = TelemetrySystemGuard::new(Some(Box::new(
+        SimpleLogger::new().with_level(LevelFilter::Info),
+    )));
+    let _telemetry_thread_guard = TelemetryThreadGuard::new();
+    trace_scope!();
+
     const ARG_NAME_CAS: &str = "cas";
     const ARG_NAME_MANIFEST: &str = "manifest";
     const ARG_NAME_ROOT: &str = "root";
+    const ARG_NAME_EGUI: &str = "egui";
+
+    #[cfg(feature = "standalone")]
+    const ARG_NAME_STANDALONE: &str = "standalone";
 
     let args = clap::App::new("Legion Labs runtime engine")
         .author(clap::crate_authors!())
@@ -92,7 +112,20 @@ fn main() {
             .long(ARG_NAME_ROOT)
             .takes_value(true)
             .help("Root object to load, usually a world"))
-        .get_matches();
+        .arg(Arg::with_name(ARG_NAME_EGUI)
+            .long(ARG_NAME_EGUI)
+            .takes_value(false)
+            .help("If supplied, starts with egui enabled"));
+
+    #[cfg(feature = "standalone")]
+    let args = args.arg(
+        Arg::with_name(ARG_NAME_STANDALONE)
+            .long(ARG_NAME_STANDALONE)
+            .takes_value(false)
+            .help("If supplied, starts with a window display, and collects input locally"),
+    );
+
+    let args = args.get_matches();
 
     let content_store_addr = args
         .value_of(ARG_NAME_CAS)
@@ -117,8 +150,16 @@ fn main() {
         assets_to_load.push(asset_id);
     }
 
-    // Start app with 60 fps
-    App::new()
+    #[cfg(feature = "standalone")]
+    let standalone = args.is_present(ARG_NAME_STANDALONE);
+
+    #[cfg(not(feature = "standalone"))]
+    let standalone = false;
+
+    let mut app = App::new();
+
+    app
+        // Start app with 60 fps
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
         )))
@@ -132,5 +173,16 @@ fn main() {
             None,
         ))
         .add_plugin(AssetRegistryPlugin::default())
-        .run();
+        .add_plugin(InputPlugin::default())
+        .add_plugin(RendererPlugin::new(
+            standalone,
+            args.is_present(ARG_NAME_EGUI),
+        ));
+
+    #[cfg(feature = "standalone")]
+    if standalone {
+        build_standalone(&mut app);
+    }
+
+    app.run();
 }

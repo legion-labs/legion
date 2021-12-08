@@ -9,8 +9,8 @@ use lgn_telemetry_proto::analytics::Span;
 use lgn_transit::prelude::*;
 
 trait ThreadBlockProcessor {
-    fn on_begin_scope(&mut self, scope_name: String, ts: u64);
-    fn on_end_scope(&mut self, scope_name: String, ts: u64);
+    fn on_begin_scope(&mut self, scope_name: String, ts: i64);
+    fn on_end_scope(&mut self, scope_name: String, ts: i64);
 }
 
 async fn parse_thread_bock<Proc: ThreadBlockProcessor>(
@@ -24,7 +24,7 @@ async fn parse_thread_bock<Proc: ThreadBlockProcessor>(
     parse_block(stream, &payload, |val| {
         trace_scope!("obj_in_block");
         if let Value::Object(obj) = val {
-            let tick = obj.get::<u64>("time").unwrap();
+            let tick = obj.get::<i64>("time").unwrap();
             let scope = obj.get::<Object>("scope").unwrap();
             let name = scope.get::<String>("name").unwrap();
             match obj.type_name.as_str() {
@@ -48,18 +48,18 @@ pub(crate) struct CallTreeNode {
 }
 
 struct CallTreeBuilder {
-    ts_begin_block: u64,
-    ts_end_block: u64,
-    ts_offset: u64,
+    ts_begin_block: i64,
+    ts_end_block: i64,
+    ts_offset: i64,
     inv_tsc_frequency: f64,
     stack: Vec<CallTreeNode>,
 }
 
 impl CallTreeBuilder {
     pub fn new(
-        ts_begin_block: u64,
-        ts_end_block: u64,
-        ts_offset: u64,
+        ts_begin_block: i64,
+        ts_end_block: i64,
+        ts_offset: i64,
         inv_tsc_frequency: f64,
     ) -> Self {
         Self {
@@ -93,7 +93,7 @@ impl CallTreeBuilder {
     }
 
     #[allow(clippy::cast_precision_loss)]
-    fn get_time(&self, ts: u64) -> f64 {
+    fn get_time(&self, ts: i64) -> f64 {
         (ts - self.ts_offset) as f64 * self.inv_tsc_frequency
     }
 
@@ -116,7 +116,7 @@ impl CallTreeBuilder {
 }
 
 impl ThreadBlockProcessor for CallTreeBuilder {
-    fn on_begin_scope(&mut self, scope_name: String, ts: u64) {
+    fn on_begin_scope(&mut self, scope_name: String, ts: i64) {
         trace_scope!();
         let time = self.get_time(ts);
         let scope = CallTreeNode {
@@ -129,7 +129,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         self.stack.push(scope);
     }
 
-    fn on_end_scope(&mut self, scope_name: String, ts: u64) {
+    fn on_end_scope(&mut self, scope_name: String, ts: i64) {
         trace_scope!();
         let time = self.get_time(ts);
         if let Some(mut old_top) = self.stack.pop() {

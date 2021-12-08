@@ -62,6 +62,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
+use lgn_data_offline::Transform;
 use lgn_data_runtime::Resource;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -69,7 +70,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     build_version: DATA_BUILD_VERSION,
     code_version: "1",
     data_version: "1",
-    transform: &(
+    transform: &Transform::new(
         lgn_graphics_offline::Texture::TYPE,
         lgn_graphics_runtime::Texture::TYPE,
     ),

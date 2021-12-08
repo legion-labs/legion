@@ -66,7 +66,7 @@ export const Process = {
       writer.uint32(74).string(message.startTime);
     }
     if (message.startTicks !== 0) {
-      writer.uint32(80).uint64(message.startTicks);
+      writer.uint32(80).int64(message.startTicks);
     }
     if (message.parentProcessId !== "") {
       writer.uint32(90).string(message.parentProcessId);
@@ -109,7 +109,7 @@ export const Process = {
           message.startTime = reader.string();
           break;
         case 10:
-          message.startTicks = longToNumber(reader.uint64() as Long);
+          message.startTicks = longToNumber(reader.int64() as Long);
           break;
         case 11:
           message.parentProcessId = reader.string();
@@ -187,7 +187,7 @@ export const Process = {
     return obj;
   },
 
-  fromPartial(object: DeepPartial<Process>): Process {
+  fromPartial<I extends Exact<DeepPartial<Process>, I>>(object: I): Process {
     const message = { ...baseProcess } as Process;
     message.processId = object.processId ?? "";
     message.exe = object.exe ?? "";
@@ -223,6 +223,7 @@ type Builtin =
   | number
   | boolean
   | undefined;
+
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -232,6 +233,14 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
 
 function longToNumber(long: Long): number {
   if (long.gt(Number.MAX_SAFE_INTEGER)) {

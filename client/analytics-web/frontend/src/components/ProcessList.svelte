@@ -53,10 +53,11 @@
         <th>username</th>
         <th>computer</th>
         <th>log</th>
+        <th>metrics</th>
         <th>timeline</th>
       </thead>
       <tbody>
-        {#each processList as { nbCpuBlocks, nbLogBlocks, processInfo } (processInfo?.processId)}
+        {#each processList as { nbCpuBlocks, nbMetricBlocks, nbLogBlocks, processInfo } (processInfo?.processId)}
           <tr>
             <td>{formatLocalTime(processInfo?.startTime)}</td>
             <td>{processInfo?.exe}</td>
@@ -67,6 +68,15 @@
                 <div>
                   <a href={`/log/${processInfo?.processId}`} use:link>
                     log
+                  </a>
+                </div>
+              {/if}
+            </td>
+            <td>
+              {#if nbMetricBlocks > 0 && processInfo}
+                <div>
+                  <a href={`/metrics/${processInfo?.processId}`} use:link>
+                    metrics
                   </a>
                 </div>
               {/if}

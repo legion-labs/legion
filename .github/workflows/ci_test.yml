@@ -27,26 +27,6 @@ jobs:
       - name: Run dependencies checks
         run: make check-deps
 
-  test:
-    name: Running tests
-    needs: lint
-    strategy:
-      matrix:
-        os:
-          [
-            [self-hosted, windows, common, build],
-            [self-hosted, linux, common, build],
-          ]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Build tests
-        run: make test-build
-
-      - name: Run tests
-        run: make test-run
-
   check_needs_gpu_tests:
     name: Check if graphics libs changed
     runs-on: ubuntu-latest
@@ -66,6 +46,26 @@ jobs:
             ^plugin/renderer
             ^plugin/presenter-*
             ^test/graphics-*
+
+  test:
+    name: Running tests
+    needs: lint
+    strategy:
+      matrix:
+        os:
+          [
+            [self-hosted, windows, common, build],
+            [self-hosted, linux, common, build],
+          ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build tests
+        run: make test-build
+
+      - name: Run tests
+        run: make test-run
 
   test_gpu:
     name: Running gpu tests

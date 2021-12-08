@@ -126,7 +126,7 @@
               {:else if propertyIsVecU8(property)}
                 Vec: {property.value}
               {:else}
-                Unknown property: {JSON.stringify(property)}
+                Unknown property
               {/if}
             </div>
             <div

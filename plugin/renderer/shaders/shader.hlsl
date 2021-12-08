@@ -44,6 +44,8 @@ VertexOut main_vs(in VertexIn vertex_in) {
     return vertex_out;
 }
 
+#define PI 3.141592
+
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
     float3 normal = normalize(vertex_out.normal);
     float3 light_pos = float3(1.0, 4.0, -2.0);
@@ -60,7 +62,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
     float3 diffuse_color = uniform_color.xyz;
     float3 spec_color = float3(1.0, 1.0, 1.0);
 
-    float lambertian = max(dot(light_dir, normal), 0.0);
+    float lambertian = max(dot(light_dir, normal)/PI, 0.0);
     float specular = 0.0;
 
     if (lambertian > 0.0)

@@ -184,6 +184,52 @@ pub struct ProcessChildrenReply {
     #[prost(message, repeated, tag = "1")]
     pub processes: ::prost::alloc::vec::Vec<super::telemetry::Process>,
 }
+/// list_process_metrics
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListProcessMetricsRequest {
+    #[prost(string, tag = "1")]
+    pub process_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MetricDesc {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub unit: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ProcessMetricsReply {
+    #[prost(message, repeated, tag = "1")]
+    pub metrics: ::prost::alloc::vec::Vec<MetricDesc>,
+    #[prost(double, tag = "2")]
+    pub min_time_ms: f64,
+    #[prost(double, tag = "3")]
+    pub max_time_ms: f64,
+}
+/// fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply);
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchProcessMetricRequest {
+    #[prost(string, tag = "1")]
+    pub process_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub metric_name: ::prost::alloc::string::String,
+    #[prost(double, tag = "3")]
+    pub begin_ms: f64,
+    #[prost(double, tag = "4")]
+    pub end_ms: f64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MetricDataPoint {
+    #[prost(double, tag = "1")]
+    pub time_ms: f64,
+    #[prost(double, tag = "2")]
+    pub value: f64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ProcessMetricReply {
+    #[prost(message, repeated, tag = "1")]
+    pub points: ::prost::alloc::vec::Vec<MetricDataPoint>,
+}
 #[doc = r" Generated client implementations."]
 pub mod performance_analytics_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
@@ -387,6 +433,38 @@ pub mod performance_analytics_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        pub async fn list_process_metrics(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListProcessMetricsRequest>,
+        ) -> Result<tonic::Response<super::ProcessMetricsReply>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/analytics.PerformanceAnalytics/list_process_metrics",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        pub async fn fetch_process_metric(
+            &mut self,
+            request: impl tonic::IntoRequest<super::FetchProcessMetricRequest>,
+        ) -> Result<tonic::Response<super::ProcessMetricReply>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/analytics.PerformanceAnalytics/fetch_process_metric",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
     }
 }
 #[doc = r" Generated server implementations."]
@@ -432,6 +510,14 @@ pub mod performance_analytics_server {
             &self,
             request: tonic::Request<super::ListStreamBlocksRequest>,
         ) -> Result<tonic::Response<super::ListStreamBlocksReply>, tonic::Status>;
+        async fn list_process_metrics(
+            &self,
+            request: tonic::Request<super::ListProcessMetricsRequest>,
+        ) -> Result<tonic::Response<super::ProcessMetricsReply>, tonic::Status>;
+        async fn fetch_process_metric(
+            &self,
+            request: tonic::Request<super::FetchProcessMetricRequest>,
+        ) -> Result<tonic::Response<super::ProcessMetricReply>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct PerformanceAnalyticsServer<T: PerformanceAnalytics> {
@@ -771,6 +857,74 @@ pub mod performance_analytics_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = list_stream_blocksSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/analytics.PerformanceAnalytics/list_process_metrics" => {
+                    #[allow(non_camel_case_types)]
+                    struct list_process_metricsSvc<T: PerformanceAnalytics>(pub Arc<T>);
+                    impl<T: PerformanceAnalytics>
+                        tonic::server::UnaryService<super::ListProcessMetricsRequest>
+                        for list_process_metricsSvc<T>
+                    {
+                        type Response = super::ProcessMetricsReply;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListProcessMetricsRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).list_process_metrics(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = list_process_metricsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/analytics.PerformanceAnalytics/fetch_process_metric" => {
+                    #[allow(non_camel_case_types)]
+                    struct fetch_process_metricSvc<T: PerformanceAnalytics>(pub Arc<T>);
+                    impl<T: PerformanceAnalytics>
+                        tonic::server::UnaryService<super::FetchProcessMetricRequest>
+                        for fetch_process_metricSvc<T>
+                    {
+                        type Response = super::ProcessMetricReply;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::FetchProcessMetricRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).fetch_process_metric(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = fetch_process_metricSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,

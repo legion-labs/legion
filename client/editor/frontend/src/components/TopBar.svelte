@@ -7,6 +7,7 @@
     Id as TopBarMenuId,
     menus as topBarMenus,
   } from "@/stores/topBarMenu";
+  import { createAwsCognitoTokenCache } from "@/lib/auth";
 
   export let documentTitle: string | null = null;
 
@@ -35,8 +36,9 @@
 
   async function authenticate() {
     if (!window.__TAURI__) {
-      // TODO: Add TS auth code: https://github.com/legion-labs/legion/issues/617
-      log.error("auth", "You can't authenticate in the browser for the moment");
+      const awsCognitoTokenCache = createAwsCognitoTokenCache();
+
+      awsCognitoTokenCache.getAuthorizationCodeInteractive();
 
       return;
     }

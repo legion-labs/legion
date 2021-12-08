@@ -37,7 +37,7 @@ async fn extract_process_thread_events(
     connection: &mut sqlx::AnyConnection,
     data_path: &Path,
     process_info: &lgn_telemetry::ProcessInfo,
-    ts_offset: u64,
+    ts_offset: i64,
     inv_tsc_frequency: f64,
 ) -> Result<json::Array> {
     let mut events = json::Array::new();
@@ -53,7 +53,7 @@ async fn extract_process_thread_events(
                         "EndScopeEvent" => "E",
                         _ => panic!("unknown event type {}", obj.type_name),
                     };
-                    let tick = obj.get::<u64>("time").unwrap();
+                    let tick = obj.get::<i64>("time").unwrap();
                     let time = format!("{}", (tick - ts_offset) as f64 * inv_tsc_frequency);
                     let scope = obj.get::<Object>("scope").unwrap();
                     let name = scope.get::<String>("name").unwrap();

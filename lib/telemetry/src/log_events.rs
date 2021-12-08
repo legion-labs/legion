@@ -20,7 +20,7 @@ impl std::convert::From<log::Level> for LogLevel {
 
 #[derive(Debug, TransitReflect)]
 pub struct LogMsgEvent {
-    pub time: u64,
+    pub time: i64,
     pub level: u8,
     pub msg_len: u32,
     pub msg: *const u8,
@@ -30,7 +30,7 @@ impl InProcSerialize for LogMsgEvent {}
 
 #[derive(Debug)]
 pub struct LogDynMsgEvent {
-    pub time: u64,
+    pub time: i64,
     pub level: u8,
     pub msg: DynString,
 }
@@ -52,7 +52,7 @@ impl InProcSerialize for LogDynMsgEvent {
 
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn read_value(ptr: *const u8, value_size: Option<u32>) -> Self {
-        let time = read_any::<u64>(ptr);
+        let time = read_any::<i64>(ptr);
         let level_offset = std::mem::size_of::<u64>();
         let level = unsafe { read_any::<u8>(ptr.add(level_offset)) };
         let buffer_size = value_size.unwrap();

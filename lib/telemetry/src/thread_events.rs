@@ -10,7 +10,7 @@ pub trait ScopeEvent {
 
 #[derive(Debug, TransitReflect)]
 pub struct BeginScopeEvent {
-    pub time: u64,
+    pub time: i64,
     pub scope: fn() -> ScopeDesc,
 }
 
@@ -23,7 +23,7 @@ impl ScopeEvent for BeginScopeEvent {
 
 #[derive(Debug, TransitReflect)]
 pub struct EndScopeEvent {
-    pub time: u64,
+    pub time: i64,
     pub scope: fn() -> ScopeDesc,
 }
 
