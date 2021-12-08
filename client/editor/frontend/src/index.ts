@@ -1,8 +1,9 @@
 import "./assets/index.css";
 
 import log, { Level } from "@/lib/log";
-import App from "./App.svelte";
-import { createAwsCognitoTokenCache, finalizeAwsCognitoAuth } from "./lib/auth";
+import userInfo from "@/stores/userInfo";
+import { createAwsCognitoTokenCache, finalizeAwsCognitoAuth } from "@/lib/auth";
+import App from "@/App.svelte";
 
 const target = document.querySelector("#root");
 
@@ -18,18 +19,34 @@ if (logLevel) {
   log.set(logLevel);
 }
 
-// TODO: Make a small router for this
-if (window.location.pathname === "/") {
-  const code = new URLSearchParams(window.location.search).get("code");
+const code =
+  window.location.pathname === "/" &&
+  new URLSearchParams(window.location.search).get("code");
 
-  if (code) {
-    const awsCognitoTokenCache = createAwsCognitoTokenCache();
+if (code) {
+  const awsCognitoTokenCache = createAwsCognitoTokenCache();
 
-    finalizeAwsCognitoAuth(awsCognitoTokenCache, code).then(() => {
+  finalizeAwsCognitoAuth(awsCognitoTokenCache, code)
+    .then((newUserInfo) => {
+      if (newUserInfo) {
+        userInfo.data.set(newUserInfo);
+      }
+    })
+    .then(() => {
       // Cleanup the Url
       window.history.replaceState(null, "Home", "/");
     });
-  }
 }
 
-new App({ target });
+// Fetch user info before running the application
+userInfo
+  .run()
+  .then((_userInfo) => {
+    log.debug("User is authed");
+  })
+  .catch(() => {
+    log.debug("User is not authed");
+  })
+  .finally(() => {
+    new App({ target });
+  });

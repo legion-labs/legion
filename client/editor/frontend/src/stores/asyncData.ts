@@ -20,7 +20,7 @@ export default function asyncData<T>(promise: () => Promise<T>) {
     loading.set(true);
     error.set(null);
 
-    let newData = await promise();
+    let newData: T;
 
     try {
       newData = await promise();
