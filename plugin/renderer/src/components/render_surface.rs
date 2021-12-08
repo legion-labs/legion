@@ -9,6 +9,7 @@ use lgn_tasks::TaskPool;
 use parking_lot::RwLock;
 use uuid::Uuid;
 
+use crate::debug_display::DebugDisplayPass;
 use crate::egui::egui_pass::EguiPass;
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::render_pass::{DebugRenderPass, PickingRenderPass, TmpRenderPass};
@@ -140,6 +141,7 @@ pub struct RenderSurface {
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
     debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     test_renderpass: Arc<RwLock<TmpRenderPass>>,
+    debug_display_renderpass: Arc<RwLock<DebugDisplayPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
 }
 
@@ -166,6 +168,10 @@ impl RenderSurface {
 
     pub fn egui_renderpass(&self) -> Arc<RwLock<EguiPass>> {
         self.egui_renderpass.clone()
+    }
+
+    pub fn debug_display_renderpass(&self) -> Arc<RwLock<DebugDisplayPass>> {
+        self.debug_display_renderpass.clone()
     }
 
     pub fn resize(&mut self, renderer: &Renderer, extents: RenderSurfaceExtents) {
@@ -266,6 +272,7 @@ impl RenderSurface {
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(renderer))),
             test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(renderer))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(renderer))),
+            debug_display_renderpass: Arc::new(RwLock::new(DebugDisplayPass::new(renderer))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(renderer))),
             presenters: Vec::new(),
         }

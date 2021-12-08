@@ -12,9 +12,9 @@ use lgn_transform::components::Transform;
 use crate::{
     components::{CameraComponent, RenderSurface, RotationComponent, StaticMesh},
     labels::RendererSystemLabel,
-    resources::{EntityTransforms, UniformGPUDataUpdater},
-    RenderContext, Renderer,
-};
+use crate::resources::{EntityTransforms, UniformGPUDataUpdater};
+use crate::debug_display::DebugDisplay;
+use crate::{labels::RendererSystemLabel, RenderContext, Renderer};
 
 #[derive(Default)]
 pub struct RendererPlugin {
@@ -42,6 +42,7 @@ impl Plugin for RendererPlugin {
         app.add_plugin(PickingPlugin::new(self.has_window));
         app.insert_resource(renderer);
         app.insert_resource(default_meshes);
+        app.insert_resource(DebugDisplay::default());
 
         // Pre-Update
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
@@ -111,7 +112,7 @@ fn update_ui(
                     ui.add(egui::Slider::new(&mut transform.translation.z, -10.0..=10.0).text("z"));
                     ui.add(egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"));
                 }
-                _ => unimplemented!(),
+                LightType::Spotlight { .. } => unimplemented!(),
             });
         }
     });
@@ -238,6 +239,10 @@ fn render_update(
             },
             &default_meshes,
         );
+
+        let debug_display_pass = render_surface.debug_display_renderpass();
+        let debug_display_pass = debug_display_pass.write();
+        debug_display_pass.render(&mut render_context, &cmd_buffer, render_surface.as_mut());
 
         let egui_pass = render_surface.egui_renderpass();
         let mut egui_pass = egui_pass.write();

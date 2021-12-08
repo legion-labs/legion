@@ -280,16 +280,36 @@ impl Renderer {
             pool.end_frame();
         }
     }
+        std::mem::drop(self.test_transform_data.take());
+
+
+        (shader, root_signature)
+    }
 }
 
 impl Drop for Renderer {
     fn drop(&mut self) {
-        std::mem::drop(self.test_transform_data.take());
-
-        let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
+        let graphics_queue = self.queue(QueueType::Graphics);
         graphics_queue.wait_for_queue_idle().unwrap();
     }
 }
+
+pub struct TmpRenderPass {
+    static_meshes: Vec<StaticMeshRenderData>,
+    root_signature: RootSignature,
+    pipeline: Pipeline,
+    pub color: [f32; 4],
+    pub speed: f32,
+}
+
+impl TmpRenderPass {
+    #![allow(clippy::too_many_lines)]
+    pub fn new(renderer: &Renderer) -> Self {
+        let device_context = renderer.device_context();
+
+        let (shader, root_signature) = renderer.prepare_vs_ps(
+            String::from_utf8(include_bytes!("../shaders/shader.hlsl").to_vec()).unwrap(),
+        );
 
         lights: &[(&Transform, &LightComponent)],
         camera: &CameraComponent,
@@ -318,7 +338,7 @@ impl Drop for Renderer {
                     omnidirectional_lights_data.push(light.color.1);
                     omnidirectional_lights_data.push(light.color.2);
                 }
-                _ => unimplemented!(),
+                LightType::Spotlight { .. } => unimplemented!(),
             }
         }
         let mut sub_allocation = transient_allocator.copy_data(None, &directional_lights_data, 64);

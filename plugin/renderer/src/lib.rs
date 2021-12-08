@@ -92,6 +92,7 @@ pub mod picking;
 pub mod static_mesh_render_data;
 
 pub use lgn_tasks::ComputeTaskPool as RenderTaskPool;
+pub mod debug_display;
 pub mod egui;
 
 pub mod hl_gfx_api;
