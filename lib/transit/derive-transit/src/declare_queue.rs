@@ -100,7 +100,7 @@ fn gen_hetero_queue_impl(
 pub fn declare_queue_impl(input: TokenStream) -> TokenStream {
     let ast = parse::<DeriveInput>(input).unwrap();
     let struct_identifier = ast.ident.clone();
-    let struct_name_str = format!("{}", struct_identifier);
+    let struct_name_str = struct_identifier.to_string();
 
     let type_args: Vec<syn::Ident> = ast
         .generics

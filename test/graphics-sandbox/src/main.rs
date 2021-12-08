@@ -129,7 +129,9 @@ fn main() {
 
     let mut app = App::new();
     app.add_plugin(CorePlugin::default())
-        .add_plugin(RendererPlugin::new(true, matches.is_present(ARG_NAME_EGUI)));
+        .add_plugin(RendererPlugin::new(true, matches.is_present(ARG_NAME_EGUI)))
+        .add_plugin(WindowPlugin::default())
+        .add_plugin(InputPlugin::default());
 
     if matches.is_present(ARG_NAME_SNAPSHOT) {
         app.insert_resource(SnapshotDescriptor {
@@ -147,9 +149,7 @@ fn main() {
             height,
             ..WindowDescriptor::default()
         });
-        app.add_plugin(WindowPlugin::default())
-            .add_plugin(InputPlugin::default())
-            .add_plugin(WinitPlugin::default())
+        app.add_plugin(WinitPlugin::default())
             .add_system(on_window_created.exclusive_system())
             .add_system(on_window_resized.exclusive_system())
             .add_system(on_window_close_requested.exclusive_system())

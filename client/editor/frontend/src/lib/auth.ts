@@ -1,8 +1,8 @@
+import { getCookie, setCookie } from "./cookie";
+
 const authorizationUrl = new URL(
   "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/authorize?client_id=5m58nrjfv6kr144prif9jk62di&response_type=code&scope=aws.cognito.signin.user.admin+email+https://legionlabs.com/editor/allocate+openid+profile&redirect_uri=http://localhost:3000/&identity_provider=Azure"
 );
-
-const cookieDomain = "localhost";
 
 export type UserInfo = {
   sub: string;
@@ -44,39 +44,6 @@ export interface Authenticator {
   getAuthorizationCodeInteractive(): void;
 
   getTokenSetFromAuthorizationCode(code: string): Promise<ClientTokenSet>;
-}
-
-/**
- * Fast cookie lookup function
- * @param name Cookie name
- * @returns The cookie value or `null`
- */
-function getCookie(name: string) {
-  const parts = document.cookie.split(/[;=]/);
-
-  for (let i = 0; i < parts.length - 1; i += 2) {
-    if (parts[i].trim() === name) {
-      const value = parts[i + 1];
-
-      return value && value.trim();
-    }
-  }
-
-  return null;
-}
-
-/**
- * Safely set a cookie in the browser
- * @param name Cookie name
- * @param value Cookie value (must be serializable)
- * @param maxAge Cookie duration (in seconds)
- */
-function setCookie(
-  name: string,
-  value: { toString(): string },
-  maxAge: number
-) {
-  document.cookie = `${name}=${value.toString()};domain=${cookieDomain};path=/;max-age=${maxAge};samesite=strict;secure`;
 }
 
 export class TokenCache<A extends Authenticator> {
@@ -215,6 +182,10 @@ export class AwsCognitoClientAuthenticator implements Authenticator {
 
     const response = await fetch(request);
 
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
     return response.json();
   }
 
@@ -229,12 +200,20 @@ export class AwsCognitoClientAuthenticator implements Authenticator {
 
     const response = await fetch(request);
 
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
     return response.json();
   }
 }
 
+export function createAwsCognito() {
+  return new AwsCognitoClientAuthenticator(authorizationUrl);
+}
+
 export function createAwsCognitoTokenCache() {
-  return new TokenCache(new AwsCognitoClientAuthenticator(authorizationUrl));
+  return new TokenCache(createAwsCognito());
 }
 
 /**

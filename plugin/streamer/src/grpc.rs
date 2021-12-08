@@ -63,7 +63,7 @@ impl Streamer for GRPCServer {
 
                 InitializeStreamResponse {
                     rtc_session_description: vec![],
-                    error: format!("{}", e),
+                    error: e.to_string(),
                 }
             }
         }))

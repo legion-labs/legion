@@ -78,11 +78,19 @@ type TokenCache = OnlineTokenCache<AwsCognitoClientAuthenticator>;
 async fn authenticate(token_cache: tauri::State<'_, Arc<TokenCache>>) -> anyhow::Result<UserInfo> {
     let access_token = token_cache.login().await?.access_token;
 
-    token_cache
+    let user_info = token_cache
         .authenticator()
         .get_user_info(&access_token)
         .await
-        .map_err(Into::into)
+        .map_err::<anyhow::Error, _>(Into::into)?;
+
+    Ok(user_info)
+}
+
+#[lgn_tauri_command]
+#[allow(clippy::needless_pass_by_value)]
+fn get_access_token(token_cache: tauri::State<'_, Arc<TokenCache>>) -> anyhow::Result<String> {
+    Ok(token_cache.read_token_set_from_cache()?.access_token)
 }
 
 fn main() -> anyhow::Result<()> {
@@ -98,7 +106,7 @@ fn main() -> anyhow::Result<()> {
 
     let builder = tauri::Builder::default()
         .manage(Arc::clone(&token_cache))
-        .invoke_handler(tauri::generate_handler![authenticate]);
+        .invoke_handler(tauri::generate_handler![authenticate, get_access_token]);
 
     App::new()
         .insert_non_send_resource(TauriPluginSettings::new(builder))

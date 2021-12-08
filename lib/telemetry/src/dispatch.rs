@@ -233,7 +233,7 @@ impl Dispatch {
 
     fn init_thread_stream(&mut self, cell: &Cell<Option<ThreadStream>>) {
         let mut properties = HashMap::new();
-        properties.insert(String::from("thread-id"), format!("{}", thread_id::get()));
+        properties.insert(String::from("thread-id"), thread_id::get().to_string());
         let thread_stream = ThreadStream::new(
             self.thread_buffer_size,
             self.process_id.clone(),
