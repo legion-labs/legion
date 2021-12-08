@@ -43,7 +43,7 @@ fn compile_atoi() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(format!("{}", source));
+        let path = resource_dir.join(source.to_string());
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -109,7 +109,7 @@ fn compile_intermediate() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(format!("{}", source));
+        let path = resource_dir.join(source.to_string());
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -202,7 +202,7 @@ fn compile_multi_resource() {
 
         resource.text_list = source_text_list.clone();
 
-        let path = resource_dir.join(format!("{}", source));
+        let path = resource_dir.join(source.to_string());
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");
@@ -283,7 +283,7 @@ fn compile_base64() {
 
         resource.content = source_binary_value;
 
-        let path = resource_dir.join(format!("{}", source));
+        let path = resource_dir.join(source.to_string());
         let mut file = File::create(path).expect("new file");
         proc.write_resource(resource, &mut file)
             .expect("written to disk");

@@ -392,13 +392,13 @@ impl Project {
 
     fn metadata_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
         let mut path = self.resource_dir();
-        path.push(format!("{}", type_id));
+        path.push(type_id.to_string());
         path.set_extension(METADATA_EXT);
         path
     }
 
     fn resource_path(&self, type_id: ResourceTypeAndId) -> PathBuf {
-        self.resource_dir().join(format!("{}", type_id))
+        self.resource_dir().join(type_id.to_string())
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
@@ -578,7 +578,7 @@ mod tests {
             writer.write_all(&bytes)?;
 
             for dep in &resource.dependencies {
-                let str = format!("{}", dep);
+                let str = dep.to_string();
                 let str = str.as_bytes();
                 let bytes = str.len().to_ne_bytes();
                 writer.write_all(&bytes)?;

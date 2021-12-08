@@ -714,7 +714,7 @@ fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Con
     if let Ok(source_name) = project.resource_name(rid.source_resource()) {
         output_text.push_str(&source_name.to_string());
     } else {
-        output_text.push_str(&format!("{}", rid.source_resource()));
+        output_text.push_str(&rid.source_resource().to_string());
     }
 
     let source_ty_pretty = config

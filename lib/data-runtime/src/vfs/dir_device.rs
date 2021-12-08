@@ -18,7 +18,7 @@ impl DirDevice {
 
 impl Device for DirDevice {
     fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
-        let path = self.dir.join(format!("{}", type_id));
+        let path = self.dir.join(type_id.to_string());
         std::fs::read(path).ok()
     }
 }

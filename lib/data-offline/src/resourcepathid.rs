@@ -118,8 +118,7 @@ impl Serialize for ResourcePathId {
     where
         S: serde::Serializer,
     {
-        let str = format!("{}", self);
-        serializer.serialize_str(&str)
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -324,10 +323,10 @@ mod tests {
         let path_a = ResourcePathId::from(source);
         let path_b = path_a.push(test_resource::TestResource::TYPE);
 
-        let name_a = format!("{}", path_a);
+        let name_a = path_a.to_string();
         assert_eq!(path_a, ResourcePathId::from_str(&name_a).unwrap());
 
-        let name_b = format!("{}", path_b);
+        let name_b = path_b.to_string();
         assert_eq!(path_b, ResourcePathId::from_str(&name_b).unwrap());
     }
 
@@ -338,7 +337,7 @@ mod tests {
         let source = ResourcePathId::from(source);
         let source_hello = source.push_named(test_resource::TestResource::TYPE, "hello");
 
-        let hello_text = format!("{}", source_hello);
+        let hello_text = source_hello.to_string();
         assert_eq!(source_hello, ResourcePathId::from_str(&hello_text).unwrap());
     }
 

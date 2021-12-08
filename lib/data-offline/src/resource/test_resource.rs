@@ -105,7 +105,7 @@ impl ResourceProcessor for TestResourceProc {
         writer.write_all(&bytes)?;
 
         for dep in &resource.build_deps {
-            let str = format!("{}", dep);
+            let str = dep.to_string();
             let str = str.as_bytes();
             let bytes = str.len().to_ne_bytes();
             writer.write_all(&bytes)?;
