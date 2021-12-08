@@ -49,7 +49,7 @@ impl<T> DerefMut for RenderHandle<T> {
 impl<T> Drop for RenderHandle<T> {
     fn drop(&mut self) {
         match &self.inner {
-            Some(_) => unreachable!("This handle should have been released. It should not have the ownership of the internal resource."),
+            Some(_) => unreachable!("This handle (of type {}) should have been released. It should not have the ownership of the internal resource.", std::any::type_name::<T>()),
             None => (),
         }
     }
