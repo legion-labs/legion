@@ -2,8 +2,9 @@ use std::sync::{Arc, Mutex};
 
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
-    BufferView, BufferViewDef, DeviceContext, MemoryPagesAllocation, PagedBufferAllocation, Queue,
-    QueueType, ResourceCreation, ResourceState, ResourceUsage, Semaphore,
+    BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
+    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, Queue, QueueType, ResourceCreation,
+    ResourceState, ResourceUsage, Semaphore,
 };
 use lgn_math::Mat4;
 
@@ -16,7 +17,9 @@ use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
 pub(crate) struct UnifiedStaticBufferInner {
     buffer: Buffer,
     segment_allocator: RangeAllocator,
-    binding_manager: SparseBindingManager,
+    _allocation: Option<MemoryAllocation>,
+    binding_manager: Option<SparseBindingManager>,
+    sparse_binding: bool,
     page_size: u64,
     read_only_view: BufferView,
     job_blocks: Vec<UniformGPUDataUploadJobBlock>,
@@ -28,12 +31,20 @@ pub struct UnifiedStaticBuffer {
 }
 
 impl UnifiedStaticBuffer {
-    pub fn new(device_context: &DeviceContext, virtual_buffer_size: u64) -> Self {
+    pub fn new(
+        device_context: &DeviceContext,
+        virtual_buffer_size: u64,
+        sparse_binding: bool,
+    ) -> Self {
+        let mut creation_flags = ResourceCreation::empty();
+        if sparse_binding {
+            creation_flags |= ResourceCreation::SPARSE_BINDING;
+        }
         let buffer_def = BufferDef {
             size: virtual_buffer_size,
             queue_type: QueueType::Graphics,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
-            creation_flags: ResourceCreation::SPARSE_BINDING,
+            creation_flags,
         };
 
         let buffer = device_context.create_buffer(&buffer_def);
@@ -44,11 +55,30 @@ impl UnifiedStaticBuffer {
         let ro_view_def = BufferViewDef::as_byte_address_buffer(buffer.definition(), true);
         let read_only_view = BufferView::from_buffer(&buffer, &ro_view_def).unwrap();
 
+        let mut allocation = None;
+        let mut binding_manager = None;
+        if sparse_binding {
+            binding_manager = Some(SparseBindingManager::new());
+        } else {
+            let alloc_def = MemoryAllocationDef {
+                memory_usage: MemoryUsage::GpuOnly,
+                always_mapped: false,
+            };
+
+            allocation = Some(MemoryAllocation::from_buffer(
+                device_context,
+                &buffer,
+                &alloc_def,
+            ));
+        }
+
         Self {
             inner: Arc::new(Mutex::new(UnifiedStaticBufferInner {
                 buffer,
                 segment_allocator: RangeAllocator::new(virtual_buffer_size),
-                binding_manager: SparseBindingManager::new(),
+                _allocation: allocation,
+                binding_manager,
+                sparse_binding,
                 page_size: required_alignment,
                 read_only_view,
                 job_blocks: Vec::new(),
@@ -65,11 +95,16 @@ impl UnifiedStaticBuffer {
         let alloc_size = page_count * page_size;
 
         let location = inner.segment_allocator.allocate(alloc_size).unwrap();
-        let allocation = MemoryPagesAllocation::for_sparse_buffer(
-            inner.buffer.device_context(),
-            &inner.buffer,
-            page_count,
-        );
+
+        let allocation = if inner.sparse_binding {
+            MemoryPagesAllocation::for_sparse_buffer(
+                inner.buffer.device_context(),
+                &inner.buffer,
+                page_count,
+            )
+        } else {
+            MemoryPagesAllocation::empty_allocation(inner.buffer.device_context())
+        };
 
         let paged_allocation = PagedBufferAllocation {
             buffer: inner.buffer.clone(),
@@ -77,9 +112,9 @@ impl UnifiedStaticBuffer {
             range: location,
         };
 
-        inner
-            .binding_manager
-            .add_sparse_binding(paged_allocation.clone());
+        if let Some(binding_manager) = &mut inner.binding_manager {
+            binding_manager.add_sparse_binding(paged_allocation.clone());
+        }
 
         paged_allocation
     }
@@ -88,7 +123,10 @@ impl UnifiedStaticBuffer {
         let inner = &mut *self.inner.lock().unwrap();
 
         inner.segment_allocator.free(segment.range);
-        inner.binding_manager.add_sparse_unbinding(segment);
+
+        if let Some(binding_manager) = &mut inner.binding_manager {
+            binding_manager.add_sparse_unbinding(segment);
+        }
     }
 
     pub fn add_update_job_block(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
@@ -107,12 +145,15 @@ impl UnifiedStaticBuffer {
     ) {
         let inner = &mut *self.inner.lock().unwrap();
 
-        let last_semaphore = inner.binding_manager.commmit_sparse_bindings(
-            graphics_queue,
-            prev_frame_semaphore,
-            unbind_semaphore,
-            bind_semaphore,
-        );
+        let mut last_semaphore = None;
+        if let Some(binding_manager) = &mut inner.binding_manager {
+            last_semaphore = Some(binding_manager.commmit_sparse_bindings(
+                graphics_queue,
+                prev_frame_semaphore,
+                unbind_semaphore,
+                bind_semaphore,
+            ));
+        }
 
         let cmd_buffer = render_context.acquire_cmd_buffer(QueueType::Graphics);
 
@@ -154,9 +195,11 @@ impl UnifiedStaticBuffer {
         cmd_buffer.end().unwrap();
 
         let mut wait_sems = Vec::new();
-        if last_semaphore.signal_available() {
-            wait_sems.push(last_semaphore);
-            last_semaphore.set_signal_available(false);
+        if let Some(wait_sem) = last_semaphore {
+            if wait_sem.signal_available() {
+                wait_sems.push(wait_sem);
+                wait_sem.set_signal_available(false);
+            }
         }
 
         graphics_queue

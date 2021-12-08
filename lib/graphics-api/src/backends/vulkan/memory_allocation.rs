@@ -146,6 +146,12 @@ impl VulkanMemoryPagesAllocation {
         }
     }
 
+    pub fn empty_allocation() -> Self {
+        Self {
+            vk_allocated_pages: Vec::new(),
+        }
+    }
+
     pub fn destroy(&mut self, device_context: &DeviceContext) {
         let mut allocations = Vec::with_capacity(self.vk_allocated_pages.len());
         for allocation in &self.vk_allocated_pages {

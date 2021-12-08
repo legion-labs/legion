@@ -148,6 +148,20 @@ impl MemoryPagesAllocation {
                 }),
         }
     }
+
+    pub fn empty_allocation(device_context: &DeviceContext) -> Self {
+        #[cfg(feature = "vulkan")]
+        let platform_allocation = VulkanMemoryPagesAllocation::empty_allocation();
+        Self {
+            inner: device_context
+                .deferred_dropper()
+                .new_drc(MemoryPagesAllocationInner {
+                    device_context: device_context.clone(),
+                    #[cfg(any(feature = "vulkan"))]
+                    platform_allocation,
+                }),
+        }
+    }
 }
 
 pub type BufferAllocation = BufferSubAllocation<MemoryAllocation>;
