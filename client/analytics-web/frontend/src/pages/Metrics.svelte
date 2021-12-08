@@ -14,11 +14,20 @@
   let renderingContext: CanvasRenderingContext2D | undefined;
   let minMs = Infinity;
   let maxMs = -Infinity;
+  let viewRange: [number, number] | undefined;
   let dataTracks: Record<string, MetricDataPoint[]> = {};
 
   const client = new PerformanceAnalyticsClientImpl(
     new GrpcWebImpl("http://" + location.hostname + ":9090", {})
   );
+
+  function getViewRange(): [number, number] {
+    if (viewRange) {
+      return viewRange;
+    }
+
+    return [minMs, maxMs];
+  }
 
   onMount(() => {
     canvas = document.getElementById("canvas_plot") as HTMLCanvasElement;
@@ -52,30 +61,40 @@
     }
     let minValue = Infinity;
     let maxValue = -Infinity;
-    let toDisplay: MetricDataPoint[] = [];
-    points.forEach( function( pt: MetricDataPoint ){
-      if (pt.timeMs >= minMs && pt.timeMs <= maxMs){
+    const viewRange = getViewRange();
+    const beginView = viewRange[0];
+    const endView = viewRange[1];
+
+    let beginIndex = points.length;
+    let endIndex = 0;
+    for( let i = 0; i < points.length; ++i ){
+      const pt = points[i];
+      if (pt.timeMs >= beginView && pt.timeMs <= endView){
         minValue = Math.min(minValue, pt.value);
         maxValue = Math.max(maxValue, pt.value);
-        toDisplay.push(pt);
+        beginIndex = Math.min(beginIndex, i);
+        endIndex = Math.max(endIndex, i);
       }
-    } );
+    }
 
-    const timeSpan = maxMs - minMs;
+    beginIndex = Math.max( 0, beginIndex-1 );
+    endIndex = Math.min( endIndex+1, points.length );
+
+    const timeSpan = endView - beginView;
     const valueSpan = maxValue - minValue;
     const widthPixels = canvas.width;
     const heightPixels = canvas.height;
 
     renderingContext.beginPath();
     {
-      let p = toDisplay[0];
-      let x = ((p.timeMs - minMs) / timeSpan) * widthPixels;
+      let p = points[beginIndex];
+      let x = ((p.timeMs - beginView) / timeSpan) * widthPixels;
       let y = heightPixels - ((p.value - minValue) * heightPixels / valueSpan);
       renderingContext.moveTo(x,y);
     }
-    for( let i = 1; i < toDisplay.length; ++i ){
-      let p = toDisplay[i];
-      let x = ((p.timeMs - minMs) / timeSpan) * widthPixels;
+    for( let i = beginIndex+1; i < endIndex; ++i ){
+      let p = points[i];
+      let x = ((p.timeMs - beginView) / timeSpan) * widthPixels;
       let y = heightPixels - ((p.value - minValue) * heightPixels / valueSpan);
       renderingContext.lineTo(x,y);
     }
@@ -112,6 +131,27 @@
     drawCanvas();
   }
 
+  function onZoom(event: WheelEvent) {
+    if (!canvas) {
+      throw new Error("Canvas can't be found");
+    }
+
+    const speed = 0.75;
+    const factor = event.deltaY > 0 ? 1.0 / speed : speed;
+    const oldRange = getViewRange();
+    const length = oldRange[1] - oldRange[0];
+    const newLength = length * factor;
+    const pctCursor = event.offsetX / canvas.width;
+    const pivot = oldRange[0] + length * pctCursor;
+
+    viewRange = [
+      pivot - newLength * pctCursor,
+      pivot + newLength * (1 - pctCursor),
+    ];
+
+    drawCanvas();
+  }
+
 </script>
 
 <div>
@@ -129,6 +169,7 @@
     bind:this={canvas}
     id="canvas_plot"
     width="1024px"
+    on:wheel|preventDefault={onZoom}
     />
 </div>
 
