@@ -209,14 +209,14 @@ impl AssetRegistryPlugin {
                             &mut asset_to_entity_map,
                         ) {
                             eprintln!(
-                                "Unhandled runtime type: {}, asset: {:?}",
+                                "Unhandled runtime type: {}, asset: {}",
                                 asset_id.t, asset_id
                             );
                         }
 
                         *loading_state = LoadingState::Loaded;
                     } else if handle.is_err(&registry) {
-                        eprintln!("Failed to load runtime asset {:?}", asset_id);
+                        eprintln!("Failed to load runtime asset {}", asset_id);
                         *loading_state = LoadingState::Failed;
                     }
                 }
@@ -247,7 +247,7 @@ impl AssetRegistryPlugin {
                 ResourceLoadEvent::LoadError(asset_id, error_kind) => {
                     if asset_loading_states.get(asset_id).is_none() {
                         eprintln!(
-                            "Failed to load runtime asset {:?}, error: {:?}",
+                            "Failed to load runtime asset {}, error: {:?}",
                             asset_id, error_kind
                         );
                         asset_loading_states.insert(asset_id, LoadingState::Failed);

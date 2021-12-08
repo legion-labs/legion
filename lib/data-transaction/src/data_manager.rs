@@ -16,11 +16,11 @@ pub enum Error {
     NoCommittedTransaction,
 
     ///Resource failed to deserializer from memory
-    #[error("ResourceId '{0:?}' failed to deserialize")]
+    #[error("ResourceId '{0}' failed to deserialize")]
     InvalidResourceDeserialization(ResourceTypeAndId),
 
     /// Resource Id Already Exists
-    #[error("Resource '{0:?}' already exists in the Project")]
+    #[error("Resource '{0}' already exists in the Project")]
     ResourceIdAlreadyExist(ResourceTypeAndId),
 
     /// Resource Path Already Exists
@@ -28,11 +28,11 @@ pub enum Error {
     ResourcePathAlreadyExist(ResourcePathName),
 
     /// Invalid Delete Operation
-    #[error("Invalid DeleteOperation on Resource'{0:?}'")]
+    #[error("Invalid DeleteOperation on Resource'{0}'")]
     InvalidDeleteOperation(ResourceTypeAndId),
 
     /// Invalid Resource
-    #[error("ResourceId '{0:?}' not found")]
+    #[error("ResourceId '{0}' not found")]
     InvalidResource(ResourceTypeAndId),
 
     /// Resource of type failed to create
@@ -40,7 +40,7 @@ pub enum Error {
     ResourceCreationFailed(ResourceType),
 
     /// Invalid Resource Reflection
-    #[error("Resource {0:?} doesn't have reflection.")]
+    #[error("Resource {0} doesn't have reflection.")]
     InvalidResourceReflection(ResourceTypeAndId),
 }
 

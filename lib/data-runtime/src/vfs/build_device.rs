@@ -77,7 +77,7 @@ impl BuildDevice {
         let output = command.output()?;
 
         log::info!(
-            "{} DataBuild for Resource: {:?} processed in {:?}",
+            "{} DataBuild for Resource: {} processed in {:?}",
             if output.status.success() {
                 "Succeeded"
             } else {

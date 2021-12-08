@@ -105,7 +105,7 @@ impl Editor for GRPCServer {
         let handle = ctx
             .loaded_resource_handles
             .get(resource_id)
-            .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {:?}", resource_id)))?;
+            .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
 
         let mut response = GetResourcePropertiesResponse {
             description: Some(ResourceDescription {
@@ -127,7 +127,7 @@ impl Editor for GRPCServer {
         {
             let descriptors = reflection.get_property_descriptors().ok_or_else(|| {
                 Status::internal(format!(
-                    "Invalid Property Descriptor for ResourceId: {:?}",
+                    "Invalid Property Descriptor for ResourceId: {}",
                     resource_id
                 ))
             })?;
@@ -223,7 +223,7 @@ impl Editor for GRPCServer {
         }
 
         Err(Status::internal(format!(
-            "Invalid ResourceID: {:?}",
+            "Invalid ResourceID: {}",
             resource_id
         )))
     }
