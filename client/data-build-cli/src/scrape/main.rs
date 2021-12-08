@@ -676,7 +676,10 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
                 ResourceId::from_raw(f.read_u128::<LittleEndian>().expect("valid data"));
             if let Some(config) = config {
                 let (_build, project) = config.open().expect("open config");
-                let path_id = ResourcePathId::from(ResourceTypeAndId(asset_ref_type, asset_ref_id));
+                let path_id = ResourcePathId::from(ResourceTypeAndId {
+                    t: asset_ref_type,
+                    id: asset_ref_id,
+                });
                 println!(
                     "\t\treference: {}",
                     pretty_name_from_pathid(&path_id, &project, config)
@@ -684,7 +687,10 @@ fn parse_asset_file(path: impl AsRef<Path>, config: &Option<Config>) {
             } else {
                 println!(
                     "\t\treference: {}",
-                    ResourceTypeAndId(asset_ref_type, asset_ref_id,)
+                    ResourceTypeAndId {
+                        t: asset_ref_type,
+                        id: asset_ref_id
+                    }
                 );
             }
         }
@@ -719,9 +725,9 @@ fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Con
 
     let source_ty_pretty = config
         .type_map
-        .get(&rid.source_resource().0)
+        .get(&rid.source_resource().t)
         .cloned()
-        .unwrap_or_else(|| rid.source_resource().0.to_string());
+        .unwrap_or_else(|| rid.source_resource().t.to_string());
     output_text.push_str(&format!(" ({})", source_ty_pretty));
 
     for (_, target, name) in rid.transforms() {

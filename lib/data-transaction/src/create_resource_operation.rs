@@ -23,8 +23,8 @@ impl TransactionOperation for CreateResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> anyhow::Result<()> {
         let handle = ctx
             .resource_registry
-            .new_resource(self.resource_id.0)
-            .ok_or(Error::ResourceCreationFailed(self.resource_id.0))?;
+            .new_resource(self.resource_id.t)
+            .ok_or(Error::ResourceCreationFailed(self.resource_id.t))?;
 
         // Validate duplicate id/name
         if ctx.project.exists(self.resource_id) {
@@ -36,7 +36,7 @@ impl TransactionOperation for CreateResourceOperation {
 
         ctx.project.add_resource_with_id(
             self.resource_path.clone(),
-            self.resource_id.0,
+            self.resource_id.t,
             self.resource_id,
             &handle,
             &mut ctx.resource_registry,

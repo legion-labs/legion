@@ -109,7 +109,10 @@ impl Transaction {
         resource_path: ResourcePathName,
         resource_type: ResourceType,
     ) -> anyhow::Result<ResourceTypeAndId> {
-        let resource_id = ResourceTypeAndId(resource_type, ResourceId::new());
+        let resource_id = ResourceTypeAndId {
+            t: resource_type,
+            id: ResourceId::new(),
+        };
         self.operations.push(Box::new(CreateResourceOperation::new(
             resource_id,
             resource_path,

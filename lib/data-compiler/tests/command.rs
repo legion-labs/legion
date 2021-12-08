@@ -50,7 +50,10 @@ fn command_compile() {
 
     let content = "test content";
 
-    let source = ResourceTypeAndId(refs_resource::TestResource::TYPE, ResourceId::new());
+    let source = ResourceTypeAndId {
+        t: refs_resource::TestResource::TYPE,
+        id: ResourceId::new(),
+    };
     create_test_resource(source, &resource_dir, content);
 
     let exe_path = common::compiler_exe("test-refs");

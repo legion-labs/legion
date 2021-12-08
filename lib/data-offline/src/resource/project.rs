@@ -243,7 +243,10 @@ impl Project {
         handle: impl AsRef<ResourceHandleUntyped>,
         registry: &mut ResourceRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let type_id = ResourceTypeAndId(kind, ResourceId::new());
+        let type_id = ResourceTypeAndId {
+            t: kind,
+            id: ResourceId::new(),
+        };
         self.add_resource_with_id(name, kind, type_id, handle, registry)
     }
 
@@ -330,7 +333,7 @@ impl Project {
                 .map_err(Error::IOError)?;
 
             let (_written, build_deps) = resources
-                .serialize_resource(type_id.0, handle, &mut resource_file)
+                .serialize_resource(type_id.t, handle, &mut resource_file)
                 .map_err(Error::IOError)?;
             build_deps
         };
@@ -355,14 +358,14 @@ impl Project {
     /// In order to update the resource on disk see [`Self::save_resource()`].
     pub fn load_resource(
         &self,
-        id: ResourceTypeAndId,
+        type_id: ResourceTypeAndId,
         resources: &mut ResourceRegistry,
     ) -> Result<ResourceHandleUntyped, Error> {
-        let resource_path = self.resource_path(id);
+        let resource_path = self.resource_path(type_id);
 
         let mut resource_file = File::open(resource_path).map_err(Error::IOError)?;
         let handle = resources
-            .deserialize_resource(id.0, &mut resource_file)
+            .deserialize_resource(type_id.t, &mut resource_file)
             .map_err(Error::IOError)?;
         Ok(handle)
     }

@@ -18,7 +18,7 @@ pub(crate) fn load_ecs_asset<T>(
 where
     T: AssetToECS + Resource + 'static,
 {
-    if asset_id.0 == T::TYPE {
+    if asset_id.t == T::TYPE {
         if let Some(asset) = handle.get::<T>(registry) {
             let entity = T::create_in_ecs(commands, &asset, asset_to_entity_map);
 

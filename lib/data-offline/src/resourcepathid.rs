@@ -194,7 +194,7 @@ impl ResourcePathId {
     /// Returns `ResourceType` of the resource identified by this path.
     pub fn content_type(&self) -> ResourceType {
         if self.transforms.is_empty() {
-            self.source.0
+            self.source.t
         } else {
             self.transforms.last().unwrap().0
         }
@@ -223,7 +223,7 @@ impl ResourcePathId {
     pub fn last_transform(&self) -> Option<(ResourceType, ResourceType)> {
         match self.transforms.len() {
             0 => None,
-            1 => Some((self.source.0, self.transforms[0].0)),
+            1 => Some((self.source.t, self.transforms[0].0)),
             _ => {
                 let len = self.transforms.len();
                 Some((self.transforms[len - 2].0, self.transforms[len - 1].0))
@@ -248,7 +248,10 @@ impl ResourcePathId {
         if self.is_source() {
             self.source
         } else {
-            ResourceTypeAndId(self.content_type(), ResourceId::from_obj(&self))
+            ResourceTypeAndId {
+                t: self.content_type(),
+                id: ResourceId::from_obj(&self),
+            }
         }
     }
 
@@ -261,7 +264,7 @@ impl ResourcePathId {
     /// # use lgn_data_offline::{ResourcePathId};
     /// # const FOO_TYPE: ResourceType = ResourceType::new(b"foo");
     /// # const BAR_TYPE: ResourceType = ResourceType::new(b"bar");
-    /// let source = ResourceTypeAndId(FOO_TYPE, ResourceId::new());
+    /// let source = ResourceTypeAndId { t: FOO_TYPE, id: ResourceId::new() };
     /// let path = ResourcePathId::from(source).push(BAR_TYPE).push_named(FOO_TYPE, "parameter");
     ///
     /// let mut transforms = path.transforms();
@@ -293,7 +296,7 @@ impl<'a> Iterator for Transforms<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.target_index < self.path_id.transforms.len() {
             let source = if self.target_index == 0 {
-                self.path_id.source.0
+                self.path_id.source.t
             } else {
                 self.path_id.transforms[self.target_index - 1].0
             };
@@ -318,7 +321,10 @@ mod tests {
 
     #[test]
     fn simple_path() {
-        let source = ResourceTypeAndId(test_resource::TestResource::TYPE, ResourceId::new());
+        let source = ResourceTypeAndId {
+            t: test_resource::TestResource::TYPE,
+            id: ResourceId::new(),
+        };
 
         let path_a = ResourcePathId::from(source);
         let path_b = path_a.push(test_resource::TestResource::TYPE);
@@ -332,7 +338,10 @@ mod tests {
 
     #[test]
     fn named_path() {
-        let source = ResourceTypeAndId(test_resource::TestResource::TYPE, ResourceId::new());
+        let source = ResourceTypeAndId {
+            t: test_resource::TestResource::TYPE,
+            id: ResourceId::new(),
+        };
 
         let source = ResourcePathId::from(source);
         let source_hello = source.push_named(test_resource::TestResource::TYPE, "hello");
@@ -345,7 +354,10 @@ mod tests {
     fn transform_iter() {
         let foo_type = ResourceType::new(b"foo");
         let bar_type = ResourceType::new(b"bar");
-        let source = ResourceTypeAndId(foo_type, ResourceId::new());
+        let source = ResourceTypeAndId {
+            t: foo_type,
+            id: ResourceId::new(),
+        };
 
         let source_only = ResourcePathId::from(source);
         assert_eq!(source_only.transforms().next(), None);

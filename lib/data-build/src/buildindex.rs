@@ -18,6 +18,7 @@ use lgn_utils::DefaultHasher;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::serde_as;
+use serde_with::DisplayFromStr;
 
 use crate::Error;
 
@@ -96,7 +97,7 @@ struct OutputContent {
     version: String,
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
-    #[serde_as(as = "Vec<(_, _)>")]
+    #[serde_as(as = "Vec<(DisplayFromStr, _)>")]
     pathid_mapping: BTreeMap<ResourceTypeAndId, ResourcePathId>,
 }
 
@@ -569,7 +570,10 @@ mod tests {
         let project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
-        let source_id = ResourceTypeAndId(refs_resource::TestResource::TYPE, ResourceId::new());
+        let source_id = ResourceTypeAndId {
+            t: refs_resource::TestResource::TYPE,
+            id: ResourceId::new(),
+        };
         let source_resource = ResourcePathId::from(source_id);
         let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
         let output_resource = intermediate_resource.push(refs_resource::TestResource::TYPE);
@@ -622,7 +626,10 @@ mod tests {
         let project = Project::create_new(work_dir.path()).expect("failed to create project");
 
         // dummy ids - the actual project structure is irrelevant in this test.
-        let source_id = ResourceTypeAndId(refs_resource::TestResource::TYPE, ResourceId::new());
+        let source_id = ResourceTypeAndId {
+            t: refs_resource::TestResource::TYPE,
+            id: ResourceId::new(),
+        };
         let source_resource = ResourcePathId::from(source_id);
         let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
         let output_resources = intermediate_resource.push(refs_resource::TestResource::TYPE);

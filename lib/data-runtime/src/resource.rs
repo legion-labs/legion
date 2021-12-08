@@ -195,7 +195,13 @@ impl<'de> Deserialize<'de> for ResourceId {
 
 /// FIXME: This should only be a temporary struct, we should be using the `ResourceId` directly.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash, Serialize, Deserialize)]
-pub struct ResourceTypeAndId(pub ResourceType, pub ResourceId);
+pub struct ResourceTypeAndId {
+    /// The associated `ResourceType`.
+    pub t: ResourceType,
+
+    /// The associated `ResourceId`.
+    pub id: ResourceId,
+}
 
 impl FromStr for ResourceTypeAndId {
     type Err = Box<dyn std::error::Error>;
@@ -207,13 +213,13 @@ impl FromStr for ResourceTypeAndId {
             .collect();
         let t = pair[0].parse::<ResourceType>()?;
         let id = pair[1].parse::<ResourceId>()?;
-        Ok(Self(t, id))
+        Ok(Self { t, id })
     }
 }
 
 impl fmt::Display for ResourceTypeAndId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("({},{})", self.0, self.1))
+        f.write_fmt(format_args!("({},{})", self.t, self.id))
     }
 }
 

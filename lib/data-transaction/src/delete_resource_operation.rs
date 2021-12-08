@@ -28,7 +28,7 @@ impl TransactionOperation for DeleteResourceOperation {
             if self.old_resource_name.is_none() {
                 let mut old_resource_data = Vec::<u8>::new();
                 ctx.resource_registry.serialize_resource(
-                    self.resource_id.0,
+                    self.resource_id.t,
                     &old_handle,
                     &mut old_resource_data,
                 )?;
@@ -54,11 +54,11 @@ impl TransactionOperation for DeleteResourceOperation {
 
         let handle = ctx
             .resource_registry
-            .deserialize_resource(self.resource_id.0, &mut old_resource_data.as_slice())?;
+            .deserialize_resource(self.resource_id.t, &mut old_resource_data.as_slice())?;
 
         ctx.project.add_resource_with_id(
             old_resource_name.clone(),
-            self.resource_id.0,
+            self.resource_id.t,
             self.resource_id,
             &handle,
             &mut ctx.resource_registry,

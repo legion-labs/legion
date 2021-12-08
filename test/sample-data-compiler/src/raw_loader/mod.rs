@@ -153,7 +153,10 @@ fn create_or_find_default(
             if let Ok(id) = project.find_resource(name) {
                 id
             } else {
-                let id = ResourceTypeAndId(kind, ResourceId::new());
+                let id = ResourceTypeAndId {
+                    t: kind,
+                    id: ResourceId::new(),
+                };
                 project
                     .add_resource_with_id(
                         name.clone(),
@@ -176,7 +179,10 @@ fn create_or_find_default(
                 id
             } else {
                 let kind = TestEntity::TYPE;
-                let id = ResourceTypeAndId(kind, ResourceId::new());
+                let id = ResourceTypeAndId {
+                    t: kind,
+                    id: ResourceId::new(),
+                };
                 let test_entity_handle = resources.new_resource(kind).unwrap();
                 let test_entity = test_entity_handle.get_mut::<TestEntity>(resources).unwrap();
                 test_entity.test_string = "Editable String Value".into();
@@ -197,7 +203,10 @@ fn create_or_find_default(
         let name: ResourcePathName = format!("/entity/DebugCube{}", index).into();
         let id = project.find_resource(&name).unwrap_or_else(|_err| {
             let kind = DebugCube::TYPE;
-            let id = ResourceTypeAndId(kind, ResourceId::new());
+            let id = ResourceTypeAndId {
+                t: kind,
+                id: ResourceId::new(),
+            };
             let cube_entity_handle = resources.new_resource(kind).unwrap();
             let cube_entity = cube_entity_handle.get_mut::<DebugCube>(resources).unwrap();
 

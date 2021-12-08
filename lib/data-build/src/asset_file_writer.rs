@@ -32,7 +32,7 @@ pub fn write_assetfile(
     let mut kind: Option<ResourceType> = None;
     for content in asset_list {
         if asset_contents.is_empty() {
-            kind = Some(content.0 .0);
+            kind = Some(content.0.t);
         }
         asset_contents.push(content_store.read(content.1).unwrap());
     }
@@ -67,7 +67,10 @@ mod tests {
     fn create_ref_asset(text: &'static str, reference: ResourceId) -> Vec<u8> {
         let content = RefAssetContent {
             text,
-            reference: ResourceTypeAndId(refs_asset::RefsAsset::TYPE, reference),
+            reference: ResourceTypeAndId {
+                t: refs_asset::RefsAsset::TYPE,
+                id: reference,
+            },
         };
         bincode::DefaultOptions::new()
             .with_varint_encoding()
@@ -80,7 +83,10 @@ mod tests {
     fn one_asset_no_references() {
         let mut content_store = RamContentStore::default();
 
-        let asset_id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(1));
+        let asset_id = ResourceTypeAndId {
+            t: refs_asset::RefsAsset::TYPE,
+            id: ResourceId::new_explicit(1),
+        };
         let asset_content = create_ref_asset("test_content", ResourceId::new_explicit(9));
         let asset_checksum = content_store.store(&asset_content).expect("to store asset");
         assert_eq!(content_store.read(asset_checksum).unwrap(), asset_content);
@@ -107,12 +113,18 @@ mod tests {
     fn two_dependent_assets() {
         let mut content_store = RamContentStore::default();
 
-        let child_id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(1));
+        let child_id = ResourceTypeAndId {
+            t: refs_asset::RefsAsset::TYPE,
+            id: ResourceId::new_explicit(1),
+        };
         let child_content = create_ref_asset("child", ResourceId::new_explicit(9));
         let child_checksum = content_store.store(&child_content).expect("to store asset");
         assert_eq!(content_store.read(child_checksum).unwrap(), child_content);
 
-        let parent_id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(2));
+        let parent_id = ResourceTypeAndId {
+            t: refs_asset::RefsAsset::TYPE,
+            id: ResourceId::new_explicit(2),
+        };
         let parent_content = create_ref_asset("parent", ResourceId::new_explicit(1));
         let parent_checksum = content_store
             .store(&parent_content)

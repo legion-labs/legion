@@ -465,10 +465,10 @@ mod tests {
             if underlying_id == 0 {
                 return Ok(None);
             }
-            Ok(Some(Reference::Passive(ResourceTypeAndId(
-                ResourceType::from_raw(underlying_type),
-                ResourceId::from_raw(underlying_id),
-            ))))
+            Ok(Some(Reference::Passive(ResourceTypeAndId {
+                t: ResourceType::from_raw(underlying_type),
+                id: ResourceId::from_raw(underlying_id),
+            })))
         }
     }
 
@@ -484,8 +484,10 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let asset_id = {
-            let type_id =
-                ResourceTypeAndId(test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
+            let type_id = ResourceTypeAndId {
+                t: test_asset::TestAsset::TYPE,
+                id: ResourceId::new_explicit(1),
+            };
             let checksum = content_store.store(content).unwrap();
             manifest.insert(type_id, checksum, content.len());
             type_id
@@ -526,7 +528,10 @@ mod tests {
             0, 0, 0, // asset data
         ];
 
-        let child_id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(1));
+        let child_id = ResourceTypeAndId {
+            t: refs_asset::RefsAsset::TYPE,
+            id: ResourceId::new_explicit(1),
+        };
 
         let parent_id = {
             manifest.insert(
@@ -535,7 +540,10 @@ mod tests {
                 BINARY_CHILD_ASSETFILE.len(),
             );
             let checksum = content_store.store(&BINARY_PARENT_ASSETFILE).unwrap();
-            let id = ResourceTypeAndId(refs_asset::RefsAsset::TYPE, ResourceId::new_explicit(2));
+            let id = ResourceTypeAndId {
+                t: refs_asset::RefsAsset::TYPE,
+                id: ResourceId::new_explicit(2),
+            };
             manifest.insert(id, checksum, BINARY_PARENT_ASSETFILE.len());
             id
         };
@@ -625,10 +633,10 @@ mod tests {
 
         let internal_id;
         {
-            let a = reg.load_untyped(ResourceTypeAndId(
-                test_asset::TestAsset::TYPE,
-                ResourceId::new_explicit(7),
-            ));
+            let a = reg.load_untyped(ResourceTypeAndId {
+                t: test_asset::TestAsset::TYPE,
+                id: ResourceId::new_explicit(7),
+            });
             internal_id = a.id();
 
             let mut test_timeout = Duration::from_millis(500);
@@ -653,10 +661,10 @@ mod tests {
 
         let internal_id;
         {
-            let a = reg.load_untyped_sync(ResourceTypeAndId(
-                test_asset::TestAsset::TYPE,
-                ResourceId::new_explicit(7),
-            ));
+            let a = reg.load_untyped_sync(ResourceTypeAndId {
+                t: test_asset::TestAsset::TYPE,
+                id: ResourceId::new_explicit(7),
+            });
             internal_id = a.id();
 
             assert!(!a.is_loaded(&reg));

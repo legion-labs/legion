@@ -32,7 +32,10 @@ fn compile_atoi() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceTypeAndId(text_resource::TextResource::TYPE, ResourceId::new());
+        let source = ResourceTypeAndId {
+            t: text_resource::TextResource::TYPE,
+            id: ResourceId::new(),
+        };
 
         let mut proc = text_resource::TextResourceProc {};
 
@@ -100,7 +103,10 @@ fn compile_intermediate() {
     let source_magic_value = String::from("47");
 
     let source = {
-        let source = ResourceTypeAndId(text_resource::TextResource::TYPE, ResourceId::new());
+        let source = ResourceTypeAndId {
+            t: text_resource::TextResource::TYPE,
+            id: ResourceId::new(),
+        };
         let mut proc = text_resource::TextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -190,10 +196,10 @@ fn compile_multi_resource() {
     let source_text_list = vec![String::from("hello"), String::from("world")];
 
     let source = {
-        let source = ResourceTypeAndId(
-            multitext_resource::MultiTextResource::TYPE,
-            ResourceId::new(),
-        );
+        let source = ResourceTypeAndId {
+            t: multitext_resource::MultiTextResource::TYPE,
+            id: ResourceId::new(),
+        };
         let mut proc = MultiTextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -272,7 +278,10 @@ fn compile_base64() {
     let expected_base64_value = String::from("AQIDBAUGBwgJ");
 
     let source = {
-        let source = ResourceTypeAndId(binary_resource::BinaryResource::TYPE, ResourceId::new());
+        let source = ResourceTypeAndId {
+            t: binary_resource::BinaryResource::TYPE,
+            id: ResourceId::new(),
+        };
 
         let mut proc = binary_resource::BinaryResourceProc {};
 

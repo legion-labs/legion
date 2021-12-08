@@ -123,7 +123,7 @@ impl Editor for GRPCServer {
         // Refresh for Reflection interface. Might not be present for type with no properties
         if let Some(reflection) = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.0, handle)
+            .get_resource_reflection(resource_id.t, handle)
         {
             let descriptors = reflection.get_property_descriptors().ok_or_else(|| {
                 Status::internal(format!(
@@ -198,7 +198,7 @@ impl Editor for GRPCServer {
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.0, handle)
+            .get_resource_reflection(resource_id.t, handle)
             .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
 
         let results: anyhow::Result<Vec<ResourcePropertyUpdate>> = request

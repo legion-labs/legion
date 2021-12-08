@@ -68,8 +68,8 @@ where
     if underlying_id == 0 {
         return Ok(None);
     }
-    Ok(Some(Reference::Passive(ResourceTypeAndId(
-        ResourceType::from_raw(underlying_type),
-        ResourceId::from_raw(underlying_id),
-    ))))
+    Ok(Some(Reference::Passive(ResourceTypeAndId {
+        t: ResourceType::from_raw(underlying_type),
+        id: ResourceId::from_raw(underlying_id),
+    })))
 }

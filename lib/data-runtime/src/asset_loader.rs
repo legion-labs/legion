@@ -310,7 +310,7 @@ impl AssetLoaderIO {
         let (_, primary_resource) = output.assets.first_mut().unwrap();
 
         if let Some(boxed) = primary_resource {
-            let loader = self.loaders.get_mut(&primary_id.0).unwrap();
+            let loader = self.loaders.get_mut(&primary_id.t).unwrap();
             loader.load_init(boxed.as_mut());
         }
         assert!(self.loaded_resources.contains(&primary_id));
@@ -464,7 +464,7 @@ impl AssetLoaderIO {
 
                 for (asset_id, asset) in &mut loaded.assets {
                     if let Some(boxed) = asset {
-                        let loader = self.loaders.get_mut(&asset_id.id().0).unwrap();
+                        let loader = self.loaders.get_mut(&asset_id.id().t).unwrap();
                         loader.load_init(boxed.as_mut());
                     }
                     // if there is no boxed asset here, it means it was already loaded before.
@@ -507,7 +507,7 @@ impl AssetLoaderIO {
         let mut content = Vec::new();
         reader.read_to_end(&mut content)?;
 
-        let asset_type = type_id.0;
+        let asset_type = type_id.t;
         let loader = loaders.get_mut(&asset_type).unwrap();
         let boxed_asset = loader.load(&mut &content[..])?;
 
@@ -546,10 +546,10 @@ impl AssetLoaderIO {
         let reference_count = reader.read_u64::<LittleEndian>()?;
         let mut reference_list = Vec::with_capacity(reference_count as usize);
         for _ in 0..reference_count {
-            let asset_ref = ResourceTypeAndId(
-                ResourceType::from_raw(reader.read_u32::<LittleEndian>()?),
-                ResourceId::from_raw(reader.read_u128::<LittleEndian>()?),
-            );
+            let asset_ref = ResourceTypeAndId {
+                t: ResourceType::from_raw(reader.read_u32::<LittleEndian>()?),
+                id: ResourceId::from_raw(reader.read_u128::<LittleEndian>()?),
+            };
             reference_list.push(AssetReference {
                 primary: asset_ref,
                 secondary: asset_ref,
@@ -563,7 +563,7 @@ impl AssetLoaderIO {
             )
         };
         assert_eq!(
-            asset_type, primary_id.0,
+            asset_type, primary_id.t,
             "The asset must be of primary id's type"
         );
 
@@ -618,7 +618,10 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let asset_id = {
-            let id = ResourceTypeAndId(test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
+            let id = ResourceTypeAndId {
+                t: test_asset::TestAsset::TYPE,
+                id: ResourceId::new_explicit(1),
+            };
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_ASSETFILE)
                 .unwrap();
@@ -689,7 +692,10 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let asset_id = {
-            let id = ResourceTypeAndId(test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
+            let id = ResourceTypeAndId {
+                t: test_asset::TestAsset::TYPE,
+                id: ResourceId::new_explicit(1),
+            };
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_ASSETFILE)
                 .unwrap();
@@ -748,7 +754,10 @@ mod tests {
         let mut content_store = Box::new(RamContentStore::default());
         let mut manifest = Manifest::default();
 
-        let parent_id = ResourceTypeAndId(test_asset::TestAsset::TYPE, ResourceId::new_explicit(2));
+        let parent_id = ResourceTypeAndId {
+            t: test_asset::TestAsset::TYPE,
+            id: ResourceId::new_explicit(2),
+        };
 
         let asset_id = {
             let checksum = content_store
@@ -803,8 +812,14 @@ mod tests {
 
         let parent_content = "parent";
 
-        let parent_id = ResourceTypeAndId(test_asset::TestAsset::TYPE, ResourceId::new_explicit(2));
-        let child_id = ResourceTypeAndId(test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
+        let parent_id = ResourceTypeAndId {
+            t: test_asset::TestAsset::TYPE,
+            id: ResourceId::new_explicit(2),
+        };
+        let child_id = ResourceTypeAndId {
+            t: test_asset::TestAsset::TYPE,
+            id: ResourceId::new_explicit(1),
+        };
 
         let asset_id = {
             manifest.insert(
@@ -905,7 +920,10 @@ mod tests {
         let mut manifest = Manifest::default();
 
         let asset_id = {
-            let id = ResourceTypeAndId(test_asset::TestAsset::TYPE, ResourceId::new_explicit(1));
+            let id = ResourceTypeAndId {
+                t: test_asset::TestAsset::TYPE,
+                id: ResourceId::new_explicit(1),
+            };
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_ASSETFILE)
                 .unwrap();
